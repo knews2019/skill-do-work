@@ -632,6 +632,25 @@ After creating files, give a brief summary:
 
 Keep it concise. Don't explain your reasoning unless asked.
 
+#### Verify Hint for Complex Requests
+
+If the request was **meaningfully complex**, suggest the verify action after your summary. A request is meaningfully complex when ANY of these are true:
+
+- Complex mode was used (per the detection rules above)
+- 3 or more REQ files were created
+- The input was notably long or nuanced (lots of conditional logic, edge cases, firm constraints)
+
+When the threshold is met, add a brief line after the file summary:
+
+> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `/do-work verify` to check coverage against your original input.
+
+**Don't suggest verify when:**
+- It's a simple, single-feature request
+- Only 1-2 straightforward REQs were created
+- The input was short and direct
+
+The goal is a gentle nudge, not a gate. One sentence, no pressure. If the user ignores it, that's fine.
+
 ## Examples
 
 ### Example 1: Simple Single Request
@@ -723,6 +742,9 @@ Created:
 - do-work/REQ-013-password-reset.md (user_request: UR-001, alternative to REQ-010)
 
 All requests reference UR-001 for full requirements.
+
+That was a pretty detailed request — it's possible the capture missed some
+nuances. You can run `/do-work verify` to check coverage against your original input.
 ```
 
 ### Example 7: Detecting Complexity
@@ -749,6 +771,9 @@ Created:
 - do-work/REQ-018-dashboard-responsive-layout.md (user_request: UR-002)
 
 Each request includes full detailed requirements and references UR-002.
+
+That was a pretty detailed request — it's possible the capture missed some
+nuances. You can run `/do-work verify` to check coverage against your original input.
 ```
 
 ## What NOT To Do

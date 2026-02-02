@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.7.0 — The Nudge
+
+Complex requests now get a gentle suggestion to run `/do-work verify` after capture. If your input had lots of features, nuanced constraints, or multiple REQs, the system lets you know verification is available — so you can catch dropped details before building starts. Simple requests stay clean and quiet.
+
+- Verify hint added to do action's report step for meaningfully complex requests
+- Triggers on: complex mode, 3+ REQ files, or notably long/nuanced input
+- Two complex examples updated to show the hint in action
+- No change for simple requests — no hint, no noise
+
 ## 0.6.0 — The Bouncer
 
 Working and archive folders are now off-limits. Once a request is claimed by a builder or archived, nobody can reach in and modify it — not even to add "one more thing." If you forgot something, it goes in as a new addendum request that references the original. Clean boundaries, no mid-flight surprises.
