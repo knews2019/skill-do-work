@@ -1,15 +1,16 @@
 ---
-name: do-work
+
+## name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: run | (task to capture) | verify | cleanup | version
-upstream: https://raw.githubusercontent.com/bladnman/do-work/main/SKILL.md
----
+argument-hint: run | (task to capture) | verify | cleanup | version | changelog
+upstream: [https://raw.githubusercontent.com/bladnman/do-work/main/SKILL.md](https://raw.githubusercontent.com/bladnman/do-work/main/SKILL.md)
 
 # Do-Work Skill
 
 A unified entry point for task capture and processing.
 
 **Actions:**
+
 - **do**: Capture new tasks/requests → creates UR folder (verbatim input) + REQ files (queue items), always paired
 - **work**: Process pending requests → executes the queue
 - **verify**: Evaluate captured REQs against original input → quality check
@@ -23,20 +24,33 @@ A unified entry point for task capture and processing.
 
 Examine what follows "do work":
 
-| Pattern | Example | Route |
-|---------|---------|-------|
-| Empty or bare invocation | `do work` | → Ask: "Start the work loop?" |
-| Action verbs only | `do work run`, `do work go`, `do work start` | → work |
-| Verify keywords | `do work verify`, `do work check`, `do work evaluate` | → verify |
-| Cleanup keywords | `do work cleanup`, `do work tidy`, `do work consolidate` | → cleanup |
-| Descriptive content | `do work add dark mode`, `do work [meeting notes]` | → do |
-| Version keywords | `do work version`, `do work update`, `do work check for updates` | → version |
+
+Check these patterns **in order** — first match wins:
+
+| Priority | Pattern                  | Example                                                                                                                            | Route                         |
+| -------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| 1        | Empty or bare invocation | `do work`                                                                                                                          | → Ask: "Start the work loop?" |
+| 2        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
+| 3        | Verify keywords          | `do work verify`, `do work check`, `do work evaluate`                                                                              | → verify                      |
+| 4        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
+| 5        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
+| 6        | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
+| 7        | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`                                                                                 | → do                          |
+
 
 ### Step 2: Preserve Payload
 
 **Critical rule**: Never lose the user's content.
 
-If routing is unclear BUT content was provided:
+**Single-word rule**: A single word is either a known keyword or ambiguous — it is never "descriptive content."
+
+- **Matches a keyword** in the routing table (e.g., "version", "verify", "cleanup") → route to that action directly.
+- **Doesn't match any keyword** (e.g., "refactor", "optimize") → ambiguous. Ask: "Do you want to add '`{word}`' as a new request, or did you mean something else?"
+
+Only route to **do** when the input is clearly descriptive — multiple words, a sentence, a feature request, etc.
+
+If routing is genuinely unclear AND multi-word content was provided:
+
 - Default to **do** (adding a task)
 - Hold onto $ARGUMENTS
 - If truly ambiguous, ask: "Add this as a request, or start the work loop?"
@@ -59,9 +73,17 @@ Note: "check" routes to verify ONLY when used alone or with a target (e.g., "do 
 These signal "consolidate the archive":
 cleanup, clean up, tidy, consolidate, organize archive, fix archive
 
+### Changelog Verbs (→ Version)
+
+These signal "show release notes":
+changelog, release notes, what's new, what's changed, updates, history
+
+Note: "updates" (plural) routes to changelog display. "update" (singular) routes to update check. Both are handled by the version action.
+
 ### Content Signals (→ Do)
 
 These signal "add a new task":
+
 - Descriptive text beyond a single verb
 - Feature requests, bug reports, ideas
 - Screenshots or context
@@ -70,11 +92,13 @@ These signal "add a new task":
 ## Examples
 
 ### Routes to Work
+
 - `do work` → "Ready to process the queue?" (confirmation)
 - `do work run` → Starts work action immediately
 - `do work go` → Starts work action immediately
 
 ### Routes to Verify
+
 - `do work verify` → Evaluates most recent UR's REQs
 - `do work verify UR-003` → Evaluates specific UR
 - `do work check REQ-018` → Evaluates the UR that REQ-018 belongs to
@@ -82,11 +106,21 @@ These signal "add a new task":
 - `do work review requests` → Evaluates most recent UR's REQs
 
 ### Routes to Cleanup
+
 - `do work cleanup` → Consolidates archive, closes completed URs
 - `do work tidy` → Same as cleanup
 - `do work consolidate` → Same as cleanup
 
+### Routes to Changelog (via Version)
+
+- `do work changelog` → Displays changelog (newest at bottom)
+- `do work release notes` → Same as changelog
+- `do work what's new` → Same as changelog
+- `do work updates` → Same as changelog
+- `do work history` → Same as changelog
+
 ### Routes to Do
+
 - `do work add dark mode` → Creates REQ file + UR folder
 - `do work the button is broken` → Creates REQ file + UR folder
 - `do work [400 words]` → Creates REQ files + UR folder with full verbatim input
@@ -102,14 +136,17 @@ When clarification is needed but content was provided:
 5. **Never ask the user to re-paste content**
 
 This enables a two-phase commit pattern:
+
 1. Capture intent payload
 2. Confirm action
 
 ## Action References
 
 Follow the detailed instructions in:
+
 - [do action](./actions/do.md) - Request capture
 - [work action](./actions/work.md) - Queue processing
 - [verify action](./actions/verify.md) - Quality evaluation of captured requests
 - [cleanup action](./actions/cleanup.md) - Archive consolidation and UR closure
-- [version action](./actions/version.md) - Version & updates
+- [version action](./actions/version.md) - Version, updates & changelog
+

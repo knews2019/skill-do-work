@@ -4,6 +4,24 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.9.1 — The Gatekeeper
+
+Keywords like "version" and "changelog" were sneaking past the routing table and getting treated as task content. Fixed by reordering the routing table so keyword patterns are checked before the descriptive-content catch-all, and added explicit priority language so agents match keywords first.
+
+- Routing table now has numbered priority — first match wins, top to bottom
+- "Descriptive content" catch-all moved to last position (priority 7)
+- Step 2 clarifies that single keywords matching the table are routed actions, not content
+- Fixes: `do work version` no longer asks "Add this as a request?"
+
+## 0.9.0 — The Rewind
+
+You can now ask "what's new" and actually see what's new — right at the bottom of your terminal where you're already looking. The version action gained changelog display with a twist: it reverses the entries so the latest changes land at the bottom of the output, no scrolling required. Portable across skills — any project with a CHANGELOG.md gets this for free.
+
+- Changelog display added to the version action: `do work changelog`, `release notes`, `what's new`, `updates`, `history`
+- Entries print oldest-to-newest so the most recent version appears at the bottom of terminal output
+- Routing table updated with changelog keyword detection
+- Works with any skill that has a CHANGELOG.md in its root
+
 ## 0.8.0 — The Clarity Pass
 
 The UR system was hiding in plain sight — documented everywhere but easy to miss if you weren't reading carefully. This release restructures the do action and skill definition so the UR + REQ pairing is unmissable, even for agents that skim. Also added agent compatibility guidance to CLAUDE.md so future edits keep the skill portable across platforms.
