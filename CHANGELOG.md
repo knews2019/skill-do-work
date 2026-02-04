@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.9.2 — The Front Door
+
+The SKILL.md frontmatter was broken — missing closing delimiters and markdown syntax mixed into the YAML. The `add-skill` CLI couldn't parse the skill metadata properly. Now it's valid YAML frontmatter that tools can actually read.
+
+- Fixed SKILL.md frontmatter: removed `##` from name field, added closing `---`
+- Cleaned up upstream URL (was wrapped in a markdown link inside YAML)
+
 ## 0.9.1 — The Gatekeeper
 
 Keywords like "version" and "changelog" were sneaking past the routing table and getting treated as task content. Fixed by reordering the routing table so keyword patterns are checked before the descriptive-content catch-all, and added explicit priority language so agents match keywords first.
@@ -97,3 +104,4 @@ The beginning. Core task capture and processing system with do/work routing, REQ
 - Work loop processing with `do work run`
 - REQ file lifecycle: pending → working → archived
 - Git-aware: auto-commits after each completed request
+
