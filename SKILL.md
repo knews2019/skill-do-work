@@ -18,6 +18,8 @@ A unified entry point for task capture and processing.
 
 > **Core concept:** The do action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
 
+> **Capture ≠ Execute.** The do action captures requests. The work action executes them. These are strictly separate operations. After the do action finishes writing files and reporting back, **STOP**. Do not start processing the queue, do not begin implementation, do not "helpfully" transition into the work action. The user decides when to execute — always. The only exception is if the user explicitly says something like "add this and then run it" or "capture this and start working" in the same invocation.
+
 ## Routing Decision
 
 ### Step 1: Parse the Input

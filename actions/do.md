@@ -673,6 +673,18 @@ When the threshold is met, add a brief line after the file summary:
 
 The goal is a gentle nudge, not a gate. One sentence, no pressure. If the user ignores it, that's fine.
 
+### STOP After Capture
+
+**The do action ends here.** After reporting back to the user, you are done. Do not proceed to process the queue, start implementation, or transition into the work action.
+
+This is a hard boundary:
+- **Do NOT** check for pending requests and start working on them
+- **Do NOT** offer to "go ahead and start building" unless the user explicitly asked for that
+- **Do NOT** treat capture as step one of a capture-then-execute pipeline
+- **DO** let the user decide when to run `do work run` (or equivalent)
+
+The only exception: if the user's original input explicitly combined capture and execution (e.g., "add this and start working on it", "capture these and run the queue"). Short of that, capture is the complete action.
+
 ### Do Action Checklist
 
 Use this to verify you haven't skipped a step:

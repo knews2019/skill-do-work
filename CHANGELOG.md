@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.10.0 — The Hard Stop (2026-02-16)
+
+Capture no longer slides into execution. The do action now has an explicit boundary: after writing files and reporting back, it stops. No helpful "let me go ahead and start building that for you." The user decides when to run the queue — always. Both SKILL.md (routing level) and do.md (action level) enforce this, so even eager agents get the message.
+
+- Added "Capture ≠ Execute" guardrail to SKILL.md core concepts
+- Added "STOP After Capture" section to do.md workflow, before the checklist
+- Only exception: user explicitly asks for capture + execution in the same invocation
+
 ## 0.9.5 — The Reinstall (2026-02-04)
 
 `npx skills update` silently fails to update files despite reporting success. Switched the update command to `npx skills add bladnman/do-work -g -y` which does a full reinstall and actually works. Also fixed the upstream URL — version checks now hit `version.md` where the version number actually lives.
