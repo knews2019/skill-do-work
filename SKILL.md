@@ -142,13 +142,25 @@ This enables a two-phase commit pattern:
 1. Capture intent payload
 2. Confirm action
 
-## Action References
+## Action Dispatch
 
-Follow the detailed instructions in:
+Dispatch each action to a `general-purpose` Task subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
-- [do action](./actions/do.md) - Request capture
-- [work action](./actions/work.md) - Queue processing
-- [verify action](./actions/verify.md) - Quality evaluation of captured requests
-- [cleanup action](./actions/cleanup.md) - Archive consolidation and UR closure
-- [version action](./actions/version.md) - Version, updates & changelog
+**Prompt pattern:** Tell the subagent to read and follow the action file, pass `$ARGUMENTS` as the user's input, and return a brief summary when done.
+
+| Action  | Action file                      | Background | Context to pass                |
+|---------|----------------------------------|------------|--------------------------------|
+| do      | `./actions/do.md`                | no         | Full user input text           |
+| work    | `./actions/work.md`              | yes        | (none needed)                  |
+| verify  | `./actions/verify.md`            | no         | Target UR/REQ or "most recent" |
+| cleanup | `./actions/cleanup.md`           | yes        | (none needed)                  |
+| version | `./actions/version.md`           | no         | `$ARGUMENTS`                   |
+
+**Background actions** (`work`, `cleanup`): Use `run_in_background: true` on the Task tool. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately. The subagent result is delivered when it finishes.
+
+**Foreground actions** (`do`, `verify`, `version`): Run normally (blocking). These need user interaction or produce small immediate output.
+
+**Screenshots (do action only):** Subagents can't see images from the main conversation. Before dispatching `do`, if screenshots are present: save them to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
+
+**On failure:** Report the error to the user. Do not re-execute in the main thread.
 

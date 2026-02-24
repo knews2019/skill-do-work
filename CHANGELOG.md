@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.11.0 — The Delegate (2026-02-24)
+
+Actions now run in subagents instead of the main context window. The 170-220KB of action file content that used to flood the conversation stays out of sight — the main thread only handles routing and receives a summary. `work` and `cleanup` run in the background so you get your conversation back immediately.
+
+- Replaced "Action References" with "Action Dispatch" in SKILL.md
+- Actions dispatched to `general-purpose` Task subagents via prompt pattern
+- `work` and `cleanup` run in background (non-blocking)
+- `do`, `verify`, `version` run in foreground (blocking)
+- Screenshots bridged to `do` subagent via temp files + text descriptions
+
 ## 0.10.0 — The Hard Stop (2026-02-16)
 
 Capture no longer slides into execution. The do action now has an explicit boundary: after writing files and reporting back, it stops. No helpful "let me go ahead and start building that for you." The user decides when to run the queue — always. Both SKILL.md (routing level) and do.md (action level) enforce this, so even eager agents get the message.
