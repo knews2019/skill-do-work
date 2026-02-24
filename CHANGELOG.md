@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.11.1 — The Safety Net (2026-02-24)
+
+Subagent dispatch no longer assumes subagents exist. Environments without Task subagents can now fall back to reading the action file directly in the current session — no more broken routing in simpler tools. The dispatch section is restructured as "if available / if not" so the skill stays portable.
+
+- Added fallback path: read action file directly when subagents are unavailable
+- Removed Claude Code-specific language (Task tool, `run_in_background`)
+- Dispatch table simplified — background column moved into subagent-specific guidance
+
 ## 0.11.0 — The Delegate (2026-02-24)
 
 Actions now run in subagents instead of the main context window. The 170-220KB of action file content that used to flood the conversation stays out of sight — the main thread only handles routing and receives a summary. `work` and `cleanup` run in the background so you get your conversation back immediately.

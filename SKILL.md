@@ -144,23 +144,29 @@ This enables a two-phase commit pattern:
 
 ## Action Dispatch
 
-Dispatch each action to a `general-purpose` Task subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
+Each action has an action file with full instructions. How you execute it depends on your environment's capabilities.
 
-**Prompt pattern:** Tell the subagent to read and follow the action file, pass `$ARGUMENTS` as the user's input, and return a brief summary when done.
+| Action  | Action file             | Context to pass                |
+|---------|-------------------------|--------------------------------|
+| do      | `./actions/do.md`       | Full user input text           |
+| work    | `./actions/work.md`     | (none needed)                  |
+| verify  | `./actions/verify.md`   | Target UR/REQ or "most recent" |
+| cleanup | `./actions/cleanup.md`  | (none needed)                  |
+| version | `./actions/version.md`  | `$ARGUMENTS`                   |
 
-| Action  | Action file                      | Background | Context to pass                |
-|---------|----------------------------------|------------|--------------------------------|
-| do      | `./actions/do.md`                | no         | Full user input text           |
-| work    | `./actions/work.md`              | yes        | (none needed)                  |
-| verify  | `./actions/verify.md`            | no         | Target UR/REQ or "most recent" |
-| cleanup | `./actions/cleanup.md`           | yes        | (none needed)                  |
-| version | `./actions/version.md`           | no         | `$ARGUMENTS`                   |
+### If subagents are available
 
-**Background actions** (`work`, `cleanup`): Use `run_in_background: true` on the Task tool. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately. The subagent result is delivered when it finishes.
+Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
-**Foreground actions** (`do`, `verify`, `version`): Run normally (blocking). These need user interaction or produce small immediate output.
+- **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
+- **`do`, `verify`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **Screenshots (`do` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
-**Screenshots (do action only):** Subagents can't see images from the main conversation. Before dispatching `do`, if screenshots are present: save them to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
+### If subagents are not available
 
-**On failure:** Report the error to the user. Do not re-execute in the main thread.
+Read the action file directly and follow its instructions in the current session. The action files are designed to work as standalone prompts — no subagent infrastructure required.
+
+### On failure
+
+Report the error to the user. Do not retry automatically.
 
