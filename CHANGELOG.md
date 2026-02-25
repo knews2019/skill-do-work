@@ -4,7 +4,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.12.3 — The Deep Check (2026-02-25)
+## 0.12.4 — The Deep Check (2026-02-25)
 
 Duplicate detection now actually reads queued request files instead of just glancing at filenames. A `REQ-042-ui-cleanup.md` whose `## What` says "fix spacing on the settings page" will now correctly match a new submission of "fix the spacing and layout on the settings page" — no more phantom duplicates slipping through because the slug didn't match the phrasing.
 
@@ -12,7 +12,13 @@ Duplicate detection now actually reads queued request files instead of just glan
 - In-flight and archived requests (`working/`, `archive/`): still filename-scan only (fast, and files are immutable anyway)
 - Decision table and addendum formats unchanged — this is a detection improvement, not a workflow change
 
-## 0.12.2 — The New Address (2025-02-25)
+## 0.12.3 — The Time Traveler (2026-02-25)
+
+Fixed three changelog entries (0.12.0, 0.12.1, 0.12.2) that were dated 2025 instead of 2026. The release chronology is now consistent across all versions.
+
+- Corrected year in 0.12.0, 0.12.1, and 0.12.2 headings from 2025-02-25 to 2026-02-25
+
+## 0.12.2 — The New Address (2026-02-25)
 
 Upstream references updated to the forked repository. README install command, SKILL.md upstream URL, and version action URLs all now point to `knews2019/skill-do-work` instead of the original `bladnman/do-work`.
 
@@ -21,14 +27,14 @@ Upstream references updated to the forked repository. README install command, SK
 - Updated version.md upstream URL, install commands, and GitHub link to `knews2019/skill-do-work`
 - CHANGELOG.md historical entries left unchanged (they reference the original repo accurately)
 
-## 0.12.1 — The Passport Check (2025-02-25)
+## 0.12.1 — The Passport Check (2026-02-25)
 
 Removed a hardcoded `Co-Authored-By: Claude <noreply@anthropic.com>` trailer from the commit template in work.md. Agents on other platforms would stamp Claude-specific metadata onto their commits just by following the template verbatim — violating the agent compatibility rules. The trailer is now a documented option with a generic example, not a baked-in default.
 
 - Removed tool-specific co-author line from the commit template example
 - Added guidance: use your platform's co-author convention if it has one, otherwise omit
 
-## 0.12.0 — The Diet (2025-02-25)
+## 0.12.0 — The Diet (2026-02-25)
 
 The skill shed two-thirds of its weight. `do.md` dropped from 883 to 288 lines, `work.md` from 1,277 to 383. Same behavior, dramatically less noise. Redundancy across files (folder structure repeated 4 times, schemas defined twice, checklists restating the workflow) was consolidated or cut. Agent prompt templates in work.md were merged into one. The 158-line retrospective section, 7 overlapping examples, and standalone "What NOT to do" sections — all trimmed to their essentials.
 
