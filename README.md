@@ -75,7 +75,7 @@ This skill assumes your tool supports:
 
 It was originally written for Claude Code and should work with other tools that provide similar capabilities. If your tool does not support subagents, run the Plan, Explore, and Implementation phases sequentially in the same session.
 
-## The three actions
+## The actions
 
 ### Do (capture)
 
@@ -97,15 +97,25 @@ Invoked when you say "run", "go", "start", or just confirm the prompt. Runs the 
 
 See [actions/work.md](./actions/work.md) for the full processing logic.
 
-### Verify (evaluate)
+### Verify (capture quality)
 
-Invoked when you say "verify", "check", "evaluate", or "review requests". Quality gate:
+Invoked when you say "verify", "check", "evaluate", or "review requests". This is a pre-build extraction quality gate:
 - Reads the original user input from the UR folder
 - Compares against extracted REQ files for completeness
 - Scores coverage, UX detail capture, intent signal preservation
 - Optionally fixes identified gaps
 
 See [actions/verify.md](./actions/verify.md) for the full evaluation logic.
+
+### Review (post-work code review)
+
+Invoked when you say "review", "code review", or "audit implementation". This is a post-build implementation quality pass:
+- Reviews completed REQ/UR implementation logs and changed code
+- Assesses correctness, test quality, design fit, readability, and risk
+- Produces severity-ranked findings (Blocker/Major/Minor)
+- Optionally creates follow-up REQs for review findings
+
+See [actions/review.md](./actions/review.md) for the full post-work review workflow.
 
 ### Cleanup (consolidate)
 

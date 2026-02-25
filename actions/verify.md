@@ -4,6 +4,8 @@
 
 A confidence evaluation system that compares extracted REQ files against the original user input to identify lost requirements, dropped UX details, missing intent signals, and incomplete coverage.
 
+**Scope boundary:** This action does **not** perform post-implementation code review. Use the `review` action for after-work code quality checks.
+
 ## Philosophy
 
 - **The original input is the source of truth** — the UR's input.md contains everything the user said
@@ -140,3 +142,4 @@ For REQs created before the UR system:
 - Don't penalize REQs for missing details the user never mentioned
 - Don't treat implementation details as gaps — those are for the builder to decide
 - Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
+- Don't review implementation quality here — use `review` for post-work code review
