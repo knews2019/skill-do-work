@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to verify the quality of captured requests. Evaluates REQ files against their originating User Request (UR) to find gaps.
 
-A confidence evaluation system that compares extracted REQ files against the original user input to identify lost requirements, dropped UX details, missing intent signals, and incomplete coverage.
+A confidence evaluation system that compares extracted REQ files against the original user input to identify lost requirements, dropped UX details, missing intent signals, and incomplete coverage. This is **capture QA**, not implementation code review.
 
 ## Philosophy
 
@@ -16,6 +16,8 @@ A confidence evaluation system that compares extracted REQ files against the ori
 - After creating REQs from a complex request (to validate the extraction)
 - When the user says "verify", "check", "evaluate", "review requests"
 - Before starting `do work` processing, as a quality gate
+
+If the user wants review of shipped code quality after implementation/testing, use the **review action** instead.
 
 ## Workflow
 

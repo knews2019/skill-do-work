@@ -226,6 +226,27 @@ Before marking complete, verify tests pass:
 3. **If tests fail** — return to implementation to fix. Loop until passing or mark as failed after 3 attempts.
 4. **If new tests are needed** — spawn a general-purpose agent to write them following existing patterns, then run them.
 
+### Step 6.7: Code Review (Post-Work)
+
+After tests pass, run a short code-review pass before archiving:
+
+1. Confirm implementation matches the REQ's stated requirements
+2. Scan changed files for obvious maintainability/safety issues (readability, duplication, missing validation, risky edge cases)
+3. Confirm testing notes are reproducible (commands + pass/fail result)
+4. If serious issues are found, return to implementation and testing before continuing
+
+Append to the request file:
+
+```markdown
+## Code Review
+
+**Recommendation:** Approve | Changes requested
+**Findings:**
+- [severity] [issue or "None"]
+
+*Reviewed by work action*
+```
+
 Append to the request file:
 
 ```markdown
@@ -320,6 +341,7 @@ All 2 requests completed:
 | Explore agent fails (B/C) | Proceed to implementation with reduced context — builder can explore on its own |
 | Implementation fails | Mark failed, preserve plan/exploration outputs for retry |
 | Tests fail repeatedly | After 3 fix attempts, mark failed with test failure details |
+| Code review finds blockers repeatedly | After 3 fix attempts, mark failed with review blocker details |
 | Commit fails | Report error, continue to next request — changes remain uncommitted but archived |
 | Unrecoverable error | Stop loop, report clearly, leave queue intact for manual recovery |
 

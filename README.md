@@ -75,7 +75,7 @@ This skill assumes your tool supports:
 
 It was originally written for Claude Code and should work with other tools that provide similar capabilities. If your tool does not support subagents, run the Plan, Explore, and Implementation phases sequentially in the same session.
 
-## The three actions
+## The five actions
 
 ### Do (capture)
 
@@ -97,15 +97,25 @@ Invoked when you say "run", "go", "start", or just confirm the prompt. Runs the 
 
 See [actions/work.md](./actions/work.md) for the full processing logic.
 
-### Verify (evaluate)
+### Verify (evaluate capture quality)
 
-Invoked when you say "verify", "check", "evaluate", or "review requests". Quality gate:
+Invoked when you say "verify", "check", "evaluate", or "review requests". This checks **capture quality**, not implementation quality:
 - Reads the original user input from the UR folder
 - Compares against extracted REQ files for completeness
 - Scores coverage, UX detail capture, intent signal preservation
 - Optionally fixes identified gaps
 
 See [actions/verify.md](./actions/verify.md) for the full evaluation logic.
+
+### Review (post-work code review)
+
+Invoked when you say "review", "code review", "review code", or "audit code". This checks **implementation quality after work/tests**:
+- Reviews completed REQ implementation and changed files
+- Re-runs relevant tests/checks and evaluates coverage quality
+- Reports findings by severity (blocker/major/minor/nit)
+- Gives a clear recommendation: approve vs changes requested
+
+See [actions/review.md](./actions/review.md) for the full review workflow.
 
 ### Cleanup (consolidate)
 
