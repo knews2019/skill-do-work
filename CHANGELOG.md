@@ -4,7 +4,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.12.3 — The Right Address (2026-02-25)
+## 0.12.4 — The Right Address (2026-02-25)
 
 Fixed ambiguous paths in the REQ/UR numbering instructions. The do action told agents to scan `working/` and `archive/` for existing IDs — bare paths that miss the `do-work/` prefix every other reference uses. Agents following the instructions literally would scan nonexistent directories and risk creating duplicate request IDs.
 
@@ -12,7 +12,13 @@ Fixed ambiguous paths in the REQ/UR numbering instructions. The do action told a
 - Explicitly listed UR scan locations (`do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`)
 - Added file pattern hints (`REQ-*.md`, `UR-*`) so agents know what to look for
 
-## 0.12.2 — The New Address (2025-02-25)
+## 0.12.3 — The Time Traveler (2026-02-25)
+
+Fixed three changelog entries (0.12.0, 0.12.1, 0.12.2) that were dated 2025 instead of 2026. The release chronology is now consistent across all versions.
+
+- Corrected year in 0.12.0, 0.12.1, and 0.12.2 headings from 2025-02-25 to 2026-02-25
+
+## 0.12.2 — The New Address (2026-02-25)
 
 Upstream references updated to the forked repository. README install command, SKILL.md upstream URL, and version action URLs all now point to `knews2019/skill-do-work` instead of the original `bladnman/do-work`.
 
@@ -21,14 +27,14 @@ Upstream references updated to the forked repository. README install command, SK
 - Updated version.md upstream URL, install commands, and GitHub link to `knews2019/skill-do-work`
 - CHANGELOG.md historical entries left unchanged (they reference the original repo accurately)
 
-## 0.12.1 — The Passport Check (2025-02-25)
+## 0.12.1 — The Passport Check (2026-02-25)
 
 Removed a hardcoded `Co-Authored-By: Claude <noreply@anthropic.com>` trailer from the commit template in work.md. Agents on other platforms would stamp Claude-specific metadata onto their commits just by following the template verbatim — violating the agent compatibility rules. The trailer is now a documented option with a generic example, not a baked-in default.
 
 - Removed tool-specific co-author line from the commit template example
 - Added guidance: use your platform's co-author convention if it has one, otherwise omit
 
-## 0.12.0 — The Diet (2025-02-25)
+## 0.12.0 — The Diet (2026-02-25)
 
 The skill shed two-thirds of its weight. `do.md` dropped from 883 to 288 lines, `work.md` from 1,277 to 383. Same behavior, dramatically less noise. Redundancy across files (folder structure repeated 4 times, schemas defined twice, checklists restating the workflow) was consolidated or cut. Agent prompt templates in work.md were merged into one. The 158-line retrospective section, 7 overlapping examples, and standalone "What NOT to do" sections — all trimmed to their essentials.
 
