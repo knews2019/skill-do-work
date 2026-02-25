@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.12.7 — The Cold Start (2026-02-25)
+
+The do action now knows what to do the very first time it runs. Previously, agents following the instructions would try to scan `do-work/` for duplicates and numbering before the directory existed — a guaranteed stumble on first use. Now there's explicit guidance for bootstrapping the folder structure, starting numbering at 1, skipping duplicate checks on an empty project, and ensuring directories exist before writing files.
+
+- Added "First-Run Bootstrap" subsection under Core Rules — create `do-work/` and `user-requests/`, don't pre-create `working/`/`archive/`
+- Added fallback to File Naming: start at 1 when no existing files found
+- Added fresh-bootstrap skip to Step 2 (Duplicate Check): no files means no duplicates to scan
+- Added directory-creation guard to Step 5 (Write Files): ensure paths exist before writing
+
 ## 0.12.6 — The Missed Spot (2026-02-25)
 
 Fixed the last bare `archive/UR-*/` path in the duplicate-check instructions. The v0.12.4 path fix caught the numbering section but missed the same issue in the Step 2 duplicate scan — agents following it literally would skip archived UR subfolders and let duplicates through.
