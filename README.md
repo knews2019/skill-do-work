@@ -92,6 +92,7 @@ See [actions/do.md](./actions/do.md) for the full capture logic.
 Invoked when you say "run", "go", "start", or just confirm the prompt. Runs the build loop:
 - Triages each request to determine the right amount of planning
 - Spawns specialized agents only when needed
+- Runs implementation testing and a post-work code review pass before completion
 - Archives completed work with implementation notes
 - Creates atomic git commits per request
 
@@ -104,6 +105,8 @@ Invoked when you say "verify", "check", "evaluate", or "review requests". Qualit
 - Compares against extracted REQ files for completeness
 - Scores coverage, UX detail capture, intent signal preservation
 - Optionally fixes identified gaps
+
+Verify is for **capture quality** (did we extract the right requests?), not implementation quality. Implementation quality review happens in the work action after code is built and tested.
 
 See [actions/verify.md](./actions/verify.md) for the full evaluation logic.
 
