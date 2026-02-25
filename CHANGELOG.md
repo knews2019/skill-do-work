@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.12.4 — The Right Address (2026-02-25)
+
+Fixed ambiguous paths in the REQ/UR numbering instructions. The do action told agents to scan `working/` and `archive/` for existing IDs — bare paths that miss the `do-work/` prefix every other reference uses. Agents following the instructions literally would scan nonexistent directories and risk creating duplicate request IDs.
+
+- Fixed `do.md` line 47: `working/` → `do-work/working/`, `archive/` → `do-work/archive/`
+- Explicitly listed UR scan locations (`do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`)
+- Added file pattern hints (`REQ-*.md`, `UR-*`) so agents know what to look for
+
 ## 0.12.3 — The Time Traveler (2026-02-25)
 
 Fixed three changelog entries (0.12.0, 0.12.1, 0.12.2) that were dated 2025 instead of 2026. The release chronology is now consistent across all versions.
