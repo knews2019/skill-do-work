@@ -1,7 +1,7 @@
 ---
 name: do-work
-description: Task queue - add requests or process pending work
-argument-hint: run | (task to capture) | verify | cleanup | version | changelog
+description: Task queue - add requests, process pending work, and run review gates
+argument-hint: run | (task to capture) | verify | review | cleanup | version | changelog
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -14,6 +14,7 @@ A unified entry point for task capture and processing.
 - **do**: Capture new tasks/requests → creates UR folder (verbatim input) + REQ files (queue items), always paired
 - **work**: Process pending requests → executes the queue
 - **verify**: Evaluate captured REQs against original input → quality check
+- **review**: Review completed implementation quality (after work/testing)
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
 
 > **Core concept:** The do action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
@@ -34,10 +35,11 @@ Check these patterns **in order** — first match wins:
 | 1        | Empty or bare invocation | `do work`                                                                                                                          | → Ask: "Start the work loop?" |
 | 2        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
 | 3        | Verify keywords          | `do work verify`, `do work check`, `do work evaluate`                                                                              | → verify                      |
-| 4        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
-| 5        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
-| 6        | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
-| 7        | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`                                                                                 | → do                          |
+| 4        | Review keywords          | `do work review`, `do work code review`, `do work audit code`, `do work review REQ-021`                                           | → review                      |
+| 5        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
+| 6        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
+| 7        | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
+| 8        | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`                                                                                 | → do                          |
 
 
 ### Step 2: Preserve Payload
@@ -69,6 +71,13 @@ These signal "check request quality":
 verify, check, evaluate, review requests, review reqs, audit
 
 Note: "check" routes to verify ONLY when used alone or with a target (e.g., "do work check UR-003"). When followed by descriptive content it routes to do (e.g., "do work check if the button works" → do).
+
+### Review Verbs (→ Review)
+
+These signal "perform post-work code review":
+review, code review, review code, audit code
+
+Disambiguation rule: phrases like "review requests" and "review reqs" route to verify (REQ extraction coverage), not review (implementation quality).
 
 ### Cleanup Verbs (→ Cleanup)
 
@@ -113,6 +122,12 @@ These signal "add a new task":
 - `do work tidy` → Same as cleanup
 - `do work consolidate` → Same as cleanup
 
+### Routes to Review
+
+- `do work review` → Reviews the most recently completed REQ/UR implementation
+- `do work code review REQ-021` → Reviews a specific request implementation
+- `do work review code UR-010` → Reviews all completed REQs for a specific UR
+
 ### Routes to Changelog (via Version)
 
 - `do work changelog` → Displays changelog (newest at bottom)
@@ -151,6 +166,7 @@ Each action has an action file with full instructions. How you execute it depend
 | do      | `./actions/do.md`       | Full user input text           |
 | work    | `./actions/work.md`     | (none needed)                  |
 | verify  | `./actions/verify.md`   | Target UR/REQ or "most recent" |
+| review  | `./actions/review.md`   | Target UR/REQ or "most recent" |
 | cleanup | `./actions/cleanup.md`  | (none needed)                  |
 | version | `./actions/version.md`  | `$ARGUMENTS`                   |
 
@@ -159,7 +175,7 @@ Each action has an action file with full instructions. How you execute it depend
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`do`, `verify`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`do`, `verify`, `review`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`do` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
@@ -169,4 +185,3 @@ Read the action file directly and follow its instructions in the current session
 ### On failure
 
 Report the error to the user. Do not retry automatically.
-

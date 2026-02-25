@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.12.8 — The Second Lens (2026-02-25)
+
+Capture verification and implementation review are now explicitly separate workflows, so you can keep verify focused on REQ extraction accuracy while still running a high-quality post-work code review. Routing now supports a dedicated review action, and work guidance includes a lightweight review pass after tests.
+
+- Added new `review` action with post-work code review workflow, severity levels, and approval recommendations
+- Updated routing in `SKILL.md` with dedicated review keywords plus disambiguation (`review requests` stays in verify)
+- Clarified docs: verify = capture QA, review = implementation QA
+- Added post-testing code review step to `work.md` before archive/commit
+
 ## 0.12.7 — The Cold Start (2026-02-25)
 
 The do action now knows what to do the very first time it runs. Previously, agents following the instructions would try to scan `do-work/` for duplicates and numbering before the directory existed — a guaranteed stumble on first use. Now there's explicit guidance for bootstrapping the folder structure, starting numbering at 1, skipping duplicate checks on an empty project, and ensuring directories exist before writing files.
