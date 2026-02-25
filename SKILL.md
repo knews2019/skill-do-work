@@ -12,7 +12,7 @@ A unified entry point for task capture and processing.
 **Actions:**
 
 - **do**: Capture new tasks/requests → creates UR folder (verbatim input) + REQ files (queue items), always paired
-- **work**: Process pending requests → executes the queue
+- **work**: Process pending requests → executes the queue (includes testing + post-work code review)
 - **verify**: Evaluate captured REQs against original input → quality check
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
 
@@ -69,6 +69,8 @@ These signal "check request quality":
 verify, check, evaluate, review requests, review reqs, audit
 
 Note: "check" routes to verify ONLY when used alone or with a target (e.g., "do work check UR-003"). When followed by descriptive content it routes to do (e.g., "do work check if the button works" → do).
+
+Use phrases like **"review requests"** for capture verification. For post-implementation quality checks, run **work** (it includes a code review pass before archive/commit).
 
 ### Cleanup Verbs (→ Cleanup)
 

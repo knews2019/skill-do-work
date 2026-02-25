@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.13.0 — The Double Check (2026-02-25)
+
+Work processing now includes a dedicated post-work code review pass, so every completed REQ gets both testing and implementation-quality review before archive/commit. We also clarified the boundary so verify stays focused on capture quality, while work owns code quality after build.
+
+- Added a new post-work code review step to `work.md` with a concrete checklist and rework loop
+- Updated progress/error handling examples to show code-review status in the work pipeline
+- Clarified in README, SKILL, and verify action docs that verify is for request extraction quality, not code review
+
 ## 0.12.7 — The Cold Start (2026-02-25)
 
 The do action now knows what to do the very first time it runs. Previously, agents following the instructions would try to scan `do-work/` for duplicates and numbering before the directory existed — a guaranteed stumble on first use. Now there's explicit guidance for bootstrapping the folder structure, starting numbering at 1, skipping duplicate checks on an empty project, and ensuring directories exist before writing files.

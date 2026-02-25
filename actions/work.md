@@ -240,6 +240,43 @@ Append to the request file:
 *Verified by work action*
 ```
 
+### Step 6.7: Post-Work Code Review
+
+Run a dedicated review pass **after implementation + testing** and before archiving.
+
+This is intentionally different from the verify action:
+- **verify action** = checks capture quality (UR input vs extracted REQs)
+- **post-work code review** = checks implementation quality (code/tests/docs) for the finished REQ
+
+Review checklist:
+
+1. **Correctness** — compare changes against the REQ's requirements and constraints
+2. **Test quality** — ensure tests validate behavior meaningfully (not only happy path)
+3. **Regression risk** — check adjacent flows likely to break from this change
+4. **Code quality** — readability, naming, duplication, dead code, maintainability
+5. **Security/performance/accessibility** — apply only if relevant to this REQ
+6. **Diff hygiene** — remove debug artifacts, temporary scripts, commented-out experiments
+
+If review findings are substantial, return to Step 6 (implementation), re-run Step 6.5 (testing), then review again.
+
+Append to the request file:
+
+```markdown
+## Code Review
+
+**Reviewer:** Work action (post-work review pass)
+**Scope:** [files/modules reviewed]
+**Checklist:** Correctness, tests, regression risk, code quality, relevant non-functional checks
+
+**Findings:**
+- [none / list issues]
+
+**Fixes applied before completion:**
+- [none / list fixes]
+
+*Reviewed by work action*
+```
+
 ### Step 7: Archive
 
 **On success:**
@@ -297,6 +334,7 @@ Processing REQ-003-dark-mode.md...
   Exploring...    [done]
   Implementing... [done]
   Testing...      [done] ✓ 12 tests passing
+  Code review...  [done] ✓ no blocking issues
   Archiving...    [done]
   Committing...   [done] → abc1234
 
@@ -304,6 +342,7 @@ Processing REQ-004-fix-typo.md...
   Triage: Simple (Route A)
   Implementing... [done]
   Testing...      [done] ✓ 3 tests passing
+  Code review...  [done] ✓ no blocking issues
   Archiving...    [done]
   Committing...   [done] → def5678
 
@@ -320,6 +359,7 @@ All 2 requests completed:
 | Explore agent fails (B/C) | Proceed to implementation with reduced context — builder can explore on its own |
 | Implementation fails | Mark failed, preserve plan/exploration outputs for retry |
 | Tests fail repeatedly | After 3 fix attempts, mark failed with test failure details |
+| Code review finds blocking issues | Return to implementation, re-test, then re-review |
 | Commit fails | Report error, continue to next request — changes remain uncommitted but archived |
 | Unrecoverable error | Stop loop, report clearly, leave queue intact for manual recovery |
 
