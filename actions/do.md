@@ -19,6 +19,14 @@ Never create one without the other. A REQ without `user_request` is orphaned. A 
 - Never be lossy — for complex inputs, preserve ALL detail in the UR's verbatim section
 - After capture, **STOP** — do not start processing the queue or transition into the work action unless the user explicitly asked for both (e.g., "add this and start working")
 
+### First-Run Bootstrap
+
+If `do-work/` doesn't exist yet (first invocation in a project):
+
+1. Create `do-work/` and `do-work/user-requests/`
+2. Do **not** pre-create `working/` or `archive/` — those are created by the work action on demand
+3. Start numbering at REQ-001 and UR-001
+
 ## Simple vs Complex
 
 | Mode | When | Approach |
@@ -44,7 +52,7 @@ Files in `working/` and `archive/` are **immutable**. If someone wants to add to
 - **UR folders:** `do-work/user-requests/UR-[number]/` containing `input.md` and optional `assets/`
 - **Assets:** `do-work/user-requests/UR-NNN/assets/REQ-[num]-[descriptive-name].png`
 
-To get the next REQ number, check existing `REQ-*.md` files across `do-work/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`), then increment from the highest. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences.
+To get the next REQ number, check existing `REQ-*.md` files across `do-work/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`), then increment from the highest. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences. If no existing files are found anywhere, start at 1.
 
 ### Backward Compatibility
 
@@ -152,6 +160,8 @@ Read the user's input. Determine:
 
 **In-flight and archived requests** — list filenames in `do-work/working/` and `do-work/archive/` (including inside `do-work/archive/UR-*/`). A filename scan is sufficient here since these files are immutable regardless.
 
+If `do-work/` is freshly bootstrapped (no existing REQ files anywhere), skip duplicate checking entirely.
+
 For each parsed request, check for similar existing ones across both tiers.
 
 | Existing request is in... | Action |
@@ -208,6 +218,8 @@ If the user provides a screenshot:
 4. Write a thorough text description (what it shows, visible text, layout, problems visible) — this is the primary record for searchability
 
 ### Step 5: Write Files
+
+Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (create if needed).
 
 **For all requests (simple and complex):**
 1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially)
