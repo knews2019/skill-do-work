@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.12.5 — The Deep Check (2026-02-25)
+
+Duplicate detection now actually reads queued request files instead of just glancing at filenames. A `REQ-042-ui-cleanup.md` whose `## What` says "fix spacing on the settings page" will now correctly match a new submission of "fix the spacing and layout on the settings page" — no more phantom duplicates slipping through because the slug didn't match the phrasing.
+
+- Queued requests (`do-work/`): agent now inspects `title`, heading, and `## What` for semantic intent matching
+- In-flight and archived requests (`working/`, `archive/`): still filename-scan only (fast, and files are immutable anyway)
+- Decision table and addendum formats unchanged — this is a detection improvement, not a workflow change
+
 ## 0.12.4 — The Right Address (2026-02-25)
 
 Fixed ambiguous paths in the REQ/UR numbering instructions. The do action told agents to scan `working/` and `archive/` for existing IDs — bare paths that miss the `do-work/` prefix every other reference uses. Agents following the instructions literally would scan nonexistent directories and risk creating duplicate request IDs.
