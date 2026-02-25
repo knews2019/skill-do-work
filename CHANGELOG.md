@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.12.2 — The New Address (2025-02-25)
+
+Upstream references updated to the forked repository. README install command, SKILL.md upstream URL, and version action URLs all now point to `knews2019/skill-do-work` instead of the original `bladnman/do-work`.
+
+- Updated README.md install command to `npx skills add knews2019/skill-do-work`
+- Updated SKILL.md upstream URL to `knews2019/skill-do-work`
+- Updated version.md upstream URL, install commands, and GitHub link to `knews2019/skill-do-work`
+- CHANGELOG.md historical entries left unchanged (they reference the original repo accurately)
+
 ## 0.12.1 — The Passport Check (2025-02-25)
 
 Removed a hardcoded `Co-Authored-By: Claude <noreply@anthropic.com>` trailer from the commit template in work.md. Agents on other platforms would stamp Claude-specific metadata onto their commits just by following the template verbatim — violating the agent compatibility rules. The trailer is now a documented option with a generic example, not a baked-in default.
