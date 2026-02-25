@@ -274,12 +274,11 @@ Implements: do-work/archive/REQ-003-dark-mode.md
 - Created src/stores/theme-store.ts
 - Modified src/components/settings/SettingsPanel.tsx
 
-Co-Authored-By: Claude <noreply@anthropic.com>
 EOF
 )"
 ```
 
-**Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets + co-author line (use your platform's preferred identity, or omit).
+**Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
 
 One commit per request. Stage everything with `git add -A`. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
 
