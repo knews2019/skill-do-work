@@ -148,7 +148,11 @@ Read the user's input. Determine:
 
 ### Step 2: Check for Duplicates
 
-List filenames in `do-work/`, `do-work/working/`, and `do-work/archive/`. For each parsed request, check for similar existing ones.
+**Queued requests** — read each `REQ-*.md` in `do-work/` and compare the new request's intent against the existing file's `title`, heading, and `## What` section. Slugs are lossy — a file named `REQ-042-ui-cleanup.md` may contain the exact requirement being re-submitted under different phrasing. Match on intent, not just keywords.
+
+**In-flight and archived requests** — list filenames in `do-work/working/` and `do-work/archive/` (including inside `archive/UR-*/`). A filename scan is sufficient here since these files are immutable regardless.
+
+For each parsed request, check for similar existing ones across both tiers.
 
 | Existing request is in... | Action |
 |---------------------------|--------|
