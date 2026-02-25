@@ -4,6 +4,19 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.13.0 — The Second Opinion (2026-02-25)
+
+Every completed request now gets a code review before it's archived. The work pipeline gained a new step between testing and archive that reads the actual diff, compares it against the original requirements and UR, scores the implementation across five dimensions, and creates follow-up REQs when it finds real issues. You can also invoke it manually on anything already shipped.
+
+- New `review` action (`actions/review.md`) — post-work code review with requirements tracing
+- Two modes: **pipeline** (auto-triggered in the work loop after tests pass) and **standalone** (manual via `do work review`)
+- Scores on Requirements Compliance, Code Quality, Test Adequacy, Scope Discipline, and Risk Assessment
+- Creates follow-up REQs (using `addendum_to` pattern) for Critical/Important findings — they re-enter the queue automatically
+- Review depth scales with route: quick scan for Route A, standard for B, thorough for C
+- `work.md` updated: new Step 7 (Review), renumbered Archive→8, Commit→9, Loop→10
+- `SKILL.md` routing updated: "review"/"review code"/"code review" → review action (priority 4); "review requests"/"review reqs" still → verify
+- REQ living documents now include a `## Review` section with per-dimension scores and follow-up links
+
 ## 0.12.7 — The Cold Start (2026-02-25)
 
 The do action now knows what to do the very first time it runs. Previously, agents following the instructions would try to scan `do-work/` for duplicates and numbering before the directory existed — a guaranteed stumble on first use. Now there's explicit guidance for bootstrapping the folder structure, starting numbering at 1, skipping duplicate checks on an empty project, and ensuring directories exist before writing files.

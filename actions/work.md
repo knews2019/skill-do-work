@@ -6,7 +6,7 @@ An orchestrated build system that processes request files created by the do acti
 
 ## Request Files as Living Logs
 
-Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Plan, Exploration, Implementation Summary, Testing. This ensures full traceability — what was planned vs done, where failures happened, and whether triage was accurate.
+Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Plan, Exploration, Implementation Summary, Testing, Review. This ensures full traceability — what was planned vs done, where failures happened, and whether triage was accurate.
 
 ## Architecture
 
@@ -26,9 +26,15 @@ work action (orchestrator - lightweight, stays in loop)
   │     │     └── Route C (Complex) ──► Plan ──► Explore
   │     │                                            │
   │     │                                            ▼
-  │     └─────────────────────────────────────► Implementation agent
+  │     │                                     Implementation agent
+  │     │                                            │
+  │     │                                            ▼
+  │     │                                        Testing
+  │     │                                            │
+  │     │                                            ▼
+  │     └──────────────────────────────────────► Review
   │
-  └── Loop continues until queue empty
+  └── Loop continues until queue empty (including review follow-ups)
 ```
 
 **Sub-agent note:** This document uses "spawn agent" language. Use your platform's subagent mechanism when available. If your tool doesn't support subagents, run phases sequentially in the same session and label outputs clearly.
@@ -125,7 +131,7 @@ error: "Description"          # Only if failed
 ---
 ```
 
-**Status flow:** `pending` → `claimed` → `[planning]` → `[exploring]` → `implementing` → `testing` → `completed` / `failed`
+**Status flow:** `pending` → `claimed` → `[planning]` → `[exploring]` → `implementing` → `testing` → `reviewing` → `completed` / `failed`
 
 ## Workflow
 
@@ -240,7 +246,43 @@ Append to the request file:
 *Verified by work action*
 ```
 
-### Step 7: Archive
+### Step 7: Review
+
+Run the [review action](./review.md) in **pipeline mode** against this REQ.
+
+The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation against the requirements.
+
+**How to run it:** Spawn an agent with the review action file and the REQ path, or read `actions/review.md` and follow its pipeline mode instructions in the current session.
+
+**What happens next depends on the review score:**
+
+- **75%+ overall**: Append the Review section to the REQ and continue to archive. Minor findings go in the report only.
+- **Below 75%**: Review creates follow-up REQ files in `do-work/` (using the `addendum_to` pattern). Append the Review section to the REQ and continue to archive — the current REQ is still marked completed. The follow-up REQs enter the queue and get processed in a future loop iteration.
+
+**Calibrate depth to route:** Route A gets a quick scan (skip dimensions that don't apply). Route B gets a standard review. Route C gets a thorough review comparing against the plan.
+
+Append to the request file:
+
+```markdown
+## Review
+
+**Overall: [X]%** | [timestamp]
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | X% |
+| Code Quality | X% |
+| Test Adequacy | X% |
+| Scope | X% |
+| Risk | [level] |
+
+**Findings:** [count] important, [count] minor
+**Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"
+
+*Reviewed by review action*
+```
+
+### Step 8: Archive
 
 **On success:**
 
@@ -260,7 +302,7 @@ Append to the request file:
 2. Move to `archive/` (failed REQs always go to archive root, not into UR folders)
 3. Report failure to user
 
-### Step 8: Commit (Git repos only)
+### Step 9: Commit (Git repos only)
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
@@ -282,7 +324,7 @@ EOF
 
 One commit per request. Stage everything with `git add -A`. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
 
-### Step 9: Loop or Exit
+### Step 10: Loop or Exit
 
 Re-check `do-work/` for `REQ-*.md` files (fresh check, not cached). If found, loop to Step 1. If empty, run the [cleanup action](./cleanup.md) to consolidate the archive, then report final summary and exit.
 
@@ -297,6 +339,7 @@ Processing REQ-003-dark-mode.md...
   Exploring...    [done]
   Implementing... [done]
   Testing...      [done] ✓ 12 tests passing
+  Reviewing...    [done] 92% — 0 follow-ups
   Archiving...    [done]
   Committing...   [done] → abc1234
 
@@ -304,12 +347,13 @@ Processing REQ-004-fix-typo.md...
   Triage: Simple (Route A)
   Implementing... [done]
   Testing...      [done] ✓ 3 tests passing
+  Reviewing...    [done] 88% — 0 follow-ups
   Archiving...    [done]
   Committing...   [done] → def5678
 
 All 2 requests completed:
-  - REQ-003 (Route C) → abc1234
-  - REQ-004 (Route A) → def5678
+  - REQ-003 (Route C) → abc1234 [review: 92%]
+  - REQ-004 (Route A) → def5678 [review: 88%]
 ```
 
 ## Error Handling
@@ -320,6 +364,7 @@ All 2 requests completed:
 | Explore agent fails (B/C) | Proceed to implementation with reduced context — builder can explore on its own |
 | Implementation fails | Mark failed, preserve plan/exploration outputs for retry |
 | Tests fail repeatedly | After 3 fix attempts, mark failed with test failure details |
+| Review agent fails | Skip review, note it in the REQ file, continue to archive — review is advisory, not a gate |
 | Commit fails | Report error, continue to next request — changes remain uncommitted but archived |
 | Unrecoverable error | Stop loop, report clearly, leave queue intact for manual recovery |
 
@@ -377,6 +422,23 @@ commit: a1b2c3d
 **Tests run:** npm test -- --testPathPattern="user-avatar"
 **Result:** ✓ All passing (4 tests)
 *Verified by work action*
+
+## Review
+
+**Overall: 90%** | 2025-01-26T11:06:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 90% |
+| Test Adequacy | 85% |
+| Scope | 95% |
+| Risk | None |
+
+**Findings:** 0 important, 1 minor
+**Follow-ups created:** None
+
+*Reviewed by review action*
 ```
 
 **Timestamps tell the story:** `created_at` → `claimed_at` = queue wait time. `claimed_at` → `completed_at` = implementation time. Route + timestamps let you calibrate triage accuracy over time.
