@@ -142,13 +142,31 @@ This enables a two-phase commit pattern:
 1. Capture intent payload
 2. Confirm action
 
-## Action References
+## Action Dispatch
 
-Follow the detailed instructions in:
+Each action has an action file with full instructions. How you execute it depends on your environment's capabilities.
 
-- [do action](./actions/do.md) - Request capture
-- [work action](./actions/work.md) - Queue processing
-- [verify action](./actions/verify.md) - Quality evaluation of captured requests
-- [cleanup action](./actions/cleanup.md) - Archive consolidation and UR closure
-- [version action](./actions/version.md) - Version, updates & changelog
+| Action  | Action file             | Context to pass                |
+|---------|-------------------------|--------------------------------|
+| do      | `./actions/do.md`       | Full user input text           |
+| work    | `./actions/work.md`     | (none needed)                  |
+| verify  | `./actions/verify.md`   | Target UR/REQ or "most recent" |
+| cleanup | `./actions/cleanup.md`  | (none needed)                  |
+| version | `./actions/version.md`  | `$ARGUMENTS`                   |
+
+### If subagents are available
+
+Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
+
+- **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
+- **`do`, `verify`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **Screenshots (`do` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
+
+### If subagents are not available
+
+Read the action file directly and follow its instructions in the current session. The action files are designed to work as standalone prompts — no subagent infrastructure required.
+
+### On failure
+
+Report the error to the user. Do not retry automatically.
 
