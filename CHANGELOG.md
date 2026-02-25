@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.11.0 — The Diet (2025-02-25)
+
+The skill shed two-thirds of its weight. `do.md` dropped from 883 to 288 lines, `work.md` from 1,277 to 383. Same behavior, dramatically less noise. Redundancy across files (folder structure repeated 4 times, schemas defined twice, checklists restating the workflow) was consolidated or cut. Agent prompt templates in work.md were merged into one. The 158-line retrospective section, 7 overlapping examples, and standalone "What NOT to do" sections — all trimmed to their essentials.
+
+- `do.md`: 883 → 288 lines (67% reduction) — consolidated formats, trimmed examples from 7 to 4, folded checklists into workflow, cut platform-specific screenshot bloat
+- `work.md`: 1,277 → 383 lines (70% reduction) — unified agent prompt template, cut duplicate retrospective section, merged error handling into a table, removed redundant orchestrator checklist
+- All behavioral rules preserved — UR+REQ pairing, immutability, complexity triage, living logs, capture≠execute boundary
+- Zero behavior changes — this is a documentation refactor, not a feature change
+
 ## 0.10.0 — The Hard Stop (2026-02-16)
 
 Capture no longer slides into execution. The do action now has an explicit boundary: after writing files and reporting back, it stops. No helpful "let me go ahead and start building that for you." The user decides when to run the queue — always. Both SKILL.md (routing level) and do.md (action level) enforce this, so even eager agents get the message.
