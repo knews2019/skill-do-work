@@ -4,14 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.11.1 — The Passport Check (2025-02-25)
+## 0.12.1 — The Passport Check (2025-02-25)
 
 Removed a hardcoded `Co-Authored-By: Claude <noreply@anthropic.com>` trailer from the commit template in work.md. Agents on other platforms would stamp Claude-specific metadata onto their commits just by following the template verbatim — violating the agent compatibility rules. The trailer is now a documented option with a generic example, not a baked-in default.
 
 - Removed tool-specific co-author line from the commit template example
 - Added guidance: use your platform's co-author convention if it has one, otherwise omit
 
-## 0.11.0 — The Diet (2025-02-25)
+## 0.12.0 — The Diet (2025-02-25)
 
 The skill shed two-thirds of its weight. `do.md` dropped from 883 to 288 lines, `work.md` from 1,277 to 383. Same behavior, dramatically less noise. Redundancy across files (folder structure repeated 4 times, schemas defined twice, checklists restating the workflow) was consolidated or cut. Agent prompt templates in work.md were merged into one. The 158-line retrospective section, 7 overlapping examples, and standalone "What NOT to do" sections — all trimmed to their essentials.
 
@@ -19,6 +19,24 @@ The skill shed two-thirds of its weight. `do.md` dropped from 883 to 288 lines, 
 - `work.md`: 1,277 → 383 lines (70% reduction) — unified agent prompt template, cut duplicate retrospective section, merged error handling into a table, removed redundant orchestrator checklist
 - All behavioral rules preserved — UR+REQ pairing, immutability, complexity triage, living logs, capture≠execute boundary
 - Zero behavior changes — this is a documentation refactor, not a feature change
+
+## 0.11.1 — The Safety Net (2026-02-24)
+
+Subagent dispatch no longer assumes subagents exist. Environments without Task subagents can now fall back to reading the action file directly in the current session — no more broken routing in simpler tools. The dispatch section is restructured as "if available / if not" so the skill stays portable.
+
+- Added fallback path: read action file directly when subagents are unavailable
+- Removed Claude Code-specific language (Task tool, `run_in_background`)
+- Dispatch table simplified — background column moved into subagent-specific guidance
+
+## 0.11.0 — The Delegate (2026-02-24)
+
+Actions now run in subagents instead of the main context window. The 170-220KB of action file content that used to flood the conversation stays out of sight — the main thread only handles routing and receives a summary. `work` and `cleanup` run in the background so you get your conversation back immediately.
+
+- Replaced "Action References" with "Action Dispatch" in SKILL.md
+- Actions dispatched to `general-purpose` Task subagents via prompt pattern
+- `work` and `cleanup` run in background (non-blocking)
+- `do`, `verify`, `version` run in foreground (blocking)
+- Screenshots bridged to `do` subagent via temp files + text descriptions
 
 ## 0.10.0 — The Hard Stop (2026-02-16)
 
