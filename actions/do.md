@@ -44,7 +44,7 @@ Files in `working/` and `archive/` are **immutable**. If someone wants to add to
 - **UR folders:** `do-work/user-requests/UR-[number]/` containing `input.md` and optional `assets/`
 - **Assets:** `do-work/user-requests/UR-NNN/assets/REQ-[num]-[descriptive-name].png`
 
-To get the next number, check existing files across `do-work/`, `working/`, and `archive/` (including inside `archive/UR-*/`), then increment from the highest. REQ and UR use separate numbering sequences.
+To get the next REQ number, check existing `REQ-*.md` files across `do-work/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`), then increment from the highest. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences.
 
 ### Backward Compatibility
 
