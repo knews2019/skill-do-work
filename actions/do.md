@@ -110,7 +110,9 @@ conditions, edge cases, "must"/"should"/"never" statements.]
 Any latitude given to the builder.]
 
 ## Open Questions
-[Ambiguities the builder should clarify or decide]
+- [ ] [Question about ambiguity the user needs to clarify]
+
+Open Questions use checkbox syntax. `- [ ]` = unresolved (blocks the work action from starting implementation). Each question should be specific enough to answer in one sentence. Only add questions where the user's intent is genuinely unclear — don't add questions the builder can answer by reading the codebase.
 
 ## Full Context
 See [user-requests/UR-NNN/input.md](./user-requests/UR-NNN/input.md) for complete verbatim input.
@@ -298,7 +300,7 @@ nuances. You can run `/do-work verify` to check coverage against your original i
 
 - **Vague request ("fix the search")**: Capture what was said. The builder can clarify.
 - **References earlier conversation**: Include that context in the request file.
-- **Seems impossible or contradictory**: Capture it. Note contradictions in Open Questions.
+- **Seems impossible or contradictory**: Capture it. Add contradictions as `- [ ]` Open Questions so the work action pauses for clarification.
 - **Requirement applies to multiple features**: Include in ALL relevant REQ files. Duplication beats losing it.
 - **User changes mind mid-request**: Capture the final decision, note the evolution in the UR.
 - **Mentioned once in passing**: Still a requirement. Capture it.
