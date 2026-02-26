@@ -118,7 +118,13 @@ After presenting the report:
 1. Ask the user if they want to apply the recommended fixes
 2. If yes, update the REQ files directly:
    - **Critical/Important/Minor gaps**: Add missing requirements to the appropriate sections, add or update Builder Guidance sections, add batch constraints to Constraints sections
-   - **Ambiguous gaps**: Don't fix the REQ content — instead add a `- [ ]` Open Question to the REQ's `## Open Questions` section (create the section if it doesn't exist). This ensures the work action's clarification checkpoint catches it before implementation starts.
+   - **Ambiguous gaps**: Don't fix the REQ content — instead add an Open Question to the REQ's `## Open Questions` section (create the section if it doesn't exist). Use the choice format:
+     ```
+     - [ ] [Question]
+       Recommended: [best default based on context]
+       Also: [alternative A], [alternative B]
+     ```
+     The recommended choice lets the builder proceed with best judgment if the user doesn't answer before the work action picks it up.
 3. Re-score after fixes to confirm improvement (Ambiguous items don't affect the re-score — they're resolved by the user during work, not by verify)
 
 ## Scoring Guidelines

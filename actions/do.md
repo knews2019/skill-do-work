@@ -111,8 +111,16 @@ Any latitude given to the builder.]
 
 ## Open Questions
 - [ ] [Question about ambiguity the user needs to clarify]
+  Recommended: [best default based on context]
+  Also: [alternative A], [alternative B]
 
-Open Questions use checkbox syntax. `- [ ]` = unresolved (blocks the work action from starting implementation). Each question should be specific enough to answer in one sentence. Only add questions where the user's intent is genuinely unclear — don't add questions the builder can answer by reading the codebase.
+Open Questions use checkbox syntax with recommended choices. Each question includes a `Recommended:` line (the best default if the user doesn't answer) and an `Also:` line with alternatives. The choices make questions answerable even when the question itself isn't fully understood — the user can just pick one.
+
+`- [ ]` = unresolved, `- [x]` = answered (answer follows `→`), `- [~]` = deferred to builder (note follows `→`).
+
+**Capture time is the optimal window for resolving these.** During capture (this action), use your environment's ask-user prompt/tool to present Open Questions immediately. The user is here, engaged, and fleshing out the request — don't defer what you can clarify now. Only leave questions as `- [ ]` if you genuinely can't ask (e.g., batch processing, async capture).
+
+Only add questions where the user's intent is genuinely unclear — don't add questions the builder can answer by reading the codebase.
 
 ## Full Context
 See [user-requests/UR-NNN/input.md](./user-requests/UR-NNN/input.md) for complete verbatim input.
@@ -300,7 +308,7 @@ nuances. You can run `/do-work verify` to check coverage against your original i
 
 - **Vague request ("fix the search")**: Capture what was said. The builder can clarify.
 - **References earlier conversation**: Include that context in the request file.
-- **Seems impossible or contradictory**: Capture it. Add contradictions as `- [ ]` Open Questions so the work action pauses for clarification.
+- **Seems impossible or contradictory**: Capture it. Add contradictions as `- [ ]` Open Questions with recommended resolutions — and ask the user right now if they're available.
 - **Requirement applies to multiple features**: Include in ALL relevant REQ files. Duplication beats losing it.
 - **User changes mind mid-request**: Capture the final decision, note the evolution in the UR.
 - **Mentioned once in passing**: Still a requirement. Capture it.

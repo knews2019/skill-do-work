@@ -157,14 +157,20 @@ Found during code review of [REQ-id]. [1 sentence on what the review found.]
 - [Specific fix needed]
 ```
 
-**When the root cause is ambiguous requirements** — not a code quality issue or missed implementation, but genuine ambiguity in what the user wanted — add an `## Open Questions` section to the follow-up REQ:
+**When the root cause is ambiguous requirements** — not a code quality issue or missed implementation, but genuine ambiguity in what the user wanted — add an `## Open Questions` section to the follow-up REQ and set its status to `pending-answers`:
 
 ```markdown
+---
+status: pending-answers
+---
+
 ## Open Questions
 - [ ] [What needs clarification before this fix can be implemented]
+  Recommended: [best default based on review findings]
+  Also: [alternative A], [alternative B]
 ```
 
-This ensures the work action's clarification checkpoint (Step 3.5) pauses for user input before attempting the fix. Only add Open Questions when the ambiguity caused the issue — if the fix is clear (e.g., "missed a null check"), don't add questions.
+The `pending-answers` status means the work loop won't pick this up until the user reviews it, answers the questions, and flips the status to `pending`. The recommended choices let the user quickly pick an option without deep context-switching. Only add Open Questions when the ambiguity caused the issue — if the fix is clear (e.g., "missed a null check"), use `status: pending` and skip the Open Questions.
 
 Follow-up REQs go in `do-work/` (the queue). In pipeline mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do work run`.
 

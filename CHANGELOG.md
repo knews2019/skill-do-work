@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.15.0 — The No-Block Build (2026-02-26)
+
+Open Questions no longer block the build phase. The builder uses its best judgment, completes the REQ, and creates `pending-answers` follow-up REQs for decisions that need user validation. Human interaction is optimized for two windows: capture time (ask freely) and batch-review time (user returns to answer accumulated questions). Questions now include recommended defaults and alternatives so they're answerable at a glance.
+
+- `do.md`: Open Questions now include `Recommended:` and `Also:` choices; capture time is the primary ask window — use the ask tool immediately instead of deferring
+- `work.md`: Step 3.5 is no longer a blocking gate — builder marks `- [~]` with reasoning, completes the REQ, then queues `pending-answers` follow-ups for user review
+- `work.md`: New `pending-answers` status — work loop skips these; user batch-reviews them between runs
+- `work.md`: Step 1 now skips `pending-answers` REQs and reports them when queue is otherwise empty
+- `verify.md`: Ambiguous gaps use the choice format (`Recommended:` / `Also:`) when adding Open Questions
+- `review.md`: Ambiguous-requirement follow-ups use `status: pending-answers` with choice format
+
 ## 0.14.0 — The Clarification Gate (2026-02-26)
 
 Ambiguous requirements now get caught before code gets written. Open Questions in REQs use a structured checkbox format, the work action pauses at a new Step 3.5 checkpoint to resolve them with the user, verify flags genuinely ambiguous gaps for clarification instead of just failing them, and review creates follow-up REQs with Open Questions when the root cause is unclear intent rather than a code bug.
