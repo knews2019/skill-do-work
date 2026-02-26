@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.13.1 — The Human Loop (2026-02-25)
+
+Verification now handles real-world ambiguity explicitly: when request intent is unclear, the flow asks focused clarification questions instead of guessing. That keeps automation fast while still pulling the client into decision points that matter.
+
+- Added a clarification gate to `verify` for decision-critical ambiguity
+- Added `Needs Clarification` reporting guidance and a dedicated "Clarifications Needed" section in the verification report format
+- Updated verify workflow to pause for user answers before applying fixes and re-scoring
+- Documented the clarification behavior in README so expectations are clear
+
 ## 0.13.0 — The Second Pass (2026-02-25)
 
 Post-work quality is now a first-class flow. Verify stays focused on capture quality, testing stays in the work loop, and a new review action handles implementation-level code review after work is done.

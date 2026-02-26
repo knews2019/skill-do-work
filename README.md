@@ -104,6 +104,7 @@ Invoked when you say "verify", "check", "evaluate", or "review requests". This i
 - Compares against extracted REQ files for completeness
 - Scores coverage, UX detail capture, intent signal preservation
 - Optionally fixes identified gaps
+- If core intent is ambiguous, asks focused clarification questions and resumes scoring after user input
 
 See [actions/verify.md](./actions/verify.md) for the full evaluation logic.
 

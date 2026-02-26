@@ -21,6 +21,17 @@ A confidence evaluation system that compares extracted REQ files against the ori
 
 ## Workflow
 
+### Step 0: Clarification Gate (When Input Is Ambiguous)
+
+If verification reveals ambiguity in the original request that materially affects implementation (e.g., two valid interpretations, missing acceptance criteria, unresolved scope conflict):
+
+1. **Pause scoring for the ambiguous part** — do not guess.
+2. **Ask the user a focused clarification question** with 2-4 concrete options when possible.
+3. **Mark status as `Needs Clarification`** in the report.
+4. **Resume verification after the user answers** and update impacted REQ scores/recommendations.
+
+Use this only for decision-critical ambiguity. Minor wording uncertainty should be noted, not escalated.
+
 ### Step 1: Find the Target UR
 
 1. **If user specifies a UR** (e.g., "verify UR-003"): Use that UR directly
@@ -92,6 +103,10 @@ Output a confidence report in this format:
 | REQ-018 | TOC Panel | 85% | 70% | 90% | 80% | 81% |
 | REQ-019 | File Tree | 90% | 60% | 90% | 80% | 80% |
 
+### Clarifications Needed
+
+- [None / list focused questions to ask user before final scoring]
+
 ### Gaps Found
 
 **Critical:**
@@ -109,16 +124,17 @@ Output a confidence report in this format:
 2. [Specific fix: "Add batch constraint about stability-first sequencing to REQ-019"]
 ```
 
-### Step 7: Offer Fixes
+### Step 7: Resolve Clarifications and Offer Fixes
 
 After presenting the report:
 
-1. Ask the user if they want to apply the recommended fixes
-2. If yes, update the REQ files directly:
+1. If there are clarification questions, ask them first and wait for user input
+2. Once clarified, ask whether to apply the recommended fixes
+3. If yes, update the REQ files directly:
    - Add missing requirements to the appropriate sections
    - Add or update Builder Guidance sections
    - Add batch constraints to Constraints sections
-3. Re-score after fixes to confirm improvement
+4. Re-score after fixes to confirm improvement
 
 ## Scoring Guidelines
 
@@ -142,4 +158,5 @@ For REQs created before the UR system:
 - Don't penalize REQs for missing details the user never mentioned
 - Don't treat implementation details as gaps — those are for the builder to decide
 - Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
+- Don't guess when the request is truly ambiguous — ask the user a focused clarification question
 - Don't review implementation quality here — use `review` for post-work code review
