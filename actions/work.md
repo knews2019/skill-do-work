@@ -6,7 +6,7 @@ An orchestrated build system that processes request files created by the do acti
 
 ## Request Files as Living Logs
 
-Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Plan, Exploration, Implementation Summary, Testing, Review. This ensures full traceability — what was planned vs done, where failures happened, and whether triage was accurate.
+Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Open Questions (if any), Plan, Exploration, Implementation Summary, Testing, Review. This ensures full traceability — what was planned vs done, where failures happened, and whether triage was accurate.
 
 ## Architecture
 
@@ -16,6 +16,9 @@ work action (orchestrator - lightweight, stays in loop)
   ├── For each pending request:
   │     │
   │     ├── TRIAGE: Assess complexity (no agent, just read & categorize)
+  │     │
+  │     ├── OPEN QUESTIONS? ── - [ ] items exist ──► Ask user, resolve
+  │     │                      (none / all resolved) ──► continue
   │     │     │
   │     │     ├── Route A (Simple) ──────────────────┐
   │     │     │   Skip plan/explore, direct to build │
@@ -131,7 +134,7 @@ error: "Description"          # Only if failed
 ---
 ```
 
-**Status flow:** `pending` → `claimed` → `[planning]` → `[exploring]` → `implementing` → `testing` → `reviewing` → `completed` / `failed`
+**Status flow:** `pending` → `claimed` → `[clarifying]` → `[planning]` → `[exploring]` → `implementing` → `testing` → `reviewing` → `completed` / `failed`
 
 ## Workflow
 
@@ -163,6 +166,30 @@ Read the request, apply the decision flow, update frontmatter with `route`. Appe
 ```
 
 Report the triage decision briefly to the user.
+
+### Step 3.5: Resolve Open Questions
+
+After triage, scan the REQ for a `## Open Questions` section. If the section exists and contains any `- [ ]` (unresolved) items, pause and present them to the user before proceeding.
+
+Open Questions use checkbox syntax:
+- `- [ ]` — **Unresolved**: needs user input (blocks implementation)
+- `- [x]` — **Resolved**: user answered (answer follows `→`)
+- `- [~]` — **Deferred**: user said "let the builder decide" (note follows `→`)
+
+**If unresolved items exist:**
+
+1. Present the `- [ ]` questions to the user — use your environment's ask-user prompt/tool if available, otherwise list them and wait for a response
+2. For each question, the user can:
+   - **Answer it** → update to `- [x] [question] → [user's answer]`
+   - **Defer to builder** → update to `- [~] [question] → Builder decides`
+3. Update the REQ file in `do-work/working/` with the resolved questions
+4. Only proceed to Step 4 when no `- [ ]` items remain
+
+If no `## Open Questions` section exists, or all items are already `[x]` or `[~]`, skip this step entirely.
+
+If the REQ already has the Open Questions section from capture time, update it in place. If verify or review added questions to a follow-up REQ, the section is already there — just resolve the items.
+
+**If the user is unavailable:** Leave the REQ claimed with unresolved questions. Report which REQ is blocked and why. If the queue has more REQs, continue to the next one — come back to the blocked REQ when the user is available.
 
 ### Step 4: Planning (Route C only)
 
@@ -335,6 +362,7 @@ Keep the user informed:
 ```
 Processing REQ-003-dark-mode.md...
   Triage: Complex (Route C)
+  Clarifying...   [done] 2 questions resolved
   Planning...     [done]
   Exploring...    [done]
   Implementing... [done]
@@ -360,6 +388,7 @@ All 2 requests completed:
 
 | Phase | Action |
 |-------|--------|
+| User unavailable for Open Questions | Leave REQ claimed with unresolved questions. Report which REQ is blocked. Continue to next REQ if queue has more. |
 | Plan agent fails (Route C) | Mark failed, continue to next request |
 | Explore agent fails (B/C) | Proceed to implementation with reduced context — builder can explore on its own |
 | Implementation fails | Mark failed, preserve plan/exploration outputs for retry |

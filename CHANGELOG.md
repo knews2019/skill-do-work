@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.14.0 — The Clarification Gate (2026-02-26)
+
+Ambiguous requirements now get caught before code gets written. Open Questions in REQs use a structured checkbox format, the work action pauses at a new Step 3.5 checkpoint to resolve them with the user, verify flags genuinely ambiguous gaps for clarification instead of just failing them, and review creates follow-up REQs with Open Questions when the root cause is unclear intent rather than a code bug.
+
+- `do.md`: Open Questions now use `- [ ] question text` checkbox format with `(context: ...)` annotations
+- `work.md`: New Step 3.5 — Resolve Open Questions checkpoint that pauses for user input before implementation
+- `verify.md`: New "Ambiguous" gap classification that generates Open Questions on the REQ instead of just reporting a gap
+- `review.md`: Follow-up REQs for ambiguous-requirement findings now include `## Open Questions` to trigger the clarification checkpoint
+
 ## 0.13.0 — The Second Opinion (2026-02-25)
 
 Every completed request now gets a code review before it's archived. The work pipeline gained a new step between testing and archive that reads the actual diff, compares it against the original requirements and UR, scores the implementation across five dimensions, and creates follow-up REQs when it finds real issues. You can also invoke it manually on anything already shipped.

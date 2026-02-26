@@ -73,6 +73,7 @@ For each gap found:
    - **Critical**: A firm requirement that was completely dropped
    - **Important**: A clear requirement that was partially captured or summarized too aggressively
    - **Minor**: A passing mention or soft preference that was missed
+   - **Ambiguous**: The original input doesn't contain enough information to resolve this — neither the REQ nor the UR has a clear answer. This isn't a gap in the REQ; it's a gap in the original request that only the user can fill.
 
 ### Step 6: Generate Report
 
@@ -101,6 +102,9 @@ Output a confidence report in this format:
 **Minor:**
 - [List of missed passing mentions]
 
+**Ambiguous (needs client input):**
+- [List of requirements where the original input is unclear — these become Open Questions on the REQ]
+
 ### Recommendations
 
 1. [Specific fix: "Add 'auto-scroll to current file' to REQ-018 Detailed Requirements"]
@@ -113,10 +117,9 @@ After presenting the report:
 
 1. Ask the user if they want to apply the recommended fixes
 2. If yes, update the REQ files directly:
-   - Add missing requirements to the appropriate sections
-   - Add or update Builder Guidance sections
-   - Add batch constraints to Constraints sections
-3. Re-score after fixes to confirm improvement
+   - **Critical/Important/Minor gaps**: Add missing requirements to the appropriate sections, add or update Builder Guidance sections, add batch constraints to Constraints sections
+   - **Ambiguous gaps**: Don't fix the REQ content — instead add a `- [ ]` Open Question to the REQ's `## Open Questions` section (create the section if it doesn't exist). This ensures the work action's clarification checkpoint catches it before implementation starts.
+3. Re-score after fixes to confirm improvement (Ambiguous items don't affect the re-score — they're resolved by the user during work, not by verify)
 
 ## Scoring Guidelines
 
@@ -139,4 +142,5 @@ For REQs created before the UR system:
 - Don't expand requirements beyond what the user said — you're checking coverage, not inventing new features
 - Don't penalize REQs for missing details the user never mentioned
 - Don't treat implementation details as gaps — those are for the builder to decide
+- Don't classify something as Ambiguous when the answer is in the original input — that's a Critical or Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
 - Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
