@@ -240,6 +240,16 @@ Append to the request file:
 *Verified by work action*
 ```
 
+### Step 6.6: Keep Quality Checks Separate
+
+Maintain clear boundaries between quality checks:
+
+- **Verify action (`verify`)** = request extraction quality vs original user input (before implementation)
+- **Testing in work** = executable behavior validation (during implementation)
+- **Review action (`review`)** = post-work implementation quality review (after completion)
+
+When reporting completion for medium/high risk work (especially Route C), suggest running `review` as a follow-up quality pass.
+
 ### Step 7: Archive
 
 **On success:**
