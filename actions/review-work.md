@@ -1,22 +1,24 @@
-# Review Action
+# Review Work Action
 
-> **Part of the do-work skill.** Invoked automatically after work completes or manually when the user requests a code review. Evaluates implementation quality against the original requirements.
+> **Part of the do-work skill.** Invoked automatically after work completes or manually when the user requests a review. Evaluates whether the work actually delivers what was requested — through requirements checking, code review, acceptance testing, and additional testing recommendations.
 
-A post-work quality gate that reads the actual code changes and compares them against the REQ and UR to catch what automated tests miss: requirements gaps, code quality issues, scope creep, and missing edge cases.
+A post-work quality gate with three jobs: (1) confirm the implementation matches the requirements, (2) verify the code is solid, and (3) actually test that the thing works. Creates follow-up REQs for anything that needs fixing.
 
 ## Philosophy
 
-- **Review is not testing.** Tests verify behavior; review evaluates quality, completeness, and intent alignment.
+- **Did we build what was asked?** Requirements check comes first. Everything else is secondary if the wrong thing got built.
+- **Does it actually work?** Reading diffs catches logic errors. Running the code catches everything else. Do both.
 - **Traceability makes this powerful.** You have the original input (UR), the structured requirements (REQ), the triage/plan/exploration history, and the actual diff — use all of it.
 - **Actionable output.** Don't just report problems — create follow-up REQs for issues worth fixing.
 - **Proportional effort.** A Route A config change gets a quick scan. A Route C multi-file feature gets a thorough review.
+- **Suggest what's next.** After checking what you can, tell the user what else should be tested — manual checks, edge cases, integration scenarios, things only a human can verify.
 
 ## Two Modes
 
 | Mode | Trigger | REQ location | How to get the diff |
 |------|---------|-------------|---------------------|
 | **Pipeline** | Auto-triggered by the work action after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary |
-| **Standalone** | User invokes manually: `do work review`, `do work code review`, `do work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field |
+| **Standalone** | User invokes manually: `do work review`, `do work review work`, `do work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field |
 
 Both modes follow the same workflow. The only difference is where the REQ lives and how you obtain the diff.
 
@@ -59,15 +61,25 @@ Read the diff carefully. For large diffs, focus on:
 - Modified files (understand what changed and why)
 - Deleted files (was deletion justified?)
 
-### Step 5: Evaluate
+### Step 5: Requirements Check
 
-Score the implementation across these dimensions:
+Walk through every requirement in the REQ and the original UR input. For each one, determine: **was it built?**
 
-**Requirements Compliance (0-100%)**
-- Does the code deliver every requirement from the REQ?
-- Are specific values, constraints, and conditions implemented correctly?
-- Are edge cases from the requirements handled?
-- Compare the Implementation Summary claims against the actual diff
+This is not a code quality check — it's a checklist. Go requirement by requirement:
+
+1. **Extract all requirements** from the REQ's What/Detailed Requirements sections AND from the UR's original input. Include explicit requirements, implicit UX expectations, constraints, and edge cases the user mentioned.
+2. **For each requirement**, check the diff and implementation:
+   - **Delivered**: The requirement is implemented and visible in the diff
+   - **Partially delivered**: Some aspects implemented, others missing
+   - **Not delivered**: No evidence of implementation in the diff
+   - **N/A**: Requirement doesn't apply (e.g., deferred by Open Questions)
+3. **Compare against Implementation Summary claims.** If the builder says it did something, verify it actually appears in the diff.
+
+Score: **Requirements Compliance (0-100%)** — percentage of requirements that are fully delivered.
+
+### Step 6: Code Review
+
+Evaluate the implementation quality by reading the diff:
 
 **Code Quality (0-100%)**
 - Does it follow existing project patterns and conventions?
@@ -91,14 +103,59 @@ Score the implementation across these dimensions:
 - Performance risks (N+1 queries, unbounded loops, memory leaks)
 - Data integrity risks (race conditions, missing validation at boundaries)
 
+### Step 7: Acceptance Testing
+
+Actually verify the implementation works. Reading diffs catches logic errors; running code catches everything else.
+
+**What to do:**
+
+1. **Run the test suite** — if tests weren't already run by the work pipeline (pipeline mode should have run them in Step 6.5), run them now. Target tests related to changed code first, then broader tests if fast enough.
+2. **Try the feature** — if the change produces observable behavior (UI, CLI output, API response, file output), verify it works end-to-end:
+   - Run the app/server/tool if applicable
+   - Exercise the specific feature that was built
+   - Try the happy path first, then obvious edge cases
+   - For CLI tools: run the command with expected inputs
+   - For APIs: make a test request
+   - For UI: describe what you'd check (the reviewer may not have a browser, but should note what to verify)
+3. **Verify the fix** — for bug fixes, confirm the original bug no longer reproduces
+4. **Check integration** — if the change touches interfaces between components, verify both sides still work together
+
+**What NOT to do:**
+- Don't build an exhaustive test harness — this is a quick smoke test, not QA
+- Don't test things unrelated to the change
+- Don't skip this step just because unit tests pass — unit tests and acceptance testing catch different things
+
+**If you can't run the code** (e.g., requires external services, credentials, or hardware you don't have), note what you couldn't test and include it in the "Suggested Additional Testing" section.
+
+Score: **Acceptance (Pass / Partial / Fail / Untested)**
+- **Pass**: Feature works end-to-end as specified
+- **Partial**: Core functionality works but edge cases or secondary behaviors don't
+- **Fail**: Feature doesn't work as specified
+- **Untested**: Couldn't run the code (note why)
+
+### Step 8: Suggest Additional Testing
+
+After completing your review and acceptance testing, recommend what else should be checked. This is where you flag things only a human can verify, things that need specific environments, or edge cases worth exploring.
+
+**Categories to consider:**
+
+- **Manual verification needed** — UI appearance, UX flow, accessibility, things that need eyes on a screen
+- **Environment-specific testing** — different browsers, mobile, OS-specific behavior, production-like data
+- **Integration testing** — third-party services, APIs, database migrations, auth flows
+- **Edge cases worth exploring** — unusual inputs, boundary conditions, concurrent usage, error recovery
+- **Performance testing** — if the change could affect performance (large datasets, frequent operations, network calls)
+- **Security review** — if the change handles user input, auth, or sensitive data
+
+Only include categories that are relevant to this specific change. A copy change doesn't need security review suggestions. A new auth flow does.
+
 ### Scoring Guidelines
 
-**90-100%**: Ship-ready. Clean implementation, good tests, on-spec.
+**90-100%**: Ship-ready. Clean implementation, good tests, on-spec, acceptance passes.
 **75-89%**: Minor issues. Style nits, a missing edge case test, small scope drift. Not worth blocking.
-**50-74%**: Needs attention. Missed requirements, inadequate tests, or code quality concerns.
-**Below 50%**: Significant problems. Major requirements missed, no tests for new behavior, or risky code.
+**50-74%**: Needs attention. Missed requirements, inadequate tests, acceptance issues, or code quality concerns.
+**Below 50%**: Significant problems. Major requirements missed, no tests for new behavior, acceptance fails, or risky code.
 
-### Step 6: Report
+### Step 9: Report
 
 **Pipeline mode:** Report to the work action orchestrator (which reports to the user).
 **Standalone mode:** Report directly to the user.
@@ -106,9 +163,11 @@ Score the implementation across these dimensions:
 Format:
 
 ```
-## Code Review: REQ-NNN
+## Review: REQ-NNN
 
 **Overall: [X]%** | Route [A/B/C] | [commit hash or "uncommitted"]
+
+### Scores
 
 | Dimension | Score | Notes |
 |-----------|-------|-------|
@@ -117,6 +176,14 @@ Format:
 | Test Adequacy | 70% | Missing edge case coverage |
 | Scope | 100% | Focused, no drift |
 | Risk | None | — |
+| Acceptance | Pass | Feature works end-to-end |
+
+### Requirements Checklist
+
+- [x] Dark mode toggle in settings — delivered
+- [x] Persists preference in localStorage — delivered
+- [ ] Applies to sidebar — not delivered (only main content area)
+- [x] Respects OS preference on first visit — delivered
 
 ### Findings
 
@@ -126,11 +193,23 @@ Format:
 **Minor:**
 - [Style nit or suggestion]
 
+### Acceptance Testing
+
+**Result: [Pass/Partial/Fail/Untested]**
+- [What was tested and outcome]
+- [Any issues found during hands-on testing]
+
+### Suggested Additional Testing
+
+- [Manual verification: check dark mode renders correctly across all page layouts]
+- [Browser testing: verify localStorage persistence in Safari private mode]
+- [Edge case: toggle rapidly between modes to check for flicker/race conditions]
+
 ### Follow-up REQs Created
 - REQ-025: "Add edge case tests for dark mode toggle" (addendum_to: REQ-003)
 ```
 
-### Step 7: Create Follow-up REQs
+### Step 10: Create Follow-up REQs
 
 For each **Critical** or **Important** finding, create a follow-up REQ:
 
@@ -151,7 +230,7 @@ review_generated: true
 [Describe the issue found and the fix needed]
 
 ## Context
-Found during code review of [REQ-id]. [1 sentence on what the review found.]
+Found during review of [REQ-id]. [1 sentence on what the review found.]
 
 ## Requirements
 - [Specific fix needed]
@@ -192,11 +271,14 @@ After generating the report, append a Review section to the REQ file:
 | Test Adequacy | X% |
 | Scope | X% |
 | Risk | [level] |
+| Acceptance | [result] |
 
 **Findings:** [count] important, [count] minor
+**Acceptance:** [Pass/Partial/Fail/Untested] — [1-line summary]
+**Suggested testing:** [count] items
 **Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"
 
-*Reviewed by review action*
+*Reviewed by review work action*
 ```
 
 In standalone mode, this is an exception to the archive immutability rule — review annotations are post-work metadata, not content changes.
@@ -207,9 +289,9 @@ Match effort to complexity:
 
 | Route | Review depth |
 |-------|-------------|
-| **A** (Simple) | Quick scan. Check the change is correct and focused. 1-2 minutes of review. Skip dimensions that don't apply (e.g., Test Adequacy for a copy change). |
-| **B** (Medium) | Standard review. Check all dimensions. Focus on whether the builder found and followed the right patterns. |
-| **C** (Complex) | Thorough review. Compare against the plan. Check architectural decisions. Verify cross-cutting concerns. Read new files fully. |
+| **A** (Simple) | Quick scan. Requirements check is a glance, code review focuses on correctness, acceptance is a quick smoke test. Skip dimensions that don't apply (e.g., Test Adequacy for a copy change). Suggested testing is usually empty or 1 item. |
+| **B** (Medium) | Standard review. Full requirements checklist. Code review checks all dimensions. Acceptance tests the feature end-to-end. Suggested testing covers obvious gaps. |
+| **C** (Complex) | Thorough review. Requirements checklist cross-referenced against plan and UR. Code review checks architectural decisions. Acceptance tests multiple paths. Suggested testing is comprehensive — integration, edge cases, performance. |
 
 ## What NOT to Do
 
@@ -218,4 +300,5 @@ Match effort to complexity:
 - Don't block on minor issues — report them but keep moving
 - Don't invent requirements — review against what the REQ says, not what you think it should say
 - Don't penalize the absence of things the project doesn't have (no test infrastructure = don't fail on test adequacy)
-- Don't duplicate what testing already covers — if tests pass and cover a behavior, don't re-verify that behavior manually
+- Don't turn acceptance testing into a full QA cycle — it's a smoke test, not an exhaustive regression suite
+- Don't suggest testing for things that are clearly irrelevant to the change

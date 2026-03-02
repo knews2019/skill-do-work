@@ -107,15 +107,26 @@ Invoked when you say "clarify", "questions", or "answers". Batch-reviews Open Qu
 
 See [actions/work.md](./actions/work.md) "Clarify Questions" section for the full workflow.
 
-### Verify (evaluate)
+### Verify Requests
 
-Invoked when you say "verify", "check", "evaluate", or "review requests". Quality gate:
+Invoked when you say "verify requests", "verify", "check", "evaluate", or "review requests". Quality gate for captured requirements:
 - Reads the original user input from the UR folder
 - Compares against extracted REQ files for completeness
 - Scores coverage, UX detail capture, intent signal preservation
 - Optionally fixes identified gaps
 
-See [actions/verify.md](./actions/verify.md) for the full evaluation logic.
+See [actions/verify-requests.md](./actions/verify-requests.md) for the full evaluation logic.
+
+### Review Work
+
+Invoked when you say "review work", "review", "review code", or "code review". Also runs automatically after each work loop item completes. Comprehensive post-work review:
+- **Requirements check** — walks through every requirement to confirm it was built
+- **Code review** — evaluates code quality, scope discipline, and risk
+- **Acceptance testing** — actually runs/tests the feature to verify it works
+- **Suggested testing** — recommends additional checks the user should perform
+- Creates follow-up REQs for Critical/Important findings
+
+See [actions/review-work.md](./actions/review-work.md) for the full review logic.
 
 ### Cleanup (consolidate)
 

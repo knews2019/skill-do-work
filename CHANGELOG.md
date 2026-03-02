@@ -4,6 +4,19 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.19.0 — The Full Picture (2026-03-02)
+
+Review and verify got proper names and bigger jobs. "Verify" becomes "verify requests" — it checks capture quality. "Review" becomes "review work" — and now it does requirements checking (did we build what was asked?), code review, acceptance testing (actually run the thing), and suggests additional testing the user should do. Every action now ends with suggested next prompts so you always know what to do next.
+
+- Renamed `verify.md` → `verify-requests.md`; action name is now "verify requests" across routing, dispatch, help menu, and examples
+- Renamed `review.md` → `review-work.md`; action name is now "review work" — enhanced with three new phases:
+  - **Requirements check** — walks through every REQ requirement line-by-line to confirm it was delivered
+  - **Acceptance testing** — runs the app/tests and verifies the feature works end-to-end, not just in the diff
+  - **Suggested additional testing** — recommends manual verification, integration, edge cases, and environment-specific checks
+- Review report now includes a requirements checklist, acceptance result (Pass/Partial/Fail/Untested), and suggested testing section
+- Added "Suggest Next Steps" section to SKILL.md — every action now ends with 2-3 fully qualified prompt suggestions (`do work verify requests`, not just `verify`)
+- Updated capture.md, work.md, README.md with new action names and references
+
 ## 0.18.0 — The Clarity Pass (2026-03-02)
 
 Actions now say what they mean. "Capture" becomes "capture requests," the confusing "answers mode" becomes "clarify questions" with `do work clarify`, and bare `do work` shows a help menu instead of jumping straight to the work loop.

@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: (describe a task) | run | clarify | verify | review | cleanup | version
+argument-hint: (describe a task) | run | verify requests | review work | clarify | cleanup | version
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -14,8 +14,8 @@ A unified entry point for task capture and processing.
 - **capture requests**: Capture new tasks/requests → creates UR folder (verbatim input) + REQ files (queue items), always paired
 - **work**: Process pending requests → executes the queue
 - **clarify questions**: Batch-review Open Questions from completed work → user answers, confirms, or skips
-- **verify**: Evaluate captured REQs against original input → quality check
-- **review**: Post-work code review → evaluates implementation quality against requirements
+- **verify requests**: Evaluate captured REQs against original input → quality check
+- **review work**: Post-work review → requirements check, code review, acceptance testing, and testing suggestions
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
 
 > **Core concept:** The capture requests action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
@@ -36,12 +36,12 @@ Check these patterns **in order** — first match wins:
 | 1        | Empty or bare invocation | `do work`                                                                                                                          | → help menu                   |
 | 2        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
 | 3        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
-| 4        | Verify keywords          | `do work verify`, `do work check`, `do work evaluate`                                                                              | → verify                      |
-| 5        | Review keywords          | `do work review`, `do work review code`, `do work code review`                                                                     | → review                      |
+| 4        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check`, `do work evaluate`                                                   | → verify requests              |
+| 5        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review`                                              | → review work                  |
 | 6        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
 | 7        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
 | 8        | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
-| 9        | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`                                                                                 | → capture requests             |
+| 9        | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`                                                                                 | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -74,19 +74,19 @@ clarify, answers, questions, pending, pending answers, blocked, what's blocked, 
 
 Note: This routes to the work action with `mode: clarify` — see work.md "Clarify Questions" section.
 
-### Verify Verbs (→ Verify)
+### Verify Verbs (→ Verify Requests)
 
 These signal "check request quality":
-verify, check, evaluate, review requests, review reqs, audit
+verify, verify requests, check, evaluate, review requests, review reqs, audit
 
-Note: "check" routes to verify ONLY when used alone or with a target (e.g., "do work check UR-003"). When followed by descriptive content it routes to capture requests (e.g., "do work check if the button works" → capture requests).
+Note: "check" routes to verify requests ONLY when used alone or with a target (e.g., "do work check UR-003"). When followed by descriptive content it routes to capture requests (e.g., "do work check if the button works" → capture requests).
 
-### Review Verbs (→ Review)
+### Review Verbs (→ Review Work)
 
-These signal "review the code changes":
-review, review code, code review, review REQ-NNN, review UR-NNN
+These signal "review the completed work":
+review, review work, review code, code review, review REQ-NNN, review UR-NNN
 
-Note: "review requests" and "review reqs" route to **verify** (priority 3), not review. "review" alone or followed by a target/code-related word routes to review (priority 4). The review action also runs automatically as part of the work pipeline — see `work.md` Step 7.
+Note: "review requests" and "review reqs" route to **verify requests** (priority 4), not review work. "review" alone or followed by a target/code-related word routes to review work (priority 5). The review work action also runs automatically as part of the work pipeline — see `work.md` Step 7.
 
 ### Cleanup Verbs (→ Cleanup)
 
@@ -126,15 +126,15 @@ do-work — task queue for agentic coding tools
   Process the queue:
     do work run
 
-  Clarify questions:
-    do work clarify
+  Verify & review:
+    do work verify requests     Check capture quality against original input
+    do work review work         Review completed work (requirements + code + acceptance)
 
   Other actions:
-    do work verify          Check capture quality
-    do work review          Code review last completed REQ
-    do work cleanup         Consolidate the archive
-    do work version         Check version / updates
-    do work changelog       Show release notes
+    do work clarify             Answer pending questions from completed work
+    do work cleanup             Consolidate the archive
+    do work version             Check version / updates
+    do work changelog           Show release notes
 ```
 
 Do not ask "Start the work loop?" — just print the help menu and wait.
@@ -152,16 +152,18 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work pending` → Same as clarify
 - `do work what's blocked` → Same as clarify
 
-### Routes to Verify
+### Routes to Verify Requests
 
+- `do work verify requests` → Evaluates most recent UR's REQs
 - `do work verify` → Evaluates most recent UR's REQs
 - `do work verify UR-003` → Evaluates specific UR
 - `do work check REQ-018` → Evaluates the UR that REQ-018 belongs to
 - `do work evaluate` → Evaluates most recent UR's REQs
 - `do work review requests` → Evaluates most recent UR's REQs
 
-### Routes to Review
+### Routes to Review Work
 
+- `do work review work` → Reviews the most recently completed REQ
 - `do work review` → Reviews the most recently completed REQ
 - `do work review REQ-005` → Reviews a specific completed REQ
 - `do work review UR-003` → Reviews all completed REQs under that UR
@@ -207,22 +209,22 @@ This enables a two-phase commit pattern:
 
 Each action has an action file with full instructions. How you execute it depends on your environment's capabilities.
 
-| Action             | Action file             | Context to pass                |
-|--------------------|-------------------------|--------------------------------|
-| capture requests   | `./actions/capture.md`  | Full user input text           |
-| work               | `./actions/work.md`     | (none needed)                  |
-| clarify questions  | `./actions/work.md`     | `mode: clarify`                |
-| verify             | `./actions/verify.md`   | Target UR/REQ or "most recent" |
-| review             | `./actions/review.md`   | Target REQ/UR or "most recent" |
-| cleanup            | `./actions/cleanup.md`  | (none needed)                  |
-| version            | `./actions/version.md`  | `$ARGUMENTS`                   |
+| Action             | Action file                     | Context to pass                |
+|--------------------|---------------------------------|--------------------------------|
+| capture requests   | `./actions/capture.md`          | Full user input text           |
+| work               | `./actions/work.md`             | (none needed)                  |
+| clarify questions  | `./actions/work.md`             | `mode: clarify`                |
+| verify requests    | `./actions/verify-requests.md`  | Target UR/REQ or "most recent" |
+| review work        | `./actions/review-work.md`      | Target REQ/UR or "most recent" |
+| cleanup            | `./actions/cleanup.md`          | (none needed)                  |
+| version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 
 ### If subagents are available
 
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`capture requests`, `clarify questions`, `verify`, `review`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
@@ -232,4 +234,50 @@ Read the action file directly and follow its instructions in the current session
 ### On failure
 
 Report the error to the user. Do not retry automatically.
+
+## Suggest Next Steps
+
+After every action completes, suggest the next logical prompts the user might want to run. Use fully qualified action names so the user can copy-paste directly.
+
+**After capture requests:**
+```
+Next steps:
+  do work verify requests     Check capture quality before building
+  do work run                 Start processing the queue
+```
+
+**After work (queue processing):**
+```
+Next steps:
+  do work review work         Review the completed work
+  do work clarify             Answer any pending questions
+  do work run                 Process remaining queue items (if any)
+```
+
+**After verify requests:**
+```
+Next steps:
+  do work run                 Start processing the queue
+  do work [describe changes]  Capture additional requests
+```
+
+**After review work:**
+```
+Next steps:
+  do work run                 Process follow-up REQs (if any were created)
+  do work [describe changes]  Capture new requests
+```
+
+**After clarify questions:**
+```
+Next steps:
+  do work run                 Process answered questions
+  do work clarify             Continue answering (if skipped any)
+```
+
+**Rules:**
+- Only suggest prompts that provide value given the current state (e.g., don't suggest `do work run` if the queue is empty)
+- Use the full action name (`verify requests`, not just `verify`; `review work`, not just `review`)
+- Keep it to 2-3 suggestions max — don't overwhelm
+- Format as a simple list the user can scan and copy
 

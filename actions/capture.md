@@ -11,7 +11,7 @@ Every invocation produces exactly two things, always paired:
 1. **A UR folder** at `do-work/user-requests/UR-NNN/` with `input.md` containing the full verbatim input
 2. **One or more REQ files** at `do-work/REQ-NNN-slug.md`, each linked via `user_request: UR-NNN` in frontmatter
 
-Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless. The verify action depends on this linkage.
+Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless. The verify requests action depends on this linkage.
 
 **Principles:**
 - Represent, don't expand — if the user says 5 words, write a 5-word request (with structure)
@@ -248,7 +248,17 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 
 Brief summary of created files. If the request was meaningfully complex (complex mode, 3+ REQs, or notably long/nuanced input), add:
 
-> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `/do-work verify` to check coverage against your original input.
+> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `/do-work verify requests` to check coverage against your original input.
+
+Always end with next step suggestions:
+
+```
+Next steps:
+  do work verify requests     Check capture quality before building
+  do work run                 Start processing the queue
+```
+
+Only suggest prompts that provide value given the current state. Use full action names.
 
 ## Examples
 
@@ -301,7 +311,7 @@ Created:
 - do-work/REQ-013-password-reset.md (user_request: UR-001)
 
 That was a pretty detailed request — it's possible the capture missed some
-nuances. You can run `/do-work verify` to check coverage against your original input.
+nuances. You can run `/do-work verify requests` to check coverage against your original input.
 ```
 
 ## Edge Cases

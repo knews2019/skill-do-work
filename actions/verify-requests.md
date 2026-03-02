@@ -1,4 +1,4 @@
-# Verify Action
+# Verify Requests Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to verify the quality of captured requests. Evaluates REQ files against their originating User Request (UR) to find gaps.
 

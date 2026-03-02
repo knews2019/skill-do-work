@@ -279,11 +279,11 @@ Append to the request file:
 
 ### Step 7: Review
 
-Run the [review action](./review.md) in **pipeline mode** against this REQ.
+Run the [review work action](./review-work.md) in **pipeline mode** against this REQ.
 
-The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation against the requirements.
+The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation: requirements check (did we build what was asked?), code review (is it solid?), and acceptance testing (does it actually work?).
 
-**How to run it:** Spawn an agent with the review action file and the REQ path, or read `actions/review.md` and follow its pipeline mode instructions in the current session.
+**How to run it:** Spawn an agent with the review work action file and the REQ path, or read `actions/review-work.md` and follow its pipeline mode instructions in the current session.
 
 **What happens next depends on the review score:**
 
@@ -306,11 +306,14 @@ Append to the request file:
 | Test Adequacy | X% |
 | Scope | X% |
 | Risk | [level] |
+| Acceptance | [result] |
 
 **Findings:** [count] important, [count] minor
+**Acceptance:** [Pass/Partial/Fail/Untested] — [1-line summary]
+**Suggested testing:** [count] items
 **Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"
 
-*Reviewed by review action*
+*Reviewed by review work action*
 ```
 
 ### Step 8: Archive
@@ -471,7 +474,7 @@ All 2 requests completed:
 | Explore agent fails (B/C) | Proceed to implementation with reduced context — builder can explore on its own |
 | Implementation fails | Mark failed, preserve plan/exploration outputs for retry |
 | Tests fail repeatedly | After 3 fix attempts, mark failed with test failure details |
-| Review agent fails | Skip review, note it in the REQ file, continue to archive — review is advisory, not a gate |
+| Review work agent fails | Skip review, note it in the REQ file, continue to archive — review is advisory, not a gate |
 | Commit fails | Report error, continue to next request — changes remain uncommitted but archived |
 | Unrecoverable error | Stop loop, report clearly, leave queue intact for manual recovery |
 
@@ -541,11 +544,14 @@ commit: a1b2c3d
 | Test Adequacy | 85% |
 | Scope | 95% |
 | Risk | None |
+| Acceptance | Pass |
 
 **Findings:** 0 important, 1 minor
+**Acceptance:** Pass — component renders correctly with all avatar states
+**Suggested testing:** 1 item
 **Follow-ups created:** None
 
-*Reviewed by review action*
+*Reviewed by review work action*
 ```
 
 **Timestamps tell the story:** `created_at` → `claimed_at` = queue wait time. `claimed_at` → `completed_at` = implementation time. Route + timestamps let you calibrate triage accuracy over time.
