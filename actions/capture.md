@@ -1,4 +1,4 @@
-# Do Action
+# Capture Requests Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user is adding a request. Creates a `do-work/` folder in your project for request tracking.
 
@@ -11,7 +11,7 @@ Every invocation produces exactly two things, always paired:
 1. **A UR folder** at `do-work/user-requests/UR-NNN/` with `input.md` containing the full verbatim input
 2. **One or more REQ files** at `do-work/REQ-NNN-slug.md`, each linked via `user_request: UR-NNN` in frontmatter
 
-Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless. The verify action depends on this linkage.
+Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless. The verify requests action depends on this linkage.
 
 **Principles:**
 - Represent, don't expand — if the user says 5 words, write a 5-word request (with structure)
@@ -110,7 +110,17 @@ conditions, edge cases, "must"/"should"/"never" statements.]
 Any latitude given to the builder.]
 
 ## Open Questions
-[Ambiguities the builder should clarify or decide]
+- [ ] [Question about ambiguity the user needs to clarify]
+  Recommended: [best default based on context]
+  Also: [alternative A], [alternative B]
+
+Open Questions use checkbox syntax with recommended choices. Each question includes a `Recommended:` line (the best default if the user doesn't answer) and an `Also:` line with alternatives. The choices make questions answerable even when the question itself isn't fully understood — the user can just pick one.
+
+`- [ ]` = unresolved, `- [x]` = answered (answer follows `→`), `- [~]` = deferred to builder (note follows `→`).
+
+**Capture time is the optimal window for resolving these.** During capture (this action), use your environment's ask-user prompt/tool to present Open Questions immediately. The user is here, engaged, and fleshing out the request — don't defer what you can clarify now. Only leave questions as `- [ ]` if you genuinely can't ask (e.g., batch processing, async capture).
+
+Only add questions where the user's intent is genuinely unclear — don't add questions the builder can answer by reading the codebase.
 
 ## Full Context
 See [user-requests/UR-NNN/input.md](./user-requests/UR-NNN/input.md) for complete verbatim input.
@@ -238,7 +248,17 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 
 Brief summary of created files. If the request was meaningfully complex (complex mode, 3+ REQs, or notably long/nuanced input), add:
 
-> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `/do-work verify` to check coverage against your original input.
+> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `/do-work verify requests` to check coverage against your original input.
+
+Always end with next step suggestions:
+
+```
+Next steps:
+  do work verify requests     Check capture quality before building
+  do work run                 Start processing the queue
+```
+
+Only suggest prompts that provide value given the current state. Use full action names.
 
 ## Examples
 
@@ -291,14 +311,14 @@ Created:
 - do-work/REQ-013-password-reset.md (user_request: UR-001)
 
 That was a pretty detailed request — it's possible the capture missed some
-nuances. You can run `/do-work verify` to check coverage against your original input.
+nuances. You can run `/do-work verify requests` to check coverage against your original input.
 ```
 
 ## Edge Cases
 
 - **Vague request ("fix the search")**: Capture what was said. The builder can clarify.
 - **References earlier conversation**: Include that context in the request file.
-- **Seems impossible or contradictory**: Capture it. Note contradictions in Open Questions.
+- **Seems impossible or contradictory**: Capture it. Add contradictions as `- [ ]` Open Questions with recommended resolutions — and ask the user right now if they're available.
 - **Requirement applies to multiple features**: Include in ALL relevant REQ files. Duplication beats losing it.
 - **User changes mind mid-request**: Capture the final decision, note the evolution in the UR.
 - **Mentioned once in passing**: Still a requirement. Capture it.

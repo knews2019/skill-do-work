@@ -62,7 +62,7 @@ do-work/
     └── REQ-010-legacy.md     # Legacy REQs archive directly
 ```
 
-Every `do` invocation creates a User Request (UR) folder preserving the verbatim input. REQ files in the queue reference their UR. When all REQs from a UR are completed, the UR folder moves to archive as a self-contained unit.
+Every capture invocation creates a User Request (UR) folder preserving the verbatim input. REQ files in the queue reference their UR. When all REQs from a UR are completed, the UR folder moves to archive as a self-contained unit.
 
 Legacy REQs (created before the UR system) work the same as before — they archive directly without a UR folder.
 
@@ -75,21 +75,21 @@ This skill assumes your tool supports:
 
 It was originally written for Claude Code and should work with other tools that provide similar capabilities. If your tool does not support subagents, run the Plan, Explore, and Implementation phases sequentially in the same session.
 
-## The three actions
+## Actions
 
-### Do (capture)
+### Capture Requests
 
 Invoked when you provide descriptive content. Optimized for speed:
-- Minimal questions - capture what was said, don't interrogate
+- Minimal questions — capture what was said, don't interrogate
 - Handles simple one-liners and complex multi-feature specs
 - Always creates a UR folder preserving the full verbatim input
 - Checks for duplicates against existing requests
 
-See [actions/do.md](./actions/do.md) for the full capture logic.
+See [actions/capture.md](./actions/capture.md) for the full capture logic.
 
 ### Work (process)
 
-Invoked when you say "run", "go", "start", or just confirm the prompt. Runs the build loop:
+Invoked when you say "run", "go", or "start". Runs the build loop:
 - Triages each request to determine the right amount of planning
 - Spawns specialized agents only when needed
 - Archives completed work with implementation notes
@@ -97,15 +97,48 @@ Invoked when you say "run", "go", "start", or just confirm the prompt. Runs the 
 
 See [actions/work.md](./actions/work.md) for the full processing logic.
 
-### Verify (evaluate)
+### Clarify Questions
 
-Invoked when you say "verify", "check", "evaluate", or "review requests". Quality gate:
+Invoked when you say "clarify", "questions", or "answers". Batch-reviews Open Questions from completed work:
+- Presents all `pending-answers` REQs and their unresolved questions
+- User can answer, confirm the builder's choice, or skip
+- Confirmed choices resolve without re-entering the work loop
+- Answered questions flip the REQ to `pending` for the next work run
+
+See [actions/work.md](./actions/work.md) "Clarify Questions" section for the full workflow.
+
+### Verify Requests
+
+Invoked when you say "verify requests", "verify", "check", "evaluate", or "review requests". Quality gate for captured requirements:
 - Reads the original user input from the UR folder
 - Compares against extracted REQ files for completeness
 - Scores coverage, UX detail capture, intent signal preservation
 - Optionally fixes identified gaps
 
-See [actions/verify.md](./actions/verify.md) for the full evaluation logic.
+See [actions/verify-requests.md](./actions/verify-requests.md) for the full evaluation logic.
+
+### Review Work
+
+Invoked when you say "review work", "review", "review code", or "code review". Also runs automatically after each work loop item completes. Comprehensive post-work review:
+- **Requirements check** — walks through every requirement to confirm it was built
+- **Code review** — evaluates code quality, scope discipline, and risk
+- **Acceptance testing** — actually runs/tests the feature to verify it works
+- **Suggested testing** — recommends additional checks the user should perform
+- Creates follow-up REQs for Critical/Important findings
+
+See [actions/review-work.md](./actions/review-work.md) for the full review logic.
+
+### Present Work
+
+Invoked when you say "present work", "present", "showcase", or "deliver". Generates client-facing deliverables from completed work:
+- **Client Brief** — what was built, how it works (architecture + data flow), why it matters
+- **Value Proposition** — business impact, revenue opportunities, competitive advantage
+- **Video Script** — scene-by-scene walkthrough for demo videos (Remotion/Loom) when the feature is user-facing
+- **Portfolio Summary** — `do work present all` aggregates all completed work into a cumulative overview
+
+Artifacts are saved to `do-work/deliverables/` for reuse.
+
+See [actions/present-work.md](./actions/present-work.md) for the full presentation logic.
 
 ### Cleanup (consolidate)
 

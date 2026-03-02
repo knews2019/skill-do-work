@@ -1,4 +1,4 @@
-# Verify Action
+# Verify Requests Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to verify the quality of captured requests. Evaluates REQ files against their originating User Request (UR) to find gaps.
 
@@ -73,6 +73,7 @@ For each gap found:
    - **Critical**: A firm requirement that was completely dropped
    - **Important**: A clear requirement that was partially captured or summarized too aggressively
    - **Minor**: A passing mention or soft preference that was missed
+   - **Ambiguous**: The original input doesn't contain enough information to resolve this — neither the REQ nor the UR has a clear answer. This isn't a gap in the REQ; it's a gap in the original request that only the user can fill.
 
 ### Step 6: Generate Report
 
@@ -101,6 +102,9 @@ Output a confidence report in this format:
 **Minor:**
 - [List of missed passing mentions]
 
+**Ambiguous (needs client input):**
+- [List of requirements where the original input is unclear — these become Open Questions on the REQ]
+
 ### Recommendations
 
 1. [Specific fix: "Add 'auto-scroll to current file' to REQ-018 Detailed Requirements"]
@@ -113,10 +117,18 @@ After presenting the report:
 
 1. Ask the user if they want to apply the recommended fixes
 2. If yes, update the REQ files directly:
-   - Add missing requirements to the appropriate sections
-   - Add or update Builder Guidance sections
-   - Add batch constraints to Constraints sections
-3. Re-score after fixes to confirm improvement
+   - **Critical/Important/Minor gaps**: Add missing requirements to the appropriate sections, add or update Builder Guidance sections, add batch constraints to Constraints sections
+   - **Ambiguous gaps**: The user is here right now — **resolve them on the spot.** For each Ambiguous gap:
+     1. Present the question with recommended choices using your environment's ask-user prompt/tool:
+        ```
+        [Question]
+        Recommended: [best default based on context]
+        Also: [alternative A], [alternative B]
+        ```
+     2. If the user answers → add the resolved question to the REQ's `## Open Questions` section as `- [x] [question] → [user's answer]`
+     3. If the user defers ("let the builder decide") → add as `- [~] [question] → Builder decides`
+     4. If the user can't answer now → add as unresolved `- [ ]` with choices. The builder will use best judgment when it picks up the REQ.
+3. Re-score after fixes to confirm improvement (Resolved Ambiguous items that resulted in new requirements being added DO affect the re-score. Items left as `- [ ]` or `- [~]` don't.)
 
 ## Scoring Guidelines
 
@@ -139,4 +151,6 @@ For REQs created before the UR system:
 - Don't expand requirements beyond what the user said — you're checking coverage, not inventing new features
 - Don't penalize REQs for missing details the user never mentioned
 - Don't treat implementation details as gaps — those are for the builder to decide
+- Don't classify something as Ambiguous when the answer is in the original input — that's a Critical or Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
 - Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
+- Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Verify already tried to ask the user; any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment per Step 3.5.

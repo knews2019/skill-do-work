@@ -4,6 +4,112 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.20.1 — The Self-Portrait (2026-03-02)
+
+The do-work skill presented itself. Generated the first set of client-facing deliverables for the skill as a product — a client brief with full architecture diagrams and data flow, a 3-minute video script (7 scenes, capture through portfolio), and a portfolio summary covering all 20 releases.
+
+- Generated `do-work/deliverables/do-work-client-brief.md` — architecture, data flow, value proposition, competitive advantage, and roadmap
+- Generated `do-work/deliverables/do-work-video-script.md` — 7-scene walkthrough from problem to install command
+- Generated `do-work/deliverables/do-work-portfolio-summary.md` — all 20 versions catalogued with cumulative value prop and cross-project lessons
+
+## 0.20.0 — The Pitch Deck (2026-03-02)
+
+Completed work can now speak for itself. The new "present work" action reads your archive — requests, implementation history, code diffs, and lessons learned — and generates client-facing deliverables: briefs that explain what was built and how it works, value propositions that sell the impact, and video scripts for demo walkthroughs. Run it on a single UR or across the full portfolio. Also added a "Lessons Learned" section to archived REQs so institutional knowledge survives between sessions, and refined diff hygiene to protect those lessons from cleanup.
+
+- New `present work` action (`actions/present-work.md`) — two modes:
+  - **Detail mode** — deep dive on a specific UR or REQ: client brief with architecture diagrams, data flow, value proposition, and optional video script (Remotion/Loom-ready)
+  - **Portfolio mode** (`do work present all`) — summary of all completed work with cumulative value proposition and cross-project lessons learned
+- Artifacts saved to `do-work/deliverables/` for reuse and sharing
+- New `## Lessons Learned` section in work.md — archived REQs now capture what worked, what didn't, key files, and gotchas (Step 7.5, between Review and Archive)
+- Refined diff hygiene in review-work.md — explicitly protects comments that document reasoning, failed approaches, or architectural decisions
+- SKILL.md: new routing (priority 6), dispatch table, help menu, verb section, examples, and next-step suggestions for present work
+- README.md: new Present Work section
+
+## 0.19.1 — The Neighbor Check (2026-03-02)
+
+Review work now checks whether your change broke something nearby. Regression risk analysis reads the diff to identify callers and dependents, acceptance testing exercises adjacent features, and suggested testing flags regression scenarios. Also catches leftover debug artifacts and commented-out experiments.
+
+- Added regression risk to Risk Assessment — identifies callers/dependents of changed code, flags changed interfaces, notes shared utilities
+- Replaced "Check integration" with broader "Check for regressions" in acceptance testing — run adjacent tests, exercise other consumers of shared code, verify bug fixes don't break related behaviors
+- Added "Regression scenarios" category to Suggest Additional Testing
+- Added diff hygiene to Code Quality — catches debug artifacts, console.log/print statements, commented-out experiments, temp files
+
+## 0.19.0 — The Full Picture (2026-03-02)
+
+Review and verify got proper names and bigger jobs. "Verify" becomes "verify requests" — it checks capture quality. "Review" becomes "review work" — and now it does requirements checking (did we build what was asked?), code review, acceptance testing (actually run the thing), and suggests additional testing the user should do. Every action now ends with suggested next prompts so you always know what to do next.
+
+- Renamed `verify.md` → `verify-requests.md`; action name is now "verify requests" across routing, dispatch, help menu, and examples
+- Renamed `review.md` → `review-work.md`; action name is now "review work" — enhanced with three new phases:
+  - **Requirements check** — walks through every REQ requirement line-by-line to confirm it was delivered
+  - **Acceptance testing** — runs the app/tests and verifies the feature works end-to-end, not just in the diff
+  - **Suggested additional testing** — recommends manual verification, integration, edge cases, and environment-specific checks
+- Review report now includes a requirements checklist, acceptance result (Pass/Partial/Fail/Untested), and suggested testing section
+- Added "Suggest Next Steps" section to SKILL.md — every action now ends with 2-3 fully qualified prompt suggestions (`do work verify requests`, not just `verify`)
+- Updated capture.md, work.md, README.md with new action names and references
+
+## 0.18.0 — The Clarity Pass (2026-03-02)
+
+Actions now say what they mean. "Capture" becomes "capture requests," the confusing "answers mode" becomes "clarify questions" with `do work clarify`, and bare `do work` shows a help menu instead of jumping straight to the work loop.
+
+- Renamed action: "capture" → "capture requests" across SKILL.md, README, dispatch table, capture.md, work.md
+- Renamed "answers mode" → "clarify questions" — new primary verb is `do work clarify` (old verbs still work)
+- Bare invocation (`do work` with no arguments) now shows a help menu with sample prompts instead of asking "Start the work loop?"
+- Added `clarify questions` row to action dispatch table (routes to work.md with `mode: clarify`)
+- README now documents "Clarify Questions" as a standalone section alongside the other actions
+
+## 0.17.0 — The Name Tag (2026-03-02)
+
+The "do action" is now the "capture action." No more confusion between the skill name (`do-work`) and the action that captures requests. `do.md` becomes `capture.md`, all references updated across the codebase. Also fixes three workflow consistency issues found during a full trace.
+
+- Renamed `actions/do.md` → `actions/capture.md` and updated all references in SKILL.md, work.md, README.md, CLAUDE.md
+- SKILL.md routing: `→ do` becomes `→ capture` everywhere — routing table, content signals, examples, dispatch table
+- Architecture diagram in work.md now shows Open Questions and the pending-answers follow-up flow
+- Step 10 (Loop or Exit) now runs cleanup even when only `pending-answers` REQs remain, then reports them
+- Answers Mode step 5 now explicitly skips REQs already completed by the Builder Was Right path
+
+## 0.16.0 — The Full Loop (2026-03-02)
+
+The Open Questions system now has a complete lifecycle — from capture to drain. Five improvements tighten the feedback loop: verify resolves ambiguous questions on the spot (user is present, why not ask?), `do work answers` gives users a dedicated command to batch-review accumulated questions, follow-up REQ creation moves to the archive step so timing is unambiguous, confirmed builder choices skip the work loop entirely, and verify's question handling is explicitly documented as different from review's.
+
+- `verify.md`: Ambiguous gaps now get presented to the user immediately during verify — resolve on the spot, defer, or leave for the builder
+- `SKILL.md` + `work.md`: New "answers mode" — `do work answers`/`questions`/`pending` presents all `pending-answers` REQs for batch review
+- `work.md`: "Builder Was Right" path — when user confirms builder's choice, follow-up archives directly with no work cycle
+- `work.md`: Follow-up REQ creation moved from Step 3.5 to Step 8 (Archive) with full template — timing is now explicit
+- `verify.md`: Clarified that verify never sets `pending-answers` status — it already asked the user; remaining questions stay on `pending` REQs
+
+## 0.15.0 — The No-Block Build (2026-02-26)
+
+Open Questions no longer block the build phase. The builder uses its best judgment, completes the REQ, and creates `pending-answers` follow-up REQs for decisions that need user validation. Human interaction is optimized for two windows: capture time (ask freely) and batch-review time (user returns to answer accumulated questions). Questions now include recommended defaults and alternatives so they're answerable at a glance.
+
+- `do.md`: Open Questions now include `Recommended:` and `Also:` choices; capture time is the primary ask window — use the ask tool immediately instead of deferring
+- `work.md`: Step 3.5 is no longer a blocking gate — builder marks `- [~]` with reasoning, completes the REQ, then queues `pending-answers` follow-ups for user review
+- `work.md`: New `pending-answers` status — work loop skips these; user batch-reviews them between runs
+- `work.md`: Step 1 now skips `pending-answers` REQs and reports them when queue is otherwise empty
+- `verify.md`: Ambiguous gaps use the choice format (`Recommended:` / `Also:`) when adding Open Questions
+- `review.md`: Ambiguous-requirement follow-ups use `status: pending-answers` with choice format
+
+## 0.14.0 — The Clarification Gate (2026-02-26)
+
+Ambiguous requirements now get caught before code gets written. Open Questions in REQs use a structured checkbox format, the work action pauses at a new Step 3.5 checkpoint to resolve them with the user, verify flags genuinely ambiguous gaps for clarification instead of just failing them, and review creates follow-up REQs with Open Questions when the root cause is unclear intent rather than a code bug.
+
+- `do.md`: Open Questions now use `- [ ] question text` checkbox format with `(context: ...)` annotations
+- `work.md`: New Step 3.5 — Resolve Open Questions checkpoint that pauses for user input before implementation
+- `verify.md`: New "Ambiguous" gap classification that generates Open Questions on the REQ instead of just reporting a gap
+- `review.md`: Follow-up REQs for ambiguous-requirement findings now include `## Open Questions` to trigger the clarification checkpoint
+
+## 0.13.0 — The Second Opinion (2026-02-25)
+
+Every completed request now gets a code review before it's archived. The work pipeline gained a new step between testing and archive that reads the actual diff, compares it against the original requirements and UR, scores the implementation across five dimensions, and creates follow-up REQs when it finds real issues. You can also invoke it manually on anything already shipped.
+
+- New `review` action (`actions/review.md`) — post-work code review with requirements tracing
+- Two modes: **pipeline** (auto-triggered in the work loop after tests pass) and **standalone** (manual via `do work review`)
+- Scores on Requirements Compliance, Code Quality, Test Adequacy, Scope Discipline, and Risk Assessment
+- Creates follow-up REQs (using `addendum_to` pattern) for Critical/Important findings — they re-enter the queue automatically
+- Review depth scales with route: quick scan for Route A, standard for B, thorough for C
+- `work.md` updated: new Step 7 (Review), renumbered Archive→8, Commit→9, Loop→10
+- `SKILL.md` routing updated: "review"/"review code"/"code review" → review action (priority 4); "review requests"/"review reqs" still → verify
+- REQ living documents now include a `## Review` section with per-dimension scores and follow-up links
+
 ## 0.12.7 — The Cold Start (2026-02-25)
 
 The do action now knows what to do the very first time it runs. Previously, agents following the instructions would try to scan `do-work/` for duplicates and numbering before the directory existed — a guaranteed stumble on first use. Now there's explicit guidance for bootstrapping the folder structure, starting numbering at 1, skipping duplicate checks on an empty project, and ensuring directories exist before writing files.
