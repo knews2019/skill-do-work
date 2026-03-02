@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.16.0 — The Full Loop (2026-03-02)
+
+The Open Questions system now has a complete lifecycle — from capture to drain. Five improvements tighten the feedback loop: verify resolves ambiguous questions on the spot (user is present, why not ask?), `do work answers` gives users a dedicated command to batch-review accumulated questions, follow-up REQ creation moves to the archive step so timing is unambiguous, confirmed builder choices skip the work loop entirely, and verify's question handling is explicitly documented as different from review's.
+
+- `verify.md`: Ambiguous gaps now get presented to the user immediately during verify — resolve on the spot, defer, or leave for the builder
+- `SKILL.md` + `work.md`: New "answers mode" — `do work answers`/`questions`/`pending` presents all `pending-answers` REQs for batch review
+- `work.md`: "Builder Was Right" path — when user confirms builder's choice, follow-up archives directly with no work cycle
+- `work.md`: Follow-up REQ creation moved from Step 3.5 to Step 8 (Archive) with full template — timing is now explicit
+- `verify.md`: Clarified that verify never sets `pending-answers` status — it already asked the user; remaining questions stay on `pending` REQs
+
 ## 0.15.0 — The No-Block Build (2026-02-26)
 
 Open Questions no longer block the build phase. The builder uses its best judgment, completes the REQ, and creates `pending-answers` follow-up REQs for decisions that need user validation. Human interaction is optimized for two windows: capture time (ask freely) and batch-review time (user returns to answer accumulated questions). Questions now include recommended defaults and alternatives so they're answerable at a glance.

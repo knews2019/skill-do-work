@@ -180,11 +180,8 @@ Open Questions use checkbox syntax:
 1. Note them. Read the `Recommended:` default and `Also:` alternatives for each.
 2. Mark each as `- [~]` with the builder's chosen approach and reasoning: `- [~] [question] → Builder chose: [choice]. Reasoning: [why]`
 3. Proceed with implementation using those decisions.
-4. After the REQ completes (post-review), create a **follow-up REQ** for each `- [~]` item where the builder's choice meaningfully affects the user experience. The follow-up REQ:
-   - Has `status: pending-answers` in frontmatter (not `pending`)
-   - Includes an `## Open Questions` section with the original question + choices
-   - Describes what the builder chose and what would change if the user picks differently
-   - Goes in `do-work/` (the queue) but **won't be picked up by the work loop** — it waits for the user
+
+The follow-up REQs for builder-decided questions are created during **Step 8 (Archive)** — not here. Step 3.5 just records the decisions; the archive step handles the paperwork after the REQ is fully complete.
 
 **Why not block?** Human time is the bottleneck. The optimal windows for user interaction are: (1) capture time, when the user is actively fleshing out requests, and (2) batch-review time, when the user returns to answer accumulated questions. Blocking mid-build wastes builder capacity on idle waiting.
 
@@ -316,7 +313,37 @@ Append to the request file:
 
 1. Update frontmatter: `status: completed`, `completed_at: <timestamp>`
 2. Append implementation summary if not already present
-3. Archive based on REQ type:
+3. **Create follow-ups for builder-decided questions:** If the REQ has any `- [~]` items in Open Questions where the builder's choice meaningfully affects the user experience, create a follow-up REQ for each:
+   ```markdown
+   ---
+   id: REQ-NNN
+   title: "Confirm: [brief description of the choice]"
+   status: pending-answers
+   created_at: [timestamp]
+   user_request: [same UR as the original REQ]
+   addendum_to: [original REQ id]
+   builder_decided: true
+   ---
+
+   # Confirm: [Brief Description]
+
+   ## What
+   During [REQ-id], the builder chose [choice] for [question]. This follow-up
+   confirms whether that choice matches your intent or if you'd prefer a different approach.
+
+   ## What the Builder Chose
+   [Description of the choice and its impact on the implementation]
+
+   ## What Would Change
+   [If the user picks a different option, what would need to change]
+
+   ## Open Questions
+   - [ ] [Original question]
+     Recommended: [builder's choice — already implemented]
+     Also: [other alternatives]
+   ```
+   These go in `do-work/` with `status: pending-answers`. The user reviews them via `do work answers`.
+4. Archive based on REQ type:
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
@@ -355,6 +382,45 @@ One commit per request. Stage everything with `git add -A`. Don't bypass pre-com
 ### Step 10: Loop or Exit
 
 Re-check `do-work/` for `REQ-*.md` files (fresh check, not cached). If found, loop to Step 1. If empty, run the [cleanup action](./cleanup.md) to consolidate the archive, then report final summary and exit.
+
+## Answers Mode
+
+When invoked with `do work answers` (or `questions`, `pending`, `what's blocked`), the work action enters **answers mode** instead of the normal work loop. This is the batch-review drain for `pending-answers` REQs.
+
+### Answers Workflow
+
+1. **Scan the queue**: Find all `REQ-*.md` files in `do-work/` with `status: pending-answers`
+2. **If none found**: Report "No pending questions — queue is clear" and exit
+3. **Present questions**: For each `pending-answers` REQ, show:
+   ```
+   REQ-025 — Review fix: dark mode sidebar
+   (follow-up to REQ-003, from review)
+
+   1. [ ] Should the sidebar use the same dark palette as the main content?
+      Recommended: Yes, match main content palette
+      Also: Separate sidebar palette, User-configurable
+
+   2. [ ] Should dark mode persist across sessions?
+      Recommended: Yes, save to localStorage
+      Also: Reset on refresh, Follow OS preference
+   ```
+4. **Collect answers**: For each question, the user can:
+   - **Answer it** → update to `- [x] [question] → [user's answer]`
+   - **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]` and mark the REQ `status: completed` (no implementation needed — see "Builder Was Right" below)
+   - **Skip for now** → leave as `- [ ]`, REQ stays `pending-answers`
+5. **Activate answered REQs**: For each REQ where all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending`. These enter the queue for the next `do work run`.
+6. **Report**: Summary of what was resolved and what's still pending
+
+### Builder Was Right
+
+When the user reviews a `pending-answers` follow-up and confirms that the builder's original choice was correct (i.e., no implementation change needed):
+
+1. Update the question to `- [x] [question] → Confirmed: [builder's choice]`
+2. Update frontmatter: `status: completed`, `completed_at: <timestamp>`
+3. Archive the follow-up REQ directly (skip the work loop — there's nothing to build)
+4. Append a brief note: `## Implementation\n\n**No changes needed.** User confirmed builder's choice from [original REQ].\n\n*Resolved in answers mode*`
+
+This avoids wasting a work cycle on a REQ that just needs sign-off.
 
 ## Progress Reporting
 

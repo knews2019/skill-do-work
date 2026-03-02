@@ -34,12 +34,13 @@ Check these patterns **in order** — first match wins:
 | -------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | 1        | Empty or bare invocation | `do work`                                                                                                                          | → Ask: "Start the work loop?" |
 | 2        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
-| 3        | Verify keywords          | `do work verify`, `do work check`, `do work evaluate`                                                                              | → verify                      |
-| 4        | Review keywords          | `do work review`, `do work review code`, `do work code review`                                                                     | → review                      |
-| 5        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
-| 6        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
-| 7        | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
-| 8        | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`                                                                                 | → do                          |
+| 3        | Answers keywords         | `do work answers`, `do work questions`, `do work pending`                                                                          | → work (answers mode)         |
+| 4        | Verify keywords          | `do work verify`, `do work check`, `do work evaluate`                                                                              | → verify                      |
+| 5        | Review keywords          | `do work review`, `do work review code`, `do work code review`                                                                     | → review                      |
+| 6        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
+| 7        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
+| 8        | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
+| 9        | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`                                                                                 | → do                          |
 
 
 ### Step 2: Preserve Payload
@@ -64,6 +65,13 @@ If routing is genuinely unclear AND multi-word content was provided:
 
 These signal "process the queue":
 run, go, start, begin, work, process, execute, build, continue, resume
+
+### Answers Verbs (→ Work, answers mode)
+
+These signal "review pending questions":
+answers, questions, pending, pending answers, blocked, what's blocked, what needs answers
+
+Note: This routes to the work action with `mode: answers` — see work.md "Answers Mode" section.
 
 ### Verify Verbs (→ Verify)
 
@@ -107,6 +115,13 @@ These signal "add a new task":
 - `do work` → "Ready to process the queue?" (confirmation)
 - `do work run` → Starts work action immediately
 - `do work go` → Starts work action immediately
+
+### Routes to Answers (via Work)
+
+- `do work answers` → Presents all pending-answers REQs for batch review
+- `do work questions` → Same as answers
+- `do work pending` → Same as answers
+- `do work what's blocked` → Same as answers
 
 ### Routes to Verify
 
