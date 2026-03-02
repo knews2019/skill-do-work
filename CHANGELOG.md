@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.20.1 — The Self-Portrait (2026-03-02)
+
+The do-work skill presented itself. Generated the first set of client-facing deliverables for the skill as a product — a client brief with full architecture diagrams and data flow, a 3-minute video script (7 scenes, capture through portfolio), and a portfolio summary covering all 20 releases.
+
+- Generated `do-work/deliverables/do-work-client-brief.md` — architecture, data flow, value proposition, competitive advantage, and roadmap
+- Generated `do-work/deliverables/do-work-video-script.md` — 7-scene walkthrough from problem to install command
+- Generated `do-work/deliverables/do-work-portfolio-summary.md` — all 20 versions catalogued with cumulative value prop and cross-project lessons
+
 ## 0.20.0 — The Pitch Deck (2026-03-02)
 
 Completed work can now speak for itself. The new "present work" action reads your archive — requests, implementation history, code diffs, and lessons learned — and generates client-facing deliverables: briefs that explain what was built and how it works, value propositions that sell the impact, and video scripts for demo walkthroughs. Run it on a single UR or across the full portfolio. Also added a "Lessons Learned" section to archived REQs so institutional knowledge survives between sessions, and refined diff hygiene to protect those lessons from cleanup.
