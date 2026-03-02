@@ -86,7 +86,7 @@ Evaluate the implementation quality by reading the diff:
 - Naming clarity, readability, maintainability
 - Appropriate error handling for the context
 - No obvious bugs or logic errors in the diff
-- Diff hygiene — no debug artifacts, console.log/print statements, commented-out experiments, or temporary files left behind
+- Diff hygiene — no debug artifacts, console.log/print statements, or temporary files left behind. **Protect lessons learned** — comments that document *why* something was done, what was tried and didn't work, or architectural reasoning are valuable and should stay. Strip noise, keep knowledge.
 
 **Test Adequacy (0-100%)**
 - Are there tests for the new/changed behavior?

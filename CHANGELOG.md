@@ -4,6 +4,19 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.20.0 — The Pitch Deck (2026-03-02)
+
+Completed work can now speak for itself. The new "present work" action reads your archive — requests, implementation history, code diffs, and lessons learned — and generates client-facing deliverables: briefs that explain what was built and how it works, value propositions that sell the impact, and video scripts for demo walkthroughs. Run it on a single UR or across the full portfolio. Also added a "Lessons Learned" section to archived REQs so institutional knowledge survives between sessions, and refined diff hygiene to protect those lessons from cleanup.
+
+- New `present work` action (`actions/present-work.md`) — two modes:
+  - **Detail mode** — deep dive on a specific UR or REQ: client brief with architecture diagrams, data flow, value proposition, and optional video script (Remotion/Loom-ready)
+  - **Portfolio mode** (`do work present all`) — summary of all completed work with cumulative value proposition and cross-project lessons learned
+- Artifacts saved to `do-work/deliverables/` for reuse and sharing
+- New `## Lessons Learned` section in work.md — archived REQs now capture what worked, what didn't, key files, and gotchas (Step 7.5, between Review and Archive)
+- Refined diff hygiene in review-work.md — explicitly protects comments that document reasoning, failed approaches, or architectural decisions
+- SKILL.md: new routing (priority 6), dispatch table, help menu, verb section, examples, and next-step suggestions for present work
+- README.md: new Present Work section
+
 ## 0.19.1 — The Neighbor Check (2026-03-02)
 
 Review work now checks whether your change broke something nearby. Regression risk analysis reads the diff to identify callers and dependents, acceptance testing exercises adjacent features, and suggested testing flags regression scenarios. Also catches leftover debug artifacts and commented-out experiments.

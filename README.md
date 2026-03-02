@@ -128,6 +128,18 @@ Invoked when you say "review work", "review", "review code", or "code review". A
 
 See [actions/review-work.md](./actions/review-work.md) for the full review logic.
 
+### Present Work
+
+Invoked when you say "present work", "present", "showcase", or "deliver". Generates client-facing deliverables from completed work:
+- **Client Brief** — what was built, how it works (architecture + data flow), why it matters
+- **Value Proposition** — business impact, revenue opportunities, competitive advantage
+- **Video Script** — scene-by-scene walkthrough for demo videos (Remotion/Loom) when the feature is user-facing
+- **Portfolio Summary** — `do work present all` aggregates all completed work into a cumulative overview
+
+Artifacts are saved to `do-work/deliverables/` for reuse.
+
+See [actions/present-work.md](./actions/present-work.md) for the full presentation logic.
+
 ### Cleanup (consolidate)
 
 Invoked when you say "cleanup", "tidy", or "consolidate". Also runs automatically at the end of every work loop. Keeps the archive organized:

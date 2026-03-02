@@ -316,6 +316,27 @@ Append to the request file:
 *Reviewed by review work action*
 ```
 
+### Step 7.5: Lessons Learned
+
+Before archiving, capture what's worth remembering. This section is the institutional memory — when someone revisits this code in six months, the REQ file tells them what happened, what was tried, and why things ended up the way they did.
+
+Append to the request file:
+
+```markdown
+## Lessons Learned
+
+**What worked:** [1-2 bullets — approaches, patterns, or tools that paid off]
+**What didn't:** [1-2 bullets — dead ends, failed approaches, and *why* they failed]
+**Key files:** [Pointers to the most important files — these are the source of truth, not this summary]
+**Worth knowing:** [Anything the next person touching this code should know — gotchas, edge cases, non-obvious dependencies]
+```
+
+**Rules:**
+- Keep it concise — pointers to code, not walls of text. The code is the source of truth.
+- Only include entries that have value. If everything went smoothly (Route A, no surprises), skip this section entirely.
+- "What didn't work" is the most valuable part — it prevents repeating mistakes.
+- Always reference specific files rather than describing their contents.
+
 ### Step 8: Archive
 
 **On success:**
@@ -552,6 +573,13 @@ commit: a1b2c3d
 **Follow-ups created:** None
 
 *Reviewed by review work action*
+
+## Lessons Learned
+
+**What worked:** Reused existing Avatar.tsx patterns — saved time and kept consistency.
+**What didn't:** Initially tried CSS modules for scoping, but project uses styled-components everywhere — switched after exploration.
+**Key files:** `src/components/UserAvatar.tsx`, `tests/user-avatar.spec.ts`
+**Worth knowing:** Avatar sizes are constrained by the grid layout in `AppShell.tsx` — don't go above 48px without checking the sidebar.
 ```
 
 **Timestamps tell the story:** `created_at` → `claimed_at` = queue wait time. `claimed_at` → `completed_at` = implementation time. Route + timestamps let you calibrate triage accuracy over time.
