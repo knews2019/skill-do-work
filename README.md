@@ -62,7 +62,7 @@ do-work/
     └── REQ-010-legacy.md     # Legacy REQs archive directly
 ```
 
-Every `do` invocation creates a User Request (UR) folder preserving the verbatim input. REQ files in the queue reference their UR. When all REQs from a UR are completed, the UR folder moves to archive as a self-contained unit.
+Every capture invocation creates a User Request (UR) folder preserving the verbatim input. REQ files in the queue reference their UR. When all REQs from a UR are completed, the UR folder moves to archive as a self-contained unit.
 
 Legacy REQs (created before the UR system) work the same as before — they archive directly without a UR folder.
 
@@ -77,7 +77,7 @@ It was originally written for Claude Code and should work with other tools that 
 
 ## The three actions
 
-### Do (capture)
+### Capture
 
 Invoked when you provide descriptive content. Optimized for speed:
 - Minimal questions - capture what was said, don't interrogate
@@ -85,7 +85,7 @@ Invoked when you provide descriptive content. Optimized for speed:
 - Always creates a UR folder preserving the full verbatim input
 - Checks for duplicates against existing requests
 
-See [actions/do.md](./actions/do.md) for the full capture logic.
+See [actions/capture.md](./actions/capture.md) for the full capture logic.
 
 ### Work (process)
 

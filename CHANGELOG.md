@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.17.0 — The Name Tag (2026-03-02)
+
+The "do action" is now the "capture action." No more confusion between the skill name (`do-work`) and the action that captures requests. `do.md` becomes `capture.md`, all references updated across the codebase. Also fixes three workflow consistency issues found during a full trace.
+
+- Renamed `actions/do.md` → `actions/capture.md` and updated all references in SKILL.md, work.md, README.md, CLAUDE.md
+- SKILL.md routing: `→ do` becomes `→ capture` everywhere — routing table, content signals, examples, dispatch table
+- Architecture diagram in work.md now shows Open Questions and the pending-answers follow-up flow
+- Step 10 (Loop or Exit) now runs cleanup even when only `pending-answers` REQs remain, then reports them
+- Answers Mode step 5 now explicitly skips REQs already completed by the Builder Was Right path
+
 ## 0.16.0 — The Full Loop (2026-03-02)
 
 The Open Questions system now has a complete lifecycle — from capture to drain. Five improvements tighten the feedback loop: verify resolves ambiguous questions on the spot (user is present, why not ask?), `do work answers` gives users a dedicated command to batch-review accumulated questions, follow-up REQ creation moves to the archive step so timing is unambiguous, confirmed builder choices skip the work loop entirely, and verify's question handling is explicitly documented as different from review's.

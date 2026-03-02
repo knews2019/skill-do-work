@@ -11,15 +11,15 @@ A unified entry point for task capture and processing.
 
 **Actions:**
 
-- **do**: Capture new tasks/requests → creates UR folder (verbatim input) + REQ files (queue items), always paired
+- **capture**: Capture new tasks/requests → creates UR folder (verbatim input) + REQ files (queue items), always paired
 - **work**: Process pending requests → executes the queue
 - **verify**: Evaluate captured REQs against original input → quality check
 - **review**: Post-work code review → evaluates implementation quality against requirements
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
 
-> **Core concept:** The do action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
+> **Core concept:** The capture action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
 
-> **Capture ≠ Execute.** The do action captures requests. The work action executes them. These are strictly separate operations. After the do action finishes writing files and reporting back, **STOP**. Do not start processing the queue, do not begin implementation, do not "helpfully" transition into the work action. The user decides when to execute — always. The only exception is if the user explicitly says something like "add this and then run it" or "capture this and start working" in the same invocation.
+> **Capture ≠ Execute.** The capture action captures requests. The work action executes them. These are strictly separate operations. After the capture action finishes writing files and reporting back, **STOP**. Do not start processing the queue, do not begin implementation, do not "helpfully" transition into the work action. The user decides when to execute — always. The only exception is if the user explicitly says something like "add this and then run it" or "capture this and start working" in the same invocation.
 
 ## Routing Decision
 
@@ -40,7 +40,7 @@ Check these patterns **in order** — first match wins:
 | 6        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
 | 7        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
 | 8        | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
-| 9        | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`                                                                                 | → do                          |
+| 9        | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`                                                                                 | → capture                     |
 
 
 ### Step 2: Preserve Payload
@@ -52,11 +52,11 @@ Check these patterns **in order** — first match wins:
 - **Matches a keyword** in the routing table (e.g., "version", "verify", "cleanup") → route to that action directly.
 - **Doesn't match any keyword** (e.g., "refactor", "optimize") → ambiguous. Ask: "Do you want to add '`{word}`' as a new request, or did you mean something else?"
 
-Only route to **do** when the input is clearly descriptive — multiple words, a sentence, a feature request, etc.
+Only route to **capture** when the input is clearly descriptive — multiple words, a sentence, a feature request, etc.
 
 If routing is genuinely unclear AND multi-word content was provided:
 
-- Default to **do** (adding a task)
+- Default to **capture** (adding a task)
 - Hold onto $ARGUMENTS
 - If truly ambiguous, ask: "Add this as a request, or start the work loop?"
 - User replies with just "add" or "work" → proceed with original content
@@ -78,7 +78,7 @@ Note: This routes to the work action with `mode: answers` — see work.md "Answe
 These signal "check request quality":
 verify, check, evaluate, review requests, review reqs, audit
 
-Note: "check" routes to verify ONLY when used alone or with a target (e.g., "do work check UR-003"). When followed by descriptive content it routes to do (e.g., "do work check if the button works" → do).
+Note: "check" routes to verify ONLY when used alone or with a target (e.g., "do work check UR-003"). When followed by descriptive content it routes to capture (e.g., "do work check if the button works" → capture).
 
 ### Review Verbs (→ Review)
 
@@ -99,7 +99,7 @@ changelog, release notes, what's new, what's changed, updates, history
 
 Note: "updates" (plural) routes to changelog display. "update" (singular) routes to update check. Both are handled by the version action.
 
-### Content Signals (→ Do)
+### Content Signals (→ Capture)
 
 These signal "add a new task":
 
@@ -153,7 +153,7 @@ These signal "add a new task":
 - `do work updates` → Same as changelog
 - `do work history` → Same as changelog
 
-### Routes to Do
+### Routes to Capture
 
 - `do work add dark mode` → Creates REQ file + UR folder
 - `do work the button is broken` → Creates REQ file + UR folder
@@ -180,7 +180,7 @@ Each action has an action file with full instructions. How you execute it depend
 
 | Action  | Action file             | Context to pass                |
 |---------|-------------------------|--------------------------------|
-| do      | `./actions/do.md`       | Full user input text           |
+| capture | `./actions/capture.md`  | Full user input text           |
 | work    | `./actions/work.md`     | (none needed)                  |
 | verify  | `./actions/verify.md`   | Target UR/REQ or "most recent" |
 | review  | `./actions/review.md`   | Target REQ/UR or "most recent" |
@@ -192,8 +192,8 @@ Each action has an action file with full instructions. How you execute it depend
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`do`, `verify`, `review`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
-- **Screenshots (`do` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
+- **`capture`, `verify`, `review`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **Screenshots (`capture` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
 

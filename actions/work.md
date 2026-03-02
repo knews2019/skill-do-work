@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to process the queue. Processes requests from the `do-work/` folder in your project.
 
-An orchestrated build system that processes request files created by the do action. Uses complexity triage to route simple requests straight to implementation and complex ones through planning and exploration first.
+An orchestrated build system that processes request files created by the capture action. Uses complexity triage to route simple requests straight to implementation and complex ones through planning and exploration first.
 
 ## Request Files as Living Logs
 
@@ -13,9 +13,12 @@ Each request file becomes a historical record. As you process a request, append 
 ```
 work action (orchestrator - lightweight, stays in loop)
   │
-  ├── For each pending request:
+  ├── For each pending request (skip pending-answers):
   │     │
   │     ├── TRIAGE: Assess complexity (no agent, just read & categorize)
+  │     │
+  │     ├── OPEN QUESTIONS? ── - [ ] items exist ──► Mark - [~], builder decides
+  │     │                      (none / all resolved) ──► continue
   │     │     │
   │     │     ├── Route A (Simple) ──────────────────┐
   │     │     │   Skip plan/explore, direct to build │
@@ -32,9 +35,12 @@ work action (orchestrator - lightweight, stays in loop)
   │     │                                        Testing
   │     │                                            │
   │     │                                            ▼
-  │     └──────────────────────────────────────► Review
+  │     │                                        Review
+  │     │                                            │
+  │     │                                            ▼
+  │     └── Archive ──► create pending-answers follow-ups for - [~] items
   │
-  └── Loop continues until queue empty (including review follow-ups)
+  └── Loop until queue empty → cleanup → report (including any pending-answers)
 ```
 
 **Sub-agent note:** This document uses "spawn agent" language. Use your platform's subagent mechanism when available. If your tool doesn't support subagents, run phases sequentially in the same session and label outputs clearly.
@@ -112,7 +118,7 @@ Request files use YAML frontmatter added progressively:
 
 ```yaml
 ---
-# Set by do action
+# Set by capture action
 id: REQ-001
 title: Short descriptive title
 status: pending
@@ -381,7 +387,11 @@ One commit per request. Stage everything with `git add -A`. Don't bypass pre-com
 
 ### Step 10: Loop or Exit
 
-Re-check `do-work/` for `REQ-*.md` files (fresh check, not cached). If found, loop to Step 1. If empty, run the [cleanup action](./cleanup.md) to consolidate the archive, then report final summary and exit.
+Re-check `do-work/` for `REQ-*.md` files (fresh check, not cached).
+
+- **`pending` REQs found**: Loop to Step 1.
+- **Only `pending-answers` REQs remain**: Run the [cleanup action](./cleanup.md), then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work answers` when ready.
+- **No REQs at all**: Run cleanup, report final summary and exit.
 
 ## Answers Mode
 
@@ -408,7 +418,7 @@ When invoked with `do work answers` (or `questions`, `pending`, `what's blocked`
    - **Answer it** → update to `- [x] [question] → [user's answer]`
    - **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]` and mark the REQ `status: completed` (no implementation needed — see "Builder Was Right" below)
    - **Skip for now** → leave as `- [ ]`, REQ stays `pending-answers`
-5. **Activate answered REQs**: For each REQ where all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending`. These enter the queue for the next `do work run`.
+5. **Activate answered REQs**: For each REQ that wasn't already completed by the Builder Was Right path: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending`. These enter the queue for the next `do work run`.
 6. **Report**: Summary of what was resolved and what's still pending
 
 ### Builder Was Right
@@ -466,7 +476,7 @@ All 2 requests completed:
 
 ## What This Action Does NOT Do
 
-- Create new request files (use the do action)
+- Create new request files (use the capture action)
 - Make architectural decisions beyond what's in the request
 - Run without user present (this is supervised automation)
 - Modify already-completed requests

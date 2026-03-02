@@ -1,4 +1,4 @@
-# Do Action
+# Capture Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user is adding a request. Creates a `do-work/` folder in your project for request tracking.
 
