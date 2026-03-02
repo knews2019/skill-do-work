@@ -75,12 +75,12 @@ This skill assumes your tool supports:
 
 It was originally written for Claude Code and should work with other tools that provide similar capabilities. If your tool does not support subagents, run the Plan, Explore, and Implementation phases sequentially in the same session.
 
-## The three actions
+## Actions
 
-### Capture
+### Capture Requests
 
 Invoked when you provide descriptive content. Optimized for speed:
-- Minimal questions - capture what was said, don't interrogate
+- Minimal questions — capture what was said, don't interrogate
 - Handles simple one-liners and complex multi-feature specs
 - Always creates a UR folder preserving the full verbatim input
 - Checks for duplicates against existing requests
@@ -89,13 +89,23 @@ See [actions/capture.md](./actions/capture.md) for the full capture logic.
 
 ### Work (process)
 
-Invoked when you say "run", "go", "start", or just confirm the prompt. Runs the build loop:
+Invoked when you say "run", "go", or "start". Runs the build loop:
 - Triages each request to determine the right amount of planning
 - Spawns specialized agents only when needed
 - Archives completed work with implementation notes
 - Creates atomic git commits per request
 
 See [actions/work.md](./actions/work.md) for the full processing logic.
+
+### Clarify Questions
+
+Invoked when you say "clarify", "questions", or "answers". Batch-reviews Open Questions from completed work:
+- Presents all `pending-answers` REQs and their unresolved questions
+- User can answer, confirm the builder's choice, or skip
+- Confirmed choices resolve without re-entering the work loop
+- Answered questions flip the REQ to `pending` for the next work run
+
+See [actions/work.md](./actions/work.md) "Clarify Questions" section for the full workflow.
 
 ### Verify (evaluate)
 

@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.18.0 — The Clarity Pass (2026-03-02)
+
+Actions now say what they mean. "Capture" becomes "capture requests," the confusing "answers mode" becomes "clarify questions" with `do work clarify`, and bare `do work` shows a help menu instead of jumping straight to the work loop.
+
+- Renamed action: "capture" → "capture requests" across SKILL.md, README, dispatch table, capture.md, work.md
+- Renamed "answers mode" → "clarify questions" — new primary verb is `do work clarify` (old verbs still work)
+- Bare invocation (`do work` with no arguments) now shows a help menu with sample prompts instead of asking "Start the work loop?"
+- Added `clarify questions` row to action dispatch table (routes to work.md with `mode: clarify`)
+- README now documents "Clarify Questions" as a standalone section alongside the other actions
+
 ## 0.17.0 — The Name Tag (2026-03-02)
 
 The "do action" is now the "capture action." No more confusion between the skill name (`do-work`) and the action that captures requests. `do.md` becomes `capture.md`, all references updated across the codebase. Also fixes three workflow consistency issues found during a full trace.

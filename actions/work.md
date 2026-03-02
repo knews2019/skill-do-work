@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to process the queue. Processes requests from the `do-work/` folder in your project.
 
-An orchestrated build system that processes request files created by the capture action. Uses complexity triage to route simple requests straight to implementation and complex ones through planning and exploration first.
+An orchestrated build system that processes request files created by the capture requests action. Uses complexity triage to route simple requests straight to implementation and complex ones through planning and exploration first.
 
 ## Request Files as Living Logs
 
@@ -40,7 +40,7 @@ work action (orchestrator - lightweight, stays in loop)
   │     │                                            ▼
   │     └── Archive ──► create pending-answers follow-ups for - [~] items
   │
-  └── Loop until queue empty → cleanup → report (including any pending-answers)
+  └── Loop until queue empty → cleanup → report (tip: `do work clarify` for pending-answers)
 ```
 
 **Sub-agent note:** This document uses "spawn agent" language. Use your platform's subagent mechanism when available. If your tool doesn't support subagents, run phases sequentially in the same session and label outputs clearly.
@@ -139,7 +139,7 @@ error: "Description"          # Only if failed
 
 **Status flow:** `pending` → `claimed` → `[planning]` → `[exploring]` → `implementing` → `testing` → `reviewing` → `completed` / `failed`
 
-**Special status:** `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user returns.
+**Special status:** `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do work clarify`.
 
 ## Workflow
 
@@ -191,7 +191,7 @@ The follow-up REQs for builder-decided questions are created during **Step 8 (Ar
 
 **Why not block?** Human time is the bottleneck. The optimal windows for user interaction are: (1) capture time, when the user is actively fleshing out requests, and (2) batch-review time, when the user returns to answer accumulated questions. Blocking mid-build wastes builder capacity on idle waiting.
 
-**`pending-answers` REQs:** These accumulate in the queue. When the user returns (or between work runs), they can review all `pending-answers` REQs at once, answer the questions, and flip the status to `pending` so the next work run picks them up. The work loop skips `pending-answers` REQs — it only processes `pending` ones.
+**`pending-answers` REQs:** These accumulate in the queue. When the user returns, they run `do work clarify` to review all `pending-answers` REQs at once, answer the questions, and flip the status to `pending` so the next work run picks them up. The work loop skips `pending-answers` REQs — it only processes `pending` ones.
 
 If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section exists, skip this step entirely.
 
@@ -348,7 +348,7 @@ Append to the request file:
      Recommended: [builder's choice — already implemented]
      Also: [other alternatives]
    ```
-   These go in `do-work/` with `status: pending-answers`. The user reviews them via `do work answers`.
+   These go in `do-work/` with `status: pending-answers`. The user reviews them via `do work clarify`.
 4. Archive based on REQ type:
 
 | REQ has... | Archive behavior |
@@ -390,14 +390,14 @@ One commit per request. Stage everything with `git add -A`. Don't bypass pre-com
 Re-check `do-work/` for `REQ-*.md` files (fresh check, not cached).
 
 - **`pending` REQs found**: Loop to Step 1.
-- **Only `pending-answers` REQs remain**: Run the [cleanup action](./cleanup.md), then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work answers` when ready.
+- **Only `pending-answers` REQs remain**: Run the [cleanup action](./cleanup.md), then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work clarify` when ready.
 - **No REQs at all**: Run cleanup, report final summary and exit.
 
-## Answers Mode
+## Clarify Questions
 
-When invoked with `do work answers` (or `questions`, `pending`, `what's blocked`), the work action enters **answers mode** instead of the normal work loop. This is the batch-review drain for `pending-answers` REQs.
+When invoked with `do work clarify` (or `answers`, `questions`, `pending`, `what's blocked`), the work action enters **clarify mode** instead of the normal work loop. This is the batch-review drain for `pending-answers` REQs.
 
-### Answers Workflow
+### Clarify Workflow
 
 1. **Scan the queue**: Find all `REQ-*.md` files in `do-work/` with `status: pending-answers`
 2. **If none found**: Report "No pending questions — queue is clear" and exit
@@ -417,6 +417,7 @@ When invoked with `do work answers` (or `questions`, `pending`, `what's blocked`
 4. **Collect answers**: For each question, the user can:
    - **Answer it** → update to `- [x] [question] → [user's answer]`
    - **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]` and mark the REQ `status: completed` (no implementation needed — see "Builder Was Right" below)
+   - **Pick a different option** → update to `- [x] [question] → [user's chosen option]`
    - **Skip for now** → leave as `- [ ]`, REQ stays `pending-answers`
 5. **Activate answered REQs**: For each REQ that wasn't already completed by the Builder Was Right path: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending`. These enter the queue for the next `do work run`.
 6. **Report**: Summary of what was resolved and what's still pending
@@ -428,7 +429,7 @@ When the user reviews a `pending-answers` follow-up and confirms that the builde
 1. Update the question to `- [x] [question] → Confirmed: [builder's choice]`
 2. Update frontmatter: `status: completed`, `completed_at: <timestamp>`
 3. Archive the follow-up REQ directly (skip the work loop — there's nothing to build)
-4. Append a brief note: `## Implementation\n\n**No changes needed.** User confirmed builder's choice from [original REQ].\n\n*Resolved in answers mode*`
+4. Append a brief note: `## Implementation\n\n**No changes needed.** User confirmed builder's choice from [original REQ].\n\n*Resolved via clarify questions*`
 
 This avoids wasting a work cycle on a REQ that just needs sign-off.
 
@@ -465,7 +466,7 @@ All 2 requests completed:
 
 | Phase | Action |
 |-------|--------|
-| `pending-answers` REQs remain after queue is empty | Report them to the user: list each REQ and its unresolved questions so the user can batch-review. |
+| `pending-answers` REQs remain after queue is empty | Report them to the user: list each REQ and its unresolved questions. Suggest `do work clarify` to batch-review. |
 | Plan agent fails (Route C) | Mark failed, continue to next request |
 | Explore agent fails (B/C) | Proceed to implementation with reduced context — builder can explore on its own |
 | Implementation fails | Mark failed, preserve plan/exploration outputs for retry |
@@ -476,7 +477,7 @@ All 2 requests completed:
 
 ## What This Action Does NOT Do
 
-- Create new request files (use the capture action)
+- Create new request files (use the capture requests action)
 - Make architectural decisions beyond what's in the request
 - Run without user present (this is supervised automation)
 - Modify already-completed requests
