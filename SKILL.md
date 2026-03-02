@@ -83,10 +83,12 @@ verify, verify requests, check, evaluate, review requests, review reqs, audit
 
 Note: "check" routes to verify requests ONLY when used alone or with a target (e.g., "do work check UR-003"). When followed by descriptive content it routes to capture requests (e.g., "do work check if the button works" → capture requests).
 
+Note: "audit" alone routes to verify requests. "audit code" and "audit implementation" route to review work (see Review Verbs below).
+
 ### Review Verbs (→ Review Work)
 
 These signal "review the completed work":
-review, review work, review code, code review, review REQ-NNN, review UR-NNN
+review, review work, review code, code review, audit code, audit implementation, review REQ-NNN, review UR-NNN
 
 Note: "review requests" and "review reqs" route to **verify requests** (priority 4), not review work. "review" alone or followed by a target/code-related word routes to review work (priority 5). The review work action also runs automatically as part of the work pipeline — see `work.md` Step 7.
 

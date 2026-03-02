@@ -162,6 +162,8 @@ Only include categories that are relevant to this specific change. A copy change
 **50-74%**: Needs attention. Missed requirements, inadequate tests, acceptance issues, or code quality concerns.
 **Below 50%**: Significant problems. Major requirements missed, no tests for new behavior, acceptance fails, or risky code.
 
+Nit findings carry zero weight on the overall score — they're stylistic suggestions only and never block a recommendation of Approve.
+
 ### Step 9: Report
 
 **Pipeline mode:** Report to the work action orchestrator (which reports to the user).
@@ -199,6 +201,9 @@ Format:
 
 **Minor:**
 - [Style nit or suggestion]
+
+**Nit:**
+- [Optional stylistic suggestion — no score impact]
 
 ### Acceptance Testing
 

@@ -17,6 +17,8 @@ A confidence evaluation system that compares extracted REQ files against the ori
 - When the user says "verify", "check", "evaluate", "review requests"
 - Before starting `do work` processing, as a quality gate
 
+If the user wants a post-implementation quality review of shipped code (not capture quality), route to **`review work`** instead.
+
 ## Workflow
 
 ### Step 1: Find the Target UR
