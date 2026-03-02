@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.19.1 — The Neighbor Check (2026-03-02)
+
+Review work now checks whether your change broke something nearby. Regression risk analysis reads the diff to identify callers and dependents, acceptance testing exercises adjacent features, and suggested testing flags regression scenarios. Also catches leftover debug artifacts and commented-out experiments.
+
+- Added regression risk to Risk Assessment — identifies callers/dependents of changed code, flags changed interfaces, notes shared utilities
+- Replaced "Check integration" with broader "Check for regressions" in acceptance testing — run adjacent tests, exercise other consumers of shared code, verify bug fixes don't break related behaviors
+- Added "Regression scenarios" category to Suggest Additional Testing
+- Added diff hygiene to Code Quality — catches debug artifacts, console.log/print statements, commented-out experiments, temp files
+
 ## 0.19.0 — The Full Picture (2026-03-02)
 
 Review and verify got proper names and bigger jobs. "Verify" becomes "verify requests" — it checks capture quality. "Review" becomes "review work" — and now it does requirements checking (did we build what was asked?), code review, acceptance testing (actually run the thing), and suggests additional testing the user should do. Every action now ends with suggested next prompts so you always know what to do next.

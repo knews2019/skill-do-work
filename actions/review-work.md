@@ -86,6 +86,7 @@ Evaluate the implementation quality by reading the diff:
 - Naming clarity, readability, maintainability
 - Appropriate error handling for the context
 - No obvious bugs or logic errors in the diff
+- Diff hygiene — no debug artifacts, console.log/print statements, commented-out experiments, or temporary files left behind
 
 **Test Adequacy (0-100%)**
 - Are there tests for the new/changed behavior?
@@ -102,6 +103,7 @@ Evaluate the implementation quality by reading the diff:
 - Security concerns (injection, auth bypass, data exposure)
 - Performance risks (N+1 queries, unbounded loops, memory leaks)
 - Data integrity risks (race conditions, missing validation at boundaries)
+- Regression risk — identify callers/dependents of changed code, flag interfaces whose contract changed, note shared utilities that other features rely on
 
 ### Step 7: Acceptance Testing
 
@@ -118,7 +120,11 @@ Actually verify the implementation works. Reading diffs catches logic errors; ru
    - For APIs: make a test request
    - For UI: describe what you'd check (the reviewer may not have a browser, but should note what to verify)
 3. **Verify the fix** — for bug fixes, confirm the original bug no longer reproduces
-4. **Check integration** — if the change touches interfaces between components, verify both sides still work together
+4. **Check for regressions** — based on the risks identified in code review:
+   - Run tests for adjacent/dependent features, not just the changed code
+   - If the change modifies a shared utility, API, or interface, exercise the other consumers
+   - For bug fixes, verify the fix doesn't break the feature's other behaviors
+   - Try the most obvious related flow — if you changed checkout, make sure the cart still works
 
 **What NOT to do:**
 - Don't build an exhaustive test harness — this is a quick smoke test, not QA
@@ -145,6 +151,7 @@ After completing your review and acceptance testing, recommend what else should 
 - **Edge cases worth exploring** — unusual inputs, boundary conditions, concurrent usage, error recovery
 - **Performance testing** — if the change could affect performance (large datasets, frequent operations, network calls)
 - **Security review** — if the change handles user input, auth, or sensitive data
+- **Regression scenarios** — adjacent flows that could break: shared utilities, upstream/downstream consumers, features that depend on the same data or state
 
 Only include categories that are relevant to this specific change. A copy change doesn't need security review suggestions. A new auth flow does.
 
