@@ -211,9 +211,17 @@ Add sidebar support to the existing dark mode implementation (REQ-005).
 Addendum to REQ-005, which is currently [in progress / completed].
 The user wants the sidebar to also support dark mode.
 
+## Prior Implementation
+[Read the original REQ from archive/working and summarize what was built,
+key files touched, and patterns used — so the builder doesn't start blind.]
+
 ## Requirements
 - Sidebar must respect the dark mode theme
 ```
+
+**Why new REQs, not reactivation:** Archived requests have completed lifecycles — triage, implementation, review, commit hash, lessons learned. Un-archiving would break that history and the UR's self-contained archive unit. A new addendum REQ goes through its own lifecycle (may need different triage), gets its own commit, and links back via `addendum_to` for traceability. The builder reads the original archived REQ for context but works independently.
+
+**Context is critical for addenda to archived/completed REQs.** When writing the addendum REQ, read the original archived REQ and include a `## Prior Implementation` section summarizing: what was built, key files modified, patterns used, and commit hash. Without this, the builder wastes time re-discovering what already exists. For in-flight REQs this matters less — the builder will encounter the work in progress naturally.
 
 ### Step 3: Clarify Only If Needed
 
@@ -296,6 +304,24 @@ REQ-005 is currently being worked on — creating a follow-up request instead.
 Created:
 - do-work/user-requests/UR-006/input.md
 - do-work/REQ-021-addendum-dark-mode-sidebar.md (addendum_to: REQ-005)
+```
+
+### Addendum to Archived Request
+
+```
+User: do work dark mode should also affect the sidebar
+
+[Checks existing — REQ-005-dark-mode.md is in do-work/archive/UR-002/]
+
+REQ-005 was completed in a previous run. Creating a new follow-up request
+that references the original implementation.
+
+[Reads archived REQ-005 to extract: key files, patterns, commit hash]
+
+Created:
+- do-work/user-requests/UR-006/input.md
+- do-work/REQ-021-addendum-dark-mode-sidebar.md
+  (addendum_to: REQ-005, includes Prior Implementation summary)
 ```
 
 ### Complex Multi-Feature Request

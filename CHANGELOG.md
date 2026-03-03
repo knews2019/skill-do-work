@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.20.4 — The Context Bridge (2026-03-03)
+
+Addendum REQs for archived work no longer leave the builder guessing. When creating a follow-up to a completed request, capture now reads the original archived REQ and includes a `## Prior Implementation` section — key files, patterns used, commit hash — so the builder has full context without re-discovering what already exists. Also added an explicit example for the archived-addendum path and a rationale block explaining why new REQs beat reactivation.
+
+- Added `## Prior Implementation` section to the addendum-for-archived-REQ template in `capture.md`
+- Added "Why new REQs, not reactivation" rationale block — explains why archive immutability is preserved
+- Added "Context is critical" guidance — instructs capture to read the original archived REQ before writing the addendum
+- New example: "Addendum to Archived Request" showing the full flow with prior implementation summary
+
 ## 0.20.3 — The Bug Hunt (2026-03-03)
 
 Three pre-existing bugs squashed. Nothing new, just things that were quietly wrong.
