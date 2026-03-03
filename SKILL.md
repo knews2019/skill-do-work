@@ -38,7 +38,7 @@ Check these patterns **in order** — first match wins:
 | 2        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
 | 3        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
 | 4        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check`, `do work evaluate`                                                   | → verify requests              |
-| 5        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review`                                              | → review work                  |
+| 5        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review`, `do work audit code`                        | → review work                  |
 | 6        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
 | 7        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
 | 8        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
@@ -83,10 +83,12 @@ verify, verify requests, check, evaluate, review requests, review reqs, audit
 
 Note: "check" routes to verify requests ONLY when used alone or with a target (e.g., "do work check UR-003"). When followed by descriptive content it routes to capture requests (e.g., "do work check if the button works" → capture requests).
 
+Note: "audit" alone routes to verify requests. "audit code" and "audit implementation" route to review work (see Review Verbs below).
+
 ### Review Verbs (→ Review Work)
 
 These signal "review the completed work":
-review, review work, review code, code review, review REQ-NNN, review UR-NNN
+review, review work, review code, code review, audit code, audit implementation, review REQ-NNN, review UR-NNN
 
 Note: "review requests" and "review reqs" route to **verify requests** (priority 4), not review work. "review" alone or followed by a target/code-related word routes to review work (priority 5). The review work action also runs automatically as part of the work pipeline — see `work.md` Step 7.
 

@@ -4,12 +4,28 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.20.2 — The Right Folders (2026-03-03)
+## 0.20.4 — The Right Folders (2026-03-03)
 
 Two instruction bugs that would cause literal agent implementations to fail. Standalone review mode now searches UR subfolders for recent work, and Step 1 of the work loop now explicitly reads frontmatter before selecting the next request.
 
 - `review-work.md` Step 1: "no target specified" now searches `do-work/archive/UR-NNN/` subdirectories in addition to the archive root — completed REQs live in UR folders after cleanup, not the root
 - `work.md` Step 1: replaced "List (don't read) ... pick first with `status: pending`" with an explicit frontmatter-read step — status is in YAML frontmatter, not the filename, so listing alone can't filter by status
+
+## 0.20.3 — The Bug Hunt (2026-03-03)
+
+Three pre-existing bugs squashed. Nothing new, just things that were quietly wrong.
+
+- `verify-requests.md`: Removed dangling "per Step 3.5" reference — that step doesn't exist
+- `review-work.md`: Removed phantom "Critical" severity from Step 10 — the defined levels are Important/Minor/Nit, not Critical
+- `SKILL.md`: Added `audit code` to routing table row 5 so the table matches the verb list updated in 0.20.2
+
+## 0.20.2 — The Fine Print (2026-03-02)
+
+Three small clarity improvements borrowed from sibling branches. Nothing dramatic — just sharper routing, a missing severity level, and a better signpost for confused users.
+
+- `verify-requests.md`: Added a redirect note under "When to Use" — if you want code review, use `review work` instead
+- `review-work.md`: Added **Nit** as a fourth finding severity (below Minor; carries zero score weight — stylistic suggestions only)
+- `SKILL.md`: Disambiguated `audit` routing — `audit` alone stays in verify, `audit code` and `audit implementation` now correctly route to review work
 
 ## 0.20.1 — The Self-Portrait (2026-03-02)
 
