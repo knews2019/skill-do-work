@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.20.2 — The Right Folders (2026-03-03)
+
+Two instruction bugs that would cause literal agent implementations to fail. Standalone review mode now searches UR subfolders for recent work, and Step 1 of the work loop now explicitly reads frontmatter before selecting the next request.
+
+- `review-work.md` Step 1: "no target specified" now searches `do-work/archive/UR-NNN/` subdirectories in addition to the archive root — completed REQs live in UR folders after cleanup, not the root
+- `work.md` Step 1: replaced "List (don't read) ... pick first with `status: pending`" with an explicit frontmatter-read step — status is in YAML frontmatter, not the filename, so listing alone can't filter by status
+
 ## 0.20.1 — The Self-Portrait (2026-03-02)
 
 The do-work skill presented itself. Generated the first set of client-facing deliverables for the skill as a product — a client brief with full architecture diagrams and data flow, a 3-minute video script (7 scenes, capture through portfolio), and a portfolio summary covering all 20 releases.

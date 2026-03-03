@@ -31,7 +31,7 @@ Both modes follow the same workflow. The only difference is where the REQ lives 
 **Standalone mode:**
 1. **If user specifies a REQ** (e.g., "review REQ-005"): Find it in `do-work/archive/` or `do-work/archive/UR-NNN/`
 2. **If user specifies a UR** (e.g., "review UR-003"): Find all completed REQs under that UR and review each
-3. **If no target specified**: Find the most recently completed REQ — check `do-work/archive/` for the highest REQ number with `status: completed`
+3. **If no target specified**: Find the most recently completed REQ — check both `do-work/archive/` (root) and all `do-work/archive/UR-NNN/` subdirectories for the highest REQ number with `status: completed`
 
 If the target REQ has no `commit` field (standalone mode) or no implementation changes (pipeline mode), report that there's nothing to review and exit.
 
