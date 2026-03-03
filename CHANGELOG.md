@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.20.3 — The Bug Hunt (2026-03-03)
+
+Three pre-existing bugs squashed. Nothing new, just things that were quietly wrong.
+
+- `verify-requests.md`: Removed dangling "per Step 3.5" reference — that step doesn't exist
+- `review-work.md`: Removed phantom "Critical" severity from Step 10 — the defined levels are Important/Minor/Nit, not Critical
+- `SKILL.md`: Added `audit code` to routing table row 5 so the table matches the verb list updated in 0.20.2
+
 ## 0.20.2 — The Fine Print (2026-03-02)
 
 Three small clarity improvements borrowed from sibling branches. Nothing dramatic — just sharper routing, a missing severity level, and a better signpost for confused users.

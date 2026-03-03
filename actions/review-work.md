@@ -223,7 +223,7 @@ Format:
 
 ### Step 10: Create Follow-up REQs
 
-For each **Critical** or **Important** finding, create a follow-up REQ:
+For each **Important** finding, create a follow-up REQ:
 
 ```markdown
 ---

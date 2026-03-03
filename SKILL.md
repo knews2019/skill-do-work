@@ -38,7 +38,7 @@ Check these patterns **in order** — first match wins:
 | 2        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
 | 3        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
 | 4        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check`, `do work evaluate`                                                   | → verify requests              |
-| 5        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review`                                              | → review work                  |
+| 5        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review`, `do work audit code`                        | → review work                  |
 | 6        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
 | 7        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
 | 8        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
