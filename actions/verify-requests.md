@@ -17,6 +17,8 @@ A confidence evaluation system that compares extracted REQ files against the ori
 - When the user says "verify", "check", "evaluate", "review requests"
 - Before starting `do work` processing, as a quality gate
 
+If the user wants a post-implementation quality review of shipped code (not capture quality), route to **`review work`** instead.
+
 ## Workflow
 
 ### Step 1: Find the Target UR
@@ -153,4 +155,4 @@ For REQs created before the UR system:
 - Don't treat implementation details as gaps — those are for the builder to decide
 - Don't classify something as Ambiguous when the answer is in the original input — that's a Critical or Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
 - Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
-- Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Verify already tried to ask the user; any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment per Step 3.5.
+- Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Verify already tried to ask the user; any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment.
