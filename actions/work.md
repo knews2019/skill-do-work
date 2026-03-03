@@ -156,6 +156,8 @@ List (don't read) `REQ-*.md` filenames in `do-work/`. Sort by number, pick the f
 
 ### Step 3: Triage
 
+**If the REQ has an `addendum_to` field:** Before triaging, locate and read the referenced REQ from its current location (check `do-work/working/`, `do-work/archive/`, and `do-work/archive/UR-*/` in that order). Use its context (What, Requirements, Implementation Summary if completed) alongside the addendum REQ when triaging and when passing context to the builder in later steps. This ensures the builder understands what already exists and what the addendum is changing.
+
 Read the request, apply the decision flow, update frontmatter with `route`. Append to the request file:
 
 ```markdown

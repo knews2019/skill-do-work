@@ -177,8 +177,8 @@ For each parsed request, check for similar existing ones across both tiers.
 | Existing request is in... | Action |
 |---------------------------|--------|
 | `do-work/` (queue) | If same: tell user, skip. If similar: ask. If enhancement: append an Addendum section to the pending file |
-| `do-work/working/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field |
-| `do-work/archive/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field |
+| `do-work/working/` | **NEVER modify working/.** Create a new addendum REQ with `addendum_to` field, referencing the **same UR** (still active in `user-requests/`). Update the UR's `requests` array to include the new REQ ID — this prevents the UR from archiving before the addendum is processed. |
+| `do-work/archive/` | **NEVER modify archive/.** Create a **new UR** (next available number) to capture the new input, plus new addendum REQ(s) with `addendum_to` field linking to the archived original. The new REQ references `user_request:` of the **new** UR, not the archived one. |
 
 **Addendum to a queued request** — don't rewrite, append:
 
@@ -190,7 +190,7 @@ User added: "dark mode should also affect the sidebar"
 - Sidebar must also respect dark mode theme
 ```
 
-**Addendum for in-flight/completed requests** — create a new REQ:
+**Addendum for in-flight requests** (original in `working/`, UR still active) — create a new REQ under the same UR:
 
 ```markdown
 ---
@@ -208,12 +208,41 @@ addendum_to: REQ-005
 Add sidebar support to the existing dark mode implementation (REQ-005).
 
 ## Context
-Addendum to REQ-005, which is currently [in progress / completed].
+Addendum to REQ-005, which is currently in progress.
 The user wants the sidebar to also support dark mode.
 
 ## Requirements
 - Sidebar must respect the dark mode theme
 ```
+
+Also update UR-006's `requests` array to include REQ-021 (e.g., `[REQ-005, REQ-021]`). This ensures the UR won't archive until the addendum completes too.
+
+**Addendum for archived requests** (original in `archive/`) — create a new UR + new REQ:
+
+```markdown
+---
+id: REQ-084
+title: "Addendum: dark mode sidebar support"
+status: pending
+created_at: 2025-01-27T09:00:00Z
+user_request: UR-021
+addendum_to: REQ-005
+---
+
+# Addendum: Dark Mode Sidebar Support
+
+## What
+Add sidebar support to the existing dark mode implementation (REQ-005, archived).
+
+## Context
+Addendum to REQ-005 (completed, in archive/UR-006/).
+The user wants the sidebar to also support dark mode.
+
+## Requirements
+- Sidebar must respect the dark mode theme
+```
+
+The new UR-021 gets its own `input.md` capturing the new user input. In the UR's verbatim section, note what it extends (e.g., "Follow-up to UR-006"). The new UR/REQ pair flows through the normal lifecycle independently — the `addendum_to` field provides context linkage without coupling lifecycles.
 
 ### Step 3: Clarify Only If Needed
 
@@ -229,7 +258,13 @@ If the user provides a screenshot:
 
 ### Step 5: Write Files
 
-Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (create if needed).
+Before writing, determine the correct UR to use:
+
+- **Fresh request** (no matching existing REQ): Create a new UR with the next available number.
+- **Addendum to in-flight request** (original in `working/`, UR in `user-requests/`): Use the existing UR. Update its `requests` array to include the new REQ ID(s).
+- **Addendum to archived request** (original in `archive/`): Create a **new** UR with the next available number. Do NOT reference or recreate the archived UR — the new UR captures the new input and follows its own lifecycle.
+
+Ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (create if needed).
 
 **For all requests (simple and complex):**
 1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially)
@@ -291,11 +326,27 @@ User: do work dark mode should also affect the sidebar
 
 [Checks existing — REQ-005-dark-mode.md is in do-work/working/]
 
-REQ-005 is currently being worked on — creating a follow-up request instead.
+REQ-005 is currently being worked on — creating a follow-up request.
+
+Updated:
+- do-work/user-requests/UR-006/input.md (added REQ-021 to requests array)
 
 Created:
-- do-work/user-requests/UR-006/input.md
-- do-work/REQ-021-addendum-dark-mode-sidebar.md (addendum_to: REQ-005)
+- do-work/REQ-021-addendum-dark-mode-sidebar.md (addendum_to: REQ-005, user_request: UR-006)
+```
+
+### Addendum to Archived Request
+
+```
+User: do work dark mode should also affect the sidebar
+
+[Checks existing — REQ-005-dark-mode.md is in do-work/archive/UR-006/]
+
+REQ-005 is archived — creating a new request with a fresh UR.
+
+Created:
+- do-work/user-requests/UR-021/input.md (new UR for this input, notes follow-up to UR-006)
+- do-work/REQ-084-addendum-dark-mode-sidebar.md (addendum_to: REQ-005, user_request: UR-021)
 ```
 
 ### Complex Multi-Feature Request

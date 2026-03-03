@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.21.0 — The Comeback (2026-03-03)
+
+Addendums to archived requests no longer fall into a lifecycle gap. Previously, creating an addendum for a completed request would reference the old (archived) UR, leading to orphaned REQs and confused cleanup. Now the system creates a fresh UR for the new input while keeping an `addendum_to` link back to the original — clean lifecycle, no archive mutations. In-flight addendums also got tightened: the original UR's `requests` array is updated so cleanup won't archive it prematurely. The work action now reads the original REQ for context before triaging any addendum.
+
+- `capture.md`: Split the addendum table into three explicit cases — queued, in-flight, and archived — each with its own UR handling rules
+- `capture.md`: Archived addendums now create a **new UR** (not reuse the old one) plus addendum REQ(s) with `addendum_to` for context linkage
+- `capture.md`: In-flight addendums now update the original UR's `requests` array to prevent premature archival
+- `capture.md`: Step 5 now has conditional UR logic — fresh, in-flight, or archived — so agents pick the right path
+- `capture.md`: Added "Addendum to Archived Request" example showing the new UR + addendum REQ flow
+- `work.md`: Triage (Step 3) now reads the referenced `addendum_to` REQ from archive before triaging, so the builder has full context
+
 ## 0.20.3 — The Bug Hunt (2026-03-03)
 
 Three pre-existing bugs squashed. Nothing new, just things that were quietly wrong.
