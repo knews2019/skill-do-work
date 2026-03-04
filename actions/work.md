@@ -396,7 +396,7 @@ Append to the request file:
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
 ```bash
-git add -A
+git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx do-work/archive/REQ-003-dark-mode.md
 git commit -m "$(cat <<'EOF'
 [REQ-003] Dark Mode (Route C)
 
@@ -411,7 +411,7 @@ EOF
 
 **Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
 
-One commit per request. Stage everything with `git add -A`. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
+One commit per request. Stage only the files created or modified during implementation (listed in the Implementation Summary) plus the archived REQ file. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
 
 ### Step 10: Loop or Exit
 

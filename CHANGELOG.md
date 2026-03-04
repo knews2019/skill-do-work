@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.22.5 — The Regression Fix (2026-03-04)
+
+Three regressions restored from content that was lost during prior simplification passes.
+
+- **SKILL.md**: Restored "Human time has two optimal windows" section — explains the two-phase interaction model (capture phase for real-time clarification, batch review for accumulated questions) that underpins the entire system
+- **capture.md**: Restored full "Step 3: Capture-Phase Clarification" — was reduced to a single paragraph ("Clarify Only If Needed"), losing the AskUserQuestion guidance, good/bad examples, what NOT to ask about, and after-capture open questions flow
+- **work.md**: Restored safe git staging — `git add -A` replaced with specific file staging, plus safety instructions warning against `git add -A` / `git add .` (risk of staging secrets, `.env` files, or unrelated changes)
+
 ## 0.22.4 — The Course Correct (2026-03-04)
 
 Two fixes from PR review. CHANGELOG.md moved back to root so `do work changelog` works for installed users (it was accidentally excluded with the `_dev/` move). Standalone reviews now find UR input regardless of whether the UR has been archived yet.
