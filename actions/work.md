@@ -438,7 +438,7 @@ When invoked with `do work clarify` (or `answers`, `questions`, `pending`, `what
       Recommended: Yes, save to localStorage
       Also: Reset on refresh, Follow OS preference
    ```
-4. **Collect answers**: For each question, the user can:
+4. **Collect answers**: If your environment has a structured question prompt (multi-question UI), batch questions in groups of **at most 4 per prompt** — chunk by question count, not by REQ. A REQ with 6 questions needs 2 prompts. For each question, the user can:
    - **Answer it** → update to `- [x] [question] → [user's answer]`
    - **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]` and mark the REQ `status: completed` (no implementation needed — see "Builder Was Right" below)
    - **Pick a different option** → update to `- [x] [question] → [user's chosen option]`
