@@ -172,6 +172,8 @@ Read the request, apply the decision flow, update frontmatter with `route`. Appe
 
 Report the triage decision briefly to the user.
 
+**Addendum REQs:** If the REQ has `addendum_to` in frontmatter, read the original REQ before building. If the original includes a `## Prior Implementation` section, use it. If it doesn't (e.g., the original was in-flight when the addendum was captured but has since completed), find the original in `do-work/archive/` and read it to understand what was already built — key files, patterns, and approach. This prevents duplicating or conflicting with existing work.
+
 ### Step 3.5: Open Questions — Best Judgment, Not a Gate
 
 After triage, scan the REQ for a `## Open Questions` section with `- [ ]` items. Open Questions are **not a blocker** — the builder proceeds with its best judgment and completes the REQ.
@@ -288,7 +290,9 @@ The review reads the REQ (in `do-work/working/`), the original UR, and the curre
 **What happens next depends on the review score:**
 
 - **75%+ overall**: Append the Review section to the REQ and continue to archive. Minor findings go in the report only.
-- **Below 75%**: Review creates follow-up REQ files in `do-work/` (using the `addendum_to` pattern). Append the Review section to the REQ and continue to archive — the current REQ is still marked completed. The follow-up REQs enter the queue and get processed in a future loop iteration.
+- **Below 75%**: Same as above — append Review, continue to archive. The current REQ is still marked completed.
+
+**Follow-up REQs are created based on finding severity, not score.** The review creates follow-up REQs for each **Important** finding (regardless of overall score). Minor and Nit findings go in the report only. The follow-up REQs enter the queue and get processed in a future loop iteration.
 
 **Calibrate depth to route:** Route A gets a quick scan (skip dimensions that don't apply). Route B gets a standard review. Route C gets a thorough review comparing against the plan.
 
@@ -438,7 +442,7 @@ When invoked with `do work clarify` (or `answers`, `questions`, `pending`, `what
       Recommended: Yes, save to localStorage
       Also: Reset on refresh, Follow OS preference
    ```
-4. **Collect answers**: For each question, the user can:
+4. **Collect answers**: If your environment has a structured question prompt (multi-question UI), batch questions in groups of **at most 4 per prompt** — chunk by question count, not by REQ. A REQ with 6 questions needs 2 prompts. For each question, the user can:
    - **Answer it** → update to `- [x] [question] → [user's answer]`
    - **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]` and mark the REQ `status: completed` (no implementation needed — see "Builder Was Right" below)
    - **Pick a different option** → update to `- [x] [question] → [user's chosen option]`

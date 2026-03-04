@@ -43,7 +43,7 @@ For each completed REQ, read the full file and extract:
 - **Implementation Summary** — what the builder says it did
 - **Testing** — what tests exist and pass
 - **Review** — scores, findings, acceptance result
-- **Lessons Learned** — what worked, what didn't, key files, gotchas
+- **Lessons Learned** (if present) — what worked, what didn't, key files, gotchas. Route A REQs may skip this section.
 
 ### Step 3: Read the Code
 

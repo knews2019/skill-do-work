@@ -39,8 +39,9 @@ If the target REQ has no `commit` field (standalone mode) or no implementation c
 
 Read the full REQ file. Extract:
 - **What was requested** — the What/Detailed Requirements sections
+- **Builder Guidance** — certainty level (Firm vs Exploratory), scope cues, implementation hints. Use this to calibrate expectations: Exploratory requests get more latitude on interpretation; Firm requirements must match exactly.
 - **Triage decision** — the route and reasoning
-- **Plan** — what was planned (if Route B/C)
+- **Plan** — what was planned (if Route C)
 - **Implementation Summary** — what the builder says it did
 - **Testing results** — what tests exist and pass
 
@@ -156,6 +157,8 @@ After completing your review and acceptance testing, recommend what else should 
 Only include categories that are relevant to this specific change. A copy change doesn't need security review suggestions. A new auth flow does.
 
 ### Scoring Guidelines
+
+**Computing the overall score:** Average the percentage dimensions — Requirements, Code Quality, Test Adequacy (skip if N/A), and Scope Discipline. Then apply qualitative modifiers: Risk = Critical caps the overall at 60% max; Acceptance = Fail caps at 50% max; Acceptance = Partial applies a 10-point penalty.
 
 **90-100%**: Ship-ready. Clean implementation, good tests, on-spec, acceptance passes.
 **75-89%**: Minor issues. Style nits, a missing edge case test, small scope drift. Not worth blocking.

@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting and update checks.
 
-**Current version**: 0.20.5
+**Current version**: 0.22.1
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -15,7 +15,7 @@ When user asks "what version" or "version":
 
 When user asks "check for updates", "update", or "is there a newer version":
 
-1. **Fetch upstream**: Use WebFetch to get the raw version.md from the upstream URL above
+1. **Fetch upstream**: Use your environment's web fetch capability to get the raw version.md from the upstream URL above
 2. **Extract remote version**: Look for `**Current version**:` in the fetched content
 3. **Compare versions**: Use semantic versioning comparison
 4. **Report result** using the format below

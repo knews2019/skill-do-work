@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to verify the quality of captured requests. Evaluates REQ files against their originating User Request (UR) to find gaps.
 
-A confidence evaluation system that compares extracted REQ files against the original user input to identify lost requirements, dropped UX details, missing intent signals, and incomplete coverage.
+A confidence evaluation system that compares extracted REQ files against the original user input to identify lost requirements, dropped UX details, missing intent signals, and incomplete coverage. This is **capture QA** — it checks whether requirements were extracted correctly, not whether the implementation is good.
 
 ## Philosophy
 
@@ -72,9 +72,9 @@ For each gap found:
 1. Quote the relevant section from the original input
 2. Identify which REQ should contain it (or if a new REQ is needed)
 3. Classify the severity:
-   - **Critical**: A firm requirement that was completely dropped
-   - **Important**: A clear requirement that was partially captured or summarized too aggressively
-   - **Minor**: A passing mention or soft preference that was missed
+   - **Important**: A firm requirement that was completely dropped or partially captured with significant loss
+   - **Minor**: A clear detail that was summarized too aggressively or a soft preference that was missed
+   - **Nit**: A passing mention or stylistic preference — won't affect the build
    - **Ambiguous**: The original input doesn't contain enough information to resolve this — neither the REQ nor the UR has a clear answer. This isn't a gap in the REQ; it's a gap in the original request that only the user can fill.
 
 ### Step 6: Generate Report
@@ -95,14 +95,14 @@ Output a confidence report in this format:
 
 ### Gaps Found
 
-**Critical:**
-- [None / list of dropped firm requirements with source quotes]
-
 **Important:**
-- [List of partially captured or over-summarized requirements]
+- [None / list of dropped or significantly under-captured requirements with source quotes]
 
 **Minor:**
-- [List of missed passing mentions]
+- [List of over-summarized details or missed soft preferences]
+
+**Nit:**
+- [List of stylistic or trivial gaps]
 
 **Ambiguous (needs client input):**
 - [List of requirements where the original input is unclear — these become Open Questions on the REQ]
@@ -119,7 +119,7 @@ After presenting the report:
 
 1. Ask the user if they want to apply the recommended fixes
 2. If yes, update the REQ files directly:
-   - **Critical/Important/Minor gaps**: Add missing requirements to the appropriate sections, add or update Builder Guidance sections, add batch constraints to Constraints sections
+   - **Important/Minor gaps**: Add missing requirements to the appropriate sections, add or update Builder Guidance sections, add batch constraints to Constraints sections
    - **Ambiguous gaps**: The user is here right now — **resolve them on the spot.** For each Ambiguous gap:
      1. Present the question with recommended choices using your environment's ask-user prompt/tool:
         ```
@@ -153,6 +153,6 @@ For REQs created before the UR system:
 - Don't expand requirements beyond what the user said — you're checking coverage, not inventing new features
 - Don't penalize REQs for missing details the user never mentioned
 - Don't treat implementation details as gaps — those are for the builder to decide
-- Don't classify something as Ambiguous when the answer is in the original input — that's a Critical or Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
+- Don't classify something as Ambiguous when the answer is in the original input — that's an Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
 - Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
 - Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Verify already tried to ask the user; any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment.

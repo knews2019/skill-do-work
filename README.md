@@ -124,7 +124,7 @@ Invoked when you say "review work", "review", "review code", or "code review". A
 - **Code review** — evaluates code quality, scope discipline, and risk
 - **Acceptance testing** — actually runs/tests the feature to verify it works
 - **Suggested testing** — recommends additional checks the user should perform
-- Creates follow-up REQs for Critical/Important findings
+- Creates follow-up REQs for Important findings
 
 See [actions/review-work.md](./actions/review-work.md) for the full review logic.
 

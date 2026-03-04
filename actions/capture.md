@@ -32,7 +32,7 @@ If `do-work/` doesn't exist yet (first invocation in a project):
 | Mode | When | Approach |
 |------|------|----------|
 | **Simple** | Short input (<200 words), 1-2 features, no detailed constraints | Lean format, minimal UR |
-| **Complex** | >500 words, 3+ features, detailed requirements/constraints/edge cases, dependencies between features, or user says "spec"/"PRD"/"requirements" | Full preservation with detailed REQ sections |
+| **Complex** | 3+ features, detailed requirements/constraints/edge cases, dependencies between features, or user says "spec"/"PRD"/"requirements" | Full preservation with detailed REQ sections |
 
 **When uncertain, treat as complex.** Over-preserving is better than losing requirements.
 
@@ -45,6 +45,8 @@ If `do-work/` doesn't exist yet (first invocation in a project):
 ### Immutability Rule
 
 Files in `working/` and `archive/` are **immutable**. If someone wants to add to an in-flight or completed request, create a new addendum REQ that references the original via `addendum_to` in frontmatter. **The new addendum REQ always goes to `do-work/` root** — never into `working/` or `archive/` — so the work loop picks it up on the next run. A new UR is also created (verbatim input of the addendum) paired with the new REQ.
+
+**Exception:** The review work action may append a `## Review` section to archived files — review annotations are post-work metadata, not content changes. See `review-work.md`.
 
 ## File Naming
 
@@ -216,9 +218,17 @@ Add sidebar support to the existing dark mode implementation (REQ-005).
 Addendum to REQ-005, which is currently [in progress / completed].
 The user wants the sidebar to also support dark mode.
 
+## Prior Implementation
+[For archived/completed originals: read the original REQ from the archive and
+summarize what was built, key files modified, patterns used, and commit hash
+(if available). Skip this section for in-flight originals — the builder will
+encounter the work in progress naturally.]
+
 ## Requirements
 - Sidebar must respect the dark mode theme
 ```
+
+**Context is critical for addenda to archived/completed REQs.** When writing the addendum REQ, read the original archived REQ and include a `## Prior Implementation` section summarizing: what was built, key files modified, patterns used, and commit hash (if available). Without this, the builder wastes time re-discovering what already exists. For in-flight REQs this matters less — the builder will encounter the work in progress naturally.
 
 **When the original UR is archived:** The original UR folder is in `archive/UR-NNN/` and is immutable. The new addendum UR goes into `do-work/user-requests/` as normal. Do not attempt to modify or re-open the archived UR folder.
 
@@ -255,7 +265,7 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 
 Brief summary of created files. If the request was meaningfully complex (complex mode, 3+ REQs, or notably long/nuanced input), add:
 
-> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `/do-work verify requests` to check coverage against your original input.
+> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `do work verify requests` to check coverage against your original input.
 
 Always end with next step suggestions:
 
@@ -313,12 +323,13 @@ User: do work dark mode should also apply to modals
 [Checks existing — REQ-005-dark-mode.md is in do-work/archive/UR-003/]
 
 REQ-005 is already completed and archived — creating a new follow-up request.
-The archived UR is immutable, so a new UR is created for this addendum.
+
+[Reads archived REQ-005 to extract: key files, patterns, commit hash (if available)]
 
 Created:
 - do-work/user-requests/UR-009/input.md         ← new UR (archived UR-003 is not touched)
 - do-work/REQ-027-addendum-dark-mode-modals.md  ← new REQ in do-work/ root
-  (user_request: UR-009, addendum_to: REQ-005)
+  (user_request: UR-009, addendum_to: REQ-005, includes Prior Implementation summary)
 ```
 
 The new REQ-027 sits in `do-work/` root with `status: pending` and will be picked up by the next `do work run`. The archived `UR-003/` folder is not modified.
@@ -336,7 +347,7 @@ Created:
 - do-work/REQ-013-password-reset.md (user_request: UR-001)
 
 That was a pretty detailed request — it's possible the capture missed some
-nuances. You can run `/do-work verify requests` to check coverage against your original input.
+nuances. You can run `do work verify requests` to check coverage against your original input.
 ```
 
 ## Edge Cases

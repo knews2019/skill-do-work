@@ -4,6 +4,57 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.22.1 — The Signpost (2026-03-04)
+
+Verify now clearly identifies itself as capture QA, so agents (and users) don't confuse it with implementation review.
+
+- Added "capture QA" clarification to `verify-requests.md` opening description
+- Fixed stale "Critical" reference in verify's "What NOT To Do" section (should be "Important" per severity alignment)
+
+## 0.22.0 — The Alignment (2026-03-04)
+
+Cross-file severity levels and extraction lists are now consistent. Agents following one action file won't contradict another.
+
+- Aligned `verify-requests.md` severity levels to match `review-work.md` — replaced Critical/Important/Minor with Important/Minor/Nit (Ambiguous stays as-is since it's verify-specific)
+- Added Builder Guidance to `review-work.md` Step 2 extraction list — reviewers now calibrate expectations based on certainty level (Firm vs Exploratory)
+- Marked Lessons Learned as optional in `present-work.md` Step 2 — Route A REQs skip this section per `work.md`
+
+## 0.21.1 — The Addendum Fix (2026-03-04)
+
+Addendum REQs now work reliably in non-git environments and the builder knows what to do with them.
+
+- Made commit hash conditional ("if available") in `capture.md`'s Prior Implementation section — non-git projects legitimately have no hash
+- Added addendum_to handling to `work.md` Step 3 (Triage) — builder now reads the original REQ for context, closing the timing gap where capture skips Prior Implementation for in-flight originals that complete before the addendum is built
+
+## 0.21.0 — The Consistency Pass (2026-03-04)
+
+Ten cross-file inconsistencies and instruction gaps cleaned up. Agents following these docs literally should now get consistent behavior across all action files.
+
+- Fixed `cleanup.md` self-contradiction — Pass 1 no longer references `do-work/working/` (work action handles its own files before cleanup runs)
+- Fixed stale "Critical" severity in `README.md` — the defined levels are Important/Minor/Nit
+- Aligned follow-up REQ creation rules — `work.md` now matches `review-work.md`: follow-ups are per-Important-finding, not score-gated
+- Added overall review score formula to `review-work.md` — average of percentage dimensions with Risk/Acceptance modifiers
+- Closed 200–500 word classification gap in `capture.md` — removed the >500 word floor from Complex (features/constraints matter more than word count)
+- Fixed `review-work.md` Step 2: "Plan (if Route B/C)" → "Plan (if Route C)" — planning is Route C only
+- Fixed `capture.md` leading-slash references (`/do-work verify requests` → `do work verify requests`)
+- Fixed `version.md` agent compatibility — replaced tool-specific "WebFetch" with generalized language
+- Documented `hold/` directory in `cleanup.md` archive structure
+- Added review annotation exception to `capture.md` immutability rule (cross-ref to `review-work.md`)
+
+## 0.20.7 — The Chunker (2026-03-04)
+
+Clarify workflow now chunks questions by count (max 4 per prompt), not by REQ. A single REQ with 6 questions gets 2 prompts instead of blowing the limit.
+
+- Fixed question batching in clarify mode to respect per-prompt limits
+
+## 0.20.6 — The Context Bridge (2026-03-04)
+
+Addendum REQs for archived work no longer leave the builder guessing. When creating a follow-up to a completed request, capture now reads the original archived REQ and includes a `## Prior Implementation` section — key files, patterns used, commit hash — so the builder has full context without re-discovering what already exists.
+
+- Added `## Prior Implementation` section to the addendum REQ template in `capture.md`
+- Added "Context is critical" guidance — instructs capture to read the original archived REQ before writing the addendum
+- Updated "Addendum to Archived Request" example to show the prior-implementation flow
+
 ## 0.20.5 — The Gap Closer (2026-03-03)
 
 Addendum rules in `capture.md` are now airtight. When an original request is archived, creating an addendum always produces a new UR + REQ in `do-work/` root — so the work loop can pick it up. The archive stays immutable.
