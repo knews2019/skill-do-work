@@ -12,9 +12,9 @@ A unified entry point for task capture and processing.
 **Actions:**
 
 - **capture requests**: Capture new tasks/requests → creates UR folder (verbatim input) + REQ files (queue items), always paired
+- **verify requests**: Evaluate captured REQs against original input → quality check
 - **work**: Process pending requests → executes the queue
 - **clarify questions**: Batch-review Open Questions from completed work → user answers, confirms, or skips
-- **verify requests**: Evaluate captured REQs against original input → quality check
 - **review work**: Post-work review → requirements check, code review, acceptance testing, and testing suggestions
 - **present work**: Client-facing deliverables → briefs, architecture diagrams, value propositions, video scripts
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
@@ -36,14 +36,14 @@ Check these patterns **in order** — first match wins:
 | -------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | 1        | Empty or bare invocation | `do work`                                                                                                                          | → help menu                   |
 | 2        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
-| 3        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
-| 4        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check`, `do work evaluate`                                                   | → verify requests              |
+| 3        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check`, `do work evaluate`                                                   | → verify requests              |
+| 4        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
 | 5        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review`, `do work audit code`                        | → review work                  |
 | 6        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
 | 7        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
 | 8        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
 | 9        | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
-| 10       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`                                                                                 | → capture requests              |
+| 10       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
 
 
 ### Step 2: Preserve Payload
