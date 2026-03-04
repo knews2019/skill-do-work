@@ -39,6 +39,7 @@ If the target REQ has no `commit` field (standalone mode) or no implementation c
 
 Read the full REQ file. Extract:
 - **What was requested** — the What/Detailed Requirements sections
+- **Builder Guidance** — certainty level (Firm vs Exploratory), scope cues, implementation hints. Use this to calibrate expectations: Exploratory requests get more latitude on interpretation; Firm requirements must match exactly.
 - **Triage decision** — the route and reasoning
 - **Plan** — what was planned (if Route C)
 - **Implementation Summary** — what the builder says it did

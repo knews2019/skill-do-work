@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.22.0 — The Alignment (2026-03-04)
+
+Cross-file severity levels and extraction lists are now consistent. Agents following one action file won't contradict another.
+
+- Aligned `verify-requests.md` severity levels to match `review-work.md` — replaced Critical/Important/Minor with Important/Minor/Nit (Ambiguous stays as-is since it's verify-specific)
+- Added Builder Guidance to `review-work.md` Step 2 extraction list — reviewers now calibrate expectations based on certainty level (Firm vs Exploratory)
+- Marked Lessons Learned as optional in `present-work.md` Step 2 — Route A REQs skip this section per `work.md`
+
 ## 0.21.1 — The Addendum Fix (2026-03-04)
 
 Addendum REQs now work reliably in non-git environments and the builder knows what to do with them.

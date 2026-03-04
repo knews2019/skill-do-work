@@ -72,9 +72,9 @@ For each gap found:
 1. Quote the relevant section from the original input
 2. Identify which REQ should contain it (or if a new REQ is needed)
 3. Classify the severity:
-   - **Critical**: A firm requirement that was completely dropped
-   - **Important**: A clear requirement that was partially captured or summarized too aggressively
-   - **Minor**: A passing mention or soft preference that was missed
+   - **Important**: A firm requirement that was completely dropped or partially captured with significant loss
+   - **Minor**: A clear detail that was summarized too aggressively or a soft preference that was missed
+   - **Nit**: A passing mention or stylistic preference — won't affect the build
    - **Ambiguous**: The original input doesn't contain enough information to resolve this — neither the REQ nor the UR has a clear answer. This isn't a gap in the REQ; it's a gap in the original request that only the user can fill.
 
 ### Step 6: Generate Report
@@ -95,14 +95,14 @@ Output a confidence report in this format:
 
 ### Gaps Found
 
-**Critical:**
-- [None / list of dropped firm requirements with source quotes]
-
 **Important:**
-- [List of partially captured or over-summarized requirements]
+- [None / list of dropped or significantly under-captured requirements with source quotes]
 
 **Minor:**
-- [List of missed passing mentions]
+- [List of over-summarized details or missed soft preferences]
+
+**Nit:**
+- [List of stylistic or trivial gaps]
 
 **Ambiguous (needs client input):**
 - [List of requirements where the original input is unclear — these become Open Questions on the REQ]
@@ -119,7 +119,7 @@ After presenting the report:
 
 1. Ask the user if they want to apply the recommended fixes
 2. If yes, update the REQ files directly:
-   - **Critical/Important/Minor gaps**: Add missing requirements to the appropriate sections, add or update Builder Guidance sections, add batch constraints to Constraints sections
+   - **Important/Minor gaps**: Add missing requirements to the appropriate sections, add or update Builder Guidance sections, add batch constraints to Constraints sections
    - **Ambiguous gaps**: The user is here right now — **resolve them on the spot.** For each Ambiguous gap:
      1. Present the question with recommended choices using your environment's ask-user prompt/tool:
         ```
