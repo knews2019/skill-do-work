@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.20.6 — The Context Bridge (2026-03-04)
+
+Addendum REQs for archived work no longer leave the builder guessing. When creating a follow-up to a completed request, capture now reads the original archived REQ and includes a `## Prior Implementation` section — key files, patterns used, commit hash — so the builder has full context without re-discovering what already exists.
+
+- Added `## Prior Implementation` section to the addendum REQ template in `capture.md`
+- Added "Context is critical" guidance — instructs capture to read the original archived REQ before writing the addendum
+- Updated "Addendum to Archived Request" example to show the prior-implementation flow
+
 ## 0.20.5 — The Gap Closer (2026-03-03)
 
 Addendum rules in `capture.md` are now airtight. When an original request is archived, creating an addendum always produces a new UR + REQ in `do-work/` root — so the work loop can pick it up. The archive stays immutable.
