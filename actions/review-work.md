@@ -47,7 +47,7 @@ Read the full REQ file. Extract:
 
 ### Step 3: Read the Original Input
 
-Find the UR via the REQ's `user_request` frontmatter field. Read `do-work/user-requests/UR-NNN/input.md` (or `do-work/archive/UR-NNN/input.md` in standalone mode). This is the source of truth for what the user actually wanted.
+Find the UR via the REQ's `user_request` frontmatter field. Read `do-work/user-requests/UR-NNN/input.md`. If not found there (UR already archived), check `do-work/archive/UR-NNN/input.md`. This is the source of truth for what the user actually wanted.
 
 If the REQ is a legacy file without `user_request`, use whatever context is available (the REQ content itself, any `context_ref` file).
 
