@@ -4,6 +4,21 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.21.0 — The Consistency Pass (2026-03-04)
+
+Ten cross-file inconsistencies and instruction gaps cleaned up. Agents following these docs literally should now get consistent behavior across all action files.
+
+- Fixed `cleanup.md` self-contradiction — Pass 1 no longer references `do-work/working/` (work action handles its own files before cleanup runs)
+- Fixed stale "Critical" severity in `README.md` — the defined levels are Important/Minor/Nit
+- Aligned follow-up REQ creation rules — `work.md` now matches `review-work.md`: follow-ups are per-Important-finding, not score-gated
+- Added overall review score formula to `review-work.md` — average of percentage dimensions with Risk/Acceptance modifiers
+- Closed 200–500 word classification gap in `capture.md` — removed the >500 word floor from Complex (features/constraints matter more than word count)
+- Fixed `review-work.md` Step 2: "Plan (if Route B/C)" → "Plan (if Route C)" — planning is Route C only
+- Fixed `capture.md` leading-slash references (`/do-work verify requests` → `do work verify requests`)
+- Fixed `version.md` agent compatibility — replaced tool-specific "WebFetch" with generalized language
+- Documented `hold/` directory in `cleanup.md` archive structure
+- Added review annotation exception to `capture.md` immutability rule (cross-ref to `review-work.md`)
+
 ## 0.20.7 — The Chunker (2026-03-04)
 
 Clarify workflow now chunks questions by count (max 4 per prompt), not by REQ. A single REQ with 6 questions gets 2 prompts instead of blowing the limit.

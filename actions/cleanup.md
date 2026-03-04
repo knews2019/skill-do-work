@@ -23,10 +23,8 @@ For each UR folder in `do-work/user-requests/`:
 2. For each REQ ID in the array, check if it exists with `status: completed` in ANY of these locations:
    - `do-work/archive/UR-NNN/` (already consolidated)
    - `do-work/archive/` root (loose in archive)
-   - `do-work/working/` (just completed, not yet moved)
 3. If **ALL** REQs are completed:
    - Gather any loose completed REQ files from `do-work/archive/` root into the UR folder
-   - Gather any completed REQ files from `do-work/working/` into the UR folder
    - Move the entire UR folder to `do-work/archive/UR-NNN/`
    - Report: `Archived UR-NNN (all N REQs complete)`
 4. If **NOT all** REQs are completed:
@@ -97,8 +95,7 @@ do-work/archive/
 │   ├── REQ-001-old-task.md
 │   ├── REQ-002-old-task.md
 │   └── CONTEXT-001-batch.md
-└── hold/                      # Items on hold (unchanged by cleanup)
-    └── ...
+└── hold/                      # Items on hold (paused by user — cleanup skips these)
 ```
 
 **No loose REQ or CONTEXT files should exist directly in `do-work/archive/` after cleanup.**

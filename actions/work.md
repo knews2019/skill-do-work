@@ -288,7 +288,9 @@ The review reads the REQ (in `do-work/working/`), the original UR, and the curre
 **What happens next depends on the review score:**
 
 - **75%+ overall**: Append the Review section to the REQ and continue to archive. Minor findings go in the report only.
-- **Below 75%**: Review creates follow-up REQ files in `do-work/` (using the `addendum_to` pattern). Append the Review section to the REQ and continue to archive — the current REQ is still marked completed. The follow-up REQs enter the queue and get processed in a future loop iteration.
+- **Below 75%**: Same as above — append Review, continue to archive. The current REQ is still marked completed.
+
+**Follow-up REQs are created based on finding severity, not score.** The review creates follow-up REQs for each **Important** finding (regardless of overall score). Minor and Nit findings go in the report only. The follow-up REQs enter the queue and get processed in a future loop iteration.
 
 **Calibrate depth to route:** Route A gets a quick scan (skip dimensions that don't apply). Route B gets a standard review. Route C gets a thorough review comparing against the plan.
 

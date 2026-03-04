@@ -32,7 +32,7 @@ If `do-work/` doesn't exist yet (first invocation in a project):
 | Mode | When | Approach |
 |------|------|----------|
 | **Simple** | Short input (<200 words), 1-2 features, no detailed constraints | Lean format, minimal UR |
-| **Complex** | >500 words, 3+ features, detailed requirements/constraints/edge cases, dependencies between features, or user says "spec"/"PRD"/"requirements" | Full preservation with detailed REQ sections |
+| **Complex** | 3+ features, detailed requirements/constraints/edge cases, dependencies between features, or user says "spec"/"PRD"/"requirements" | Full preservation with detailed REQ sections |
 
 **When uncertain, treat as complex.** Over-preserving is better than losing requirements.
 
@@ -45,6 +45,8 @@ If `do-work/` doesn't exist yet (first invocation in a project):
 ### Immutability Rule
 
 Files in `working/` and `archive/` are **immutable**. If someone wants to add to an in-flight or completed request, create a new addendum REQ that references the original via `addendum_to` in frontmatter. **The new addendum REQ always goes to `do-work/` root** — never into `working/` or `archive/` — so the work loop picks it up on the next run. A new UR is also created (verbatim input of the addendum) paired with the new REQ.
+
+**Exception:** The review work action may append a `## Review` section to archived files — review annotations are post-work metadata, not content changes. See `review-work.md`.
 
 ## File Naming
 
@@ -263,7 +265,7 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 
 Brief summary of created files. If the request was meaningfully complex (complex mode, 3+ REQs, or notably long/nuanced input), add:
 
-> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `/do-work verify requests` to check coverage against your original input.
+> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `do work verify requests` to check coverage against your original input.
 
 Always end with next step suggestions:
 
@@ -345,7 +347,7 @@ Created:
 - do-work/REQ-013-password-reset.md (user_request: UR-001)
 
 That was a pretty detailed request — it's possible the capture missed some
-nuances. You can run `/do-work verify requests` to check coverage against your original input.
+nuances. You can run `do work verify requests` to check coverage against your original input.
 ```
 
 ## Edge Cases
