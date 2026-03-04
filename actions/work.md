@@ -172,6 +172,8 @@ Read the request, apply the decision flow, update frontmatter with `route`. Appe
 
 Report the triage decision briefly to the user.
 
+**Addendum REQs:** If the REQ has `addendum_to` in frontmatter, read the original REQ before building. If the original includes a `## Prior Implementation` section, use it. If it doesn't (e.g., the original was in-flight when the addendum was captured but has since completed), find the original in `do-work/archive/` and read it to understand what was already built — key files, patterns, and approach. This prevents duplicating or conflicting with existing work.
+
 ### Step 3.5: Open Questions — Best Judgment, Not a Gate
 
 After triage, scan the REQ for a `## Open Questions` section with `- [ ]` items. Open Questions are **not a blocker** — the builder proceeds with its best judgment and completes the REQ.

@@ -220,15 +220,15 @@ The user wants the sidebar to also support dark mode.
 
 ## Prior Implementation
 [For archived/completed originals: read the original REQ from the archive and
-summarize what was built, key files modified, patterns used, and commit hash.
-Skip this section for in-flight originals — the builder will encounter the
-work in progress naturally.]
+summarize what was built, key files modified, patterns used, and commit hash
+(if available). Skip this section for in-flight originals — the builder will
+encounter the work in progress naturally.]
 
 ## Requirements
 - Sidebar must respect the dark mode theme
 ```
 
-**Context is critical for addenda to archived/completed REQs.** When writing the addendum REQ, read the original archived REQ and include a `## Prior Implementation` section summarizing: what was built, key files modified, patterns used, and commit hash. Without this, the builder wastes time re-discovering what already exists. For in-flight REQs this matters less — the builder will encounter the work in progress naturally.
+**Context is critical for addenda to archived/completed REQs.** When writing the addendum REQ, read the original archived REQ and include a `## Prior Implementation` section summarizing: what was built, key files modified, patterns used, and commit hash (if available). Without this, the builder wastes time re-discovering what already exists. For in-flight REQs this matters less — the builder will encounter the work in progress naturally.
 
 **When the original UR is archived:** The original UR folder is in `archive/UR-NNN/` and is immutable. The new addendum UR goes into `do-work/user-requests/` as normal. Do not attempt to modify or re-open the archived UR folder.
 
@@ -324,7 +324,7 @@ User: do work dark mode should also apply to modals
 
 REQ-005 is already completed and archived — creating a new follow-up request.
 
-[Reads archived REQ-005 to extract: key files, patterns, commit hash]
+[Reads archived REQ-005 to extract: key files, patterns, commit hash (if available)]
 
 Created:
 - do-work/user-requests/UR-009/input.md         ← new UR (archived UR-003 is not touched)

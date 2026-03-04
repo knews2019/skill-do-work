@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.21.1 — The Addendum Fix (2026-03-04)
+
+Addendum REQs now work reliably in non-git environments and the builder knows what to do with them.
+
+- Made commit hash conditional ("if available") in `capture.md`'s Prior Implementation section — non-git projects legitimately have no hash
+- Added addendum_to handling to `work.md` Step 3 (Triage) — builder now reads the original REQ for context, closing the timing gap where capture skips Prior Implementation for in-flight originals that complete before the addendum is built
+
 ## 0.21.0 — The Consistency Pass (2026-03-04)
 
 Ten cross-file inconsistencies and instruction gaps cleaned up. Agents following these docs literally should now get consistent behavior across all action files.
