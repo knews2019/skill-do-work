@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.22.6 — The Safety Net (2026-03-04)
+
+Six cross-file fixes addressing safety gaps, missing guardrails, and inconsistent instructions.
+
+- **work.md**: Expanded commit failure guidance — explicit prohibition of `--no-verify` and `--no-gpg-sign`, instructions to investigate and fix hook errors instead of bypassing them
+- **work.md**: Restored Orchestrator Checklist (per-request step verification) and Common Mistakes to Avoid section — prevents file management errors, premature archiving, and unsafe git operations
+- **work.md**: Clarified follow-up creation filter for `- [~]` items — create follow-ups for UX/scope/data-representation decisions, skip purely technical decisions (caching, algorithms, internal naming)
+- **work.md**: Clarified Lessons Learned scope — required for Routes B/C, optional for Route A (consistent with present-work.md)
+- **review-work.md**: Clarified Test Adequacy N/A handling — explicitly excluded from overall score average (not counted as 0%)
+
 ## 0.22.5 — The Regression Fix (2026-03-04)
 
 Three regressions restored from content that was lost during prior simplification passes.

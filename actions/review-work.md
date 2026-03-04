@@ -93,7 +93,7 @@ Evaluate the implementation quality by reading the diff:
 - Are there tests for the new/changed behavior?
 - Do tests cover the important paths (not just the happy path)?
 - Are test assertions meaningful (not just "doesn't throw")?
-- If no tests exist and the project has no test infrastructure, score N/A
+- If no tests exist and the project has no test infrastructure, score N/A — this dimension is excluded from the overall average (don't count it as 0%)
 
 **Scope Discipline (0-100%)**
 - Did the implementation stay focused on the request?

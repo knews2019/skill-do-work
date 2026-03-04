@@ -337,7 +337,7 @@ Append to the request file:
 
 **Rules:**
 - Keep it concise — pointers to code, not walls of text. The code is the source of truth.
-- Only include entries that have value. If everything went smoothly (Route A, no surprises), skip this section entirely.
+- **Required for Routes B and C** — there's always something worth recording when exploration or planning was involved. **Optional for Route A** — skip if everything went smoothly with no surprises.
 - "What didn't work" is the most valuable part — it prevents repeating mistakes.
 - Always reference specific files rather than describing their contents.
 
@@ -347,7 +347,7 @@ Append to the request file:
 
 1. Update frontmatter: `status: completed`, `completed_at: <timestamp>`
 2. Append implementation summary if not already present
-3. **Create follow-ups for builder-decided questions:** If the REQ has any `- [~]` items in Open Questions where the builder's choice meaningfully affects the user experience, create a follow-up REQ for each:
+3. **Create follow-ups for builder-decided questions:** If the REQ has any `- [~]` items in Open Questions where the builder's choice affects what the user sees or interacts with, create a follow-up REQ for each. **Create follow-ups for:** UX decisions (interaction behavior, visibility, layout), scope boundaries (what's included/excluded), data representation choices. **Skip follow-ups for:** purely technical decisions (caching strategy, algorithm choice, internal naming, DB indexes) that don't change user-facing behavior. Template:
    ```markdown
    ---
    id: REQ-NNN
@@ -500,7 +500,7 @@ All 2 requests completed:
 | Implementation fails | Mark failed, preserve plan/exploration outputs for retry |
 | Tests fail repeatedly | After 3 fix attempts, mark failed with test failure details |
 | Review work agent fails | Skip review, note it in the REQ file, continue to archive — review is advisory, not a gate |
-| Commit fails | Report error, continue to next request — changes remain uncommitted but archived |
+| Commit fails | Investigate the error (usually a pre-commit hook failure). Fix the underlying issue, re-stage, and retry as a **new** commit. Do NOT use `--no-verify` to skip hooks or `--no-gpg-sign` to bypass signing — fix the root cause. If unfixable, report the error to the user and continue to next request — changes remain uncommitted but archived. |
 | Unrecoverable error | Stop loop, report clearly, leave queue intact for manual recovery |
 
 ## What This Action Does NOT Do
@@ -510,6 +510,40 @@ All 2 requests completed:
 - Run without user present (this is supervised automation)
 - Modify already-completed requests
 - Allow external modification of files in `working/` or `archive/`
+
+## Orchestrator Checklist (per request)
+
+```
+□ Step 1: List REQ-*.md files in do-work/, pick first pending (skip pending-answers)
+□ Step 2: mkdir -p do-work/working && mv REQ to do-work/working/
+□ Step 2: Update frontmatter: status: claimed, claimed_at: <timestamp>
+□ Step 3: Read request, decide route (A/B/C), update frontmatter with route
+□ Step 3: Append ## Triage section (including Planning status)
+□ Step 3: If addendum_to exists, read original REQ + Prior Implementation
+□ Step 3.5: Handle Open Questions — mark - [~] with builder's choice
+□ Step 4: Append ## Plan section (Route C: Plan agent / Routes A,B: "Not required")
+□ Step 5: (Routes B,C) Spawn Explore agent, append ## Exploration section
+□ Step 6: Spawn implementation agent
+□ Step 6.5: Run tests, append ## Testing section
+□ Step 7: Spawn review work action (pipeline mode)
+□ Step 7.5: Append ## Lessons Learned (skip for Route A if no surprises)
+□ Step 8: Update frontmatter: status: completed, completed_at: <timestamp>
+□ Step 8: Append ## Implementation Summary
+□ Step 8: Create pending-answers follow-ups for - [~] UX decisions
+□ Step 8: Archive REQ (check if all UR REQs complete → archive UR folder)
+□ Step 9: Stage specific files and commit (if git repo)
+□ Step 10: Check for more pending REQs, loop or cleanup and exit
+```
+
+**Common mistakes to avoid:**
+- Spawning implementation agent without first moving file to `working/`
+- Letting spawned agents handle file management (only the orchestrator moves/archives files)
+- Forgetting to update status in frontmatter at each phase transition
+- Archiving a UR folder before all its REQs are complete
+- Forgetting Planning status note for Routes A/B ("Planning not required")
+- Using `git add -A` instead of staging specific files
+- Using `--no-verify` to bypass a failing pre-commit hook instead of fixing the issue
+- Creating follow-ups for every `- [~]` item instead of only UX-affecting decisions
 
 ## Archived Request File Example
 
