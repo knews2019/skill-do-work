@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.22.3 — The Lighter Carry (2026-03-04)
+
+Sample deliverables no longer ship with the skill. The three do-work-specific outputs (client brief, video script, portfolio summary) moved to `_dev/deliverables/` so they're excluded from installation. Users generate their own via `do work present`.
+
+- Moved 3 sample deliverable files from `do-work/deliverables/` to `_dev/deliverables/`
+
 ## 0.22.2 — The Tidy Install (2026-03-04)
 
 Dev-only files no longer tag along when someone installs the skill. CLAUDE.md, CHANGELOG.md, AGENTS.md, and GEMINI.md now live in `_dev/` — excluded by the skills CLI's underscore convention. A root symlink keeps CLAUDE.md discoverable for repo development.
