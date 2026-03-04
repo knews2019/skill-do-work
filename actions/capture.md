@@ -177,7 +177,7 @@ For each parsed request, check for similar existing ones across both tiers.
 | Existing request is in... | Action |
 |---------------------------|--------|
 | `do-work/` (queue) | If same: tell user, skip. If similar: ask. If enhancement: append an Addendum section to the pending file |
-| `do-work/working/` | **NEVER modify working/.** Create a new addendum REQ with `addendum_to` field, referencing the **same UR** (still active in `user-requests/`). Update the UR's `requests` array to include the new REQ ID — this prevents the UR from archiving before the addendum is processed. |
+| `do-work/working/` | **NEVER modify working/.** Create a new addendum REQ with `addendum_to` field, referencing the **same UR** (still active in `user-requests/`). Update the UR's `requests` array to include the new REQ ID — this prevents the UR from archiving before the addendum is processed. If the original is a legacy REQ with no `user_request` field, create a new UR instead (same as the archive case). |
 | `do-work/archive/` | **NEVER modify archive/.** Create a **new UR** (next available number) to capture the new input, plus new addendum REQ(s) with `addendum_to` field linking to the archived original. The new REQ references `user_request:` of the **new** UR, not the archived one. |
 
 **Addendum to a queued request** — don't rewrite, append:
@@ -261,7 +261,7 @@ If the user provides a screenshot:
 Before writing, determine the correct UR to use:
 
 - **Fresh request** (no matching existing REQ): Create a new UR with the next available number.
-- **Addendum to in-flight request** (original in `working/`, UR in `user-requests/`): Use the existing UR. Update its `requests` array to include the new REQ ID(s).
+- **Addendum to in-flight request** (original in `working/` with a `user_request` field): Use the existing UR. Update its `requests` array to include the new REQ ID(s). If the original is a legacy REQ with no `user_request` field, create a new UR instead (same as the archived case).
 - **Addendum to archived request** (original in `archive/`): Create a **new** UR with the next available number. Do NOT reference or recreate the archived UR — the new UR captures the new input and follows its own lifecycle.
 
 Ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (create if needed).

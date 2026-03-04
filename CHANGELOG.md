@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.21.1 — The Legacy Pass (2026-03-04)
+
+In-flight addendum handling now has a fallback for legacy REQs. If the original request in `working/` has no `user_request` field (pre-UR system), capture creates a fresh UR instead of trying to reuse one that doesn't exist.
+
+- `capture.md`: Added legacy fallback to the in-flight addendum row in the duplicate-check table and Step 5 UR logic
+
 ## 0.21.0 — The Comeback (2026-03-03)
 
 Addendums to archived requests no longer fall into a lifecycle gap. Previously, creating an addendum for a completed request would reference the old (archived) UR, leading to orphaned REQs and confused cleanup. Now the system creates a fresh UR for the new input while keeping an `addendum_to` link back to the original — clean lifecycle, no archive mutations. In-flight addendums also got tightened: the original UR's `requests` array is updated so cleanup won't archive it prematurely. The work action now reads the original REQ for context before triaging any addendum.
