@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.22.4 — The Course Correct (2026-03-04)
+
+Two fixes from PR review. CHANGELOG.md moved back to root so `do work changelog` works for installed users (it was accidentally excluded with the `_dev/` move). Standalone reviews now find UR input regardless of whether the UR has been archived yet.
+
+- Moved `CHANGELOG.md` back to root — the changelog command needs it at install time
+- Fixed `review-work.md` Step 3: UR input lookup now checks `user-requests/` first, falls back to `archive/` — works in both pipeline and standalone modes regardless of UR completion state
+
 ## 0.22.3 — The Lighter Carry (2026-03-04)
 
 Sample deliverables no longer ship with the skill. The three do-work-specific outputs (client brief, video script, portfolio summary) moved to `_dev/deliverables/` so they're excluded from installation. Users generate their own via `do work present`.

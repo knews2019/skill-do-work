@@ -11,7 +11,7 @@ The version is on the line that starts with `**Current version**:` - increment i
 
 When in doubt, bump the patch version.
 
-**Immediately after bumping the version, update `_dev/CHANGELOG.md`.**
+**Immediately after bumping the version, update `CHANGELOG.md`.**
 
 Add a new entry at the top of the file (below the header), following this format:
 
