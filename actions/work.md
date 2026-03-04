@@ -396,11 +396,21 @@ Append to the request file:
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
 ```bash
-git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx do-work/archive/REQ-003-dark-mode.md
+# Stage implementation files + archived REQ
+git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx \
+  do-work/archive/REQ-003-dark-mode.md
+
+# Stage follow-up REQs created in Step 8 (if any)
+git add do-work/REQ-025-confirm-sidebar-palette.md
+
+# Stage UR-folder move (if this was the last REQ and the UR moved to archive/)
+# Both the old path (deletion) and new path (addition) must be staged.
+git add do-work/user-requests/UR-002/ do-work/archive/UR-002/
+
 git commit -m "$(cat <<'EOF'
 [REQ-003] Dark Mode (Route C)
 
-Implements: do-work/archive/REQ-003-dark-mode.md
+Implements: do-work/archive/UR-002/REQ-003-dark-mode.md
 
 - Created src/stores/theme-store.ts
 - Modified src/components/settings/SettingsPanel.tsx
@@ -411,7 +421,7 @@ EOF
 
 **Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
 
-One commit per request. Stage only the files created, modified, or deleted during implementation (listed in the Implementation Summary) plus the archived REQ file. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
+One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/`), and any UR-folder moves to `archive/`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
 
 ### Step 10: Loop or Exit
 
@@ -531,7 +541,7 @@ All 2 requests completed:
 □ Step 8: Append ## Implementation Summary
 □ Step 8: Create pending-answers follow-ups for - [~] UX decisions
 □ Step 8: Archive REQ (check if all UR REQs complete → archive UR folder)
-□ Step 9: Stage specific files and commit (if git repo)
+□ Step 9: Stage implementation files, archived REQ, follow-up REQs, and UR-folder moves; commit (if git repo)
 □ Step 10: Check for more pending REQs, loop or cleanup and exit
 ```
 
