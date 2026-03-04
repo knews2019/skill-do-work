@@ -44,7 +44,7 @@ If `do-work/` doesn't exist yet (first invocation in a project):
 
 ### Immutability Rule
 
-Files in `working/` and `archive/` are **immutable**. If someone wants to add to an in-flight or completed request, create a new addendum REQ that references the original via `addendum_to` in frontmatter. The addendum goes through the queue like any other request.
+Files in `working/` and `archive/` are **immutable**. If someone wants to add to an in-flight or completed request, create a new addendum REQ that references the original via `addendum_to` in frontmatter. **The new addendum REQ always goes to `do-work/` root** — never into `working/` or `archive/` — so the work loop picks it up on the next run. A new UR is also created (verbatim input of the addendum) paired with the new REQ.
 
 ## File Naming
 
@@ -174,11 +174,11 @@ If `do-work/` is freshly bootstrapped (no existing REQ files anywhere), skip dup
 
 For each parsed request, check for similar existing ones across both tiers.
 
-| Existing request is in... | Action |
-|---------------------------|--------|
-| `do-work/` (queue) | If same: tell user, skip. If similar: ask. If enhancement: append an Addendum section to the pending file |
-| `do-work/working/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field |
-| `do-work/archive/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field |
+| Existing request is in... | Action | New REQ lands in |
+|---------------------------|--------|-----------------|
+| `do-work/` (queue) | If same: tell user, skip. If similar: ask. If enhancement: append an Addendum section to the pending file | N/A — amends the existing pending file |
+| `do-work/working/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field | `do-work/` root — work loop picks it up |
+| `do-work/archive/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field | `do-work/` root — work loop picks it up |
 
 **Addendum to a queued request** — don't rewrite, append:
 
@@ -190,7 +190,12 @@ User added: "dark mode should also affect the sidebar"
 - Sidebar must also respect dark mode theme
 ```
 
-**Addendum for in-flight/completed requests** — create a new REQ:
+**Addendum for in-flight/completed requests** — create a new UR + REQ, both in `do-work/`:
+
+- Create `do-work/user-requests/UR-NNN/input.md` with the addendum input verbatim (new UR, fresh number)
+- Create `do-work/REQ-NNN-slug.md` linking to that new UR, with `addendum_to` pointing at the original
+
+The `addendum_to` field is what connects the addendum to its origin. The new REQ then enters the queue normally and gets picked up by the next `do work run`.
 
 ```markdown
 ---
@@ -198,8 +203,8 @@ id: REQ-021
 title: "Addendum: dark mode sidebar support"
 status: pending
 created_at: 2025-01-27T09:00:00Z
-user_request: UR-006
-addendum_to: REQ-005
+user_request: UR-006        ← new UR created for this addendum
+addendum_to: REQ-005        ← links back to the original request
 ---
 
 # Addendum: Dark Mode Sidebar Support
@@ -214,6 +219,8 @@ The user wants the sidebar to also support dark mode.
 ## Requirements
 - Sidebar must respect the dark mode theme
 ```
+
+**When the original UR is archived:** The original UR folder is in `archive/UR-NNN/` and is immutable. The new addendum UR goes into `do-work/user-requests/` as normal. Do not attempt to modify or re-open the archived UR folder.
 
 ### Step 3: Clarify Only If Needed
 
@@ -297,6 +304,24 @@ Created:
 - do-work/user-requests/UR-006/input.md
 - do-work/REQ-021-addendum-dark-mode-sidebar.md (addendum_to: REQ-005)
 ```
+
+### Addendum to Archived Request
+
+```
+User: do work dark mode should also apply to modals
+
+[Checks existing — REQ-005-dark-mode.md is in do-work/archive/UR-003/]
+
+REQ-005 is already completed and archived — creating a new follow-up request.
+The archived UR is immutable, so a new UR is created for this addendum.
+
+Created:
+- do-work/user-requests/UR-009/input.md         ← new UR (archived UR-003 is not touched)
+- do-work/REQ-027-addendum-dark-mode-modals.md  ← new REQ in do-work/ root
+  (user_request: UR-009, addendum_to: REQ-005)
+```
+
+The new REQ-027 sits in `do-work/` root with `status: pending` and will be picked up by the next `do work run`. The archived `UR-003/` folder is not modified.
 
 ### Complex Multi-Feature Request
 

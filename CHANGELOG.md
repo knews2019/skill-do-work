@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.20.5 — The Gap Closer (2026-03-03)
+
+Addendum rules in `capture.md` are now airtight. When an original request is archived, creating an addendum always produces a new UR + REQ in `do-work/` root — so the work loop can pick it up. The archive stays immutable.
+
+- Added explicit "New REQ lands in" column to the duplicate-handling table
+- Strengthened the Immutability Rule to state that new addendum REQs always go to `do-work/` root
+- Clarified that archived URs are immutable — addendums always get a fresh UR
+- Added "Addendum to Archived Request" example to make the pattern unambiguous
+
 ## 0.20.4 — The Right Folders (2026-03-03)
 
 Two instruction bugs that would cause literal agent implementations to fail. Standalone review mode now searches UR subfolders for recent work, and Step 1 of the work loop now explicitly reads frontmatter before selecting the next request.
