@@ -232,9 +232,22 @@ encounter the work in progress naturally.]
 
 **When the original UR is archived:** The original UR folder is in `archive/UR-NNN/` and is immutable. The new addendum UR goes into `do-work/user-requests/` as normal. Do not attempt to modify or re-open the archived UR folder.
 
-### Step 3: Clarify Only If Needed
+### Step 3: Capture-Phase Clarification
 
-Ask questions ONLY when the request is genuinely ambiguous (could mean two very different things), or when a duplicate/similar request makes intent unclear. Don't ask about implementation details — that's for the building agent.
+**Capture is the optimal window for human interaction.** The user is present, actively thinking about the request, and expects back-and-forth. Use `AskUserQuestion` here to resolve ambiguities — this is far cheaper than blocking the build phase later.
+
+**When to ask:** Only when the request is genuinely ambiguous (could mean two very different things), or when a duplicate/similar request makes intent unclear. Don't ask about implementation details — that's for the building agent.
+
+**How to ask:** Use the `AskUserQuestion` tool with concrete options. Every question must present choices the user can pick from — not open-ended "what do you mean?" prompts. The choices themselves clarify the question: even if the user doesn't fully understand the question, selecting the closest option moves things forward.
+
+```
+Good: "Should dark mode apply to the sidebar?" — options: (yes, full app / no, main content only / builder decides)
+Bad:  "Can you clarify the scope of dark mode?"
+```
+
+**What NOT to ask about:** Implementation details, architecture, file locations, naming conventions — these belong to the builder agent during the work phase.
+
+**After capture:** Any remaining ambiguities that weren't resolved interactively go into the REQ's `## Open Questions` section with inline choices. These are exceptional — most REQs should have zero open questions after capture.
 
 ### Step 4: Handle Screenshots
 
