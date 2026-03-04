@@ -44,7 +44,7 @@ If `do-work/` doesn't exist yet (first invocation in a project):
 
 ### Immutability Rule
 
-Files in `working/` and `archive/` are **immutable**. If someone wants to add to an in-flight or completed request, create a new addendum REQ that references the original via `addendum_to` in frontmatter. The addendum goes through the queue like any other request.
+Files in `working/` and `archive/` are **immutable**. If someone wants to add to an in-flight or completed request, create a new addendum REQ that references the original via `addendum_to` in frontmatter. **The new addendum REQ always goes to `do-work/` root** — never into `working/` or `archive/` — so the work loop picks it up on the next run. See Step 2 for details on UR handling (in-flight addendums reuse the active UR; archived addendums get a fresh UR).
 
 ## File Naming
 
@@ -174,11 +174,11 @@ If `do-work/` is freshly bootstrapped (no existing REQ files anywhere), skip dup
 
 For each parsed request, check for similar existing ones across both tiers.
 
-| Existing request is in... | Action |
-|---------------------------|--------|
-| `do-work/` (queue) | If same: tell user, skip. If similar: ask. If enhancement: append an Addendum section to the pending file |
-| `do-work/working/` | **NEVER modify working/.** Create a new addendum REQ with `addendum_to` field, referencing the **same UR** (still active in `user-requests/`). Update the UR's `requests` array to include the new REQ ID — this prevents the UR from archiving before the addendum is processed. If the original is a legacy REQ with no `user_request` field, create a new UR instead (same as the archive case). |
-| `do-work/archive/` | **NEVER modify archive/.** Create a **new UR** (next available number) to capture the new input, plus new addendum REQ(s) with `addendum_to` field linking to the archived original. The new REQ references `user_request:` of the **new** UR, not the archived one. |
+| Existing request is in... | Action | New REQ lands in |
+|---------------------------|--------|-----------------|
+| `do-work/` (queue) | If same: tell user, skip. If similar: ask. If enhancement: append an Addendum section to the pending file | N/A — amends the existing pending file |
+| `do-work/working/` | **NEVER modify working/.** Create a new addendum REQ with `addendum_to` field, referencing the **same UR** (still active in `user-requests/`). Update the UR's `requests` array to include the new REQ ID — this prevents the UR from archiving before the addendum is processed. If the original is a legacy REQ with no `user_request` field, create a new UR instead (same as the archive case). | `do-work/` root — work loop picks it up |
+| `do-work/archive/` | **NEVER modify archive/.** Create a **new UR** (next available number) to capture the new input, plus new addendum REQ(s) with `addendum_to` field linking to the archived original. The new REQ references `user_request:` of the **new** UR, not the archived one. | `do-work/` root — work loop picks it up |
 
 **Addendum to a queued request** — don't rewrite, append:
 
@@ -215,7 +215,7 @@ The user wants the sidebar to also support dark mode.
 - Sidebar must respect the dark mode theme
 ```
 
-Also update UR-006's `requests` array to include REQ-021 (e.g., `[REQ-005, REQ-021]`). This ensures the UR won't archive until the addendum completes too.
+Also update UR-006's `requests` array to include REQ-021 (e.g., `[REQ-005, REQ-021]`). This ensures the UR won't archive until the addendum completes too. The `addendum_to` field is what connects the addendum to its origin — the new REQ enters the queue normally and gets picked up by the next `do work run`.
 
 **Addendum for archived requests** (original in `archive/`) — create a new UR + new REQ:
 
@@ -242,7 +242,7 @@ The user wants the sidebar to also support dark mode.
 - Sidebar must respect the dark mode theme
 ```
 
-The new UR-021 gets its own `input.md` capturing the new user input. In the UR's verbatim section, note what it extends (e.g., "Follow-up to UR-006"). The new UR/REQ pair flows through the normal lifecycle independently — the `addendum_to` field provides context linkage without coupling lifecycles.
+The new UR-021 gets its own `input.md` capturing the new user input. In the UR's verbatim section, note what it extends (e.g., "Follow-up to UR-006"). The new UR/REQ pair flows through the normal lifecycle independently — the `addendum_to` field provides context linkage without coupling lifecycles. The original UR folder in `archive/` is immutable — do not attempt to modify or re-open it.
 
 ### Step 3: Clarify Only If Needed
 
@@ -338,16 +338,20 @@ Created:
 ### Addendum to Archived Request
 
 ```
-User: do work dark mode should also affect the sidebar
+User: do work dark mode should also apply to modals
 
-[Checks existing — REQ-005-dark-mode.md is in do-work/archive/UR-006/]
+[Checks existing — REQ-005-dark-mode.md is in do-work/archive/UR-003/]
 
-REQ-005 is archived — creating a new request with a fresh UR.
+REQ-005 is already completed and archived — creating a new follow-up request.
+The archived UR is immutable, so a new UR is created for this addendum.
 
 Created:
-- do-work/user-requests/UR-021/input.md (new UR for this input, notes follow-up to UR-006)
-- do-work/REQ-084-addendum-dark-mode-sidebar.md (addendum_to: REQ-005, user_request: UR-021)
+- do-work/user-requests/UR-009/input.md         ← new UR (archived UR-003 is not touched)
+- do-work/REQ-027-addendum-dark-mode-modals.md  ← new REQ in do-work/ root
+  (user_request: UR-009, addendum_to: REQ-005)
 ```
+
+The new REQ-027 sits in `do-work/` root with `status: pending` and will be picked up by the next `do work run`. The archived `UR-003/` folder is not modified.
 
 ### Complex Multi-Feature Request
 

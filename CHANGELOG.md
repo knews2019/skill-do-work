@@ -10,16 +10,33 @@ In-flight addendum handling now has a fallback for legacy REQs. If the original 
 
 - `capture.md`: Added legacy fallback to the in-flight addendum row in the duplicate-check table and Step 5 UR logic
 
-## 0.21.0 — The Comeback (2026-03-03)
+## 0.21.0 — The Comeback (2026-03-04)
 
 Addendums to archived requests no longer fall into a lifecycle gap. Previously, creating an addendum for a completed request would reference the old (archived) UR, leading to orphaned REQs and confused cleanup. Now the system creates a fresh UR for the new input while keeping an `addendum_to` link back to the original — clean lifecycle, no archive mutations. In-flight addendums also got tightened: the original UR's `requests` array is updated so cleanup won't archive it prematurely. The work action now reads the original REQ for context before triaging any addendum.
 
-- `capture.md`: Split the addendum table into three explicit cases — queued, in-flight, and archived — each with its own UR handling rules
+- `capture.md`: Split the addendum table into three explicit cases — queued, in-flight, and archived — each with its own UR handling rules and "New REQ lands in" column
 - `capture.md`: Archived addendums now create a **new UR** (not reuse the old one) plus addendum REQ(s) with `addendum_to` for context linkage
 - `capture.md`: In-flight addendums now update the original UR's `requests` array to prevent premature archival
+- `capture.md`: Strengthened Immutability Rule to state that addendum REQs always go to `do-work/` root
 - `capture.md`: Step 5 now has conditional UR logic — fresh, in-flight, or archived — so agents pick the right path
-- `capture.md`: Added "Addendum to Archived Request" example showing the new UR + addendum REQ flow
+- `capture.md`: Added "Addendum to Archived Request" examples showing the new UR + addendum REQ flow
 - `work.md`: Triage (Step 3) now reads the referenced `addendum_to` REQ from archive before triaging, so the builder has full context
+
+## 0.20.5 — The Gap Closer (2026-03-03)
+
+Addendum rules in `capture.md` are now airtight. When an original request is archived, creating an addendum always produces a new UR + REQ in `do-work/` root — so the work loop can pick it up. The archive stays immutable.
+
+- Added explicit "New REQ lands in" column to the duplicate-handling table
+- Strengthened the Immutability Rule to state that new addendum REQs always go to `do-work/` root
+- Clarified that archived URs are immutable — addendums always get a fresh UR
+- Added "Addendum to Archived Request" example to make the pattern unambiguous
+
+## 0.20.4 — The Right Folders (2026-03-03)
+
+Two instruction bugs that would cause literal agent implementations to fail. Standalone review mode now searches UR subfolders for recent work, and Step 1 of the work loop now explicitly reads frontmatter before selecting the next request.
+
+- `review-work.md` Step 1: "no target specified" now searches `do-work/archive/UR-NNN/` subdirectories in addition to the archive root — completed REQs live in UR folders after cleanup, not the root
+- `work.md` Step 1: replaced "List (don't read) ... pick first with `status: pending`" with an explicit frontmatter-read step — status is in YAML frontmatter, not the filename, so listing alone can't filter by status
 
 ## 0.20.3 — The Bug Hunt (2026-03-03)
 

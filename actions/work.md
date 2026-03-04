@@ -147,7 +147,7 @@ error: "Description"          # Only if failed
 
 ### Step 1: Find Next Request
 
-List (don't read) `REQ-*.md` filenames in `do-work/`. Sort by number, pick the first with `status: pending` (skip `pending-answers` — those wait for user input). If no `pending` REQs found, report completion and exit. If only `pending-answers` REQs remain, report them to the user so they can batch-review the questions.
+List `REQ-*.md` filenames in `do-work/`. Sort by number. Read the frontmatter of each (in number order) to check `status` — pick the first with `status: pending` (skip `pending-answers` — those wait for user input). Don't read the full body at this stage. If no `pending` REQs found, report completion and exit. If only `pending-answers` REQs remain, report them to the user so they can batch-review the questions.
 
 ### Step 2: Claim the Request
 
