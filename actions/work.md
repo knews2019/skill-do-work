@@ -545,7 +545,7 @@ All 2 requests completed:
 - Forgetting to update status in frontmatter at each phase transition
 - Archiving a UR folder before all its REQs are complete
 - Forgetting Planning status note for Routes A/B ("Planning not required")
-- Using `git add -A` instead of staging specific files (remember: follow-up REQs and UR-folder moves from Step 8 must also be staged)
+- Using `git add -A` instead of staging specific files
 - Using `--no-verify` to bypass a failing pre-commit hook instead of fixing the issue
 - Creating follow-ups for every `- [~]` item instead of only UX-affecting decisions
 
