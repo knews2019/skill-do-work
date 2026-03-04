@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to verify the quality of captured requests. Evaluates REQ files against their originating User Request (UR) to find gaps.
 
-A confidence evaluation system that compares extracted REQ files against the original user input to identify lost requirements, dropped UX details, missing intent signals, and incomplete coverage.
+A confidence evaluation system that compares extracted REQ files against the original user input to identify lost requirements, dropped UX details, missing intent signals, and incomplete coverage. This is **capture QA** — it checks whether requirements were extracted correctly, not whether the implementation is good.
 
 ## Philosophy
 
@@ -153,6 +153,6 @@ For REQs created before the UR system:
 - Don't expand requirements beyond what the user said — you're checking coverage, not inventing new features
 - Don't penalize REQs for missing details the user never mentioned
 - Don't treat implementation details as gaps — those are for the builder to decide
-- Don't classify something as Ambiguous when the answer is in the original input — that's a Critical or Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
+- Don't classify something as Ambiguous when the answer is in the original input — that's an Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
 - Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
 - Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Verify already tried to ask the user; any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment.
