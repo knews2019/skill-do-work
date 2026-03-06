@@ -398,7 +398,7 @@ Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, ski
 ```bash
 # Stage implementation files + archived REQ
 git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx \
-  do-work/archive/REQ-003-dark-mode.md
+  do-work/archive/UR-002/REQ-003-dark-mode.md
 
 # Stage follow-up REQs created in Step 8 (if any)
 git add do-work/REQ-025-confirm-sidebar-palette.md
