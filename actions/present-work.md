@@ -140,52 +140,191 @@ These are the source of truth — read them for the full picture.]
 - [Quick wins — small additions that compound the value]
 ```
 
-#### 4b: Video Script (when the feature is user-facing/demo-able)
+#### 4b: Remotion Video (when the feature is user-facing/demo-able)
 
-Write to `do-work/deliverables/UR-NNN-video-script.md`:
+Generate a Remotion video project for browser preview. **No mp4 rendering** — the deliverable is the Remotion source code itself, previewed via `npx remotion studio`.
 
-```markdown
-# Video Script: [Feature Name]
+Write the video project to `do-work/deliverables/UR-NNN-video/` (or `REQ-NNN-video/` for standalone REQs):
 
-**Duration:** ~[X] minutes
-**Format:** Screen recording with narration (Remotion / Loom / manual)
-**Audience:** [Client stakeholders / end users / both]
+**Project structure:**
 
----
-
-## Scene 1: The Problem (~10-15s)
-
-**Visual:** [What to show on screen — the existing pain point, gap, or workflow without this feature]
-**Narration:** "[Setup — what was missing, broken, or manual. Keep it relatable.]"
-**Transition:** [How to move to the next scene]
-
-## Scene 2: The Solution (~20-30s)
-
-**Visual:** [Demo the feature — show the happy path, step by step]
-**Narration:** "[Walk through what's happening on screen. Match narration to actions.]"
-**Key moments:**
-- [Moment 1: The "aha" — where the value becomes obvious]
-- [Moment 2: The detail — a specific capability that impresses]
-
-## Scene 3: Under the Hood (~15-20s)
-
-**Visual:** [Architecture diagram or data flow from the client brief]
-**Narration:** "[Brief technical explanation — how it works at a high level. No code. Confidence-building, not education.]"
-
-## Scene 4: The Value (~10-15s)
-
-**Visual:** [Key capability comparison: before vs. after, or a list of what's now possible]
-**Narration:** "[Why this matters to the business. End on the revenue/growth angle.]"
-
----
-
-**Production notes:**
-- [Screen resolution / browser / app state needed for recording]
-- [Test data to use for the demo]
-- [Anything to set up before recording]
+```
+do-work/deliverables/UR-NNN-video/
+├── package.json
+├── src/
+│   ├── Root.tsx              # Remotion <Composition> entry point
+│   ├── Video.tsx             # Main composition — sequences all scenes
+│   ├── scenes/
+│   │   ├── ProblemScene.tsx   # Scene 1: The pain point
+│   │   ├── SolutionScene.tsx  # Scene 2: The feature demo
+│   │   ├── ArchScene.tsx      # Scene 3: Under the hood
+│   │   └── ValueScene.tsx     # Scene 4: Business value + CTA
+│   └── styles.ts             # Shared colors, fonts, layout constants
+└── tsconfig.json
 ```
 
-**When to generate a video script:**
+**`package.json`:**
+
+```json
+{
+  "name": "[ur-or-req-id]-video",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "preview": "npx remotion studio src/Root.tsx"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "remotion": "^4.0.0",
+    "@remotion/cli": "^4.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/react": "^18.2.0"
+  }
+}
+```
+
+**`src/Root.tsx`:**
+
+```tsx
+import {Composition} from 'remotion';
+import {Video} from './Video';
+
+export const RemotionRoot: React.FC = () => {
+  return (
+    <Composition
+      id="[FeatureName]"
+      component={Video}
+      durationInFrames={[total frames — 30fps * seconds]}
+      fps={30}
+      width={1920}
+      height={1080}
+    />
+  );
+};
+```
+
+**`src/Video.tsx`:**
+
+Compose all scenes using `<Sequence>` with appropriate frame offsets:
+
+```tsx
+import {AbsoluteFill, Sequence} from 'remotion';
+import {ProblemScene} from './scenes/ProblemScene';
+import {SolutionScene} from './scenes/SolutionScene';
+import {ArchScene} from './scenes/ArchScene';
+import {ValueScene} from './scenes/ValueScene';
+
+export const Video: React.FC = () => {
+  return (
+    <AbsoluteFill style={{backgroundColor: '#0f172a'}}>
+      <Sequence from={0} durationInFrames={[scene1 frames]}>
+        <ProblemScene />
+      </Sequence>
+      <Sequence from={[scene1 end]} durationInFrames={[scene2 frames]}>
+        <SolutionScene />
+      </Sequence>
+      <Sequence from={[scene2 end]} durationInFrames={[scene3 frames]}>
+        <ArchScene />
+      </Sequence>
+      <Sequence from={[scene3 end]} durationInFrames={[scene4 frames]}>
+        <ValueScene />
+      </Sequence>
+    </AbsoluteFill>
+  );
+};
+```
+
+**Scene components — guidelines:**
+
+Each scene is a React component using Remotion primitives. Build visuals with:
+
+- `<AbsoluteFill>` for full-frame layouts
+- `useCurrentFrame()` and `interpolate()` for animations (fade in/out, slide, scale)
+- `<Sequence>` for staggered element timing within a scene
+- `spring()` for natural motion on key elements
+- Inline styles or the shared `styles.ts` constants — no external CSS frameworks
+- Text, boxes, arrows, and simple shapes to illustrate concepts — no external images unless the project has them
+
+**Scene content mapping:**
+
+| Scene | Duration | Content |
+|-------|----------|---------|
+| **ProblemScene** | ~10-15s (300-450 frames) | Animate the pain point — what was missing, broken, or manual. Use text reveals, fading lists, or a "before" state visualization. |
+| **SolutionScene** | ~20-30s (600-900 frames) | Walk through the feature. Animate a simulated UI or step-by-step flow. Highlight the "aha" moment with emphasis animation. This is the longest scene. |
+| **ArchScene** | ~15-20s (450-600 frames) | Animate the architecture diagram from the client brief — boxes appearing, arrows drawing between them, labels fading in. Show data flow as animated paths. |
+| **ValueScene** | ~10-15s (300-450 frames) | Before/after comparison or animated capability list. End with the project name and a call to action. |
+
+**Scene component example (ProblemScene):**
+
+```tsx
+import {AbsoluteFill, useCurrentFrame, interpolate, Sequence} from 'remotion';
+
+export const ProblemScene: React.FC = () => {
+  const frame = useCurrentFrame();
+  const titleOpacity = interpolate(frame, [0, 30], [0, 1], {
+    extrapolateRight: 'clamp',
+  });
+
+  return (
+    <AbsoluteFill
+      style={{
+        backgroundColor: '#1e293b',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 80,
+      }}
+    >
+      <h1
+        style={{
+          color: '#f8fafc',
+          fontSize: 72,
+          fontFamily: 'system-ui, sans-serif',
+          fontWeight: 700,
+          opacity: titleOpacity,
+          textAlign: 'center',
+        }}
+      >
+        [The problem statement — concise, relatable]
+      </h1>
+      <Sequence from={45}>
+        {/* Staggered bullet points, animated elements, etc. */}
+      </Sequence>
+    </AbsoluteFill>
+  );
+};
+```
+
+**`src/styles.ts`:**
+
+```ts
+export const COLORS = {
+  bg: '#0f172a',
+  surface: '#1e293b',
+  primary: '#3b82f6',
+  accent: '#10b981',
+  text: '#f8fafc',
+  muted: '#94a3b8',
+};
+
+export const FONTS = {
+  heading: 'system-ui, -apple-system, sans-serif',
+  body: 'system-ui, -apple-system, sans-serif',
+  mono: 'ui-monospace, monospace',
+};
+```
+
+**Key rules for generating scenes:**
+
+- **Use real content from the completed work.** Scene text comes from the REQ's What/Implementation Summary sections and the client brief — not placeholder lorem ipsum.
+- **Animate meaningfully.** Every animation should reveal information progressively. Don't animate for the sake of it.
+- **Keep it readable.** Large fonts (48px+ for body, 72px+ for headings), high contrast, minimal text per frame.
+- **No external assets.** Everything is built with React components, styled divs, and SVG. No image imports, no video embeds.
+- **Match the architecture diagram.** The ArchScene should visualize the same components and data flow from the client brief's architecture section, animated.
+
+**When to generate a Remotion video:**
 - The feature has visible UI or user-facing output
 - There's a clear before/after to demonstrate
 - The work is substantial enough to warrant a walkthrough (Route B or C)
@@ -207,10 +346,13 @@ Write to `do-work/deliverables/UR-NNN-video-script.md`:
 Generated deliverables for UR-003:
 
   do-work/deliverables/UR-003-client-brief.md      Client brief with architecture + value prop
-  do-work/deliverables/UR-003-video-script.md       Video script (4 scenes, ~90s)
+  do-work/deliverables/UR-003-video/               Remotion video (4 scenes, ~90s)
 
 Key value points:
   - [Top 1-2 value propositions from the brief]
+
+To preview the video:
+  cd do-work/deliverables/UR-003-video && npm install && npm run preview
 ```
 
 ## Portfolio Mode Workflow
