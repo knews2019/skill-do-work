@@ -38,10 +38,15 @@ work action (orchestrator - lightweight, stays in loop)
   │     │                                        Review
   │     │                                            │
   │     │                                            ▼
-  │     └── Archive ──► create pending-answers follow-ups for - [~] items
+  │     ├── Archive ──► create pending-answers follow-ups for - [~] items
+  │     │                                            │
+  │     │                                            ▼
+  │     └── Commit (git repos only)
   │
   └── Loop until queue empty → cleanup → report (tip: `do work clarify` for pending-answers)
 ```
+
+> **Remember:** Every completed request gets a git commit (Step 9) before looping to the next request.
 
 **Sub-agent note:** This document uses "spawn agent" language. Use your platform's subagent mechanism when available. If your tool doesn't support subagents, run phases sequentially in the same session and label outputs clearly.
 
