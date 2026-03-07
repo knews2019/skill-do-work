@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.22.7 — The Missing Step (2026-03-07)
+
+Commits weren't happening during `do work run` because the architecture diagram — the visual flow agents follow — never mentioned Step 9 (Commit). The detailed instructions existed but agents never reached them. Now the diagram shows Commit as an explicit step after Archive.
+
+- **work.md**: Added "Commit (git repos only)" node to the architecture diagram between Archive and Loop
+- **work.md**: Added bold reminder callout below the diagram reinforcing that every completed request gets a commit before looping
+
 ## 0.22.6 — The Safety Net (2026-03-04)
 
 Six cross-file fixes addressing safety gaps, missing guardrails, and inconsistent instructions.
