@@ -16,7 +16,7 @@ A unified entry point for task capture and processing.
 - **work**: Process pending requests → executes the queue
 - **clarify questions**: Batch-review Open Questions from completed work → user answers, confirms, or skips
 - **review work**: Post-work review → requirements check, code review, acceptance testing, and testing suggestions
-- **present work**: Client-facing deliverables → briefs, architecture diagrams, value propositions, video scripts
+- **present work**: Client-facing deliverables → briefs, architecture diagrams, value propositions, Remotion videos
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
 
 > **Core concept:** The capture requests action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.

@@ -133,7 +133,7 @@ See [actions/review-work.md](./actions/review-work.md) for the full review logic
 Invoked when you say "present work", "present", "showcase", or "deliver". Generates client-facing deliverables from completed work:
 - **Client Brief** — what was built, how it works (architecture + data flow), why it matters
 - **Value Proposition** — business impact, revenue opportunities, competitive advantage
-- **Video Script** — scene-by-scene walkthrough for demo videos (Remotion/Loom) when the feature is user-facing
+- **Remotion Video** — browser-previewable Remotion video project (React components, no mp4) when the feature is user-facing
 - **Portfolio Summary** — `do work present all` aggregates all completed work into a cumulative overview
 
 Artifacts are saved to `do-work/deliverables/` for reuse.

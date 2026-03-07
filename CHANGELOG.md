@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.23.0 — The Director's Cut (2026-03-07)
+
+Present work now generates real Remotion video projects instead of markdown video scripts. The video deliverable is a full React/TypeScript project with animated scenes you can preview in the browser via `npx remotion studio` — no mp4 rendering needed.
+
+- **present-work.md**: Replaced section 4b markdown video script template with Remotion project structure (Root, Video, scene components, styles)
+- **present-work.md**: Added scene content guidelines, animation patterns, and project scaffolding instructions
+- **_dev/deliverables**: Replaced `do-work-video-script.md` with a complete `do-work-video/` Remotion project as the reference example
+- **SKILL.md, README.md**: Updated video deliverable descriptions to reflect Remotion video format
+
 ## 0.22.7 — The Missing Step (2026-03-07)
 
 Commits weren't happening during `do work run` because the architecture diagram — the visual flow agents follow — never mentioned Step 9 (Commit). The detailed instructions existed but agents never reached them. Now the diagram shows Commit as an explicit step after Archive.
