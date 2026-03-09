@@ -14,6 +14,13 @@ Every action now commits its own work. Capture, cleanup, review-work, and work a
 - **work.md**: Step 1 now uses explicit glob pattern `do-work/REQ-*.md` with a fallback verification to prevent false "queue empty" results
 - **work.md**: Step 9 now writes the real commit hash back to the archived REQ's `commit:` frontmatter field via `--amend`, giving review-work and present-work reliable traceability
 
+## 0.23.2 — The Atomic Ledger (2026-03-09)
+
+Uncommitted files no longer pile up without a home. The new commit action analyzes your working tree, traces files back to archived REQs when possible, semantically groups the rest, and commits everything in small atomic batches — each one traceable.
+
+- **commit.md**: New action — analyzes uncommitted files, associates with archived REQs for traceability, groups semantically into atomic commits (1-5 files each), and reports a summary
+- **SKILL.md**: Added routing (priority 8), commit verbs, action list, dispatch table, help menu, next steps, and examples for the commit action
+
 ## 0.23.0 — The Director's Cut (2026-03-07)
 
 Present work now generates real Remotion video projects instead of markdown video scripts. The video deliverable is a full React/TypeScript project with animated scenes you can preview in the browser via `npx remotion studio` — no mp4 rendering needed.
