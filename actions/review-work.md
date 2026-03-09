@@ -298,6 +298,33 @@ After generating the report, append a Review section to the REQ file:
 
 In standalone mode, this is an exception to the archive immutability rule — review annotations are post-work metadata, not content changes.
 
+### Commit (Standalone mode, git repos only)
+
+In **standalone mode**, after appending the Review section and creating any follow-up REQs, commit the changes. In **pipeline mode**, skip this — the work action's Step 9 handles the commit.
+
+Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
+
+```bash
+# Stage the modified archived REQ (with appended Review section)
+git add do-work/archive/UR-NNN/REQ-NNN-slug.md
+
+# Stage any follow-up REQs created
+git add do-work/REQ-NNN-slug.md
+
+git commit -m "$(cat <<'EOF'
+[REQ-NNN] review: {score}% (Route {route})
+
+Reviewed: do-work/archive/UR-NNN/REQ-NNN-slug.md
+Follow-ups: {REQ-NNN, REQ-NNN} or "None"
+
+EOF
+)"
+```
+
+**Format:** `[REQ-NNN] review: {score}% (Route {route})` — where `{score}` is the overall review percentage and `{route}` is the original triage route. List the reviewed file path and any follow-up REQs created.
+
+Do not use `git add -A` or `git add .` — stage only the modified archived REQ and any new follow-up REQs. Don't bypass pre-commit hooks.
+
 ## Calibrating Review Depth
 
 Match effort to complexity:

@@ -428,6 +428,19 @@ EOF
 
 One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/`), and any UR-folder moves to `archive/`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
 
+**Write commit hash back to the archived REQ.** After the commit succeeds, retrieve the hash with `git rev-parse --short HEAD` and update the archived REQ's frontmatter `commit:` field with the actual value. Then amend the commit to include this update:
+
+```bash
+# After the initial commit succeeds:
+HASH=$(git rev-parse --short HEAD)
+# Update the commit: field in the archived REQ frontmatter
+# (replace "commit:" line or add it if missing)
+git add do-work/archive/UR-NNN/REQ-NNN-slug.md
+git commit --amend --no-edit
+```
+
+This ensures the `commit:` field in the archived REQ contains the real hash, which the review-work and present-work actions depend on for traceability. Without this step, the field would be empty or a placeholder.
+
 ### Step 10: Loop or Exit
 
 Re-check `do-work/` for `REQ-*.md` files (fresh check, not cached).

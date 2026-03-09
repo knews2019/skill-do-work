@@ -290,6 +290,36 @@ Next steps:
 
 Only suggest prompts that provide value given the current state. Use full action names.
 
+### Step 7: Commit (Git repos only)
+
+Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip this step.
+
+Stage only the files created during this capture — the UR folder and all new REQ files:
+
+```bash
+# Stage the UR input and any assets
+git add do-work/user-requests/UR-NNN/input.md
+git add do-work/user-requests/UR-NNN/assets/  # only if assets were created
+
+# Stage each created REQ file
+git add do-work/REQ-NNN-slug.md
+
+git commit -m "$(cat <<'EOF'
+[UR-NNN] captured {title} ({N} REQs)
+
+- REQ-NNN: {title}
+- REQ-NNN: {title}
+
+EOF
+)"
+```
+
+**Format:** `[UR-NNN] captured {title} ({N} REQs)` — where `{title}` is the UR title and `{N}` is the count of REQ files created. List each REQ with its ID and title in the body.
+
+**For addenda** (when appending to an existing pending REQ instead of creating new files), the commit message changes to: `[UR-NNN] addendum to REQ-NNN: {description}`. Stage the modified REQ file and the new UR folder.
+
+Do not use `git add -A` or `git add .` — stage only the specific files created by this capture. Don't bypass pre-commit hooks — fix issues and retry.
+
 ## Examples
 
 ### Simple Capture
