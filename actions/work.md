@@ -152,7 +152,9 @@ error: "Description"          # Only if failed
 
 ### Step 1: Find Next Request
 
-List `REQ-*.md` filenames in `do-work/`. Sort by number. Read the frontmatter of each (in number order) to check `status` — pick the first with `status: pending` (skip `pending-answers` — those wait for user input). Don't read the full body at this stage. If no `pending` REQs found, report completion and exit. If only `pending-answers` REQs remain, report them to the user so they can batch-review the questions.
+Glob for `do-work/REQ-*.md` (root of `do-work/`, **not** a subdirectory — there is no `queue/` folder). Sort by number. Read the frontmatter of each (in number order) to check `status` — pick the first with `status: pending` (skip `pending-answers` — those wait for user input). Don't read the full body at this stage. If no `pending` REQs found, report completion and exit. If only `pending-answers` REQs remain, report them to the user so they can batch-review the questions.
+
+**Exact glob pattern:** `do-work/REQ-*.md` — if this returns no results, do NOT conclude the queue is empty. Verify by listing `do-work/` contents to rule out a bad pattern.
 
 ### Step 2: Claim the Request
 
@@ -427,6 +429,19 @@ EOF
 **Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
 
 One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/`), and any UR-folder moves to `archive/`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
+
+**Write commit hash back to the archived REQ.** After the commit succeeds, retrieve the hash with `git rev-parse --short HEAD` and update the archived REQ's frontmatter `commit:` field with the actual value. Then amend the commit to include this update:
+
+```bash
+# After the initial commit succeeds:
+HASH=$(git rev-parse --short HEAD)
+# Update the commit: field in the archived REQ frontmatter
+# (replace "commit:" line or add it if missing)
+git add do-work/archive/UR-NNN/REQ-NNN-slug.md
+git commit --amend --no-edit
+```
+
+This ensures the `commit:` field in the archived REQ contains the real hash, which the review-work and present-work actions depend on for traceability. Without this step, the field would be empty or a placeholder.
 
 ### Step 10: Loop or Exit
 

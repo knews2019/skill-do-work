@@ -100,6 +100,34 @@ do-work/archive/
 
 **No loose REQ or CONTEXT files should exist directly in `do-work/archive/` after cleanup.**
 
+## Commit (Git repos only)
+
+After all three passes complete, if any files were moved or consolidated, commit the structural changes.
+
+Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
+
+```bash
+# Stage all paths affected by cleanup (moves show as delete + add)
+git add do-work/archive/
+
+git commit -m "$(cat <<'EOF'
+do-work: cleanup — consolidated {N} REQs, closed {M} URs
+
+- Archived: {list of UR-NNN closed}
+- Consolidated: {X} loose REQs into UR folders
+- Legacy: {Y} items moved to archive/legacy/
+- Fixed: {Z} misplaced folders
+
+EOF
+)"
+```
+
+**Format:** `do-work: cleanup — consolidated {N} REQs, closed {M} URs` — adjust the counts and bullet list to reflect what actually changed. Omit bullet categories where the count is zero.
+
+If nothing was moved (archive was already clean), skip the commit entirely.
+
+Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/` and `do-work/user-requests/` affected by the cleanup. Don't bypass pre-commit hooks.
+
 ## What This Action Does NOT Do
 
 - Delete any files — only moves them into the right location
