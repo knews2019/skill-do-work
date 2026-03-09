@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.23.1 — The Paper Trail (2026-03-09)
+
+Every action now commits its own work. Capture, cleanup, review-work, and work all have explicit git commit steps so changes are never left unstaged. The work action also writes the real commit hash back into the archived REQ for traceability.
+
+- **capture.md**: Added Step 7 — commits the UR folder and new REQ files after capture, with addendum-aware message format
+- **cleanup.md**: Added Commit section — commits structural moves (archive consolidation, legacy, misplaced folders) after all three cleanup passes
+- **review-work.md**: Added Commit section for standalone mode — commits the appended Review section and any follow-up REQs (pipeline mode defers to work Step 9)
+- **work.md**: Step 1 now uses explicit glob pattern `do-work/REQ-*.md` with a fallback verification to prevent false "queue empty" results
+- **work.md**: Step 9 now writes the real commit hash back to the archived REQ's `commit:` frontmatter field via `--amend`, giving review-work and present-work reliable traceability
+
 ## 0.23.0 — The Director's Cut (2026-03-07)
 
 Present work now generates real Remotion video projects instead of markdown video scripts. The video deliverable is a full React/TypeScript project with animated scenes you can preview in the browser via `npx remotion studio` — no mp4 rendering needed.
