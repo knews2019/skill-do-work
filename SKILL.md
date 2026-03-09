@@ -18,6 +18,7 @@ A unified entry point for task capture and processing.
 - **review work**: Post-work review → requirements check, code review, acceptance testing, and testing suggestions
 - **present work**: Client-facing deliverables → briefs, architecture diagrams, value propositions, Remotion videos
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
+- **commit**: Commit uncommitted files → analyzes, groups atomically, traces to REQs
 
 > **Core concept:** The capture requests action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
 
@@ -49,9 +50,10 @@ Check these patterns **in order** — first match wins:
 | 5        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review`, `do work audit code`                        | → review work                  |
 | 6        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
 | 7        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
-| 8        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
-| 9        | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
-| 10       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
+| 8        | Commit keywords          | `do work commit`, `do work commit changes`, `do work save work`                                                                    | → commit                      |
+| 9        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
+| 10       | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
+| 11       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -112,6 +114,11 @@ Note: `do work present` (no target) presents the most recent completed UR. `do w
 These signal "consolidate the archive":
 cleanup, clean up, tidy, consolidate, organize archive, fix archive
 
+### Commit Verbs (→ Commit)
+
+These signal "commit uncommitted files atomically":
+commit, commit changes, commit files, save changes, save work
+
 ### Changelog Verbs (→ Version)
 
 These signal "show release notes":
@@ -156,6 +163,7 @@ do-work — task queue for agentic coding tools
   Other actions:
     do work clarify             Answer pending questions from completed work
     do work cleanup             Consolidate the archive
+    do work commit              Analyze and commit uncommitted files atomically
     do work version             Check version / updates
     do work changelog           Show release notes
 ```
@@ -209,6 +217,12 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work tidy` → Same as cleanup
 - `do work consolidate` → Same as cleanup
 
+### Routes to Commit
+
+- `do work commit` → Analyzes and commits all uncommitted files atomically
+- `do work commit changes` → Same as commit
+- `do work save work` → Same as commit
+
 ### Routes to Changelog (via Version)
 
 - `do work changelog` → Displays changelog (newest at bottom)
@@ -251,6 +265,7 @@ Each action has an action file with full instructions. How you execute it depend
 | review work        | `./actions/review-work.md`      | Target REQ/UR or "most recent" |
 | present work       | `./actions/present-work.md`     | Target REQ/UR, "most recent", or "all" |
 | cleanup            | `./actions/cleanup.md`          | (none needed)                  |
+| commit             | `./actions/commit.md`           | (none needed)                  |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 
 ### If subagents are available
@@ -307,6 +322,13 @@ Next steps:
 ```
 Next steps:
   do work present all         Generate portfolio summary (if multiple URs completed)
+  do work [describe changes]  Capture new requests
+```
+
+**After commit:**
+```
+Next steps:
+  do work review work         Review the committed changes
   do work [describe changes]  Capture new requests
 ```
 
