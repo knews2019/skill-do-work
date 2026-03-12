@@ -14,6 +14,14 @@ Every action now commits its own work. Capture, cleanup, review-work, and work a
 - **work.md**: Step 1 now uses explicit glob pattern `do-work/REQ-*.md` with a fallback verification to prevent false "queue empty" results
 - **work.md**: Step 9 now writes the real commit hash back to the archived REQ's `commit:` frontmatter field via `--amend`, giving review-work and present-work reliable traceability
 
+## 0.23.4 — The Crash Guard (2026-03-12)
+
+Appending steps in the work loop are now idempotent. If a crash or re-entry happens mid-REQ, Steps 3, 4, and 5 skip sections that already exist instead of writing duplicates.
+
+- Step 3 (Triage): guards `## Triage` append with existence check
+- Step 4 (Planning): guards `## Plan` append and skip-note with existence checks
+- Step 5 (Exploration): guards `## Exploration` append with existence check
+
 ## 0.23.3 — The Tidy Tenant (2026-03-12)
 
 Agent rules now live inside `do-work/` where they belong. No more root-level pollution — the skill's runtime directory holds everything it creates.
