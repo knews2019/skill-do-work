@@ -11,8 +11,14 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 1
 fi
 
-# Capture only newly-added lines (starting with "+") from staged + unstaged diff
-diff_output=$(git diff HEAD 2>/dev/null || git diff 2>/dev/null || true)
+# Capture only newly-added lines (starting with "+") from staged + unstaged diff.
+# git diff HEAD covers both staged and unstaged changes when commits exist.
+# For initial-commit repos (no HEAD), combine --cached (staged) and plain diff (unstaged).
+if git rev-parse HEAD >/dev/null 2>&1; then
+  diff_output=$(git diff HEAD)
+else
+  diff_output=$(git diff --cached; git diff)
+fi
 
 if [ -z "$diff_output" ]; then
   echo -e "${GREEN}UNIFY PASSED: Diff is clean.${NC}"
