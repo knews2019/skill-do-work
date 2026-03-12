@@ -79,6 +79,11 @@ domain: frontend | backend | general
 ## What
 [1-3 sentences describing what is being requested]
 
+## AI Execution State (P-A-U Loop)
+- [ ] **[PLAN]:** (Agent: Read `.agent-rules/rules-[domain].md`. Write brief technical approach here. Do not write code yet.)
+- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
+- [ ] **[UNIFY]:** (Agent: Linters run, `./verify-unify.sh` passed, debug logs removed.)
+
 ## Why (if provided)
 [User's stated reasoning — omit if not provided]
 
