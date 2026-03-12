@@ -334,7 +334,19 @@ export const FONTS = {
 - Bug fixes that aren't visually interesting
 - Route A changes (too small)
 
-#### 4c: Portfolio artifacts (portfolio mode only — see below)
+#### 4c: Interactive Explainer (Single-File HTML)
+
+Always generate a self-contained HTML file at `do-work/deliverables/UR-NNN-interactive-explainer.html` (or `REQ-NNN-interactive-explainer.html`).
+
+**Guidelines for the Interactive Explainer:**
+
+- **Zero build steps:** It MUST be a single `.html` file. Use standard HTML5, Tailwind CSS via CDN (`<script src="https://cdn.tailwindcss.com"></script>`), and Vanilla JavaScript. No React, Vite, or npm installs required.
+- **Goal:** Visually explain the problem (Before) and the solution (After) to a non-technical stakeholder.
+- **Interactivity:** You MUST include interactive elements. Examples: A 'Before / After' visual toggle slider, or a clickable 'Step-by-Step' data flow diagram where clicking 'Next' highlights different parts of the architecture.
+- **Design:** Make it look modern and highly polished (slate light-mode backgrounds, bright accent colors, large typography, soft shadows). Include tooltips or sidebars that explain technical decisions in plain English.
+- **Content:** Pull real context from the REQ files. Include a 'The Problem', 'The Interactive Demo', and a 'Value Delivered' section.
+
+#### 4d: Portfolio artifacts (portfolio mode only — see below)
 
 ### Step 5: Save and Present
 
@@ -345,14 +357,18 @@ export const FONTS = {
 ```
 Generated deliverables for UR-003:
 
-  do-work/deliverables/UR-003-client-brief.md      Client brief with architecture + value prop
-  do-work/deliverables/UR-003-video/               Remotion video (4 scenes, ~90s)
+  do-work/deliverables/UR-003-client-brief.md              Client brief with architecture + value prop
+  do-work/deliverables/UR-003-video/                       Remotion video (4 scenes, ~90s)
+  do-work/deliverables/UR-003-interactive-explainer.html   Interactive explainer (single-file HTML)
 
 Key value points:
   - [Top 1-2 value propositions from the brief]
 
 To preview the video:
   cd do-work/deliverables/UR-003-video && npm install && npm run preview
+
+To view the interactive explainer:
+  Simply double-click the HTML file to open the interactive presentation directly in any browser.
 ```
 
 ## Portfolio Mode Workflow

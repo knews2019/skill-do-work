@@ -224,6 +224,20 @@ Format:
 - REQ-025: "Add edge case tests for dark mode toggle" (addendum_to: REQ-003)
 ```
 
+### Step 9.5: Human Validation (Standalone Mode Only)
+
+In **Standalone mode**, after presenting your review report, you MUST use your environment's ask-user prompt/tool to request human validation.
+
+Prompt the user: *"I have completed my automated review. Please test the deliverable manually. Do you approve? Do you have any feedback, lessons learned, or bugs to report?"*
+
+Based on their response:
+
+- **Lessons Learned / Architectural Feedback:** Append their exact insights directly into the `## Lessons Learned` section of the archived REQ file. (Create the section if it doesn't exist).
+- **Bugs / Fixes requested:** Treat these as **Important** findings. Pass them to Step 10 so the system automatically generates new follow-up REQ files (status: pending) containing their exact feedback, linking back via `addendum_to`, so the builder can fix them in the next run.
+- **Approved:** Note the approval and proceed.
+
+In **Pipeline mode**, skip this step entirely so you do not block the automated background work loop.
+
 ### Step 10: Create Follow-up REQs
 
 For each **Important** finding, create a follow-up REQ:

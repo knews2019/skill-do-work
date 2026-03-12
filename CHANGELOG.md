@@ -4,6 +4,75 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.25.1 — The Billboard (2026-03-12)
+
+README and SKILL.md now advertise the two new features. Users browsing the docs will see Human UAT under Review Work and Interactive Explainer under Present Work without digging into the action files.
+
+- README: Added Human UAT bullet to Review Work section
+- README: Added Interactive Explainer bullet to Present Work section
+- SKILL.md: Updated help menu description for `do work present work`
+
+## 0.25.0 — The Show Floor (2026-03-12)
+
+Present work now generates an interactive HTML explainer alongside the client brief and video. It's a single `.html` file — no build steps, no npm — that stakeholders can double-click to open in any browser.
+
+- Added section 4c: Interactive Explainer (Single-File HTML) to `present-work.md`
+- Zero dependencies: HTML5 + Tailwind CDN + Vanilla JS in one file
+- Includes Before/After toggle, step-by-step architecture walkthrough, and value summary
+- Updated Step 5 summary to list the HTML file with double-click-to-open instructions
+- Renumbered Portfolio artifacts from 4c to 4d
+
+## 0.24.0 — The Feedback Loop (2026-03-12)
+
+Reviews in standalone mode now pause for human validation before closing out. The reviewer presents its report, then asks the user to test manually and share feedback. Lessons learned go straight into the archived REQ; bugs become follow-up REQs automatically.
+
+- Added Step 9.5: Human Validation (Standalone Mode Only) to `review-work.md`
+- Lessons learned / architectural feedback appended to the archived REQ's `## Lessons Learned` section
+- Bugs and fix requests treated as Important findings, routed to Step 10 for follow-up REQ generation
+- Pipeline mode skips the step entirely — no blocking the automated loop
+
+## 0.23.7 — The Softer Touch (2026-03-12)
+
+Toned down the APPLY and Out-of-Scope agent instructions. Same constraints, less adversarial language — agents follow guidance better when it reads like coaching, not a legal contract.
+
+- Rewrote APPLY phase: "stay focused" instead of "you are forbidden"
+- Rewrote Out-of-Scope: "do not fix them inline" instead of "DO NOT fix them. You must strictly adhere to..."
+
+## 0.23.6 — The Reference Card (2026-03-12)
+
+The archived REQ example now shows what a completed P-A-U loop looks like. Agents have a concrete reference for how the execution state checkboxes should read when a request is done.
+
+- Added completed `## AI Execution State (P-A-U Loop)` section to the archived request file example
+
+## 0.23.5 — The Fine Tuning (2026-03-12)
+
+Two small fixes in work.md: the domain field in the REQ schema no longer looks like a pipe-delimited value (it's a single choice), and the APPLY phase now explicitly permits editing the REQ file to update state checkboxes.
+
+- Fixed `domain` field in Request File Schema — shows example value with comment instead of ambiguous pipe syntax
+- Added REQ-file exception to APPLY phase scope restriction — agents can update their own state checkboxes
+
+## 0.23.4 — The Crash Guard (2026-03-12)
+
+Appending steps in the work loop are now idempotent. If a crash or re-entry happens mid-REQ, Steps 3, 4, and 5 skip sections that already exist instead of writing duplicates.
+
+- Step 3 (Triage): guards `## Triage` append with existence check
+- Step 4 (Planning): guards `## Plan` append and skip-note with existence checks
+- Step 5 (Exploration): guards `## Exploration` append with existence check
+
+## 0.23.3 — The Tidy Tenant (2026-03-12)
+
+Agent rules now live inside `do-work/` where they belong. No more root-level pollution — the skill's runtime directory holds everything it creates.
+
+- Moved `agent-rules/` to `do-work/agent-rules/`
+- Updated all references in `capture.md` and `work.md` to use the new path
+
+## 0.23.2 — The Atomic Ledger (2026-03-09)
+
+Uncommitted files no longer pile up without a home. The new commit action analyzes your working tree, traces files back to archived REQs when possible, semantically groups the rest, and commits everything in small atomic batches — each one traceable.
+
+- **commit.md**: New action — analyzes uncommitted files, associates with archived REQs for traceability, groups semantically into atomic commits (1-5 files each), and reports a summary
+- **SKILL.md**: Added routing (priority 8), commit verbs, action list, dispatch table, help menu, next steps, and examples for the commit action
+
 ## 0.23.1 — The Paper Trail (2026-03-09)
 
 Every action now commits its own work. Capture, cleanup, review-work, and work all have explicit git commit steps so changes are never left unstaged. The work action also writes the real commit hash back into the archived REQ for traceability.
@@ -13,13 +82,6 @@ Every action now commits its own work. Capture, cleanup, review-work, and work a
 - **review-work.md**: Added Commit section for standalone mode — commits the appended Review section and any follow-up REQs (pipeline mode defers to work Step 9)
 - **work.md**: Step 1 now uses explicit glob pattern `do-work/REQ-*.md` with a fallback verification to prevent false "queue empty" results
 - **work.md**: Step 9 now writes the real commit hash back to the archived REQ's `commit:` frontmatter field via `--amend`, giving review-work and present-work reliable traceability
-
-## 0.23.2 — The Atomic Ledger (2026-03-09)
-
-Uncommitted files no longer pile up without a home. The new commit action analyzes your working tree, traces files back to archived REQs when possible, semantically groups the rest, and commits everything in small atomic batches — each one traceable.
-
-- **commit.md**: New action — analyzes uncommitted files, associates with archived REQs for traceability, groups semantically into atomic commits (1-5 files each), and reports a summary
-- **SKILL.md**: Added routing (priority 8), commit verbs, action list, dispatch table, help menu, next steps, and examples for the commit action
 
 ## 0.23.0 — The Director's Cut (2026-03-07)
 

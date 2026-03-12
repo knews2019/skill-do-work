@@ -71,12 +71,18 @@ title: Brief descriptive title
 status: pending
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001
+domain: frontend  # choose one: frontend, backend, or general
 ---
 
 # [Brief Title]
 
 ## What
 [1-3 sentences describing what is being requested]
+
+## AI Execution State (P-A-U Loop)
+- [ ] **[PLAN]:** (Agent: Read `do-work/agent-rules/rules-[domain].md`. Write brief technical approach here. Do not write code yet.)
+- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
+- [ ] **[UNIFY]:** (Agent: Native project linters run, tests passed, and diff hygiene manually verified to remove debug logs.)
 
 ## Why (if provided)
 [User's stated reasoning — omit if not provided]
@@ -165,6 +171,7 @@ For complex requests, add a Summary, an Extracted Requests table, and a Batch Co
 Read the user's input. Determine:
 - **Single vs multiple requests** — look for "and also", comma-separated lists, numbered items, distinct topics
 - **Simple vs complex** — apply the detection criteria above
+- **Domain classification** — infer the primary technical domain of the request (e.g., frontend, backend, or general) so the downstream builder knows which JIT rules to load.
 
 ### Step 2: Check for Duplicates
 
@@ -263,7 +270,7 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 
 **For all requests (simple and complex):**
 1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially)
-2. Create `REQ-NNN-slug.md` files using the appropriate format, with `user_request: UR-NNN`
+2. Create `REQ-NNN-slug.md` files using the appropriate format, with `user_request: UR-NNN` and the inferred `domain:`
 3. Update the UR's `requests` array with all created REQ IDs
 
 **Complex mode additionally:**

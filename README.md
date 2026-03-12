@@ -124,6 +124,7 @@ Invoked when you say "review work", "review", "review code", or "code review". A
 - **Code review** — evaluates code quality, scope discipline, and risk
 - **Acceptance testing** — actually runs/tests the feature to verify it works
 - **Suggested testing** — recommends additional checks the user should perform
+- **Human UAT** — interactively collects your manual testing feedback and lessons learned (Standalone mode only)
 - Creates follow-up REQs for Important findings
 
 See [actions/review-work.md](./actions/review-work.md) for the full review logic.
@@ -134,6 +135,7 @@ Invoked when you say "present work", "present", "showcase", or "deliver". Genera
 - **Client Brief** — what was built, how it works (architecture + data flow), why it matters
 - **Value Proposition** — business impact, revenue opportunities, competitive advantage
 - **Remotion Video** — browser-previewable Remotion video project (React components, no mp4) when the feature is user-facing
+- **Interactive Explainer** — a zero-dependency, clickable HTML file demonstrating the before/after state and data flow
 - **Portfolio Summary** — `do work present all` aggregates all completed work into a cumulative overview
 
 Artifacts are saved to `do-work/deliverables/` for reuse.
