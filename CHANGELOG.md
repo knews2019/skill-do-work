@@ -14,6 +14,13 @@ Every action now commits its own work. Capture, cleanup, review-work, and work a
 - **work.md**: Step 1 now uses explicit glob pattern `do-work/REQ-*.md` with a fallback verification to prevent false "queue empty" results
 - **work.md**: Step 9 now writes the real commit hash back to the archived REQ's `commit:` frontmatter field via `--amend`, giving review-work and present-work reliable traceability
 
+## 0.23.3 — The Tidy Tenant (2026-03-12)
+
+Agent rules now live inside `do-work/` where they belong. No more root-level pollution — the skill's runtime directory holds everything it creates.
+
+- Moved `agent-rules/` to `do-work/agent-rules/`
+- Updated all references in `capture.md` and `work.md` to use the new path
+
 ## 0.23.2 — The Atomic Ledger (2026-03-09)
 
 Uncommitted files no longer pile up without a home. The new commit action analyzes your working tree, traces files back to archived REQs when possible, semantically groups the rest, and commits everything in small atomic batches — each one traceable.
