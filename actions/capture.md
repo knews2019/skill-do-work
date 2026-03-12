@@ -71,6 +71,7 @@ title: Brief descriptive title
 status: pending
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001
+domain: frontend | backend | general
 ---
 
 # [Brief Title]
@@ -165,6 +166,7 @@ For complex requests, add a Summary, an Extracted Requests table, and a Batch Co
 Read the user's input. Determine:
 - **Single vs multiple requests** — look for "and also", comma-separated lists, numbered items, distinct topics
 - **Simple vs complex** — apply the detection criteria above
+- **Domain classification** — infer the primary technical domain of the request (e.g., frontend, backend, or general) so the downstream builder knows which JIT rules to load.
 
 ### Step 2: Check for Duplicates
 
@@ -263,7 +265,7 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 
 **For all requests (simple and complex):**
 1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially)
-2. Create `REQ-NNN-slug.md` files using the appropriate format, with `user_request: UR-NNN`
+2. Create `REQ-NNN-slug.md` files using the appropriate format, with `user_request: UR-NNN` and the inferred `domain:`
 3. Update the UR's `requests` array with all created REQ IDs
 
 **Complex mode additionally:**
