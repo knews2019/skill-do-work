@@ -29,7 +29,7 @@ fi
 matches=$(echo "$diff_output" \
   | grep '^+' \
   | grep -v '^+++' \
-  | grep -En 'console\.log|print\(|TODO: AI|FIXME:' || true)
+  | grep -En 'console\.log|\bprint\(|TODO: AI|FIXME:' || true)
 
 if [ -n "$matches" ]; then
   echo -e "${RED}UNIFY FAILED: Debug statements found. Please remove them.${NC}" >&2
