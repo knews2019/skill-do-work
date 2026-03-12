@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.27.1 — The Field Guide (2026-03-12)
+
+General agent rules now include the Prime Files Philosophy. Agents know what prime files are, how to write them, and what to avoid — before they ever encounter one in a REQ.
+
+- Added PRIME Files Philosophy section to `rules-general.md`
+- Covers purpose, conciseness, pointer-not-copy pattern, volatile metric avoidance, and multi-aspect support
+
 ## 0.27.0 — The Cartographer (2026-03-12)
 
 The work orchestrator now speaks prime files. Plan and implementation agents receive prime files as first-class context, and the builder is instructed to create missing ones on the fly. The archived REQ example also carries the new field for reference.
