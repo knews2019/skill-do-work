@@ -127,7 +127,7 @@ Request files use YAML frontmatter added progressively:
 id: REQ-001
 title: Short descriptive title
 status: pending
-domain: frontend | backend | general
+domain: frontend  # choose one: frontend, backend, or general
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001          # May be absent on legacy REQs
 
@@ -266,7 +266,7 @@ All routes include these instructions to the agent:
 - When complete, summarize: what changed, what tests exist, what new tests were written
 - **State Machine Updates:** As you progress, you MUST physically edit this REQ file to change the `[ ]` checkboxes in the "AI Execution State (P-A-U Loop)" section to `[x]`.
 - **[PLAN] Phase:** Before writing any code, write your brief technical approach next to the `[PLAN]` checkbox in the REQ file.
-- **[APPLY] Phase:** You are strictly executing the plan or the isolated ticket scope. You are forbidden from modifying files not explicitly related to this scope.
+- **[APPLY] Phase:** You are strictly executing the plan or the isolated ticket scope. You are forbidden from modifying files not explicitly related to this scope (Exception: You are permitted and required to edit this REQ file to update your state checkboxes).
 - **[UNIFY] Phase:** Run native project linters and manually review your own diff to ensure no debug artifacts (e.g., console.log, TODOs) are left behind before checking the `[UNIFY]` box. Do not rely on external bash scripts for this.
 - **Out-of-Scope Discoveries:** If you discover unrelated bugs, technical debt, or missing prerequisites, DO NOT fix them. You must strictly adhere to the [APPLY] scope constraint. Instead, append a `## Discovered Tasks` section to your summary and list them as bullet points so the orchestrator can queue them for later.
 ```

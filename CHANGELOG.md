@@ -14,6 +14,13 @@ Every action now commits its own work. Capture, cleanup, review-work, and work a
 - **work.md**: Step 1 now uses explicit glob pattern `do-work/REQ-*.md` with a fallback verification to prevent false "queue empty" results
 - **work.md**: Step 9 now writes the real commit hash back to the archived REQ's `commit:` frontmatter field via `--amend`, giving review-work and present-work reliable traceability
 
+## 0.23.5 — The Fine Tuning (2026-03-12)
+
+Two small fixes in work.md: the domain field in the REQ schema no longer looks like a pipe-delimited value (it's a single choice), and the APPLY phase now explicitly permits editing the REQ file to update state checkboxes.
+
+- Fixed `domain` field in Request File Schema — shows example value with comment instead of ambiguous pipe syntax
+- Added REQ-file exception to APPLY phase scope restriction — agents can update their own state checkboxes
+
 ## 0.23.4 — The Crash Guard (2026-03-12)
 
 Appending steps in the work loop are now idempotent. If a crash or re-entry happens mid-REQ, Steps 3, 4, and 5 skip sections that already exist instead of writing duplicates.
