@@ -492,10 +492,11 @@ When invoked with `do work clarify` (or `answers`, `questions`, `pending`, `what
    - **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]` and mark the REQ `status: completed` (no implementation needed — see "Builder Was Right" below)
    - **Pick a different option** → update to `- [x] [question] → [user's chosen option]`
    - **Skip for now** → leave as `- [ ]`, REQ stays `pending-answers`
-5. **Activate answered REQs**: For each REQ that wasn't already completed by the Builder Was Right path: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending`. These enter the queue for the next `do work run`.
+   - **Discard it** → update to `- [x] [question] → Discarded`, then mark the REQ `status: completed`, `completed_at: <timestamp>`, and archive it directly (same pattern as "Builder Was Right" — no implementation work)
+5. **Activate answered REQs**: For each REQ that wasn't already completed or discarded: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending`. These enter the queue for the next `do work run`.
 6. **Report**: Summary of what was resolved and what's still pending
 
-### Builder Was Right
+### Builder Was Right / Discarded
 
 When the user reviews a `pending-answers` follow-up and confirms that the builder's original choice was correct (i.e., no implementation change needed):
 
@@ -504,7 +505,9 @@ When the user reviews a `pending-answers` follow-up and confirms that the builde
 3. Archive the follow-up REQ directly (skip the work loop — there's nothing to build)
 4. Append a brief note: `## Implementation\n\n**No changes needed.** User confirmed builder's choice from [original REQ].\n\n*Resolved via clarify questions*`
 
-This avoids wasting a work cycle on a REQ that just needs sign-off.
+**Discarded discovered tasks:** When the user reviews a discovered-task follow-up and chooses "No, discard it", the same fast-path applies. Mark `status: completed`, archive directly, and append: `## Implementation\n\n**Discarded.** User chose not to process this discovered task from [original REQ].\n\n*Resolved via clarify questions*`
+
+This avoids wasting a work cycle on a REQ that just needs sign-off or rejection.
 
 ## Progress Reporting
 
