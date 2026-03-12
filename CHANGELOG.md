@@ -4,15 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.23.1 — The Paper Trail (2026-03-09)
+## 0.24.0 — The Feedback Loop (2026-03-12)
 
-Every action now commits its own work. Capture, cleanup, review-work, and work all have explicit git commit steps so changes are never left unstaged. The work action also writes the real commit hash back into the archived REQ for traceability.
+Reviews in standalone mode now pause for human validation before closing out. The reviewer presents its report, then asks the user to test manually and share feedback. Lessons learned go straight into the archived REQ; bugs become follow-up REQs automatically.
 
-- **capture.md**: Added Step 7 — commits the UR folder and new REQ files after capture, with addendum-aware message format
-- **cleanup.md**: Added Commit section — commits structural moves (archive consolidation, legacy, misplaced folders) after all three cleanup passes
-- **review-work.md**: Added Commit section for standalone mode — commits the appended Review section and any follow-up REQs (pipeline mode defers to work Step 9)
-- **work.md**: Step 1 now uses explicit glob pattern `do-work/REQ-*.md` with a fallback verification to prevent false "queue empty" results
-- **work.md**: Step 9 now writes the real commit hash back to the archived REQ's `commit:` frontmatter field via `--amend`, giving review-work and present-work reliable traceability
+- Added Step 9.5: Human Validation (Standalone Mode Only) to `review-work.md`
+- Lessons learned / architectural feedback appended to the archived REQ's `## Lessons Learned` section
+- Bugs and fix requests treated as Important findings, routed to Step 10 for follow-up REQ generation
+- Pipeline mode skips the step entirely — no blocking the automated loop
 
 ## 0.23.7 — The Softer Touch (2026-03-12)
 
@@ -55,6 +54,16 @@ Uncommitted files no longer pile up without a home. The new commit action analyz
 
 - **commit.md**: New action — analyzes uncommitted files, associates with archived REQs for traceability, groups semantically into atomic commits (1-5 files each), and reports a summary
 - **SKILL.md**: Added routing (priority 8), commit verbs, action list, dispatch table, help menu, next steps, and examples for the commit action
+
+## 0.23.1 — The Paper Trail (2026-03-09)
+
+Every action now commits its own work. Capture, cleanup, review-work, and work all have explicit git commit steps so changes are never left unstaged. The work action also writes the real commit hash back into the archived REQ for traceability.
+
+- **capture.md**: Added Step 7 — commits the UR folder and new REQ files after capture, with addendum-aware message format
+- **cleanup.md**: Added Commit section — commits structural moves (archive consolidation, legacy, misplaced folders) after all three cleanup passes
+- **review-work.md**: Added Commit section for standalone mode — commits the appended Review section and any follow-up REQs (pipeline mode defers to work Step 9)
+- **work.md**: Step 1 now uses explicit glob pattern `do-work/REQ-*.md` with a fallback verification to prevent false "queue empty" results
+- **work.md**: Step 9 now writes the real commit hash back to the archived REQ's `commit:` frontmatter field via `--amend`, giving review-work and present-work reliable traceability
 
 ## 0.23.0 — The Director's Cut (2026-03-07)
 
