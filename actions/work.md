@@ -127,6 +127,7 @@ Request files use YAML frontmatter added progressively:
 id: REQ-001
 title: Short descriptive title
 status: pending
+domain: frontend | backend | general
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001          # May be absent on legacy REQs
 
@@ -206,7 +207,7 @@ If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section ex
 
 ### Step 4: Planning (Route C only)
 
-**Route C:** Spawn a **Plan agent** with the request content and project context. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). Append the output:
+**Route C:** Spawn a **Plan agent** with the request content, project context, and ONLY the specific `.agent-rules/rules-[domain].md` file indicated in the frontmatter. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). Append the output:
 
 ```markdown
 ## Plan
@@ -245,7 +246,7 @@ Append the output:
 
 ### Step 6: Implementation
 
-Spawn a **general-purpose agent** with context appropriate to the route:
+Spawn a **general-purpose agent** with the specific `.agent-rules/rules-[domain].md` file and context appropriate to the route:
 
 - **Route A**: Request content only — "triaged as simple, aim for a focused minimal change"
 - **Route B**: Request + exploration output — "follow existing patterns identified above"
@@ -261,6 +262,7 @@ All routes include these instructions to the agent:
 - Write new tests for new functionality / regression tests for bug fixes
 - Update existing tests if behavior intentionally changed
 - When complete, summarize: what changed, what tests exist, what new tests were written
+- **[APPLY] Phase:** You are strictly executing the plan or the isolated ticket scope. You are forbidden from modifying files not explicitly related to this scope.
 ```
 
 ### Step 6.5: Testing
@@ -282,6 +284,22 @@ Append to the request file:
 
 **New tests added:**
 - [list]
+
+*Verified by work action*
+```
+
+### Step 6.8: Unify Verification
+
+Before moving to Review, the orchestrator MUST mathematically verify the diff is clean.
+
+1. Run `./verify-unify.sh` in the terminal.
+2. **If it fails (exit code 1):** You are forbidden from moving to Step 7. Intercept the grep output showing leftover debug statements (console.log, TODOs, etc.). Spawn an implementation agent to remove them. Loop this step until `./verify-unify.sh` passes.
+3. **If it passes (exit code 0):** Append to the REQ file:
+
+```markdown
+## Unify
+
+**Verification:** ✓ Passed `./verify-unify.sh`. No debug artifacts remain.
 
 *Verified by work action*
 ```
@@ -447,7 +465,7 @@ This ensures the `commit:` field in the archived REQ contains the real hash, whi
 
 Re-check `do-work/` for `REQ-*.md` files (fresh check, not cached).
 
-- **`pending` REQs found**: Loop to Step 1.
+- **`pending` REQs found**: **CONTEXT WIPE**. Before looping back to Step 1 to grab the next pending REQ, you MUST clear your sub-agents' memory and close all open editor tabs. Drop all architectural assumptions from the previous REQ. Treat the next REQ as an entirely new, isolated project to prevent context drift. Then loop to Step 1.
 - **Only `pending-answers` REQs remain**: Run the [cleanup action](./cleanup.md), then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work clarify` when ready.
 - **No REQs at all**: Run cleanup, report final summary and exit.
 
@@ -555,6 +573,7 @@ All 2 requests completed:
 □ Step 5: (Routes B,C) Spawn Explore agent, append ## Exploration section
 □ Step 6: Spawn implementation agent
 □ Step 6.5: Run tests, append ## Testing section
+□ Step 6.8: Run ./verify-unify.sh, clean up if failed, append ## Unify section
 □ Step 7: Spawn review work action (pipeline mode)
 □ Step 7.5: Append ## Lessons Learned (skip for Route A if no surprises)
 □ Step 8: Update frontmatter: status: completed, completed_at: <timestamp>
