@@ -557,26 +557,19 @@ All 2 requests completed:
 ## Orchestrator Checklist (per request)
 
 ```
-□ Step 1: List REQ-*.md files in do-work/, pick first pending (skip pending-answers)
-□ Step 2: mkdir -p do-work/working && mv REQ to do-work/working/
-□ Step 2: Update frontmatter: status: claimed, claimed_at: <timestamp>
-□ Step 3: Read request, decide route (A/B/C), update frontmatter with route
-□ Step 3: Append ## Triage section (including Planning status)
-□ Step 3: If addendum_to exists, read original REQ + Prior Implementation
-□ Step 3.5: Handle Open Questions — mark - [~] with builder's choice
-□ Step 4: Append ## Plan section (Route C: Plan agent / Routes A,B: "Not required")
-□ Step 5: (Routes B,C) Spawn Explore agent, append ## Exploration section
-□ Step 6: Spawn implementation agent
-□ Step 6.5: Run tests, append ## Testing section
-□ Step 7: Spawn review work action (pipeline mode)
-□ Step 7.5: Append ## Lessons Learned (skip for Route A if no surprises)
-□ Step 8: Update frontmatter: status: completed, completed_at: <timestamp>
-□ Step 8: Append ## Implementation Summary
-□ Step 8: Create pending-answers follow-ups for - [~] UX decisions
-□ Step 8: Extract ## Discovered Tasks into new pending-answers REQ files
-□ Step 8: Archive REQ (check if all UR REQs complete → archive UR folder)
-□ Step 9: Stage implementation files, archived REQ, follow-up REQs, and UR-folder moves; commit (if git repo)
-□ Step 10: Check for more pending REQs, loop or cleanup and exit
+□ Step 1: Find next request (pick first pending, skip pending-answers)
+□ Step 2: Claim request (mkdir -p working/, move REQ, update status & claimed_at)
+□ Step 3: Triage (decide route, append ## Triage, read original if addendum)
+□ Step 3.5: Handle Open Questions (mark - [~] with builder's choice)
+□ Step 4: Plan (Route C: spawn Plan agent / Routes A & B: note skipped)
+□ Step 5: Explore (Routes B & C: spawn Explore agent, append ## Exploration)
+□ Step 6: Implement (spawn agent, execute P-A-U state loop, agent updates checkboxes)
+□ Step 6.5: Test (run relevant tests, append ## Testing)
+□ Step 7: Review (spawn review action in pipeline mode)
+□ Step 7.5: Lessons Learned (append section, skip for Route A if no surprises)
+□ Step 8: Archive (update status, append summary, queue follow-ups & discovered tasks, move to archive/)
+□ Step 9: Commit (stage explicit files, commit if git repo, amend hash to REQ)
+□ Step 10: Loop or Exit (CONTEXT WIPE if looping, else cleanup and exit)
 ```
 
 **Common mistakes to avoid:**
