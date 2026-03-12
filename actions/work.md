@@ -263,6 +263,7 @@ All routes include these instructions to the agent:
 - Update existing tests if behavior intentionally changed
 - When complete, summarize: what changed, what tests exist, what new tests were written
 - **[APPLY] Phase:** You are strictly executing the plan or the isolated ticket scope. You are forbidden from modifying files not explicitly related to this scope.
+- **Out-of-Scope Discoveries:** If you discover unrelated bugs, technical debt, or missing prerequisites, DO NOT fix them. You must strictly adhere to the [APPLY] scope constraint. Instead, append a `## Discovered Tasks` section to your summary and list them as bullet points so the orchestrator can queue them for later.
 ```
 
 ### Step 6.5: Testing
@@ -402,7 +403,14 @@ Append to the request file:
      Also: [other alternatives]
    ```
    These go in `do-work/` with `status: pending-answers`. The user reviews them via `do work clarify`.
-4. Archive based on REQ type:
+4. **Queue Discovered Tasks:** Check the implementation summary for a `## Discovered Tasks` section. For every item listed, create a new follow-up REQ file in the `do-work/` root.
+   - Set frontmatter: `status: pending-answers`, `user_request: [same UR]`, `addendum_to: [current REQ id]`, `domain: [same domain as current REQ]`.
+   - Add an `## Open Questions` section with this checkbox format:
+     `- [ ] I discovered this out-of-scope task while working on [current REQ]: [Task Description]. Should I process this as a new task?`
+     `  Recommended: Yes, add to queue (will flip to 'pending').`
+     `  Also: No, discard it.`
+   This ensures out-of-scope discoveries are safely captured but require the user's explicit permission via `do work clarify` before execution.
+5. Archive based on REQ type:
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
@@ -579,6 +587,7 @@ All 2 requests completed:
 □ Step 8: Update frontmatter: status: completed, completed_at: <timestamp>
 □ Step 8: Append ## Implementation Summary
 □ Step 8: Create pending-answers follow-ups for - [~] UX decisions
+□ Step 8: Extract ## Discovered Tasks into new pending-answers REQ files
 □ Step 8: Archive REQ (check if all UR REQs complete → archive UR folder)
 □ Step 9: Stage implementation files, archived REQ, follow-up REQs, and UR-folder moves; commit (if git repo)
 □ Step 10: Check for more pending REQs, loop or cleanup and exit
