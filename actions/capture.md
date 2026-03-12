@@ -80,7 +80,7 @@ domain: frontend | backend | general
 [1-3 sentences describing what is being requested]
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read `.agent-rules/rules-[domain].md`. Write brief technical approach here. Do not write code yet.)
+- [ ] **[PLAN]:** (Agent: Read `do-work/.agent-rules/rules-[domain].md`. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Native project linters run, tests passed, and diff hygiene manually verified to remove debug logs.)
 
