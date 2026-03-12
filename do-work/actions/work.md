@@ -298,7 +298,7 @@ Run the [review work action](./review-work.md) in **pipeline mode** against this
 
 The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation: requirements check (did we build what was asked?), code review (is it solid?), and acceptance testing (does it actually work?).
 
-**How to run it:** Spawn an agent with the review work action file and the REQ path, or read `actions/review-work.md` and follow its pipeline mode instructions in the current session.
+**How to run it:** Spawn an agent with the review work action file and the REQ path, or read `do-work/actions/review-work.md` and follow its pipeline mode instructions in the current session.
 
 **What happens next depends on the review score:**
 
