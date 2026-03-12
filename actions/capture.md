@@ -71,7 +71,7 @@ title: Brief descriptive title
 status: pending
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001
-domain: frontend | backend | general
+domain: frontend  # choose one: frontend, backend, or general
 ---
 
 # [Brief Title]
