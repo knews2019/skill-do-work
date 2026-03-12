@@ -345,3 +345,15 @@ Next steps:
 - Keep it to 2-3 suggestions max — don't overwhelm
 - Format as a simple list the user can scan and copy
 
+### MANDATORY OPERATING STATES (P-A-U Loop)
+For every task you process, you must operate in strict phases. Use `.agent-templates/task-template.md` for your tasks.
+1. **[PLAN]:** Explore the codebase. Write your technical plan in the task document. **Do not write application code yet.** Also, identify the domain of your task and read ONLY the specific `.agent-rules/rules-[domain].md` file. Do not read global architectural files unless required.
+2. **[APPLY]:** Write the code to execute the plan. You are strictly forbidden from modifying files not listed in your plan.
+3. **[UNIFY]:** Enter the cleanup phase.
+
+### UNIFY CHECKLIST & CONTEXT WIPE (Definition of Done)
+Before you mark a task as DONE, commit code, or pull the next task, you MUST:
+1. Run the project's linter/formatter on the files you touched.
+2. Run `./verify-unify.sh` in the terminal. You are forbidden from marking a task as DONE unless this script returns exit code 0.
+3. **CONTEXT WIPE:** Once verified, clear your mental context. Close all open files in your editor environment, and treat the next queued task as an entirely brand-new, isolated project. Do not carry over assumptions from Task A into Task B.
+
