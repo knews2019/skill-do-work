@@ -4,7 +4,7 @@
 
 **Current version**: 0.23.2
 
-**Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/do-work/actions/version.md
+**Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
 ## Responding to Version Requests
 

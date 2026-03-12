@@ -2,7 +2,7 @@
 
 ## Before Every Commit
 
-**Always bump the version in `do-work/actions/version.md` before committing.**
+**Always bump the version in `actions/version.md` before committing.**
 
 The version is on the line that starts with `**Current version**:` - increment it using semver:
 - Patch (0.1.0 → 0.1.1): Bug fixes, minor tweaks

@@ -1,1 +1,1 @@
-do-work/_dev/CLAUDE.md
+_dev/CLAUDE.md

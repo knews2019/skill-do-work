@@ -258,15 +258,15 @@ Each action has an action file with full instructions. How you execute it depend
 
 | Action             | Action file                     | Context to pass                |
 |--------------------|---------------------------------|--------------------------------|
-| capture requests   | `./do-work/actions/capture.md`          | Full user input text           |
-| work               | `./do-work/actions/work.md`             | (none needed)                  |
-| clarify questions  | `./do-work/actions/work.md`             | `mode: clarify`                |
-| verify requests    | `./do-work/actions/verify-requests.md`  | Target UR/REQ or "most recent" |
-| review work        | `./do-work/actions/review-work.md`      | Target REQ/UR or "most recent" |
-| present work       | `./do-work/actions/present-work.md`     | Target REQ/UR, "most recent", or "all" |
-| cleanup            | `./do-work/actions/cleanup.md`          | (none needed)                  |
-| commit             | `./do-work/actions/commit.md`           | (none needed)                  |
-| version            | `./do-work/actions/version.md`          | `$ARGUMENTS`                   |
+| capture requests   | `./actions/capture.md`          | Full user input text           |
+| work               | `./actions/work.md`             | (none needed)                  |
+| clarify questions  | `./actions/work.md`             | `mode: clarify`                |
+| verify requests    | `./actions/verify-requests.md`  | Target UR/REQ or "most recent" |
+| review work        | `./actions/review-work.md`      | Target REQ/UR or "most recent" |
+| present work       | `./actions/present-work.md`     | Target REQ/UR, "most recent", or "all" |
+| cleanup            | `./actions/cleanup.md`          | (none needed)                  |
+| commit             | `./actions/commit.md`           | (none needed)                  |
+| version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 
 ### If subagents are available
 

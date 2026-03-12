@@ -85,7 +85,7 @@ Invoked when you provide descriptive content. Optimized for speed:
 - Always creates a UR folder preserving the full verbatim input
 - Checks for duplicates against existing requests
 
-See [actions/capture.md](./do-work/actions/capture.md) for the full capture logic.
+See [actions/capture.md](./actions/capture.md) for the full capture logic.
 
 ### Work (process)
 
@@ -95,7 +95,7 @@ Invoked when you say "run", "go", or "start". Runs the build loop:
 - Archives completed work with implementation notes
 - Creates atomic git commits per request
 
-See [actions/work.md](./do-work/actions/work.md) for the full processing logic.
+See [actions/work.md](./actions/work.md) for the full processing logic.
 
 ### Clarify Questions
 
@@ -105,7 +105,7 @@ Invoked when you say "clarify", "questions", or "answers". Batch-reviews Open Qu
 - Confirmed choices resolve without re-entering the work loop
 - Answered questions flip the REQ to `pending` for the next work run
 
-See [actions/work.md](./do-work/actions/work.md) "Clarify Questions" section for the full workflow.
+See [actions/work.md](./actions/work.md) "Clarify Questions" section for the full workflow.
 
 ### Verify Requests
 
@@ -115,7 +115,7 @@ Invoked when you say "verify requests", "verify", "check", "evaluate", or "revie
 - Scores coverage, UX detail capture, intent signal preservation
 - Optionally fixes identified gaps
 
-See [actions/verify-requests.md](./do-work/actions/verify-requests.md) for the full evaluation logic.
+See [actions/verify-requests.md](./actions/verify-requests.md) for the full evaluation logic.
 
 ### Review Work
 
@@ -126,7 +126,7 @@ Invoked when you say "review work", "review", "review code", or "code review". A
 - **Suggested testing** — recommends additional checks the user should perform
 - Creates follow-up REQs for Important findings
 
-See [actions/review-work.md](./do-work/actions/review-work.md) for the full review logic.
+See [actions/review-work.md](./actions/review-work.md) for the full review logic.
 
 ### Present Work
 
@@ -138,7 +138,7 @@ Invoked when you say "present work", "present", "showcase", or "deliver". Genera
 
 Artifacts are saved to `do-work/deliverables/` for reuse.
 
-See [actions/present-work.md](./do-work/actions/present-work.md) for the full presentation logic.
+See [actions/present-work.md](./actions/present-work.md) for the full presentation logic.
 
 ### Cleanup (consolidate)
 
@@ -148,7 +148,7 @@ Invoked when you say "cleanup", "tidy", or "consolidate". Also runs automaticall
 - Moves legacy REQs (no UR reference) into `archive/legacy/`
 - Fixes misplaced folders (e.g., `archive/user-requests/UR-NNN` → `archive/UR-NNN`)
 
-See [actions/cleanup.md](./do-work/actions/cleanup.md) for the full consolidation logic.
+See [actions/cleanup.md](./actions/cleanup.md) for the full consolidation logic.
 
 ## License
 
