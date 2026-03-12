@@ -289,22 +289,6 @@ Append to the request file:
 *Verified by work action*
 ```
 
-### Step 6.8: Unify Verification
-
-Before moving to Review, the orchestrator MUST mathematically verify the diff is clean.
-
-1. Run `./verify-unify.sh` in the terminal.
-2. **If it fails (exit code 1):** You are forbidden from moving to Step 7. Intercept the grep output showing leftover debug statements (console.log, TODOs, etc.). Spawn an implementation agent to remove them. Loop this step until `./verify-unify.sh` passes.
-3. **If it passes (exit code 0):** Append to the REQ file:
-
-```markdown
-## Unify
-
-**Verification:** ✓ Passed `./verify-unify.sh`. No debug artifacts remain.
-
-*Verified by work action*
-```
-
 ### Step 7: Review
 
 Run the [review work action](./review-work.md) in **pipeline mode** against this REQ.
@@ -581,7 +565,6 @@ All 2 requests completed:
 □ Step 5: (Routes B,C) Spawn Explore agent, append ## Exploration section
 □ Step 6: Spawn implementation agent
 □ Step 6.5: Run tests, append ## Testing section
-□ Step 6.8: Run ./verify-unify.sh, clean up if failed, append ## Unify section
 □ Step 7: Spawn review work action (pipeline mode)
 □ Step 7.5: Append ## Lessons Learned (skip for Route A if no surprises)
 □ Step 8: Update frontmatter: status: completed, completed_at: <timestamp>
