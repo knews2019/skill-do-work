@@ -157,7 +157,7 @@ do-work — task queue for agentic coding tools
     do work review work         Review completed work (requirements + code + acceptance)
 
   Present to client:
-    do work present work        Generate client brief, architecture, value prop
+    do work present work        Generate client brief, architecture, video, and interactive HTML explainer
     do work present all         Portfolio summary of all completed work
 
   Other actions:

@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.25.1 — The Billboard (2026-03-12)
+
+README and SKILL.md now advertise the two new features. Users browsing the docs will see Human UAT under Review Work and Interactive Explainer under Present Work without digging into the action files.
+
+- README: Added Human UAT bullet to Review Work section
+- README: Added Interactive Explainer bullet to Present Work section
+- SKILL.md: Updated help menu description for `do work present work`
+
 ## 0.25.0 — The Show Floor (2026-03-12)
 
 Present work now generates an interactive HTML explainer alongside the client brief and video. It's a single `.html` file — no build steps, no npm — that stakeholders can double-click to open in any browser.
