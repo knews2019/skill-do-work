@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.26.0 — The Compass (2026-03-12)
+
+Capture now knows about prime files — semantic index files that point agents to the right source code. REQs carry a `prime_files` array in frontmatter, the PLAN phase reads them alongside agent rules, and Step 1 routes to matching prime files automatically.
+
+- Added `prime_files: []` field to Simple REQ YAML frontmatter
+- Updated PLAN checkbox to read listed `prime_files` and agent rules
+- Added prime file routing bullet to Step 1: Parse and Assess
+- Updated Step 5 item 2 to populate `prime_files` with discovered paths
+
 ## 0.25.1 — The Billboard (2026-03-12)
 
 README and SKILL.md now advertise the two new features. Users browsing the docs will see Human UAT under Review Work and Interactive Explainer under Present Work without digging into the action files.
