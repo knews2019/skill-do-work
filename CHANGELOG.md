@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.25.0 — The Show Floor (2026-03-12)
+
+Present work now generates an interactive HTML explainer alongside the client brief and video. It's a single `.html` file — no build steps, no npm — that stakeholders can double-click to open in any browser.
+
+- Added section 4c: Interactive Explainer (Single-File HTML) to `present-work.md`
+- Zero dependencies: HTML5 + Tailwind CDN + Vanilla JS in one file
+- Includes Before/After toggle, step-by-step architecture walkthrough, and value summary
+- Updated Step 5 summary to list the HTML file with double-click-to-open instructions
+- Renumbered Portfolio artifacts from 4c to 4d
+
 ## 0.24.0 — The Feedback Loop (2026-03-12)
 
 Reviews in standalone mode now pause for human validation before closing out. The reviewer presents its report, then asks the user to test manually and share feedback. Lessons learned go straight into the archived REQ; bugs become follow-up REQs automatically.
