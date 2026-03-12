@@ -14,6 +14,12 @@ Every action now commits its own work. Capture, cleanup, review-work, and work a
 - **work.md**: Step 1 now uses explicit glob pattern `do-work/REQ-*.md` with a fallback verification to prevent false "queue empty" results
 - **work.md**: Step 9 now writes the real commit hash back to the archived REQ's `commit:` frontmatter field via `--amend`, giving review-work and present-work reliable traceability
 
+## 0.23.6 — The Reference Card (2026-03-12)
+
+The archived REQ example now shows what a completed P-A-U loop looks like. Agents have a concrete reference for how the execution state checkboxes should read when a request is done.
+
+- Added completed `## AI Execution State (P-A-U Loop)` section to the archived request file example
+
 ## 0.23.5 — The Fine Tuning (2026-03-12)
 
 Two small fixes in work.md: the domain field in the REQ schema no longer looks like a pipe-delimited value (it's a single choice), and the APPLY phase now explicitly permits editing the REQ file to update state checkboxes.
