@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.27.0 — The Cartographer (2026-03-12)
+
+The work orchestrator now speaks prime files. Plan and implementation agents receive prime files as first-class context, and the builder is instructed to create missing ones on the fly. The archived REQ example also carries the new field for reference.
+
+- Added `prime_files: []` to Request File Schema YAML example
+- Updated Step 4 (Planning): Plan agent now receives prime files and uses them as the strict index
+- Updated Step 6 (Implementation): general-purpose agent receives prime files alongside domain rules
+- Added Prime Files bullet to agent instructions — read first, create if missing, keep low-noise
+- Added `prime_files: []` to the Archived Request File Example frontmatter
+
 ## 0.26.0 — The Compass (2026-03-12)
 
 Capture now knows about prime files — semantic index files that point agents to the right source code. REQs carry a `prime_files` array in frontmatter, the PLAN phase reads them alongside agent rules, and Step 1 routes to matching prime files automatically.
