@@ -14,6 +14,13 @@ Every action now commits its own work. Capture, cleanup, review-work, and work a
 - **work.md**: Step 1 now uses explicit glob pattern `do-work/REQ-*.md` with a fallback verification to prevent false "queue empty" results
 - **work.md**: Step 9 now writes the real commit hash back to the archived REQ's `commit:` frontmatter field via `--amend`, giving review-work and present-work reliable traceability
 
+## 0.23.7 — The Softer Touch (2026-03-12)
+
+Toned down the APPLY and Out-of-Scope agent instructions. Same constraints, less adversarial language — agents follow guidance better when it reads like coaching, not a legal contract.
+
+- Rewrote APPLY phase: "stay focused" instead of "you are forbidden"
+- Rewrote Out-of-Scope: "do not fix them inline" instead of "DO NOT fix them. You must strictly adhere to..."
+
 ## 0.23.6 — The Reference Card (2026-03-12)
 
 The archived REQ example now shows what a completed P-A-U loop looks like. Agents have a concrete reference for how the execution state checkboxes should read when a request is done.
