@@ -491,7 +491,9 @@ When invoked with `do work clarify` (or `answers`, `questions`, `pending`, `what
    ```
 4. **Collect answers**: If your environment has a structured question prompt (multi-question UI), batch questions in groups of **at most 4 per prompt** — chunk by question count, not by REQ. A REQ with 6 questions needs 2 prompts. For each question, the user can:
    - **Answer it** → update to `- [x] [question] → [user's answer]`
-   - **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]` and mark the REQ `status: completed` (no implementation needed — see "Builder Was Right" below)
+   - **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]`. Then check the REQ type:
+     - *Discovered-task REQ* (has a "Should I process this as a new task?" question with recommended "Yes, add to queue"): flip `status` to `pending` so the task enters the work queue — see "Approved Discovered Task" below
+     - *All other REQs* (builder-decision follow-ups): mark `status: completed` (no implementation needed — see "Builder Was Right" below)
    - **Pick a different option** → update to `- [x] [question] → [user's chosen option]`
    - **Skip for now** → leave as `- [ ]`, REQ stays `pending-answers`
    - **Discard it** → update to `- [x] [question] → Discarded`, then mark the REQ `status: completed`, `completed_at: <timestamp>`, and archive it directly (same pattern as "Builder Was Right" — no implementation work)
@@ -509,7 +511,17 @@ When the user reviews a `pending-answers` follow-up and confirms that the builde
 
 **Discarded discovered tasks:** When the user reviews a discovered-task follow-up and chooses "No, discard it", the same fast-path applies. Mark `status: completed`, archive directly, and append: `## Implementation\n\n**Discarded.** User chose not to process this discovered task from [original REQ].\n\n*Resolved via clarify questions*`
 
-This avoids wasting a work cycle on a REQ that just needs sign-off or rejection.
+### Approved Discovered Task
+
+When the user reviews a discovered-task follow-up (one whose question is "Should I process this as a new task?" with recommended "Yes, add to queue") and confirms the recommendation:
+
+1. Update the question to `- [x] [question] → Confirmed: Yes, add to queue`
+2. Update frontmatter: `status: pending` (NOT `completed` — this task needs to be built)
+3. **Do not archive.** The REQ stays in `do-work/` and enters the normal work queue for the next `do work run`
+
+This is distinct from "Builder Was Right" because confirming a discovered task means the user wants it *executed*, not signed off. The task has no prior implementation to confirm — it's a new piece of work that needs a full work cycle.
+
+This avoids wasting a work cycle on a REQ that just needs sign-off or rejection, while correctly routing approved discovered tasks into the build queue.
 
 ## Progress Reporting
 
