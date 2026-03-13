@@ -210,7 +210,7 @@ If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section ex
 
 ### Step 4: Planning (Route C only)
 
-**Route C:** Spawn a **Plan agent** with the request content, project context, the `rules-[domain].md` file, and any files listed in the `prime_files` array. Instruct it to use the prime files as the strict index for discovering the source of truth. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
+**Route C:** Spawn a **Plan agent** with the request content, project context, the `do-work/agent-rules/rules-[domain].md` file indicated in the frontmatter (if `domain` is missing or the file doesn't exist, skip loading it), and any files listed in the `prime_files` array. Instruct it to use the prime files as the strict index for discovering the source of truth. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
 
 ```markdown
 ## Plan
@@ -249,7 +249,7 @@ If an `## Exploration` section does not already exist, append the output:
 
 ### Step 6: Implementation
 
-Spawn a **general-purpose agent** with the `rules-[domain].md` file, any files listed in the `prime_files` array, and context appropriate to the route:
+Spawn a **general-purpose agent** with the `do-work/agent-rules/rules-[domain].md` file (if `domain` is specified and the file exists), any files listed in the `prime_files` array, and context appropriate to the route:
 
 - **Route A**: Request content only — "triaged as simple, aim for a focused minimal change"
 - **Route B**: Request + exploration output — "follow existing patterns identified above"

@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.27.2 — The Safety Latch (2026-03-13)
+
+Restored the missing-domain fallback guard that was accidentally dropped during the prime files update. Legacy REQs without a `domain` field (or with an unexpected value) no longer cause the planner or builder to choke on a non-existent rules file.
+
+- Step 4: Restored `(if domain is missing or the file doesn't exist, skip loading it)` guard
+- Step 6: Restored `(if domain is specified and the file exists)` guard
+- Both steps retain the full `do-work/agent-rules/` path prefix
+
 ## 0.27.1 — The Field Guide (2026-03-12)
 
 General agent rules now include the Prime Files Philosophy. Agents know what prime files are, how to write them, and what to avoid — before they ever encounter one in a REQ.
