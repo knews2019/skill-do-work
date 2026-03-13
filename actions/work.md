@@ -128,6 +128,7 @@ id: REQ-001
 title: Short descriptive title
 status: pending
 domain: frontend  # choose one: frontend, backend, or general
+prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001          # May be absent on legacy REQs
 
@@ -209,7 +210,7 @@ If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section ex
 
 ### Step 4: Planning (Route C only)
 
-**Route C:** Spawn a **Plan agent** with the request content, project context, and the `do-work/agent-rules/rules-[domain].md` file indicated in the frontmatter (if `domain` is missing or the file doesn't exist, skip loading it). Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
+**Route C:** Spawn a **Plan agent** with the request content, project context, the `rules-[domain].md` file, and any files listed in the `prime_files` array. Instruct it to use the prime files as the strict index for discovering the source of truth. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
 
 ```markdown
 ## Plan
@@ -248,7 +249,7 @@ If an `## Exploration` section does not already exist, append the output:
 
 ### Step 6: Implementation
 
-Spawn a **general-purpose agent** with the `do-work/agent-rules/rules-[domain].md` file (if `domain` is specified and exists) and context appropriate to the route:
+Spawn a **general-purpose agent** with the `rules-[domain].md` file, any files listed in the `prime_files` array, and context appropriate to the route:
 
 - **Route A**: Request content only — "triaged as simple, aim for a focused minimal change"
 - **Route B**: Request + exploration output — "follow existing patterns identified above"
@@ -257,6 +258,7 @@ Spawn a **general-purpose agent** with the `do-work/agent-rules/rules-[domain].m
 All routes include these instructions to the agent:
 
 ```
+- **Prime Files:** If `prime_files` are attached to this REQ, READ THEM FIRST. They are your map to the codebase. If NO prime file exists for the primary utility you are modifying, you MUST investigate the utility and create one (`prime-[name].md`). Prime files must be low-noise, high-value, point to code as the source of truth, and avoid volatile metrics (like test counts). If you create one, update the REQ's frontmatter to include it.
 - You have full access to edit files and run shell commands
 - If you find the request is more complex than expected, you can explore or plan as needed
 - Document any blockers clearly
@@ -601,6 +603,7 @@ claimed_at: 2025-01-26T11:00:00Z
 route: B
 completed_at: 2025-01-26T11:08:00Z
 commit: a1b2c3d
+prime_files: []
 ---
 
 # Add User Avatar Component
