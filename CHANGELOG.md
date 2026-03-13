@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.27.5 — The Unboxing (2026-03-13)
+
+Moved `agent-rules/` out of the `do-work/` subdirectory to the repo root. When the skill is installed into a project that already uses `do-work/` as its working directory, the old layout would create a nested `do-work/do-work/` path. Now the rules live at `agent-rules/` — no nesting, no confusion.
+
+- Moved `do-work/agent-rules/` → `agent-rules/` at repo root
+- Updated path references in `work.md`
+
 ## 0.27.4 — The Stage Call (2026-03-13)
 
 The video preview actually works now. The Remotion project was missing `registerRoot()`, so `npm run preview` would launch Studio with nothing to show. Added a proper entry file and pointed the preview script at it.
