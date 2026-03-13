@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.27.2 — The Safety Catch (2026-03-13)
+
+Restored the missing-domain fallback guard for loading `rules-[domain].md` in the work pipeline. Steps 4 and 6 now gracefully skip the rules file when `domain` is absent from frontmatter or the file doesn't exist, instead of assuming it's always resolvable.
+
+- Restored `(if domain is missing or the file doesn't exist, skip loading it)` guard to Step 4 (Planning, Route C)
+- Added the same guard to Step 6 (Implementation) for consistency
+
 ## 0.27.1 — The Field Guide (2026-03-12)
 
 General agent rules now include the Prime Files Philosophy. Agents know what prime files are, how to write them, and what to avoid — before they ever encounter one in a REQ.
