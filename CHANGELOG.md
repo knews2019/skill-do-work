@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.27.3 — The Right Lane (2026-03-13)
+
+Discovered-task approvals now route to `pending` instead of `completed`. Previously, confirming "Yes, add to queue" on a discovered task hit the "Builder Was Right" fast-path, which archived it immediately — the task never actually ran.
+
+- Added "Approved Discovered Task" section to clarify workflow with correct `pending` routing
+- Updated "Confirm builder's choice" logic to distinguish discovered tasks from builder-decision follow-ups
+- Discovered tasks confirmed for processing stay in `do-work/` and enter the normal work queue
+
 ## 0.27.2 — The Safety Catch (2026-03-13)
 
 Restored the missing-domain fallback guard for loading `rules-[domain].md` in the work pipeline. Steps 4 and 6 now gracefully skip the rules file when `domain` is absent from frontmatter or the file doesn't exist, instead of assuming it's always resolvable.
