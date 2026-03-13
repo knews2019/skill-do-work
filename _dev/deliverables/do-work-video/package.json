@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "preview": "npx remotion studio src/Root.tsx"
+    "preview": "npx remotion studio src/index.ts"
   },
   "dependencies": {
     "react": "^18.2.0",

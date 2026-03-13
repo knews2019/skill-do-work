@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.27.4 — The Stage Call (2026-03-13)
+
+The video preview actually works now. The Remotion project was missing `registerRoot()`, so `npm run preview` would launch Studio with nothing to show. Added a proper entry file and pointed the preview script at it.
+
+- Added `src/index.ts` with `registerRoot(RemotionRoot)` call
+- Updated `package.json` preview script to point at `src/index.ts` instead of `src/Root.tsx`
+
 ## 0.27.3 — The Right Lane (2026-03-13)
 
 Discovered-task approvals now route to `pending` instead of `completed`. Previously, confirming "Yes, add to queue" on a discovered task hit the "Builder Was Right" fast-path, which archived it immediately — the task never actually ran.
