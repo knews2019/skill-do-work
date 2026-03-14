@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.27.7 — The Trim (2026-03-14)
+
+Rewrote `CLAUDE.md` as a proper prime file — project structure map, concise commit rules, and agent compatibility guidance. Cut the noise, kept the signal.
+
+- Added project structure overview with file-level descriptions
+- Condensed changelog formatting rules from 10 bullets to a template + one-liner
+- Tightened agent compatibility section from 5 verbose bullets to 3 clear ones
+
 ## 0.27.6 — The Unboxing (2026-03-14)
 
 Moved `agent-rules/` out of the `do-work/` subdirectory to the repo root. When the skill is installed into a project that already uses `do-work/` as its working directory, the old layout would create a nested `do-work/do-work/` path. Now the rules live at `agent-rules/` — no nesting, no confusion.
