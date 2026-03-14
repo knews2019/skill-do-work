@@ -4,12 +4,20 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.27.5 — The Unboxing (2026-03-13)
+## 0.27.6 — The Unboxing (2026-03-14)
 
 Moved `agent-rules/` out of the `do-work/` subdirectory to the repo root. When the skill is installed into a project that already uses `do-work/` as its working directory, the old layout would create a nested `do-work/do-work/` path. Now the rules live at `agent-rules/` — no nesting, no confusion.
 
 - Moved `do-work/agent-rules/` → `agent-rules/` at repo root
 - Updated path references in `work.md`
+
+## 0.27.5 — The Spring Clean (2026-03-14)
+
+Trimmed the `_dev/` folder and fixed a fragile symlink. Root `CLAUDE.md` was a symlink to `_dev/CLAUDE.md` — replaced it with a real file so it can't break when `_dev/` gets cleaned up. Removed the stub agent config files too.
+
+- Replaced `CLAUDE.md` symlink with a standalone file (was `CLAUDE.md -> _dev/CLAUDE.md`)
+- Deleted `_dev/CLAUDE.md` (now lives at root as a real file)
+- Deleted `_dev/AGENTS.md` and `_dev/GEMINI.md` (one-line stubs with no real value)
 
 ## 0.27.4 — The Stage Call (2026-03-13)
 
