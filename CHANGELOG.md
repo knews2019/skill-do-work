@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.27.5 — The Spring Clean (2026-03-14)
+
+Trimmed the `_dev/` folder and fixed a fragile symlink. Root `CLAUDE.md` was a symlink to `_dev/CLAUDE.md` — replaced it with a real file so it can't break when `_dev/` gets cleaned up. Removed the stub agent config files too.
+
+- Replaced `CLAUDE.md` symlink with a standalone file (was `CLAUDE.md -> _dev/CLAUDE.md`)
+- Deleted `_dev/CLAUDE.md` (now lives at root as a real file)
+- Deleted `_dev/AGENTS.md` and `_dev/GEMINI.md` (one-line stubs with no real value)
+
 ## 0.27.4 — The Stage Call (2026-03-13)
 
 The video preview actually works now. The Remotion project was missing `registerRoot()`, so `npm run preview` would launch Studio with nothing to show. Added a proper entry file and pointed the preview script at it.
