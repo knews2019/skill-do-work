@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.28.1 — The Light Install (2026-03-18)
+
+Update command no longer pulls in the `skills` npm package. Now it's a single curl+tar one-liner that downloads files directly from GitHub — no npm, no intermediary tools.
+
+- Replaced `npx skills add` with `curl | tar` in update commands and install docs
+- `_dev/` folder excluded automatically during extraction
+
 ## 0.28.0 — The Feedback Loop (2026-03-18)
 
 Lessons learned now flow back into prime files. When a REQ captures lessons, the relevant prime files get a link under a `## Lessons` section — so future agents working on that area of the codebase benefit from past experience without re-reading archived REQs.

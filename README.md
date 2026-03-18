@@ -5,7 +5,7 @@ A task queue skill for agentic coding tools. Capture requests fast, process them
 ## Installation
 
 ```bash
-npx skills add knews2019/skill-do-work
+curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
 ```
 
 ## Welcome to your new work loop
