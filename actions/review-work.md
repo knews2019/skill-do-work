@@ -237,7 +237,17 @@ After presenting the review report, perform a self-validation pass — no human 
 
    In **Pipeline mode**, skip lesson capture — the work action's Step 7.5 handles it after the review returns.
 
-Self-validation runs in **both modes**. Lesson capture is **standalone-only** to avoid duplication with the work action.
+4. **Update prime files (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant, append a link under a `## Lessons` section (create it if it doesn't exist):
+
+   ```markdown
+   ## Lessons
+
+   - [REQ-NNN: 1-line summary](do-work/archive/UR-NNN/REQ-NNN-slug.md#lessons-learned)
+   ```
+
+   Only link lessons relevant to that prime file's scope. In **Pipeline mode**, the work action's Step 7.5 handles prime file updates.
+
+Self-validation runs in **both modes**. Lesson capture and prime file updates are **standalone-only** to avoid duplication with the work action.
 
 ### Step 10: Create Follow-up REQs
 
