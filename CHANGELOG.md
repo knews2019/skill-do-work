@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.27.8 — The Self-Check (2026-03-18)
+
+Replaced human validation gate in review-work with automated self-validation. The review now re-examines its own findings, captures lessons learned, and creates follow-up REQs for anything it missed — no human prompt blocking the flow.
+
+- Removed Step 9.5 human validation prompt (standalone mode)
+- Added self-validation pass that runs in both pipeline and standalone modes
+- Lessons learned are now captured automatically by the review itself
+
 ## 0.27.7 — The Trim (2026-03-14)
 
 Rewrote `CLAUDE.md` as a proper prime file — project structure map, concise commit rules, and agent compatibility guidance. Cut the noise, kept the signal.
