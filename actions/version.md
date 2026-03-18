@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting and update checks.
 
-**Current version**: 0.28.0
+**Current version**: 0.28.1
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -27,8 +27,8 @@ When user asks "check for updates", "update", or "is there a newer version":
 ```
 Update available: v{remote} (you have v{local})
 
-To update, run:
-npx skills add knews2019/skill-do-work -g -y
+To update, run this from the skill's root directory (where SKILL.md lives):
+curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
 ```
 
 **If up to date** (local >= remote):
@@ -42,8 +42,8 @@ You're up to date (v{local})
 ```
 Couldn't check for updates.
 
-To manually update, run:
-npx skills add knews2019/skill-do-work
+To manually update, run this from the skill's root directory (where SKILL.md lives):
+curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
 
 Or visit: https://github.com/knews2019/skill-do-work
 ```
