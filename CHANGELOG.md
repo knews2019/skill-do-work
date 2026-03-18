@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.28.2 — The Right Address (2026-03-18)
+
+Lesson linkback to prime files now works reliably. Links are written after archiving (so the target file exists), paths are relative from the prime file's directory (so they work regardless of repo layout), and prime discovery checks CLAUDE.md and globs for `prime-*.md` near changed files instead of relying solely on REQ frontmatter.
+
+- Moved prime file update from Step 7.5 (before archive) to new Step 8.5 (after archive)
+- Link paths are now relative from the prime file's directory, not a fixed `do-work/archive/` prefix
+- Discovery checks CLAUDE.md, globs `prime-*.md` near changed files, and falls back to REQ frontmatter
+- Expanded `rules-general.md` with satellite docs pattern, `## Lessons` convention, and CLAUDE.md registration
+- Fixed typo: `prime-checkout-consolididation.md` → `prime-checkout-consolidation.md`
+
 ## 0.28.1 — The Light Install (2026-03-18)
 
 Update command no longer pulls in the `skills` npm package. Now it's a single curl+tar one-liner that downloads files directly from GitHub — no npm, no intermediary tools.

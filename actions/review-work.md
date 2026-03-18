@@ -237,15 +237,15 @@ After presenting the review report, perform a self-validation pass — no human 
 
    In **Pipeline mode**, skip lesson capture — the work action's Step 7.5 handles it after the review returns.
 
-4. **Update prime files (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant, append a link under a `## Lessons` section (create it if it doesn't exist):
+4. **Update prime files (Standalone mode only).** Discover relevant prime files — they always follow the `prime-*.md` naming convention. Check the project's CLAUDE.md for registered primes, glob for `prime-*.md` in directories where the REQ touched files (and their parents), and check the REQ's `prime_files` frontmatter. For each discovered prime file where the lesson is relevant, append a link under a `## Lessons` section (create the section if it doesn't exist). The link path must be **relative from the prime file's directory** to the archived REQ:
 
    ```markdown
    ## Lessons
 
-   - [REQ-NNN: 1-line summary](do-work/archive/UR-NNN/REQ-NNN-slug.md#lessons-learned)
+   - [REQ-NNN: 1-line summary](relative/path/to/do-work/archive/UR-NNN/REQ-NNN-slug.md#lessons-learned)
    ```
 
-   Only link lessons relevant to that prime file's scope. In **Pipeline mode**, the work action's Step 7.5 handles prime file updates.
+   Skip prime files where the lesson isn't relevant to that file's scope. Don't create new prime files here. In **Pipeline mode**, the work action's Step 8.5 handles prime file updates after archiving.
 
 Self-validation runs in **both modes**. Lesson capture and prime file updates are **standalone-only** to avoid duplication with the work action.
 

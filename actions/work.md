@@ -358,16 +358,6 @@ Append to the request file:
 - "What didn't work" is the most valuable part — it prevents repeating mistakes.
 - Always reference specific files rather than describing their contents.
 
-**Update prime files:** After writing the Lessons Learned section, check the REQ's `prime_files` frontmatter. For each listed prime file, append a link to the lesson under a `## Lessons` section in that prime file (create the section if it doesn't exist):
-
-```markdown
-## Lessons
-
-- [REQ-NNN: 1-line summary of the lesson](do-work/archive/UR-NNN/REQ-NNN-slug.md#lessons-learned)
-```
-
-Only add a link when the lesson is relevant to that prime file's scope — don't spray every lesson into every prime file. If the REQ has no `prime_files` or the lessons aren't relevant to any prime file, skip this.
-
 ### Step 8: Archive
 
 **On success:**
@@ -424,6 +414,31 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 1. Update frontmatter: `status: failed`, `error: "description"`
 2. Move to `archive/` (failed REQs always go to archive root, not into UR folders)
 3. Report failure to user
+
+### Step 8.5: Update Prime Files
+
+After archiving, link lessons learned back into the relevant prime files. This is how institutional knowledge flows from completed work into the codebase's durable memory.
+
+1. **Discover relevant prime files.** Prime files always follow the `prime-*.md` naming convention. Check these sources in order:
+   - The project's CLAUDE.md (or equivalent root instructions) — prime files are typically registered there.
+   - The directories where the REQ's implementation touched files, and their parents — glob for `prime-*.md`.
+   - The REQ's `prime_files` frontmatter — but don't rely on it exclusively, since it may be empty or stale from capture time.
+2. For each discovered prime file, check whether the lesson is relevant to that prime file's scope. Skip irrelevant lessons — don't spray every lesson into every prime file.
+3. Append a link under a `## Lessons` section in the prime file (create the section if it doesn't exist). The link path must be **relative from the prime file's directory** to the archived REQ:
+
+```markdown
+## Lessons
+
+- [REQ-NNN: 1-line summary](relative/path/to/do-work/archive/UR-NNN/REQ-NNN-slug.md#lessons-learned)
+```
+
+**Example:** if the prime file is at `utils/parser/prime-parser.md` and the archived REQ is at `do-work/archive/UR-042/REQ-105-fix-edge-case.md`, the link is:
+
+```markdown
+- [REQ-105: Empty input edge case](../../do-work/archive/UR-042/REQ-105-fix-edge-case.md#lessons-learned)
+```
+
+If the prime file doesn't exist (e.g., it was deleted since the REQ was created), skip it — don't create a new prime file here.
 
 ### Step 9: Commit (Git repos only)
 
@@ -597,6 +612,7 @@ All 2 requests completed:
 □ Step 7: Review (spawn review action in pipeline mode)
 □ Step 7.5: Lessons Learned (append section, skip for Route A if no surprises)
 □ Step 8: Archive (update status, append summary, queue follow-ups & discovered tasks, move to archive/)
+□ Step 8.5: Update Prime Files (discover primes, link lessons with relative paths)
 □ Step 9: Commit (stage explicit files, commit if git repo, amend hash to REQ)
 □ Step 10: Loop or Exit (CONTEXT WIPE if looping, else cleanup and exit)
 ```
