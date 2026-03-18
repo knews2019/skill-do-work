@@ -5,6 +5,7 @@ A task queue skill for agentic coding tools. Capture requests fast, process them
 ## Installation
 
 ```bash
+# Run from the directory where you want the skill installed
 curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
 ```
 

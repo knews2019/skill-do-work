@@ -10,6 +10,7 @@ Update command no longer pulls in the `skills` npm package. Now it's a single cu
 
 - Replaced `npx skills add` with `curl | tar` in update commands and install docs
 - `_dev/` folder excluded automatically during extraction
+- Added directory guidance ("run from the skill's root directory") to prevent extracting into the wrong location
 
 ## 0.28.0 — The Feedback Loop (2026-03-18)
 
