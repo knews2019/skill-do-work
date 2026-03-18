@@ -4,6 +4,30 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.28.0 — The Feedback Loop (2026-03-18)
+
+Lessons learned now flow back into prime files. When a REQ captures lessons, the relevant prime files get a link under a `## Lessons` section — so future agents working on that area of the codebase benefit from past experience without re-reading archived REQs.
+
+- Added prime file update step to work.md Step 7.5 (pipeline mode)
+- Added prime file update step to review-work.md Step 9.5 (standalone mode)
+- Links are scoped: only lessons relevant to a prime file's domain get added
+
+## 0.27.9 — The Right File (2026-03-18)
+
+Fixed Step 9.5 targeting the archived REQ in pipeline mode — the file hasn't been archived yet at that point. Lesson capture is now standalone-only (work.md Step 7.5 handles it in pipeline mode), self-validation still runs in both modes.
+
+- Changed "archived REQ file" → "the REQ file" in Step 9.5
+- Made lesson capture standalone-only to avoid duplication with work.md Step 7.5
+- Reordered steps: self-validation first, then lesson capture
+
+## 0.27.8 — The Self-Check (2026-03-18)
+
+Replaced human validation gate in review-work with automated self-validation. The review now re-examines its own findings, captures lessons learned, and creates follow-up REQs for anything it missed — no human prompt blocking the flow.
+
+- Removed Step 9.5 human validation prompt (standalone mode)
+- Added self-validation pass that runs in both pipeline and standalone modes
+- Lessons learned are now captured automatically by the review itself
+
 ## 0.27.7 — The Trim (2026-03-14)
 
 Rewrote `CLAUDE.md` as a proper prime file — project structure map, concise commit rules, and agent compatibility guidance. Cut the noise, kept the signal.

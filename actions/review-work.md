@@ -224,19 +224,30 @@ Format:
 - REQ-025: "Add edge case tests for dark mode toggle" (addendum_to: REQ-003)
 ```
 
-### Step 9.5: Human Validation (Standalone Mode Only)
+### Step 9.5: Self-Validation & Lessons Learned
 
-In **Standalone mode**, after presenting your review report, you MUST use your environment's ask-user prompt/tool to request human validation.
+After presenting the review report, perform a self-validation pass — no human prompt needed.
 
-Prompt the user: *"I have completed my automated review. Please test the deliverable manually. Do you approve? Do you have any feedback, lessons learned, or bugs to report?"*
+1. **Re-examine your own review.** Look for blind spots: did you test the happy path but skip error cases? Did you verify the feature works but not check for regressions? Did you assume something works because the code looks right without actually running it?
+2. **If self-validation reveals new issues:** Treat them as **Important** findings. Pass them to Step 10 so the system automatically generates follow-up REQ files (status: pending), linking back via `addendum_to`.
+3. **Capture lessons learned (Standalone mode only).** Append a `## Lessons Learned` section to the REQ file (create it if it doesn't exist) with:
+   - **What worked:** Approaches, patterns, or tools that paid off during this review
+   - **What didn't:** Dead ends, false assumptions, things the review missed initially
+   - **Worth knowing:** Gotchas, edge cases, or non-obvious dependencies discovered during review
 
-Based on their response:
+   In **Pipeline mode**, skip lesson capture — the work action's Step 7.5 handles it after the review returns.
 
-- **Lessons Learned / Architectural Feedback:** Append their exact insights directly into the `## Lessons Learned` section of the archived REQ file. (Create the section if it doesn't exist).
-- **Bugs / Fixes requested:** Treat these as **Important** findings. Pass them to Step 10 so the system automatically generates new follow-up REQ files (status: pending) containing their exact feedback, linking back via `addendum_to`, so the builder can fix them in the next run.
-- **Approved:** Note the approval and proceed.
+4. **Update prime files (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant, append a link under a `## Lessons` section (create it if it doesn't exist):
 
-In **Pipeline mode**, skip this step entirely so you do not block the automated background work loop.
+   ```markdown
+   ## Lessons
+
+   - [REQ-NNN: 1-line summary](do-work/archive/UR-NNN/REQ-NNN-slug.md#lessons-learned)
+   ```
+
+   Only link lessons relevant to that prime file's scope. In **Pipeline mode**, the work action's Step 7.5 handles prime file updates.
+
+Self-validation runs in **both modes**. Lesson capture and prime file updates are **standalone-only** to avoid duplication with the work action.
 
 ### Step 10: Create Follow-up REQs
 

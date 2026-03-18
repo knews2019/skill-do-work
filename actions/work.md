@@ -358,6 +358,16 @@ Append to the request file:
 - "What didn't work" is the most valuable part — it prevents repeating mistakes.
 - Always reference specific files rather than describing their contents.
 
+**Update prime files:** After writing the Lessons Learned section, check the REQ's `prime_files` frontmatter. For each listed prime file, append a link to the lesson under a `## Lessons` section in that prime file (create the section if it doesn't exist):
+
+```markdown
+## Lessons
+
+- [REQ-NNN: 1-line summary of the lesson](do-work/archive/UR-NNN/REQ-NNN-slug.md#lessons-learned)
+```
+
+Only add a link when the lesson is relevant to that prime file's scope — don't spray every lesson into every prime file. If the REQ has no `prime_files` or the lessons aren't relevant to any prime file, skip this.
+
 ### Step 8: Archive
 
 **On success:**
