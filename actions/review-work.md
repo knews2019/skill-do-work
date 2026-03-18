@@ -229,13 +229,15 @@ Format:
 After presenting the review report, perform a self-validation pass — no human prompt needed.
 
 1. **Re-examine your own review.** Look for blind spots: did you test the happy path but skip error cases? Did you verify the feature works but not check for regressions? Did you assume something works because the code looks right without actually running it?
-2. **Capture lessons learned.** Append a `## Lessons Learned` section to the archived REQ file (create it if it doesn't exist) with:
+2. **If self-validation reveals new issues:** Treat them as **Important** findings. Pass them to Step 10 so the system automatically generates follow-up REQ files (status: pending), linking back via `addendum_to`.
+3. **Capture lessons learned (Standalone mode only).** Append a `## Lessons Learned` section to the REQ file (create it if it doesn't exist) with:
    - **What worked:** Approaches, patterns, or tools that paid off during this review
    - **What didn't:** Dead ends, false assumptions, things the review missed initially
    - **Worth knowing:** Gotchas, edge cases, or non-obvious dependencies discovered during review
-3. **If self-validation reveals new issues:** Treat them as **Important** findings. Pass them to Step 10 so the system automatically generates follow-up REQ files (status: pending), linking back via `addendum_to`.
 
-This step runs in **both Pipeline and Standalone modes** — the review should always close the loop on its own findings without blocking on human input.
+   In **Pipeline mode**, skip lesson capture — the work action's Step 7.5 handles it after the review returns.
+
+Self-validation runs in **both modes**. Lesson capture is **standalone-only** to avoid duplication with the work action.
 
 ### Step 10: Create Follow-up REQs
 

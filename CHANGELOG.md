@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.27.9 — The Right File (2026-03-18)
+
+Fixed Step 9.5 targeting the archived REQ in pipeline mode — the file hasn't been archived yet at that point. Lesson capture is now standalone-only (work.md Step 7.5 handles it in pipeline mode), self-validation still runs in both modes.
+
+- Changed "archived REQ file" → "the REQ file" in Step 9.5
+- Made lesson capture standalone-only to avoid duplication with work.md Step 7.5
+- Reordered steps: self-validation first, then lesson capture
+
 ## 0.27.8 — The Self-Check (2026-03-18)
 
 Replaced human validation gate in review-work with automated self-validation. The review now re-examines its own findings, captures lessons learned, and creates follow-up REQs for anything it missed — no human prompt blocking the flow.
