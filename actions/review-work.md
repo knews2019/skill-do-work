@@ -93,6 +93,7 @@ Evaluate the implementation quality by reading the diff:
 - Are there tests for the new/changed behavior?
 - Do tests cover the important paths (not just the happy path)?
 - Are test assertions meaningful (not just "doesn't throw")?
+- **Were the right tests run?** Check the prime file for a testing section that maps code areas to test commands. If the prime says "changes to `lib/foo.js` → run `npm run test:foo`" and the builder only ran `node -c`, flag it. The prime's test map is the project-specific source of truth for which tests validate which code.
 - If no tests exist and the project has no test infrastructure, score N/A — this dimension is excluded from the overall average (don't count it as 0%)
 
 **Scope Discipline (0-100%)**
@@ -112,7 +113,7 @@ Actually verify the implementation works. Reading diffs catches logic errors; ru
 
 **What to do:**
 
-1. **Run the test suite** — if tests weren't already run by the work pipeline (pipeline mode should have run them in Step 6.5), run them now. Target tests related to changed code first, then broader tests if fast enough.
+1. **Run the test suite** — if tests weren't already run by the work pipeline (pipeline mode should have run them in Step 6.5), run them now. Check the prime file for a testing section — if it maps changed code areas to specific test commands, run those. Otherwise, target tests related to changed code first, then broader tests if fast enough.
 2. **Try the feature** — if the change produces observable behavior (UI, CLI output, API response, file output), verify it works end-to-end:
    - Run the app/server/tool if applicable
    - Exercise the specific feature that was built

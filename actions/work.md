@@ -263,6 +263,7 @@ All routes include these instructions to the agent:
 - If you find the request is more complex than expected, you can explore or plan as needed
 - Document any blockers clearly
 - Identify existing tests related to your changes
+- **Check the prime file for a testing section** — if the prime maps code areas to specific test commands (e.g., "changes to lib/inpainting.js → run `npm run test:api`"), follow that mapping. This takes precedence over generic test detection.
 - Write new tests for new functionality / regression tests for bug fixes
 - Update existing tests if behavior intentionally changed
 - When complete, summarize: what changed, what tests exist, what new tests were written
@@ -277,10 +278,11 @@ All routes include these instructions to the agent:
 
 Before marking complete, verify tests pass:
 
-1. **Detect testing infrastructure** — look for `package.json` test scripts, `jest.config.*`, `pytest.ini`, `Cargo.toml`, `*_test.go`, etc. If none found, skip testing and note it.
-2. **Run relevant tests** — target tests related to changed code, not the full suite (unless it's fast)
-3. **If tests fail** — return to implementation to fix. Loop until passing or mark as failed after 3 attempts.
-4. **If new tests are needed** — spawn a general-purpose agent to write them following existing patterns, then run them.
+1. **Check the prime file for test guidance** — if the REQ's `prime_files` reference a prime with a testing section (test commands, code-area-to-test mappings), use that as the primary source for what to run. Prime test maps are project-specific knowledge that generic detection can't replicate (e.g., "changes to `lib/inpainting.js` require `npm run test:api`" or "`npm test` is always safe but `npm run test:e2e` costs money").
+2. **Fall back to generic detection** — if the prime has no testing section, look for `package.json` test scripts, `jest.config.*`, `pytest.ini`, `Cargo.toml`, `*_test.go`, etc. If none found, skip testing and note it.
+3. **Run relevant tests** — target tests related to changed code, not the full suite (unless it's fast). If the prime specifies different commands for different code areas, run only the commands relevant to the files you changed.
+4. **If tests fail** — return to implementation to fix. Loop until passing or mark as failed after 3 attempts.
+5. **If new tests are needed** — spawn a general-purpose agent to write them following existing patterns, then run them.
 
 Append to the request file:
 

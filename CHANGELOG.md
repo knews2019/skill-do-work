@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.28.2 — The Test Map (2026-03-21)
+
+Agents now check prime files for project-specific test commands before falling back to generic detection. If your prime maps code areas to test commands, builders and reviewers will follow that mapping instead of just running `npm test`.
+
+- work.md builder instructions: added bullet to check prime file testing sections
+- work.md Step 6.5: prime test guidance comes first, generic detection is the fallback
+- review-work.md Step 6: Test Adequacy now checks whether the *right* tests were run per the prime
+- review-work.md Step 7: Acceptance testing checks prime for test command mappings
+
 ## 0.28.1 — The Light Install (2026-03-18)
 
 Update command no longer pulls in the `skills` npm package. Now it's a single curl+tar one-liner that downloads files directly from GitHub — no npm, no intermediary tools.
