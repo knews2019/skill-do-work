@@ -94,6 +94,8 @@ Evaluate the implementation quality by reading the diff:
 - Do tests cover the important paths (not just the happy path)?
 - Are test assertions meaningful (not just "doesn't throw")?
 - **Were the right tests run?** Check the prime file for a testing section that maps code areas to test commands. If the prime says "changes to `lib/foo.js` → run `npm run test:foo`" and the builder only ran `node -c`, flag it. The prime's test map is the project-specific source of truth for which tests validate which code.
+- **Do the tests prove the request is implemented?** Tests for the new behavior should have failed before implementation and pass after (red-green validation). If the Testing section has no red-green evidence, the tests may not actually validate the change. Tests that were "already passing" before implementation don't prove anything.
+- **Were behavior changes to other requests documented?** If existing tests were updated, verify each update is traced to the originating REQ and the behavior change is intentional. This is how we track which request altered which other request's behavior. Missing traceability here is an Important finding.
 - If no tests exist and the project has no test infrastructure, score N/A — this dimension is excluded from the overall average (don't count it as 0%)
 
 **Scope Discipline (0-100%)**
@@ -127,6 +129,7 @@ Actually verify the implementation works. Reading diffs catches logic errors; ru
    - If the change modifies a shared utility, API, or interface, exercise the other consumers
    - For bug fixes, verify the fix doesn't break the feature's other behaviors
    - Try the most obvious related flow — if you changed checkout, make sure the cart still works
+5. **Verify cross-REQ test updates** — if the Testing section lists "Existing tests updated (cross-REQ impact)", verify: (a) the behavior change is genuinely intentional, (b) the updated tests still meaningfully validate their original REQ's requirements, and (c) the original REQ is referenced so the change is traceable. Flag undocumented test modifications as an Important finding.
 
 **What NOT to do:**
 - Don't build an exhaustive test harness — this is a quick smoke test, not QA

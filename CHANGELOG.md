@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.29.0 — The Red-Green Trace (2026-03-21)
+
+Each request now proves itself with red-green test validation and cross-REQ traceability. Tests must fail before implementation and pass after — proving the request is delivered, not just that tests exist. When a request intentionally changes behavior tested by a prior request, the builder documents which REQ's tests changed and why.
+
+- Builder instructions: write/identify tests before code, confirm they fail, then implement
+- Builder instructions: when existing tests break, document cross-REQ impact with originating REQ reference
+- Step 6.5 testing template: added red-green validation and cross-REQ impact sections
+- review-work.md Step 6: reviewers check for red-green evidence and cross-REQ test traceability
+- review-work.md Step 7: acceptance testing verifies cross-REQ test updates are intentional and documented
+
 ## 0.28.2 — The Test Map (2026-03-21)
 
 Agents now check prime files for project-specific test commands before falling back to generic detection. If your prime maps code areas to test commands, builders and reviewers will follow that mapping instead of just running `npm test`.
