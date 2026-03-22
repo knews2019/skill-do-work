@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.29.3 — The Self Updater (2026-03-22)
+
+Version update now actually runs the update instead of telling you to do it. You're the user, not the agent's assistant.
+
+- Changed "update available" flow to execute the curl command directly instead of printing it
+- Agent verifies the update succeeded by re-reading the version file
+
 ## 0.29.2 — The Drift Catcher (2026-03-22)
 
 Cleanup now detects `do-work/` directories created in the wrong location when an agent's CWD drifts into a subdirectory. Pass 3a scans the repo for misplaced `do-work/` trees and relocates their contents to the canonical root queue.
