@@ -175,7 +175,8 @@ do-work — task queue for agentic coding tools
     do work clarify             Answer pending questions from completed work
     do work cleanup             Consolidate the archive
     do work commit              Analyze and commit uncommitted files atomically
-    do work version             Check version / updates + last 5 skill releases
+    do work version             Check version + last 5 skill releases
+    do work update              Check for upstream updates
     do work recap               Last 5 completed URs with their REQs
 ```
 
@@ -234,6 +235,12 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work commit changes` → Same as commit
 - `do work save work` → Same as commit
 
+### Routes to Version
+
+- `do work version` → Reports version + last 5 skill releases
+- `do work update` → Checks for upstream updates
+- `do work check for updates` → Same as update
+
 ### Routes to Recap (via Version)
 
 - `do work recap` → Last 5 completed URs with their REQs
@@ -286,13 +293,14 @@ Each action has an action file with full instructions. How you execute it depend
 | commit             | `./actions/commit.md`           | (none needed)                  |
 | quick-wins         | `./actions/quick-wins.md`       | Target directory               |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
+| recap              | `./actions/version.md`          | `mode: recap`                  |
 
 ### If subagents are available
 
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `present work`, `quick-wins`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `present work`, `quick-wins`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
@@ -363,6 +371,13 @@ Next steps:
 Next steps:
   do work run                 Process answered questions
   do work clarify             Continue answering (if skipped any)
+```
+
+**After version / recap:**
+```
+Next steps:
+  do work run                 Start processing the queue
+  do work [describe changes]  Capture new requests
 ```
 
 **Rules:**

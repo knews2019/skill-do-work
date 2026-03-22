@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.30.5 — The Consistency Pass (2026-03-22)
+
+Filled in gaps from the recap/version split — missing route examples, dispatch table entry, next steps, and help menu clarity.
+
+- Added "Routes to Version" example section (was the only action without one)
+- Added recap row to Action Dispatch table with `mode: recap` context
+- Added recap to foreground subagent list
+- Split help menu: `do work version` and `do work update` now on separate lines
+- Added "After version / recap" to Suggest Next Steps
+- Updated version.md header to mention recap handling
+
 ## 0.30.4 — The Recap (2026-03-22)
 
 Split changelog into two focused commands: `do work version` now shows last 5 skill releases alongside the version number, and `do work recap` shows last 5 completed URs with their REQs. No more wall-of-text changelog dumps.
