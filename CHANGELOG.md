@@ -4,6 +4,28 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.29.5 — The Clean Slate (2026-03-22)
+
+Crash recovery now strips stale phase sections so interrupted runs don't poison the next attempt. Pass 3a relocation spec tightened with explicit path preservation and conflict handling rules.
+
+- Crash recovery clears `## Triage`, `## Exploration`, `## Plan`, and `## Testing` from interrupted REQs — prevents stale partial data from being trusted on retry
+- Pass 3a now specifies exactly how each subtree type is relocated, what counts as a conflict vs. a duplicate, and when to leave misplaced copies for manual resolution
+
+## 0.29.4 — The Pragmatist (2026-03-22)
+
+Addressed three code review findings: cleanup detection gaps, internal contradictions, and overly rigid test requirements.
+
+- Pass 3a now detects misplaced `do-work/` directories directly instead of relying on narrow file patterns that miss partial trees
+- Resolved contradiction between Pass 3a relocation and "does not touch" exclusions — misplaced trees get fully relocated (error recovery), canonical root stays untouched (work action's domain)
+- Red-green testing is now the default for bug fixes and new features; refactors, config, docs, and cleanup use pragmatic evidence instead
+
+## 0.29.3 — The Self Updater (2026-03-22)
+
+Version update now actually runs the update instead of telling you to do it. You're the user, not the agent's assistant.
+
+- Changed "update available" flow to execute the curl command directly instead of printing it
+- Agent verifies the update succeeded by re-reading the version file
+
 ## 0.29.2 — The Drift Catcher (2026-03-22)
 
 Cleanup now detects `do-work/` directories created in the wrong location when an agent's CWD drifts into a subdirectory. Pass 3a scans the repo for misplaced `do-work/` trees and relocates their contents to the canonical root queue.
