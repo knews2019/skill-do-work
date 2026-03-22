@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.29.7 — The Link Fixer (2026-03-22)
+
+Prime-file lesson links now compute proper relative paths instead of assuming repo-root context. Also documented the stale-file hazard in tar-based updates.
+
+- Lesson links in prime files now use paths relative to the prime file's location, so links work regardless of where the prime file lives in the repo
+- Updated both work.md (Step 7.5) and review-work.md (Step 9.5) with the same fix and a concrete example
+- Added stale-file warning to version.md update flow and README.md install section — tar overwrites but doesn't delete
+
 ## 0.29.6 — The Safety Net (2026-03-22)
 
 Auto-update now checks for uncommitted local changes before overwriting anything. No more silent destruction of in-progress work.

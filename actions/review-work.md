@@ -246,8 +246,10 @@ After presenting the review report, perform a self-validation pass — no human 
    ```markdown
    ## Lessons
 
-   - [REQ-NNN: 1-line summary](do-work/archive/UR-NNN/REQ-NNN-slug.md#lessons-learned)
+   - [REQ-NNN: 1-line summary](<relative-path-to-req>#lessons-learned)
    ```
+
+   **Path must be relative to the prime file's location**, not the repo root. Compute the correct relative path from the prime file's directory to the archived REQ file. For example, if the prime file is at `src/utils/prime-auth.md` and the REQ is at `do-work/archive/UR-005/REQ-042-auth-fix.md`, the link should use `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`.
 
    Only link lessons relevant to that prime file's scope. In **Pipeline mode**, the work action's Step 7.5 handles prime file updates.
 

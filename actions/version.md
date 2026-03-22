@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting and update checks.
 
-**Current version**: 0.29.6
+**Current version**: 0.29.7
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -34,6 +34,7 @@ When user asks "check for updates", "update", or "is there a newer version":
    ```
    curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
    ```
+   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. If the update changes significantly, stale files from older versions may remain. For a guaranteed clean update, delete the skill directory contents first (preserving `do-work/` queue data) and then extract.
 4. **Verify**: Read `actions/version.md` again and confirm the local version now matches the remote version.
 5. **Report result**: `Updated to v{remote}.`
 
