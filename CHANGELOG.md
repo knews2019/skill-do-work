@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.30.0 — The Low Hanging Fruit (2026-03-22)
+
+New quick-wins action scans a target directory for refactoring opportunities and low-hanging tests without modifying any files.
+
+- Added `actions/quick-wins.md` — read-only codebase scanner that identifies long functions, copy-paste, god files, dead code, deep nesting, mixed concerns, and untested pure functions
+- Outputs a structured markdown report ranked by effort vs impact (trivial+high first)
+- Full SKILL.md integration: routing, dispatch, help menu, verb section, examples, and next-steps suggestions
+
 ## 0.29.5 — The Clean Slate (2026-03-22)
 
 Crash recovery now strips stale phase sections so interrupted runs don't poison the next attempt. Pass 3a relocation spec tightened with explicit path preservation and conflict handling rules.
