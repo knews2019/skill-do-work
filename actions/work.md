@@ -264,7 +264,7 @@ All routes include these instructions to the agent:
 - Document any blockers clearly
 - Identify existing tests related to your changes
 - **Check the prime file for a testing section** — if the prime maps code areas to specific test commands (e.g., "changes to lib/inpainting.js → run `npm run test:api`"), follow that mapping. This takes precedence over generic test detection.
-- **Write tests before code (red-green validation):** Write or identify tests that validate the request's requirements. Run them before implementing — they should fail (proving they actually test the new behavior). If they already pass, the test doesn't validate the change and you need a better test. After implementation, these same tests must pass.
+- **Write pragmatic tests:** For bug fixes and new features, prefer red-green validation — write or identify tests that validate the request's requirements, run them before implementing (they should fail), then verify they pass after. For refactors, config changes, documentation, and cleanup, red-green may not apply — targeted regression tests, lint/build validation, or non-regression evidence is sufficient. The goal is proof that the change works, not ceremony.
 - Write new tests for new functionality / regression tests for bug fixes
 - Update existing tests if behavior intentionally changed
 - **If existing tests break:** When your changes cause tests from a prior request to fail, determine if the behavior change is intentional. If yes: update the failing tests to match the new behavior and document which REQ's tests changed and why in the Testing section — this creates traceability for which request altered which other request's behavior. If no: fix your implementation to preserve the existing behavior.
@@ -294,7 +294,7 @@ Append to the request file:
 **Tests run:** [command]
 **Result:** ✓ All passing (X tests)
 
-**Red-green validation:**
+**Red-green validation:** *(for bug fixes and new features)*
 - [test name/file]: ✗ before implementation → ✓ after
 - [test name/file]: ✗ before implementation → ✓ after
 
@@ -307,7 +307,7 @@ Append to the request file:
 *Verified by work action*
 ```
 
-Omit `Red-green validation` if no request-specific tests were written or identified. Omit `Existing tests updated` if no prior tests were modified.
+Omit `Red-green validation` if no request-specific tests were written or identified, or if the change is non-behavioral (refactor, config, docs, cleanup) — use regression evidence instead. Omit `Existing tests updated` if no prior tests were modified.
 
 ### Step 7: Review
 

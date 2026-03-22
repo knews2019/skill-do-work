@@ -51,11 +51,10 @@ For each loose `REQ-*.md` file directly in `do-work/archive/` (not inside a subf
 
 Scan for `do-work/` directories created inside utility subdirectories instead of the project root. This happens when an agent's working directory drifts into a subdirectory (e.g., during a refactor) and the next capture creates `do-work/` relative to that location. Once the misplaced directory exists, subsequent sessions keep writing there — silently diverging from the canonical queue.
 
-1. Search for `do-work/` directories anywhere in the repo EXCEPT the project root: glob for `**/do-work/REQ-*.md` and `**/do-work/archive/UR-*` excluding the root `do-work/`
-2. For each misplaced `do-work/` found:
-   - List all REQ files, UR folders (archive + user-requests), and working items
+1. **Detect directories, not file patterns.** Search for any directory named `do-work/` anywhere in the repo EXCEPT the project root. Look for the directory itself — don't rely on specific file patterns inside it, since a misplaced tree may contain only `user-requests/`, only `working/`, only assets, or any partial subset of the normal structure.
+2. For each misplaced `do-work/` found, inspect its known subtrees (`archive/`, `user-requests/`, `working/`, and queue-root REQ files):
    - For each item, check if it already exists at the root `do-work/` — skip if duplicate, move if not
-   - Report: `Found misplaced do-work/ at {path} — relocated {N} REQs, {M} URs to project root`
+   - Report: `Found misplaced do-work/ at {path} — relocated {N} items to project root`
 3. After relocating all contents, remove the empty misplaced `do-work/` directory
 4. Do not auto-delete files — if a conflict exists (same REQ/UR at both locations), report the conflict and leave the misplaced copy for manual resolution
 
@@ -148,6 +147,6 @@ Do not use `git add -A` or `git add .` — stage only paths within `do-work/arch
 
 - Delete any files — only moves them into the right location
 - Modify file contents or frontmatter — files are relocated as-is
-- Touch files in `do-work/` root (the queue) or `do-work/working/` — those are the work action's responsibility
+- Touch files in the **canonical** `do-work/` root (the queue) or `do-work/working/` — those are the work action's responsibility. Exception: Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery, not queue processing.
 - Archive UR folders that still have pending/in-progress REQs
 - Process any REQ files (use the work action for that)

@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.29.4 — The Pragmatist (2026-03-22)
+
+Addressed three code review findings: cleanup detection gaps, internal contradictions, and overly rigid test requirements.
+
+- Pass 3a now detects misplaced `do-work/` directories directly instead of relying on narrow file patterns that miss partial trees
+- Resolved contradiction between Pass 3a relocation and "does not touch" exclusions — misplaced trees get fully relocated (error recovery), canonical root stays untouched (work action's domain)
+- Red-green testing is now the default for bug fixes and new features; refactors, config, docs, and cleanup use pragmatic evidence instead
+
 ## 0.29.3 — The Self Updater (2026-03-22)
 
 Version update now actually runs the update instead of telling you to do it. You're the user, not the agent's assistant.
