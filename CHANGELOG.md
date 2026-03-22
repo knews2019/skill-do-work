@@ -4,6 +4,22 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.30.1 — The Guard Rail (2026-03-22)
+
+Fixes three review findings in quick-wins: ambiguous verb routing, glob-vs-directory mismatch, and hardcoded language list.
+
+- Ambiguous verbs (`scan`, `opportunities`, `what can we improve`) now route to quick-wins only when used alone or with a directory path — followed by descriptive content they fall through to capture requests, matching the existing `check`/`review` pattern
+- Dropped "or glob pattern" from the `$TARGET` interface — quick-wins accepts a directory path, not a file-level glob
+- Replaced hardcoded extension list with language-adaptive detection — scans whatever languages are actually in the repo instead of only JS/TS/Python/PHP
+
+## 0.30.0 — The Low Hanging Fruit (2026-03-22)
+
+New quick-wins action scans a target directory for refactoring opportunities and low-hanging tests without modifying any files.
+
+- Added `actions/quick-wins.md` — read-only codebase scanner that identifies long functions, copy-paste, god files, dead code, deep nesting, mixed concerns, and untested pure functions
+- Outputs a structured markdown report ranked by effort vs impact (trivial+high first)
+- Full SKILL.md integration: routing, dispatch, help menu, verb section, examples, and next-steps suggestions
+
 ## 0.29.5 — The Clean Slate (2026-03-22)
 
 Crash recovery now strips stale phase sections so interrupted runs don't poison the next attempt. Pass 3a relocation spec tightened with explicit path preservation and conflict handling rules.
