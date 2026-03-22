@@ -4,6 +4,41 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.29.2 — The Drift Catcher (2026-03-22)
+
+Cleanup now detects `do-work/` directories created in the wrong location when an agent's CWD drifts into a subdirectory. Pass 3a scans the repo for misplaced `do-work/` trees and relocates their contents to the canonical root queue.
+
+- Added Pass 3a: scan for misplaced `do-work/` directories outside project root
+- Renamed existing Pass 3 to Pass 3b (misplaced folders within the archive)
+- Conflict-safe: duplicates are reported for manual resolution, not auto-deleted
+- Updated commit staging to include misplaced directory paths
+
+## 0.29.1 — The Gap Plug (2026-03-22)
+
+Fixed a gap in Step 6.5 where a partial prime test map caused zero tests to run for unmapped files. The fallback is now per-file: matched files use the prime's commands, unmatched files fall back to generic detection.
+
+- Step 6.5: fallback to generic detection applies per changed file, not per prime section
+- Explicit: a partial prime map is not an excuse to skip tests for unmapped files
+
+## 0.29.0 — The Red-Green Trace (2026-03-21)
+
+Each request now proves itself with red-green test validation and cross-REQ traceability. Tests must fail before implementation and pass after — proving the request is delivered, not just that tests exist. When a request intentionally changes behavior tested by a prior request, the builder documents which REQ's tests changed and why.
+
+- Builder instructions: write/identify tests before code, confirm they fail, then implement
+- Builder instructions: when existing tests break, document cross-REQ impact with originating REQ reference
+- Step 6.5 testing template: added red-green validation and cross-REQ impact sections
+- review-work.md Step 6: reviewers check for red-green evidence and cross-REQ test traceability
+- review-work.md Step 7: acceptance testing verifies cross-REQ test updates are intentional and documented
+
+## 0.28.2 — The Test Map (2026-03-21)
+
+Agents now check prime files for project-specific test commands before falling back to generic detection. If your prime maps code areas to test commands, builders and reviewers will follow that mapping instead of just running `npm test`.
+
+- work.md builder instructions: added bullet to check prime file testing sections
+- work.md Step 6.5: prime test guidance comes first, generic detection is the fallback
+- review-work.md Step 6: Test Adequacy now checks whether the *right* tests were run per the prime
+- review-work.md Step 7: Acceptance testing checks prime for test command mappings
+
 ## 0.28.1 — The Light Install (2026-03-18)
 
 Update command no longer pulls in the `skills` npm package. Now it's a single curl+tar one-liner that downloads files directly from GitHub — no npm, no intermediary tools.
