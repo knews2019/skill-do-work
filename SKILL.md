@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: (describe a task) | run | verify requests | review work | present work | clarify | cleanup | version
+argument-hint: (describe a task) | run | verify requests | review work | present work | clarify | cleanup | quick-wins | version
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -18,6 +18,7 @@ A unified entry point for task capture and processing.
 - **review work**: Post-work review → requirements check, code review, acceptance testing, and testing suggestions
 - **present work**: Client-facing deliverables → briefs, architecture diagrams, value propositions, Remotion videos
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
+- **quick-wins**: Scan a target directory for obvious refactoring opportunities and low-hanging tests to add
 - **commit**: Commit uncommitted files → analyzes, groups atomically, traces to REQs
 
 > **Core concept:** The capture requests action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
@@ -53,7 +54,8 @@ Check these patterns **in order** — first match wins:
 | 8        | Commit keywords          | `do work commit`, `do work commit changes`, `do work save work`                                                                    | → commit                      |
 | 9        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
 | 10       | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
-| 11       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
+| 11       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`                                                                  | → quick-wins                  |
+| 12       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -126,6 +128,13 @@ changelog, release notes, what's new, what's changed, updates, history
 
 Note: "updates" (plural) routes to changelog display. "update" (singular) routes to update check. Both are handled by the version action.
 
+### Quick-Wins Verbs (→ Quick-Wins)
+
+These signal "scan for improvement opportunities":
+quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, what can we improve
+
+Note: "scan", "opportunities", and "what can we improve" route to quick-wins ONLY when used alone or with a directory path (e.g., "do work scan", "do work scan src/"). When followed by descriptive content they route to capture requests (e.g., "do work scan the checkout logs for 500s" → capture requests).
+
 ### Content Signals (→ Capture Requests)
 
 These signal "add a new task":
@@ -159,6 +168,10 @@ do-work — task queue for agentic coding tools
   Present to client:
     do work present work        Generate client brief, architecture, video, and interactive HTML explainer
     do work present all         Portfolio summary of all completed work
+
+  Scan for improvements:
+    do work quick-wins          Scan cwd for refactoring and test opportunities
+    do work quick-wins src/     Scan a specific directory
 
   Other actions:
     do work clarify             Answer pending questions from completed work
@@ -231,6 +244,17 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work updates` → Same as changelog
 - `do work history` → Same as changelog
 
+### Routes to Quick-Wins
+
+- `do work quick-wins` → Scans current working directory
+- `do work quick wins` → Same
+- `do work quick-wins src/` → Scans specific directory
+- `do work low-hanging` → Same
+- `do work scan` → Scans current working directory
+- `do work scan src/` → Scans specific directory
+- `do work scan the checkout logs for 500s` → Routes to capture requests (descriptive content)
+- `do work opportunities` → Scans current working directory
+
 ### Routes to Capture Requests
 
 - `do work add dark mode` → Creates REQ file + UR folder
@@ -266,6 +290,7 @@ Each action has an action file with full instructions. How you execute it depend
 | present work       | `./actions/present-work.md`     | Target REQ/UR, "most recent", or "all" |
 | cleanup            | `./actions/cleanup.md`          | (none needed)                  |
 | commit             | `./actions/commit.md`           | (none needed)                  |
+| quick-wins         | `./actions/quick-wins.md`       | Target directory               |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 
 ### If subagents are available
@@ -273,7 +298,7 @@ Each action has an action file with full instructions. How you execute it depend
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `present work`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `present work`, `quick-wins`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
@@ -323,6 +348,13 @@ Next steps:
 Next steps:
   do work present all         Generate portfolio summary (if multiple URs completed)
   do work [describe changes]  Capture new requests
+```
+
+**After quick-wins:**
+```
+Next steps:
+  do work [describe fix]        Capture a finding as a request
+  do work run                   Process the queue
 ```
 
 **After commit:**

@@ -4,27 +4,31 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.29.8 — The Scoped Check (2026-03-22)
+## 0.30.2 — The Scoped Check (2026-03-22)
 
-Dirty-tree check now only looks at shipped skill files, so captured requests in `do-work/` no longer trigger false "dirty" warnings during updates. Also replaced the dangerous "delete directory contents" clean-update advice with a safe list of skill-owned paths.
+Dirty-tree check now only looks at shipped skill files, so captured requests in `do-work/` no longer trigger false "dirty" warnings during updates. Also replaced the dangerous "delete directory contents" clean-update advice with a safe list of skill-owned paths. Prime-file lesson links now compute proper relative paths.
 
 - Scoped `git status --porcelain` to specific skill paths (`SKILL.md`, `actions/`, `agent-rules/`, etc.), explicitly excluding `do-work/`
 - Clean-update guidance in version.md and README.md now lists only safe-to-delete skill paths instead of suggesting a blanket directory wipe
+- Lesson links in prime files now use paths relative to the prime file's location, so links work regardless of nesting depth
+- Added stale-file warning to version.md update flow and README.md install section
+- Added dirty-tree guard to the update flow with scoped file checking
 
-## 0.29.7 — The Link Fixer (2026-03-22)
+## 0.30.1 — The Guard Rail (2026-03-22)
 
-Prime-file lesson links now compute proper relative paths instead of assuming repo-root context. Also documented the stale-file hazard in tar-based updates.
+Fixes three review findings in quick-wins: ambiguous verb routing, glob-vs-directory mismatch, and hardcoded language list.
 
-- Lesson links in prime files now use paths relative to the prime file's location, so links work regardless of where the prime file lives in the repo
-- Updated both work.md (Step 7.5) and review-work.md (Step 9.5) with the same fix and a concrete example
-- Added stale-file warning to version.md update flow and README.md install section — tar overwrites but doesn't delete
+- Ambiguous verbs (`scan`, `opportunities`, `what can we improve`) now route to quick-wins only when used alone or with a directory path — followed by descriptive content they fall through to capture requests, matching the existing `check`/`review` pattern
+- Dropped "or glob pattern" from the `$TARGET` interface — quick-wins accepts a directory path, not a file-level glob
+- Replaced hardcoded extension list with language-adaptive detection — scans whatever languages are actually in the repo instead of only JS/TS/Python/PHP
 
-## 0.29.6 — The Safety Net (2026-03-22)
+## 0.30.0 — The Low Hanging Fruit (2026-03-22)
 
-Auto-update now checks for uncommitted local changes before overwriting anything. No more silent destruction of in-progress work.
+New quick-wins action scans a target directory for refactoring opportunities and low-hanging tests without modifying any files.
 
-- Added dirty-tree guard to the update flow — agent checks `git status --porcelain` (or equivalent) before extracting
-- If local modifications exist, the agent warns the user and asks for confirmation instead of bulldozing ahead
+- Added `actions/quick-wins.md` — read-only codebase scanner that identifies long functions, copy-paste, god files, dead code, deep nesting, mixed concerns, and untested pure functions
+- Outputs a structured markdown report ranked by effort vs impact (trivial+high first)
+- Full SKILL.md integration: routing, dispatch, help menu, verb section, examples, and next-steps suggestions
 
 ## 0.29.5 — The Clean Slate (2026-03-22)
 
