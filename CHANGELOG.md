@@ -4,7 +4,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.30.3 — The Quick Glance (2026-03-22)
+## 0.30.3 — The Recap (2026-03-22)
 
 Changelog no longer dumps 60+ versions. Shows last 5 skill releases + last 5 completed URs with their REQs. Full history available via `do work changelog all`.
 
