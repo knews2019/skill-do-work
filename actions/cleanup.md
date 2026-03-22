@@ -52,11 +52,15 @@ For each loose `REQ-*.md` file directly in `do-work/archive/` (not inside a subf
 Scan for `do-work/` directories created inside utility subdirectories instead of the project root. This happens when an agent's working directory drifts into a subdirectory (e.g., during a refactor) and the next capture creates `do-work/` relative to that location. Once the misplaced directory exists, subsequent sessions keep writing there — silently diverging from the canonical queue.
 
 1. **Detect directories, not file patterns.** Search for any directory named `do-work/` anywhere in the repo EXCEPT the project root. Look for the directory itself — don't rely on specific file patterns inside it, since a misplaced tree may contain only `user-requests/`, only `working/`, only assets, or any partial subset of the normal structure.
-2. For each misplaced `do-work/` found, inspect its known subtrees (`archive/`, `user-requests/`, `working/`, and queue-root REQ files):
-   - For each item, check if it already exists at the root `do-work/` — skip if duplicate, move if not
-   - Report: `Found misplaced do-work/ at {path} — relocated {N} items to project root`
-3. After relocating all contents, remove the empty misplaced `do-work/` directory
-4. Do not auto-delete files — if a conflict exists (same REQ/UR at both locations), report the conflict and leave the misplaced copy for manual resolution
+2. For each misplaced `do-work/` found, inspect its known subtrees (`archive/`, `user-requests/`, `working/`, and queue-root REQ files). Relocate preserving internal structure:
+   - **Queue-root REQ files** (`do-work/REQ-*.md`): move to canonical `do-work/REQ-*.md`. Conflict = same REQ number exists at both locations.
+   - **`user-requests/UR-NNN/`**: move entire folder to canonical `do-work/user-requests/UR-NNN/`. Conflict = same UR number exists at both locations.
+   - **`archive/UR-NNN/`**: move entire folder to canonical `do-work/archive/UR-NNN/`. Conflict = same UR number exists at both locations.
+   - **`working/REQ-*.md`**: move to canonical `do-work/working/REQ-*.md`. Conflict = same REQ number exists at both locations.
+   - **Other files/dirs**: move to matching path under canonical `do-work/`. Conflict = same path already exists.
+   - **Conflict handling**: when the same item exists at both locations, do NOT overwrite — report the conflict with both paths and leave the misplaced copy in place for manual resolution.
+   - Report: `Found misplaced do-work/ at {path} — relocated {N} items to project root` (and list any conflicts separately)
+3. After relocating all non-conflicting contents, remove the misplaced `do-work/` directory if empty. If conflicts remain, leave it in place.
 
 ### Pass 3b: Misplaced Folders Within the Archive
 

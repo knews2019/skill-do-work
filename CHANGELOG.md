@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.29.5 — The Clean Slate (2026-03-22)
+
+Crash recovery now strips stale phase sections so interrupted runs don't poison the next attempt. Pass 3a relocation spec tightened with explicit path preservation and conflict handling rules.
+
+- Crash recovery clears `## Triage`, `## Exploration`, `## Plan`, and `## Testing` from interrupted REQs — prevents stale partial data from being trusted on retry
+- Pass 3a now specifies exactly how each subtree type is relocated, what counts as a conflict vs. a duplicate, and when to leave misplaced copies for manual resolution
+
 ## 0.29.4 — The Pragmatist (2026-03-22)
 
 Addressed three code review findings: cleanup detection gaps, internal contradictions, and overly rigid test requirements.

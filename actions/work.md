@@ -154,7 +154,12 @@ error: "Description"          # Only if failed
 
 ### Step 1: Find Next Request
 
-**Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run was interrupted. Move them back to the `do-work/` root, reset their frontmatter `status` to `pending`, and remove the `claimed_at` field. Once `working/` is empty, proceed with finding the next request.
+**Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run was interrupted. For each recovered REQ:
+1. Reset frontmatter: set `status` to `pending`, remove `claimed_at` and `route`
+2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, and `## Testing` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact.
+3. Move the REQ back to the `do-work/` root
+
+Once `working/` is empty, proceed with finding the next request.
 
 Glob for `do-work/REQ-*.md` (root of `do-work/`, **not** a subdirectory — there is no `queue/` folder). Sort by number. Read the frontmatter of each (in number order) to check `status` — pick the first with `status: pending` (skip `pending-answers` — those wait for user input). Don't read the full body at this stage. If no `pending` REQs found, report completion and exit. If only `pending-answers` REQs remain, report them to the user so they can batch-review the questions.
 
