@@ -2,17 +2,17 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps.
 
-**Current version**: 0.30.5
+**Current version**: 0.30.6
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
 ## Responding to Version Requests
 
-When user asks "what version" or "version":
+When user asks "what version", "version", "what's new", "release notes", "what's changed", "updates", or "history":
 
 1. Report the version shown above
 2. **Show last 5 skill releases**:
-   - Read the first ~80 lines of `CHANGELOG.md` (do NOT load the full file)
+   - Read the first ~80 lines of `CHANGELOG.md` in the skill's root directory (same level as `SKILL.md`) — do NOT load the full file
    - Extract the 5 most recent version entries (split at `## ` headings, take first 5 blocks)
    - Reverse so newest is at the bottom (right where the user's eyes are)
    - Print them after the version number

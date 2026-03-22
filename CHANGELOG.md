@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.30.6 — The Alias Restore (2026-03-22)
+
+Restored version/release aliases and anchored changelog lookup to skill root — fixes from PR review feedback.
+
+- Restored `what's new`, `release notes`, `updates`, `history`, `what's changed` as version keywords (were dropped in 0.30.4)
+- Anchored CHANGELOG.md lookup to skill root directory (same level as SKILL.md) so it doesn't pick up the project's own changelog
+- Added route examples for all restored aliases
+
 ## 0.30.5 — The Consistency Pass (2026-03-22)
 
 Filled in gaps from the recap/version split — missing route examples, dispatch table entry, next steps, and help menu clarity.

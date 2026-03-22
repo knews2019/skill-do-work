@@ -52,7 +52,7 @@ Check these patterns **in order** — first match wins:
 | 6        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
 | 7        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
 | 8        | Commit keywords          | `do work commit`, `do work commit changes`, `do work save work`                                                                    | → commit                      |
-| 9        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
+| 9        | Version keywords         | `do work version`, `do work update`, `do work check for updates`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
 | 10       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
 | 11       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`                                                                  | → quick-wins                  |
 | 12       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
@@ -125,6 +125,13 @@ commit, commit changes, commit files, save changes, save work
 
 These signal "show recent work summary":
 recap
+
+### Version / Release Info Verbs (→ Version)
+
+These signal "show version or release info":
+version, update, check for updates, what's new, release notes, what's changed, updates, history
+
+Note: "updates" (plural) and "what's new" show version + last 5 releases. "update" (singular) triggers the update check flow. Both are handled by the version action.
 
 ### Quick-Wins Verbs (→ Quick-Wins)
 
@@ -240,6 +247,10 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work version` → Reports version + last 5 skill releases
 - `do work update` → Checks for upstream updates
 - `do work check for updates` → Same as update
+- `do work what's new` → Same as version (shows releases)
+- `do work release notes` → Same as version
+- `do work updates` → Same as version
+- `do work history` → Same as version
 
 ### Routes to Recap (via Version)
 
