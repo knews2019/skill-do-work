@@ -238,7 +238,8 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 
 ### Routes to Changelog (via Version)
 
-- `do work changelog` → Displays changelog (newest at bottom)
+- `do work changelog` → Last 5 skill releases + last 5 completed URs
+- `do work changelog all` → Full changelog (all versions)
 - `do work release notes` → Same as changelog
 - `do work what's new` → Same as changelog
 - `do work updates` → Same as changelog

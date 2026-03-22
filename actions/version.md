@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting and update checks.
 
-**Current version**: 0.30.2
+**Current version**: 0.30.3
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -66,18 +66,39 @@ Or visit: https://github.com/knews2019/skill-do-work
 
 When user asks "changelog", "release notes", "what's new", "what's changed", "updates", or "history":
 
+### Step 1: Show Recent Skill Changes (last 5 versions)
+
 1. **Find the changelog**: Look for `CHANGELOG.md` in the skill's root directory (same level as `SKILL.md`)
-2. **Read the file**: Load the full contents
-3. **Reverse for terminal reading**: The changelog is written newest-on-top (conventional for file reading). For terminal output, reverse the version sections so the **most recent entries appear at the bottom** — right where the user's eyes are
-   - Separate the header (everything before the first `## ` version heading) from the version entries
-   - Split version entries at each `## ` heading (each heading + its body is one block)
-   - Reverse the order of those blocks
-   - Output: header first, then oldest-to-newest entries (so newest lands at the bottom)
-4. **Print the result**: Output the reversed changelog directly — no file creation, just terminal output
+2. **Read the first ~80 lines** of `CHANGELOG.md` (do NOT load the full file)
+3. **Extract the 5 most recent version entries**: Split at `## ` headings, take the first 5 blocks
+4. **Reverse for terminal reading**: Reverse those 5 blocks so the **newest entry appears at the bottom** — right where the user's eyes are
+5. **Print with a hint at the top**:
+   ```
+   Showing last 5 releases (do work changelog all for full history)
+   ```
+   Then output the 5 reversed entries (oldest-to-newest, so newest lands at the bottom)
 
-### Why Reverse?
+**If user says `changelog all` or `full changelog`**: Load and reverse the entire file (all versions, oldest-to-newest).
 
-Changelogs are written newest-first so the file reads well. But in a terminal, the bottom of the output is where the user is looking. Reversing puts the latest changes at the bottom — no scrolling required.
+### Step 2: Show Recent Repo Work (last 5 URs)
+
+1. **Find the archive**: Look for `do-work/archive/` in the project root
+2. **Find the 5 highest-numbered UR folders** (e.g., `UR-012`, `UR-011`, etc.)
+3. **For each UR**:
+   - Read `input.md` for the title
+   - List REQ files and extract titles from frontmatter or filename slug
+4. **Format as a "Recent Work" section**:
+   ```
+   ## Recent Work
+
+   UR-012 — [title from input.md]
+     REQ-045 — [title]
+     REQ-046 — [title]
+   UR-011 — [title from input.md]
+     REQ-043 — [title]
+   ```
+   One line per UR, one indented line per REQ. No descriptions, no scores, no file lists.
+5. **If no archive exists** (`do-work/archive/` not found or empty): Print `No completed work yet.` and skip this section.
 
 ### If No Changelog Exists
 

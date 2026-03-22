@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.30.3 — The Quick Glance (2026-03-22)
+
+Changelog no longer dumps 60+ versions. Shows last 5 skill releases + last 5 completed URs with their REQs. Full history available via `do work changelog all`.
+
+- Capped default changelog output to 5 most recent versions (was: entire file reversed)
+- Added `## Recent Work` section showing last 5 archived URs with REQ titles
+- Added `changelog all` variant for full history
+- Instructions now say "read first ~80 lines" instead of "load the full contents"
+
 ## 0.30.2 — The Scoped Check (2026-03-22)
 
 Dirty-tree check now only looks at shipped skill files, so captured requests in `do-work/` no longer trigger false "dirty" warnings during updates. Also replaced the dangerous "delete directory contents" clean-update advice with a safe list of skill-owned paths. Prime-file lesson links now compute proper relative paths.
