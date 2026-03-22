@@ -381,8 +381,10 @@ Append to the request file:
 ```markdown
 ## Lessons
 
-- [REQ-NNN: 1-line summary of the lesson](do-work/archive/UR-NNN/REQ-NNN-slug.md#lessons-learned)
+- [REQ-NNN: 1-line summary of the lesson](<relative-path-to-req>#lessons-learned)
 ```
+
+**Path must be relative to the prime file's location**, not the repo root. Compute the correct relative path from the prime file's directory to the archived REQ file. For example, if the prime file is at `src/utils/prime-auth.md` and the REQ is at `do-work/archive/UR-005/REQ-042-auth-fix.md`, the link should use `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`.
 
 Only add a link when the lesson is relevant to that prime file's scope — don't spray every lesson into every prime file. If the REQ has no `prime_files` or the lessons aren't relevant to any prime file, skip this.
 

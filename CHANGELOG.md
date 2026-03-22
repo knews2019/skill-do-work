@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.30.2 — The Scoped Check (2026-03-22)
+
+Dirty-tree check now only looks at shipped skill files, so captured requests in `do-work/` no longer trigger false "dirty" warnings during updates. Also replaced the dangerous "delete directory contents" clean-update advice with a safe list of skill-owned paths. Prime-file lesson links now compute proper relative paths.
+
+- Scoped `git status --porcelain` to specific skill paths (`SKILL.md`, `actions/`, `agent-rules/`, etc.), explicitly excluding `do-work/`
+- Clean-update guidance in version.md and README.md now lists only safe-to-delete skill paths instead of suggesting a blanket directory wipe
+- Lesson links in prime files now use paths relative to the prime file's location, so links work regardless of nesting depth
+- Added stale-file warning to version.md update flow and README.md install section
+- Added dirty-tree guard to the update flow with scoped file checking
+
 ## 0.30.1 — The Guard Rail (2026-03-22)
 
 Fixes three review findings in quick-wins: ambiguous verb routing, glob-vs-directory mismatch, and hardcoded language list.
