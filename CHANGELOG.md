@@ -4,14 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.30.3 — The Recap (2026-03-22)
+## 0.30.4 — The Recap (2026-03-22)
 
-Changelog no longer dumps 60+ versions. Shows last 5 skill releases + last 5 completed URs with their REQs. Full history available via `do work changelog all`.
+Split changelog into two focused commands: `do work version` now shows last 5 skill releases alongside the version number, and `do work recap` shows last 5 completed URs with their REQs. No more wall-of-text changelog dumps.
 
-- Capped default changelog output to 5 most recent versions (was: entire file reversed)
-- Added `## Recent Work` section showing last 5 archived URs with REQ titles
-- Added `changelog all` variant for full history
-- Instructions now say "read first ~80 lines" instead of "load the full contents"
+- `do work version` now includes last 5 releases from CHANGELOG.md (read first ~80 lines only)
+- Added `do work recap` command — shows last 5 archived URs with REQ titles
+- Removed `do work changelog` / `changelog all` routes (version and recap cover both use cases)
+- Updated help menu, routing table, and argument-hint
 
 ## 0.30.2 — The Scoped Check (2026-03-22)
 

@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: (describe a task) | run | verify requests | review work | present work | clarify | cleanup | quick-wins | version
+argument-hint: (describe a task) | run | verify requests | review work | present work | clarify | cleanup | quick-wins | version | recap
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -53,7 +53,7 @@ Check these patterns **in order** — first match wins:
 | 7        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
 | 8        | Commit keywords          | `do work commit`, `do work commit changes`, `do work save work`                                                                    | → commit                      |
 | 9        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
-| 10       | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
+| 10       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
 | 11       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`                                                                  | → quick-wins                  |
 | 12       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
 
@@ -121,12 +121,10 @@ cleanup, clean up, tidy, consolidate, organize archive, fix archive
 These signal "commit uncommitted files atomically":
 commit, commit changes, commit files, save changes, save work
 
-### Changelog Verbs (→ Version)
+### Recap Verbs (→ Version)
 
-These signal "show release notes":
-changelog, release notes, what's new, what's changed, updates, history
-
-Note: "updates" (plural) routes to changelog display. "update" (singular) routes to update check. Both are handled by the version action.
+These signal "show recent work summary":
+recap
 
 ### Quick-Wins Verbs (→ Quick-Wins)
 
@@ -177,8 +175,8 @@ do-work — task queue for agentic coding tools
     do work clarify             Answer pending questions from completed work
     do work cleanup             Consolidate the archive
     do work commit              Analyze and commit uncommitted files atomically
-    do work version             Check version / updates
-    do work changelog           Show release notes
+    do work version             Check version / updates + last 5 skill releases
+    do work recap               Last 5 completed URs with their REQs
 ```
 
 Do not ask "Start the work loop?" — just print the help menu and wait.
@@ -236,14 +234,9 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work commit changes` → Same as commit
 - `do work save work` → Same as commit
 
-### Routes to Changelog (via Version)
+### Routes to Recap (via Version)
 
-- `do work changelog` → Last 5 skill releases + last 5 completed URs
-- `do work changelog all` → Full changelog (all versions)
-- `do work release notes` → Same as changelog
-- `do work what's new` → Same as changelog
-- `do work updates` → Same as changelog
-- `do work history` → Same as changelog
+- `do work recap` → Last 5 completed URs with their REQs
 
 ### Routes to Quick-Wins
 

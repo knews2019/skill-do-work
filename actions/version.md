@@ -2,14 +2,20 @@
 
 > **Part of the do-work skill.** Handles version reporting and update checks.
 
-**Current version**: 0.30.3
+**Current version**: 0.30.4
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
 ## Responding to Version Requests
 
 When user asks "what version" or "version":
-- Report the version shown above
+
+1. Report the version shown above
+2. **Show last 5 skill releases**:
+   - Read the first ~80 lines of `CHANGELOG.md` (do NOT load the full file)
+   - Extract the 5 most recent version entries (split at `## ` headings, take first 5 blocks)
+   - Reverse so newest is at the bottom (right where the user's eyes are)
+   - Print them after the version number
 
 ## Responding to Update Checks
 
@@ -62,25 +68,9 @@ curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.
 Or visit: https://github.com/knews2019/skill-do-work
 ```
 
-## Responding to Changelog Requests
+## Responding to Recap Requests
 
-When user asks "changelog", "release notes", "what's new", "what's changed", "updates", or "history":
-
-### Step 1: Show Recent Skill Changes (last 5 versions)
-
-1. **Find the changelog**: Look for `CHANGELOG.md` in the skill's root directory (same level as `SKILL.md`)
-2. **Read the first ~80 lines** of `CHANGELOG.md` (do NOT load the full file)
-3. **Extract the 5 most recent version entries**: Split at `## ` headings, take the first 5 blocks
-4. **Reverse for terminal reading**: Reverse those 5 blocks so the **newest entry appears at the bottom** — right where the user's eyes are
-5. **Print with a hint at the top**:
-   ```
-   Showing last 5 releases (do work changelog all for full history)
-   ```
-   Then output the 5 reversed entries (oldest-to-newest, so newest lands at the bottom)
-
-**If user says `changelog all` or `full changelog`**: Load and reverse the entire file (all versions, oldest-to-newest).
-
-### Step 2: Show Recent Repo Work (last 5 URs)
+When user asks "recap":
 
 1. **Find the archive**: Look for `do-work/archive/` in the project root
 2. **Find the 5 highest-numbered UR folders** (e.g., `UR-012`, `UR-011`, etc.)
@@ -99,11 +89,3 @@ When user asks "changelog", "release notes", "what's new", "what's changed", "up
    ```
    One line per UR, one indented line per REQ. No descriptions, no scores, no file lists.
 5. **If no archive exists** (`do-work/archive/` not found or empty): Print `No completed work yet.` and skip this section.
-
-### If No Changelog Exists
-
-If `CHANGELOG.md` is not found in the skill root:
-
-```
-No changelog found for this skill.
-```
