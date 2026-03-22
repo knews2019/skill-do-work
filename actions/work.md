@@ -303,7 +303,7 @@ Append to the request file:
 
 **Rules:**
 - **Mandatory for all routes.** Route A gets a short list. Route C gets a detailed list.
-- Only list source files — not `do-work/` metadata files.
+- List all project files that changed — source code, config (`package.json`, `Dockerfile`, CI YAML), documentation, etc. Exclude only `do-work/` metadata files.
 - Mark files as `(new)`, `(modified)`, or `(deleted)`.
 - The "What was done" summary should be factual, not aspirational — describe what you built, not what the REQ asked for.
 - This section is the primary auditability artifact. If `Files changed` only lists `do-work/` paths or is empty, the REQ was not implemented.
@@ -450,7 +450,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
      Also: [other alternatives]
    ```
    These go in `do-work/` with `status: pending-answers`. The user reviews them via `do work clarify`.
-4. **Queue Discovered Tasks:** Check the implementation summary for a `## Discovered Tasks` section. For every item listed, create a new follow-up REQ file in the `do-work/` root.
+4. **Queue Discovered Tasks:** Check the REQ file for a `## Discovered Tasks` section (appended by the implementation agent as a separate section — not inside `## Implementation Summary`). For every item listed, create a new follow-up REQ file in the `do-work/` root.
    - Set frontmatter: `status: pending-answers`, `user_request: [same UR]`, `addendum_to: [current REQ id]`, `domain: [same domain as current REQ]`.
    - Add an `## Open Questions` section with this checkbox format:
      `- [ ] I discovered this out-of-scope task while working on [current REQ]: [Task Description]. Should I process this as a new task?`
@@ -503,7 +503,7 @@ EOF
 
 One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/`), and any UR-folder moves to `archive/`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
 
-**Validation check:** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists source files that aren't staged, or if the only staged files are `do-work/` metadata, flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding.
+**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
 
 **Write commit hash back to the archived REQ.** After the commit succeeds, retrieve the hash with `git rev-parse --short HEAD` and update the archived REQ's frontmatter `commit:` field with the actual value. Then amend the commit to include this update:
 

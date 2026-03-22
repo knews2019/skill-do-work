@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.31.2 — The Review Fix (2026-03-22)
+
+Addresses PR review feedback on the Implementation Summary feature.
+
+- Clarified Step 8 Discovered Tasks wording — explicitly notes it's a separate section from `## Implementation Summary`, not nested inside it
+- Broadened "source files" to "project files" in Implementation Summary rules — config, CI, docs, and Dockerfiles now included in the manifest
+- Scoped Step 9 validation check to successful REQs only — failed REQs may have no summary or staged project files, and that's expected
+
 ## 0.31.1 — The Consistency Pass (2026-03-22)
 
 Follow-up fixes to ensure Implementation Summary is consistently referenced across all action files.
