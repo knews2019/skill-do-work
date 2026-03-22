@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.31.1 — The Consistency Pass (2026-03-22)
+
+Follow-up fixes to ensure Implementation Summary is consistently referenced across all action files.
+
+- Added Implementation Summary to architecture diagram in work.md
+- Added `## Implementation Summary` to crash recovery strip list (Step 1)
+- Clarified Step 6 agent instructions: agent reports file list, orchestrator writes the formal summary
+- Fixed present-work.md: removed stale "key files" reference from Lessons Learned extraction, pointed Key Files section to Implementation Summary
+- Added `Summary...` line to progress reporting example
+
 ## 0.31.0 — The Archive Proof (2026-03-22)
 
 Every completed REQ now carries a mandatory implementation manifest — no more guessing whether a REQ was actually built or just filed away.

@@ -32,6 +32,9 @@ work action (orchestrator - lightweight, stays in loop)
   │     │                                     Implementation agent
   │     │                                            │
   │     │                                            ▼
+  │     │                                  Implementation Summary
+  │     │                                            │
+  │     │                                            ▼
   │     │                                        Testing
   │     │                                            │
   │     │                                            ▼
@@ -156,7 +159,7 @@ error: "Description"          # Only if failed
 
 **Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run was interrupted. For each recovered REQ:
 1. Reset frontmatter: set `status` to `pending`, remove `claimed_at` and `route`
-2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, and `## Testing` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact.
+2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, `## Implementation Summary`, and `## Testing` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact.
 3. Move the REQ back to the `do-work/` root
 
 Once `working/` is empty, proceed with finding the next request.
@@ -273,7 +276,7 @@ All routes include these instructions to the agent:
 - Write new tests for new functionality / regression tests for bug fixes
 - Update existing tests if behavior intentionally changed
 - **If existing tests break:** When your changes cause tests from a prior request to fail, determine if the behavior change is intentional. If yes: update the failing tests to match the new behavior and document which REQ's tests changed and why in the Testing section — this creates traceability for which request altered which other request's behavior. If no: fix your implementation to preserve the existing behavior.
-- When complete, summarize: what changed, what tests exist, what new tests were written
+- When complete, report back: list every source file you created, modified, or deleted (with the action — new/modified/deleted), and summarize what tests exist and what new tests were written. The orchestrator uses this to write the formal `## Implementation Summary`.
 - **State Machine Updates:** As you progress, you MUST physically edit this REQ file to change the `[ ]` checkboxes in the "AI Execution State (P-A-U Loop)" section to `[x]`.
 - **[PLAN] Phase:** Before writing any code, write your brief technical approach next to the `[PLAN]` checkbox in the REQ file.
 - **[APPLY] Phase:** Stay strictly focused on the planned scope. Resist the urge to refactor unrelated code or fix adjacent issues. (Note: You are required to edit this REQ file to update your state checkboxes).
@@ -589,6 +592,7 @@ Processing REQ-003-dark-mode.md...
   Planning...     [done]
   Exploring...    [done]
   Implementing... [done]
+  Summary...      [done] 3 files changed
   Testing...      [done] ✓ 12 tests passing
   Reviewing...    [done] 92% — 0 follow-ups
   Archiving...    [done]
@@ -597,6 +601,7 @@ Processing REQ-003-dark-mode.md...
 Processing REQ-004-fix-typo.md...
   Triage: Simple (Route A)
   Implementing... [done]
+  Summary...      [done] 1 file changed
   Testing...      [done] ✓ 3 tests passing
   Reviewing...    [done] 88% — 0 follow-ups
   Archiving...    [done]
