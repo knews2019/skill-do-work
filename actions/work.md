@@ -6,7 +6,7 @@ An orchestrated build system that processes request files created by the capture
 
 ## Request Files as Living Logs
 
-Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Plan, Exploration, Implementation Summary, Testing, Review. This ensures full traceability — what was planned vs done, where failures happened, and whether triage was accurate.
+Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Plan, Exploration, Implementation Summary (mandatory file manifest), Testing, Review. This ensures full traceability — what was planned vs done, what files were touched, and whether triage was accurate.
 
 ## Architecture
 
@@ -281,6 +281,30 @@ All routes include these instructions to the agent:
 - **Out-of-Scope Discoveries:** If you discover unrelated bugs, technical debt, or missing prerequisites, do not fix them inline. Instead, append a `## Discovered Tasks` section to your summary and list them as bullet points so the orchestrator can queue them for later.
 ```
 
+### Step 6.25: Implementation Summary
+
+After implementation completes, append a manifest of what changed to the request file. This is the primary auditability artifact — without it, there's no way to verify the REQ was implemented without digging through git history.
+
+Append to the request file:
+
+```markdown
+## Implementation Summary
+
+**Files changed:**
+- `src/stores/theme-store.ts` (new)
+- `src/components/settings/SettingsPanel.tsx` (modified)
+- `tests/theme-store.test.js` (new)
+
+**What was done:** [1-2 sentences — what the implementation actually did]
+```
+
+**Rules:**
+- **Mandatory for all routes.** Route A gets a short list. Route C gets a detailed list.
+- Only list source files — not `do-work/` metadata files.
+- Mark files as `(new)`, `(modified)`, or `(deleted)`.
+- The "What was done" summary should be factual, not aspirational — describe what you built, not what the REQ asked for.
+- This section is the primary auditability artifact. If `Files changed` only lists `do-work/` paths or is empty, the REQ was not implemented.
+
 ### Step 6.5: Testing
 
 Before marking complete, verify tests pass:
@@ -366,7 +390,6 @@ Append to the request file:
 
 **What worked:** [1-2 bullets — approaches, patterns, or tools that paid off]
 **What didn't:** [1-2 bullets — dead ends, failed approaches, and *why* they failed]
-**Key files:** [Pointers to the most important files — these are the source of truth, not this summary]
 **Worth knowing:** [Anything the next person touching this code should know — gotchas, edge cases, non-obvious dependencies]
 ```
 
@@ -374,7 +397,7 @@ Append to the request file:
 - Keep it concise — pointers to code, not walls of text. The code is the source of truth.
 - **Required for Routes B and C** — there's always something worth recording when exploration or planning was involved. **Optional for Route A** — skip if everything went smoothly with no surprises.
 - "What didn't work" is the most valuable part — it prevents repeating mistakes.
-- Always reference specific files rather than describing their contents.
+- File lists are no longer needed here — they're covered by the mandatory Implementation Summary (Step 6.25).
 
 **Update prime files:** After writing the Lessons Learned section, check the REQ's `prime_files` frontmatter. For each listed prime file, append a link to the lesson under a `## Lessons` section in that prime file (create the section if it doesn't exist):
 
@@ -393,7 +416,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 **On success:**
 
 1. Update frontmatter: `status: completed`, `completed_at: <timestamp>`
-2. Append implementation summary if not already present
+2. Verify `## Implementation Summary` is present (written in Step 6.25). If missing, append it now — this should not happen in normal flow, but crash recovery may skip it.
 3. **Create follow-ups for builder-decided questions:** If the REQ has any `- [~]` items in Open Questions where the builder's choice affects what the user sees or interacts with, create a follow-up REQ for each. **Create follow-ups for:** UX decisions (interaction behavior, visibility, layout), scope boundaries (what's included/excluded), data representation choices. **Skip follow-ups for:** purely technical decisions (caching strategy, algorithm choice, internal naming, DB indexes) that don't change user-facing behavior. Template:
    ```markdown
    ---
@@ -476,6 +499,8 @@ EOF
 **Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
 
 One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/`), and any UR-folder moves to `archive/`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
+
+**Validation check:** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists source files that aren't staged, or if the only staged files are `do-work/` metadata, flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding.
 
 **Write commit hash back to the archived REQ.** After the commit succeeds, retrieve the hash with `git rev-parse --short HEAD` and update the archived REQ's frontmatter `commit:` field with the actual value. Then amend the commit to include this update:
 
@@ -613,6 +638,7 @@ All 2 requests completed:
 □ Step 4: Plan (Route C: spawn Plan agent / Routes A & B: note skipped)
 □ Step 5: Explore (Routes B & C: spawn Explore agent, append ## Exploration)
 □ Step 6: Implement (spawn agent, execute P-A-U state loop, agent updates checkboxes)
+□ Step 6.25: Implementation Summary (append file manifest — mandatory for all routes)
 □ Step 6.5: Test (run relevant tests, append ## Testing)
 □ Step 7: Review (spawn review action in pipeline mode)
 □ Step 7.5: Lessons Learned (append section, skip for Route A if no surprises)
@@ -629,6 +655,8 @@ All 2 requests completed:
 - Forgetting Planning status note for Routes A/B ("Planning not required")
 - Using `git add -A` instead of staging specific files
 - Using `--no-verify` to bypass a failing pre-commit hook instead of fixing the issue
+- Committing without validating Implementation Summary file list against staged files
+- Implementation Summary that only lists `do-work/` paths (means the REQ wasn't actually implemented)
 - Creating follow-ups for every `- [~]` item instead of only UX-affecting decisions
 
 ## Archived Request File Example
@@ -675,9 +703,12 @@ prime_files: []
 *Generated by Explore agent*
 
 ## Implementation Summary
-- Created src/components/UserAvatar.tsx
-- Added tests in tests/user-avatar.spec.ts
-*Completed by work action (Route B)*
+
+**Files changed:**
+- `src/components/UserAvatar.tsx` (new)
+- `tests/user-avatar.spec.ts` (new)
+
+**What was done:** Created a UserAvatar component wrapping the existing Avatar.tsx with user-specific props and default state handling.
 
 ## Testing
 **Tests run:** npm test -- --testPathPattern="user-avatar"
@@ -708,7 +739,6 @@ prime_files: []
 
 **What worked:** Reused existing Avatar.tsx patterns — saved time and kept consistency.
 **What didn't:** Initially tried CSS modules for scoping, but project uses styled-components everywhere — switched after exploration.
-**Key files:** `src/components/UserAvatar.tsx`, `tests/user-avatar.spec.ts`
 **Worth knowing:** Avatar sizes are constrained by the grid layout in `AppShell.tsx` — don't go above 48px without checking the sidebar.
 ```
 

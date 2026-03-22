@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.31.0 — The Archive Proof (2026-03-22)
+
+Every completed REQ now carries a mandatory implementation manifest — no more guessing whether a REQ was actually built or just filed away.
+
+- Added Step 6.25 (Implementation Summary) to work.md — mandatory file-change manifest for all routes (A, B, C)
+- Removed `Key files:` from Lessons Learned (Step 7.5) — now covered by Implementation Summary
+- Added commit validation check to Step 9 — flags mismatches between Implementation Summary and staged files
+- Updated archived REQ example to reflect new format
+- Added two new common-mistakes entries for Implementation Summary gaps
+
 ## 0.30.6 — The Alias Restore (2026-03-22)
 
 Restored version/release aliases and anchored changelog lookup to skill root — fixes from PR review feedback.
