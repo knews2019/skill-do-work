@@ -9,7 +9,7 @@ A task queue skill for agentic coding tools. Capture requests fast, process them
 curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
 ```
 
-**Updating:** Re-run the same command to update. Note that tar extraction overwrites but does not delete files removed upstream — stale files from older versions may remain. For a clean update, remove the skill files first (preserving your `do-work/` queue data) and re-extract.
+**Updating:** Re-run the same command to update. Note that tar extraction overwrites but does not delete files removed upstream — stale files from older versions may linger (generally harmless). For a fully clean update, delete only the known skill paths (`actions/`, `agent-rules/`, `SKILL.md`, `CHANGELOG.md`, `README.md`) before re-extracting — never delete `do-work/` or other project files.
 
 ## Welcome to your new work loop
 

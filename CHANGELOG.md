@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.29.8 — The Scoped Check (2026-03-22)
+
+Dirty-tree check now only looks at shipped skill files, so captured requests in `do-work/` no longer trigger false "dirty" warnings during updates. Also replaced the dangerous "delete directory contents" clean-update advice with a safe list of skill-owned paths.
+
+- Scoped `git status --porcelain` to specific skill paths (`SKILL.md`, `actions/`, `agent-rules/`, etc.), explicitly excluding `do-work/`
+- Clean-update guidance in version.md and README.md now lists only safe-to-delete skill paths instead of suggesting a blanket directory wipe
+
 ## 0.29.7 — The Link Fixer (2026-03-22)
 
 Prime-file lesson links now compute proper relative paths instead of assuming repo-root context. Also documented the stale-file hazard in tar-based updates.

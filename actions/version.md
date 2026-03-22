@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting and update checks.
 
-**Current version**: 0.29.7
+**Current version**: 0.29.8
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -25,16 +25,17 @@ When user asks "check for updates", "update", or "is there a newer version":
 **If update available** (remote > local):
 
 1. **Tell the user**: `Update available: v{remote} (you have v{local}).`
-2. **Check for local changes** in the skill's root directory (where SKILL.md lives):
-   - If the directory is a git repo, run `git -C <skill-root> status --porcelain` and check for uncommitted changes to tracked files.
-   - If it's **not** a git repo, check whether any files differ from a fresh install by looking for user-modified content (custom agent-rules, edited action files, etc.).
-   - **If the working tree is dirty / has local modifications**: Stop and warn the user. List the modified files and ask for explicit confirmation before proceeding. Do NOT auto-update.
+2. **Check for local changes** to shipped skill files (where SKILL.md lives):
+   - **Scope the check to skill-owned files only.** Ignore `do-work/` (queue data, archives, deliverables) — those are generated at runtime and should never block an update.
+   - If the directory is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ agent-rules/ CHANGELOG.md README.md` (listing only shipped paths) and check for uncommitted changes.
+   - If it's **not** a git repo, check whether shipped skill files (actions/, agent-rules/, SKILL.md, etc.) differ from a fresh install by looking for user-modified content (custom agent-rules, edited action files, etc.).
+   - **If any shipped skill files are dirty / have local modifications**: Stop and warn the user. List the modified files and ask for explicit confirmation before proceeding. Do NOT auto-update.
    - **If clean**: Proceed to step 3.
 3. **Run the update** from the skill's root directory:
    ```
    curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
    ```
-   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. If the update changes significantly, stale files from older versions may remain. For a guaranteed clean update, delete the skill directory contents first (preserving `do-work/` queue data) and then extract.
+   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. Stale files from older versions may remain. This is generally harmless — the skill only loads files it references. If you need a fully clean update, delete only the known skill paths (`actions/`, `agent-rules/`, `SKILL.md`, `CHANGELOG.md`, `README.md`) before extracting — never delete `do-work/` or other project files.
 4. **Verify**: Read `actions/version.md` again and confirm the local version now matches the remote version.
 5. **Report result**: `Updated to v{remote}.`
 
