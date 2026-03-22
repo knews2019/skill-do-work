@@ -54,7 +54,7 @@ Check these patterns **in order** — first match wins:
 | 8        | Commit keywords          | `do work commit`, `do work commit changes`, `do work save work`                                                                    | → commit                      |
 | 9        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
 | 10       | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
-| 11       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`                                                  | → quick-wins                  |
+| 11       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`                                                                  | → quick-wins                  |
 | 12       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
 
 
@@ -132,6 +132,8 @@ Note: "updates" (plural) routes to changelog display. "update" (singular) routes
 
 These signal "scan for improvement opportunities":
 quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, what can we improve
+
+Note: "scan", "opportunities", and "what can we improve" route to quick-wins ONLY when used alone or with a directory path (e.g., "do work scan", "do work scan src/"). When followed by descriptive content they route to capture requests (e.g., "do work scan the checkout logs for 500s" → capture requests).
 
 ### Content Signals (→ Capture Requests)
 
@@ -248,8 +250,10 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work quick wins` → Same
 - `do work quick-wins src/` → Scans specific directory
 - `do work low-hanging` → Same
-- `do work scan` → Same
-- `do work opportunities` → Same
+- `do work scan` → Scans current working directory
+- `do work scan src/` → Scans specific directory
+- `do work scan the checkout logs for 500s` → Routes to capture requests (descriptive content)
+- `do work opportunities` → Scans current working directory
 
 ### Routes to Capture Requests
 
@@ -286,7 +290,7 @@ Each action has an action file with full instructions. How you execute it depend
 | present work       | `./actions/present-work.md`     | Target REQ/UR, "most recent", or "all" |
 | cleanup            | `./actions/cleanup.md`          | (none needed)                  |
 | commit             | `./actions/commit.md`           | (none needed)                  |
-| quick-wins         | `./actions/quick-wins.md`       | Target directory or glob pattern |
+| quick-wins         | `./actions/quick-wins.md`       | Target directory               |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 
 ### If subagents are available

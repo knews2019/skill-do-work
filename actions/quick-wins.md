@@ -6,7 +6,7 @@
 
 ## Input
 
-`$TARGET` comes from `$ARGUMENTS` — a directory path or glob pattern. If empty, defaults to the current working directory.
+`$TARGET` comes from `$ARGUMENTS` — a directory path. If empty, defaults to the current working directory.
 
 ## Steps
 
@@ -18,7 +18,8 @@
 
 ### Step 2: Survey the Codebase
 
-- Glob for source files in the target: `*.{js,ts,jsx,tsx,py,php,html,css,json}`
+- Detect the languages in use by checking for project markers (`package.json`, `Cargo.toml`, `go.mod`, `requirements.txt`, `Gemfile`, `composer.json`, `pom.xml`, `*.csproj`, etc.) and scanning file extensions
+- Glob for source files matching the detected languages — adapt the extensions to what's actually in the repo (e.g., `*.go` for Go, `*.rs` for Rust, `*.java` for Java, `*.rb` for Ruby, `*.sh` for shell, `*.js,*.ts,*.jsx,*.tsx` for JS/TS, `*.py` for Python, etc.)
 - **Skip vendored/generated files**: ignore `node_modules/`, `vendor/`, `dist/`, `build/`, `.next/`, `__pycache__/`, `*.min.js`, `*.min.css`, `*.bundle.*`, `*.generated.*`, lock files, and similar
 - Build a file list with approximate line counts
 - Note the primary language(s) and frameworks in use
