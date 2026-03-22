@@ -47,7 +47,19 @@ For each loose `REQ-*.md` file directly in `do-work/archive/` (not inside a subf
    - Move it to `do-work/archive/legacy/` (create the folder if needed)
    - Report: `Moved REQ-XXX to archive/legacy/ (no UR reference)`
 
-### Pass 3: Fix Misplaced Folders
+### Pass 3a: Misplaced do-work Directories Elsewhere in the Repo
+
+Scan for `do-work/` directories created inside utility subdirectories instead of the project root. This happens when an agent's working directory drifts into a subdirectory (e.g., during a refactor) and the next capture creates `do-work/` relative to that location. Once the misplaced directory exists, subsequent sessions keep writing there — silently diverging from the canonical queue.
+
+1. Search for `do-work/` directories anywhere in the repo EXCEPT the project root: glob for `**/do-work/REQ-*.md` and `**/do-work/archive/UR-*` excluding the root `do-work/`
+2. For each misplaced `do-work/` found:
+   - List all REQ files, UR folders (archive + user-requests), and working items
+   - For each item, check if it already exists at the root `do-work/` — skip if duplicate, move if not
+   - Report: `Found misplaced do-work/ at {path} — relocated {N} REQs, {M} URs to project root`
+3. After relocating all contents, remove the empty misplaced `do-work/` directory
+4. Do not auto-delete files — if a conflict exists (same REQ/UR at both locations), report the conflict and leave the misplaced copy for manual resolution
+
+### Pass 3b: Misplaced Folders Within the Archive
 
 Check for UR folders that ended up in wrong locations within the archive.
 
@@ -70,7 +82,8 @@ Archive cleanup complete:
   - Archived: UR-011 (3 REQs), UR-004 (8 REQs)
   - Consolidated: 5 loose REQs into their UR folders
   - Legacy: 24 REQs moved to archive/legacy/
-  - Fixed: 1 misplaced UR folder
+  - Misplaced do-work/: relocated 7 REQs, 6 URs from exp/g3-segment-anything/do-work/
+  - Fixed: 1 misplaced UR folder in archive
   - Still open: UR-015 (2/4 REQs complete)
 ```
 
@@ -102,13 +115,16 @@ do-work/archive/
 
 ## Commit (Git repos only)
 
-After all three passes complete, if any files were moved or consolidated, commit the structural changes.
+After all passes complete, if any files were moved or consolidated, commit the structural changes.
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
 ```bash
 # Stage all paths affected by cleanup (moves show as delete + add)
-git add do-work/archive/
+# Include misplaced do-work/ paths if Pass 3a relocated anything
+git add do-work/archive/ do-work/user-requests/
+# If Pass 3a found misplaced directories, also stage those paths:
+# git add exp/g3-segment-anything/do-work/  (the deletion side of the move)
 
 git commit -m "$(cat <<'EOF'
 do-work: cleanup — consolidated {N} REQs, closed {M} URs
@@ -126,7 +142,7 @@ EOF
 
 If nothing was moved (archive was already clean), skip the commit entirely.
 
-Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/` and `do-work/user-requests/` affected by the cleanup. Don't bypass pre-commit hooks.
+Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/`, `do-work/user-requests/`, and any misplaced `do-work/` directories relocated by Pass 3a. Don't bypass pre-commit hooks.
 
 ## What This Action Does NOT Do
 

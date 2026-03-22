@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.29.2 — The Drift Catcher (2026-03-22)
+
+Cleanup now detects `do-work/` directories created in the wrong location when an agent's CWD drifts into a subdirectory. Pass 3a scans the repo for misplaced `do-work/` trees and relocates their contents to the canonical root queue.
+
+- Added Pass 3a: scan for misplaced `do-work/` directories outside project root
+- Renamed existing Pass 3 to Pass 3b (misplaced folders within the archive)
+- Conflict-safe: duplicates are reported for manual resolution, not auto-deleted
+- Updated commit staging to include misplaced directory paths
+
 ## 0.29.1 — The Gap Plug (2026-03-22)
 
 Fixed a gap in Step 6.5 where a partial prime test map caused zero tests to run for unmapped files. The fallback is now per-file: matched files use the prime's commands, unmatched files fall back to generic detection.
