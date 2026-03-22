@@ -4,6 +4,34 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.30.6 — The Alias Restore (2026-03-22)
+
+Restored version/release aliases and anchored changelog lookup to skill root — fixes from PR review feedback.
+
+- Restored `what's new`, `release notes`, `updates`, `history`, `what's changed` as version keywords (were dropped in 0.30.4)
+- Anchored CHANGELOG.md lookup to skill root directory (same level as SKILL.md) so it doesn't pick up the project's own changelog
+- Added route examples for all restored aliases
+
+## 0.30.5 — The Consistency Pass (2026-03-22)
+
+Filled in gaps from the recap/version split — missing route examples, dispatch table entry, next steps, and help menu clarity.
+
+- Added "Routes to Version" example section (was the only action without one)
+- Added recap row to Action Dispatch table with `mode: recap` context
+- Added recap to foreground subagent list
+- Split help menu: `do work version` and `do work update` now on separate lines
+- Added "After version / recap" to Suggest Next Steps
+- Updated version.md header to mention recap handling
+
+## 0.30.4 — The Recap (2026-03-22)
+
+Split changelog into two focused commands: `do work version` now shows last 5 skill releases alongside the version number, and `do work recap` shows last 5 completed URs with their REQs. No more wall-of-text changelog dumps.
+
+- `do work version` now includes last 5 releases from CHANGELOG.md (read first ~80 lines only)
+- Added `do work recap` command — shows last 5 archived URs with REQ titles
+- Removed `do work changelog` / `changelog all` routes (version and recap cover both use cases)
+- Updated help menu, routing table, and argument-hint
+
 ## 0.30.2 — The Scoped Check (2026-03-22)
 
 Dirty-tree check now only looks at shipped skill files, so captured requests in `do-work/` no longer trigger false "dirty" warnings during updates. Also replaced the dangerous "delete directory contents" clean-update advice with a safe list of skill-owned paths. Prime-file lesson links now compute proper relative paths.

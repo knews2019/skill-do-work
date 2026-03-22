@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: (describe a task) | run | verify requests | review work | present work | clarify | cleanup | quick-wins | version
+argument-hint: (describe a task) | run | verify requests | review work | present work | clarify | cleanup | quick-wins | version | recap
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -52,8 +52,8 @@ Check these patterns **in order** — first match wins:
 | 6        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
 | 7        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
 | 8        | Commit keywords          | `do work commit`, `do work commit changes`, `do work save work`                                                                    | → commit                      |
-| 9        | Version keywords         | `do work version`, `do work update`, `do work check for updates`                                                                   | → version                     |
-| 10       | Changelog keywords       | `do work changelog`, `do work release notes`, `do work what's new`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
+| 9        | Version keywords         | `do work version`, `do work update`, `do work check for updates`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
+| 10       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
 | 11       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`                                                                  | → quick-wins                  |
 | 12       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
 
@@ -121,12 +121,17 @@ cleanup, clean up, tidy, consolidate, organize archive, fix archive
 These signal "commit uncommitted files atomically":
 commit, commit changes, commit files, save changes, save work
 
-### Changelog Verbs (→ Version)
+### Recap Verbs (→ Version)
 
-These signal "show release notes":
-changelog, release notes, what's new, what's changed, updates, history
+These signal "show recent work summary":
+recap
 
-Note: "updates" (plural) routes to changelog display. "update" (singular) routes to update check. Both are handled by the version action.
+### Version / Release Info Verbs (→ Version)
+
+These signal "show version or release info":
+version, update, check for updates, what's new, release notes, what's changed, updates, history
+
+Note: "updates" (plural) and "what's new" show version + last 5 releases. "update" (singular) triggers the update check flow. Both are handled by the version action.
 
 ### Quick-Wins Verbs (→ Quick-Wins)
 
@@ -177,8 +182,9 @@ do-work — task queue for agentic coding tools
     do work clarify             Answer pending questions from completed work
     do work cleanup             Consolidate the archive
     do work commit              Analyze and commit uncommitted files atomically
-    do work version             Check version / updates
-    do work changelog           Show release notes
+    do work version             Check version + last 5 skill releases
+    do work update              Check for upstream updates
+    do work recap               Last 5 completed URs with their REQs
 ```
 
 Do not ask "Start the work loop?" — just print the help menu and wait.
@@ -236,13 +242,19 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work commit changes` → Same as commit
 - `do work save work` → Same as commit
 
-### Routes to Changelog (via Version)
+### Routes to Version
 
-- `do work changelog` → Displays changelog (newest at bottom)
-- `do work release notes` → Same as changelog
-- `do work what's new` → Same as changelog
-- `do work updates` → Same as changelog
-- `do work history` → Same as changelog
+- `do work version` → Reports version + last 5 skill releases
+- `do work update` → Checks for upstream updates
+- `do work check for updates` → Same as update
+- `do work what's new` → Same as version (shows releases)
+- `do work release notes` → Same as version
+- `do work updates` → Same as version
+- `do work history` → Same as version
+
+### Routes to Recap (via Version)
+
+- `do work recap` → Last 5 completed URs with their REQs
 
 ### Routes to Quick-Wins
 
@@ -292,13 +304,14 @@ Each action has an action file with full instructions. How you execute it depend
 | commit             | `./actions/commit.md`           | (none needed)                  |
 | quick-wins         | `./actions/quick-wins.md`       | Target directory               |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
+| recap              | `./actions/version.md`          | `mode: recap`                  |
 
 ### If subagents are available
 
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `present work`, `quick-wins`, `version`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `present work`, `quick-wins`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
@@ -369,6 +382,13 @@ Next steps:
 Next steps:
   do work run                 Process answered questions
   do work clarify             Continue answering (if skipped any)
+```
+
+**After version / recap:**
+```
+Next steps:
+  do work run                 Start processing the queue
+  do work [describe changes]  Capture new requests
 ```
 
 **Rules:**
