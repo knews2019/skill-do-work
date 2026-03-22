@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.29.1 — The Gap Plug (2026-03-22)
+
+Fixed a gap in Step 6.5 where a partial prime test map caused zero tests to run for unmapped files. The fallback is now per-file: matched files use the prime's commands, unmatched files fall back to generic detection.
+
+- Step 6.5: fallback to generic detection applies per changed file, not per prime section
+- Explicit: a partial prime map is not an excuse to skip tests for unmapped files
+
 ## 0.29.0 — The Red-Green Trace (2026-03-21)
 
 Each request now proves itself with red-green test validation and cross-REQ traceability. Tests must fail before implementation and pass after — proving the request is delivered, not just that tests exist. When a request intentionally changes behavior tested by a prior request, the builder documents which REQ's tests changed and why.
