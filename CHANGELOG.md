@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.29.6 — The Safety Net (2026-03-22)
+
+Auto-update now checks for uncommitted local changes before overwriting anything. No more silent destruction of in-progress work.
+
+- Added dirty-tree guard to the update flow — agent checks `git status --porcelain` (or equivalent) before extracting
+- If local modifications exist, the agent warns the user and asks for confirmation instead of bulldozing ahead
+
 ## 0.29.5 — The Clean Slate (2026-03-22)
 
 Crash recovery now strips stale phase sections so interrupted runs don't poison the next attempt. Pass 3a relocation spec tightened with explicit path preservation and conflict handling rules.

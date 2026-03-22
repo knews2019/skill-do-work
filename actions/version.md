@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting and update checks.
 
-**Current version**: 0.29.5
+**Current version**: 0.29.6
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -24,13 +24,18 @@ When user asks "check for updates", "update", or "is there a newer version":
 
 **If update available** (remote > local):
 
-1. **Tell the user**: `Update available: v{remote} (you have v{local}). Updating now...`
-2. **Run the update** from the skill's root directory (where SKILL.md lives):
+1. **Tell the user**: `Update available: v{remote} (you have v{local}).`
+2. **Check for local changes** in the skill's root directory (where SKILL.md lives):
+   - If the directory is a git repo, run `git -C <skill-root> status --porcelain` and check for uncommitted changes to tracked files.
+   - If it's **not** a git repo, check whether any files differ from a fresh install by looking for user-modified content (custom agent-rules, edited action files, etc.).
+   - **If the working tree is dirty / has local modifications**: Stop and warn the user. List the modified files and ask for explicit confirmation before proceeding. Do NOT auto-update.
+   - **If clean**: Proceed to step 3.
+3. **Run the update** from the skill's root directory:
    ```
    curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
    ```
-3. **Verify**: Read `actions/version.md` again and confirm the local version now matches the remote version.
-4. **Report result**: `Updated to v{remote}.`
+4. **Verify**: Read `actions/version.md` again and confirm the local version now matches the remote version.
+5. **Report result**: `Updated to v{remote}.`
 
 Do NOT just print the curl command and ask the user to run it. You are the agent — run it yourself.
 
@@ -46,7 +51,7 @@ You're up to date (v{local})
 Couldn't check for updates.
 ```
 
-Attempt the update anyway using the curl command above. If that also fails, report the error and provide the manual command as a fallback:
+Attempt the update anyway using the curl command above (still respecting the dirty-tree check in step 2). If that also fails, report the error and provide the manual command as a fallback:
 
 ```
 To manually update, run this from the skill's root directory (where SKILL.md lives):
