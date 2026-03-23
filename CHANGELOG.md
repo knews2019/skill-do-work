@@ -4,6 +4,34 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.31.2 — The Review Fix (2026-03-22)
+
+Addresses PR review feedback on the Implementation Summary feature.
+
+- Clarified Step 8 Discovered Tasks wording — explicitly notes it's a separate section from `## Implementation Summary`, not nested inside it
+- Broadened "source files" to "project files" in Implementation Summary rules — config, CI, docs, and Dockerfiles now included in the manifest
+- Scoped Step 9 validation check to successful REQs only — failed REQs may have no summary or staged project files, and that's expected
+
+## 0.31.1 — The Consistency Pass (2026-03-22)
+
+Follow-up fixes to ensure Implementation Summary is consistently referenced across all action files.
+
+- Added Implementation Summary to architecture diagram in work.md
+- Added `## Implementation Summary` to crash recovery strip list (Step 1)
+- Clarified Step 6 agent instructions: agent reports file list, orchestrator writes the formal summary
+- Fixed present-work.md: removed stale "key files" reference from Lessons Learned extraction, pointed Key Files section to Implementation Summary
+- Added `Summary...` line to progress reporting example
+
+## 0.31.0 — The Archive Proof (2026-03-22)
+
+Every completed REQ now carries a mandatory implementation manifest — no more guessing whether a REQ was actually built or just filed away.
+
+- Added Step 6.25 (Implementation Summary) to work.md — mandatory file-change manifest for all routes (A, B, C)
+- Removed `Key files:` from Lessons Learned (Step 7.5) — now covered by Implementation Summary
+- Added commit validation check to Step 9 — flags mismatches between Implementation Summary and staged files
+- Updated archived REQ example to reflect new format
+- Added two new common-mistakes entries for Implementation Summary gaps
+
 ## 0.30.6 — The Alias Restore (2026-03-22)
 
 Restored version/release aliases and anchored changelog lookup to skill root — fixes from PR review feedback.

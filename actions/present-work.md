@@ -40,10 +40,10 @@ For each completed REQ, read the full file and extract:
 - **Triage** — what route was chosen and why
 - **Plan** — what was planned (Route C)
 - **Exploration** — what was discovered about the codebase
-- **Implementation Summary** — what the builder says it did
+- **Implementation Summary** — mandatory file manifest (files changed, what was done)
 - **Testing** — what tests exist and pass
 - **Review** — scores, findings, acceptance result
-- **Lessons Learned** (if present) — what worked, what didn't, key files, gotchas. Route A REQs may skip this section.
+- **Lessons Learned** (if present) — what worked, what didn't, gotchas. Route A REQs may skip this section.
 
 ### Step 3: Read the Code
 
@@ -126,8 +126,8 @@ problem well, not just technically but for the business.]
 
 ## Key Files
 
-[Pointers to the most important files in the implementation.
-These are the source of truth — read them for the full picture.]
+[Pointers to the most important files in the implementation — pull from
+the REQ's ## Implementation Summary. These are the source of truth.]
 
 - `src/components/Feature.tsx` — main component
 - `src/services/feature-service.ts` — business logic
