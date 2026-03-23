@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.33.0 — The Design Install (2026-03-23)
+
+One command to get production-grade UI design capabilities. `do work install-ui-design` installs Anthropic's `frontend-design` skill into the current project.
+
+- Added `actions/install-ui-design.md` — installs `frontend-design` Claude skill with automatic fallback to manual curl
+- Added `install-ui-design` routing, verbs, help menu entry, and dispatch table in SKILL.md
+- Works alongside `domain: ui-design` rules for a complete design workflow
+
 ## 0.32.0 — The Design Eye (2026-03-23)
 
 UI design gets first-class domain support. Requests tagged `domain: ui-design` now load dedicated design rules covering IA, wireframing, visual aesthetics, component systems, UX copy, interaction specs, and heuristic reviews.
