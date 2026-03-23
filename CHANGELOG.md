@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.32.0 — The Design Eye (2026-03-23)
+
+UI/UX gets first-class domain support. Requests tagged `domain: ui-ux` now load dedicated design rules covering IA, wireframing, visual aesthetics, component systems, UX copy, interaction specs, and heuristic reviews.
+
+- Added `agent-rules/rules-ui-ux.md` — phased design workflow (IA → wireframe → visuals → components → copy → interaction) with quality checks and implementation patterns
+- Added `ui-ux` as a domain option in capture and work action file schemas
+- Includes accessibility baseline, heuristic review criteria, and handoff note guidance
+
 ## 0.31.2 — The Review Fix (2026-03-22)
 
 Addresses PR review feedback on the Implementation Summary feature.
