@@ -1,6 +1,6 @@
-# UI/UX Rules
+# UI Design Rules
 
-<!-- JIT_CONTEXT: This file is loaded by the AI agent when working on UI/UX-related tasks (domain: ui-ux). It provides a structured design workflow that chains phases from information architecture through visual polish and handoff. -->
+<!-- JIT_CONTEXT: This file is loaded by the AI agent when working on UI/UX design tasks (domain: ui-design). It provides a structured design workflow that chains phases from information architecture through visual polish and handoff. -->
 
 ## Design Workflow Phases
 

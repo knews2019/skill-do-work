@@ -130,7 +130,7 @@ Request files use YAML frontmatter added progressively:
 id: REQ-001
 title: Short descriptive title
 status: pending
-domain: frontend  # choose one: frontend, backend, ui-ux, or general
+domain: frontend  # choose one: frontend, backend, ui-design, or general
 prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001          # May be absent on legacy REQs
