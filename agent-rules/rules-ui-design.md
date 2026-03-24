@@ -104,6 +104,10 @@ Rate issues by severity: **low** (cosmetic), **medium** (confusing but workaroun
 - If adjacent UI has issues, note them in the REQ's review section but don't fix unless asked.
 - A styling request doesn't need an IA overhaul. A new feature may need IA + wireframe + visuals.
 
+## Design Artifacts
+
+Not every ui-design request produces code. Wireframe specs, IA documents, visual design specs, and interaction specs are valid deliverables. Place them as project files outside `do-work/` (e.g., `docs/design/REQ-NNN-wireframe.md`) so they appear in the Implementation Summary and satisfy the pipeline's file-change validation. Design artifacts are project deliverables — the same rules apply: list them in `Files changed`, mark as `(new)` or `(modified)`, and commit them.
+
 ## Implementation Patterns
 
 ### CSS & Styling

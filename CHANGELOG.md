@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.34.0 — The Design Pipeline (2026-03-24)
+
+Design-only deliverables now flow through the full pipeline without inventing code changes. Domain-specific review criteria are actually applied during review.
+
+- Design-artifact exception in work.md — wireframe specs, IA docs, and visual specs placed outside `do-work/` (e.g., `docs/design/`) satisfy Implementation Summary and commit validation
+- Work.md Step 7 now passes `rules-[domain].md` to the review agent (matching how Plan and Implementation agents already receive it)
+- review-work.md gains a generic Domain-Specific Review hook — any domain can define review criteria in its rules file
+- rules-ui-design.md gains a Design Artifacts section explaining where to place non-code deliverables
+
 ## 0.33.0 — The Design Install (2026-03-23)
 
 One command to get production-grade UI design capabilities. `do work install-ui-design` installs Anthropic's `frontend-design` skill into the current project.

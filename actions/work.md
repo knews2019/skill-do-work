@@ -307,6 +307,7 @@ Append to the request file:
 - Mark files as `(new)`, `(modified)`, or `(deleted)`.
 - The "What was done" summary should be factual, not aspirational — describe what you built, not what the REQ asked for.
 - This section is the primary auditability artifact. If `Files changed` only lists `do-work/` paths or is empty, the REQ was not implemented.
+- **Design-artifact exception:** For `domain: ui-design` requests that produce design deliverables rather than code (wireframes, IA specs, visual specs, interaction specs), the artifact files themselves count as project files. Place them in the project's design docs directory (e.g., `docs/design/`) — not inside `do-work/`. The Implementation Summary lists these files normally.
 
 ### Step 6.5: Testing
 
@@ -347,7 +348,7 @@ Run the [review work action](./review-work.md) in **pipeline mode** against this
 
 The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation: requirements check (did we build what was asked?), code review (is it solid?), and acceptance testing (does it actually work?).
 
-**How to run it:** Spawn an agent with the review work action file and the REQ path, or read `actions/review-work.md` and follow its pipeline mode instructions in the current session.
+**How to run it:** Spawn an agent with the review work action file, the REQ path, and the `rules-[domain].md` file (if the domain has one and the file exists). Or read `actions/review-work.md` and follow its pipeline mode instructions in the current session.
 
 **What happens next depends on the review score:**
 
@@ -503,7 +504,7 @@ EOF
 
 One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/`), and any UR-folder moves to `archive/`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
 
-**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
+**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
 
 **Write commit hash back to the archived REQ.** After the commit succeeds, retrieve the hash with `git rev-parse --short HEAD` and update the archived REQ's frontmatter `commit:` field with the actual value. Then amend the commit to include this update:
 
@@ -661,7 +662,7 @@ All 2 requests completed:
 - Using `git add -A` instead of staging specific files
 - Using `--no-verify` to bypass a failing pre-commit hook instead of fixing the issue
 - Committing without validating Implementation Summary file list against staged files
-- Implementation Summary that only lists `do-work/` paths (means the REQ wasn't actually implemented)
+- Implementation Summary that only lists `do-work/` paths (means the REQ wasn't actually implemented — exception: `domain: ui-design` design artifacts placed in project directories like `docs/design/`)
 - Creating follow-ups for every `- [~]` item instead of only UX-affecting decisions
 
 ## Archived Request File Example
