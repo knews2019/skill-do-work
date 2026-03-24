@@ -6,6 +6,7 @@ A task queue skill for agentic coding tools. Platform-agnostic — works with an
 
 ```
 SKILL.md              # Entry point — routing logic, action dispatch
+README.md             # Installation + quick usage guide
 actions/              # Action files (each is a standalone prompt)
   capture.md          # Capture new requests → UR folders + REQ files
   work.md             # Process the queue — triage, plan, build, test, review
@@ -15,6 +16,8 @@ actions/              # Action files (each is a standalone prompt)
   cleanup.md          # Archive consolidation
   commit.md           # Atomic git commits traced to REQs
   version.md          # Version reporting + update checks (current version lives here)
+  quick-wins.md       # Scan for refactoring opportunities and low-hanging tests
+  install-ui-design.md # Install the frontend-design skill for UI work
 agent-rules/          # Domain-specific rules loaded by work action
 CHANGELOG.md          # Release notes (newest on top)
 ```

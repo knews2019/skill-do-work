@@ -71,7 +71,7 @@ title: Brief descriptive title
 status: pending
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001
-domain: frontend  # choose one: frontend, backend, or general
+domain: frontend  # choose one: frontend, backend, ui-design, or general
 prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 ---
 
@@ -172,7 +172,7 @@ For complex requests, add a Summary, an Extracted Requests table, and a Batch Co
 Read the user's input. Determine:
 - **Single vs multiple requests** — look for "and also", comma-separated lists, numbered items, distinct topics
 - **Simple vs complex** — apply the detection criteria above
-- **Domain classification** — infer the primary technical domain of the request (e.g., frontend, backend, or general) so the downstream builder knows which JIT rules to load.
+- **Domain classification** — infer the primary technical domain of the request (e.g., frontend, backend, ui-design, or general) so the downstream builder knows which JIT rules to load.
 - **Prime file routing** — check the project's root `CLAUDE.md` (or similar instructions) to see if there are defined prime files that match the requested utility. Note them for inclusion.
 
 ### Step 2: Check for Duplicates

@@ -155,6 +155,42 @@ Invoked when you say "cleanup", "tidy", or "consolidate". Also runs automaticall
 
 See [actions/cleanup.md](./actions/cleanup.md) for the full consolidation logic.
 
+### Quick-Wins (scan)
+
+Invoked when you say "quick-wins", "scan", or "low-hanging". Scans a target directory for obvious improvements:
+- Refactoring opportunities (dead code, duplication, complexity)
+- Low-hanging tests to add
+- Optionally targets a specific directory (`do work quick-wins src/`)
+
+See [actions/quick-wins.md](./actions/quick-wins.md) for the full scan logic.
+
+### Commit
+
+Invoked when you say "commit", "commit changes", or "save work". Atomic git commits traced to REQs:
+- Analyzes uncommitted files and groups them by REQ
+- Creates one commit per REQ with traceability in the commit message
+- Validates Implementation Summary against staged files
+
+See [actions/commit.md](./actions/commit.md) for the full commit logic.
+
+### Install UI Design
+
+Invoked when you say "install-ui-design" or "install ui design". Installs Anthropic's `frontend-design` skill for production-grade UI design capabilities:
+- Checks if already installed
+- Installs the skill into `.claude/skills/frontend-design/`
+- Works alongside `domain: ui-design` rules for a complete design workflow
+
+See [actions/install-ui-design.md](./actions/install-ui-design.md) for the full installation logic.
+
+### Version / Recap
+
+Invoked when you say "version", "update", or "what's new". Also supports "recap" for work history:
+- **Version**: Shows current version and last 5 skill releases
+- **Update**: Checks for upstream updates and applies them
+- **Recap**: Summary of last 5 completed user requests
+
+See [actions/version.md](./actions/version.md) for the full version logic.
+
 ## License
 
 MIT

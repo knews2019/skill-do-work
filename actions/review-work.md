@@ -109,6 +109,10 @@ Evaluate the implementation quality by reading the diff:
 - Data integrity risks (race conditions, missing validation at boundaries)
 - Regression risk — identify callers/dependents of changed code, flag interfaces whose contract changed, note shared utilities that other features rely on
 
+**Domain-Specific Review (if domain rules provided)**
+
+If `rules-[domain].md` was provided alongside this review, apply any review criteria defined in that file in addition to the standard rubric above. Report domain-specific findings in a separate `### Domain Review` subsection within the `## Review` output. Domain-specific scores are advisory — they inform the overall assessment but don't replace the standard dimensions.
+
 ### Step 7: Acceptance Testing
 
 Actually verify the implementation works. Reading diffs catches logic errors; running code catches everything else.

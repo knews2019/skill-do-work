@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: (describe a task) | run | verify requests | review work | present work | clarify | cleanup | quick-wins | version | recap
+argument-hint: (describe a task) | run | verify requests | review work | present work | clarify | cleanup | quick-wins | install-ui-design | version | recap
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -19,7 +19,10 @@ A unified entry point for task capture and processing.
 - **present work**: Client-facing deliverables → briefs, architecture diagrams, value propositions, Remotion videos
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
 - **quick-wins**: Scan a target directory for obvious refactoring opportunities and low-hanging tests to add
+- **install-ui-design**: Install the `frontend-design` Claude skill for production-grade UI design capabilities
 - **commit**: Commit uncommitted files → analyzes, groups atomically, traces to REQs
+- **version**: Show current version, last 5 releases, or check for upstream updates
+- **recap**: Summary of last 5 completed user requests with their REQs
 
 > **Core concept:** The capture requests action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
 
@@ -55,7 +58,8 @@ Check these patterns **in order** — first match wins:
 | 9        | Version keywords         | `do work version`, `do work update`, `do work check for updates`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
 | 10       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
 | 11       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`                                                                  | → quick-wins                  |
-| 12       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
+| 12       | Install keywords         | `do work install-ui-design`, `do work install ui design`                                                                           | → install-ui-design           |
+| 13       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -140,6 +144,11 @@ quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, wha
 
 Note: "scan", "opportunities", and "what can we improve" route to quick-wins ONLY when used alone or with a directory path (e.g., "do work scan", "do work scan src/"). When followed by descriptive content they route to capture requests (e.g., "do work scan the checkout logs for 500s" → capture requests).
 
+### Install Verbs (→ Install UI Design)
+
+These signal "install the frontend-design skill":
+install-ui-design, install ui design, install ui, install frontend-design, setup ui design, setup design skill
+
 ### Content Signals (→ Capture Requests)
 
 These signal "add a new task":
@@ -177,6 +186,9 @@ do-work — task queue for agentic coding tools
   Scan for improvements:
     do work quick-wins          Scan cwd for refactoring and test opportunities
     do work quick-wins src/     Scan a specific directory
+
+  Setup:
+    do work install-ui-design   Install the frontend-design skill for production-grade UI
 
   Other actions:
     do work clarify             Answer pending questions from completed work
@@ -267,6 +279,13 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work scan the checkout logs for 500s` → Routes to capture requests (descriptive content)
 - `do work opportunities` → Scans current working directory
 
+### Routes to Install UI Design
+
+- `do work install-ui-design` → Installs the frontend-design skill
+- `do work install ui design` → Same
+- `do work install ui` → Same
+- `do work setup design skill` → Same
+
 ### Routes to Capture Requests
 
 - `do work add dark mode` → Creates REQ file + UR folder
@@ -303,6 +322,7 @@ Each action has an action file with full instructions. How you execute it depend
 | cleanup            | `./actions/cleanup.md`          | (none needed)                  |
 | commit             | `./actions/commit.md`           | (none needed)                  |
 | quick-wins         | `./actions/quick-wins.md`       | Target directory               |
+| install-ui-design  | `./actions/install-ui-design.md`| (none needed)                  |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 | recap              | `./actions/version.md`          | `mode: recap`                  |
 
