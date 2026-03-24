@@ -21,6 +21,8 @@ A unified entry point for task capture and processing.
 - **quick-wins**: Scan a target directory for obvious refactoring opportunities and low-hanging tests to add
 - **install-ui-design**: Install the `frontend-design` Claude skill for production-grade UI design capabilities
 - **commit**: Commit uncommitted files → analyzes, groups atomically, traces to REQs
+- **version**: Show current version, last 5 releases, or check for upstream updates
+- **recap**: Summary of last 5 completed user requests with their REQs
 
 > **Core concept:** The capture requests action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
 

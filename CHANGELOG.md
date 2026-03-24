@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.34.1 — The Consistency Pass (2026-03-24)
+
+Documentation alignment across the entire skill.
+
+- CLAUDE.md project structure now lists all action files (added quick-wins.md, install-ui-design.md, README.md)
+- README.md now documents all actions (added Quick-Wins, Commit, Install UI Design, Version/Recap sections)
+- SKILL.md action list now includes version and recap entries
+- install-ui-design.md uses real installation mechanism (mkdir + curl) instead of nonexistent `claude skill add` command
+- Fixed changelog dates for v0.32.0 and v0.33.0 (2026-03-23 → 2026-03-24)
+
 ## 0.34.0 — The Design Pipeline (2026-03-24)
 
 Design-only deliverables now flow through the full pipeline without inventing code changes. Domain-specific review criteria are actually applied during review.
@@ -13,7 +23,7 @@ Design-only deliverables now flow through the full pipeline without inventing co
 - review-work.md gains a generic Domain-Specific Review hook — any domain can define review criteria in its rules file
 - rules-ui-design.md gains a Design Artifacts section explaining where to place non-code deliverables
 
-## 0.33.0 — The Design Install (2026-03-23)
+## 0.33.0 — The Design Install (2026-03-24)
 
 One command to get production-grade UI design capabilities. `do work install-ui-design` installs Anthropic's `frontend-design` skill into the current project.
 
@@ -21,7 +31,7 @@ One command to get production-grade UI design capabilities. `do work install-ui-
 - Added `install-ui-design` routing, verbs, help menu entry, and dispatch table in SKILL.md
 - Works alongside `domain: ui-design` rules for a complete design workflow
 
-## 0.32.0 — The Design Eye (2026-03-23)
+## 0.32.0 — The Design Eye (2026-03-24)
 
 UI design gets first-class domain support. Requests tagged `domain: ui-design` now load dedicated design rules covering IA, wireframing, visual aesthetics, component systems, UX copy, interaction specs, and heuristic reviews.
 

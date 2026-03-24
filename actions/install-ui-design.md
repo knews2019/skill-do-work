@@ -22,19 +22,15 @@ If the file exists, report that it's already installed and stop.
 
 ### Step 2: Install the Skill
 
-Run the Claude Code skill installation command:
-
-```bash
-claude skill add anthropic/frontend-design
-```
-
-If your environment doesn't support `claude skill add`, fall back to manual installation:
+Create the skill directory and download the skill file:
 
 ```bash
 mkdir -p .claude/skills/frontend-design
 curl -fsSL -o .claude/skills/frontend-design/SKILL.md \
   https://raw.githubusercontent.com/anthropics/claude-code/main/skills/frontend-design/SKILL.md
 ```
+
+If `curl` is not available or the download fails, check for the skill in your environment's plugin/skill registry (e.g., `/plugin install frontend-design` or equivalent) and install it from there.
 
 ### Step 3: Verify Installation
 
