@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.36.2 — The Bowser Eye (2026-03-25)
+
+Visual verification now uses Playwright CLI (`playwright-cli`) and the Bowser skill instead of deprecated MCP browser tools. Concrete session-based workflow with viewport screenshots at 320/768/1280px.
+
+- ui-review Step 2.4 detects `playwright-cli` or Bowser skill; recommends `npm install -g @anthropic-ai/playwright-cli@latest` when missing
+- ui-review Step 8.5 rewritten with `playwright-cli` session commands: named sessions, `--headless`, viewport via env var, snapshot for a11y, `close-all` cleanup
+- Removed all MCP/Puppeteer references — Bowser skill is the browser automation layer
+
 ## 0.36.1 — The Rendered Eye (2026-03-25)
 
 Visual verification layer for ui-review. Playwright CLI or browser tools (when available) now screenshot at 320/768/1280px, run axe accessibility audits, and catch rendered-page issues that static code analysis misses.

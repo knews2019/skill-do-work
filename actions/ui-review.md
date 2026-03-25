@@ -46,13 +46,13 @@ Combine all resolved file paths into a single deduplicated list. This is the **r
 3. **Check for project design tokens**: Look for existing design system files — `tailwind.config.*`, `theme.*`, `tokens.*`, `design-system.*`, CSS custom properties files, or equivalent. These establish the project's design language and serve as the baseline for consistency checks.
 
 4. **Check for browser/visual verification tools** (in this order):
-   - **Playwright CLI**: Run `npx playwright --version` or check for `playwright` in `node_modules/.bin/`, `package.json` dependencies, or as a global install (`playwright --version`). If available, it will be used in Step 8.5 for rendered-page validation.
-   - **Browser skill/MCP**: Check if a browser tool is available in your environment (e.g., a `browser` MCP server, Puppeteer, or similar). If available, use it as the Playwright alternative.
-   - **Neither available**: Note in the report that visual verification was skipped. Recommend installing Playwright:
+   - **Playwright CLI (`playwright-cli`)**: Check if `playwright-cli` is available — run `playwright-cli --help 2>/dev/null` or check for it in `node_modules/.bin/`. This is the preferred tool for visual verification (Step 8.5). It's token-efficient, supports headed/headless modes, parallel sessions, and screenshots via simple CLI commands.
+   - **Bowser skill**: Check if a `playwright-bowser` skill is loaded in your environment. If available, use it — it wraps `playwright-cli` with session management and viewport configuration.
+   - **Neither available**: Note in the report that visual verification was skipped. Recommend installing Playwright CLI:
      ```
-     npm init playwright@latest
+     npm install -g @anthropic-ai/playwright-cli@latest
      ```
-     Playwright enables rendered-page checks — screenshot comparison, actual color contrast measurement, responsive viewport testing, and accessibility audits via `@axe-core/playwright` — that static code analysis alone cannot provide.
+     Playwright CLI enables rendered-page checks — screenshot comparison, actual color contrast measurement, responsive viewport testing, and accessibility audits — that static code analysis alone cannot provide.
 
 5. **Read the scoped files**: Read all files in the review scope. For large scopes (>20 files), prioritize component files and page/view files over utility/helper files.
 
@@ -122,27 +122,43 @@ Evaluate against the implementation patterns section:
 
 ### Step 8.5: Visual Verification (if browser tools available)
 
-If Playwright CLI or a browser skill/MCP was detected in Step 2.4, use it to validate the rendered UI. If neither is available, skip this step entirely — the code-level review (Steps 3–8) stands on its own.
+If Playwright CLI or the Bowser skill was detected in Step 2.4, use it to validate the rendered UI. If neither is available, skip this step entirely — the code-level review (Steps 3–8) stands on its own.
 
 **If the app can be started** (check for `dev`/`start` scripts in `package.json`, or a running dev server):
 
 1. **Launch the app** if not already running. Use the project's dev server command (e.g., `npm run dev`, `yarn dev`).
 
-2. **Screenshot at key breakpoints** — capture the scoped pages/components at:
-   - 320px (mobile)
-   - 768px (tablet)
-   - 1280px (desktop)
-
-   Use Playwright's `page.setViewportSize()` and `page.screenshot()`, or equivalent browser tool commands. Save screenshots to a temp directory for reference.
-
-3. **Accessibility audit** — if `@axe-core/playwright` is available (or can be installed), run an axe accessibility scan on the rendered pages. This catches issues that static analysis misses: actual color contrast failures, missing labels on rendered elements, focus order problems.
+2. **Screenshot at key breakpoints** — capture the scoped pages/components at three viewports. Derive a session name from the review scope (e.g., `ui-review-components`):
 
    ```bash
-   # Check if axe-core is available
-   npm ls @axe-core/playwright 2>/dev/null
+   # Mobile (320px)
+   PLAYWRIGHT_MCP_VIEWPORT_SIZE=320x568 playwright-cli -s=ui-review-mobile open http://localhost:3000 --persistent --headless
+   playwright-cli -s=ui-review-mobile screenshot --filename=ui-review-320.png
+   playwright-cli -s=ui-review-mobile close
+
+   # Tablet (768px)
+   PLAYWRIGHT_MCP_VIEWPORT_SIZE=768x1024 playwright-cli -s=ui-review-tablet open http://localhost:3000 --persistent --headless
+   playwright-cli -s=ui-review-tablet screenshot --filename=ui-review-768.png
+   playwright-cli -s=ui-review-tablet close
+
+   # Desktop (1280px)
+   PLAYWRIGHT_MCP_VIEWPORT_SIZE=1280x800 playwright-cli -s=ui-review-desktop open http://localhost:3000 --persistent --headless
+   playwright-cli -s=ui-review-desktop screenshot --filename=ui-review-1280.png
+   playwright-cli -s=ui-review-desktop close
    ```
 
-   If not available, skip the automated audit — the manual checks in Step 7 still apply.
+   If using the Bowser skill, follow the same session pattern — it wraps `playwright-cli` with the same commands.
+
+3. **Accessibility audit** — use `playwright-cli` to run JavaScript-based accessibility checks on the rendered page:
+
+   ```bash
+   PLAYWRIGHT_MCP_VIEWPORT_SIZE=1280x800 playwright-cli -s=ui-review-a11y open http://localhost:3000 --persistent --headless
+   # Inject and run axe-core if available, or use snapshot to inspect element structure
+   playwright-cli -s=ui-review-a11y snapshot
+   playwright-cli -s=ui-review-a11y close
+   ```
+
+   The snapshot output reveals the rendered element tree — check for missing labels, heading hierarchy, ARIA attributes, and interactive element roles. This catches issues that static code analysis misses.
 
 4. **Visual checks on rendered output**:
    - Do elements overlap or overflow at any breakpoint?
@@ -151,7 +167,12 @@ If Playwright CLI or a browser skill/MCP was detected in Step 2.4, use it to val
    - Does the layout break at any viewport width?
    - Are interactive elements (dropdowns, modals, tooltips) positioned correctly?
 
-5. **Add findings** from visual verification to the report under a new `### Visual Verification` category in Step 9. Include screenshots as evidence where relevant (reference the saved file paths).
+5. **Add findings** from visual verification to the report under a new `### Visual Verification` category in Step 9. Include screenshot file paths as evidence where relevant.
+
+6. **Clean up sessions** — always close all review sessions when done:
+   ```bash
+   playwright-cli close-all
+   ```
 
 **If the app cannot be started** (no dev server, build errors, missing dependencies):
 
@@ -167,7 +188,7 @@ Compile all findings into a structured markdown report. **Do not modify any file
 **Scope**: [list of reviewed files/directories]
 **Date**: [today]
 **frontend-design skill**: [Installed / Not installed — recommend `do work install-ui-design`]
-**Visual verification**: [Playwright / Browser MCP / Skipped — recommend `npm init playwright@latest`]
+**Visual verification**: [Playwright CLI / Bowser skill / Skipped — recommend `npm install -g @anthropic-ai/playwright-cli@latest`]
 
 ## Summary
 
@@ -249,4 +270,4 @@ If the user declines or doesn't respond, skip this step. The report stands on it
 - **Proportional depth**: A 3-file review gets a focused report. A 50-file review gets broader patterns, not 50x the findings.
 - **Acknowledge strengths**: A report that's all negatives is demoralizing and incomplete. Note what works.
 - **frontend-design skill is additive**: If not installed, still run the full review using `rules-ui-design.md`. The skill adds aesthetic depth but isn't required.
-- **Playwright/browser tools are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend installation when missing — it's high-value and low-effort.
+- **Playwright CLI / Bowser skill are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend `npm install -g @anthropic-ai/playwright-cli@latest` when missing — it's high-value and low-effort.
