@@ -291,6 +291,7 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work validate ui` → Same as ui-review
 - `do work design review src/pages/` → Validates specific directory
 - `do work ui audit` → Same as ui-review
+- `do work design audit` → Same as ui-review
 
 ### Routes to Review Work
 
@@ -443,8 +444,8 @@ Next steps:
 ```
 Next steps:
   do work present work        Generate client-facing deliverables
+  do work ui-review [scope]   Validate UI quality (if domain: ui-design)
   do work run                 Process follow-up REQs (if any were created)
-  do work [describe changes]  Capture new requests
 ```
 
 **After code-review:**

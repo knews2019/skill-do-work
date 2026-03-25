@@ -185,6 +185,20 @@ Invoked when you say "commit", "commit changes", or "save work". Atomic git comm
 
 See [actions/commit.md](./actions/commit.md) for the full commit logic.
 
+### UI Review (validate)
+
+Invoked when you say "ui-review", "review ui", "design review", or "validate ui". Read-only UI quality audit — does not modify code:
+- **Scoped by files/directories**: `do work ui-review src/components/` validates all UI files in that directory
+- **Scoped by prime files**: `do work ui-review prime-dashboard` validates everything that prime file touches
+- **Interactive**: `do work ui-review` (no scope) lists UI-relevant files and asks
+- Evaluates structure/IA, visual aesthetics, component consistency, UX copy, interaction/accessibility, and implementation patterns
+- Produces a severity-rated findings report with file:line references and concrete fix suggestions
+- Leverages both `rules-ui-design.md` and the `frontend-design` skill (if installed)
+- Uses Playwright or browser tools when available for rendered-page validation
+- Optionally captures findings as `domain: ui-design` REQs in the queue
+
+See [actions/ui-review.md](./actions/ui-review.md) for the full validation logic.
+
 ### Install UI Design
 
 Invoked when you say "install-ui-design" or "install ui design". Installs Anthropic's `frontend-design` skill for production-grade UI design capabilities:

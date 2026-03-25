@@ -45,7 +45,16 @@ Combine all resolved file paths into a single deduplicated list. This is the **r
 
 3. **Check for project design tokens**: Look for existing design system files — `tailwind.config.*`, `theme.*`, `tokens.*`, `design-system.*`, CSS custom properties files, or equivalent. These establish the project's design language and serve as the baseline for consistency checks.
 
-4. **Read the scoped files**: Read all files in the review scope. For large scopes (>20 files), prioritize component files and page/view files over utility/helper files.
+4. **Check for browser/visual verification tools** (in this order):
+   - **Playwright CLI**: Run `npx playwright --version` or check for `playwright` in `node_modules/.bin/`, `package.json` dependencies, or as a global install (`playwright --version`). If available, it will be used in Step 8.5 for rendered-page validation.
+   - **Browser skill/MCP**: Check if a browser tool is available in your environment (e.g., a `browser` MCP server, Puppeteer, or similar). If available, use it as the Playwright alternative.
+   - **Neither available**: Note in the report that visual verification was skipped. Recommend installing Playwright:
+     ```
+     npm init playwright@latest
+     ```
+     Playwright enables rendered-page checks — screenshot comparison, actual color contrast measurement, responsive viewport testing, and accessibility audits via `@axe-core/playwright` — that static code analysis alone cannot provide.
+
+5. **Read the scoped files**: Read all files in the review scope. For large scopes (>20 files), prioritize component files and page/view files over utility/helper files.
 
 ### Step 3: Structural & IA Review (Phase 1–2)
 
@@ -111,6 +120,43 @@ Evaluate against the implementation patterns section:
 - **Responsive breakpoints**: Is the UI tested/designed for at least 320px, 768px, and 1280px?
 - **CSS quality**: Any `!important` overrides, deeply nested selectors, or inline styles that should be in stylesheets?
 
+### Step 8.5: Visual Verification (if browser tools available)
+
+If Playwright CLI or a browser skill/MCP was detected in Step 2.4, use it to validate the rendered UI. If neither is available, skip this step entirely — the code-level review (Steps 3–8) stands on its own.
+
+**If the app can be started** (check for `dev`/`start` scripts in `package.json`, or a running dev server):
+
+1. **Launch the app** if not already running. Use the project's dev server command (e.g., `npm run dev`, `yarn dev`).
+
+2. **Screenshot at key breakpoints** — capture the scoped pages/components at:
+   - 320px (mobile)
+   - 768px (tablet)
+   - 1280px (desktop)
+
+   Use Playwright's `page.setViewportSize()` and `page.screenshot()`, or equivalent browser tool commands. Save screenshots to a temp directory for reference.
+
+3. **Accessibility audit** — if `@axe-core/playwright` is available (or can be installed), run an axe accessibility scan on the rendered pages. This catches issues that static analysis misses: actual color contrast failures, missing labels on rendered elements, focus order problems.
+
+   ```bash
+   # Check if axe-core is available
+   npm ls @axe-core/playwright 2>/dev/null
+   ```
+
+   If not available, skip the automated audit — the manual checks in Step 7 still apply.
+
+4. **Visual checks on rendered output**:
+   - Do elements overlap or overflow at any breakpoint?
+   - Are fonts actually loading (not falling back to system fonts unexpectedly)?
+   - Are images/icons rendering correctly?
+   - Does the layout break at any viewport width?
+   - Are interactive elements (dropdowns, modals, tooltips) positioned correctly?
+
+5. **Add findings** from visual verification to the report under a new `### Visual Verification` category in Step 9. Include screenshots as evidence where relevant (reference the saved file paths).
+
+**If the app cannot be started** (no dev server, build errors, missing dependencies):
+
+Note in the report that visual verification was attempted but the app could not be started. Include the error. This is not a failure of the review — the code-level analysis is still complete.
+
 ### Step 9: Synthesize Report
 
 Compile all findings into a structured markdown report. **Do not modify any files** — output the report only.
@@ -121,6 +167,7 @@ Compile all findings into a structured markdown report. **Do not modify any file
 **Scope**: [list of reviewed files/directories]
 **Date**: [today]
 **frontend-design skill**: [Installed / Not installed — recommend `do work install-ui-design`]
+**Visual verification**: [Playwright / Browser MCP / Skipped — recommend `npm init playwright@latest`]
 
 ## Summary
 
@@ -154,6 +201,10 @@ Compile all findings into a structured markdown report. **Do not modify any file
 ### Implementation Patterns
 | # | Finding | Severity | File:Line | Suggested Fix |
 |---|---------|----------|-----------|---------------|
+
+### Visual Verification (if performed)
+| # | Finding | Severity | Viewport/Context | Suggested Fix |
+|---|---------|----------|------------------|---------------|
 
 ## Severity Summary
 
@@ -198,3 +249,4 @@ If the user declines or doesn't respond, skip this step. The report stands on it
 - **Proportional depth**: A 3-file review gets a focused report. A 50-file review gets broader patterns, not 50x the findings.
 - **Acknowledge strengths**: A report that's all negatives is demoralizing and incomplete. Note what works.
 - **frontend-design skill is additive**: If not installed, still run the full review using `rules-ui-design.md`. The skill adds aesthetic depth but isn't required.
+- **Playwright/browser tools are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend installation when missing — it's high-value and low-effort.

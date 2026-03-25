@@ -4,6 +4,19 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.36.1 — The Rendered Eye (2026-03-25)
+
+Visual verification layer for ui-review. Playwright CLI or browser tools (when available) now screenshot at 320/768/1280px, run axe accessibility audits, and catch rendered-page issues that static code analysis misses.
+
+- ui-review Step 2.4 detects Playwright CLI, browser MCP/skill, or recommends `npm init playwright@latest`
+- ui-review Step 8.5 runs visual verification: viewport screenshots, axe audit, rendered layout checks
+- Report template gains `Visual verification` status line and `Visual Verification` findings category
+- Fixed: missing `design audit` in routing examples
+- Fixed: `review work` next steps now suggests `ui-review` for ui-design domain REQs
+- Fixed: restored `quick-wins` alongside `ui-review` in code-review next steps
+- Added `UI Review` section to README.md
+- Removed conflicting `check ui`/`ui check` verbs (consumed by verify-requests at priority 3)
+
 ## 0.36.0 — The Design Audit (2026-03-25)
 
 Read-only UI validation that combines the structured 6-phase design checklist with the `frontend-design` skill's aesthetic eye. Points out what needs fixing without touching the code.
