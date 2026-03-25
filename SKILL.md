@@ -53,7 +53,7 @@ Check these patterns **in order** — first match wins:
 | 1        | Empty or bare invocation | `do work`                                                                                                                          | → help menu                   |
 | 2        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
 | 2.5      | Version exact phrases    | `do work check for updates`, `do work check for update`                                                                            | → version                      |
-| 3        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check`, `do work evaluate`                                                   | → verify requests              |
+| 3        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check REQ-018`, `do work evaluate`                                           | → verify requests              |
 | 4        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
 | 5        | Code-review keywords     | `do work code-review`, `do work code-review prime-auth`, `do work code review src/`, `do work audit codebase`, `do work review codebase`, `do work codebase review` | → code-review                  |
 | 5.5      | UI-review keywords       | `do work ui-review`, `do work ui-review src/`, `do work review ui`, `do work design review`, `do work validate ui`                 | → ui-review                    |
@@ -139,7 +139,7 @@ Scope arguments are passed through as `$ARGUMENTS`:
 These signal "review the completed work":
 review, review work, review code, code review, audit code, audit implementation, review REQ-NNN, review UR-NNN
 
-Note: "review requests" and "review reqs" route to **verify requests** (priority 4), not review work. "review" alone or followed by a target/code-related word routes to review work (priority 6). The review work action also runs automatically as part of the work pipeline — see `work.md` Step 7.
+Note: "review requests" and "review reqs" route to **verify requests** (priority 3), not review work. "review" alone or followed by a target/code-related word routes to review work (priority 6). The review work action also runs automatically as part of the work pipeline — see `work.md` Step 7.
 
 ### Present Verbs (→ Present Work)
 
