@@ -20,6 +20,7 @@ actions/              # Action files (each is a standalone prompt)
   version.md          # Version reporting + update checks (current version lives here)
   quick-wins.md       # Scan for refactoring opportunities and low-hanging tests
   install-ui-design.md # Install the frontend-design skill for UI work
+  install-bowser.md   # Install Playwright CLI + Bowser skill for browser automation
 agent-rules/          # Domain-specific rules loaded by work action
 CHANGELOG.md          # Release notes (newest on top)
 ```

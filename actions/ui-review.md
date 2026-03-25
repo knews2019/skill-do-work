@@ -48,11 +48,11 @@ Combine all resolved file paths into a single deduplicated list. This is the **r
 4. **Check for browser/visual verification tools** (in this order):
    - **Playwright CLI (`playwright-cli`)**: Check if `playwright-cli` is available — run `playwright-cli --help 2>/dev/null` or check for it in `node_modules/.bin/`. This is the preferred tool for visual verification (Step 8.5). It's token-efficient, supports headed/headless modes, parallel sessions, and screenshots via simple CLI commands.
    - **Bowser skill**: Check if a `playwright-bowser` skill is loaded in your environment. If available, use it — it wraps `playwright-cli` with session management and viewport configuration.
-   - **Neither available**: Note in the report that visual verification was skipped. Recommend installing Playwright CLI:
+   - **Neither available**: Note in the report that visual verification was skipped. Recommend installing via do-work:
      ```
-     npm install -g @anthropic-ai/playwright-cli@latest
+     do work install-bowser
      ```
-     Playwright CLI enables rendered-page checks — screenshot comparison, actual color contrast measurement, responsive viewport testing, and accessibility audits — that static code analysis alone cannot provide.
+     This installs both `playwright-cli` (global) and the Bowser skill (project-scoped) from https://github.com/disler/bowser. Playwright CLI enables rendered-page checks — screenshot comparison, actual color contrast measurement, responsive viewport testing, and accessibility audits — that static code analysis alone cannot provide.
 
 5. **Read the scoped files**: Read all files in the review scope. For large scopes (>20 files), prioritize component files and page/view files over utility/helper files.
 
@@ -188,7 +188,7 @@ Compile all findings into a structured markdown report. **Do not modify any file
 **Scope**: [list of reviewed files/directories]
 **Date**: [today]
 **frontend-design skill**: [Installed / Not installed — recommend `do work install-ui-design`]
-**Visual verification**: [Playwright CLI / Bowser skill / Skipped — recommend `npm install -g @anthropic-ai/playwright-cli@latest`]
+**Visual verification**: [Playwright CLI / Bowser skill / Skipped — recommend `do work install-bowser`]
 
 ## Summary
 
@@ -270,4 +270,4 @@ If the user declines or doesn't respond, skip this step. The report stands on it
 - **Proportional depth**: A 3-file review gets a focused report. A 50-file review gets broader patterns, not 50x the findings.
 - **Acknowledge strengths**: A report that's all negatives is demoralizing and incomplete. Note what works.
 - **frontend-design skill is additive**: If not installed, still run the full review using `rules-ui-design.md`. The skill adds aesthetic depth but isn't required.
-- **Playwright CLI / Bowser skill are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend `npm install -g @anthropic-ai/playwright-cli@latest` when missing — it's high-value and low-effort.
+- **Playwright CLI / Bowser skill are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend `do work install-bowser` when missing — it's high-value and low-effort.

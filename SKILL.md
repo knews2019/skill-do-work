@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | quick-wins | install-ui-design | version | recap
+argument-hint: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | quick-wins | install-ui-design | install-bowser | version | recap
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -22,6 +22,7 @@ A unified entry point for task capture and processing.
 - **quick-wins**: Scan a target directory for obvious refactoring opportunities and low-hanging tests to add
 - **ui-review**: Validate UI quality against design best practices — read-only audit with structured findings report
 - **install-ui-design**: Install the `frontend-design` Claude skill for production-grade UI design capabilities
+- **install-bowser**: Install Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification
 - **commit**: Commit uncommitted files → analyzes, groups atomically, traces to REQs
 - **version**: Show current version, last 5 releases, or check for upstream updates
 - **recap**: Summary of last 5 completed user requests with their REQs
@@ -62,7 +63,7 @@ Check these patterns **in order** — first match wins:
 | 10       | Version keywords         | `do work version`, `do work update`, `do work check for updates`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
 | 11       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
 | 12       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`                                                                  | → quick-wins                  |
-| 13       | Install keywords         | `do work install-ui-design`, `do work install ui design`                                                                           | → install-ui-design           |
+| 13       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright` | → install-ui-design / install-bowser |
 | 14       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
 
 
@@ -175,10 +176,15 @@ quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, wha
 
 Note: "scan", "opportunities", and "what can we improve" route to quick-wins ONLY when used alone or with a directory path (e.g., "do work scan", "do work scan src/"). When followed by descriptive content they route to capture requests (e.g., "do work scan the checkout logs for 500s" → capture requests).
 
-### Install Verbs (→ Install UI Design)
+### Install Verbs (→ Install UI Design / Install Bowser)
 
-These signal "install the frontend-design skill":
+Two install actions exist. Route based on the keyword after "install":
+
+**UI Design** — these signal "install the frontend-design skill":
 install-ui-design, install ui design, install ui, install frontend-design, setup ui design, setup design skill
+
+**Bowser** — these signal "install Playwright CLI + Bowser skill":
+install-bowser, install bowser, install playwright, install playwright-cli, setup bowser, setup playwright
 
 ### Content Signals (→ Capture Requests)
 
@@ -231,6 +237,7 @@ do-work — task queue for agentic coding tools
 
   Setup:
     do work install-ui-design   Install the frontend-design skill for production-grade UI
+    do work install-bowser      Install Playwright CLI + Bowser skill for browser automation
 
   Other actions:
     do work clarify             Answer pending questions from completed work
@@ -356,6 +363,14 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work install ui` → Same
 - `do work setup design skill` → Same
 
+### Routes to Install Bowser
+
+- `do work install-bowser` → Installs Playwright CLI + Bowser skill
+- `do work install bowser` → Same
+- `do work install playwright` → Same
+- `do work setup bowser` → Same
+- `do work setup playwright` → Same
+
 ### Routes to Capture Requests
 
 - `do work add dark mode` → Creates REQ file + UR folder
@@ -395,6 +410,7 @@ Each action has an action file with full instructions. How you execute it depend
 | ui-review          | `./actions/ui-review.md`        | File/directory paths and/or prime file refs |
 | quick-wins         | `./actions/quick-wins.md`       | Target directory               |
 | install-ui-design  | `./actions/install-ui-design.md`| (none needed)                  |
+| install-bowser     | `./actions/install-bowser.md`   | (none needed)                  |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 | recap              | `./actions/version.md`          | `mode: recap`                  |
 
@@ -461,7 +477,7 @@ Next steps:
 Next steps:
   do work [describe fix]        Capture findings as requests
   do work run                   Process follow-up REQs (if any were created)
-  do work install-ui-design     Install frontend-design skill (if not installed)
+  do work install-bowser        Install Playwright CLI for visual verification (if not installed)
 ```
 
 **After present work:**

@@ -208,6 +208,16 @@ Invoked when you say "install-ui-design" or "install ui design". Installs Anthro
 
 See [actions/install-ui-design.md](./actions/install-ui-design.md) for the full installation logic.
 
+### Install Bowser
+
+Invoked when you say "install-bowser", "install bowser", or "install playwright". Installs Playwright CLI and the Bowser skill for browser automation:
+- Installs `playwright-cli` globally via npm
+- Installs Chromium browser binaries
+- Downloads the Bowser skill from https://github.com/disler/bowser into `.claude/skills/playwright-bowser/`
+- Works alongside `ui-review` for automatic visual verification
+
+See [actions/install-bowser.md](./actions/install-bowser.md) for the full installation logic.
+
 ### Version / Recap
 
 Invoked when you say "version", "update", or "what's new". Also supports "recap" for work history:

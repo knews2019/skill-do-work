@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.37.0 — The Bowser Install (2026-03-25)
+
+One command to get browser automation. `do work install-bowser` installs Playwright CLI globally and downloads the Bowser skill from github.com/disler/bowser into the project.
+
+- Added `actions/install-bowser.md` — installs `playwright-cli` (global), Chromium browsers, and Bowser skill (project-scoped from upstream repo)
+- Added `install-bowser` routing, verbs, help menu entry, dispatch table, and routing examples in SKILL.md
+- `ui-review` now recommends `do work install-bowser` (instead of raw npm command) when no browser tools detected
+- Updated CLAUDE.md, README.md with install-bowser documentation
+
 ## 0.36.2 — The Bowser Eye (2026-03-25)
 
 Visual verification now uses Playwright CLI (`playwright-cli`) and the Bowser skill instead of deprecated MCP browser tools. Concrete session-based workflow with viewport screenshots at 320/768/1280px.
