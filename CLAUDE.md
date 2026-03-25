@@ -13,12 +13,14 @@ actions/              # Action files (each is a standalone prompt)
   verify-requests.md  # Quality-check captured REQs against original input
   review-work.md      # Post-work code review + acceptance testing
   code-review.md      # Standalone codebase review scoped by prime files / directories
+  ui-review.md        # Read-only UI quality validation against design best practices
   present-work.md     # Client-facing deliverables (briefs, videos, diagrams)
   cleanup.md          # Archive consolidation
   commit.md           # Atomic git commits traced to REQs
   version.md          # Version reporting + update checks (current version lives here)
   quick-wins.md       # Scan for refactoring opportunities and low-hanging tests
   install-ui-design.md # Install the frontend-design skill for UI work
+  install-bowser.md   # Install Playwright CLI + Bowser skill for browser automation
 agent-rules/          # Domain-specific rules loaded by work action
 CHANGELOG.md          # Release notes (newest on top)
 ```

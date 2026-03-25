@@ -185,6 +185,20 @@ Invoked when you say "commit", "commit changes", or "save work". Atomic git comm
 
 See [actions/commit.md](./actions/commit.md) for the full commit logic.
 
+### UI Review (validate)
+
+Invoked when you say "ui-review", "review ui", "design review", or "validate ui". Read-only UI quality audit — does not modify code:
+- **Scoped by files/directories**: `do work ui-review src/components/` validates all UI files in that directory
+- **Scoped by prime files**: `do work ui-review prime-dashboard` validates everything that prime file touches
+- **Interactive**: `do work ui-review` (no scope) lists UI-relevant files and asks
+- Evaluates structure/IA, visual aesthetics, component consistency, UX copy, interaction/accessibility, and implementation patterns
+- Produces a severity-rated findings report with file:line references and concrete fix suggestions
+- Leverages both `rules-ui-design.md` and the `frontend-design` skill (if installed)
+- Uses Playwright CLI or the Bowser skill when available for rendered-page validation
+- Optionally captures findings as `domain: ui-design` REQs in the queue
+
+See [actions/ui-review.md](./actions/ui-review.md) for the full validation logic.
+
 ### Install UI Design
 
 Invoked when you say "install-ui-design" or "install ui design". Installs Anthropic's `frontend-design` skill for production-grade UI design capabilities:
@@ -193,6 +207,16 @@ Invoked when you say "install-ui-design" or "install ui design". Installs Anthro
 - Works alongside `domain: ui-design` rules for a complete design workflow
 
 See [actions/install-ui-design.md](./actions/install-ui-design.md) for the full installation logic.
+
+### Install Bowser
+
+Invoked when you say "install-bowser", "install bowser", or "install playwright". Installs Playwright CLI and the Bowser skill for browser automation:
+- Installs `playwright-cli` globally via npm
+- Installs Chromium browser binaries
+- Downloads the Bowser skill from https://github.com/disler/bowser into `.claude/skills/playwright-bowser/`
+- Works alongside `ui-review` for automatic visual verification
+
+See [actions/install-bowser.md](./actions/install-bowser.md) for the full installation logic.
 
 ### Version / Recap
 

@@ -4,6 +4,47 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.37.0 — The Bowser Install (2026-03-25)
+
+One command to get browser automation. `do work install-bowser` installs Playwright CLI globally and downloads the Bowser skill from github.com/disler/bowser into the project.
+
+- Added `actions/install-bowser.md` — installs `playwright-cli` (global), Chromium browsers, and Bowser skill (project-scoped from upstream repo)
+- Added `install-bowser` routing, verbs, help menu entry, dispatch table, and routing examples in SKILL.md
+- `ui-review` now recommends `do work install-bowser` (instead of raw npm command) when no browser tools detected
+- Updated CLAUDE.md, README.md with install-bowser documentation
+
+## 0.36.2 — The Bowser Eye (2026-03-25)
+
+Visual verification now uses Playwright CLI (`playwright-cli`) and the Bowser skill instead of deprecated MCP browser tools. Concrete session-based workflow with viewport screenshots at 320/768/1280px.
+
+- ui-review Step 2.4 detects `playwright-cli` or Bowser skill; recommends `npm install -g @anthropic-ai/playwright-cli@latest` when missing
+- ui-review Step 8.5 rewritten with `playwright-cli` session commands: named sessions, `--headless`, viewport via env var, snapshot for a11y, `close-all` cleanup
+- Removed all MCP/Puppeteer references — Bowser skill is the browser automation layer
+
+## 0.36.1 — The Rendered Eye (2026-03-25)
+
+Visual verification layer for ui-review. Playwright CLI or browser tools (when available) now screenshot at 320/768/1280px, run axe accessibility audits, and catch rendered-page issues that static code analysis misses.
+
+- ui-review Step 2.4 detects Playwright CLI, browser MCP/skill, or recommends `npm init playwright@latest`
+- ui-review Step 8.5 runs visual verification: viewport screenshots, axe audit, rendered layout checks
+- Report template gains `Visual verification` status line and `Visual Verification` findings category
+- Fixed: missing `design audit` in routing examples
+- Fixed: `review work` next steps now suggests `ui-review` for ui-design domain REQs
+- Fixed: restored `quick-wins` alongside `ui-review` in code-review next steps
+- Added `UI Review` section to README.md
+- Removed conflicting `check ui`/`ui check` verbs (consumed by verify-requests at priority 3)
+
+## 0.36.0 — The Design Audit (2026-03-25)
+
+Read-only UI validation that combines the structured 6-phase design checklist with the `frontend-design` skill's aesthetic eye. Points out what needs fixing without touching the code.
+
+- Added `actions/ui-review.md` — validates UI quality across structure/IA, visual aesthetics, component consistency, UX copy, interaction/accessibility, and implementation patterns
+- Produces a severity-rated findings report with file:line references and concrete fix suggestions
+- Leverages both `rules-ui-design.md` (6-phase design workflow) and `frontend-design` skill (if installed) for comprehensive coverage
+- Optional follow-up: capture high/medium findings as `domain: ui-design` REQs in the queue
+- SKILL.md routing: `ui-review`, `review ui`, `design review`, `validate ui`, `ui audit` keywords (priority 5.5)
+- Updated help menu, dispatch table, and next steps suggestions
+
 ## 0.35.0 — The Code Lens (2026-03-25)
 
 Standalone codebase review, scoped by prime files and/or directories. Review consistency, patterns, security, and architecture without needing the REQ/UR queue.

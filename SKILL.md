@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: (describe a task) | run | verify requests | review work | code-review | present work | clarify | cleanup | quick-wins | install-ui-design | version | recap
+argument-hint: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | quick-wins | install-ui-design | install-bowser | version | recap
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -20,7 +20,9 @@ A unified entry point for task capture and processing.
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
 - **code-review**: Standalone codebase review scoped by prime files and/or directories → consistency, patterns, security, architecture
 - **quick-wins**: Scan a target directory for obvious refactoring opportunities and low-hanging tests to add
+- **ui-review**: Validate UI quality against design best practices — read-only audit with structured findings report
 - **install-ui-design**: Install the `frontend-design` Claude skill for production-grade UI design capabilities
+- **install-bowser**: Install Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification
 - **commit**: Commit uncommitted files → analyzes, groups atomically, traces to REQs
 - **version**: Show current version, last 5 releases, or check for upstream updates
 - **recap**: Summary of last 5 completed user requests with their REQs
@@ -53,6 +55,7 @@ Check these patterns **in order** — first match wins:
 | 3        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check`, `do work evaluate`                                                   | → verify requests              |
 | 4        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
 | 5        | Code-review keywords     | `do work code-review`, `do work code-review prime-auth`, `do work audit codebase`, `do work review codebase`                       | → code-review                  |
+| 5.5      | UI-review keywords       | `do work ui-review`, `do work ui-review src/`, `do work review ui`, `do work design review`, `do work validate ui`                 | → ui-review                    |
 | 6        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review`, `do work audit code`                        | → review work                  |
 | 7        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
 | 8        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
@@ -60,7 +63,7 @@ Check these patterns **in order** — first match wins:
 | 10       | Version keywords         | `do work version`, `do work update`, `do work check for updates`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
 | 11       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
 | 12       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`                                                                  | → quick-wins                  |
-| 13       | Install keywords         | `do work install-ui-design`, `do work install ui design`                                                                           | → install-ui-design           |
+| 13       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright` | → install-ui-design / install-bowser |
 | 14       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
 
 
@@ -116,6 +119,20 @@ Scope arguments are passed through as `$ARGUMENTS`:
 - Combined: `prime-auth src/utils/`
 - No scope: interactive — lists available prime files and asks
 
+### UI-Review Verbs (→ UI Review)
+
+These signal "validate UI quality (read-only)":
+ui-review, review ui, design review, validate ui, ui audit, design audit
+
+Note: "ui-review" (hyphenated) always routes to ui-review. "review ui" and "design review" route to ui-review. "validate ui" routes to ui-review. Do NOT use "check ui" — "check" is consumed by verify-requests at priority 3 before reaching this rule. The key distinction from code-review: ui-review evaluates visual design, UX, accessibility, and component consistency against design best practices. code-review evaluates code patterns, architecture, and security.
+
+Scope arguments are passed through as `$ARGUMENTS`:
+- File paths: `src/components/Header.tsx`
+- Directory paths: `src/pages/`
+- Prime file references: `prime-dashboard`
+- Combined: `prime-auth src/components/`
+- No scope: interactive — lists UI-relevant files and asks
+
 ### Review Verbs (→ Review Work)
 
 These signal "review the completed work":
@@ -159,10 +176,15 @@ quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, wha
 
 Note: "scan", "opportunities", and "what can we improve" route to quick-wins ONLY when used alone or with a directory path (e.g., "do work scan", "do work scan src/"). When followed by descriptive content they route to capture requests (e.g., "do work scan the checkout logs for 500s" → capture requests).
 
-### Install Verbs (→ Install UI Design)
+### Install Verbs (→ Install UI Design / Install Bowser)
 
-These signal "install the frontend-design skill":
+Two install actions exist. Route based on the keyword after "install":
+
+**UI Design** — these signal "install the frontend-design skill":
 install-ui-design, install ui design, install ui, install frontend-design, setup ui design, setup design skill
+
+**Bowser** — these signal "install Playwright CLI + Bowser skill":
+install-bowser, install bowser, install playwright, install playwright-cli, setup bowser, setup playwright
 
 ### Content Signals (→ Capture Requests)
 
@@ -208,8 +230,14 @@ do-work — task queue for agentic coding tools
     do work quick-wins          Scan cwd for refactoring and test opportunities
     do work quick-wins src/     Scan a specific directory
 
+  UI review (read-only):
+    do work ui-review                     Validate UI quality (interactive scope selection)
+    do work ui-review src/components/     Validate a directory
+    do work ui-review prime-dashboard     Validate everything a prime file touches
+
   Setup:
     do work install-ui-design   Install the frontend-design skill for production-grade UI
+    do work install-bowser      Install Playwright CLI + Bowser skill for browser automation
 
   Other actions:
     do work clarify             Answer pending questions from completed work
@@ -258,6 +286,19 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work review codebase` → Same as code-review
 - `do work review codebase src/` → Reviews src/ directory
 - `do work codebase review` → Same as code-review
+
+### Routes to UI Review
+
+- `do work ui-review` → Interactive scope selection (lists UI-relevant files)
+- `do work ui-review src/components/` → Validates all UI files in directory
+- `do work ui-review prime-dashboard` → Validates all files referenced by prime-dashboard.md
+- `do work ui-review prime-auth src/components/` → Combined: prime file scope + directory
+- `do work review ui` → Same as ui-review (no scope → interactive)
+- `do work design review` → Same as ui-review
+- `do work validate ui` → Same as ui-review
+- `do work design review src/pages/` → Validates specific directory
+- `do work ui audit` → Same as ui-review
+- `do work design audit` → Same as ui-review
 
 ### Routes to Review Work
 
@@ -322,6 +363,14 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work install ui` → Same
 - `do work setup design skill` → Same
 
+### Routes to Install Bowser
+
+- `do work install-bowser` → Installs Playwright CLI + Bowser skill
+- `do work install bowser` → Same
+- `do work install playwright` → Same
+- `do work setup bowser` → Same
+- `do work setup playwright` → Same
+
 ### Routes to Capture Requests
 
 - `do work add dark mode` → Creates REQ file + UR folder
@@ -358,8 +407,10 @@ Each action has an action file with full instructions. How you execute it depend
 | cleanup            | `./actions/cleanup.md`          | (none needed)                  |
 | commit             | `./actions/commit.md`           | (none needed)                  |
 | code-review        | `./actions/code-review.md`      | Prime file refs and/or directory paths |
+| ui-review          | `./actions/ui-review.md`        | File/directory paths and/or prime file refs |
 | quick-wins         | `./actions/quick-wins.md`       | Target directory               |
 | install-ui-design  | `./actions/install-ui-design.md`| (none needed)                  |
+| install-bowser     | `./actions/install-bowser.md`   | (none needed)                  |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 | recap              | `./actions/version.md`          | `mode: recap`                  |
 
@@ -368,7 +419,7 @@ Each action has an action file with full instructions. How you execute it depend
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `present work`, `quick-wins`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
@@ -409,16 +460,24 @@ Next steps:
 ```
 Next steps:
   do work present work        Generate client-facing deliverables
+  do work ui-review [scope]   Validate UI quality (if domain: ui-design)
   do work run                 Process follow-up REQs (if any were created)
-  do work [describe changes]  Capture new requests
 ```
 
 **After code-review:**
 ```
 Next steps:
   do work run                   Process follow-up REQs (if any were created)
-  do work [describe fix]        Capture a finding as a request
+  do work ui-review [scope]     Validate UI quality for the same scope
   do work quick-wins [dir]      Scan for additional improvements
+```
+
+**After ui-review:**
+```
+Next steps:
+  do work [describe fix]        Capture findings as requests
+  do work run                   Process follow-up REQs (if any were created)
+  do work install-bowser        Install Playwright CLI for visual verification (if not installed)
 ```
 
 **After present work:**
