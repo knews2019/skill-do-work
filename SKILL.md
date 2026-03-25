@@ -451,7 +451,7 @@ Next steps:
 ```
 Next steps:
   do work run                   Process follow-up REQs (if any were created)
-  do work [describe fix]        Capture a finding as a request
+  do work ui-review [scope]     Validate UI quality for the same scope
   do work quick-wins [dir]      Scan for additional improvements
 ```
 
