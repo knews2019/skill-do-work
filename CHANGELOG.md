@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.36.0 — The Design Audit (2026-03-25)
+
+Read-only UI validation that combines the structured 6-phase design checklist with the `frontend-design` skill's aesthetic eye. Points out what needs fixing without touching the code.
+
+- Added `actions/ui-review.md` — validates UI quality across structure/IA, visual aesthetics, component consistency, UX copy, interaction/accessibility, and implementation patterns
+- Produces a severity-rated findings report with file:line references and concrete fix suggestions
+- Leverages both `rules-ui-design.md` (6-phase design workflow) and `frontend-design` skill (if installed) for comprehensive coverage
+- Optional follow-up: capture high/medium findings as `domain: ui-design` REQs in the queue
+- SKILL.md routing: `ui-review`, `review ui`, `design review`, `validate ui`, `ui audit` keywords (priority 5.5)
+- Updated help menu, dispatch table, and next steps suggestions
+
 ## 0.35.0 — The Code Lens (2026-03-25)
 
 Standalone codebase review, scoped by prime files and/or directories. Review consistency, patterns, security, and architecture without needing the REQ/UR queue.
