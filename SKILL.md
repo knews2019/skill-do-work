@@ -121,9 +121,9 @@ Scope arguments are passed through as `$ARGUMENTS`:
 ### UI-Review Verbs (→ UI Review)
 
 These signal "validate UI quality (read-only)":
-ui-review, review ui, design review, validate ui, ui audit, design audit, check ui, ui check
+ui-review, review ui, design review, validate ui, ui audit, design audit
 
-Note: "ui-review" (hyphenated) always routes to ui-review. "review ui" and "design review" route to ui-review. "validate ui" routes to ui-review. The key distinction from code-review: ui-review evaluates visual design, UX, accessibility, and component consistency against design best practices. code-review evaluates code patterns, architecture, and security.
+Note: "ui-review" (hyphenated) always routes to ui-review. "review ui" and "design review" route to ui-review. "validate ui" routes to ui-review. Do NOT use "check ui" — "check" is consumed by verify-requests at priority 3 before reaching this rule. The key distinction from code-review: ui-review evaluates visual design, UX, accessibility, and component consistency against design best practices. code-review evaluates code patterns, architecture, and security.
 
 Scope arguments are passed through as `$ARGUMENTS`:
 - File paths: `src/components/Header.tsx`
@@ -451,8 +451,8 @@ Next steps:
 ```
 Next steps:
   do work run                   Process follow-up REQs (if any were created)
-  do work ui-review [scope]     Validate UI quality for the same scope
   do work [describe fix]        Capture a finding as a request
+  do work quick-wins [dir]      Scan for additional improvements
 ```
 
 **After ui-review:**
