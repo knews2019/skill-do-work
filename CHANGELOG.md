@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.37.1 — The Route Fix (2025-03-25)
+
+Fixed routing conflicts where commands could dispatch to the wrong action.
+
+- "check for updates" no longer misroutes to verify-requests — added exact-phrase rule at priority 2.5 above Verify
+- Added `code review <scope>` and `codebase review` to the code-review priority row so the table matches the verb docs and examples
+- Clarified `code review` (no scope) falls through to review-work at priority 6 — annotated in both the table and verb section
+- Updated code-review "Read-only" label to "Source-code read-only" with explicit note about optional REQ file creation
+
 ## 0.37.0 — The Bowser Install (2026-03-25)
 
 One command to get browser automation. `do work install-bowser` installs Playwright CLI globally and downloads the Bowser skill from github.com/disler/bowser into the project.
