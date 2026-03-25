@@ -52,11 +52,12 @@ Check these patterns **in order** — first match wins:
 | -------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | 1        | Empty or bare invocation | `do work`                                                                                                                          | → help menu                   |
 | 2        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
+| 2.5      | Version exact phrases    | `do work check for updates`, `do work check for update`                                                                            | → version                      |
 | 3        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check`, `do work evaluate`                                                   | → verify requests              |
 | 4        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
-| 5        | Code-review keywords     | `do work code-review`, `do work code-review prime-auth`, `do work audit codebase`, `do work review codebase`                       | → code-review                  |
+| 5        | Code-review keywords     | `do work code-review`, `do work code-review prime-auth`, `do work code review src/`, `do work audit codebase`, `do work review codebase`, `do work codebase review` | → code-review                  |
 | 5.5      | UI-review keywords       | `do work ui-review`, `do work ui-review src/`, `do work review ui`, `do work design review`, `do work validate ui`                 | → ui-review                    |
-| 6        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review`, `do work audit code`                        | → review work                  |
+| 6        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review` (no scope), `do work audit code`             | → review work                  |
 | 7        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
 | 8        | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
 | 9        | Commit keywords          | `do work commit`, `do work commit changes`, `do work save work`                                                                    | → commit                      |
@@ -102,7 +103,7 @@ Note: This routes to the work action with `mode: clarify` — see work.md "Clari
 These signal "check request quality":
 verify, verify requests, check, evaluate, review requests, review reqs, audit
 
-Note: "check" routes to verify requests ONLY when used alone or with a target (e.g., "do work check UR-003"). When followed by descriptive content it routes to capture requests (e.g., "do work check if the button works" → capture requests).
+Note: "check" routes to verify requests ONLY when used alone or with a target (e.g., "do work check UR-003"). "check for updates" is intercepted at priority 2.5 and routes to version — it never reaches verify. When followed by other descriptive content it routes to capture requests (e.g., "do work check if the button works" → capture requests).
 
 Note: "audit" alone routes to verify requests. "audit code" and "audit implementation" route to review work (see Review Verbs below). "audit codebase" routes to code-review (see Code-Review Verbs below).
 
@@ -111,7 +112,7 @@ Note: "audit" alone routes to verify requests. "audit code" and "audit implement
 These signal "standalone codebase review":
 code-review, code review [scope], review codebase, audit codebase, review codebase [scope], codebase review
 
-Note: "code-review" (hyphenated) always routes to code-review. "code review" followed by a **prime file reference or directory path** routes to code-review. Plain "code review" (no scope) routes to **review work** (priority 6) for backwards compatibility. "audit codebase" and "review codebase" always route to code-review. The key distinction: review work reviews completed REQ/UR work items; code-review reviews the actual source code independent of the queue.
+Note: "code-review" (hyphenated) always routes to code-review (priority 5). "code review" followed by a **prime file reference or directory path** routes to code-review (priority 5). "codebase review" always routes to code-review (priority 5). Plain "code review" (no scope) falls through to **review work** (priority 6) for backwards compatibility. "audit codebase" and "review codebase" always route to code-review. The key distinction: review work reviews completed REQ/UR work items; code-review reviews the actual source code independent of the queue.
 
 Scope arguments are passed through as `$ARGUMENTS`:
 - Prime file references: `prime-auth`, `prime-auth.md`, `src/prime-auth.md`

@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Standalone codebase review — not tied to the REQ/UR queue. Evaluates consistency, patterns, security, and architectural health across a scoped section of the codebase.
 
-**Read-only** — this action does NOT modify any project source files. It produces a structured report only (and optionally creates REQ files for findings worth fixing).
+**Source-code read-only** — this action does NOT modify any project source files. It produces a structured report only. May write queue metadata (`do-work/REQ-*` files) with explicit user confirmation — see Step 9.
 
 ## Input
 
