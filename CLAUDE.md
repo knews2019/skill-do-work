@@ -12,6 +12,7 @@ actions/              # Action files (each is a standalone prompt)
   work.md             # Process the queue — triage, plan, build, test, review
   verify-requests.md  # Quality-check captured REQs against original input
   review-work.md      # Post-work code review + acceptance testing
+  code-review.md      # Standalone codebase review scoped by prime files / directories
   present-work.md     # Client-facing deliverables (briefs, videos, diagrams)
   cleanup.md          # Archive consolidation
   commit.md           # Atomic git commits traced to REQs

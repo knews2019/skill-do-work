@@ -132,6 +132,18 @@ Invoked when you say "review work", "review", "review code", or "code review". A
 
 See [actions/review-work.md](./actions/review-work.md) for the full review logic.
 
+### Code Review (standalone)
+
+Invoked when you say "code-review", "audit codebase", or "review codebase". Standalone codebase review — not tied to the REQ/UR queue:
+- **Scoped by prime files**: `do work code-review prime-auth` reviews everything that prime file touches
+- **Scoped by directories**: `do work code-review src/api/` reviews all source files in that directory
+- **Combined**: `do work code-review prime-auth src/utils/` reviews the union of both scopes
+- **Interactive**: `do work code-review` (no scope) lists available prime files and asks
+- Evaluates consistency, naming, error handling, architecture, security, and test coverage
+- Optionally creates REQ files for Critical/Important findings
+
+See [actions/code-review.md](./actions/code-review.md) for the full review logic.
+
 ### Present Work
 
 Invoked when you say "present work", "present", "showcase", or "deliver". Generates client-facing deliverables from completed work:

@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.35.0 — The Code Lens (2026-03-25)
+
+Standalone codebase review, scoped by prime files and/or directories. Review consistency, patterns, security, and architecture without needing the REQ/UR queue.
+
+- Added `actions/code-review.md` — full codebase review action with prime file and directory scoping
+- SKILL.md routing: `code-review`, `audit codebase`, `review codebase` keywords (priority 5, before review work)
+- Supports combined scoping: `do work code-review prime-auth src/utils/` reviews the union of both
+- Interactive mode when no scope given — lists available prime files and asks
+- Optionally creates follow-up REQs for Critical/Important findings
+- Updated help menu, README, and CLAUDE.md with code-review documentation
+
 ## 0.34.1 — The Consistency Pass (2026-03-24)
 
 Documentation alignment across the entire skill.
