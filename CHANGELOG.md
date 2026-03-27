@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.37.4 — The Self-Contained Shell (2026-03-27)
+
+Each code block in install-bowser is now independently runnable — no stale variable assumptions across blocks.
+
+- install-bowser: Recompute `PROJECT_ROOT` in fallback and verify blocks so they work in a fresh shell
+
 ## 0.37.3 — The Root Anchor (2026-03-27)
 
 install-bowser now resolves the project root via `git rev-parse --show-toplevel` so the skill installs correctly regardless of cwd.

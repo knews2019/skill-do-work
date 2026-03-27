@@ -72,6 +72,7 @@ If the download fails (network issue, file not at expected path), try an alterna
 
 ```bash
 # Fallback: check if skill is at a different path
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 curl -fsSL -o "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" \
   https://raw.githubusercontent.com/disler/bowser/main/skills/playwright-bowser/SKILL.md
 ```
@@ -85,6 +86,7 @@ If both fail, report the error and direct the user to https://github.com/disler/
 playwright-cli --help >/dev/null 2>&1 && echo "playwright-cli: OK" || echo "playwright-cli: FAILED"
 
 # Verify Bowser skill
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 test -s "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" && echo "bowser skill: OK" || echo "bowser skill: FAILED"
 ```
 
