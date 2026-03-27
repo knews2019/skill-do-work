@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.37.3 — The Root Anchor (2026-03-27)
+
+install-bowser now resolves the project root via `git rev-parse --show-toplevel` so the skill installs correctly regardless of cwd.
+
+- install-bowser: All `.claude/skills/` paths anchored to `$PROJECT_ROOT` instead of bare relative paths
+- install-bowser: Notes updated to reference `<project-root>/.claude/skills/`
+- ui-review: Bowser detection checks from project root for consistency
+- SKILL.md: "After ui-review" next steps text now mentions both Playwright CLI and Bowser skill
+
 ## 0.37.2 — The Clarity Patch (2026-03-27)
 
 Minor wording fixes for install-bowser and ui-review to make instructions more precise and actionable.

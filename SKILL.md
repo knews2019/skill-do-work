@@ -478,7 +478,7 @@ Next steps:
 Next steps:
   do work [describe fix]        Capture findings as requests
   do work run                   Process follow-up REQs (if any were created)
-  do work install-bowser        Install Playwright CLI for visual verification (if not installed)
+  do work install-bowser        Install Playwright CLI + Bowser skill for visual verification (if not installed)
 ```
 
 **After present work:**

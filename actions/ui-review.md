@@ -47,7 +47,7 @@ Combine all resolved file paths into a single deduplicated list. This is the **r
 
 4. **Check for browser/visual verification tools** (in this order):
    - **Playwright CLI (`playwright-cli`)**: Check if `playwright-cli` is available — run `playwright-cli --help 2>/dev/null` or check for it in `node_modules/.bin/`. This is the preferred tool for visual verification (Step 8.5). It's token-efficient, supports headed/headless modes, parallel sessions, and screenshots via simple CLI commands.
-   - **Bowser skill**: Check if `.claude/skills/playwright-bowser/SKILL.md` exists (installed), and whether your environment has loaded that skill. If available, use it — it wraps `playwright-cli` with session management and viewport configuration.
+   - **Bowser skill**: Check if `.claude/skills/playwright-bowser/SKILL.md` exists from the project root. If available, use it — it wraps `playwright-cli` with session management and viewport configuration.
    - **Neither available**: Note in the report that visual verification was skipped. Recommend installing via do-work:
      ```
      do work install-bowser
