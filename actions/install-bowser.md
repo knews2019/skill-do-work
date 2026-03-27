@@ -67,7 +67,7 @@ curl -fsSL -o .claude/skills/playwright-bowser/SKILL.md \
   https://raw.githubusercontent.com/disler/bowser/main/SKILL.md
 ```
 
-If the download fails (network issue, file not at expected path), try the repository's root for alternative skill file locations:
+If the download fails (network issue, file not at expected path), try an alternative path in the same repository:
 
 ```bash
 # Fallback: check if skill is at a different path

@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.37.2 — The Clarity Patch (2026-03-27)
+
+Minor wording fixes for install-bowser and ui-review to make instructions more precise and actionable.
+
+- install-bowser: Clarified fallback curl text — "alternative path in the same repository" instead of misleading "repository's root"
+- ui-review: Made Bowser skill detection concrete — check for `.claude/skills/playwright-bowser/SKILL.md` instead of vague "loaded in your environment"
+
 ## 0.37.1 — The Route Fix (2025-03-25)
 
 Fixed routing conflicts where commands could dispatch to the wrong action.
