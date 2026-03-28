@@ -4,6 +4,28 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.37.4 — The Self-Contained Shell (2026-03-27)
+
+Each code block in install-bowser is now independently runnable — no stale variable assumptions across blocks.
+
+- install-bowser: Recompute `PROJECT_ROOT` in fallback and verify blocks so they work in a fresh shell
+
+## 0.37.3 — The Root Anchor (2026-03-27)
+
+install-bowser now resolves the project root via `git rev-parse --show-toplevel` so the skill installs correctly regardless of cwd.
+
+- install-bowser: All `.claude/skills/` paths anchored to `$PROJECT_ROOT` instead of bare relative paths
+- install-bowser: Notes updated to reference `<project-root>/.claude/skills/`
+- ui-review: Bowser detection checks from project root for consistency
+- SKILL.md: "After ui-review" next steps text now mentions both Playwright CLI and Bowser skill
+
+## 0.37.2 — The Clarity Patch (2026-03-27)
+
+Minor wording fixes for install-bowser and ui-review to make instructions more precise and actionable.
+
+- install-bowser: Clarified fallback curl text — "alternative path in the same repository" instead of misleading "repository's root"
+- ui-review: Made Bowser skill detection concrete — check for `.claude/skills/playwright-bowser/SKILL.md` instead of vague "loaded in your environment"
+
 ## 0.37.1 — The Route Fix (2025-03-25)
 
 Fixed routing conflicts where commands could dispatch to the wrong action.

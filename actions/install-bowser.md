@@ -59,19 +59,21 @@ npx playwright install chromium
 
 ### Step 4: Install the Bowser Skill
 
-Create the skill directory and download the skill from the Bowser repository:
+Create the skill directory from the **project root** and download the skill from the Bowser repository:
 
 ```bash
-mkdir -p .claude/skills/playwright-bowser
-curl -fsSL -o .claude/skills/playwright-bowser/SKILL.md \
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+mkdir -p "$PROJECT_ROOT/.claude/skills/playwright-bowser"
+curl -fsSL -o "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" \
   https://raw.githubusercontent.com/disler/bowser/main/SKILL.md
 ```
 
-If the download fails (network issue, file not at expected path), try the repository's root for alternative skill file locations:
+If the download fails (network issue, file not at expected path), try an alternative path in the same repository:
 
 ```bash
 # Fallback: check if skill is at a different path
-curl -fsSL -o .claude/skills/playwright-bowser/SKILL.md \
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+curl -fsSL -o "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" \
   https://raw.githubusercontent.com/disler/bowser/main/skills/playwright-bowser/SKILL.md
 ```
 
@@ -84,7 +86,8 @@ If both fail, report the error and direct the user to https://github.com/disler/
 playwright-cli --help >/dev/null 2>&1 && echo "playwright-cli: OK" || echo "playwright-cli: FAILED"
 
 # Verify Bowser skill
-test -s .claude/skills/playwright-bowser/SKILL.md && echo "bowser skill: OK" || echo "bowser skill: FAILED"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+test -s "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" && echo "bowser skill: OK" || echo "bowser skill: FAILED"
 ```
 
 ### Step 6: Report Back
@@ -111,6 +114,6 @@ To use directly: playwright-cli -s=my-session open https://example.com --persist
 ## Notes
 
 - This action installs both the CLI tool (global) and the skill file (project-scoped).
-- `playwright-cli` is installed globally so it's available across projects. The Bowser skill is project-scoped (`.claude/skills/`).
+- `playwright-cli` is installed globally so it's available across projects. The Bowser skill is project-scoped (`<project-root>/.claude/skills/`).
 - Only Chromium is installed by default. For Firefox or WebKit, run `playwright-cli install firefox` or `playwright-cli install webkit`.
 - If the project doesn't use Claude Code, the skill file is still readable by any agent as a standalone prompt.
