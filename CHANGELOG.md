@@ -4,6 +4,23 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.38.0 — The Quality Gate (2026-03-30)
+
+Borrowed the best quality mechanisms from PAUL and GSD to make the work pipeline self-verifying. Builder claims are now independently checked, failing acceptance tests block archiving, and failures get classified for smarter recovery.
+
+- work.md: New Step 6.3 (Qualify Implementation) — orchestrator independently verifies files exist, changes are substantive, requirements trace, and P-A-U boxes are honest. Includes anti-rationalization rules.
+- work.md: New Step 5.5 (Scope Declaration) — Routes B/C declare target files and acceptance criteria before coding. Review compares against this.
+- work.md: Step 7 review gating — Acceptance=Fail now triggers a remediation loop instead of silent archiving. New `completed-with-issues` status.
+- work.md: Diagnostic failure routing — failures classified as Intent/Spec/Code/Environment with appropriate follow-up REQs.
+- work.md: Discovered task severity triage — `[critical]` auto-queues, `[normal]`/`[low]` go through pending-answers.
+- work.md: Session checkpoint (CHECKPOINT.md) — written on exit, consumed on resume for session continuity.
+- work.md: Context wipe is now structural — fresh agents per REQ, contamination check via file list comparison.
+- work.md: Builder and explorer agents now read `## Lessons` from prime files before implementing.
+- capture.md: UNIFY checkbox now requires listing files verified and checks performed.
+- rules-frontend.md: Populated with component patterns, state management, performance, error handling, quality checks, scope discipline.
+- rules-backend.md: Populated with API design, data layer, security baseline, error handling, quality checks, scope discipline.
+- review-work.md: Scope Discipline dimension now compares against `## Scope` declaration when present.
+
 ## 0.37.4 — The Self-Contained Shell (2026-03-27)
 
 Each code block in install-bowser is now independently runnable — no stale variable assumptions across blocks.

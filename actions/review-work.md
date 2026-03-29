@@ -102,6 +102,7 @@ Evaluate the implementation quality by reading the diff:
 - Did the implementation stay focused on the request?
 - Any unnecessary refactoring, feature additions, or style changes?
 - Files touched that didn't need touching?
+- **If a `## Scope` section exists in the REQ** (Routes B/C): compare the Implementation Summary file list against the Scope declaration. Files touched that were not declared = scope drift. Declared files not touched = incomplete scope. Flag significant drift as an Important finding.
 
 **Risk Assessment (Critical / Low / None)**
 - Security concerns (injection, auth bypass, data exposure)
