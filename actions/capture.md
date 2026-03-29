@@ -83,7 +83,7 @@ prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Native project linters run, tests passed, and diff hygiene manually verified to remove debug logs.)
+- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
 ## Why (if provided)
 [User's stated reasoning — omit if not provided]
