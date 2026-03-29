@@ -73,6 +73,7 @@ created_at: 2025-01-26T10:00:00Z
 user_request: UR-001
 domain: frontend  # choose one: frontend, backend, ui-design, or general
 prime_files: []  # list paths to relevant prime-*.md files, or leave empty
+tdd: false  # set true when test-first approach applies (see heuristic below)
 ---
 
 # [Brief Title]
@@ -173,6 +174,7 @@ Read the user's input. Determine:
 - **Single vs multiple requests** — look for "and also", comma-separated lists, numbered items, distinct topics
 - **Simple vs complex** — apply the detection criteria above
 - **Domain classification** — infer the primary technical domain of the request (e.g., frontend, backend, ui-design, or general) so the downstream builder knows which JIT rules to load.
+- **TDD assessment** — determine if a test-first approach applies. Heuristic: "Can you write `expect(fn(input)).toBe(output)` before writing `fn`?" If yes (pure logic, data transformations, API handlers, utility functions) → set `tdd: true`. If no (UI layout, config changes, copy/content, glue code, refactoring) → omit or set `tdd: false`. When in doubt, leave false — the builder can still write tests without formal TDD mode.
 - **Prime file routing** — check the project's root `CLAUDE.md` (or similar instructions) to see if there are defined prime files that match the requested utility. Note them for inclusion.
 
 ### Step 2: Check for Duplicates

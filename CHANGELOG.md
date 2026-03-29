@@ -4,6 +4,23 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.39.0 — The Deep Verify (2026-03-30)
+
+Round 2 of quality improvements. The pipeline now self-diagnoses, debugs methodically, validates plans before execution, and tracks decisions for audit trails.
+
+- work.md: Qualify step (6.3) now checks wired (is the file imported?) and flowing (is data real, not stubbed?) — catches dead code and hollow implementations
+- work.md: Plan validation (Step 4, Route C) — checks requirement coverage, orphan tasks, scope sanity (5+ tasks = split warning), and file conflicts
+- work.md: Pre-flight check (Step 5.75, Routes B/C) — verifies git is clean, tests pass on HEAD, dependencies installed before builder starts
+- work.md: Decision traceability — Open Questions and builder decisions numbered D-01/D-02/D-03 in a `## Decisions` section for audit trail
+- work.md: TDD task type — `tdd: true` frontmatter flag triggers red-green-refactor cycle with mandatory evidence
+- work.md: Test failure loop loads `rules-debugging.md` on attempt 2+; remediation loads it too
+- work.md: Session checkpoint enriched with `session_depth` (light/moderate/heavy) — heavy sessions get a Context Summary for next session
+- agent-rules/rules-debugging.md (NEW): Full debugging methodology — scientific method, investigation techniques (binary search, minimal repro, working backwards, differential), cognitive bias guards, knowledge capture
+- actions/forensics.md (NEW): Read-only pipeline diagnostic — detects stuck work, hollow completions, orphaned URs, scope contamination, failed-without-follow-up, stale pending-answers, git divergence
+- SKILL.md: Added forensics routing (forensics, diagnose, health check)
+- review-work.md: Scope Discipline now checks for undocumented decisions that changed behavior
+- capture.md: Added `tdd` frontmatter field with test-first heuristic in capture workflow
+
 ## 0.38.0 — The Quality Gate (2026-03-30)
 
 Borrowed the best quality mechanisms from PAUL and GSD to make the work pipeline self-verifying. Builder claims are now independently checked, failing acceptance tests block archiving, and failures get classified for smarter recovery.

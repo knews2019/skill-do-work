@@ -23,6 +23,7 @@ A unified entry point for task capture and processing.
 - **ui-review**: Validate UI quality against design best practices — read-only audit with structured findings report
 - **install-ui-design**: Install the `frontend-design` Claude skill for production-grade UI design capabilities
 - **install-bowser**: Install Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification
+- **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination (read-only)
 - **commit**: Commit uncommitted files → analyzes, groups atomically, traces to REQs
 - **version**: Show current version, last 5 releases, or check for upstream updates
 - **recap**: Summary of last 5 completed user requests with their REQs
@@ -63,6 +64,7 @@ Check these patterns **in order** — first match wins:
 | 9        | Commit keywords          | `do work commit`, `do work commit changes`, `do work save work`                                                                    | → commit                      |
 | 10       | Version keywords         | `do work version`, `do work update`, `do work check for updates`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
 | 11       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
+| 11.5     | Forensics keywords       | `do work forensics`, `do work diagnose`, `do work health check`, `do work health`                                                  | → forensics                   |
 | 12       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`                                                                  | → quick-wins                  |
 | 13       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright` | → install-ui-design / install-bowser |
 | 14       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
