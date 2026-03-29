@@ -26,9 +26,9 @@ work action (orchestrator - lightweight, stays in loop)
   │     │     │   Skip plan/explore, direct to build │
   │     │     │                                      │
   │     │     ├── Route B (Medium) ───────┐          │
-  │     │     │   Scope declare, explore  │          │
+  │     │     │   Explore, scope declare  │          │
   │     │     │                           ▼          │
-  │     │     └── Route C (Complex) ──► Plan ──► Scope declare ──► Explore
+  │     │     └── Route C (Complex) ──► Plan ──► Explore ──► Scope declare
   │     │                                            │
   │     │                                            ▼
   │     │                                     Implementation agent
@@ -152,7 +152,9 @@ error: "Description"          # Only if failed
 ---
 ```
 
-**Status flow:** `pending` → `claimed` → `[planning]` → `[exploring]` → `implementing` → `testing` → `reviewing` → `completed` / `completed-with-issues` / `failed`
+**Status flow (frontmatter values):** `pending` → `claimed` → `completed` / `completed-with-issues` / `failed`
+
+The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only three status transitions are written to frontmatter: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8).
 
 **Special status:** `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do work clarify`.
 
@@ -170,6 +172,8 @@ error: "Description"          # Only if failed
 Once `working/` is empty, proceed with finding the next request.
 
 Glob for `do-work/REQ-*.md` (root of `do-work/`, **not** a subdirectory — there is no `queue/` folder). Sort by number. Read the frontmatter of each (in number order) to check `status` — pick the first with `status: pending` (skip `pending-answers` — those wait for user input). Don't read the full body at this stage. If no `pending` REQs found, report completion and exit. If only `pending-answers` REQs remain, report them to the user so they can batch-review the questions.
+
+**REQ validation:** When reading each REQ's frontmatter, verify it has the required fields (`id`, `status`, `title`). If a REQ file has missing or unparseable frontmatter, skip it and report: `⚠ Skipping [filename]: missing required frontmatter ([field]).` Do not let a single malformed REQ block the entire work loop — skip it and continue to the next.
 
 **Exact glob pattern:** `do-work/REQ-*.md` — if this returns no results, do NOT conclude the queue is empty. Verify by listing `do-work/` contents to rule out a bad pattern.
 
@@ -211,7 +215,7 @@ Open Questions use checkbox syntax:
 
 1. Note them. Read the `Recommended:` default and `Also:` alternatives for each.
 2. Mark each as `- [~]` with a numbered decision and the builder's reasoning: `- [~] [question] → **D-01**: Builder chose: [choice]. Reasoning: [why]`
-3. Number decisions sequentially per REQ (D-01, D-02, D-03...). These IDs carry through to the `## Decisions` section and can be referenced by future REQs.
+3. Number decisions sequentially per REQ (D-01, D-02, D-03...). Open Questions decisions and Implementation Decisions (Step 6) share the same D-XX ID space — if Open Questions uses D-01 through D-03, the first implementation decision is D-04. These IDs can be referenced by future REQs.
 4. Proceed with implementation using those decisions.
 
 The follow-up REQs for builder-decided questions are created during **Step 8 (Archive)** — not here. Step 3.5 just records the decisions; the archive step handles the paperwork after the REQ is fully complete.
@@ -522,7 +526,7 @@ Append to the request file:
 
 **Rules:**
 - Keep it concise — pointers to code, not walls of text. The code is the source of truth.
-- **Required for Routes B and C** — there's always something worth recording when exploration or planning was involved. **Optional for Route A** — skip if everything went smoothly with no surprises.
+- **Required for Routes B and C** — there's always something worth recording when exploration or planning was involved. **Optional for Route A** — skip if the change was straightforward with no unexpected discoveries, no failed approaches, and no gotchas worth noting. If anything surprised you (undocumented behavior, unexpected test failures, a file that wasn't where you expected), record it.
 - "What didn't work" is the most valuable part — it prevents repeating mistakes.
 - File lists are no longer needed here — they're covered by the mandatory Implementation Summary (Step 6.25).
 
@@ -598,7 +602,8 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
      `  Recommended: Yes, add to queue (will flip to 'pending').`
      `  Also: No, discard it.`
    This ensures non-critical discoveries require the user's explicit permission via `do work clarify` before execution.
-5. Archive based on REQ type:
+5. **Cycle detection:** Before creating any follow-up REQ, check the `addendum_to` chain. If the proposed follow-up would reference a REQ that itself has an `addendum_to` pointing back to the current REQ (or any ancestor in the chain), this is a circular reference. Do not create the follow-up — instead, report the cycle to the user: `⚠ Cycle detected: REQ-NNN → REQ-MMM → REQ-NNN. Skipping follow-up — manual resolution needed.`
+6. Archive based on REQ type:
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
@@ -851,7 +856,7 @@ All 2 requests completed:
 ## Orchestrator Checklist (per request)
 
 ```
-□ Step 1: Find next request (read CHECKPOINT.md if exists, crash recovery, pick first pending)
+□ Step 1: Find next request (read CHECKPOINT.md if exists, crash recovery, validate frontmatter, pick first pending)
 □ Step 2: Claim request (mkdir -p working/, move REQ, update status & claimed_at)
 □ Step 3: Triage (decide route, append ## Triage, read original if addendum)
 □ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions)
@@ -865,7 +870,7 @@ All 2 requests completed:
 □ Step 6.5: Test (run relevant tests, load debug rules on attempt 2+, verify TDD evidence if tdd:true)
 □ Step 7: Review (spawn review action — gate on acceptance: Pass→archive, Fail→remediate with debug rules)
 □ Step 7.5: Lessons Learned (append section, update prime files, skip for Route A if no surprises)
-□ Step 8: Archive (update status, classify failures, triage discovered tasks, queue follow-ups, move to archive/)
+□ Step 8: Archive (update status, classify failures, triage discovered tasks, cycle-check follow-ups, queue follow-ups, move to archive/)
 □ Step 9: Commit (stage explicit files, commit if git repo, amend hash to REQ)
 □ Step 10: Loop or Exit (context wipe + contamination check if looping, else write CHECKPOINT.md with depth + cleanup)
 ```
@@ -873,7 +878,7 @@ All 2 requests completed:
 **Common mistakes to avoid:**
 - Spawning implementation agent without first moving file to `working/`
 - Letting spawned agents handle file management (only the orchestrator moves/archives files)
-- Forgetting to update status in frontmatter at each phase transition
+- Forgetting to update status in frontmatter (only two transitions: `claimed` at Step 2, final status at Step 8)
 - Archiving a UR folder before all its REQs are complete
 - Forgetting Planning status note for Routes A/B ("Planning not required")
 - Using `git add -A` instead of staging specific files

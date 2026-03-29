@@ -4,6 +4,21 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.39.1 — The Bug Sweep (2026-03-30)
+
+Fixes bugs and inconsistencies found during code review of the last 20 commits.
+
+- SKILL.md: Renumber routing priorities to clean integers (no more 2.5/5.5/11.5), fix "check for updates" matching before action verbs
+- SKILL.md: Remove duplicate "check for updates" from priority 10 (already handled at priority 2)
+- SKILL.md: Add forensics to Action Dispatch table, help menu, and subagent dispatch list
+- SKILL.md: Update all priority number references in verb sections to match new numbering
+- work.md: Fix architecture diagram — Explore now correctly shown before Scope declare (matches actual step ordering)
+- work.md: Fix status flow — only documents actual frontmatter values (pending/claimed/completed/failed), intermediate phases tracked by section presence
+- work.md: Add REQ validation in Step 1 — malformed REQs are skipped instead of blocking the work loop
+- work.md: Clarify decision numbering — Open Questions and Implementation Decisions share the same D-XX ID space per REQ
+- work.md: Add cycle detection for follow-up REQs in Step 8 — prevents infinite addendum chains
+- work.md: Clarify Route A lessons learned skip condition with concrete criteria
+
 ## 0.39.0 — The Deep Verify (2026-03-30)
 
 Round 2 of quality improvements. The pipeline now self-diagnoses, debugs methodically, validates plans before execution, and tracks decisions for audit trails.
