@@ -190,35 +190,35 @@ do-work/
 
 ## Q&A
 
-**Why separate capture from processing? Why not just build immediately?**
+### Why separate capture from processing? Why not just build immediately?
 
 Because capture preserves what you asked for, and processing tracks how it was built — and neither interferes with the other. When you say `do work capture request: ...`, your exact words are saved in a UR folder as the permanent source of truth. Nothing is paraphrased, nothing is lost. When `do work run` picks up that request later, the REQ file tracks every decision: what was planned, what was explored, what was built, what was reviewed. You end up with a clear trail from intent to implementation — what the user wanted, what the builder decided, and why. Without this separation, Claude tends to hear your request, immediately start coding, and leave no trace of what was asked or how decisions were made. The two-phase split means capture is fast and cheap (dump ideas anytime), processing is thorough and auditable (every change is traceable back to a request).
 
-**Why not just let Claude decide what to do?**
+### Why not just let Claude decide what to do?
 
 Claude *does* decide — the skill just raises the floor. Without structure, Claude picks different steps every time. Sometimes it plans, sometimes it dives in. Sometimes it reviews its work, sometimes it ships the first thing that compiles. The skill encodes lessons learned from many sessions into a repeatable baseline: plan before building, review after building, don't lose the original input along the way. Claude still makes all the real decisions within each step. The skill makes sure those decisions happen.
 
-**How is this different from a hardcoded CI pipeline?**
+### How is this different from a hardcoded CI pipeline?
 
 It's not a fixed sequence. The triage system (simple/medium/complex) means Claude chooses how much planning each request needs. Simple config changes skip straight to implementation. Complex features get explore, plan, then build. The skill is more like a senior dev's checklist — you still use judgment, but you don't skip steps because you felt confident.
 
-**Do I need Claude Code specifically?**
+### Do I need Claude Code specifically?
 
 No. The skill works with any agentic coding tool that can read/write files and run shell commands. It was written for Claude Code but the action files are standalone prompts — paste them into any chat interface and they work. Subagent support is a nice-to-have, not a requirement.
 
-**What if I only have one or two tasks?**
+### What if I only have one or two tasks?
 
 The queue still helps. Even a single request benefits from the triage → build → review → commit pipeline. The overhead is near zero — capture is instant, and `do work run` processes whatever is there.
 
-**Can I use this with an existing project?**
+### Can I use this with an existing project?
 
 Yes. Install it in your project root. The skill only creates files inside `do-work/` — it doesn't touch your source code structure. Your codebase is read during the build phase, but all skill state (requests, archives, deliverables) lives in `do-work/`.
 
-**What happens if something goes wrong during processing?**
+### What happens if something goes wrong during processing?
 
 The work loop processes one request at a time. If a request fails, it's marked as failed with notes on what went wrong, and the loop moves to the next one. Nothing is lost — you can fix the issue and re-queue. Run `do work forensics` to diagnose stuck or failed work.
 
-**Can I edit REQ files manually?**
+### Can I edit REQ files manually?
 
 Yes. They're plain markdown with frontmatter. You can change priority, edit requirements, or add context before running the queue. The UR folder's `input.md` preserves your original verbatim input regardless of what you change in the REQ files.
 
