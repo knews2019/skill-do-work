@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.39.2 — The Clear Menu (2026-03-30)
+
+Rewrote README to organize all features as numbered usage scenarios instead of API-style action docs.
+
+- README: Replace "Actions" reference section with 14 scenario-driven sections (capture, process, verify, review, clarify, code-review, ui-review, quick-wins, present, commit, cleanup, diagnostics, install, version)
+- Each scenario leads with the why, then shows exact commands
+- Added forensics, ui-review, and install-bowser which were missing or underrepresented
+
 ## 0.39.1 — The Bug Sweep (2026-03-30)
 
 Fixes bugs and inconsistencies found during code review of the last 20 commits.
