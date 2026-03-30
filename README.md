@@ -22,9 +22,9 @@ Separate *thinking of things* from *doing things*. You throw ideas at the queue 
 Throw tasks at the queue as they come up — one-liners, multi-feature specs, bug reports, screenshots, meeting notes. Each invocation creates a User Request (UR) folder preserving your verbatim input, plus one or more REQ files that enter the queue.
 
 ```
-do work add dark mode to the settings page
-do work the search is slow, also add an export button, and fix the header alignment
-do work [paste meeting notes, specs, or a screenshot]
+do work capture request: add dark mode to the settings page
+do work capture request: the search is slow, also add an export button, and fix the header alignment
+do work capture request: [paste meeting notes, specs, or a screenshot]
 ```
 
 The skill splits compound inputs into separate REQ files automatically. It asks clarifying questions during capture (while you're present) but never starts building — capture and execution are strictly separate.
@@ -167,7 +167,7 @@ do work recap               # last 5 completed user requests
 
 ### Help
 
-Run `do work` with no arguments to see the full help menu.
+Run `do work help` at any point to get a refresher on all available commands.
 
 ## File structure
 

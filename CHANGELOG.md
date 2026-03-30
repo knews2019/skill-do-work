@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.39.3 — The Clear Intent (2026-03-30)
+
+Use `capture request:` prefix for capture commands so intent is unambiguous. Add `do work help` as an explicit route.
+
+- SKILL.md: Add `capture request:` as preferred capture prefix in routing, help menu, content signals, and all next-steps suggestions
+- SKILL.md: Route `do work help` to the help menu (priority 1)
+- SKILL.md: Add `do work help` reminder rule to every next-steps block
+- README.md: Update capture examples and help section to match
+
 ## 0.39.2 — The Clear Menu (2026-03-30)
 
 Rewrote README to organize all features as numbered usage scenarios instead of API-style action docs.

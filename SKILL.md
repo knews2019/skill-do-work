@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | quick-wins | install-ui-design | install-bowser | version | recap
+argument-hint: capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | quick-wins | install-ui-design | install-bowser | version | recap | help
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -51,7 +51,7 @@ Check these patterns **in order** — first match wins:
 
 | Priority | Pattern                  | Example                                                                                                                            | Route                         |
 | -------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| 1        | Empty or bare invocation | `do work`                                                                                                                          | → help menu                   |
+| 1        | Empty, bare, or help     | `do work`, `do work help`                                                                                                          | → help menu                   |
 | 2        | Version exact phrases    | `do work check for updates`, `do work check for update`                                                                            | → version                     |
 | 3        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
 | 4        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check REQ-018`, `do work evaluate`                                           | → verify requests              |
@@ -67,7 +67,7 @@ Check these patterns **in order** — first match wins:
 | 14       | Forensics keywords       | `do work forensics`, `do work diagnose`, `do work health check`, `do work health`                                                  | → forensics                   |
 | 15       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`                                                                  | → quick-wins                  |
 | 16       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright` | → install-ui-design / install-bowser |
-| 17       | Descriptive content      | `do work add dark mode`, `do work [meeting notes]`, `do work capture request [the request]`                                        | → capture requests              |
+| 17       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -193,6 +193,7 @@ install-bowser, install bowser, install playwright, install playwright-cli, setu
 
 These signal "add a new task":
 
+- `capture request:` prefix (preferred — clearest intent signal)
 - Descriptive text beyond a single verb
 - Feature requests, bug reports, ideas
 - Screenshots or context
@@ -202,15 +203,15 @@ These signal "add a new task":
 
 ### Help Menu (bare invocation)
 
-When invoked with no arguments (`do work`), show a help menu with available actions and example prompts:
+When invoked with no arguments or with `help` (`do work`, `do work help`), show a help menu with available actions and example prompts:
 
 ```
 do-work — task queue for agentic coding tools
 
   Capture requests:
-    do work add dark mode to settings
-    do work the search is slow and the header is misaligned
-    do work [paste meeting notes, specs, or a screenshot]
+    do work capture request: add dark mode to settings
+    do work capture request: the search is slow and the header is misaligned
+    do work capture request: [paste meeting notes, specs, or a screenshot]
 
   Process the queue:
     do work run
@@ -252,6 +253,7 @@ do-work — task queue for agentic coding tools
     do work version             Check version + last 5 skill releases
     do work update              Check for upstream updates
     do work recap               Last 5 completed URs with their REQs
+    do work help               Show this menu
 ```
 
 Do not ask "Start the work loop?" — just print the help menu and wait.
@@ -386,9 +388,10 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 
 ### Routes to Capture Requests
 
-- `do work add dark mode` → Creates REQ file + UR folder
-- `do work the button is broken` → Creates REQ file + UR folder
-- `do work [400 words]` → Creates REQ files + UR folder with full verbatim input
+- `do work capture request: add dark mode` → Creates REQ file + UR folder
+- `do work capture request: the button is broken` → Creates REQ file + UR folder
+- `do work capture request: [400 words]` → Creates REQ files + UR folder with full verbatim input
+- `do work the button is broken` → Also routes to capture (descriptive content still works)
 
 ## Payload Preservation Rules
 
@@ -467,7 +470,7 @@ Next steps:
 ```
 Next steps:
   do work run                 Start processing the queue
-  do work [describe changes]  Capture additional requests
+  do work capture request: [describe changes]  Capture additional requests
 ```
 
 **After review work:**
@@ -489,7 +492,7 @@ Next steps:
 **After ui-review:**
 ```
 Next steps:
-  do work [describe fix]        Capture findings as requests
+  do work capture request: [describe fix]  Capture findings as requests
   do work run                   Process follow-up REQs (if any were created)
   do work install-bowser        Install Playwright CLI + Bowser skill for visual verification (if not installed)
 ```
@@ -498,7 +501,7 @@ Next steps:
 ```
 Next steps:
   do work present all         Generate portfolio summary (if multiple URs completed)
-  do work [describe changes]  Capture new requests
+  do work capture request: [describe]  Capture new requests
 ```
 
 **After forensics:**
@@ -506,13 +509,13 @@ Next steps:
 Next steps:
   do work cleanup               Fix orphaned URs and misplaced files
   do work run                   Process stuck or pending REQs
-  do work [describe fix]        Capture a specific finding as a request
+  do work capture request: [describe fix]  Capture a specific finding as a request
 ```
 
 **After quick-wins:**
 ```
 Next steps:
-  do work [describe fix]        Capture a finding as a request
+  do work capture request: [describe fix]  Capture a finding as a request
   do work run                   Process the queue
 ```
 
@@ -520,7 +523,7 @@ Next steps:
 ```
 Next steps:
   do work review work         Review the committed changes
-  do work [describe changes]  Capture new requests
+  do work capture request: [describe]  Capture new requests
 ```
 
 **After clarify questions:**
@@ -534,7 +537,7 @@ Next steps:
 ```
 Next steps:
   do work run                 Start processing the queue
-  do work [describe changes]  Capture new requests
+  do work capture request: [describe]  Capture new requests
 ```
 
 **Rules:**
@@ -542,4 +545,5 @@ Next steps:
 - Use the full action name (`verify requests`, not just `verify`; `review work`, not just `review`)
 - Keep it to 2-3 suggestions max — don't overwhelm
 - Format as a simple list the user can scan and copy
+- Always include a reminder at the end: `do work help` to see all available commands
 
