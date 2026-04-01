@@ -22,6 +22,7 @@ actions/              # Action files (each is a standalone prompt)
   install-ui-design.md # Install the frontend-design skill for UI work
   install-bowser.md   # Install Playwright CLI + Bowser skill for browser automation
   forensics.md        # Pipeline diagnostics — stuck work, hollow completions, orphaned URs
+  sample-archived-req.md # Example of a fully processed REQ file (reference only)
 agent-rules/          # Domain-specific rules loaded by work action
 CHANGELOG.md          # Release notes (newest on top)
 ```
