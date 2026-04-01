@@ -4,6 +4,28 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.40.0 — The Audit Pass (2026-04-01)
+
+Code review across last 20 commits uncovered logic bugs, stale docs, and routing gaps. This release fixes them all.
+
+- work.md: Fix commit hash invalidation — use separate metadata commit instead of `--amend` (which changed the hash after writing it)
+- work.md: Fix crash recovery overwriting `pending-answers` status — restore original status when REQ had unresolved Open Questions
+- work.md: Fix crash recovery strip list — now removes all generated sections (Scope, Pre-Flight, Qualification, Review, Lessons Learned, Decisions, Discovered Tasks), not just the original five
+- work.md: Fix UR completion check — now scans `do-work/` root, `working/`, and `archive/` root for REQs belonging to the UR, handles `completed-with-issues` and `failed` statuses explicitly
+- work.md: Fix duplicate Implementation Summary — replace existing section on re-qualification instead of appending a second copy
+- work.md: Fix checkpoint deletion timing — keep CHECKPOINT.md until crash recovery succeeds, not immediately after reading
+- work.md: Fix Route A scope-drift review — skip scope comparison when no Scope declaration exists
+- work.md: Specify follow-up REQ requirements for review step — must include `status`, `user_request`, `addendum_to`, `domain`, `review_generated`; cycle detection applies
+- SKILL.md: Fix `AskUserQuestion` tool-specific reference → generalized "your environment's ask-user prompt/tool"
+- SKILL.md: Add missing verbs to routing table — `audit`, `review requests`, `ui audit`, `design audit`, `clean up`, `commit files`, `save changes`, `scan`, `setup bowser`, `setup playwright`
+- SKILL.md: Add `commit`, `forensics` to argument-hint frontmatter
+- SKILL.md: Add `commit`, `install-ui-design`, `install-bowser` to subagent foreground list
+- capture.md: Replace `AskUserQuestion` with generalized language (2 occurrences)
+- rules-debugging.md: Fix hardcoded `error_type: code` — now instructs proper classification per work.md failure table
+- rules-general.md: Fix typo "consolididation" → "consolidation"
+- CLAUDE.md: Add missing `forensics.md` to project structure
+- CHANGELOG.md: Fix wrong year on v0.37.1 (2025 → 2026)
+
 ## 0.39.3 — The Clear Intent (2026-03-30)
 
 Use `capture request:` prefix for capture commands so intent is unambiguous. Add `do work help` as an explicit route.
@@ -92,7 +114,7 @@ Minor wording fixes for install-bowser and ui-review to make instructions more p
 - install-bowser: Clarified fallback curl text — "alternative path in the same repository" instead of misleading "repository's root"
 - ui-review: Made Bowser skill detection concrete — check for `.claude/skills/playwright-bowser/SKILL.md` instead of vague "loaded in your environment"
 
-## 0.37.1 — The Route Fix (2025-03-25)
+## 0.37.1 — The Route Fix (2026-03-25)
 
 Fixed routing conflicts where commands could dispatch to the wrong action.
 
