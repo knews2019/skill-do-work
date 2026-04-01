@@ -55,7 +55,7 @@ When the error is "file not found" or "undefined is not a function," trace the f
 ## When to Escalate
 
 - After **2 failed fix attempts** on the same hypothesis: discard the hypothesis, form a new one
-- After **3 total fix attempts** across different hypotheses: the issue may be deeper than expected. Document what you've tried and what you've learned, then report to the orchestrator as a failure with `error_type: code` and detailed context
+- After **3 total fix attempts** across different hypotheses: the issue may be deeper than expected. Document what you've tried and what you've learned, then report to the orchestrator as a failure with the appropriate `error_type` (classify using the failure table in work.md Step 8: `intent` for ambiguous requirements, `spec` for wrong approach, `code` for implementation bugs, `environment` for external issues) and detailed context
 - If the failure is in code you didn't write and don't fully understand: document the symptom and escalate rather than guessing
 
 ## Knowledge Capture
