@@ -165,8 +165,8 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 ### Step 1: Find Next Request
 
 **Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run was interrupted. For each recovered REQ:
-1. Reset frontmatter: set `status` to `pending`, remove `claimed_at` and `route`
-2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, `## Implementation Summary`, and `## Testing` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact.
+1. Reset frontmatter: set `status` to `pending` (but if the REQ was `pending-answers` before being claimed — check for `## Open Questions` with unresolved `- [ ]` items — restore to `pending-answers` instead). Remove `claimed_at` and `route`.
+2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, `## Scope`, `## Pre-Flight`, `## Implementation Summary`, `## Qualification`, `## Testing`, `## Review`, `## Lessons Learned`, `## Decisions`, and `## Discovered Tasks` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact.
 3. Move the REQ back to the `do-work/` root
 
 Once `working/` is empty, proceed with finding the next request.
@@ -303,7 +303,7 @@ The Scope section serves two purposes:
 1. The builder commits to a file list before writing code — drift becomes measurable.
 2. The acceptance criteria, restated from the REQ, become the word-by-word comparison target for review.
 
-The review step (Step 7) **MUST** compare the Implementation Summary's file list against the Scope declaration. Any file touched that was not declared, or any declared file not touched, is flagged as scope drift (Important finding if significant, Minor if trivial like a forgotten import update).
+The review step (Step 7) **MUST** compare the Implementation Summary's file list against the Scope declaration (Routes B and C only). Any file touched that was not declared, or any declared file not touched, is flagged as scope drift (Important finding if significant, Minor if trivial like a forgotten import update). **Route A** has no Scope declaration — skip the scope-drift comparison for Route A REQs.
 
 ### Step 5.75: Pre-Flight Check (Routes B and C)
 
@@ -372,9 +372,11 @@ All routes include these instructions to the agent:
 
 ### Step 6.25: Implementation Summary
 
-After implementation completes, append a manifest of what changed to the request file. This is the primary auditability artifact — without it, there's no way to verify the REQ was implemented without digging through git history.
+After implementation completes, write a manifest of what changed to the request file. This is the primary auditability artifact — without it, there's no way to verify the REQ was implemented without digging through git history.
 
-Append to the request file:
+**If a `## Implementation Summary` section already exists** (e.g., from a re-qualification or remediation loop), **replace it entirely** with the new content. Do not append a second copy. The most recent implementation is the one that matters.
+
+Append (or replace) in the request file:
 
 ```markdown
 ## Implementation Summary
@@ -482,7 +484,7 @@ The review reads the REQ (in `do-work/working/`), the original UR, and the curre
 
 The status `completed-with-issues` means the REQ was archived but has known unresolved problems. It counts toward UR completion for archiving purposes, but the follow-up REQs must be processed before the work is considered ship-ready. This status is visible in the recap and present-work actions.
 
-**Follow-up REQs are created based on finding severity, not score.** The review creates follow-up REQs for each **Important** finding (regardless of overall score). Minor and Nit findings go in the report only. The follow-up REQs enter the queue and get processed in a future loop iteration.
+**Follow-up REQs are created based on finding severity, not score.** The review creates follow-up REQs for each **Important** finding (regardless of overall score). Minor and Nit findings go in the report only. The follow-up REQs enter the queue and get processed in a future loop iteration. Follow-up REQs created by the review step must include: `status: pending`, `user_request: [same UR as the reviewed REQ]`, `addendum_to: [reviewed REQ id]`, `domain: [same domain]`, and `review_generated: true`. Place them in `do-work/` root. Cycle detection (Step 8, substep 5) applies to these follow-ups — check the `addendum_to` chain before creating.
 
 **Calibrate depth to route:** Route A gets a quick scan (skip dimensions that don't apply). Route B gets a standard review. Route C gets a thorough review comparing against the plan.
 
@@ -607,7 +609,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
-| `user_request: UR-NNN` | Check if ALL REQs in the UR are complete. If yes: move completed REQs into UR folder, move entire UR folder to `archive/`. If no: move REQ to `archive/` root; UR stays in `user-requests/` until last REQ completes. |
+| `user_request: UR-NNN` | Check if ALL REQs in the UR are finished (status: `completed`, `completed-with-issues`, or `failed`). Check `do-work/` root, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` for REQs belonging to this UR. If all finished: move completed/completed-with-issues REQs into UR folder (failed REQs stay at archive root), move entire UR folder to `archive/`. If any REQ is still `pending`, `pending-answers`, or `claimed`: move this REQ to `archive/` root; UR stays in `user-requests/` until last REQ finishes. |
 | `context_ref` (legacy) | Move REQ to `archive/`. If all related REQs are now archived, move the CONTEXT doc too. |
 | Neither (standalone legacy) | Move directly to `archive/`. |
 
@@ -663,7 +665,7 @@ One commit per request. Stage all files created, modified, moved, or deleted dur
 
 **Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
 
-**Write commit hash back to the archived REQ.** After the commit succeeds, retrieve the hash with `git rev-parse --short HEAD` and update the archived REQ's frontmatter `commit:` field with the actual value. Then amend the commit to include this update:
+**Write commit hash back to the archived REQ.** After the commit succeeds, retrieve the hash with `git rev-parse --short HEAD` and update the archived REQ's frontmatter `commit:` field with the actual value. Then create a **separate metadata commit** (do not amend — amending changes the hash and invalidates what you just wrote):
 
 ```bash
 # After the initial commit succeeds:
@@ -671,10 +673,10 @@ HASH=$(git rev-parse --short HEAD)
 # Update the commit: field in the archived REQ frontmatter
 # (replace "commit:" line or add it if missing)
 git add do-work/archive/UR-NNN/REQ-NNN-slug.md
-git commit --amend --no-edit
+git commit -m "[REQ-NNN] record commit hash ${HASH}"
 ```
 
-This ensures the `commit:` field in the archived REQ contains the real hash, which the review-work and present-work actions depend on for traceability. Without this step, the field would be empty or a placeholder.
+This ensures the `commit:` field in the archived REQ contains the real implementation commit hash, which the review-work and present-work actions depend on for traceability. The metadata commit is a lightweight bookkeeping entry — it does not contain implementation changes.
 
 ### Step 10: Loop or Exit
 
@@ -738,7 +740,7 @@ processed — at that volume, carried-over assumptions are unreliable.]
 **On session start (Step 1 addition):** Before crash recovery, check for `do-work/CHECKPOINT.md`. If it exists:
 1. Read it and report a brief summary: `Resuming from previous session. Last completed: REQ-NNN. [N] REQs still queued.`
 2. Use the "In Progress" section to inform crash recovery context.
-3. Delete the checkpoint file after reading (consumed on resume).
+3. **Do not delete yet.** Keep the checkpoint until crash recovery completes successfully (all files moved out of `working/`). Then delete it. This prevents losing resume context if the session crashes again during crash recovery.
 
 This is NOT a blocking gate. If no checkpoint exists, the session starts normally with existing crash-recovery logic.
 
@@ -871,7 +873,7 @@ All 2 requests completed:
 □ Step 7: Review (spawn review action — gate on acceptance: Pass→archive, Fail→remediate with debug rules)
 □ Step 7.5: Lessons Learned (append section, update prime files, skip for Route A if no surprises)
 □ Step 8: Archive (update status, classify failures, triage discovered tasks, cycle-check follow-ups, queue follow-ups, move to archive/)
-□ Step 9: Commit (stage explicit files, commit if git repo, amend hash to REQ)
+□ Step 9: Commit (stage explicit files, commit if git repo, write hash to REQ in separate metadata commit)
 □ Step 10: Loop or Exit (context wipe + contamination check if looping, else write CHECKPOINT.md with depth + cleanup)
 ```
 
