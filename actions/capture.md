@@ -245,11 +245,11 @@ encounter the work in progress naturally.]
 
 ### Step 3: Capture-Phase Clarification
 
-**Capture is the optimal window for human interaction.** The user is present, actively thinking about the request, and expects back-and-forth. Use `AskUserQuestion` here to resolve ambiguities — this is far cheaper than blocking the build phase later.
+**Capture is the optimal window for human interaction.** The user is present, actively thinking about the request, and expects back-and-forth. Use your environment's ask-user prompt/tool here to resolve ambiguities — this is far cheaper than blocking the build phase later.
 
 **When to ask:** Only when the request is genuinely ambiguous (could mean two very different things), or when a duplicate/similar request makes intent unclear. Don't ask about implementation details — that's for the building agent.
 
-**How to ask:** Use the `AskUserQuestion` tool with concrete options. Every question must present choices the user can pick from — not open-ended "what do you mean?" prompts. The choices themselves clarify the question: even if the user doesn't fully understand the question, selecting the closest option moves things forward.
+**How to ask:** Use your environment's ask-user prompt/tool with concrete options. Every question must present choices the user can pick from — not open-ended "what do you mean?" prompts. The choices themselves clarify the question: even if the user doesn't fully understand the question, selecting the closest option moves things forward.
 
 ```
 Good: "Should dark mode apply to the sidebar?" — options: (yes, full app / no, main content only / builder decides)

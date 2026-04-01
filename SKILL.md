@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | quick-wins | install-ui-design | install-bowser | version | recap | help
+argument-hint: capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | quick-wins | forensics | install-ui-design | install-bowser | version | recap | help
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -34,7 +34,7 @@ A unified entry point for task capture and processing.
 
 > **Human time has two optimal windows.** The system is designed to maximize the value of human attention:
 >
-> 1. **Capture phase** (capture requests action) — The user is present, actively thinking about the request. This is the best time for back-and-forth: clarifying ambiguities, resolving contradictions, making scope decisions. Use `AskUserQuestion` with concrete choices here. Every question must present options — never open-ended "what do you mean?" prompts.
+> 1. **Capture phase** (capture requests action) — The user is present, actively thinking about the request. This is the best time for back-and-forth: clarifying ambiguities, resolving contradictions, making scope decisions. Use your environment's ask-user prompt/tool with concrete choices here. Every question must present options — never open-ended "what do you mean?" prompts.
 >
 > 2. **Batch question review** (clarify questions action) — After the build phase completes everything it can without feedback, any remaining `pending-answers` REQs are surfaced as a batch. The user reviews all builder-decided questions together, confirms or adjusts, and resolved REQs re-enter the queue.
 >
@@ -54,19 +54,19 @@ Check these patterns **in order** — first match wins:
 | 1        | Empty, bare, or help     | `do work`, `do work help`                                                                                                          | → help menu                   |
 | 2        | Version exact phrases    | `do work check for updates`, `do work check for update`                                                                            | → version                     |
 | 3        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
-| 4        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check REQ-018`, `do work evaluate`                                           | → verify requests              |
+| 4        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check REQ-018`, `do work evaluate`, `do work audit`, `do work review requests` | → verify requests              |
 | 5        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
 | 6        | Code-review keywords     | `do work code-review`, `do work code-review prime-auth`, `do work code review src/`, `do work audit codebase`, `do work review codebase`, `do work codebase review` | → code-review                  |
-| 7        | UI-review keywords       | `do work ui-review`, `do work ui-review src/`, `do work review ui`, `do work design review`, `do work validate ui`                 | → ui-review                    |
+| 7        | UI-review keywords       | `do work ui-review`, `do work ui-review src/`, `do work review ui`, `do work design review`, `do work validate ui`, `do work ui audit`, `do work design audit` | → ui-review                    |
 | 8        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review` (no scope), `do work audit code`             | → review work                  |
 | 9        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
-| 10       | Cleanup keywords         | `do work cleanup`, `do work tidy`, `do work consolidate`                                                                           | → cleanup                     |
-| 11       | Commit keywords          | `do work commit`, `do work commit changes`, `do work save work`                                                                    | → commit                      |
+| 10       | Cleanup keywords         | `do work cleanup`, `do work clean up`, `do work tidy`, `do work consolidate`                                                       | → cleanup                     |
+| 11       | Commit keywords          | `do work commit`, `do work commit changes`, `do work commit files`, `do work save changes`, `do work save work`                    | → commit                      |
 | 12       | Version keywords         | `do work version`, `do work update`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
 | 13       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
 | 14       | Forensics keywords       | `do work forensics`, `do work diagnose`, `do work health check`, `do work health`                                                  | → forensics                   |
-| 15       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`                                                                  | → quick-wins                  |
-| 16       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright` | → install-ui-design / install-bowser |
+| 15       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
+| 16       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
 | 17       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
 
 
@@ -436,7 +436,7 @@ Each action has an action file with full instructions. How you execute it depend
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `forensics`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `forensics`, `commit`, `install-ui-design`, `install-bowser`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
