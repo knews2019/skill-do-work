@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | quick-wins | forensics | install-ui-design | install-bowser | version | recap | help
+argument-hint: capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | forensics | install-ui-design | install-bowser | version | recap | help
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -25,6 +25,7 @@ A unified entry point for task capture and processing.
 - **install-bowser**: Install Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification
 - **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination (read-only)
 - **commit**: Commit uncommitted files → analyzes, groups atomically, traces to REQs
+- **inspect**: Explain uncommitted changes — what changed, why, and whether it's ready to commit (read-only)
 - **version**: Show current version, last 5 releases, or check for upstream updates
 - **recap**: Summary of last 5 completed user requests with their REQs
 
@@ -62,12 +63,13 @@ Check these patterns **in order** — first match wins:
 | 9        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
 | 10       | Cleanup keywords         | `do work cleanup`, `do work clean up`, `do work tidy`, `do work consolidate`                                                       | → cleanup                     |
 | 11       | Commit keywords          | `do work commit`, `do work commit changes`, `do work commit files`, `do work save changes`, `do work save work`                    | → commit                      |
-| 12       | Version keywords         | `do work version`, `do work update`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
-| 13       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
-| 14       | Forensics keywords       | `do work forensics`, `do work diagnose`, `do work health check`, `do work health`                                                  | → forensics                   |
-| 15       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
-| 16       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
-| 17       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
+| 12       | Inspect keywords         | `do work inspect`, `do work inspect REQ-005`, `do work inspect UR-003`, `do work explain changes`, `do work what changed`, `do work show changes` | → inspect                     |
+| 13       | Version keywords         | `do work version`, `do work update`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
+| 14       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
+| 15       | Forensics keywords       | `do work forensics`, `do work diagnose`, `do work health check`, `do work health`                                                  | → forensics                   |
+| 16       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
+| 17       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
+| 18       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -160,6 +162,13 @@ cleanup, clean up, tidy, consolidate, organize archive, fix archive
 These signal "commit uncommitted files atomically":
 commit, commit changes, commit files, save changes, save work
 
+### Inspect Verbs (→ Inspect)
+
+These signal "explain uncommitted changes":
+inspect, inspect changes, explain changes, what changed, show changes, describe changes
+
+Note: "what changed" (no apostrophe) routes to inspect. "what's changed" (with apostrophe) routes to version (priority 13) for backwards compatibility. The distinction is deliberate: "changed" (past tense, no contraction) implies the working tree; "what's changed" implies "what's new" in releases.
+
 ### Recap Verbs (→ Version)
 
 These signal "show recent work summary":
@@ -242,6 +251,11 @@ do-work — task queue for agentic coding tools
   Setup:
     do work install-ui-design   Install the frontend-design skill for production-grade UI
     do work install-bowser      Install Playwright CLI + Bowser skill for browser automation
+
+  Inspect changes:
+    do work inspect             Explain all uncommitted changes (what, why, readiness)
+    do work inspect REQ-005     Explain changes for a specific REQ
+    do work inspect UR-003      Explain changes for all REQs under a UR
 
   Diagnostics:
     do work forensics           Pipeline diagnostics — stuck work, hollow completions, orphaned URs
@@ -339,6 +353,15 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work commit changes` → Same as commit
 - `do work save work` → Same as commit
 
+### Routes to Inspect
+
+- `do work inspect` → Explains all uncommitted changes (what, why, readiness)
+- `do work inspect REQ-005` → Explains changes associated with REQ-005
+- `do work inspect UR-003` → Explains changes associated with all REQs under UR-003
+- `do work explain changes` → Same as inspect
+- `do work what changed` → Same as inspect
+- `do work show changes` → Same as inspect
+
 ### Routes to Version
 
 - `do work version` → Reports version + last 5 skill releases
@@ -422,6 +445,7 @@ Each action has an action file with full instructions. How you execute it depend
 | present work       | `./actions/present-work.md`     | Target REQ/UR, "most recent", or "all" |
 | cleanup            | `./actions/cleanup.md`          | (none needed)                  |
 | commit             | `./actions/commit.md`           | (none needed)                  |
+| inspect            | `./actions/inspect.md`          | Target REQ/UR or (none = all)  |
 | code-review        | `./actions/code-review.md`      | Prime file refs and/or directory paths |
 | ui-review          | `./actions/ui-review.md`        | File/directory paths and/or prime file refs |
 | quick-wins         | `./actions/quick-wins.md`       | Target directory               |
@@ -436,7 +460,7 @@ Each action has an action file with full instructions. How you execute it depend
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `forensics`, `commit`, `install-ui-design`, `install-bowser`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
@@ -519,9 +543,18 @@ Next steps:
   do work run                   Process the queue
 ```
 
+**After inspect:**
+```
+Next steps:
+  do work commit              Commit the ready changes
+  do work capture request: [describe fix]  Capture issues as requests
+  do work run                 Process the queue (if fixes were captured)
+```
+
 **After commit:**
 ```
 Next steps:
+  do work inspect             Review remaining uncommitted changes (if any)
   do work review work         Review the committed changes
   do work capture request: [describe]  Capture new requests
 ```

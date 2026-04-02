@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.41.0 — The Looking Glass (2026-04-02)
+
+New inspect action explains uncommitted changes — what they are, why they were made, and whether they're ready to commit. Read-only companion to the commit action, with a hybrid narrative+table report format.
+
+- New action: `inspect` — analyzes uncommitted files, traces to REQs, assesses commit readiness
+- Three scoping modes: all changes (default), per-REQ, or per-UR
+- Six readiness signals: completeness, test coverage, REQ traceability, coherence, safety, improvement hints
+- Hybrid report format: narrative What/Why per group + compact readiness summary table
+- SKILL.md: routing at priority 12, verbs, examples, dispatch, next-steps
+- CLAUDE.md: added inspect.md to project structure
+
 ## 0.40.0 — The Audit Pass (2026-04-01)
 
 Code review across last 20 commits uncovered logic bugs, stale docs, and routing gaps. This release fixes them all.

@@ -17,6 +17,7 @@ actions/              # Action files (each is a standalone prompt)
   present-work.md     # Client-facing deliverables (briefs, videos, diagrams)
   cleanup.md          # Archive consolidation
   commit.md           # Atomic git commits traced to REQs
+  inspect.md          # Explain uncommitted changes — what, why, and readiness (read-only)
   version.md          # Version reporting + update checks (current version lives here)
   quick-wins.md       # Scan for refactoring opportunities and low-hanging tests
   install-ui-design.md # Install the frontend-design skill for UI work
