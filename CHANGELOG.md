@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.42.0 — The Careful Eye (2026-04-04)
+
+Every captured REQ now ends with "Think carefully before answering." — a prompt-level nudge for downstream builders to slow down and reason before acting.
+
+- REQ file template in `capture.md` appends the phrase after the source line
+
+---
+
 ## 0.41.0 — The Looking Glass (2026-04-02)
 
 New inspect action explains uncommitted changes — what they are, why they were made, and whether they're ready to commit. Read-only companion to the commit action, with a hybrid narrative+table report format.

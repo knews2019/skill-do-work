@@ -103,6 +103,8 @@ tdd: false  # set true when test-first approach applies (see heuristic below)
 
 ---
 *Source: [original verbatim request]*
+
+Think carefully before answering.
 ```
 
 Include `## Red-Green Proof` when the request is behavior-changing and can be proven with a prompt, repro, or example. If `tdd: true`, this section is mandatory. The goal is proof of behavior, not implementation detail.
