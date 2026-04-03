@@ -9,6 +9,7 @@ A confidence evaluation system that compares extracted REQ files against the ori
 - **The original input is the source of truth** — the UR's input.md contains everything the user said
 - **REQs should be lossless extractions** — every requirement in the input should appear in at least one REQ
 - **Intent signals matter** — not just WHAT was requested, but HOW firmly and with what scope guidance
+- **Behavioral proof matters** — when a request is testable, the REQ should preserve the RED/GREEN proof target: how we know it fails now and what turns it GREEN later
 - **Actionable output** — don't just report problems, offer to fix them
 
 ## When to Use
@@ -61,6 +62,12 @@ For each REQ, score it on these dimensions:
 - Is the certainty level correct (exploratory vs firm)?
 - Are scope cues preserved ("keep it simple," "don't over-build")?
 
+**Red-Green Proof (0-100%)** — only for `tdd: true` or clearly behavioral requests
+- Does the REQ capture a concrete RED prompt/case, repro, or example?
+- Does it explain why that case is RED today?
+- Does it state what observable outcome turns it GREEN?
+- If capture-time validation was possible, does it reflect the user's confirmed or adjusted version?
+
 **Batch Context (0-100%)** — only for multi-REQ batches
 - Do cross-cutting constraints from the UR appear in this REQ's Constraints section?
 - Are sequencing requirements noted?
@@ -88,10 +95,10 @@ Output a confidence report in this format:
 
 ### Per-REQ Scores
 
-| REQ | Title | Coverage | UX Detail | Intent | Batch | Overall |
-|-----|-------|----------|-----------|--------|-------|---------|
-| REQ-018 | TOC Panel | 85% | 70% | 90% | 80% | 81% |
-| REQ-019 | File Tree | 90% | 60% | 90% | 80% | 80% |
+| REQ | Title | Coverage | UX Detail | Intent | Red-Green | Batch | Overall |
+|-----|-------|----------|-----------|--------|------------|-------|---------|
+| REQ-018 | TOC Panel | 85% | 70% | 90% | 100% | 80% | 85% |
+| REQ-019 | File Tree | 90% | 60% | 90% | N/A | 80% | 80% |
 
 ### Gaps Found
 
@@ -119,9 +126,9 @@ After presenting the report:
 
 1. Ask the user if they want to apply the recommended fixes
 2. If yes, update the REQ files directly:
-   - **Important/Minor gaps**: Add missing requirements to the appropriate sections, add or update Builder Guidance sections, add batch constraints to Constraints sections
+   - **Important/Minor gaps**: Add missing requirements to the appropriate sections, add or update Builder Guidance sections, add batch constraints to Constraints sections, and add or tighten `## Red-Green Proof` when the request is testable
    - **Ambiguous gaps**: The user is here right now — **resolve them on the spot.** For each Ambiguous gap:
-     1. Present the question with recommended choices using your environment's ask-user prompt/tool:
+     1. Present the question with recommended choices using the ask tool if your environment provides one; otherwise use your environment's normal ask-user prompt/tool:
         ```
         [Question]
         Recommended: [best default based on context]
@@ -153,6 +160,7 @@ For REQs created before the UR system:
 - Don't expand requirements beyond what the user said — you're checking coverage, not inventing new features
 - Don't penalize REQs for missing details the user never mentioned
 - Don't treat implementation details as gaps — those are for the builder to decide
+- Don't ask the user to design test internals — ask for the observable failing case and GREEN outcome instead
 - Don't classify something as Ambiguous when the answer is in the original input — that's an Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
 - Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
 - Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Verify already tried to ask the user; any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment.

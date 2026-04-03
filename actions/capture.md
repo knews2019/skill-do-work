@@ -92,12 +92,22 @@ tdd: false  # set true when test-first approach applies (see heuristic below)
 ## Context
 [Additional context, constraints, or details mentioned]
 
+## Red-Green Proof
+**RED prompt/case:** [Minimal prompt, repro, or example that should fail or be missing today]
+**Why RED now:** [What is currently broken or absent]
+**GREEN when:** [Observable result that proves the request is done]
+**Validation:** [User confirmed / User adjusted / Inferred during capture]
+
 ## Assets
 [Description of screenshots or links to saved files]
 
 ---
 *Source: [original verbatim request]*
 ```
+
+Include `## Red-Green Proof` when the request is behavior-changing and can be proven with a prompt, repro, or example. If `tdd: true`, this section is mandatory. The goal is proof of behavior, not implementation detail.
+
+Treat defining the RED state as essential, high-value capture work. It is one of the most helpful things you can do for the downstream builder because it turns vague intent into a concrete failing proof target. Do not treat this as paperwork. Lean into it. Be eager to find the best RED case: the smallest, clearest prompt/repro/example that proves the behavior is missing now and will clearly turn GREEN later.
 
 ### Complex REQ (additional sections)
 
@@ -128,7 +138,7 @@ Open Questions use checkbox syntax with recommended choices. Each question inclu
 
 `- [ ]` = unresolved, `- [x]` = answered (answer follows `→`), `- [~]` = deferred to builder (note follows `→`).
 
-**Capture time is the optimal window for resolving these.** During capture (this action), use your environment's ask-user prompt/tool to present Open Questions immediately. The user is here, engaged, and fleshing out the request — don't defer what you can clarify now. Only leave questions as `- [ ]` if you genuinely can't ask (e.g., batch processing, async capture).
+**Capture time is the optimal window for resolving these.** During capture (this action), use the ask tool if your environment provides one; otherwise use your environment's normal ask-user prompt/tool. Present Open Questions immediately. The user is here, engaged, and fleshing out the request — don't defer what you can clarify now. Only leave questions as `- [ ]` if you genuinely can't ask (e.g., batch processing, async capture).
 
 Only add questions where the user's intent is genuinely unclear — don't add questions the builder can answer by reading the codebase.
 
@@ -175,6 +185,7 @@ Read the user's input. Determine:
 - **Simple vs complex** — apply the detection criteria above
 - **Domain classification** — infer the primary technical domain of the request (e.g., frontend, backend, ui-design, or general) so the downstream builder knows which JIT rules to load.
 - **TDD assessment** — determine if a test-first approach applies. Heuristic: "Can you write `expect(fn(input)).toBe(output)` before writing `fn`?" If yes (pure logic, data transformations, API handlers, utility functions) → set `tdd: true`. If no (UI layout, config changes, copy/content, glue code, refactoring) → omit or set `tdd: false`. When in doubt, leave false — the builder can still write tests without formal TDD mode.
+- **Red-green proof inference** — for `tdd: true` requests and any clearly behavioral bug fix or feature, infer the smallest RED prompt/case and GREEN outcome in user-visible terms. Capture how we know the behavior is missing or failing now, and what observable result turns it GREEN later. This is not test code — it is the proof target. Treat this as essential: a strong RED state makes planning, implementation, and review dramatically easier.
 - **Prime file routing** — check the project's root `CLAUDE.md` (or similar instructions) to see if there are defined prime files that match the requested utility. Note them for inclusion.
 
 ### Step 2: Check for Duplicates
@@ -245,11 +256,11 @@ encounter the work in progress naturally.]
 
 ### Step 3: Capture-Phase Clarification
 
-**Capture is the optimal window for human interaction.** The user is present, actively thinking about the request, and expects back-and-forth. Use your environment's ask-user prompt/tool here to resolve ambiguities — this is far cheaper than blocking the build phase later.
+**Capture is the optimal window for human interaction.** The user is present, actively thinking about the request, and expects back-and-forth. Use the ask tool if your environment provides one; otherwise use your environment's normal ask-user prompt/tool. Resolve ambiguities here — this is far cheaper than blocking the build phase later.
 
 **When to ask:** Only when the request is genuinely ambiguous (could mean two very different things), or when a duplicate/similar request makes intent unclear. Don't ask about implementation details — that's for the building agent.
 
-**How to ask:** Use your environment's ask-user prompt/tool with concrete options. Every question must present choices the user can pick from — not open-ended "what do you mean?" prompts. The choices themselves clarify the question: even if the user doesn't fully understand the question, selecting the closest option moves things forward.
+**How to ask:** Use the ask tool if available, otherwise use your environment's normal ask-user prompt/tool, and always present concrete options. Every question must present choices the user can pick from — not open-ended "what do you mean?" prompts. The choices themselves clarify the question: even if the user doesn't fully understand the question, selecting the closest option moves things forward.
 
 ```
 Good: "Should dark mode apply to the sidebar?" — options: (yes, full app / no, main content only / builder decides)
@@ -257,6 +268,31 @@ Bad:  "Can you clarify the scope of dark mode?"
 ```
 
 **What NOT to ask about:** Implementation details, architecture, file locations, naming conventions — these belong to the builder agent during the work phase.
+
+**Special case — RED/GREEN proof:** For `tdd: true` requests and other behavior-changing work that can be proven with a prompt/repro/example, infer the likely RED case before writing the REQ and validate it with the user during capture. Use the ask tool if available for this validation so the user can confirm or correct the proof target in a structured way.
+
+This is essential, not optional polish. A well-chosen RED state is often the single most useful artifact capture can produce. It gives the builder a crisp target, keeps scope honest, and makes GREEN objectively verifiable. Be glad to do this work. Take a moment to find the best RED case you can.
+
+The goal is agreement on:
+
+1. What concrete prompt, repro, or example should fail or be missing today?
+2. What concrete outcome makes it GREEN when the work is done?
+
+Ask about observable proof, not how the test should be implemented.
+
+Prefer the best RED case, not the first one:
+- Minimal — the smallest prompt/repro/example that isolates the missing behavior
+- Concrete — specific enough that two different builders would test the same thing
+- User-visible — described in behavior/outcome terms, not internal implementation terms
+- Binary — it is obvious why it is RED now and obvious what turns it GREEN
+- Traceable — easy to reference later in testing and review
+
+```text
+Good: "Should RED be 'searching for invoice returns no results even though invoice-123 exists', and GREEN be 'invoice-123 appears in results'?" — options: yes / use a different failure case / not a test-first request
+Bad:  "What test should we write for search?"
+```
+
+If the user adjusts your inferred RED/GREEN pair, record the user's version. If you genuinely cannot ask right now, still capture your best inferred pair and mark `Validation: Inferred during capture`.
 
 **After capture:** Any remaining ambiguities that weren't resolved interactively go into the REQ's `## Open Questions` section with inline choices. These are exceptional — most REQs should have zero open questions after capture.
 
@@ -275,7 +311,8 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 **For all requests (simple and complex):**
 1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially)
 2. Create REQ-NNN-slug.md files using the appropriate format, adding user_request: UR-NNN, the inferred domain, and the prime_files array populated with any discovered paths.
-3. Update the UR's `requests` array with all created REQ IDs
+3. If the request is behavior-changing and has a meaningful RED/GREEN proof target, add a `## Red-Green Proof` section. If `tdd: true`, this section is required.
+4. Update the UR's `requests` array with all created REQ IDs
 
 **Complex mode additionally:**
 - Create `assets/` subfolder in the UR folder
@@ -407,6 +444,7 @@ nuances. You can run `do work verify requests` to check coverage against your or
 ## Edge Cases
 
 - **Vague request ("fix the search")**: Capture what was said. The builder can clarify.
+- **Behavioral request but proof is fuzzy**: Propose the smallest failing prompt/repro you can infer, ask the user to confirm or adjust it, and record the agreed RED/GREEN pair.
 - **References earlier conversation**: Include that context in the request file.
 - **Seems impossible or contradictory**: Capture it. Add contradictions as `- [ ]` Open Questions with recommended resolutions — and ask the user right now if they're available.
 - **Requirement applies to multiple features**: Include in ALL relevant REQ files. Duplication beats losing it.

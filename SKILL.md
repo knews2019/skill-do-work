@@ -11,7 +11,7 @@ A unified entry point for task capture and processing.
 
 **Actions:**
 
-- **capture requests**: Capture new tasks/requests → creates UR folder (verbatim input) + REQ files (queue items), always paired
+- **capture requests**: Capture new tasks/requests → creates UR folder (verbatim input) + REQ files (queue items), always paired; for testable behavior, infer and confirm the RED case/GREEN proof target during capture. This is essential, high-value work.
 - **verify requests**: Evaluate captured REQs against original input → quality check
 - **work**: Process pending requests → executes the queue
 - **clarify questions**: Batch-review Open Questions from completed work → user answers, confirms, or skips
@@ -35,7 +35,7 @@ A unified entry point for task capture and processing.
 
 > **Human time has two optimal windows.** The system is designed to maximize the value of human attention:
 >
-> 1. **Capture phase** (capture requests action) — The user is present, actively thinking about the request. This is the best time for back-and-forth: clarifying ambiguities, resolving contradictions, making scope decisions. Use your environment's ask-user prompt/tool with concrete choices here. Every question must present options — never open-ended "what do you mean?" prompts.
+> 1. **Capture phase** (capture requests action) — The user is present, actively thinking about the request. This is the best time for back-and-forth: clarifying ambiguities, resolving contradictions, making scope decisions. Use the ask tool if your environment provides one; otherwise use your environment's normal ask-user prompt/tool. Every question must present concrete options — never open-ended "what do you mean?" prompts.
 >
 > 2. **Batch question review** (clarify questions action) — After the build phase completes everything it can without feedback, any remaining `pending-answers` REQs are surfaced as a batch. The user reviews all builder-decided questions together, confirms or adjusts, and resolved REQs re-enter the queue.
 >
@@ -579,4 +579,3 @@ Next steps:
 - Keep it to 2-3 suggestions max — don't overwhelm
 - Format as a simple list the user can scan and copy
 - Always include a reminder at the end: `do work help` to see all available commands
-

@@ -345,6 +345,7 @@ All routes include these instructions to the agent:
 - Document any blockers clearly
 - Identify existing tests related to your changes
 - **Check the prime file for a testing section** — if the prime maps code areas to specific test commands (e.g., "changes to lib/inpainting.js → run `npm run test:api`"), follow that mapping. This takes precedence over generic test detection.
+- **Honor captured proof first:** If the REQ contains a `## Red-Green Proof` section, use its RED prompt/case and GREEN outcome as the primary behavior your tests must prove. Treat that captured RED state as a valuable artifact, not a suggestion. Only adapt it if the codebase requires a nearby equivalent; if you do, document why.
 - **Write pragmatic tests:** For bug fixes and new features, prefer red-green validation. Use RED/GREEN TDD when the change is behavioral and can be proven with a test written first — write or identify tests that validate the request's requirements, run them before implementing (they should fail), then verify they pass after. For refactors, config changes, documentation, and cleanup, red-green may not apply — targeted regression tests, lint/build validation, or non-regression evidence is sufficient. The goal is proof that the change works, not ceremony.
 - Write new tests for new functionality / regression tests for bug fixes
 - Update existing tests if behavior intentionally changed
@@ -352,7 +353,7 @@ All routes include these instructions to the agent:
 - When complete, report back: list every source file you created, modified, or deleted (with the action — new/modified/deleted), and summarize what tests exist and what new tests were written. The orchestrator uses this to write the formal `## Implementation Summary`.
 - **State Machine Updates:** As you progress, you MUST physically edit this REQ file to change the `[ ]` checkboxes in the "AI Execution State (P-A-U Loop)" section to `[x]`.
 - **TDD Mode:** If the REQ has `tdd: true` in frontmatter, use RED/GREEN TDD and follow the red-green-refactor cycle:
-  1. **RED:** Write a failing test that validates the requirement. Run it — confirm it fails.
+  1. **RED:** Start from the REQ's `## Red-Green Proof` section if present. Write a failing test that validates that captured behavior. Run it — confirm it fails.
   2. **GREEN:** Write the minimum code to make the test pass. No more.
   3. **REFACTOR:** Clean up while tests stay green.
   Report the red-green evidence in your output: test name, failure message before, pass after. The Testing section (Step 6.5) will verify this evidence is present.
@@ -460,6 +461,8 @@ Append to the request file:
 ```
 
 Omit `Red-green validation` if no request-specific tests were written or identified, or if the change is non-behavioral (refactor, config, docs, cleanup) — use regression evidence instead. Omit `Existing tests updated` if no prior tests were modified.
+
+When the REQ includes `## Red-Green Proof`, the `Red-green validation` entries should trace back to that captured RED/GREEN pair. If the implemented test uses a nearby equivalent instead of the exact captured prompt/case, explain why.
 
 **TDD verification:** If the REQ has `tdd: true`, the `Red-green validation` section is mandatory — the builder must show test-first evidence that they used RED/GREEN TDD (test written before implementation, failed, then passed after). If this evidence is missing, flag it as a qualification issue.
 

@@ -28,6 +28,7 @@ do work capture request: [paste meeting notes, specs, or a screenshot]
 ```
 
 The skill splits compound inputs into separate REQ files automatically. It asks clarifying questions during capture (while you're present) but never starts building — capture and execution are strictly separate.
+For testable behavioral work, capture should also infer and confirm the RED case: how we know it's failing or missing now, and what turns GREEN when the work is done.
 
 ### 2. Process the queue
 
