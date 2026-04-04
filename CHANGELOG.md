@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.42.3 — The Sweeper (2026-04-04)
+
+Cleanup now sweeps finished REQs stranded in queue root or working/ — completed work that fell through the cracks gets archived automatically.
+
+- Cleanup Pass 0: sweep REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from queue root and `working/` to archive
+- Cleanup Pass 0: normalize non-standard statuses (`done` → `completed`, `finished` → `completed`, `closed` → `completed`) before archiving
+- Forensics Check 9 expanded: "Stranded Finished REQs" now scans both queue root and `working/` for terminal-status REQs
+
+---
+
 ## 0.42.2 — The Clear Eyes (2026-04-04)
 
 Queue state is now visible everywhere — no more blind spots where completed work silently disappears.

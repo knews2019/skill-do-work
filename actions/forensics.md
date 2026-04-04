@@ -89,15 +89,18 @@ For recently archived REQs (last 10 with `commit` in frontmatter):
 - **Info** if files were modified by later commits (expected for active development)
 - **Warning** if files listed as `(new)` no longer exist (may have been deleted without tracking)
 
-### 9. Completed Awaiting Archive
+### 9. Stranded Finished REQs
 
-Scan `do-work/REQ-*.md` (root, not archive) for REQs with `status: completed`, `status: done`, or `status: completed-with-issues`.
+Scan `do-work/REQ-*.md` (root, not archive) AND `do-work/working/REQ-*.md` for REQs with any terminal status: `completed`, `completed-with-issues`, `failed`, or non-standard variants like `done`, `finished`, `closed`.
 
-Group by `user_request` frontmatter field. For each UR group:
-- **Warning**: "UR-NNN has N completed REQs in queue awaiting archive: REQ-NNN, REQ-NNN, ..."
-- **Suggested fix**: `do work cleanup`
+**Queue root findings:** Group by `user_request` frontmatter field. For each UR group:
+- **Warning**: "UR-NNN has N completed REQs stranded in queue root awaiting archive: REQ-NNN, REQ-NNN, ..."
+- REQs without a `user_request` field are grouped separately as "unlinked."
 
-REQs without a `user_request` field are grouped separately as "unlinked."
+**Working directory findings:** For each terminal-status REQ in `do-work/working/`:
+- **Warning**: "REQ-NNN is in working/ with terminal status '{status}' — finished but never moved out"
+
+**Suggested fix** for all: `do work cleanup` (Pass 0 sweeps finished REQs to archive)
 
 ## Output Format
 

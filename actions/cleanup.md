@@ -11,7 +11,20 @@ The archive should be a collection of self-contained UR folders, each containing
 
 ## What It Does
 
-Three passes, in order:
+Four passes, in order:
+
+### Pass 0: Sweep Finished Queue Items
+
+Scan the queue root and working directory for REQs with terminal statuses that should have been archived but weren't — typically from manual work, different agents, or legacy sessions that completed outside the standard work pipeline.
+
+1. **Glob `do-work/REQ-*.md`** in the queue root
+2. **Read each REQ's frontmatter** `status` field
+3. **If status is any terminal value** — `completed`, `completed-with-issues`, `failed`, or any non-standard terminal status (`done`, `finished`, `closed`):
+   - **Normalize non-standard statuses** before moving: change `done` → `completed`, `finished` → `completed`, `closed` → `completed` in frontmatter
+   - Move the REQ to `do-work/archive/` root (Pass 1 and Pass 2 will then consolidate it into the correct UR folder)
+   - Report: `Swept REQ-NNN from queue root (was status: {original}) → archive`
+4. **Leave `pending`, `pending-answers`, and `claimed` REQs untouched** — those are active queue items
+5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`), it was finished but never moved out. Same treatment: normalize status, move to `do-work/archive/` root, report it.
 
 ### Pass 1: Close Completed User Requests
 
@@ -82,6 +95,7 @@ Print a summary at the end:
 
 ```
 Archive cleanup complete:
+  - Swept: 3 finished REQs from queue root, 1 from working/
   - Archived: UR-011 (3 REQs), UR-004 (8 REQs)
   - Consolidated: 5 loose REQs into their UR folders
   - Legacy: 24 REQs moved to archive/legacy/
@@ -124,8 +138,10 @@ Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, ski
 
 ```bash
 # Stage all paths affected by cleanup (moves show as delete + add)
-# Include misplaced do-work/ paths if Pass 3a relocated anything
+# Include queue root and working/ if Pass 0 swept any finished REQs
 git add do-work/archive/ do-work/user-requests/
+# If Pass 0 swept REQs from queue root or working/, also stage those paths:
+# git add do-work/REQ-NNN-*.md do-work/working/REQ-NNN-*.md  (the deletion side of the moves)
 # If Pass 3a found misplaced directories, also stage those paths:
 # git add exp/g3-segment-anything/do-work/  (the deletion side of the move)
 
@@ -145,12 +161,12 @@ EOF
 
 If nothing was moved (archive was already clean), skip the commit entirely.
 
-Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/`, `do-work/user-requests/`, and any misplaced `do-work/` directories relocated by Pass 3a. Don't bypass pre-commit hooks.
+Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/`, `do-work/user-requests/`, any queue root or working/ REQs swept by Pass 0, and any misplaced `do-work/` directories relocated by Pass 3a. Don't bypass pre-commit hooks.
 
 ## What This Action Does NOT Do
 
 - Delete any files — only moves them into the right location
-- Modify file contents or frontmatter — files are relocated as-is
-- Touch files in the **canonical** `do-work/` root (the queue) or `do-work/working/` — those are the work action's responsibility. Exception: Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery, not queue processing.
+- Modify file contents or frontmatter — files are relocated as-is. Exception: Pass 0 normalizes non-standard terminal statuses (`done` → `completed`, etc.) in frontmatter before moving.
+- Touch **active** files in the **canonical** `do-work/` root (the queue) or `do-work/working/` — `pending`, `pending-answers`, and `claimed` REQs are the work action's responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from queue root and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery.
 - Archive UR folders that still have pending/in-progress REQs
 - Process any REQ files (use the work action for that)
