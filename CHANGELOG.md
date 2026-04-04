@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.42.2 — The Clear Eyes (2026-04-04)
+
+Queue state is now visible everywhere — no more blind spots where completed work silently disappears.
+
+- Work action prints queue status summary at start (pending/completed/pending-answers counts)
+- Work action lists completed-but-unarchived REQs instead of silently saying "no pending REQs"
+- Recap reads from both archive and active queue, labels non-archived URs
+- Forensics Check 9 detects completed REQs sitting in queue awaiting archive
+
+---
+
 ## 0.42.1 — The Full Picture (2026-04-04)
 
 Scoped inspect (`do work inspect REQ-NNN` / `UR-NNN`) now shows all files from the Implementation Summary — not just uncommitted ones. Committed files are read via `git show` and reported alongside pending changes so you get the complete picture in one report.

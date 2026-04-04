@@ -171,7 +171,42 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 
 Once `working/` is empty, proceed with finding the next request.
 
-Glob for `do-work/REQ-*.md` (root of `do-work/`, **not** a subdirectory — there is no `queue/` folder). Sort by number. Read the frontmatter of each (in number order) to check `status` — pick the first with `status: pending` (skip `pending-answers` — those wait for user input). Don't read the full body at this stage. If no `pending` REQs found, report completion and exit. If only `pending-answers` REQs remain, report them to the user so they can batch-review the questions.
+Glob for `do-work/REQ-*.md` (root of `do-work/`, **not** a subdirectory — there is no `queue/` folder). Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
+
+**Queue status summary:** After reading all REQ frontmatter, categorize every REQ by status and print a summary before proceeding:
+
+```
+Queue: N pending | N completed/done (awaiting archive) | N pending-answers
+```
+
+Count `completed`, `completed-with-issues`, and `done` statuses together as "completed/done (awaiting archive)." If any completed/done REQs exist in the root `do-work/`, add:
+
+```
+⚠ N completed REQs across M URs awaiting archive. Run `do work cleanup` after this session.
+```
+
+**Pick the first pending REQ:** Scan for the first REQ with `status: pending` (skip `pending-answers` — those wait for user input).
+
+**Exit paths when no `pending` REQs found:**
+
+- **Completed/done REQs exist in root `do-work/`:** Do NOT silently say "no pending REQs." Instead, list them grouped by UR:
+
+  ```
+  No pending REQs in queue.
+
+  ⚠ N completed REQs awaiting archive (UR-137: 3 REQs, UR-138: 1 REQ, ...):
+    REQ-351 — [title] (done)
+    REQ-352 — [title] (completed)
+    ...
+
+  Run `do work cleanup` to archive completed work, then `do work recap` to see full history.
+  ```
+
+  Read the `user_request` frontmatter field from each completed/done REQ to determine UR grouping. List actual REQ ids, titles, and statuses so the user sees exactly what's sitting there. Then exit.
+
+- **Only `pending-answers` REQs remain (no completed/done):** Report them to the user so they can batch-review the questions via `do work clarify`.
+
+- **No REQs at all:** Report completion and exit.
 
 **REQ validation:** When reading each REQ's frontmatter, verify it has the required fields (`id`, `status`, `title`). If a REQ file has missing or unparseable frontmatter, skip it and report: `⚠ Skipping [filename]: missing required frontmatter ([field]).` Do not let a single malformed REQ block the entire work loop — skip it and continue to the next.
 
@@ -686,8 +721,8 @@ This ensures the `commit:` field in the archived REQ contains the real implement
 Re-check `do-work/` for `REQ-*.md` files (fresh check, not cached).
 
 - **`pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
-- **Only `pending-answers` REQs remain**: Write a **Session Checkpoint** (see below), run the [cleanup action](./cleanup.md), then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work clarify` when ready.
-- **No REQs at all**: Write a Session Checkpoint, run cleanup, report final summary and exit.
+- **Only `pending-answers` REQs remain**: Write a **Session Checkpoint** (see below), run the [cleanup action](./cleanup.md), then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work clarify` when ready. If completed/done REQs also exist in root `do-work/`, include them in the summary: `⚠ N completed REQs awaiting archive. Run do work cleanup to archive them.` List the REQ ids, titles, and UR groupings.
+- **No REQs at all**: Write a Session Checkpoint, run cleanup, report final summary and exit. If completed/done REQs exist in root `do-work/` (they may have been created during this session but not yet archived due to incomplete URs), include them in the summary with the same `⚠` warning and REQ listing as above.
 
 #### Context Wipe — Verified
 

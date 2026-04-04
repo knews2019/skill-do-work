@@ -89,13 +89,23 @@ For recently archived REQs (last 10 with `commit` in frontmatter):
 - **Info** if files were modified by later commits (expected for active development)
 - **Warning** if files listed as `(new)` no longer exist (may have been deleted without tracking)
 
+### 9. Completed Awaiting Archive
+
+Scan `do-work/REQ-*.md` (root, not archive) for REQs with `status: completed`, `status: done`, or `status: completed-with-issues`.
+
+Group by `user_request` frontmatter field. For each UR group:
+- **Warning**: "UR-NNN has N completed REQs in queue awaiting archive: REQ-NNN, REQ-NNN, ..."
+- **Suggested fix**: `do work cleanup`
+
+REQs without a `user_request` field are grouped separately as "unlinked."
+
 ## Output Format
 
 ```markdown
 # Forensics Report
 
 **Scan date:** [timestamp]
-**Queue:** [N pending, N pending-answers]
+**Queue:** [N pending, N completed/done (awaiting archive), N pending-answers]
 **Archive:** [N completed, N completed-with-issues, N failed]
 **Working:** [N in-progress]
 
@@ -132,7 +142,7 @@ Omit sections with no findings. If everything is clean, report:
 # Forensics Report
 
 **Scan date:** [timestamp]
-**Queue:** [N pending, N pending-answers]
+**Queue:** [N pending, N completed/done (awaiting archive), N pending-answers]
 **Archive:** [N completed, N failed]
 
 All clear — no issues detected.

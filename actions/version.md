@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps.
 
-**Current version**: 0.42.1
+**Current version**: 0.42.2
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -72,20 +72,26 @@ Or visit: https://github.com/knews2019/skill-do-work
 
 When user asks "recap":
 
-1. **Find the archive**: Look for `do-work/archive/` in the project root
-2. **Find the 5 highest-numbered UR folders** (e.g., `UR-012`, `UR-011`, etc.)
-3. **For each UR**:
-   - Read `input.md` for the title
-   - List REQ files and extract titles from frontmatter or filename slug
-4. **Format as a "Recent Work" section**:
+1. **Archive source** (`do-work/archive/UR-*/`): Read as before — title from `input.md`, REQs from `REQ-*.md` files inside each UR folder.
+2. **Active source** (`do-work/user-requests/UR-*/`): Read `input.md` for the title. For REQs, scan root `do-work/REQ-*.md` files whose `user_request:` frontmatter field matches the UR id (e.g., `user_request: UR-143`). Also check `do-work/working/` for claimed REQs belonging to the UR.
+3. **Merge**: Combine both lists, deduplicate by UR id (archive version wins if both exist), sort by UR number descending, take top 5.
+4. **Label each UR**:
+   - No label if fully archived
+   - `(pending)` if the UR has any pending REQs
+   - `(completed, awaiting archive)` if all its REQs are completed/done but the UR isn't archived yet
+5. **Format as a "Recent Work" section**:
    ```
    ## Recent Work
 
-   UR-012 — [title from input.md]
-     REQ-045 — [title]
-     REQ-046 — [title]
-   UR-011 — [title from input.md]
-     REQ-043 — [title]
+   UR-144 — Block-level improved translation for ZH pairs
+     REQ-361 — Block-level improved translation
+   UR-143 — Model selector thinking variants (completed, awaiting archive)
+     REQ-360 — Model selector thinking variants
+   UR-142 — Quality-Score-Driven Repair Loop (completed, awaiting archive)
+     REQ-359 — Quality-Score-Driven Repair Loop
+   UR-011 — Dark mode implementation
+     REQ-043 — Theme store setup
+     REQ-044 — Settings panel toggle
    ```
    One line per UR, one indented line per REQ. No descriptions, no scores, no file lists.
-5. **If no archive exists** (`do-work/archive/` not found or empty): Print `No completed work yet.` and skip this section.
+6. **If no archive exists AND no active URs found**: Print `No completed work yet.` and skip this section.
