@@ -4,6 +4,19 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.42.1 — The Full Picture (2026-04-04)
+
+Scoped inspect (`do work inspect REQ-NNN` / `UR-NNN`) now shows all files from the Implementation Summary — not just uncommitted ones. Committed files are read via `git show` and reported alongside pending changes so you get the complete picture in one report.
+
+- Inspect: committed files from Implementation Summary included when scoped to REQ/UR
+- Inspect: committed files get "Committed" verdict (informational, not actionable)
+- Inspect: Readiness Summary table gains a Status column (committed / uncommitted)
+- Inspect: REQ groups split into Uncommitted and Committed Files subsections
+- Inspect: no longer exits early when scoped REQ has no uncommitted files — continues with committed-only inspection
+- Inspect: pre-associates all Implementation Summary files in scoped mode, skipping the matching step
+
+---
+
 ## 0.42.0 — The Careful Eye (2026-04-04)
 
 Every captured REQ now ends with "Think carefully before answering." — a prompt-level nudge for downstream builders to slow down and reason before acting.
