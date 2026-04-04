@@ -4,6 +4,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.42.4 — The Tightened Bolts (2026-04-04)
+
+Five logic gaps fixed from code review — baseline test handling, deleted file inspection, domain propagation, framework routing, and TDD enforcement.
+
+- Work Step 6.5: baseline test failures from Pre-Flight are now excluded from the pass/fail gate — only new regressions require fixing
+- Work Step 6.3: "wired" qualification check now exempts framework-convention files (Next.js pages/, SvelteKit routes/, etc.)
+- Work Step 6.5: TDD missing-evidence is now a test failure (returns to implementation), not an orphaned qualification flag
+- Inspect: committed `(deleted)` files are noted by path without attempting `git show` (which would error)
+- Review-work: follow-up REQ template now includes `domain` field to preserve rules-[domain].md loading
+
+---
+
 ## 0.42.3 — The Sweeper (2026-04-04)
 
 Cleanup now sweeps finished REQs stranded in queue root or working/ — completed work that fell through the cracks gets archived automatically.

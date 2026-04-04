@@ -88,9 +88,11 @@ Build a semantic understanding of each uncommitted file:
 When `$ARGUMENTS` specifies a REQ or UR, also collect committed files from the target REQ's Implementation Summary that are **not** in the uncommitted file list:
 
 1. Read the target REQ file(s) and extract the file list from `## Implementation Summary`.
-2. For each file in the list that has no uncommitted changes, read its content via `git show <commit>:<path>`:
-   - Use the `commit:` field from the REQ's frontmatter if present.
-   - Otherwise, fall back to `HEAD`.
+2. For each file in the list that has no uncommitted changes:
+   - **Deleted files** (marked `(deleted)` in the Implementation Summary): Note the path and that it was deleted by this REQ. Do not attempt `git show` — there is no content to read. Mark as **committed (deleted)**.
+   - **All other files**: Read content via `git show <commit>:<path>`:
+     - Use the `commit:` field from the REQ's frontmatter if present.
+     - Otherwise, fall back to `HEAD`.
 3. Skip binary files (same extension check as above). For large files (>500 lines), read the first 100 and last 50 lines.
 4. Mark these files as **committed** — they will be reported separately from uncommitted files.
 

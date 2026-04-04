@@ -270,6 +270,7 @@ For each **Important** finding, create a follow-up REQ:
 id: REQ-NNN
 title: "Review fix: [brief description]"
 status: pending
+domain: [same domain as the reviewed REQ]
 created_at: [timestamp]
 user_request: [same UR as the reviewed REQ]
 addendum_to: [reviewed REQ id]
