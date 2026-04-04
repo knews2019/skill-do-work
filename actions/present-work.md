@@ -171,7 +171,7 @@ do-work/deliverables/UR-NNN-video/
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "preview": "npx remotion studio src/Root.tsx"
+    "preview": "npx remotion studio src/Root.tsx --no-open & sleep 3 && open http://localhost:3000"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -189,10 +189,10 @@ do-work/deliverables/UR-NNN-video/
 **`src/Root.tsx`:**
 
 ```tsx
-import {Composition} from 'remotion';
+import {registerRoot, Composition} from 'remotion';
 import {Video} from './Video';
 
-export const RemotionRoot: React.FC = () => {
+const RemotionRoot: React.FC = () => {
   return (
     <Composition
       id="[FeatureName]"
@@ -204,7 +204,11 @@ export const RemotionRoot: React.FC = () => {
     />
   );
 };
+
+registerRoot(RemotionRoot);
 ```
+
+**Important:** The `registerRoot()` call is required — without it Remotion Studio will hang on "Waiting for registerRoot() to get called." Do NOT use `export const RemotionRoot` — call `registerRoot()` at module level instead.
 
 **`src/Video.tsx`:**
 
@@ -343,7 +347,8 @@ Always generate a self-contained HTML file at `do-work/deliverables/UR-NNN-inter
 - **Zero build steps:** It MUST be a single `.html` file. Use standard HTML5, Tailwind CSS via CDN (`<script src="https://cdn.tailwindcss.com"></script>`), and Vanilla JavaScript. No React, Vite, or npm installs required.
 - **Goal:** Visually explain the problem (Before) and the solution (After) to a non-technical stakeholder.
 - **Interactivity:** You MUST include interactive elements. Examples: A 'Before / After' visual toggle slider, or a clickable 'Step-by-Step' data flow diagram where clicking 'Next' highlights different parts of the architecture.
-- **Design:** Make it look modern and highly polished (slate light-mode backgrounds, bright accent colors, large typography, soft shadows). Include tooltips or sidebars that explain technical decisions in plain English.
+- **Theme:** Light theme by default. Use `prefers-color-scheme: dark` media query to support OS-level dark mode. Define CSS custom properties (e.g., `--bg`, `--surface`, `--text`) at `:root` for light values and override them inside `@media (prefers-color-scheme: dark)`. Light palette: white/slate-50 backgrounds, slate-800/900 text, blue-600 accents. Dark palette: slate-900 backgrounds, slate-100 text, blue-400 accents.
+- **Design:** Make it look modern and highly polished — large typography, soft shadows, generous whitespace. Include tooltips or sidebars that explain technical decisions in plain English.
 - **Content:** Pull real context from the REQ files. Include a 'The Problem', 'The Interactive Demo', and a 'Value Delivered' section.
 
 #### 4d: Portfolio artifacts (portfolio mode only — see below)

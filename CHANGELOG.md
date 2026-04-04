@@ -4,6 +4,31 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.42.7 — The Open Sesame (2026-04-05)
+
+Remotion preview script now works around a macOS LaunchServices bug that prevents the browser from opening.
+
+- Present-work Remotion package.json: preview script uses `--no-open` flag + native macOS `open` command to reliably launch the browser
+
+---
+
+## 0.42.6 — The Missing Call (2026-04-05)
+
+Remotion video template now calls `registerRoot()` — fixes the "Waiting for registerRoot()" hang in Remotion Studio.
+
+- Present-work Remotion Root.tsx template: added `registerRoot(RemotionRoot)` call at module level
+- Added explicit warning note so agents don't revert to the broken `export const` pattern
+
+---
+
+## 0.42.5 — The Light Switch (2026-04-05)
+
+Interactive explainer now defaults to light theme with automatic OS-level dark mode support via `prefers-color-scheme`.
+
+- Present-work interactive explainer: light theme by default, CSS custom properties for theming, `@media (prefers-color-scheme: dark)` override for dark mode users
+
+---
+
 ## 0.42.4 — The Tightened Bolts (2026-04-04)
 
 Five logic gaps fixed from code review — baseline test handling, deleted file inspection, domain propagation, framework routing, and TDD enforcement.
