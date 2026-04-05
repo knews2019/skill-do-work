@@ -39,6 +39,14 @@ Before executing any sub-command (except `init`), find the KB root:
 
 Create the full KB directory structure at the specified path (default: `./kb`).
 
+### Pre-flight Check
+
+Before creating anything, check if the target path already contains a KB (has both `raw/` and `wiki/` subdirectories):
+
+- **If KB exists**: Stop and report: "Knowledge base already exists at `<path>/` (N articles, M topic clusters). To repair a broken structure, run `do work bkb init <path> --fill-gaps`."
+- **If `--fill-gaps` flag is present**: Only create directories and seed files that don't already exist. Never overwrite existing files. Report what was created vs. what was skipped.
+- **If no KB exists**: Proceed with full initialization.
+
 ### Step 1: Create the Raw Pipeline
 
 ```
@@ -237,6 +245,16 @@ confidence: high | medium | low
 
 > **`sources:` always uses the `raw/processed/` path** (e.g., `raw/processed/2026-04-05/moe-paper.pdf`). This is the file's stable final location. Never use `capture/` paths — those are transient.
 
+### Confidence Rules
+
+Set `confidence:` in frontmatter based on source quality:
+
+- **high** — backed by a primary source (peer-reviewed paper, official documentation, authoritative reference) OR corroborated by 2+ independent sources that agree.
+- **medium** — single secondary source (blog post, talk transcript, tutorial) with no corroboration yet. This is the default for new pages.
+- **low** — no direct source (inferred or synthesized by the LLM), OR an active contradiction is flagged against this page.
+
+Confidence can change: medium → high when a second source confirms the claim. High → low when a contradiction is flagged. Low → medium/high when the contradiction is resolved.
+
 ### Index Size Rules
 
 - `_master_index.md` must stay under 80 lines.
@@ -306,6 +324,8 @@ Lint results (scope: [scope]):
 
 Suggest specific fixes for each finding.
 
+Append a lint entry to `wiki/log.md` using the format `## [{today}] lint | <scope>` with a summary of findings. This allows `status` to derive the last-lint date by scanning `log.md` for the most recent lint entry.
+
 ---
 
 ## Sub-Command: `resolve`
@@ -360,9 +380,10 @@ Generate the monthly summary. Run on the 1st of each month or on demand.
    - **Theme evolution**: which topics grew, which went stale, emerging patterns.
    - **Integrity summary**: lint results, confidence changes.
    - **Recommendations**: topic splits needed, new clusters suggested, gap areas.
-3. **Evaluate** whether any topic index needs splitting (threshold: 80+ articles).
-4. **Update** `wiki/_master_index.md` with monthly activity line.
-5. **Append** to `wiki/log.md`.
+3. **Archive queue**: Move all "done" rows older than 30 days from `raw/_inbox_queue.md` to `raw/_inbox_queue_archive.md` (create if needed). This keeps the active queue small while preserving the full ledger. The manifest in `raw/processed/_manifest.md` remains the authoritative permanent record.
+4. **Evaluate** whether any topic index needs splitting (threshold: 80+ articles).
+5. **Update** `wiki/_master_index.md` with monthly activity line.
+6. **Append** to `wiki/log.md`.
 
 ---
 
@@ -375,6 +396,7 @@ Quick snapshot of the KB state.
 1. **Read** `wiki/_master_index.md` for article counts and topic clusters.
 2. **Count** files in `raw/inbox/` (pending triage) and items marked "ready" in `raw/_inbox_queue.md` (pending ingestion).
 3. **Read** the most recent `wiki/daily/` entry for last activity date.
+4. **Scan** `wiki/log.md` for the most recent `lint |` entry to get the last-lint date.
 4. **Report**:
    ```
    Knowledge Base Status:
