@@ -151,14 +151,32 @@ do work diagnose
 do work health check
 ```
 
-### 13. Install companion skills
+### 13. Build a knowledge base
+
+Build and maintain an LLM-friendly Markdown wiki from raw sources (PDFs, articles, notes). Aliases: `bkb`, `kb`, `build knowledge base`, `knowledge base`.
+
+```
+do work bkb init              # initialize a new knowledge base at ./kb
+do work bkb init ~/research   # initialize at a custom path
+do work bkb triage            # sort inbox items into capture directories
+do work bkb ingest            # compile sources into wiki pages
+do work bkb query [question]  # search the wiki and synthesize an answer
+do work bkb lint              # quick health check
+do work bkb lint full         # full structural check
+do work bkb resolve           # walk through open contradictions
+do work bkb close             # finalize daily log, refresh overview
+do work bkb rollup            # monthly summary
+do work bkb status            # show KB stats and pending items
+```
+
+### 14. Install companion skills
 
 ```
 do work install-ui-design   # Anthropic's frontend-design skill for production-grade UI
 do work install-bowser      # Playwright CLI + Bowser skill for browser automation
 ```
 
-### 14. Version and history
+### 15. Version and history
 
 ```
 do work version             # current version + last 5 releases

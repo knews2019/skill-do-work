@@ -257,7 +257,7 @@ do-work — task queue for agentic coding tools
     do work ui-review src/components/     Validate a directory
     do work ui-review prime-dashboard     Validate everything a prime file touches
 
-  Knowledge base:
+  Knowledge base (aliases: bkb, kb, build knowledge base, knowledge base):
     do work bkb init              Initialize a new LLM knowledge base
     do work bkb triage            Sort inbox items into capture directories
     do work bkb ingest            Compile sources into wiki pages
