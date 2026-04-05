@@ -169,6 +169,8 @@ do work bkb rollup            # monthly summary
 do work bkb status            # show KB stats and pending items
 ```
 
+For the full folder structure, file lifecycle, and wiki page format, see the [BKB Guide](docs/bkb-guide.md).
+
 ### 14. Install companion skills
 
 ```
