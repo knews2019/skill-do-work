@@ -4,6 +4,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.43.1 — The Clean Handoff (2026-04-05)
+
+BKB file lifecycle fixed — ingest now moves sources out of capture/ so triage never re-queues already-ingested files.
+
+- Ingest step 6: **move** (not copy) sources from `capture/` to `processed/{today}/`; filename collisions get an `HHMMSS-` prefix
+- Triage step 4: queue updates scoped to files moved in the current pass only (append-only ledger)
+- Ingest step 3: duplicate detection before wiki page creation — exact duplicates merge into existing pages, near-duplicates get bidirectional `related:` links
+- Manifest table gains "Processed Path" column tracking the final location
+- Schema file updated to match new lifecycle semantics
+
+---
+
 ## 0.43.0 — The Second Brain (2026-04-05)
 
 New `bkb` command — build and maintain a persistent LLM Knowledge Base wiki compiled from raw source documents. Based on Karpathy's methodology: raw sources go in, structured interlinked Markdown wiki comes out.

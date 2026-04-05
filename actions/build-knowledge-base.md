@@ -54,7 +54,7 @@ Create the full KB directory structure at the specified path (default: `./kb`).
 │   │   └── video/
 │   ├── daily/                      # Compilation batches by date
 │   ├── monthly/                    # Monthly rollups
-│   ├── processed/                  # Post-compilation copies
+│   ├── processed/                  # Ingested sources, organized by date (YYYY-MM-DD/)
 │   └── _inbox_queue.md             # LLM work list
 ```
 
@@ -93,7 +93,7 @@ Items pending triage. Updated automatically during triage.
 ```markdown
 # Processing Manifest
 
-| File | Date Processed | Daily Batch | Wiki Articles Produced | Status |
+| File | Date Processed | Processed Path | Wiki Articles Produced | Status |
 |---|---|---|---|---|
 ```
 
@@ -174,7 +174,7 @@ Sort new items from `raw/inbox/` into `raw/capture/` subdirectories by type.
    - Code files, `README.md` from repos → `capture/repos/`
    - Unknown → leave in inbox, flag for user
 3. **Move** each classified file to its target directory.
-4. **Update** `raw/_inbox_queue.md` with all items now in `capture/`, marked as "ready".
+4. **Update** `raw/_inbox_queue.md` — append only the files moved from inbox in **this** triage pass, marked as "ready". Do NOT re-scan all of `capture/`; the queue is an append-only ledger of triage batches.
 5. **Report**: Items triaged, items skipped (with reasons), items ready for ingestion.
 
 If inbox is empty, say so and suggest adding files.
@@ -194,21 +194,25 @@ Compile source documents into wiki pages. This is the core operation.
 
 ### Steps
 
-1. **Read** the target source file(s).
-2. **Create daily batch**: Create `raw/daily/{today}/` if it doesn't exist. Note which files are in this batch.
+1. **Read** the target source file(s) from `raw/capture/` (or the specified path).
+2. **Record daily batch**: Create `raw/daily/{today}/` if it doesn't exist. This folder is a log — it records which files were processed on this date (via the daily wiki log and manifest), but source files stay in `capture/` until step 6 moves them to `processed/`.
 3. **For each source**, discuss key takeaways briefly, then:
-   a. **Create or update** a summary page in `wiki/sources/` with YAML frontmatter.
-   b. **Create or update** relevant concept pages in `wiki/concepts/`.
-   c. **Create or update** relevant entity pages in `wiki/entities/`.
-   d. **Check for contradictions** with existing wiki content. Flag any found.
-   e. **Update cross-references** — add `[[wiki-links]]` between related pages.
+   a. **Duplicate check** — before creating any wiki page, search for existing pages covering the same topic:
+      - **Exact duplicate** (same source re-ingested, or same content from a different URL): update the existing page — add the new file to its `sources:` frontmatter list, refresh any stale claims, note "additional source" in the daily log. Do NOT create a second page.
+      - **Near-duplicate** (same topic, different angle or data): create a separate page but add bidirectional `[[wiki-links]]` in both pages' `related:` frontmatter. Note the relationship in the daily log (e.g., "New page X complements existing page Y").
+      - **No duplicate**: proceed normally.
+   b. **Create or update** a summary page in `wiki/sources/` with YAML frontmatter.
+   c. **Create or update** relevant concept pages in `wiki/concepts/`.
+   d. **Create or update** relevant entity pages in `wiki/entities/`.
+   e. **Check for contradictions** with existing wiki content. Flag any found.
+   f. **Update cross-references** — add `[[wiki-links]]` between related pages.
 4. **Update indexes**:
    a. Determine which topic cluster(s) the new content belongs to.
    b. Create new topic index (`wiki/topics/_index_[topic].md`) if needed.
    c. Update existing topic index(es) with new article entries.
    d. Update `wiki/_master_index.md` — article counts, topic list, recent activity.
 5. **Write daily log**: Create or append to `wiki/daily/{today}.md` listing everything ingested, created, updated, and any contradictions flagged.
-6. **Update manifest**: Copy processed files to `raw/processed/`, add rows to `raw/processed/_manifest.md`.
+6. **Move to processed**: Move each source file from `raw/capture/` to `raw/processed/{today}/` (create the date directory if needed). If a file with the same name already exists in the target directory, prefix with the current time: `HHMMSS-filename.ext`. Update `raw/processed/_manifest.md` with the original path, processed path, and wiki articles produced.
 7. **Update queue**: Mark processed items as "done" in `raw/_inbox_queue.md`.
 8. **Append to activity log**: Add entry to `wiki/log.md`.
 9. **Report**: Sources processed, pages created/updated, contradictions found, index changes.
@@ -406,9 +410,9 @@ When `init` creates `<path>/CLAUDE.md`, use this content:
 - `raw/` — source documents with lifecycle pipeline. NEVER modify originals.
 - `raw/inbox/` — zero-friction drop zone. Sort into capture/ before processing.
 - `raw/capture/` — type-sorted staging area.
-- `raw/daily/YYYY-MM-DD/` — compilation batches. Created at ingest time.
-- `raw/processed/` — copies of successfully compiled sources.
-- `raw/_inbox_queue.md` — your work list. Read this to find pending items.
+- `raw/daily/YYYY-MM-DD/` — compilation batch logs. Created at ingest time.
+- `raw/processed/YYYY-MM-DD/` — ingested sources, moved here after successful compilation.
+- `raw/_inbox_queue.md` — append-only triage ledger. Only updated with files moved in the current triage pass.
 - `wiki/` — LLM-generated wiki. You own this entirely.
 - `wiki/_master_index.md` — top-level catalog. Read FIRST on every query.
 - `wiki/topics/_index_[topic].md` — second-level indexes by topic cluster.
@@ -438,8 +442,8 @@ Every wiki page MUST have YAML frontmatter:
 - Every topic index listed in _master_index.md
 
 ## Workflows
-- **triage**: Sort inbox → capture, update _inbox_queue.md
-- **ingest**: Read source → create/update wiki pages → update indexes → write daily log → update manifest
+- **triage**: Sort inbox → capture, append only new items to _inbox_queue.md
+- **ingest**: Read source → duplicate check → create/update wiki pages → update indexes → write daily log → move source to processed/{today}/ → update manifest
 - **query**: Read master index → topic index → articles → synthesize → optionally file answer
 - **lint**: Check contradictions, orphans, missing pages, stale claims, index integrity, broken links
 - **close**: Finalize daily log, verify index counts
