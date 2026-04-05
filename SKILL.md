@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | forensics | install-ui-design | install-bowser | version | recap | help
+argument-hint: capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | help
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -24,6 +24,7 @@ A unified entry point for task capture and processing.
 - **install-ui-design**: Install the `frontend-design` Claude skill for production-grade UI design capabilities
 - **install-bowser**: Install Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification
 - **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination (read-only)
+- **build knowledge base (bkb)**: LLM Knowledge Base builder → initialize, triage, ingest, query, lint, and maintain a persistent Markdown wiki compiled from raw sources
 - **commit**: Commit uncommitted files → analyzes, groups atomically, traces to REQs
 - **inspect**: Explain uncommitted changes — what changed, why, and whether it's ready to commit (read-only)
 - **version**: Show current version, last 5 releases, or check for upstream updates
@@ -67,9 +68,10 @@ Check these patterns **in order** — first match wins:
 | 13       | Version keywords         | `do work version`, `do work update`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
 | 14       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
 | 15       | Forensics keywords       | `do work forensics`, `do work diagnose`, `do work health check`, `do work health`                                                  | → forensics                   |
-| 16       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
-| 17       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
-| 18       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
+| 16       | BKB keywords             | `do work bkb`, `do work bkb init`, `do work bkb ingest`, `do work build knowledge base`, `do work knowledge base`                 | → build knowledge base        |
+| 17       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
+| 18       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
+| 19       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -181,6 +183,13 @@ version, update, check for updates, what's new, release notes, what's changed, u
 
 Note: "updates" (plural) and "what's new" show version + last 5 releases. "update" (singular) triggers the update check flow. Both are handled by the version action.
 
+### BKB Verbs (→ Build Knowledge Base)
+
+These signal "LLM Knowledge Base operations":
+bkb, build knowledge base, knowledge base, kb
+
+Note: "bkb" is the short form. Everything after the verb is passed as `$ARGUMENTS` (sub-command + parameters). For example, `do work bkb init ~/research` passes `init ~/research` as arguments. `do work bkb ingest today` passes `ingest today`. `do work build knowledge base` with no sub-command shows the BKB help menu.
+
 ### Quick-Wins Verbs (→ Quick-Wins)
 
 These signal "scan for improvement opportunities":
@@ -247,6 +256,16 @@ do-work — task queue for agentic coding tools
     do work ui-review                     Validate UI quality (interactive scope selection)
     do work ui-review src/components/     Validate a directory
     do work ui-review prime-dashboard     Validate everything a prime file touches
+
+  Knowledge base:
+    do work bkb init              Initialize a new LLM knowledge base
+    do work bkb triage            Sort inbox items into capture directories
+    do work bkb ingest            Compile sources into wiki pages
+    do work bkb query [question]  Search the wiki and synthesize an answer
+    do work bkb lint              Health check the wiki
+    do work bkb resolve           Resolve flagged contradictions
+    do work bkb close             Finalize daily log, refresh overview
+    do work bkb status            Show KB stats and pending items
 
   Setup:
     do work install-ui-design   Install the frontend-design skill for production-grade UI
@@ -401,6 +420,25 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work install ui` → Same
 - `do work setup design skill` → Same
 
+### Routes to Build Knowledge Base
+
+- `do work bkb` → Shows BKB help menu
+- `do work bkb init` → Initializes KB at ./kb
+- `do work bkb init ~/research` → Initializes KB at ~/research
+- `do work bkb triage` → Sorts inbox items
+- `do work bkb ingest` → Ingests all ready sources
+- `do work bkb ingest moe-paper.pdf` → Ingests specific file
+- `do work bkb query what are MoE routing tradeoffs?` → Queries the wiki
+- `do work bkb lint` → Quick health check
+- `do work bkb lint full` → Full structural check
+- `do work bkb resolve` → Walk through open contradictions
+- `do work bkb close` → Finalize daily log, refresh overview, suggest commit
+- `do work bkb rollup` → Monthly summary
+- `do work bkb status` → KB stats
+- `do work build knowledge base` → Same as `do work bkb` (shows help)
+- `do work knowledge base` → Same as `do work bkb`
+- `do work kb` → Same as `do work bkb`
+
 ### Routes to Install Bowser
 
 - `do work install-bowser` → Installs Playwright CLI + Bowser skill
@@ -452,6 +490,7 @@ Each action has an action file with full instructions. How you execute it depend
 | install-ui-design  | `./actions/install-ui-design.md`| (none needed)                  |
 | install-bowser     | `./actions/install-bowser.md`   | (none needed)                  |
 | forensics          | `./actions/forensics.md`        | (none needed)                  |
+| build knowledge base | `./actions/build-knowledge-base.md` | `$ARGUMENTS` (sub-command + params) |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 | recap              | `./actions/version.md`          | `mode: recap`                  |
 
@@ -564,6 +603,13 @@ Next steps:
 Next steps:
   do work run                 Process answered questions
   do work clarify             Continue answering (if skipped any)
+```
+
+**After build knowledge base:**
+```
+Next steps:
+  do work bkb [next-subcommand]  Continue KB workflow (triage → ingest → query → close)
+  do work bkb status             Check KB state
 ```
 
 **After version / recap:**

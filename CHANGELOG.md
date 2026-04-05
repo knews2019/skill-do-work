@@ -4,6 +4,77 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.43.5 — The Final Polish (2026-04-05)
+
+Four cleanup fixes from final review pass — two bugs and two documentation gaps.
+
+- Fixed duplicate step number in `status` sub-command
+- Fixed stale "today" target reference in sub-commands table
+- Companion files (image+md, audio+transcript) explicitly move to `processed/` together as a unit
+- Schema file (CLAUDE.md) now includes confidence rules, non-text handling, and `[RESOLVED]` convention
+
+---
+
+## 0.43.4 — The Safety Net (2026-04-05)
+
+Four defensive gaps closed — init can't clobber existing KBs, queue prunes itself, lint runs are trackable, and confidence levels have clear rules.
+
+- Init: pre-flight check stops if KB already exists, suggests `--fill-gaps` for repair
+- Rollup: archives done queue rows older than 30 days to `_inbox_queue_archive.md`
+- Lint: appends timestamped entry to `log.md` so `status` can report last-lint date
+- Page conventions: confidence heuristic — high (primary/corroborated), medium (single secondary, default), low (no source or contradiction flagged)
+
+---
+
+## 0.43.3 — The Loose Ends (2026-04-05)
+
+Three remaining BKB edge cases tightened up after full review pass.
+
+- Removed stale `ingest today` from help menu (target was already removed)
+- Resolve: added `[RESOLVED]` log convention so open vs closed contradictions are distinguishable
+- Ingest by path: files outside `capture/` now handled correctly — moved to `processed/` from any source location, queue entry added for traceability
+
+---
+
+## 0.43.2 — The Gap Closer (2026-04-05)
+
+Nine process gaps fixed in the BKB command — removed ghost folders, added collision handling, non-text source support, per-file fault tolerance, contradiction resolution, and more.
+
+- Removed `raw/daily/` and `raw/monthly/` ghost folders (nothing was ever written there)
+- Removed dead `ingest today` target (referenced the ghost folder)
+- Triage: HHMMSS- prefix on filename collisions in `capture/`
+- Ingest: non-text file handling — LLM vision for images, companion transcript required for audio/video
+- Ingest: per-file move-and-mark-done (partial failure no longer loses completed work)
+- Ingest: `sources:` frontmatter explicitly uses `raw/processed/` paths (stable location)
+- New sub-command: `bkb resolve` — interactive contradiction resolution workflow
+- Close: now refreshes `wiki/overview.md` and suggests (but doesn't auto-run) git commit
+- Schema file updated to match all lifecycle changes
+
+---
+
+## 0.43.1 — The Clean Handoff (2026-04-05)
+
+BKB file lifecycle fixed — ingest now moves sources out of capture/ so triage never re-queues already-ingested files.
+
+- Ingest step 6: **move** (not copy) sources from `capture/` to `processed/{today}/`; filename collisions get an `HHMMSS-` prefix
+- Triage step 4: queue updates scoped to files moved in the current pass only (append-only ledger)
+- Ingest step 3: duplicate detection before wiki page creation — exact duplicates merge into existing pages, near-duplicates get bidirectional `related:` links
+- Manifest table gains "Processed Path" column tracking the final location
+- Schema file updated to match new lifecycle semantics
+
+---
+
+## 0.43.0 — The Second Brain (2026-04-05)
+
+New `bkb` command — build and maintain a persistent LLM Knowledge Base wiki compiled from raw source documents. Based on Karpathy's methodology: raw sources go in, structured interlinked Markdown wiki comes out.
+
+- New action: `build-knowledge-base.md` with sub-commands: init, triage, ingest, query, lint, close, rollup, status
+- Routing: `do work bkb [subcommand]`, `do work build knowledge base`, `do work knowledge base`, `do work kb`
+- Three-layer architecture: raw pipeline (inbox → capture → daily → processed), wiki (hierarchical indexes → articles), schema file
+- Two-hop index navigation for scaling to thousands of articles
+
+---
+
 ## 0.42.7 — The Open Sesame (2026-04-05)
 
 Remotion preview script now works around a macOS LaunchServices bug that prevents the browser from opening.
