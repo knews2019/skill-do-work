@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.43.0 — The Second Brain (2026-04-05)
+
+New `bkb` command — build and maintain a persistent LLM Knowledge Base wiki compiled from raw source documents. Based on Karpathy's methodology: raw sources go in, structured interlinked Markdown wiki comes out.
+
+- New action: `build-knowledge-base.md` with sub-commands: init, triage, ingest, query, lint, close, rollup, status
+- Routing: `do work bkb [subcommand]`, `do work build knowledge base`, `do work knowledge base`, `do work kb`
+- Three-layer architecture: raw pipeline (inbox → capture → daily → processed), wiki (hierarchical indexes → articles), schema file
+- Two-hop index navigation for scaling to thousands of articles
+
+---
+
 ## 0.42.7 — The Open Sesame (2026-04-05)
 
 Remotion preview script now works around a macOS LaunchServices bug that prevents the browser from opening.
