@@ -15,6 +15,7 @@ The `bkb` command accepts a sub-command as its first argument. If no sub-command
 | `ingest [target]` | Compile source(s) into wiki pages (file, batch, or "today") |
 | `query [question]` | Search the wiki and synthesize an answer |
 | `lint [scope]` | Health check — contradictions, orphans, broken links, stale claims |
+| `resolve` | Walk through open contradictions and resolve them one by one |
 | `close` | Finalize the daily log, verify indexes, report summary |
 | `rollup` | Monthly rollup — trends, volume stats, recommendations |
 | `status` | Show current KB stats — article counts, pending items, recent activity |
@@ -52,8 +53,6 @@ Create the full KB directory structure at the specified path (default: `./kb`).
 │   │   ├── notes/
 │   │   ├── audio/
 │   │   └── video/
-│   ├── daily/                      # Compilation batches by date
-│   ├── monthly/                    # Monthly rollups
 │   ├── processed/                  # Ingested sources, organized by date (YYYY-MM-DD/)
 │   └── _inbox_queue.md             # LLM work list
 ```
@@ -146,7 +145,7 @@ If the KB path is not already inside a git repository, run `git init` in the KB 
 ```
 Knowledge base initialized at <path>/
 
-  raw/     Source pipeline (inbox → capture → daily → processed)
+  raw/     Source pipeline (inbox → capture → processed)
   wiki/    LLM-maintained wiki (master index → topic indexes → articles)
 
 Next steps:
@@ -173,7 +172,7 @@ Sort new items from `raw/inbox/` into `raw/capture/` subdirectories by type.
    - `.mp4`, `.webm`, `.mkv`, transcript files → `capture/video/`
    - Code files, `README.md` from repos → `capture/repos/`
    - Unknown → leave in inbox, flag for user
-3. **Move** each classified file to its target directory.
+3. **Move** each classified file to its target directory. If a file with the same name already exists in the target (from a previous triage that hasn't been ingested yet), prefix with the current time: `HHMMSS-filename.ext`.
 4. **Update** `raw/_inbox_queue.md` — append only the files moved from inbox in **this** triage pass, marked as "ready". Do NOT re-scan all of `capture/`; the queue is an append-only ledger of triage batches.
 5. **Report**: Items triaged, items skipped (with reasons), items ready for ingestion.
 
@@ -188,14 +187,17 @@ Compile source documents into wiki pages. This is the core operation.
 ### Target Resolution
 
 - `ingest` (no target) → process all "ready" items in `raw/_inbox_queue.md`
-- `ingest today` → process today's daily batch (`raw/daily/{today}/`)
 - `ingest <filename>` → process a specific file from `raw/capture/`
 - `ingest <path>` → process a specific file by path
 
 ### Steps
 
 1. **Read** the target source file(s) from `raw/capture/` (or the specified path).
-2. **Record daily batch**: Create `raw/daily/{today}/` if it doesn't exist. This folder is a log — it records which files were processed on this date (via the daily wiki log and manifest), but source files stay in `capture/` until step 6 moves them to `processed/`.
+2. **Handle non-text sources**:
+   - **Images** (`.png`, `.jpg`, `.svg`, etc.): Use LLM vision to describe the image. Generate a summary from the visual content. If a companion `.md` file exists alongside (e.g., `diagram.png` + `diagram.md`), use both.
+   - **Audio** (`.mp3`, `.wav`, etc.): Check for a companion transcript file (e.g., `podcast.mp3` + `podcast.txt` or `podcast.md`). If found, ingest the transcript. If no transcript exists, skip the file and flag it: "Audio file needs a transcript — add a .txt or .md alongside it."
+   - **Video** (`.mp4`, `.webm`, etc.): Same as audio — look for a companion transcript. Skip and flag if none found.
+   - **Text files** (`.md`, `.pdf`, `.txt`, code files): Process normally.
 3. **For each source**, discuss key takeaways briefly, then:
    a. **Duplicate check** — before creating any wiki page, search for existing pages covering the same topic:
       - **Exact duplicate** (same source re-ingested, or same content from a different URL): update the existing page — add the new file to its `sources:` frontmatter list, refresh any stale claims, note "additional source" in the daily log. Do NOT create a second page.
@@ -212,10 +214,9 @@ Compile source documents into wiki pages. This is the core operation.
    c. Update existing topic index(es) with new article entries.
    d. Update `wiki/_master_index.md` — article counts, topic list, recent activity.
 5. **Write daily log**: Create or append to `wiki/daily/{today}.md` listing everything ingested, created, updated, and any contradictions flagged.
-6. **Move to processed**: Move each source file from `raw/capture/` to `raw/processed/{today}/` (create the date directory if needed). If a file with the same name already exists in the target directory, prefix with the current time: `HHMMSS-filename.ext`. Update `raw/processed/_manifest.md` with the original path, processed path, and wiki articles produced.
-7. **Update queue**: Mark processed items as "done" in `raw/_inbox_queue.md`.
-8. **Append to activity log**: Add entry to `wiki/log.md`.
-9. **Report**: Sources processed, pages created/updated, contradictions found, index changes.
+6. **Move to processed and mark done** (per-file): After each file completes steps 3–5 successfully, immediately move it from `raw/capture/` to `raw/processed/{today}/` (create the date directory if needed) and mark its queue row as "done" in `raw/_inbox_queue.md`. If a file with the same name already exists in the target directory, prefix with the current time: `HHMMSS-filename.ext`. Update `raw/processed/_manifest.md` with the original path, processed path, and wiki articles produced. **This is per-file, not per-batch** — if file 4 of 5 fails, files 1–3 are already safely processed and marked done.
+7. **Append to activity log**: Add entry to `wiki/log.md`.
+8. **Report**: Sources processed, pages created/updated, contradictions found, skipped files (with reasons), index changes.
 
 ### Page Conventions
 
@@ -226,13 +227,15 @@ Every wiki page MUST have YAML frontmatter:
 title: Page Title
 type: concept | entity | source-summary | comparison | daily-log | monthly-rollup
 topic_cluster: [which topic index this belongs to]
-sources: [list of raw/ files referenced]
+sources: [list of raw/processed/ paths — the file's final stable location]
 related: [list of wiki pages linked]
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 confidence: high | medium | low
 ---
 ```
+
+> **`sources:` always uses the `raw/processed/` path** (e.g., `raw/processed/2026-04-05/moe-paper.pdf`). This is the file's stable final location. Never use `capture/` paths — those are transient.
 
 ### Index Size Rules
 
@@ -305,6 +308,25 @@ Suggest specific fixes for each finding.
 
 ---
 
+## Sub-Command: `resolve`
+
+Walk through open contradictions and resolve them interactively.
+
+### Steps
+
+1. **Find contradictions**: Scan `wiki/daily/` logs for entries containing "contradiction" or "conflicting". Also check `wiki/log.md` for flagged contradictions not yet marked resolved.
+2. **For each contradiction**, present it to the user:
+   - Show the two (or more) conflicting claims with their source pages and original raw sources.
+   - Propose a resolution: which claim is more recent, better sourced, or more authoritative?
+   - Ask the user to confirm, adjust, or skip.
+3. **Apply resolution**: Update the wiki page(s) — correct the stale/wrong claim, add a note about what changed and why, update the `confidence:` frontmatter if needed.
+4. **Log resolution**: Append to `wiki/log.md` and `wiki/daily/{today}.md`: which contradiction was resolved, how, and which pages were updated.
+5. **Report**: Contradictions resolved, contradictions skipped, contradictions remaining.
+
+If no open contradictions are found, say so.
+
+---
+
 ## Sub-Command: `close`
 
 Finalize the day's work.
@@ -313,7 +335,8 @@ Finalize the day's work.
 
 1. **Finalize daily log**: Ensure `wiki/daily/{today}.md` has all changes from today.
 2. **Verify indexes**: Check that `_master_index.md` article counts are accurate.
-3. **Report**:
+3. **Refresh overview**: Re-read the current state of the wiki (master index, recent daily logs, topic clusters) and regenerate `wiki/overview.md` with an up-to-date high-level synthesis of what the knowledge base covers.
+4. **Report**:
    ```
    Day closed ({today}):
      Articles created: N
@@ -321,6 +344,7 @@ Finalize the day's work.
      Sources ingested: N
      Contradictions pending: N
    ```
+5. **Suggest git commit** (do not auto-commit): If there are uncommitted changes in the KB directory, print: "Uncommitted KB changes — run `do work commit` or `git add . && git commit` when ready."
 
 ---
 
@@ -336,10 +360,9 @@ Generate the monthly summary. Run on the 1st of each month or on demand.
    - **Theme evolution**: which topics grew, which went stale, emerging patterns.
    - **Integrity summary**: lint results, confidence changes.
    - **Recommendations**: topic splits needed, new clusters suggested, gap areas.
-3. **Create** `raw/monthly/{YYYY-MM}/_summary.md` mirroring the raw-side stats.
-4. **Evaluate** whether any topic index needs splitting (threshold: 80+ articles).
-5. **Update** `wiki/_master_index.md` with monthly activity line.
-6. **Append** to `wiki/log.md`.
+3. **Evaluate** whether any topic index needs splitting (threshold: 80+ articles).
+4. **Update** `wiki/_master_index.md` with monthly activity line.
+5. **Append** to `wiki/log.md`.
 
 ---
 
@@ -386,6 +409,7 @@ do work bkb — LLM Knowledge Base builder
   Maintenance:
     do work bkb lint              Quick health check (recent changes)
     do work bkb lint full         Full cross-cluster integrity check
+    do work bkb resolve           Walk through and resolve contradictions
     do work bkb rollup            Monthly summary and trend analysis
     do work bkb status            Show KB stats and pending items
 
@@ -410,7 +434,6 @@ When `init` creates `<path>/CLAUDE.md`, use this content:
 - `raw/` — source documents with lifecycle pipeline. NEVER modify originals.
 - `raw/inbox/` — zero-friction drop zone. Sort into capture/ before processing.
 - `raw/capture/` — type-sorted staging area.
-- `raw/daily/YYYY-MM-DD/` — compilation batch logs. Created at ingest time.
 - `raw/processed/YYYY-MM-DD/` — ingested sources, moved here after successful compilation.
 - `raw/_inbox_queue.md` — append-only triage ledger. Only updated with files moved in the current triage pass.
 - `wiki/` — LLM-generated wiki. You own this entirely.
@@ -427,7 +450,7 @@ Every wiki page MUST have YAML frontmatter:
     title: Page Title
     type: concept | entity | source-summary | comparison | daily-log | monthly-rollup
     topic_cluster: [which topic index this belongs to]
-    sources: [list of raw/ files referenced]
+    sources: [list of raw/processed/ paths — stable final location]
     related: [list of wiki pages linked]
     created: YYYY-MM-DD
     updated: YYYY-MM-DD
@@ -443,10 +466,11 @@ Every wiki page MUST have YAML frontmatter:
 
 ## Workflows
 - **triage**: Sort inbox → capture, append only new items to _inbox_queue.md
-- **ingest**: Read source → duplicate check → create/update wiki pages → update indexes → write daily log → move source to processed/{today}/ → update manifest
+- **ingest**: Read source → duplicate check → create/update wiki pages → update indexes → write daily log → move source to processed/{today}/ → update manifest → update queue
 - **query**: Read master index → topic index → articles → synthesize → optionally file answer
 - **lint**: Check contradictions, orphans, missing pages, stale claims, index integrity, broken links
-- **close**: Finalize daily log, verify index counts
+- **resolve**: Walk through open contradictions, propose and apply resolutions with user confirmation
+- **close**: Finalize daily log, verify index counts, refresh overview.md, suggest git commit
 - **rollup**: Monthly summary with volume, themes, integrity, recommendations
 ```
 
@@ -487,7 +511,15 @@ Next steps:
 **After lint:**
 ```
 Next steps:
+  do work bkb resolve           Resolve flagged contradictions
   do work bkb ingest            Address gaps with new sources
+  do work bkb close             Finalize the day
+```
+
+**After resolve:**
+```
+Next steps:
+  do work bkb lint              Verify fixes
   do work bkb close             Finalize the day
 ```
 

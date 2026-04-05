@@ -4,6 +4,22 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.43.2 — The Gap Closer (2026-04-05)
+
+Nine process gaps fixed in the BKB command — removed ghost folders, added collision handling, non-text source support, per-file fault tolerance, contradiction resolution, and more.
+
+- Removed `raw/daily/` and `raw/monthly/` ghost folders (nothing was ever written there)
+- Removed dead `ingest today` target (referenced the ghost folder)
+- Triage: HHMMSS- prefix on filename collisions in `capture/`
+- Ingest: non-text file handling — LLM vision for images, companion transcript required for audio/video
+- Ingest: per-file move-and-mark-done (partial failure no longer loses completed work)
+- Ingest: `sources:` frontmatter explicitly uses `raw/processed/` paths (stable location)
+- New sub-command: `bkb resolve` — interactive contradiction resolution workflow
+- Close: now refreshes `wiki/overview.md` and suggests (but doesn't auto-run) git commit
+- Schema file updated to match all lifecycle changes
+
+---
+
 ## 0.43.1 — The Clean Handoff (2026-04-05)
 
 BKB file lifecycle fixed — ingest now moves sources out of capture/ so triage never re-queues already-ingested files.

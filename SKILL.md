@@ -263,6 +263,8 @@ do-work — task queue for agentic coding tools
     do work bkb ingest            Compile sources into wiki pages
     do work bkb query [question]  Search the wiki and synthesize an answer
     do work bkb lint              Health check the wiki
+    do work bkb resolve           Resolve flagged contradictions
+    do work bkb close             Finalize daily log, refresh overview
     do work bkb status            Show KB stats and pending items
 
   Setup:
@@ -425,12 +427,12 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work bkb init ~/research` → Initializes KB at ~/research
 - `do work bkb triage` → Sorts inbox items
 - `do work bkb ingest` → Ingests all ready sources
-- `do work bkb ingest today` → Ingests today's batch
 - `do work bkb ingest moe-paper.pdf` → Ingests specific file
 - `do work bkb query what are MoE routing tradeoffs?` → Queries the wiki
 - `do work bkb lint` → Quick health check
 - `do work bkb lint full` → Full structural check
-- `do work bkb close` → Finalize daily log
+- `do work bkb resolve` → Walk through open contradictions
+- `do work bkb close` → Finalize daily log, refresh overview, suggest commit
 - `do work bkb rollup` → Monthly summary
 - `do work bkb status` → KB stats
 - `do work build knowledge base` → Same as `do work bkb` (shows help)
