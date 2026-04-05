@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.43.5 — The Final Polish (2026-04-05)
+
+Four cleanup fixes from final review pass — two bugs and two documentation gaps.
+
+- Fixed duplicate step number in `status` sub-command
+- Fixed stale "today" target reference in sub-commands table
+- Companion files (image+md, audio+transcript) explicitly move to `processed/` together as a unit
+- Schema file (CLAUDE.md) now includes confidence rules, non-text handling, and `[RESOLVED]` convention
+
+---
+
 ## 0.43.4 — The Safety Net (2026-04-05)
 
 Four defensive gaps closed — init can't clobber existing KBs, queue prunes itself, lint runs are trackable, and confidence levels have clear rules.

@@ -12,7 +12,7 @@ The `bkb` command accepts a sub-command as its first argument. If no sub-command
 |---|---|
 | `init [path]` | Initialize a new knowledge base at the given path (default: `./kb`) |
 | `triage` | Sort inbox items into capture subdirectories, update the queue |
-| `ingest [target]` | Compile source(s) into wiki pages (file, batch, or "today") |
+| `ingest [target]` | Compile source(s) into wiki pages (all ready, specific file, or path) |
 | `query [question]` | Search the wiki and synthesize an answer |
 | `lint [scope]` | Health check — contradictions, orphans, broken links, stale claims |
 | `resolve` | Walk through open contradictions and resolve them one by one |
@@ -202,9 +202,9 @@ Compile source documents into wiki pages. This is the core operation.
 
 1. **Read** the target source file(s) from `raw/capture/` (or the specified path).
 2. **Handle non-text sources**:
-   - **Images** (`.png`, `.jpg`, `.svg`, etc.): Use LLM vision to describe the image. Generate a summary from the visual content. If a companion `.md` file exists alongside (e.g., `diagram.png` + `diagram.md`), use both.
-   - **Audio** (`.mp3`, `.wav`, etc.): Check for a companion transcript file (e.g., `podcast.mp3` + `podcast.txt` or `podcast.md`). If found, ingest the transcript. If no transcript exists, skip the file and flag it: "Audio file needs a transcript — add a .txt or .md alongside it."
-   - **Video** (`.mp4`, `.webm`, etc.): Same as audio — look for a companion transcript. Skip and flag if none found.
+   - **Images** (`.png`, `.jpg`, `.svg`, etc.): Use LLM vision to describe the image. Generate a summary from the visual content. If a companion `.md` file exists alongside (e.g., `diagram.png` + `diagram.md`), use both. Both files are treated as a unit — move both to `processed/` together in step 6.
+   - **Audio** (`.mp3`, `.wav`, etc.): Check for a companion transcript file (e.g., `podcast.mp3` + `podcast.txt` or `podcast.md`). If found, ingest the transcript. Both files move to `processed/` together. If no transcript exists, skip the file and flag it: "Audio file needs a transcript — add a .txt or .md alongside it."
+   - **Video** (`.mp4`, `.webm`, etc.): Same as audio — look for a companion transcript. Both move together. Skip and flag if none found.
    - **Text files** (`.md`, `.pdf`, `.txt`, code files): Process normally.
 3. **For each source**, discuss key takeaways briefly, then:
    a. **Duplicate check** — before creating any wiki page, search for existing pages covering the same topic:
@@ -397,7 +397,7 @@ Quick snapshot of the KB state.
 2. **Count** files in `raw/inbox/` (pending triage) and items marked "ready" in `raw/_inbox_queue.md` (pending ingestion).
 3. **Read** the most recent `wiki/daily/` entry for last activity date.
 4. **Scan** `wiki/log.md` for the most recent `lint |` entry to get the last-lint date.
-4. **Report**:
+5. **Report**:
    ```
    Knowledge Base Status:
      Location: <path>
@@ -477,6 +477,21 @@ Every wiki page MUST have YAML frontmatter:
     updated: YYYY-MM-DD
     confidence: high | medium | low
     ---
+
+## Confidence Rules
+- **high**: primary source (paper, official docs) OR 2+ independent sources agree
+- **medium**: single secondary source (blog, tutorial). Default for new pages.
+- **low**: no direct source, or active contradiction flagged
+- Transitions: medium → high (corroborated), high → low (contradiction), low → medium/high (resolved)
+
+## Non-Text Sources
+- Images: use LLM vision to describe. Companion .md used if present. Both files move together.
+- Audio/Video: require a companion transcript (.txt or .md). Skip and flag if missing.
+
+## Contradiction Tracking
+- Flag format in logs: `contradiction: <description>`
+- Resolution format: `[RESOLVED] contradiction: <description>`
+- A contradiction is open if no `[RESOLVED]` entry matches the original flag.
 
 ## Index Rules
 - _master_index.md: max 80 lines, one line per topic cluster
