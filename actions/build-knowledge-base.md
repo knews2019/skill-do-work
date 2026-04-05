@@ -188,7 +188,7 @@ Compile source documents into wiki pages. This is the core operation.
 
 - `ingest` (no target) → process all "ready" items in `raw/_inbox_queue.md`
 - `ingest <filename>` → process a specific file from `raw/capture/`
-- `ingest <path>` → process a specific file by path
+- `ingest <path>` → process a specific file by path (can be outside `capture/` — e.g., a file the user hasn't triaged yet)
 
 ### Steps
 
@@ -214,7 +214,7 @@ Compile source documents into wiki pages. This is the core operation.
    c. Update existing topic index(es) with new article entries.
    d. Update `wiki/_master_index.md` — article counts, topic list, recent activity.
 5. **Write daily log**: Create or append to `wiki/daily/{today}.md` listing everything ingested, created, updated, and any contradictions flagged.
-6. **Move to processed and mark done** (per-file): After each file completes steps 3–5 successfully, immediately move it from `raw/capture/` to `raw/processed/{today}/` (create the date directory if needed) and mark its queue row as "done" in `raw/_inbox_queue.md`. If a file with the same name already exists in the target directory, prefix with the current time: `HHMMSS-filename.ext`. Update `raw/processed/_manifest.md` with the original path, processed path, and wiki articles produced. **This is per-file, not per-batch** — if file 4 of 5 fails, files 1–3 are already safely processed and marked done.
+6. **Move to processed and mark done** (per-file): After each file completes steps 3–5 successfully, immediately move it to `raw/processed/{today}/` (create the date directory if needed) from wherever it currently lives (`raw/capture/`, `raw/inbox/`, or an external path). If the file was in the queue, mark its row as "done" in `raw/_inbox_queue.md`; if it was ingested directly by path (bypassing triage), add a "done" entry to the queue for traceability. If a file with the same name already exists in the target directory, prefix with the current time: `HHMMSS-filename.ext`. Update `raw/processed/_manifest.md` with the original path, processed path, and wiki articles produced. **This is per-file, not per-batch** — if file 4 of 5 fails, files 1–3 are already safely processed and marked done.
 7. **Append to activity log**: Add entry to `wiki/log.md`.
 8. **Report**: Sources processed, pages created/updated, contradictions found, skipped files (with reasons), index changes.
 
@@ -314,13 +314,13 @@ Walk through open contradictions and resolve them interactively.
 
 ### Steps
 
-1. **Find contradictions**: Scan `wiki/daily/` logs for entries containing "contradiction" or "conflicting". Also check `wiki/log.md` for flagged contradictions not yet marked resolved.
+1. **Find open contradictions**: Scan `wiki/daily/` logs and `wiki/log.md` for entries containing "contradiction" or "conflicting". A contradiction is **open** if no subsequent log entry marks it as `[RESOLVED]`. Convention: resolution log entries use the format `[RESOLVED] contradiction: <description>` so they can be matched against the original flag.
 2. **For each contradiction**, present it to the user:
    - Show the two (or more) conflicting claims with their source pages and original raw sources.
    - Propose a resolution: which claim is more recent, better sourced, or more authoritative?
    - Ask the user to confirm, adjust, or skip.
 3. **Apply resolution**: Update the wiki page(s) — correct the stale/wrong claim, add a note about what changed and why, update the `confidence:` frontmatter if needed.
-4. **Log resolution**: Append to `wiki/log.md` and `wiki/daily/{today}.md`: which contradiction was resolved, how, and which pages were updated.
+4. **Log resolution**: Append to `wiki/log.md` and `wiki/daily/{today}.md` using the format `[RESOLVED] contradiction: <description>` — this marks it as closed so future `resolve` runs skip it. Include which pages were updated and how.
 5. **Report**: Contradictions resolved, contradictions skipped, contradictions remaining.
 
 If no open contradictions are found, say so.
@@ -402,7 +402,6 @@ do work bkb — LLM Knowledge Base builder
   Daily workflow:
     do work bkb triage            Sort inbox items into capture directories
     do work bkb ingest            Compile all ready sources into wiki
-    do work bkb ingest today      Compile today's batch only
     do work bkb query [question]  Search the wiki and synthesize an answer
     do work bkb close             Finalize today's daily log
 

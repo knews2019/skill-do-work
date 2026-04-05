@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.43.3 — The Loose Ends (2026-04-05)
+
+Three remaining BKB edge cases tightened up after full review pass.
+
+- Removed stale `ingest today` from help menu (target was already removed)
+- Resolve: added `[RESOLVED]` log convention so open vs closed contradictions are distinguishable
+- Ingest by path: files outside `capture/` now handled correctly — moved to `processed/` from any source location, queue entry added for traceability
+
+---
+
 ## 0.43.2 — The Gap Closer (2026-04-05)
 
 Nine process gaps fixed in the BKB command — removed ghost folders, added collision handling, non-text source support, per-file fault tolerance, contradiction resolution, and more.
