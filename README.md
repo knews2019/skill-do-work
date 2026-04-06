@@ -122,7 +122,19 @@ do work scan src/api/
 
 See the [Quick Wins Guide](docs/quick-wins-guide.md) for what it looks for and ranking criteria.
 
-### 9. Present work to clients
+### 9. Manage prime files
+
+Create and audit prime files — AI context documents that help an AI coder navigate a utility in minimum tokens. Prime files index entry points, traps, and exclusions so the AI doesn't waste tool calls rediscovering architecture.
+
+```
+do work prime create src/auth/    # interactive Q&A to generate a prime file
+do work prime audit               # read-only health check of all prime files
+do work prime                     # show prime sub-command help
+```
+
+See the [Prime Guide](docs/prime-guide.md) for the create workflow, audit checks, and prime file format.
+
+### 10. Present work to clients
 
 Generate client-facing deliverables from completed work: briefs, architecture diagrams, value propositions, Remotion videos, interactive HTML explainers.
 
@@ -137,7 +149,7 @@ Artifacts are saved to `do-work/deliverables/`.
 
 See the [Present Work Guide](docs/present-work-guide.md) for detail mode, portfolio mode, and artifact types.
 
-### 10. Commit changes
+### 11. Commit changes
 
 Analyze uncommitted files, group them by REQ, and create atomic git commits with traceability.
 
@@ -148,7 +160,7 @@ do work save work
 
 See the [Commit Guide](docs/commit-guide.md) for grouping logic and commit message format.
 
-### 11. Inspect changes
+### 12. Inspect changes
 
 Read-only examination of uncommitted changes — explains what changed, why, traces to REQs, and assesses commit readiness.
 
@@ -160,7 +172,7 @@ do work inspect UR-003      # changes for all REQs under a UR
 
 See the [Inspect Guide](docs/inspect-guide.md) for readiness signals and verdict definitions.
 
-### 12. Cleanup the archive
+### 13. Cleanup the archive
 
 Consolidate completed work — close finished UR folders, move loose REQs into their URs, organize legacy files.
 
@@ -173,7 +185,7 @@ Also runs automatically at the end of every work loop.
 
 See the [Cleanup Guide](docs/cleanup-guide.md) for the four consolidation passes.
 
-### 13. Diagnostics
+### 14. Diagnostics
 
 Pipeline health check — detects stuck work, hollow completions, orphaned URs, scope contamination. Read-only.
 
@@ -185,7 +197,7 @@ do work health check
 
 See the [Forensics Guide](docs/forensics-guide.md) for the full list of checks and severity levels.
 
-### 14. Build a knowledge base
+### 15. Build a knowledge base
 
 Build and maintain an LLM-friendly Markdown wiki from raw sources (PDFs, articles, notes). Aliases: `bkb`, `kb`, `build knowledge base`, `knowledge base`.
 
@@ -205,14 +217,14 @@ do work bkb status            # show KB stats and pending items
 
 For the full folder structure, file lifecycle, and wiki page format, see the [BKB Guide](docs/bkb-guide.md).
 
-### 15. Install companion skills
+### 16. Install companion skills
 
 ```
 do work install-ui-design   # Anthropic's frontend-design skill for production-grade UI
 do work install-bowser      # Playwright CLI + Bowser skill for browser automation
 ```
 
-### 16. Version and history
+### 17. Version and history
 
 ```
 do work version             # current version + last 5 releases

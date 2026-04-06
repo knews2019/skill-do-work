@@ -126,6 +126,15 @@ Perform a read-only health check on the repo's prime file system. Prime files (`
 
 **Important: Do NOT modify any files.** This is an audit-only operation. Report findings; let the user decide what to fix.
 
+### Conventions
+
+If CLAUDE.md has a section describing prime file conventions, read it to understand the project's specific rules. The general conventions are:
+- **Utility-specific primes:** `<utility-dir>/prime-<name>.md` — discovered by convention (recursive glob), NOT registered in CLAUDE.md
+- **Satellite docs:** `known-bugs-<name>.md`, `lessons-learned/<topic>.md` — live alongside the prime
+- **Cross-cutting primes:** Registered in CLAUDE.md's prime registry section (if one exists) — only for shared docs that don't live in a utility root
+- **Cross-linking:** Primes in the same area must cross-link to each other (not just operational dependencies)
+- **Area indexes:** Areas with 3+ primes need one prime that lists all related primes as the entry point
+
 ### Step 1: Discover all prime files
 
 ```
@@ -150,19 +159,26 @@ For each prime file, check:
 
 5. **No absolute paths** — grep for `file:///` URLs in the prime. All links must be relative from the prime's directory. Flag any absolute paths as portability violations.
 
-6. **Cross-links present** — primes in the same area (sharing a parent directory tree) should cross-link to each other, not just for operational dependencies. If two primes are siblings or cousins in the same area, flag missing cross-links.
+6. **Cross-links present** — primes in the same area (sharing a parent directory tree) should cross-link to each other, not just for operational dependencies. If two primes are siblings or cousins in the same area (e.g., multiple primes under the same utility root), flag missing cross-links.
 
 7. **Area index exists** — if an area (parent directory tree) contains **3 or more primes**, one prime should serve as the **area index** that lists all related primes. Check if such an index prime exists and whether it lists all the primes in that area. Flag areas with 3+ primes but no index.
 
 ### Step 3: Find utilities without primes
 
-Scan the repository for directories that contain source files (`.php`, `.js`, `.ts`, `.jsx`, `.tsx`, `.py`, `.rb`, `.go`, `.rs`) but no `prime-*.md`. Use a recursive glob from the project root, limiting depth to avoid noise from deeply nested subdirectories.
+Identify directories that have source code but no prime file. A utility-sized directory typically has its own entry point, build config, or package manifest.
+
+Look for directories containing source files (`.php`, `.js`, `.ts`, `.py`, `.go`, `.rs`, `.rb`, etc.) but no `prime-*.md`. Use the project's directory structure to identify utility-sized units — directories with their own `package.json`, `composer.json`, `Makefile`, `index.*` entry point, or similar markers of an independent unit.
 
 Skip directories that are clearly not utility roots: `node_modules/`, `vendor/`, `dist/`, `build/`, `.next/`, `.git/`, test fixture directories.
 
 If CLAUDE.md defines known utility locations or directory conventions, use those as the primary scan targets. Otherwise, scan the project root with reasonable depth limits (2-3 levels).
 
-Report these as "missing prime" candidates — directories with meaningful source code that would benefit from an AI context document.
+Focus on directories that represent distinct utilities or modules — not every subdirectory needs a prime. A directory is a good "missing prime" candidate if:
+- It has 5+ source files
+- It has its own entry point or build config
+- An AI would need multiple tool calls to understand its structure
+
+Report these as "missing prime" candidates.
 
 ### Step 4: Audit satellite docs
 
@@ -181,6 +197,7 @@ Read CLAUDE.md and check whether it has a prime file registry section. If it doe
 3. The convention description is still accurate
 
 If CLAUDE.md has no prime registry section, skip this step.
+
 
 ### Step 6: Content freshness spot-check
 

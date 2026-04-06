@@ -113,7 +113,7 @@ verify, verify requests, check, evaluate, review requests, review reqs, audit
 
 Note: "check" routes to verify requests ONLY when used alone or with a target (e.g., "do work check UR-003"). "check for updates" is intercepted at priority 2 and routes to version — it never reaches verify. When followed by other descriptive content it routes to capture requests (e.g., "do work check if the button works" → capture requests).
 
-Note: "audit" alone routes to verify requests. "audit code" and "audit implementation" route to review work (see Review Verbs below). "audit codebase" routes to code-review (see Code-Review Verbs below).
+Note: "audit" alone routes to verify requests. "audit code" and "audit implementation" route to review work (see Review Verbs below). "audit codebase" routes to code-review (see Code-Review Verbs below). "audit primes" routes to prime (see Prime Verbs below).
 
 ### Code-Review Verbs (→ Code Review)
 
@@ -261,6 +261,10 @@ do-work — task queue for agentic coding tools
     do work quick-wins          Scan cwd for refactoring and test opportunities
     do work quick-wins src/     Scan a specific directory
 
+  Prime files:
+    do work prime create src/auth/    Generate a prime file via interactive Q&A
+    do work prime audit               Audit all prime files for staleness and broken links
+
   UI review (read-only):
     do work ui-review                     Validate UI quality (interactive scope selection)
     do work ui-review src/components/     Validate a directory
@@ -303,178 +307,6 @@ do-work — task queue for agentic coding tools
 ```
 
 Do not ask "Start the work loop?" — just print the help menu and wait.
-
-### Routes to Work
-
-- `do work run` → Starts work action immediately
-- `do work go` → Starts work action immediately
-
-### Routes to Clarify Questions
-
-- `do work clarify` → Presents all pending-answers REQs for batch review
-- `do work questions` → Same as clarify
-- `do work answers` → Same as clarify
-- `do work pending` → Same as clarify
-- `do work what's blocked` → Same as clarify
-
-### Routes to Verify Requests
-
-- `do work verify requests` → Evaluates most recent UR's REQs
-- `do work verify` → Evaluates most recent UR's REQs
-- `do work verify UR-003` → Evaluates specific UR
-- `do work check REQ-018` → Evaluates the UR that REQ-018 belongs to
-- `do work evaluate` → Evaluates most recent UR's REQs
-- `do work review requests` → Evaluates most recent UR's REQs
-
-### Routes to Code Review
-
-- `do work code-review` → Interactive scope selection (lists available prime files)
-- `do work code-review prime-auth` → Reviews all files referenced by prime-auth.md
-- `do work code-review prime-auth.md` → Same (explicit extension)
-- `do work code-review src/prime-auth.md` → Same (explicit path)
-- `do work code-review prime-auth prime-checkout` → Reviews union of both prime file scopes
-- `do work code-review src/` → Reviews all source files in src/
-- `do work code-review src/api/ src/utils/` → Reviews multiple directories
-- `do work code-review prime-auth src/utils/` → Combined: prime file scope + directory
-- `do work audit codebase` → Same as code-review (no scope → interactive)
-- `do work review codebase` → Same as code-review
-- `do work review codebase src/` → Reviews src/ directory
-- `do work codebase review` → Same as code-review
-
-### Routes to UI Review
-
-- `do work ui-review` → Interactive scope selection (lists UI-relevant files)
-- `do work ui-review src/components/` → Validates all UI files in directory
-- `do work ui-review prime-dashboard` → Validates all files referenced by prime-dashboard.md
-- `do work ui-review prime-auth src/components/` → Combined: prime file scope + directory
-- `do work review ui` → Same as ui-review (no scope → interactive)
-- `do work design review` → Same as ui-review
-- `do work validate ui` → Same as ui-review
-- `do work design review src/pages/` → Validates specific directory
-- `do work ui audit` → Same as ui-review
-- `do work design audit` → Same as ui-review
-
-### Routes to Review Work
-
-- `do work review work` → Reviews the most recently completed REQ
-- `do work review` → Reviews the most recently completed REQ
-- `do work review REQ-005` → Reviews a specific completed REQ
-- `do work review UR-003` → Reviews all completed REQs under that UR
-- `do work code review` → Reviews the most recently completed REQ
-- `do work review code` → Reviews the most recently completed REQ
-
-### Routes to Present Work
-
-- `do work present work` → Generates deliverables for most recently completed UR
-- `do work present` → Same as present work
-- `do work present UR-003` → Generates deliverables for specific UR
-- `do work present REQ-005` → Generates deliverables for specific REQ
-- `do work present all` → Portfolio summary of all completed work
-- `do work present portfolio` → Same as present all
-- `do work showcase` → Same as present work
-
-### Routes to Cleanup
-
-- `do work cleanup` → Consolidates archive, closes completed URs
-- `do work tidy` → Same as cleanup
-- `do work consolidate` → Same as cleanup
-
-### Routes to Commit
-
-- `do work commit` → Analyzes and commits all uncommitted files atomically
-- `do work commit changes` → Same as commit
-- `do work save work` → Same as commit
-
-### Routes to Inspect
-
-- `do work inspect` → Explains all uncommitted changes (what, why, readiness)
-- `do work inspect REQ-005` → Explains changes associated with REQ-005
-- `do work inspect UR-003` → Explains changes associated with all REQs under UR-003
-- `do work explain changes` → Same as inspect
-- `do work what changed` → Same as inspect
-- `do work show changes` → Same as inspect
-
-### Routes to Version
-
-- `do work version` → Reports version + last 5 skill releases
-- `do work update` → Checks for upstream updates
-- `do work check for updates` → Same as update
-- `do work what's new` → Same as version (shows releases)
-- `do work release notes` → Same as version
-- `do work updates` → Same as version
-- `do work history` → Same as version
-
-### Routes to Recap (via Version)
-
-- `do work recap` → Last 5 completed URs with their REQs
-
-### Routes to Forensics
-
-- `do work forensics` → Full pipeline diagnostics (read-only)
-- `do work diagnose` → Same as forensics
-- `do work health check` → Same as forensics
-- `do work health` → Same as forensics
-
-### Routes to Prime
-
-- `do work prime` → Shows prime sub-command help
-- `do work prime create src/auth/` → Interactive Q&A to generate prime-auth.md
-- `do work prime audit` → Full audit of all prime files (read-only)
-- `do work create prime src/utils/` → Same as prime create (reversed order)
-- `do work audit primes` → Same as prime audit
-- `do work primes` → Shows prime sub-command help
-
-### Routes to Quick-Wins
-
-- `do work quick-wins` → Scans current working directory
-- `do work quick wins` → Same
-- `do work quick-wins src/` → Scans specific directory
-- `do work low-hanging` → Same
-- `do work scan` → Scans current working directory
-- `do work scan src/` → Scans specific directory
-- `do work scan the checkout logs for 500s` → Routes to capture requests (descriptive content)
-- `do work opportunities` → Scans current working directory
-
-### Routes to Install UI Design
-
-- `do work install-ui-design` → Installs the frontend-design skill
-- `do work install ui design` → Same
-- `do work install ui` → Same
-- `do work setup design skill` → Same
-
-### Routes to Build Knowledge Base
-
-- `do work bkb` → Shows BKB help menu
-- `do work bkb init` → Initializes KB at ./kb
-- `do work bkb init ~/research` → Initializes KB at ~/research
-- `do work bkb triage` → Sorts inbox items
-- `do work bkb ingest` → Ingests all ready sources
-- `do work bkb ingest moe-paper.pdf` → Ingests specific file
-- `do work bkb query what are MoE routing tradeoffs?` → Queries the wiki
-- `do work bkb lint` → Quick health check
-- `do work bkb lint full` → Full structural check
-- `do work bkb resolve` → Walk through open contradictions
-- `do work bkb close` → Finalize daily log, refresh overview, suggest commit
-- `do work bkb rollup` → Monthly summary
-- `do work bkb status` → KB stats
-- `do work build knowledge base` → Same as `do work bkb` (shows help)
-- `do work knowledge base` → Same as `do work bkb`
-- `do work kb` → Same as `do work bkb`
-
-### Routes to Install Bowser
-
-- `do work install-bowser` → Installs Playwright CLI + Bowser skill
-- `do work install bowser` → Same
-- `do work install playwright` → Same
-- `do work setup bowser` → Same
-- `do work setup playwright` → Same
-
-### Routes to Capture Requests
-
-- `do work capture request: add dark mode` → Creates REQ file + UR folder
-- `do work capture request: the button is broken` → Creates REQ file + UR folder
-- `do work capture request: [400 words]` → Creates REQ files + UR folder with full verbatim input
-- `do work the button is broken` → Also routes to capture (descriptive content still works)
 
 ## Payload Preservation Rules
 

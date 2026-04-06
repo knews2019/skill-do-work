@@ -4,13 +4,52 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.44.0 — The Cartographer (2026-04-06)
+## 0.48.0 — The Cartographer (2026-04-06)
 
 Prime file operations now live inside do-work. `do work prime create` generates prime files via interactive Q&A; `do work prime audit` runs a full health check on all primes.
 
 - New `prime` action with `create` and `audit` sub-commands
 - Routing at priority 16 (between forensics and BKB)
 - BKB, quick-wins, install, capture renumbered to 17-20
+
+## 0.47.1 — The Badge Guard (2026-04-06)
+
+Agent dispatch now gracefully handles missing `agents/` directory instead of failing.
+
+- Main and custom agent dispatch sections skip loading when `agents/` is absent (fresh `init` or legacy KBs)
+- Legacy KBs get a clear message pointing to `bkb init --fill-gaps` for migration
+- Init `--fill-gaps` documentation clarified as the migration path for pre-v0.46.0 KBs
+- Schema crew section notes the guard
+
+## 0.47.0 — The Full Crew (2026-04-06)
+
+BKB imports the best ideas from My-Brain-Is-Full-Crew's 13 skills — adapted for zero-dependency knowledge base operations.
+
+- `bkb defrag` — weekly structural maintenance: re-evaluates cluster boundaries, proposes merges/splits, promotes growing concepts, demotes stale clusters
+- `bkb garden` — metadata hygiene: topic cluster balance, relationship type distribution, orphaned indexes, reciprocity checks, reclassification suggestions
+- `bkb crew create/list/edit/remove` — custom agent lifecycle: extend the 8 built-in agents with domain-specific roles via guided interview
+- Enhanced transcript handling during ingest: multi-speaker detection, key decisions/action items/open questions extraction, topic segmentation, speaker entity pages, structured source summary format
+- Status sub-command now reports last defrag/garden dates and custom agent count
+- All 8 built-in agents updated with new "When active" entries for defrag, garden, and crew
+
+## 0.46.0 — The Crew (2026-04-06)
+
+BKB gets a crew of 8 specialized agents that define the roles the LLM adopts during each operation. Inspired by My-Brain-Is-Full-Crew's multi-agent architecture, adapted for knowledge base operations.
+
+- 8 agent definition files created during `bkb init` in `kb/agents/`: Architect, Sorter, Compiler, Seeker, Connector, Librarian, Reviewer (QA), Editor (readability)
+- Agent dispatch table maps each sub-command to its crew: sequential handoff (→) for ingest pipeline, concurrent standards (+) for lint
+- Reviewer agent adds QA gate: confidence auditing, source verification, untested-claim detection
+- Editor agent adds readability checks: scannable articles, clear titles, navigation quality, stub detection
+- Schema file (CLAUDE.md) updated with crew dispatch section
+
+## 0.45.0 — The Second Brain (2026-04-06)
+
+BKB gets smarter queries, richer connections, and zero-friction capture. Inspired by the best ideas from karpathy-llm-wiki, open-brain-server, claude-knowledge-vault, and My-Brain-Is-Full-Crew.
+
+- Self-improving retrieval agent (`wiki/agent.md`) — learns from past queries to prioritize future lookups, regenerates hot topics every 5 queries
+- Three-tier query routing (Synthesize/Record/Skip) — only files answers as wiki pages when they connect 2+ sources, preventing wiki bloat
+- Typed relationships in `related:` frontmatter — six relationship types (extends, contradicts, evidence-for, complements, supersedes, depends-on) with 8-per-page cap
+- Lint expanded with relationship density, relationship validity, and agent staleness checks
 
 ## 0.43.5 — The Final Polish (2026-04-05)
 
