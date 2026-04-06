@@ -113,7 +113,7 @@ verify, verify requests, check, evaluate, review requests, review reqs, audit
 
 Note: "check" routes to verify requests ONLY when used alone or with a target (e.g., "do work check UR-003"). "check for updates" is intercepted at priority 2 and routes to version — it never reaches verify. When followed by other descriptive content it routes to capture requests (e.g., "do work check if the button works" → capture requests).
 
-Note: "audit" alone routes to verify requests. "audit code" and "audit implementation" route to review work (see Review Verbs below). "audit codebase" routes to code-review (see Code-Review Verbs below).
+Note: "audit" alone routes to verify requests. "audit code" and "audit implementation" route to review work (see Review Verbs below). "audit codebase" routes to code-review (see Code-Review Verbs below). "audit primes" routes to prime (see Prime Verbs below).
 
 ### Code-Review Verbs (→ Code Review)
 
@@ -261,6 +261,10 @@ do-work — task queue for agentic coding tools
     do work quick-wins          Scan cwd for refactoring and test opportunities
     do work quick-wins src/     Scan a specific directory
 
+  Prime files:
+    do work prime create src/auth/    Generate a prime file via interactive Q&A
+    do work prime audit               Audit all prime files for staleness and broken links
+
   UI review (read-only):
     do work ui-review                     Validate UI quality (interactive scope selection)
     do work ui-review src/components/     Validate a directory
@@ -284,10 +288,6 @@ do-work — task queue for agentic coding tools
     do work inspect             Explain all uncommitted changes (what, why, readiness)
     do work inspect REQ-005     Explain changes for a specific REQ
     do work inspect UR-003      Explain changes for all REQs under a UR
-
-  Prime files:
-    do work prime create src/auth/    Generate a prime file via interactive Q&A
-    do work prime audit               Audit all prime files for staleness and broken links
 
   Diagnostics:
     do work forensics           Pipeline diagnostics — stuck work, hollow completions, orphaned URs
