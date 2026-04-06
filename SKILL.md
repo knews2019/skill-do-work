@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | help
+argument-hint: capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | prime [create|audit] | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | help
 upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
 ---
 
@@ -24,6 +24,7 @@ A unified entry point for task capture and processing.
 - **install-ui-design**: Install the `frontend-design` Claude skill for production-grade UI design capabilities
 - **install-bowser**: Install Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification
 - **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination (read-only)
+- **prime**: Create and audit prime files — AI context documents that index utility codebases
 - **build knowledge base (bkb)**: LLM Knowledge Base builder → initialize, triage, ingest, query, lint, and maintain a persistent Markdown wiki compiled from raw sources
 - **commit**: Commit uncommitted files → analyzes, groups atomically, traces to REQs
 - **inspect**: Explain uncommitted changes — what changed, why, and whether it's ready to commit (read-only)
@@ -68,10 +69,11 @@ Check these patterns **in order** — first match wins:
 | 13       | Version keywords         | `do work version`, `do work update`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
 | 14       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
 | 15       | Forensics keywords       | `do work forensics`, `do work diagnose`, `do work health check`, `do work health`                                                  | → forensics                   |
-| 16       | BKB keywords             | `do work bkb`, `do work bkb init`, `do work bkb ingest`, `do work build knowledge base`, `do work knowledge base`                 | → build knowledge base        |
-| 17       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
-| 18       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
-| 19       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
+| 16       | Prime keywords           | `do work prime`, `do work prime create src/auth/`, `do work prime audit`, `do work create prime`, `do work audit primes`           | → prime                       |
+| 17       | BKB keywords             | `do work bkb`, `do work bkb init`, `do work bkb ingest`, `do work build knowledge base`, `do work knowledge base`                 | → build knowledge base        |
+| 18       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
+| 19       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
+| 20       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -190,6 +192,13 @@ bkb, build knowledge base, knowledge base, kb
 
 Note: "bkb" is the short form. Everything after the verb is passed as `$ARGUMENTS` (sub-command + parameters). For example, `do work bkb init ~/research` passes `init ~/research` as arguments. `do work bkb ingest today` passes `ingest today`. `do work build knowledge base` with no sub-command shows the BKB help menu.
 
+### Prime Verbs (→ Prime)
+
+These signal "prime file management operations":
+prime, prime create, prime audit, create prime, audit primes, primes
+
+Note: "prime" as the first word after "do work" always routes to the prime action. "create prime" (reversed order) also routes here. "audit primes" routes here; plain "audit" still routes to verify requests (priority 4). The key distinction: "audit" alone is about REQ quality; "audit primes" or "prime audit" is about prime file health. Everything after the verb is passed as `$ARGUMENTS` (sub-command + parameters). For example, `do work prime create src/auth/` passes `create src/auth/` as arguments.
+
 ### Quick-Wins Verbs (→ Quick-Wins)
 
 These signal "scan for improvement opportunities":
@@ -275,6 +284,10 @@ do-work — task queue for agentic coding tools
     do work inspect             Explain all uncommitted changes (what, why, readiness)
     do work inspect REQ-005     Explain changes for a specific REQ
     do work inspect UR-003      Explain changes for all REQs under a UR
+
+  Prime files:
+    do work prime create src/auth/    Generate a prime file via interactive Q&A
+    do work prime audit               Audit all prime files for staleness and broken links
 
   Diagnostics:
     do work forensics           Pipeline diagnostics — stuck work, hollow completions, orphaned URs
@@ -402,6 +415,15 @@ Do not ask "Start the work loop?" — just print the help menu and wait.
 - `do work health check` → Same as forensics
 - `do work health` → Same as forensics
 
+### Routes to Prime
+
+- `do work prime` → Shows prime sub-command help
+- `do work prime create src/auth/` → Interactive Q&A to generate prime-auth.md
+- `do work prime audit` → Full audit of all prime files (read-only)
+- `do work create prime src/utils/` → Same as prime create (reversed order)
+- `do work audit primes` → Same as prime audit
+- `do work primes` → Shows prime sub-command help
+
 ### Routes to Quick-Wins
 
 - `do work quick-wins` → Scans current working directory
@@ -490,6 +512,7 @@ Each action has an action file with full instructions. How you execute it depend
 | install-ui-design  | `./actions/install-ui-design.md`| (none needed)                  |
 | install-bowser     | `./actions/install-bowser.md`   | (none needed)                  |
 | forensics          | `./actions/forensics.md`        | (none needed)                  |
+| prime              | `./actions/prime.md`            | `$ARGUMENTS` (sub-command + params) |
 | build knowledge base | `./actions/build-knowledge-base.md` | `$ARGUMENTS` (sub-command + params) |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 | recap              | `./actions/version.md`          | `mode: recap`                  |
@@ -499,7 +522,7 @@ Each action has an action file with full instructions. How you execute it depend
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `prime`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
@@ -573,6 +596,22 @@ Next steps:
   do work cleanup               Fix orphaned URs and misplaced files
   do work run                   Process stuck or pending REQs
   do work capture request: [describe fix]  Capture a specific finding as a request
+```
+
+**After prime create:**
+```
+Next steps:
+  do work code-review prime-{name}   Review the code scope the prime covers
+  do work prime audit                Run a full audit to check the new prime
+  do work run                        Process the queue
+```
+
+**After prime audit:**
+```
+Next steps:
+  do work prime create <path>         Create primes for flagged utilities
+  do work capture request: [fix]      Capture audit findings as requests
+  do work run                         Process the queue
 ```
 
 **After quick-wins:**
