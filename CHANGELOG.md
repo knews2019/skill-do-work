@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.47.2 — The Quoter (2026-04-06)
+
+Fixed invalid YAML frontmatter in SKILL.md that caused strict parsers to fail.
+
+- Quoted `argument-hint` value to escape colons
+- Removed non-standard `upstream` frontmatter key
+
+---
+
 ## 0.47.1 — The Badge Guard (2026-04-06)
 
 Agent dispatch now gracefully handles missing `agents/` directory instead of failing.
