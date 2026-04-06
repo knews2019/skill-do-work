@@ -143,7 +143,7 @@ glob **/prime-*.md
 
 Build a table of every prime file with columns: path, utility it documents, last modified.
 
-Skip session/ideation artifacts — directories like `ideation-*/session/sources/` contain session snapshots, not real primes.
+Skip directories that are clearly not source primes — build output (`dist/`, `build/`, `.next/`), dependencies (`node_modules/`, `vendor/`), and session/scratch artifacts (temp directories, `.cache/`).
 
 ### Step 2: Validate each prime file
 

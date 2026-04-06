@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.47.3 — The Compass (2026-04-06)
+
+Prime audit skip rules now use generic patterns instead of project-specific directory names.
+
+- Replaced `ideation-*/session/sources/` with portable skip list (`dist/`, `node_modules/`, `.cache/`, etc.)
+
 ## 0.47.2 — The Quoter (2026-04-06)
 
 Fixed invalid YAML frontmatter in SKILL.md that caused strict parsers to fail.
