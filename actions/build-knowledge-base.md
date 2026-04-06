@@ -19,6 +19,9 @@ The `bkb` command accepts a sub-command as its first argument. If no sub-command
 | `close` | Finalize the daily log, verify indexes, report summary | Librarian + Editor |
 | `rollup` | Monthly rollup — trends, volume stats, recommendations | Librarian + Editor |
 | `status` | Show current KB stats — article counts, pending items, recent activity | (any) |
+| `defrag` | Weekly structural maintenance — re-evaluate clusters, suggest merges/splits | Architect + Connector + Editor |
+| `garden` | Topic cluster and relationship hygiene — balance, orphans, reciprocity | Connector + Librarian |
+| `crew [action]` | Manage custom agents — create, list, edit, remove | Architect |
 | (none) | Show help menu | (any) |
 
 ### Agent Dispatch
@@ -194,6 +197,8 @@ You are the Architect. You own the KB's structure and schema.
 ## When active
 - `bkb init` — you design and create the full structure
 - `bkb lint` — you verify index integrity and schema compliance
+- `bkb defrag` — you evaluate and reshape cluster boundaries
+- `bkb crew` — you guide custom agent creation and validate definitions
 
 ## Standards
 - Master index stays under 80 lines
@@ -241,7 +246,7 @@ You are the Compiler. You transform raw sources into wiki knowledge.
 - Per-file processing with independent fault tolerance
 
 ## When active
-- `bkb ingest` — you own the source-to-wiki compilation
+- `bkb ingest` — you own the source-to-wiki compilation (including enhanced transcript handling for audio/video)
 
 ## Standards
 - Every page gets YAML frontmatter with all required fields
@@ -293,6 +298,8 @@ You are the Connector. You discover and maintain relationships between pages.
 ## When active
 - `bkb ingest` — you add cross-references after the Compiler creates pages
 - `bkb lint` — you verify relationship validity and density
+- `bkb defrag` — you assess how relationships span across cluster boundaries
+- `bkb garden` — you audit relationship types, reciprocity, and density
 
 ## Standards
 - Every relationship is bidirectional — if A extends B, B gets a link back to A
@@ -321,6 +328,7 @@ You are the Librarian. You maintain wiki health and track history.
 - `bkb resolve` — you walk through contradictions
 - `bkb rollup` — you produce the monthly summary
 - `bkb close` — you finalize the day
+- `bkb garden` — you audit topic cluster balance and identify orphaned indexes
 
 ## Standards
 - Lint findings go to wiki/daily/{today}.md AND wiki/log.md
@@ -373,6 +381,7 @@ You are the Editor. You ensure the wiki is clear, navigable, and well-structured
 - `bkb close` — you review today's new/updated pages for readability
 - `bkb lint` — you check for thin articles, unclear titles, and navigation dead ends
 - `bkb rollup` — you refresh the overview and flag readability issues
+- `bkb defrag` — you ensure restructured clusters have clear, intuitive names
 
 ## Standards
 - Articles should be scannable — headers, short paragraphs, no walls of text
@@ -446,8 +455,8 @@ Compile source documents into wiki pages. This is the core operation.
 1. **Read** the target source file(s) from `raw/capture/` (or the specified path).
 2. **Handle non-text sources**:
    - **Images** (`.png`, `.jpg`, `.svg`, etc.): Use LLM vision to describe the image. Generate a summary from the visual content. If a companion `.md` file exists alongside (e.g., `diagram.png` + `diagram.md`), use both. Both files are treated as a unit — move both to `processed/` together in step 6.
-   - **Audio** (`.mp3`, `.wav`, etc.): Check for a companion transcript file (e.g., `podcast.mp3` + `podcast.txt` or `podcast.md`). If found, ingest the transcript. Both files move to `processed/` together. If no transcript exists, skip the file and flag it: "Audio file needs a transcript — add a .txt or .md alongside it."
-   - **Video** (`.mp4`, `.webm`, etc.): Same as audio — look for a companion transcript. Both move together. Skip and flag if none found.
+   - **Audio** (`.mp3`, `.wav`, etc.): Check for a companion transcript file (e.g., `podcast.mp3` + `podcast.txt` or `podcast.md`). If found, process the transcript using enhanced transcript handling (see below). Both files move to `processed/` together. If no transcript exists, skip the file and flag it: "Audio file needs a transcript — add a .txt or .md alongside it."
+   - **Video** (`.mp4`, `.webm`, etc.): Same as audio — look for a companion transcript. Process using enhanced transcript handling. Both move together. Skip and flag if none found.
    - **Text files** (`.md`, `.pdf`, `.txt`, code files): Process normally.
 3. **For each source**, discuss key takeaways briefly, then:
    a. **Duplicate check** — before creating any wiki page, search for existing pages covering the same topic:
@@ -518,6 +527,57 @@ Set `confidence:` in frontmatter based on source quality:
 - **low** — no direct source (inferred or synthesized by the LLM), OR an active contradiction is flagged against this page.
 
 Confidence can change: medium → high when a second source confirms the claim. High → low when a contradiction is flagged. Low → medium/high when the contradiction is resolved.
+
+### Enhanced Transcript Handling
+
+When the Compiler ingests audio or video with a companion transcript, apply these additional steps beyond standard text ingestion:
+
+1. **Detect multi-speaker content**: Scan the transcript for speaker labels (e.g., "Speaker 1:", "John:", "[Host]", timestamps with speaker changes). If multiple speakers are detected:
+   a. Attribute quotes, claims, and opinions to their specific speakers.
+   b. In the source summary, note which claims belong to which speaker rather than presenting everything as a single-voice narrative.
+
+2. **Extract structured content**: Identify and extract:
+   a. **Key decisions** — statements where speakers agree on a course of action or reach a conclusion.
+   b. **Action items** — commitments to do something, assignments, deadlines mentioned.
+   c. **Open questions** — questions raised but not answered, disagreements left unresolved, items explicitly deferred.
+
+3. **Segment by topic**: For transcripts longer than ~2000 words, identify major topic shifts and segment the transcript. Each segment gets its own section in the source summary. If a segment covers a topic that warrants its own concept page, create one.
+
+4. **Create entity pages for speakers**: For each identified speaker who does not already have an entity page in `wiki/entities/`:
+   a. Create a new entity page with `type: entity` and available information (name, role/title if mentioned, organization if mentioned).
+   b. Set `confidence: low` (since speaker identity comes from a single transcript).
+   c. Link the entity page to the source summary.
+   d. If the speaker already has an entity page, add the new source to their `sources:` list and update any new information mentioned.
+
+5. **Structure the source summary**: When a transcript is detected, the source summary in `wiki/sources/` should use this format instead of the default:
+
+   ```markdown
+   ## Overview
+   Brief description of the audio/video content, date, context, and duration if known.
+
+   ## Speakers
+   - **Speaker Name** — role/title if known. [[entity-page-link]]
+   - ...
+
+   ## Key Points
+   - Point 1 (attributed to Speaker if applicable)
+   - Point 2
+   - ...
+
+   ## Decisions
+   - Decision 1 — agreed by [speakers]
+   - ... (or "No explicit decisions recorded" if none)
+
+   ## Action Items
+   - [ ] Action item 1 — assigned to [speaker] (deadline if mentioned)
+   - ... (or "No action items identified" if none)
+
+   ## Open Questions
+   - Question 1 — raised by [speaker], not resolved
+   - ... (or "No open questions" if none)
+   ```
+
+This enhanced handling applies ONLY to audio/video transcripts. Standard text sources (articles, papers, notes) continue using the default source summary format.
 
 ### Index Size Rules
 
@@ -667,8 +727,9 @@ Quick snapshot of the KB state.
 1. **Read** `wiki/_master_index.md` for article counts and topic clusters.
 2. **Count** files in `raw/inbox/` (pending triage) and items marked "ready" in `raw/_inbox_queue.md` (pending ingestion).
 3. **Read** the most recent `wiki/daily/` entry for last activity date.
-4. **Scan** `wiki/log.md` for the most recent `lint |` entry to get the last-lint date.
-5. **Report**:
+4. **Scan** `wiki/log.md` for the most recent `lint |`, `defrag |`, and `garden |` entries to get their last-run dates.
+5. **Count** custom agents: `.md` files in `<kb>/agents/` that contain `## Custom Agent`.
+6. **Report**:
    ```
    Knowledge Base Status:
      Location: <path>
@@ -677,7 +738,167 @@ Quick snapshot of the KB state.
      Queue: N items ready for ingestion
      Last activity: YYYY-MM-DD
      Last lint: YYYY-MM-DD (or "never")
+     Last defrag: YYYY-MM-DD (or "never")
+     Last garden: YYYY-MM-DD (or "never")
+     Agents: 8 built-in + N custom
    ```
+
+---
+
+## Sub-Command: `defrag`
+
+Weekly structural maintenance. Unlike lint (which finds problems), defrag proactively improves the wiki's structure as it grows. You can pass lint with flying colors and still benefit from defrag.
+
+### Steps
+
+1. **Read current structure**: Read `wiki/_master_index.md` and all `wiki/topics/_index_*.md` files. Count articles per cluster. Read a sample of articles from each cluster (first 3) to understand cluster boundaries.
+
+2. **Evaluate cluster boundaries**: For each topic cluster:
+   a. **Overcrowded clusters** (40+ articles): Analyze article titles and `topic_cluster` assignments. Propose splits — identify natural sub-groups that could become their own cluster.
+   b. **Underweight clusters** (fewer than 5 articles): Check if articles would fit better in a neighboring cluster. Propose merges with the most closely related cluster.
+   c. **Overlapping clusters**: Compare cluster scopes. If two clusters cover substantially similar ground, propose merging them.
+
+3. **Check concept promotion**: Scan for concepts mentioned across 5+ articles in different clusters that do NOT have their own topic cluster. These are candidates for promotion to a new cluster.
+
+4. **Check cluster demotion**: Identify topic clusters where no new articles have been added in 30+ days AND the cluster has fewer than 10 articles. Flag as candidates for absorption into a parent or sibling cluster.
+
+5. **Refresh master index organization**: Re-order `_master_index.md` entries by cluster size (largest first) or by thematic grouping if logical groups emerge. Ensure article counts are accurate.
+
+6. **Apply approved changes**: For each proposed change, describe it and apply:
+   - **Merge**: Move all articles to the target cluster's index, delete the empty index, update all affected articles' `topic_cluster` frontmatter, update `_master_index.md`.
+   - **Split**: Create the new topic index, move articles, update frontmatter, update master index.
+   - **Promote**: Create a new `wiki/topics/_index_[topic].md`, reclassify articles, update frontmatter, update master index.
+   - **Demote**: Merge the shrinking cluster into its best-fit neighbor.
+
+7. **Generate defrag report**: Create `wiki/daily/{today}-defrag.md` with:
+   - Cluster inventory (before and after)
+   - Merges performed
+   - Splits performed
+   - Promotions and demotions
+   - Master index changes
+   - Recommendations for next defrag
+
+8. **Log**: Append to `wiki/log.md` using the format `## [{today}] defrag | <summary of structural changes>`.
+
+### When to Run
+
+Weekly, or after a large batch ingest (20+ sources). The `status` command should note when defrag hasn't run in 14+ days.
+
+---
+
+## Sub-Command: `garden`
+
+Audit the wiki's metadata layer — topic clusters, typed relationships, and cross-references. Focuses on the "connective tissue" rather than the content itself.
+
+### Steps
+
+1. **Topic cluster balance**: Read all `wiki/topics/_index_*.md` files. Report the distribution of articles across clusters. Flag clusters with fewer than 3 articles (underused) and clusters with more than 50 articles (overcrowded). Calculate the standard deviation of cluster sizes — a high value suggests imbalance.
+
+2. **Relationship type distribution**: Scan all wiki pages' `related:` frontmatter. Tally how many of each relationship type are used across the entire wiki:
+   - `extends`, `contradicts`, `evidence-for`, `complements`, `supersedes`, `depends-on`
+   - Flag if any single type exceeds 60% of all relationships (likely overuse).
+   - Flag if `evidence-for` and `contradicts` together are below 10% (the wiki may be under-analyzed — these are the most valuable relationship types).
+   - Suggest specific pages where a `complements` link could be upgraded to a more precise type.
+
+3. **Orphaned topic indexes**: Find topic indexes in `wiki/topics/` that exist as files but have zero articles pointing to them (no wiki page has that `topic_cluster` value in frontmatter). Suggest removal or re-population.
+
+4. **Relationship reciprocity**: For every `related:` entry on every page, verify the target page has a reciprocal `related:` entry pointing back. Report all one-way links. Offer to add the missing back-links.
+
+5. **Reclassification suggestions**: For each article, compare its content (title, related pages, relationship targets) against its assigned `topic_cluster`. If the majority of an article's relationships point to a different cluster, suggest reclassifying it.
+
+6. **Generate garden report**: Write findings to `wiki/daily/{today}.md` and print a summary:
+   ```
+   Garden results:
+     Cluster balance: N clusters (min: X, max: Y, avg: Z articles)
+     Relationship distribution: {type: count, ...}
+     Orphaned topic indexes: N
+     One-way links (missing reciprocals): N
+     Reclassification candidates: N
+   ```
+
+7. **Apply fixes**: For reciprocity violations, add the missing back-links automatically. For other findings, list them as recommendations (do not auto-apply reclassifications or index removals without user confirmation).
+
+8. **Log**: Append to `wiki/log.md` using the format `## [{today}] garden | <summary of findings>`.
+
+---
+
+## Sub-Command: `crew [action]`
+
+Manage the agent crew. Built-in agents (8) are read-only. Custom agents extend the crew with domain-specific roles.
+
+### Actions
+
+- `crew` or `crew list` — list all agents
+- `crew create` — guided interview to define a new custom agent
+- `crew edit <name>` — modify an existing custom agent
+- `crew remove <name>` — remove a custom agent
+
+### Sub-Action: `crew list`
+
+1. **Read** all `.md` files in `<kb>/agents/`.
+2. **Classify** each as built-in (one of the 8 original names: architect, sorter, compiler, seeker, connector, librarian, reviewer, editor) or custom.
+3. **Display** a table:
+   ```
+   Agent Crew:
+     # | Agent      | Type     | Role                              | Active during
+     1 | Architect  | built-in | Structure, schema, init           | init, lint, defrag, crew
+     2 | Sorter     | built-in | Inbox triage, file classification | triage
+     ...
+     9 | Taxonomist | custom   | Domain-specific classification    | ingest, garden
+   ```
+
+### Sub-Action: `crew create`
+
+Guided interview to build a new agent file. Ask the user for:
+
+1. **Name** — a single word, lowercase, no spaces. Must not collide with built-in names. File will be `<kb>/agents/<name>.md`.
+2. **Role** — one-sentence description of what this agent does.
+3. **Focus** — 3–5 bullet points describing the agent's area of expertise.
+4. **When active** — which sub-commands this agent participates in, and whether it joins as a sequential step (arrow) or concurrent concern (plus). Example: "ingest (after Reviewer)" or "lint (concurrent)".
+5. **Standards** — 3–5 rules this agent enforces.
+
+Create the agent file using the same format as built-in agents, with an additional marker section:
+
+```markdown
+# {Name}
+
+You are the {Name}. {Role}
+
+## Focus
+- {focus bullet 1}
+- ...
+
+## When active
+- `bkb {command}` — {description}
+- ...
+
+## Standards
+- {standard 1}
+- ...
+
+## Custom Agent
+Created: {today}
+```
+
+After creating, confirm: "Agent '{name}' created. It will be active during: {commands}."
+
+### Sub-Action: `crew edit <name>`
+
+1. **Validate**: Check that `<name>.md` exists in `<kb>/agents/` and is a custom agent (has `## Custom Agent` section). Refuse to edit built-in agents — suggest creating a custom agent that supplements the built-in one instead.
+2. **Show** the current agent definition.
+3. **Ask** what the user wants to change (focus, when active, standards, or full rewrite).
+4. **Update** the file. Set `Updated: {today}` in the `## Custom Agent` section.
+
+### Sub-Action: `crew remove <name>`
+
+1. **Validate**: Check that `<name>.md` exists and is a custom agent. Refuse to remove built-in agents: "Cannot remove built-in agent '{name}'. Built-in agents are part of the core BKB system."
+2. **Confirm** with the user: "Remove custom agent '{name}'? This cannot be undone."
+3. **Delete** the file from `<kb>/agents/`.
+4. **Log**: Append to `wiki/log.md`: `## [{today}] crew remove | Removed custom agent: {name}`.
+
+### Custom Agent Dispatch
+
+Before executing any sub-command, scan ALL `.md` files in `<kb>/agents/` — not just the built-in crew listed in the Sub-Commands table. Custom agents activate based on their `## When active` section. If a custom agent lists the current sub-command, include it alongside the standard crew using the notation specified (arrow for sequential, plus for concurrent).
 
 ---
 
@@ -702,8 +923,16 @@ do work bkb — LLM Knowledge Base builder
     do work bkb lint              Quick health check (recent changes)
     do work bkb lint full         Full cross-cluster integrity check
     do work bkb resolve           Walk through and resolve contradictions
+    do work bkb defrag            Weekly structural maintenance (merges, splits)
+    do work bkb garden            Topic cluster and relationship hygiene
     do work bkb rollup            Monthly summary and trend analysis
     do work bkb status            Show KB stats and pending items
+
+  Crew:
+    do work bkb crew              List all agents (built-in + custom)
+    do work bkb crew create       Define a new custom agent
+    do work bkb crew edit <name>  Modify a custom agent
+    do work bkb crew remove <name> Remove a custom agent
 
   Typical flow:
     1. Drop files into kb/raw/inbox/
@@ -711,6 +940,7 @@ do work bkb — LLM Knowledge Base builder
     3. do work bkb ingest
     4. do work bkb query "what are the tradeoffs of X vs Y?"
     5. do work bkb close
+    Weekly: do work bkb defrag && do work bkb garden
 ```
 
 ---
@@ -790,20 +1020,37 @@ Every wiki page MUST have YAML frontmatter:
 - Every topic index listed in _master_index.md
 
 ## Crew (Agent Dispatch)
-- `agents/` — 8 role definitions read before each sub-command
+- `agents/` — 8 built-in role definitions + custom agents, read before each sub-command
 - **init**: Architect | **triage**: Sorter | **ingest**: Compiler → Connector → Reviewer
 - **query**: Seeker | **lint**: Librarian + Reviewer + Connector + Editor
 - **resolve**: Librarian + Reviewer | **close**: Librarian + Editor | **rollup**: Librarian + Editor
+- **defrag**: Architect + Connector + Editor | **garden**: Connector + Librarian
+- **crew**: Architect
 - Arrow (→) = sequential handoff. Plus (+) = concurrent standards.
+- Custom agents (files with `## Custom Agent` section) activate based on their `## When active` section.
+
+## Custom Agents
+- Custom agent files live in `agents/` alongside built-ins.
+- Custom agents have a `## Custom Agent` section with Created/Updated dates.
+- Built-in agents (8) are never modified. Custom agents extend the crew.
+- Custom agents specify which sub-commands they activate during.
+
+## Transcript Handling
+- Audio/video transcripts get enhanced processing: speaker detection, decisions, action items, open questions.
+- Source summaries for transcripts use the structured format: Overview, Speakers, Key Points, Decisions, Action Items, Open Questions.
+- Entity pages created for identified speakers (confidence: low).
 
 ## Workflows
 - **triage**: Sort inbox → capture, append only new items to _inbox_queue.md
-- **ingest**: Read source → duplicate check → create/update wiki pages → update indexes → write daily log → move source to processed/{today}/ → update manifest → update queue
+- **ingest**: Read source → duplicate check → create/update wiki pages (enhanced transcript handling for audio/video) → update indexes → write daily log → move source to processed/{today}/ → update manifest → update queue
 - **query**: Read agent.md → master index → topic index → articles → synthesize → route (Synthesize/Record/Skip) → update agent
-- **lint**: Check contradictions, orphans, missing pages, stale claims, index integrity, broken links
+- **lint**: Check contradictions, orphans, missing pages, stale claims, index integrity, broken links, relationship density/validity, agent staleness
 - **resolve**: Walk through open contradictions, propose and apply resolutions with user confirmation
 - **close**: Finalize daily log, verify index counts, refresh overview.md, suggest git commit
 - **rollup**: Monthly summary with volume, themes, integrity, recommendations
+- **defrag**: Read structure → evaluate cluster boundaries → check promotions/demotions → refresh master index → apply changes → generate report
+- **garden**: Cluster balance → relationship distribution → orphaned indexes → reciprocity check → reclassification suggestions → apply reciprocity fixes
+- **crew**: list/create/edit/remove custom agents in agents/
 ```
 
 ---
@@ -844,6 +1091,8 @@ Next steps:
 ```
 Next steps:
   do work bkb resolve           Resolve flagged contradictions
+  do work bkb defrag            Optimize structure (weekly)
+  do work bkb garden            Audit relationships and clusters
   do work bkb ingest            Address gaps with new sources
   do work bkb close             Finalize the day
 ```
@@ -859,6 +1108,7 @@ Next steps:
 ```
 Next steps:
   do work bkb rollup            Generate monthly summary (if end of month)
+  do work bkb defrag            Weekly structural maintenance
   do work bkb status            Review KB state
 ```
 
@@ -867,4 +1117,27 @@ Next steps:
 Next steps:
   do work bkb lint full         Full integrity check
   do work bkb status            Review KB state
+```
+
+**After defrag:**
+```
+Next steps:
+  do work bkb lint              Verify structural integrity after changes
+  do work bkb garden            Check relationship hygiene
+  do work bkb close             Finalize the day
+```
+
+**After garden:**
+```
+Next steps:
+  do work bkb defrag            Apply structural changes if needed
+  do work bkb resolve           Resolve any flagged issues
+  do work bkb close             Finalize the day
+```
+
+**After crew (any action):**
+```
+Next steps:
+  do work bkb crew              Review the full agent roster
+  do work bkb status            Check KB state
 ```

@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.47.0 — The Full Crew (2026-04-06)
+
+BKB imports the best ideas from My-Brain-Is-Full-Crew's 13 skills — adapted for zero-dependency knowledge base operations.
+
+- `bkb defrag` — weekly structural maintenance: re-evaluates cluster boundaries, proposes merges/splits, promotes growing concepts, demotes stale clusters
+- `bkb garden` — metadata hygiene: topic cluster balance, relationship type distribution, orphaned indexes, reciprocity checks, reclassification suggestions
+- `bkb crew create/list/edit/remove` — custom agent lifecycle: extend the 8 built-in agents with domain-specific roles via guided interview
+- Enhanced transcript handling during ingest: multi-speaker detection, key decisions/action items/open questions extraction, topic segmentation, speaker entity pages, structured source summary format
+- Status sub-command now reports last defrag/garden dates and custom agent count
+- All 8 built-in agents updated with new "When active" entries for defrag, garden, and crew
+
 ## 0.46.0 — The Crew (2026-04-06)
 
 BKB gets a crew of 8 specialized agents that define the roles the LLM adopts during each operation. Inspired by My-Brain-Is-Full-Crew's multi-agent architecture, adapted for knowledge base operations.
