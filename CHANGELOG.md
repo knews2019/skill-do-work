@@ -11,7 +11,6 @@ BKB gets smarter queries, richer connections, and zero-friction capture. Inspire
 - Self-improving retrieval agent (`wiki/agent.md`) — learns from past queries to prioritize future lookups, regenerates hot topics every 5 queries
 - Three-tier query routing (Synthesize/Record/Skip) — only files answers as wiki pages when they connect 2+ sources, preventing wiki bloat
 - Typed relationships in `related:` frontmatter — six relationship types (extends, contradicts, evidence-for, complements, supersedes, depends-on) with 8-per-page cap
-- Web clipper inbox (`raw/inbox/clippings/`) — browser extensions drop clips here, auto-classified as web content during triage
 - Lint expanded with relationship density, relationship validity, and agent staleness checks
 
 ## 0.44.0 — The Cartographer (2026-04-06)

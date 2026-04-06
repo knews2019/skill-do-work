@@ -53,7 +53,6 @@ Before creating anything, check if the target path already contains a KB (has bo
 <path>/
 ├── raw/
 │   ├── inbox/                      # Zero-friction drop zone
-│   │   └── clippings/              # Browser clipper target (Obsidian Web Clipper, MarkDownload, etc.)
 │   ├── capture/                    # Type-sorted staging
 │   │   ├── web/
 │   │   ├── papers/
@@ -189,8 +188,8 @@ Sort new items from `raw/inbox/` into `raw/capture/` subdirectories by type.
 
 ### Steps
 
-1. **Scan** `raw/inbox/` for all files (non-recursive — files only, not subdirectories). Also scan `raw/inbox/clippings/` for files dropped by browser extensions (these are always web content).
-2. **Classify** each file by extension and content (files from `clippings/` are pre-classified as `capture/web/` — skip extension-based classification for them):
+1. **Scan** `raw/inbox/` for all files (non-recursive — files only, not subdirectories).
+2. **Classify** each file by extension and content:
    - `.pdf` → `capture/papers/`
    - `.md` from web clippers (has URL in frontmatter or content) → `capture/web/`
    - `.md` that looks like personal notes → `capture/notes/`
@@ -469,7 +468,7 @@ do work bkb — LLM Knowledge Base builder
     do work bkb init ~/research   Initialize at a custom path
 
   Daily workflow:
-    do work bkb triage            Sort inbox + clippings into capture directories
+    do work bkb triage            Sort inbox items into capture directories
     do work bkb ingest            Compile all ready sources into wiki
     do work bkb query [question]  Search the wiki and synthesize an answer
     do work bkb close             Finalize today's daily log
@@ -481,12 +480,8 @@ do work bkb — LLM Knowledge Base builder
     do work bkb rollup            Monthly summary and trend analysis
     do work bkb status            Show KB stats and pending items
 
-  Capture shortcuts:
-    Drop files into kb/raw/inbox/               General drop zone
-    Save clips to kb/raw/inbox/clippings/       Browser clipper target
-
   Typical flow:
-    1. Drop files into kb/raw/inbox/ (or clip via browser extension)
+    1. Drop files into kb/raw/inbox/
     2. do work bkb triage
     3. do work bkb ingest
     4. do work bkb query "what are the tradeoffs of X vs Y?"
@@ -505,7 +500,6 @@ When `init` creates `<path>/CLAUDE.md`, use this content:
 ## Project Structure
 - `raw/` — source documents with lifecycle pipeline. NEVER modify originals.
 - `raw/inbox/` — zero-friction drop zone. Sort into capture/ before processing.
-- `raw/inbox/clippings/` — browser clipper target (Obsidian Web Clipper, MarkDownload, etc.). Auto-classified as web content during triage.
 - `raw/capture/` — type-sorted staging area.
 - `raw/processed/YYYY-MM-DD/` — ingested sources, moved here after successful compilation.
 - `raw/_inbox_queue.md` — append-only triage ledger. Only updated with files moved in the current triage pass.

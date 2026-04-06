@@ -12,7 +12,6 @@ After `do work bkb init`, the KB looks like this:
 kb/
 ├── raw/                          # Source document pipeline
 │   ├── inbox/                    # Drop zone — put anything here
-│   │   └── clippings/            # Browser clipper target (auto-classified as web)
 │   ├── capture/                  # Type-sorted staging (transient)
 │   │   ├── web/                  #   Web articles
 │   │   ├── papers/               #   PDFs, academic papers
@@ -134,7 +133,7 @@ Any article is reachable in two hops from the master index.
 | Command | What it does |
 |---------|--------------|
 | `bkb init [path]` | Create the full directory structure and seed files |
-| `bkb triage` | Sort inbox + clippings into capture directories |
+| `bkb triage` | Sort inbox items into capture directories |
 | `bkb ingest [file]` | Compile sources into wiki pages |
 | `bkb query [question]` | Search the wiki and synthesize an answer |
 | `bkb lint` | Quick health check (orphans, broken links, stale claims) |
@@ -162,16 +161,11 @@ Queries are classified into three tiers to prevent wiki bloat:
 | **Record** | Substantive answer, single source | Returned to user, brief log entry, no wiki page |
 | **Skip** | Simple factual lookup | Returned to user, nothing logged |
 
-## Capture shortcuts
-
-- **General drop zone**: `kb/raw/inbox/` — drop any file
-- **Browser clippings**: `kb/raw/inbox/clippings/` — point your browser extension here (Obsidian Web Clipper, MarkDownload, etc.). Files here are auto-classified as web content during triage.
-
 ## Typical workflow
 
 ```
 do work bkb init                  # one-time setup
-# drop files into kb/raw/inbox/ (or clip via browser extension)
+# drop files into kb/raw/inbox/
 do work bkb triage                # sort them
 do work bkb ingest                # compile into wiki
 do work bkb query [question]      # ask the wiki anything
