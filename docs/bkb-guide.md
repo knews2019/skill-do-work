@@ -12,6 +12,7 @@ After `do work bkb init`, the KB looks like this:
 kb/
 ├── raw/                          # Source document pipeline
 │   ├── inbox/                    # Drop zone — put anything here
+│   │   └── clippings/            # Browser clipper target (auto-classified as web)
 │   ├── capture/                  # Type-sorted staging (transient)
 │   │   ├── web/                  #   Web articles
 │   │   ├── papers/               #   PDFs, academic papers
@@ -36,7 +37,8 @@ kb/
 │   ├── daily/                    # Daily changelogs (YYYY-MM-DD.md)
 │   ├── monthly/                  # Monthly rollups (YYYY-MM.md)
 │   ├── log.md                    # Append-only activity timeline
-│   └── overview.md               # High-level synthesis
+│   ├── overview.md               # High-level synthesis
+│   └── agent.md                  # Retrieval agent — learns query patterns
 │
 └── CLAUDE.md                     # Schema — conventions, frontmatter, workflows
 ```
@@ -98,12 +100,16 @@ title: Page Title
 type: concept | entity | source-summary | comparison
 topic_cluster: [which topic index this belongs to]
 sources: [raw/processed/ paths — always the final location]
-related: [wiki pages linked via [[wiki-links]]]
+related:
+  - page: other-page-name
+    rel: extends | contradicts | evidence-for | complements | supersedes | depends-on
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 confidence: high | medium | low
 ---
 ```
+
+**Typed relationships** describe *how* pages connect, not just *that* they connect. Six types: `extends`, `contradicts`, `evidence-for`, `complements`, `supersedes`, `depends-on`. Max 8 per page.
 
 **Confidence levels:**
 
@@ -128,7 +134,7 @@ Any article is reachable in two hops from the master index.
 | Command | What it does |
 |---------|--------------|
 | `bkb init [path]` | Create the full directory structure and seed files |
-| `bkb triage` | Sort inbox items into capture directories |
+| `bkb triage` | Sort inbox + clippings into capture directories |
 | `bkb ingest [file]` | Compile sources into wiki pages |
 | `bkb query [question]` | Search the wiki and synthesize an answer |
 | `bkb lint` | Quick health check (orphans, broken links, stale claims) |
@@ -138,11 +144,34 @@ Any article is reachable in two hops from the master index.
 | `bkb rollup` | Monthly summary |
 | `bkb status` | KB stats and pending items |
 
+## Retrieval agent
+
+The file `wiki/agent.md` learns from your queries over time. It tracks which topic clusters and articles get used most often, so future queries check the most relevant areas first instead of scanning cold.
+
+- Activates after 3+ queries (cold start threshold)
+- Hot Topics section regenerated every 5 queries
+- Bounded to ~150 lines — oldest log entries pruned automatically
+
+## Query routing
+
+Queries are classified into three tiers to prevent wiki bloat:
+
+| Tier | When | What happens |
+|------|------|--------------|
+| **Synthesize** | Answer connects 2+ sources | Filed as a wiki page in `comparisons/`, indexes updated |
+| **Record** | Substantive answer, single source | Returned to user, brief log entry, no wiki page |
+| **Skip** | Simple factual lookup | Returned to user, nothing logged |
+
+## Capture shortcuts
+
+- **General drop zone**: `kb/raw/inbox/` — drop any file
+- **Browser clippings**: `kb/raw/inbox/clippings/` — point your browser extension here (Obsidian Web Clipper, MarkDownload, etc.). Files here are auto-classified as web content during triage.
+
 ## Typical workflow
 
 ```
 do work bkb init                  # one-time setup
-# drop files into kb/raw/inbox/
+# drop files into kb/raw/inbox/ (or clip via browser extension)
 do work bkb triage                # sort them
 do work bkb ingest                # compile into wiki
 do work bkb query [question]      # ask the wiki anything

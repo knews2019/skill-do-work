@@ -53,6 +53,7 @@ Before creating anything, check if the target path already contains a KB (has bo
 <path>/
 ├── raw/
 │   ├── inbox/                      # Zero-friction drop zone
+│   │   └── clippings/              # Browser clipper target (Obsidian Web Clipper, MarkDownload, etc.)
 │   ├── capture/                    # Type-sorted staging
 │   │   ├── web/
 │   │   ├── papers/
@@ -79,7 +80,8 @@ Before creating anything, check if the target path already contains a KB (has bo
 │   ├── daily/                      # Daily changelog
 │   ├── monthly/                    # Monthly rollup + trends
 │   ├── log.md                      # Append-only timeline
-│   └── overview.md                 # High-level synthesis
+│   ├── overview.md                 # High-level synthesis
+│   └── agent.md                    # Retrieval agent — learns query patterns
 ```
 
 ### Step 3: Create Seed Files
@@ -140,6 +142,23 @@ This knowledge base was initialized on {today}. No sources have been ingested ye
 Add sources to `raw/inbox/` and run `do work bkb triage` followed by `do work bkb ingest` to begin building.
 ```
 
+**`wiki/agent.md`:**
+
+```markdown
+# Retrieval Agent
+
+Learned patterns from past queries. Read this file FIRST during `bkb query` to prioritize which topic clusters and articles to check.
+
+## Hot Topics
+
+(none yet — patterns emerge after 3+ queries)
+
+## Query Log
+
+| Date | Query | Topics Checked | Articles Used | Useful? |
+|---|---|---|---|---|
+```
+
 ### Step 4: Create the Schema File
 
 Create `<path>/CLAUDE.md` with the KB schema (conventions, frontmatter format, workflow triggers). Use the schema content from the "Schema File" section below.
@@ -170,8 +189,8 @@ Sort new items from `raw/inbox/` into `raw/capture/` subdirectories by type.
 
 ### Steps
 
-1. **Scan** `raw/inbox/` for all files (non-recursive — files only, not subdirectories).
-2. **Classify** each file by extension and content:
+1. **Scan** `raw/inbox/` for all files (non-recursive — files only, not subdirectories). Also scan `raw/inbox/clippings/` for files dropped by browser extensions (these are always web content).
+2. **Classify** each file by extension and content (files from `clippings/` are pre-classified as `capture/web/` — skip extension-based classification for them):
    - `.pdf` → `capture/papers/`
    - `.md` from web clippers (has URL in frontmatter or content) → `capture/web/`
    - `.md` that looks like personal notes → `capture/notes/`
@@ -236,7 +255,9 @@ title: Page Title
 type: concept | entity | source-summary | comparison | daily-log | monthly-rollup
 topic_cluster: [which topic index this belongs to]
 sources: [list of raw/processed/ paths — the file's final stable location]
-related: [list of wiki pages linked]
+related:
+  - page: other-page-name
+    rel: extends | contradicts | evidence-for | complements | supersedes | depends-on
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 confidence: high | medium | low
@@ -244,6 +265,25 @@ confidence: high | medium | low
 ```
 
 > **`sources:` always uses the `raw/processed/` path** (e.g., `raw/processed/2026-04-05/moe-paper.pdf`). This is the file's stable final location. Never use `capture/` paths — those are transient.
+
+### Typed Relationships
+
+The `related:` field uses typed entries instead of flat lists. Each entry has a `page` (the `[[wiki-link]]` target) and a `rel` (the relationship type):
+
+| Relationship | Meaning | Example |
+|---|---|---|
+| `extends` | Builds on or expands the target page's ideas | A deep-dive article extends a concept overview |
+| `contradicts` | Makes claims that conflict with the target | Two papers with opposing conclusions |
+| `evidence-for` | Provides supporting evidence for the target's claims | An experiment result supporting a theory |
+| `complements` | Covers related but distinct ground | Two frameworks for different aspects of the same problem |
+| `supersedes` | Replaces or updates the target (target may be stale) | A newer version of a spec replacing the old one |
+| `depends-on` | Requires understanding of the target as a prerequisite | An advanced concept depending on a foundational one |
+
+**Rules:**
+- Relationships are always **bidirectional** — if A `extends` B, then B gets a `related:` entry pointing to A (the inverse relationship is inferred: B is `extended-by` A, but store it as `complements` for simplicity).
+- When creating or updating cross-references during ingest, choose the most specific relationship type. Default to `complements` when unsure.
+- The `contradicts` relationship automatically flags a contradiction in the daily log and lowers the `confidence:` of the less-sourced page to `low`.
+- Maximum 8 typed relationships per page. When adding a 9th, drop the weakest connection (lowest confidence target, or oldest `complements` link).
 
 ### Confidence Rules
 
@@ -267,16 +307,20 @@ Confidence can change: medium → high when a second source confirms the claim. 
 
 ## Sub-Command: `query [question]`
 
-Search the wiki to answer a question. Uses two-hop navigation.
+Search the wiki to answer a question. Uses the retrieval agent for prioritization and three-tier routing for output.
 
 ### Steps
 
-1. **Read** `wiki/_master_index.md` to identify relevant topic cluster(s).
-2. **Read** the relevant topic index(es) from `wiki/topics/`.
-3. **Read** the specific articles identified as relevant (2–5 articles typically).
-4. **Synthesize** an answer using `[[wiki-link]]` citations to wiki pages.
-5. **Offer to file**: If the answer is substantive, ask the user if they want to save it as a new wiki page in `wiki/comparisons/`.
-6. **If filed**: Create the page with proper frontmatter, update the relevant topic index and `_master_index.md`, append to `wiki/log.md`.
+1. **Read `wiki/agent.md`** first. Check the Hot Topics section for topic clusters and articles that have been useful for similar past queries. Use these to prioritize which indexes and articles to read — check high-frequency topics first.
+2. **Read** `wiki/_master_index.md` to identify relevant topic cluster(s). If the agent suggested clusters, start there; otherwise scan the full index.
+3. **Read** the relevant topic index(es) from `wiki/topics/`.
+4. **Read** the specific articles identified as relevant (2–5 articles typically).
+5. **Synthesize** an answer using `[[wiki-link]]` citations to wiki pages.
+6. **Classify the response** using three-tier routing:
+   - **Synthesize** — the answer connects 2+ sources or produces a novel comparison. File it as a new wiki page in `wiki/comparisons/` with proper frontmatter. Update the relevant topic index, `_master_index.md`, and append to `wiki/log.md`.
+   - **Record** — the answer is substantive but doesn't produce new cross-source connections. Return the answer to the user but do NOT create a wiki page. Append a brief entry to `wiki/log.md` noting the query and result.
+   - **Skip** — the answer is a simple lookup or factual retrieval from a single page. Return the answer only. No log entry needed.
+7. **Update `wiki/agent.md`**: Append a row to the Query Log table with today's date, the question asked, which topic clusters were checked, which articles were actually used in the answer, and whether the result was useful (yes/partial/no). After every 5th query, regenerate the Hot Topics section: scan the Query Log for topic clusters and articles that appear most frequently with "yes" usefulness, and list the top 5–10 as prioritized entries.
 
 If the wiki has no content on the topic, say so and suggest sources to ingest.
 
@@ -307,6 +351,9 @@ Health check the wiki for consistency and accuracy.
 6. **Broken links** — `[[wiki-links]]` pointing to non-existent pages.
 7. **Daily log coverage** — daily logs exist for every day that had ingestion activity.
 8. **Frontmatter completeness** — all required fields present in every wiki page.
+9. **Relationship density** — pages with more than 8 `related:` entries (cap exceeded).
+10. **Relationship validity** — every `rel:` value is one of the six allowed types; every `page:` target exists.
+11. **Agent staleness** — `wiki/agent.md` Query Log has entries but Hot Topics haven't been regenerated in 10+ queries.
 
 ### Report
 
@@ -422,7 +469,7 @@ do work bkb — LLM Knowledge Base builder
     do work bkb init ~/research   Initialize at a custom path
 
   Daily workflow:
-    do work bkb triage            Sort inbox items into capture directories
+    do work bkb triage            Sort inbox + clippings into capture directories
     do work bkb ingest            Compile all ready sources into wiki
     do work bkb query [question]  Search the wiki and synthesize an answer
     do work bkb close             Finalize today's daily log
@@ -434,8 +481,12 @@ do work bkb — LLM Knowledge Base builder
     do work bkb rollup            Monthly summary and trend analysis
     do work bkb status            Show KB stats and pending items
 
+  Capture shortcuts:
+    Drop files into kb/raw/inbox/               General drop zone
+    Save clips to kb/raw/inbox/clippings/       Browser clipper target
+
   Typical flow:
-    1. Drop files into kb/raw/inbox/
+    1. Drop files into kb/raw/inbox/ (or clip via browser extension)
     2. do work bkb triage
     3. do work bkb ingest
     4. do work bkb query "what are the tradeoffs of X vs Y?"
@@ -454,6 +505,7 @@ When `init` creates `<path>/CLAUDE.md`, use this content:
 ## Project Structure
 - `raw/` — source documents with lifecycle pipeline. NEVER modify originals.
 - `raw/inbox/` — zero-friction drop zone. Sort into capture/ before processing.
+- `raw/inbox/clippings/` — browser clipper target (Obsidian Web Clipper, MarkDownload, etc.). Auto-classified as web content during triage.
 - `raw/capture/` — type-sorted staging area.
 - `raw/processed/YYYY-MM-DD/` — ingested sources, moved here after successful compilation.
 - `raw/_inbox_queue.md` — append-only triage ledger. Only updated with files moved in the current triage pass.
@@ -463,6 +515,13 @@ When `init` creates `<path>/CLAUDE.md`, use this content:
 - `wiki/daily/YYYY-MM-DD.md` — daily changelog.
 - `wiki/monthly/YYYY-MM.md` — monthly rollup and trends.
 - `wiki/log.md` — append-only activity log.
+- `wiki/agent.md` — retrieval agent. Learns query patterns to prioritize future lookups.
+
+## Retrieval Agent
+- `wiki/agent.md` tracks query history and hot topics.
+- Read FIRST during `bkb query` to prioritize topic clusters.
+- Hot Topics regenerated every 5 queries from the Query Log.
+- Bounded to ~150 lines. Prune oldest log entries when exceeded.
 
 ## Page Conventions
 Every wiki page MUST have YAML frontmatter:
@@ -472,11 +531,22 @@ Every wiki page MUST have YAML frontmatter:
     type: concept | entity | source-summary | comparison | daily-log | monthly-rollup
     topic_cluster: [which topic index this belongs to]
     sources: [list of raw/processed/ paths — stable final location]
-    related: [list of wiki pages linked]
+    related:
+      - page: other-page-name
+        rel: extends | contradicts | evidence-for | complements | supersedes | depends-on
     created: YYYY-MM-DD
     updated: YYYY-MM-DD
     confidence: high | medium | low
     ---
+
+## Typed Relationships
+- `extends` — builds on target's ideas
+- `contradicts` — conflicting claims (auto-flags contradiction)
+- `evidence-for` — supporting data for target's claims
+- `complements` — related but distinct ground
+- `supersedes` — replaces/updates the target
+- `depends-on` — requires target as prerequisite
+- Max 8 relationships per page; drop weakest when adding a 9th
 
 ## Confidence Rules
 - **high**: primary source (paper, official docs) OR 2+ independent sources agree
@@ -503,7 +573,7 @@ Every wiki page MUST have YAML frontmatter:
 ## Workflows
 - **triage**: Sort inbox → capture, append only new items to _inbox_queue.md
 - **ingest**: Read source → duplicate check → create/update wiki pages → update indexes → write daily log → move source to processed/{today}/ → update manifest → update queue
-- **query**: Read master index → topic index → articles → synthesize → optionally file answer
+- **query**: Read agent.md → master index → topic index → articles → synthesize → route (Synthesize/Record/Skip) → update agent
 - **lint**: Check contradictions, orphans, missing pages, stale claims, index integrity, broken links
 - **resolve**: Walk through open contradictions, propose and apply resolutions with user confirmation
 - **close**: Finalize daily log, verify index counts, refresh overview.md, suggest git commit
