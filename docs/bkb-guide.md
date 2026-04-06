@@ -39,6 +39,16 @@ kb/
 │   ├── overview.md               # High-level synthesis
 │   └── agent.md                  # Retrieval agent — learns query patterns
 │
+├── agents/                       # Crew — role definitions for each KB operation
+│   ├── architect.md              #   Structure, schema, init
+│   ├── sorter.md                 #   Inbox triage → capture
+│   ├── compiler.md               #   Ingest sources → wiki pages
+│   ├── seeker.md                 #   Query, retrieval, synthesis
+│   ├── connector.md              #   Cross-references, typed relationships
+│   ├── librarian.md              #   Lint, resolve, rollup, maintenance
+│   ├── reviewer.md               #   QA — confidence, source verification
+│   └── editor.md                 #   Wiki readability, navigation quality
+│
 └── CLAUDE.md                     # Schema — conventions, frontmatter, workflows
 ```
 
@@ -142,6 +152,23 @@ Any article is reachable in two hops from the master index.
 | `bkb close` | Finalize daily log, refresh overview, suggest commit |
 | `bkb rollup` | Monthly summary |
 | `bkb status` | KB stats and pending items |
+
+## The Crew
+
+Eight agents define the roles the LLM adopts during each operation. Agent files live in `kb/agents/` and are read before each sub-command.
+
+| # | Agent | Role | Active during |
+|---|-------|------|---------------|
+| 1 | **Architect** | Structure, schema, index rules | init, lint |
+| 2 | **Sorter** | Inbox triage, file classification | triage |
+| 3 | **Compiler** | Source → wiki page compilation | ingest |
+| 4 | **Seeker** | Query, retrieval, synthesis | query |
+| 5 | **Connector** | Cross-references, typed relationships | ingest, lint |
+| 6 | **Librarian** | Lint, resolve, rollup, daily close | lint, resolve, close, rollup |
+| 7 | **Reviewer** | QA — confidence auditing, source verification | ingest, lint, resolve |
+| 8 | **Editor** | Readability, navigation, article quality | close, lint, rollup |
+
+During **ingest**, agents hand off sequentially: Compiler creates pages → Connector adds relationships → Reviewer audits confidence. During **lint**, all four agents (Librarian + Reviewer + Connector + Editor) apply their checks concurrently.
 
 ## Retrieval agent
 

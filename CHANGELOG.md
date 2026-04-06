@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.46.0 — The Crew (2026-04-06)
+
+BKB gets a crew of 8 specialized agents that define the roles the LLM adopts during each operation. Inspired by My-Brain-Is-Full-Crew's multi-agent architecture, adapted for knowledge base operations.
+
+- 8 agent definition files created during `bkb init` in `kb/agents/`: Architect, Sorter, Compiler, Seeker, Connector, Librarian, Reviewer (QA), Editor (readability)
+- Agent dispatch table maps each sub-command to its crew: sequential handoff (→) for ingest pipeline, concurrent standards (+) for lint
+- Reviewer agent adds QA gate: confidence auditing, source verification, untested-claim detection
+- Editor agent adds readability checks: scannable articles, clear titles, navigation quality, stub detection
+- Schema file (CLAUDE.md) updated with crew dispatch section
+
 ## 0.45.0 — The Second Brain (2026-04-06)
 
 BKB gets smarter queries, richer connections, and zero-friction capture. Inspired by the best ideas from karpathy-llm-wiki, open-brain-server, claude-knowledge-vault, and My-Brain-Is-Full-Crew.
