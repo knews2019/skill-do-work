@@ -4,11 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.47.3 — The Compass (2026-04-06)
+## 0.47.4 — The Compass (2026-04-06)
 
-Prime audit skip rules now use generic patterns instead of project-specific directory names.
+Prime action no longer assumes project-specific CLAUDE.md sections or directory layouts.
 
-- Replaced `ideation-*/session/sources/` with portable skip list (`dist/`, `node_modules/`, `.cache/`, etc.)
+- Conventions section and Step 5 registry check are now conditional — skip gracefully if CLAUDE.md has no prime registry
+- Step 3 adds explicit skip list and CLAUDE.md-guided scan targets
+- Cross-cutting prime registration references made generic
+- Step 1 skip rules use portable patterns instead of project-specific directory names
 
 ## 0.47.2 — The Quoter (2026-04-06)
 
