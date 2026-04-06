@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.44.0 — The Cartographer (2026-04-06)
+
+Prime file operations now live inside do-work. `do work prime create` generates prime files via interactive Q&A; `do work prime audit` runs a full health check on all primes.
+
+- New `prime` action with `create` and `audit` sub-commands
+- Routing at priority 16 (between forensics and BKB)
+- BKB, quick-wins, install, capture renumbered to 17-20
+
 ## 0.43.5 — The Final Polish (2026-04-05)
 
 Four cleanup fixes from final review pass — two bugs and two documentation gaps.
