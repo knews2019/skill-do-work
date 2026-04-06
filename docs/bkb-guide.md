@@ -36,7 +36,19 @@ kb/
 │   ├── daily/                    # Daily changelogs (YYYY-MM-DD.md)
 │   ├── monthly/                  # Monthly rollups (YYYY-MM.md)
 │   ├── log.md                    # Append-only activity timeline
-│   └── overview.md               # High-level synthesis
+│   ├── overview.md               # High-level synthesis
+│   └── agent.md                  # Retrieval agent — learns query patterns
+│
+├── agents/                       # Crew — role definitions for each KB operation
+│   ├── architect.md              #   Structure, schema, init
+│   ├── sorter.md                 #   Inbox triage → capture
+│   ├── compiler.md               #   Ingest sources → wiki pages
+│   ├── seeker.md                 #   Query, retrieval, synthesis
+│   ├── connector.md              #   Cross-references, typed relationships
+│   ├── librarian.md              #   Lint, resolve, rollup, maintenance
+│   ├── reviewer.md               #   QA — confidence, source verification
+│   ├── editor.md                 #   Wiki readability, navigation quality
+│   └── *.md                      #   Custom agents (user-created via bkb crew create)
 │
 └── CLAUDE.md                     # Schema — conventions, frontmatter, workflows
 ```
@@ -98,12 +110,16 @@ title: Page Title
 type: concept | entity | source-summary | comparison
 topic_cluster: [which topic index this belongs to]
 sources: [raw/processed/ paths — always the final location]
-related: [wiki pages linked via [[wiki-links]]]
+related:
+  - page: other-page-name
+    rel: extends | contradicts | evidence-for | complements | supersedes | depends-on
 created: YYYY-MM-DD
 updated: YYYY-MM-DD
 confidence: high | medium | low
 ---
 ```
+
+**Typed relationships** describe *how* pages connect, not just *that* they connect. Six types: `extends`, `contradicts`, `evidence-for`, `complements`, `supersedes`, `depends-on`. Max 8 per page.
 
 **Confidence levels:**
 
@@ -134,9 +150,91 @@ Any article is reachable in two hops from the master index.
 | `bkb lint` | Quick health check (orphans, broken links, stale claims) |
 | `bkb lint full` | Full structural check |
 | `bkb resolve` | Walk through open contradictions |
+| `bkb defrag` | Weekly structural maintenance (merges, splits, promotions) |
+| `bkb garden` | Topic cluster and relationship hygiene |
 | `bkb close` | Finalize daily log, refresh overview, suggest commit |
 | `bkb rollup` | Monthly summary |
 | `bkb status` | KB stats and pending items |
+| `bkb crew` | List all agents (built-in + custom) |
+| `bkb crew create` | Define a new custom agent |
+| `bkb crew edit <name>` | Modify a custom agent |
+| `bkb crew remove <name>` | Remove a custom agent |
+
+## The Crew
+
+Eight built-in agents define the roles the LLM adopts during each operation. Agent files live in `kb/agents/` and are read before each sub-command. Users can extend the crew with custom agents via `bkb crew create`.
+
+| # | Agent | Role | Active during |
+|---|-------|------|---------------|
+| 1 | **Architect** | Structure, schema, index rules | init, lint, defrag, crew |
+| 2 | **Sorter** | Inbox triage, file classification | triage |
+| 3 | **Compiler** | Source → wiki page compilation (+ transcript handling) | ingest |
+| 4 | **Seeker** | Query, retrieval, synthesis | query |
+| 5 | **Connector** | Cross-references, typed relationships | ingest, lint, defrag, garden |
+| 6 | **Librarian** | Lint, resolve, rollup, daily close | lint, resolve, close, rollup, garden |
+| 7 | **Reviewer** | QA — confidence auditing, source verification | ingest, lint, resolve |
+| 8 | **Editor** | Readability, navigation, article quality | close, lint, rollup, defrag |
+
+During **ingest**, agents hand off sequentially: Compiler creates pages → Connector adds relationships → Reviewer audits confidence. During **lint**, all four agents (Librarian + Reviewer + Connector + Editor) apply their checks concurrently. During **defrag**, Architect reshapes clusters while Connector checks cross-cluster links and Editor ensures clear naming.
+
+## Retrieval agent
+
+The file `wiki/agent.md` learns from your queries over time. It tracks which topic clusters and articles get used most often, so future queries check the most relevant areas first instead of scanning cold.
+
+- Activates after 3+ queries (cold start threshold)
+- Hot Topics section regenerated every 5 queries
+- Bounded to ~150 lines — oldest log entries pruned automatically
+
+## Query routing
+
+Queries are classified into three tiers to prevent wiki bloat:
+
+| Tier | When | What happens |
+|------|------|--------------|
+| **Synthesize** | Answer connects 2+ sources | Filed as a wiki page in `comparisons/`, indexes updated |
+| **Record** | Substantive answer, single source | Returned to user, brief log entry, no wiki page |
+| **Skip** | Simple factual lookup | Returned to user, nothing logged |
+
+## Defrag
+
+Weekly structural maintenance. Unlike lint (which finds problems), defrag *improves* structure:
+
+- Re-evaluates topic cluster boundaries as the wiki grows
+- Proposes merges (small/overlapping clusters) and splits (overcrowded clusters)
+- Promotes concepts that appear across 5+ articles into their own cluster
+- Demotes clusters that haven't grown in 30+ days with fewer than 10 articles
+- Run weekly or after a large batch ingest (20+ sources)
+
+## Garden
+
+Audits the wiki's metadata layer — the "connective tissue":
+
+- Topic cluster balance (flags under-3 and over-50 clusters)
+- Relationship type distribution (flags overuse of `complements`, underuse of `evidence-for`/`contradicts`)
+- Orphaned topic indexes with no articles pointing to them
+- Reciprocity check — finds one-way links and auto-adds missing back-links
+- Reclassification suggestions when an article's relationships mostly point elsewhere
+
+## Custom agents
+
+Extend the built-in crew with domain-specific roles:
+
+- `bkb crew create` — guided interview to define a new agent (name, focus, standards, when active)
+- `bkb crew list` — show all agents (built-in + custom)
+- `bkb crew edit <name>` — modify a custom agent (built-ins are read-only)
+- `bkb crew remove <name>` — delete a custom agent
+
+Custom agents activate based on their "When active" section and participate alongside built-in agents during sub-command execution.
+
+## Enhanced transcript handling
+
+When ingesting audio/video with companion transcripts, the Compiler applies extra processing:
+
+- **Speaker detection** — attributes claims and quotes to specific speakers
+- **Structured extraction** — key decisions, action items, open questions
+- **Topic segmentation** — long transcripts split by major topic shifts
+- **Entity creation** — speakers get entity pages (confidence: low)
+- **Structured format** — source summaries use: Overview → Speakers → Key Points → Decisions → Action Items → Open Questions
 
 ## Typical workflow
 
@@ -148,4 +246,8 @@ do work bkb ingest                # compile into wiki
 do work bkb query [question]      # ask the wiki anything
 do work bkb lint                  # check for issues
 do work bkb close                 # wrap up the day
+
+# weekly
+do work bkb defrag                # optimize structure
+do work bkb garden                # audit relationships
 ```
