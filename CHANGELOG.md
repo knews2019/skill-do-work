@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.47.1 — The Badge Guard (2026-04-06)
+
+Agent dispatch now gracefully handles missing `agents/` directory instead of failing.
+
+- Main and custom agent dispatch sections skip loading when `agents/` is absent (fresh `init` or legacy KBs)
+- Legacy KBs get a clear message pointing to `bkb init --fill-gaps` for migration
+- Init `--fill-gaps` documentation clarified as the migration path for pre-v0.46.0 KBs
+- Schema crew section notes the guard
+
 ## 0.47.0 — The Full Crew (2026-04-06)
 
 BKB imports the best ideas from My-Brain-Is-Full-Crew's 13 skills — adapted for zero-dependency knowledge base operations.

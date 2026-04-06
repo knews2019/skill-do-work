@@ -31,6 +31,8 @@ Before executing a sub-command, read the relevant agent file(s) from `<kb>/agent
 - **Arrow (`→`)** means sequential handoff — the first agent completes its work, then the next picks up. Example: during `ingest`, the Compiler creates pages, then the Connector adds cross-references, then the Reviewer audits confidence.
 - **Plus (`+`)** means concurrent concerns — all agents' standards apply simultaneously. Example: during `lint`, the Librarian checks structural health while the Reviewer checks confidence accuracy, the Connector checks relationships, and the Editor checks readability.
 
+**If `<kb>/agents/` does not exist**: skip agent dispatch entirely for that invocation. For `init`, the agents are created in Step 4 — no dispatch is needed beforehand. For other sub-commands on a legacy KB (created before v0.46.0), proceed without agent files and note in output: "No agents/ directory found — run `bkb init` on an existing KB to add the agent crew (non-destructive, preserves existing data)."
+
 ---
 
 ## Locating the Knowledge Base
@@ -54,7 +56,7 @@ Create the full KB directory structure at the specified path (default: `./kb`).
 Before creating anything, check if the target path already contains a KB (has both `raw/` and `wiki/` subdirectories):
 
 - **If KB exists**: Stop and report: "Knowledge base already exists at `<path>/` (N articles, M topic clusters). To repair a broken structure, run `do work bkb init <path> --fill-gaps`."
-- **If `--fill-gaps` flag is present**: Only create directories and seed files that don't already exist. Never overwrite existing files. Report what was created vs. what was skipped.
+- **If `--fill-gaps` flag is present**: Only create directories and seed files that don't already exist. Never overwrite existing files. Report what was created vs. what was skipped. This is the migration path for legacy KBs — e.g., a KB created before v0.46.0 will gain the `agents/` directory and all 8 built-in agent files without disturbing existing content.
 - **If no KB exists**: Proceed with full initialization.
 
 ### Step 1: Create the Raw Pipeline
@@ -898,7 +900,7 @@ After creating, confirm: "Agent '{name}' created. It will be active during: {com
 
 ### Custom Agent Dispatch
 
-Before executing any sub-command, scan ALL `.md` files in `<kb>/agents/` — not just the built-in crew listed in the Sub-Commands table. Custom agents activate based on their `## When active` section. If a custom agent lists the current sub-command, include it alongside the standard crew using the notation specified (arrow for sequential, plus for concurrent).
+Before executing any sub-command, scan ALL `.md` files in `<kb>/agents/` — not just the built-in crew listed in the Sub-Commands table. Custom agents activate based on their `## When active` section. If a custom agent lists the current sub-command, include it alongside the standard crew using the notation specified (arrow for sequential, plus for concurrent). If `<kb>/agents/` does not exist, skip custom agent scanning (see the guard in Agent Dispatch above).
 
 ---
 
@@ -1020,7 +1022,7 @@ Every wiki page MUST have YAML frontmatter:
 - Every topic index listed in _master_index.md
 
 ## Crew (Agent Dispatch)
-- `agents/` — 8 built-in role definitions + custom agents, read before each sub-command
+- `agents/` — 8 built-in role definitions + custom agents, read before each sub-command (skipped if directory absent — see Agent Dispatch guard)
 - **init**: Architect | **triage**: Sorter | **ingest**: Compiler → Connector → Reviewer
 - **query**: Seeker | **lint**: Librarian + Reviewer + Connector + Editor
 - **resolve**: Librarian + Reviewer | **close**: Librarian + Editor | **rollup**: Librarian + Editor
