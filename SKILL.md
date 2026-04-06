@@ -1,8 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | prime [create|audit] | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | help
-upstream: https://raw.githubusercontent.com/knews2019/skill-do-work/main/SKILL.md
+argument-hint: "capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | prime [create|audit] | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | help"
 ---
 
 # Do-Work Skill

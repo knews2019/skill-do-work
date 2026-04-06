@@ -12,6 +12,15 @@ Prime file operations now live inside do-work. `do work prime create` generates 
 - Routing at priority 16 (between forensics and BKB)
 - BKB, quick-wins, install, capture renumbered to 17-20
 
+## 0.47.2 — The Quoter (2026-04-06)
+
+Fixed invalid YAML frontmatter in SKILL.md that caused strict parsers to fail.
+
+- Quoted `argument-hint` value to escape colons
+- Removed non-standard `upstream` frontmatter key
+
+---
+
 ## 0.47.1 — The Badge Guard (2026-04-06)
 
 Agent dispatch now gracefully handles missing `agents/` directory instead of failing.
