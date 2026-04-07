@@ -16,7 +16,7 @@ prime_files: []
 [Original request content]
 
 ## AI Execution State (P-A-U Loop)
-- [x] **[PLAN]:** (Agent: Read `agent-rules/rules-[domain].md`. Write brief technical approach here. Do not write code yet.) -> Analyzed Avatar.tsx and determined we need to build UserAvatar.tsx wrapping it.
+- [x] **[PLAN]:** (Agent: Read `crew-members/[domain].md`. Write brief technical approach here. Do not write code yet.) -> Analyzed Avatar.tsx and determined we need to build UserAvatar.tsx wrapping it.
 - [x] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [x] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.) -> Verified: UserAvatar.tsx (clean), user-avatar.spec.ts (clean). ESLint passed. No console.log or debug artifacts.
 

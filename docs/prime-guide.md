@@ -68,7 +68,7 @@ Markdown report with summary counts and a checklist of issues organized by categ
 
 ## Key rules
 
-- Follows the PRIME Files Philosophy from `agent-rules/rules-general.md`: low noise, high value, pointers not copies, no volatile metrics
+- Follows the PRIME Files Philosophy from `crew-members/general.md`: low noise, high value, pointers not copies, no volatile metrics
 - Multiple primes per directory are valid for different concerns
 - `create` is interactive (asks 3 questions); `audit` is fully automated and read-only
 

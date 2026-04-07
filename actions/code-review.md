@@ -77,7 +77,7 @@ If no arguments provided:
 ### Step 2: Load Context
 
 - Read all resolved `prime-*.md` files — these define the project's conventions, architecture, and known patterns
-- Read any `agent-rules/rules-*.md` files if present — these contain domain-specific standards
+- Read any `crew-members/*.md` files if present — these contain domain-specific standards
 - Check for linter configs (`.eslintrc*`, `.prettierrc*`, `biome.json`, `rustfmt.toml`, `.rubocop.yml`, `ruff.toml`, etc.) — note what the project already enforces automatically
 - Check for CI config (`.github/workflows/`, `.gitlab-ci.yml`, `Makefile`, etc.) — understand what's already validated in the pipeline
 

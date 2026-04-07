@@ -113,7 +113,7 @@ Evaluate the implementation quality by reading the diff:
 
 **Domain-Specific Review (if domain rules provided)**
 
-If `rules-[domain].md` was provided alongside this review, apply any review criteria defined in that file in addition to the standard rubric above. Report domain-specific findings in a separate `### Domain Review` subsection within the `## Review` output. Domain-specific scores are advisory — they inform the overall assessment but don't replace the standard dimensions.
+If `crew-members/[domain].md` was provided alongside this review, apply any review criteria defined in that file in addition to the standard rubric above. Report domain-specific findings in a separate `### Domain Review` subsection within the `## Review` output. Domain-specific scores are advisory — they inform the overall assessment but don't replace the standard dimensions.
 
 ### Step 7: Acceptance Testing
 
