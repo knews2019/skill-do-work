@@ -408,7 +408,7 @@ All routes include these instructions to the agent:
   - **D-02**: Used zustand over jotai for state — matches existing project pattern
   - **D-03**: API returns paginated results (20/page) — no explicit requirement, follows existing endpoints
   ```
-  Continue numbering from any D-XX decisions already recorded in Open Questions (Step 3.5). Future REQs can reference these: "per D-02 in REQ-003, we use zustand."
+  Before numbering, check for a `<!-- D-XX counter: ... Next decision: D-NN. -->` comment in the REQ file (written by Step 3.5) and start from that value. If no counter exists and no `- [~]` items are present, start at D-01. Future REQs can reference these: "per D-02 in REQ-003, we use zustand."
 - **Out-of-Scope Discoveries:** If you discover unrelated bugs, technical debt, or missing prerequisites, do not fix them inline. Instead, append a `## Discovered Tasks` section to your summary and list them as bullet points so the orchestrator can queue them for later.
 ```
 
@@ -584,12 +584,12 @@ Append to the request file:
 - [REQ-NNN: 1-line summary of the lesson](<relative-path-to-req>#lessons-learned)
 ```
 
-**Path must be relative to the prime file's location**, not the repo root. To compute the correct relative path: count the number of `/` separators in the prime file's path from the repo root — this equals the number of directory levels deep it sits. Prepend that many `../` steps to the REQ's repo-root-relative path. Examples:
-- Prime at `src/utils/prime-auth.md` (2 levels deep) → `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
-- Prime at `prime-auth.md` (0 levels, repo root) → `do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
-- Prime at `web/src/auth/prime-auth.md` (3 levels deep) → `../../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
+**Path must be relative to the prime file's location**, not the repo root. To compute the correct relative path: count how many directories deep the prime file sits (i.e., the number of path components before the filename). Prepend that many `../` steps to the REQ's repo-root-relative path. Examples:
+- Prime at `prime-auth.md` (0 dirs deep) → `do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
+- Prime at `src/utils/prime-auth.md` (2 dirs deep: `src/` and `utils/`) → `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
+- Prime at `web/src/auth/prime-auth.md` (3 dirs deep) → `../../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
 
-After writing the link, verify the resolved path points to an existing file before saving.
+After writing the link, verify the resolved path points to an existing file. If it doesn't, report the broken link rather than silently writing it.
 
 Only add a link when the lesson is relevant to that prime file's scope — don't spray every lesson into every prime file. If the REQ has no `prime_files` or the lessons aren't relevant to any prime file, skip this.
 
@@ -653,7 +653,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
      `  Recommended: Yes, add to queue (will flip to 'pending').`
      `  Also: No, discard it.`
    This ensures non-critical discoveries require the user's explicit permission via `do work clarify` before execution.
-5. **Cycle detection:** Before creating any follow-up REQ, check the `addendum_to` chain for circular references. Algorithm: start from the current REQ and walk `addendum_to` links upward, collecting each visited REQ ID into a seen set. If the ID of the proposed new follow-up REQ already appears in the seen set, a cycle would be created — do not create it. This handles chains of any length (2-cycles, 3-cycles, etc.). Report: `⚠ Cycle detected: REQ-NNN → REQ-MMM → ... → REQ-NNN. Skipping follow-up — manual resolution needed.`
+5. **Cycle detection:** Before creating any follow-up REQ, verify the current REQ's own `addendum_to` chain is not already circular. Algorithm: walk `addendum_to` links starting from the current REQ, collecting each visited ID into a seen set. If you encounter the current REQ's ID again during the walk, the chain is already circular — do not create any follow-ups. Report: `⚠ Cycle detected in addendum_to chain: REQ-NNN → REQ-MMM → ... → REQ-NNN. Skipping follow-up — manual resolution needed.` This handles chains of any length.
 6. Archive based on REQ type:
 
 | REQ has... | Archive behavior |

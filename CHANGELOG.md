@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.50.5 — The Second Pass (2026-04-07)
+
+Self-review of 0.50.4 patch kit — fixed 5 issues found in our own changes.
+
+- `work.md`: Relative path algorithm reworded to count directory components, not `/` separators (less ambiguous)
+- `work.md`: Path verification now specifies failure behavior (report broken link, don't silently write it)
+- `work.md`: Step 6 builder instructions now explicitly say to read the D-XX counter before numbering decisions
+- `work.md`: Cycle detection rewritten to check the current REQ's existing chain for loops (clearer logic)
+- `cleanup.md`: Pass 1 "skip" behavior made explicit (leave UR in `user-requests/` untouched)
+- `cleanup.md`: Pass 3a explains why the canonical-location check exists despite Pass 0
+
 ## 0.50.4 — The Patch Kit (2026-04-07)
 
 Code review fixes: addressed bugs and ambiguities found across a 20-commit audit. Improves reliability of the core work pipeline and diagnostic actions.
