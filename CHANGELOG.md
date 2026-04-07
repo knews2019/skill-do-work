@@ -4,6 +4,19 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.47.5 — The Lint Brush (2026-04-07)
+
+Fix 9 bugs and consistency issues found during code review of last 20 commits.
+
+- Fix master index line limit contradiction (50 → 80) in BKB directory tree comment
+- Align topic index split threshold to 40 articles everywhere (was 80 in some places, 40 in defrag)
+- Add missing defrag/garden staleness warnings to BKB `status` sub-command
+- Fix misleading cleanup Pass 2 comment about Pass 1 handling loose REQs
+- Add `build-knowledge-base.md` to CLAUDE.md project structure
+- Add missing BKB sub-commands (`defrag`, `garden`, `rollup`, `crew`) to SKILL.md help menu
+- Clarify SKILL.md routing table to distinguish scoped code-review (priority 6) from unscoped review (priority 8)
+- Disambiguate `CLAUDE.md` reference in BKB architect agent to mean KB schema file
+
 ## 0.47.4 — The Compass (2026-04-06)
 
 Prime action no longer assumes project-specific CLAUDE.md sections or directory layouts.
