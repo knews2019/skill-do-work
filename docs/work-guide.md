@@ -67,7 +67,7 @@ At session end, a `do-work/CHECKPOINT.md` is written with the last completed REQ
 
 A typical `do work run` session:
 
-1. **Queue scan** — finds the next `pending` REQ file in `do-work/requests/`
+1. **Queue scan** — finds the next `pending` REQ file in `do-work/`
 2. **Claim** — moves it to `working/` and sets `status: claimed` so no other agent grabs it
 3. **Triage** — reads the REQ, assesses complexity, picks Route A/B/C
 4. **Build** — implements the request (planning and exploration for B/C routes)

@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.50.2 — The Typo (2026-04-07)
+
+Fixed incorrect queue path in work guide.
+
+- `docs/work-guide.md`: `do-work/requests/` → `do-work/` (REQ files live at the do-work root, not a requests subdirectory)
+
 ## 0.50.1 — The Roll Call (2026-04-07)
 
 Named the crew members — each now has a title that reflects their role.
