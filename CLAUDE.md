@@ -11,6 +11,7 @@ README.md             # Installation + quick usage guide
 actions/              # Action files (each is a standalone prompt)
   capture.md          # Capture new requests → UR folders + REQ files
   work.md             # Process the queue — triage, plan, build, test, review
+  work-reference.md   # Orchestrator checklist, error handling, progress template
   clarify.md          # Batch-review pending questions from completed work
   verify-requests.md  # Quality-check captured REQs against original input
   review-work.md      # Post-work code review + acceptance testing
@@ -78,6 +79,11 @@ Action files follow a consistent structure. When adding or modifying actions, us
 ```
 
 **Required elements:** Description blockquote, Steps (numbered). **Common elements:** Input, Output Format, Rules. **Section order matters:** always Philosophy → Input → Steps → Output → Rules.
+
+**Accepted variants:**
+- **Sub-command dispatchers** (`prime.md`, `build-knowledge-base.md`) — Use a Sub-Commands table instead of flat steps. Each sub-command has its own workflow section.
+- **Multi-mode actions** (`present-work.md`, `review-work.md`) — Use a Modes table, then separate workflow sections per mode.
+- **State-based actions** (`version.md`) — Response sections keyed by input type instead of sequential steps.
 
 Cross-reference other actions by short name (e.g., "the work action", "do work clarify") — not by file path. SKILL.md owns the file-path mappings.
 

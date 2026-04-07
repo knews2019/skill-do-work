@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.49.0 — The Architect (2026-04-07)
+
+Major clarity and modularization pass — smaller files, consolidated routing, documented conventions.
+
+- SKILL.md verb sections (18 H3s, ~130 lines) collapsed into a single scannable Verb Reference table
+- work.md split: orchestrator checklist, error handling, progress template, and common mistakes extracted to `work-reference.md`
+- CLAUDE.md now documents accepted action file variants (sub-command dispatchers, multi-mode, state-based) alongside the standard template
+- Project structure updated to reflect all new files (`work-reference.md`, `clarify.md`, `next-steps.md`)
+
 ## 0.48.0 — The Splitter (2026-04-07)
 
 Modularized the skill for clarity — smaller files, explicit conventions, cleaner separation of concerns.
