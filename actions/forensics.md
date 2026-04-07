@@ -26,6 +26,8 @@ For each found:
 
 Report: file name, title, route, how long stuck, last known phase (check which `##` sections exist — Triage, Plan, Exploration, Implementation Summary, etc.)
 
+**Suggested remediation:** Run `do work cleanup` — Pass 0 will sweep any REQ with a terminal status. For a truly stuck `claimed` REQ (still in-progress, not terminal), manually reset `status: pending`, remove `claimed_at` and `route` from frontmatter, strip incomplete sections, and move the file back to `do-work/` root, then run `do work cleanup`.
+
 ### 2. Hollow Completions
 
 Scan `do-work/archive/` (including `UR-*/` subdirectories) for REQs with `status: completed` or `status: completed-with-issues`.

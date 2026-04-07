@@ -213,7 +213,7 @@ Each uncommitted file/group gets one verdict:
 
 Committed files (REQ/UR scope only) get a separate label:
 
-- **Committed** — already committed; shown for informational completeness. The six readiness signals above are still evaluated and reported, but the verdict is always "Committed" regardless of findings — the user is not deciding whether to commit these files.
+- **Already Committed** — already in the repository; shown for informational completeness only. The six readiness signals above are evaluated and any findings are reported, but the verdict label is always "Already Committed" regardless of findings — the user is not deciding whether to commit these files. This is a status label, not a quality judgment.
 
 ### Step 6: Report
 
@@ -299,10 +299,10 @@ The report uses a **hybrid format**: narrative explanations per group (like a co
 |------|-----|--------|---------|
 | `src/auth/login.ts` | REQ-NNN | uncommitted | Ready |
 | `src/auth/login.test.ts` | REQ-NNN | uncommitted | Ready |
-| `src/auth/types.ts` | REQ-NNN | committed | Committed |
+| `src/auth/types.ts` | REQ-NNN | committed | Already Committed |
 | `src/api/client.ts` | REQ-MMM | uncommitted | Needs attention |
-| `src/api/errors.ts` | REQ-MMM | committed | Committed |
-| `src/config/defaults.ts` | REQ-MMM | committed | Committed |
+| `src/api/errors.ts` | REQ-MMM | committed | Already Committed |
+| `src/config/defaults.ts` | REQ-MMM | committed | Already Committed |
 | `package.json` | — | uncommitted | Ready |
 | `src/utils/debug-helper.ts` | — | uncommitted | Not ready |
 
@@ -316,7 +316,7 @@ The report uses a **hybrid format**: narrative explanations per group (like a co
 - **Hints** appear only when something is worth flagging. Omit entirely when nothing stands out.
 - **Contradictions** appear only when conflicting changes are found. Omit when none.
 - In REQ/UR scope, each REQ group has **Uncommitted** and **Committed Files** subsections. Omit either subsection if empty (e.g., all files committed → no "Uncommitted" subsection).
-- The **Readiness Summary** table includes a **Status** column (`committed` / `uncommitted`) alongside the verdict. Committed files always show verdict "Committed".
+- The **Readiness Summary** table includes a **Status** column (`committed` / `uncommitted`) alongside the verdict. Committed files always show verdict "Already Committed".
 - The **Overall** line at the bottom counts only uncommitted files for the readiness assessment. Committed files are noted separately ("N committed files shown for context").
 - Omit sections with no entries (e.g., skip "REQ-Associated Changes" if no files match any REQ).
 
@@ -377,7 +377,7 @@ No uncommitted changes.
 □ Step 5: Check coherence across changed files (flag contradictions)
 □ Step 5: Scan for safety issues (secrets in diffs)
 □ Step 5: Note improvement hints (length, duplication, missing types, naming)
-□ Step 5: Assign per-file and per-group readiness verdicts (Committed for committed files)
+□ Step 5: Assign per-file and per-group readiness verdicts (Already Committed for committed files)
 □ Step 6: Write narrative What/Why per group
 □ Step 6: Separate Uncommitted and Committed Files subsections in REQ groups
 □ Step 6: Include Hints and Contradictions where applicable
@@ -394,4 +394,4 @@ No uncommitted changes.
 - Turning improvement hints into a full code review — keep them light (1-2 sentences)
 - Flagging style preferences as contradictions — only flag logical conflicts
 - Exiting early when no uncommitted files match a scoped REQ/UR — committed files should still be inspected
-- Giving a committed file a "Ready"/"Needs attention"/"Not ready" verdict — use "Committed" instead
+- Giving a committed file a "Ready"/"Needs attention"/"Not ready" verdict — use "Already Committed" instead
