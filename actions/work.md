@@ -364,7 +364,13 @@ Quick environment sanity check before the builder starts coding. All checks are 
 
 ### Step 6: Implementation
 
-Spawn a **general-purpose agent** with the `agent-rules/rules-general.md` file (always loaded — contains PRIME Files Philosophy and cross-domain rules) plus the `rules-[domain].md` file (if domain is set and the file exists), any files listed in the `prime_files` array, and context appropriate to the route:
+**Agent rules loading:** Before spawning the implementation agent, load domain-specific rules:
+
+1. **Always load** `agent-rules/rules-general.md` — cross-domain rules and PRIME Files Philosophy
+2. **Conditionally load** `agent-rules/rules-[domain].md` — only if the REQ's `domain` frontmatter is set AND the file exists (e.g., `domain: ui-design` → `rules-ui-design.md`)
+3. **If a rules file is missing**, proceed without it — never block on a missing rules file
+
+Spawn a **general-purpose agent** with the loaded rules, any files listed in the `prime_files` array, and context appropriate to the route:
 
 - **Route A**: Request content only — "triaged as simple, aim for a focused minimal change"
 - **Route B**: Request + exploration output — "follow existing patterns identified above"
@@ -784,58 +790,7 @@ This is NOT a blocking gate. If no checkpoint exists, the session starts normall
 
 ## Clarify Questions
 
-When invoked with `do work clarify` (or `answers`, `questions`, `pending`, `what's blocked`), the work action enters **clarify mode** instead of the normal work loop. This is the batch-review drain for `pending-answers` REQs.
-
-### Clarify Workflow
-
-1. **Scan the queue**: Find all `REQ-*.md` files in `do-work/` with `status: pending-answers`
-2. **If none found**: Report "No pending questions — queue is clear" and exit
-3. **Present questions**: For each `pending-answers` REQ, show:
-   ```
-   REQ-025 — Review fix: dark mode sidebar
-   (follow-up to REQ-003, from review)
-
-   1. [ ] Should the sidebar use the same dark palette as the main content?
-      Recommended: Yes, match main content palette
-      Also: Separate sidebar palette, User-configurable
-
-   2. [ ] Should dark mode persist across sessions?
-      Recommended: Yes, save to localStorage
-      Also: Reset on refresh, Follow OS preference
-   ```
-4. **Collect answers**: If your environment has a structured question prompt (multi-question UI), batch questions in groups of **at most 4 per prompt** — chunk by question count, not by REQ. A REQ with 6 questions needs 2 prompts. For each question, the user can:
-   - **Answer it** → update to `- [x] [question] → [user's answer]`
-   - **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]`. Then check the REQ type:
-     - *Discovered-task REQ* (has a "Should I process this as a new task?" question with recommended "Yes, add to queue"): flip `status` to `pending` so the task enters the work queue — see "Approved Discovered Task" below
-     - *All other REQs* (builder-decision follow-ups): mark `status: completed` (no implementation needed — see "Builder Was Right" below)
-   - **Pick a different option** → update to `- [x] [question] → [user's chosen option]`
-   - **Skip for now** → leave as `- [ ]`, REQ stays `pending-answers`
-   - **Discard it** → update to `- [x] [question] → Discarded`, then mark the REQ `status: completed`, `completed_at: <timestamp>`, and archive it directly (same pattern as "Builder Was Right" — no implementation work)
-5. **Activate answered REQs**: For each REQ that wasn't already completed or discarded: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending`. These enter the queue for the next `do work run`.
-6. **Report**: Summary of what was resolved and what's still pending
-
-### Builder Was Right / Discarded
-
-When the user reviews a `pending-answers` follow-up and confirms that the builder's original choice was correct (i.e., no implementation change needed):
-
-1. Update the question to `- [x] [question] → Confirmed: [builder's choice]`
-2. Update frontmatter: `status: completed`, `completed_at: <timestamp>`
-3. Archive the follow-up REQ directly (skip the work loop — there's nothing to build)
-4. Append a brief note: `## Implementation\n\n**No changes needed.** User confirmed builder's choice from [original REQ].\n\n*Resolved via clarify questions*`
-
-**Discarded discovered tasks:** When the user reviews a discovered-task follow-up and chooses "No, discard it", the same fast-path applies. Mark `status: completed`, archive directly, and append: `## Implementation\n\n**Discarded.** User chose not to process this discovered task from [original REQ].\n\n*Resolved via clarify questions*`
-
-### Approved Discovered Task
-
-When the user reviews a discovered-task follow-up (one whose question is "Should I process this as a new task?" with recommended "Yes, add to queue") and confirms the recommendation:
-
-1. Update the question to `- [x] [question] → Confirmed: Yes, add to queue`
-2. Update frontmatter: `status: pending` (NOT `completed` — this task needs to be built)
-3. **Do not archive.** The REQ stays in `do-work/` and enters the normal work queue for the next `do work run`
-
-This is distinct from "Builder Was Right" because confirming a discovered task means the user wants it *executed*, not signed off. The task has no prior implementation to confirm — it's a new piece of work that needs a full work cycle.
-
-This avoids wasting a work cycle on a REQ that just needs sign-off or rejection, while correctly routing approved discovered tasks into the build queue.
+The clarify workflow has its own action file: [`clarify.md`](./clarify.md). It handles batch-review of `pending-answers` REQs — the user confirms, overrides, or discards builder decisions. Resolved REQs flip back to `pending` and re-enter the work queue.
 
 ## Progress Reporting
 

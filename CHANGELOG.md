@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.48.0 — The Splitter (2026-04-07)
+
+Modularized the skill for clarity — smaller files, explicit conventions, cleaner separation of concerns.
+
+- Extracted `next-steps.md` from SKILL.md (130 lines of per-action suggestions now live in their own file)
+- Extracted `actions/clarify.md` from work.md (clarify questions is now a standalone action file, not a mode of work.md)
+- Added Action File Conventions and Agent Rules loading docs to CLAUDE.md
+- Added explicit agent-rules loading steps in work.md Step 6 (always load general, conditionally load domain, never block on missing)
+- Updated SKILL.md dispatch table: clarify now points to `./actions/clarify.md` instead of `./actions/work.md` with mode flag
+
 ## 0.47.5 — The Signpost (2026-04-07)
 
 Gave the most important command in the skill a proper help entry and expanded its guide.
