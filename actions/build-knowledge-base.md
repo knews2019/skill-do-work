@@ -435,7 +435,11 @@ Sort new items from `raw/inbox/` into `raw/capture/` subdirectories by type.
    - Code files, `README.md` from repos → `capture/repos/`
    - Unknown → leave in inbox, flag for user
 3. **Move** each classified file to its target directory. If a file with the same name already exists in the target (from a previous triage that hasn't been ingested yet), prefix with the current time: `HHMMSS-filename.ext`.
-4. **Update** `raw/_inbox_queue.md` — append only the files moved from inbox in **this** triage pass, marked as "ready". Do NOT re-scan all of `capture/`; the queue is an append-only ledger of triage batches.
+4. **Update** `raw/_inbox_queue.md` — append only the files moved from inbox in **this** triage pass, marked as "ready". Do NOT re-scan all of `capture/`; the queue is an append-only ledger of triage batches. For each entry, include:
+   - `topic_hint` — scan the file's first 500 characters against existing topic clusters in `wiki/topics/` and note the best match (or "new" if no match).
+   - `priority` — set to "high" if the file references an open contradiction or an active query topic from `wiki/agent.md` Hot Topics; otherwise "normal".
+
+   Queue entry format: `- [ ] filename.ext | type: <type> | topic_hint: <topic> | priority: <normal|high> | ready`
 5. **Report**: Items triaged, items skipped (with reasons), items ready for ingestion.
 
 If inbox is empty, say so and suggest adding files.
@@ -470,6 +474,14 @@ Compile source documents into wiki pages. This is the core operation.
    d. **Create or update** relevant entity pages in `wiki/entities/`.
    e. **Check for contradictions** with existing wiki content. Flag any found.
    f. **Update cross-references** — add `[[wiki-links]]` between related pages.
+   g. **Confidence transitions** — check whether this new source changes confidence for existing pages:
+      - If a new source corroborates an existing `medium` page's claims, upgrade that page to `confidence: high`.
+      - If a new source contradicts an existing `high` page, downgrade to `confidence: low` and flag the contradiction.
+      - Note all confidence changes in the daily log.
+3b. **Batch cross-referencing** (when ingesting multiple sources): After completing step 3 for all sources in the batch, cross-reference claims across the batch before proceeding to step 4:
+   - **Agreements**: If 2+ sources in the same batch make the same claim, set the resulting page to `confidence: high`.
+   - **Contradictions**: If sources in the batch conflict with each other, flag them immediately — do not defer to lint.
+   - **Entity unification**: Merge entity references that appear across multiple sources in the batch into a single canonical entity page.
 4. **Update indexes**:
    a. Determine which topic cluster(s) the new content belongs to.
    b. Create new topic index (`wiki/topics/_index_[topic].md`) if needed.
@@ -601,12 +613,17 @@ Search the wiki to answer a question. Uses the retrieval agent for prioritizatio
 2. **Read** `wiki/_master_index.md` to identify relevant topic cluster(s). If the agent suggested clusters, start there; otherwise scan the full index.
 3. **Read** the relevant topic index(es) from `wiki/topics/`.
 4. **Read** the specific articles identified as relevant (2–5 articles typically).
-5. **Synthesize** an answer using `[[wiki-link]]` citations to wiki pages.
-6. **Classify the response** using three-tier routing:
+5. **Follow relationships** — for each article read in step 4, check its `related:` frontmatter and follow relevant typed links up to 2 hops deep:
+   - If article A `extends` B and B is relevant to the question → read B for fuller context.
+   - If article A `contradicts` B → read B and present both sides in the answer.
+   - If article A `depends-on` B → read B first for prerequisite context.
+   - Stop at 2 hops from any initial article to avoid scope creep.
+6. **Synthesize** an answer using `[[wiki-link]]` citations to wiki pages.
+7. **Classify the response** using three-tier routing:
    - **Synthesize** — the answer connects 2+ sources or produces a novel comparison. File it as a new wiki page in `wiki/comparisons/` with proper frontmatter. Update the relevant topic index, `_master_index.md`, and append to `wiki/log.md`.
    - **Record** — the answer is substantive but doesn't produce new cross-source connections. Return the answer to the user but do NOT create a wiki page. Append a brief entry to `wiki/log.md` noting the query and result.
    - **Skip** — the answer is a simple lookup or factual retrieval from a single page. Return the answer only. No log entry needed.
-7. **Update `wiki/agent.md`**: Append a row to the Query Log table with today's date, the question asked, which topic clusters were checked, which articles were actually used in the answer, and whether the result was useful (yes/partial/no). After every 5th query, regenerate the Hot Topics section: scan the Query Log for topic clusters and articles that appear most frequently with "yes" usefulness, and list the top 5–10 as prioritized entries.
+8. **Update `wiki/agent.md`**: Append a row to the Query Log table with today's date, the question asked, which topic clusters were checked, which articles were actually used in the answer, and whether the result was useful (yes/partial/no). After every 5th query, regenerate the Hot Topics section: scan the Query Log for topic clusters and articles that appear most frequently with "yes" usefulness, and list the top 5–10 as prioritized entries.
 
 If the wiki has no content on the topic, say so and suggest sources to ingest.
 
@@ -640,6 +657,7 @@ Health check the wiki for consistency and accuracy.
 9. **Relationship density** — pages with more than 8 `related:` entries (cap exceeded).
 10. **Relationship validity** — every `rel:` value is one of the six allowed types; every `page:` target exists.
 11. **Agent staleness** — `wiki/agent.md` Query Log has entries but Hot Topics haven't been regenerated in 10+ queries.
+12. **Confidence audit** — pages where confidence level doesn't match their source evidence: a page with 2+ corroborating sources still at `medium` (should be `high`), or a page at `high` with only one secondary source (should be `medium`).
 
 ### Report
 
@@ -668,13 +686,14 @@ Walk through open contradictions and resolve them interactively.
 ### Steps
 
 1. **Find open contradictions**: Scan `wiki/daily/` logs and `wiki/log.md` for entries containing "contradiction" or "conflicting". A contradiction is **open** if no subsequent log entry marks it as `[RESOLVED]`. Convention: resolution log entries use the format `[RESOLVED] contradiction: <description>` so they can be matched against the original flag.
-2. **For each contradiction**, present it to the user:
+2. **Cluster related contradictions**: Group open contradictions into connected clusters using the wiki's typed relationships. If page A contradicts B, and B has an `evidence-for` link to C, and C contradicts D — then {A, B, C, D} form one cluster. Resolving them together prevents cascading inconsistencies (e.g., resolving A vs B in isolation may conflict with the later resolution of C vs D). Present each cluster as a unit; standalone contradictions (no relationship connections to other contradictions) are clusters of one.
+3. **For each cluster**, present it to the user:
    - Show the two (or more) conflicting claims with their source pages and original raw sources.
    - Propose a resolution: which claim is more recent, better sourced, or more authoritative?
    - Ask the user to confirm, adjust, or skip.
-3. **Apply resolution**: Update the wiki page(s) — correct the stale/wrong claim, add a note about what changed and why, update the `confidence:` frontmatter if needed.
-4. **Log resolution**: Append to `wiki/log.md` and `wiki/daily/{today}.md` using the format `[RESOLVED] contradiction: <description>` — this marks it as closed so future `resolve` runs skip it. Include which pages were updated and how.
-5. **Report**: Contradictions resolved, contradictions skipped, contradictions remaining.
+4. **Apply resolution**: Update the wiki page(s) — correct the stale/wrong claim, add a note about what changed and why, update the `confidence:` frontmatter if needed. After resolving a cluster, propagate confidence changes: a page that was `low` solely because of a now-resolved contradiction may qualify for `medium` or `high`.
+5. **Log resolution**: Append to `wiki/log.md` and `wiki/daily/{today}.md` using the format `[RESOLVED] contradiction: <description>` — this marks it as closed so future `resolve` runs skip it. Include which pages were updated and how.
+6. **Report**: Contradictions resolved (by cluster), contradictions skipped, contradictions remaining.
 
 If no open contradictions are found, say so.
 
