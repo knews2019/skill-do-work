@@ -263,7 +263,7 @@ If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section ex
 
 ### Step 4: Planning (Route C only)
 
-**Route C:** Spawn a **Plan agent** with the request content, project context, the `rules-[domain].md` file (if domain is missing or the file doesn't exist, skip loading it), and any files listed in the `prime_files` array. Instruct it to use the prime files as the strict index for discovering the source of truth. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
+**Route C:** Spawn a **Plan agent** with the request content, project context, the `crew-members/[domain].md` file (if domain is missing or the file doesn't exist, skip loading it), and any files listed in the `prime_files` array. Instruct it to use the prime files as the strict index for discovering the source of truth. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
 
 ```markdown
 ## Plan
@@ -366,8 +366,8 @@ Quick environment sanity check before the builder starts coding. All checks are 
 
 **Agent rules loading:** Before spawning the implementation agent, load domain-specific rules:
 
-1. **Always load** `agent-rules/rules-general.md` — cross-domain rules and PRIME Files Philosophy
-2. **Conditionally load** `agent-rules/rules-[domain].md` — only if the REQ's `domain` frontmatter is set AND the file exists (e.g., `domain: ui-design` → `rules-ui-design.md`)
+1. **Always load** `crew-members/general.md` — cross-domain rules and PRIME Files Philosophy
+2. **Conditionally load** `crew-members/[domain].md` — only if the REQ's `domain` frontmatter is set AND the file exists (e.g., `domain: ui-design` → `ui-design.md`)
 3. **If a rules file is missing**, proceed without it — never block on a missing rules file
 
 Spawn a **general-purpose agent** with the loaded rules, any files listed in the `prime_files` array, and context appropriate to the route:
@@ -477,7 +477,7 @@ Before marking complete, verify tests pass:
 1. **Check the prime file for test guidance** — if the REQ's `prime_files` reference a prime with a testing section (test commands, code-area-to-test mappings), use that as the primary source for what to run. Prime test maps are project-specific knowledge that generic detection can't replicate (e.g., "changes to `lib/inpainting.js` require `npm run test:api`" or "`npm test` is always safe but `npm run test:e2e` costs money").
 2. **Fall back to generic detection for unmapped files** — if the prime has no testing section, or if you changed files the prime's test map doesn't cover, fall back to generic detection for those files: look for `package.json` test scripts, `jest.config.*`, `pytest.ini`, `Cargo.toml`, `*_test.go`, etc. A partial prime map is not an excuse to skip tests — matched files use the prime's commands, unmatched files use generic detection. If neither source yields test commands for a file, skip testing for it and note it.
 3. **Run relevant tests** — target tests related to changed code, not the full suite (unless it's fast). If the prime specifies different commands for different code areas, run only the commands relevant to the files you changed. For unmapped files, run whatever generic detection found.
-4. **If tests fail** — check whether the failures were already recorded as baseline failures in Step 5.75 (Pre-Flight). If a failing test matches a pre-existing baseline failure (same test name/file, same failure mode), exclude it from the pass/fail gate — the builder should not be blamed for pre-existing failures. Only **new regressions** (tests that passed at baseline but fail after implementation) require fixing. Return to implementation to fix new regressions. On attempt 2+, load `agent-rules/rules-debugging.md` for the builder to follow the structured debugging methodology. Loop until passing or mark as failed after 3 attempts.
+4. **If tests fail** — check whether the failures were already recorded as baseline failures in Step 5.75 (Pre-Flight). If a failing test matches a pre-existing baseline failure (same test name/file, same failure mode), exclude it from the pass/fail gate — the builder should not be blamed for pre-existing failures. Only **new regressions** (tests that passed at baseline but fail after implementation) require fixing. Return to implementation to fix new regressions. On attempt 2+, load `crew-members/debugging.md` for the builder to follow the structured debugging methodology. Loop until passing or mark as failed after 3 attempts.
 5. **If new tests are needed** — spawn a general-purpose agent to write them following existing patterns, then run them.
 
 Append to the request file:
@@ -513,7 +513,7 @@ Run the [review work action](./review-work.md) in **pipeline mode** against this
 
 The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation: requirements check (did we build what was asked?), code review (is it solid?), and acceptance testing (does it actually work?).
 
-**How to run it:** Spawn an agent with the review work action file, the REQ path, and the `rules-[domain].md` file (if the domain has one and the file exists). Or read `actions/review-work.md` and follow its pipeline mode instructions in the current session.
+**How to run it:** Spawn an agent with the review work action file, the REQ path, and the `crew-members/[domain].md` file (if the domain has one and the file exists). Or read `actions/review-work.md` and follow its pipeline mode instructions in the current session.
 
 **What happens next depends on the review result:**
 
@@ -521,7 +521,7 @@ The review reads the REQ (in `do-work/working/`), the original UR, and the curre
 - **Acceptance = Partial OR overall 50-74%**: Append Review, continue to archive as `completed`, but the review **MUST** create follow-up REQs for every Important finding. These are not optional — they enter the queue and block the UR from being considered "done" until addressed.
 - **Acceptance = Fail OR overall < 50%**: **Do NOT archive as completed.** Instead:
   1. Append the Review section to the REQ.
-  2. Return to Step 6 (Implementation) with the review findings as context for the builder. Load `agent-rules/rules-debugging.md` for the remediation attempt — the builder needs structured debugging methodology, not just "try again."
+  2. Return to Step 6 (Implementation) with the review findings as context for the builder. Load `crew-members/debugging.md` for the remediation attempt — the builder needs structured debugging methodology, not just "try again."
   3. The builder gets **ONE remediation attempt**.
   4. Re-run Steps 6.25 through 7 (Summary → Qualification → Testing → Review) on the remediated code.
   5. If still failing after remediation: update frontmatter to `status: completed-with-issues`, `completed_at: <timestamp>`, append a `## Remediation` section documenting both attempts, and create follow-up REQs for all remaining Important findings. Then proceed to archive (Step 8) — the frontmatter is already set, so Step 8 should not overwrite it.

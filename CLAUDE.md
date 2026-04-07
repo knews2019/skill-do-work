@@ -28,7 +28,7 @@ actions/              # Action files (each is a standalone prompt)
   forensics.md        # Pipeline diagnostics — stuck work, hollow completions, orphaned URs
   prime.md             # Prime file management — create and audit AI context documents
   sample-archived-req.md # Example of a fully processed REQ file (reference only)
-agent-rules/          # Domain-specific rules loaded by work action
+crew-members/         # Domain-specific rules loaded by work action
 CHANGELOG.md          # Release notes (newest on top)
 ```
 
@@ -89,11 +89,11 @@ Cross-reference other actions by short name (e.g., "the work action", "do work c
 
 ## Agent Rules
 
-Domain-specific rules live in `agent-rules/rules-[domain].md`. Each file has a `JIT_CONTEXT` comment documenting when it loads. Loading behavior:
+Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_CONTEXT` comment documenting when it loads. Loading behavior:
 
-- `rules-general.md` — always loaded during implementation (Step 6)
-- `rules-[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists
-- `rules-debugging.md` — loaded during remediation (review fail → retry) and after 2+ test failures
+- `general.md` — always loaded during implementation (Step 6)
+- `[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists
+- `debugging.md` — loaded during remediation (review fail → retry) and after 2+ test failures
 - If a rules file is missing, proceed without it — never block on a missing rules file
 
 ## Agent Compatibility

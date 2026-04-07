@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.50.0 — The Crew (2026-04-07)
+
+Renamed `agent-rules/` to `crew-members/` and dropped the `rules-` prefix from all files inside.
+
+- `agent-rules/` → `crew-members/` directory rename
+- `rules-general.md` → `general.md`, `rules-frontend.md` → `frontend.md`, etc.
+- Updated all references across work.md, ui-review.md, code-review.md, prime.md, review-work.md, version.md, sample-archived-req.md, CLAUDE.md, README.md, and docs/
+- Historical CHANGELOG entries preserved as-is (they describe the state at time of release)
+
 ## 0.49.0 — The Architect (2026-04-07)
 
 Major clarity and modularization pass — smaller files, consolidated routing, documented conventions.

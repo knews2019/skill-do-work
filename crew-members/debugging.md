@@ -1,4 +1,4 @@
-# Debugging Rules
+# Debugging Crew Member
 
 <!-- JIT_CONTEXT: This file is loaded by the AI agent when debugging — during remediation attempts (Step 7 → Step 6 loop) or when the test failure loop (Step 6.5) exceeds 1 attempt. It provides a structured methodology to prevent thrashing. -->
 
