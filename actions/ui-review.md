@@ -8,7 +8,7 @@ This action is a **validation-only** pass. It does not modify code — it identi
 
 It combines two layers of design knowledge:
 
-1. **`rules-ui-design.md`** — the structured 6-phase design workflow (IA, wireframing, visual aesthetics, component systems, UX copy, interaction & motion) plus quality checks, accessibility baseline, and implementation patterns.
+1. **`crew-members/ui-design.md`** — the structured 6-phase design workflow (IA, wireframing, visual aesthetics, component systems, UX copy, interaction & motion) plus quality checks, accessibility baseline, and implementation patterns.
 2. **`frontend-design` skill** (if installed at `.claude/skills/frontend-design/SKILL.md`) — Anthropic's production-grade aesthetics guidance covering typography, color, motion, and backgrounds.
 
 Together, these provide both the structural rigor of a design system review and the aesthetic eye of a visual design audit.
@@ -39,7 +39,7 @@ Combine all resolved file paths into a single deduplicated list. This is the **r
 
 ### Step 2: Load Design Context
 
-1. **Read `agent-rules/rules-ui-design.md`** from the skill root. This provides the 6-phase design checklist, heuristic review criteria, accessibility baseline, and implementation patterns.
+1. **Read `crew-members/crew-members/ui-design.md`** from the skill root. This provides the 6-phase design checklist, heuristic review criteria, accessibility baseline, and implementation patterns.
 
 2. **Check for `frontend-design` skill**: Look for `.claude/skills/frontend-design/SKILL.md`. If it exists, read it and incorporate its aesthetics criteria into the review. If not installed, note this in the report as a recommendation but proceed without it.
 
@@ -58,7 +58,7 @@ Combine all resolved file paths into a single deduplicated list. This is the **r
 
 ### Step 3: Structural & IA Review (Phase 1–2)
 
-Evaluate the UI structure against Phase 1 and Phase 2 criteria from `rules-ui-design.md`:
+Evaluate the UI structure against Phase 1 and Phase 2 criteria from `crew-members/ui-design.md`:
 
 - **Navigation & information hierarchy**: Is the navigation structure clear? Are content groups logical?
 - **Screen completeness**: Are edge cases handled — empty states, error states, loading states, permission states?
@@ -68,7 +68,7 @@ Evaluate the UI structure against Phase 1 and Phase 2 criteria from `rules-ui-de
 
 ### Step 4: Visual Aesthetics Review (Phase 3)
 
-Evaluate against Phase 3 criteria from `rules-ui-design.md` and the `frontend-design` skill (if available):
+Evaluate against Phase 3 criteria from `crew-members/ui-design.md` and the `frontend-design` skill (if available):
 
 - **Typography**: Is there a consistent type scale? Are there too many font sizes/weights/families? Generic defaults (Inter, Roboto, system-ui only) without intentional pairing?
 - **Color palette**: Is the palette cohesive and intentional? Are semantic colors (success, warning, error, info) consistent? Any accessibility contrast issues?
@@ -242,7 +242,7 @@ Compile all findings into a structured markdown report. **Do not modify any file
 [2–3 things the UI does well — acknowledge good patterns so they're preserved.]
 ```
 
-**Severity definitions** (from `rules-ui-design.md`):
+**Severity definitions** (from `crew-members/ui-design.md`):
 - **High**: Blocks task completion, causes user errors, or fails accessibility requirements (WCAG AA)
 - **Medium**: Confusing UX but workaround exists, inconsistency across screens, missing states
 - **Low**: Cosmetic polish, best-practice improvement, nice-to-have
@@ -269,5 +269,5 @@ If the user declines or doesn't respond, skip this step. The report stands on it
 - **Don't flag what tools catch**: If a linter or formatter would catch it, skip it. Focus on design-level issues that require human judgment.
 - **Proportional depth**: A 3-file review gets a focused report. A 50-file review gets broader patterns, not 50x the findings.
 - **Acknowledge strengths**: A report that's all negatives is demoralizing and incomplete. Note what works.
-- **frontend-design skill is additive**: If not installed, still run the full review using `rules-ui-design.md`. The skill adds aesthetic depth but isn't required.
+- **frontend-design skill is additive**: If not installed, still run the full review using `crew-members/ui-design.md`. The skill adds aesthetic depth but isn't required.
 - **Playwright CLI / Bowser skill are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend `do work install-bowser` when missing — it's high-value and low-effort.

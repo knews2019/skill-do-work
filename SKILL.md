@@ -93,137 +93,29 @@ If routing is genuinely unclear AND multi-word content was provided:
 - If truly ambiguous, ask: "Add this as a request, or start the work loop?"
 - User replies with just "add" or "work" → proceed with original content
 
-### Action Verbs (→ Work)
+### Verb Reference
 
-These signal "process the queue":
-run, go, start, begin, work, process, execute, build, continue, resume
-
-### Clarify Verbs (→ Clarify Questions)
-
-These signal "review pending questions":
-clarify, answers, questions, pending, pending answers, blocked, what's blocked, what needs answers
-
-Note: This routes to the work action with `mode: clarify` — see work.md "Clarify Questions" section.
-
-### Verify Verbs (→ Verify Requests)
-
-These signal "check request quality":
-verify, verify requests, check, evaluate, review requests, review reqs, audit
-
-Note: "check" routes to verify requests ONLY when used alone or with a target (e.g., "do work check UR-003"). "check for updates" is intercepted at priority 2 and routes to version — it never reaches verify. When followed by other descriptive content it routes to capture requests (e.g., "do work check if the button works" → capture requests).
-
-Note: "audit" alone routes to verify requests. "audit code" and "audit implementation" route to review work (see Review Verbs below). "audit codebase" routes to code-review (see Code-Review Verbs below). "audit primes" routes to prime (see Prime Verbs below).
-
-### Code-Review Verbs (→ Code Review)
-
-These signal "standalone codebase review":
-code-review, code review [scope], review codebase, audit codebase, review codebase [scope], codebase review
-
-Note: "code-review" (hyphenated) always routes to code-review (priority 6). "code review" followed by a **prime file reference or directory path** routes to code-review (priority 6). "codebase review" always routes to code-review (priority 6). Plain "code review" (no scope) falls through to **review work** (priority 8) for backwards compatibility. "audit codebase" and "review codebase" always route to code-review. The key distinction: review work reviews completed REQ/UR work items; code-review reviews the actual source code independent of the queue.
-
-Scope arguments are passed through as `$ARGUMENTS`:
-- Prime file references: `prime-auth`, `prime-auth.md`, `src/prime-auth.md`
-- Directory paths: `src/`, `src/api/ src/utils/`
-- Combined: `prime-auth src/utils/`
-- No scope: interactive — lists available prime files and asks
-
-### UI-Review Verbs (→ UI Review)
-
-These signal "validate UI quality (read-only)":
-ui-review, review ui, design review, validate ui, ui audit, design audit
-
-Note: "ui-review" (hyphenated) always routes to ui-review. "review ui" and "design review" route to ui-review. "validate ui" routes to ui-review. Do NOT use "check ui" — "check" is consumed by verify-requests at priority 4 before reaching this rule. The key distinction from code-review: ui-review evaluates visual design, UX, accessibility, and component consistency against design best practices. code-review evaluates code patterns, architecture, and security.
-
-Scope arguments are passed through as `$ARGUMENTS`:
-- File paths: `src/components/Header.tsx`
-- Directory paths: `src/pages/`
-- Prime file references: `prime-dashboard`
-- Combined: `prime-auth src/components/`
-- No scope: interactive — lists UI-relevant files and asks
-
-### Review Verbs (→ Review Work)
-
-These signal "review the completed work":
-review, review work, review code, code review, audit code, audit implementation, review REQ-NNN, review UR-NNN
-
-Note: "review requests" and "review reqs" route to **verify requests** (priority 4), not review work. "review" alone or followed by a target/code-related word routes to review work (priority 8). The review work action also runs automatically as part of the work pipeline — see `work.md` Step 7.
-
-### Present Verbs (→ Present Work)
-
-These signal "generate client-facing deliverables":
-present, present work, showcase, deliver, pitch, client brief
-
-Note: `do work present` (no target) presents the most recent completed UR. `do work present all` or `do work present portfolio` enters portfolio mode. `do work present UR-003` or `do work present REQ-005` targets specific work.
-
-### Cleanup Verbs (→ Cleanup)
-
-These signal "consolidate the archive":
-cleanup, clean up, tidy, consolidate, organize archive, fix archive
-
-### Commit Verbs (→ Commit)
-
-These signal "commit uncommitted files atomically":
-commit, commit changes, commit files, save changes, save work
-
-### Inspect Verbs (→ Inspect)
-
-These signal "explain uncommitted changes":
-inspect, inspect changes, explain changes, what changed, show changes, describe changes
-
-Note: "what changed" (no apostrophe) routes to inspect. "what's changed" (with apostrophe) routes to version (priority 13) for backwards compatibility. The distinction is deliberate: "changed" (past tense, no contraction) implies the working tree; "what's changed" implies "what's new" in releases.
-
-### Recap Verbs (→ Version)
-
-These signal "show recent work summary":
-recap
-
-### Version / Release Info Verbs (→ Version)
-
-These signal "show version or release info":
-version, update, check for updates, what's new, release notes, what's changed, updates, history
-
-Note: "updates" (plural) and "what's new" show version + last 5 releases. "update" (singular) triggers the update check flow. Both are handled by the version action.
-
-### BKB Verbs (→ Build Knowledge Base)
-
-These signal "LLM Knowledge Base operations":
-bkb, build knowledge base, knowledge base, kb
-
-Note: "bkb" is the short form. Everything after the verb is passed as `$ARGUMENTS` (sub-command + parameters). For example, `do work bkb init ~/research` passes `init ~/research` as arguments. `do work bkb ingest today` passes `ingest today`. `do work build knowledge base` with no sub-command shows the BKB help menu.
-
-### Prime Verbs (→ Prime)
-
-These signal "prime file management operations":
-prime, prime create, prime audit, create prime, audit primes, primes
-
-Note: "prime" as the first word after "do work" always routes to the prime action. "create prime" (reversed order) also routes here. "audit primes" routes here; plain "audit" still routes to verify requests (priority 4). The key distinction: "audit" alone is about REQ quality; "audit primes" or "prime audit" is about prime file health. Everything after the verb is passed as `$ARGUMENTS` (sub-command + parameters). For example, `do work prime create src/auth/` passes `create src/auth/` as arguments.
-
-### Quick-Wins Verbs (→ Quick-Wins)
-
-These signal "scan for improvement opportunities":
-quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, what can we improve
-
-Note: "scan", "opportunities", and "what can we improve" route to quick-wins ONLY when used alone or with a directory path (e.g., "do work scan", "do work scan src/"). When followed by descriptive content they route to capture requests (e.g., "do work scan the checkout logs for 500s" → capture requests).
-
-### Install Verbs (→ Install UI Design / Install Bowser)
-
-Two install actions exist. Route based on the keyword after "install":
-
-**UI Design** — these signal "install the frontend-design skill":
-install-ui-design, install ui design, install ui, install frontend-design, setup ui design, setup design skill
-
-**Bowser** — these signal "install Playwright CLI + Bowser skill":
-install-bowser, install bowser, install playwright, install playwright-cli, setup bowser, setup playwright
-
-### Content Signals (→ Capture Requests)
-
-These signal "add a new task":
-
-- `capture request:` prefix (preferred — clearest intent signal)
-- Descriptive text beyond a single verb
-- Feature requests, bug reports, ideas
-- Screenshots or context
-- "add", "create", "I need", "we should"
+| Route | Trigger verbs | Notes |
+|-------|--------------|-------|
+| **work** | run, go, start, begin, work, process, execute, build, continue, resume | |
+| **clarify** | clarify, answers, questions, pending, pending answers, blocked, what's blocked, what needs answers | Routes to `actions/clarify.md` |
+| **verify requests** | verify, verify requests, check, evaluate, review requests, review reqs, audit | "check" alone → verify; "check for updates" → version (priority 2); "audit" alone → verify; "audit codebase" → code-review; "audit primes" → prime |
+| **code-review** | code-review, code review [scope], review codebase, audit codebase, codebase review | Hyphenated form always routes here. Plain "code review" (no scope) falls through to review work. Scope args: prime file refs, directory paths, or combined |
+| **ui-review** | ui-review, review ui, design review, validate ui, ui audit, design audit | Do NOT use "check ui" — consumed by verify at priority 4. Scope args: file paths, directory paths, prime file refs |
+| **review work** | review, review work, review code, code review, audit code, audit implementation, review REQ-NNN | "review requests" / "review reqs" → verify (priority 4), not here |
+| **present work** | present, present work, showcase, deliver, pitch, client brief | No target → most recent UR. "present all" → portfolio mode |
+| **cleanup** | cleanup, clean up, tidy, consolidate, organize archive, fix archive | |
+| **commit** | commit, commit changes, commit files, save changes, save work | |
+| **inspect** | inspect, inspect changes, explain changes, what changed, show changes, describe changes | "what changed" (no apostrophe) → inspect; "what's changed" → version |
+| **recap** | recap | Routes to version action with `mode: recap` |
+| **version** | version, update, check for updates, what's new, release notes, what's changed, updates, history | "updates" (plural) shows last 5 releases; "update" (singular) triggers update check |
+| **forensics** | forensics, diagnose, health check, health | |
+| **prime** | prime, prime create, prime audit, create prime, audit primes, primes | Everything after verb → `$ARGUMENTS`. "audit primes" → prime; plain "audit" → verify |
+| **bkb** | bkb, build knowledge base, knowledge base, kb | Everything after verb → `$ARGUMENTS` (sub-command + params) |
+| **quick-wins** | quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, what can we improve | "scan" alone or with directory → quick-wins; with descriptive content → capture |
+| **install-ui-design** | install-ui-design, install ui design, install ui, install frontend-design, setup ui design, setup design skill | |
+| **install-bowser** | install-bowser, install bowser, install playwright, install playwright-cli, setup bowser, setup playwright | |
+| **capture requests** | `capture request:` prefix, descriptive text, feature requests, bug reports, "add", "create", "I need", "we should" | Default for multi-word descriptive content that doesn't match any keyword |
 
 ## Examples
 
@@ -240,7 +132,9 @@ do-work — task queue for agentic coding tools
     do work capture request: [paste meeting notes, specs, or a screenshot]
 
   Process the queue:
-    do work run
+    do work run                 Triage, build, test, review — one REQ at a time
+    do work continue            Resume after a break (also: go, start, begin)
+    do work clarify             Review pending questions from completed work
 
   Verify & review:
     do work verify requests     Check capture quality against original input
@@ -330,7 +224,7 @@ Each action has an action file with full instructions. How you execute it depend
 |--------------------|---------------------------------|--------------------------------|
 | capture requests   | `./actions/capture.md`          | Full user input text           |
 | work               | `./actions/work.md`             | (none needed)                  |
-| clarify questions  | `./actions/work.md`             | `mode: clarify`                |
+| clarify questions  | `./actions/clarify.md`          | (none needed)                  |
 | verify requests    | `./actions/verify-requests.md`  | Target UR/REQ or "most recent" |
 | review work        | `./actions/review-work.md`      | Target REQ/UR or "most recent" |
 | present work       | `./actions/present-work.md`     | Target REQ/UR, "most recent", or "all" |
@@ -366,132 +260,4 @@ Report the error to the user. Do not retry automatically.
 
 ## Suggest Next Steps
 
-After every action completes, suggest the next logical prompts the user might want to run. Use fully qualified action names so the user can copy-paste directly.
-
-**After capture requests:**
-```
-Next steps:
-  do work verify requests     Check capture quality before building
-  do work run                 Start processing the queue
-```
-
-**After work (queue processing):**
-```
-Next steps:
-  do work review work         Review the completed work
-  do work present work        Generate client-facing deliverables
-  do work clarify             Answer any pending questions
-```
-
-**After verify requests:**
-```
-Next steps:
-  do work run                 Start processing the queue
-  do work capture request: [describe changes]  Capture additional requests
-```
-
-**After review work:**
-```
-Next steps:
-  do work present work        Generate client-facing deliverables
-  do work ui-review [scope]   Validate UI quality (if domain: ui-design)
-  do work run                 Process follow-up REQs (if any were created)
-```
-
-**After code-review:**
-```
-Next steps:
-  do work run                   Process follow-up REQs (if any were created)
-  do work ui-review [scope]     Validate UI quality for the same scope
-  do work quick-wins [dir]      Scan for additional improvements
-```
-
-**After ui-review:**
-```
-Next steps:
-  do work capture request: [describe fix]  Capture findings as requests
-  do work run                   Process follow-up REQs (if any were created)
-  do work install-bowser        Install Playwright CLI + Bowser skill for visual verification (if not installed)
-```
-
-**After present work:**
-```
-Next steps:
-  do work present all         Generate portfolio summary (if multiple URs completed)
-  do work capture request: [describe]  Capture new requests
-```
-
-**After forensics:**
-```
-Next steps:
-  do work cleanup               Fix orphaned URs and misplaced files
-  do work run                   Process stuck or pending REQs
-  do work capture request: [describe fix]  Capture a specific finding as a request
-```
-
-**After prime create:**
-```
-Next steps:
-  do work code-review prime-{name}   Review the code scope the prime covers
-  do work prime audit                Run a full audit to check the new prime
-  do work run                        Process the queue
-```
-
-**After prime audit:**
-```
-Next steps:
-  do work prime create <path>         Create primes for flagged utilities
-  do work capture request: [fix]      Capture audit findings as requests
-  do work run                         Process the queue
-```
-
-**After quick-wins:**
-```
-Next steps:
-  do work capture request: [describe fix]  Capture a finding as a request
-  do work run                   Process the queue
-```
-
-**After inspect:**
-```
-Next steps:
-  do work commit              Commit the ready changes
-  do work capture request: [describe fix]  Capture issues as requests
-  do work run                 Process the queue (if fixes were captured)
-```
-
-**After commit:**
-```
-Next steps:
-  do work inspect             Review remaining uncommitted changes (if any)
-  do work review work         Review the committed changes
-  do work capture request: [describe]  Capture new requests
-```
-
-**After clarify questions:**
-```
-Next steps:
-  do work run                 Process answered questions
-  do work clarify             Continue answering (if skipped any)
-```
-
-**After build knowledge base:**
-```
-Next steps:
-  do work bkb [next-subcommand]  Continue KB workflow (triage → ingest → query → close)
-  do work bkb status             Check KB state
-```
-
-**After version / recap:**
-```
-Next steps:
-  do work run                 Start processing the queue
-  do work capture request: [describe]  Capture new requests
-```
-
-**Rules:**
-- Only suggest prompts that provide value given the current state (e.g., don't suggest `do work run` if the queue is empty)
-- Use the full action name (`verify requests`, not just `verify`; `review work`, not just `review`)
-- Keep it to 2-3 suggestions max — don't overwhelm
-- Format as a simple list the user can scan and copy
-- Always include a reminder at the end: `do work help` to see all available commands
+After every action completes, suggest the next logical prompts the user might want to run. See [`next-steps.md`](./next-steps.md) for the full per-action reference (what to suggest after each action, formatting rules, and constraints).
