@@ -8,6 +8,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 Fix 9 bugs and consistency issues found during code review of last 20 commits.
 
+- Fix doubled path in ui-review (`crew-members/crew-members/` → `crew-members/`)
 - Fix master index line limit contradiction (50 → 80) in BKB directory tree comment
 - Align topic index split threshold to 40 articles everywhere (was 80 in some places, 40 in defrag)
 - Add missing defrag/garden staleness warnings to BKB `status` sub-command

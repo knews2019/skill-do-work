@@ -39,7 +39,7 @@ Combine all resolved file paths into a single deduplicated list. This is the **r
 
 ### Step 2: Load Design Context
 
-1. **Read `crew-members/crew-members/ui-design.md`** from the skill root. This provides the 6-phase design checklist, heuristic review criteria, accessibility baseline, and implementation patterns.
+1. **Read `crew-members/ui-design.md`** from the skill root. This provides the 6-phase design checklist, heuristic review criteria, accessibility baseline, and implementation patterns.
 
 2. **Check for `frontend-design` skill**: Look for `.claude/skills/frontend-design/SKILL.md`. If it exists, read it and incorporate its aesthetics criteria into the review. If not installed, note this in the report as a recommendation but proceed without it.
 
