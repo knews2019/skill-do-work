@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.50.3 — The Double Take (2026-04-07)
+
+Fixed doubled path in ui-review that broke design context loading.
+
+- `actions/ui-review.md`: `crew-members/crew-members/ui-design.md` → `crew-members/ui-design.md` (duplicate directory prefix)
+
 ## 0.50.2 — The Typo (2026-04-07)
 
 Fixed incorrect queue path in work guide.
