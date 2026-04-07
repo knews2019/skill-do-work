@@ -1,4 +1,4 @@
-# General Crew Member
+# The Compass — General Crew Member
 
 ## PRIME Files Philosophy
 

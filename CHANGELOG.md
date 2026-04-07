@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.50.1 — The Roll Call (2026-04-07)
+
+Named the crew members — each now has a title that reflects their role.
+
+- The Compass (general) — cross-domain orientation, PRIME philosophy
+- The Renderer (frontend) — components, state, performance, accessibility
+- The Engineer (backend) — APIs, data layer, security, error boundaries
+- The Artisan (ui-design) — 6-phase design pipeline, visual craft, interaction specs
+- The Detective (debugging) — scientific method, investigation techniques, bias guards
+
 ## 0.50.0 — The Crew (2026-04-07)
 
 Renamed `agent-rules/` to `crew-members/` and dropped the `rules-` prefix from all files inside.
