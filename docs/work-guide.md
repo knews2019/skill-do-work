@@ -63,14 +63,46 @@ Builders never block on ambiguities. They mark questions as `- [~]` with best-ju
 
 At session end, a `do-work/CHECKPOINT.md` is written with the last completed REQ, queue state, and where any in-progress work stopped — so the next session can resume cleanly.
 
-## Usage
+## What happens when you run it
+
+A typical `do work run` session:
+
+1. **Queue scan** — finds the next `pending` REQ file in `do-work/requests/`
+2. **Claim** — moves it to `working/` and sets `status: claimed` so no other agent grabs it
+3. **Triage** — reads the REQ, assesses complexity, picks Route A/B/C
+4. **Build** — implements the request (planning and exploration for B/C routes)
+5. **Test** — runs the project's test suite, validates red-green if TDD targets exist
+6. **Review** — scores the work against requirements, code quality, and acceptance criteria
+7. **Archive** — moves the REQ to `archive/`, creates follow-up REQs if the review flagged issues
+8. **Commit** — one atomic commit per REQ with explicit file staging
+9. **Loop** — wipes context and picks the next REQ (or exits if the queue is empty)
+
+Each REQ is fully processed before the next one starts. If context limits are hit mid-REQ, a checkpoint is written so the next session can resume.
+
+## Trigger aliases
+
+All of these do the same thing — process the queue:
 
 ```
 do work run
 do work go
 do work start
+do work begin
+do work process
+do work execute
+do work build
 do work continue
+do work resume
 ```
+
+Use whichever feels natural. `continue` and `resume` read well after a break; `run` and `go` are good for fresh starts.
+
+## Tips
+
+- **`continue` vs fresh `run`** — No functional difference. Both scan the queue and pick the next pending REQ. Use `continue` when you're resuming a session; use `run` when you're starting fresh. The checkpoint system handles the actual resume logic.
+- **Failed items** — If a REQ fails review, the system tries one remediation pass. If it still fails, it archives with issues noted and optionally creates a follow-up REQ. You don't need to intervene manually.
+- **Context limits** — Long-running queues may hit context limits. The system writes `do-work/CHECKPOINT.md` before stopping. Just run `do work run` again in a new session — it picks up where it left off.
+- **One at a time** — The work action processes one REQ per loop iteration. This keeps commits atomic and reviews focused. Don't try to batch multiple REQs into one pass.
 
 ## Clarify mode
 

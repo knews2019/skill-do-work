@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.47.5 — The Signpost (2026-04-07)
+
+Gave the most important command in the skill a proper help entry and expanded its guide.
+
+- Help menu now shows description text and trigger aliases for `do work run`
+- Added `do work continue` and `do work clarify` to the help menu's "Process the queue" section
+- Expanded `docs/work-guide.md` with practical session walkthrough, full alias list, and tips
+
 ## 0.47.4 — The Compass (2026-04-06)
 
 Prime action no longer assumes project-specific CLAUDE.md sections or directory layouts.

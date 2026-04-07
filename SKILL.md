@@ -240,7 +240,9 @@ do-work — task queue for agentic coding tools
     do work capture request: [paste meeting notes, specs, or a screenshot]
 
   Process the queue:
-    do work run
+    do work run                 Triage, build, test, review — one REQ at a time
+    do work continue            Resume after a break (also: go, start, begin)
+    do work clarify             Review pending questions from completed work
 
   Verify & review:
     do work verify requests     Check capture quality against original input
