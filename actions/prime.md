@@ -161,7 +161,7 @@ For each prime file, check:
 
 6. **Cross-links present** — primes in the same area (sharing a parent directory tree) should cross-link to each other, not just for operational dependencies. If two primes are siblings or cousins in the same area (e.g., multiple primes under the same utility root), flag missing cross-links.
 
-7. **Area index exists** — if an area (parent directory tree) contains **3 or more primes**, one prime should serve as the **area index** that lists all related primes. Check if such an index prime exists and whether it lists all the primes in that area. Flag areas with 3+ primes but no index.
+7. **Area index exists** — if an area (parent directory tree) contains **3 or more primes**, one prime should serve as the **area index** that lists all related primes. An area index prime is identified by: (a) a filename matching `prime-*-index.md` (e.g., `prime-auth-index.md`), or (b) containing a `## Related Primes` or `## Index` section that lists other primes in the same area. Check if such an index prime exists and whether it lists all primes in that area. Flag areas with 3+ primes but no index prime.
 
 ### Step 3: Find utilities without primes
 

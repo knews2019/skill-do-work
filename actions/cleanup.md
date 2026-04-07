@@ -36,7 +36,8 @@ For each UR folder in `do-work/user-requests/`:
 2. For each REQ ID in the array, check if it exists with `status: completed` in ANY of these locations:
    - `do-work/archive/UR-NNN/` (already consolidated)
    - `do-work/archive/` root (loose in archive)
-3. If **ALL** REQs are completed:
+   If the same REQ-ID is found in **both** locations simultaneously, flag it and skip the whole UR: `⚠ Duplicate: REQ-NNN found in both archive/ root and archive/UR-NNN/. Resolve manually before archiving this UR.`
+3. If **ALL** REQs are completed (and no duplicates flagged):
    - Gather any loose completed REQ files from `do-work/archive/` root into the UR folder
    - Move the entire UR folder to `do-work/archive/UR-NNN/`
    - Report: `Archived UR-NNN (all N REQs complete)`
@@ -66,7 +67,7 @@ Scan for `do-work/` directories created inside utility subdirectories instead of
 
 1. **Detect directories, not file patterns.** Search for any directory named `do-work/` anywhere in the repo EXCEPT the project root. Look for the directory itself — don't rely on specific file patterns inside it, since a misplaced tree may contain only `user-requests/`, only `working/`, only assets, or any partial subset of the normal structure.
 2. For each misplaced `do-work/` found, inspect its known subtrees (`archive/`, `user-requests/`, `working/`, and queue-root REQ files). Relocate preserving internal structure:
-   - **Queue-root REQ files** (`do-work/REQ-*.md`): move to canonical `do-work/REQ-*.md`. Conflict = same REQ number exists at both locations.
+   - **Queue-root REQ files** (`do-work/REQ-*.md`): move to canonical `do-work/REQ-*.md`. **Before moving**, check if a REQ with the same number already exists at the canonical location (Pass 0 may have already swept it there). Conflict = same REQ number exists at both locations — report and leave the misplaced copy in place.
    - **`user-requests/UR-NNN/`**: move entire folder to canonical `do-work/user-requests/UR-NNN/`. Conflict = same UR number exists at both locations.
    - **`archive/UR-NNN/`**: move entire folder to canonical `do-work/archive/UR-NNN/`. Conflict = same UR number exists at both locations.
    - **`working/REQ-*.md`**: move to canonical `do-work/working/REQ-*.md`. Conflict = same REQ number exists at both locations.

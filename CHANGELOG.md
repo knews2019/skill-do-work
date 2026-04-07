@@ -4,6 +4,23 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.47.5 — The Patch Kit (2026-04-07)
+
+Code review fixes: addressed bugs and ambiguities found across 20-commit audit. Improves reliability of the core work pipeline and diagnostic actions.
+
+- `work.md`: Clarified crash recovery logic for `pending-answers` restoration (explicit condition check)
+- `work.md`: D-XX counter annotation required after Step 3.5 to prevent ID collision with Step 6 decisions
+- `work.md`: Expanded "Wired" check exceptions to cover barrel re-exports, dynamic imports, CSS side-effect modules
+- `work.md`: Prime test commands are now validated against `package.json`/config before use; stale commands fall back to generic detection
+- `work.md`: Added explicit relative-path algorithm (depth-counting) for prime file lesson links
+- `work.md`: Cycle detection rewritten with clear traversal algorithm (handles chains of any length)
+- `cleanup.md`: Pass 1 now flags duplicate REQ-IDs found in multiple archive locations
+- `cleanup.md`: Pass 3a warns before overwriting a canonical REQ already handled by Pass 0
+- `forensics.md`: Stuck work check now includes explicit remediation steps
+- `inspect.md`: Renamed "Committed" verdict to "Already Committed" to avoid confusion with quality judgments
+- `prime.md`: Area index prime is now defined (filename pattern + required section)
+- `SKILL.md`: "scan" routing rule clarified — bare path vs. path + descriptive text
+
 ## 0.47.4 — The Compass (2026-04-06)
 
 Prime action no longer assumes project-specific CLAUDE.md sections or directory layouts.

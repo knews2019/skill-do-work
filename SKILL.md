@@ -203,7 +203,7 @@ Note: "prime" as the first word after "do work" always routes to the prime actio
 These signal "scan for improvement opportunities":
 quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, what can we improve
 
-Note: "scan", "opportunities", and "what can we improve" route to quick-wins ONLY when used alone or with a directory path (e.g., "do work scan", "do work scan src/"). When followed by descriptive content they route to capture requests (e.g., "do work scan the checkout logs for 500s" → capture requests).
+Note: "scan", "opportunities", and "what can we improve" route to quick-wins ONLY when used alone or with a bare directory path (e.g., "do work scan", "do work scan src/"). A bare directory path is the last meaningful token — if any text follows it (e.g., "do work scan src/ for dead code"), treat the trailing text as descriptive content and route to capture requests instead (e.g., "do work scan the checkout logs for 500s" → capture requests).
 
 ### Install Verbs (→ Install UI Design / Install Bowser)
 
