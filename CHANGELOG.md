@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.0 — The Sentinel Suite (2026-04-07)
+
+New audit actions and a security crew member, inspired by techniques from [awesome-prompts](https://github.com/ai-boost/awesome-prompts). Fills gaps in performance diagnosis, test planning, and security review.
+
+- New **crew-members/security.md** — OWASP Top 10 checklist with framework-specific patterns (Node/Express, Python/Django, Java/Spring, React, Go) and severity classification. Loads JIT when working on auth, crypto, or input handling code
+- New **actions/test-strategy.md** — risk-driven test strategy designer. Identifies what tests should exist based on risk assessment, gap analysis, and test pyramid health. Includes flaky test prevention and CI quality gate checks
+- New **actions/perf-audit.md** — evidence-based performance diagnosis. Scans for backend, frontend, and database anti-patterns (N+1 queries, bundle bloat, missing indexes), quantifies impact, and ranks fixes by effort vs improvement
+- Enhanced **crew-members/debugging.md** — added tool-selection-by-failure-class table, Heisenbug identification heuristics, and confidence-level labeling for diagnostic claims
+- Enhanced **actions/quick-wins.md** — added objective complexity metrics for tie-breaking (cyclomatic complexity, nesting depth, import count, change frequency), false positive checks, and behavior-preservation rule
+- Updated SKILL.md routing table, help menu, action dispatch, and next-steps.md for new actions
+
 ## 0.50.5 — The Second Pass (2026-04-07)
 
 Self-review of 0.50.4 patch kit — fixed 5 issues found in our own changes.

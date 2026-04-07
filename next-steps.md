@@ -36,7 +36,8 @@ Next steps:
 ```
 Next steps:
   do work run                   Process follow-up REQs (if any were created)
-  do work ui-review [scope]     Validate UI quality for the same scope
+  do work test-strategy [scope] Design a test strategy for the reviewed scope
+  do work perf-audit [scope]    Audit performance for the reviewed scope
   do work quick-wins [dir]      Scan for additional improvements
 ```
 
@@ -83,6 +84,23 @@ Next steps:
 ```
 Next steps:
   do work capture request: [describe fix]  Capture a finding as a request
+  do work test-strategy [scope]  Design a test strategy for the same scope
+  do work run                   Process the queue
+```
+
+**After test-strategy:**
+```
+Next steps:
+  do work capture request: [describe test to write]  Capture a test recommendation as a request
+  do work quick-wins [scope]    Scan for refactoring opportunities in the same scope
+  do work run                   Process the queue
+```
+
+**After perf-audit:**
+```
+Next steps:
+  do work capture request: [describe fix]  Capture a performance fix as a request
+  do work code-review [scope]   Review code quality for the same scope
   do work run                   Process the queue
 ```
 

@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | prime [create|audit] | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | help"
+argument-hint: "capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | test-strategy | perf-audit | prime [create|audit] | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | help"
 ---
 
 # Do-Work Skill
@@ -19,6 +19,8 @@ A unified entry point for task capture and processing.
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
 - **code-review**: Standalone codebase review scoped by prime files and/or directories → consistency, patterns, security, architecture
 - **quick-wins**: Scan a target directory for obvious refactoring opportunities and low-hanging tests to add
+- **test-strategy**: Design a risk-driven test strategy — identifies what tests should exist, prioritized by risk reduction per effort (read-only)
+- **perf-audit**: Evidence-based performance diagnosis — identifies bottlenecks, quantifies impact, ranks solutions by effort vs improvement (read-only)
 - **ui-review**: Validate UI quality against design best practices — read-only audit with structured findings report
 - **install-ui-design**: Install the `frontend-design` Claude skill for production-grade UI design capabilities
 - **install-bowser**: Install Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification
@@ -71,8 +73,10 @@ Check these patterns **in order** — first match wins:
 | 16       | Prime keywords           | `do work prime`, `do work prime create src/auth/`, `do work prime audit`, `do work create prime`, `do work audit primes`           | → prime                       |
 | 17       | BKB keywords             | `do work bkb`, `do work bkb init`, `do work bkb ingest`, `do work build knowledge base`, `do work knowledge base`                 | → build knowledge base        |
 | 18       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
-| 19       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
-| 20       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
+| 19       | Test-strategy keywords   | `do work test-strategy`, `do work test strategy`, `do work test plan`, `do work what should we test`, `do work testing strategy`    | → test-strategy               |
+| 20       | Perf-audit keywords      | `do work perf-audit`, `do work perf audit`, `do work performance`, `do work performance audit`, `do work profile`, `do work slow`  | → perf-audit                  |
+| 21       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
+| 22       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -113,6 +117,8 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **prime** | prime, prime create, prime audit, create prime, audit primes, primes | Everything after verb → `$ARGUMENTS`. "audit primes" → prime; plain "audit" → verify |
 | **bkb** | bkb, build knowledge base, knowledge base, kb | Everything after verb → `$ARGUMENTS` (sub-command + params) |
 | **quick-wins** | quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, what can we improve | "scan" alone or with a bare directory path → quick-wins; bare path = last meaningful token (any text after it is descriptive content → capture) |
+| **test-strategy** | test-strategy, test strategy, test plan, testing strategy, what should we test, what tests, test audit | Scope args: directory paths, prime file refs, or combined. Same scoping as code-review |
+| **perf-audit** | perf-audit, perf audit, performance, performance audit, profile, slow, bottleneck, perf | "slow" and "performance" alone → perf-audit; with descriptive content → capture |
 | **install-ui-design** | install-ui-design, install ui design, install ui, install frontend-design, setup ui design, setup design skill | |
 | **install-bowser** | install-bowser, install bowser, install playwright, install playwright-cli, setup bowser, setup playwright | |
 | **capture requests** | `capture request:` prefix, descriptive text, feature requests, bug reports, "add", "create", "I need", "we should" | Default for multi-word descriptive content that doesn't match any keyword |
@@ -153,6 +159,10 @@ do-work — task queue for agentic coding tools
   Scan for improvements:
     do work quick-wins          Scan cwd for refactoring and test opportunities
     do work quick-wins src/     Scan a specific directory
+    do work test-strategy       Design a risk-driven test strategy
+    do work test-strategy src/  Test strategy for a specific directory
+    do work perf-audit          Performance diagnosis — find bottlenecks
+    do work perf-audit src/api/ Audit a specific directory for perf issues
 
   Prime files:
     do work prime create src/auth/    Generate a prime file via interactive Q&A
@@ -234,6 +244,8 @@ Each action has an action file with full instructions. How you execute it depend
 | code-review        | `./actions/code-review.md`      | Prime file refs and/or directory paths |
 | ui-review          | `./actions/ui-review.md`        | File/directory paths and/or prime file refs |
 | quick-wins         | `./actions/quick-wins.md`       | Target directory               |
+| test-strategy      | `./actions/test-strategy.md`    | Prime file refs and/or directory paths |
+| perf-audit         | `./actions/perf-audit.md`       | Target directory/file or concern description |
 | install-ui-design  | `./actions/install-ui-design.md`| (none needed)                  |
 | install-bowser     | `./actions/install-bowser.md`   | (none needed)                  |
 | forensics          | `./actions/forensics.md`        | (none needed)                  |
@@ -247,7 +259,7 @@ Each action has an action file with full instructions. How you execute it depend
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `prime`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `test-strategy`, `perf-audit`, `prime`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
