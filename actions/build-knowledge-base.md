@@ -82,7 +82,7 @@ Before creating anything, check if the target path already contains a KB (has bo
 ```
 <path>/
 ├── wiki/
-│   ├── _master_index.md            # Top-level nav (~50 lines max)
+│   ├── _master_index.md            # Top-level nav (~80 lines max)
 │   ├── topics/                     # Second-level indexes
 │   ├── concepts/                   # Concept articles
 │   ├── entities/                   # Person/org/product articles
@@ -204,10 +204,10 @@ You are the Architect. You own the KB's structure and schema.
 
 ## Standards
 - Master index stays under 80 lines
-- Topic indexes stay under 60 lines, split at 80 articles
+- Topic indexes stay under 60 lines; split when a cluster exceeds 40 articles
 - Every article in exactly one topic index
 - Every topic index in the master index
-- CLAUDE.md is the single source of truth for conventions
+- The KB schema file (`<kb>/CLAUDE.md`) is the single source of truth for conventions
 ```
 
 **`agents/sorter.md`:**
@@ -585,7 +585,7 @@ This enhanced handling applies ONLY to audio/video transcripts. Standard text so
 
 - `_master_index.md` must stay under 80 lines.
 - Each topic index must stay under 60 lines.
-- When a topic index exceeds 80 articles, split it and update `_master_index.md`.
+- When a topic index exceeds 40 articles, split it and update `_master_index.md`.
 - Every wiki article must appear in exactly one topic index.
 - Every topic index must appear in `_master_index.md`.
 
@@ -633,7 +633,7 @@ Health check the wiki for consistency and accuracy.
    - Every wiki article appears in exactly one topic index.
    - Every topic index appears in `_master_index.md`.
    - Article counts in indexes match actual file counts.
-   - No topic index exceeds the split threshold (80 articles).
+   - No topic index exceeds the split threshold (40 articles).
 6. **Broken links** — `[[wiki-links]]` pointing to non-existent pages.
 7. **Daily log coverage** — daily logs exist for every day that had ingestion activity.
 8. **Frontmatter completeness** — all required fields present in every wiki page.
@@ -744,6 +744,7 @@ Quick snapshot of the KB state.
      Last garden: YYYY-MM-DD (or "never")
      Agents: 8 built-in + N custom
    ```
+7. **Staleness warnings**: If defrag hasn't run in 14+ days (or never), append a warning: `⚠ Defrag is overdue — last run was N days ago (recommend weekly).` Same for garden at 14+ days.
 
 ---
 
@@ -1017,7 +1018,7 @@ Every wiki page MUST have YAML frontmatter:
 ## Index Rules
 - _master_index.md: max 80 lines, one line per topic cluster
 - Topic indexes: max 60 lines, one line per article in the cluster
-- Split threshold: 80 articles per topic index
+- Split threshold: 40 articles per topic index
 - Every article in exactly one topic index
 - Every topic index listed in _master_index.md
 

@@ -58,7 +58,7 @@ Check these patterns **in order** — first match wins:
 | 3        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
 | 4        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check REQ-018`, `do work evaluate`, `do work audit`, `do work review requests` | → verify requests              |
 | 5        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
-| 6        | Code-review keywords     | `do work code-review`, `do work code-review prime-auth`, `do work code review src/`, `do work audit codebase`, `do work review codebase`, `do work codebase review` | → code-review                  |
+| 6        | Code-review keywords (with scope or "codebase") | `do work code-review`, `do work code-review prime-auth`, `do work code review src/`, `do work audit codebase`, `do work review codebase`, `do work codebase review` | → code-review                  |
 | 7        | UI-review keywords       | `do work ui-review`, `do work ui-review src/`, `do work review ui`, `do work design review`, `do work validate ui`, `do work ui audit`, `do work design audit` | → ui-review                    |
 | 8        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review` (no scope), `do work audit code`             | → review work                  |
 | 9        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
@@ -172,6 +172,10 @@ do-work — task queue for agentic coding tools
     do work bkb resolve           Resolve flagged contradictions
     do work bkb close             Finalize daily log, refresh overview
     do work bkb status            Show KB stats and pending items
+    do work bkb defrag            Weekly structural maintenance — split/merge clusters
+    do work bkb garden            Audit metadata layer — relationships and cross-refs
+    do work bkb rollup            Generate periodic summary from daily logs
+    do work bkb crew              Manage custom agents for the knowledge base
 
   Setup:
     do work install-ui-design   Install the frontend-design skill for production-grade UI
