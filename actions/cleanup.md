@@ -55,7 +55,7 @@ For each loose `REQ-*.md` file directly in `do-work/archive/` (not inside a subf
 2. **If it has `user_request: UR-NNN`:**
    - Check if `do-work/archive/UR-NNN/` exists
    - If yes: move the REQ file into that UR folder
-   - If no: check if `do-work/user-requests/UR-NNN/` exists (UR still open — leave the REQ in archive root for now, Pass 1 will handle it on next run)
+   - If no: check if `do-work/user-requests/UR-NNN/` exists (UR still open — leave the REQ in archive root for now; it will be consolidated when the UR is fully complete and archived by Pass 1)
    - If the UR folder doesn't exist anywhere: report a warning — `REQ-XXX references UR-NNN but no UR folder found`
 3. **If it has NO `user_request` field (legacy/standalone):**
    - Move it to `do-work/archive/legacy/` (create the folder if needed)

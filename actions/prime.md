@@ -37,7 +37,7 @@ Generate a prime file for the utility at `<path>` — a routing index that helps
 - The AI has `Read`, `Grep`, `Glob`. Don't reproduce what tool calls discover.
 - Only include what the AI CANNOT efficiently find: routing, traps, exclusions.
 - NO: line numbers, code descriptions, DOM anchors, request flow diagrams, URL params, environment tables, external service catalogs. The AI will discover these via tool calls.
-- Follow the **PRIME Files Philosophy** from `agent-rules/rules-general.md`: low noise, high value, pointers not copies, no volatile metrics.
+- Follow the **PRIME Files Philosophy** from `crew-members/general.md`: low noise, high value, pointers not copies, no volatile metrics.
 - Save to `{utility}/prime-{short-name}.md`
 
 ### Workflow

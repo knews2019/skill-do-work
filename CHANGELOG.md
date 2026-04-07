@@ -4,9 +4,9 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.47.5 — The Patch Kit (2026-04-07)
+## 0.50.4 — The Patch Kit (2026-04-07)
 
-Code review fixes: addressed bugs and ambiguities found across 20-commit audit. Improves reliability of the core work pipeline and diagnostic actions.
+Code review fixes: addressed bugs and ambiguities found across a 20-commit audit. Improves reliability of the core work pipeline and diagnostic actions.
 
 - `work.md`: Clarified crash recovery logic for `pending-answers` restoration (explicit condition check)
 - `work.md`: D-XX counter annotation required after Step 3.5 to prevent ID collision with Step 6 decisions
@@ -15,11 +15,76 @@ Code review fixes: addressed bugs and ambiguities found across 20-commit audit. 
 - `work.md`: Added explicit relative-path algorithm (depth-counting) for prime file lesson links
 - `work.md`: Cycle detection rewritten with clear traversal algorithm (handles chains of any length)
 - `cleanup.md`: Pass 1 now flags duplicate REQ-IDs found in multiple archive locations
-- `cleanup.md`: Pass 3a warns before overwriting a canonical REQ already handled by Pass 0
+- `cleanup.md`: Pass 3a defers to Pass 0 before overwriting a canonical REQ
 - `forensics.md`: Stuck work check now includes explicit remediation steps
 - `inspect.md`: Renamed "Committed" verdict to "Already Committed" to avoid confusion with quality judgments
 - `prime.md`: Area index prime is now defined (filename pattern + required section)
-- `SKILL.md`: "scan" routing rule clarified — bare path vs. path + descriptive text
+- `SKILL.md`: "scan" routing clarified — bare path vs. path + descriptive text
+
+## 0.50.3 — The Lint Brush (2026-04-07)
+
+Fix 9 bugs and consistency issues found during code review of last 20 commits.
+
+- Fix master index line limit contradiction (50 → 80) in BKB directory tree comment
+- Align topic index split threshold to 40 articles everywhere (was 80 in some places, 40 in defrag)
+- Add missing defrag/garden staleness warnings to BKB `status` sub-command
+- Fix misleading cleanup Pass 2 comment about Pass 1 handling loose REQs
+- Add `build-knowledge-base.md` to CLAUDE.md project structure
+- Add missing BKB sub-commands (`defrag`, `garden`, `rollup`, `crew`) to SKILL.md help menu
+- Clarify SKILL.md routing table to distinguish scoped code-review (priority 6) from unscoped review (priority 8)
+- Disambiguate `CLAUDE.md` reference in BKB architect agent to mean KB schema file
+
+## 0.50.2 — The Typo (2026-04-07)
+
+Fixed incorrect queue path in work guide.
+
+- `docs/work-guide.md`: `do-work/requests/` → `do-work/` (REQ files live at the do-work root, not a requests subdirectory)
+
+## 0.50.1 — The Roll Call (2026-04-07)
+
+Named the crew members — each now has a title that reflects their role.
+
+- The Compass (general) — cross-domain orientation, PRIME philosophy
+- The Renderer (frontend) — components, state, performance, accessibility
+- The Engineer (backend) — APIs, data layer, security, error boundaries
+- The Artisan (ui-design) — 6-phase design pipeline, visual craft, interaction specs
+- The Detective (debugging) — scientific method, investigation techniques, bias guards
+
+## 0.50.0 — The Crew (2026-04-07)
+
+Renamed `agent-rules/` to `crew-members/` and dropped the `rules-` prefix from all files inside.
+
+- `agent-rules/` → `crew-members/` directory rename
+- `rules-general.md` → `general.md`, `rules-frontend.md` → `frontend.md`, etc.
+- Updated all references across work.md, ui-review.md, code-review.md, prime.md, review-work.md, version.md, sample-archived-req.md, CLAUDE.md, README.md, and docs/
+- Historical CHANGELOG entries preserved as-is (they describe the state at time of release)
+
+## 0.49.0 — The Architect (2026-04-07)
+
+Major clarity and modularization pass — smaller files, consolidated routing, documented conventions.
+
+- SKILL.md verb sections (18 H3s, ~130 lines) collapsed into a single scannable Verb Reference table
+- work.md split: orchestrator checklist, error handling, progress template, and common mistakes extracted to `work-reference.md`
+- CLAUDE.md now documents accepted action file variants (sub-command dispatchers, multi-mode, state-based) alongside the standard template
+- Project structure updated to reflect all new files (`work-reference.md`, `clarify.md`, `next-steps.md`)
+
+## 0.48.0 — The Splitter (2026-04-07)
+
+Modularized the skill for clarity — smaller files, explicit conventions, cleaner separation of concerns.
+
+- Extracted `next-steps.md` from SKILL.md (130 lines of per-action suggestions now live in their own file)
+- Extracted `actions/clarify.md` from work.md (clarify questions is now a standalone action file, not a mode of work.md)
+- Added Action File Conventions and Agent Rules loading docs to CLAUDE.md
+- Added explicit agent-rules loading steps in work.md Step 6 (always load general, conditionally load domain, never block on missing)
+- Updated SKILL.md dispatch table: clarify now points to `./actions/clarify.md` instead of `./actions/work.md` with mode flag
+
+## 0.47.5 — The Signpost (2026-04-07)
+
+Gave the most important command in the skill a proper help entry and expanded its guide.
+
+- Help menu now shows description text and trigger aliases for `do work run`
+- Added `do work continue` and `do work clarify` to the help menu's "Process the queue" section
+- Expanded `docs/work-guide.md` with practical session walkthrough, full alias list, and tips
 
 ## 0.47.4 — The Compass (2026-04-06)
 
