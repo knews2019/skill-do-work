@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.6 — The Tight Scope (2026-04-08)
+
+Pipeline hardening — request isolation, synchronous dispatch, and robust gitignore handling.
+
+- `actions/pipeline.md`: `run` step now scoped to captured REQs only — no longer drains the full work queue, preventing unrelated backlog from executing during a pipeline
+- `actions/pipeline.md`: All pipeline-dispatched actions run foreground (blocking), overriding SKILL.md's background default for `work` — prevents race between `run` and `review`
+- `actions/pipeline.md`: `.gitignore` is now created if absent (previously only appended to existing), ensuring `pipeline.json` is always excluded from commits
+- `SKILL.md`: Added pipeline foreground dispatch exception to subagent config
+
 ## 0.51.5 — The Full Send (2026-04-08)
 
 End-to-end pipeline orchestration — chain investigate, capture, verify, run, and review in one command with resumable state tracking.
