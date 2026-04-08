@@ -84,8 +84,9 @@ Pipeline state lives at `do-work/pipeline.json`. Created on initialize, read on 
    - All 5 steps set to `status: "pending"`
    - `active: true`
    - `started_at` set to current ISO 8601 timestamp
-4. Print the initial status block
-5. Proceed to Step 4 (execute first step: `investigate`)
+4. **Exclude state file from git**: If a `.gitignore` exists in the project root and doesn't already contain `do-work/pipeline.json`, append it. The state file is transient session state and should not be committed.
+5. Print the initial status block
+6. Proceed to Step 4 (execute first step: `investigate`)
 
 ### Step 3: Resume (existing pipeline)
 
@@ -103,15 +104,17 @@ For the current step:
 1. **Update state**: Set the step's `status` to `"in-progress"` in `pipeline.json` — write the file immediately before dispatching
 2. **Dispatch** to the corresponding action:
 
-| Pipeline step | Action to dispatch | What to pass |
-|---------------|-------------------|--------------|
-| `investigate` | the inspect action (`do work inspect`) | No arguments — inspects all uncommitted changes |
-| `capture` | the capture action (`do work capture request: {request}`) | The `request` field from pipeline.json |
-| `verify` | the verify requests action (`do work verify requests`) | No arguments — targets most recent UR |
-| `run` | the work action (`do work run`) | No arguments — processes the queue |
-| `review` | the review work action (`do work review work`) | No arguments — reviews most recent completed work |
+| Pipeline step | Action to dispatch | What to pass | Context from prior steps |
+|---------------|-------------------|--------------|--------------------------|
+| `investigate` | the inspect action (`do work inspect`) | No arguments | None — inspects all uncommitted changes |
+| `capture` | the capture action (`do work capture request: {request}`) | The `request` field from pipeline.json | None — request text is the input |
+| `verify` | the verify requests action (`do work verify requests`) | Target UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do work verify UR-018`) |
+| `run` | the work action (`do work run`) | No arguments | No explicit context needed — the work action finds pending REQs in `do-work/` |
+| `review` | the review work action (`do work review work`) | Target REQ/UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do work review UR-018`) so the reviewer knows which work to review |
 
 Dispatch each action the same way the main router dispatches actions: subagent if available, inline otherwise. The pipeline action is the orchestrator — it calls the router's dispatch mechanism, not the action files directly.
+
+**Sub-agent context rule:** Sub-agents do not inherit conversation history. When dispatching via sub-agent, always read `pipeline.json` and include in the sub-agent prompt: (1) the pipeline request text, (2) all artifact IDs from completed steps, and (3) any relevant file paths. Without this, the sub-agent won't know which UR was just created or which REQs to target.
 
 3. **After the action completes**:
    - Update the step's `status` to `"done"` and set `completed_at` to current timestamp
@@ -204,4 +207,6 @@ pipeline — full end-to-end orchestration
 - **Write state before dispatch.** Always update `pipeline.json` to `"in-progress"` before dispatching an action, and to `"done"` after it completes. This ensures the state file reflects reality even if the session ends unexpectedly.
 - **The `run` step may be long.** The work action processes the entire queue and can take significant time. When starting this step, note: "Starting queue processing — this may take a while if multiple REQs are pending."
 - **Platform-agnostic.** No tool-specific APIs. Dispatch actions the same way the main router does. If your environment supports stop hooks, you can optionally install `hooks/pipeline-guard.sh` to prevent accidental stops mid-pipeline — but the pipeline works without it.
+- **Do not commit the state file.** `do-work/pipeline.json` is transient session state. It tracks a single pipeline run and has no value after completion. Ensure it is in `.gitignore`.
+- **Pass context to sub-agents explicitly.** Sub-agents have no conversation history. When dispatching a step via sub-agent, always include the pipeline request text and all artifact IDs from completed steps in the sub-agent prompt. Without this, sub-agents cannot target the correct UR/REQs.
 - **Suggest next steps on completion.** After the pipeline finishes, suggest what the user might want to do next (see the next-steps reference).

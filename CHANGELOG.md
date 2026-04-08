@@ -9,7 +9,9 @@ What's new, what's better, what's different. Most recent stuff on top.
 End-to-end pipeline orchestration — chain investigate, capture, verify, run, and review in one command with resumable state tracking.
 
 - `actions/pipeline.md` (NEW): Stateful multi-action pipeline with `do-work/pipeline.json` state tracking, resume across sessions, status display, and error recovery
-- `hooks/pipeline-guard.sh` (NEW): Optional Claude Code stop hook to prevent agent from stopping mid-pipeline
+- `actions/pipeline.md`: Explicit sub-agent context passing — each step documents what artifacts and IDs to forward so sub-agents can target the correct UR/REQs
+- `actions/pipeline.md`: Pipeline initialization auto-adds state file to `.gitignore` (transient session state, not for version control)
+- `hooks/pipeline-guard.sh` (NEW): Optional Claude Code stop hook to prevent agent from stopping mid-pipeline; uses `$CLAUDE_PROJECT_DIR` for robust path resolution
 - SKILL.md: Added pipeline routing (priority 3), dispatch entry, help menu section, verb reference, subagent config
 - next-steps.md: Added pipeline next-step suggestions
 - CLAUDE.md: Added pipeline.md and hooks/ directory to project structure

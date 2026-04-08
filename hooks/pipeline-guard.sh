@@ -31,7 +31,7 @@ if echo "$INPUT" | grep -q '"stop_hook_active"' 2>/dev/null; then
   exit 0
 fi
 
-PIPELINE_FILE="do-work/pipeline.json"
+PIPELINE_FILE="${CLAUDE_PROJECT_DIR:-.}/do-work/pipeline.json"
 
 if [ ! -f "$PIPELINE_FILE" ]; then
   exit 0
