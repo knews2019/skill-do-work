@@ -8,6 +8,8 @@ An orchestrated build system that processes request files created by the capture
 
 Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Plan, Exploration, Implementation Summary (mandatory file manifest), Testing, Review. This ensures full traceability — what was planned vs done, what files were touched, and whether triage was accurate.
 
+This living log is also the **trail of intent**. The REQ starts as a validated statement of what the user wants (written by capture). As the work action processes it, each appended section documents how intent was interpreted and realized: builder decisions (## Decisions) record where the builder exercised judgment beyond stated intent, scope declarations (## Scope) record what the builder committed to, and implementation summaries record what was actually built. The gap between captured intent and realized implementation is visible in a single file.
+
 ## Architecture
 
 ```
@@ -409,6 +411,7 @@ All routes include these instructions to the agent:
   - **D-03**: API returns paginated results (20/page) — no explicit requirement, follows existing endpoints
   ```
   Before numbering, check for a `<!-- D-XX counter: ... Next decision: D-NN. -->` comment in the REQ file (written by Step 3.5) and start from that value. If no counter exists and no `- [~]` items are present, start at D-01. Future REQs can reference these: "per D-02 in REQ-003, we use zustand."
+  These decisions are part of the intent trail — they document where implementation diverged from or extended the captured intent, and why. A decision without reasoning is not traceable.
 - **Out-of-Scope Discoveries:** If you discover unrelated bugs, technical debt, or missing prerequisites, do not fix them inline. Instead, append a `## Discovered Tasks` section to your summary and list them as bullet points so the orchestrator can queue them for later.
 ```
 

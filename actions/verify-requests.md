@@ -9,6 +9,7 @@ A confidence evaluation system that compares extracted REQ files against the ori
 - **The original input is the source of truth** — the UR's input.md contains everything the user said
 - **REQs should be lossless extractions** — every requirement in the input should appear in at least one REQ
 - **Intent signals matter** — not just WHAT was requested, but HOW firmly and with what scope guidance
+- **REQs are validated intent** — capture resolves ambiguities with the user present. Verify checks that this validation actually happened: are Open Questions resolved? Does the Validation field reflect user confirmation? A REQ marked "Inferred during capture" when the user was available is a missed opportunity.
 - **Behavioral proof matters** — when a request is testable, the REQ should preserve the RED/GREEN proof target: how we know it fails now and what turns it GREEN later
 - **Actionable output** — don't just report problems, offer to fix them
 
@@ -62,6 +63,12 @@ For each REQ, score it on these dimensions:
 - Is the certainty level correct (exploratory vs firm)?
 - Are scope cues preserved ("keep it simple," "don't over-build")?
 
+**Internal Coherence (0-100%)**
+- Does the REQ contradict itself? (e.g., "## What" says one thing, "## Detailed Requirements" says another)
+- If the REQ has addendum sections, do they conflict with the original content?
+- Are scope cues consistent? (e.g., "keep it simple" in Builder Guidance but 15 detailed requirements)
+- Is the Red-Green Proof consistent with the What section?
+
 **Red-Green Proof (0-100%)** — only for `tdd: true` or clearly behavioral requests
 - Does the REQ capture a concrete RED prompt/case, repro, or example?
 - Does it explain why that case is RED today?
@@ -95,10 +102,10 @@ Output a confidence report in this format:
 
 ### Per-REQ Scores
 
-| REQ | Title | Coverage | UX Detail | Intent | Red-Green | Batch | Overall |
-|-----|-------|----------|-----------|--------|------------|-------|---------|
-| REQ-018 | TOC Panel | 85% | 70% | 90% | 100% | 80% | 85% |
-| REQ-019 | File Tree | 90% | 60% | 90% | N/A | 80% | 80% |
+| REQ | Title | Coverage | UX Detail | Intent | Coherence | Red-Green | Batch | Overall |
+|-----|-------|----------|-----------|--------|-----------|------------|-------|---------|
+| REQ-018 | TOC Panel | 85% | 70% | 90% | 100% | 100% | 80% | 85% |
+| REQ-019 | File Tree | 90% | 60% | 90% | 100% | N/A | 80% | 80% |
 
 ### Gaps Found
 

@@ -32,6 +32,8 @@ A unified entry point for task capture and processing.
 
 > **Core concept:** The capture requests action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
 
+> **Trail of Intent.** This skill doesn't just produce code — it produces a documented trail of *intent*. Every REQ records what the user wanted, why, and what "done" looks like — validated with the user during capture. As the REQ moves through the pipeline, builder decisions, scope declarations, and implementation notes are appended. The result is a living document tracing from original intent through every decision to final implementation. The UR preserves the verbatim request; the REQ preserves the validated, structured intent; the appended sections preserve how intent was realized. This trail is the skill's primary value — code is the side effect.
+
 > **Capture ≠ Execute.** The capture requests action captures requests. The work action executes them. These are strictly separate operations. After capture finishes writing files and reporting back, **STOP**. Do not start processing the queue, do not begin implementation, do not "helpfully" transition into the work action. The user decides when to execute — always. The only exception is if the user explicitly says something like "add this and then run it" or "capture this and start working" in the same invocation.
 
 > **Human time has two optimal windows.** The system is designed to maximize the value of human attention:
