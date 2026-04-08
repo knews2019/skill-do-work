@@ -24,6 +24,37 @@ Run the smallest possible test of your prediction. Read the output. Does it matc
 - **Prediction matched:** Hypothesis confirmed. Now fix the root cause — not the symptom.
 - **Prediction didn't match:** Hypothesis was wrong. Return to step 1 with new information. Do NOT patch anyway.
 
+## Tool Selection by Failure Class
+
+Pick the right diagnostic tool for the problem type — using the wrong tool wastes cycles:
+
+| Failure Class | Recommended Tools | Why |
+|---------------|------------------|-----|
+| **Wrong output** | Debugger breakpoints, log assertions at boundaries | Trace data transformation step by step |
+| **Performance** | Profiler (CPU/memory), flame graphs, query analyzers | Identify hotspots with actual timing data |
+| **Memory leaks** | Heap snapshots, allocation tracking, GC logs | Compare snapshots over time to find growing objects |
+| **Concurrency** | Thread sanitizers, race detectors, deterministic schedulers | Heisenbugs vanish under observation — use tooling that doesn't change timing |
+| **Crashes** | Core dumps, stack traces, signal handlers | Post-mortem analysis preserves state at failure point |
+| **Flaky tests** | Seed logging, retry with verbose output, test isolation checks | Reproduce the exact conditions — randomness and ordering are usually the cause |
+
+### Heisenbugs
+
+If the bug disappears when you add logging, changes behavior under a debugger, or only fails in CI: suspect a **timing-dependent bug**. Signs:
+- Adding `console.log` or `print` makes it go away (I/O changes timing)
+- Works in debug mode but fails in release/production (optimization changes execution order)
+- Fails intermittently with no code changes (thread scheduling, GC timing, network latency)
+
+**Response:** Don't add more logging. Use deterministic tools: thread sanitizers, recorded execution replay, or stress-test loops with fixed seeds.
+
+## Confidence Levels
+
+Label your diagnostic claims so the orchestrator (and future readers) know how certain you are:
+
+- **Confirmed**: Hypothesis tested and prediction matched. Root cause identified.
+- **High confidence**: Strong evidence points to this cause, but not yet fully verified.
+- **Investigating**: Working theory based on initial observations. Needs more data.
+Use these labels in REQ updates and escalation reports.
+
 ## Investigation Techniques
 
 Use the technique that best fits the failure mode:

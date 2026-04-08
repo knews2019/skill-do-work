@@ -4,7 +4,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.50.6 — The Intent Trail (2026-04-08)
+## 0.51.3 — The Intent Trail (2026-04-08)
 
 Elevates intent tracking to a first-class concept. REQs are now explicitly framed as validated statements of user intent, not just task descriptions.
 
@@ -18,6 +18,33 @@ Elevates intent tracking to a first-class concept. REQs are now explicitly frame
 - `verify-requests.md`: "REQs are validated intent" philosophy bullet — verify checks validation actually happened
 - `verify-requests.md`: Internal Coherence evaluation dimension (0-100%) — catches self-contradictory REQs
 - `verify-requests.md`: Coherence column added to verification report table
+
+## 0.51.2 — The One Scale (2026-04-08)
+
+Security findings in code-review now use the same severity scale as the rest of the report (Critical / Important / Minor / Nit) instead of a separate High / Medium / Low scale that had no mapping to follow-up REQ creation.
+
+- Aligned Step 5 security classification to the file's existing 4-level scale with explicit mapping from security.md levels
+
+## 0.51.1 — The Lean Cut (2026-04-08)
+
+Removed standalone `test-strategy` and `perf-audit` actions — their best ideas now live inside `code-review` instead of duplicating scope across three actions.
+
+- Deleted `actions/test-strategy.md` and `actions/perf-audit.md`
+- Enhanced **code-review** with new Step 6 (Performance Anti-Pattern Scan) covering N+1 queries, unbounded queries, sequential I/O, bundle bloat, and more
+- Enhanced **code-review** Step 7 (Test Coverage Assessment) with risk-driven gap prioritization — flags critical-risk + untested combinations
+- Enhanced **code-review** Step 5 (Security) to load `crew-members/security.md` when present
+- Cleaned up SKILL.md routing, help menu, action dispatch, and next-steps.md
+
+## 0.51.0 — The Sentinel Suite (2026-04-07)
+
+New audit actions and a security crew member, inspired by techniques from [awesome-prompts](https://github.com/ai-boost/awesome-prompts). Fills gaps in performance diagnosis, test planning, and security review.
+
+- New **crew-members/security.md** — OWASP Top 10 checklist with framework-specific patterns (Node/Express, Python/Django, Java/Spring, React, Go) and severity classification. Loads JIT when working on auth, crypto, or input handling code
+- New **actions/test-strategy.md** — risk-driven test strategy designer. Identifies what tests should exist based on risk assessment, gap analysis, and test pyramid health. Includes flaky test prevention and CI quality gate checks
+- New **actions/perf-audit.md** — evidence-based performance diagnosis. Scans for backend, frontend, and database anti-patterns (N+1 queries, bundle bloat, missing indexes), quantifies impact, and ranks fixes by effort vs improvement
+- Enhanced **crew-members/debugging.md** — added tool-selection-by-failure-class table, Heisenbug identification heuristics, and confidence-level labeling for diagnostic claims
+- Enhanced **actions/quick-wins.md** — added objective complexity metrics for tie-breaking (cyclomatic complexity, nesting depth, import count, change frequency), false positive checks, and behavior-preservation rule
+- Updated SKILL.md routing table, help menu, action dispatch, and next-steps.md for new actions
 
 ## 0.50.5 — The Second Pass (2026-04-07)
 

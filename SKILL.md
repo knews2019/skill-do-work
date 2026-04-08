@@ -17,7 +17,7 @@ A unified entry point for task capture and processing.
 - **review work**: Post-work review → requirements check, code review, acceptance testing, and testing suggestions
 - **present work**: Client-facing deliverables → briefs, architecture diagrams, value propositions, Remotion videos
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
-- **code-review**: Standalone codebase review scoped by prime files and/or directories → consistency, patterns, security, architecture
+- **code-review**: Standalone codebase review scoped by prime files and/or directories → consistency, patterns, security, performance, architecture, and risk-driven test coverage
 - **quick-wins**: Scan a target directory for obvious refactoring opportunities and low-hanging tests to add
 - **ui-review**: Validate UI quality against design best practices — read-only audit with structured findings report
 - **install-ui-design**: Install the `frontend-design` Claude skill for production-grade UI design capabilities
