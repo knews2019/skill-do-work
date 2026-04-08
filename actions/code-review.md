@@ -127,7 +127,7 @@ Check the scoped files for:
 | **Dependency concerns** | Known vulnerable patterns, outdated security practices, missing CSRF/CORS protections |
 | **Secrets** | Hardcoded credentials, API keys, tokens — even if they look like placeholders |
 
-If `crew-members/security.md` exists, load it and apply the OWASP Top 10 checklist and framework-specific patterns to the scoped code. Classify findings by severity (Critical / High / Medium / Low).
+If `crew-members/security.md` exists, load it and apply the OWASP Top 10 checklist and framework-specific patterns to the scoped code. Classify findings using the same severity scale as the rest of this review (Critical / Important / Minor / Nit). Map security-specific levels: High → Important, Medium → Minor, Low → Nit.
 
 Only report findings relevant to the code in scope. Don't flag theoretical risks that don't apply.
 

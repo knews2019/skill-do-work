@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.2 — The One Scale (2026-04-08)
+
+Security findings in code-review now use the same severity scale as the rest of the report (Critical / Important / Minor / Nit) instead of a separate High / Medium / Low scale that had no mapping to follow-up REQ creation.
+
+- Aligned Step 5 security classification to the file's existing 4-level scale with explicit mapping from security.md levels
+
 ## 0.51.1 — The Lean Cut (2026-04-08)
 
 Removed standalone `test-strategy` and `perf-audit` actions — their best ideas now live inside `code-review` instead of duplicating scope across three actions.
