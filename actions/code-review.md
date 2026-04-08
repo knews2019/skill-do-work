@@ -127,9 +127,30 @@ Check the scoped files for:
 | **Dependency concerns** | Known vulnerable patterns, outdated security practices, missing CSRF/CORS protections |
 | **Secrets** | Hardcoded credentials, API keys, tokens — even if they look like placeholders |
 
+If `crew-members/security.md` exists, load it and apply the OWASP Top 10 checklist and framework-specific patterns to the scoped code. Classify findings using the same severity scale as the rest of this review (Critical / Important / Minor / Nit). Map security-specific levels: High → Important, Medium → Minor, Low → Nit.
+
 Only report findings relevant to the code in scope. Don't flag theoretical risks that don't apply.
 
-### Step 6: Test Coverage Assessment
+### Step 6: Performance Anti-Pattern Scan
+
+Scan scoped files for common performance anti-patterns. Check what's relevant to the detected stack:
+
+| Pattern | What to look for |
+|---------|-----------------|
+| **N+1 queries** | Loops that execute a query per iteration. ORM `.find()` inside a `.map()` or `for` loop |
+| **Unbounded queries** | `SELECT *` without `LIMIT`, or queries that fetch entire tables into memory |
+| **Sequential I/O** | Multiple independent async operations run sequentially instead of concurrently (`Promise.all`, `asyncio.gather`) |
+| **Missing caching** | Repeated expensive computations or DB queries for data that changes infrequently |
+| **Bundle bloat** | Large dependencies imported for small features. No code splitting. `moment.js` when `date-fns` suffices |
+| **No virtualization** | Rendering 1000+ DOM nodes in a list when only 20 are visible |
+| **Synchronous blocking** | Blocking I/O in async contexts. `fs.readFileSync` in a request handler |
+| **Overfetching** | API endpoints returning full objects when clients need 2-3 fields |
+
+For each finding, record the file, line range, pattern, and estimated impact (High / Medium / Low). Only report patterns where the code is on a plausibly hot path — don't flag one-time startup code or CLI scripts.
+
+If no performance anti-patterns are found in scope, skip this section entirely rather than padding with non-findings.
+
+### Step 7: Test Coverage Assessment
 
 Evaluate testing for the scoped code:
 
@@ -137,10 +158,11 @@ Evaluate testing for the scoped code:
 2. **Coverage gaps** — which scoped files/functions have no test coverage at all?
 3. **Test quality** — for existing tests, are assertions meaningful? Do they test behavior or just structure?
 4. **Missing test categories** — unit tests present but no integration tests? Happy path only, no error cases?
+5. **Risk-driven priorities** — cross-reference coverage gaps with module risk. Untested code that handles authentication, payments, or user data is a more urgent gap than an untested utility formatter. Flag critical-risk + untested combinations explicitly.
 
 If the project has no test infrastructure, note it and skip — don't penalize.
 
-### Step 7: Run Existing Checks
+### Step 8: Run Existing Checks
 
 If the project has automated checks, run them against the scoped code:
 
@@ -152,7 +174,7 @@ If checks pass cleanly, note it — a clean bill of health is useful information
 
 If you can't run checks (missing dependencies, env issues), note what you couldn't run and why.
 
-### Step 8: Synthesize & Report
+### Step 9: Synthesize & Report
 
 Produce a structured report:
 
@@ -190,6 +212,14 @@ Produce a structured report:
 
 {If no security findings: "No security concerns identified in the reviewed scope."}
 
+## Performance
+
+| # | Finding | Files | Pattern | Impact | Recommendation |
+|---|---------|-------|---------|--------|----------------|
+| 1 | {concrete description} | {file:line references} | {anti-pattern} | {High/Med/Low} | {specific fix} |
+
+{If no performance findings: omit this section entirely.}
+
 ## Test Coverage
 
 **Coverage**: {qualitative assessment — Well-tested / Partially tested / Gaps / Untested}
@@ -219,7 +249,7 @@ Produce a structured report:
 {Rank by: Critical severity first, then Important, then by effort-to-impact ratio.}
 ```
 
-### Step 9: Create Follow-up REQs (Optional)
+### Step 10: Create Follow-up REQs (Optional)
 
 For **Critical** and **Important** findings that warrant action, offer to create REQ files:
 

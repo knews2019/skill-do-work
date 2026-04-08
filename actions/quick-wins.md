@@ -83,6 +83,19 @@ Rate each finding:
 - **Medium** — noticeable improvement, but codebase works fine without it
 - **Low** — nice-to-have, cosmetic, or marginal benefit
 
+**Risk-impact scoring:** When two findings have the same effort/impact category, break ties using objective metrics:
+- **Cyclomatic complexity** — higher complexity = higher refactoring value (functions with 10+ branches are strong candidates)
+- **Nesting depth** — 4+ levels of nesting is a reliable smell regardless of function length
+- **Import count** — files imported by many others have higher blast radius; refactoring them benefits more consumers
+- **Change frequency** — files modified often (check `git log --format='' --name-only | sort | uniq -c | sort -rn`) are better targets than stable files
+
+**False positive check:** Before reporting a finding, verify it's a genuine improvement opportunity:
+- A long function may be appropriate if it's a state machine, parser, or migration — check if the length serves a purpose
+- A "god file" may be intentional if `prime-*.md` documents describe it as a deliberate convention
+- Dead code may be used dynamically (plugin systems, reflection, conditional requires) — check for non-static usage patterns
+
+**Behavior preservation rule:** Every refactoring candidate in the report must be achievable without changing observable behavior. If a refactoring would require changing tests or API contracts, note it explicitly — it's a different class of work.
+
 Sort findings by priority: **Trivial effort + High impact first**, then Small+High, Trivial+Medium, and so on. Drop anything that's Medium effort + Low impact — not worth mentioning.
 
 ## Output Format

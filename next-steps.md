@@ -36,8 +36,8 @@ Next steps:
 ```
 Next steps:
   do work run                   Process follow-up REQs (if any were created)
-  do work ui-review [scope]     Validate UI quality for the same scope
-  do work quick-wins [dir]      Scan for additional improvements
+  do work quick-wins [dir]      Scan for additional refactoring opportunities
+  do work capture request: [describe fix]  Capture a finding as a request
 ```
 
 **After ui-review:**
@@ -83,6 +83,7 @@ Next steps:
 ```
 Next steps:
   do work capture request: [describe fix]  Capture a finding as a request
+  do work code-review [scope]   Full code review for the same scope
   do work run                   Process the queue
 ```
 
