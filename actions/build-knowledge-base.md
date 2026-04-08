@@ -692,7 +692,7 @@ Walk through open contradictions and resolve them interactively.
    - Propose a resolution: which claim is more recent, better sourced, or more authoritative?
    - Ask the user to confirm, adjust, or skip.
 4. **Apply resolution**: Update the wiki page(s) — correct the stale/wrong claim, add a note about what changed and why, update the `confidence:` frontmatter if needed. After resolving a cluster, propagate confidence changes: a page that was `low` solely because of a now-resolved contradiction may qualify for `medium` or `high`.
-5. **Log resolution**: Append to `wiki/log.md` and `wiki/daily/{today}.md` using the format `[RESOLVED] contradiction: <description>` — this marks it as closed so future `resolve` runs skip it. Include which pages were updated and how.
+5. **Log resolution**: Append to `wiki/log.md` and `wiki/daily/{today}.md`. **Emit one `[RESOLVED] contradiction: <description>` entry per original contradiction in the cluster** — each original flag from step 1 must have its own matching resolved marker, or it will be re-detected as open on future runs. After the per-contradiction markers, include a summary of which pages were updated and how.
 6. **Report**: Contradictions resolved (by cluster), contradictions skipped, contradictions remaining.
 
 If no open contradictions are found, say so.

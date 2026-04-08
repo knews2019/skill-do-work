@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.50.7 — The Marker Match (2026-04-08)
+
+Fix: bkb resolve now emits one `[RESOLVED]` marker per original contradiction in a cluster, not one per cluster. Without this, multi-contradiction clusters left unmatched flags that were re-detected as open on every future run.
+
+- `build-knowledge-base.md`: Step 5 of resolve explicitly requires per-contradiction resolved markers
+
 ## 0.50.6 — The Deeper Cuts (2026-04-07)
 
 Cherry-picked five improvements from a Graph-of-Thought analysis of the bkb action — better cross-source awareness, smarter queries, and fewer deferred problems.
