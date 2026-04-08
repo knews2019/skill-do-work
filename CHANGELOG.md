@@ -4,6 +4,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.7 — The Cross-Check (2026-04-08)
+
+Fixes stale references and underspecified instructions found during a 20-commit code review.
+
+- `actions/code-review.md`: Fix stale "see Step 9" → "see Step 10" after step renumbering from perf-audit fold
+- `actions/code-review.md`: Security severity mapping now explicitly includes Critical → Critical
+- `actions/pipeline.md`: Session ID increment logic simplified — single-file state can't track prior IDs
+- `actions/pipeline.md`: Clarify `investigate` step completes immediately when no uncommitted changes exist
+- `actions/pipeline.md`: Fix contradictory rule about `run` step queue scope
+- `actions/verify-requests.md`: Add scoring formula for per-REQ Overall and Overall Confidence
+- `actions/capture.md`: Unify addendum coherence resolution protocol for both queued and in-flight paths
+
 ## 0.51.6 — The Tight Scope (2026-04-08)
 
 Pipeline hardening — request isolation, synchronous dispatch, and robust gitignore handling.

@@ -265,7 +265,7 @@ encounter the work in progress naturally.]
 
 **When the original UR is archived:** The original UR folder is in `archive/UR-NNN/` and is immutable. The new addendum UR goes into `do-work/user-requests/` as normal. Do not attempt to modify or re-open the archived UR folder.
 
-**Coherence across addendum chains:** When creating an addendum REQ for an in-flight or completed request, read the original REQ's What, Requirements, and any prior addendum chain (follow `addendum_to` links). If the new addendum contradicts the original or a prior addendum, flag the conflict to the user before writing the file. The addendum REQ must state clearly how it relates to the original: extending, narrowing, replacing, or correcting.
+**Coherence across addendum chains:** When creating an addendum REQ for an in-flight or completed request, read the original REQ's What, Requirements, and any prior addendum chain (follow `addendum_to` links). If the new addendum contradicts the original or a prior addendum, present the conflict to the user with concrete options (same protocol as the queued addenda Coherence Rule above): show what conflicts, ask which should win, and record the resolution or flag as an Open Question. The addendum REQ must state clearly how it relates to the original: extending, narrowing, replacing, or correcting.
 
 ### Step 3: Capture-Phase Clarification
 
