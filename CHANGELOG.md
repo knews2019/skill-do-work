@@ -4,6 +4,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.4 — The Deeper Cuts (2026-04-08)
+
+Cherry-picked five improvements from a Graph-of-Thought analysis of the bkb action — better cross-source awareness, smarter queries, and fewer deferred problems. Also fixed a bug where clustered resolve left contradictions permanently open.
+
+- `build-knowledge-base.md`: Triage now enriches queue entries with `topic_hint` and `priority` fields
+- `build-knowledge-base.md`: Ingest detects confidence transitions at ingest time (medium→high on corroboration, high→low on contradiction) instead of deferring to lint
+- `build-knowledge-base.md`: Batch ingest cross-references claims across sources — catches agreements and contradictions at merge time
+- `build-knowledge-base.md`: Query follows typed relationships up to 2 hops deep for richer multi-source answers
+- `build-knowledge-base.md`: Resolve groups related contradictions into clusters and resolves them as a unit to prevent cascading inconsistencies
+- `build-knowledge-base.md`: Resolve emits one `[RESOLVED]` marker per original contradiction in a cluster (not one per cluster), preventing ghost re-detection
+- `build-knowledge-base.md`: Lint adds a confidence-audit check (flags mismatches between source evidence and confidence level)
+
 ## 0.51.3 — The Intent Trail (2026-04-08)
 
 Elevates intent tracking to a first-class concept. REQs are now explicitly framed as validated statements of user intent, not just task descriptions.
