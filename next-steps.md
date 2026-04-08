@@ -2,6 +2,20 @@
 
 After every action completes, suggest the next logical prompts the user might want to run. Use fully qualified action names so the user can copy-paste directly.
 
+**After pipeline (completed):**
+```
+Next steps:
+  do work present work        Generate client-facing deliverables
+  do work capture request: [describe]  Capture new requests
+```
+
+**After pipeline (interrupted — active pipeline still exists):**
+```
+Next steps:
+  do work pipeline            Resume the active pipeline
+  do work pipeline status     Check pipeline progress
+```
+
 **After capture requests:**
 ```
 Next steps:

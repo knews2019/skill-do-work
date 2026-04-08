@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | prime [create|audit] | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | help"
+argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | prime [create|audit] | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | help"
 ---
 
 # Do-Work Skill
@@ -10,6 +10,7 @@ A unified entry point for task capture and processing.
 
 **Actions:**
 
+- **pipeline**: Full end-to-end orchestration → investigate, capture, verify, run, review in sequence with persistent state tracking
 - **capture requests**: Capture new tasks/requests → creates UR folder (verbatim input) + REQ files (queue items), always paired; for testable behavior, infer and confirm the RED case/GREEN proof target during capture. This is essential, high-value work.
 - **verify requests**: Evaluate captured REQs against original input → quality check
 - **work**: Process pending requests → executes the queue
@@ -57,24 +58,25 @@ Check these patterns **in order** — first match wins:
 | -------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
 | 1        | Empty, bare, or help     | `do work`, `do work help`                                                                                                          | → help menu                   |
 | 2        | Version exact phrases    | `do work check for updates`, `do work check for update`                                                                            | → version                     |
-| 3        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
-| 4        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check REQ-018`, `do work evaluate`, `do work audit`, `do work review requests` | → verify requests              |
-| 5        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
-| 6        | Code-review keywords (with scope or "codebase") | `do work code-review`, `do work code-review prime-auth`, `do work code review src/`, `do work audit codebase`, `do work review codebase`, `do work codebase review` | → code-review                  |
-| 7        | UI-review keywords       | `do work ui-review`, `do work ui-review src/`, `do work review ui`, `do work design review`, `do work validate ui`, `do work ui audit`, `do work design audit` | → ui-review                    |
-| 8        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review` (no scope), `do work audit code`             | → review work                  |
-| 9        | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
-| 10       | Cleanup keywords         | `do work cleanup`, `do work clean up`, `do work tidy`, `do work consolidate`                                                       | → cleanup                     |
-| 11       | Commit keywords          | `do work commit`, `do work commit changes`, `do work commit files`, `do work save changes`, `do work save work`                    | → commit                      |
-| 12       | Inspect keywords         | `do work inspect`, `do work inspect REQ-005`, `do work inspect UR-003`, `do work explain changes`, `do work what changed`, `do work show changes` | → inspect                     |
-| 13       | Version keywords         | `do work version`, `do work update`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
-| 14       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
-| 15       | Forensics keywords       | `do work forensics`, `do work diagnose`, `do work health check`, `do work health`                                                  | → forensics                   |
-| 16       | Prime keywords           | `do work prime`, `do work prime create src/auth/`, `do work prime audit`, `do work create prime`, `do work audit primes`           | → prime                       |
-| 17       | BKB keywords             | `do work bkb`, `do work bkb init`, `do work bkb ingest`, `do work build knowledge base`, `do work knowledge base`                 | → build knowledge base        |
-| 18       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
-| 19       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
-| 20       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
+| 3        | Pipeline keywords        | `do work pipeline`, `do work full`, `do work pipeline add dark mode`, `do work full add dark mode`, `do work pipeline status`, `do work pipeline abandon` | → pipeline                    |
+| 4        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
+| 5        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check REQ-018`, `do work evaluate`, `do work audit`, `do work review requests` | → verify requests              |
+| 6        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
+| 7        | Code-review keywords (with scope or "codebase") | `do work code-review`, `do work code-review prime-auth`, `do work code review src/`, `do work audit codebase`, `do work review codebase`, `do work codebase review` | → code-review                  |
+| 8        | UI-review keywords       | `do work ui-review`, `do work ui-review src/`, `do work review ui`, `do work design review`, `do work validate ui`, `do work ui audit`, `do work design audit` | → ui-review                    |
+| 9        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review` (no scope), `do work audit code`             | → review work                  |
+| 10       | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
+| 11       | Cleanup keywords         | `do work cleanup`, `do work clean up`, `do work tidy`, `do work consolidate`                                                       | → cleanup                     |
+| 12       | Commit keywords          | `do work commit`, `do work commit changes`, `do work commit files`, `do work save changes`, `do work save work`                    | → commit                      |
+| 13       | Inspect keywords         | `do work inspect`, `do work inspect REQ-005`, `do work inspect UR-003`, `do work explain changes`, `do work what changed`, `do work show changes` | → inspect                     |
+| 14       | Version keywords         | `do work version`, `do work update`, `do work what's new`, `do work release notes`, `do work what's changed`, `do work updates`, `do work history` | → version                     |
+| 15       | Recap keywords           | `do work recap`                                                                                                                    | → version                     |
+| 16       | Forensics keywords       | `do work forensics`, `do work diagnose`, `do work health check`, `do work health`                                                  | → forensics                   |
+| 17       | Prime keywords           | `do work prime`, `do work prime create src/auth/`, `do work prime audit`, `do work create prime`, `do work audit primes`           | → prime                       |
+| 18       | BKB keywords             | `do work bkb`, `do work bkb init`, `do work bkb ingest`, `do work build knowledge base`, `do work knowledge base`                 | → build knowledge base        |
+| 19       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
+| 20       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
+| 21       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -99,6 +101,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 
 | Route | Trigger verbs | Notes |
 |-------|--------------|-------|
+| **pipeline** | pipeline, full, full pipeline | Everything after keyword → `$ARGUMENTS` (request text). "pipeline status" → status mode. "pipeline abandon" → abandon mode. If no args and active pipeline exists, resume. |
 | **work** | run, go, start, begin, work, process, execute, build, continue, resume | |
 | **clarify** | clarify, answers, questions, pending, pending answers, blocked, what's blocked, what needs answers | Routes to `actions/clarify.md` |
 | **verify requests** | verify, verify requests, check, evaluate, review requests, review reqs, audit | "check" alone → verify; "check for updates" → version (priority 2); "audit" alone → verify; "audit codebase" → code-review; "audit primes" → prime |
@@ -132,6 +135,12 @@ do-work — task queue for agentic coding tools
     do work capture request: add dark mode to settings
     do work capture request: the search is slow and the header is misaligned
     do work capture request: [paste meeting notes, specs, or a screenshot]
+
+  Full pipeline (end-to-end):
+    do work pipeline add dark mode    Investigate → capture → verify → run → review
+    do work full add dark mode        Alias for pipeline
+    do work pipeline                  Resume an active pipeline
+    do work pipeline status           Show pipeline progress
 
   Process the queue:
     do work run                 Triage, build, test, review — one REQ at a time
@@ -224,6 +233,7 @@ Each action has an action file with full instructions. How you execute it depend
 
 | Action             | Action file                     | Context to pass                |
 |--------------------|---------------------------------|--------------------------------|
+| pipeline           | `./actions/pipeline.md`         | `$ARGUMENTS` (request text, "status", or "abandon") |
 | capture requests   | `./actions/capture.md`          | Full user input text           |
 | work               | `./actions/work.md`             | (none needed)                  |
 | clarify questions  | `./actions/clarify.md`          | (none needed)                  |
@@ -249,7 +259,7 @@ Each action has an action file with full instructions. How you execute it depend
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
-- **`capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `prime`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `prime`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available

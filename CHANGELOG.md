@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.5 — The Full Send (2026-04-08)
+
+End-to-end pipeline orchestration — chain investigate, capture, verify, run, and review in one command with resumable state tracking.
+
+- `actions/pipeline.md` (NEW): Stateful multi-action pipeline with `do-work/pipeline.json` state tracking, resume across sessions, status display, and error recovery
+- `hooks/pipeline-guard.sh` (NEW): Optional Claude Code stop hook to prevent agent from stopping mid-pipeline
+- SKILL.md: Added pipeline routing (priority 3), dispatch entry, help menu section, verb reference, subagent config
+- next-steps.md: Added pipeline next-step suggestions
+- CLAUDE.md: Added pipeline.md and hooks/ directory to project structure
+
 ## 0.51.4 — The Deeper Cuts (2026-04-08)
 
 Cherry-picked five improvements from a Graph-of-Thought analysis of the bkb action — better cross-source awareness, smarter queries, and fewer deferred problems. Also fixed a bug where clustered resolve left contradictions permanently open.

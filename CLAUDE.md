@@ -27,9 +27,12 @@ actions/              # Action files (each is a standalone prompt)
   install-bowser.md   # Install Playwright CLI + Bowser skill for browser automation
   forensics.md        # Pipeline diagnostics — stuck work, hollow completions, orphaned URs
   prime.md             # Prime file management — create and audit AI context documents
+  pipeline.md          # Full end-to-end orchestration (investigate → capture → verify → run → review)
   build-knowledge-base.md # LLM knowledge base — init, triage, ingest, query, lint, and more
   sample-archived-req.md # Example of a fully processed REQ file (reference only)
 crew-members/         # Domain-specific rules loaded by work action
+hooks/                # Optional hook scripts (platform-specific, installable)
+  pipeline-guard.sh   # Claude Code stop hook — prevents stopping mid-pipeline
 CHANGELOG.md          # Release notes (newest on top)
 ```
 
@@ -84,7 +87,7 @@ Action files follow a consistent structure. When adding or modifying actions, us
 **Accepted variants:**
 - **Sub-command dispatchers** (`prime.md`, `build-knowledge-base.md`) — Use a Sub-Commands table instead of flat steps. Each sub-command has its own workflow section.
 - **Multi-mode actions** (`present-work.md`, `review-work.md`) — Use a Modes table, then separate workflow sections per mode.
-- **State-based actions** (`version.md`) — Response sections keyed by input type instead of sequential steps.
+- **State-based actions** (`version.md`, `pipeline.md`) — Response sections keyed by input type instead of sequential steps.
 
 Cross-reference other actions by short name (e.g., "the work action", "do work clarify") — not by file path. SKILL.md owns the file-path mappings.
 
