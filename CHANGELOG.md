@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.1 — The Lean Cut (2026-04-08)
+
+Removed standalone `test-strategy` and `perf-audit` actions — their best ideas now live inside `code-review` instead of duplicating scope across three actions.
+
+- Deleted `actions/test-strategy.md` and `actions/perf-audit.md`
+- Enhanced **code-review** with new Step 6 (Performance Anti-Pattern Scan) covering N+1 queries, unbounded queries, sequential I/O, bundle bloat, and more
+- Enhanced **code-review** Step 7 (Test Coverage Assessment) with risk-driven gap prioritization — flags critical-risk + untested combinations
+- Enhanced **code-review** Step 5 (Security) to load `crew-members/security.md` when present
+- Cleaned up SKILL.md routing, help menu, action dispatch, and next-steps.md
+
 ## 0.51.0 — The Sentinel Suite (2026-04-07)
 
 New audit actions and a security crew member, inspired by techniques from [awesome-prompts](https://github.com/ai-boost/awesome-prompts). Fills gaps in performance diagnosis, test planning, and security review.
