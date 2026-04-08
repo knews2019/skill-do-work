@@ -16,6 +16,7 @@ Never create one without the other. A REQ without `user_request` is orphaned. A 
 **Principles:**
 - Represent, don't expand — if the user says 5 words, write a 5-word request (with structure)
 - The building agent solves technical questions — you're capturing intent, not making architectural decisions
+- **Validated artifacts** — captured REQs are not drafts. They are user-validated statements of intent. During capture, ambiguities are resolved with the user, RED/GREEN proofs are confirmed, and the resulting REQ reflects what the user actually wants. Downstream agents treat REQs as the authoritative expression of user intent.
 - Never be lossy — for complex inputs, preserve ALL detail in the UR's verbatim section
 - After capture, **STOP** — do not start processing the queue or transition into the work action unless the user explicitly asked for both (e.g., "add this and start working")
 
@@ -216,6 +217,14 @@ User added: "dark mode should also affect the sidebar"
 - Sidebar must also respect dark mode theme
 ```
 
+**Coherence Rule (queued addenda):** After appending an Addendum section to a pending REQ, re-read the full REQ — the original What, Requirements, Constraints, and Red-Green Proof sections plus the new addendum. If the addendum **contradicts** any existing content (e.g., "add dark mode" + "remove all theming"), do not silently write the contradiction. Instead:
+
+1. Present the conflict to the user with concrete options: "The original REQ says X. The new input says Y. These conflict. Which should win?" Use the ask tool if available.
+2. If the user resolves it: update the REQ to reflect the resolved intent. Record what changed in the Addendum section: `Resolved conflict: [original] → [user's decision]`.
+3. If the user cannot resolve now: append the addendum as-is but add a `- [ ]` Open Question flagging the contradiction with both options as choices.
+
+The goal is that every REQ, at every point in time, expresses a single coherent intent.
+
 **Addendum for in-flight/completed requests** — create a new UR + REQ, both in `do-work/`:
 
 - Create `do-work/user-requests/UR-NNN/input.md` with the addendum input verbatim (new UR, fresh number)
@@ -255,6 +264,8 @@ encounter the work in progress naturally.]
 **Context is critical for addenda to archived/completed REQs.** When writing the addendum REQ, read the original archived REQ and include a `## Prior Implementation` section summarizing: what was built, key files modified, patterns used, and commit hash (if available). Without this, the builder wastes time re-discovering what already exists. For in-flight REQs this matters less — the builder will encounter the work in progress naturally.
 
 **When the original UR is archived:** The original UR folder is in `archive/UR-NNN/` and is immutable. The new addendum UR goes into `do-work/user-requests/` as normal. Do not attempt to modify or re-open the archived UR folder.
+
+**Coherence across addendum chains:** When creating an addendum REQ for an in-flight or completed request, read the original REQ's What, Requirements, and any prior addendum chain (follow `addendum_to` links). If the new addendum contradicts the original or a prior addendum, flag the conflict to the user before writing the file. The addendum REQ must state clearly how it relates to the original: extending, narrowing, replacing, or correcting.
 
 ### Step 3: Capture-Phase Clarification
 
@@ -297,6 +308,8 @@ Bad:  "What test should we write for search?"
 If the user adjusts your inferred RED/GREEN pair, record the user's version. If you genuinely cannot ask right now, still capture your best inferred pair and mark `Validation: Inferred during capture`.
 
 **After capture:** Any remaining ambiguities that weren't resolved interactively go into the REQ's `## Open Questions` section with inline choices. These are exceptional — most REQs should have zero open questions after capture.
+
+**Capture produces validated intent.** By the end of this step, every ambiguity that could be resolved has been resolved with the user present. The REQ that gets written in Step 5 is not a guess — it is a validated expression of intent. Record this validation status in the Red-Green Proof section (`Validation: User confirmed` / `User adjusted` / `Inferred during capture`) so downstream agents know how firmly the intent was established.
 
 ### Step 4: Handle Screenshots
 

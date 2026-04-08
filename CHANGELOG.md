@@ -4,6 +4,21 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.3 — The Intent Trail (2026-04-08)
+
+Elevates intent tracking to a first-class concept. REQs are now explicitly framed as validated statements of user intent, not just task descriptions.
+
+- `SKILL.md`: New "Trail of Intent" blockquote — the skill produces a trail of intent, not just code
+- `capture.md`: "Validated artifacts" principle — captured REQs are user-validated, not drafts
+- `capture.md`: Coherence Rule — addenda must not contradict existing REQ content; conflicts trigger user resolution
+- `capture.md`: Coherence across addendum chains — cross-file contradictions flagged before writing
+- `capture.md`: "Capture produces validated intent" closing — names the output of capture-phase clarification
+- `work.md`: Living log connected to intent trail — builder decisions and scope declarations are intent documentation
+- `work.md`: Decisions linked to intent trail — decisions without reasoning are not traceable
+- `verify-requests.md`: "REQs are validated intent" philosophy bullet — verify checks validation actually happened
+- `verify-requests.md`: Internal Coherence evaluation dimension (0-100%) — catches self-contradictory REQs
+- `verify-requests.md`: Coherence column added to verification report table
+
 ## 0.51.2 — The One Scale (2026-04-08)
 
 Security findings in code-review now use the same severity scale as the rest of the report (Critical / Important / Minor / Nit) instead of a separate High / Medium / Low scale that had no mapping to follow-up REQ creation.
