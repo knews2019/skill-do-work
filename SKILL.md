@@ -171,9 +171,34 @@ do-work — task queue for agentic coding tools
     do work update                      Check for upstream updates
     do work recap                       Last 5 completed URs with their REQs
     do work help                        Show this menu
+
+  Tip: add "help" to any command for details — e.g. do work commit help
 ```
 
 Do not ask "Start the work loop?" — just print the help menu and wait.
+
+### Per-Command Help
+
+When any action is invoked with `help` as its sole argument (e.g., `do work commit help`, `do work inspect help`), show a brief usage summary instead of executing the action.
+
+**Actions with built-in help** (`pipeline`, `prime`, `bkb`): dispatch normally — they handle `help` internally.
+
+**All other actions**: read the action file and present a compact summary:
+
+```
+<action-name> — <description from the blockquote>
+
+  Usage:
+    do work <action> [args]       <brief description>
+
+  Arguments:
+    <list accepted arguments/modes from the action file's Input section>
+
+  Examples:
+    <2-3 example invocations>
+```
+
+Keep it short — no more than 15 lines. The goal is quick orientation, not a tutorial. After showing the summary, stop — do not execute the action.
 
 ## Payload Preservation Rules
 

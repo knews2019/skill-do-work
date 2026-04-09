@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.9 — The Help Desk (2026-04-09)
+
+Per-command help — any action now supports `do work <command> help` to show a brief usage summary. Actions with sub-commands (pipeline, prime, bkb) already handled this; all other actions now generate a compact summary from their action file. Footer line added to the main help menu to advertise the feature.
+
+- `SKILL.md`: Add "Per-Command Help" section with rendering template and dispatch rules
+- `SKILL.md`: Add tip footer to help menu
+
 ## 0.51.8 — The Trim Down (2026-04-09)
 
 Condensed the help menu from ~80 lines to ~35. Removed duplicate entries, collapsed BKB sub-commands into a single line, reduced per-action examples, and merged related sections.
