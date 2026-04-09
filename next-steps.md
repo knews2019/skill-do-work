@@ -101,6 +101,14 @@ Next steps:
   do work run                   Process the queue
 ```
 
+**After ideate:**
+```
+Next steps:
+  do work capture request: [paste an idea]  Capture an idea as a request
+  do work ideate [different focus]          Brainstorm a different area
+  do work quick-wins [dir]                  Scan for quick refactoring wins
+```
+
 **After inspect:**
 ```
 Next steps:

@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.53.0 — The Spark (2026-04-09)
+
+New `do work ideate` action — generates grounded ideas for what to build, improve, or explore next. Scans prime files, project history, TODOs, coverage gaps, and codebase patterns to produce ranked suggestions with effort estimates. Every idea references something concrete in the code.
+
+- `actions/ideate.md`: New action with 7 idea categories (features, improvements, performance, DX, reliability, integrations, docs), size tags (S/M/L), and confidence levels
+- `SKILL.md`: Add ideate routing (priority 20), verb reference, help menu entry, action dispatch, subagent config
+- `CLAUDE.md`: Add ideate.md to project structure
+- `next-steps.md`: Add post-ideate suggestions
+
 ## 0.52.3 — The Full Map (2026-04-09)
 
 Tutorial's "File structure" topic now covers the knowledge base layout (raw/, wiki/, agents/) alongside the do-work/ directory.
