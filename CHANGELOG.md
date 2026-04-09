@@ -4,6 +4,23 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.54.1 — The Sharp Eye (2026-04-09)
+
+Fix three bugs in v0.54.0 crew-member additions caught by PR review.
+
+- `crew-members/testing.md`: Rust detection no longer requires `[dev-dependencies]` — any `Cargo.toml` is sufficient. RSpec pattern fixed from `*.test.rb` to `spec/*_spec.rb, .rspec`.
+- `crew-members/performance.md`: Reverted JIT_CONTEXT to match actual work.md loader rules — removed aspirational "backend API" loading claim that was never wired up.
+
+## 0.54.0 — The Test Bench (2026-04-09)
+
+New testing crew member and enhanced domain knowledge for performance/observability and async/concurrency. Inspired by patterns from the wshobson/agents plugin marketplace — distilled into do-work's platform-agnostic crew-member format.
+
+- `crew-members/testing.md`: New "Verifier" crew member — test framework detection, testing pyramid guidance, mocking boundaries, fixture patterns, flaky test prevention, TDD workflow, and anti-patterns. Loads on `tdd: true`, `domain: testing`, or after 2+ test failures
+- `crew-members/performance.md`: Added observability basics section (structured logging, health checks, metric naming, trace context). Broadened loading to include backend API and data-intensive work
+- `crew-members/backend.md`: Added async/concurrency section (blocking I/O in async paths, shared state protection, parallel I/O, cancellation) and dependency awareness section (vulnerability checks, lockfile hygiene, pinned versions)
+- `actions/work.md`: Updated crew-member loading rules in Step 6 and Step 6.5 to include testing.md
+- `CLAUDE.md`: Documented testing.md loading behavior in Agent Rules
+
 ## 0.53.2 — The Short Circuit (2026-04-09)
 
 Bare "code review" (no hyphen, no scope) now routes to `code-review` instead of falling through to `review-work`. No more surprise routing.

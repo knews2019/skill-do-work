@@ -99,6 +99,7 @@ Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_C
 
 - `general.md` — always loaded during implementation (Step 6)
 - `[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists
+- `testing.md` — loaded when `tdd: true` or `domain: testing`, and alongside debugging.md after 2+ test failures
 - `debugging.md` — loaded during remediation (review fail → retry) and after 2+ test failures
 - If a rules file is missing, proceed without it — never block on a missing rules file
 
