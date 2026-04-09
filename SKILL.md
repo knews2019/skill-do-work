@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | prime [create|audit] | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | help"
+argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | prime [create|audit] | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -30,6 +30,7 @@ A unified entry point for task capture and processing.
 - **inspect**: Explain uncommitted changes — what changed, why, and whether it's ready to commit (read-only)
 - **version**: Show current version, last 5 releases, or check for upstream updates
 - **recap**: Summary of last 5 completed user requests with their REQs
+- **tutorial**: Interactive tutorials — quick start, concepts, workflow recipes, or guided tour
 
 > **Core concept:** The capture requests action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
 
@@ -76,7 +77,8 @@ Check these patterns **in order** — first match wins:
 | 18       | BKB keywords             | `do work bkb`, `do work bkb init`, `do work bkb ingest`, `do work build knowledge base`, `do work knowledge base`                 | → build knowledge base        |
 | 19       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
 | 20       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
-| 21       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
+| 21       | Tutorial keywords        | `do work tutorial`, `do work tutorial quick-start`, `do work tutorial concepts`, `do work tutorial recipes`, `do work tutorial tour` | → tutorial                      |
+| 22       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -120,6 +122,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **quick-wins** | quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, what can we improve | "scan" alone or with a bare directory path → quick-wins; bare path = last meaningful token (any text after it is descriptive content → capture) |
 | **install-ui-design** | install-ui-design, install ui design, install ui, install frontend-design, setup ui design, setup design skill | |
 | **install-bowser** | install-bowser, install bowser, install playwright, install playwright-cli, setup bowser, setup playwright | |
+| **tutorial** | tutorial, tutorial quick-start, tutorial concepts, tutorial recipes, tutorial tour, learn, getting started, how does this work | Everything after "tutorial" → `$ARGUMENTS` (mode). No args → ask user which mode |
 | **capture requests** | `capture request:` prefix, descriptive text, feature requests, bug reports, "add", "create", "I need", "we should" | Default for multi-word descriptive content that doesn't match any keyword |
 
 ## Examples
@@ -162,6 +165,10 @@ do-work — task queue for agentic coding tools
   Setup:
     do work install-ui-design           Frontend-design skill for production-grade UI
     do work install-bowser              Playwright CLI + Bowser for browser automation
+
+  Learn:
+    do work tutorial                    Pick a tutorial (quick-start, concepts, recipes, tour)
+    do work tutorial quick-start        Hands-on walkthrough of capture → run → review
 
   Maintenance & info:
     do work cleanup                     Consolidate the archive
@@ -241,6 +248,7 @@ Each action has an action file with full instructions. How you execute it depend
 | build knowledge base | `./actions/build-knowledge-base.md` | `$ARGUMENTS` (sub-command + params) |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 | recap              | `./actions/version.md`          | `mode: recap`                  |
+| tutorial           | `./actions/tutorial.md`         | `$ARGUMENTS` (mode name or empty) |
 
 ### If subagents are available
 
@@ -248,7 +256,7 @@ Dispatch each action to a subagent. The subagent reads the action file and execu
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
 - **Exception — pipeline dispatch**: When the pipeline action dispatches `work`, it runs in the **foreground** (blocking). The pipeline requires each step to complete before advancing. This override applies only when the pipeline is the caller.
-- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `prime`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `prime`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`, `tutorial`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available

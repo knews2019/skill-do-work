@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.52.0 — The Onboarding (2026-04-09)
+
+New `do work tutorial` command with four modes: quick-start (hands-on walkthrough), concepts (mental model explainer), recipes (scenario → command cheat sheet), and interactive tour (menu-driven deep dives). Bare invocation asks which mode to run.
+
+- `actions/tutorial.md`: New multi-mode tutorial action with Quick Start, Concepts, Recipes, and Interactive Tour
+- `SKILL.md`: Add tutorial routing (priority 21), verb reference, help menu entry, action dispatch, subagent config
+- `CLAUDE.md`: Add tutorial.md to project structure
+- `next-steps.md`: Add post-tutorial suggestions
+
 ## 0.51.9 — The Help Desk (2026-04-09)
 
 Per-command help — any action now supports `do work <command> help` to show a brief usage summary. Actions with sub-commands (pipeline, prime, bkb) already handled this; all other actions now generate a compact summary from their action file. Footer line added to the main help menu to advertise the feature.

@@ -29,6 +29,7 @@ actions/              # Action files (each is a standalone prompt)
   prime.md             # Prime file management — create and audit AI context documents
   pipeline.md          # Full end-to-end orchestration (investigate → capture → verify → run → review)
   build-knowledge-base.md # LLM knowledge base — init, triage, ingest, query, lint, and more
+  tutorial.md          # Interactive tutorials — quick start, concepts, recipes, guided tour
   sample-archived-req.md # Example of a fully processed REQ file (reference only)
 crew-members/         # Domain-specific rules loaded by work action
 hooks/                # Optional hook scripts (platform-specific, installable)

@@ -131,6 +131,14 @@ Next steps:
   do work bkb status             Check KB state
 ```
 
+**After tutorial:**
+```
+Next steps:
+  do work capture request: [describe]  Capture your first request
+  do work tutorial [mode]              Try another tutorial mode
+  do work help                         Full command reference
+```
+
 **After version / recap:**
 ```
 Next steps:
