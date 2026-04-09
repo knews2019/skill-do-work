@@ -21,6 +21,20 @@ New testing crew member and enhanced domain knowledge for performance/observabil
 - `actions/work.md`: Updated crew-member loading rules in Step 6 and Step 6.5 to include testing.md
 - `CLAUDE.md`: Documented testing.md loading behavior in Agent Rules
 
+## 0.53.2 — The Short Circuit (2026-04-09)
+
+Bare "code review" (no hyphen, no scope) now routes to `code-review` instead of falling through to `review-work`. No more surprise routing.
+
+- `SKILL.md`: Move bare "code review" from priority 9 (review-work) to priority 7 (code-review), update verb reference, remove help menu warning
+
+## 0.53.1 — The Mirror Check (2026-04-09)
+
+Fixes two documentation gaps from 20-commit audit: adds Performance dimension to code-review guide, surfaces routing distinction in help menu.
+
+- `docs/code-review-guide.md`: Add Performance Anti-Pattern Scan section
+- `SKILL.md`: Add UX note about "code review" vs "code-review" routing
+- `_dev/code-review-20-commits.md`: Updated review — 2 valid findings, 2 false positives dismissed
+
 ## 0.53.0 — The Spark (2026-04-09)
 
 New `do work ideate` action — generates grounded ideas for what to build, improve, or explore next. Scans prime files, project history, TODOs, coverage gaps, and codebase patterns to produce ranked suggestions with effort estimates. Every idea references something concrete in the code.
