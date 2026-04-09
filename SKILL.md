@@ -64,9 +64,9 @@ Check these patterns **in order** — first match wins:
 | 4        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
 | 5        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check REQ-018`, `do work evaluate`, `do work audit`, `do work review requests` | → verify requests              |
 | 6        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
-| 7        | Code-review keywords (with scope or "codebase") | `do work code-review`, `do work code-review prime-auth`, `do work code review src/`, `do work audit codebase`, `do work review codebase`, `do work codebase review` | → code-review                  |
+| 7        | Code-review keywords     | `do work code-review`, `do work code review`, `do work code-review prime-auth`, `do work code review src/`, `do work audit codebase`, `do work review codebase`, `do work codebase review` | → code-review                  |
 | 8        | UI-review keywords       | `do work ui-review`, `do work ui-review src/`, `do work review ui`, `do work design review`, `do work validate ui`, `do work ui audit`, `do work design audit` | → ui-review                    |
-| 9        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work code review` (no scope), `do work audit code`             | → review work                  |
+| 9        | Review keywords          | `do work review`, `do work review work`, `do work review code`, `do work audit code`                                               | → review work                  |
 | 10       | Present keywords         | `do work present`, `do work present work`, `do work showcase`, `do work deliver`                                                   | → present work                 |
 | 11       | Cleanup keywords         | `do work cleanup`, `do work clean up`, `do work tidy`, `do work consolidate`                                                       | → cleanup                     |
 | 12       | Commit keywords          | `do work commit`, `do work commit changes`, `do work commit files`, `do work save changes`, `do work save work`                    | → commit                      |
@@ -109,9 +109,9 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **work** | run, go, start, begin, work, process, execute, build, continue, resume | |
 | **clarify** | clarify, answers, questions, pending, pending answers, blocked, what's blocked, what needs answers | Routes to `actions/clarify.md` |
 | **verify requests** | verify, verify requests, check, evaluate, review requests, review reqs, audit | "check" alone → verify; "check for updates" → version (priority 2); "audit" alone → verify; "audit codebase" → code-review; "audit primes" → prime |
-| **code-review** | code-review, code review [scope], review codebase, audit codebase, codebase review | Hyphenated form always routes here. Plain "code review" (no scope) falls through to review work. Scope args: prime file refs, directory paths, or combined |
+| **code-review** | code-review, code review, review codebase, audit codebase, codebase review | Both hyphenated and unhyphenated forms route here, with or without scope. Scope args: prime file refs, directory paths, or combined |
 | **ui-review** | ui-review, review ui, design review, validate ui, ui audit, design audit | Do NOT use "check ui" — consumed by verify at priority 4. Scope args: file paths, directory paths, prime file refs |
-| **review work** | review, review work, review code, code review, audit code, audit implementation, review REQ-NNN | "review requests" / "review reqs" → verify (priority 4), not here |
+| **review work** | review, review work, review code, audit code, audit implementation, review REQ-NNN | "review requests" / "review reqs" → verify (priority 4), not here. "code review" → code-review (priority 7), not here |
 | **present work** | present, present work, showcase, deliver, pitch, client brief | No target → most recent UR. "present all" → portfolio mode |
 | **cleanup** | cleanup, clean up, tidy, consolidate, organize archive, fix archive | |
 | **commit** | commit, commit changes, commit files, save changes, save work | |
@@ -150,7 +150,6 @@ do-work — task queue for agentic coding tools
     do work verify requests             Check capture quality against original input
     do work review work                 Review completed work (requirements + code + acceptance)
     do work code-review [scope]         Standalone codebase review (prime refs, dirs, or both)
-                                        ⚠ "code review" (no hyphen, no scope) routes to review-work
     do work ui-review [scope]           Read-only UI quality validation
 
   Present & inspect:

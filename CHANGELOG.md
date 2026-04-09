@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.53.2 — The Short Circuit (2026-04-09)
+
+Bare "code review" (no hyphen, no scope) now routes to `code-review` instead of falling through to `review-work`. No more surprise routing.
+
+- `SKILL.md`: Move bare "code review" from priority 9 (review-work) to priority 7 (code-review), update verb reference, remove help menu warning
+
 ## 0.53.1 — The Mirror Check (2026-04-09)
 
 Fixes two documentation gaps from 20-commit audit: adds Performance dimension to code-review guide, surfaces routing distinction in help menu.
