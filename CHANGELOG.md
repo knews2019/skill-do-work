@@ -4,6 +4,19 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.52.0 — The Guard Rails (2026-04-09)
+
+Strengthens anti-rationalization guards, adds verification checklists, and deepens crew member guidance — inspired by patterns from addyosmani/agent-skills.
+
+- `actions/work.md`: Expanded anti-rationalization table from 4 to 9 rows in Step 6.3
+- `actions/code-review.md`: Added Common Rationalizations table and Verification Checklist
+- `actions/review-work.md`: Added Common Rationalizations, Red Flags, and Verification Checklist
+- `actions/ui-review.md`: Added Common Rationalizations and Verification Checklist
+- `actions/quick-wins.md`: Added performance/security smell scanning (Steps 3 + 3.5) and Common Rationalizations
+- `crew-members/frontend.md`: Expanded with animation perf, error handling depth, and frontend security
+- `crew-members/backend.md`: Expanded with API resilience and performance awareness
+- `crew-members/performance.md`: New crew member covering Core Web Vitals, backend optimization, and bundle analysis
+
 ## 0.51.8 — The Safe Exit (2026-04-09)
 
 Fix pipeline-guard stop hook crashing when jq is unavailable and no pipeline is active.

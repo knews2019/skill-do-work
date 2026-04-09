@@ -58,6 +58,10 @@ Runs the project's linter, type checker, and relevant tests against the scoped f
 
 Structured markdown report with: summary, findings tables by dimension (with file:line references and severity), strengths, and top 3 recommended actions.
 
+## Guardrails
+
+Includes anti-rationalization tables (guards against shortcuts like "this pattern is used elsewhere so it's fine" or "tests exist so the code is correct") and a verification checklist to ensure all 6 dimensions are covered before the report is finalized.
+
 ## Depth scaling
 
 - 5 files: line-by-line review

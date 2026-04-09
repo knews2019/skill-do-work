@@ -260,6 +260,18 @@ If the user confirms:
 
 If the user declines or doesn't respond, skip this step. The report stands on its own.
 
+## Common Rationalizations
+
+Guard against these when conducting the UI review:
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "The design looks fine to me" | Evaluate against each phase checklist systematically | Subjective approval skips objective criteria |
+| "Accessibility is someone else's job" | Check semantic HTML, contrast, focus indicators, keyboard nav | Accessibility is a baseline, not an add-on |
+| "This component is similar enough to the design system" | Measure: exact padding, radius, color values against the tokens | "Similar enough" accumulates into visual inconsistency |
+| "I can't check this without running the app" | The code-level review (Steps 3–8) catches most issues statically | Visual verification is additive, not a prerequisite |
+| "No findings in this category" | Verify you checked all items in the category's checklist | An empty category should be earned, not assumed |
+
 ## Rules
 
 - **Read-only**: Do not modify any source files. The entire action is observational.
@@ -271,3 +283,14 @@ If the user declines or doesn't respond, skip this step. The report stands on it
 - **Acknowledge strengths**: A report that's all negatives is demoralizing and incomplete. Note what works.
 - **frontend-design skill is additive**: If not installed, still run the full review using `crew-members/ui-design.md`. The skill adds aesthetic depth but isn't required.
 - **Playwright CLI / Bowser skill are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend `do work install-bowser` when missing — it's high-value and low-effort.
+
+## Verification Checklist
+
+Before finalizing the report, verify:
+
+- [ ] Every finding has a file path and line number (or range)
+- [ ] Both sides shown for every inconsistency finding (the pattern and the deviation)
+- [ ] All review steps (Structure, Visual, Component, UX Copy, Interaction, Implementation, Visual Verification) were attempted or explicitly noted as skipped with reason
+- [ ] Severity counts in the summary match actual findings in the tables
+- [ ] At least 1 item in Strengths section (acknowledge what works)
+- [ ] No findings that a configured linter/formatter would catch

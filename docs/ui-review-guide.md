@@ -44,6 +44,10 @@ If Playwright CLI or Bowser skill is installed, renders pages to verify contrast
 | **Medium** | Confusing but workaround exists |
 | **Low** | Cosmetic or minor polish |
 
+## Guardrails
+
+Includes anti-rationalization tables (guards against "the design looks fine to me" or "accessibility is someone else's job") and a verification checklist to ensure all review steps were attempted and severity counts match.
+
 ## Output
 
 Structured markdown report organized by category with file:line references, severity levels, suggested fixes, top priorities, and acknowledged strengths.

@@ -27,6 +27,19 @@
 - Log with enough context to debug (request ID, user ID, action) but never log sensitive data (passwords, tokens, PII).
 - Return structured errors to clients; keep stack traces server-side.
 
+### API Resilience
+- Rate limiting: be aware of which endpoints need it (login, signup, password reset, public search). Note if rate limiting is missing when adding or modifying these endpoints.
+- API versioning: follow the project's existing convention (URL prefix `/v1/`, header-based, query param). If no convention exists and you're creating a new API surface, use URL prefix versioning and document the choice as a Decision (D-XX).
+- Timeouts: set explicit timeouts on all outbound HTTP calls. Never rely on the default (which may be infinite).
+- Idempotency keys: for non-idempotent write endpoints exposed to retries (payment, order creation), note if an idempotency mechanism is missing.
+- Circuit breakers: when calling external services, note if the failure mode is "cascade" (one service down brings everything down).
+
+### Performance Awareness
+- N+1 queries: if you see a database call inside a loop, refactor to a batch query.
+- Pagination: never return unbounded result sets. All list endpoints should accept `limit`/`offset` or cursor parameters.
+- Caching: for data that changes infrequently (config, feature flags, user permissions), note where a cache could help. Don't implement caching without the REQ requesting it, but flag it in Discovered Tasks.
+- Connection pooling: note if database connections are being opened per-request instead of pooled.
+
 ## Quality Checks
 
 Before marking UNIFY complete, verify:

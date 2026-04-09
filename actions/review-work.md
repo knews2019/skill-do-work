@@ -373,6 +373,41 @@ Match effort to complexity:
 | **B** (Medium) | Standard review. Full requirements checklist. Code review checks all dimensions. Acceptance tests the feature end-to-end. Suggested testing covers obvious gaps. |
 | **C** (Complex) | Thorough review. Requirements checklist cross-referenced against plan and UR. Code review checks architectural decisions. Acceptance tests multiple paths. Suggested testing is comprehensive — integration, edge cases, performance. |
 
+## Common Rationalizations
+
+Guard against these when conducting the review:
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "Requirements are met because the builder says so" | Walk the REQ requirements against the diff, line by line | Implementation summaries are claims, not evidence |
+| "Acceptance passes because unit tests pass" | Run the feature end-to-end | Unit tests and acceptance testing catch different defects |
+| "The score is borderline, I'll round up" | Apply the scoring guidelines mechanically | Rounding up defeats the quality gate |
+| "This finding is minor, not worth a follow-up REQ" | Ask: would a senior engineer request changes on this in a PR? | The threshold is documented; use it |
+| "I can't run the code so I'll skip acceptance" | Score Untested and note exactly what you couldn't test | Skipping silently hides risk |
+
+## Red Flags
+
+If any of these are true, escalate review depth regardless of route:
+
+- Implementation Summary lists files but `git diff` shows no changes in those files
+- Builder checked all P-A-U boxes but the diff contains `console.log`, `debugger`, or TODO/FIXME
+- New files exist but nothing imports them (dead code)
+- Tests pass but test file has trivial assertions (`expect(true).toBe(true)` style)
+- Scope section declares 3 files but Implementation Summary lists 8
+- No red-green evidence on a behavioral change with `tdd: true`
+
+## Verification Checklist
+
+Before presenting the review report:
+
+- [ ] Every requirement from the REQ walked against the diff (not skimmed)
+- [ ] All applicable scoring dimensions have a numeric score (no blanks)
+- [ ] Overall score computed using the documented formula
+- [ ] Acceptance testing was attempted (or scored Untested with specific reason)
+- [ ] Each Important finding has a follow-up REQ drafted
+- [ ] Suggested Additional Testing includes only items relevant to this change
+- [ ] Self-validation pass completed
+
 ## What NOT to Do
 
 - Don't re-implement — you're reviewing, not building

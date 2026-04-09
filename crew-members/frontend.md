@@ -25,6 +25,24 @@
 - Every data fetch needs loading, success, and error states.
 - Form validation: client-side for UX, never trust it for security.
 - Display user-friendly error messages — log technical details to console.
+- Error boundaries (React) or equivalent: catch rendering failures without crashing the entire app.
+- Retry logic for transient network failures — distinguish between 4xx (don't retry) and 5xx/network errors (retry with backoff).
+- Graceful degradation: if a non-critical feature fails to load, the rest of the page still works.
+- Never swallow errors silently — at minimum, log to an error tracking service or console.
+
+### Animation & Rendering Performance
+- Animate only `transform` and `opacity` — these run on the compositor thread. Animating `width`, `height`, `top`, `left`, `margin`, or `padding` triggers layout recalculation.
+- Use `will-change` sparingly and only on elements that will actually animate. Remove it after animation completes.
+- Respect `prefers-reduced-motion` — disable non-essential animations when the user requests it.
+- Virtualize long lists (>100 items visible) — react-window, tanstack-virtual, or framework equivalent.
+- Debounce resize/scroll event handlers. Use `IntersectionObserver` over scroll-position polling.
+
+### Frontend Security
+- Never use `dangerouslySetInnerHTML` (React), `v-html` (Vue), or `[innerHTML]` (Angular) with unsanitized user content. Use DOMPurify or equivalent.
+- Validate and sanitize all user input on the client for UX, but enforce on the server for security.
+- Never store auth tokens in `localStorage` — use `httpOnly` cookies.
+- Never bundle API keys or secrets in client-side code.
+- Set `rel="noopener noreferrer"` on external `target="_blank"` links.
 
 ## Quality Checks
 
