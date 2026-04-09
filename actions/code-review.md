@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Standalone codebase review — not tied to the REQ/UR queue. Evaluates consistency, patterns, security, and architectural health across a scoped section of the codebase.
 
-**Source-code read-only** — this action does NOT modify any project source files. It produces a structured report only. May write queue metadata (`do-work/REQ-*` files) with explicit user confirmation — see Step 9.
+**Source-code read-only** — this action does NOT modify any project source files. It produces a structured report only. May write queue metadata (`do-work/REQ-*` files) with explicit user confirmation — see Step 10.
 
 ## Input
 
@@ -127,7 +127,7 @@ Check the scoped files for:
 | **Dependency concerns** | Known vulnerable patterns, outdated security practices, missing CSRF/CORS protections |
 | **Secrets** | Hardcoded credentials, API keys, tokens — even if they look like placeholders |
 
-If `crew-members/security.md` exists, load it and apply the OWASP Top 10 checklist and framework-specific patterns to the scoped code. Classify findings using the same severity scale as the rest of this review (Critical / Important / Minor / Nit). Map security-specific levels: High → Important, Medium → Minor, Low → Nit.
+If `crew-members/security.md` exists, load it and apply the OWASP Top 10 checklist and framework-specific patterns to the scoped code. Classify findings using the same severity scale as the rest of this review (Critical / Important / Minor / Nit). Map security-specific levels: Critical → Critical, High → Important, Medium → Minor, Low → Nit.
 
 Only report findings relevant to the code in scope. Don't flag theoretical risks that don't apply.
 

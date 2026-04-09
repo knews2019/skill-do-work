@@ -107,6 +107,8 @@ Output a confidence report in this format:
 | REQ-018 | TOC Panel | 85% | 70% | 90% | 100% | 100% | 80% | 85% |
 | REQ-019 | File Tree | 90% | 60% | 90% | 100% | N/A | 80% | 80% |
 
+**Scoring:** Per-REQ Overall = average of applicable dimension scores (omit N/A dimensions from the denominator). Overall Confidence = average of per-REQ Overall scores.
+
 ### Gaps Found
 
 **Important:**
