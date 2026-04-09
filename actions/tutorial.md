@@ -23,20 +23,20 @@
 
 ## Step 1: Mode Selection (no arguments)
 
-When invoked with no arguments, present the four modes and ask:
+When invoked with no arguments, present the four modes and wait for the user to reply:
 
 ```
 do-work tutorial — learn how the skill works
 
-  1. Quick Start     Capture a task, run it, review it — hands-on in ~5 min
-  2. Concepts        Mental model: URs, REQs, pipeline, trail of intent
-  3. Recipes         Common scenarios → exact commands (cheat sheet)
+  1. Quick Start        Capture a task, run it, review it — hands-on in ~5 min
+  2. Concepts           Mental model: URs, REQs, pipeline, trail of intent
+  3. Recipes            Common scenarios → exact commands (cheat sheet)
   4. Interactive Tour   Pick a topic, get a self-contained deep dive
 
 Which tutorial? (1-4, or name):
 ```
 
-Use your environment's ask-user tool. Accept a number (1-4) or mode name. Then proceed to the matching mode below.
+Print the menu and stop. Wait for the user's reply. Accept a number (1-4) or mode name. Then proceed to the matching mode below.
 
 ---
 
@@ -275,11 +275,11 @@ INTERACTIVE TOUR — pick a topic to learn about
   Pick a number (or "done" to exit):
 ```
 
-Use your environment's ask-user tool. Accept a number or topic name.
+Print the menu and stop. Wait for the user's reply. Accept a number (1-8), topic name, or "done".
 
 ### Step T-2: Topic Deep Dives
 
-For each topic, provide a self-contained explanation (8-15 lines) with the relevant commands and a concrete example. After each explanation, show the topic menu again and ask if they want another topic or are done.
+For each topic, provide a self-contained explanation (8-15 lines) with the relevant commands and a concrete example. After each explanation, show the topic menu again and wait for the user to pick another or say "done".
 
 **Topic 1 — Capturing requests:**
 Explain the UR/REQ pairing, how multi-part requests become multiple REQs, the role of the RED case / GREEN proof, and how verbatim input is preserved. Key commands: `capture request:`, `verify requests`.
@@ -325,5 +325,5 @@ Each mode is self-contained — print its content and stop. Do not chain into an
 
 - **Read-only.** Tutorials explain — they never create URs, REQs, or modify the queue.
 - **No fake files.** Show example file structures as text illustrations, not actual file creation.
-- **Ask tool required** for mode selection (Step 1) and Interactive Tour topic selection (Step T-1/T-2). If no ask tool is available, default to Quick Start.
+- **Plain text menus.** Print the menu, then stop and wait for the user to reply. Do not use the ask-user tool for mode selection or topic selection — the menus have too many options for structured prompts. Just print and wait.
 - **Stop after the tutorial.** Do not offer to start capture or run after finishing. Suggest next steps per the standard next-steps format.

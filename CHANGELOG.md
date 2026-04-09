@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.52.2 — The Plain Prompt (2026-04-09)
+
+Tutorial now uses plain text menus instead of the ask-user tool. The ask tool caps at 4 options, which truncated the 8-topic interactive tour. Menus are printed as text and the agent waits for the user to reply naturally.
+
+- `actions/tutorial.md`: Replace ask-tool requirement with plain text print-and-wait pattern in mode selection, tour topic selection, and rules
+
 ## 0.52.1 — The Tidy Menu (2026-04-09)
 
 Moved tutorial to a single line in the "Maintenance & info" section, right before `help`. Keeps the help menu compact.
