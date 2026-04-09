@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.54.0 — The Test Bench (2026-04-09)
+
+New testing crew member and enhanced domain knowledge for performance/observability and async/concurrency. Inspired by patterns from the wshobson/agents plugin marketplace — distilled into do-work's platform-agnostic crew-member format.
+
+- `crew-members/testing.md`: New "Verifier" crew member — test framework detection, testing pyramid guidance, mocking boundaries, fixture patterns, flaky test prevention, TDD workflow, and anti-patterns. Loads on `tdd: true`, `domain: testing`, or after 2+ test failures
+- `crew-members/performance.md`: Added observability basics section (structured logging, health checks, metric naming, trace context). Broadened loading to include backend API and data-intensive work
+- `crew-members/backend.md`: Added async/concurrency section (blocking I/O in async paths, shared state protection, parallel I/O, cancellation) and dependency awareness section (vulnerability checks, lockfile hygiene, pinned versions)
+- `actions/work.md`: Updated crew-member loading rules in Step 6 and Step 6.5 to include testing.md
+- `CLAUDE.md`: Documented testing.md loading behavior in Agent Rules
+
 ## 0.53.0 — The Spark (2026-04-09)
 
 New `do work ideate` action — generates grounded ideas for what to build, improve, or explore next. Scans prime files, project history, TODOs, coverage gaps, and codebase patterns to produce ranked suggestions with effort estimates. Every idea references something concrete in the code.

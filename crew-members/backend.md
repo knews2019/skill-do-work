@@ -34,6 +34,20 @@
 - Idempotency keys: for non-idempotent write endpoints exposed to retries (payment, order creation), note if an idempotency mechanism is missing.
 - Circuit breakers: when calling external services, note if the failure mode is "cascade" (one service down brings everything down).
 
+### Async & Concurrency
+- Follow the project's concurrency model — don't mix paradigms (e.g., threads + asyncio, callbacks + promises).
+- **Async/await:** Never call blocking I/O (file reads, synchronous HTTP, `time.sleep`) inside async functions. Use async equivalents (`aiofiles`, `fetch`, `asyncio.sleep`).
+- **Shared mutable state:** If multiple coroutines/threads/goroutines access the same data, protect it (locks, atomics, channels, immutable snapshots). Race conditions are silent until production.
+- **Parallelism for independent work:** When making multiple independent I/O calls, parallelize them (`Promise.all`, `asyncio.gather`, `sync.WaitGroup`, `tokio::join!`). Sequential independent awaits are a performance bug.
+- **Cancellation & timeouts:** Long-running async operations should respect cancellation (abort signals, context cancellation, `CancellationToken`). Never fire-and-forget without cleanup.
+- **Connection lifecycle:** Database connections, HTTP clients, and gRPC channels should be reused via pools — not created per request. Close/release connections in `finally` blocks or use context managers.
+
+### Dependency Awareness
+- Before adding a new dependency, check if the existing stack already provides the functionality. Prefer stdlib or existing deps over new ones.
+- **Vulnerability check:** After adding or upgrading dependencies, note whether `npm audit` / `pip audit` / `cargo audit` / equivalent reports new vulnerabilities. Don't block on advisory-only findings, but flag Critical/High severity.
+- **Lockfile hygiene:** Commit lockfiles (`package-lock.json`, `uv.lock`, `Cargo.lock`, `Gemfile.lock`). If the lockfile changes unexpectedly, investigate — don't blindly commit.
+- **Pinned versions for security-critical deps:** Auth libraries, crypto packages, and serialization libraries should use exact versions, not ranges.
+
 ### Performance Awareness
 - N+1 queries: if you see a database call inside a loop, refactor to a batch query.
 - Pagination: never return unbounded result sets. All list endpoints should accept `limit`/`offset` or cursor parameters.
@@ -51,6 +65,8 @@ Before marking UNIFY complete, verify:
 | No data leaks | Error responses don't expose internal details |
 | Idempotency | Safe methods (GET) have no side effects; writes handle retries |
 | Existing tests pass | No regressions in adjacent endpoints or services |
+| No blocking I/O in async paths | Synchronous calls don't sneak into async handlers |
+| Dependencies clean | No new Critical/High vulnerabilities from added deps |
 
 ## Scope Discipline
 
