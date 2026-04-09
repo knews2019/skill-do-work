@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.53.1 — The Mirror Check (2026-04-09)
+
+Fixes two documentation gaps from 20-commit audit: adds Performance dimension to code-review guide, surfaces routing distinction in help menu.
+
+- `docs/code-review-guide.md`: Add Performance Anti-Pattern Scan section
+- `SKILL.md`: Add UX note about "code review" vs "code-review" routing
+- `_dev/code-review-20-commits.md`: Updated review — 2 valid findings, 2 false positives dismissed
+
 ## 0.53.0 — The Spark (2026-04-09)
 
 New `do work ideate` action — generates grounded ideas for what to build, improve, or explore next. Scans prime files, project history, TODOs, coverage gaps, and codebase patterns to produce ranked suggestions with effort estimates. Every idea references something concrete in the code.
