@@ -101,6 +101,14 @@ Next steps:
   do work run                   Process the queue
 ```
 
+**After ideate:**
+```
+Next steps:
+  do work capture request: [paste an idea]  Capture an idea as a request
+  do work ideate [different focus]          Brainstorm a different area
+  do work quick-wins [dir]                  Scan for quick refactoring wins
+```
+
 **After inspect:**
 ```
 Next steps:
@@ -129,6 +137,14 @@ Next steps:
 Next steps:
   do work bkb [next-subcommand]  Continue KB workflow (triage → ingest → query → close)
   do work bkb status             Check KB state
+```
+
+**After tutorial:**
+```
+Next steps:
+  do work capture request: [describe]  Capture your first request
+  do work tutorial [mode]              Try another tutorial mode
+  do work help                         Full command reference
 ```
 
 **After version / recap:**

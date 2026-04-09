@@ -23,12 +23,14 @@ actions/              # Action files (each is a standalone prompt)
   inspect.md          # Explain uncommitted changes — what, why, and readiness (read-only)
   version.md          # Version reporting + update checks (current version lives here)
   quick-wins.md       # Scan for refactoring opportunities and low-hanging tests
+  ideate.md           # Generate ideas for what to build, improve, or explore next
   install-ui-design.md # Install the frontend-design skill for UI work
   install-bowser.md   # Install Playwright CLI + Bowser skill for browser automation
   forensics.md        # Pipeline diagnostics — stuck work, hollow completions, orphaned URs
   prime.md             # Prime file management — create and audit AI context documents
   pipeline.md          # Full end-to-end orchestration (investigate → capture → verify → run → review)
   build-knowledge-base.md # LLM knowledge base — init, triage, ingest, query, lint, and more
+  tutorial.md          # Interactive tutorials — quick start, concepts, recipes, guided tour
   sample-archived-req.md # Example of a fully processed REQ file (reference only)
 crew-members/         # Domain-specific rules loaded by work action
 hooks/                # Optional hook scripts (platform-specific, installable)

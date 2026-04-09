@@ -4,6 +4,55 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.53.0 — The Spark (2026-04-09)
+
+New `do work ideate` action — generates grounded ideas for what to build, improve, or explore next. Scans prime files, project history, TODOs, coverage gaps, and codebase patterns to produce ranked suggestions with effort estimates. Every idea references something concrete in the code.
+
+- `actions/ideate.md`: New action with 7 idea categories (features, improvements, performance, DX, reliability, integrations, docs), size tags (S/M/L), and confidence levels
+- `SKILL.md`: Add ideate routing (priority 20), verb reference, help menu entry, action dispatch, subagent config
+- `CLAUDE.md`: Add ideate.md to project structure
+- `next-steps.md`: Add post-ideate suggestions
+
+## 0.52.3 — The Full Map (2026-04-09)
+
+Tutorial's "File structure" topic now covers the knowledge base layout (raw/, wiki/, agents/) alongside the do-work/ directory.
+
+- `actions/tutorial.md`: Expand Topic 8 guidance to include KB directory structure
+
+## 0.52.2 — The Plain Prompt (2026-04-09)
+
+Tutorial now uses plain text menus instead of the ask-user tool. The ask tool caps at 4 options, which truncated the 8-topic interactive tour. Menus are printed as text and the agent waits for the user to reply naturally.
+
+- `actions/tutorial.md`: Replace ask-tool requirement with plain text print-and-wait pattern in mode selection, tour topic selection, and rules
+
+## 0.52.1 — The Tidy Menu (2026-04-09)
+
+Moved tutorial to a single line in the "Maintenance & info" section, right before `help`. Keeps the help menu compact.
+
+- `SKILL.md`: Consolidate tutorial from separate "Learn" section into one line before `help`
+
+## 0.52.0 — The Onboarding (2026-04-09)
+
+New `do work tutorial` command with four modes: quick-start (hands-on walkthrough), concepts (mental model explainer), recipes (scenario → command cheat sheet), and interactive tour (menu-driven deep dives). Bare invocation asks which mode to run.
+
+- `actions/tutorial.md`: New multi-mode tutorial action with Quick Start, Concepts, Recipes, and Interactive Tour
+- `SKILL.md`: Add tutorial routing (priority 21), verb reference, help menu entry, action dispatch, subagent config
+- `CLAUDE.md`: Add tutorial.md to project structure
+- `next-steps.md`: Add post-tutorial suggestions
+
+## 0.51.9 — The Help Desk (2026-04-09)
+
+Per-command help — any action now supports `do work <command> help` to show a brief usage summary. Actions with sub-commands (pipeline, prime, bkb) already handled this; all other actions now generate a compact summary from their action file. Footer line added to the main help menu to advertise the feature.
+
+- `SKILL.md`: Add "Per-Command Help" section with rendering template and dispatch rules
+- `SKILL.md`: Add tip footer to help menu
+
+## 0.51.8 — The Trim Down (2026-04-09)
+
+Condensed the help menu from ~80 lines to ~35. Removed duplicate entries, collapsed BKB sub-commands into a single line, reduced per-action examples, and merged related sections.
+
+- `SKILL.md`: Help menu compressed — grouped related actions, eliminated duplicates (clarify listed twice), collapsed 12 BKB examples into inline sub-command list
+
 ## 0.52.0 — The Guard Rails (2026-04-09)
 
 Strengthens anti-rationalization guards, adds verification checklists, and deepens crew member guidance — inspired by patterns from addyosmani/agent-skills.

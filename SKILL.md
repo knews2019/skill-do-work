@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | prime [create|audit] | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | help"
+argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | ideate [focus] | prime [create|audit] | forensics | bkb [subcommand] | install-ui-design | install-bowser | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -20,6 +20,7 @@ A unified entry point for task capture and processing.
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
 - **code-review**: Standalone codebase review scoped by prime files and/or directories → consistency, patterns, security, performance, architecture, and risk-driven test coverage
 - **quick-wins**: Scan a target directory for obvious refactoring opportunities and low-hanging tests to add
+- **ideate**: Generate ideas for what to build, improve, or explore next — grounded in codebase analysis and project history
 - **ui-review**: Validate UI quality against design best practices — read-only audit with structured findings report
 - **install-ui-design**: Install the `frontend-design` Claude skill for production-grade UI design capabilities
 - **install-bowser**: Install Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification
@@ -30,6 +31,7 @@ A unified entry point for task capture and processing.
 - **inspect**: Explain uncommitted changes — what changed, why, and whether it's ready to commit (read-only)
 - **version**: Show current version, last 5 releases, or check for upstream updates
 - **recap**: Summary of last 5 completed user requests with their REQs
+- **tutorial**: Interactive tutorials — quick start, concepts, workflow recipes, or guided tour
 
 > **Core concept:** The capture requests action always produces both a UR folder (preserving the original input) and REQ files (the queue items). Each REQ links back to its UR via `user_request` frontmatter. This pairing is mandatory for all requests — simple or complex.
 
@@ -75,8 +77,10 @@ Check these patterns **in order** — first match wins:
 | 17       | Prime keywords           | `do work prime`, `do work prime create src/auth/`, `do work prime audit`, `do work create prime`, `do work audit primes`           | → prime                       |
 | 18       | BKB keywords             | `do work bkb`, `do work bkb init`, `do work bkb ingest`, `do work build knowledge base`, `do work knowledge base`                 | → build knowledge base        |
 | 19       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
-| 20       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
-| 21       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
+| 20       | Ideate keywords          | `do work ideate`, `do work ideate performance`, `do work ideate src/api/`, `do work ideas`, `do work brainstorm`, `do work what should I build`, `do work suggest` | → ideate                        |
+| 21       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
+| 22       | Tutorial keywords        | `do work tutorial`, `do work tutorial quick-start`, `do work tutorial concepts`, `do work tutorial recipes`, `do work tutorial tour` | → tutorial                      |
+| 23       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -120,6 +124,8 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **quick-wins** | quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, what can we improve | "scan" alone or with a bare directory path → quick-wins; bare path = last meaningful token (any text after it is descriptive content → capture) |
 | **install-ui-design** | install-ui-design, install ui design, install ui, install frontend-design, setup ui design, setup design skill | |
 | **install-bowser** | install-bowser, install bowser, install playwright, install playwright-cli, setup bowser, setup playwright | |
+| **ideate** | ideate, ideas, brainstorm, what should I build, suggest, what's next, what could we improve | Everything after keyword → `$ARGUMENTS` (focus topic or directory). No args → open exploration |
+| **tutorial** | tutorial, tutorial quick-start, tutorial concepts, tutorial recipes, tutorial tour, learn, getting started, how does this work | Everything after "tutorial" → `$ARGUMENTS` (mode). No args → ask user which mode |
 | **capture requests** | `capture request:` prefix, descriptive text, feature requests, bug reports, "add", "create", "I need", "we should" | Default for multi-word descriptive content that doesn't match any keyword |
 
 ## Examples
@@ -131,86 +137,76 @@ When invoked with no arguments or with `help` (`do work`, `do work help`), show 
 ```
 do-work — task queue for agentic coding tools
 
-  Capture requests:
+  Capture & pipeline:
     do work capture request: add dark mode to settings
-    do work capture request: the search is slow and the header is misaligned
-    do work capture request: [paste meeting notes, specs, or a screenshot]
-
-  Full pipeline (end-to-end):
-    do work pipeline add dark mode    Investigate → capture → verify → run → review
-    do work full add dark mode        Alias for pipeline
-    do work pipeline                  Resume an active pipeline
-    do work pipeline status           Show pipeline progress
+    do work pipeline add dark mode      End-to-end: investigate → capture → verify → run → review
+    do work pipeline status             Show progress / resume active pipeline
 
   Process the queue:
-    do work run                 Triage, build, test, review — one REQ at a time
-    do work continue            Resume after a break (also: go, start, begin)
-    do work clarify             Review pending questions from completed work
+    do work run                         Triage, build, test, review — one REQ at a time
+    do work clarify                     Review pending questions from completed work
 
   Verify & review:
-    do work verify requests     Check capture quality against original input
-    do work review work         Review completed work (requirements + code + acceptance)
+    do work verify requests             Check capture quality against original input
+    do work review work                 Review completed work (requirements + code + acceptance)
+    do work code-review [scope]         Standalone codebase review (prime refs, dirs, or both)
+    do work ui-review [scope]           Read-only UI quality validation
 
-  Code review (standalone):
-    do work code-review                   Review codebase (interactive scope selection)
-    do work code-review prime-auth        Review everything prime-auth.md touches
-    do work code-review src/api/          Review a directory
-    do work code-review prime-auth src/   Review prime file scope + directory combined
+  Present & inspect:
+    do work present work                Client brief, architecture, video, HTML explainer
+    do work inspect                     Explain uncommitted changes (what, why, readiness)
 
-  Present to client:
-    do work present work        Generate client brief, architecture, video, and interactive HTML explainer
-    do work present all         Portfolio summary of all completed work
+  Scan & improve:
+    do work quick-wins [dir]            Refactoring opportunities and low-hanging tests
+    do work ideate [focus]              Generate ideas for what to build next
+    do work prime create src/auth/      Generate a prime file via interactive Q&A
+    do work prime audit                 Audit prime files for staleness and broken links
 
-  Scan for improvements:
-    do work quick-wins          Scan cwd for refactoring and test opportunities
-    do work quick-wins src/     Scan a specific directory
-
-  Prime files:
-    do work prime create src/auth/    Generate a prime file via interactive Q&A
-    do work prime audit               Audit all prime files for staleness and broken links
-
-  UI review (read-only):
-    do work ui-review                     Validate UI quality (interactive scope selection)
-    do work ui-review src/components/     Validate a directory
-    do work ui-review prime-dashboard     Validate everything a prime file touches
-
-  Knowledge base (aliases: bkb, kb, build knowledge base, knowledge base):
-    do work bkb init              Initialize a new LLM knowledge base
-    do work bkb triage            Sort inbox items into capture directories
-    do work bkb ingest            Compile sources into wiki pages
-    do work bkb query [question]  Search the wiki and synthesize an answer
-    do work bkb lint              Health check the wiki
-    do work bkb resolve           Resolve flagged contradictions
-    do work bkb close             Finalize daily log, refresh overview
-    do work bkb status            Show KB stats and pending items
-    do work bkb defrag            Weekly structural maintenance — split/merge clusters
-    do work bkb garden            Audit metadata layer — relationships and cross-refs
-    do work bkb rollup            Generate periodic summary from daily logs
-    do work bkb crew              Manage custom agents for the knowledge base
+  Knowledge base:
+    do work bkb [sub]                   Sub-commands: init | triage | ingest | query | lint |
+                                        resolve | close | status | defrag | garden | rollup | crew
 
   Setup:
-    do work install-ui-design   Install the frontend-design skill for production-grade UI
-    do work install-bowser      Install Playwright CLI + Bowser skill for browser automation
+    do work install-ui-design           Frontend-design skill for production-grade UI
+    do work install-bowser              Playwright CLI + Bowser for browser automation
 
-  Inspect changes:
-    do work inspect             Explain all uncommitted changes (what, why, readiness)
-    do work inspect REQ-005     Explain changes for a specific REQ
-    do work inspect UR-003      Explain changes for all REQs under a UR
+  Maintenance & info:
+    do work cleanup                     Consolidate the archive
+    do work commit                      Analyze and commit files atomically
+    do work forensics                   Pipeline diagnostics — stuck work, orphaned URs
+    do work version                     Version + last 5 releases
+    do work update                      Check for upstream updates
+    do work recap                       Last 5 completed URs with their REQs
+    do work tutorial                     Learn the skill (quick-start, concepts, recipes, tour)
+    do work help                        Show this menu
 
-  Diagnostics:
-    do work forensics           Pipeline diagnostics — stuck work, hollow completions, orphaned URs
-
-  Other actions:
-    do work clarify             Answer pending questions from completed work
-    do work cleanup             Consolidate the archive
-    do work commit              Analyze and commit uncommitted files atomically
-    do work version             Check version + last 5 skill releases
-    do work update              Check for upstream updates
-    do work recap               Last 5 completed URs with their REQs
-    do work help               Show this menu
+  Tip: add "help" to any command for details — e.g. do work commit help
 ```
 
 Do not ask "Start the work loop?" — just print the help menu and wait.
+
+### Per-Command Help
+
+When any action is invoked with `help` as its sole argument (e.g., `do work commit help`, `do work inspect help`), show a brief usage summary instead of executing the action.
+
+**Actions with built-in help** (`pipeline`, `prime`, `bkb`): dispatch normally — they handle `help` internally.
+
+**All other actions**: read the action file and present a compact summary:
+
+```
+<action-name> — <description from the blockquote>
+
+  Usage:
+    do work <action> [args]       <brief description>
+
+  Arguments:
+    <list accepted arguments/modes from the action file's Input section>
+
+  Examples:
+    <2-3 example invocations>
+```
+
+Keep it short — no more than 15 lines. The goal is quick orientation, not a tutorial. After showing the summary, stop — do not execute the action.
 
 ## Payload Preservation Rules
 
@@ -246,6 +242,7 @@ Each action has an action file with full instructions. How you execute it depend
 | code-review        | `./actions/code-review.md`      | Prime file refs and/or directory paths |
 | ui-review          | `./actions/ui-review.md`        | File/directory paths and/or prime file refs |
 | quick-wins         | `./actions/quick-wins.md`       | Target directory               |
+| ideate             | `./actions/ideate.md`           | `$ARGUMENTS` (focus topic, directory, or empty) |
 | install-ui-design  | `./actions/install-ui-design.md`| (none needed)                  |
 | install-bowser     | `./actions/install-bowser.md`   | (none needed)                  |
 | forensics          | `./actions/forensics.md`        | (none needed)                  |
@@ -253,6 +250,7 @@ Each action has an action file with full instructions. How you execute it depend
 | build knowledge base | `./actions/build-knowledge-base.md` | `$ARGUMENTS` (sub-command + params) |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 | recap              | `./actions/version.md`          | `mode: recap`                  |
+| tutorial           | `./actions/tutorial.md`         | `$ARGUMENTS` (mode name or empty) |
 
 ### If subagents are available
 
@@ -260,7 +258,7 @@ Dispatch each action to a subagent. The subagent reads the action file and execu
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
 - **Exception — pipeline dispatch**: When the pipeline action dispatches `work`, it runs in the **foreground** (blocking). The pipeline requires each step to complete before advancing. This override applies only when the pipeline is the caller.
-- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `prime`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `ideate`, `prime`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`, `tutorial`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
