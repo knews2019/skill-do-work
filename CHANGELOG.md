@@ -38,6 +38,12 @@ Condensed the help menu from ~80 lines to ~35. Removed duplicate entries, collap
 
 - `SKILL.md`: Help menu compressed — grouped related actions, eliminated duplicates (clarify listed twice), collapsed 12 BKB examples into inline sub-command list
 
+## 0.51.8 — The Safe Exit (2026-04-09)
+
+Fix pipeline-guard stop hook crashing when jq is unavailable and no pipeline is active.
+
+- `hooks/pipeline-guard.sh`: Add `|| true` to grep fallback for `active` field so a no-match doesn't trigger `set -e` exit
+
 ## 0.51.7 — The Cross-Check (2026-04-08)
 
 Fixes stale references and underspecified instructions found during a 20-commit code review.

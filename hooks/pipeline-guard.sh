@@ -43,7 +43,7 @@ if command -v jq &>/dev/null; then
   PENDING=$(jq '[.steps[] | select(.status == "pending" or .status == "in-progress")] | length' "$PIPELINE_FILE" 2>/dev/null)
   NEXT=$(jq -r '[.steps[] | select(.status == "pending" or .status == "in-progress")][0].name // "unknown"' "$PIPELINE_FILE" 2>/dev/null)
 else
-  ACTIVE=$(grep -o '"active"[[:space:]]*:[[:space:]]*true' "$PIPELINE_FILE" | head -1)
+  ACTIVE=$(grep -o '"active"[[:space:]]*:[[:space:]]*true' "$PIPELINE_FILE" | head -1 || true)
   PENDING=$(grep -c '"status"[[:space:]]*:[[:space:]]*"pending"\|"status"[[:space:]]*:[[:space:]]*"in-progress"' "$PIPELINE_FILE" 2>/dev/null || echo "0")
   NEXT="(check do-work/pipeline.json)"
   # Normalize ACTIVE for the check below
