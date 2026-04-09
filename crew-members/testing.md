@@ -17,9 +17,9 @@ Before writing tests, identify the project's existing test setup. Don't guess â€
 | `vitest.config.*`, `"vitest"` in package.json | Vitest | `npx vitest` |
 | `playwright.config.*` | Playwright | `npx playwright test` |
 | `cypress.config.*`, `cypress/` dir | Cypress | `npx cypress run` |
-| `Cargo.toml` with `[dev-dependencies]` | Rust built-in + cargo-nextest | `cargo test` / `cargo nextest run` |
+| `Cargo.toml` | Rust built-in + cargo-nextest | `cargo test` / `cargo nextest run` |
 | `*_test.go` files | Go built-in | `go test ./...` |
-| `*.test.rb`, `Gemfile` with rspec | RSpec | `bundle exec rspec` |
+| `spec/*_spec.rb`, `.rspec`, `Gemfile` with rspec | RSpec | `bundle exec rspec` |
 
 **Rule:** Use the project's existing framework. Never introduce a second test framework unless the REQ explicitly requests it.
 

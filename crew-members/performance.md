@@ -1,6 +1,6 @@
 # The Profiler — Performance Crew Member
 
-<!-- JIT_CONTEXT: This file is loaded by the AI agent when working on performance-related tasks (domain: performance), when code-review/review-work detects performance anti-patterns in scoped code, or when the REQ involves backend API endpoints or data-intensive operations. Keep rules scoped and concise to minimize token usage. -->
+<!-- JIT_CONTEXT: This file is loaded by the AI agent when working on performance-related tasks (domain: performance), or when code-review/review-work detects performance anti-patterns in scoped code. Keep rules scoped and concise to minimize token usage. -->
 
 ## Core Principle: Measure Before You Optimize
 
