@@ -463,6 +463,11 @@ After the builder returns and the Implementation Summary is written, the **orche
 | "Tests pass so requirements are met" | Compare requirements to diff, word by word | Tests can be incomplete |
 | "The builder checked the UNIFY box" | Read the actual diff for debug artifacts | A checked box is a claim, not a fact |
 | "This is probably fine" | Verify it specifically | Probably ≠ verified |
+| "I'll come back and fix this later" | Fix it now or create a follow-up REQ | Later never comes in agentic workflows |
+| "The user probably doesn't care about this edge case" | Check the requirements word by word | You don't know what the user cares about |
+| "This works on my test case" | Test at least 2 additional cases including an edge case | One test case proves nothing about generality |
+| "The existing code was already like this" | Flag it in Discovered Tasks | Pre-existing problems are still problems |
+| "It's just a small deviation from the plan" | Log it as a Decision (D-XX) | Unlogged deviations break traceability |
 
 **If qualification fails on any check:**
 1. Append a `## Qualification` section to the REQ noting what failed and why.

@@ -20,6 +20,16 @@ Scans a target directory for obvious refactoring opportunities and low-hanging t
 - Config/environment checks
 - Obvious boundary conditions
 
+### Performance smells
+- Sequential independent async I/O (should be parallelized)
+- Unbounded data loading (missing LIMIT, no pagination)
+
+### Security smells
+- Hardcoded secrets (API keys, tokens, passwords in source)
+- Unescaped user input (raw SQL interpolation, `dangerouslySetInnerHTML`, `eval()`)
+- Disabled security features (`rejectUnauthorized: false`, CORS `*` on auth endpoints)
+- Debug artifacts in production paths
+
 ## Ranking
 
 Each finding is rated:
@@ -35,6 +45,7 @@ Two tables:
 
 1. **Refactoring Candidates** — file:line, pattern, description, suggested fix, effort/impact
 2. **Test Candidates** — file:line, what to test, suggested approach, effort/impact
+3. **Security Smells** — file:line, smell category, risk level, suggested fix
 
 Plus an "Already Covered" section noting existing good patterns, and recommended next steps.
 

@@ -46,6 +46,10 @@ Averages the percentage dimensions with qualitative modifiers:
 
 Critical risk caps at 60%. Acceptance fail caps at 50%.
 
+## Guardrails
+
+Includes anti-rationalization tables, red flags (patterns that trigger extra scrutiny like "summary lists files but diff shows no changes"), and a verification checklist to ensure all scoring dimensions are filled and every requirement is walked against the diff.
+
 ## Follow-ups
 
 Important findings generate follow-up REQ files automatically. Minor findings stay in the report only.

@@ -37,6 +37,8 @@ Scan source files for these patterns:
 | **Hardcoded values** | Magic numbers, hardcoded URLs/paths/credentials, values that should be config |
 | **Deep nesting** | Conditionals nested 4+ levels deep. Note the file and line range |
 | **Mixed concerns** | Files mixing business logic with I/O, UI with data fetching, config with runtime logic |
+| **Sequential async I/O** | Multiple independent `await` calls in sequence where `Promise.all`/`asyncio.gather` would work. Note the file and estimated concurrency gain |
+| **Unbounded data loading** | Queries without `LIMIT`, array operations on full datasets, API responses with no pagination |
 
 For each candidate, record:
 - **File** and **line range** (be specific — `src/utils/parse.ts:45-112`, not just "parse.ts")
@@ -44,6 +46,19 @@ For each candidate, record:
 - **Pattern** (which category from the table above)
 - **What's wrong** (1 sentence — be concrete)
 - **Suggested fix** (1 sentence — be actionable)
+
+### Step 3.5: Security Smell Scan
+
+Scan for obvious security anti-patterns. This is not a full audit (use the code-review action for that) — it catches low-hanging risks:
+
+| Smell | What to look for |
+|-------|-----------------|
+| **Hardcoded secrets** | API keys, tokens, passwords, connection strings in source (not `.env`) |
+| **Unescaped user input** | `dangerouslySetInnerHTML`, raw SQL interpolation, `eval()` with variables |
+| **Disabled security** | `rejectUnauthorized: false`, CORS `*` on authenticated endpoints, disabled CSRF |
+| **Debug artifacts in production paths** | `console.log` of sensitive data, `DEBUG=true` in non-dev config |
+
+For each smell, record: file, line range, smell category, risk level (High/Medium), and a one-sentence suggested fix.
 
 ### Step 4: Identify Low-Hanging Tests
 
@@ -123,6 +138,13 @@ Produce a markdown report with this structure:
 | 1 | `src/utils/format.ts` | `formatCurrency` | Pure function | No side effects, takes number + locale, returns string | `formatCurrency(1234.5, 'en-US')` → `'$1,234.50'` | Trivial | High |
 | ... | | | | | | | |
 
+## Security Smells
+
+| # | File | Lines | Smell | Risk | Suggested Fix |
+|---|------|-------|-------|------|---------------|
+| 1 | `src/db/query.ts:23` | 1 | Unescaped user input | High | Use parameterized query instead of string interpolation |
+| ... | | | | | |
+
 ## Already Covered
 
 {List any areas where tests or clean patterns already exist — give credit where it's due. If a module is well-tested, say so. This prevents wasted effort re-analyzing good code.}
@@ -137,6 +159,17 @@ Produce a markdown report with this structure:
 >   do work [describe the fix]     Capture as a request
 >   do work run                    Process the queue
 ```
+
+## Common Rationalizations
+
+Guard against these when producing the report:
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "This file is long so it must be a refactoring candidate" | Check if the length serves a purpose (state machine, migration, parser) | Length alone is not a smell |
+| "No quick wins found" after scanning 3 files | Verify you scanned all source files in scope | Small scan = invisible problems |
+| "This looks like dead code" | Grep for dynamic references, re-exports, and framework conventions | Static analysis misses dynamic usage |
+| "I'll pad the report with low-impact findings" | Only report findings above the effort/impact threshold | Padding erodes trust in the report |
 
 ## Rules
 
