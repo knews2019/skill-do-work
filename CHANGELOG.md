@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.5 — The Routing Nudge (2026-04-08)
+
+Tightened a couple of rough edges found during another 20-commit review pass: one broken step reference and one routing ambiguity that could send users to the wrong action.
+
+- `SKILL.md`: Plain `do work code review` now routes to the standalone `code-review` action (interactive scope selection) instead of `review work`
+- `SKILL.md`: Removed the conflicting `code review` trigger from `review work` keywords and updated verb-reference notes
+- `actions/code-review.md`: Fixed the follow-up REQ cross-reference from Step 9 → Step 10
+
 ## 0.51.4 — The Deeper Cuts (2026-04-08)
 
 Cherry-picked five improvements from a Graph-of-Thought analysis of the bkb action — better cross-source awareness, smarter queries, and fewer deferred problems. Also fixed a bug where clustered resolve left contradictions permanently open.
@@ -1360,4 +1368,3 @@ The beginning. Core task capture and processing system with do/work routing, REQ
 - Work loop processing with `do work run`
 - REQ file lifecycle: pending → working → archived
 - Git-aware: auto-commits after each completed request
-
