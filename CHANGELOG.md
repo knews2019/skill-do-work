@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.52.3 — The Full Map (2026-04-09)
+
+Tutorial's "File structure" topic now covers the knowledge base layout (raw/, wiki/, agents/) alongside the do-work/ directory.
+
+- `actions/tutorial.md`: Expand Topic 8 guidance to include KB directory structure
+
 ## 0.52.2 — The Plain Prompt (2026-04-09)
 
 Tutorial now uses plain text menus instead of the ask-user tool. The ask tool caps at 4 options, which truncated the 8-topic interactive tour. Menus are printed as text and the agent waits for the user to reply naturally.

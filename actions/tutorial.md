@@ -303,7 +303,7 @@ Explain what prime files are (AI context documents), when to create them, what t
 Explain standalone reviews (not tied to a REQ), scoping via prime files or directories, what gets checked (security, patterns, performance, accessibility). Key commands: `code-review [scope]`, `ui-review [scope]`.
 
 **Topic 8 — File structure:**
-Walk through the `do-work/` directory: `user-requests/`, `queue/`, `active/`, `archive/`, and how files move between them. Explain frontmatter fields and status transitions.
+Walk through the `do-work/` directory: `user-requests/`, `queue/`, `active/`, `archive/`, and how files move between them. Explain frontmatter fields and status transitions. Also cover the knowledge base layout (`kb/` or `knowledge-base/`): `raw/` (inbox → capture pipeline), `wiki/` (master index, topics, concepts, entities, sources, daily logs), and `agents/` (crew role definitions).
 
 ### Step T-3: Exit
 
