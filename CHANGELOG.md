@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.8 — The Trim Down (2026-04-09)
+
+Condensed the help menu from ~80 lines to ~35. Removed duplicate entries, collapsed BKB sub-commands into a single line, reduced per-action examples, and merged related sections.
+
+- `SKILL.md`: Help menu compressed — grouped related actions, eliminated duplicates (clarify listed twice), collapsed 12 BKB examples into inline sub-command list
+
 ## 0.51.7 — The Cross-Check (2026-04-08)
 
 Fixes stale references and underspecified instructions found during a 20-commit code review.

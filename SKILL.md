@@ -131,83 +131,46 @@ When invoked with no arguments or with `help` (`do work`, `do work help`), show 
 ```
 do-work — task queue for agentic coding tools
 
-  Capture requests:
+  Capture & pipeline:
     do work capture request: add dark mode to settings
-    do work capture request: the search is slow and the header is misaligned
-    do work capture request: [paste meeting notes, specs, or a screenshot]
-
-  Full pipeline (end-to-end):
-    do work pipeline add dark mode    Investigate → capture → verify → run → review
-    do work full add dark mode        Alias for pipeline
-    do work pipeline                  Resume an active pipeline
-    do work pipeline status           Show pipeline progress
+    do work pipeline add dark mode      End-to-end: investigate → capture → verify → run → review
+    do work pipeline status             Show progress / resume active pipeline
 
   Process the queue:
-    do work run                 Triage, build, test, review — one REQ at a time
-    do work continue            Resume after a break (also: go, start, begin)
-    do work clarify             Review pending questions from completed work
+    do work run                         Triage, build, test, review — one REQ at a time
+    do work clarify                     Review pending questions from completed work
 
   Verify & review:
-    do work verify requests     Check capture quality against original input
-    do work review work         Review completed work (requirements + code + acceptance)
+    do work verify requests             Check capture quality against original input
+    do work review work                 Review completed work (requirements + code + acceptance)
+    do work code-review [scope]         Standalone codebase review (prime refs, dirs, or both)
+    do work ui-review [scope]           Read-only UI quality validation
 
-  Code review (standalone):
-    do work code-review                   Review codebase (interactive scope selection)
-    do work code-review prime-auth        Review everything prime-auth.md touches
-    do work code-review src/api/          Review a directory
-    do work code-review prime-auth src/   Review prime file scope + directory combined
+  Present & inspect:
+    do work present work                Client brief, architecture, video, HTML explainer
+    do work inspect                     Explain uncommitted changes (what, why, readiness)
 
-  Present to client:
-    do work present work        Generate client brief, architecture, video, and interactive HTML explainer
-    do work present all         Portfolio summary of all completed work
+  Scan & improve:
+    do work quick-wins [dir]            Refactoring opportunities and low-hanging tests
+    do work prime create src/auth/      Generate a prime file via interactive Q&A
+    do work prime audit                 Audit prime files for staleness and broken links
 
-  Scan for improvements:
-    do work quick-wins          Scan cwd for refactoring and test opportunities
-    do work quick-wins src/     Scan a specific directory
-
-  Prime files:
-    do work prime create src/auth/    Generate a prime file via interactive Q&A
-    do work prime audit               Audit all prime files for staleness and broken links
-
-  UI review (read-only):
-    do work ui-review                     Validate UI quality (interactive scope selection)
-    do work ui-review src/components/     Validate a directory
-    do work ui-review prime-dashboard     Validate everything a prime file touches
-
-  Knowledge base (aliases: bkb, kb, build knowledge base, knowledge base):
-    do work bkb init              Initialize a new LLM knowledge base
-    do work bkb triage            Sort inbox items into capture directories
-    do work bkb ingest            Compile sources into wiki pages
-    do work bkb query [question]  Search the wiki and synthesize an answer
-    do work bkb lint              Health check the wiki
-    do work bkb resolve           Resolve flagged contradictions
-    do work bkb close             Finalize daily log, refresh overview
-    do work bkb status            Show KB stats and pending items
-    do work bkb defrag            Weekly structural maintenance — split/merge clusters
-    do work bkb garden            Audit metadata layer — relationships and cross-refs
-    do work bkb rollup            Generate periodic summary from daily logs
-    do work bkb crew              Manage custom agents for the knowledge base
+  Knowledge base:
+    do work bkb [sub]                   Sub-commands: init | triage | ingest | query | lint |
+                                        resolve | close | status | defrag | garden | rollup | crew
 
   Setup:
-    do work install-ui-design   Install the frontend-design skill for production-grade UI
-    do work install-bowser      Install Playwright CLI + Bowser skill for browser automation
+    do work install-ui-design           Frontend-design skill for production-grade UI
+    do work install-bowser              Playwright CLI + Bowser for browser automation
 
-  Inspect changes:
-    do work inspect             Explain all uncommitted changes (what, why, readiness)
-    do work inspect REQ-005     Explain changes for a specific REQ
-    do work inspect UR-003      Explain changes for all REQs under a UR
-
-  Diagnostics:
-    do work forensics           Pipeline diagnostics — stuck work, hollow completions, orphaned URs
-
-  Other actions:
-    do work clarify             Answer pending questions from completed work
-    do work cleanup             Consolidate the archive
-    do work commit              Analyze and commit uncommitted files atomically
-    do work version             Check version + last 5 skill releases
-    do work update              Check for upstream updates
-    do work recap               Last 5 completed URs with their REQs
-    do work help               Show this menu
+  Maintenance & info:
+    do work cleanup                     Consolidate the archive
+    do work commit                      Analyze and commit files atomically
+    do work forensics                   Pipeline diagnostics — stuck work, orphaned URs
+    do work version                     Version + last 5 releases
+    do work update                      Check for upstream updates
+    do work recap                       Last 5 completed URs with their REQs
+    do work help                        Show this menu
 ```
 
 Do not ask "Start the work loop?" — just print the help menu and wait.
