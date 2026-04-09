@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.52.1 — The Tidy Menu (2026-04-09)
+
+Moved tutorial to a single line in the "Maintenance & info" section, right before `help`. Keeps the help menu compact.
+
+- `SKILL.md`: Consolidate tutorial from separate "Learn" section into one line before `help`
+
 ## 0.52.0 — The Onboarding (2026-04-09)
 
 New `do work tutorial` command with four modes: quick-start (hands-on walkthrough), concepts (mental model explainer), recipes (scenario → command cheat sheet), and interactive tour (menu-driven deep dives). Bare invocation asks which mode to run.

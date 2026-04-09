@@ -166,10 +166,6 @@ do-work — task queue for agentic coding tools
     do work install-ui-design           Frontend-design skill for production-grade UI
     do work install-bowser              Playwright CLI + Bowser for browser automation
 
-  Learn:
-    do work tutorial                    Pick a tutorial (quick-start, concepts, recipes, tour)
-    do work tutorial quick-start        Hands-on walkthrough of capture → run → review
-
   Maintenance & info:
     do work cleanup                     Consolidate the archive
     do work commit                      Analyze and commit files atomically
@@ -177,6 +173,7 @@ do-work — task queue for agentic coding tools
     do work version                     Version + last 5 releases
     do work update                      Check for upstream updates
     do work recap                       Last 5 completed URs with their REQs
+    do work tutorial                     Learn the skill (quick-start, concepts, recipes, tour)
     do work help                        Show this menu
 
   Tip: add "help" to any command for details — e.g. do work commit help
