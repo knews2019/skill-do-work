@@ -42,6 +42,9 @@ Input validation, auth checks, data exposure, injection vectors, dependency conc
 ### Test Coverage
 Existing tests for scoped code, coverage gaps, test quality, missing test categories.
 
+### Performance
+Hot-path anti-patterns: N+1 queries, unbounded queries, sequential I/O, missing caching, bundle bloat, no list virtualization, synchronous blocking, overfetching. Only flags plausibly hot paths.
+
 ### Automated Checks
 Runs the project's linter, type checker, and relevant tests against the scoped files.
 

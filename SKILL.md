@@ -150,6 +150,7 @@ do-work — task queue for agentic coding tools
     do work verify requests             Check capture quality against original input
     do work review work                 Review completed work (requirements + code + acceptance)
     do work code-review [scope]         Standalone codebase review (prime refs, dirs, or both)
+                                        ⚠ "code review" (no hyphen, no scope) routes to review-work
     do work ui-review [scope]           Read-only UI quality validation
 
   Present & inspect:
