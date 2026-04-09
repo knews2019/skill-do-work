@@ -307,3 +307,27 @@ Do NOT auto-create REQs without confirmation. The report itself is the primary o
 - **Skip vendored and generated files.** Same exclusions as quick-wins.
 - **Be honest.** If the code is clean, say so. A short report with real findings beats a long report with filler. An "Excellent" rating with zero findings is a valid outcome.
 - **Stay in scope.** Only review files within the resolved scope. Don't wander into unrelated parts of the codebase. If you notice something outside scope that's concerning, mention it briefly in a "Notes" section but don't score it.
+
+## Common Rationalizations
+
+Guard against these when writing the review report:
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "This pattern is fine because it's used elsewhere in the codebase" | Check if the existing usage is itself an anti-pattern | Widespread problems are still problems |
+| "No security issues found" after a surface scan | Trace every user input to its sink | Surface scans miss injection, XSS, and SSRF |
+| "Performance is probably fine" | Check if the code is on a hot path before skipping | "Probably" is not profiling |
+| "Tests exist so the code is correct" | Read what the tests actually assert | `expect(true).toBe(true)` is a test that exists |
+| "The architecture is too big to evaluate in this review" | Evaluate the scoped slice; note what's out of scope | Partial evaluation beats no evaluation |
+| "I already noted enough findings" | Check coverage of all 6 review dimensions | Premature stopping misses entire categories |
+
+## Verification Checklist
+
+Before finalizing the report, verify:
+
+- [ ] All 6 review dimensions attempted: Consistency, Architecture, Security, Performance, Test Coverage, Automated Checks
+- [ ] Every finding has file:line references and shows concrete code patterns (not abstract descriptions)
+- [ ] Health rating matches the evidence (no "Excellent" with Critical findings, no "Concerning" with only Nits)
+- [ ] Recommended Actions are ordered by severity then effort-to-impact ratio
+- [ ] Strengths section has 2-3 genuine positives (not filler)
+- [ ] No findings that the project's configured linter/type-checker would already catch
