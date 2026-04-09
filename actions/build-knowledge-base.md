@@ -14,7 +14,7 @@ The `bkb` command accepts a sub-command as its first argument. If no sub-command
 | `triage` | Sort inbox items into capture subdirectories, update the queue | Sorter |
 | `ingest [target]` | Compile source(s) into wiki pages (all ready, specific file, or path) | Compiler → Connector → Reviewer |
 | `query [question]` | Search the wiki and synthesize an answer | Seeker |
-| `lint [scope]` | Health check — contradictions, orphans, broken links, stale claims | Librarian + Reviewer + Connector + Editor |
+| `lint [scope]` | Health check — contradictions, orphans, broken links, stale claims | Architect + Librarian + Reviewer + Connector + Editor |
 | `resolve` | Walk through open contradictions and resolve them one by one | Librarian + Reviewer |
 | `close` | Finalize the daily log, verify indexes, report summary | Librarian + Editor |
 | `rollup` | Monthly rollup — trends, volume stats, recommendations | Librarian + Editor |

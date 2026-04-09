@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.51.5 — The Missing Architect (2026-04-08)
+
+Small but important dispatch fix: `bkb lint` now loads the Architect alongside the existing crew so structural/schema checks are consistently applied during lint runs.
+
+- `build-knowledge-base.md`: Added Architect to the lint crew dispatch table (`Architect + Librarian + Reviewer + Connector + Editor`)
+
 ## 0.51.4 — The Deeper Cuts (2026-04-08)
 
 Cherry-picked five improvements from a Graph-of-Thought analysis of the bkb action — better cross-source awareness, smarter queries, and fewer deferred problems. Also fixed a bug where clustered resolve left contradictions permanently open.
@@ -1360,4 +1366,3 @@ The beginning. Core task capture and processing system with do/work routing, REQ
 - Work loop processing with `do work run`
 - REQ file lifecycle: pending → working → archived
 - Git-aware: auto-commits after each completed request
-
