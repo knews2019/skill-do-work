@@ -17,6 +17,12 @@ Strengthens anti-rationalization guards, adds verification checklists, and deepe
 - `crew-members/backend.md`: Expanded with API resilience and performance awareness
 - `crew-members/performance.md`: New crew member covering Core Web Vitals, backend optimization, and bundle analysis
 
+## 0.51.8 — The Safe Exit (2026-04-09)
+
+Fix pipeline-guard stop hook crashing when jq is unavailable and no pipeline is active.
+
+- `hooks/pipeline-guard.sh`: Add `|| true` to grep fallback for `active` field so a no-match doesn't trigger `set -e` exit
+
 ## 0.51.7 — The Cross-Check (2026-04-08)
 
 Fixes stale references and underspecified instructions found during a 20-commit code review.
