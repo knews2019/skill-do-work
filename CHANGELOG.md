@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.57.1 — The Tidy Sweep (2026-04-10)
+
+Quick-wins cleanup: shell script hardening, broken link fix, and next-steps consolidation.
+
+- `hooks/pipeline-guard.sh`: Quoted command substitution (line 27), replaced `2>/dev/null` error suppression with numeric validation on PENDING comparison (line 53)
+- `actions/capture.md`: Fixed broken relative link on line 149 — replaced with inline code path
+- `next-steps.md`: Expanded generic bkb entry into 11 per-sub-command next-step blocks (moved from `build-knowledge-base.md`)
+- `actions/build-knowledge-base.md`: Removed embedded next-steps section (88 lines) — canonical source is now `next-steps.md`
+
 ## 0.57.0 — The Deep Dive (2026-04-10)
 
 New `do work deep-explore` action for multi-round structured exploration of concepts. Spawns divergent/convergent subagent dialogue (Free Thinker, Grounder, Writer, optional Explorer) to develop seed ideas into vision documents and idea briefs. Also renames `ideate` to `scan-ideas` for clarity — `ideate` still works as a trigger keyword.

@@ -24,7 +24,7 @@
 
 set -euo pipefail
 
-INPUT=$(cat)
+INPUT="$(cat)"
 
 # Never loop on hook-driven continuations
 if echo "$INPUT" | grep -q '"stop_hook_active"' 2>/dev/null; then
@@ -50,7 +50,7 @@ else
   [ -n "$ACTIVE" ] && ACTIVE="true" || ACTIVE="false"
 fi
 
-if [ "$ACTIVE" = "true" ] && [ "$PENDING" -gt 0 ] 2>/dev/null; then
+if [ "$ACTIVE" = "true" ] && [[ "$PENDING" =~ ^[0-9]+$ ]] && [ "$PENDING" -gt 0 ]; then
   echo "{\"decision\": \"block\", \"reason\": \"Pipeline active with $PENDING steps remaining. Next: $NEXT. Continue the pipeline.\"}"
   exit 2
 fi
