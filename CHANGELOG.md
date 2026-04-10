@@ -4,7 +4,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.55.1 — The Safety Net (2026-04-10)
+## 0.56.1 — The Safety Net (2026-04-10)
 
 Three gaps closed in the pipeline queue continuation (Step 5a).
 
@@ -12,13 +12,21 @@ Three gaps closed in the pipeline queue continuation (Step 5a).
 - Max iteration cap: continuation loop limited to 3 cycles to prevent runaway loops from review-generated follow-ups
 - Explicit review targeting: continuation now records pending REQ IDs before dispatching run, then passes them to the review action by ID (or by shared UR)
 
-## 0.55.0 — The Clean Sweep (2026-04-10)
+## 0.56.0 — The Clean Sweep (2026-04-10)
 
 Pipeline now drains the full queue after completing its primary request. If pending REQs remain (from prior captures, follow-ups, or review-generated work), the pipeline automatically continues with run + review cycles until the queue is empty.
 
 - `actions/pipeline.md`: Added Step 5a (Queue Continuation) — scans for remaining `status: pending` REQs after pipeline completion and processes them in a loop
 - `actions/pipeline.md`: Added continuation notice to Output Format section and drain rule to Rules section
 - `next-steps.md`: Updated pipeline completion label to reflect queue-drained state
+
+## 0.55.0 — The Outside Eye (2026-04-10)
+
+Enriched security, accessibility, and testing guidance after reviewing the claude-skills-collection catalog and cross-referencing with Trail of Bits skills, claude-a11y-skill, and testing-anti-patterns approaches.
+
+- `crew-members/security.md`: New "Static Analysis Tooling" section — tool detection table (CodeQL, Semgrep, Bandit, Brakeman, gosec), what SAST catches vs misses, variant analysis concept, guidance to use project's existing tools
+- `actions/ui-review.md`: New "Automated Accessibility Tooling" subsection in Step 7 — tool detection for eslint-plugin-jsx-a11y, axe-core, Pa11y with run commands and integration guidance
+- `crew-members/testing.md`: Three new anti-patterns — test-per-method symmetry, catch-all assertions, ignoring test output
 
 ## 0.54.1 — The Sharp Eye (2026-04-09)
 

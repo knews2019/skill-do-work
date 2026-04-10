@@ -133,6 +133,37 @@ Apply the relevant block based on the project's stack. If multiple apply, check 
 - `crypto/rand` for security-critical randomness — not `math/rand`
 - Context-based timeouts on HTTP handlers to prevent slowloris
 
+## Static Analysis Tooling
+
+When the project has static analysis tools available, use them to catch vulnerabilities that manual review misses. Check for these before relying solely on manual inspection.
+
+### Tool Detection
+
+| Indicator | Tool | Run Command |
+|-----------|------|-------------|
+| `.github/codeql/`, `codeql-config.yml`, CodeQL workflow in CI | CodeQL | `codeql database create db --language=<lang> && codeql database analyze db` |
+| `.semgrep.yml`, `semgrep` in CI config or `package.json`/`Makefile` | Semgrep | `semgrep --config=auto .` or `semgrep --config=p/owasp-top-ten .` |
+| `bandit.yml`, `bandit` in CI or `pyproject.toml` | Bandit (Python) | `bandit -r src/` |
+| `brakeman` in Gemfile or CI | Brakeman (Ruby/Rails) | `brakeman --no-pager` |
+| `gosec` in CI or Makefile | gosec (Go) | `gosec ./...` |
+
+**Rule:** Use whatever the project already has configured. Don't introduce a new SAST tool unless the REQ specifically asks for it. If no tool is configured, `semgrep --config=auto` is the lowest-friction option for a one-off scan.
+
+### What Static Analysis Catches That Manual Review Misses
+
+- **Taint tracking**: Data flow from user input (sources) to dangerous operations (sinks) across multiple files and function calls
+- **Known vulnerability patterns**: Regex-based and AST-based matching against catalogs of thousands of known-bad code patterns
+- **Variant analysis**: Once one vulnerability is found, tools can search for structurally similar code elsewhere in the codebase
+- **Dependency-level issues**: Known CVEs in transitive dependencies that don't appear in direct `import` statements
+
+### What Static Analysis Misses That Manual Review Catches
+
+- **Business logic flaws**: Authorization bypass through valid-but-wrong sequences of operations
+- **Design-level issues**: Missing rate limits, overly broad permissions, insecure defaults
+- **Context-dependent vulnerabilities**: Code that's safe in one context but dangerous when called from a different path
+
+**Use both.** Static analysis finds the needles; manual review evaluates the haystack.
+
 ## Severity Classification
 
 When reporting security findings, classify by severity:
