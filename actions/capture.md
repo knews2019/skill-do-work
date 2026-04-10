@@ -75,6 +75,7 @@ user_request: UR-001
 domain: frontend  # choose one: frontend, backend, ui-design, or general
 prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 tdd: false  # set true when test-first approach applies (see heuristic below)
+suggested_spec:  # optional — spec template name if one clearly matches (e.g., "api-endpoint", "bug-fix")
 ---
 
 # [Brief Title]
@@ -146,7 +147,7 @@ Open Questions use checkbox syntax with recommended choices. Each question inclu
 Only add questions where the user's intent is genuinely unclear — don't add questions the builder can answer by reading the codebase.
 
 ## Full Context
-See [user-requests/UR-NNN/input.md](./user-requests/UR-NNN/input.md) for complete verbatim input.
+See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
 ```
 
 **Additional frontmatter for complex requests:**
@@ -189,6 +190,7 @@ Read the user's input. Determine:
 - **Domain classification** — infer the primary technical domain of the request (e.g., frontend, backend, ui-design, or general) so the downstream builder knows which JIT rules to load.
 - **TDD assessment** — determine if a test-first approach applies. Heuristic: "Can you write `expect(fn(input)).toBe(output)` before writing `fn`?" If yes (pure logic, data transformations, API handlers, utility functions) → set `tdd: true`. If no (UI layout, config changes, copy/content, glue code, refactoring) → omit or set `tdd: false`. When in doubt, leave false — the builder can still write tests without formal TDD mode.
 - **Red-green proof inference** — for `tdd: true` requests and any clearly behavioral bug fix or feature, infer the smallest RED prompt/case and GREEN outcome in user-visible terms. Capture how we know the behavior is missing or failing now, and what observable result turns it GREEN later. This is not test code — it is the proof target. Treat this as essential: a strong RED state makes planning, implementation, and review dramatically easier.
+- **Spec hint** — if the request clearly matches a common task type (API endpoint, UI component, refactor, bug fix), set `suggested_spec` in frontmatter to the matching template name. This is a hint for the work action — not binding. If the match is ambiguous or no spec fits, leave it empty.
 - **Prime file routing** — check the project's root `CLAUDE.md` (or similar instructions) to see if there are defined prime files that match the requested utility. Note them for inclusion.
 
 ### Step 2: Check for Duplicates

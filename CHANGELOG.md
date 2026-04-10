@@ -4,7 +4,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.57.2 — The Paved Path (2026-04-10)
+## 0.60.3 — The Paved Path (2026-04-10)
 
 Pending REQ files now live in `do-work/queue/` instead of `do-work/` root. The `queue/` path is what people kept writing instinctively — paving the cow path prevents a recurring class of stale-path bugs.
 
@@ -15,7 +15,7 @@ Pending REQ files now live in `do-work/queue/` instead of `do-work/` root. The `
 - `CLAUDE.md`: Queue Path Convention section updated to document `do-work/queue/` as canonical location
 - `README.md`, `docs/capture-guide.md`, `docs/work-guide.md`, `docs/cleanup-guide.md`, `docs/forensics-guide.md`: Directory diagrams and path references updated
 
-## 0.57.1 — The Clean Ledger (2026-04-10)
+## 0.60.2 — The Clean Ledger (2026-04-10)
 
 Changelog and action file hygiene — fixes that prevent recurring errors.
 
@@ -25,6 +25,38 @@ Changelog and action file hygiene — fixes that prevent recurring errors.
 - `actions/scan-ideas.md`, `actions/deep-explore.md`: Fixed stale `do-work/queue/` path → `do-work/` (queue lives at root, not a subdirectory)
 - `CLAUDE.md`: Added version dedup guard (verify new version > existing before committing) and codename uniqueness check
 - `CLAUDE.md`: Added Queue Path Convention section documenting that REQ files live at `do-work/` root
+
+## 0.60.1 — The Clear Head (2026-04-10)
+
+Reverted wave-based pipeline processing — it duplicated what `do work run` already handles natively (sequential queue draining with fresh agents per REQ). Pipeline Step 5a is back to the original simple continuation loop.
+
+- `actions/pipeline.md`: Removed wave-based processing (Step 5a.1), wave output formats, wave rules. Restored original Step 5a with 3-cycle cap.
+
+## 0.60.0 — The Many Lenses (2026-04-10)
+
+Per-agent approach directives for multi-REQ processing. When sub-agents work on parallel or sequential REQs, each gets a distinct implementation lens (Correctness-First, Simplicity-First, etc.) to improve solution diversity and reduce convergent thinking.
+
+- `crew-members/approach-directives.md`: New file — 8 implementation lenses, assignment rules, and sub-agent context template
+- `actions/work.md`: Added approach directive assignment before sub-agent dispatch in Step 6
+- `actions/review-work.md`: Added Directive Alignment Check in Step 6 — evaluates whether the assigned lens was applied and flags blind spots
+
+## 0.59.0 — The Quality Blueprint (2026-04-10)
+
+New `specs/` directory with reusable specification templates for common task types. Specs define output structure, quality standards, implementation checklists, and common pitfalls — loaded automatically during work when the REQ matches a template.
+
+- `specs/`: New directory with README and four templates: `api-endpoint.md`, `ui-component.md`, `refactor.md`, `bug-fix.md`
+- `actions/work.md`: Added Step 3.7 (Spec Loading) — checks `specs/` for matching templates after triage, passes guidance to builder and reviewer
+- `actions/capture.md`: Added optional `suggested_spec` frontmatter field and spec hint inference during parsing
+- `CLAUDE.md`: Updated project structure to include `specs/` directory
+
+## 0.57.1 — The Tidy Sweep (2026-04-10)
+
+Quick-wins cleanup: shell script hardening, broken link fix, and next-steps consolidation.
+
+- `hooks/pipeline-guard.sh`: Quoted command substitution (line 27), replaced `2>/dev/null` error suppression with numeric validation on PENDING comparison (line 53)
+- `actions/capture.md`: Fixed broken relative link on line 149 — replaced with inline code path
+- `next-steps.md`: Expanded generic bkb entry into 11 per-sub-command next-step blocks (moved from `build-knowledge-base.md`)
+- `actions/build-knowledge-base.md`: Removed embedded next-steps section (88 lines) — canonical source is now `next-steps.md`
 
 ## 0.57.0 — The Deep Dive (2026-04-10)
 

@@ -141,11 +141,89 @@ Next steps:
   do work clarify             Continue answering (if skipped any)
 ```
 
-**After build knowledge base:**
+**After bkb init:**
 ```
 Next steps:
-  do work bkb [next-subcommand]  Continue KB workflow (triage → ingest → query → close)
-  do work bkb status             Check KB state
+  Drop files into <path>/raw/inbox/
+  do work bkb triage            Sort inbox items
+  do work bkb status            Check KB state
+```
+
+**After bkb triage:**
+```
+Next steps:
+  do work bkb ingest            Compile ready sources into wiki
+  do work bkb ingest <file>     Ingest a specific source
+```
+
+**After bkb ingest:**
+```
+Next steps:
+  do work bkb query [question]  Ask the wiki a question
+  do work bkb lint              Health check after ingestion
+  do work bkb close             Finalize the day
+```
+
+**After bkb query:**
+```
+Next steps:
+  do work bkb ingest            Add more sources
+  do work bkb lint              Health check
+```
+
+**After bkb lint:**
+```
+Next steps:
+  do work bkb resolve           Resolve flagged contradictions
+  do work bkb defrag            Optimize structure (weekly)
+  do work bkb garden            Audit relationships and clusters
+  do work bkb ingest            Address gaps with new sources
+  do work bkb close             Finalize the day
+```
+
+**After bkb resolve:**
+```
+Next steps:
+  do work bkb lint              Verify fixes
+  do work bkb close             Finalize the day
+```
+
+**After bkb close:**
+```
+Next steps:
+  do work bkb rollup            Generate monthly summary (if end of month)
+  do work bkb defrag            Weekly structural maintenance
+  do work bkb status            Review KB state
+```
+
+**After bkb rollup:**
+```
+Next steps:
+  do work bkb lint full         Full integrity check
+  do work bkb status            Review KB state
+```
+
+**After bkb defrag:**
+```
+Next steps:
+  do work bkb lint              Verify structural integrity after changes
+  do work bkb garden            Check relationship hygiene
+  do work bkb close             Finalize the day
+```
+
+**After bkb garden:**
+```
+Next steps:
+  do work bkb defrag            Apply structural changes if needed
+  do work bkb resolve           Resolve any flagged issues
+  do work bkb close             Finalize the day
+```
+
+**After bkb crew (any action):**
+```
+Next steps:
+  do work bkb crew              Review the full agent roster
+  do work bkb status            Check KB state
 ```
 
 **After tutorial:**
