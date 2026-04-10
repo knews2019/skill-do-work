@@ -34,6 +34,12 @@ actions/              # Action files (each is a standalone prompt)
   build-knowledge-base.md # LLM knowledge base — init, triage, ingest, query, lint, and more
   tutorial.md          # Interactive tutorials — quick start, concepts, recipes, guided tour
   sample-archived-req.md # Example of a fully processed REQ file (reference only)
+specs/                # Reusable specification templates for common task types
+  README.md           # What specs are, how to use them, how to create new ones
+  api-endpoint.md     # Spec template for building API endpoints
+  ui-component.md     # Spec template for frontend UI components
+  refactor.md         # Spec template for refactoring tasks
+  bug-fix.md          # Spec template for bug fixes
 crew-members/         # Domain-specific rules loaded by work action
 hooks/                # Optional hook scripts (platform-specific, installable)
   pipeline-guard.sh   # Claude Code stop hook — prevents stopping mid-pipeline

@@ -4,6 +4,29 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.60.1 — The Clear Head (2026-04-10)
+
+Reverted wave-based pipeline processing — it duplicated what `do work run` already handles natively (sequential queue draining with fresh agents per REQ). Pipeline Step 5a is back to the original simple continuation loop.
+
+- `actions/pipeline.md`: Removed wave-based processing (Step 5a.1), wave output formats, wave rules. Restored original Step 5a with 3-cycle cap.
+
+## 0.60.0 — The Many Lenses (2026-04-10)
+
+Per-agent approach directives for multi-REQ processing. When sub-agents work on parallel or sequential REQs, each gets a distinct implementation lens (Correctness-First, Simplicity-First, etc.) to improve solution diversity and reduce convergent thinking.
+
+- `crew-members/approach-directives.md`: New file — 8 implementation lenses, assignment rules, and sub-agent context template
+- `actions/work.md`: Added approach directive assignment before sub-agent dispatch in Step 6
+- `actions/review-work.md`: Added Directive Alignment Check in Step 6 — evaluates whether the assigned lens was applied and flags blind spots
+
+## 0.59.0 — The Quality Blueprint (2026-04-10)
+
+New `specs/` directory with reusable specification templates for common task types. Specs define output structure, quality standards, implementation checklists, and common pitfalls — loaded automatically during work when the REQ matches a template.
+
+- `specs/`: New directory with README and four templates: `api-endpoint.md`, `ui-component.md`, `refactor.md`, `bug-fix.md`
+- `actions/work.md`: Added Step 3.7 (Spec Loading) — checks `specs/` for matching templates after triage, passes guidance to builder and reviewer
+- `actions/capture.md`: Added optional `suggested_spec` frontmatter field and spec hint inference during parsing
+- `CLAUDE.md`: Updated project structure to include `specs/` directory
+
 ## 0.57.1 — The Tidy Sweep (2026-04-10)
 
 Quick-wins cleanup: shell script hardening, broken link fix, and next-steps consolidation.

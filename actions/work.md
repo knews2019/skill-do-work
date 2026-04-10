@@ -263,6 +263,19 @@ The follow-up REQs for builder-decided questions are created during **Step 8 (Ar
 
 If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section exists, skip this step entirely.
 
+### Step 3.7: Spec Loading (optional)
+
+After triage, check if a specification template matches this REQ's domain or task type.
+
+1. **Match by task type:** If the REQ's title or What section clearly indicates a task type (API endpoint, UI component, refactor, bug fix), check `specs/` for a matching template (e.g., `specs/api-endpoint.md`, `specs/bug-fix.md`).
+2. **Match by suggested spec:** If the REQ's frontmatter contains a `suggested_spec` field (set during capture), check `specs/` for that template.
+3. **If a matching spec exists**, read it and use it to inform:
+   - The implementation checklist order (pass to the planning or implementation agent)
+   - Quality standards to verify against (pass to the review step)
+   - Common pitfalls to watch for (include in the builder's context)
+4. **The spec is guidance, not override** — the REQ's specific requirements always take priority. If the REQ's requirements conflict with a spec's recommendations, follow the REQ.
+5. **If no matching spec exists**, proceed normally. Specs are optional — their absence never blocks work.
+
 ### Step 4: Planning (Route C only)
 
 **Route C:** Spawn a **Plan agent** with the request content, project context, the `crew-members/[domain].md` file (if domain is missing or the file doesn't exist, skip loading it), and any files listed in the `prime_files` array. Instruct it to use the prime files as the strict index for discovering the source of truth. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
@@ -372,6 +385,8 @@ Quick environment sanity check before the builder starts coding. All checks are 
 2. **Conditionally load** `crew-members/[domain].md` — only if the REQ's `domain` frontmatter is set AND the file exists (e.g., `domain: ui-design` → `ui-design.md`)
 3. **Conditionally load** `crew-members/testing.md` — if the REQ has `tdd: true` in frontmatter, or `domain: testing`
 4. **If a rules file is missing**, proceed without it — never block on a missing rules file
+
+**Approach directive assignment (multi-REQ only):** If multiple REQs are being processed in parallel, read `crew-members/approach-directives.md` and assign each sub-agent a distinct directive from the pool. Include the directive in the sub-agent's context block. Record the assigned directive in the REQ's Implementation Summary section. For single-REQ processing, no directive is needed — skip this.
 
 Spawn a **general-purpose agent** with the loaded rules, any files listed in the `prime_files` array, and context appropriate to the route:
 
