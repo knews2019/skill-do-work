@@ -1,8 +1,3 @@
----
-name: scan-ideas
-description: "Use when the user wants ideas for what to build, improve, or explore next. Turns codebase analysis into actionable suggestions."
----
-
 # Scan-Ideas Action
 
 > **Part of the do-work skill.** Generates ideas for what to build, improve, or explore next. Turns codebase analysis and project context into actionable suggestions the user can capture as requests.

@@ -1,8 +1,3 @@
----
-name: cleanup
-description: "Use when the user wants to tidy the archive or at the end of the work loop. Consolidates loose files and organizes UR folders."
----
-
 # Cleanup Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to tidy the archive, or automatically at the end of the work loop. Consolidates loose files and ensures the archive is well-organized.

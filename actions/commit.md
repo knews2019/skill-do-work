@@ -1,8 +1,3 @@
----
-name: commit
-description: "Use when the user wants to commit accumulated uncommitted files. Analyzes changes, associates with REQs, and commits in atomic batches."
----
-
 # Commit Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to commit accumulated uncommitted files. Analyzes changes, associates them with existing REQs for traceability, groups the rest semantically, and commits everything in small atomic batches.

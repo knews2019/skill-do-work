@@ -1,8 +1,3 @@
----
-name: deep-explore
-description: "Use when the user wants to explore a concept in depth through multi-round structured dialogue between specialized subagents."
----
-
 # Deep-Explore Action
 
 > **Part of the do-work skill.** Explores a concept in depth through multi-round structured dialogue between specialized subagents — a Free Thinker (divergent generation), a Grounder (convergent evaluation), and a Writer (neutral synthesis). Produces idea briefs and a consolidated vision document.

@@ -1,8 +1,3 @@
----
-name: review-work
-description: "Use when reviewing completed work — requirements checking, code review, acceptance testing, and additional testing recommendations."
----
-
 # Review Work Action
 
 > **Part of the do-work skill.** Invoked automatically after work completes or manually when the user requests a review. Evaluates whether the work actually delivers what was requested — through requirements checking, code review, acceptance testing, and additional testing recommendations.

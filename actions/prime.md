@@ -1,8 +1,3 @@
----
-name: prime
-description: "Use when the user wants to create or audit prime files — AI context documents that index utility codebases for efficient navigation."
----
-
 # Prime Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to create or audit prime files. Prime files (`prime-*.md`) are AI context documents — semantic indexes that help an AI coder navigate a utility in minimum tokens.

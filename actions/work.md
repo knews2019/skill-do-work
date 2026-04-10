@@ -1,8 +1,3 @@
----
-name: work
-description: "Use when routing determines the user wants to process the queue. Triages pending requests by complexity and executes through plan-explore-build-test-review."
----
-
 # Work Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to process the queue. Processes pending requests from the `do-work/queue/` folder in your project.

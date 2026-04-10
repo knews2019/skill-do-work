@@ -1,8 +1,3 @@
----
-name: code-review
-description: "Use when the user wants a standalone codebase review not tied to the REQ queue. Evaluates consistency, patterns, security, and architecture."
----
-
 # Code Review Action
 
 > **Part of the do-work skill.** Standalone codebase review — not tied to the REQ/UR queue. Evaluates consistency, patterns, security, and architectural health across a scoped section of the codebase.

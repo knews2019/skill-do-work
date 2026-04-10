@@ -6,15 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ## 0.61.0 — The Bright Standard (2026-04-10)
 
-Adopted best practices from the agent-skills ecosystem — every action file now has machine-readable frontmatter, anti-rationalization guardrails, and verification checklists. Plus slash commands, a session-start hook, and contributor docs.
+Anti-rationalization guardrails, verification checklists, and routing clarity across action files. Plus a session-start hook, contributor docs, and crew-member personas.
 
-- All 24 action files: Added YAML frontmatter with `name` and `description` fields for machine-readable routing
 - 13 action files: Added Common Rationalizations tables, Red Flags sections, and Verification Checklists (capture, clarify, cleanup, commit, inspect, verify-requests, pipeline, forensics, prime, scan-ideas, present-work, work, quick-wins)
 - 10 action files: Added "When to Use / When NOT to Use" sections to commonly confused routes (review-work, code-review, verify-requests, inspect, commit, cleanup, forensics, scan-ideas, quick-wins, deep-explore)
-- `.claude/commands/`: 6 new slash commands — `/capture`, `/run`, `/review`, `/pipeline`, `/code-review`, `/status`
 - `hooks/session-start.sh` + `hooks/hooks.json`: SessionStart hook injects version, pending REQ count, and pipeline status
 - `crew-members/security.md`, `testing.md`, `debugging.md`: Added Role Identity sections for persona-driven implementation
-- `CLAUDE.md`: Updated action file template with frontmatter, When to Use, Common Rationalizations, Red Flags, and Verification Checklist conventions
+- `CLAUDE.md`: Updated action file template with When to Use, Common Rationalizations, Red Flags, and Verification Checklist conventions
 - `README.md`: Added token efficiency guidance and hooks installation section
 - New `CONTRIBUTING.md`: Human-facing contributor guide
 - New `docs/skill-anatomy.md`: Walkthrough of action file format, routing, and how pieces fit together

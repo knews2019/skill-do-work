@@ -1,8 +1,3 @@
----
-name: version
-description: "Use when the user asks about the current version, wants release notes, update checks, or a recap of recent work."
----
-
 # Version Action
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps.

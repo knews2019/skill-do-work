@@ -1,8 +1,3 @@
----
-name: inspect
-description: "Use when the user wants to understand uncommitted changes. Read-only — explains what changed, traces to REQs, and assesses commit readiness."
----
-
 # Inspect Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to understand uncommitted changes. Read-only — examines the working tree, explains what changed, traces changes to REQs, and assesses commit readiness. When scoped to a REQ or UR, also inspects committed files from the Implementation Summary for a complete picture.

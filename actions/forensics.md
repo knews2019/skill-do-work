@@ -1,8 +1,3 @@
----
-name: forensics
-description: "Use when the user wants pipeline diagnostics. Read-only — examines do-work system state to detect stuck work, hollow completions, and orphaned URs."
----
-
 # Forensics Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants pipeline diagnostics. Read-only — examines the state of the do-work system without modifying anything.

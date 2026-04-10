@@ -1,8 +1,3 @@
----
-name: tutorial
-description: "Use when the user wants to learn how the skill works. Four interactive modes: quick start, concepts, recipes, and guided tour."
----
-
 # Tutorial Action
 
 > **Part of the do-work skill.** Interactive tutorials that teach users how the skill works. Four modes cover different learning styles — from hands-on walkthrough to reference cheat sheet.

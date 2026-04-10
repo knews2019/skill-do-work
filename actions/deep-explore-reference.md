@@ -1,8 +1,3 @@
----
-name: deep-explore-reference
-description: "Companion file for deep-explore. Contains subagent persona prompts, convergence rubric, state schema, and error handling. Not invoked directly."
----
-
 # Deep-Explore Reference
 
 > **Companion file for `deep-explore.md`.** Contains subagent persona prompts, convergence rubric, source capture procedure, state file schema, and error handling. Not invoked directly — loaded by the orchestrator during a deep-explore session.

@@ -1,8 +1,3 @@
----
-name: present-work
-description: "Use when the user wants client-facing deliverables from completed work — briefs, architecture diagrams, value propositions, and video scripts."
----
-
 # Present Work Action
 
 > **Part of the do-work skill.** Generates client-facing deliverables from completed work — briefs, architecture diagrams, value propositions, and video scripts. Turns the technical archive into something that educates and sells.

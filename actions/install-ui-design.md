@@ -1,8 +1,3 @@
----
-name: install-ui-design
-description: "Use when the user wants to install the frontend-design skill for production-grade UI design capabilities."
----
-
 # Install UI Design Action
 
 > **Part of the do-work skill.** Installs the `frontend-design` Claude skill for production-grade frontend interfaces with high design quality.

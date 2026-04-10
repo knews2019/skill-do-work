@@ -1,8 +1,3 @@
----
-name: quick-wins
-description: "Use when the user wants to scan for obvious refactoring opportunities and low-hanging tests. Read-only — produces a structured report."
----
-
 # Quick-Wins Action
 
 > **Part of the do-work skill.** Scans a target directory for obvious refactoring opportunities and low-hanging tests to add.

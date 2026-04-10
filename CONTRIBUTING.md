@@ -2,7 +2,7 @@
 
 ## Adding a new action
 
-1. **Create the action file** at `actions/{name}.md` following the template in `CLAUDE.md` — frontmatter, description blockquote, steps, and guardrail sections.
+1. **Create the action file** at `actions/{name}.md` following the template in `CLAUDE.md` — description blockquote, steps, and guardrail sections.
 
 2. **Add a routing entry** in `SKILL.md` — insert a row in the priority table and add keywords to the verb reference. Pick a priority that avoids conflicts with existing routes.
 
@@ -16,7 +16,7 @@
 
 ## Modifying an existing action
 
-- Preserve section order: Frontmatter → Philosophy → When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist
+- Preserve section order: Philosophy → When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist
 - Don't remove existing sections without good reason
 - Test the action with a real invocation before committing
 - Bump the version for any user-visible change
@@ -25,7 +25,6 @@
 
 Every action file must have:
 
-- **YAML frontmatter** with `name` and `description` (description starts with "Use when...")
 - **Description blockquote** starting with `> **Part of the do-work skill.**`
 - **Steps** (numbered `### Step N:` headings)
 

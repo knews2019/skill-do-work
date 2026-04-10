@@ -1,8 +1,3 @@
----
-name: clarify
-description: "Use when the user wants to batch-review pending questions from completed work. Surfaces builder decisions for user confirmation or override."
----
-
 # Clarify Questions Action
 
 > **Part of the do-work skill.** Batch-reviews pending questions from completed work — the user confirms, overrides, or discards builder decisions.

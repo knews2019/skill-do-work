@@ -1,8 +1,3 @@
----
-name: verify-requests
-description: "Use when the user wants to verify captured request quality. Evaluates REQ files against originating URs to find gaps in coverage."
----
-
 # Verify Requests Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to verify the quality of captured requests. Evaluates REQ files against their originating User Request (UR) to find gaps.

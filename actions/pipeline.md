@@ -1,8 +1,3 @@
----
-name: pipeline
-description: "Use when the user wants a full end-to-end pipeline: investigate, capture, verify, run, review. Manages state across sessions via pipeline.json."
----
-
 # Pipeline Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to run a full end-to-end pipeline: investigate, capture, verify, run, review. Manages state across sessions via `do-work/pipeline.json`.

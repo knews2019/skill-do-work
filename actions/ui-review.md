@@ -1,8 +1,3 @@
----
-name: ui-review
-description: "Use when the user wants to validate UI quality against design best practices. Read-only audit with structured findings report."
----
-
 # UI Review Action
 
 > **Part of the do-work skill.** Validates UI quality against design best practices without making changes. Read-only audit that produces a structured findings report.

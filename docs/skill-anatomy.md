@@ -7,11 +7,6 @@ A guide to how action files are structured, how routing works, and how the piece
 Every action file in `actions/` follows a consistent anatomy. The exemplar is `review-work.md`, which demonstrates all sections:
 
 ```
----
-name: review-work                          ← YAML frontmatter (machine-readable metadata)
-description: "Use when..."                 ← Activation hint for agents
----
-
 # Review Work Action                       ← Title
 
 > **Part of the do-work skill.** ...       ← Description blockquote (human-readable summary)
@@ -31,7 +26,6 @@ description: "Use when..."                 ← Activation hint for agents
 
 ### Required elements
 
-- **Frontmatter** — `name` and `description` fields. Description starts with "Use when..." for agent activation.
 - **Description blockquote** — One sentence starting with `> **Part of the do-work skill.**`
 - **Steps** — Numbered `### Step N:` headings with actionable instructions.
 
@@ -44,7 +38,7 @@ description: "Use when..."                 ← Activation hint for agents
 
 ### Section order
 
-The order matters: **Frontmatter → Philosophy → When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist**. Not all sections are required in every file, but the ones present should follow this order.
+The order matters: **Philosophy → When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist**. Not all sections are required in every file, but the ones present should follow this order.
 
 ## Accepted variants
 
@@ -83,10 +77,6 @@ Templates in `specs/` define output structure and quality standards for common t
 - Optionally hinted during capture via `suggested_spec` frontmatter
 - Automatically loaded during the work action after triage
 - Guidance for the builder and reviewer — not binding; REQ requirements take priority
-
-## Slash commands
-
-`.claude/commands/` provides tab-completable shortcuts for Claude Code users. Each command is a thin wrapper that reads the relevant action file and follows it. The SKILL.md routing table remains the canonical dispatch mechanism.
 
 ## Cross-referencing
 

@@ -1,8 +1,3 @@
----
-name: build-knowledge-base
-description: "Use when the user wants to initialize, populate, query, or maintain an LLM knowledge base — a persistent Markdown wiki compiled from raw sources."
----
-
 # Build Knowledge Base Action
 
 > **Part of the do-work skill.** Implements the LLM Knowledge Base pattern — a persistent, compounding Markdown wiki compiled from raw source documents.
