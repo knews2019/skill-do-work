@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.59.0 — The Quality Blueprint (2026-04-10)
+
+New `specs/` directory with reusable specification templates for common task types. Specs define output structure, quality standards, implementation checklists, and common pitfalls — loaded automatically during work when the REQ matches a template.
+
+- `specs/`: New directory with README and four templates: `api-endpoint.md`, `ui-component.md`, `refactor.md`, `bug-fix.md`
+- `actions/work.md`: Added Step 3.7 (Spec Loading) — checks `specs/` for matching templates after triage, passes guidance to builder and reviewer
+- `actions/capture.md`: Added optional `suggested_spec` frontmatter field and spec hint inference during parsing
+- `CLAUDE.md`: Updated project structure to include `specs/` directory
+
 ## 0.58.0 — The Rising Tide (2026-04-10)
 
 Pipeline queue continuation now groups pending REQs into waves when 3+ remain. Each wave gets cross-REQ awareness, progressive learning from prior waves, and adaptive context monitoring instead of a hard 3-cycle cap. Sequential mode remains the default for small queues.
