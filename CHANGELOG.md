@@ -4,7 +4,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.60.4 — The Honest Mirror (2026-04-10)
+## 0.60.5 — The Honest Mirror (2026-04-10)
 
 Cross-file contradiction audit — fixes 13 inconsistencies spanning stale paths, duplicate codenames, missing scoping mechanisms, and documentation gaps.
 
@@ -12,13 +12,22 @@ Cross-file contradiction audit — fixes 13 inconsistencies spanning stale paths
 - `CHANGELOG.md`: Renamed 15 duplicate codenames (The Safety Net ×3, The Consistency Pass ×4, The Signpost ×2, The Compass ×2, The Cartographer ×2, The Feedback Loop ×2, The Gap Closer ×2, The Full Picture ×2, The Clarity Pass ×2) — each entry now has a unique codename
 - `CHANGELOG.md`: Corrected v0.60.2 entry that claimed `do-work/` root was canonical (subsequently reversed by v0.60.3)
 - `actions/work.md`: Added Input section with `$ARGUMENTS` support for targeted REQ IDs (e.g., `do work run REQ-042`) — fixes pipeline scoping gap where pipeline.md told work to process specific REQs but work had no mechanism to accept that constraint
-- `SKILL.md`: Updated work verb reference to document optional REQ ID arguments
+- `SKILL.md`: Updated work verb reference to document optional REQ ID arguments; updated priority 4 routing to accept trailing REQ IDs
 - `actions/commit.md`: Documented commit message format distinction from work.md (`Traced-to:` vs `Implements:`) and added commit pathway deconfliction note
-- `actions/verify-requests.md`: Fixed Step 3 queue path `do-work/` → `do-work/queue/`
+- `actions/verify-requests.md`: Fixed Step 3 to include `do-work/queue/` while keeping `do-work/` as legacy fallback
 - `actions/review-work.md`: Added P-A-U checkbox verification to the Verification Checklist
 - `specs/README.md`: Fixed `--spec` hint claim → `suggested_spec` frontmatter field (matches actual capture.md implementation)
 - `actions/deep-explore.md`: Added `surviving_directions` and `total_directions_explored` to Step 8 state.json update
 - `CLAUDE.md`: Added missing `docs/` directory and `AGENTS.md` to project structure listing
+
+## 0.60.4 — The Vivid Voice (2026-04-10)
+
+Enriched all four deep-explore subagent persona prompts — Free Thinker, Grounder, Writer, Explorer — from dry task specs into rich, conversational creative briefings with distinct voices, example phrases, and clear "what to avoid" guidance.
+
+- `actions/deep-explore-reference.md`: Rewrote Free Thinker persona with divergent identity, "do NOT self-censor" directive, exploration dimensions, and example phrases
+- `actions/deep-explore-reference.md`: Rewrote Grounder persona as brainstorm partner (not analyst), with taste-driven instincts, enthusiasm for good ideas, and direct example reactions
+- `actions/deep-explore-reference.md`: Rewrote Writer persona with invisible-observer identity and philosophy about preserving agents' actual language
+- `actions/deep-explore-reference.md`: Rewrote Explorer persona with tenacious-researcher identity, focused report structure, and "facts only" boundary
 
 ## 0.60.3 — The Paved Path (2026-04-10)
 
