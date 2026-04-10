@@ -146,7 +146,7 @@ Open Questions use checkbox syntax with recommended choices. Each question inclu
 Only add questions where the user's intent is genuinely unclear — don't add questions the builder can answer by reading the codebase.
 
 ## Full Context
-See [user-requests/UR-NNN/input.md](./user-requests/UR-NNN/input.md) for complete verbatim input.
+See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
 ```
 
 **Additional frontmatter for complex requests:**
