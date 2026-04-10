@@ -149,13 +149,87 @@ Pipeline complete.
 
 When the pipeline completes and additional pending REQs remain in the queue (from prior captures, follow-ups created during review, or other sources):
 
+**Mode selection:** If 3 or more pending REQs remain, use **wave-based processing** (Step 5a.1). If fewer than 3 pending REQs remain, or if the user passed `--sequential`, use **sequential processing** (Step 5a.2). Wave mode groups independent REQs for cross-REQ awareness and progressive learning; sequential mode processes them one at a time.
+
+#### Step 5a.1: Wave-Based Processing
+
+When 3+ pending REQs remain in the queue, group them into waves for structured processing.
+
+**Wave planning:**
+
+1. **Read all pending REQs.** For each, extract: `id`, `title`, `domain`, files mentioned in What/Requirements/Context sections, and any `related`/`addendum_to`/`batch` frontmatter fields.
+2. **Classify by domain** — group REQs by their `domain` frontmatter (frontend, backend, infra, docs, general).
+3. **Detect dependencies** — two REQs are dependent if they: share files mentioned in their requirements, have `related` or `batch` linking them, or one's `addendum_to` references the other. Independent REQs have no such overlap.
+4. **Group into waves:**
+   - Independent REQs go in the same wave. Dependent REQs go in sequential waves (dependency first).
+   - Each wave contains 2-5 REQs max. If more than 5 independent REQs exist, split into multiple waves of 2-5.
+   - Order waves by dependency graph — foundational changes (infra, backend, shared utilities) before dependent changes (frontend features, UI polish).
+5. Print the wave plan (see Output Format).
+
+**Progressive sophistication — each wave benefits from prior waves:**
+
+- **Wave 1**: Process foundational/infrastructure REQs. Establish patterns.
+- **Wave 2**: Process feature REQs that build on Wave 1 patterns. Reference completed work from the wave summary.
+- **Wave 3+**: Process refinement/polish REQs. Apply lessons learned from earlier waves.
+
+**Wave directive strategy:** When dispatching sub-agents for wave processing, read `crew-members/approach-directives.md` and assign directives that match the wave's purpose:
+
+- **Wave 1 (foundational):** Prefer Correctness-First and Simplicity-First directives
+- **Wave 2 (features):** Prefer User-First and Extensibility-First directives
+- **Wave 3+ (refinement):** Prefer Performance-First and Resilience-First directives
+
+Record assigned directives in `do-work/wave-summary.md` for continuity across pipeline runs. If the directives file is missing, proceed without directives — they are optional.
+
+**Wave execution:**
+
+For each wave:
+
+1. Print the wave header (see Output Format).
+2. Process the wave's REQs: dispatch the work action with the wave's REQ IDs (e.g., `do work run REQ-043 REQ-044 REQ-045`). If directives are assigned, include them in the sub-agent context.
+3. After the work action completes, dispatch the review work action for each REQ individually (e.g., `do work review REQ-043`, then `do work review REQ-044`). Always use REQ IDs — never pass a UR ID.
+4. **Generate a wave summary** (5-10 lines) capturing:
+   - What was completed (REQ IDs + titles)
+   - Patterns established (e.g., "API endpoints follow REST conventions in src/api/")
+   - Decisions made (reference D-XX IDs from REQ files)
+   - Lessons learned (gotchas, unexpected findings)
+5. **Context capacity check** (see below). If capacity allows, pass the wave summary as context to the next wave and continue. If capacity is low, stop.
+6. **Loop**: Scan for new `status: pending` REQs (follow-ups from review). If any exist, add them to the next wave's plan. If no more waves remain and the queue is empty, proceed to wave completion.
+
+**Context capacity monitoring — replaces the hard 3-cycle cap in wave mode:**
+
+```
+CONTEXT MONITORING (between waves):
+- After each wave completion, assess remaining context capacity
+- HIGH capacity (>50% remaining): proceed to next wave normally
+- MEDIUM capacity (30-50% remaining): reduce next wave size to 1-2 REQs
+- LOW capacity (15-30% remaining): complete current wave, summarize all work, stop
+- CRITICAL (<15% remaining): emergency checkpoint, archive progress, exit gracefully
+
+Between waves: progressively summarize completed work to free context space.
+Prefer completing fewer REQs well over rushing through many REQs poorly.
+```
+
+If you cannot directly measure context capacity, use a heuristic: count the waves completed. After 3 waves, assume MEDIUM. After 5 waves, assume LOW. After 7 waves, assume CRITICAL.
+
+**Wave completion — when stopping (by context limit or queue empty):**
+
+1. Write `do-work/wave-summary.md` (overwritten each pipeline run) with the format below.
+2. List remaining unprocessed REQs with suggested wave groupings for the next run.
+3. Note any cross-REQ patterns or architectural decisions for continuity.
+
+If the queue is empty after all waves, print "Queue fully drained." and suggest next steps.
+
+#### Step 5a.2: Sequential Processing (default for <3 REQs or --sequential)
+
+Processes pending REQs one at a time. This is the fallback for small queues or when the user explicitly requests sequential mode.
+
 1. Print the continuation notice (see Output Format) listing each pending REQ ID and its title
 2. Record the list of pending REQ IDs about to be processed (e.g., `["REQ-043", "REQ-044"]`) — this is needed for review targeting in step 3
 3. Dispatch the work action (`do work run`) in **standard queue-draining mode** — do NOT scope to pipeline artifacts. Pass the pending REQ IDs (e.g., `do work run REQ-043 REQ-044`) so the work action processes them.
 4. After the work action completes, dispatch the review work action for each REQ from step 2 individually (e.g., `do work review REQ-043`, then `do work review REQ-044`). Always use REQ IDs — never pass a UR ID, since UR-scoped review would re-review all completed REQs under that UR, not just this cycle's batch.
 5. **Loop**: Scan `do-work/REQ-*.md` for `status: pending` again. If more pending REQs remain (e.g., follow-ups created during the review step), repeat from step 1. If the queue is empty, print "Queue fully drained." and suggest next steps.
 
-**Max iterations:** The continuation loop runs at most **3 cycles**. If pending REQs still remain after 3 run → review cycles, stop the loop and print:
+**Max iterations (sequential mode only):** The continuation loop runs at most **3 cycles**. If pending REQs still remain after 3 run → review cycles, stop the loop and print:
 
 ```
 Continuation limit reached (3 cycles). {count} REQ(s) still pending:
@@ -167,12 +241,13 @@ Run "do work run" to continue processing manually.
 
 This prevents runaway loops when review steps keep generating follow-up REQs.
 
-**Error handling:** If the work action or review action fails during continuation:
+**Error handling (both modes):** If the work action or review action fails during continuation:
 
 1. Report the error to the user with context about what failed
 2. Print how many REQs were successfully processed before the failure
 3. Stop the continuation loop — do not retry automatically
-4. Suggest the appropriate recovery command:
+4. In wave mode: write `do-work/wave-summary.md` with progress so far before stopping
+5. Suggest the appropriate recovery command:
    - **Run step failed**: Suggest `do work run` to resume processing pending REQs
    - **Review step failed**: Suggest `do work review REQ-NNN` for each REQ that was processed but not yet reviewed (those REQs are already `status: completed`, so `do work run` would be a no-op)
 
@@ -235,7 +310,7 @@ When the continuation loop finishes and the queue is empty:
 Queue fully drained. All pending requests processed.
 ```
 
-When the continuation loop hits the max iteration cap (3 cycles):
+When the continuation loop hits the max iteration cap (3 cycles, sequential mode):
 
 ```
 Continuation limit reached (3 cycles). {count} REQ(s) still pending:
@@ -244,6 +319,83 @@ Continuation limit reached (3 cycles). {count} REQ(s) still pending:
 
 Run "do work run" to continue processing manually.
 ```
+
+### Wave Plan (printed when wave-based processing activates)
+
+```
+── Wave Plan ────────────────────────
+  {total} pending REQ(s) grouped into {N} wave(s):
+
+  Wave 1 (foundational):
+    {REQ-ID} — {title} [{domain}]
+    {REQ-ID} — {title} [{domain}]
+
+  Wave 2 (features):
+    {REQ-ID} — {title} [{domain}]
+    {REQ-ID} — {title} [{domain}]
+    {REQ-ID} — {title} [{domain}]
+
+  Wave 3 (refinement):
+    {REQ-ID} — {title} [{domain}]
+
+  Dependencies: REQ-045 depends on REQ-043 (shared files)
+─────────────────────────────────────
+```
+
+### Wave Header (printed at the start of each wave)
+
+```
+── Wave {N}/{total} ─────────────────
+  Processing {count} REQ(s):
+    {REQ-ID} — {title}
+    ...
+  Context from prior waves: {summary length} lines
+─────────────────────────────────────
+```
+
+### Wave Summary File (`do-work/wave-summary.md`)
+
+Written at the end of wave-based processing (overwritten each pipeline run):
+
+```markdown
+---
+pipeline_session: {session_id}
+waves_completed: {N}
+waves_planned: {total}
+total_reqs_processed: {count}
+created_at: {timestamp}
+---
+
+# Wave Summary
+
+## Completed Waves
+
+### Wave 1 — {label}
+- **REQs:** REQ-043 (completed), REQ-044 (completed)
+- **Patterns:** [e.g., API endpoints follow REST conventions in src/api/]
+- **Decisions:** [D-XX references from REQ files]
+- **Lessons:** [gotchas, unexpected findings]
+
+### Wave 2 — {label}
+- **REQs:** REQ-045 (completed), REQ-046 (completed-with-issues)
+- **Patterns:** [patterns established or extended]
+- **Decisions:** [D-XX references]
+- **Lessons:** [what was learned]
+
+## Remaining (unprocessed)
+
+Suggested wave groupings for the next run:
+
+- **Next wave:** REQ-048 [{domain}], REQ-049 [{domain}]
+  Dependency: REQ-049 depends on REQ-048
+
+## Cross-REQ Patterns
+
+- [Architectural decisions that apply across multiple REQs]
+- [Shared utilities or conventions established during this run]
+```
+
+**Exclude from git:** If `do-work/wave-summary.md` is not already in `.gitignore`, append it. Like `pipeline.json`, the wave summary is transient session state.
 
 ### Help Menu (no active pipeline, no arguments)
 
@@ -278,5 +430,6 @@ pipeline — full end-to-end orchestration
 - **Do not commit the state file.** `do-work/pipeline.json` is transient session state. It tracks a single pipeline run and has no value after completion. Ensure it is in `.gitignore`.
 - **Pass context to sub-agents explicitly.** Sub-agents have no conversation history. When dispatching a step via sub-agent, always include the pipeline request text and all artifact IDs from completed steps in the sub-agent prompt. Without this, sub-agents cannot target the correct UR/REQs.
 - **Scope the `run` step to captured REQs only.** The work action is queue-draining by default. When dispatched from the pipeline, it must only process the REQs created by this pipeline's capture step (listed in `artifacts`). Never process unrelated backlog items during a pipeline run.
-- **Drain remaining queue after completion.** After the pipeline's 5 steps finish, check for other pending REQs in the queue. If any exist, continue processing them automatically via run + review cycles until the queue is empty. This continuation uses standard queue-draining mode (not scoped to pipeline artifacts). The pipeline state file remains `active: false` — the continuation is a post-pipeline operation. Maximum 3 continuation cycles — if REQs still remain after 3 cycles, stop and let the user continue manually.
+- **Drain remaining queue after completion.** After the pipeline's 5 steps finish, check for other pending REQs in the queue. If any exist, continue processing them automatically. If 3+ REQs are pending, use wave-based processing (Step 5a.1) for cross-REQ awareness and progressive learning. If fewer than 3, use sequential processing (Step 5a.2). The pipeline state file remains `active: false` — the continuation is a post-pipeline operation. Users can force sequential mode with `--sequential`.
+- **Wave summaries are transient.** `do-work/wave-summary.md` is overwritten each pipeline run and should not be committed. Ensure it is in `.gitignore` alongside `pipeline.json`.
 - **Suggest next steps on completion.** After the pipeline finishes (including any queue continuation), suggest what the user might want to do next (see the next-steps reference).

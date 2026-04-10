@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.58.0 — The Rising Tide (2026-04-10)
+
+Pipeline queue continuation now groups pending REQs into waves when 3+ remain. Each wave gets cross-REQ awareness, progressive learning from prior waves, and adaptive context monitoring instead of a hard 3-cycle cap. Sequential mode remains the default for small queues.
+
+- `actions/pipeline.md`: Added wave-based processing (Step 5a.1) — wave planning, progressive sophistication, context capacity monitoring, wave summary output
+- `actions/pipeline.md`: Refactored Step 5a into two modes: wave-based (3+ REQs) and sequential (<3 REQs or `--sequential`)
+- `actions/pipeline.md`: Added wave plan, wave header, and wave summary output formats
+- `actions/pipeline.md`: Wave summary file (`do-work/wave-summary.md`) written at end of wave processing for cross-session continuity
+
 ## 0.57.1 — The Tidy Sweep (2026-04-10)
 
 Quick-wins cleanup: shell script hardening, broken link fix, and next-steps consolidation.
