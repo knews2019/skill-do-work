@@ -292,6 +292,27 @@ The work loop processes one request at a time. If a request fails, it's marked a
 
 Yes. They're plain markdown with frontmatter. You can change priority, edit requirements, or add context before running the queue. The UR folder's `input.md` preserves your original verbatim input regardless of what you change in the REQ files.
 
+## Token efficiency
+
+The skill is designed for selective loading — you don't need everything in context at once.
+
+- **SKILL.md** is the only file loaded initially. It handles routing and dispatches to the relevant action file.
+- **Action files** are loaded on-demand by the routing decision. Only the active action file needs to be in context.
+- **crew-members/** are JIT-loaded during implementation based on REQ domain. They never need to be pre-loaded.
+- **docs/** guides are for human reading, not agent context. Don't load them during work.
+- **specs/** templates are loaded by the work action after triage, only when a REQ matches.
+
+If your agent has limited context, prioritize: **SKILL.md → active action file → relevant crew-member**. Everything else is optional.
+
+## Hooks (optional)
+
+Two optional hook scripts for Claude Code users:
+
+- **`hooks/pipeline-guard.sh`** — Stop hook that prevents the agent from stopping mid-pipeline. Install as a `Stop` hook.
+- **`hooks/session-start.sh`** — SessionStart hook that injects a status line (version, pending REQs, active pipeline) at the beginning of each session.
+
+To install, merge the hook config from `hooks/hooks.json` into your `.claude/settings.json`. See each script for details.
+
 ## Designed for agentic coding tools
 
 This skill assumes your tool supports:

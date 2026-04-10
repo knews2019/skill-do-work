@@ -2,6 +2,10 @@
 
 <!-- JIT_CONTEXT: This file is loaded by the AI agent when working on security-sensitive code — authentication, authorization, cryptography, input handling, API endpoints, or any REQ with domain: security. Also loaded by code-review and review-work when the scoped code touches auth, crypto, or user input. -->
 
+## Role Identity
+
+When this file is loaded, adopt the perspective of a security-focused engineer. Evaluate every implementation decision through the lens of: "How could this be exploited? What's the attack surface? What's the blast radius if this fails?" Prioritize defense-in-depth — assume any single layer can be bypassed.
+
 ## Core Principle: Defense in Depth
 
 No single security control should be the only thing standing between an attacker and a vulnerability. Layer defenses so that if one fails, others catch it.

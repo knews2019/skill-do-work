@@ -34,6 +34,13 @@ actions/              # Action files (each is a standalone prompt)
   build-knowledge-base.md # LLM knowledge base — init, triage, ingest, query, lint, and more
   tutorial.md          # Interactive tutorials — quick start, concepts, recipes, guided tour
   sample-archived-req.md # Example of a fully processed REQ file (reference only)
+.claude/commands/     # Claude Code slash commands (tab-completable entry points)
+  capture.md          # /capture — quick-add a request to the queue
+  run.md              # /run — process the pending queue
+  review.md           # /review — review completed work
+  pipeline.md         # /pipeline — full end-to-end orchestration
+  code-review.md      # /code-review — standalone codebase review
+  status.md           # /status — queue and pipeline status report
 specs/                # Reusable specification templates for common task types
   README.md           # What specs are, how to use them, how to create new ones
   api-endpoint.md     # Spec template for building API endpoints
@@ -42,7 +49,9 @@ specs/                # Reusable specification templates for common task types
   bug-fix.md          # Spec template for bug fixes
 crew-members/         # Domain-specific rules loaded by work action
 hooks/                # Optional hook scripts (platform-specific, installable)
-  pipeline-guard.sh   # Claude Code stop hook — prevents stopping mid-pipeline
+  hooks.json          # Combined hook config for Claude Code (SessionStart + Stop)
+  session-start.sh    # Claude Code SessionStart hook — injects status line
+  pipeline-guard.sh   # Claude Code Stop hook — prevents stopping mid-pipeline
 CHANGELOG.md          # Release notes (newest on top)
 ```
 
@@ -67,11 +76,21 @@ Keep it brief, newest on top, lead with value not implementation. Every version 
 Action files follow a consistent structure. When adding or modifying actions, use this template:
 
 ```markdown
+---
+name: [action-name]
+description: "Use when [activation condition]. [What it does in one sentence.]"
+---
+
 # [Action Name] Action
 
 > **Part of the do-work skill.** [1 sentence: what it does and when it's invoked.]
 
 [Optional: read-only flag, philosophy, or key principles — 1-2 paragraphs max]
+
+## When to Use
+
+**Use when:** [2-4 bullets — positive triggers]
+**Do NOT use when:** [2-3 bullets — explicit exclusions, with redirect to correct action]
 
 ## Input
 
@@ -90,9 +109,23 @@ Action files follow a consistent structure. When adding or modifying actions, us
 ## Rules
 
 [Constraints, common mistakes, what NOT to do]
+
+## Common Rationalizations
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| [Shortcut the agent might attempt] | [What to do instead] | [Why the shortcut fails] |
+
+## Red Flags
+
+- [Observable symptom that something went wrong — helps reviewers detect problems after the fact]
+
+## Verification Checklist
+
+- [ ] [Concrete exit criterion with evidence requirement]
 ```
 
-**Required elements:** Description blockquote, Steps (numbered). **Common elements:** Input, Output Format, Rules. **Section order matters:** always Philosophy → Input → Steps → Output → Rules.
+**Required elements:** Frontmatter (name + description), Description blockquote, Steps (numbered). **Common elements:** Input, Output Format, Rules, When to Use. **Encouraged elements:** Common Rationalizations, Red Flags, Verification Checklist. **Section order matters:** always Frontmatter → Philosophy → When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist.
 
 **Accepted variants:**
 - **Sub-command dispatchers** (`prime.md`, `build-knowledge-base.md`) — Use a Sub-Commands table instead of flat steps. Each sub-command has its own workflow section.

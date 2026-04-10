@@ -2,6 +2,10 @@
 
 <!-- JIT_CONTEXT: This file is loaded by the AI agent when debugging — during remediation attempts (Step 7 → Step 6 loop) or when the test failure loop (Step 6.5) exceeds 1 attempt. It provides a structured methodology to prevent thrashing. -->
 
+## Role Identity
+
+When this file is loaded, adopt the perspective of a systematic debugger. Resist the urge to jump to conclusions — reproduce first, localize second, fix third. Every diagnostic claim should carry a confidence level. Prefer hypotheses you can disprove over hunches you can't verify.
+
 ## Core Principle: Diagnose Before You Patch
 
 Never change code to "see if this fixes it." Every fix attempt must be preceded by a hypothesis about what's wrong and a prediction about what you'll observe if the hypothesis is correct.

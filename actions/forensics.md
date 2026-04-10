@@ -1,8 +1,24 @@
+---
+name: forensics
+description: "Use when the user wants pipeline diagnostics. Read-only — examines do-work system state to detect stuck work, hollow completions, and orphaned URs."
+---
+
 # Forensics Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants pipeline diagnostics. Read-only — examines the state of the do-work system without modifying anything.
 
 A diagnostic tool for when the work pipeline feels broken, stuck, or produces confusing results. Reads git history, file system state, and archived REQs to detect problems and report findings.
+
+## When to Use
+
+**Use when:**
+- User suspects something is stuck, broken, or producing confusing results
+- User says "forensics", "diagnose", "health check", or "health"
+- Pipeline feels broken or work output seems hollow
+
+**Do NOT use when:**
+- User wants to *fix* the archive structure — route to the cleanup action instead
+- User wants to *review completed code* — route to the review-work action instead
 
 ## Core Rules
 
@@ -160,3 +176,20 @@ All clear — no issues detected.
 - Before starting a large batch of work (health check)
 - When onboarding to a project that already has `do-work/` history
 - Periodically, as a quality audit
+
+## Common Rationalizations
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "This is probably fine — no action needed" | Report every anomaly with its severity, even if you think it's benign | The user decides what's fine — your job is to surface findings |
+| "It was probably intentional" | Flag it and note that it may be intentional — don't assume | Intentional choices look identical to mistakes without documentation |
+| "The system is healthy — quick scan is enough" | Run all diagnostic checks regardless of initial impression | Intermittent problems only surface under thorough examination |
+| "This finding is too minor to report" | Report it at Nit severity — let the user triage | Unreported findings can't be triaged |
+
+## Verification Checklist
+
+- [ ] All diagnostic checks attempted (stuck work, hollow completions, orphaned URs, scope contamination, etc.)
+- [ ] Severity correctly assigned to each finding (Critical, Important, Minor, Nit)
+- [ ] Remediation suggestion provided for every non-Nit finding
+- [ ] Report includes both problems found and areas checked with no issues
+- [ ] No files or directories modified (read-only action)

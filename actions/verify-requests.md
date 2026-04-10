@@ -1,3 +1,8 @@
+---
+name: verify-requests
+description: "Use when the user wants to verify captured request quality. Evaluates REQ files against originating URs to find gaps in coverage."
+---
+
 # Verify Requests Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to verify the quality of captured requests. Evaluates REQ files against their originating User Request (UR) to find gaps.
@@ -15,11 +20,15 @@ A confidence evaluation system that compares extracted REQ files against the ori
 
 ## When to Use
 
-- After creating REQs from a complex request (to validate the extraction)
-- When the user says "verify", "check", "evaluate", "review requests"
-- Before starting `do work` processing, as a quality gate
+**Use when:**
+- User wants to verify that captured REQs accurately represent the original input
+- User says "verify", "verify requests", "check REQ-NNN", "evaluate", or "review requests"
+- Quality-checking capture output before running the work queue
 
-If the user wants a post-implementation quality review of shipped code (not capture quality), route to **`review work`** instead.
+**Do NOT use when:**
+- User wants to review *completed work* (code, implementation) — route to the review-work action instead
+- User wants a *codebase* review — route to the code-review action instead
+- User says just "review" without "requests" — that's the review-work action
 
 ## Workflow
 
@@ -163,6 +172,30 @@ For REQs created before the UR system:
 - They won't have a Builder Guidance section
 - Score them the same way, but note that missing Builder Guidance is expected (not a gap) for legacy REQs
 - If the user wants to verify legacy REQs and has the original CONTEXT file, use its verbatim input
+
+## Common Rationalizations
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "The REQs cover everything — quick pass is fine" | Compare the original input against each REQ word by word | Requirements drift is invisible at a glance |
+| "Close enough — I'll round the score up" | Apply the scoring rubric mechanically | Rounding up defeats the quality gate — verification should be honest, not generous |
+| "This gap is just a wording difference" | Check if the wording difference changes what gets built | Semantic drift in requirements is how features go missing |
+| "The original input was vague, so the REQ interpretation is fine" | Score it as Ambiguous and resolve it now while the user is present | Ambiguity unresolved at verification becomes wrong assumptions at build time |
+
+## Red Flags
+
+- All dimension scores are 100% on a complex multi-feature request (suspiciously perfect)
+- Gap count is 0 on a request with 5+ distinct requirements
+- Verification report doesn't directly reference or quote the original input
+- REQ has significantly more detail than the original input (embellishment, not capture)
+
+## Verification Checklist
+
+- [ ] Every REQ scored on all applicable dimensions
+- [ ] Original input compared against REQ content word by word (not skimmed)
+- [ ] Gap severity rated for every identified gap (Important, Minor, Nit, Ambiguous)
+- [ ] Ambiguous gaps resolved on the spot with user input
+- [ ] Final score reflects actual coverage, not optimistic rounding
 
 ## What NOT To Do
 

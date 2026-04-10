@@ -1,3 +1,8 @@
+---
+name: work
+description: "Use when routing determines the user wants to process the queue. Triages pending requests by complexity and executes through plan-explore-build-test-review."
+---
+
 # Work Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to process the queue. Processes pending requests from the `do-work/queue/` folder in your project.
@@ -485,6 +490,24 @@ After the builder returns and the Implementation Summary is written, the **orche
 | "This works on my test case" | Test at least 2 additional cases including an edge case | One test case proves nothing about generality |
 | "The existing code was already like this" | Flag it in Discovered Tasks | Pre-existing problems are still problems |
 | "It's just a small deviation from the plan" | Log it as a Decision (D-XX) | Unlogged deviations break traceability |
+
+## Red Flags
+
+- REQ in `do-work/working/` for >1 hour with no new git commits (builder may be stuck)
+- Implementation Summary lists files but `git diff` shows no changes in those files (hollow implementation)
+- All P-A-U checkboxes marked complete but diff contains `console.log`, `debugger`, or `TODO` (debug artifacts)
+- No Triage section appended to the REQ after processing begins
+- Scope section declares 3 files but Implementation Summary lists 12 (scope creep)
+- Builder created files only inside `do-work/` and no source files changed (no real work done)
+
+## Verification Checklist
+
+- [ ] All pending REQs processed or explicitly skipped with documented reason
+- [ ] Every completed REQ has an Implementation Summary section with file manifest
+- [ ] No REQ files remain in `do-work/working/` after the work loop ends
+- [ ] CHECKPOINT.md written if ending mid-session (for resume)
+- [ ] Git commit created for each completed REQ
+- [ ] Cleanup pass triggered at end of work loop
 
 **If qualification fails on any check:**
 1. Append a `## Qualification` section to the REQ noting what failed and why.

@@ -1,8 +1,24 @@
+---
+name: scan-ideas
+description: "Use when the user wants ideas for what to build, improve, or explore next. Turns codebase analysis into actionable suggestions."
+---
+
 # Scan-Ideas Action
 
 > **Part of the do-work skill.** Generates ideas for what to build, improve, or explore next. Turns codebase analysis and project context into actionable suggestions the user can capture as requests.
 
 **Read-only** — this action does NOT modify any files. It produces a structured report of ideas.
+
+## When to Use
+
+**Use when:**
+- User wants inspiration for what to build, improve, or explore next
+- User says "scan-ideas", "ideas", "brainstorm", "suggest", or "what should I build"
+- Looking for product-level and code-level improvement opportunities
+
+**Do NOT use when:**
+- User wants specific *refactoring* opportunities with file-level detail — route to the quick-wins action instead
+- User wants to *deeply explore* a specific concept — route to the deep-explore action instead
 
 ## Philosophy
 
@@ -105,3 +121,20 @@ Aim for 8-15 ideas total. Fewer is fine if the codebase is small or focused. Mor
 - **Grounded in evidence.** Every idea must point at something real — a file, a pattern, a TODO, a gap, a user-facing behavior. If you can't point at evidence, drop the idea.
 - **Respect the focus.** If `$ARGUMENTS` specifies a topic or directory, stay in scope. Don't pad the list with off-topic suggestions.
 - **Read-only.** Do not create files, modify code, or capture requests. The user decides what to act on.
+
+## Common Rationalizations
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "Add tests" (without specifics) | Point at the specific untested file/function and explain why testing it matters | Generic suggestions are noise — ideas must be actionable |
+| "This codebase needs a rewrite" | Identify the specific pain points and suggest incremental improvements | Rewrites are rarely the answer and never actionable as a single capture |
+| "I'll suggest what's trendy" | Ground every idea in something concrete from this codebase | Ideas disconnected from the project are worthless |
+| "More ideas are better" | Curate to 5-10 high-quality ideas with clear effort tags | Overwhelming the user with 30 vague ideas is worse than 5 good ones |
+
+## Verification Checklist
+
+- [ ] Multiple idea categories explored (not all refactoring, not all features)
+- [ ] Every idea references concrete codebase evidence (file, pattern, gap, or completed REQ)
+- [ ] Effort tag assigned to each idea (trivial, small, medium, large)
+- [ ] Ideas are concrete enough to paste into `do work capture request:`
+- [ ] No files modified (read-only action)

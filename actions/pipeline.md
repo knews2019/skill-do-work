@@ -1,3 +1,8 @@
+---
+name: pipeline
+description: "Use when the user wants a full end-to-end pipeline: investigate, capture, verify, run, review. Manages state across sessions via pipeline.json."
+---
+
 # Pipeline Action
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to run a full end-to-end pipeline: investigate, capture, verify, run, review. Manages state across sessions via `do-work/pipeline.json`.
@@ -280,3 +285,27 @@ pipeline — full end-to-end orchestration
 - **Scope the `run` step to captured REQs only.** The work action is queue-draining by default. When dispatched from the pipeline, it must only process the REQs created by this pipeline's capture step (listed in `artifacts`). Never process unrelated backlog items during a pipeline run.
 - **Drain remaining queue after completion.** After the pipeline's 5 steps finish, check for other pending REQs in the queue. If any exist, continue processing them automatically via run + review cycles until the queue is empty. This continuation uses standard queue-draining mode (not scoped to pipeline artifacts). The pipeline state file remains `active: false` — the continuation is a post-pipeline operation. Maximum 3 continuation cycles — if REQs still remain after 3 cycles, stop and let the user continue manually.
 - **Suggest next steps on completion.** After the pipeline finishes (including any queue continuation), suggest what the user might want to do next (see the next-steps reference).
+
+## Common Rationalizations
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "Skip verify — the capture was clean" | Run every step in sequence, even if you think it's unnecessary | The pipeline's value is consistency — skipping steps creates gaps |
+| "The pipeline is stuck — just mark the step done" | Investigate why it's stuck, then fix or escalate | Marking stuck steps as done creates hollow completions |
+| "I'll restart the pipeline from scratch" | Resume from the last completed step using pipeline.json state | Restarting loses progress and re-runs already-completed work |
+| "This step failed — skip it and continue" | Record the failure, attempt recovery, then decide with the user | Silently skipping failures undermines the pipeline's reliability |
+
+## Red Flags
+
+- Step marked as `in-progress` but no recent git activity (pipeline may be stuck)
+- Step marked as `done` but no artifacts recorded (hollow completion)
+- Pipeline has been active for >24 hours without step transitions
+- pipeline.json shows a step status that contradicts the file system state
+
+## Verification Checklist
+
+- [ ] pipeline.json state matches file system reality
+- [ ] Current step status updated before and after execution
+- [ ] Artifacts from each completed step recorded in pipeline.json
+- [ ] Failed steps have failure reason documented
+- [ ] User informed of pipeline progress at each step transition

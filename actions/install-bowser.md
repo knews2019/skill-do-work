@@ -1,3 +1,8 @@
+---
+name: install-bowser
+description: "Use when the user wants to install Playwright CLI and the Bowser skill for browser automation, screenshots, and UI validation."
+---
+
 # Install Bowser Action
 
 > **Part of the do-work skill.** Installs Playwright CLI (`playwright-cli`) and the Bowser skill for headed browser automation, screenshots, and UI validation.

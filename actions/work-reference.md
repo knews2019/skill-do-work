@@ -1,3 +1,8 @@
+---
+name: work-reference
+description: "Companion file for work.md. Contains orchestrator checklist, error handling, progress template, and common mistakes. Not invoked directly."
+---
+
 # Work Action — Reference
 
 > Companion file to `work.md`. Contains the orchestrator checklist, error handling table, progress reporting template, and common mistakes. Extracted to keep the main action file focused on procedural steps.

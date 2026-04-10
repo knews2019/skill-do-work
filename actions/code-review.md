@@ -1,8 +1,25 @@
+---
+name: code-review
+description: "Use when the user wants a standalone codebase review not tied to the REQ queue. Evaluates consistency, patterns, security, and architecture."
+---
+
 # Code Review Action
 
 > **Part of the do-work skill.** Standalone codebase review — not tied to the REQ/UR queue. Evaluates consistency, patterns, security, and architectural health across a scoped section of the codebase.
 
 **Source-code read-only** — this action does NOT modify any project source files. It produces a structured report only. May write queue metadata (`do-work/queue/REQ-*` files) with explicit user confirmation — see Step 10.
+
+## When to Use
+
+**Use when:**
+- User wants a standalone codebase review not tied to any specific REQ or UR
+- User says "code-review", "code review", "audit codebase", "review codebase", or "codebase review"
+- Reviewing architectural health, consistency, security, or patterns across a directory or prime file scope
+
+**Do NOT use when:**
+- User wants to review *completed work* against its requirements — route to the review-work action instead
+- User says just "review" without "code" or "codebase" qualifier — that's the review-work action
+- User wants to verify *capture quality* — route to the verify-requests action instead
 
 ## Input
 
