@@ -43,6 +43,8 @@ specs/                # Reusable specification templates for common task types
 crew-members/         # Domain-specific rules loaded by work action
 hooks/                # Optional hook scripts (platform-specific, installable)
   pipeline-guard.sh   # Claude Code stop hook — prevents stopping mid-pipeline
+docs/                 # Per-action user guides (capture-guide.md, work-guide.md, etc.)
+AGENTS.md             # Stub — redirects to CLAUDE.md
 CHANGELOG.md          # Release notes (newest on top)
 ```
 

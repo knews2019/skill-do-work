@@ -108,7 +108,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | Route | Trigger verbs | Notes |
 |-------|--------------|-------|
 | **pipeline** | pipeline, full, full pipeline | Everything after keyword → `$ARGUMENTS` (request text). "pipeline status" → status mode. "pipeline abandon" → abandon mode. If no args and active pipeline exists, resume. |
-| **work** | run, go, start, begin, work, process, execute, build, continue, resume | |
+| **work** | run, go, start, begin, work, process, execute, build, continue, resume | Optional REQ IDs after keyword (e.g., `do work run REQ-042`) → process only those REQs. No args → drain full queue. |
 | **clarify** | clarify, answers, questions, pending, pending answers, blocked, what's blocked, what needs answers | Routes to `actions/clarify.md` |
 | **verify requests** | verify, verify requests, check, evaluate, review requests, review reqs, audit | "check" alone → verify; "check for updates" → version (priority 2); "audit" alone → verify; "audit codebase" → code-review; "audit primes" → prime |
 | **code-review** | code-review, code review, review codebase, audit codebase, codebase review | Both hyphenated and unhyphenated forms route here, with or without scope. Scope args: prime file refs, directory paths, or combined |
