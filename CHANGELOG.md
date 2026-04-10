@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.55.1 — The Safety Net (2026-04-10)
+
+Three gaps closed in the pipeline queue continuation (Step 5a).
+
+- Error handling for continuation: if run or review fails mid-continuation, report the error, print progress, and stop — don't retry or update `pipeline.json`
+- Max iteration cap: continuation loop limited to 3 cycles to prevent runaway loops from review-generated follow-ups
+- Explicit review targeting: continuation now records pending REQ IDs before dispatching run, then passes them to the review action by ID (or by shared UR)
+
 ## 0.55.0 — The Clean Sweep (2026-04-10)
 
 Pipeline now drains the full queue after completing its primary request. If pending REQs remain (from prior captures, follow-ups, or review-generated work), the pipeline automatically continues with run + review cycles until the queue is empty.

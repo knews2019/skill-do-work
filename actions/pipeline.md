@@ -150,9 +150,31 @@ Pipeline complete.
 When the pipeline completes and additional pending REQs remain in the queue (from prior captures, follow-ups created during review, or other sources):
 
 1. Print the continuation notice (see Output Format) listing each pending REQ ID and its title
-2. Dispatch the work action (`do work run`) in **standard queue-draining mode** — do NOT scope to pipeline artifacts. Pass all remaining pending REQ IDs so the work action processes them.
-3. After the work action completes, dispatch the review work action (`do work review work`) for the REQs that were just processed
-4. **Loop**: Scan `do-work/REQ-*.md` for `status: pending` again. If more pending REQs remain (e.g., follow-ups created during the review step), repeat from step 1. If the queue is empty, print "Queue fully drained." and suggest next steps.
+2. Record the list of pending REQ IDs about to be processed (e.g., `["REQ-043", "REQ-044"]`) — this is needed for review targeting in step 3
+3. Dispatch the work action (`do work run`) in **standard queue-draining mode** — do NOT scope to pipeline artifacts. Pass the pending REQ IDs (e.g., `do work run REQ-043 REQ-044`) so the work action processes them.
+4. After the work action completes, dispatch the review work action targeting the specific REQs from step 2 (e.g., `do work review REQ-043`, then `do work review REQ-044`). If the REQs share a UR, pass the UR instead (e.g., `do work review UR-019`).
+5. **Loop**: Scan `do-work/REQ-*.md` for `status: pending` again. If more pending REQs remain (e.g., follow-ups created during the review step), repeat from step 1. If the queue is empty, print "Queue fully drained." and suggest next steps.
+
+**Max iterations:** The continuation loop runs at most **3 cycles**. If pending REQs still remain after 3 run → review cycles, stop the loop and print:
+
+```
+Continuation limit reached (3 cycles). {count} REQ(s) still pending:
+  {REQ-ID} — {title}
+  ...
+
+Run "do work run" to continue processing manually.
+```
+
+This prevents runaway loops when review steps keep generating follow-up REQs.
+
+**Error handling:** If the work action or review action fails during continuation:
+
+1. Report the error to the user with context about what failed
+2. Print how many REQs were successfully processed before the failure
+3. Stop the continuation loop — do not retry automatically
+4. Suggest `do work run` to resume processing the remaining queue manually
+
+Unlike the main pipeline's error handling (Step 6), continuation errors do not update `pipeline.json` — the formal pipeline is already complete.
 
 **State file note:** The pipeline's `active` field remains `false` during the continuation — the formal pipeline is complete. The continuation is a post-pipeline queue drain. If the session ends mid-continuation, the user can resume with `do work run` to process any remaining pending REQs.
 
@@ -211,6 +233,16 @@ When the continuation loop finishes and the queue is empty:
 Queue fully drained. All pending requests processed.
 ```
 
+When the continuation loop hits the max iteration cap (3 cycles):
+
+```
+Continuation limit reached (3 cycles). {count} REQ(s) still pending:
+  {REQ-ID} — {title}
+  ...
+
+Run "do work run" to continue processing manually.
+```
+
 ### Help Menu (no active pipeline, no arguments)
 
 ```
@@ -244,5 +276,5 @@ pipeline — full end-to-end orchestration
 - **Do not commit the state file.** `do-work/pipeline.json` is transient session state. It tracks a single pipeline run and has no value after completion. Ensure it is in `.gitignore`.
 - **Pass context to sub-agents explicitly.** Sub-agents have no conversation history. When dispatching a step via sub-agent, always include the pipeline request text and all artifact IDs from completed steps in the sub-agent prompt. Without this, sub-agents cannot target the correct UR/REQs.
 - **Scope the `run` step to captured REQs only.** The work action is queue-draining by default. When dispatched from the pipeline, it must only process the REQs created by this pipeline's capture step (listed in `artifacts`). Never process unrelated backlog items during a pipeline run.
-- **Drain remaining queue after completion.** After the pipeline's 5 steps finish, check for other pending REQs in the queue. If any exist, continue processing them automatically via run + review cycles until the queue is empty. This continuation uses standard queue-draining mode (not scoped to pipeline artifacts). The pipeline state file remains `active: false` — the continuation is a post-pipeline operation.
+- **Drain remaining queue after completion.** After the pipeline's 5 steps finish, check for other pending REQs in the queue. If any exist, continue processing them automatically via run + review cycles until the queue is empty. This continuation uses standard queue-draining mode (not scoped to pipeline artifacts). The pipeline state file remains `active: false` — the continuation is a post-pipeline operation. Maximum 3 continuation cycles — if REQs still remain after 3 cycles, stop and let the user continue manually.
 - **Suggest next steps on completion.** After the pipeline finishes (including any queue continuation), suggest what the user might want to do next (see the next-steps reference).
