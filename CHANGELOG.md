@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.60.4 — The Vivid Voice (2026-04-10)
+
+Enriched all four deep-explore subagent persona prompts — Free Thinker, Grounder, Writer, Explorer — from dry task specs into rich, conversational creative briefings with distinct voices, example phrases, and clear "what to avoid" guidance.
+
+- `actions/deep-explore-reference.md`: Rewrote Free Thinker persona with divergent identity, "do NOT self-censor" directive, exploration dimensions, and example phrases
+- `actions/deep-explore-reference.md`: Rewrote Grounder persona as brainstorm partner (not analyst), with taste-driven instincts, enthusiasm for good ideas, and direct example reactions
+- `actions/deep-explore-reference.md`: Rewrote Writer persona with invisible-observer identity and philosophy about preserving agents' actual language
+- `actions/deep-explore-reference.md`: Rewrote Explorer persona with tenacious-researcher identity, focused report structure, and "facts only" boundary
+
 ## 0.60.3 — The Paved Path (2026-04-10)
 
 Pending REQ files now live in `do-work/queue/` instead of `do-work/` root. The `queue/` path is what people kept writing instinctively — paving the cow path prevents a recurring class of stale-path bugs.
