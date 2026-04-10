@@ -52,6 +52,8 @@ hooks/                # Optional hook scripts (platform-specific, installable)
   hooks.json          # Combined hook config for Claude Code (SessionStart + Stop)
   session-start.sh    # Claude Code SessionStart hook — injects status line
   pipeline-guard.sh   # Claude Code Stop hook — prevents stopping mid-pipeline
+docs/                 # Per-action user guides (capture-guide.md, work-guide.md, etc.)
+AGENTS.md             # Stub — redirects to CLAUDE.md
 CHANGELOG.md          # Release notes (newest on top)
 ```
 

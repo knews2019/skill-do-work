@@ -19,6 +19,22 @@ Adopted best practices from the agent-skills ecosystem — every action file now
 - New `CONTRIBUTING.md`: Human-facing contributor guide
 - New `docs/skill-anatomy.md`: Walkthrough of action file format, routing, and how pieces fit together
 
+## 0.60.5 — The Honest Mirror (2026-04-10)
+
+Cross-file contradiction audit — fixes 13 inconsistencies spanning stale paths, duplicate codenames, missing scoping mechanisms, and documentation gaps.
+
+- `actions/scan-ideas.md`, `actions/deep-explore.md`: Fixed stale `do-work/` queue path → `do-work/queue/` (missed by v0.60.3)
+- `CHANGELOG.md`: Renamed 15 duplicate codenames (The Safety Net ×3, The Consistency Pass ×4, The Signpost ×2, The Compass ×2, The Cartographer ×2, The Feedback Loop ×2, The Gap Closer ×2, The Full Picture ×2, The Clarity Pass ×2) — each entry now has a unique codename
+- `CHANGELOG.md`: Corrected v0.60.2 entry that claimed `do-work/` root was canonical (subsequently reversed by v0.60.3)
+- `actions/work.md`: Added Input section with `$ARGUMENTS` support for targeted REQ IDs (e.g., `do work run REQ-042`) — fixes pipeline scoping gap where pipeline.md told work to process specific REQs but work had no mechanism to accept that constraint
+- `SKILL.md`: Updated work verb reference to document optional REQ ID arguments; updated priority 4 routing to accept trailing REQ IDs
+- `actions/commit.md`: Documented commit message format distinction from work.md (`Traced-to:` vs `Implements:`) and added commit pathway deconfliction note
+- `actions/verify-requests.md`: Fixed Step 3 to include `do-work/queue/` while keeping `do-work/` as legacy fallback
+- `actions/review-work.md`: Added P-A-U checkbox verification to the Verification Checklist
+- `specs/README.md`: Fixed `--spec` hint claim → `suggested_spec` frontmatter field (matches actual capture.md implementation)
+- `actions/deep-explore.md`: Added `surviving_directions` and `total_directions_explored` to Step 8 state.json update
+- `CLAUDE.md`: Added missing `docs/` directory and `AGENTS.md` to project structure listing
+
 ## 0.60.4 — The Vivid Voice (2026-04-10)
 
 Enriched all four deep-explore subagent persona prompts — Free Thinker, Grounder, Writer, Explorer — from dry task specs into rich, conversational creative briefings with distinct voices, example phrases, and clear "what to avoid" guidance.
@@ -46,9 +62,9 @@ Changelog and action file hygiene — fixes that prevent recurring errors.
 - `CHANGELOG.md`: Fixed duplicate version numbers (two entries for 0.52.0, two for 0.51.8) by renumbering displaced entries to 0.51.8–0.51.11 in correct monotonic order
 - `CHANGELOG.md`: Renamed 4 duplicate codenames (The Tight Scope → The Narrow Pipe, The Crew → The Agent Crew, The Safety Net → The Guard Dog, The Second Brain → The Knowledge Forge)
 - `actions/scan-ideas.md`: Fixed header from "Ideate Action" to "Scan-Ideas Action" (missed in v0.57.0 rename)
-- `actions/scan-ideas.md`, `actions/deep-explore.md`: Fixed stale `do-work/queue/` path → `do-work/` (queue lives at root, not a subdirectory)
+- `actions/scan-ideas.md`, `actions/deep-explore.md`: Updated queue path references (subsequently moved to `do-work/queue/` in v0.60.3)
 - `CLAUDE.md`: Added version dedup guard (verify new version > existing before committing) and codename uniqueness check
-- `CLAUDE.md`: Added Queue Path Convention section documenting that REQ files live at `do-work/` root
+- `CLAUDE.md`: Added Queue Path Convention section (subsequently updated to `do-work/queue/` in v0.60.3)
 
 ## 0.60.1 — The Clear Head (2026-04-10)
 
@@ -844,7 +860,7 @@ Addresses PR review feedback on the Implementation Summary feature.
 - Broadened "source files" to "project files" in Implementation Summary rules — config, CI, docs, and Dockerfiles now included in the manifest
 - Scoped Step 9 validation check to successful REQs only — failed REQs may have no summary or staged project files, and that's expected
 
-## 0.31.1 — The Consistency Pass (2026-03-22)
+## 0.31.1 — The Alignment Check (2026-03-22)
 
 Follow-up fixes to ensure Implementation Summary is consistently referenced across all action files.
 
@@ -872,7 +888,7 @@ Restored version/release aliases and anchored changelog lookup to skill root —
 - Anchored CHANGELOG.md lookup to skill root directory (same level as SKILL.md) so it doesn't pick up the project's own changelog
 - Added route examples for all restored aliases
 
-## 0.30.5 — The Consistency Pass (2026-03-22)
+## 0.30.5 — The Missing Piece (2026-03-22)
 
 Filled in gaps from the recap/version split — missing route examples, dispatch table entry, next steps, and help menu clarity.
 
@@ -1059,7 +1075,7 @@ General agent rules now include the Prime Files Philosophy. Agents know what pri
 - Added PRIME Files Philosophy section to `rules-general.md`
 - Covers purpose, conciseness, pointer-not-copy pattern, volatile metric avoidance, and multi-aspect support
 
-## 0.27.0 — The Cartographer (2026-03-12)
+## 0.27.0 — The Trailblazer (2026-03-12)
 
 The work orchestrator now speaks prime files. Plan and implementation agents receive prime files as first-class context, and the builder is instructed to create missing ones on the fly. The archived REQ example also carries the new field for reference.
 
@@ -1069,7 +1085,7 @@ The work orchestrator now speaks prime files. Plan and implementation agents rec
 - Added Prime Files bullet to agent instructions — read first, create if missing, keep low-noise
 - Added `prime_files: []` to the Archived Request File Example frontmatter
 
-## 0.26.0 — The Compass (2026-03-12)
+## 0.26.0 — The Wayfinder (2026-03-12)
 
 Capture now knows about prime files — semantic index files that point agents to the right source code. REQs carry a `prime_files` array in frontmatter, the PLAN phase reads them alongside agent rules, and Step 1 routes to matching prime files automatically.
 
@@ -1096,7 +1112,7 @@ Present work now generates an interactive HTML explainer alongside the client br
 - Updated Step 5 summary to list the HTML file with double-click-to-open instructions
 - Renumbered Portfolio artifacts from 4c to 4d
 
-## 0.24.0 — The Feedback Loop (2026-03-12)
+## 0.24.0 — The Human Touch (2026-03-12)
 
 Reviews in standalone mode now pause for human validation before closing out. The reviewer presents its report, then asks the user to test manually and share feedback. Lessons learned go straight into the archived REQ; bugs become follow-up REQs automatically.
 
@@ -1173,7 +1189,7 @@ Commits weren't happening during `do work run` because the architecture diagram 
 - **work.md**: Added "Commit (git repos only)" node to the architecture diagram between Archive and Loop
 - **work.md**: Added bold reminder callout below the diagram reinforcing that every completed request gets a commit before looping
 
-## 0.22.6 — The Safety Net (2026-03-04)
+## 0.22.6 — The Guardrail (2026-03-04)
 
 Six cross-file fixes addressing safety gaps, missing guardrails, and inconsistent instructions.
 
@@ -1212,7 +1228,7 @@ Dev-only files no longer tag along when someone installs the skill. CLAUDE.md, C
 - Added `CLAUDE.md` symlink at repo root for Claude Code auto-discovery
 - Updated CLAUDE.md changelog path reference to `_dev/CHANGELOG.md`
 
-## 0.22.1 — The Signpost (2026-03-04)
+## 0.22.1 — The Badge (2026-03-04)
 
 Verify now clearly identifies itself as capture QA, so agents (and users) don't confuse it with implementation review.
 
@@ -1234,7 +1250,7 @@ Addendum REQs now work reliably in non-git environments and the builder knows wh
 - Made commit hash conditional ("if available") in `capture.md`'s Prior Implementation section — non-git projects legitimately have no hash
 - Added addendum_to handling to `work.md` Step 3 (Triage) — builder now reads the original REQ for context, closing the timing gap where capture skips Prior Implementation for in-flight originals that complete before the addendum is built
 
-## 0.21.0 — The Consistency Pass (2026-03-04)
+## 0.21.0 — The Level Set (2026-03-04)
 
 Ten cross-file inconsistencies and instruction gaps cleaned up. Agents following these docs literally should now get consistent behavior across all action files.
 
@@ -1263,7 +1279,7 @@ Addendum REQs for archived work no longer leave the builder guessing. When creat
 - Added "Context is critical" guidance — instructs capture to read the original archived REQ before writing the addendum
 - Updated "Addendum to Archived Request" example to show the prior-implementation flow
 
-## 0.20.5 — The Gap Closer (2026-03-03)
+## 0.20.5 — The Tight Seal (2026-03-03)
 
 Addendum rules in `capture.md` are now airtight. When an original request is archived, creating an addendum always produces a new UR + REQ in `do-work/` root — so the work loop can pick it up. The archive stays immutable.
 
@@ -1325,7 +1341,7 @@ Review work now checks whether your change broke something nearby. Regression ri
 - Added "Regression scenarios" category to Suggest Additional Testing
 - Added diff hygiene to Code Quality — catches debug artifacts, console.log/print statements, commented-out experiments, temp files
 
-## 0.19.0 — The Full Picture (2026-03-02)
+## 0.19.0 — The Wide Lens (2026-03-02)
 
 Review and verify got proper names and bigger jobs. "Verify" becomes "verify requests" — it checks capture quality. "Review" becomes "review work" — and now it does requirements checking (did we build what was asked?), code review, acceptance testing (actually run the thing), and suggests additional testing the user should do. Every action now ends with suggested next prompts so you always know what to do next.
 
@@ -1338,7 +1354,7 @@ Review and verify got proper names and bigger jobs. "Verify" becomes "verify req
 - Added "Suggest Next Steps" section to SKILL.md — every action now ends with 2-3 fully qualified prompt suggestions (`do work verify requests`, not just `verify`)
 - Updated capture.md, work.md, README.md with new action names and references
 
-## 0.18.0 — The Clarity Pass (2026-03-02)
+## 0.18.0 — The Plain English (2026-03-02)
 
 Actions now say what they mean. "Capture" becomes "capture requests," the confusing "answers mode" becomes "clarify questions" with `do work clarify`, and bare `do work` shows a help menu instead of jumping straight to the work loop.
 
@@ -1463,7 +1479,7 @@ The skill shed two-thirds of its weight. `do.md` dropped from 883 to 288 lines, 
 - All behavioral rules preserved — UR+REQ pairing, immutability, complexity triage, living logs, capture≠execute boundary
 - Zero behavior changes — this is a documentation refactor, not a feature change
 
-## 0.11.1 — The Safety Net (2026-02-24)
+## 0.11.1 — The Soft Landing (2026-02-24)
 
 Subagent dispatch no longer assumes subagents exist. Environments without Task subagents can now fall back to reading the action file directly in the current session — no more broken routing in simpler tools. The dispatch section is restructured as "if available / if not" so the skill stays portable.
 
@@ -1537,7 +1553,7 @@ You can now ask "what's new" and actually see what's new — right at the bottom
 - Routing table updated with changelog keyword detection
 - Works with any skill that has a CHANGELOG.md in its root
 
-## 0.8.0 — The Clarity Pass (2026-02-03)
+## 0.8.0 — The Bright Light (2026-02-03)
 
 The UR system was hiding in plain sight — documented everywhere but easy to miss if you weren't reading carefully. This release restructures the do action and skill definition so the UR + REQ pairing is unmissable, even for agents that skim. Also added agent compatibility guidance to CLAUDE.md so future edits keep the skill portable across platforms.
 

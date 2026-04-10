@@ -62,7 +62,7 @@ Check these patterns **in order** — first match wins:
 | 1        | Empty, bare, or help     | `do work`, `do work help`                                                                                                          | → help menu                   |
 | 2        | Version exact phrases    | `do work check for updates`, `do work check for update`                                                                            | → version                     |
 | 3        | Pipeline keywords        | `do work pipeline`, `do work full`, `do work pipeline add dark mode`, `do work full add dark mode`, `do work pipeline status`, `do work pipeline abandon` | → pipeline                    |
-| 4        | Action verbs only        | `do work run`, `do work go`, `do work start`                                                                                       | → work                        |
+| 4        | Action verbs (± REQ IDs) | `do work run`, `do work go`, `do work start`, `do work run REQ-042`                                                                | → work                        |
 | 5        | Verify keywords          | `do work verify`, `do work verify requests`, `do work check REQ-018`, `do work evaluate`, `do work audit`, `do work review requests` | → verify requests              |
 | 6        | Clarify keywords         | `do work clarify`, `do work questions`, `do work pending`                                                                          | → clarify questions            |
 | 7        | Code-review keywords     | `do work code-review`, `do work code review`, `do work code-review prime-auth`, `do work code review src/`, `do work audit codebase`, `do work review codebase`, `do work codebase review` | → code-review                  |
@@ -108,7 +108,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | Route | Trigger verbs | Notes |
 |-------|--------------|-------|
 | **pipeline** | pipeline, full, full pipeline | Everything after keyword → `$ARGUMENTS` (request text). "pipeline status" → status mode. "pipeline abandon" → abandon mode. If no args and active pipeline exists, resume. |
-| **work** | run, go, start, begin, work, process, execute, build, continue, resume | |
+| **work** | run, go, start, begin, work, process, execute, build, continue, resume | Optional REQ IDs after keyword (e.g., `do work run REQ-042`) → process only those REQs. No args → drain full queue. |
 | **clarify** | clarify, answers, questions, pending, pending answers, blocked, what's blocked, what needs answers | Routes to `actions/clarify.md` |
 | **verify requests** | verify, verify requests, check, evaluate, review requests, review reqs, audit | "check" alone → verify; "check for updates" → version (priority 2); "audit" alone → verify; "audit codebase" → code-review; "audit primes" → prime |
 | **code-review** | code-review, code review, review codebase, audit codebase, codebase review | Both hyphenated and unhyphenated forms route here, with or without scope. Scope args: prime file refs, directory paths, or combined |

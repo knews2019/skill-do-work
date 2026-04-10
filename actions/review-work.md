@@ -430,6 +430,7 @@ Before presenting the review report:
 - [ ] Every requirement from the REQ walked against the diff (not skimmed)
 - [ ] All applicable scoring dimensions have a numeric score (no blanks)
 - [ ] Overall score computed using the documented formula
+- [ ] P-A-U checkboxes checked — if the REQ has an "AI Execution State (P-A-U Loop)" section, verify all three boxes (`[PLAN]`, `[APPLY]`, `[UNIFY]`) are marked `[x]`. Unchecked boxes suggest the builder skipped a phase — flag as a Minor finding.
 - [ ] Acceptance testing was attempted (or scored Untested with specific reason)
 - [ ] Each Important finding has a follow-up REQ drafted
 - [ ] Suggested Additional Testing includes only items relevant to this change
