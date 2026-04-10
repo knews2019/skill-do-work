@@ -9,7 +9,7 @@ A fast-capture system for turning ideas into structured request files. Speed ove
 Every invocation produces exactly two things, always paired:
 
 1. **A UR folder** at `do-work/user-requests/UR-NNN/` with `input.md` containing the full verbatim input
-2. **One or more REQ files** at `do-work/REQ-NNN-slug.md`, each linked via `user_request: UR-NNN` in frontmatter
+2. **One or more REQ files** at `do-work/queue/REQ-NNN-slug.md`, each linked via `user_request: UR-NNN` in frontmatter
 
 Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless. The verify requests action depends on this linkage.
 
@@ -39,23 +39,23 @@ If `do-work/` doesn't exist yet (first invocation in a project):
 
 ## File Locations
 
-- `do-work/` root — ONLY for pending `REQ-*.md` files (the queue)
+- `do-work/queue/` — ONLY for pending `REQ-*.md` files
 - `do-work/user-requests/UR-NNN/` — verbatim input (`input.md`) and assets (`assets/`)
 - **NEVER write to** `do-work/working/` or `do-work/archive/` — those belong to the work action
 
 ### Immutability Rule
 
-Files in `working/` and `archive/` are **immutable**. If someone wants to add to an in-flight or completed request, create a new addendum REQ that references the original via `addendum_to` in frontmatter. **The new addendum REQ always goes to `do-work/` root** — never into `working/` or `archive/` — so the work loop picks it up on the next run. A new UR is also created (verbatim input of the addendum) paired with the new REQ.
+Files in `working/` and `archive/` are **immutable**. If someone wants to add to an in-flight or completed request, create a new addendum REQ that references the original via `addendum_to` in frontmatter. **The new addendum REQ always goes to `do-work/queue/`** — never into `working/` or `archive/` — so the work loop picks it up on the next run. A new UR is also created (verbatim input of the addendum) paired with the new REQ.
 
 **Exception:** The review work action may append a `## Review` section to archived files — review annotations are post-work metadata, not content changes. See `review-work.md`.
 
 ## File Naming
 
-- **REQ files:** `REQ-[number]-[slug].md` in `do-work/` root
+- **REQ files:** `REQ-[number]-[slug].md` in `do-work/queue/`
 - **UR folders:** `do-work/user-requests/UR-[number]/` containing `input.md` and optional `assets/`
 - **Assets:** `do-work/user-requests/UR-NNN/assets/REQ-[num]-[descriptive-name].png`
 
-To get the next REQ number, check existing `REQ-*.md` files across `do-work/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`), then increment from the highest. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences. If no existing files are found anywhere, start at 1.
+To get the next REQ number, check existing `REQ-*.md` files across `do-work/queue/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`), then increment from the highest. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences. If no existing files are found anywhere, start at 1.
 
 ### Backward Compatibility
 
@@ -193,7 +193,7 @@ Read the user's input. Determine:
 
 ### Step 2: Check for Duplicates
 
-**Queued requests** — read each `REQ-*.md` in `do-work/` and compare the new request's intent against the existing file's `title`, heading, and `## What` section. Slugs are lossy — a file named `REQ-042-ui-cleanup.md` may contain the exact requirement being re-submitted under different phrasing. Match on intent, not just keywords.
+**Queued requests** — read each `REQ-*.md` in `do-work/queue/` and compare the new request's intent against the existing file's `title`, heading, and `## What` section. Slugs are lossy — a file named `REQ-042-ui-cleanup.md` may contain the exact requirement being re-submitted under different phrasing. Match on intent, not just keywords.
 
 **In-flight and archived requests** — list filenames in `do-work/working/` and `do-work/archive/` (including inside `do-work/archive/UR-*/`). A filename scan is sufficient here since these files are immutable regardless.
 
@@ -203,9 +203,9 @@ For each parsed request, check for similar existing ones across both tiers.
 
 | Existing request is in... | Action | New REQ lands in |
 |---------------------------|--------|-----------------|
-| `do-work/` (queue) | If same: tell user, skip. If similar: ask. If enhancement: append an Addendum section to the pending file | N/A — amends the existing pending file |
-| `do-work/working/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field | `do-work/` root — work loop picks it up |
-| `do-work/archive/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field | `do-work/` root — work loop picks it up |
+| `do-work/queue/` | If same: tell user, skip. If similar: ask. If enhancement: append an Addendum section to the pending file | N/A — amends the existing pending file |
+| `do-work/working/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field | `do-work/queue/` — work loop picks it up |
+| `do-work/archive/` | **NEVER modify.** Create a new addendum REQ with `addendum_to` field | `do-work/queue/` — work loop picks it up |
 
 **Addendum to a queued request** — don't rewrite, append:
 
@@ -225,10 +225,10 @@ User added: "dark mode should also affect the sidebar"
 
 The goal is that every REQ, at every point in time, expresses a single coherent intent.
 
-**Addendum for in-flight/completed requests** — create a new UR + REQ, both in `do-work/`:
+**Addendum for in-flight/completed requests** — create a new UR + REQ, both in `do-work/queue/`:
 
 - Create `do-work/user-requests/UR-NNN/input.md` with the addendum input verbatim (new UR, fresh number)
-- Create `do-work/REQ-NNN-slug.md` linking to that new UR, with `addendum_to` pointing at the original
+- Create `do-work/queue/REQ-NNN-slug.md` linking to that new UR, with `addendum_to` pointing at the original
 
 The `addendum_to` field is what connects the addendum to its origin. The new REQ then enters the queue normally and gets picked up by the next `do work run`.
 
@@ -365,7 +365,7 @@ git add do-work/user-requests/UR-NNN/input.md
 git add do-work/user-requests/UR-NNN/assets/  # only if assets were created
 
 # Stage each created REQ file
-git add do-work/REQ-NNN-slug.md
+git add do-work/queue/REQ-NNN-slug.md
 
 git commit -m "$(cat <<'EOF'
 [UR-NNN] captured {title} ({N} REQs)
@@ -392,7 +392,7 @@ User: do work add keyboard shortcuts
 
 Created:
 - do-work/user-requests/UR-003/input.md
-- do-work/REQ-004-keyboard-shortcuts.md
+- do-work/queue/REQ-004-keyboard-shortcuts.md
 ```
 
 ### Multiple Requests
@@ -402,9 +402,9 @@ User: do work add dark mode, also the search feels slow, and we need an export b
 
 Created:
 - do-work/user-requests/UR-004/input.md
-- do-work/REQ-005-dark-mode.md
-- do-work/REQ-006-search-performance.md
-- do-work/REQ-007-export-button.md
+- do-work/queue/REQ-005-dark-mode.md
+- do-work/queue/REQ-006-search-performance.md
+- do-work/queue/REQ-007-export-button.md
 ```
 
 ### Addendum to In-Flight Request
@@ -418,7 +418,7 @@ REQ-005 is currently being worked on — creating a follow-up request instead.
 
 Created:
 - do-work/user-requests/UR-006/input.md
-- do-work/REQ-021-addendum-dark-mode-sidebar.md (addendum_to: REQ-005)
+- do-work/queue/REQ-021-addendum-dark-mode-sidebar.md (addendum_to: REQ-005)
 ```
 
 ### Addendum to Archived Request
@@ -434,11 +434,11 @@ REQ-005 is already completed and archived — creating a new follow-up request.
 
 Created:
 - do-work/user-requests/UR-009/input.md         ← new UR (archived UR-003 is not touched)
-- do-work/REQ-027-addendum-dark-mode-modals.md  ← new REQ in do-work/ root
+- do-work/queue/REQ-027-addendum-dark-mode-modals.md  ← new REQ in do-work/queue/
   (user_request: UR-009, addendum_to: REQ-005, includes Prior Implementation summary)
 ```
 
-The new REQ-027 sits in `do-work/` root with `status: pending` and will be picked up by the next `do work run`. The archived `UR-003/` folder is not modified.
+The new REQ-027 sits in `do-work/queue/` with `status: pending` and will be picked up by the next `do work run`. The archived `UR-003/` folder is not modified.
 
 ### Complex Multi-Feature Request
 
@@ -447,10 +447,10 @@ User: do work [detailed auth system requirements — OAuth, profiles, sessions, 
 
 Created:
 - do-work/user-requests/UR-001/input.md (full verbatim input, 1847 words)
-- do-work/REQ-010-oauth-login.md (user_request: UR-001)
-- do-work/REQ-011-user-profiles.md (user_request: UR-001)
-- do-work/REQ-012-session-management.md (user_request: UR-001)
-- do-work/REQ-013-password-reset.md (user_request: UR-001)
+- do-work/queue/REQ-010-oauth-login.md (user_request: UR-001)
+- do-work/queue/REQ-011-user-profiles.md (user_request: UR-001)
+- do-work/queue/REQ-012-session-management.md (user_request: UR-001)
+- do-work/queue/REQ-013-password-reset.md (user_request: UR-001)
 
 That was a pretty detailed request — it's possible the capture missed some
 nuances. You can run `do work verify requests` to check coverage against your original input.

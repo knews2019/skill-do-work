@@ -14,7 +14,7 @@ Pipeline diagnostics — detects stuck work, hollow completions, orphaned URs, s
 | **Failed without follow-up** | Failed REQs missing error classification or follow-up REQ |
 | **Stale pending-answers** | REQs waiting for user input for >7 days |
 | **Git divergence** | Files from completed REQs later modified or deleted without tracking |
-| **Stranded finished REQs** | Terminal-status REQs left in queue root or `working/` instead of archived |
+| **Stranded finished REQs** | Terminal-status REQs left in `do-work/queue/` or `working/` instead of archived |
 
 ## Output
 

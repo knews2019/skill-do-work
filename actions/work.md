@@ -1,6 +1,6 @@
 # Work Action
 
-> **Part of the do-work skill.** Invoked when routing determines the user wants to process the queue. Processes requests from the `do-work/` folder in your project.
+> **Part of the do-work skill.** Invoked when routing determines the user wants to process the queue. Processes pending requests from the `do-work/queue/` folder in your project.
 
 An orchestrated build system that processes request files created by the capture requests action. Uses complexity triage to route simple requests straight to implementation and complex ones through planning and exploration first.
 
@@ -106,7 +106,8 @@ Read the request
 
 ```
 do-work/
-├── REQ-018-pending-task.md       # Pending (root = queue)
+├── queue/                         # Pending REQ files (the work queue)
+│   └── REQ-018-pending-task.md
 ├── user-requests/                 # UR folders (verbatim input + assets)
 │   └── UR-003/
 │       ├── input.md
@@ -122,7 +123,7 @@ do-work/
     └── legacy/                    # Consolidated legacy items
 ```
 
-- **Root**: The queue — only pending `REQ-*.md` files
+- **`queue/`**: The queue — only pending `REQ-*.md` files
 - **`working/`**: Claimed requests. Immutable to all actions except the work pipeline.
 - **`archive/`**: Completed UR folders (self-contained) and legacy REQs/CONTEXT docs
 - **`user-requests/`**: Active UR folders. Moved to `archive/` when all REQs complete.
@@ -169,11 +170,11 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 **Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run was interrupted. For each recovered REQ:
 1. Reset frontmatter: set `status` to `pending`, **unless** the REQ file contains a `## Open Questions` section with at least one unresolved `- [ ]` item — in that case, restore `status` to `pending-answers`. (If the `## Open Questions` section exists but all items are already `[x]` or `[~]`, or if no `## Open Questions` section exists at all, set `status` to `pending`.) Remove `claimed_at` and `route`.
 2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, `## Scope`, `## Pre-Flight`, `## Implementation Summary`, `## Qualification`, `## Testing`, `## Review`, `## Lessons Learned`, `## Decisions`, and `## Discovered Tasks` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact.
-3. Move the REQ back to the `do-work/` root
+3. Move the REQ back to `do-work/queue/`
 
 Once `working/` is empty, proceed with finding the next request.
 
-Glob for `do-work/REQ-*.md` (root of `do-work/`, **not** a subdirectory — there is no `queue/` folder). Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
+Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
 
 **Queue status summary:** After reading all REQ frontmatter, categorize every REQ by status and print a summary before proceeding:
 
@@ -181,7 +182,7 @@ Glob for `do-work/REQ-*.md` (root of `do-work/`, **not** a subdirectory — ther
 Queue: N pending | N completed/done (awaiting archive) | N pending-answers
 ```
 
-Count `completed`, `completed-with-issues`, and `done` statuses together as "completed/done (awaiting archive)." If any completed/done REQs exist in the root `do-work/`, add:
+Count `completed`, `completed-with-issues`, and `done` statuses together as "completed/done (awaiting archive)." If any completed/done REQs exist in `do-work/queue/`, add:
 
 ```
 ⚠ N completed REQs across M URs awaiting archive. Run `do work cleanup` after this session.
@@ -191,7 +192,7 @@ Count `completed`, `completed-with-issues`, and `done` statuses together as "com
 
 **Exit paths when no `pending` REQs found:**
 
-- **Completed/done REQs exist in root `do-work/`:** Do NOT silently say "no pending REQs." Instead, list them grouped by UR:
+- **Completed/done REQs exist in `do-work/queue/`:** Do NOT silently say "no pending REQs." Instead, list them grouped by UR:
 
   ```
   No pending REQs in queue.
@@ -212,7 +213,7 @@ Count `completed`, `completed-with-issues`, and `done` statuses together as "com
 
 **REQ validation:** When reading each REQ's frontmatter, verify it has the required fields (`id`, `status`, `title`). If a REQ file has missing or unparseable frontmatter, skip it and report: `⚠ Skipping [filename]: missing required frontmatter ([field]).` Do not let a single malformed REQ block the entire work loop — skip it and continue to the next.
 
-**Exact glob pattern:** `do-work/REQ-*.md` — if this returns no results, do NOT conclude the queue is empty. Verify by listing `do-work/` contents to rule out a bad pattern.
+**Exact glob pattern:** `do-work/queue/REQ-*.md` — if this returns no results, do NOT conclude the queue is empty. Verify by listing `do-work/queue/` contents to rule out a bad pattern.
 
 ### Step 2: Claim the Request
 
@@ -537,7 +538,7 @@ The review reads the REQ (in `do-work/working/`), the original UR, and the curre
 
 The status `completed-with-issues` means the REQ was archived but has known unresolved problems. It counts toward UR completion for archiving purposes, but the follow-up REQs must be processed before the work is considered ship-ready. This status is visible in the recap and present-work actions.
 
-**Follow-up REQs are created based on finding severity, not score.** The review creates follow-up REQs for each **Important** finding (regardless of overall score). Minor and Nit findings go in the report only. The follow-up REQs enter the queue and get processed in a future loop iteration. Follow-up REQs created by the review step must include: `status: pending`, `user_request: [same UR as the reviewed REQ]`, `addendum_to: [reviewed REQ id]`, `domain: [same domain]`, and `review_generated: true`. Place them in `do-work/` root. Cycle detection (Step 8, substep 5) applies to these follow-ups — check the `addendum_to` chain before creating.
+**Follow-up REQs are created based on finding severity, not score.** The review creates follow-up REQs for each **Important** finding (regardless of overall score). Minor and Nit findings go in the report only. The follow-up REQs enter the queue and get processed in a future loop iteration. Follow-up REQs created by the review step must include: `status: pending`, `user_request: [same UR as the reviewed REQ]`, `addendum_to: [reviewed REQ id]`, `domain: [same domain]`, and `review_generated: true`. Place them in `do-work/queue/`. Cycle detection (Step 8, substep 5) applies to these follow-ups — check the `addendum_to` chain before creating.
 
 **Calibrate depth to route:** Route A gets a quick scan (skip dimensions that don't apply). Route B gets a standard review. Route C gets a thorough review comparing against the plan.
 
@@ -637,7 +638,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
      Recommended: [builder's choice — already implemented]
      Also: [other alternatives]
    ```
-   These go in `do-work/` with `status: pending-answers`. The user reviews them via `do work clarify`.
+   These go in `do-work/queue/` with `status: pending-answers`. The user reviews them via `do work clarify`.
 4. **Queue Discovered Tasks:** Check the REQ file for a `## Discovered Tasks` section (appended by the implementation agent as a separate section — not inside `## Implementation Summary`). For every item listed, classify by severity and create follow-up REQs accordingly.
 
    The builder should classify each discovered task when appending them:
@@ -667,7 +668,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
-| `user_request: UR-NNN` | Check if ALL REQs in the UR are finished (status: `completed`, `completed-with-issues`, or `failed`). Check `do-work/` root, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` for REQs belonging to this UR. If all finished: move completed/completed-with-issues REQs into UR folder (failed REQs stay at archive root), move entire UR folder to `archive/`. If any REQ is still `pending`, `pending-answers`, or `claimed`: move this REQ to `archive/` root; UR stays in `user-requests/` until last REQ finishes. |
+| `user_request: UR-NNN` | Check if ALL REQs in the UR are finished (status: `completed`, `completed-with-issues`, or `failed`). Check `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` for REQs belonging to this UR. If all finished: move completed/completed-with-issues REQs into UR folder (failed REQs stay at archive root), move entire UR folder to `archive/`. If any REQ is still `pending`, `pending-answers`, or `claimed`: move this REQ to `archive/` root; UR stays in `user-requests/` until last REQ finishes. |
 | `context_ref` (legacy) | Move REQ to `archive/`. If all related REQs are now archived, move the CONTEXT doc too. |
 | Neither (standalone legacy) | Move directly to `archive/`. |
 
@@ -699,7 +700,7 @@ git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx \
   do-work/archive/UR-002/REQ-003-dark-mode.md
 
 # Stage follow-up REQs created in Step 8 (if any)
-git add do-work/REQ-025-confirm-sidebar-palette.md
+git add do-work/queue/REQ-025-confirm-sidebar-palette.md
 
 # Stage UR-folder move (if this was the last REQ and the UR moved to archive/)
 # Both the old path (deletion) and new path (addition) must be staged.
@@ -719,7 +720,7 @@ EOF
 
 **Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
 
-One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/`), and any UR-folder moves to `archive/`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
+One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), and any UR-folder moves to `archive/`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
 
 **Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
 
@@ -738,11 +739,11 @@ This ensures the `commit:` field in the archived REQ contains the real implement
 
 ### Step 10: Loop or Exit
 
-Re-check `do-work/` for `REQ-*.md` files (fresh check, not cached).
+Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
 
 - **`pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
-- **Only `pending-answers` REQs remain**: Write a **Session Checkpoint** (see below), run the [cleanup action](./cleanup.md), then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work clarify` when ready. If completed/done REQs also exist in root `do-work/`, include them in the summary: `⚠ N completed REQs awaiting archive. Run do work cleanup to archive them.` List the REQ ids, titles, and UR groupings.
-- **No REQs at all**: Write a Session Checkpoint, run cleanup, report final summary and exit. If completed/done REQs exist in root `do-work/` (they may have been created during this session but not yet archived due to incomplete URs), include them in the summary with the same `⚠` warning and REQ listing as above.
+- **Only `pending-answers` REQs remain**: Write a **Session Checkpoint** (see below), run the [cleanup action](./cleanup.md), then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work clarify` when ready. If completed/done REQs also exist in `do-work/queue/`, include them in the summary: `⚠ N completed REQs awaiting archive. Run do work cleanup to archive them.` List the REQ ids, titles, and UR groupings.
+- **No REQs at all**: Write a Session Checkpoint, run cleanup, report final summary and exit. If completed/done REQs exist in `do-work/queue/` (they may have been created during this session but not yet archived due to incomplete URs), include them in the summary with the same `⚠` warning and REQ listing as above.
 
 #### Context Wipe — Verified
 

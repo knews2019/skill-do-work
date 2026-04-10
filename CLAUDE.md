@@ -107,7 +107,7 @@ Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_C
 
 ## Queue Path Convention
 
-Pending REQ files live at `do-work/` root — there is no `do-work/queue/` subdirectory. When referencing the queue in action files, always use `do-work/` not `do-work/queue/`.
+Pending REQ files live in `do-work/queue/`. When referencing the queue in action files, always use `do-work/queue/` — not `do-work/` root.
 
 ## Agent Compatibility
 

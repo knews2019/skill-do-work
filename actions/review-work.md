@@ -304,7 +304,7 @@ status: pending-answers
 
 The `pending-answers` status means the work loop won't pick this up until the user reviews it, answers the questions, and flips the status to `pending`. The recommended choices let the user quickly pick an option without deep context-switching. Only add Open Questions when the ambiguity caused the issue — if the fix is clear (e.g., "missed a null check"), use `status: pending` and skip the Open Questions.
 
-Follow-up REQs go in `do-work/` (the queue). In pipeline mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do work run`.
+Follow-up REQs go in `do-work/queue/`. In pipeline mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do work run`.
 
 **Don't create follow-ups for minor issues.** Minor findings go in the report only. The threshold: would a senior engineer request changes on this in a PR review, or just leave a comment?
 
@@ -347,7 +347,7 @@ Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, ski
 git add do-work/archive/UR-NNN/REQ-NNN-slug.md
 
 # Stage any follow-up REQs created
-git add do-work/REQ-NNN-slug.md
+git add do-work/queue/REQ-NNN-slug.md
 
 git commit -m "$(cat <<'EOF'
 [REQ-NNN] review: {score}% (Route {route})

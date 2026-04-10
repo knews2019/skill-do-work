@@ -7,7 +7,7 @@ Consolidates the archive — moves loose files into the right places, closes com
 Four passes, in order:
 
 ### Pass 1: Sweep finished queue items
-Moves terminal-status REQs (`completed`, `failed`, `done`) from the queue root and `working/` into `archive/`.
+Moves terminal-status REQs (`completed`, `failed`, `done`) from `do-work/queue/` and `working/` into `archive/`.
 
 ### Pass 2: Close completed User Requests
 When all REQs for a UR are archived, moves the entire UR folder from `user-requests/` into `archive/UR-NNN/`.
@@ -31,7 +31,8 @@ do-work/
 │   └── legacy/              # Standalone REQs without UR references
 │       └── REQ-010-done.md
 ├── user-requests/            # Only open URs remain here
-└── (pending REQs)            # Only active queue items remain here
+├── queue/                    # Only active queue items remain here
+│   └── (pending REQs)
 ```
 
 ## Key rules

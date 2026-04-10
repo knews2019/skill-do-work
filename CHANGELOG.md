@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.57.2 — The Paved Path (2026-04-10)
+
+Pending REQ files now live in `do-work/queue/` instead of `do-work/` root. The `queue/` path is what people kept writing instinctively — paving the cow path prevents a recurring class of stale-path bugs.
+
+- `actions/work.md`: All queue glob patterns, directory diagrams, REQ placement paths, crash recovery, and git staging updated to `do-work/queue/`
+- `actions/capture.md`: REQ output paths, duplicate-check scans, addendum destinations, and all example outputs updated to `do-work/queue/`
+- `actions/cleanup.md`: Sweep globs, report messages, git staging, and relocation paths updated to `do-work/queue/`
+- `actions/pipeline.md`, `actions/clarify.md`, `actions/forensics.md`, `actions/review-work.md`, `actions/version.md`, `actions/code-review.md`: Queue scan paths and REQ placement references updated
+- `CLAUDE.md`: Queue Path Convention section updated to document `do-work/queue/` as canonical location
+- `README.md`, `docs/capture-guide.md`, `docs/work-guide.md`, `docs/cleanup-guide.md`, `docs/forensics-guide.md`: Directory diagrams and path references updated
+
 ## 0.57.1 — The Clean Ledger (2026-04-10)
 
 Changelog and action file hygiene — fixes that prevent recurring errors.

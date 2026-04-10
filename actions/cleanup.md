@@ -15,14 +15,14 @@ Four passes, in order:
 
 ### Pass 0: Sweep Finished Queue Items
 
-Scan the queue root and working directory for REQs with terminal statuses that should have been archived but weren't — typically from manual work, different agents, or legacy sessions that completed outside the standard work pipeline.
+Scan `do-work/queue/` and the working directory for REQs with terminal statuses that should have been archived but weren't — typically from manual work, different agents, or legacy sessions that completed outside the standard work pipeline.
 
-1. **Glob `do-work/REQ-*.md`** in the queue root
+1. **Glob `do-work/queue/REQ-*.md`**
 2. **Read each REQ's frontmatter** `status` field
 3. **If status is any terminal value** — `completed`, `completed-with-issues`, `failed`, or any non-standard terminal status (`done`, `finished`, `closed`):
    - **Normalize non-standard statuses** before moving: change `done` → `completed`, `finished` → `completed`, `closed` → `completed` in frontmatter
    - Move the REQ to `do-work/archive/` root (Pass 1 and Pass 2 will then consolidate it into the correct UR folder)
-   - Report: `Swept REQ-NNN from queue root (was status: {original}) → archive`
+   - Report: `Swept REQ-NNN from do-work/queue/ (was status: {original}) → archive`
 4. **Leave `pending`, `pending-answers`, and `claimed` REQs untouched** — those are active queue items
 5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`), it was finished but never moved out. Same treatment: normalize status, move to `do-work/archive/` root, report it.
 
@@ -66,8 +66,8 @@ For each loose `REQ-*.md` file directly in `do-work/archive/` (not inside a subf
 Scan for `do-work/` directories created inside utility subdirectories instead of the project root. This happens when an agent's working directory drifts into a subdirectory (e.g., during a refactor) and the next capture creates `do-work/` relative to that location. Once the misplaced directory exists, subsequent sessions keep writing there — silently diverging from the canonical queue.
 
 1. **Detect directories, not file patterns.** Search for any directory named `do-work/` anywhere in the repo EXCEPT the project root. Look for the directory itself — don't rely on specific file patterns inside it, since a misplaced tree may contain only `user-requests/`, only `working/`, only assets, or any partial subset of the normal structure.
-2. For each misplaced `do-work/` found, inspect its known subtrees (`archive/`, `user-requests/`, `working/`, and queue-root REQ files). Relocate preserving internal structure:
-   - **Queue-root REQ files** (`do-work/REQ-*.md`): move to canonical `do-work/REQ-*.md`. **Before moving**, check if a REQ with the same number already exists at the canonical location (Pass 0 sweeps terminal-status REQs, but a misplaced `do-work/` may have a REQ with a status Pass 0 doesn't touch, such as `pending`). Conflict = same REQ number exists at both locations — report and leave the misplaced copy in place for manual resolution.
+2. For each misplaced `do-work/` found, inspect its known subtrees (`archive/`, `user-requests/`, `working/`, and `queue/` REQ files). Relocate preserving internal structure:
+   - **Queue REQ files** (`do-work/queue/REQ-*.md`): move to canonical `do-work/queue/REQ-*.md`. **Before moving**, check if a REQ with the same number already exists at the canonical location (Pass 0 sweeps terminal-status REQs, but a misplaced `do-work/` may have a REQ with a status Pass 0 doesn't touch, such as `pending`). Conflict = same REQ number exists at both locations — report and leave the misplaced copy in place for manual resolution.
    - **`user-requests/UR-NNN/`**: move entire folder to canonical `do-work/user-requests/UR-NNN/`. Conflict = same UR number exists at both locations.
    - **`archive/UR-NNN/`**: move entire folder to canonical `do-work/archive/UR-NNN/`. Conflict = same UR number exists at both locations.
    - **`working/REQ-*.md`**: move to canonical `do-work/working/REQ-*.md`. Conflict = same REQ number exists at both locations.
@@ -96,7 +96,7 @@ Print a summary at the end:
 
 ```
 Archive cleanup complete:
-  - Swept: 3 finished REQs from queue root, 1 from working/
+  - Swept: 3 finished REQs from do-work/queue/, 1 from working/
   - Archived: UR-011 (3 REQs), UR-004 (8 REQs)
   - Consolidated: 5 loose REQs into their UR folders
   - Legacy: 24 REQs moved to archive/legacy/
@@ -139,10 +139,10 @@ Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, ski
 
 ```bash
 # Stage all paths affected by cleanup (moves show as delete + add)
-# Include queue root and working/ if Pass 0 swept any finished REQs
+# Include do-work/queue/ and working/ if Pass 0 swept any finished REQs
 git add do-work/archive/ do-work/user-requests/
-# If Pass 0 swept REQs from queue root or working/, also stage those paths:
-# git add do-work/REQ-NNN-*.md do-work/working/REQ-NNN-*.md  (the deletion side of the moves)
+# If Pass 0 swept REQs from do-work/queue/ or working/, also stage those paths:
+# git add do-work/queue/REQ-NNN-*.md do-work/working/REQ-NNN-*.md  (the deletion side of the moves)
 # If Pass 3a found misplaced directories, also stage those paths:
 # git add exp/g3-segment-anything/do-work/  (the deletion side of the move)
 
@@ -162,12 +162,12 @@ EOF
 
 If nothing was moved (archive was already clean), skip the commit entirely.
 
-Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/`, `do-work/user-requests/`, any queue root or working/ REQs swept by Pass 0, and any misplaced `do-work/` directories relocated by Pass 3a. Don't bypass pre-commit hooks.
+Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/`, `do-work/user-requests/`, any `do-work/queue/` or working/ REQs swept by Pass 0, and any misplaced `do-work/` directories relocated by Pass 3a. Don't bypass pre-commit hooks.
 
 ## What This Action Does NOT Do
 
 - Delete any files — only moves them into the right location
 - Modify file contents or frontmatter — files are relocated as-is. Exception: Pass 0 normalizes non-standard terminal statuses (`done` → `completed`, etc.) in frontmatter before moving.
-- Touch **active** files in the **canonical** `do-work/` root (the queue) or `do-work/working/` — `pending`, `pending-answers`, and `claimed` REQs are the work action's responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from queue root and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery.
+- Touch **active** files in `do-work/queue/` (the queue) or `do-work/working/` — `pending`, `pending-answers`, and `claimed` REQs are the work action's responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from `do-work/queue/` and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery.
 - Archive UR folders that still have pending/in-progress REQs
 - Process any REQ files (use the work action for that)
