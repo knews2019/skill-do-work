@@ -2,7 +2,7 @@
 
 After every action completes, suggest the next logical prompts the user might want to run. Use fully qualified action names so the user can copy-paste directly.
 
-**After pipeline (completed):**
+**After pipeline (completed — queue fully drained):**
 ```
 Next steps:
   do work present work        Generate client-facing deliverables
