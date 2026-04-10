@@ -77,7 +77,7 @@ Build a picture of the project and the concept before exploring:
 
 1. **Prime files**: Glob for `**/prime-*.md` — understand the architecture, entry points, conventions. Summarize the project landscape in 2-3 sentences.
 2. **Recent work**: Check `do-work/archive/` for the most recent 5 completed URs. Note the trajectory — what direction has recent work been heading?
-3. **Queue state**: Check `do-work/queue/` for pending REQs — known gaps that may inform exploration.
+3. **Queue state**: Check `do-work/` for pending REQs — known gaps that may inform exploration.
 4. **The seed**: Read `$ARGUMENTS` carefully. Understand not just the stated idea but the intent behind it — what problem is the user trying to solve, what excites them about it, what tensions exist in their thinking.
 
 If `$ARGUMENTS` is empty, present the project context to the user and ask: "What concept would you like to explore? Here's where the project has been heading: [summary]." Wait for their response.

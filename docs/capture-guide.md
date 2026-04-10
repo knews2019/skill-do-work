@@ -7,7 +7,7 @@ Fast-capture for turning ideas into structured, trackable request files. Designe
 Every invocation produces exactly two things:
 
 1. A **UR folder** (`do-work/user-requests/UR-NNN/`) preserving your verbatim input
-2. One or more **REQ files** (`do-work/REQ-NNN-slug.md`) that enter the queue
+2. One or more **REQ files** (`do-work/queue/REQ-NNN-slug.md`) that enter the queue
 
 Compound inputs are split into separate REQ files automatically. The skill asks clarifying questions during capture (while you're present) but never starts building — capture and execution are strictly separate.
 
@@ -19,8 +19,9 @@ do-work/
 │   └── UR-001/
 │       ├── input.md          # Full, unedited user input (source of truth)
 │       └── assets/           # Screenshots, attachments
-├── REQ-001-dark-mode.md      # Pending queue item
-├── REQ-002-export-button.md  # Another queue item
+├── queue/
+│   ├── REQ-001-dark-mode.md      # Pending queue item
+│   └── REQ-002-export-button.md  # Another queue item
 ├── working/                  # (created later by work action)
 └── archive/                  # (created later by work action)
 ```

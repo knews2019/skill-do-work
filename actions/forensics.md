@@ -26,7 +26,7 @@ For each found:
 
 Report: file name, title, route, how long stuck, last known phase (check which `##` sections exist — Triage, Plan, Exploration, Implementation Summary, etc.)
 
-**Suggested remediation:** Run `do work cleanup` — Pass 0 will sweep any REQ with a terminal status. For a truly stuck `claimed` REQ (still in-progress, not terminal), manually reset `status: pending`, remove `claimed_at` and `route` from frontmatter, strip incomplete sections, and move the file back to `do-work/` root, then run `do work cleanup`.
+**Suggested remediation:** Run `do work cleanup` — Pass 0 will sweep any REQ with a terminal status. For a truly stuck `claimed` REQ (still in-progress, not terminal), manually reset `status: pending`, remove `claimed_at` and `route` from frontmatter, strip incomplete sections, and move the file back to `do-work/queue/`, then run `do work cleanup`.
 
 ### 2. Hollow Completions
 
@@ -75,7 +75,7 @@ For each, check:
 
 ### 7. Stale Pending-Answers
 
-Scan `do-work/` root for REQs with `status: pending-answers`.
+Scan `do-work/queue/` for REQs with `status: pending-answers`.
 
 For each, check `created_at`:
 - **Info** if 3-7 days old
@@ -93,10 +93,10 @@ For recently archived REQs (last 10 with `commit` in frontmatter):
 
 ### 9. Stranded Finished REQs
 
-Scan `do-work/REQ-*.md` (root, not archive) AND `do-work/working/REQ-*.md` for REQs with any terminal status: `completed`, `completed-with-issues`, `failed`, or non-standard variants like `done`, `finished`, `closed`.
+Scan `do-work/queue/REQ-*.md` (queue, not archive) AND `do-work/working/REQ-*.md` for REQs with any terminal status: `completed`, `completed-with-issues`, `failed`, or non-standard variants like `done`, `finished`, `closed`.
 
-**Queue root findings:** Group by `user_request` frontmatter field. For each UR group:
-- **Warning**: "UR-NNN has N completed REQs stranded in queue root awaiting archive: REQ-NNN, REQ-NNN, ..."
+**Queue findings:** Group by `user_request` frontmatter field. For each UR group:
+- **Warning**: "UR-NNN has N completed REQs stranded in queue awaiting archive: REQ-NNN, REQ-NNN, ..."
 - REQs without a `user_request` field are grouped separately as "unlinked."
 
 **Working directory findings:** For each terminal-status REQ in `do-work/working/`:

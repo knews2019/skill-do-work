@@ -242,8 +242,9 @@ Run `do work help` at any point to get a refresher on all available commands.
 
 ```
 do-work/
-├── REQ-018-pending.md       # Queue (pending requests)
-├── REQ-019-pending.md
+├── queue/                    # Pending requests
+│   ├── REQ-018-pending.md
+│   └── REQ-019-pending.md
 ├── user-requests/            # Verbatim input + assets per user request
 │   └── UR-003/
 │       ├── input.md          # Original user input (source of truth)

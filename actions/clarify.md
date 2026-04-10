@@ -12,7 +12,7 @@ Triggered by `do work clarify` (also: `answers`, `questions`, `pending`, `what's
 
 ### Step 1: Scan the queue
 
-Find all `REQ-*.md` files in `do-work/` with `status: pending-answers`.
+Find all `REQ-*.md` files in `do-work/queue/` with `status: pending-answers`.
 
 ### Step 2: Check for pending questions
 
@@ -74,7 +74,7 @@ When the user reviews a discovered-task follow-up (one whose question is "Should
 
 1. Update the question to `- [x] [question] → Confirmed: Yes, add to queue`
 2. Update frontmatter: `status: pending` (NOT `completed` — this task needs to be built)
-3. **Do not archive.** The REQ stays in `do-work/` and enters the normal work queue for the next `do work run`
+3. **Do not archive.** The REQ stays in `do-work/queue/` and enters the normal work queue for the next `do work run`
 
 This is distinct from "Builder Was Right" because confirming a discovered task means the user wants it *executed*, not signed off. The task has no prior implementation to confirm — it's a new piece of work that needs a full work cycle.
 

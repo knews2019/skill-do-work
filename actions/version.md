@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps.
 
-**Current version**: 0.60.1
+**Current version**: 0.60.3
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -73,7 +73,7 @@ Or visit: https://github.com/knews2019/skill-do-work
 When user asks "recap":
 
 1. **Archive source** (`do-work/archive/UR-*/`): Read as before — title from `input.md`, REQs from `REQ-*.md` files inside each UR folder.
-2. **Active source** (`do-work/user-requests/UR-*/`): Read `input.md` for the title. For REQs, scan root `do-work/REQ-*.md` files whose `user_request:` frontmatter field matches the UR id (e.g., `user_request: UR-143`). Also check `do-work/working/` for claimed REQs belonging to the UR.
+2. **Active source** (`do-work/user-requests/UR-*/`): Read `input.md` for the title. For REQs, scan `do-work/queue/REQ-*.md` files whose `user_request:` frontmatter field matches the UR id (e.g., `user_request: UR-143`). Also check `do-work/working/` for claimed REQs belonging to the UR.
 3. **Merge**: Combine both lists, deduplicate by UR id (archive version wins if both exist), sort by UR number descending, take top 5.
 4. **Label each UR**:
    - No label if fully archived
