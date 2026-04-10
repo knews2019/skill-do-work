@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.56.2 — The Tight Scope (2026-04-10)
+
+Two fixes to pipeline queue continuation (Step 5a) from PR review feedback.
+
+- Continuation reviews now always target individual REQ IDs — removed UR shortcut that would re-review all completed REQs under a UR, not just the current batch
+- Error recovery guidance is now context-aware: suggests `do work review REQ-NNN` when review fails (since processed REQs are already completed and `do work run` would no-op), and `do work run` only when the run step itself failed
+
 ## 0.56.1 — The Safety Net (2026-04-10)
 
 Three gaps closed in the pipeline queue continuation (Step 5a).
