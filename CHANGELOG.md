@@ -4,13 +4,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.60.1 — The Clear Head (2026-04-10)
+
+Reverted wave-based pipeline processing — it duplicated what `do work run` already handles natively (sequential queue draining with fresh agents per REQ). Pipeline Step 5a is back to the original simple continuation loop.
+
+- `actions/pipeline.md`: Removed wave-based processing (Step 5a.1), wave output formats, wave rules. Restored original Step 5a with 3-cycle cap.
+
 ## 0.60.0 — The Many Lenses (2026-04-10)
 
-Per-agent approach directives for multi-REQ processing. When sub-agents work on parallel or wave-batched REQs, each gets a distinct implementation lens (Correctness-First, Simplicity-First, etc.) to improve solution diversity and reduce convergent thinking.
+Per-agent approach directives for multi-REQ processing. When sub-agents work on parallel or sequential REQs, each gets a distinct implementation lens (Correctness-First, Simplicity-First, etc.) to improve solution diversity and reduce convergent thinking.
 
 - `crew-members/approach-directives.md`: New file — 8 implementation lenses, assignment rules, and sub-agent context template
 - `actions/work.md`: Added approach directive assignment before sub-agent dispatch in Step 6
-- `actions/pipeline.md`: Added wave directive strategy — foundational waves get Correctness/Simplicity, feature waves get User/Extensibility, refinement waves get Performance/Resilience
 - `actions/review-work.md`: Added Directive Alignment Check in Step 6 — evaluates whether the assigned lens was applied and flags blind spots
 
 ## 0.59.0 — The Quality Blueprint (2026-04-10)
@@ -21,15 +26,6 @@ New `specs/` directory with reusable specification templates for common task typ
 - `actions/work.md`: Added Step 3.7 (Spec Loading) — checks `specs/` for matching templates after triage, passes guidance to builder and reviewer
 - `actions/capture.md`: Added optional `suggested_spec` frontmatter field and spec hint inference during parsing
 - `CLAUDE.md`: Updated project structure to include `specs/` directory
-
-## 0.58.0 — The Rising Tide (2026-04-10)
-
-Pipeline queue continuation now groups pending REQs into waves when 3+ remain. Each wave gets cross-REQ awareness, progressive learning from prior waves, and adaptive context monitoring instead of a hard 3-cycle cap. Sequential mode remains the default for small queues.
-
-- `actions/pipeline.md`: Added wave-based processing (Step 5a.1) — wave planning, progressive sophistication, context capacity monitoring, wave summary output
-- `actions/pipeline.md`: Refactored Step 5a into two modes: wave-based (3+ REQs) and sequential (<3 REQs or `--sequential`)
-- `actions/pipeline.md`: Added wave plan, wave header, and wave summary output formats
-- `actions/pipeline.md`: Wave summary file (`do-work/wave-summary.md`) written at end of wave processing for cross-session continuity
 
 ## 0.57.1 — The Tidy Sweep (2026-04-10)
 
