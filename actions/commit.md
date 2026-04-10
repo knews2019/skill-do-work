@@ -4,6 +4,8 @@
 
 Unlike the commit steps embedded in other actions (capture Step 7, work Step 9, review-work standalone, cleanup), this action handles files that accumulated outside the normal pipeline — manual edits, ad-hoc fixes, or work done between do-work runs.
 
+**Commit pathway deconfliction:** Three actions can commit archived REQs: (1) the work action's Step 9 commits the REQ + implementation after completion, (2) review-work standalone commits the REQ after appending a Review section, (3) this action commits leftover files traced to archived REQs. This action only discovers files via `git status` — if work or review-work already committed a file, it won't appear here. No double-commit risk exists as long as the prior actions committed cleanly. If a prior commit was interrupted, this action may pick up the leftovers — that's the intended behavior.
+
 ## When This Runs
 
 - **Manually** when the user invokes it (e.g., `do work commit`, `do work save work`)
@@ -114,7 +116,7 @@ EOF
 )"
 ```
 
-**Format:** `[{REQ id}] {REQ title} — additional changes` + `Traced-to:` line pointing to the archived REQ + file list bullets.
+**Format:** `[{REQ id}] {REQ title} — additional changes` + `Traced-to:` line pointing to the archived REQ + file list bullets. Note: this format intentionally differs from the work action's primary commit format (`[{id}] {title} (Route {route})` + `Implements:`). The `— additional changes` suffix and `Traced-to:` prefix signal these are supplementary commits for files that missed the original work commit, not the primary implementation commit.
 
 **Unassociated commits** (one per semantic group):
 

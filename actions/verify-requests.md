@@ -41,7 +41,7 @@ If the user wants a post-implementation quality review of shipped code (not capt
 ### Step 3: Read All Related REQs
 
 1. Find all REQ files listed in the UR's `requests` array
-2. Check `do-work/`, `do-work/working/`, and `do-work/archive/` for each
+2. Check `do-work/queue/`, `do-work/` (root, legacy fallback), `do-work/working/`, and `do-work/archive/` for each
 3. Read the full content of each REQ file
 
 ### Step 4: Evaluate Each REQ

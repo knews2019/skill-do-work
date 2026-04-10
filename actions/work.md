@@ -161,6 +161,10 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 
 **Special status:** `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do work clarify`.
 
+## Input
+
+`$ARGUMENTS` may contain specific REQ IDs (e.g., `REQ-042`, `REQ-042 REQ-043`). When REQ IDs are provided, process **only** those REQs and stop — do not drain the full queue. This is how the pipeline action scopes work to a specific batch. When no REQ IDs are provided, process all pending REQs in queue order (default behavior).
+
 ## Workflow
 
 **The work action is an orchestrator.** You handle ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents handle implementation work only.
@@ -188,7 +192,9 @@ Count `completed`, `completed-with-issues`, and `done` statuses together as "com
 ⚠ N completed REQs across M URs awaiting archive. Run `do work cleanup` after this session.
 ```
 
-**Pick the first pending REQ:** Scan for the first REQ with `status: pending` (skip `pending-answers` — those wait for user input).
+**Targeted mode:** If `$ARGUMENTS` contains specific REQ IDs, find only those REQs in `do-work/queue/`. Verify each exists and has `status: pending`. If a targeted REQ is missing or not pending, report the issue and skip it. Process only the targeted REQs, then stop after the last one completes (skip the loop-or-exit logic in Step 10).
+
+**Default mode (no REQ IDs in arguments):** Scan for the first REQ with `status: pending` (skip `pending-answers` — those wait for user input).
 
 **Exit paths when no `pending` REQs found:**
 

@@ -2,7 +2,7 @@
 
 Reusable templates defining output structure, quality standards, and implementation patterns for common task types.
 
-**How to use:** Specs are referenced during `capture` (optional `--spec` hint in `$ARGUMENTS`) or loaded automatically during `work` when the REQ's domain or task type matches a template. The work action checks `specs/` for a matching file after triage and before planning.
+**How to use:** Specs are suggested during `capture` via the optional `suggested_spec` frontmatter field, or loaded automatically during `work` when the REQ's domain or task type matches a template. The work action checks `specs/` for a matching file after triage and before planning.
 
 **How they work:** A spec informs the implementation checklist order, quality standards to verify against, and common pitfalls to watch for. The spec is guidance, not override — the REQ's specific requirements always take priority.
 
