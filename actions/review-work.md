@@ -111,6 +111,16 @@ Evaluate the implementation quality by reading the diff:
 - Data integrity risks (race conditions, missing validation at boundaries)
 - Regression risk — identify callers/dependents of changed code, flag interfaces whose contract changed, note shared utilities that other features rely on
 
+**Directive Alignment Check (if an approach directive was assigned)**
+
+If the REQ's Implementation Summary notes an assigned approach directive (e.g., "Directive: Simplicity-First"):
+
+1. **Was the directive applied?** Check whether the implementation reflects the assigned lens. A Simplicity-First directive should produce minimal, readable code. A Correctness-First directive should show thorough edge case handling.
+2. **Did the lens create blind spots?** Each lens has natural trade-offs. Simplicity-First may skip important error handling. Performance-First may sacrifice readability. Note any blind spots that need follow-up.
+3. **Report in findings:** If the directive was effectively applied, note it as a positive finding. If the directive was ignored or created significant blind spots, flag it as a Minor finding.
+
+The directive check is informational — it does not affect the overall score. Its purpose is to track whether approach diversity produces better outcomes over time.
+
 **Domain-Specific Review (if domain rules provided)**
 
 If `crew-members/[domain].md` was provided alongside this review, apply any review criteria defined in that file in addition to the standard rubric above. Report domain-specific findings in a separate `### Domain Review` subsection within the `## Review` output. Domain-specific scores are advisory — they inform the overall assessment but don't replace the standard dimensions.

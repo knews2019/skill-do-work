@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.60.0 — The Many Lenses (2026-04-10)
+
+Per-agent approach directives for multi-REQ processing. When sub-agents work on parallel or wave-batched REQs, each gets a distinct implementation lens (Correctness-First, Simplicity-First, etc.) to improve solution diversity and reduce convergent thinking.
+
+- `crew-members/approach-directives.md`: New file — 8 implementation lenses, assignment rules, and sub-agent context template
+- `actions/work.md`: Added approach directive assignment before sub-agent dispatch in Step 6
+- `actions/pipeline.md`: Added wave directive strategy — foundational waves get Correctness/Simplicity, feature waves get User/Extensibility, refinement waves get Performance/Resilience
+- `actions/review-work.md`: Added Directive Alignment Check in Step 6 — evaluates whether the assigned lens was applied and flags blind spots
+
 ## 0.59.0 — The Quality Blueprint (2026-04-10)
 
 New `specs/` directory with reusable specification templates for common task types. Specs define output structure, quality standards, implementation checklists, and common pitfalls — loaded automatically during work when the REQ matches a template.
