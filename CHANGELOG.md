@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.55.0 — The Clean Sweep (2026-04-10)
+
+Pipeline now drains the full queue after completing its primary request. If pending REQs remain (from prior captures, follow-ups, or review-generated work), the pipeline automatically continues with run + review cycles until the queue is empty.
+
+- `actions/pipeline.md`: Added Step 5a (Queue Continuation) — scans for remaining `status: pending` REQs after pipeline completion and processes them in a loop
+- `actions/pipeline.md`: Added continuation notice to Output Format section and drain rule to Rules section
+- `next-steps.md`: Updated pipeline completion label to reflect queue-drained state
+
 ## 0.54.1 — The Sharp Eye (2026-04-09)
 
 Fix three bugs in v0.54.0 crew-member additions caught by PR review.

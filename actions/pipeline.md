@@ -143,6 +143,19 @@ Pipeline complete.
   Artifacts:  {list of REQ/UR IDs from capture step}
 ```
 
+5. **Queue continuation check**: Scan `do-work/REQ-*.md` for files with `status: pending` in their frontmatter. Exclude any REQ IDs listed in the current pipeline's `artifacts` array (those should already be completed). If remaining pending REQs exist, proceed to Step 5a. If the queue is empty, suggest next steps and stop.
+
+### Step 5a: Queue Continuation
+
+When the pipeline completes and additional pending REQs remain in the queue (from prior captures, follow-ups created during review, or other sources):
+
+1. Print the continuation notice (see Output Format) listing each pending REQ ID and its title
+2. Dispatch the work action (`do work run`) in **standard queue-draining mode** — do NOT scope to pipeline artifacts. Pass all remaining pending REQ IDs so the work action processes them.
+3. After the work action completes, dispatch the review work action (`do work review work`) for the REQs that were just processed
+4. **Loop**: Scan `do-work/REQ-*.md` for `status: pending` again. If more pending REQs remain (e.g., follow-ups created during the review step), repeat from step 1. If the queue is empty, print "Queue fully drained." and suggest next steps.
+
+**State file note:** The pipeline's `active` field remains `false` during the continuation — the formal pipeline is complete. The continuation is a post-pipeline queue drain. If the session ends mid-continuation, the user can resume with `do work run` to process any remaining pending REQs.
+
 ### Step 6: Error Handling
 
 If any step's dispatched action fails (error, exception, or the action reports failure):
@@ -179,6 +192,25 @@ On resume, the pipeline retries the failed step from scratch.
 
 For the `capture` step, append ` → {artifact IDs}` after "done" if artifacts were recorded.
 
+### Continuation Notice (printed when pending REQs remain after pipeline completion)
+
+```
+── Queue Continuation ───────────────
+  {count} pending REQ(s) remaining:
+    {REQ-ID} — {title}
+    {REQ-ID} — {title}
+    ...
+
+  Processing remaining queue...
+─────────────────────────────────────
+```
+
+When the continuation loop finishes and the queue is empty:
+
+```
+Queue fully drained. All pending requests processed.
+```
+
 ### Help Menu (no active pipeline, no arguments)
 
 ```
@@ -212,4 +244,5 @@ pipeline — full end-to-end orchestration
 - **Do not commit the state file.** `do-work/pipeline.json` is transient session state. It tracks a single pipeline run and has no value after completion. Ensure it is in `.gitignore`.
 - **Pass context to sub-agents explicitly.** Sub-agents have no conversation history. When dispatching a step via sub-agent, always include the pipeline request text and all artifact IDs from completed steps in the sub-agent prompt. Without this, sub-agents cannot target the correct UR/REQs.
 - **Scope the `run` step to captured REQs only.** The work action is queue-draining by default. When dispatched from the pipeline, it must only process the REQs created by this pipeline's capture step (listed in `artifacts`). Never process unrelated backlog items during a pipeline run.
-- **Suggest next steps on completion.** After the pipeline finishes, suggest what the user might want to do next (see the next-steps reference).
+- **Drain remaining queue after completion.** After the pipeline's 5 steps finish, check for other pending REQs in the queue. If any exist, continue processing them automatically via run + review cycles until the queue is empty. This continuation uses standard queue-draining mode (not scoped to pipeline artifacts). The pipeline state file remains `active: false` — the continuation is a post-pipeline operation.
+- **Suggest next steps on completion.** After the pipeline finishes (including any queue continuation), suggest what the user might want to do next (see the next-steps reference).
