@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.55.0 — The Deep Dive (2026-04-10)
+
+New `do work deep-explore` action for multi-round structured exploration of concepts. Spawns divergent/convergent subagent dialogue (Free Thinker, Grounder, Writer, optional Explorer) to develop seed ideas into vision documents and idea briefs. Also renames `ideate` to `scan-ideas` for clarity — `ideate` still works as a trigger keyword.
+
+- `actions/deep-explore.md`: New action — multi-round exploration with session directories, continue mode, convergence rubric, and 4 subagent roles
+- `actions/deep-explore-reference.md`: Companion file — persona prompts, document templates, state schema, error handling
+- `actions/ideate.md` → `actions/scan-ideas.md`: Renamed for clarity (quick scan vs deep exploration)
+- `SKILL.md`: Add deep-explore routing (priority 21), rename ideate → scan-ideas (priority 20), update verb reference, help menu, action dispatch, subagent config
+- `CLAUDE.md`: Update project structure for scan-ideas, deep-explore, deep-explore-reference
+- `next-steps.md`: Add post-deep-explore suggestions, update post-scan-ideas suggestions
+
 ## 0.54.1 — The Sharp Eye (2026-04-09)
 
 Fix three bugs in v0.54.0 crew-member additions caught by PR review.

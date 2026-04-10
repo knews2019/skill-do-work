@@ -101,12 +101,21 @@ Next steps:
   do work run                   Process the queue
 ```
 
-**After ideate:**
+**After scan-ideas:**
 ```
 Next steps:
   do work capture request: [paste an idea]  Capture an idea as a request
-  do work ideate [different focus]          Brainstorm a different area
+  do work scan-ideas [different focus]      Brainstorm a different area
+  do work deep-explore [concept]            Explore an idea in depth
   do work quick-wins [dir]                  Scan for quick refactoring wins
+```
+
+**After deep-explore:**
+```
+Next steps:
+  do work capture request: [paste a direction]  Capture a direction as a request
+  do work deep-explore continue [session]       Resume or extend the session
+  do work scan-ideas [focus]                    Quick idea scan for a related area
 ```
 
 **After inspect:**
