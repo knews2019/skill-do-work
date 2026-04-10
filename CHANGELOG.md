@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.55.0 — The Outside Eye (2026-04-10)
+
+Enriched security, accessibility, and testing guidance after reviewing the claude-skills-collection catalog and cross-referencing with Trail of Bits skills, claude-a11y-skill, and testing-anti-patterns approaches.
+
+- `crew-members/security.md`: New "Static Analysis Tooling" section — tool detection table (CodeQL, Semgrep, Bandit, Brakeman, gosec), what SAST catches vs misses, variant analysis concept, guidance to use project's existing tools
+- `actions/ui-review.md`: New "Automated Accessibility Tooling" subsection in Step 7 — tool detection for eslint-plugin-jsx-a11y, axe-core, Pa11y with run commands and integration guidance
+- `crew-members/testing.md`: Three new anti-patterns — test-per-method symmetry, catch-all assertions, ignoring test output
+
 ## 0.54.1 — The Sharp Eye (2026-04-09)
 
 Fix three bugs in v0.54.0 crew-member additions caught by PR review.
