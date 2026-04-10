@@ -133,3 +133,6 @@ When the REQ has `tdd: true`:
 - **Asserting on error messages:** Brittle — messages change. Assert on error types, status codes, or structured error fields instead.
 - **Commenting out failing tests:** If a test fails, fix it or delete it. Commented-out tests are dead code that no one re-enables.
 - **Testing the mock:** When assertions verify mock return values you set up yourself, rather than behavior of the code under test.
+- **Test-per-method symmetry:** Mirroring the source file structure 1:1 (one test file per module, one test per method). Test behavior and use cases, not method inventory. Some methods need 5 tests; some need zero.
+- **Catch-all assertions:** `expect(result).toBeTruthy()` or `assert response` without checking specific values. These pass on wrong results and catch nothing.
+- **Ignoring test output:** Re-running a failing test without reading the failure message. The assertion diff usually points directly at the bug.

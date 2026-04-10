@@ -111,6 +111,21 @@ Evaluate against Phase 6 criteria and the accessibility baseline:
 - **Motion**: Are transitions reasonable (150–300ms)? Is `prefers-reduced-motion` respected?
 - **Screen reader compatibility**: Would a screen reader user be able to navigate and use this UI?
 
+#### Automated Accessibility Tooling
+
+Before or alongside the manual checks above, check if the project has automated accessibility tooling configured. These catch issues systematically that manual review may miss:
+
+| Indicator | Tool | What It Catches |
+|-----------|------|-----------------|
+| `eslint-plugin-jsx-a11y` in `package.json` or `.eslintrc` | eslint-plugin-jsx-a11y | Missing alt text, invalid ARIA, non-interactive element handlers, missing form labels |
+| `@axe-core/react` or `react-axe` in dependencies | axe-core (runtime) | Contrast violations, missing landmarks, duplicate IDs, ARIA misuse — in the rendered DOM |
+| `axe-core` in dev dependencies, `@axe-core/cli` | axe-core (CLI) | Same as above, runnable from terminal: `npx axe http://localhost:3000` |
+| `pa11y` in dependencies or CI | Pa11y | WCAG 2.1 AA automated checks against rendered pages |
+
+**If tools are configured:** Run them and include findings in the report. Tool-caught issues go in the Interaction & Accessibility table with a note that they were tool-detected.
+
+**If no tools are configured:** Note this in the report as a recommendation. For projects with UI, `eslint-plugin-jsx-a11y` (static, zero-config with most ESLint setups) and `axe-core` (rendered DOM, catches contrast and landmark issues) cover the most ground with the least effort.
+
 ### Step 8: Implementation Patterns Review
 
 Evaluate against the implementation patterns section:
