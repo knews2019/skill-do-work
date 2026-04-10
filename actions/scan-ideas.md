@@ -1,4 +1,4 @@
-# Ideate Action
+# Scan-Ideas Action
 
 > **Part of the do-work skill.** Generates ideas for what to build, improve, or explore next. Turns codebase analysis and project context into actionable suggestions the user can capture as requests.
 
@@ -28,7 +28,7 @@ Build a picture of the project before generating ideas:
 
 1. **Prime files**: Glob for `**/prime-*.md` — these describe the architecture, entry points, and conventions. Read them.
 2. **Recent work**: Check `do-work/archive/` for completed URs/REQs (most recent 5-10). Read their titles and summaries to understand what's been built and what direction the project is moving.
-3. **Queue**: Check `do-work/queue/` for pending REQs — avoid suggesting ideas that are already captured.
+3. **Queue**: Check `do-work/` for pending REQs — avoid suggesting ideas that are already captured.
 4. **Codebase survey**: Detect languages, frameworks, project structure. Identify the primary areas of the codebase.
 5. **Signals**: Scan for indicators of opportunities:
    - `TODO`, `FIXME`, `HACK`, `XXX` comments

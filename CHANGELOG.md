@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.57.1 — The Clean Ledger (2026-04-10)
+
+Changelog and action file hygiene — fixes that prevent recurring errors.
+
+- `CHANGELOG.md`: Fixed duplicate version numbers (two entries for 0.52.0, two for 0.51.8) by renumbering displaced entries to 0.51.8–0.51.11 in correct monotonic order
+- `CHANGELOG.md`: Renamed 4 duplicate codenames (The Tight Scope → The Narrow Pipe, The Crew → The Agent Crew, The Safety Net → The Guard Dog, The Second Brain → The Knowledge Forge)
+- `actions/scan-ideas.md`: Fixed header from "Ideate Action" to "Scan-Ideas Action" (missed in v0.57.0 rename)
+- `actions/scan-ideas.md`, `actions/deep-explore.md`: Fixed stale `do-work/queue/` path → `do-work/` (queue lives at root, not a subdirectory)
+- `CLAUDE.md`: Added version dedup guard (verify new version > existing before committing) and codename uniqueness check
+- `CLAUDE.md`: Added Queue Path Convention section documenting that REQ files live at `do-work/` root
+
 ## 0.57.0 — The Deep Dive (2026-04-10)
 
 New `do work deep-explore` action for multi-round structured exploration of concepts. Spawns divergent/convergent subagent dialogue (Free Thinker, Grounder, Writer, optional Explorer) to develop seed ideas into vision documents and idea briefs. Also renames `ideate` to `scan-ideas` for clarity — `ideate` still works as a trigger keyword.
@@ -113,20 +124,7 @@ New `do work tutorial` command with four modes: quick-start (hands-on walkthroug
 - `CLAUDE.md`: Add tutorial.md to project structure
 - `next-steps.md`: Add post-tutorial suggestions
 
-## 0.51.9 — The Help Desk (2026-04-09)
-
-Per-command help — any action now supports `do work <command> help` to show a brief usage summary. Actions with sub-commands (pipeline, prime, bkb) already handled this; all other actions now generate a compact summary from their action file. Footer line added to the main help menu to advertise the feature.
-
-- `SKILL.md`: Add "Per-Command Help" section with rendering template and dispatch rules
-- `SKILL.md`: Add tip footer to help menu
-
-## 0.51.8 — The Trim Down (2026-04-09)
-
-Condensed the help menu from ~80 lines to ~35. Removed duplicate entries, collapsed BKB sub-commands into a single line, reduced per-action examples, and merged related sections.
-
-- `SKILL.md`: Help menu compressed — grouped related actions, eliminated duplicates (clarify listed twice), collapsed 12 BKB examples into inline sub-command list
-
-## 0.52.0 — The Guard Rails (2026-04-09)
+## 0.51.11 — The Guard Rails (2026-04-09)
 
 Strengthens anti-rationalization guards, adds verification checklists, and deepens crew member guidance — inspired by patterns from addyosmani/agent-skills.
 
@@ -138,6 +136,19 @@ Strengthens anti-rationalization guards, adds verification checklists, and deepe
 - `crew-members/frontend.md`: Expanded with animation perf, error handling depth, and frontend security
 - `crew-members/backend.md`: Expanded with API resilience and performance awareness
 - `crew-members/performance.md`: New crew member covering Core Web Vitals, backend optimization, and bundle analysis
+
+## 0.51.10 — The Help Desk (2026-04-09)
+
+Per-command help — any action now supports `do work <command> help` to show a brief usage summary. Actions with sub-commands (pipeline, prime, bkb) already handled this; all other actions now generate a compact summary from their action file. Footer line added to the main help menu to advertise the feature.
+
+- `SKILL.md`: Add "Per-Command Help" section with rendering template and dispatch rules
+- `SKILL.md`: Add tip footer to help menu
+
+## 0.51.9 — The Trim Down (2026-04-09)
+
+Condensed the help menu from ~80 lines to ~35. Removed duplicate entries, collapsed BKB sub-commands into a single line, reduced per-action examples, and merged related sections.
+
+- `SKILL.md`: Help menu compressed — grouped related actions, eliminated duplicates (clarify listed twice), collapsed 12 BKB examples into inline sub-command list
 
 ## 0.51.8 — The Safe Exit (2026-04-09)
 
@@ -157,7 +168,7 @@ Fixes stale references and underspecified instructions found during a 20-commit 
 - `actions/verify-requests.md`: Add scoring formula for per-REQ Overall and Overall Confidence
 - `actions/capture.md`: Unify addendum coherence resolution protocol for both queued and in-flight paths
 
-## 0.51.6 — The Tight Scope (2026-04-08)
+## 0.51.6 — The Narrow Pipe (2026-04-08)
 
 Pipeline hardening — request isolation, synchronous dispatch, and robust gitignore handling.
 
@@ -364,7 +375,7 @@ BKB imports the best ideas from My-Brain-Is-Full-Crew's 13 skills — adapted fo
 - Status sub-command now reports last defrag/garden dates and custom agent count
 - All 8 built-in agents updated with new "When active" entries for defrag, garden, and crew
 
-## 0.46.0 — The Crew (2026-04-06)
+## 0.46.0 — The Agent Crew (2026-04-06)
 
 BKB gets a crew of 8 specialized agents that define the roles the LLM adopts during each operation. Inspired by My-Brain-Is-Full-Crew's multi-agent architecture, adapted for knowledge base operations.
 
@@ -402,7 +413,7 @@ Four cleanup fixes from final review pass — two bugs and two documentation gap
 
 ---
 
-## 0.43.4 — The Safety Net (2026-04-05)
+## 0.43.4 — The Guard Dog (2026-04-05)
 
 Four defensive gaps closed — init can't clobber existing KBs, queue prunes itself, lint runs are trackable, and confidence levels have clear rules.
 
@@ -451,7 +462,7 @@ BKB file lifecycle fixed — ingest now moves sources out of capture/ so triage 
 
 ---
 
-## 0.43.0 — The Second Brain (2026-04-05)
+## 0.43.0 — The Knowledge Forge (2026-04-05)
 
 New `bkb` command — build and maintain a persistent LLM Knowledge Base wiki compiled from raw source documents. Based on Karpathy's methodology: raw sources go in, structured interlinked Markdown wiki comes out.
 

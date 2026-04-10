@@ -42,9 +42,9 @@ CHANGELOG.md          # Release notes (newest on top)
 
 ## Before Every Commit
 
-1. **Bump the version** in `actions/version.md` (line starting with `**Current version**:`). Use semver — patch for fixes, minor for features, major for breaking changes. When in doubt, patch.
+1. **Bump the version** in `actions/version.md` (line starting with `**Current version**:`). Use semver — patch for fixes, minor for features, major for breaking changes. When in doubt, patch. **Verify the new version number is strictly greater than the first existing entry in `CHANGELOG.md`** — duplicate version numbers have occurred before.
 
-2. **Add a changelog entry** at the top of `CHANGELOG.md` (below the header):
+2. **Add a changelog entry** at the top of `CHANGELOG.md` (below the header). **Verify the codename is not already used** by an earlier entry.
 
 ```markdown
 ## X.Y.Z — The [Fun Two-Word Name] (YYYY-MM-DD)
@@ -104,6 +104,10 @@ Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_C
 - `testing.md` — loaded when `tdd: true` or `domain: testing`, and alongside debugging.md after 2+ test failures
 - `debugging.md` — loaded during remediation (review fail → retry) and after 2+ test failures
 - If a rules file is missing, proceed without it — never block on a missing rules file
+
+## Queue Path Convention
+
+Pending REQ files live at `do-work/` root — there is no `do-work/queue/` subdirectory. When referencing the queue in action files, always use `do-work/` not `do-work/queue/`.
 
 ## Agent Compatibility
 
