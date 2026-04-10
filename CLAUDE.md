@@ -23,7 +23,9 @@ actions/              # Action files (each is a standalone prompt)
   inspect.md          # Explain uncommitted changes — what, why, and readiness (read-only)
   version.md          # Version reporting + update checks (current version lives here)
   quick-wins.md       # Scan for refactoring opportunities and low-hanging tests
-  ideate.md           # Generate ideas for what to build, improve, or explore next
+  scan-ideas.md       # Generate ideas for what to build, improve, or explore next
+  deep-explore.md     # Multi-round structured exploration — diverge/converge dialogue, vision docs
+  deep-explore-reference.md # Companion: persona prompts, rubrics, state schema, error handling
   install-ui-design.md # Install the frontend-design skill for UI work
   install-bowser.md   # Install Playwright CLI + Bowser skill for browser automation
   forensics.md        # Pipeline diagnostics — stuck work, hollow completions, orphaned URs
