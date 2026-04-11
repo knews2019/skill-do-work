@@ -4,6 +4,17 @@
 
 **Read-only** — this action does NOT modify any files. It produces a structured report only.
 
+## When to Use
+
+**Use when:**
+- User wants a concrete list of refactoring opportunities and test gaps in a directory
+- User says "quick-wins", "quick wins", "low-hanging", or "scan"
+- Looking for specific, file-level improvements with effort/impact ratings
+
+**Do NOT use when:**
+- User wants *product-level ideas* for what to build next — route to the scan-ideas action instead
+- User wants to *deeply explore* a concept — route to the deep-explore action instead
+
 ## Input
 
 `$TARGET` comes from `$ARGUMENTS` — a directory path. If empty, defaults to the current working directory.
@@ -170,6 +181,21 @@ Guard against these when producing the report:
 | "No quick wins found" after scanning 3 files | Verify you scanned all source files in scope | Small scan = invisible problems |
 | "This looks like dead code" | Grep for dynamic references, re-exports, and framework conventions | Static analysis misses dynamic usage |
 | "I'll pad the report with low-impact findings" | Only report findings above the effort/impact threshold | Padding erodes trust in the report |
+
+## Red Flags
+
+- Zero findings in a codebase with 10,000+ lines of code (scan was likely too shallow)
+- All findings concentrated in a single category (missed other dimensions)
+- Security smell section missing or empty (should always be checked)
+- Findings reference files that don't exist or have wrong line numbers
+
+## Verification Checklist
+
+- [ ] All pattern categories scanned (refactoring, duplication, complexity, dead code, security smells)
+- [ ] Every finding includes file path and line number reference
+- [ ] Effort and impact ratings assigned to each finding
+- [ ] Security smells checked regardless of codebase size
+- [ ] Report is read-only — no files modified
 
 ## Rules
 

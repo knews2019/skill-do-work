@@ -4,6 +4,18 @@
 
 A post-work quality gate with three jobs: (1) confirm the implementation matches the requirements, (2) verify the code is solid, and (3) actually test that the thing works. Creates follow-up REQs for anything that needs fixing.
 
+## When to Use
+
+**Use when:**
+- Reviewing completed work against its REQ requirements (post-build quality gate)
+- User says "review", "review work", "review code", or "audit code"
+- Automatically after the work action completes each REQ
+
+**Do NOT use when:**
+- User wants to verify *capture quality* (not code) — route to the verify-requests action instead
+- User wants a standalone *codebase* review unrelated to REQs — route to the code-review action instead
+- User wants to *inspect* uncommitted changes without judgment — route to the inspect action instead
+
 ## Philosophy
 
 - **Did we build what was asked?** Requirements check comes first. Everything else is secondary if the wrong thing got built.

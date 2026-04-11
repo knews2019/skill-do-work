@@ -32,6 +32,7 @@ actions/              # Action files (each is a standalone prompt)
   prime.md             # Prime file management — create and audit AI context documents
   pipeline.md          # Full end-to-end orchestration (investigate → capture → verify → run → review)
   build-knowledge-base.md # LLM knowledge base — init, triage, ingest, query, lint, and more
+  bkb-reference.md    # Companion: seed file templates, agent crew definitions, KB schema content
   tutorial.md          # Interactive tutorials — quick start, concepts, recipes, guided tour
   sample-archived-req.md # Example of a fully processed REQ file (reference only)
 specs/                # Reusable specification templates for common task types
@@ -42,7 +43,9 @@ specs/                # Reusable specification templates for common task types
   bug-fix.md          # Spec template for bug fixes
 crew-members/         # Domain-specific rules loaded by work action
 hooks/                # Optional hook scripts (platform-specific, installable)
-  pipeline-guard.sh   # Claude Code stop hook — prevents stopping mid-pipeline
+  hooks.json          # Combined hook config for Claude Code (SessionStart + Stop)
+  session-start.sh    # Claude Code SessionStart hook — injects status line
+  pipeline-guard.sh   # Claude Code Stop hook — prevents stopping mid-pipeline
 docs/                 # Per-action user guides (capture-guide.md, work-guide.md, etc.)
 AGENTS.md             # Stub — redirects to CLAUDE.md
 CHANGELOG.md          # Release notes (newest on top)
@@ -75,6 +78,11 @@ Action files follow a consistent structure. When adding or modifying actions, us
 
 [Optional: read-only flag, philosophy, or key principles — 1-2 paragraphs max]
 
+## When to Use
+
+**Use when:** [2-4 bullets — positive triggers]
+**Do NOT use when:** [2-3 bullets — explicit exclusions, with redirect to correct action]
+
 ## Input
 
 [What parameters drive behavior: $ARGUMENTS, target REQ/UR, modes]
@@ -92,9 +100,23 @@ Action files follow a consistent structure. When adding or modifying actions, us
 ## Rules
 
 [Constraints, common mistakes, what NOT to do]
+
+## Common Rationalizations
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| [Shortcut the agent might attempt] | [What to do instead] | [Why the shortcut fails] |
+
+## Red Flags
+
+- [Observable symptom that something went wrong — helps reviewers detect problems after the fact]
+
+## Verification Checklist
+
+- [ ] [Concrete exit criterion with evidence requirement]
 ```
 
-**Required elements:** Description blockquote, Steps (numbered). **Common elements:** Input, Output Format, Rules. **Section order matters:** always Philosophy → Input → Steps → Output → Rules.
+**Required elements:** Description blockquote, Steps (numbered). **Common elements:** Input, Output Format, Rules, When to Use. **Encouraged elements:** Common Rationalizations, Red Flags, Verification Checklist. **Section order matters:** always Philosophy → When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist.
 
 **Accepted variants:**
 - **Sub-command dispatchers** (`prime.md`, `build-knowledge-base.md`) — Use a Sub-Commands table instead of flat steps. Each sub-command has its own workflow section.

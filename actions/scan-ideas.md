@@ -4,6 +4,17 @@
 
 **Read-only** — this action does NOT modify any files. It produces a structured report of ideas.
 
+## When to Use
+
+**Use when:**
+- User wants inspiration for what to build, improve, or explore next
+- User says "scan-ideas", "ideas", "brainstorm", "suggest", or "what should I build"
+- Looking for product-level and code-level improvement opportunities
+
+**Do NOT use when:**
+- User wants specific *refactoring* opportunities with file-level detail — route to the quick-wins action instead
+- User wants to *deeply explore* a specific concept — route to the deep-explore action instead
+
 ## Philosophy
 
 - **Grounded, not generic.** Every idea must reference something concrete in the codebase or project history — a file, a pattern, a gap, a completed REQ. No "you should add tests" without pointing at what's untested and why it matters.

@@ -467,3 +467,32 @@ nuances. You can run `do work verify requests` to check coverage against your or
 - **Requirement applies to multiple features**: Include in ALL relevant REQ files. Duplication beats losing it.
 - **User changes mind mid-request**: Capture the final decision, note the evolution in the UR.
 - **Mentioned once in passing**: Still a requirement. Capture it.
+
+## Common Rationalizations
+
+Guard against these during capture:
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "This is simple enough for one REQ" | Check if the input contains multiple distinct requests | Compound inputs need splitting — the work action processes one REQ at a time |
+| "I'll clarify this during the build phase" | Resolve ambiguities now while the user is present | The capture phase is the first human-attention window — builders run autonomously |
+| "The user probably meant..." | Ask the user — present concrete options | Inventing intent is the fastest path to building the wrong thing |
+| "RED/GREEN isn't needed for this request" | Check if the request describes observable behavior | If it's testable, the RED/GREEN proof helps the builder verify correctness |
+| "I'll start processing after capture finishes" | STOP after writing files and reporting back | Capture ≠ Execute — the user decides when to run the queue |
+
+## Red Flags
+
+- REQ file has no `user_request` frontmatter field (orphaned — can't trace to original input)
+- UR folder exists but contains no REQ files (capture incomplete)
+- Single REQ created from input containing 3+ distinct requests (under-splitting)
+- RED/GREEN section missing from a request that describes observable behavioral change
+- Open Questions section has items with no recommended resolution
+
+## Verification Checklist
+
+- [ ] UR folder created at `do-work/user-requests/UR-NNN/` with `input.md` containing verbatim input
+- [ ] Every REQ file has `user_request: UR-NNN` in frontmatter
+- [ ] REQ count matches the number of distinct requests in the input
+- [ ] RED/GREEN proof captured for behavioral requests (or explicitly noted as not applicable)
+- [ ] All Open Questions resolved during capture or marked with recommended resolution
+- [ ] Git commit created with format `[UR-NNN] captured: ...`

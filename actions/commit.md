@@ -6,6 +6,17 @@ Unlike the commit steps embedded in other actions (capture Step 7, work Step 9, 
 
 **Commit pathway deconfliction:** Three actions can commit archived REQs: (1) the work action's Step 9 commits the REQ + implementation after completion, (2) review-work standalone commits the REQ after appending a Review section, (3) this action commits leftover files traced to archived REQs. This action only discovers files via `git status` — if work or review-work already committed a file, it won't appear here. No double-commit risk exists as long as the prior actions committed cleanly. If a prior commit was interrupted, this action may pick up the leftovers — that's the intended behavior.
 
+## When to Use
+
+**Use when:**
+- User wants to commit accumulated uncommitted files with REQ tracing
+- User says "commit", "commit changes", "save changes", or "save work"
+- Files have accumulated outside the normal pipeline (manual edits, ad-hoc fixes)
+
+**Do NOT use when:**
+- User just wants to *understand* uncommitted changes — route to the inspect action instead
+- Committing as part of the work action (work.md has its own commit step)
+
 ## When This Runs
 
 - **Manually** when the user invokes it (e.g., `do work commit`, `do work save work`)
@@ -218,3 +229,30 @@ Excluded:
 - Making one giant commit instead of atomic groups
 - Grouping unrelated files just because they're in the same directory
 - Skipping the exclusion check for dangerous files
+
+## Common Rationalizations
+
+Guard against these when committing:
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "One big commit is fine for all these changes" | Group by REQ association, then by semantic relationship | Atomic commits enable targeted reverts and clear history |
+| "These files are related enough to commit together" | Check if they trace to the same REQ or serve the same semantic purpose | False grouping makes git history unreliable for debugging |
+| "No REQ matches — just commit everything together" | Group unassociated files by semantic purpose (feature, fix, config, etc.) | Even outside the pipeline, commits should be atomic and meaningful |
+| "This .env file is fine to commit" | Never commit files containing secrets, credentials, or environment-specific config | Credential leaks are irreversible — err on the side of excluding |
+| "The commit message doesn't need a REQ reference" | Include REQ reference when REQs exist — it's the traceability link | Without REQ references, the trail of intent is broken |
+
+## Red Flags
+
+- `.env`, credentials, or secret files staged for commit
+- Single commit with >20 files (likely needs splitting)
+- Commit message has no REQ reference when matching REQs exist in the system
+- Files from multiple unrelated REQs grouped in a single commit
+
+## Verification Checklist
+
+- [ ] Every commit traces to a REQ or a clear semantic group
+- [ ] No credential or secret files committed (.env, *.key, *.pem, credentials.*)
+- [ ] Commit messages follow the established format
+- [ ] Each commit is atomic — one logical change per commit
+- [ ] All excluded files reported to the user with reason

@@ -4,6 +4,17 @@
 
 Unlike the commit action (which stages and commits), this action only reads and reports. Use it to understand what's in your working tree before deciding whether to commit, fix, or discard.
 
+## When to Use
+
+**Use when:**
+- User wants to understand what's in the working tree before committing
+- User says "inspect", "explain changes", "what changed", or "show changes"
+- Read-only examination of uncommitted changes with REQ tracing
+
+**Do NOT use when:**
+- User wants to actually *commit* the changes — route to the commit action instead
+- User wants to *review completed work* against requirements — route to the review-work action instead
+
 ## When This Runs
 
 - **Manually** when the user invokes it (e.g., `do work inspect`, `do work explain changes`)
@@ -395,3 +406,20 @@ No uncommitted changes.
 - Flagging style preferences as contradictions — only flag logical conflicts
 - Exiting early when no uncommitted files match a scoped REQ/UR — committed files should still be inspected
 - Giving a committed file a "Ready"/"Needs attention"/"Not ready" verdict — use "Already Committed" instead
+
+## Common Rationalizations
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "This looks ready to commit" | Verify every changed file has a clear purpose and traces to a REQ or intent | "Looks ready" is a feeling, not evidence |
+| "The changes are self-explanatory" | Still document what changed, why, and the REQ association | Future readers (including the user) need the trail of intent |
+| "I'll skip the REQ tracing — these are just small edits" | Attempt REQ association for every changed file | Even small edits may relate to queued or completed work |
+| "This debug artifact is probably intentional" | Flag it explicitly — let the user decide | Leftover console.log/debugger statements are the #1 commit contaminant |
+
+## Verification Checklist
+
+- [ ] Every uncommitted file analyzed and categorized
+- [ ] REQ association attempted for each file (matched, unmatched, or ambiguous)
+- [ ] Readiness verdict provided for each logical group of changes
+- [ ] Debug artifacts, TODO comments, and temporary files flagged explicitly
+- [ ] Report covers both staged and unstaged changes

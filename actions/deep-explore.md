@@ -4,7 +4,19 @@
 
 **Self-contained** — this action does not depend on any external skills or plugins.
 
-**Companion file:** Read `actions/deep-explore-reference.md` for subagent persona prompts, convergence rubric, source capture procedure, state file schema, and error handling.
+**Companion file:** Read `deep-explore-reference.md` for subagent persona prompts, convergence rubric, source capture procedure, state file schema, and error handling.
+
+## When to Use
+
+**Use when:**
+- User wants to explore a concept in depth through multi-round dialogue
+- User says "deep-explore", "deep dive", "explore concept", or "develop idea"
+- Needs divergent/convergent thinking to evaluate a direction before committing
+
+**Do NOT use when:**
+- User wants a quick list of *improvement ideas* — route to the scan-ideas action instead
+- User wants specific *refactoring* opportunities — route to the quick-wins action instead
+- User already knows what to build — route to capture instead
 
 ## Philosophy
 

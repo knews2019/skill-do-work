@@ -4,6 +4,17 @@
 
 A diagnostic tool for when the work pipeline feels broken, stuck, or produces confusing results. Reads git history, file system state, and archived REQs to detect problems and report findings.
 
+## When to Use
+
+**Use when:**
+- User suspects something is stuck, broken, or producing confusing results
+- User says "forensics", "diagnose", "health check", or "health"
+- Pipeline feels broken or work output seems hollow
+
+**Do NOT use when:**
+- User wants to *fix* the archive structure — route to the cleanup action instead
+- User wants to *review completed code* — route to the review-work action instead
+
 ## Core Rules
 
 - **Read-only.** This action never modifies files, moves REQs, updates frontmatter, or creates commits. It only reads and reports.

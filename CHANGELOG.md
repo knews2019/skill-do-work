@@ -4,6 +4,25 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.61.1 — The Lean Cut (2026-04-11)
+
+Trimmed low-value additions from 0.61.0 and split the largest action file. Guardrails stay where they earn their token cost; template bloat moves to a companion file.
+
+- Removed guardrail sections (rationalizations, checklists) from 5 low-stakes actions: forensics, scan-ideas, prime, present-work, clarify — these are read-only reporting actions where the guardrails restated what the Steps already say
+- Removed Role Identity sections from 3 crew-member files — a motivational paragraph doesn't change behavior when 150+ lines of specific rules follow
+- Removed `CONTRIBUTING.md` (CLAUDE.md already serves as the contributor guide) and `docs/skill-anatomy.md` (same)
+- Split `build-knowledge-base.md` (1077→687 lines) — extracted seed file templates, agent crew definitions, and KB schema into new `bkb-reference.md` companion, following the work.md/work-reference.md pattern
+
+## 0.61.0 — The Bright Standard (2026-04-10)
+
+Quality guardrails, routing clarity, and a session-start hook across the skill.
+
+- 7 action files: Added Common Rationalizations tables, Red Flags sections, and Verification Checklists (capture, cleanup, commit, inspect, verify-requests, pipeline, quick-wins)
+- 10 action files: Added "When to Use / When NOT to Use" sections to commonly confused routes (review-work, code-review, verify-requests, inspect, commit, cleanup, forensics, scan-ideas, quick-wins, deep-explore)
+- `hooks/session-start.sh` + `hooks/hooks.json`: SessionStart hook injects version, pending REQ count, and pipeline status
+- `CLAUDE.md`: Updated action file template with When to Use, Common Rationalizations, Red Flags, and Verification Checklist conventions
+- `README.md`: Added token efficiency guidance and hooks installation section
+
 ## 0.60.5 — The Honest Mirror (2026-04-10)
 
 Cross-file contradiction audit — fixes 13 inconsistencies spanning stale paths, duplicate codenames, missing scoping mechanisms, and documentation gaps.

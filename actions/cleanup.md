@@ -4,6 +4,17 @@
 
 The archive should be a collection of self-contained UR folders, each containing their original input and all related REQ files. Over time, REQ files can end up loose in the archive root — either from intermediate archival (when not all REQs were done yet) or from legacy requests predating the UR system. This action fixes that.
 
+## When to Use
+
+**Use when:**
+- User wants to tidy the archive — organize loose REQs into UR folders
+- User says "cleanup", "clean up", "tidy", or "consolidate"
+- Automatically at the end of the work loop
+
+**Do NOT use when:**
+- User wants *diagnostics* on pipeline health — route to the forensics action instead
+- User wants to *delete* or discard work — cleanup only reorganizes, never deletes
+
 ## When This Runs
 
 - **Automatically** at the end of every work loop (after all pending REQs are processed)
@@ -171,3 +182,28 @@ Do not use `git add -A` or `git add .` — stage only paths within `do-work/arch
 - Touch **active** files in `do-work/queue/` (the queue) or `do-work/working/` — `pending`, `pending-answers`, and `claimed` REQs are the work action's responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from `do-work/queue/` and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery.
 - Archive UR folders that still have pending/in-progress REQs
 - Process any REQ files (use the work action for that)
+
+## Common Rationalizations
+
+Guard against these during cleanup:
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "This REQ is probably done" | Check the actual status in frontmatter and verify against git history | Premature archival loses in-progress work |
+| "Close enough to completed — archive it" | Only archive REQs with terminal status (completed, failed, cancelled) | Non-terminal REQs belong in the queue, not the archive |
+| "This UR folder looks empty, delete it" | Check if REQs reference it via `user_request` field | Empty UR folders may have REQs still in the queue or working/ |
+| "The archive structure is fine, skip reorganization" | Run all 4 passes even if the archive looks clean | Loose files accumulate gradually — what looks clean may have orphans |
+
+## Red Flags
+
+- REQ with terminal status (completed/failed/cancelled) still in `do-work/queue/` or `do-work/working/`
+- UR archived but some of its REQs still pending in the queue
+- Duplicate REQs found in multiple locations (queue + archive, or working + archive)
+- UR folder in archive with no REQ files inside
+
+## Verification Checklist
+
+- [ ] All 4 consolidation passes attempted
+- [ ] No terminal-status REQs remain in `do-work/queue/` or `do-work/working/`
+- [ ] Every archived REQ with `user_request` field is inside its UR folder
+- [ ] No empty UR folders remain in archive (unless REQs are still pending elsewhere)
