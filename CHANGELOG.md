@@ -17,7 +17,7 @@ Trimmed low-value additions from 0.61.0 and split the largest action file. Guard
 
 Quality guardrails, routing clarity, and a session-start hook across the skill.
 
-- 8 action files: Added Common Rationalizations tables, Red Flags sections, and Verification Checklists (capture, cleanup, commit, inspect, verify-requests, pipeline, work, quick-wins)
+- 7 action files: Added Common Rationalizations tables, Red Flags sections, and Verification Checklists (capture, cleanup, commit, inspect, verify-requests, pipeline, quick-wins)
 - 10 action files: Added "When to Use / When NOT to Use" sections to commonly confused routes (review-work, code-review, verify-requests, inspect, commit, cleanup, forensics, scan-ideas, quick-wins, deep-explore)
 - `hooks/session-start.sh` + `hooks/hooks.json`: SessionStart hook injects version, pending REQ count, and pipeline status
 - `CLAUDE.md`: Updated action file template with When to Use, Common Rationalizations, Red Flags, and Verification Checklist conventions

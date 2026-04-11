@@ -4,7 +4,7 @@
 
 **Self-contained** — this action does not depend on any external skills or plugins.
 
-**Companion file:** Read `actions/deep-explore-reference.md` for subagent persona prompts, convergence rubric, source capture procedure, state file schema, and error handling.
+**Companion file:** Read `deep-explore-reference.md` for subagent persona prompts, convergence rubric, source capture procedure, state file schema, and error handling.
 
 ## When to Use
 

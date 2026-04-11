@@ -38,7 +38,7 @@ PIPELINE_MSG=""
 PIPELINE_FILE="${CLAUDE_PROJECT_DIR:-.}/do-work/pipeline.json"
 if [ -f "$PIPELINE_FILE" ]; then
   if command -v jq &>/dev/null; then
-    ACTIVE=$(jq -r '.active // false' "$PIPELINE_FILE" 2>/dev/null)
+    ACTIVE=$(jq -r '.active // false' "$PIPELINE_FILE" 2>/dev/null || echo "false")
     if [ "$ACTIVE" = "true" ]; then
       PIPELINE_MSG=" | Pipeline active — run 'do work pipeline' to resume"
     fi
