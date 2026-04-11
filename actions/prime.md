@@ -255,20 +255,3 @@ Report findings as a structured checklist:
 ```
 
 Be concise. Only flag actual issues. "Everything looks fine" for a prime is not worth reporting individually.
-
-## Common Rationalizations
-
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "Include everything for completeness" | Be selective — prime files are indexes, not documentation dumps | Noise in a prime file wastes tokens and buries the important signals |
-| "Copy the code so it's all in one place" | Use pointers (file paths + line ranges), never inline code | Copied code goes stale instantly — pointers stay accurate |
-| "Add runtime metrics so the AI knows performance characteristics" | Omit volatile data — prime files are structural, not observational | Metrics change constantly and make the prime file unreliable |
-| "This utility is too small for a prime file" | If an AI would waste 3+ tool calls rediscovering it, it's worth a prime | Prime files exist to prevent rediscovery, not to document importance |
-
-## Verification Checklist
-
-- [ ] Prime file follows pointers-not-copies principle (no inline code blocks from source)
-- [ ] No volatile metrics or runtime data included
-- [ ] All entry points for the indexed utility documented
-- [ ] Traps and exclusions noted (things an AI would get wrong without the prime)
-- [ ] File path is `prime-{name}.md` in the appropriate directory

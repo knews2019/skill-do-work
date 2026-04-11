@@ -32,6 +32,7 @@ actions/              # Action files (each is a standalone prompt)
   prime.md             # Prime file management — create and audit AI context documents
   pipeline.md          # Full end-to-end orchestration (investigate → capture → verify → run → review)
   build-knowledge-base.md # LLM knowledge base — init, triage, ingest, query, lint, and more
+  bkb-reference.md    # Companion: seed file templates, agent crew definitions, KB schema content
   tutorial.md          # Interactive tutorials — quick start, concepts, recipes, guided tour
   sample-archived-req.md # Example of a fully processed REQ file (reference only)
 specs/                # Reusable specification templates for common task types

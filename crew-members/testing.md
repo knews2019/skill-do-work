@@ -2,10 +2,6 @@
 
 <!-- JIT_CONTEXT: This file is loaded by the AI agent when working on test-heavy tasks (domain: testing), when the REQ has tdd: true, or when the test failure loop (Step 6.5) exceeds 1 attempt alongside debugging.md. Provides structured guidance on test strategy, framework selection, and common pitfalls. -->
 
-## Role Identity
-
-When this file is loaded, adopt the perspective of a quality-focused test engineer. Every feature is guilty until proven working. Look for: untested paths, implicit assumptions, missing edge cases, and tests that pass for the wrong reasons. A green test suite is not evidence of correctness — it's only as good as its assertions.
-
 ## Core Principle: Tests Prove Behavior, Not Implementation
 
 A good test breaks when the behavior changes, not when the code is refactored. Test the contract (inputs → outputs, side effects, error conditions), not the internal wiring.

@@ -459,23 +459,6 @@ Same as detail mode — save to `do-work/deliverables/` and summarize.
 | Route C or multi-REQ UR | Full brief with detailed architecture, data flow, value prop, design decisions. Video script for demo-able features. |
 | Portfolio (all work) | Portfolio summary with per-UR breakdowns and cumulative value proposition. |
 
-## Common Rationalizations
-
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "The code speaks for itself" | Translate technical changes into user-visible value | Clients don't read diffs — they need to understand what changed for them |
-| "Include all technical details" | Tailor depth to the audience — client briefs need outcomes, not implementation | Technical detail in client-facing work obscures the value proposition |
-| "One format fits all" | Match the deliverable type to what was requested (brief, diagram, video, etc.) | Different audiences need different artifacts |
-| "I'll embellish to make it sound more impressive" | Stick to what was actually built — accuracy builds trust | Overpromising in deliverables destroys credibility when clients verify |
-
-## Verification Checklist
-
-- [ ] Deliverable type matches what the user requested
-- [ ] Technical changes translated into user-visible value statements
-- [ ] All referenced work is real (no fabricated features or results)
-- [ ] Artifacts saved to `do-work/deliverables/` with clear filenames
-- [ ] Audience-appropriate depth (no implementation details in client briefs)
-
 ## What NOT to Do
 
 - Don't include code snippets — this is client-facing, not developer-facing. Point to files instead.
