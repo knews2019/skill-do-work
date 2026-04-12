@@ -134,6 +134,7 @@ Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_C
 - `karpathy.md` — always loaded during implementation (Step 6); Karpathy-inspired behavioral guardrails (think before coding, simplicity, surgical changes, goal-driven execution)
 - `[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists (e.g., `backend.md`, `frontend.md`, `performance.md`, `security.md`, `ui-design.md`)
 - `testing.md` — loaded when `tdd: true` or `domain: testing`, and alongside debugging.md after 2+ test failures
+- `caveman.md` — loaded when `caveman` frontmatter is set (truthy value or intensity: `lite`, `full`, `ultra`); compresses agent prose ~65-75% while keeping code and technical terms exact. Adapted from [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
 - `debugging.md` — loaded during remediation (review fail → retry) and after 2+ test failures
 - `approach-directives.md` — loaded by the work or pipeline action when dispatching multiple sub-agents for parallel/sequential work on related REQs (assigns each agent a distinct implementation lens)
 - If a rules file is missing, proceed without it — never block on a missing rules file

@@ -392,7 +392,8 @@ Quick environment sanity check before the builder starts coding. All checks are 
 2. **Always load** `crew-members/karpathy.md` — behavioral guardrails (think before coding, simplicity, surgical changes, goal-driven execution)
 3. **Conditionally load** `crew-members/[domain].md` — only if the REQ's `domain` frontmatter is set AND the file exists (e.g., `domain: ui-design` → `ui-design.md`)
 4. **Conditionally load** `crew-members/testing.md` — if the REQ has `tdd: true` in frontmatter, or `domain: testing`
-5. **If a rules file is missing**, proceed without it — never block on a missing rules file
+5. **Conditionally load** `crew-members/caveman.md` — if the REQ has `caveman` in frontmatter (any truthy value: `true`, `lite`, `full`, `ultra`). Compresses agent prose ~65-75% while keeping code and technical terms exact.
+6. **If a rules file is missing**, proceed without it — never block on a missing rules file
 
 **Approach directive assignment (multi-REQ only):** If multiple REQs are being processed in parallel, read `crew-members/approach-directives.md` and assign each sub-agent a distinct directive from the pool. Include the directive in the sub-agent's context block. Record the assigned directive in the REQ's Implementation Summary section. For single-REQ processing, no directive is needed — skip this.
 
