@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.61.3 — The Finer Edges (2026-04-12)
+
+Round 2 of self-run quick-wins — structural template nits and documentation accuracy. Every action file now either matches the CLAUDE.md template or is documented as an accepted variant.
+
+- `actions/deep-explore.md`: Wrapped 9 steps under a `## Steps` parent and demoted them from H2 to H3 (largest template deviation remaining after 0.61.2)
+- `actions/cleanup.md`: Renamed `## What It Does` → `## Steps` (Pass 0/1/2/3 sub-sections keep their domain-appropriate "Pass" terminology)
+- `CLAUDE.md`: Clarified crew-members description (not all files are domain-gated); added `approach-directives.md` loading rule to the Agent Rules list
+- `CLAUDE.md`: Added `tutorial.md` and `forensics.md` to the Accepted Variants section (multi-mode with dispatcher + checklist-based diagnostic patterns)
+- `actions/work.md`: Completed the `specs/` example list in Step 3.7 — now names all 4 shipped spec templates instead of just 2
+
 ## 0.61.2 — The Quick Sweep (2026-04-12)
 
 Fixes from a self-run `do work quick-wins` on the skill itself. Consistency nits the team would notice before users ever would.

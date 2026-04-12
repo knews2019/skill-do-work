@@ -83,7 +83,9 @@ Triggered when `$ARGUMENTS` starts with **"continue"**.
 
 ---
 
-## Step 1: Gather Context and Read the Seed
+## Steps
+
+### Step 1: Gather Context and Read the Seed
 
 Build a picture of the project and the concept before exploring:
 
@@ -98,9 +100,9 @@ If `$ARGUMENTS` is a file path, read the file as the seed.
 
 ---
 
-## Step 2: Create Session Directory and Capture Sources
+### Step 2: Create Session Directory and Capture Sources
 
-### Create the directory
+#### Create the directory
 
 Each session gets a unique, timestamped directory at the project root:
 
@@ -109,11 +111,11 @@ SESSION_DIR="deep-explore-$(echo '<concept-slug>' | tr ' ' '-' | tr '[:upper:]' 
 mkdir -p "$SESSION_DIR"/session/sources "$SESSION_DIR"/session/idea-reports "$SESSION_DIR"/session/briefs "$SESSION_DIR"/session/research
 ```
 
-### Capture sources
+#### Capture sources
 
 Follow the source capture procedure in `deep-explore-reference.md`. Copy all input materials (files, URLs, images) into `session/sources/` with a manifest.
 
-### Initialize state
+#### Initialize state
 
 Write `session/state.json` with the initial state. See the state file schema in `deep-explore-reference.md`.
 
@@ -121,7 +123,7 @@ Store the resolved session output path — all subagents need it in their prompt
 
 ---
 
-## Step 3: Assess Research Needs
+### Step 3: Assess Research Needs
 
 After capturing sources, decide whether the **Explorer** subagent is needed.
 
@@ -139,7 +141,7 @@ Record your decision in state.json (`research_mode` field).
 
 ---
 
-## Step 4: Round 1 — Free Thinker (Diverge)
+### Step 4: Round 1 — Free Thinker (Diverge)
 
 Spawn a subagent with the Free Thinker persona from `deep-explore-reference.md`.
 
@@ -155,7 +157,7 @@ Update state.json after the subagent completes.
 
 ---
 
-## Step 5: Arbiter Evaluation 1
+### Step 5: Arbiter Evaluation 1
 
 You (the orchestrator) read the Free Thinker's output. This is an inline evaluation — do not spawn a subagent.
 
@@ -168,7 +170,7 @@ If satisfactory, proceed to Step 6. Record evaluation notes in state.json.
 
 ---
 
-## Step 6: Round 2 — Grounder (Converge)
+### Step 6: Round 2 — Grounder (Converge)
 
 Spawn a subagent with the Grounder persona from `deep-explore-reference.md`.
 
@@ -185,7 +187,7 @@ Update state.json after the subagent completes.
 
 ---
 
-## Step 7: Arbiter Evaluation 2 — Decide More Rounds
+### Step 7: Arbiter Evaluation 2 — Decide More Rounds
 
 Read the Grounder's output. Apply the convergence rubric from `deep-explore-reference.md`.
 
@@ -211,7 +213,7 @@ Update state.json after each round.
 
 ---
 
-## Step 8: Writer (Synthesize)
+### Step 8: Writer (Synthesize)
 
 Spawn a subagent with the Writer persona from `deep-explore-reference.md`.
 
@@ -232,7 +234,7 @@ Update state.json: set `writer_status: "done"`, `status: "complete"`, `completed
 
 ---
 
-## Step 9: Present Results
+### Step 9: Present Results
 
 Read the vision document and briefs. Present to the user:
 
