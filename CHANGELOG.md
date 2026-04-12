@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.62.4 — The Dangling Pointer (2026-04-12)
+
+Fixed a dangling cross-reference in `bkb init` Step 5 — it pointed to a "Schema File" section that had been extracted out into `bkb-reference.md`. Init now correctly points to the schema content's real home.
+
+- `actions/build-knowledge-base.md`: Step 5 now references the "Schema File Content" section of the bkb-reference action, matching the pattern already used in Steps 3 and 4
+
 ## 0.62.3 — The Same Rake (2026-04-12)
 
 Gap-closure pass after 0.62.2. The earlier release caught a Rules-at-end ordering bug in `quick-wins.md` and fixed it there, but never grepped for the same pattern elsewhere — turns out two other action files had the identical structure. Also formalized a capture.md deviation that was noticed during the first review but never fixed.
