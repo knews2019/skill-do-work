@@ -114,7 +114,7 @@ Create the 8 agent files listed in the "Agent Crew Templates" section of the bkb
 
 ### Step 5: Create the Schema File
 
-Create `<path>/CLAUDE.md` with the KB schema (conventions, frontmatter format, workflow triggers). Use the schema content from the "Schema File" section below.
+Create `<path>/CLAUDE.md` with the KB schema (conventions, frontmatter format, workflow triggers). Use the schema content from the "Schema File Content" section of the bkb-reference action.
 
 ### Step 6: Initialize Git
 
