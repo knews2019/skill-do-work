@@ -43,6 +43,9 @@ if command -v jq &>/dev/null; then
   PENDING=$(jq '[.steps[] | select(.status == "pending" or .status == "in-progress")] | length' "$PIPELINE_FILE" 2>/dev/null)
   NEXT=$(jq -r '[.steps[] | select(.status == "pending" or .status == "in-progress")][0].name // "unknown"' "$PIPELINE_FILE" 2>/dev/null)
 else
+  # Best-effort fallback when jq is absent. Assumes well-formed JSON —
+  # miscounts are possible if the pipeline file is malformed. Install jq
+  # for reliable parsing if you depend on this hook.
   ACTIVE=$(grep -o '"active"[[:space:]]*:[[:space:]]*true' "$PIPELINE_FILE" | head -1 || true)
   PENDING=$(grep -c '"status"[[:space:]]*:[[:space:]]*"pending"\|"status"[[:space:]]*:[[:space:]]*"in-progress"' "$PIPELINE_FILE" 2>/dev/null || echo "0")
   NEXT="(check do-work/pipeline.json)"

@@ -4,6 +4,15 @@
 
 A post-work quality gate with three jobs: (1) confirm the implementation matches the requirements, (2) verify the code is solid, and (3) actually test that the thing works. Creates follow-up REQs for anything that needs fixing.
 
+## Philosophy
+
+- **Did we build what was asked?** Requirements check comes first. Everything else is secondary if the wrong thing got built.
+- **Does it actually work?** Reading diffs catches logic errors. Running the code catches everything else. Do both.
+- **Traceability makes this powerful.** You have the original input (UR), the structured requirements (REQ), the triage/plan/exploration history, and the actual diff — use all of it.
+- **Actionable output.** Don't just report problems — create follow-up REQs for issues worth fixing.
+- **Proportional effort.** A Route A config change gets a quick scan. A Route C multi-file feature gets a thorough review.
+- **Suggest what's next.** After checking what you can, tell the user what else should be tested — manual checks, edge cases, integration scenarios, things only a human can verify.
+
 ## When to Use
 
 **Use when:**
@@ -15,15 +24,6 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 - User wants to verify *capture quality* (not code) — route to the verify-requests action instead
 - User wants a standalone *codebase* review unrelated to REQs — route to the code-review action instead
 - User wants to *inspect* uncommitted changes without judgment — route to the inspect action instead
-
-## Philosophy
-
-- **Did we build what was asked?** Requirements check comes first. Everything else is secondary if the wrong thing got built.
-- **Does it actually work?** Reading diffs catches logic errors. Running the code catches everything else. Do both.
-- **Traceability makes this powerful.** You have the original input (UR), the structured requirements (REQ), the triage/plan/exploration history, and the actual diff — use all of it.
-- **Actionable output.** Don't just report problems — create follow-up REQs for issues worth fixing.
-- **Proportional effort.** A Route A config change gets a quick scan. A Route C multi-file feature gets a thorough review.
-- **Suggest what's next.** After checking what you can, tell the user what else should be tested — manual checks, edge cases, integration scenarios, things only a human can verify.
 
 ## Two Modes
 

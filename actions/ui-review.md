@@ -275,6 +275,18 @@ If the user confirms:
 
 If the user declines or doesn't respond, skip this step. The report stands on its own.
 
+## Rules
+
+- **Read-only**: Do not modify any source files. The entire action is observational.
+- **Be specific**: Every finding must include a file path and line number (or range). Vague findings ("the spacing feels off") are not actionable.
+- **Show both sides**: When flagging inconsistency, show both the pattern and the deviation.
+- **Respect the project's design language**: If the project has an established design system, evaluate against it — don't impose external preferences.
+- **Don't flag what tools catch**: If a linter or formatter would catch it, skip it. Focus on design-level issues that require human judgment.
+- **Proportional depth**: A 3-file review gets a focused report. A 50-file review gets broader patterns, not 50x the findings.
+- **Acknowledge strengths**: A report that's all negatives is demoralizing and incomplete. Note what works.
+- **frontend-design skill is additive**: If not installed, still run the full review using `crew-members/ui-design.md`. The skill adds aesthetic depth but isn't required.
+- **Playwright CLI / Bowser skill are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend `do work install-bowser` when missing — it's high-value and low-effort.
+
 ## Common Rationalizations
 
 Guard against these when conducting the UI review:
@@ -287,17 +299,13 @@ Guard against these when conducting the UI review:
 | "I can't check this without running the app" | The code-level review (Steps 3–8) catches most issues statically | Visual verification is additive, not a prerequisite |
 | "No findings in this category" | Verify you checked all items in the category's checklist | An empty category should be earned, not assumed |
 
-## Rules
+## Red Flags
 
-- **Read-only**: Do not modify any source files. The entire action is observational.
-- **Be specific**: Every finding must include a file path and line number (or range). Vague findings ("the spacing feels off") are not actionable.
-- **Show both sides**: When flagging inconsistency, show both the pattern and the deviation.
-- **Respect the project's design language**: If the project has an established design system, evaluate against it — don't impose external preferences.
-- **Don't flag what tools catch**: If a linter or formatter would catch it, skip it. Focus on design-level issues that require human judgment.
-- **Proportional depth**: A 3-file review gets a focused report. A 50-file review gets broader patterns, not 50x the findings.
-- **Acknowledge strengths**: A report that's all negatives is demoralizing and incomplete. Note what works.
-- **frontend-design skill is additive**: If not installed, still run the full review using `crew-members/ui-design.md`. The skill adds aesthetic depth but isn't required.
-- **Playwright CLI / Bowser skill are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend `do work install-bowser` when missing — it's high-value and low-effort.
+- Every finding is "Low" severity (the review likely stopped at surface polish)
+- Accessibility section empty with no explicit justification (WCAG AA checks skipped)
+- Zero findings across all categories for a 20+ file review (scan was likely too shallow)
+- Severity counts in Summary don't match the findings tables
+- No Strengths listed (either the code is genuinely broken, or the review skipped the acknowledgment step)
 
 ## Verification Checklist
 

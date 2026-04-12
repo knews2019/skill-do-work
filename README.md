@@ -50,7 +50,20 @@ Other trigger words: `go`, `start`, `begin`, `process`, `execute`, `build`, `con
 
 See the [Work Guide](docs/work-guide.md) for the full pipeline, triage routes, and clarify mode.
 
-### 3. Verify captured requests
+### 3. Run the full pipeline
+
+One command, full cycle: investigate → capture → verify → run → review. Stateful and resumable — if the session ends mid-pipeline (context limit, crash, closed terminal), re-invoking picks up from the last step.
+
+```
+do work pipeline add dark mode to settings    # initialize with a request
+do work pipeline                              # resume the active pipeline
+do work pipeline status                       # progress without advancing
+do work pipeline abandon                      # deactivate without completing
+```
+
+Pipeline state lives at `do-work/pipeline.json`. Each step dispatches to an existing action — the pipeline never re-implements logic.
+
+### 4. Verify captured requests
 
 Quality-check your captured REQs against the original input before building. Catches missed requirements, lost UX details, or intent drift.
 
@@ -62,7 +75,7 @@ do work check REQ-018
 
 See the [Verify Requests Guide](docs/verify-requests-guide.md) for scoring dimensions and gap severity.
 
-### 4. Review completed work
+### 5. Review completed work
 
 Post-build review: requirements check, code review, acceptance testing, and suggested testing. Also runs automatically after each work loop item.
 
@@ -74,7 +87,7 @@ do work review UR-003
 
 See the [Review Work Guide](docs/review-work-guide.md) for the three review phases and scoring.
 
-### 5. Answer pending questions
+### 6. Answer pending questions
 
 During the build phase, the assistant makes best-judgment calls on ambiguities instead of blocking. After work completes, review those decisions as a batch — confirm, override, or skip.
 
@@ -83,7 +96,7 @@ do work clarify
 do work questions
 ```
 
-### 6. Code review (standalone)
+### 7. Code review (standalone)
 
 Review the actual codebase independent of the task queue. Scoped by prime files (architectural reference docs), directories, or both.
 
@@ -97,7 +110,7 @@ do work audit codebase
 
 See the [Code Review Guide](docs/code-review-guide.md) for scoping modes, review dimensions, and health ratings.
 
-### 7. UI review (read-only)
+### 8. UI review (read-only)
 
 Validate UI quality against design best practices — structure, aesthetics, accessibility, UX copy, interaction patterns. Does not modify code.
 
@@ -110,7 +123,7 @@ do work design review
 
 See the [UI Review Guide](docs/ui-review-guide.md) for review dimensions and severity levels.
 
-### 8. Scan for quick wins
+### 9. Scan for quick wins
 
 Find obvious improvements in a directory — dead code, duplication, complexity, missing tests.
 
@@ -122,7 +135,34 @@ do work scan src/api/
 
 See the [Quick Wins Guide](docs/quick-wins-guide.md) for what it looks for and ranking criteria.
 
-### 9. Manage prime files
+### 10. Generate ideas
+
+Brainstorm what to build, improve, or explore next — grounded in codebase analysis and project history, not generic advice. Every idea points at something concrete and comes with a size estimate.
+
+```
+do work scan-ideas                # open exploration of the whole project
+do work scan-ideas performance    # focused brainstorm on a theme
+do work scan-ideas src/api/       # ideas scoped to a directory
+do work ideas
+do work brainstorm
+```
+
+Output is a ranked list of ideas, sized S/M/L, ready to paste into `do work capture request:`.
+
+### 11. Explore a concept in depth
+
+Multi-round structured exploration of a concept through specialized subagents — a Free Thinker (divergent generation), a Grounder (convergent evaluation), and a Writer (neutral synthesis). Produces idea briefs and a consolidated vision document.
+
+```
+do work deep-explore                       # ask what to explore
+do work deep-explore "streaming rendering" # seed concept
+do work deep-explore src/renderer/         # explore what a directory suggests
+do work deep-explore continue              # resume an in-progress session
+```
+
+Use when you have a seed idea and want to develop it, not when you just want a list of tasks (use scan-ideas for that).
+
+### 12. Manage prime files
 
 Create and audit prime files — AI context documents that help an AI coder navigate a utility in minimum tokens. Prime files index entry points, traps, and exclusions so the AI doesn't waste tool calls rediscovering architecture.
 
@@ -134,7 +174,7 @@ do work prime                     # show prime sub-command help
 
 See the [Prime Guide](docs/prime-guide.md) for the create workflow, audit checks, and prime file format.
 
-### 10. Present work to clients
+### 13. Present work to clients
 
 Generate client-facing deliverables from completed work: briefs, architecture diagrams, value propositions, Remotion videos, interactive HTML explainers.
 
@@ -149,7 +189,7 @@ Artifacts are saved to `do-work/deliverables/`.
 
 See the [Present Work Guide](docs/present-work-guide.md) for detail mode, portfolio mode, and artifact types.
 
-### 11. Commit changes
+### 14. Commit changes
 
 Analyze uncommitted files, group them by REQ, and create atomic git commits with traceability.
 
@@ -160,7 +200,7 @@ do work save work
 
 See the [Commit Guide](docs/commit-guide.md) for grouping logic and commit message format.
 
-### 12. Inspect changes
+### 15. Inspect changes
 
 Read-only examination of uncommitted changes — explains what changed, why, traces to REQs, and assesses commit readiness.
 
@@ -172,7 +212,7 @@ do work inspect UR-003      # changes for all REQs under a UR
 
 See the [Inspect Guide](docs/inspect-guide.md) for readiness signals and verdict definitions.
 
-### 13. Cleanup the archive
+### 16. Cleanup the archive
 
 Consolidate completed work — close finished UR folders, move loose REQs into their URs, organize legacy files.
 
@@ -185,7 +225,7 @@ Also runs automatically at the end of every work loop.
 
 See the [Cleanup Guide](docs/cleanup-guide.md) for the four consolidation passes.
 
-### 14. Diagnostics
+### 17. Diagnostics
 
 Pipeline health check — detects stuck work, hollow completions, orphaned URs, scope contamination. Read-only.
 
@@ -197,7 +237,7 @@ do work health check
 
 See the [Forensics Guide](docs/forensics-guide.md) for the full list of checks and severity levels.
 
-### 15. Build a knowledge base
+### 18. Build a knowledge base
 
 Build and maintain an LLM-friendly Markdown wiki from raw sources (PDFs, articles, notes). Aliases: `bkb`, `kb`, `build knowledge base`, `knowledge base`.
 
@@ -217,14 +257,14 @@ do work bkb status            # show KB stats and pending items
 
 For the full folder structure, file lifecycle, and wiki page format, see the [BKB Guide](docs/bkb-guide.md).
 
-### 16. Install companion skills
+### 19. Install companion skills
 
 ```
 do work install-ui-design   # Anthropic's frontend-design skill for production-grade UI
 do work install-bowser      # Playwright CLI + Bowser skill for browser automation
 ```
 
-### 17. Version and history
+### 20. Version and history
 
 ```
 do work version             # current version + last 5 releases
@@ -233,6 +273,18 @@ do work recap               # last 5 completed user requests
 ```
 
 See the [Version Guide](docs/version-guide.md) for update behavior and recap format.
+
+### 21. Learn the skill
+
+Interactive tutorials for users new to do-work. Four modes:
+
+```
+do work tutorial                # ask which mode
+do work tutorial quick-start    # hands-on walkthrough
+do work tutorial concepts       # how the pieces fit together
+do work tutorial recipes        # common workflow patterns
+do work tutorial tour           # guided tour of the whole system
+```
 
 ### Help
 

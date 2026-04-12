@@ -559,11 +559,11 @@ When the REQ includes `## Red-Green Proof`, the `Red-green validation` entries s
 
 ### Step 7: Review
 
-Run the [review work action](./review-work.md) in **pipeline mode** against this REQ.
+Run the review work action in **pipeline mode** against this REQ.
 
 The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation: requirements check (did we build what was asked?), code review (is it solid?), and acceptance testing (does it actually work?).
 
-**How to run it:** Spawn an agent with the review work action file, the REQ path, and the `crew-members/[domain].md` file (if the domain has one and the file exists). Or read `actions/review-work.md` and follow its pipeline mode instructions in the current session.
+**How to run it:** Spawn an agent with the review work action file, the REQ path, and the `crew-members/[domain].md` file (if the domain has one and the file exists). Or read the review work action file and follow its pipeline mode instructions in the current session.
 
 **What happens next depends on the review result:**
 
@@ -782,7 +782,7 @@ This ensures the `commit:` field in the archived REQ contains the real implement
 Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
 
 - **`pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
-- **Only `pending-answers` REQs remain**: Write a **Session Checkpoint** (see below), run the [cleanup action](./cleanup.md), then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work clarify` when ready. If completed/done REQs also exist in `do-work/queue/`, include them in the summary: `⚠ N completed REQs awaiting archive. Run do work cleanup to archive them.` List the REQ ids, titles, and UR groupings.
+- **Only `pending-answers` REQs remain**: Write a **Session Checkpoint** (see below), run the cleanup action, then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work clarify` when ready. If completed/done REQs also exist in `do-work/queue/`, include them in the summary: `⚠ N completed REQs awaiting archive. Run do work cleanup to archive them.` List the REQ ids, titles, and UR groupings.
 - **No REQs at all**: Write a Session Checkpoint, run cleanup, report final summary and exit. If completed/done REQs exist in `do-work/queue/` (they may have been created during this session but not yet archived due to incomplete URs), include them in the summary with the same `⚠` warning and REQ listing as above.
 
 #### Context Wipe — Verified
@@ -845,7 +845,7 @@ This is NOT a blocking gate. If no checkpoint exists, the session starts normall
 
 ## Clarify Questions
 
-The clarify workflow has its own action file: [`clarify.md`](./clarify.md). It handles batch-review of `pending-answers` REQs — the user confirms, overrides, or discards builder decisions. Resolved REQs flip back to `pending` and re-enter the work queue.
+The clarify workflow has its own action. Run `do work clarify` — it handles batch-review of `pending-answers` REQs, where the user confirms, overrides, or discards builder decisions. Resolved REQs flip back to `pending` and re-enter the work queue.
 
 ## Reference
 

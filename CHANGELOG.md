@@ -4,6 +4,20 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.62.2 — The Own Medicine (2026-04-12)
+
+Ran `do work code-review` on the skill itself and actually fixed the findings. Four first-class actions (`pipeline`, `scan-ideas`, `deep-explore`, `tutorial`) were missing from the README usage scenarios despite being prominent in the SKILL.md help menu — now every listed action has a README section. Also cleared the remaining template-ordering drift and filled in missing Red Flags blocks.
+
+- `README.md`: Added four new usage-scenario sections (`pipeline`, `scan-ideas`, `deep-explore`, `tutorial`) and renumbered to 21 scenarios — closes the discoverability gap between the help menu and the README
+- `actions/scan-ideas.md`, `actions/review-work.md`, `actions/deep-explore.md`: Swapped `## Philosophy` and `## When to Use` to match the CLAUDE.md template order
+- `actions/quick-wins.md`, `actions/ui-review.md`: Moved `## Rules` back before `## Common Rationalizations` / `## Verification Checklist`
+- `actions/inspect.md`: Renamed `## Core Rules` → `## Rules` and repositioned it after Output so it matches the template's post-Output placement
+- `actions/code-review.md`, `actions/inspect.md`, `actions/ui-review.md`: Added the missing `## Red Flags` section each had been skipping — brings the encouraged-elements coverage up to parity with peers
+- `actions/work.md`: Replaced three `[text](./file.md)` cross-references with short-name prose (CLAUDE.md rule: "SKILL.md owns the file-path mappings")
+- `hooks/session-start.sh`: Warn on stderr when the version parse falls back to "unknown" instead of silently hiding format drift
+- `hooks/pipeline-guard.sh`: Documented that the jq-absent fallback is best-effort and depends on well-formed JSON
+- `CLAUDE.md`: Softened the `docs/` description — not every action has a per-action guide (install-*, tutorial, scan-ideas, deep-explore, pipeline, clarify intentionally rely on the action file + README)
+
 ## 0.62.1 — The Senior Engineer Test (2026-04-12)
 
 Refined the Karpathy crew-member and wired its principles into review-work, so the four guardrails aren't just applied during the build — they're audited during review. Also added an oversimplification hedge, because "simplify" is not "strip."

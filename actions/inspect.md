@@ -19,12 +19,6 @@ Unlike the commit action (which stages and commits), this action only reads and 
 
 - **Manually** when the user invokes it (e.g., `do work inspect`, `do work explain changes`)
 
-## Core Rules
-
-- **Read-only.** This action never modifies files, creates commits, stages changes, or writes to the do-work queue. It only reads and reports.
-- **Safe to run anytime.** No side effects. Can be run mid-work, between sessions, or before deciding whether to commit.
-- **Explain, don't act.** The report tells the user what changed, why, and whether it's ready. The user decides what to do next.
-
 ## Input
 
 `$ARGUMENTS` determines the scope of the inspection. Three modes:
@@ -407,6 +401,12 @@ No uncommitted changes.
 - Exiting early when no uncommitted files match a scoped REQ/UR — committed files should still be inspected
 - Giving a committed file a "Ready"/"Needs attention"/"Not ready" verdict — use "Already Committed" instead
 
+## Rules
+
+- **Read-only.** This action never modifies files, creates commits, stages changes, or writes to the do-work queue. It only reads and reports.
+- **Safe to run anytime.** No side effects. Can be run mid-work, between sessions, or before deciding whether to commit.
+- **Explain, don't act.** The report tells the user what changed, why, and whether it's ready. The user decides what to do next.
+
 ## Common Rationalizations
 
 | If you're thinking... | STOP. Instead... | Because... |
@@ -415,6 +415,14 @@ No uncommitted changes.
 | "The changes are self-explanatory" | Still document what changed, why, and the REQ association | Future readers (including the user) need the trail of intent |
 | "I'll skip the REQ tracing — these are just small edits" | Attempt REQ association for every changed file | Even small edits may relate to queued or completed work |
 | "This debug artifact is probably intentional" | Flag it explicitly — let the user decide | Leftover console.log/debugger statements are the #1 commit contaminant |
+
+## Red Flags
+
+- Report produced without a `git status` / `git diff` reading actually happening (hollow analysis)
+- Files listed with no REQ association attempt — even "unassociated" should be an explicit conclusion
+- "Ready" verdict given to a group containing `.env`, credentials, or secrets-shaped strings
+- Debug artifacts (console.log, debugger, commented-out blocks) appear in added lines but aren't flagged
+- Committed files inspected under REQ/UR scope but given readiness verdicts instead of "Already Committed"
 
 ## Verification Checklist
 

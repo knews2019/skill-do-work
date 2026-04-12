@@ -171,6 +171,15 @@ Produce a markdown report with this structure:
 >   do work run                    Process the queue
 ```
 
+## Rules
+
+- **Do NOT modify any files.** This action is read-only. Report only.
+- **Be specific.** Every finding must include a file path, line range or function name, and a concrete description. "Some files are too long" is useless — "`src/api/handlers.ts` is 847 lines with 12 unrelated route handlers" is useful.
+- **Be honest about impact.** Don't inflate findings to make the report look impressive. If the codebase is clean, say so. A short report with real findings beats a long report with filler.
+- **Skip vendored and generated files.** Don't report issues in `node_modules/`, `vendor/`, `.next/`, compiled output, or generated code.
+- **Check before suggesting tests.** If a function already has test coverage, don't suggest testing it again. Note it in "Already Covered" instead.
+- **Respect project conventions.** If `prime-*.md` files describe deliberate patterns (e.g., "we use god files for route handlers"), don't flag those as problems.
+
 ## Common Rationalizations
 
 Guard against these when producing the report:
@@ -196,12 +205,3 @@ Guard against these when producing the report:
 - [ ] Effort and impact ratings assigned to each finding
 - [ ] Security smells checked regardless of codebase size
 - [ ] Report is read-only — no files modified
-
-## Rules
-
-- **Do NOT modify any files.** This action is read-only. Report only.
-- **Be specific.** Every finding must include a file path, line range or function name, and a concrete description. "Some files are too long" is useless — "`src/api/handlers.ts` is 847 lines with 12 unrelated route handlers" is useful.
-- **Be honest about impact.** Don't inflate findings to make the report look impressive. If the codebase is clean, say so. A short report with real findings beats a long report with filler.
-- **Skip vendored and generated files.** Don't report issues in `node_modules/`, `vendor/`, `.next/`, compiled output, or generated code.
-- **Check before suggesting tests.** If a function already has test coverage, don't suggest testing it again. Note it in "Already Covered" instead.
-- **Respect project conventions.** If `prime-*.md` files describe deliberate patterns (e.g., "we use god files for route handlers"), don't flag those as problems.
