@@ -35,6 +35,11 @@ and surface later via `do work clarify`. Silent assumptions are the failure mode
 
 Ask: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
+**Simplify ≠ strip.** If removing something would need to be restored next week,
+it wasn't complexity — it was foundation. The test isn't "fewest lines"; it's
+"fewest lines *that still hold up under the REQ's real requirements*." When in
+doubt, keep it and note the decision.
+
 ## 3. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
@@ -64,6 +69,9 @@ error") over vague improvements ("add validation"). If the REQ has a
 
 ---
 
-**Success indicators:** fewer unnecessary changes in diffs, fewer rewrites from
-overcomplication, clarifying questions asked before implementation rather than
-silent guesses.
+**Success indicators** — observable behaviors that show the principles are landing:
+
+- Clarifying questions appear *before* code starts, not after
+- Diffs stay small and focused on the REQ
+- Neighboring files stay untouched unless the REQ requires them
+- You talk in verification terms ("here's what turns GREEN") rather than "I implemented it"
