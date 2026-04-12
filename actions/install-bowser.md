@@ -11,7 +11,7 @@ Installs two components:
 
 Once installed, `do work ui-review` can use Playwright CLI for visual verification — screenshotting at multiple viewports, running accessibility checks on rendered pages, and catching layout issues that static code analysis misses.
 
-## Workflow
+## Steps
 
 ### Step 1: Check If Already Installed
 

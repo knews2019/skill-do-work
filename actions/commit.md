@@ -21,7 +21,7 @@ Unlike the commit steps embedded in other actions (capture Step 7, work Step 9, 
 
 - **Manually** when the user invokes it (e.g., `do work commit`, `do work save work`)
 
-## Workflow
+## Steps
 
 ```
 commit action

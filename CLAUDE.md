@@ -41,7 +41,7 @@ specs/                # Reusable specification templates for common task types
   ui-component.md     # Spec template for frontend UI components
   refactor.md         # Spec template for refactoring tasks
   bug-fix.md          # Spec template for bug fixes
-crew-members/         # Domain-specific rules loaded by work action
+crew-members/         # Agent rules loaded by work action based on domain, phase, or dispatch pattern
 hooks/                # Optional hook scripts (platform-specific, installable)
   hooks.json          # Combined hook config for Claude Code (SessionStart + Stop)
   session-start.sh    # Claude Code SessionStart hook — injects status line
@@ -120,8 +120,9 @@ Action files follow a consistent structure. When adding or modifying actions, us
 
 **Accepted variants:**
 - **Sub-command dispatchers** (`prime.md`, `build-knowledge-base.md`) — Use a Sub-Commands table instead of flat steps. Each sub-command has its own workflow section.
-- **Multi-mode actions** (`present-work.md`, `review-work.md`) — Use a Modes table, then separate workflow sections per mode.
+- **Multi-mode actions** (`present-work.md`, `review-work.md`, `tutorial.md`) — Use a Modes table, then separate workflow sections per mode. A single `Step 1: Mode Selection` dispatcher at the top is acceptable.
 - **State-based actions** (`version.md`, `pipeline.md`) — Response sections keyed by input type instead of sequential steps.
+- **Checklist-based diagnostics** (`forensics.md`) — Use a `## Checks` section with independently-runnable items instead of ordered `## Steps`. Each check is a diagnostic probe, not a sequential step.
 
 Cross-reference other actions by short name (e.g., "the work action", "do work clarify") — not by file path. SKILL.md owns the file-path mappings.
 
@@ -129,10 +130,11 @@ Cross-reference other actions by short name (e.g., "the work action", "do work c
 
 Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_CONTEXT` comment documenting when it loads. Loading behavior:
 
-- `general.md` — always loaded during implementation (Step 6)
-- `[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists
+- `general.md` — always loaded during implementation (Step 6), regardless of domain
+- `[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists (e.g., `backend.md`, `frontend.md`, `performance.md`, `security.md`, `ui-design.md`)
 - `testing.md` — loaded when `tdd: true` or `domain: testing`, and alongside debugging.md after 2+ test failures
 - `debugging.md` — loaded during remediation (review fail → retry) and after 2+ test failures
+- `approach-directives.md` — loaded by the work or pipeline action when dispatching multiple sub-agents for parallel/sequential work on related REQs (assigns each agent a distinct implementation lens)
 - If a rules file is missing, proceed without it — never block on a missing rules file
 
 ## Queue Path Convention

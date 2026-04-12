@@ -165,7 +165,7 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 
 `$ARGUMENTS` may contain specific REQ IDs (e.g., `REQ-042`, `REQ-042 REQ-043`). When REQ IDs are provided, process **only** those REQs and stop — do not drain the full queue. This is how the pipeline action scopes work to a specific batch. When no REQ IDs are provided, process all pending REQs in queue order (default behavior).
 
-## Workflow
+## Steps
 
 **The work action is an orchestrator.** You handle ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents handle implementation work only.
 
@@ -274,7 +274,7 @@ If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section ex
 
 After triage, check if a specification template matches this REQ's domain or task type.
 
-1. **Match by task type:** If the REQ's title or What section clearly indicates a task type (API endpoint, UI component, refactor, bug fix), check `specs/` for a matching template (e.g., `specs/api-endpoint.md`, `specs/bug-fix.md`).
+1. **Match by task type:** If the REQ's title or What section clearly indicates a task type (API endpoint, UI component, refactor, bug fix), check `specs/` for a matching template (`specs/api-endpoint.md`, `specs/ui-component.md`, `specs/refactor.md`, `specs/bug-fix.md`).
 2. **Match by suggested spec:** If the REQ's frontmatter contains a `suggested_spec` field (set during capture), check `specs/` for that template.
 3. **If a matching spec exists**, read it and use it to inform:
    - The implementation checklist order (pass to the planning or implementation agent)

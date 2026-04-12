@@ -8,7 +8,7 @@ Installs the Anthropic-maintained `frontend-design` skill into the current proje
 
 Once installed, the skill is available to all agents working in this project — including do-work builders processing `domain: ui-design` requests.
 
-## Workflow
+## Steps
 
 ### Step 1: Check If Already Installed
 

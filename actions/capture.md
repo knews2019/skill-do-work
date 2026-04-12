@@ -180,7 +180,7 @@ add keyboard shortcuts
 
 For complex requests, add a Summary, an Extracted Requests table, and a Batch Constraints section before the Full Verbatim Input. The verbatim section must contain the COMPLETE, UNEDITED input — never summarize or clean it up.
 
-## Workflow
+## Steps
 
 ### Step 1: Parse and Assess
 

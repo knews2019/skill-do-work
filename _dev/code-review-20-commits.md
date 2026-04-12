@@ -2,6 +2,7 @@
 
 **Scope**: `5a12078..6eb3f53` (20 commits)  
 **Date**: 2026-04-09  
+**Status**: RESOLVED — both findings have been addressed (Performance dimension added to `docs/code-review-guide.md`; code-review hyphenation routing documented in `SKILL.md`). Retained as a historical dev artifact.
 
 ---
 

@@ -34,7 +34,7 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 
 Both modes follow the same workflow. The only difference is where the REQ lives and how you obtain the diff.
 
-## Workflow
+## Steps
 
 ### Step 1: Find the Target
 

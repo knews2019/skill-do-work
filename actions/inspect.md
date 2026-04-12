@@ -41,7 +41,7 @@ Unlike the commit action (which stages and commits), this action only reads and 
 
 `do work inspect UR-003` — inspects files associated with ANY REQ under UR-003 (both uncommitted and committed). Equivalent to Mode 2 across all REQs in the UR, with a unified report.
 
-## Workflow
+## Steps
 
 ```
 inspect action

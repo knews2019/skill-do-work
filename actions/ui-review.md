@@ -23,7 +23,7 @@ The user specifies what to review. Accepted formats:
 - **Combined**: `do work ui-review prime-auth src/components/`
 - **No arguments**: Interactive — list UI-relevant files and ask the user what to review
 
-## Workflow
+## Steps
 
 ### Step 1: Resolve Scope
 

@@ -25,7 +25,7 @@ A confidence evaluation system that compares extracted REQ files against the ori
 - User wants a *codebase* review — route to the code-review action instead
 - User says just "review" without "requests" — that's the review-work action
 
-## Workflow
+## Steps
 
 ### Step 1: Find the Target UR
 
