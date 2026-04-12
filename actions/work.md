@@ -389,9 +389,10 @@ Quick environment sanity check before the builder starts coding. All checks are 
 **Agent rules loading:** Before spawning the implementation agent, load domain-specific rules:
 
 1. **Always load** `crew-members/general.md` — cross-domain rules and PRIME Files Philosophy
-2. **Conditionally load** `crew-members/[domain].md` — only if the REQ's `domain` frontmatter is set AND the file exists (e.g., `domain: ui-design` → `ui-design.md`)
-3. **Conditionally load** `crew-members/testing.md` — if the REQ has `tdd: true` in frontmatter, or `domain: testing`
-4. **If a rules file is missing**, proceed without it — never block on a missing rules file
+2. **Always load** `crew-members/karpathy.md` — behavioral guardrails (think before coding, simplicity, surgical changes, goal-driven execution)
+3. **Conditionally load** `crew-members/[domain].md` — only if the REQ's `domain` frontmatter is set AND the file exists (e.g., `domain: ui-design` → `ui-design.md`)
+4. **Conditionally load** `crew-members/testing.md` — if the REQ has `tdd: true` in frontmatter, or `domain: testing`
+5. **If a rules file is missing**, proceed without it — never block on a missing rules file
 
 **Approach directive assignment (multi-REQ only):** If multiple REQs are being processed in parallel, read `crew-members/approach-directives.md` and assign each sub-agent a distinct directive from the pool. Include the directive in the sub-agent's context block. Record the assigned directive in the REQ's Implementation Summary section. For single-REQ processing, no directive is needed — skip this.
 

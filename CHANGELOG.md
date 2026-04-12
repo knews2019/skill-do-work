@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.62.0 — The Karpathy Nod (2026-04-12)
+
+Adopted Andrej Karpathy's four coding guardrails as an always-loaded crew-member, so every REQ — not just multi-agent waves — benefits from them. Complements do-work's workflow machinery: the queue decides *what* to build; these principles shape *how*.
+
+- `crew-members/karpathy.md`: New file — four behavioral principles (Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution) adapted from [forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills)
+- `actions/work.md`: Step 6 now always-loads `karpathy.md` alongside `general.md`
+- `CLAUDE.md`: Agent Rules section documents the new always-loaded file
+
 ## 0.61.3 — The Finer Edges (2026-04-12)
 
 Round 2 of self-run quick-wins — structural template nits and documentation accuracy. Every action file now either matches the CLAUDE.md template or is documented as an accepted variant.
