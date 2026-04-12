@@ -4,6 +4,13 @@
 
 **Read-only** — this action does NOT modify any files. It produces a structured report of ideas.
 
+## Philosophy
+
+- **Grounded, not generic.** Every idea must reference something concrete in the codebase or project history — a file, a pattern, a gap, a completed REQ. No "you should add tests" without pointing at what's untested and why it matters.
+- **Product thinking, not just code.** Go beyond refactoring. Think about what users would want, what's missing from the experience, what would make the project more valuable.
+- **Effort-aware.** Tag every idea with a rough size so the user can pick what fits their time budget.
+- **Feed the pipeline.** Ideas should be concrete enough to paste straight into `do work capture request:`.
+
 ## When to Use
 
 **Use when:**
@@ -14,13 +21,6 @@
 **Do NOT use when:**
 - User wants specific *refactoring* opportunities with file-level detail — route to the quick-wins action instead
 - User wants to *deeply explore* a specific concept — route to the deep-explore action instead
-
-## Philosophy
-
-- **Grounded, not generic.** Every idea must reference something concrete in the codebase or project history — a file, a pattern, a gap, a completed REQ. No "you should add tests" without pointing at what's untested and why it matters.
-- **Product thinking, not just code.** Go beyond refactoring. Think about what users would want, what's missing from the experience, what would make the project more valuable.
-- **Effort-aware.** Tag every idea with a rough size so the user can pick what fits their time budget.
-- **Feed the pipeline.** Ideas should be concrete enough to paste straight into `do work capture request:`.
 
 ## Input
 

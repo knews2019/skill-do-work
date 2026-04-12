@@ -4,6 +4,15 @@
 
 A post-work quality gate with three jobs: (1) confirm the implementation matches the requirements, (2) verify the code is solid, and (3) actually test that the thing works. Creates follow-up REQs for anything that needs fixing.
 
+## Philosophy
+
+- **Did we build what was asked?** Requirements check comes first. Everything else is secondary if the wrong thing got built.
+- **Does it actually work?** Reading diffs catches logic errors. Running the code catches everything else. Do both.
+- **Traceability makes this powerful.** You have the original input (UR), the structured requirements (REQ), the triage/plan/exploration history, and the actual diff — use all of it.
+- **Actionable output.** Don't just report problems — create follow-up REQs for issues worth fixing.
+- **Proportional effort.** A Route A config change gets a quick scan. A Route C multi-file feature gets a thorough review.
+- **Suggest what's next.** After checking what you can, tell the user what else should be tested — manual checks, edge cases, integration scenarios, things only a human can verify.
+
 ## When to Use
 
 **Use when:**
@@ -15,15 +24,6 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 - User wants to verify *capture quality* (not code) — route to the verify-requests action instead
 - User wants a standalone *codebase* review unrelated to REQs — route to the code-review action instead
 - User wants to *inspect* uncommitted changes without judgment — route to the inspect action instead
-
-## Philosophy
-
-- **Did we build what was asked?** Requirements check comes first. Everything else is secondary if the wrong thing got built.
-- **Does it actually work?** Reading diffs catches logic errors. Running the code catches everything else. Do both.
-- **Traceability makes this powerful.** You have the original input (UR), the structured requirements (REQ), the triage/plan/exploration history, and the actual diff — use all of it.
-- **Actionable output.** Don't just report problems — create follow-up REQs for issues worth fixing.
-- **Proportional effort.** A Route A config change gets a quick scan. A Route C multi-file feature gets a thorough review.
-- **Suggest what's next.** After checking what you can, tell the user what else should be tested — manual checks, edge cases, integration scenarios, things only a human can verify.
 
 ## Two Modes
 
@@ -406,6 +406,16 @@ Match effort to complexity:
 | **B** (Medium) | Standard review. Full requirements checklist. Code review checks all dimensions. Acceptance tests the feature end-to-end. Suggested testing covers obvious gaps. |
 | **C** (Complex) | Thorough review. Requirements checklist cross-referenced against plan and UR. Code review checks architectural decisions. Acceptance tests multiple paths. Suggested testing is comprehensive — integration, edge cases, performance. |
 
+## What NOT to Do
+
+- Don't re-implement — you're reviewing, not building
+- Don't review your own review's follow-up REQs more strictly than the original work — avoid infinite loops of diminishing-return fixes
+- Don't block on minor issues — report them but keep moving
+- Don't invent requirements — review against what the REQ says, not what you think it should say
+- Don't penalize the absence of things the project doesn't have (no test infrastructure = don't fail on test adequacy)
+- Don't turn acceptance testing into a full QA cycle — it's a smoke test, not an exhaustive regression suite
+- Don't suggest testing for things that are clearly irrelevant to the change
+
 ## Common Rationalizations
 
 Guard against these when conducting the review:
@@ -441,13 +451,3 @@ Before presenting the review report:
 - [ ] Each Important finding has a follow-up REQ drafted
 - [ ] Suggested Additional Testing includes only items relevant to this change
 - [ ] Self-validation pass completed
-
-## What NOT to Do
-
-- Don't re-implement — you're reviewing, not building
-- Don't review your own review's follow-up REQs more strictly than the original work — avoid infinite loops of diminishing-return fixes
-- Don't block on minor issues — report them but keep moving
-- Don't invent requirements — review against what the REQ says, not what you think it should say
-- Don't penalize the absence of things the project doesn't have (no test infrastructure = don't fail on test adequacy)
-- Don't turn acceptance testing into a full QA cycle — it's a smoke test, not an exhaustive regression suite
-- Don't suggest testing for things that are clearly irrelevant to the change

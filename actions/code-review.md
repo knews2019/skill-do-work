@@ -333,6 +333,15 @@ Guard against these when writing the review report:
 | "The architecture is too big to evaluate in this review" | Evaluate the scoped slice; note what's out of scope | Partial evaluation beats no evaluation |
 | "I already noted enough findings" | Check coverage of all 6 review dimensions | Premature stopping misses entire categories |
 
+## Red Flags
+
+- Report missing one or more of the six review dimensions (Consistency, Architecture, Security, Performance, Test Coverage, Automated Checks) with no skip justification
+- Health rating inconsistent with evidence (Excellent alongside Critical findings, or Concerning with only Nits)
+- Findings without file:line references or without showing the concrete code pattern
+- Security section empty after a surface scan — inputs never traced to sinks
+- Strengths section missing, empty, or filled with generic filler ("clean code", "good naming")
+- Findings that a configured linter or type-checker would already catch
+
 ## Verification Checklist
 
 Before finalizing the report, verify:

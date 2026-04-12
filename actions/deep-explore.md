@@ -6,18 +6,6 @@
 
 **Companion file:** Read `deep-explore-reference.md` for subagent persona prompts, convergence rubric, source capture procedure, state file schema, and error handling.
 
-## When to Use
-
-**Use when:**
-- User wants to explore a concept in depth through multi-round dialogue
-- User says "deep-explore", "deep dive", "explore concept", or "develop idea"
-- Needs divergent/convergent thinking to evaluate a direction before committing
-
-**Do NOT use when:**
-- User wants a quick list of *improvement ideas* — route to the scan-ideas action instead
-- User wants specific *refactoring* opportunities — route to the quick-wins action instead
-- User already knows what to build — route to capture instead
-
 ## Philosophy
 
 A single agent combining generation and evaluation in one pass produces mediocre output — it self-censors during creation and gets attached during evaluation. This action separates cognitive modes across distinct subagent roles:
@@ -30,6 +18,18 @@ A single agent combining generation and evaluation in one pass produces mediocre
 The separation is enforced by spawning each role as a separate subagent with its own persona prompt. Each subagent reads the prior rounds' output files and writes its own output to a new file. The orchestrator (you) coordinates rounds, evaluates progress, and decides when to converge.
 
 **Sub-agent note:** This document uses "spawn agent" language. Use your platform's subagent mechanism when available. If your tool doesn't support subagents, run phases sequentially in the same session and label outputs clearly: "I am now in Free Thinker mode — generating without evaluating." The cognitive separation still applies — do not evaluate during generation or generate during evaluation, even in single-session mode.
+
+## When to Use
+
+**Use when:**
+- User wants to explore a concept in depth through multi-round dialogue
+- User says "deep-explore", "deep dive", "explore concept", or "develop idea"
+- Needs divergent/convergent thinking to evaluate a direction before committing
+
+**Do NOT use when:**
+- User wants a quick list of *improvement ideas* — route to the scan-ideas action instead
+- User wants specific *refactoring* opportunities — route to the quick-wins action instead
+- User already knows what to build — route to capture instead
 
 ## Scan-Ideas vs Deep-Explore
 
