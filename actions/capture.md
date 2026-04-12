@@ -4,7 +4,7 @@
 
 A fast-capture system for turning ideas into structured request files. Speed over perfection — minimal interaction when intent is clear.
 
-## Core Rules
+## Philosophy
 
 Every invocation produces exactly two things, always paired:
 

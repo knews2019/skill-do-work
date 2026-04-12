@@ -168,6 +168,16 @@ For REQs created before the UR system:
 - Score them the same way, but note that missing Builder Guidance is expected (not a gap) for legacy REQs
 - If the user wants to verify legacy REQs and has the original CONTEXT file, use its verbatim input
 
+## What NOT To Do
+
+- Don't expand requirements beyond what the user said — you're checking coverage, not inventing new features
+- Don't penalize REQs for missing details the user never mentioned
+- Don't treat implementation details as gaps — those are for the builder to decide
+- Don't ask the user to design test internals — ask for the observable failing case and GREEN outcome instead
+- Don't classify something as Ambiguous when the answer is in the original input — that's an Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
+- Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
+- Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Verify already tried to ask the user; any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment.
+
 ## Common Rationalizations
 
 | If you're thinking... | STOP. Instead... | Because... |
@@ -191,13 +201,3 @@ For REQs created before the UR system:
 - [ ] Gap severity rated for every identified gap (Important, Minor, Nit, Ambiguous)
 - [ ] Ambiguous gaps resolved on the spot with user input
 - [ ] Final score reflects actual coverage, not optimistic rounding
-
-## What NOT To Do
-
-- Don't expand requirements beyond what the user said — you're checking coverage, not inventing new features
-- Don't penalize REQs for missing details the user never mentioned
-- Don't treat implementation details as gaps — those are for the builder to decide
-- Don't ask the user to design test internals — ask for the observable failing case and GREEN outcome instead
-- Don't classify something as Ambiguous when the answer is in the original input — that's an Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
-- Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
-- Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Verify already tried to ask the user; any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment.

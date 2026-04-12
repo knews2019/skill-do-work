@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.62.3 — The Same Rake (2026-04-12)
+
+Gap-closure pass after 0.62.2. The earlier release caught a Rules-at-end ordering bug in `quick-wins.md` and fixed it there, but never grepped for the same pattern elsewhere — turns out two other action files had the identical structure. Also formalized a capture.md deviation that was noticed during the first review but never fixed.
+
+- `actions/review-work.md`, `actions/verify-requests.md`: Moved `## What NOT to Do` (functionally a Rules section) from the very end back up before `## Common Rationalizations`, matching the CLAUDE.md template order
+- `actions/capture.md`: Renamed `## Core Rules` → `## Philosophy` so the opening invariants block lives in the template's pre-When-to-Use slot instead of pretending to be Rules before Steps
+
 ## 0.62.2 — The Own Medicine (2026-04-12)
 
 Ran `do work code-review` on the skill itself and actually fixed the findings. Four first-class actions (`pipeline`, `scan-ideas`, `deep-explore`, `tutorial`) were missing from the README usage scenarios despite being prominent in the SKILL.md help menu — now every listed action has a README section. Also cleared the remaining template-ordering drift and filled in missing Red Flags blocks.
