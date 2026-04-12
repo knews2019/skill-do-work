@@ -77,6 +77,30 @@ Next steps:
   do work capture request: [describe fix]  Capture a specific finding as a request
 ```
 
+**After cleanup:**
+```
+Next steps:
+  do work commit                Commit the cleanup changes (archive moves, frontmatter)
+  do work run                   Process any remaining pending REQs
+  do work recap                 Summary of recently completed work
+```
+
+**After install-ui-design:**
+```
+Next steps:
+  do work capture request: [describe UI work]  Capture a UI-design request
+  do work install-bowser                       Install Playwright CLI + Bowser for visual verification
+  do work ui-review [scope]                    Validate an existing UI surface
+```
+
+**After install-bowser:**
+```
+Next steps:
+  do work ui-review [scope]     Validate UI quality (now with visual verification)
+  do work install-ui-design     Install the frontend-design skill for production-grade UI
+  do work capture request: [describe UI work]  Capture a UI-design request
+```
+
 **After prime create:**
 ```
 Next steps:

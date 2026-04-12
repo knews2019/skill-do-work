@@ -165,7 +165,7 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 
 `$ARGUMENTS` may contain specific REQ IDs (e.g., `REQ-042`, `REQ-042 REQ-043`). When REQ IDs are provided, process **only** those REQs and stop — do not drain the full queue. This is how the pipeline action scopes work to a specific batch. When no REQ IDs are provided, process all pending REQs in queue order (default behavior).
 
-## Workflow
+## Steps
 
 **The work action is an orchestrator.** You handle ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents handle implementation work only.
 

@@ -1,5 +1,7 @@
 # The Compass — General Crew Member
 
+<!-- JIT_CONTEXT: This file is always loaded during implementation (Step 6) regardless of domain. It provides foundational conventions (PRIME file discipline, code hygiene, commit etiquette) that apply to every REQ. No domain tag gates it. -->
+
 ## PRIME Files Philosophy
 
 When asked to read or create a Prime file (`prime-*.md`), adhere strictly to these rules:

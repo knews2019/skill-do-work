@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.61.2 — The Quick Sweep (2026-04-12)
+
+Fixes from a self-run `do work quick-wins` on the skill itself. Consistency nits the team would notice before users ever would.
+
+- `next-steps.md`: Added missing `**After <action>:**` blocks for `cleanup`, `install-ui-design`, `install-bowser` — SKILL.md's "suggest next steps after every action" rule now holds for every action
+- `actions/deep-explore.md`: Renamed second `## When to Use` (a comparison table, not a use-case section) to `## Scan-Ideas vs Deep-Explore` — no more duplicate headers
+- `crew-members/general.md`: Added the `JIT_CONTEXT` comment convention the other 8 crew files already follow (always-loaded during Step 6)
+- 9 action files: Renamed `## Workflow` → `## Steps` to match the CLAUDE.md template's "Required elements: Steps (numbered)" — `capture`, `commit`, `inspect`, `install-bowser`, `install-ui-design`, `review-work`, `ui-review`, `verify-requests`, `work`
+- `_dev/code-review-20-commits.md`: Marked resolved (both findings already addressed in later versions)
+
 ## 0.61.1 — The Lean Cut (2026-04-11)
 
 Trimmed low-value additions from 0.61.0 and split the largest action file. Guardrails stay where they earn their token cost; template bloat moves to a companion file.

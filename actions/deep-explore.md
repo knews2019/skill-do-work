@@ -31,7 +31,7 @@ The separation is enforced by spawning each role as a separate subagent with its
 
 **Sub-agent note:** This document uses "spawn agent" language. Use your platform's subagent mechanism when available. If your tool doesn't support subagents, run phases sequentially in the same session and label outputs clearly: "I am now in Free Thinker mode — generating without evaluating." The cognitive separation still applies — do not evaluate during generation or generate during evaluation, even in single-session mode.
 
-## When to Use This vs `do work scan-ideas`
+## Scan-Ideas vs Deep-Explore
 
 | `do work scan-ideas` | `do work deep-explore` |
 |----------------------|------------------------|
