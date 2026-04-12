@@ -4,6 +4,22 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.62.1 — The Senior Engineer Test (2026-04-12)
+
+Refined the Karpathy crew-member and wired its principles into review-work, so the four guardrails aren't just applied during the build — they're audited during review. Also added an oversimplification hedge, because "simplify" is not "strip."
+
+- `crew-members/karpathy.md`: Sharpened Success Indicators with four concrete observable behaviors (clarifying questions first, small diffs, untouched neighbors, verification language)
+- `crew-members/karpathy.md`: Added "Simplify ≠ strip" clarification under Simplicity First — foundation should not be removed just because it could be
+- `actions/review-work.md`: Added Karpathy Principle Check as an informational pass in Step 6 Code Review — a mnemonic audit against the four principles, without double-penalizing issues already caught by existing dimensions
+
+## 0.62.0 — The Karpathy Nod (2026-04-12)
+
+Adopted Andrej Karpathy's four coding guardrails as an always-loaded crew-member, so every REQ — not just multi-agent waves — benefits from them. Complements do-work's workflow machinery: the queue decides *what* to build; these principles shape *how*.
+
+- `crew-members/karpathy.md`: New file — four behavioral principles (Think Before Coding, Simplicity First, Surgical Changes, Goal-Driven Execution) adapted from [forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills)
+- `actions/work.md`: Step 6 now always-loads `karpathy.md` alongside `general.md`
+- `CLAUDE.md`: Agent Rules section documents the new always-loaded file
+
 ## 0.61.3 — The Finer Edges (2026-04-12)
 
 Round 2 of self-run quick-wins — structural template nits and documentation accuracy. Every action file now either matches the CLAUDE.md template or is documented as an accepted variant.

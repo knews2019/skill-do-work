@@ -131,6 +131,7 @@ Cross-reference other actions by short name (e.g., "the work action", "do work c
 Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_CONTEXT` comment documenting when it loads. Loading behavior:
 
 - `general.md` — always loaded during implementation (Step 6), regardless of domain
+- `karpathy.md` — always loaded during implementation (Step 6); Karpathy-inspired behavioral guardrails (think before coding, simplicity, surgical changes, goal-driven execution)
 - `[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists (e.g., `backend.md`, `frontend.md`, `performance.md`, `security.md`, `ui-design.md`)
 - `testing.md` — loaded when `tdd: true` or `domain: testing`, and alongside debugging.md after 2+ test failures
 - `debugging.md` — loaded during remediation (review fail → retry) and after 2+ test failures
