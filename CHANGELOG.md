@@ -4,6 +4,22 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.64.1 — The Companion Split (2026-04-13)
+
+`actions/pipeline.md` had grown past the 10k-token read limit, which meant agents couldn't load it in one pass. Extracted the three Pipeline Completion Report rendering templates (markdown / Marp / HTML) plus their composition rules into a new `pipeline-reference.md` — same pattern as `work.md` + `work-reference.md` and `deep-explore.md` + `deep-explore-reference.md`. Pipeline.md drops from 549 lines to 377; the templates live in a companion file loaded at Step 5 Completion.
+
+- `actions/pipeline-reference.md`: New companion file holding the three renderings (plain markdown template, Marp 11-slide sequence + frontmatter skeleton, HTML 12-section sequence + CDN stack + design requirements) and the seven composition rules that apply across formats.
+- `actions/pipeline.md`: The former three-renderings subsection is now a short pointer paragraph listing what the reference contains — rules, markdown skeleton, Marp sequence, HTML sequence. No content lost; every rule, template, and constraint moved verbatim.
+- `CLAUDE.md`: Registered `pipeline-reference.md` in the project-structure listing.
+
+## 0.64.0 — The Cross-Linked Set (2026-04-13)
+
+Pipeline summaries and present-work deliverables now serve both audiences in every file and link to each other. A stakeholder landing on any summary opens straight into a plain-language "What got built" section before the audit data; a developer landing on the interactive explainer finds commit SHAs and `git show` commands alongside the Before/After demo. Each artifact's footer lists its siblings as clickable relative links grouped by audience — "Start here if you want to understand what was built" vs. "Audit the run" — so readers can drill in regardless of which file a teammate sent them.
+
+- `actions/pipeline.md`: All three summary formats (`.md`, `.marp.md`, `.html`) now open with a "What got built" narrative copied verbatim from the client brief, followed by an optional architecture diagram, then the existing audit sections. Added the rendering to the markdown template, a new slide 2–3 pair to the Marp required sequence (with renumbering), and hero-adjacent sections 2–3 to the HTML required sequence.
+- `actions/pipeline.md`: Deliverables section now groups sibling artifacts by audience (understand-what-was-built vs. audit-the-run) and renders them as clickable relative links in markdown, real `<a>` tiles in HTML, and a two-column next-steps slide in Marp. New "Serve both audiences in every file" and "Reuse client-brief content verbatim" composition rules, two rationalization rows covering the duplication and dev/stakeholder split, red flags for summaries that skip the narrative or ship unlinked paths, and checklist items enforcing word-for-word parity with the brief.
+- `actions/present-work.md`: Client brief template grows a "Related Reading" footer linking the interactive explainer, video, and pipeline-summary siblings when they exist. Interactive explainer guidelines now require a "For the developer" section with commit SHAs and `git show` blocks, plus a "Keep exploring" navigation card grid to sibling deliverables. Terminal summary notes that artifacts link to each other.
+
 ## 0.63.3 — The Retro (2026-04-13)
 
 Agents working in this repo now close multi-turn conversations with a short "how you could have one-shotted this" retrospective when it helps. Not for every reply — only when three-plus clarification turns landed somewhere materially different from a naïve reading of the first ask, with specific phrases the user could have used up front.

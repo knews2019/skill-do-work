@@ -248,164 +248,14 @@ For the `capture` step, append ` → {artifact IDs}` after "done" if artifacts w
 
 ### Pipeline Completion Report — three renderings of one dataset
 
-The same facts — Final summary, Test state, Coherence, Carry-forward, Deliverables, How to verify — are rendered three ways. One pass over the data, three files on disk. Never author any of the three from scratch if another already exists; re-render from the source data so they stay consistent.
+The same facts — Final summary, Test state, Coherence, Carry-forward, Deliverables, How to verify — are rendered three ways (`.md`, `.marp.md`, `.html`) so a developer, a stakeholder, and a non-technical reader each land on a surface that fits. One pass over the data, three files on disk — never author any of the three from scratch if another already exists.
 
-**Composition rules (apply to all three formats):**
+**Templates and composition rules live in [`pipeline-reference.md`](./pipeline-reference.md).** Load that file when rendering the report. It contains:
 
-- **Cite commits, not prose.** Every claim should trace to a commit SHA, a REQ ID, or a file path. Tables and bullet lists with pointers beat paragraphs of explanation.
-- **Pull from primary sources.** Final summary rows come from REQ frontmatter; coherence notes come from the review step's actual output; test deltas come from what `run` and `review` logged. Do not invent metrics.
-- **Be honest about gaps.** If the baseline test count wasn't captured before the pipeline started, write "baseline not recorded" — don't guess. If no cross-REQ coherence was analyzed (single-REQ pipeline), omit that section.
-- **Carry-forward ≠ auto-capture.** List candidates clearly with the command the user would run to capture each one, but never capture them automatically.
-- **No format-specific editorializing.** The Marp deck must not add facts the markdown lacks; the HTML must not soften or strengthen claims for a broader audience. Format dictates rendering; rendering does not dictate facts.
-
-#### 1. Plain Markdown Report — `{UR-NNN}-pipeline-summary.md`
-
-Developer-facing. Read in a terminal with `cat`, grepped, or pasted into a PR description. No YAML header, no CSS, no slide breaks — just markdown.
-
-```markdown
-# Pipeline Completion Report — {UR-NNN}
-
-**Session**: {session_id} · **Duration**: {duration} · **Branch**: {branch} ({pushed|local})
-**Verdict**: {PASS | PASS with caveats | FAIL}
-
-## Final summary
-
-| REQ | Commit | Scope | One-line |
-|-----|--------|-------|----------|
-| REQ-402 | 5ab214d | docs     | 4 lessons-learned files + prime links |
-| REQ-410 | 9371a68 | refactor | shared `initializeDatabaseAtPath` — prod/test converged |
-| REQ-413 | 9e20bde | backend  | SHA-256 index + O(log N) lookup rewrite |
-| ...     | ...     | ...      | ... |
-
-## Test state (before → after the {N}-REQ pipeline)
-
-| Suite         | Before    | After     | Delta |
-|---------------|-----------|-----------|-------|
-| Go (sa1-server) | 81 tests  | 98 tests  | +17 |
-| Frontend      | 1053 tests / 62 suites | 1067 tests / 65 suites | +14 tests / +3 suites |
-| `go vet`      | clean     | clean     | — |
-
-## Cross-REQ coherence highlights (verified by the review)
-
-- **REQ-413 ↔ REQ-406**: early-exit preserved at cache-hit + fresh-match. `effectiveLimit` threaded.
-- **REQ-413 ↔ REQ-407**: metric_version filter preserved in `loadCachedEdgesForSource`.
-- **REQ-411 ↔ REQ-412**: orthogonal, zero file overlap, no shared state.
-
-## Carry-forward work (implied, not captured yet)
-
-- [Deferred item] — capture with `do work capture request: ...`
-- [TODO/FIXME introduced and left for a follow-up]
-- [`pending-answers` REQs awaiting user input — run `do work clarify`]
-
-## Deliverables
-
-- `do-work/deliverables/{UR-NNN}-pipeline-summary.md` — this report (markdown)
-- `do-work/deliverables/{UR-NNN}-pipeline-summary.marp.md` — Marp slide deck
-- `do-work/deliverables/{UR-NNN}-pipeline-summary.html` — standalone HTML debrief
-- `do-work/deliverables/{UR-NNN}-client-brief.md` — client-facing brief (if present ran)
-- `do-work/deliverables/{UR-NNN}-video/` — Remotion video (if present ran)
-- `do-work/deliverables/{UR-NNN}-interactive-explainer.html` — explainer (if present ran)
-
-## How to verify
-
-1. **Check out the branch and pull latest:**
-   ```
-   git checkout {branch} && git pull
-   ```
-2. **Inspect each commit** (ordered to show the build-up):
-   ```
-   git show 5ab214d   # REQ-402 — lessons-learned docs
-   git show 9371a68   # REQ-410 — shared init routine
-   git show 9e20bde   # REQ-413 — SHA-256 index rewrite
-   ```
-3. **Run the tests** (matches what the pipeline ran):
-   ```
-   {project test command — e.g., `go test ./...` and `npm test`}
-   ```
-4. **Preview the other renderings:**
-   ```
-   npx @marp-team/marp-cli {UR-NNN}-pipeline-summary.marp.md --preview
-   open do-work/deliverables/{UR-NNN}-pipeline-summary.html
-   ```
-5. **Read the per-REQ archive** for the full trail of intent:
-   ```
-   do-work/archive/{UR-NNN}/REQ-*.md
-   ```
-```
-
-#### 2. Marp Slide Deck — `{UR-NNN}-pipeline-summary.marp.md`
-
-Stakeholder-facing. Viewed with `marp --preview` or exported to PDF/HTML. Must start with Marp YAML frontmatter (`marp: true`). Each slide separated by `---`. Keep slides scannable — no slide should fit more than ~8 rows of content; split long Final-summary tables across domain-grouped slides. Use a Mermaid `graph LR` on the coherence slide when there are 2+ cross-REQ links.
-
-Required slide sequence (omit a slide entirely if its section has no data — don't leave empty slides):
-
-1. **Title slide** — UR-NNN, session ID, branch, verdict badge
-2. **At-a-glance stats** — REQ count, commit count, test delta, duration (big numbers in a 2×2 or 4-column grid)
-3. **What shipped — {domain}** — one slide per domain bucket (docs / backend / refactor / frontend / tests). Each is a table of REQ / commit / one-line for that domain only.
-4. **Test state (before → after)** — the table, full-width
-5. **Cross-REQ coherence** — Mermaid `graph LR` diagram of interacting REQs (skip for single-REQ pipelines)
-6. **Coherence assertions** — verbatim review quotes, one bullet per assertion
-7. **Carry-forward work** — bullets with capture commands (skip if none)
-8. **How to verify** — fenced `bash` block with checkout + git-show + test commands
-9. **Deliverables + next steps** — pointers to the markdown, HTML, and client-brief files
-
-Use this Marp frontmatter skeleton and extend the `style:` block as needed — don't invent new themes:
-
-```yaml
----
-marp: true
-theme: default
-paginate: true
-size: 16:9
-header: '{UR-NNN} — Pipeline Debrief'
-footer: 'Session {session_id} · branch {branch}'
-style: |
-  section { font-family: system-ui, -apple-system, sans-serif; }
-  h2 { color: #1e40af; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.25em; }
-  code { background: #f1f5f9; padding: 0.1em 0.3em; border-radius: 3px; }
-  table { font-size: 0.75em; }
-  th { background: #1e40af; color: white; }
-  .big { font-size: 3em; font-weight: 700; color: #1e40af; }
-  .label { color: #64748b; font-size: 0.9em; }
----
-```
-
-#### 3. Standalone HTML Debrief — `{UR-NNN}-pipeline-summary.html`
-
-Non-technical-reader-facing. Single `.html` file, zero build steps. Same content as the markdown, rendered for a browser.
-
-**Stack (CDN only — no npm, no build):**
-- Tailwind CSS via `<script src="https://cdn.tailwindcss.com"></script>`
-- Mermaid via `<script type="module">` import of `mermaid@10` from jsDelivr
-- Vanilla JS only (no React, no framework)
-
-**Required sections (in order):**
-
-1. **Hero** — UR-NNN as H1, one-paragraph description, metadata badges (branch, duration, verdict)
-2. **At-a-glance stat cards** — 4-column grid of big-number stats (REQ count, commits, tests added, suites added)
-3. **What shipped** — grouped sections by domain, each with a styled table of REQ / commit / one-line
-4. **Test state** — the table, styled with the accent colour for the After column and green for the Delta
-5. **How the work holds together** — a `<div class="mermaid">` containing the same `graph LR` from the Marp deck (Mermaid renders on load)
-6. **Coherence assertions** — responsive card grid, one card per assertion, with the REQ pair in mono accent and the claim below (skip the whole section for single-REQ pipelines)
-7. **Carry-forward work** — cards with a bold title, muted explanation, and the capture command in a `<pre>` block (skip if none)
-8. **How to verify** — numbered headings, each followed by a copy-pasteable `<pre><code>` block
-9. **Footer / next steps** — ordered list with `do work present {UR-NNN}` and other follow-ups
-
-**Design requirements:**
-
-- Light theme default; dark theme via `@media (prefers-color-scheme: dark)` overriding CSS custom properties on `:root`
-- Palette: CSS variables for `--bg`, `--surface`, `--text`, `--muted`, `--accent`, `--accent-soft`, `--border`. Light: white/slate-50 / slate-900 / blue-600. Dark: slate-900 / slate-100 / blue-400.
-- Font: `system-ui, -apple-system, sans-serif`
-- Max content width: `max-w-6xl` centred
-- Generous spacing (`py-10` / `py-16` on sections) — readable like a long-form article, not cramped like a dashboard
-- Mermaid init: `mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' })`
-
-**What NOT to do:**
-
-- Don't add charts the source data doesn't support (no fabricated time-series, no fake percentages)
-- Don't embed images unless the REQs reference them
-- Don't pull in additional CDN scripts beyond Tailwind + Mermaid — the file must work offline once cached
-- Don't add interactivity that hides data (collapsible sections are fine; JS-gated sections that require a click to reveal facts are not)
+- Composition rules (serve both audiences, reuse client-brief content verbatim, cite commits not prose, pull from primary sources, be honest about gaps, carry-forward ≠ auto-capture, no format-specific editorializing)
+- Full markdown template with section skeleton (What got built → Final summary → Test state → Coherence → Carry-forward → Deliverables → How to verify)
+- Marp slide-deck required sequence (11 slides, title through deliverables) and frontmatter skeleton
+- HTML debrief required sections (12 sections, hero through footer), CDN stack, design requirements, and what-not-to-do guardrails
 
 ### Continuation Notice (printed when pending REQs remain after pipeline completion)
 
@@ -488,6 +338,8 @@ pipeline — full end-to-end orchestration
 | "Invent a test-count baseline — it's probably close" | Write "baseline not recorded" when you lack real numbers | Fabricated metrics in the Completion Report erode trust in every future report |
 | "The markdown version is enough — who needs Marp and HTML?" | Write all three renderings — `.md`, `.marp.md`, and `.html` — from the same dataset | Different audiences consume the work on different surfaces: a developer scans the `.md` in a PR, a stakeholder sits through the deck, a non-technical reader browses the HTML. Shipping only the markdown leaves two audiences unserved. |
 | "I'll write the Marp deck now and re-author the HTML later" | Render all three files in the same completion pass, from the same extracted data | Sequencing the renderings invites drift — the second render subtly rephrases claims from the first, and the three files stop agreeing |
+| "The summary is for devs — the client brief is for stakeholders. They don't need to cross-link." | Put a "What got built" narrative at the top of every summary, and cross-link the client brief, explainer, and summaries from each other's footer | Readers arrive from whichever file a teammate sent them. If the summary only audits and the brief only educates, half the readers bounce instead of drilling in |
+| "Writing the 'What got built' section in the summary duplicates the client brief" | Copy the client brief's "What We Built" paragraph verbatim and add a link back to the full brief | Duplication is the point — each file must stand alone for readers who land on it first. Cross-links give the deeper context |
 
 ## Red Flags
 
@@ -501,6 +353,9 @@ pipeline — full end-to-end orchestration
 - The three renderings disagree — e.g., the Marp deck lists 11 REQs but the markdown lists 12, or the HTML shows a test delta the markdown doesn't
 - The HTML file references external scripts beyond Tailwind + Mermaid, or requires `npm install` to render
 - The Marp deck is missing its `marp: true` frontmatter header or uses a custom theme name (`marp --preview` will fail silently)
+- Any of the three summary formats opens straight into the audit (Final summary table, stat cards) with no "What got built" narrative — the clueless reader has no entry point
+- The three formats disagree on the "What got built" narrative — summary `.html` says one thing, client brief says another
+- Summary files list sibling deliverables as plain text paths instead of rendered links; readers can't click through
 
 ## Verification Checklist
 
@@ -515,5 +370,8 @@ pipeline — full end-to-end orchestration
 - [ ] Report's Final summary cites real commit SHAs from each REQ's frontmatter
 - [ ] Report's Test state labels "baseline not recorded" when no before-measurement was captured — no invented numbers
 - [ ] Report's How to verify section contains copy-pasteable commands (not abstract instructions)
+- [ ] All three summary formats open with a plain-language "What got built" section before any audit data, pulled from the client brief when it exists
+- [ ] Summary Deliverables section renders as clickable relative links, grouped by audience (understand-what-was-built vs. audit-the-run)
+- [ ] Each summary file's "What got built" narrative matches the client brief word-for-word (no paraphrasing drift)
 - [ ] Marp file starts with `marp: true` YAML frontmatter and uses `---` slide separators
 - [ ] HTML file is fully standalone: Tailwind + Mermaid via CDN only, no other external dependencies, no build step required
