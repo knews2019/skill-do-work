@@ -5,7 +5,8 @@ After every action completes, suggest the next logical prompts the user might wa
 **After pipeline (completed — queue fully drained):**
 ```
 Next steps:
-  do work present work        Generate client-facing deliverables
+  do work present all         Generate portfolio summary across all completed URs
+  do work commit              Commit any uncommitted changes
   do work capture request: [describe]  Capture new requests
 ```
 

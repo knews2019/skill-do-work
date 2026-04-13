@@ -133,6 +133,24 @@ the REQ's ## Implementation Summary. These are the source of truth.]
 - `src/services/feature-service.ts` — business logic
 - `tests/feature.spec.ts` — test coverage
 
+## How to Verify
+
+[Concrete steps someone can follow to check that the work is real and correct.
+Use copy-pasteable commands — no abstractions. Pull commits from each REQ's
+frontmatter.]
+
+1. **See the change in the codebase:**
+   ```
+   git show {commit-sha}   # {one-line: what this commit did}
+   ```
+2. **Run the tests that prove it works:**
+   ```
+   {project's test command — pull from prime files or REQ Testing section}
+   ```
+3. **Try it for yourself:**
+   - [User-facing steps: open page X, click Y, expect Z]
+   - [Or: call endpoint with curl, check response]
+
 ## What's Next
 
 - [Follow-up opportunities — natural extensions of this work]

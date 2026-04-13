@@ -52,7 +52,7 @@ See the [Work Guide](docs/work-guide.md) for the full pipeline, triage routes, a
 
 ### 3. Run the full pipeline
 
-One command, full cycle: investigate → capture → verify → run → review. Stateful and resumable — if the session ends mid-pipeline (context limit, crash, closed terminal), re-invoking picks up from the last step.
+One command, full cycle: investigate → capture → verify → run → review → present. Stateful and resumable — if the session ends mid-pipeline (context limit, crash, closed terminal), re-invoking picks up from the last step.
 
 ```
 do work pipeline add dark mode to settings    # initialize with a request

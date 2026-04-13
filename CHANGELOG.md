@@ -4,6 +4,37 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.63.3 — The Retro (2026-04-13)
+
+Agents working in this repo now close multi-turn conversations with a short "how you could have one-shotted this" retrospective when it helps. Not for every reply — only when three-plus clarification turns landed somewhere materially different from a naïve reading of the first ask, with specific phrases the user could have used up front.
+
+- `CLAUDE.md`: New "One-Shot Suggestions (Prompt Retrospectives)" section describing when to offer the retrospective, when to skip it (iterative-by-design work, unfolding user thinking, small tasks), its shape (diagnosis → concrete one-shot prompt in the user's voice → disambiguating phrases with reasons → optional meta-lesson), and framing rules (feedback not self-flagellation, be concrete, surface the receiving-agent-vs-embedded-content split explicitly).
+
+## 0.63.2 — The Triple Render (2026-04-13)
+
+The pipeline debrief now ships in three formats — plain markdown, a Marp slide deck, and a standalone HTML page — all rendered from the same extracted dataset. A 12-REQ pipeline deserves more than one surface: a developer scans the `.md` in a PR, a stakeholder sits through the deck, a non-technical reader browses the HTML. One pass over the data, three files on disk, zero drift.
+
+- `actions/pipeline.md`: Step 5 Completion now renders `{UR-NNN}-pipeline-summary.md`, `.marp.md`, and `.html` from one composition pass. Added format-specific templates and design constraints for each (Marp frontmatter skeleton + required slide sequence, HTML stack limited to Tailwind + Mermaid CDN with light/dark theming).
+- `actions/pipeline.md`: New composition rule — the three renderings must carry identical facts, no format-specific editorializing. Added rules, rationalization rows, red flags, and checklist items enforcing parity across formats and flagging the common skip-the-HTML shortcut.
+
+## 0.63.1 — The Debrief (2026-04-13)
+
+Pipeline completion now educates instead of just checking a box. After the six steps finish, the pipeline assembles a technical debrief — Final summary table (REQ/commit/scope/one-line), Test state before→after, Cross-REQ coherence highlights from the review, Carry-forward candidates, Deliverables, and a copy-pasteable How-to-verify recipe — and persists it to `do-work/deliverables/{UR-NNN}-pipeline-summary.md`. Long pipelines deserve a digest, not a checkmark.
+
+- `actions/pipeline.md`: Rewrote Step 5 Completion to assemble and save the Pipeline Completion Report. Added the report format to Output Format with composition rules (cite commits, pull from primary sources, flag missing baselines, never auto-capture carry-forward). Added completion-status block with Duration/Branch/Verdict metadata.
+- `actions/pipeline.md`: New Rule on completion-as-education, two new Common Rationalization rows (hollow completion + invented baselines), and Red Flag / Verification Checklist additions covering missing report sections and fabricated metrics.
+- `actions/present-work.md`: Added a "How to Verify" section to the client brief template so non-technical readers also get a concrete validation recipe.
+
+## 0.63.0 — The Closing Act (2026-04-13)
+
+The pipeline now closes the loop. Added `present` as the sixth step so a full pipeline run ends with client-facing deliverables (brief, architecture diagram, video, HTML explainer) — no more remembering to run `do work present` manually after every pipeline.
+
+- `actions/pipeline.md`: Added `present` step after `review` — dispatches to the present work action with the UR ID from the capture step's artifacts. Skips gracefully if capture produced no artifacts.
+- `actions/pipeline.md`: Updated state schema, status block example, help menu, dispatch table, completion check (5 → 6 steps), Rules, and Common Rationalizations to include the new step.
+- `SKILL.md`: Updated pipeline description and help menu to reflect the six-step sequence.
+- `README.md`: Updated the pipeline section to mention `present` in the full cycle.
+- `next-steps.md`: Post-pipeline suggestions now point at `present all` (portfolio mode) instead of the per-UR brief that's already been generated.
+
 ## 0.62.5 — The Few Words (2026-04-12)
 
 New crew member: caveman mode. Tag a REQ with `caveman: true` (or `caveman: lite|full|ultra`) and the builder compresses prose output ~65-75% while keeping code and technical terms exact. Adapted from JuliusBrussee/caveman.
