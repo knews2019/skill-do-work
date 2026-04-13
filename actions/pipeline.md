@@ -134,18 +134,18 @@ When all 6 steps are done:
 
 1. Set `active: false` in `pipeline.json`
 2. Write the final `pipeline.json`
-3. Print the completion status block (all checkmarks)
-4. Print a completion summary:
+3. Print the completion status block (all checkmarks) — use the **Completion Status Block** format from the Output Format section (includes Duration, Branch, Verdict metadata)
+4. **Assemble the Pipeline Completion Report** (see Output Format → Pipeline Completion Report). This is the primary user-education artifact. Pull data from:
+   - **Final summary table**: Each completed REQ's frontmatter (`id`, `title`, `commit`, `domain`) and the REQ's `## Implementation Summary` → one-line synthesis. Group rows by domain so related work sits together.
+   - **Test state (before → after)**: Each REQ's `## Testing` section records what tests were added/run. Aggregate test-suite counts if the work action logged them (e.g., "Go: 81 → 98"). If no before-baseline was captured, show only the post-state and note "baseline not recorded" rather than inventing numbers.
+   - **Cross-REQ coherence highlights**: Pull from the review step's output — the reviewer validates that interacting REQs (shared files, shared symbols, shared subsystems) remained consistent. Include each coherence assertion with the REQ pair. If the review didn't produce coherence notes (single-REQ pipelines, Route A REQs), omit this section.
+   - **Carry-forward work (implied, not captured yet)**: Scan for (a) REQs with `status: pending-answers`, (b) `## Lessons Learned` sections mentioning deferred items, (c) TODO/FIXME comments introduced by the pipeline's commits. List them as candidates for a follow-up capture — but **do NOT auto-capture them**; the user decides.
+   - **Deliverables**: Paths produced by the `present` step (`do-work/deliverables/{UR-NNN}-client-brief.md`, `-video/`, `-interactive-explainer.html`). Read from the present step's artifacts if recorded, or glob `do-work/deliverables/` for matches scoped to this pipeline's UR.
+   - **How to verify**: Concrete commands the user can copy-paste — `git show {sha}` for each commit, the project's test command(s), and the path to open the interactive explainer. This is the validation recipe.
+5. **Print the report to stdout** and **save it to disk** at `do-work/deliverables/{UR-NNN}-pipeline-summary.md` (or `REQ-{id}-pipeline-summary.md` if no UR was captured). Persisting it means the user can reference the summary after the terminal scrolls away.
+6. **Queue continuation check**: Scan `do-work/queue/REQ-*.md` for files with `status: pending` in their frontmatter. Exclude any REQ IDs listed in the current pipeline's `artifacts` array (those should already be completed). If remaining pending REQs exist, proceed to Step 5a. If the queue is empty, suggest next steps and stop.
 
-```
-Pipeline complete.
-  Session:    {session_id}
-  Request:    {request}
-  Duration:   {elapsed time from started_at to now}
-  Artifacts:  {list of REQ/UR IDs from capture step}
-```
-
-5. **Queue continuation check**: Scan `do-work/queue/REQ-*.md` for files with `status: pending` in their frontmatter. Exclude any REQ IDs listed in the current pipeline's `artifacts` array (those should already be completed). If remaining pending REQs exist, proceed to Step 5a. If the queue is empty, suggest next steps and stop.
+**Proportional depth:** Single-REQ Route A pipelines (config tweak, docs) get a minimal report — status block + 1-row Final summary + How to verify. Multi-REQ or Route B/C pipelines get the full treatment shown above. Don't pad short pipelines with empty sections, and don't truncate long ones. Match the report to the scope of the work.
 
 ### Step 5a: Queue Continuation
 
@@ -219,6 +219,99 @@ On resume, the pipeline retries the failed step from scratch.
 
 For the `capture` step, append ` → {artifact IDs}` after "done" if artifacts were recorded.
 
+### Completion Status Block (printed when all 6 steps are done)
+
+```
+── Pipeline {session_id} — COMPLETE ──
+  ✓ investigate   done
+  ✓ capture       done  → UR-018, 12 REQs
+  ✓ verify        done  (or "skipped ({reason})" if inputs were pre-verified)
+  ✓ run           done  → {N} commits
+  ✓ review        done  ({verdict: PASS / PASS with caveats / FAIL})
+  ✓ present       done  → {N} deliverables
+─────────────────────────────────────
+  Session:   {session_id}
+  Duration:  {elapsed time from started_at to now, e.g. "~10.5h end-to-end"}
+  Branch:    {current git branch} ({pushed | local only})
+  Verdict:   {PASS | PASS with caveats | FAIL}
+```
+
+### Pipeline Completion Report (printed after the Completion Status Block, also saved to disk)
+
+A developer-facing technical summary. Unlike the client brief from the `present` step (which targets a non-technical reader), this report is for the person who ran the pipeline and needs to understand what shipped, verify it, and decide what's next.
+
+```markdown
+## Final summary
+
+| REQ | Commit | Scope | One-line |
+|-----|--------|-------|----------|
+| REQ-402 | 5ab214d | docs     | 4 lessons-learned files + prime links |
+| REQ-410 | 9371a68 | refactor | shared `initializeDatabaseAtPath` — prod/test converged |
+| REQ-407 | 833a40c | backend  | stale-row vacuum on metric_version bump |
+| REQ-413 | 9e20bde | backend  | SHA-256 index + O(log N) lookup rewrite |
+| ...     | ...     | ...      | ... |
+
+## Test state (before → after the {N}-REQ pipeline)
+
+| Suite         | Before    | After     | Delta |
+|---------------|-----------|-----------|-------|
+| Go (sa1-server) | 81 tests  | 98 tests  | +17 |
+| Frontend      | 1053 tests / 62 suites | 1067 tests / 65 suites | +14 tests / +3 suites |
+| `go vet`      | clean     | clean     | — |
+
+## Cross-REQ coherence highlights (verified by the review)
+
+- **REQ-413 ↔ REQ-406**: early-exit preserved at the same two points (cache-hit + fresh-match) after the index-lookup rewrite. `effectiveLimit` still threaded.
+- **REQ-413 ↔ REQ-407**: metric_version filter preserved in `loadCachedEdgesForSource`; vacuum still runs on startup.
+- **REQ-411 ↔ REQ-412**: orthogonal, zero file overlap, no shared state.
+
+## Carry-forward work (implied, not captured yet)
+
+- [Deferred item surfaced during review or lessons-learned — candidate for `do work capture request: ...`]
+- [TODO/FIXME introduced by a commit that was intentionally left for a follow-up]
+- [`pending-answers` REQs awaiting user input — run `do work clarify`]
+
+## Deliverables
+
+- `do-work/deliverables/UR-158-client-brief.md` — client-facing brief (what/why/value)
+- `do-work/deliverables/UR-158-video/` — Remotion video project (run `npm install && npm run preview`)
+- `do-work/deliverables/UR-158-interactive-explainer.html` — single-file interactive explainer
+- `do-work/deliverables/UR-158-pipeline-summary.md` — this report (persisted)
+
+## How to verify
+
+1. **Check out the branch and pull latest:**
+   ```
+   git checkout {branch} && git pull
+   ```
+2. **Inspect each commit** (in order, to understand the build-up):
+   ```
+   git show 5ab214d   # REQ-402 — lessons-learned docs
+   git show 9371a68   # REQ-410 — shared init routine
+   git show 9e20bde   # REQ-413 — SHA-256 index rewrite
+   ...
+   ```
+3. **Run the tests** (matches what the pipeline ran):
+   ```
+   {project test command — e.g., `go test ./...` and `npm test`}
+   ```
+4. **Open the interactive explainer** to walk the non-technical story:
+   ```
+   open do-work/deliverables/UR-158-interactive-explainer.html
+   ```
+5. **Read the per-REQ archive** for the full trail of intent:
+   ```
+   do-work/archive/UR-158/REQ-402.md through REQ-413.md
+   ```
+```
+
+**Composition rules:**
+
+- **Cite commits, not prose.** Every claim in the report should trace to a commit SHA, a REQ ID, or a file path. Avoid paragraphs of explanation — tables and bullet lists with pointers.
+- **Pull from primary sources.** Final summary rows come from REQ frontmatter; coherence notes come from the review step's actual output; test deltas come from what `run` and `review` logged. Do not invent metrics.
+- **Be honest about gaps.** If the baseline test count wasn't captured before the pipeline started, write "baseline not recorded" — don't guess. If no cross-REQ coherence was analyzed (single-REQ pipeline), omit that section.
+- **Carry-forward ≠ auto-capture.** List candidates clearly with the command the user would run to capture each one, but never capture them automatically.
+
 ### Continuation Notice (printed when pending REQs remain after pipeline completion)
 
 ```
@@ -284,6 +377,7 @@ pipeline — full end-to-end orchestration
 - **Scope the `run` step to captured REQs only.** The work action is queue-draining by default. When dispatched from the pipeline, it must only process the REQs created by this pipeline's capture step (listed in `artifacts`). Never process unrelated backlog items during a pipeline run.
 - **Drain remaining queue after completion.** After the pipeline's 6 steps finish, check for other pending REQs in the queue. If any exist, continue processing them automatically via run + review cycles until the queue is empty. This continuation uses standard queue-draining mode (not scoped to pipeline artifacts) and does not re-run `present` per cycle — the user can run `do work present all` after the queue drains if they want a portfolio summary. The pipeline state file remains `active: false` — the continuation is a post-pipeline operation. Maximum 3 continuation cycles — if REQs still remain after 3 cycles, stop and let the user continue manually.
 - **Suggest next steps on completion.** After the pipeline finishes (including any queue continuation), suggest what the user might want to do next (see the next-steps reference).
+- **Completion is education, not a checkmark.** When all steps finish, produce the full Pipeline Completion Report (Final summary, Test state, Cross-REQ coherence, Carry-forward work, Deliverables, How to verify) and persist it to `do-work/deliverables/{UR-NNN}-pipeline-summary.md`. A 12-REQ pipeline that prints only "Pipeline complete" wastes the user's opportunity to understand and validate what shipped. Match report depth to pipeline scope — minimal for Route A, full for multi-REQ URs.
 
 ## Common Rationalizations
 
@@ -294,6 +388,8 @@ pipeline — full end-to-end orchestration
 | "I'll restart the pipeline from scratch" | Resume from the last completed step using pipeline.json state | Restarting loses progress and re-runs already-completed work |
 | "This step failed — skip it and continue" | Record the failure, attempt recovery, then decide with the user | Silently skipping failures undermines the pipeline's reliability |
 | "Skip present — the user can run it later" | Run present as part of the pipeline | The pipeline closes the loop: code → review → deliverables. Skipping present leaves the work uncommunicated. |
+| "Just print 'Pipeline complete' — the user ran it, they know what happened" | Produce the full Pipeline Completion Report with Final summary, Test state, Coherence, Carry-forward, Deliverables, and How to verify | The user kicked off a pipeline that may have run for hours across many REQs. They need a digest they can scan, verify against, and share — not a checkmark. |
+| "Invent a test-count baseline — it's probably close" | Write "baseline not recorded" when you lack real numbers | Fabricated metrics in the Completion Report erode trust in every future report |
 
 ## Red Flags
 
@@ -301,6 +397,8 @@ pipeline — full end-to-end orchestration
 - Step marked as `done` but no artifacts recorded (hollow completion)
 - Pipeline has been active for >24 hours without step transitions
 - pipeline.json shows a step status that contradicts the file system state
+- Multi-REQ pipeline finished but the Completion Report is missing sections that should have content (e.g., no Final summary table for a 10-REQ run, no Deliverables list after present)
+- Completion Report cites test counts without specifying which suite they came from, or includes "Before" numbers that were never actually measured
 
 ## Verification Checklist
 
@@ -309,3 +407,7 @@ pipeline — full end-to-end orchestration
 - [ ] Artifacts from each completed step recorded in pipeline.json
 - [ ] Failed steps have failure reason documented
 - [ ] User informed of pipeline progress at each step transition
+- [ ] Pipeline Completion Report produced at the end, printed to stdout AND saved to `do-work/deliverables/{UR-NNN}-pipeline-summary.md`
+- [ ] Report's Final summary cites real commit SHAs from each REQ's frontmatter
+- [ ] Report's Test state labels "baseline not recorded" when no before-measurement was captured — no invented numbers
+- [ ] Report's How to verify section contains copy-pasteable commands (not abstract instructions)

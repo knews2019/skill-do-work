@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.63.1 — The Debrief (2026-04-13)
+
+Pipeline completion now educates instead of just checking a box. After the six steps finish, the pipeline assembles a technical debrief — Final summary table (REQ/commit/scope/one-line), Test state before→after, Cross-REQ coherence highlights from the review, Carry-forward candidates, Deliverables, and a copy-pasteable How-to-verify recipe — and persists it to `do-work/deliverables/{UR-NNN}-pipeline-summary.md`. Long pipelines deserve a digest, not a checkmark.
+
+- `actions/pipeline.md`: Rewrote Step 5 Completion to assemble and save the Pipeline Completion Report. Added the report format to Output Format with composition rules (cite commits, pull from primary sources, flag missing baselines, never auto-capture carry-forward). Added completion-status block with Duration/Branch/Verdict metadata.
+- `actions/pipeline.md`: New Rule on completion-as-education, two new Common Rationalization rows (hollow completion + invented baselines), and Red Flag / Verification Checklist additions covering missing report sections and fabricated metrics.
+- `actions/present-work.md`: Added a "How to Verify" section to the client brief template so non-technical readers also get a concrete validation recipe.
+
 ## 0.63.0 — The Closing Act (2026-04-13)
 
 The pipeline now closes the loop. Added `present` as the sixth step so a full pipeline run ends with client-facing deliverables (brief, architecture diagram, video, HTML explainer) — no more remembering to run `do work present` manually after every pipeline.
