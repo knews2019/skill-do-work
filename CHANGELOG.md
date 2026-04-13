@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.63.0 — The Closing Act (2026-04-13)
+
+The pipeline now closes the loop. Added `present` as the sixth step so a full pipeline run ends with client-facing deliverables (brief, architecture diagram, video, HTML explainer) — no more remembering to run `do work present` manually after every pipeline.
+
+- `actions/pipeline.md`: Added `present` step after `review` — dispatches to the present work action with the UR ID from the capture step's artifacts. Skips gracefully if capture produced no artifacts.
+- `actions/pipeline.md`: Updated state schema, status block example, help menu, dispatch table, completion check (5 → 6 steps), Rules, and Common Rationalizations to include the new step.
+- `SKILL.md`: Updated pipeline description and help menu to reflect the six-step sequence.
+- `README.md`: Updated the pipeline section to mention `present` in the full cycle.
+- `next-steps.md`: Post-pipeline suggestions now point at `present all` (portfolio mode) instead of the per-UR brief that's already been generated.
+
 ## 0.62.5 — The Few Words (2026-04-12)
 
 New crew member: caveman mode. Tag a REQ with `caveman: true` (or `caveman: lite|full|ultra`) and the builder compresses prose output ~65-75% while keeping code and technical terms exact. Adapted from JuliusBrussee/caveman.

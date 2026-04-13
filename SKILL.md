@@ -10,7 +10,7 @@ A unified entry point for task capture and processing.
 
 **Actions:**
 
-- **pipeline**: Full end-to-end orchestration → investigate, capture, verify, run, review in sequence with persistent state tracking
+- **pipeline**: Full end-to-end orchestration → investigate, capture, verify, run, review, present in sequence with persistent state tracking
 - **capture requests**: Capture new tasks/requests → creates UR folder (verbatim input) + REQ files (queue items), always paired; for testable behavior, infer and confirm the RED case/GREEN proof target during capture. This is essential, high-value work.
 - **verify requests**: Evaluate captured REQs against original input → quality check
 - **work**: Process pending requests → executes the queue
@@ -142,7 +142,7 @@ do-work — task queue for agentic coding tools
 
   Capture & pipeline:
     do work capture request: add dark mode to settings
-    do work pipeline add dark mode      End-to-end: investigate → capture → verify → run → review
+    do work pipeline add dark mode      End-to-end: investigate → capture → verify → run → review → present
     do work pipeline status             Show progress / resume active pipeline
 
   Process the queue:
