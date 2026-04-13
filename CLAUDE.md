@@ -150,3 +150,43 @@ Action files must work with **any** agentic coding tool:
 - Use generalized language ("spawn a subagent", "use your environment's ask-user prompt") — no tool-specific APIs in action files.
 - Each action file should work as a standalone prompt pasted into a basic chat interface.
 - Design for the floor: the simplest agent that can read/write files and run shell commands must be able to follow the instructions. Subagents and parallel execution are nice-to-haves.
+
+## One-Shot Suggestions (Prompt Retrospectives)
+
+When a conversation needed multiple clarification turns to land the actual outcome — and the final outcome differs meaningfully from what a naïve reading of the first turn would have produced — close your reply with a short retrospective that shows the user how they could have gotten there in one prompt.
+
+**Offer a retrospective when ALL of these hold:**
+
+- The ask took **3 or more turns** to converge (original ask + at least two clarifications / redirections), OR the user had to redirect a misinterpretation that cost visible work.
+- The final deliverable has **structural constraints** the original ask didn't name (format, destination, tech stack, audience, scope boundaries).
+- You can point to **specific phrases** that would have disambiguated up front — not vague advice like "be more specific."
+
+**Skip the retrospective when:**
+
+- The conversation was genuinely iterative by design (e.g., `scan-ideas`, `deep-explore`, review-and-revise loops). Those turns aren't friction — they're the point.
+- The clarifications were about the user's own unfolding thinking (they discovered what they wanted mid-conversation). Don't retro-fit their exploration into a failure to specify.
+- The ask was small enough that a one-shot reformulation would be longer than the original exchange.
+- You've already offered a retrospective in the same thread — one per concern is enough.
+
+**Shape of the retrospective:**
+
+1. A **one-sentence diagnosis** of the core ambiguity — what the agent couldn't infer from the first ask.
+2. A **concrete one-shot prompt** the user could have sent, as a quoted block, rewritten in the user's voice (not a template with placeholders).
+3. A short list of **the specific phrases** in that prompt that would have disambiguated, with a one-line "because..." for each.
+4. Optionally, a **meta-lesson** if the pattern generalizes (one sentence, not a sermon).
+
+**Framing rules:**
+
+- **It's feedback to the user, not self-flagellation.** Don't dwell on what you got wrong — focus on what phrasing would have pointed you right.
+- **Be concrete.** "Specify the format" is useless. "Say 'Marp slide deck viewed with marp --preview' instead of 'presentation'" is useful.
+- **Separate the receiving agent's job from the content.** When the user wants a prompt for another AI, the canonical split is: *receiving agent should do X (minimal) vs. content to embed Y (maximal)*. Surface this split explicitly if it applies.
+- **Don't offer unsolicited retrospectives on simple tasks.** If the user asked for one file edit and got one file edit, no retrospective needed.
+
+**Example cue phrases** (signals the retrospective belongs):
+
+- User said "sorry, I thought I was clear" — they're noticing the gap and want help closing it.
+- User pivoted to a different format / destination / audience after the first reply.
+- User's latest ask contains structural detail the earlier asks didn't (they learned what to specify by watching you miss it).
+- Final deliverable is noticeably larger or more specific than the initial ask implied.
+
+The retrospective is a teaching moment disguised as a reply. Done well, it reduces the next session's turn count. Done wrong, it's noise. When in doubt, skip it.

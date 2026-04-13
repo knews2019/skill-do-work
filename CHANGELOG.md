@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.63.3 — The Retro (2026-04-13)
+
+Agents working in this repo now close multi-turn conversations with a short "how you could have one-shotted this" retrospective when it helps. Not for every reply — only when three-plus clarification turns landed somewhere materially different from a naïve reading of the first ask, with specific phrases the user could have used up front.
+
+- `CLAUDE.md`: New "One-Shot Suggestions (Prompt Retrospectives)" section describing when to offer the retrospective, when to skip it (iterative-by-design work, unfolding user thinking, small tasks), its shape (diagnosis → concrete one-shot prompt in the user's voice → disambiguating phrases with reasons → optional meta-lesson), and framing rules (feedback not self-flagellation, be concrete, surface the receiving-agent-vs-embedded-content split explicitly).
+
 ## 0.63.2 — The Triple Render (2026-04-13)
 
 The pipeline debrief now ships in three formats — plain markdown, a Marp slide deck, and a standalone HTML page — all rendered from the same extracted dataset. A 12-REQ pipeline deserves more than one surface: a developer scans the `.md` in a PR, a stakeholder sits through the deck, a non-technical reader browses the HTML. One pass over the data, three files on disk, zero drift.
