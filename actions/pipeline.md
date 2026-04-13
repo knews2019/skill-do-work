@@ -135,17 +135,27 @@ When all 6 steps are done:
 1. Set `active: false` in `pipeline.json`
 2. Write the final `pipeline.json`
 3. Print the completion status block (all checkmarks) — use the **Completion Status Block** format from the Output Format section (includes Duration, Branch, Verdict metadata)
-4. **Assemble the Pipeline Completion Report** (see Output Format → Pipeline Completion Report). This is the primary user-education artifact. Pull data from:
+4. **Assemble the Pipeline Completion Report data**. This is the primary user-education artifact. Pull data from:
    - **Final summary table**: Each completed REQ's frontmatter (`id`, `title`, `commit`, `domain`) and the REQ's `## Implementation Summary` → one-line synthesis. Group rows by domain so related work sits together.
    - **Test state (before → after)**: Each REQ's `## Testing` section records what tests were added/run. Aggregate test-suite counts if the work action logged them (e.g., "Go: 81 → 98"). If no before-baseline was captured, show only the post-state and note "baseline not recorded" rather than inventing numbers.
    - **Cross-REQ coherence highlights**: Pull from the review step's output — the reviewer validates that interacting REQs (shared files, shared symbols, shared subsystems) remained consistent. Include each coherence assertion with the REQ pair. If the review didn't produce coherence notes (single-REQ pipelines, Route A REQs), omit this section.
    - **Carry-forward work (implied, not captured yet)**: Scan for (a) REQs with `status: pending-answers`, (b) `## Lessons Learned` sections mentioning deferred items, (c) TODO/FIXME comments introduced by the pipeline's commits. List them as candidates for a follow-up capture — but **do NOT auto-capture them**; the user decides.
    - **Deliverables**: Paths produced by the `present` step (`do-work/deliverables/{UR-NNN}-client-brief.md`, `-video/`, `-interactive-explainer.html`). Read from the present step's artifacts if recorded, or glob `do-work/deliverables/` for matches scoped to this pipeline's UR.
    - **How to verify**: Concrete commands the user can copy-paste — `git show {sha}` for each commit, the project's test command(s), and the path to open the interactive explainer. This is the validation recipe.
-5. **Print the report to stdout** and **save it to disk** at `do-work/deliverables/{UR-NNN}-pipeline-summary.md` (or `REQ-{id}-pipeline-summary.md` if no UR was captured). Persisting it means the user can reference the summary after the terminal scrolls away.
-6. **Queue continuation check**: Scan `do-work/queue/REQ-*.md` for files with `status: pending` in their frontmatter. Exclude any REQ IDs listed in the current pipeline's `artifacts` array (those should already be completed). If remaining pending REQs exist, proceed to Step 5a. If the queue is empty, suggest next steps and stop.
+5. **Render the report in all three formats and save each to disk.** The same data powers three deliverables, each tuned to a different audience and surface:
 
-**Proportional depth:** Single-REQ Route A pipelines (config tweak, docs) get a minimal report — status block + 1-row Final summary + How to verify. Multi-REQ or Route B/C pipelines get the full treatment shown above. Don't pad short pipelines with empty sections, and don't truncate long ones. Match the report to the scope of the work.
+   | File | Format | Audience | Template |
+   |------|--------|----------|----------|
+   | `do-work/deliverables/{UR-NNN}-pipeline-summary.md`      | Plain markdown          | Developer reading in a terminal or editor — cat / grep / paste into a PR | Output Format → **Plain Markdown Report** |
+   | `do-work/deliverables/{UR-NNN}-pipeline-summary.marp.md` | Marp presentation slides | Stakeholder sitting through a walkthrough — viewed with `marp --preview` or exported to PDF | Output Format → **Marp Slide Deck** |
+   | `do-work/deliverables/{UR-NNN}-pipeline-summary.html`    | Standalone HTML         | Non-technical reader browsing independently — Mermaid + Tailwind via CDN, zero build | Output Format → **Standalone HTML Debrief** |
+
+   All three files carry the same facts — one rendering per surface, no format-specific editorializing. Use `{REQ-id}-pipeline-summary.*` as the filename prefix if no UR was captured.
+
+6. **Print the plain-markdown rendering to stdout** so the user sees the debrief immediately. Reference the other two paths in the closing "Deliverables" section so they can open them next.
+7. **Queue continuation check**: Scan `do-work/queue/REQ-*.md` for files with `status: pending` in their frontmatter. Exclude any REQ IDs listed in the current pipeline's `artifacts` array (those should already be completed). If remaining pending REQs exist, proceed to Step 5a. If the queue is empty, suggest next steps and stop.
+
+**Proportional depth:** Single-REQ Route A pipelines (config tweak, docs) get a minimal report in all three formats — status block + 1-row Final summary + How to verify. The Marp deck collapses to 3–4 slides; the HTML collapses to a single-screen summary. Multi-REQ or Route B/C pipelines get the full treatment shown above. Don't pad short pipelines with empty sections, and don't truncate long ones. Match the report to the scope of the work.
 
 ### Step 5a: Queue Continuation
 
@@ -236,18 +246,34 @@ For the `capture` step, append ` → {artifact IDs}` after "done" if artifacts w
   Verdict:   {PASS | PASS with caveats | FAIL}
 ```
 
-### Pipeline Completion Report (printed after the Completion Status Block, also saved to disk)
+### Pipeline Completion Report — three renderings of one dataset
 
-A developer-facing technical summary. Unlike the client brief from the `present` step (which targets a non-technical reader), this report is for the person who ran the pipeline and needs to understand what shipped, verify it, and decide what's next.
+The same facts — Final summary, Test state, Coherence, Carry-forward, Deliverables, How to verify — are rendered three ways. One pass over the data, three files on disk. Never author any of the three from scratch if another already exists; re-render from the source data so they stay consistent.
+
+**Composition rules (apply to all three formats):**
+
+- **Cite commits, not prose.** Every claim should trace to a commit SHA, a REQ ID, or a file path. Tables and bullet lists with pointers beat paragraphs of explanation.
+- **Pull from primary sources.** Final summary rows come from REQ frontmatter; coherence notes come from the review step's actual output; test deltas come from what `run` and `review` logged. Do not invent metrics.
+- **Be honest about gaps.** If the baseline test count wasn't captured before the pipeline started, write "baseline not recorded" — don't guess. If no cross-REQ coherence was analyzed (single-REQ pipeline), omit that section.
+- **Carry-forward ≠ auto-capture.** List candidates clearly with the command the user would run to capture each one, but never capture them automatically.
+- **No format-specific editorializing.** The Marp deck must not add facts the markdown lacks; the HTML must not soften or strengthen claims for a broader audience. Format dictates rendering; rendering does not dictate facts.
+
+#### 1. Plain Markdown Report — `{UR-NNN}-pipeline-summary.md`
+
+Developer-facing. Read in a terminal with `cat`, grepped, or pasted into a PR description. No YAML header, no CSS, no slide breaks — just markdown.
 
 ```markdown
+# Pipeline Completion Report — {UR-NNN}
+
+**Session**: {session_id} · **Duration**: {duration} · **Branch**: {branch} ({pushed|local})
+**Verdict**: {PASS | PASS with caveats | FAIL}
+
 ## Final summary
 
 | REQ | Commit | Scope | One-line |
 |-----|--------|-------|----------|
 | REQ-402 | 5ab214d | docs     | 4 lessons-learned files + prime links |
 | REQ-410 | 9371a68 | refactor | shared `initializeDatabaseAtPath` — prod/test converged |
-| REQ-407 | 833a40c | backend  | stale-row vacuum on metric_version bump |
 | REQ-413 | 9e20bde | backend  | SHA-256 index + O(log N) lookup rewrite |
 | ...     | ...     | ...      | ... |
 
@@ -261,22 +287,24 @@ A developer-facing technical summary. Unlike the client brief from the `present`
 
 ## Cross-REQ coherence highlights (verified by the review)
 
-- **REQ-413 ↔ REQ-406**: early-exit preserved at the same two points (cache-hit + fresh-match) after the index-lookup rewrite. `effectiveLimit` still threaded.
-- **REQ-413 ↔ REQ-407**: metric_version filter preserved in `loadCachedEdgesForSource`; vacuum still runs on startup.
+- **REQ-413 ↔ REQ-406**: early-exit preserved at cache-hit + fresh-match. `effectiveLimit` threaded.
+- **REQ-413 ↔ REQ-407**: metric_version filter preserved in `loadCachedEdgesForSource`.
 - **REQ-411 ↔ REQ-412**: orthogonal, zero file overlap, no shared state.
 
 ## Carry-forward work (implied, not captured yet)
 
-- [Deferred item surfaced during review or lessons-learned — candidate for `do work capture request: ...`]
-- [TODO/FIXME introduced by a commit that was intentionally left for a follow-up]
+- [Deferred item] — capture with `do work capture request: ...`
+- [TODO/FIXME introduced and left for a follow-up]
 - [`pending-answers` REQs awaiting user input — run `do work clarify`]
 
 ## Deliverables
 
-- `do-work/deliverables/UR-158-client-brief.md` — client-facing brief (what/why/value)
-- `do-work/deliverables/UR-158-video/` — Remotion video project (run `npm install && npm run preview`)
-- `do-work/deliverables/UR-158-interactive-explainer.html` — single-file interactive explainer
-- `do-work/deliverables/UR-158-pipeline-summary.md` — this report (persisted)
+- `do-work/deliverables/{UR-NNN}-pipeline-summary.md` — this report (markdown)
+- `do-work/deliverables/{UR-NNN}-pipeline-summary.marp.md` — Marp slide deck
+- `do-work/deliverables/{UR-NNN}-pipeline-summary.html` — standalone HTML debrief
+- `do-work/deliverables/{UR-NNN}-client-brief.md` — client-facing brief (if present ran)
+- `do-work/deliverables/{UR-NNN}-video/` — Remotion video (if present ran)
+- `do-work/deliverables/{UR-NNN}-interactive-explainer.html` — explainer (if present ran)
 
 ## How to verify
 
@@ -284,33 +312,100 @@ A developer-facing technical summary. Unlike the client brief from the `present`
    ```
    git checkout {branch} && git pull
    ```
-2. **Inspect each commit** (in order, to understand the build-up):
+2. **Inspect each commit** (ordered to show the build-up):
    ```
    git show 5ab214d   # REQ-402 — lessons-learned docs
    git show 9371a68   # REQ-410 — shared init routine
    git show 9e20bde   # REQ-413 — SHA-256 index rewrite
-   ...
    ```
 3. **Run the tests** (matches what the pipeline ran):
    ```
    {project test command — e.g., `go test ./...` and `npm test`}
    ```
-4. **Open the interactive explainer** to walk the non-technical story:
+4. **Preview the other renderings:**
    ```
-   open do-work/deliverables/UR-158-interactive-explainer.html
+   npx @marp-team/marp-cli {UR-NNN}-pipeline-summary.marp.md --preview
+   open do-work/deliverables/{UR-NNN}-pipeline-summary.html
    ```
 5. **Read the per-REQ archive** for the full trail of intent:
    ```
-   do-work/archive/UR-158/REQ-402.md through REQ-413.md
+   do-work/archive/{UR-NNN}/REQ-*.md
    ```
 ```
 
-**Composition rules:**
+#### 2. Marp Slide Deck — `{UR-NNN}-pipeline-summary.marp.md`
 
-- **Cite commits, not prose.** Every claim in the report should trace to a commit SHA, a REQ ID, or a file path. Avoid paragraphs of explanation — tables and bullet lists with pointers.
-- **Pull from primary sources.** Final summary rows come from REQ frontmatter; coherence notes come from the review step's actual output; test deltas come from what `run` and `review` logged. Do not invent metrics.
-- **Be honest about gaps.** If the baseline test count wasn't captured before the pipeline started, write "baseline not recorded" — don't guess. If no cross-REQ coherence was analyzed (single-REQ pipeline), omit that section.
-- **Carry-forward ≠ auto-capture.** List candidates clearly with the command the user would run to capture each one, but never capture them automatically.
+Stakeholder-facing. Viewed with `marp --preview` or exported to PDF/HTML. Must start with Marp YAML frontmatter (`marp: true`). Each slide separated by `---`. Keep slides scannable — no slide should fit more than ~8 rows of content; split long Final-summary tables across domain-grouped slides. Use a Mermaid `graph LR` on the coherence slide when there are 2+ cross-REQ links.
+
+Required slide sequence (omit a slide entirely if its section has no data — don't leave empty slides):
+
+1. **Title slide** — UR-NNN, session ID, branch, verdict badge
+2. **At-a-glance stats** — REQ count, commit count, test delta, duration (big numbers in a 2×2 or 4-column grid)
+3. **What shipped — {domain}** — one slide per domain bucket (docs / backend / refactor / frontend / tests). Each is a table of REQ / commit / one-line for that domain only.
+4. **Test state (before → after)** — the table, full-width
+5. **Cross-REQ coherence** — Mermaid `graph LR` diagram of interacting REQs (skip for single-REQ pipelines)
+6. **Coherence assertions** — verbatim review quotes, one bullet per assertion
+7. **Carry-forward work** — bullets with capture commands (skip if none)
+8. **How to verify** — fenced `bash` block with checkout + git-show + test commands
+9. **Deliverables + next steps** — pointers to the markdown, HTML, and client-brief files
+
+Use this Marp frontmatter skeleton and extend the `style:` block as needed — don't invent new themes:
+
+```yaml
+---
+marp: true
+theme: default
+paginate: true
+size: 16:9
+header: '{UR-NNN} — Pipeline Debrief'
+footer: 'Session {session_id} · branch {branch}'
+style: |
+  section { font-family: system-ui, -apple-system, sans-serif; }
+  h2 { color: #1e40af; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.25em; }
+  code { background: #f1f5f9; padding: 0.1em 0.3em; border-radius: 3px; }
+  table { font-size: 0.75em; }
+  th { background: #1e40af; color: white; }
+  .big { font-size: 3em; font-weight: 700; color: #1e40af; }
+  .label { color: #64748b; font-size: 0.9em; }
+---
+```
+
+#### 3. Standalone HTML Debrief — `{UR-NNN}-pipeline-summary.html`
+
+Non-technical-reader-facing. Single `.html` file, zero build steps. Same content as the markdown, rendered for a browser.
+
+**Stack (CDN only — no npm, no build):**
+- Tailwind CSS via `<script src="https://cdn.tailwindcss.com"></script>`
+- Mermaid via `<script type="module">` import of `mermaid@10` from jsDelivr
+- Vanilla JS only (no React, no framework)
+
+**Required sections (in order):**
+
+1. **Hero** — UR-NNN as H1, one-paragraph description, metadata badges (branch, duration, verdict)
+2. **At-a-glance stat cards** — 4-column grid of big-number stats (REQ count, commits, tests added, suites added)
+3. **What shipped** — grouped sections by domain, each with a styled table of REQ / commit / one-line
+4. **Test state** — the table, styled with the accent colour for the After column and green for the Delta
+5. **How the work holds together** — a `<div class="mermaid">` containing the same `graph LR` from the Marp deck (Mermaid renders on load)
+6. **Coherence assertions** — responsive card grid, one card per assertion, with the REQ pair in mono accent and the claim below (skip the whole section for single-REQ pipelines)
+7. **Carry-forward work** — cards with a bold title, muted explanation, and the capture command in a `<pre>` block (skip if none)
+8. **How to verify** — numbered headings, each followed by a copy-pasteable `<pre><code>` block
+9. **Footer / next steps** — ordered list with `do work present {UR-NNN}` and other follow-ups
+
+**Design requirements:**
+
+- Light theme default; dark theme via `@media (prefers-color-scheme: dark)` overriding CSS custom properties on `:root`
+- Palette: CSS variables for `--bg`, `--surface`, `--text`, `--muted`, `--accent`, `--accent-soft`, `--border`. Light: white/slate-50 / slate-900 / blue-600. Dark: slate-900 / slate-100 / blue-400.
+- Font: `system-ui, -apple-system, sans-serif`
+- Max content width: `max-w-6xl` centred
+- Generous spacing (`py-10` / `py-16` on sections) — readable like a long-form article, not cramped like a dashboard
+- Mermaid init: `mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' })`
+
+**What NOT to do:**
+
+- Don't add charts the source data doesn't support (no fabricated time-series, no fake percentages)
+- Don't embed images unless the REQs reference them
+- Don't pull in additional CDN scripts beyond Tailwind + Mermaid — the file must work offline once cached
+- Don't add interactivity that hides data (collapsible sections are fine; JS-gated sections that require a click to reveal facts are not)
 
 ### Continuation Notice (printed when pending REQs remain after pipeline completion)
 
@@ -377,7 +472,8 @@ pipeline — full end-to-end orchestration
 - **Scope the `run` step to captured REQs only.** The work action is queue-draining by default. When dispatched from the pipeline, it must only process the REQs created by this pipeline's capture step (listed in `artifacts`). Never process unrelated backlog items during a pipeline run.
 - **Drain remaining queue after completion.** After the pipeline's 6 steps finish, check for other pending REQs in the queue. If any exist, continue processing them automatically via run + review cycles until the queue is empty. This continuation uses standard queue-draining mode (not scoped to pipeline artifacts) and does not re-run `present` per cycle — the user can run `do work present all` after the queue drains if they want a portfolio summary. The pipeline state file remains `active: false` — the continuation is a post-pipeline operation. Maximum 3 continuation cycles — if REQs still remain after 3 cycles, stop and let the user continue manually.
 - **Suggest next steps on completion.** After the pipeline finishes (including any queue continuation), suggest what the user might want to do next (see the next-steps reference).
-- **Completion is education, not a checkmark.** When all steps finish, produce the full Pipeline Completion Report (Final summary, Test state, Cross-REQ coherence, Carry-forward work, Deliverables, How to verify) and persist it to `do-work/deliverables/{UR-NNN}-pipeline-summary.md`. A 12-REQ pipeline that prints only "Pipeline complete" wastes the user's opportunity to understand and validate what shipped. Match report depth to pipeline scope — minimal for Route A, full for multi-REQ URs.
+- **Completion is education, not a checkmark.** When all steps finish, produce the full Pipeline Completion Report (Final summary, Test state, Cross-REQ coherence, Carry-forward work, Deliverables, How to verify) in **all three formats** — plain markdown (`{UR-NNN}-pipeline-summary.md`), Marp slide deck (`{UR-NNN}-pipeline-summary.marp.md`), and standalone HTML (`{UR-NNN}-pipeline-summary.html`). One dataset, three renderings, different audiences. A 12-REQ pipeline that prints only "Pipeline complete" — or writes only the markdown and skips the deck and the HTML — wastes the user's opportunity to understand and validate what shipped. Match report depth to pipeline scope — minimal for Route A, full for multi-REQ URs.
+- **Never author from scratch when re-rendering.** The three report files share one source of truth: the data you extracted in Step 5.4. If you find yourself phrasing the same claim differently across formats, stop and re-render from the data. Divergence between the markdown, Marp, and HTML versions is a bug.
 
 ## Common Rationalizations
 
@@ -390,6 +486,8 @@ pipeline — full end-to-end orchestration
 | "Skip present — the user can run it later" | Run present as part of the pipeline | The pipeline closes the loop: code → review → deliverables. Skipping present leaves the work uncommunicated. |
 | "Just print 'Pipeline complete' — the user ran it, they know what happened" | Produce the full Pipeline Completion Report with Final summary, Test state, Coherence, Carry-forward, Deliverables, and How to verify | The user kicked off a pipeline that may have run for hours across many REQs. They need a digest they can scan, verify against, and share — not a checkmark. |
 | "Invent a test-count baseline — it's probably close" | Write "baseline not recorded" when you lack real numbers | Fabricated metrics in the Completion Report erode trust in every future report |
+| "The markdown version is enough — who needs Marp and HTML?" | Write all three renderings — `.md`, `.marp.md`, and `.html` — from the same dataset | Different audiences consume the work on different surfaces: a developer scans the `.md` in a PR, a stakeholder sits through the deck, a non-technical reader browses the HTML. Shipping only the markdown leaves two audiences unserved. |
+| "I'll write the Marp deck now and re-author the HTML later" | Render all three files in the same completion pass, from the same extracted data | Sequencing the renderings invites drift — the second render subtly rephrases claims from the first, and the three files stop agreeing |
 
 ## Red Flags
 
@@ -399,6 +497,10 @@ pipeline — full end-to-end orchestration
 - pipeline.json shows a step status that contradicts the file system state
 - Multi-REQ pipeline finished but the Completion Report is missing sections that should have content (e.g., no Final summary table for a 10-REQ run, no Deliverables list after present)
 - Completion Report cites test counts without specifying which suite they came from, or includes "Before" numbers that were never actually measured
+- Only one or two of the three rendering files (`.md`, `.marp.md`, `.html`) exist in `do-work/deliverables/`
+- The three renderings disagree — e.g., the Marp deck lists 11 REQs but the markdown lists 12, or the HTML shows a test delta the markdown doesn't
+- The HTML file references external scripts beyond Tailwind + Mermaid, or requires `npm install` to render
+- The Marp deck is missing its `marp: true` frontmatter header or uses a custom theme name (`marp --preview` will fail silently)
 
 ## Verification Checklist
 
@@ -407,7 +509,11 @@ pipeline — full end-to-end orchestration
 - [ ] Artifacts from each completed step recorded in pipeline.json
 - [ ] Failed steps have failure reason documented
 - [ ] User informed of pipeline progress at each step transition
-- [ ] Pipeline Completion Report produced at the end, printed to stdout AND saved to `do-work/deliverables/{UR-NNN}-pipeline-summary.md`
+- [ ] Pipeline Completion Report rendered in all three formats: `{UR-NNN}-pipeline-summary.md`, `{UR-NNN}-pipeline-summary.marp.md`, and `{UR-NNN}-pipeline-summary.html` — all present in `do-work/deliverables/`
+- [ ] Plain markdown rendering printed to stdout so the user sees it immediately
+- [ ] All three renderings cite the same commit SHAs, same test deltas, and same REQ count (no drift between formats)
 - [ ] Report's Final summary cites real commit SHAs from each REQ's frontmatter
 - [ ] Report's Test state labels "baseline not recorded" when no before-measurement was captured — no invented numbers
 - [ ] Report's How to verify section contains copy-pasteable commands (not abstract instructions)
+- [ ] Marp file starts with `marp: true` YAML frontmatter and uses `---` slide separators
+- [ ] HTML file is fully standalone: Tailwind + Mermaid via CDN only, no other external dependencies, no build step required

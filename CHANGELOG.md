@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.63.2 — The Triple Render (2026-04-13)
+
+The pipeline debrief now ships in three formats — plain markdown, a Marp slide deck, and a standalone HTML page — all rendered from the same extracted dataset. A 12-REQ pipeline deserves more than one surface: a developer scans the `.md` in a PR, a stakeholder sits through the deck, a non-technical reader browses the HTML. One pass over the data, three files on disk, zero drift.
+
+- `actions/pipeline.md`: Step 5 Completion now renders `{UR-NNN}-pipeline-summary.md`, `.marp.md`, and `.html` from one composition pass. Added format-specific templates and design constraints for each (Marp frontmatter skeleton + required slide sequence, HTML stack limited to Tailwind + Mermaid CDN with light/dark theming).
+- `actions/pipeline.md`: New composition rule — the three renderings must carry identical facts, no format-specific editorializing. Added rules, rationalization rows, red flags, and checklist items enforcing parity across formats and flagging the common skip-the-HTML shortcut.
+
 ## 0.63.1 — The Debrief (2026-04-13)
 
 Pipeline completion now educates instead of just checking a box. After the six steps finish, the pipeline assembles a technical debrief — Final summary table (REQ/commit/scope/one-line), Test state before→after, Cross-REQ coherence highlights from the review, Carry-forward candidates, Deliverables, and a copy-pasteable How-to-verify recipe — and persists it to `do-work/deliverables/{UR-NNN}-pipeline-summary.md`. Long pipelines deserve a digest, not a checkmark.
