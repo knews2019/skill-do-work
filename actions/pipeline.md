@@ -252,7 +252,9 @@ The same facts — Final summary, Test state, Coherence, Carry-forward, Delivera
 
 **Composition rules (apply to all three formats):**
 
-- **Cite commits, not prose.** Every claim should trace to a commit SHA, a REQ ID, or a file path. Tables and bullet lists with pointers beat paragraphs of explanation.
+- **Serve both audiences in every file.** Each summary opens with a "What got built" narrative for the reader who has no clue, then transitions into the audit data for the reader who wants receipts. A stakeholder landing on the `.html` should understand the feature without opening any other file; a developer scanning the `.md` should reach the commits and test deltas within seconds. Never ship a summary that only audits or only educates.
+- **Reuse client-brief content verbatim.** When the `present` step ran, the "What got built" narrative and architecture diagram come from `{UR-NNN}-client-brief.md` — copy the same sentences and the same diagram. Paraphrasing across files introduces drift. If the brief doesn't exist (present skipped or produced nothing), synthesize from the REQ Implementation Summaries.
+- **Cite commits, not prose.** Every audit claim should trace to a commit SHA, a REQ ID, or a file path. Tables and bullet lists with pointers beat paragraphs of explanation. (The opening narrative is the exception — it's plain language for the no-clue reader.)
 - **Pull from primary sources.** Final summary rows come from REQ frontmatter; coherence notes come from the review step's actual output; test deltas come from what `run` and `review` logged. Do not invent metrics.
 - **Be honest about gaps.** If the baseline test count wasn't captured before the pipeline started, write "baseline not recorded" — don't guess. If no cross-REQ coherence was analyzed (single-REQ pipeline), omit that section.
 - **Carry-forward ≠ auto-capture.** List candidates clearly with the command the user would run to capture each one, but never capture them automatically.
@@ -267,6 +269,14 @@ Developer-facing. Read in a terminal with `cat`, grepped, or pasted into a PR de
 
 **Session**: {session_id} · **Duration**: {duration} · **Branch**: {branch} ({pushed|local})
 **Verdict**: {PASS | PASS with caveats | FAIL}
+
+## What got built (for the reader who has no clue)
+
+[2-3 plain-language sentences synthesizing the UR title, the REQs' What sections, and the client brief's "What We Built" paragraph — no jargon, no commit SHAs, no REQ IDs. The reader learns what the feature *does* before they see the audit trail. If the `present` step ran, pull this straight from `{UR-NNN}-client-brief.md` so the two files stay in sync; if it didn't run, synthesize from the REQ Implementation Summaries.]
+
+[Optional: reuse the ASCII architecture diagram from the client brief, verbatim. Skip if the work is non-architectural (config tweak, bug fix, docs).]
+
+**Go deeper:** [`{UR-NNN}-client-brief.md`](./{UR-NNN}-client-brief.md) · [`{UR-NNN}-interactive-explainer.html`](./{UR-NNN}-interactive-explainer.html) *(only include links that actually exist on disk)*
 
 ## Final summary
 
@@ -299,12 +309,19 @@ Developer-facing. Read in a terminal with `cat`, grepped, or pasted into a PR de
 
 ## Deliverables
 
-- `do-work/deliverables/{UR-NNN}-pipeline-summary.md` — this report (markdown)
-- `do-work/deliverables/{UR-NNN}-pipeline-summary.marp.md` — Marp slide deck
-- `do-work/deliverables/{UR-NNN}-pipeline-summary.html` — standalone HTML debrief
-- `do-work/deliverables/{UR-NNN}-client-brief.md` — client-facing brief (if present ran)
-- `do-work/deliverables/{UR-NNN}-video/` — Remotion video (if present ran)
-- `do-work/deliverables/{UR-NNN}-interactive-explainer.html` — explainer (if present ran)
+Render each bullet as a relative markdown link to the file (e.g. `[...]({UR-NNN}-client-brief.md)`) so a reader opening the `.md` in GitHub, a PR, or an editor can click through to any sibling artifact. Group by audience so the reader lands on the right surface first.
+
+**For the clueless-reader (start here if you don't know what was built):**
+
+- [`{UR-NNN}-client-brief.md`](./{UR-NNN}-client-brief.md) — plain-language brief with architecture diagram + value prop *(if present ran)*
+- [`{UR-NNN}-interactive-explainer.html`](./{UR-NNN}-interactive-explainer.html) — interactive Before/After explainer, open in any browser *(if present ran)*
+- [`{UR-NNN}-video/`](./{UR-NNN}-video/) — Remotion video walkthrough (`cd` in, `npm install`, `npm run preview`) *(if present ran)*
+
+**For the developer / reviewer (audit the run):**
+
+- [`{UR-NNN}-pipeline-summary.md`](./{UR-NNN}-pipeline-summary.md) — this report (markdown)
+- [`{UR-NNN}-pipeline-summary.marp.md`](./{UR-NNN}-pipeline-summary.marp.md) — Marp slide deck (`marp --preview`)
+- [`{UR-NNN}-pipeline-summary.html`](./{UR-NNN}-pipeline-summary.html) — standalone HTML debrief
 
 ## How to verify
 
@@ -340,14 +357,16 @@ Stakeholder-facing. Viewed with `marp --preview` or exported to PDF/HTML. Must s
 Required slide sequence (omit a slide entirely if its section has no data — don't leave empty slides):
 
 1. **Title slide** — UR-NNN, session ID, branch, verdict badge
-2. **At-a-glance stats** — REQ count, commit count, test delta, duration (big numbers in a 2×2 or 4-column grid)
-3. **What shipped — {domain}** — one slide per domain bucket (docs / backend / refactor / frontend / tests). Each is a table of REQ / commit / one-line for that domain only.
-4. **Test state (before → after)** — the table, full-width
-5. **Cross-REQ coherence** — Mermaid `graph LR` diagram of interacting REQs (skip for single-REQ pipelines)
-6. **Coherence assertions** — verbatim review quotes, one bullet per assertion
-7. **Carry-forward work** — bullets with capture commands (skip if none)
-8. **How to verify** — fenced `bash` block with checkout + git-show + test commands
-9. **Deliverables + next steps** — pointers to the markdown, HTML, and client-brief files
+2. **What got built** — 2-3 plain-language bullets pulled from the client brief's "What We Built" section. No commit SHAs, no REQ IDs. This is the slide a stakeholder who wandered in late needs to orient. Skip only if no `present` step produced a brief AND the UR itself is trivially self-explanatory from its title.
+3. **How it works** (when a client brief exists with an architecture diagram) — reuse the ASCII or Mermaid diagram from the brief. Skip for non-architectural changes.
+4. **At-a-glance stats** — REQ count, commit count, test delta, duration (big numbers in a 2×2 or 4-column grid)
+5. **What shipped — {domain}** — one slide per domain bucket (docs / backend / refactor / frontend / tests). Each is a table of REQ / commit / one-line for that domain only.
+6. **Test state (before → after)** — the table, full-width
+7. **Cross-REQ coherence** — Mermaid `graph LR` diagram of interacting REQs (skip for single-REQ pipelines)
+8. **Coherence assertions** — verbatim review quotes, one bullet per assertion
+9. **Carry-forward work** — bullets with capture commands (skip if none)
+10. **How to verify** — fenced `bash` block with checkout + git-show + test commands
+11. **Deliverables + next steps** — two-column layout: left column "Start here if you want to understand what was built" lists the client brief, interactive explainer, and video (when present ran); right column "Audit the run" lists the markdown and HTML summary siblings. Render each as the bare filename — stakeholders open the deck from `do-work/deliverables/`, so relative filenames are all they need to find the sibling files in the same folder.
 
 Use this Marp frontmatter skeleton and extend the `style:` block as needed — don't invent new themes:
 
@@ -382,14 +401,17 @@ Non-technical-reader-facing. Single `.html` file, zero build steps. Same content
 **Required sections (in order):**
 
 1. **Hero** — UR-NNN as H1, one-paragraph description, metadata badges (branch, duration, verdict)
-2. **At-a-glance stat cards** — 4-column grid of big-number stats (REQ count, commits, tests added, suites added)
-3. **What shipped** — grouped sections by domain, each with a styled table of REQ / commit / one-line
-4. **Test state** — the table, styled with the accent colour for the After column and green for the Delta
-5. **How the work holds together** — a `<div class="mermaid">` containing the same `graph LR` from the Marp deck (Mermaid renders on load)
-6. **Coherence assertions** — responsive card grid, one card per assertion, with the REQ pair in mono accent and the claim below (skip the whole section for single-REQ pipelines)
-7. **Carry-forward work** — cards with a bold title, muted explanation, and the capture command in a `<pre>` block (skip if none)
-8. **How to verify** — numbered headings, each followed by a copy-pasteable `<pre><code>` block
-9. **Footer / next steps** — ordered list with `do work present {UR-NNN}` and other follow-ups
+2. **What got built** — a prose block that educates a reader who has no clue: 2-3 sentences explaining what the feature does in plain language, pulled from the client brief's "What We Built" section. No REQ IDs, no commit SHAs. When a client brief exists, this section is the primary educational entry point for a non-technical reader arriving at the HTML. Skip only if no `present` step ran and the UR is self-explanatory from its title.
+3. **How it works** (when an architecture diagram exists in the client brief) — a `<div class="mermaid">` with a `graph TD` or `graph LR` rendering of the same components/data flow from the brief's architecture section. Caption each node in plain language. Skip entirely for non-architectural changes (config tweaks, bug fixes).
+4. **At-a-glance stat cards** — 4-column grid of big-number stats (REQ count, commits, tests added, suites added)
+5. **What shipped** — grouped sections by domain, each with a styled table of REQ / commit / one-line
+6. **Test state** — the table, styled with the accent colour for the After column and green for the Delta
+7. **How the work holds together** — a `<div class="mermaid">` containing the same `graph LR` from the Marp deck (Mermaid renders on load)
+8. **Coherence assertions** — responsive card grid, one card per assertion, with the REQ pair in mono accent and the claim below (skip the whole section for single-REQ pipelines)
+9. **Carry-forward work** — cards with a bold title, muted explanation, and the capture command in a `<pre>` block (skip if none)
+10. **How to verify** — numbered headings, each followed by a copy-pasteable `<pre><code>` block
+11. **Related deliverables** — a navigation card grid **before** the final follow-ups list, splitting cross-links by audience. Left card group "Understand what was built" with real `<a href="./{UR-NNN}-client-brief.md">` / `<a href="./{UR-NNN}-interactive-explainer.html">` / `<a href="./{UR-NNN}-video/">` anchors (only include tiles for artifacts that actually exist on disk — if present ran and produced them). Right card group "Audit the run" linking the markdown (`<a href="./{UR-NNN}-pipeline-summary.md">`) and Marp deck (`<a href="./{UR-NNN}-pipeline-summary.marp.md">`) siblings. The HTML is the most discoverable surface for a non-technical reader — it must point them to the deeper, more educational artifacts.
+12. **Footer / next steps** — ordered list with `do work present {UR-NNN}` and other follow-ups
 
 **Design requirements:**
 
@@ -488,6 +510,8 @@ pipeline — full end-to-end orchestration
 | "Invent a test-count baseline — it's probably close" | Write "baseline not recorded" when you lack real numbers | Fabricated metrics in the Completion Report erode trust in every future report |
 | "The markdown version is enough — who needs Marp and HTML?" | Write all three renderings — `.md`, `.marp.md`, and `.html` — from the same dataset | Different audiences consume the work on different surfaces: a developer scans the `.md` in a PR, a stakeholder sits through the deck, a non-technical reader browses the HTML. Shipping only the markdown leaves two audiences unserved. |
 | "I'll write the Marp deck now and re-author the HTML later" | Render all three files in the same completion pass, from the same extracted data | Sequencing the renderings invites drift — the second render subtly rephrases claims from the first, and the three files stop agreeing |
+| "The summary is for devs — the client brief is for stakeholders. They don't need to cross-link." | Put a "What got built" narrative at the top of every summary, and cross-link the client brief, explainer, and summaries from each other's footer | Readers arrive from whichever file a teammate sent them. If the summary only audits and the brief only educates, half the readers bounce instead of drilling in |
+| "Writing the 'What got built' section in the summary duplicates the client brief" | Copy the client brief's "What We Built" paragraph verbatim and add a link back to the full brief | Duplication is the point — each file must stand alone for readers who land on it first. Cross-links give the deeper context |
 
 ## Red Flags
 
@@ -501,6 +525,9 @@ pipeline — full end-to-end orchestration
 - The three renderings disagree — e.g., the Marp deck lists 11 REQs but the markdown lists 12, or the HTML shows a test delta the markdown doesn't
 - The HTML file references external scripts beyond Tailwind + Mermaid, or requires `npm install` to render
 - The Marp deck is missing its `marp: true` frontmatter header or uses a custom theme name (`marp --preview` will fail silently)
+- Any of the three summary formats opens straight into the audit (Final summary table, stat cards) with no "What got built" narrative — the clueless reader has no entry point
+- The three formats disagree on the "What got built" narrative — summary `.html` says one thing, client brief says another
+- Summary files list sibling deliverables as plain text paths instead of rendered links; readers can't click through
 
 ## Verification Checklist
 
@@ -515,5 +542,8 @@ pipeline — full end-to-end orchestration
 - [ ] Report's Final summary cites real commit SHAs from each REQ's frontmatter
 - [ ] Report's Test state labels "baseline not recorded" when no before-measurement was captured — no invented numbers
 - [ ] Report's How to verify section contains copy-pasteable commands (not abstract instructions)
+- [ ] All three summary formats open with a plain-language "What got built" section before any audit data, pulled from the client brief when it exists
+- [ ] Summary Deliverables section renders as clickable relative links, grouped by audience (understand-what-was-built vs. audit-the-run)
+- [ ] Each summary file's "What got built" narrative matches the client brief word-for-word (no paraphrasing drift)
 - [ ] Marp file starts with `marp: true` YAML frontmatter and uses `---` slide separators
 - [ ] HTML file is fully standalone: Tailwind + Mermaid via CDN only, no other external dependencies, no build step required

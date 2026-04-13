@@ -156,6 +156,15 @@ frontmatter.]
 - [Follow-up opportunities — natural extensions of this work]
 - [Phase 2 ideas — features that build on what was just shipped]
 - [Quick wins — small additions that compound the value]
+
+## Related Reading
+
+Cross-link sibling deliverables so the reader can drill in or zoom out. Render as a markdown list of relative links; include only files that actually exist in `do-work/deliverables/` — check the folder before writing this section.
+
+- [`{UR-NNN}-interactive-explainer.html`](./{UR-NNN}-interactive-explainer.html) — click-through Before/After demo in any browser
+- [`{UR-NNN}-video/`](./{UR-NNN}-video/) — animated walkthrough (run `npm install && npm run preview`)
+- [`{UR-NNN}-pipeline-summary.md`](./{UR-NNN}-pipeline-summary.md) — developer-facing debrief: commits, test deltas, how to verify *(exists if this work was produced by a pipeline run)*
+- [`{UR-NNN}-pipeline-summary.html`](./{UR-NNN}-pipeline-summary.html) — same debrief, browser-readable *(same condition)*
 ```
 
 #### 4b: Remotion Video (when the feature is user-facing/demo-able)
@@ -367,7 +376,8 @@ Always generate a self-contained HTML file at `do-work/deliverables/UR-NNN-inter
 - **Interactivity:** You MUST include interactive elements. Examples: A 'Before / After' visual toggle slider, or a clickable 'Step-by-Step' data flow diagram where clicking 'Next' highlights different parts of the architecture.
 - **Theme:** Light theme by default. Use `prefers-color-scheme: dark` media query to support OS-level dark mode. Define CSS custom properties (e.g., `--bg`, `--surface`, `--text`) at `:root` for light values and override them inside `@media (prefers-color-scheme: dark)`. Light palette: white/slate-50 backgrounds, slate-800/900 text, blue-600 accents. Dark palette: slate-900 backgrounds, slate-100 text, blue-400 accents.
 - **Design:** Make it look modern and highly polished — large typography, soft shadows, generous whitespace. Include tooltips or sidebars that explain technical decisions in plain English.
-- **Content:** Pull real context from the REQ files. Include a 'The Problem', 'The Interactive Demo', and a 'Value Delivered' section.
+- **Content:** Pull real context from the REQ files. Include a 'The Problem', 'The Interactive Demo', and a 'Value Delivered' section. Also include a collapsible (or small-print, bottom-of-page) 'For the developer' section listing the commit SHAs from each REQ's frontmatter, a copy-pasteable `git show <sha>` block, and the project's test command. A dev who landed on the explainer shouldn't have to leave to verify it's real — the explainer serves both the "no clue" reader and the "show me the receipts" reader in one file.
+- **Navigation footer:** End the page with a "Keep exploring" section — a responsive card grid of `<a>` links to sibling deliverables that exist in the same folder. Always link the client brief (`./{UR-NNN}-client-brief.md`) with a note that GitHub/VS Code renders markdown natively. When the pipeline ran, also link `./{UR-NNN}-pipeline-summary.html` (developer debrief) and `./{UR-NNN}-video/` (walkthrough). Check the `do-work/deliverables/` folder before rendering — only include tiles for files that actually exist. This is the reader's escape hatch from the explainer's breadth-first view into deeper, audience-specific context.
 
 #### 4d: Portfolio artifacts (portfolio mode only — see below)
 
@@ -383,6 +393,8 @@ Generated deliverables for UR-003:
   do-work/deliverables/UR-003-client-brief.md              Client brief with architecture + value prop
   do-work/deliverables/UR-003-video/                       Remotion video (4 scenes, ~90s)
   do-work/deliverables/UR-003-interactive-explainer.html   Interactive explainer (single-file HTML)
+
+Each artifact links to its siblings — open any one as an entry point.
 
 Key value points:
   - [Top 1-2 value propositions from the brief]
