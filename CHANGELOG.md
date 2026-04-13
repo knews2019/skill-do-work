@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.62.5 — The Few Words (2026-04-12)
+
+New crew member: caveman mode. Tag a REQ with `caveman: true` (or `caveman: lite|full|ultra`) and the builder compresses prose output ~65-75% while keeping code and technical terms exact. Adapted from JuliusBrussee/caveman.
+
+- Added `crew-members/caveman.md` — token-efficient communication rules with three intensity levels (lite, full, ultra) and auto-clarity escape hatch for security warnings
+- `actions/work.md`: Step 6 agent rules loading now includes caveman.md conditional on `caveman` frontmatter
+- `CLAUDE.md`: Documented caveman crew member loading behavior
+
 ## 0.62.4 — The Dangling Pointer (2026-04-12)
 
 Fixed a dangling cross-reference in `bkb init` Step 5 — it pointed to a "Schema File" section that had been extracted out into `bkb-reference.md`. Init now correctly points to the schema content's real home.
