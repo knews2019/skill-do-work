@@ -4,6 +4,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.65.0 — The Prompt Shelf (2026-04-15)
+
+New `prompts` action — a dispatcher over a growing library of reusable, battle-tested prompts for recurring jobs the skill doesn't have a first-class action for. Seeded with `adr-log`, a create-or-update prompt that builds a project-wide Architecture Decision Record log at `decisions/` (BKB wiki pattern) by mining `CHANGELOG.md` for load-bearing decisions. Idempotent, resumable, supersession-aware.
+
+- `actions/prompts.md`: New sub-command dispatcher (`list`, `show <name>`, `run <name>`, shorthand `<name>`) that resolves prompt names against `prompts/*.md` by exact match or unambiguous prefix. `show` is strictly read-only; `run` adopts the body below the `---` separator as operational instructions.
+- `prompts/README.md`: Library index explaining the prompt file shape (title + blockquote + metadata + `---` + body) and how to add new entries.
+- `prompts/adr-log.md`: First library entry. Detects create-vs-update mode via `decisions/_master_index.md`, resumes from `_progress.md` mid-run, allocates sequential `ADR-NNNN` numbers without reuse, handles supersession (sets `status: superseded` + `superseded_by` on the old ADR, never deletes), de-duplicates on re-run via a `source:` frontmatter field, and commits+pushes in batches (scaffolding → mining → ADRs in groups of 3 → final reconciliation).
+- `SKILL.md`: New priority-19 routing row for `prompts` / `prompt`, new Verb Reference entry, new Action Dispatch entry, new "Prompt library:" block in the bare-invocation help menu, and `prompts` added to the foreground-dispatch list.
+- `next-steps.md`: Three new post-action sections (`prompts list`, `prompts show`, `prompts run`).
+- `README.md`: New numbered scenario "19. Run a saved prompt"; renumbered later scenarios 19→20, 20→21, 21→22.
+- `CLAUDE.md`: Registered `actions/prompts.md` and the `prompts/` directory in the Project Structure tree.
+
 ## 0.64.1 — The Companion Split (2026-04-13)
 
 `actions/pipeline.md` had grown past the 10k-token read limit, which meant agents couldn't load it in one pass. Extracted the three Pipeline Completion Report rendering templates (markdown / Marp / HTML) plus their composition rules into a new `pipeline-reference.md` — same pattern as `work.md` + `work-reference.md` and `deep-explore.md` + `deep-explore-reference.md`. Pipeline.md drops from 549 lines to 377; the templates live in a companion file loaded at Step 5 Completion.

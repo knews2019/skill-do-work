@@ -257,14 +257,30 @@ do work bkb status            # show KB stats and pending items
 
 For the full folder structure, file lifecycle, and wiki page format, see the [BKB Guide](docs/bkb-guide.md).
 
-### 19. Install companion skills
+### 19. Run a saved prompt
+
+Execute reusable, battle-tested prompts for recurring jobs — ADR logs, retrospectives, audits, and more. Each prompt lives as a standalone Markdown file under `prompts/`; drop new ones in and they become available instantly.
+
+```
+do work prompts                   # help menu
+do work prompts list              # list every available prompt
+do work prompts show adr-log      # print the prompt without running it
+do work prompts run adr-log       # execute the prompt
+do work prompts adr-log --dry-run # shorthand: arg after the prompt name passes through
+```
+
+First entry: `adr-log` — creates or updates a project-wide ADR log at `decisions/` by mining `CHANGELOG.md` for load-bearing decisions, modeled on the BKB wiki pattern. Idempotent (re-running doesn't duplicate) and resumable (interrupt-safe via `decisions/_progress.md`).
+
+To add your own prompt: create `prompts/<kebab-name>.md` with a title, one-line description blockquote, optional metadata, a `---` separator, then the body. See `prompts/README.md` for the template.
+
+### 20. Install companion skills
 
 ```
 do work install-ui-design   # Anthropic's frontend-design skill for production-grade UI
 do work install-bowser      # Playwright CLI + Bowser skill for browser automation
 ```
 
-### 20. Version and history
+### 21. Version and history
 
 ```
 do work version             # current version + last 5 releases
@@ -274,7 +290,7 @@ do work recap               # last 5 completed user requests
 
 See the [Version Guide](docs/version-guide.md) for update behavior and recap format.
 
-### 21. Learn the skill
+### 22. Learn the skill
 
 Interactive tutorials for users new to do-work. Four modes:
 

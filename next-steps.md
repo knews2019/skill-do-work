@@ -251,6 +251,28 @@ Next steps:
   do work bkb status            Check KB state
 ```
 
+**After prompts list:**
+```
+Next steps:
+  do work prompts show <name>           Inspect a prompt before running it
+  do work prompts run <name> [args]     Execute a prompt
+```
+
+**After prompts show:**
+```
+Next steps:
+  do work prompts run <name> [args]     Run the prompt you just inspected
+  do work prompts list                  Browse other prompts
+```
+
+**After prompts run:**
+```
+Next steps:
+  do work inspect             Review any uncommitted changes the prompt produced
+  do work prompts list        Browse other prompts in the library
+  do work capture request: [describe]  Capture follow-up work as a request
+```
+
 **After tutorial:**
 ```
 Next steps:
