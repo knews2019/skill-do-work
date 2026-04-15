@@ -62,9 +62,9 @@ decisions/
 
 | Id | Slug | Version | Topic | Done |
 |----|------|---------|-------|------|
-| 0001 | capture-execute-boundary | 0.10.0 | philosophy | [ ] |
-| 0002 | ur-req-pairing | 0.4.0 / 0.8.0 | queue-model | [ ] |
-| 0003 | immutable-inflight-archived | 0.6.0 | queue-model | [ ] |
+| 0001 | capture-execute-boundary | 0.10.0 | philosophy | [x] |
+| 0002 | ur-req-pairing | 0.4.0 / 0.8.0 | queue-model | [x] |
+| 0003 | immutable-inflight-archived | 0.6.0 | queue-model | [x] |
 | 0004 | platform-agnostic-action-files | 0.8.0 / 0.11.1 / 0.12.1 | platform-portability | [ ] |
 | 0005 | subagent-dispatch-pattern | 0.11.0 / 0.11.1 | platform-portability | [ ] |
 | 0006 | priority-ordered-routing | 0.9.1 | routing-dispatch | [ ] |
@@ -89,7 +89,7 @@ One commit per logical unit so the branch is always resumable:
 
 - [x] Commit 1: scaffolding (README, master index, log, progress file, queue-model index)
 - [x] Commit 2: remaining 4 topic indexes
-- [ ] Commit 3: ADRs 0001–0003
+- [x] Commit 3: ADRs 0001–0003
 - [ ] Commit 4: ADRs 0004–0006
 - [ ] Commit 5: ADRs 0007–0010
 - [ ] Commit 6: CLAUDE.md + version bump + CHANGELOG, delete this file
