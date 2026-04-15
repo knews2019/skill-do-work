@@ -53,10 +53,10 @@ decisions/
 
 ### Topic Indexes
 - [x] `decisions/topics/_index_queue-model.md` (0002, 0003, 0008)
-- [ ] `decisions/topics/_index_platform-portability.md` (0004, 0005)
-- [ ] `decisions/topics/_index_routing-dispatch.md` (0006)
-- [ ] `decisions/topics/_index_content-structure.md` (0007, 0009)
-- [ ] `decisions/topics/_index_philosophy.md` (0001, 0010)
+- [x] `decisions/topics/_index_platform-portability.md` (0004, 0005)
+- [x] `decisions/topics/_index_routing-dispatch.md` (0006)
+- [x] `decisions/topics/_index_content-structure.md` (0007, 0009)
+- [x] `decisions/topics/_index_philosophy.md` (0001, 0010)
 
 ### ADR Pages
 
@@ -87,8 +87,8 @@ decisions/
 
 One commit per logical unit so the branch is always resumable:
 
-- [x] ~~Commit 1: scaffolding (README, master index, log, progress file, queue-model index)~~ — pending
-- [ ] Commit 2: remaining 4 topic indexes
+- [x] Commit 1: scaffolding (README, master index, log, progress file, queue-model index)
+- [x] Commit 2: remaining 4 topic indexes
 - [ ] Commit 3: ADRs 0001–0003
 - [ ] Commit 4: ADRs 0004–0006
 - [ ] Commit 5: ADRs 0007–0010
