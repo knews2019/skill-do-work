@@ -42,6 +42,12 @@ specs/                # Reusable specification templates for common task types
   ui-component.md     # Spec template for frontend UI components
   refactor.md         # Spec template for refactoring tasks
   bug-fix.md          # Spec template for bug fixes
+decisions/            # Architecture Decision Records (ADRs) — BKB-style wiki of load-bearing choices
+  README.md           # Schema + how to add a decision
+  _master_index.md    # Nav by topic cluster + chronological
+  log.md              # Append-only timeline of decisions
+  topics/             # Topic cluster indexes (queue-model, platform-portability, routing-dispatch, content-structure, philosophy)
+  adr/                # One file per decision, numbered NNNN-short-slug.md
 crew-members/         # Agent rules loaded by work action based on domain, phase, or dispatch pattern
 hooks/                # Optional hook scripts (platform-specific, installable)
   hooks.json          # Combined hook config for Claude Code (SessionStart + Stop)

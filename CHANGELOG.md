@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.65.0 — The Minute Book (2026-04-15)
+
+The skill now has a project-wide Architecture Decision Record log at `decisions/`. Ten ADRs codify the load-bearing choices that shape how the skill works — capture/execute boundary, UR+REQ pairing, immutability, platform-agnostic action files, subagent dispatch, priority-ordered routing, JIT-loaded crew members, canonical queue path, companion reference files, and REQs as validated intent. Modeled on the BKB wiki pattern: `_master_index.md`, topic cluster indexes, typed `[[wiki-links]]`, and an append-only `log.md` timeline. Future decisions land as new numbered ADRs following the schema in `decisions/README.md`.
+
+- `decisions/README.md`: ADR schema (YAML frontmatter + five fixed sections) and how-to-add workflow
+- `decisions/_master_index.md`: Navigation by topic cluster and chronological date
+- `decisions/log.md`: Append-only timeline seeded with all 10 initial decisions
+- `decisions/topics/`: Five cluster indexes — queue-model, platform-portability, routing-dispatch, content-structure, philosophy
+- `decisions/adr/0001-*.md` through `decisions/adr/0010-*.md`: Ten ADRs, each citing a CHANGELOG version where the decision landed, alternatives considered, and bidirectional typed relationships to sibling ADRs
+- `CLAUDE.md`: Registered `decisions/` in Project Structure
+
 ## 0.64.1 — The Companion Split (2026-04-13)
 
 `actions/pipeline.md` had grown past the 10k-token read limit, which meant agents couldn't load it in one pass. Extracted the three Pipeline Completion Report rendering templates (markdown / Marp / HTML) plus their composition rules into a new `pipeline-reference.md` — same pattern as `work.md` + `work-reference.md` and `deep-explore.md` + `deep-explore-reference.md`. Pipeline.md drops from 549 lines to 377; the templates live in a companion file loaded at Step 5 Completion.
