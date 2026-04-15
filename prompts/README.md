@@ -43,4 +43,4 @@ The dispatcher (`actions/prompts.md`) reads the header for `list`/`show` output 
 
 | Name | What it does |
 |---|---|
-| `adr-log` | Create or update a project-wide Architecture Decision Record log at `decisions/`, modeled on the BKB wiki pattern. Mines `CHANGELOG.md` for load-bearing decisions. Resumable, idempotent, handles supersession. |
+| `adr-log` | Create or update a project-wide Architecture Decision Record log at `decisions/`, modeled on the BKB wiki pattern. Layered source mining (`implementation-history.md` → `lessons-learned/` → code, with `CHANGELOG.md` as fallback). Idempotent via REQ/UR keys. Resumable, supersession-aware. |

@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.65.1 — The Layered Spine (2026-04-15)
+
+Rewrote `prompts/adr-log.md` to merge the better ideas from the user's own ADR-extraction prompt with the safety envelope from the first draft. Same prompt, much sharper — layered source mining with `implementation-history.md` as the primary spine, REQ/UR-keyed idempotency instead of fuzzy CHANGELOG-version matching, proper YAML `related: [{page, rel}]` relationships, per-cluster `topics/_index_*.md` wiki pages, and a completion report that forecasts remaining work sized S/M/L.
+
+- `prompts/adr-log.md`: Replaced the mining spine (`CHANGELOG.md` → `implementation-history.md` primary, `lessons-learned/` secondary, current code for verification, `CHANGELOG.md` as portable fallback). Replaced the frontmatter schema (now `req:`, `ur:`, `sources:`, `related: [{page, rel}]`, `confidence`). Moved ADR files into `decisions/records/` and clusters into `decisions/topics/_index_<cluster>.md` as first-class wiki pages. Added explicit supersession workflow that flips the old ADR's `status` and adds the inverse `rel: superseded-by` to its `related` list in the same commit. Commit messages now follow `docs(adr): …` conventional shape. Added a completion-report section with a remaining-candidates forecast (sized S/M/L per UR). Kept the pre-flight safety checks, `--dry-run` / `--no-push` / `--batch-size` / `--from` flags, "infer alternatives if absent and mark `(inferred)`" guidance, and the Common Rationalizations / Red Flags / Verification Checklist guardrails.
+- `prompts/README.md`: Updated the `adr-log` description to reflect the layered source model and REQ/UR-based idempotency.
+
 ## 0.65.0 — The Prompt Shelf (2026-04-15)
 
 New `prompts` action — a dispatcher over a growing library of reusable, battle-tested prompts for recurring jobs the skill doesn't have a first-class action for. Seeded with `adr-log`, a create-or-update prompt that builds a project-wide Architecture Decision Record log at `decisions/` (BKB wiki pattern) by mining `CHANGELOG.md` for load-bearing decisions. Idempotent, resumable, supersession-aware.

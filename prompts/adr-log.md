@@ -1,62 +1,73 @@
 # ADR Log
 
-> Create or update a project-wide Architecture Decision Record log at `decisions/`, modeled on the BKB wiki pattern. Mines `CHANGELOG.md` for load-bearing, still-in-force decisions. Resumable, idempotent, handles supersession.
+> Create or update a project-wide Architecture Decision Record log at `decisions/`, modeled on the BKB wiki pattern. Layered source mining (implementation-history → lessons-learned → code). Idempotent via REQ/UR keys. Resumable, supersession-aware, pre-flight-checked.
 
 **Aliases:** `adr`, `decisions`
 
 **When to use:**
-- The repo has a rich `CHANGELOG.md` or release history and decisions are scattered / undocumented
-- You want a durable, wiki-linked record of *why* things are the way they are
-- Someone is about to join the project and needs to understand the load-bearing choices
+- The repo has an `implementation-history.md` (REQ/UR ledger) or a rich `CHANGELOG.md` and the architectural *why* is scattered
+- You want a durable, wiki-linked record that new contributors can navigate in minutes
+- An existing ADR log needs to absorb recent work without duplication
 
 **Inputs / flags:**
-- `--since <version>` — mine CHANGELOG from this version forward (default: full file)
-- `--last <N>` — mine only the last N CHANGELOG entries
-- `--dry-run` — print the plan without writing files or committing
-- `--no-push` — commit but don't push
-- `--batch-size <N>` — ADRs per commit batch (default: 3)
+- `--from <UR-NNN|REQ-NNN>` — skip every UR/REQ before this one (default: mine everything)
+- `--batch-size <N>` — ADRs per commit (default: 3)
+- `--dry-run` — print the plan without writing, committing, or pushing
+- `--no-push` — commit each batch but skip push
 
 ---
 
 ## Instructions for the executing agent
 
-You are maintaining an Architecture Decision Record (ADR) log at `decisions/` in the current repo, modeled on the BKB wiki pattern from this skill (see `actions/build-knowledge-base.md` for the wiki-structure conventions this prompt reuses — `_master_index.md`, topic clusters, typed `[[wiki-links]]`, daily `log.md`).
+You are maintaining an Architecture Decision Record (ADR) log at `decisions/` in the current repo, modeled on the BKB wiki pattern (see `actions/build-knowledge-base.md`). This prompt is **idempotent and resumable**: it detects existing state and picks up where a prior run left off, keyed on REQ/UR IDs so the same decision is never captured twice.
 
-This prompt is **idempotent and resumable**: it detects whether the log already exists and whether a prior run was interrupted, and resumes from there without re-scaffolding or duplicating ADRs.
+### Sources to mine (priority order)
+
+1. **`implementation-history.md`** — primary spine. Scan every UR/REQ entry. This is the natural key.
+2. **`lessons-learned/`** — supplementary context, rationale, and nuance.
+3. **Current code** — verify each candidate decision is still visibly in force.
+4. **`CHANGELOG.md`** — fallback spine if `implementation-history.md` is absent. When using the fallback, derive synthetic REQ/UR keys from the version string (`changelog:X.Y.Z`) and record them in the `sources:` field.
 
 ### Phase 0 — Pre-flight
 
-1. **Confirm the working tree is clean.** Run `git status --porcelain`. If dirty, stop and ask the user to stash or commit first; do not mix unrelated changes into the ADR batches.
-2. **Confirm the current branch is not `main`/`master`.** If it is, stop and ask the user for a feature branch name (or offer to create `adr-log` as one). Every batch gets pushed — pushing to main is never acceptable without explicit user authorization.
-3. **Confirm `CHANGELOG.md` exists** in the repo root. If not, stop and tell the user this prompt requires a CHANGELOG as source material.
-4. **Parse arguments.** Apply `--since`, `--last`, `--dry-run`, `--no-push`, `--batch-size` as stated above.
+1. Run `git status --porcelain`. If the working tree is dirty, **stop** and tell the user to stash or commit first. Do not mix unrelated changes into ADR batches.
+2. Run `git rev-parse --abbrev-ref HEAD`. If the branch is `main` or `master`, **stop** and ask the user for a feature branch. Every batch is pushed — pushing to main is never acceptable without explicit authorization.
+3. Confirm at least one source exists: `implementation-history.md` OR `CHANGELOG.md`. If neither, **stop**.
+4. Parse `--from`, `--batch-size`, `--dry-run`, `--no-push`.
 
 ### Phase 1 — State detection
 
 Check for `decisions/_master_index.md`:
 
 - **Absent → CREATE mode.** Proceed to Phase 2 (scaffolding).
-- **Present → UPDATE mode.** Read `decisions/_progress.md`:
-  - If `status: complete`, re-run the mining pass (Phase 3) with current CHANGELOG and only create ADRs for decisions not already covered. Skip Phase 2 entirely.
-  - If `status: in-progress`, jump to the batch after the last completed one. Do not re-run earlier batches.
-  - If `_progress.md` is missing but the index exists, reconstruct state by scanning `decisions/ADR-*.md` for the highest number and assume `status: complete`.
+- **Present → UPDATE mode.** Read `decisions/_progress.md` for the next ADR number and the list of deferred candidates. Skip Phase 2 entirely. Do NOT re-scaffold `_master_index.md`, `_progress.md`, `log.md`, or any `topics/_index_*.md`.
+- **Present but `_progress.md` missing** → RESUME mode. Reconstruct state by scanning `decisions/records/adr-*.md` for the highest existing number and every `req:`/`ur:` already referenced; then treat the run as UPDATE mode.
 
-Record which mode you're in at the top of your response to the user.
+Report the detected mode to the user before doing any writes.
 
 ### Phase 2 — Scaffolding (CREATE mode only, BATCH 1)
 
-Create the following files. All new content goes in `decisions/`.
+Create:
 
-**`decisions/_master_index.md`** — the wiki entry point. Lists topic clusters and links to every ADR. Initial skeleton (populated in Phase 4 as ADRs are written):
+```
+decisions/
+├── _master_index.md           # wiki entry point: clusters, ADR index, legend
+├── _progress.md               # resume state: next ADR number, deferred list, completed inventory
+├── log.md                     # chronological timeline, newest first
+├── records/                   # individual ADR files live here
+└── topics/                    # per-cluster wiki pages (created as clusters emerge)
+```
+
+**`_master_index.md`** seed:
 
 ```markdown
 # Architecture Decisions — Master Index
 
-Project-wide ADR log. Each entry records a load-bearing decision, its alternatives, and its consequences. Links use `[[ADR-NNNN-kebab-slug]]` syntax.
+Project-wide ADR log. Wiki-links use `[[name]]` syntax.
 
 ## Topic clusters
 
-_(populated as ADRs are written)_
+_(populated as clusters emerge — each links to topics/_index_<cluster>.md)_
 
 ## All ADRs
 
@@ -65,208 +76,236 @@ _(populated as ADRs are written — most recent first)_
 ## Status legend
 
 - **accepted** — currently in force
-- **superseded** — replaced by a newer ADR (see `superseded_by`)
+- **superseded** — replaced by a newer ADR (see `related.superseded-by`)
 - **deprecated** — no longer in force, not yet replaced
 - **proposed** — under discussion, not yet adopted
 ```
 
-**`decisions/log.md`** — the chronological timeline:
+**`_progress.md`** seed:
+
+```markdown
+---
+status: in-progress
+mode: create
+started_at: <ISO-8601>
+next_adr_number: 1
+batch_size: 3
+---
+
+# ADR Log Progress
+
+## Deferred candidates
+_(UR/REQ items mined but not yet written — populated in Phase 3)_
+
+## Completed ADRs
+_(appended as each batch commits)_
+```
+
+**`log.md`** seed:
 
 ```markdown
 # ADR Timeline
 
-Most recent decisions at the top. Each entry: date, ADR id + title, one-line summary.
+Most recent decisions on top.
 
 _(populated as ADRs are written)_
 ```
 
-**`decisions/_progress.md`** — the resume-state ledger:
-
-```markdown
-# ADR Log Progress
-
-status: in-progress
-mode: create
-started_at: <ISO-8601 timestamp>
-source: CHANGELOG.md
-scope: <"full" | "since X.Y.Z" | "last N">
-batch_size: 3
-
-## Batches
-
-- [x] BATCH 1 — scaffolding
-- [ ] BATCH 2 — mining + shortlist
-- [ ] BATCH 3+ — ADRs in groups of 3
-- [ ] FINAL — index reconciliation, log sort, cross-link audit
-
-## Mined decisions (shortlist)
-
-_(populated in Phase 3)_
-
-## Completed ADRs
-
-_(appended as they're written)_
-```
-
-**`decisions/_topic-clusters.md`** — the cluster taxonomy (living document):
-
-```markdown
-# Topic Clusters
-
-Clusters are populated as ADRs are mined. A cluster is created when 2+ ADRs share a theme. Until then, ADRs live under "Uncategorized" in the master index.
-
-_(populated as ADRs are written)_
-```
-
-**Commit this batch** with message `adr: scaffold decisions/ log` and push (unless `--no-push`). Update `_progress.md` to mark BATCH 1 complete before committing.
+Commit with `docs(adr): scaffold decisions/ log` and push (unless `--no-push`). Tick BATCH 1 in `_progress.md` before committing.
 
 ### Phase 3 — Mining (BATCH 2)
 
-Read `CHANGELOG.md` (scoped by `--since` / `--last` if provided) and extract a shortlist of **load-bearing, still-in-force decisions**.
+Walk the sources in priority order. For each UR/REQ:
 
-**Selection test — a CHANGELOG entry qualifies if ALL of these hold:**
+**Skip if**: a `req:` or `ur:` field in any existing `decisions/records/adr-*.md` already references this ID (or, for CHANGELOG fallback, any `sources:` entry already cites the version).
 
-1. It records a **decision** (an intentional choice of A over B), not a bugfix, typo, or purely mechanical refactor.
-2. It is **referenced by current code, config, or docs** — a reader today still sees its fingerprint. Spot-check by grepping for the relevant files/symbols; if they no longer exist, the decision is obsolete.
-3. It would **cause meaningful rework** if reversed (behavior change, migration, retraining, documentation churn).
-4. It has **not been explicitly undone** by a later CHANGELOG entry.
+**ADR selection criteria** — write an ADR only if ALL of these hold:
 
-**Supersession signals while mining:** if a later CHANGELOG entry explicitly replaces an earlier one, record the pair. The earlier decision may still warrant an ADR (with `status: superseded`) if the replacement is itself load-bearing and the history matters.
+1. The decision is **architecturally meaningful** — shapes *how* the system is built, not just *what* was done. Bug fixes, typos, and mechanical refactors are out.
+2. The **current code still embodies it** — spot-check by reading the relevant files. If the decision is invisible today, it's obsolete.
+3. It would **cause meaningful rework if reversed** (behavior change, migration, retraining, doc churn).
+4. It is **not already covered** by another ADR's `req:`/`ur:` fields (idempotency).
 
-**In UPDATE mode, deduplicate:** for each candidate, check every existing ADR's `source:` frontmatter. If the CHANGELOG version/section is already cited there, skip the candidate. If a candidate supersedes an existing ADR, queue a supersession update (Phase 4b below).
+**Supersession signal**: if a later UR/REQ explicitly replaces an earlier decision, queue the pair. The older ADR may still be worth writing (with `status: superseded`) if the history matters.
 
-Write the shortlist into `_progress.md` under `## Mined decisions (shortlist)` as a table: `#`, `CHANGELOG source`, `proposed slug`, `cluster guess`, `supersedes (if any)`. Commit this batch with message `adr: mine CHANGELOG shortlist` and push. Update `_progress.md` to mark BATCH 2 complete.
+Write the shortlist to `_progress.md` under `## Deferred candidates` as a table: `#`, `UR/REQ`, `proposed slug`, `cluster guess`, `supersedes (if any)`, `confidence`. Commit with `docs(adr): mine candidates from implementation-history` and push. Tick BATCH 2.
 
-### Phase 4 — ADRs in groups of 3 (BATCH 3 … N)
+### Phase 4 — ADRs in groups of N (BATCH 3 … N)
 
-For each group of N ADRs (default 3, controlled by `--batch-size`):
+For each batch of N ADRs (default `--batch-size` = 3):
 
-1. Allocate sequential numbers starting from `max(existing ADR number) + 1`, zero-padded to 4 digits. Never reuse a number.
-2. Write each ADR to `decisions/ADR-NNNN-kebab-slug.md` using the template below.
-3. Update `decisions/_master_index.md` — add each new ADR under its cluster and under "All ADRs".
-4. Update `decisions/log.md` — prepend a one-line timeline entry per new ADR (most recent first).
-5. Update `decisions/_topic-clusters.md` if a new cluster emerged.
-6. If any ADR in this group supersedes an existing one, run Phase 4b for that pair before committing.
-7. Append the batch's ADRs to `_progress.md` under `## Completed ADRs`.
-8. Tick the batch checkbox in `_progress.md`.
-9. Commit with message `adr: ADR-NNNN..ADR-NNNN <short description>` and push.
+1. Allocate sequential numbers starting at `_progress.md.next_adr_number`, zero-padded to 3 digits. Never reuse a number.
+2. Write each ADR to `decisions/records/adr-NNN-<kebab-slug>.md` using the template below.
+3. Run supersession updates (Phase 4b) for any ADR in this batch that replaces an existing one — both sides must be edited in the same commit.
+4. Update `decisions/topics/_index_<cluster>.md` for every cluster touched (create if new, see Topic cluster rules below).
+5. Update `decisions/_master_index.md`: new ADRs added under their cluster AND under "All ADRs".
+6. Prepend entries to `decisions/log.md` (newest first): `YYYY-MM-DD — [[adr-NNN-slug]] — <one-line summary>`.
+7. Update `decisions/_progress.md`: bump `next_adr_number`, append completed inventory, remove written candidates from the deferred list.
+8. Commit: `docs(adr): add ADR-NNN through ADR-NNN — <short description>` and push.
 
 **ADR file template:**
 
-```markdown
+````markdown
 ---
-id: ADR-NNNN
-title: <Short imperative title>
+title: "ADR-NNN: <Short imperative title>"
+type: architecture-decision-record
 status: accepted            # accepted | superseded | deprecated | proposed
-date: YYYY-MM-DD            # date the decision was made, per CHANGELOG
-cluster: <cluster-slug>     # or "uncategorized"
-source:                     # the CHANGELOG evidence this ADR summarizes
-  - CHANGELOG.md: "X.Y.Z — Codename"
-supersedes: []              # list of ADR ids this replaces
-superseded_by: null         # filled in when this one is later replaced
-tags: []                    # optional freeform tags
+topic_cluster: <cluster-slug>
+decided: <YYYY-MM-DD>       # the date the decision was made (per source)
+req:
+  - REQ-NNN
+ur:
+  - UR-NNN                  # use [] if unknown
+sources:
+  - <file paths or URLs backing the decision>
+related:
+  - page: adr-MMM-other-slug
+    rel: complements        # complements | depends-on | extends | supersedes | superseded-by
+created: <today>
+updated: <today>
+confidence: high            # high | medium | low (see criteria below)
 ---
 
-# ADR-NNNN — <Title>
+# ADR-NNN: <Title>
+
+Topic cluster: [[_index_<cluster>]]
+
+See also: [[adr-MMM-other-slug]], [[adr-PPP-third-slug]]
 
 ## Context
 
-What forces were in play when this decision was made? What pressures, constraints, or goals made a choice necessary? Cite the relevant CHANGELOG entry and any code/config that embodies the constraint. Use `[[wiki-links]]` for related ADRs.
+What forces were in play? What pressures, constraints, or goals made a choice necessary? Cite the originating UR/REQ and any code/config that embodies the constraint. Link related ADRs with `[[wiki-links]]`.
 
 ## Decision
 
-The choice that was made, stated in a single clear sentence, then expanded with the specifics — what was added, changed, removed, or standardized. Name files/modules/patterns when relevant.
+The choice, stated in a single clear sentence, then expanded with the specifics — what was added, changed, removed, or standardized. Name files/modules/patterns.
 
-## Alternatives considered
+## Alternatives
 
-- **<Option A>** — <why it was rejected or deferred>
-- **<Option B>** — <why it was rejected or deferred>
-- <At least 2 alternatives. If the CHANGELOG doesn't discuss alternatives, infer plausible ones from context and mark them `(inferred)`.>
+- **<Option A>** — <why rejected or deferred>
+- **<Option B>** — <why rejected or deferred>
+
+If the source doesn't discuss alternatives, infer 1–2 plausible ones from context and mark them `(inferred)`. An ADR with no Alternatives reads like a decree, not a decision.
 
 ## Consequences
 
-Positive, negative, and neutral effects of the decision. What becomes easier? What becomes harder? What new obligations does this create? What is now load-bearing that wasn't before?
+Positive, negative, and neutral effects. What becomes easier? What becomes harder? What new obligations does this create? What is now load-bearing that wasn't before?
 
 ## References
 
-- CHANGELOG.md `X.Y.Z — Codename`
+- `implementation-history.md` — <UR-NNN section>
+- `lessons-learned/<file>.md` — <if applicable>
 - `path/to/code.ext` — the embodiment of the decision
-- `[[ADR-MMMM-related-slug]]` — sibling or predecessor decisions
-```
+- `[[adr-MMM-related-slug]]` — sibling or predecessor decisions
+````
 
-**Rules for each ADR:**
+**Confidence criteria:**
 
-- **Every section must be present.** If there's truly nothing to say under Alternatives, say so explicitly — don't omit the heading.
-- **Use `[[ADR-NNNN-kebab-slug]]` links** when pointing at sibling ADRs. The dispatcher's `list` output uses these names, so keep slugs consistent.
-- **Typed links** (BKB pattern): prefix with the relationship, e.g. `[[supersedes::ADR-0003-...]]`, `[[refines::ADR-0007-...]]`, `[[conflicts::ADR-0011-...]]`. Use typed links in the References section whenever the relationship is non-obvious.
-- **Cluster slugs** stay stable — once you commit to `build-system` don't later rename to `build`. Edit `_topic-clusters.md` deliberately, not drive-by.
+- **high** — decision is explicitly documented in a source with rationale + alternatives
+- **medium** — decision is visible in code but rationale is inferred from context
+- **low** — rationale is mostly reconstructed; flag for human review
 
 ### Phase 4b — Supersession (runs inline during Phase 4 when needed)
 
 When a new ADR supersedes an existing one:
 
-1. In the new ADR: set `supersedes: [ADR-OLD]` and add to References: `[[supersedes::ADR-OLD-slug]]`.
-2. In the old ADR: set `status: superseded` and `superseded_by: ADR-NEW`. Append to its References: `Superseded by [[ADR-NEW-slug]]`.
-3. **Never delete the old ADR.** History stays intact.
-4. In `_master_index.md`, mark the old entry with `(superseded by ADR-NEW)` inline.
-5. Include the old-ADR edit in the same commit as the new ADR.
+1. **New ADR**: add `related: [{page: adr-OLD-slug, rel: supersedes}]`.
+2. **Old ADR**: flip `status: accepted` → `status: superseded`. Append `{page: adr-NEW-slug, rel: superseded-by}` to its `related` list. Bump its `updated:` field to today.
+3. **Old ADR body**: append to References: `Superseded by [[adr-NEW-slug]] — <date>`.
+4. **Master index**: annotate the old entry with `(superseded by ADR-NEW)`.
+5. **Never delete** the old ADR. History stays intact.
+6. Both edits ship in the **same commit** as the new ADR.
+
+### Topic cluster rules
+
+- Each cluster has a first-class wiki page at `decisions/topics/_index_<cluster-slug>.md` with a short description and a list of its ADRs.
+- Assign new ADRs to the most relevant existing cluster. Create a new `_index_<cluster>.md` only when the theme genuinely doesn't fit any existing cluster or when 2+ pending ADRs share a new theme.
+- New clusters must be added to `_master_index.md` under "Topic clusters" in the same commit that introduces them.
+- Cluster slugs are **stable** — once you commit to `build-system`, don't later rename to `build`. Migrations are expensive.
 
 ### Phase 5 — Final reconciliation (LAST BATCH)
 
-1. Re-read `_master_index.md` and verify every ADR file is listed exactly once under exactly one cluster, with "All ADRs" listing every ADR regardless of cluster.
-2. Re-read `log.md` and verify the timeline is date-sorted, newest first.
-3. Audit wiki-links: grep all `[[…]]` references and verify each target ADR exists. Report broken links to the user; do not silently "fix" them by dropping the link.
-4. Set `_progress.md` → `status: complete` and add a `completed_at: <ISO-8601>` field.
-5. Commit with message `adr: finalize index + log` and push.
+1. Re-read `_master_index.md`: verify every ADR is listed exactly once under exactly one cluster, and every cluster index is linked.
+2. Re-read `log.md`: verify entries are date-sorted, newest first.
+3. Audit wiki-links: grep all `[[…]]` references in `decisions/` and verify every target exists. Report broken links — do not silently drop them.
+4. Flip `_progress.md` → `status: complete`; add `completed_at: <ISO-8601>`.
+5. Commit `docs(adr): finalize index + log` and push.
 
-### Phase 6 — Report
+### Phase 6 — Completion report
 
-Tell the user:
+Print this to the user, verbatim structure:
 
-- Mode (create / update / resume-from-batch-N)
-- Counts: new ADRs written, existing ADRs superseded, batches committed, ADRs already covered (skipped)
-- Clusters that emerged
-- Broken-link findings, if any
-- Branch name and last commit hash
+```markdown
+### ADR Extraction Status
+| URs/REQs covered this run | ADRs written |
+|---|---|
+| UR-XXX (REQ-NNN, REQ-NNN) | ADR-NNN, ADR-NNN |
+| UR-YYY (REQ-NNN) | ADR-NNN |
+
+### Remaining Candidates Estimate
+- **UR-NNN** — <title> — ~<S|M|L> effort — <why it qualifies as an ADR>
+- **UR-NNN** — <title> — ~<S|M|L> effort — <why it qualifies as an ADR>
+
+Total remaining: N UR groups → estimated N–N more ADRs
+
+### Run metadata
+- Mode: <create | update | resume-from-batch-N>
+- Branch: <branch>
+- Last commit: <sha>
+- ADRs superseded: N
+- Broken links found: N
+```
+
+Scan `implementation-history.md` (or the fallback source) and count UR sections that are NOT yet referenced in any ADR's `req:`/`ur:` frontmatter. Effort sizing:
+
+- **S** — one REQ, one cluster, rationale obvious from source
+- **M** — multi-REQ or rationale partially inferred
+- **L** — cross-cluster, supersession involved, or confidence low
 
 ### Rules
 
 - **Never delete an existing ADR.** Supersede, don't rewrite history.
-- **Never renumber existing ADRs.** Numbers are load-bearing — external references depend on them.
-- **Never skip the supersession check.** If you write a new ADR that contradicts an old one without updating the old one's `status` + `superseded_by`, you've created a silent conflict.
+- **Never renumber existing ADRs.** Numbers are external references.
+- **Never skip the supersession flip.** A new ADR that contradicts an old one without flipping the old one's `status` creates a silent conflict.
 - **Never push to `main`/`master`** unless the user has already explicitly authorized it for this specific run.
-- **`--dry-run` means read-only.** No file writes, no commits, no pushes. Report what *would* have happened.
-- **If the shortlist is empty in UPDATE mode**, report "no new load-bearing decisions found since last run" and stop — do not invent ADRs.
+- **`--dry-run` means read-only.** No file writes, no commits, no pushes. Print the plan and the would-be completion report.
+- **If the shortlist is empty in UPDATE mode**, print the completion report with zero ADRs written and a remaining-candidates section of `(none)`. Do not invent ADRs to justify the run.
+- **One decision per ADR**, even if the source lumps two decisions into one entry. Split them.
 
 ### Common rationalizations
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "The CHANGELOG entry is small, I'll merge two decisions into one ADR" | One decision per ADR, even if small | ADRs are referenced by id; merged ADRs become unlinkable the moment one half is superseded |
-| "This old ADR is clearly wrong now, I'll just edit its Decision section" | Supersede it with a new ADR | Editing the Decision destroys the historical record of what was believed true at the time |
-| "The user didn't specify a cluster, I'll leave it uncategorized forever" | Promote it to a named cluster as soon as 2+ ADRs share the theme | Uncategorized bloat defeats the point of topic clusters |
-| "I'll skip `_progress.md` this batch, I'll remember where I am" | Always update `_progress.md` before committing the batch | Agents don't persist across sessions; the file IS the memory |
-| "The CHANGELOG doesn't list alternatives, I'll omit that section" | Infer 1–2 plausible alternatives and mark them `(inferred)` | An ADR with no Alternatives section reads like a decree, not a decision |
+| "The UR is small, I'll merge two decisions into one ADR" | One decision per ADR | ADRs are referenced by id; merged ADRs break when one half is superseded |
+| "This old ADR is clearly wrong now, I'll edit its Decision section" | Supersede it with a new ADR | Editing destroys the historical record of what was believed true at the time |
+| "I'll leave it `uncategorized` forever" | Promote to a named cluster when 2+ ADRs share the theme | Uncategorized bloat defeats the point of clusters |
+| "I'll skip `_progress.md` this batch, I'll remember" | Always update `_progress.md` before committing | Agents don't persist across sessions; the file IS the memory |
+| "The source doesn't list alternatives, I'll omit the section" | Infer 1–2 and mark `(inferred)` | Alternatives-less ADRs read like decrees |
+| "The push failed, I'll `--force` it" | Retry with exponential backoff; if still failing, report and stop | Force-pushing ADR commits can rewrite shared history |
+| "No `implementation-history.md`, I'll stop" | Fall back to `CHANGELOG.md` with synthetic keys | The prompt is portable by design |
 
-### Red flags (observable symptoms something went wrong)
+### Red flags
 
-- Two ADRs share a number, or an ADR id has a gap (`ADR-0003` exists, `ADR-0004` doesn't, `ADR-0005` exists)
+- Two ADRs share a number, or there's a gap (`adr-003` exists, `adr-004` missing, `adr-005` exists)
 - A superseded ADR's `status` is still `accepted`
 - `_master_index.md` lists an ADR file that doesn't exist, or vice versa
-- `log.md` entries are out of date order
-- `_progress.md` says `status: complete` but the mined shortlist still has unticked items
-- Duplicate ADRs for the same CHANGELOG source (idempotency failure)
-- A commit batch included unrelated files (ADR batches must be surgical)
+- `log.md` is not date-sorted
+- `_progress.md.status: complete` but deferred candidates remain
+- Two ADRs with overlapping `req:`/`ur:` IDs — idempotency failure
+- A commit batch includes files outside `decisions/` — ADR batches must be surgical
+- A new cluster was created without updating `_master_index.md` in the same commit
 
 ### Verification checklist
 
-- [ ] Phase 0 pre-flight all passed (clean tree, non-main branch, CHANGELOG present)
-- [ ] Mode correctly identified (create vs update vs resume) and reported to user
-- [ ] `_progress.md` exists and every completed batch is ticked
-- [ ] Every ADR has all five sections (Context, Decision, Alternatives, Consequences, References)
-- [ ] Every ADR's `source:` cites at least one CHANGELOG entry
+- [ ] Pre-flight passed (clean tree, non-main branch, at least one source present)
+- [ ] Mode detected and reported (create / update / resume)
+- [ ] `_progress.md` updated before every commit
+- [ ] Every ADR has all five body sections (Context, Decision, Alternatives, Consequences, References)
+- [ ] Every ADR's `req:` and `ur:` fields are populated (or `[]` where unknown)
 - [ ] Every supersession has both sides updated in the same commit
-- [ ] `_master_index.md` and `log.md` reconciled in the final batch
-- [ ] All batches pushed (or `--no-push` honored uniformly)
+- [ ] Every new cluster has a `topics/_index_<cluster>.md` AND a `_master_index.md` entry, in the same commit
+- [ ] `log.md` prepended with one line per new ADR, date-sorted
 - [ ] No ADR numbers reused; no gaps in the sequence
-- [ ] Final report to user includes counts, branch, last commit hash, and any broken-link findings
+- [ ] Commit messages match `docs(adr): …` format
+- [ ] All batches pushed (or `--no-push` honored uniformly)
+- [ ] Completion report printed with extraction-status table, remaining-candidates estimate, and run metadata
