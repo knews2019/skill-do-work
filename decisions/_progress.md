@@ -68,10 +68,10 @@ decisions/
 | 0004 | platform-agnostic-action-files | 0.8.0 / 0.11.1 / 0.12.1 | platform-portability | [x] |
 | 0005 | subagent-dispatch-pattern | 0.11.0 / 0.11.1 | platform-portability | [x] |
 | 0006 | priority-ordered-routing | 0.9.1 | routing-dispatch | [x] |
-| 0007 | crew-member-jit-loading | 0.50.0 | content-structure | [ ] |
-| 0008 | queue-canonical-path | 0.60.3 | queue-model | [ ] |
-| 0009 | companion-reference-files | 0.61.1 / 0.64.1 | content-structure | [ ] |
-| 0010 | reqs-as-validated-intent | 0.51.3 | philosophy | [ ] |
+| 0007 | crew-member-jit-loading | 0.50.0 | content-structure | [x] |
+| 0008 | queue-canonical-path | 0.60.3 | queue-model | [x] |
+| 0009 | companion-reference-files | 0.61.1 / 0.64.1 | content-structure | [x] |
+| 0010 | reqs-as-validated-intent | 0.51.3 | philosophy | [x] |
 
 ### Finalization
 - [ ] Register `decisions/` in `CLAUDE.md` Project Structure
@@ -91,7 +91,7 @@ One commit per logical unit so the branch is always resumable:
 - [x] Commit 2: remaining 4 topic indexes
 - [x] Commit 3: ADRs 0001–0003
 - [x] Commit 4: ADRs 0004–0006
-- [ ] Commit 5: ADRs 0007–0010
+- [x] Commit 5: ADRs 0007–0010
 - [ ] Commit 6: CLAUDE.md + version bump + CHANGELOG, delete this file
 
 Version bump and CHANGELOG entry happen in the **final** commit only — the interim WIP commits on this feature branch don't each need a version bump.
