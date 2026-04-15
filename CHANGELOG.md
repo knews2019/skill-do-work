@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.65.2 — The Dry-Run Reprieve (2026-04-15)
+
+Fixes two review findings on the `adr-log` prompt. Phase 0 no longer hard-blocks every run on `main`/`master` — `--dry-run` now skips the tree/branch blockers entirely (they're zero-risk in a read-only run), and non-dry-run invocations on `main` pause and ask for authorization instead of refusing outright. README's description of the prompt's source model was stale; it now accurately reflects the layered spine (`implementation-history.md` primary, `lessons-learned/` secondary, code verification, `CHANGELOG.md` fallback).
+
+- `prompts/adr-log.md`: Rewrote Phase 0 to parse flags first, skip dirty-tree / branch-name blockers under `--dry-run`, and prompt for authorization on `main`/`master` (with three accepted responses: yes / feature-branch-name / no). Authorization persists across resume via `authorized_main_branch: true` in `_progress.md`. Updated the "Never push to main/master" and "`--dry-run` means read-only" rules to match. Added two new Common Rationalization rows (--no-push on main is still a write; dry-run can't skip source verification).
+- `README.md`: Replaced the stale "mines CHANGELOG.md for load-bearing decisions" description in scenario 19 with the current layered source model (implementation-history primary, lessons-learned secondary, code verification, CHANGELOG fallback).
+
 ## 0.65.1 — The Layered Spine (2026-04-15)
 
 Rewrote `prompts/adr-log.md` to merge the better ideas from the user's own ADR-extraction prompt with the safety envelope from the first draft. Same prompt, much sharper — layered source mining with `implementation-history.md` as the primary spine, REQ/UR-keyed idempotency instead of fuzzy CHANGELOG-version matching, proper YAML `related: [{page, rel}]` relationships, per-cluster `topics/_index_*.md` wiki pages, and a completion report that forecasts remaining work sized S/M/L.

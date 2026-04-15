@@ -30,10 +30,15 @@ You are maintaining an Architecture Decision Record (ADR) log at `decisions/` in
 
 ### Phase 0 — Pre-flight
 
-1. Run `git status --porcelain`. If the working tree is dirty, **stop** and tell the user to stash or commit first. Do not mix unrelated changes into ADR batches.
-2. Run `git rev-parse --abbrev-ref HEAD`. If the branch is `main` or `master`, **stop** and ask the user for a feature branch. Every batch is pushed — pushing to main is never acceptable without explicit authorization.
-3. Confirm at least one source exists: `implementation-history.md` OR `CHANGELOG.md`. If neither, **stop**.
-4. Parse `--from`, `--batch-size`, `--dry-run`, `--no-push`.
+1. **Parse flags first.** Read `--from`, `--batch-size`, `--dry-run`, `--no-push` before anything else. `--dry-run` changes what the rest of Phase 0 enforces.
+2. Confirm at least one source exists: `implementation-history.md` OR `CHANGELOG.md`. If neither, **stop** — nothing to mine. (This check applies even in `--dry-run`; a plan with no source is not a plan.)
+3. **If `--dry-run`**: skip the remaining pre-flight checks. Note any dirty-tree / branch observations in the plan output for the user's awareness, but do **not** block. Dry-run is strictly read-only — no writes, commits, or pushes — so dirty trees and main-branch state can't cause harm.
+4. Run `git status --porcelain`. Dirty working tree → **stop** and tell the user to stash or commit first. Do not mix unrelated changes into ADR batches.
+5. Run `git rev-parse --abbrev-ref HEAD`. If the branch is `main` or `master`:
+   - Pause and ask the user: *"This repo is on `<branch>`. ADR batches will be committed here and pushed (unless `--no-push`). Authorize this run on `<branch>`? (yes / no / provide a feature branch name)"*
+   - On `yes` → treat as authorized for every remaining batch this run. Record `authorized_main_branch: true` in `_progress.md` so a resumed run doesn't re-prompt.
+   - On a branch name → `git switch -c <name>` and proceed.
+   - On `no` or anything ambiguous → exit cleanly with a one-line explanation. Do not proceed silently.
 
 ### Phase 1 — State detection
 
@@ -267,8 +272,8 @@ Scan `implementation-history.md` (or the fallback source) and count UR sections 
 - **Never delete an existing ADR.** Supersede, don't rewrite history.
 - **Never renumber existing ADRs.** Numbers are external references.
 - **Never skip the supersession flip.** A new ADR that contradicts an old one without flipping the old one's `status` creates a silent conflict.
-- **Never push to `main`/`master`** unless the user has already explicitly authorized it for this specific run.
-- **`--dry-run` means read-only.** No file writes, no commits, no pushes. Print the plan and the would-be completion report.
+- **Never push to `main`/`master`** unless the user has already explicitly authorized it for this specific run (via Phase 0 prompt or a prior `_progress.md` record of authorization).
+- **`--dry-run` means read-only.** No file writes, no commits, no pushes. Print the plan and the would-be completion report. Dry-run bypasses the dirty-tree and branch-name pre-flight blockers, but still reports what they would have flagged.
 - **If the shortlist is empty in UPDATE mode**, print the completion report with zero ADRs written and a remaining-candidates section of `(none)`. Do not invent ADRs to justify the run.
 - **One decision per ADR**, even if the source lumps two decisions into one entry. Split them.
 
@@ -283,6 +288,8 @@ Scan `implementation-history.md` (or the fallback source) and count UR sections 
 | "The source doesn't list alternatives, I'll omit the section" | Infer 1–2 and mark `(inferred)` | Alternatives-less ADRs read like decrees |
 | "The push failed, I'll `--force` it" | Retry with exponential backoff; if still failing, report and stop | Force-pushing ADR commits can rewrite shared history |
 | "No `implementation-history.md`, I'll stop" | Fall back to `CHANGELOG.md` with synthetic keys | The prompt is portable by design |
+| "The user is on `main` but `--no-push` is set, so I'll just run" | Ask for authorization in Phase 0 anyway | `--no-push` still commits — it writes to `main`'s local history, which the user may not want |
+| "The branch check is annoying in a dry-run, I'll skip Phase 0 entirely" | Skip only the branch/tree blockers; still verify sources exist | A dry-run without a source isn't a plan, it's a hallucination |
 
 ### Red flags
 
