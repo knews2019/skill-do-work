@@ -19,7 +19,7 @@ This is not a productivity coaching session. The interview describes reality; it
 
 ## Output files
 
-After `do work interview work-operating-model export`, you get five files in `./interview/work-operating-model/exports/`:
+After `do work interview work-operating-model export`, you get five files in `./do-work/interview/work-operating-model/exports/`:
 
 | File | What it is |
 |---|---|
@@ -60,7 +60,7 @@ The `ingest` sub-command writes files to `kb/raw/inbox/` with the `topic_cluster
 
 ## Context separation — multiple operating models
 
-One operating model per repo. If you want distinct operating models for different contexts (personal vs. work, or two different roles), install the skill in two repos. The interview action reads and writes relative to the current working directory — `./interview/<template>/` — so each repo has its own independent session.
+One operating model per repo. If you want distinct operating models for different contexts (personal vs. work, or two different roles), install the skill in two repos. The interview action reads and writes relative to the current working directory — `./do-work/interview/<template>/` — so each repo has its own independent session.
 
 ## Troubleshooting
 
@@ -74,7 +74,7 @@ The next layer's checkpoint can still reference or revise the prior layer. Alter
 Just say so. The Interviewer overwrites the draft checkpoint on each revision. Don't approve the checkpoint until it matches what you meant.
 
 **`session.json` is corrupt (invalid JSON).**
-Do not try to repair it by hand — the action refuses to load a corrupt file and does not auto-repair. Options: inspect and fix manually (the schema is in `actions/interview-reference.md`), or archive the run with `do work interview <template> reset --confirm` and start over. If reset itself fails because `session.json` can't be parsed, back up the whole `./interview/<template>/` directory manually, delete it, and start fresh.
+Do not try to repair it by hand — the action refuses to load a corrupt file and does not auto-repair. Options: inspect and fix manually (the schema is in `actions/interview-reference.md`), or archive the run with `do work interview <template> reset --confirm` and start over. If reset itself fails because `session.json` can't be parsed, back up the whole `./do-work/interview/<template>/` directory manually, delete it, and start fresh.
 
 **Review flagged a contradiction but I want to leave both versions.**
 Pick `both-are-true` during the review pass. The contradiction gets noted on both entries' `constraints` list so the downstream exports acknowledge the tension rather than hiding it.

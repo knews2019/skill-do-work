@@ -270,7 +270,7 @@ do work interview work-operating-model export  # produce agent-ready artifacts
 do work interview work-operating-model ingest  # feed exports into BKB
 ```
 
-Session state lives at `./interview/<template>/`. Re-runs support `fresh`, `update`, and `version` modes; archived runs stay immutable under `versions/`. See the [Interview Guide](docs/interview-guide.md) for onboarding and `actions/interview-reference.md` for the template authoring spec.
+Session state lives at `./do-work/interview/<template>/` and is tracked in git alongside the rest of the project's trail of intent (URs, REQs, archive). Re-runs support `fresh`, `update`, and `version` modes; archived runs stay immutable under `versions/`. See the [Interview Guide](docs/interview-guide.md) for onboarding and `actions/interview-reference.md` for the template authoring spec.
 
 ### 20. Run a saved prompt
 

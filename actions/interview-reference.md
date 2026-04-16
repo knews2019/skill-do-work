@@ -8,7 +8,7 @@ Read this file when authoring a new template, implementing the interview action,
 
 ## Template File Format
 
-A template declares the layers, per-layer prompts, canonical entry contract extensions, and export schemas. Templates live at `interviews/<template-name>.md` in the repo root — one file per template.
+A template declares the layers, per-layer prompts, canonical entry contract extensions, and export schemas. Templates live at `<skill-root>/interviews/<template-name>.md` (the `interviews/` directory inside the skill bundle) — one file per template.
 
 **Structure:** YAML frontmatter + markdown body.
 
@@ -108,7 +108,7 @@ The Interviewer never invents these fields. If the user did not provide `constra
 
 ## `session.json` Schema
 
-Session state lives at `./interview/<template>/session.json`. Full shape:
+Session state lives at `./do-work/interview/<template>/session.json`. Full shape:
 
 ```json
 {
@@ -146,7 +146,7 @@ Session state lives at `./interview/<template>/session.json`. Full shape:
 
 ## Checkpoint File Format
 
-After the Interviewer finishes asking a layer's questions and drafts canonical entries, it writes `./interview/<template>/checkpoints/<layer-id>.md` and presents it to the user in-chat for explicit approval. One file per layer. Checkpoints are transient approval artifacts — they are overwritten on re-run or revision; the authoritative record is `session.json`.
+After the Interviewer finishes asking a layer's questions and drafts canonical entries, it writes `./do-work/interview/<template>/checkpoints/<layer-id>.md` and presents it to the user in-chat for explicit approval. One file per layer. Checkpoints are transient approval artifacts — they are overwritten on re-run or revision; the authoritative record is `session.json`.
 
 ```markdown
 # Checkpoint: <layer title>
@@ -181,7 +181,7 @@ On the final layer of a template, replace the last sentence with: "If this looks
 
 ## Export Schemas — `work-operating-model`
 
-The `export` sub-command writes these five files to `./interview/<template>/exports/`. Schemas are referenced from the template's `exports:` declaration; do not duplicate inside the template body.
+The `export` sub-command writes these five files to `./do-work/interview/<template>/exports/`. Schemas are referenced from the template's `exports:` declaration; do not duplicate inside the template body.
 
 ### `USER.md` — narrative profile
 
@@ -268,7 +268,7 @@ When the user invokes `do work interview <template>` and the existing `session.j
 
 **Steps:**
 1. Determine next version number `<N>` by scanning existing `versions/` directory (monotonically increasing, starts at `v1`).
-2. Create `./interview/<template>/versions/v<N>-<YYYY-MM-DD>/`.
+2. Create `./do-work/interview/<template>/versions/v<N>-<YYYY-MM-DD>/`.
 3. Copy the current `session.json`, the `checkpoints/` directory, and the `exports/` directory into that version folder.
 4. Delete the working `checkpoints/` and `exports/` contents (the versioned copy is now the only archive).
 5. Write a new empty `session.json` — fresh `session_id`, `started_at: <now>`, `status: in_progress`, `pending_layer: <first-layer-id>`, `previous_version: null`, `review_completed_at: null`, `review_runs: 0`, `layers: {}`.
@@ -321,7 +321,7 @@ The three modes are mutually exclusive per invocation. The user picks one; the a
 
 ## Versioning Scheme
 
-- Archive directories are named `v<N>-<YYYY-MM-DD>/` under `./interview/<template>/versions/`.
+- Archive directories are named `v<N>-<YYYY-MM-DD>/` under `./do-work/interview/<template>/versions/`.
 - `<N>` is monotonically increasing per template; determine the next number by scanning existing version directory names and taking `max(N) + 1`. The first archive is `v1`.
 - A session can reference a prior version via `previous_version: "v<N>"` (set only by the `version` re-run mode).
 - **Versions are immutable.** The action never edits files inside `versions/`. If the user wants to amend a prior version, they re-interview from scratch and reference it via `previous_version`.
@@ -336,7 +336,7 @@ The `ingest` sub-command copies exports into `<repo-root>/kb/raw/inbox/` with fi
 ```yaml
 ---
 title: <template-display-name> — <export-title>
-source: ./interview/<template>/exports/<export-filename>
+source: ./do-work/interview/<template>/exports/<export-filename>
 type: source-summary
 topic_cluster: <value from template frontmatter>
 confidence: high
