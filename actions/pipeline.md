@@ -140,22 +140,23 @@ When all 6 steps are done:
    - **Test state (before → after)**: Each REQ's `## Testing` section records what tests were added/run. Aggregate test-suite counts if the work action logged them (e.g., "Go: 81 → 98"). If no before-baseline was captured, show only the post-state and note "baseline not recorded" rather than inventing numbers.
    - **Cross-REQ coherence highlights**: Pull from the review step's output — the reviewer validates that interacting REQs (shared files, shared symbols, shared subsystems) remained consistent. Include each coherence assertion with the REQ pair. If the review didn't produce coherence notes (single-REQ pipelines, Route A REQs), omit this section.
    - **Carry-forward work (implied, not captured yet)**: Scan for (a) REQs with `status: pending-answers`, (b) `## Lessons Learned` sections mentioning deferred items, (c) TODO/FIXME comments introduced by the pipeline's commits. List them as candidates for a follow-up capture — but **do NOT auto-capture them**; the user decides.
-   - **Deliverables**: Paths produced by the `present` step (`do-work/deliverables/{UR-NNN}-client-brief.md`, `-video/`, `-interactive-explainer.html`). Read from the present step's artifacts if recorded, or glob `do-work/deliverables/` for matches scoped to this pipeline's UR.
+   - **Deliverables**: Paths produced by the `present` step (`do-work/deliverables/{UR-NNN}-client-brief.md`, `-video/`, `-interactive-explainer.single.html`). Read from the present step's artifacts if recorded, or glob `do-work/deliverables/` for matches scoped to this pipeline's UR.
    - **How to verify**: Concrete commands the user can copy-paste — `git show {sha}` for each commit, the project's test command(s), and the path to open the interactive explainer. This is the validation recipe.
-5. **Render the report in all three formats and save each to disk.** The same data powers three deliverables, each tuned to a different audience and surface:
+5. **Render the three LLM formats from one dataset, then export the Marp deck to HTML.** Four files total per completion — three authored, one mechanical:
 
-   | File | Format | Audience | Template |
-   |------|--------|----------|----------|
-   | `do-work/deliverables/{UR-NNN}-pipeline-summary.md`      | Plain markdown          | Developer reading in a terminal or editor — cat / grep / paste into a PR | Output Format → **Plain Markdown Report** |
-   | `do-work/deliverables/{UR-NNN}-pipeline-summary.marp.md` | Marp presentation slides | Stakeholder sitting through a walkthrough — viewed with `marp --preview` or exported to PDF | Output Format → **Marp Slide Deck** |
-   | `do-work/deliverables/{UR-NNN}-pipeline-summary.html`    | Standalone HTML         | Non-technical reader browsing independently — Mermaid + Tailwind via CDN, zero build | Output Format → **Standalone HTML Debrief** |
+   | File | Format | Audience | Template / Producer |
+   |------|--------|----------|---------------------|
+   | `do-work/deliverables/{UR-NNN}-pipeline-summary.md`          | Plain markdown             | Developer reading in a terminal or editor — cat / grep / paste into a PR | Output Format → **Plain Markdown Report** (LLM-authored) |
+   | `do-work/deliverables/{UR-NNN}-pipeline-summary.marp.md`     | Marp slide source          | Stakeholder walkthrough via `marp --preview`; also the source for the `.marp.html` export | Output Format → **Marp Slide Deck** (LLM-authored) |
+   | `do-work/deliverables/{UR-NNN}-pipeline-summary.marp.html`   | Marp deck exported to HTML | Stakeholder who can't install `marp-cli` — share via URL or email | Produced mechanically by `npx @marp-team/marp-cli {UR-NNN}-pipeline-summary.marp.md --html` |
+   | `do-work/deliverables/{UR-NNN}-pipeline-summary.single.html` | Standalone authored HTML   | Non-technical reader browsing independently — Mermaid + Tailwind via CDN, zero build, cross-links siblings | Output Format → **Standalone HTML Debrief** (LLM-authored) |
 
-   All three files carry the same facts — one rendering per surface, no format-specific editorializing. Use `{REQ-id}-pipeline-summary.*` as the filename prefix if no UR was captured.
+   The three authored files carry the same facts — no format-specific editorializing. The `.marp.html` export inherits its content mechanically from the `.marp.md` source; run the marp-cli command after writing the Marp source. Use `{REQ-id}-pipeline-summary.*` as the filename prefix if no UR was captured.
 
-6. **Print the plain-markdown rendering to stdout** so the user sees the debrief immediately. Reference the other two paths in the closing "Deliverables" section so they can open them next.
+6. **Print the plain-markdown rendering to stdout** so the user sees the debrief immediately. Reference the other three paths (`.marp.md`, `.marp.html`, `.single.html`) in the closing "Deliverables" section so they can open them next.
 7. **Queue continuation check**: Scan `do-work/queue/REQ-*.md` for files with `status: pending` in their frontmatter. Exclude any REQ IDs listed in the current pipeline's `artifacts` array (those should already be completed). If remaining pending REQs exist, proceed to Step 5a. If the queue is empty, suggest next steps and stop.
 
-**Proportional depth:** Single-REQ Route A pipelines (config tweak, docs) get a minimal report in all three formats — status block + 1-row Final summary + How to verify. The Marp deck collapses to 3–4 slides; the HTML collapses to a single-screen summary. Multi-REQ or Route B/C pipelines get the full treatment shown above. Don't pad short pipelines with empty sections, and don't truncate long ones. Match the report to the scope of the work.
+**Proportional depth:** Single-REQ Route A pipelines (config tweak, docs) get a minimal report in all three authored formats (plus the Marp HTML export) — status block + 1-row Final summary + How to verify. The Marp deck collapses to 3–4 slides; the `.single.html` collapses to a single-screen summary. Multi-REQ or Route B/C pipelines get the full treatment shown above. Don't pad short pipelines with empty sections, and don't truncate long ones. Match the report to the scope of the work.
 
 ### Step 5a: Queue Continuation
 
@@ -248,7 +249,7 @@ For the `capture` step, append ` → {artifact IDs}` after "done" if artifacts w
 
 ### Pipeline Completion Report — three renderings of one dataset
 
-The same facts — Final summary, Test state, Coherence, Carry-forward, Deliverables, How to verify — are rendered three ways (`.md`, `.marp.md`, `.html`) so a developer, a stakeholder, and a non-technical reader each land on a surface that fits. One pass over the data, three files on disk — never author any of the three from scratch if another already exists.
+The same facts — Final summary, Test state, Coherence, Carry-forward, Deliverables, How to verify — are rendered three ways by the LLM (`.md`, `.marp.md`, `.single.html`) so a developer, a stakeholder, and a non-technical reader each land on a surface that fits. A fourth file — `.marp.html` — is produced mechanically by `marp-cli` from the `.marp.md` source so stakeholders without the Marp tooling can still view the deck. One authoring pass over the data, four files on disk — never author any of the three LLM renderings from scratch if another already exists.
 
 **Templates and composition rules live in [`pipeline-reference.md`](./pipeline-reference.md).** Load that file when rendering the report. It contains:
 
@@ -322,7 +323,7 @@ pipeline — full end-to-end orchestration
 - **Scope the `run` step to captured REQs only.** The work action is queue-draining by default. When dispatched from the pipeline, it must only process the REQs created by this pipeline's capture step (listed in `artifacts`). Never process unrelated backlog items during a pipeline run.
 - **Drain remaining queue after completion.** After the pipeline's 6 steps finish, check for other pending REQs in the queue. If any exist, continue processing them automatically via run + review cycles until the queue is empty. This continuation uses standard queue-draining mode (not scoped to pipeline artifacts) and does not re-run `present` per cycle — the user can run `do work present all` after the queue drains if they want a portfolio summary. The pipeline state file remains `active: false` — the continuation is a post-pipeline operation. Maximum 3 continuation cycles — if REQs still remain after 3 cycles, stop and let the user continue manually.
 - **Suggest next steps on completion.** After the pipeline finishes (including any queue continuation), suggest what the user might want to do next (see the next-steps reference).
-- **Completion is education, not a checkmark.** When all steps finish, produce the full Pipeline Completion Report (Final summary, Test state, Cross-REQ coherence, Carry-forward work, Deliverables, How to verify) in **all three formats** — plain markdown (`{UR-NNN}-pipeline-summary.md`), Marp slide deck (`{UR-NNN}-pipeline-summary.marp.md`), and standalone HTML (`{UR-NNN}-pipeline-summary.html`). One dataset, three renderings, different audiences. A 12-REQ pipeline that prints only "Pipeline complete" — or writes only the markdown and skips the deck and the HTML — wastes the user's opportunity to understand and validate what shipped. Match report depth to pipeline scope — minimal for Route A, full for multi-REQ URs.
+- **Completion is education, not a checkmark.** When all steps finish, produce the full Pipeline Completion Report (Final summary, Test state, Cross-REQ coherence, Carry-forward work, Deliverables, How to verify) in **all three authored formats** — plain markdown (`{UR-NNN}-pipeline-summary.md`), Marp slide source (`{UR-NNN}-pipeline-summary.marp.md`), and standalone HTML (`{UR-NNN}-pipeline-summary.single.html`) — then export the Marp deck to HTML (`{UR-NNN}-pipeline-summary.marp.html`) via `marp-cli`. One dataset, three renderings, one mechanical export, different audiences. A 12-REQ pipeline that prints only "Pipeline complete" — or writes only the markdown and skips the deck and the HTML — wastes the user's opportunity to understand and validate what shipped. Match report depth to pipeline scope — minimal for Route A, full for multi-REQ URs.
 - **Never author from scratch when re-rendering.** The three report files share one source of truth: the data you extracted in Step 5.4. If you find yourself phrasing the same claim differently across formats, stop and re-render from the data. Divergence between the markdown, Marp, and HTML versions is a bug.
 
 ## Common Rationalizations
@@ -336,7 +337,7 @@ pipeline — full end-to-end orchestration
 | "Skip present — the user can run it later" | Run present as part of the pipeline | The pipeline closes the loop: code → review → deliverables. Skipping present leaves the work uncommunicated. |
 | "Just print 'Pipeline complete' — the user ran it, they know what happened" | Produce the full Pipeline Completion Report with Final summary, Test state, Coherence, Carry-forward, Deliverables, and How to verify | The user kicked off a pipeline that may have run for hours across many REQs. They need a digest they can scan, verify against, and share — not a checkmark. |
 | "Invent a test-count baseline — it's probably close" | Write "baseline not recorded" when you lack real numbers | Fabricated metrics in the Completion Report erode trust in every future report |
-| "The markdown version is enough — who needs Marp and HTML?" | Write all three renderings — `.md`, `.marp.md`, and `.html` — from the same dataset | Different audiences consume the work on different surfaces: a developer scans the `.md` in a PR, a stakeholder sits through the deck, a non-technical reader browses the HTML. Shipping only the markdown leaves two audiences unserved. |
+| "The markdown version is enough — who needs Marp and HTML?" | Write all three renderings — `.md`, `.marp.md`, and `.single.html` — from the same dataset, then export `.marp.html` via marp-cli | Different audiences consume the work on different surfaces: a developer scans the `.md` in a PR, a stakeholder sits through the deck (or views `.marp.html` if they lack marp-cli), a non-technical reader browses the `.single.html`. Shipping only the markdown leaves three audiences unserved. |
 | "I'll write the Marp deck now and re-author the HTML later" | Render all three files in the same completion pass, from the same extracted data | Sequencing the renderings invites drift — the second render subtly rephrases claims from the first, and the three files stop agreeing |
 | "The summary is for devs — the client brief is for stakeholders. They don't need to cross-link." | Put a "What got built" narrative at the top of every summary, and cross-link the client brief, explainer, and summaries from each other's footer | Readers arrive from whichever file a teammate sent them. If the summary only audits and the brief only educates, half the readers bounce instead of drilling in |
 | "Writing the 'What got built' section in the summary duplicates the client brief" | Copy the client brief's "What We Built" paragraph verbatim and add a link back to the full brief | Duplication is the point — each file must stand alone for readers who land on it first. Cross-links give the deeper context |
@@ -349,9 +350,9 @@ pipeline — full end-to-end orchestration
 - pipeline.json shows a step status that contradicts the file system state
 - Multi-REQ pipeline finished but the Completion Report is missing sections that should have content (e.g., no Final summary table for a 10-REQ run, no Deliverables list after present)
 - Completion Report cites test counts without specifying which suite they came from, or includes "Before" numbers that were never actually measured
-- Only one or two of the three rendering files (`.md`, `.marp.md`, `.html`) exist in `do-work/deliverables/`
+- Only one or two of the three authored rendering files (`.md`, `.marp.md`, `.single.html`) exist in `do-work/deliverables/`, or the `.marp.html` export is missing
 - The three renderings disagree — e.g., the Marp deck lists 11 REQs but the markdown lists 12, or the HTML shows a test delta the markdown doesn't
-- The HTML file references external scripts beyond Tailwind + Mermaid, or requires `npm install` to render
+- The `.single.html` file references external scripts beyond Tailwind + Mermaid, or requires `npm install` to render (the `.marp.html` export is exempt — its assets are whatever marp-cli bundles)
 - The Marp deck is missing its `marp: true` frontmatter header or uses a custom theme name (`marp --preview` will fail silently)
 - Any of the three summary formats opens straight into the audit (Final summary table, stat cards) with no "What got built" narrative — the clueless reader has no entry point
 - The three formats disagree on the "What got built" narrative — summary `.html` says one thing, client brief says another
@@ -364,7 +365,7 @@ pipeline — full end-to-end orchestration
 - [ ] Artifacts from each completed step recorded in pipeline.json
 - [ ] Failed steps have failure reason documented
 - [ ] User informed of pipeline progress at each step transition
-- [ ] Pipeline Completion Report rendered in all three formats: `{UR-NNN}-pipeline-summary.md`, `{UR-NNN}-pipeline-summary.marp.md`, and `{UR-NNN}-pipeline-summary.html` — all present in `do-work/deliverables/`
+- [ ] Pipeline Completion Report rendered in all three authored formats (`{UR-NNN}-pipeline-summary.md`, `.marp.md`, `.single.html`) and exported to `{UR-NNN}-pipeline-summary.marp.html` via marp-cli — all four present in `do-work/deliverables/`
 - [ ] Plain markdown rendering printed to stdout so the user sees it immediately
 - [ ] All three renderings cite the same commit SHAs, same test deltas, and same REQ count (no drift between formats)
 - [ ] Report's Final summary cites real commit SHAs from each REQ's frontmatter

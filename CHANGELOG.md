@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.66.0 — The Four Corners (2026-04-16)
+
+Deliverables now follow an unambiguous naming convention: `.marp.md` for LLM-authored Marp source, `.marp.html` for the marp-cli export of that source, and `.single.html` for LLM-authored standalone HTML (explainer or debrief). The pipeline now ships four files per completion — three LLM renderings plus the mechanical Marp HTML export — so a stakeholder without marp-cli can still view the deck.
+
+- `actions/pipeline.md`: Step 5 table expanded to four rows — `.md`, `.marp.md`, `.marp.html`, `.single.html` — with the Marp HTML export marked as mechanically produced by `npx @marp-team/marp-cli ... --html`. Narrative, rationalizations, red flags, and the verification checklist updated to distinguish the three LLM renderings from the fourth mechanical export, and to scope the Tailwind/Mermaid CDN constraint specifically to `.single.html`.
+- `actions/pipeline-reference.md`: Section 3 heading + filename renamed to `.single.html`. Section 2 (Marp Slide Deck) now calls out the `.marp.html` export with the exact command. Sibling-link lists, preview commands, and the HTML Related-deliverables card grid updated to link both `.marp.html` and `.single.html` where relevant.
+- `actions/present-work.md`: Interactive explainer renamed to `{UR-NNN}-interactive-explainer.single.html` with a note explaining the `.single.` vs `.marp.` distinction. Client-brief "Related Reading" footer and the terminal summary updated to the new filenames, and the Keep-exploring footer now links both pipeline summary formats.
+
 ## 0.65.2 — The Dry-Run Reprieve (2026-04-15)
 
 Fixes two review findings on the `adr-log` prompt. Phase 0 no longer hard-blocks every run on `main`/`master` — `--dry-run` now skips the tree/branch blockers entirely (they're zero-risk in a read-only run), and non-dry-run invocations on `main` pause and ask for authorization instead of refusing outright. README's description of the prompt's source model was stale; it now accurately reflects the layered spine (`implementation-history.md` primary, `lessons-learned/` secondary, code verification, `CHANGELOG.md` fallback).

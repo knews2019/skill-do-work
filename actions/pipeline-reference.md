@@ -1,10 +1,10 @@
 # Pipeline Reference
 
-> **Companion to the pipeline action.** Contains the three Pipeline Completion Report rendering templates — Plain Markdown, Marp Slide Deck, and Standalone HTML Debrief — plus the composition rules that apply to all three. Extracted from `pipeline.md` to keep the main action file readable; load this file at Step 5 Completion when rendering the report.
+> **Companion to the pipeline action.** Contains the three Pipeline Completion Report rendering templates — Plain Markdown, Marp Slide Deck, and Standalone HTML Debrief — plus the composition rules that apply to all three authored renderings. A fourth file, `{UR-NNN}-pipeline-summary.marp.html`, is produced mechanically by running `marp-cli` on the Marp source — no template, no composition rules. Extracted from `pipeline.md` to keep the main action file readable; load this file at Step 5 Completion when rendering the report.
 
-## Pipeline Completion Report — three renderings of one dataset
+## Pipeline Completion Report — three renderings of one dataset (plus one mechanical export)
 
-The same facts — Final summary, Test state, Coherence, Carry-forward, Deliverables, How to verify — are rendered three ways. One pass over the data, three files on disk. Never author any of the three from scratch if another already exists; re-render from the source data so they stay consistent.
+The same facts — Final summary, Test state, Coherence, Carry-forward, Deliverables, How to verify — are rendered three ways by the LLM (`.md`, `.marp.md`, `.single.html`). One authoring pass over the data, three files on disk. A fourth file — `.marp.html` — is produced by running `npx @marp-team/marp-cli {UR-NNN}-pipeline-summary.marp.md --html` after the Marp source is written; it inherits its content mechanically and needs no template. Never author any of the three LLM renderings from scratch if another already exists; re-render from the source data so they stay consistent.
 
 ### Composition rules (apply to all three formats)
 
@@ -32,7 +32,7 @@ Developer-facing. Read in a terminal with `cat`, grepped, or pasted into a PR de
 
 [Optional: reuse the ASCII architecture diagram from the client brief, verbatim. Skip if the work is non-architectural (config tweak, bug fix, docs).]
 
-**Go deeper:** [`{UR-NNN}-client-brief.md`](./{UR-NNN}-client-brief.md) · [`{UR-NNN}-interactive-explainer.html`](./{UR-NNN}-interactive-explainer.html) *(only include links that actually exist on disk)*
+**Go deeper:** [`{UR-NNN}-client-brief.md`](./{UR-NNN}-client-brief.md) · [`{UR-NNN}-interactive-explainer.single.html`](./{UR-NNN}-interactive-explainer.single.html) *(only include links that actually exist on disk)*
 
 ## Final summary
 
@@ -70,14 +70,15 @@ Render each bullet as a relative markdown link to the file (e.g. `[...]({UR-NNN}
 **For the clueless-reader (start here if you don't know what was built):**
 
 - [`{UR-NNN}-client-brief.md`](./{UR-NNN}-client-brief.md) — plain-language brief with architecture diagram + value prop *(if present ran)*
-- [`{UR-NNN}-interactive-explainer.html`](./{UR-NNN}-interactive-explainer.html) — interactive Before/After explainer, open in any browser *(if present ran)*
+- [`{UR-NNN}-interactive-explainer.single.html`](./{UR-NNN}-interactive-explainer.single.html) — interactive Before/After explainer, open in any browser *(if present ran)*
 - [`{UR-NNN}-video/`](./{UR-NNN}-video/) — Remotion video walkthrough (`cd` in, `npm install`, `npm run preview`) *(if present ran)*
 
 **For the developer / reviewer (audit the run):**
 
 - [`{UR-NNN}-pipeline-summary.md`](./{UR-NNN}-pipeline-summary.md) — this report (markdown)
-- [`{UR-NNN}-pipeline-summary.marp.md`](./{UR-NNN}-pipeline-summary.marp.md) — Marp slide deck (`marp --preview`)
-- [`{UR-NNN}-pipeline-summary.html`](./{UR-NNN}-pipeline-summary.html) — standalone HTML debrief
+- [`{UR-NNN}-pipeline-summary.marp.md`](./{UR-NNN}-pipeline-summary.marp.md) — Marp slide source (`marp --preview`)
+- [`{UR-NNN}-pipeline-summary.marp.html`](./{UR-NNN}-pipeline-summary.marp.html) — Marp deck exported to HTML (for stakeholders without marp-cli)
+- [`{UR-NNN}-pipeline-summary.single.html`](./{UR-NNN}-pipeline-summary.single.html) — standalone authored HTML debrief
 
 ## How to verify
 
@@ -98,7 +99,8 @@ Render each bullet as a relative markdown link to the file (e.g. `[...]({UR-NNN}
 4. **Preview the other renderings:**
    ```
    npx @marp-team/marp-cli {UR-NNN}-pipeline-summary.marp.md --preview
-   open do-work/deliverables/{UR-NNN}-pipeline-summary.html
+   open do-work/deliverables/{UR-NNN}-pipeline-summary.marp.html
+   open do-work/deliverables/{UR-NNN}-pipeline-summary.single.html
    ```
 5. **Read the per-REQ archive** for the full trail of intent:
    ```
@@ -108,7 +110,7 @@ Render each bullet as a relative markdown link to the file (e.g. `[...]({UR-NNN}
 
 ## 2. Marp Slide Deck — `{UR-NNN}-pipeline-summary.marp.md`
 
-Stakeholder-facing. Viewed with `marp --preview` or exported to PDF/HTML. Must start with Marp YAML frontmatter (`marp: true`). Each slide separated by `---`. Keep slides scannable — no slide should fit more than ~8 rows of content; split long Final-summary tables across domain-grouped slides. Use a Mermaid `graph LR` on the coherence slide when there are 2+ cross-REQ links.
+Stakeholder-facing. Viewed with `marp --preview`, and also exported to `{UR-NNN}-pipeline-summary.marp.html` via `npx @marp-team/marp-cli {UR-NNN}-pipeline-summary.marp.md --html` so stakeholders without marp-cli can view the deck by opening a file. Must start with Marp YAML frontmatter (`marp: true`). Each slide separated by `---`. Keep slides scannable — no slide should fit more than ~8 rows of content; split long Final-summary tables across domain-grouped slides. Use a Mermaid `graph LR` on the coherence slide when there are 2+ cross-REQ links.
 
 Required slide sequence (omit a slide entirely if its section has no data — don't leave empty slides):
 
@@ -145,9 +147,9 @@ style: |
 ---
 ```
 
-## 3. Standalone HTML Debrief — `{UR-NNN}-pipeline-summary.html`
+## 3. Standalone HTML Debrief — `{UR-NNN}-pipeline-summary.single.html`
 
-Non-technical-reader-facing. Single `.html` file, zero build steps. Same content as the markdown, rendered for a browser.
+Non-technical-reader-facing. Single `.html` file, zero build steps. Same content as the markdown, rendered for a browser. The `.single.` infix marks this as an LLM-authored standalone page (Tailwind + Mermaid via CDN, cross-links to siblings) — distinct from the `.marp.html` mechanical export of the Marp deck.
 
 **Stack (CDN only — no npm, no build):**
 - Tailwind CSS via `<script src="https://cdn.tailwindcss.com"></script>`
@@ -166,7 +168,7 @@ Non-technical-reader-facing. Single `.html` file, zero build steps. Same content
 8. **Coherence assertions** — responsive card grid, one card per assertion, with the REQ pair in mono accent and the claim below (skip the whole section for single-REQ pipelines)
 9. **Carry-forward work** — cards with a bold title, muted explanation, and the capture command in a `<pre>` block (skip if none)
 10. **How to verify** — numbered headings, each followed by a copy-pasteable `<pre><code>` block
-11. **Related deliverables** — a navigation card grid **before** the final follow-ups list, splitting cross-links by audience. Left card group "Understand what was built" with real `<a href="./{UR-NNN}-client-brief.md">` / `<a href="./{UR-NNN}-interactive-explainer.html">` / `<a href="./{UR-NNN}-video/">` anchors (only include tiles for artifacts that actually exist on disk — if present ran and produced them). Right card group "Audit the run" linking the markdown (`<a href="./{UR-NNN}-pipeline-summary.md">`) and Marp deck (`<a href="./{UR-NNN}-pipeline-summary.marp.md">`) siblings. The HTML is the most discoverable surface for a non-technical reader — it must point them to the deeper, more educational artifacts.
+11. **Related deliverables** — a navigation card grid **before** the final follow-ups list, splitting cross-links by audience. Left card group "Understand what was built" with real `<a href="./{UR-NNN}-client-brief.md">` / `<a href="./{UR-NNN}-interactive-explainer.single.html">` / `<a href="./{UR-NNN}-video/">` anchors (only include tiles for artifacts that actually exist on disk — if present ran and produced them). Right card group "Audit the run" linking the markdown (`<a href="./{UR-NNN}-pipeline-summary.md">`), Marp source (`<a href="./{UR-NNN}-pipeline-summary.marp.md">`), and Marp HTML export (`<a href="./{UR-NNN}-pipeline-summary.marp.html">`) siblings. The `.single.html` is the most discoverable surface for a non-technical reader — it must point them to the deeper, more educational artifacts.
 12. **Footer / next steps** — ordered list with `do work present {UR-NNN}` and other follow-ups
 
 **Design requirements:**
