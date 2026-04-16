@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.66.1 — The Local Landlord (2026-04-16)
+
+The `do-work update` flow now refuses to overwrite a global/shared install. If `SKILL.md` lives under `~/.claude/skills/`, `~/.gemini/skills/`, or anywhere else outside the current project's git root, the update stops and tells the user to either `cd` into the owning project or install the skill locally — no more silent updates to a user-wide copy.
+
+- `actions/version.md`: Added an explicit preflight location check as step 2 of the update flow that resolves the skill root, compares it to `git rev-parse --show-toplevel`, and refuses to proceed if the skill sits under a user-wide skills directory. Renumbered the dirty-tree / run / verify / report steps accordingly. The curl command is now prefixed with `cd <skill-root> &&` so extraction can't land in a global directory by mistake. The fetch-failed fallback message was rewritten to call out the global paths by name.
+
 ## 0.66.0 — The Four Corners (2026-04-16)
 
 Deliverables now follow an unambiguous naming convention: `.marp.md` for LLM-authored Marp source, `.marp.html` for the marp-cli export of that source, and `.single.html` for LLM-authored standalone HTML (explainer or debrief). The pipeline now ships four files per completion — three LLM renderings plus the mechanical Marp HTML export — so a stakeholder without marp-cli can still view the deck.

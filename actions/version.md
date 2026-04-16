@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps.
 
-**Current version**: 0.66.0
+**Current version**: 0.66.1
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -31,19 +31,36 @@ When user asks "check for updates", "update", or "is there a newer version":
 **If update available** (remote > local):
 
 1. **Tell the user**: `Update available: v{remote} (you have v{local}).`
-2. **Check for local changes** to shipped skill files (where SKILL.md lives):
+2. **Preflight: confirm this is a project-local install, not a global one.** The update must overwrite the copy inside the current project — never a user-wide / global install.
+   - Resolve the absolute path of the skill's root directory (where `SKILL.md` lives). Call this `<skill-root>`.
+   - **Refuse to auto-update if `<skill-root>` is under any user-wide skills location**, including but not limited to:
+     - `~/.claude/skills/...`
+     - `~/.gemini/skills/...`
+     - `~/.cursor/skills/...`
+     - `~/.config/*/skills/...`
+     - anything else under `$HOME` that isn't also inside the current project's git repo.
+   - Resolve the current project's git root: `git -C <invocation-dir> rev-parse --show-toplevel`. If `<skill-root>` is **not** a descendant of that project root, stop and report:
+     ```
+     Skill is installed at <skill-root>, which is outside the current project (<project-root>).
+     Refusing to update a global/shared install from here. Either:
+       - cd into the project that owns <skill-root> and re-run, or
+       - install the skill locally inside this project (e.g. <project-root>/.claude/skills/do-work/) and re-run.
+     ```
+     Do NOT proceed. Do NOT suggest the curl command.
+   - Only continue once `<skill-root>` is confirmed to live inside the current project's git root.
+3. **Check for local changes** to shipped skill files at `<skill-root>`:
    - **Scope the check to skill-owned files only.** Ignore `do-work/` (queue data, archives, deliverables) — those are generated at runtime and should never block an update.
-   - If the directory is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ CHANGELOG.md README.md` (listing only shipped paths) and check for uncommitted changes.
+   - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ CHANGELOG.md README.md` (listing only shipped paths) and check for uncommitted changes.
    - If it's **not** a git repo, check whether shipped skill files (actions/, crew-members/, SKILL.md, etc.) differ from a fresh install by looking for user-modified content (custom crew-members, edited action files, etc.).
    - **If any shipped skill files are dirty / have local modifications**: Stop and warn the user. List the modified files and ask for explicit confirmation before proceeding. Do NOT auto-update.
-   - **If clean**: Proceed to step 3.
-3. **Run the update** from the skill's root directory:
+   - **If clean**: Proceed to step 4.
+4. **Run the update in place at `<skill-root>`** (the project-local path confirmed in step 2). `cd` there first so the extraction cannot land in a global directory by mistake:
    ```
-   curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
+   cd <skill-root> && curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
    ```
    **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. Stale files from older versions may remain. This is generally harmless — the skill only loads files it references. If you need a fully clean update, delete only the known skill paths (`actions/`, `crew-members/`, `SKILL.md`, `CHANGELOG.md`, `README.md`) before extracting — never delete `do-work/` or other project files.
-4. **Verify**: Read `actions/version.md` again and confirm the local version now matches the remote version.
-5. **Report result**: `Updated to v{remote}.`
+5. **Verify**: Read `<skill-root>/actions/version.md` again and confirm the local version now matches the remote version.
+6. **Report result**: `Updated to v{remote} at <skill-root>.`
 
 Do NOT just print the curl command and ask the user to run it. You are the agent — run it yourself.
 
@@ -59,10 +76,12 @@ You're up to date (v{local})
 Couldn't check for updates.
 ```
 
-Attempt the update anyway using the curl command above (still respecting the dirty-tree check in step 2). If that also fails, report the error and provide the manual command as a fallback:
+Attempt the update anyway using the curl command above (still respecting the preflight location check in step 2 and the dirty-tree check in step 3 — refuse if the install is global). If that also fails, report the error and provide the manual command as a fallback:
 
 ```
-To manually update, run this from the skill's root directory (where SKILL.md lives):
+To manually update, cd into the **project-local** skill root (where SKILL.md lives inside *this* project — NOT ~/.claude/skills/, ~/.gemini/skills/, or any other global skills directory) and run:
+
+cd <project-root>/path/to/skill-do-work
 curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
 
 Or visit: https://github.com/knews2019/skill-do-work
