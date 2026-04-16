@@ -22,6 +22,15 @@ Six new reusable prompts ingested from the Prompt Kit article on the 2026 capabi
 - `prompts/inference-architecture-decision.md`: API vs. self-hosted vs. hybrid comparison, model selection matrix, Sora test, and a Now / 3× / 10× migration path with triggers.
 - `prompts/README.md`: Index table extended with the six new prompts.
 
+## 0.67.5 — The Weekly Witness (2026-04-17)
+
+New prompt in the library: `weekly-signal-diff` — a weekly structural diff of AI-industry news, personalized via BKB. Ships with a 10-lane core starter universe and auto-loads a personal sidecar at `prompts/weekly-signal-diff-personal.md` when present for user-specific lanes. Every loaded lane gets full coverage every week — no lane is ever compressed or dropped.
+
+- `prompts/weekly-signal-diff.md`: New prompt. Produces both an inline digest and a durable deliverable at `do-work/deliverables/weekly-signal-diff/<week-ending>.md` staged for BKB ingest. Idempotent per week-ending date (appends timestamped revisions rather than overwriting). Supports `--week-ending`, `--source-packet`, `--topic`, `--dry-run`, `--no-ingest`. Aliases: `wsd`, `signal-diff`.
+- `prompts/weekly-signal-diff-personal.md`: New placeholder template. Ships with no real lanes — users copy it anywhere in their project (project root, `.claude/`, `do-work/`, etc.) and fill in real lanes. At Phase 3 the main prompt searches the user's project and loads whatever project-local copy it finds; the shipped placeholder is only a template, never treated as a source of real lanes. Library prompt and shipped placeholder stay generic; personal content lives exclusively in the user's project.
+- `prompts/README.md`: New rows for `weekly-signal-diff` and `weekly-signal-diff-personal` in the Available prompts table.
+- `decisions/imported-specs/2026-04-16_weekly-signal-diff-authoring-prompt.md`, `decisions/imported-specs/2026-04-17_starter-universe.md`: Spec updates — demotion language removed, 3–7 shift cap removed, forbidden-memory-layer name-drops stripped, personal sidecar pattern documented.
+
 ## 0.67.4 — The Gap Sealer (2026-04-16)
 
 Folds in the legitimate improvements from a parallel branch that landed alongside 0.67.2/0.67.3. The earlier "Unified Trunk" merge tried to combine both lines but truncated `CHANGELOG.md` and rewrote `actions/version.md` losing the global-install guard and the recap section — that merge was reverted and only the load-bearing changes were re-applied here.
