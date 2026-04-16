@@ -5,7 +5,7 @@ description: |
   artifacts (USER.md, SOUL.md, HEARTBEAT.md) plus machine-readable exports.
   Based on the five-layer Work Operating Model by Nate B. Jones and
   Jonathan Edwards.
-version: 1.0.0
+version: 1.1.0
 topic_cluster: operating-model
 layers:
   - id: operating_rhythms
@@ -52,9 +52,9 @@ Map how the user's days, weeks, and months actually unfold — not the calendar 
 
 ### Details shape
 Every entry's `details` field must include:
-- `time_windows` — list of `{start, end, label}` objects describing recurring time blocks
+- `time_windows` — list of `{start, end, label, days}` objects describing recurring time blocks. `days` is a list of weekday abbreviations drawn from `Mon`, `Tue`, `Wed`, `Thu`, `Fri`, `Sat`, `Sun`. Required so `schedule-recommendations.json` can emit the `days` field without inventing data.
 - `energy_pattern` — string describing when the user has energy for which kind of work
-- `interruptions` — list of recurring interruptions and their sources
+- `interruptions` — list of `{source, priority}` objects. `source` names the recurring interruption and who/what it comes from; `priority` is `low`, `medium`, or `high`. Required because `HEARTBEAT.md`'s "What to ignore" section draws from the `low`-priority entries — without the marker the export either violates its schema or invents a ranking.
 - `non_calendar_reality` — string describing what actually happens that isn't on the calendar
 
 ## Layer 2: Recurring Decisions

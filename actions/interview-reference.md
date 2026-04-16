@@ -271,7 +271,7 @@ When the user invokes `do work interview <template>` and the existing `session.j
 2. Create `./interview/<template>/versions/v<N>-<YYYY-MM-DD>/`.
 3. Copy the current `session.json`, the `checkpoints/` directory, and the `exports/` directory into that version folder.
 4. Delete the working `checkpoints/` and `exports/` contents (the versioned copy is now the only archive).
-5. Write a new empty `session.json` — fresh `session_id`, `started_at: <now>`, `status: in_progress`, `pending_layer: <first-layer-id>`, `previous_version: null`, `review_completed_at: null`, `review_runs: 0`, `layers: {}`.
+5. Write a new empty `session.json` — fresh `session_id`, `started_at: <now>`, `last_activity_at: <now>`, `status: in_progress`, `pending_layer: <first-layer-id>`, `previous_version: null`, `review_completed_at: null`, `review_runs: 0`, `layers: {}`.
 6. Append to `CHANGELOG.md`:
    ```
    ## <YYYY-MM-DD HH:MM> — fresh start: archived as v<N>
@@ -284,14 +284,15 @@ When the user invokes `do work interview <template>` and the existing `session.j
 **Intent:** walk through the prior run and revalidate in place, keep the same session.
 
 **Steps:**
-1. Leave `session.json`, `checkpoints/`, `exports/`, and `versions/` untouched.
+1. Leave `session.json`, `checkpoints/`, `exports/`, and `versions/` untouched. Initialize an in-memory `any_edits = false` flag for this run.
 2. Flip `status` back to `in_progress` and set `pending_layer` to the first layer id.
 3. For each layer in declared order:
    - Show the stored canonical entries in a compact form (title + cadence + one-line summary).
    - Ask: "Is this still accurate? Confirm / edit / add / remove entries."
    - Apply the user's changes: edits update entries in place; additions append; removals splice. Update each touched entry's `last_validated_at`.
    - Write a fresh checkpoint and require explicit approval before committing the edits (same approval gate as a new interview).
-4. When the final layer is confirmed, set `status: complete`, `pending_layer: null`. Do **not** reset `review_completed_at` or `review_runs` — the prior review may still stand, but the user is expected to re-run `review` if the updates changed enough to warrant it.
+   - **If the approval committed a non-zero diff** (added, removed, or edited entries — not a pure re-confirm), set `any_edits = true`.
+4. When the final layer is confirmed, set `status: complete`, `pending_layer: null`. **If `any_edits` is true**, also reset `review_completed_at = null` and `review_runs = 0` — the prior review covered a superseded version of the model, and the export gate must force the user back through the cross-layer contradiction pass before the next `export`. If every layer was re-confirmed without edits (`any_edits` stayed `false`), leave `review_completed_at` and `review_runs` untouched.
 5. Append to `CHANGELOG.md`:
    ```
    ## <YYYY-MM-DD HH:MM> — layer updated: <layer-id>
@@ -307,7 +308,7 @@ When the user invokes `do work interview <template>` and the existing `session.j
 **Steps:**
 1. Determine next version number `<N>` and archive as in `fresh` (copy session + checkpoints + exports into `versions/v<N>-<YYYY-MM-DD>/`).
 2. Clear the working `checkpoints/` and `exports/`.
-3. Write a new empty `session.json` — same shape as `fresh`, except `previous_version: "v<N>"`.
+3. Write a new empty `session.json` — same shape as `fresh` (including `last_activity_at: <now>`), except `previous_version: "v<N>"`.
 4. Append to `CHANGELOG.md`:
    ```
    ## <YYYY-MM-DD HH:MM> — versioned: archived as v<N>, new session seeded

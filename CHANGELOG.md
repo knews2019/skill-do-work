@@ -4,6 +4,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.67.1 — The Gap Sealer (2026-04-16)
+
+Close five state and schema gaps flagged in review of the new interview framework and the auto-updater. The update flow was silently clobbering local edits in shipped editable paths; the interview `update` rerun could bypass the export review gate; Layer 1 was missing fields its own export contracts required; and new sessions from `fresh` / `version` were missing `last_activity_at`.
+
+- **Widen the auto-update dirty check.** `actions/version.md` step 3 now covers `prompts/`, `interviews/`, `specs/`, `docs/`, `decisions/`, `hooks/`, `CLAUDE.md`, `AGENTS.md`, and `next-steps.md` in addition to the original list — previously unguarded paths that `curl | tar` would silently overwrite.
+- **Pre-clean discoverable dirs on update.** New step between dirty check and tar extract removes top-level `.md` files in `prompts/` and `interviews/` so upstream renames/removals don't leave ghost entries in `do work prompts list` and `do work interview list`.
+- **Reset review state on meaningful interview updates.** `actions/interview-reference.md` `update` re-run mode now tracks `any_edits`; when a run commits a non-zero diff to any layer, it clears `review_completed_at` and `review_runs` so `export` re-gates on a fresh cross-layer review. Companion rule added in `actions/interview.md`.
+- **Fill in Layer 1 fields the exports required.** `interviews/work-operating-model.md` `time_windows` gains a `days` list (weekday abbrs) and `interruptions` switches from a flat list to `{source, priority}` objects. Without these, `schedule-recommendations.json` and `HEARTBEAT.md`'s "What to ignore" could not be honored from approved data. Template bumps to v1.1.0.
+- **Initialize `last_activity_at` in re-run modes.** `fresh` and `version` now write `last_activity_at: <now>` alongside `started_at`, matching the session schema and keeping status/freshness checks valid from the first moment of a new session.
+
+---
+
 ## 0.67.0 — The Open Ear (2026-04-16)
 
 New `interview` action — a generalized elicitation framework that runs prescriptive templates to turn tacit work knowledge into agent-ready operating artifacts. First template `work-operating-model` walks the five-layer Work Operating Model (Nate B. Jones and Jonathan Edwards) across ~45 focused minutes and produces `USER.md` / `SOUL.md` / `HEARTBEAT.md` plus machine-readable exports. Session state is resumable, cross-layer contradictions get surfaced explicitly, and exports flow into BKB via `ingest` for querying.
