@@ -244,18 +244,22 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
 
 ### Steps
 
-1. Read the template's `exports:` frontmatter. For each declared export:
+1. **Freshness preflight.** If `./do-work/interview/<template>/exports/.exported_at` exists, read its ISO timestamp. Compare to `session.json.last_activity_at`. If the session timestamp is newer, announce: "Exports last written <exported_at>; session modified since at <last_activity_at>. Regenerating." If the file does not exist, this is the first export — proceed without announcement. Never block — this step only surfaces staleness.
+
+2. Read the template's `exports:` frontmatter. For each declared export:
    - Look up the export's schema in `actions/interview-reference.md` (Export Schemas section — one per export kind and template).
    - Compose the artifact from the approved session entries. Pull content from `session.json`; do not invent.
    - Write the file to `./do-work/interview/<template>/exports/<path>`. Overwrite any prior export.
 
-2. Append one synthesis line to CHANGELOG:
+3. Write `./do-work/interview/<template>/exports/.exported_at` containing the current ISO 8601 timestamp. This stamp is what the next export's freshness preflight reads.
+
+4. Append one synthesis line to CHANGELOG:
    ```
    ## <YYYY-MM-DD HH:MM> — exports written
    <list of filenames>
    ```
 
-3. Report to the user:
+5. Report to the user:
    ```
    Exports written to ./do-work/interview/<template>/exports/:
      USER.md                        narrative profile

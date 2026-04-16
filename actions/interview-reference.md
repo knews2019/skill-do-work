@@ -106,6 +106,21 @@ The Interviewer never invents these fields. If the user did not provide `constra
 
 ---
 
+## Status Vocabulary
+
+Four independent status fields live in session state. They do not share a lifecycle — each one answers a different question. This table is the single source of truth for their transitions.
+
+| Scope | Field | Values | Transitions |
+|---|---|---|---|
+| Session | `status` | `in_progress`, `complete` | `in_progress` on session start. Flips to `complete` on the final layer's approval write. Only terminal state. Cleared back to `in_progress` only by `reset` (which starts a new session). |
+| Layer | `approved` | `false`, `true` | `false` on session start. Flips to `true` when the user explicitly approves the layer's checkpoint. Re-approval on `update` re-runs refreshes `approved_at` and each entry's `last_validated_at`. |
+| Entry | `status` | `active`, `stale`, `aspirational` | User-set during the interview. `active` = currently true. `stale` = was true, may no longer hold. `aspirational` = user wants this pattern but it's not yet real. Updated on `update` re-runs when the user reconfirms or relabels an entry. |
+| Export freshness | `.exported_at` file | ISO 8601 timestamp | Written by the `export` sub-command on successful run. Read by the next `export` run to surface staleness (session modified after last export). Cleared by `reset`. |
+
+**There is no `superseded` state anywhere.** Prior runs are not marked superseded — they are archived as immutable `versions/v<N>-<date>/` directories. Comparison against a prior version uses the archived `session.json`, not a flag on the current one.
+
+---
+
 ## `session.json` Schema
 
 Session state lives at `./do-work/interview/<template>/session.json`. Full shape:
@@ -290,7 +305,8 @@ When the user invokes `do work interview <template>` and the existing `session.j
    - Show the stored canonical entries in a compact form (title + cadence + one-line summary).
    - Ask: "Is this still accurate? Confirm / edit / add / remove entries."
    - Apply the user's changes: edits update entries in place; additions append; removals splice. Update each touched entry's `last_validated_at`.
-   - Write a fresh checkpoint and require explicit approval before committing the edits (same approval gate as a new interview).
+   - **Empty a layer.** If the user says "remove all," "none of these apply anymore," or similar, the Interviewer may propose an empty layer. It writes a checkpoint with `## Entries` section empty and a layer summary explaining why the layer is empty now (e.g., "no standing dependencies this quarter"). The user must still explicitly approve the empty checkpoint — the gate does not bend. On approval, `layers.<layer-id>.entries` is set to `[]` and `approved_at` is refreshed. An empty layer still counts as approved and does not block `review` or `export`.
+   - Write a fresh checkpoint and require explicit approval before committing the edits (same approval gate as a new interview). **Per-entry edit friction is intentional:** fixing one typo regenerates the whole layer's checkpoint. The cost is real; the approval gate is why this recipe is trustworthy. Do not invent a per-entry patch path.
 4. When the final layer is confirmed, set `status: complete`, `pending_layer: null`. Do **not** reset `review_completed_at` or `review_runs` — the prior review may still stand, but the user is expected to re-run `review` if the updates changed enough to warrant it.
 5. Append to `CHANGELOG.md`:
    ```
