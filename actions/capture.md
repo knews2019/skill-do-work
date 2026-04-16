@@ -301,6 +301,7 @@ Prefer the best RED case, not the first one:
 - User-visible — described in behavior/outcome terms, not internal implementation terms
 - Binary — it is obvious why it is RED now and obvious what turns it GREEN
 - Traceable — easy to reference later in testing and review
+- No vague qualifiers — "well-written," "high quality," "user-friendly," "clean" are not GREEN criteria. If that is all you can describe, the RED/GREEN is not ready yet. Operationalize into observable behavior.
 
 ```text
 Good: "Should RED be 'searching for invoice returns no results even though invoice-123 exists', and GREEN be 'invoice-123 appears in results'?" — options: yes / use a different failure case / not a test-first request

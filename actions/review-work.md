@@ -427,6 +427,7 @@ Guard against these when conducting the review:
 | "The score is borderline, I'll round up" | Apply the scoring guidelines mechanically | Rounding up defeats the quality gate |
 | "This finding is minor, not worth a follow-up REQ" | Ask: would a senior engineer request changes on this in a PR? | The threshold is documented; use it |
 | "I can't run the code so I'll skip acceptance" | Score Untested and note exactly what you couldn't test | Skipping silently hides risk |
+| "All requirements checked and tests pass, so it's good" | Apply the Klarna Test — did we optimize for measurable things (checkboxes, passing tests) at the expense of unmeasured intent? | Checkbox compliance + passing tests can still miss what the user actually wanted |
 
 ## Red Flags
 
