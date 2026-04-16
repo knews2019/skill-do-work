@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.67.1 — The Settled Tenant (2026-04-16)
+
+Interview action now works the moment the skill is installed into a project, and session state lives in `do-work/` alongside the rest of the per-repo workspace — tracked in git like URs and REQs.
+
+- Templates resolve from `<skill-root>/interviews/` (the `interviews/` directory inside the skill bundle), not the user's project root. Fixes `do work interview list` and `do work interview <template>` finding nothing when the skill ships from `~/.claude/skills/do-work/`.
+- Session state moved from `./interview/<template>/` to `./do-work/interview/<template>/`. It joins `queue/`, `user-requests/`, `archive/`, and `working/` under the canonical workspace and is tracked in git — the elicited operating model is durable per-repo knowledge, not transient orchestration state.
+- Removed the stale `interview/` entry from the skill repo's own `.gitignore` so the skill no longer models the wrong behaviour.
+
 ## 0.67.0 — The Open Ear (2026-04-16)
 
 New `interview` action — a generalized elicitation framework that runs prescriptive templates to turn tacit work knowledge into agent-ready operating artifacts. First template `work-operating-model` walks the five-layer Work Operating Model (Nate B. Jones and Jonathan Edwards) across ~45 focused minutes and produces `USER.md` / `SOUL.md` / `HEARTBEAT.md` plus machine-readable exports. Session state is resumable, cross-layer contradictions get surfaced explicitly, and exports flow into BKB via `ingest` for querying.

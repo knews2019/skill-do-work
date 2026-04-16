@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Generalized interview framework. Runs prescriptive templates that elicit tacit knowledge through structured multi-layer conversations and produce agent-ready operating artifacts.
 
-The action loads templates from `interviews/<name>.md`, runs a checkpoint-gated interview layer by layer, and produces artifacts the user can hand to an agent or feed into `bkb` as queryable knowledge. Session state persists at `./interview/<template>/session.json` and resumes across sessions per ADR-005. Heavy content — template format, canonical entry contract, session schema, export schemas, re-run mode specs — lives in the companion `actions/interview-reference.md` per ADR-001. The `ingest` sub-command produces files that land in `kb/raw/inbox/` in the format `bkb triage && bkb ingest` expects, per ADR-002.
+The action loads templates from `<skill-root>/interviews/<name>.md`, runs a checkpoint-gated interview layer by layer, and produces artifacts the user can hand to an agent or feed into `bkb` as queryable knowledge. Session state persists at `./do-work/interview/<template>/session.json` and resumes across sessions per ADR-005. Heavy content — template format, canonical entry contract, session schema, export schemas, re-run mode specs — lives in the companion `actions/interview-reference.md` per ADR-001. The `ingest` sub-command produces files that land in `kb/raw/inbox/` in the format `bkb triage && bkb ingest` expects, per ADR-002.
 
 ## When to Use
 
@@ -10,7 +10,7 @@ The action loads templates from `interviews/<name>.md`, runs a checkpoint-gated 
 - The user wants to produce agent-ready operating artifacts (`USER.md` / `SOUL.md` / `HEARTBEAT.md`) and needs the five-layer Work Operating Model interview to get there.
 - The user wants to onboard a delegate (human or agent) by making their tacit work patterns explicit.
 - The user's operating context has shifted (new role, new team, new responsibilities) and the prior operating model needs a refresh — pick `update` or `version` re-run mode depending on whether the old run should be preserved.
-- A new template has been authored in `interviews/` and the user wants to run that interview.
+- A new template has been authored in `<skill-root>/interviews/` and the user wants to run that interview.
 
 **Do NOT use when:**
 - The user wants the agent to act on their behalf right now — that's the `work` or `pipeline` action. Interview produces the instructions; it does not execute them.
@@ -37,7 +37,7 @@ The action loads templates from `interviews/<name>.md`, runs a checkpoint-gated 
 
 | Sub-command | What it does | Crew |
 |---|---|---|
-| `list` | List available templates in `interviews/` | Architect |
+| `list` | List available templates in `<skill-root>/interviews/` | Architect |
 | `<template>` | Start or continue the interview for the named template | Interviewer |
 | `<template> status` | Show session progress — layers approved, layer pending, last activity | Interviewer |
 | `<template> review` | Run the contradiction pass across all approved layers | Interviewer + Reviewer |
@@ -53,32 +53,31 @@ The action loads templates from `interviews/<name>.md`, runs a checkpoint-gated 
 
 ## Locating the Template
 
-When a sub-command references `<template>`, resolve as follows:
+Templates live at `<skill-root>/interviews/<template>.md`. `<skill-root>` is the directory containing `SKILL.md` (same convention used by `actions/version.md` and `actions/prompts.md`). There is no project-root fallback — adding or modifying a template means editing the file inside the skill install.
 
-1. Read `interviews/<template>.md` from the repo root.
-2. If the file does not exist, list available templates (`ls interviews/*.md`) and stop with: `Template '<template>' not found. Run 'do work interview list' to see available templates.`
+If `<skill-root>/interviews/<template>.md` does not exist, list available templates (per the `list` sub-command) and stop with: `Template '<template>' not found. Run 'do work interview list' to see available templates.`
 
 The template's frontmatter is the contract: layers, per-layer prompts, and export declarations come from this file. The action enforces the contract; it does not improvise around missing fields.
 
 ## Locating the Session
 
-Session state lives at `./interview/<template>/session.json` in the current working directory.
+Session state lives at `./do-work/interview/<template>/session.json` in the current working directory. `do-work/` is the canonical per-repo workspace already used by other actions (`queue/`, `user-requests/`, `archive/`, `working/`); interview output joins that layout and is tracked in git alongside the rest of the project's trail of intent.
 
-- If it does not exist and the sub-command is bare `<template>`: create the directory structure and start a fresh session (see Step 1 below).
+- If `./do-work/interview/<template>/session.json` does not exist and the sub-command is bare `<template>`: create the directory structure and start a fresh session (see Step 1 below).
 - If it does not exist and the sub-command is anything else (`status`, `review`, `export`, `ingest`, `reset`, `versions`): stop with `No session found for '<template>'. Run 'do work interview <template>' to start one.`
 
 ---
 
 ## Sub-Command: `list`
 
-List every template available in `interviews/`.
+List every template available in `<skill-root>/interviews/`.
 
 ### Steps
 
-1. Scan `interviews/*.md` in the repo root.
+1. Scan `<skill-root>/interviews/*.md`.
 2. For each template, read the frontmatter `name`, `description`, and `version`.
 3. Print a single-line summary per template plus the description on a subsequent indented line.
-4. If `interviews/` does not exist or has no `.md` files, print `No templates found in interviews/. Add a template file to get started — see actions/interview-reference.md for the template format.`
+4. If `<skill-root>/interviews/` does not exist or has no `.md` files, print `No templates found in <skill-root>/interviews/. The skill install may be incomplete — see actions/interview-reference.md for the template format.`
 
 ### Output
 
@@ -103,7 +102,7 @@ The core sub-command. Behavior branches on whether a session exists and its stat
 Create the directory structure:
 
 ```
-./interview/<template>/
+./do-work/interview/<template>/
 ├── session.json
 ├── checkpoints/
 ├── exports/
@@ -153,7 +152,7 @@ For each layer in the template's declared order (starting from `pending_layer`):
 
 2. **Converse and draft.** Convert the user's responses into canonical entries matching the template's entry contract (see `actions/interview-reference.md` — Canonical Entry Contract). One question at a time. Capture the user's specific language. If a canonical field was not mentioned (e.g., `constraints`), ask — do not invent.
 
-3. **Write the checkpoint.** When the layer has 2–5 canonical entries drafted, write `./interview/<template>/checkpoints/<layer-id>.md` using the Checkpoint File Format from `actions/interview-reference.md`. Include a 1–2 paragraph layer summary, the canonical entries, any unresolved items, and the explicit approval ask.
+3. **Write the checkpoint.** When the layer has 2–5 canonical entries drafted, write `./do-work/interview/<template>/checkpoints/<layer-id>.md` using the Checkpoint File Format from `actions/interview-reference.md`. Include a 1–2 paragraph layer summary, the canonical entries, any unresolved items, and the explicit approval ask.
 
 4. **Present and wait for approval.** Show the checkpoint contents to the user in-chat. Accepted confirmations: "save," "looks right," "confirmed," "approve," or semantic equivalents. Corrections: the user edits specific entries — regenerate the checkpoint and ask again. Never persist unconfirmed content.
 
@@ -236,7 +235,7 @@ Runs the cross-layer contradiction pass. Requires all layers approved.
 
 ## Sub-Command: `<template> export`
 
-Writes the template's declared export artifacts to `./interview/<template>/exports/`.
+Writes the template's declared export artifacts to `./do-work/interview/<template>/exports/`.
 
 ### Preconditions
 
@@ -248,7 +247,7 @@ Writes the template's declared export artifacts to `./interview/<template>/expor
 1. Read the template's `exports:` frontmatter. For each declared export:
    - Look up the export's schema in `actions/interview-reference.md` (Export Schemas section — one per export kind and template).
    - Compose the artifact from the approved session entries. Pull content from `session.json`; do not invent.
-   - Write the file to `./interview/<template>/exports/<path>`. Overwrite any prior export.
+   - Write the file to `./do-work/interview/<template>/exports/<path>`. Overwrite any prior export.
 
 2. Append one synthesis line to CHANGELOG:
    ```
@@ -258,7 +257,7 @@ Writes the template's declared export artifacts to `./interview/<template>/expor
 
 3. Report to the user:
    ```
-   Exports written to ./interview/<template>/exports/:
+   Exports written to ./do-work/interview/<template>/exports/:
      USER.md                        narrative profile
      SOUL.md                        decision framework
      HEARTBEAT.md                   checklist
@@ -276,18 +275,18 @@ Copies exports into `<repo-root>/kb/raw/inbox/` with BKB-compatible frontmatter.
 
 ### Preconditions
 
-- `./interview/<template>/exports/` exists and is non-empty. If not, stop with: "No exports found. Run `do work interview <template> export` first."
+- `./do-work/interview/<template>/exports/` exists and is non-empty. If not, stop with: "No exports found. Run `do work interview <template> export` first."
 - `<repo-root>/kb/` exists. If not, stop with: "No knowledge base found. Run `do work bkb init` first."
 
 ### Steps
 
-1. For each file in `./interview/<template>/exports/`, write a companion file to `<repo-root>/kb/raw/inbox/` named `interview-<template>-<export-basename>.md` (e.g., `interview-work-operating-model-USER.md`).
+1. For each file in `./do-work/interview/<template>/exports/`, write a companion file to `<repo-root>/kb/raw/inbox/` named `interview-<template>-<export-basename>.md` (e.g., `interview-work-operating-model-USER.md`).
 
 2. Prepend YAML frontmatter per the Ingest Frontmatter section in `actions/interview-reference.md`:
    ```yaml
    ---
    title: <template-display-name> — <export-title>
-   source: ./interview/<template>/exports/<export-filename>
+   source: ./do-work/interview/<template>/exports/<export-filename>
    type: source-summary
    topic_cluster: <from template frontmatter>
    confidence: high
@@ -336,7 +335,7 @@ Archives the current run as a version and starts fresh. Destructive — requires
 
 ## Sub-Command: `<template> versions`
 
-Enumerates `./interview/<template>/versions/`.
+Enumerates `./do-work/interview/<template>/versions/`.
 
 ### Output
 
@@ -347,7 +346,7 @@ Archived versions — <template>:
   v2-2026-04-02   5 layers   21 entries
   v3-2026-04-16   5 layers   19 entries
 
-Read an archive:  open ./interview/<template>/versions/<version-id>/
+Read an archive:  open ./do-work/interview/<template>/versions/<version-id>/
 ```
 
 Counts come from each version's archived `session.json`. If `versions/` is empty, print "No archived versions yet."
@@ -360,11 +359,11 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 
 **What gets written:**
 
-- `./interview/<template>/session.json` — authoritative session state (written only on explicit layer approval, review completion, or export).
-- `./interview/<template>/checkpoints/<layer-id>.md` — transient approval drafts (overwritten on revision).
-- `./interview/<template>/exports/<filename>` — export artifacts (overwritten on re-export).
-- `./interview/<template>/versions/v<N>-<date>/` — immutable archives (written by `fresh`, `version`, `reset`).
-- `./interview/<template>/CHANGELOG.md` — append-only activity log (one entry per approval, review, export, archive).
+- `./do-work/interview/<template>/session.json` — authoritative session state (written only on explicit layer approval, review completion, or export).
+- `./do-work/interview/<template>/checkpoints/<layer-id>.md` — transient approval drafts (overwritten on revision).
+- `./do-work/interview/<template>/exports/<filename>` — export artifacts (overwritten on re-export).
+- `./do-work/interview/<template>/versions/v<N>-<date>/` — immutable archives (written by `fresh`, `version`, `reset`).
+- `./do-work/interview/<template>/CHANGELOG.md` — append-only activity log (one entry per approval, review, export, archive).
 - `<repo-root>/kb/raw/inbox/interview-<template>-*.md` — BKB-ready files (written by `ingest`).
 
 ---
@@ -378,6 +377,7 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 - **Versions are immutable.** Once written to `versions/`, a directory is never edited by the action. The user's `previous_version` reference is the only back-link.
 - **Exports gate on review.** `export` refuses to run unless all layers are approved and at least one review pass has completed. The gate exists to catch cross-layer tensions before they propagate into agent instructions.
 - **Local files only.** No MCP dependencies. No external services. Session state, templates, and exports are plain files the user can diff, grep, and commit.
+- **Session state is tracked, not ignored.** `./do-work/interview/<template>/` holds durable per-repo knowledge (checkpoints, exports, versioned archives). Commit it alongside the project's other trail-of-intent artifacts (URs, REQs). The only gitignored file under `do-work/` is `pipeline.json`, which is transient orchestration state — interview output is not.
 
 ---
 
@@ -414,7 +414,7 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 - [ ] Every `source_confidence` value is `confirmed` or `synthesized` — no other strings.
 - [ ] Every `status` value is `active`, `stale`, or `aspirational`.
 - [ ] CHANGELOG has one `layer approved:` line per approved layer, in the order approvals occurred.
-- [ ] Export files exist in `./interview/<template>/exports/` for every declared export, and their content matches the schema in `actions/interview-reference.md`.
+- [ ] Export files exist in `./do-work/interview/<template>/exports/` for every declared export, and their content matches the schema in `actions/interview-reference.md`.
 - [ ] Ingest output lands in `kb/raw/inbox/` with filenames of the form `interview-<template>-<export-basename>.md`.
 - [ ] Versions directories follow the `v<N>-<YYYY-MM-DD>/` naming convention and `<N>` is monotonically increasing.
 - [ ] No checkpoint file was written to `session.json` without an explicit user approval recorded in the CHANGELOG.
@@ -423,8 +423,8 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 
 ## Error Handling
 
-- **Template file missing** → list available templates, suggest `do work interview list`.
-- **Session corrupt (invalid JSON)** → do not attempt repair. Tell the user the file path and stop: "`./interview/<template>/session.json` has invalid JSON. Inspect and fix manually, or archive and start fresh with `do work interview <template> reset`."
+- **Template file missing** → list available templates from `<skill-root>/interviews/`, suggest `do work interview list`.
+- **Session corrupt (invalid JSON)** → do not attempt repair. Tell the user the file path and stop: "`./do-work/interview/<template>/session.json` has invalid JSON. Inspect and fix manually, or archive and start fresh with `do work interview <template> reset`."
 - **`export` invoked with unapproved layers** → list which layers are missing approval.
 - **`export` invoked before review** → tell the user to run `review` first.
 - **`ingest` invoked without completed exports** → tell the user to run `export` first.
@@ -469,7 +469,8 @@ do work interview — Run a structured elicitation interview
       version  — archive the old run and start a fresh session referencing it
       fresh    — archive and start completely over
 
-  Each template lives at interviews/<name>.md and declares its own layers, prompts,
-  and exports. See docs/interview-guide.md for onboarding and actions/interview-reference.md
-  for the template authoring spec.
+  Each template lives at <skill-root>/interviews/<name>.md, shipped with the skill.
+  Session state lives at do-work/interview/<template>/ and is tracked in git. See
+  docs/interview-guide.md for onboarding and actions/interview-reference.md for
+  the template authoring spec.
 ```
