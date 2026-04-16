@@ -7,15 +7,17 @@ not a ceiling.
 
 ## Rules for using this file
 
-- All categories below stay in scope every week. Demote, don't drop.
-  A quiet lane gets a one-line "quiet this week" note; it does not
-  disappear from the scan.
+- Every lane below stays fully in scope every week. Every lane
+  receives a real paragraph of scan notes regardless of relevance to
+  the user's current work; no lane is ever compressed to a one-line
+  "quiet this week" note.
 - Suggested entities are examples, not a contract. Swap them for
   competitors, upstream suppliers, or downstream customers that better
   match what BKB knows the user is building.
 - When a lane has two or three strong candidate shifts, don't force a
   third entity just to fill the row. One well-sourced shift beats
-  three padded ones.
+  three padded ones — but the per-lane scan paragraph still gets
+  written.
 - Preserve baseline discovery. Personalization shapes weighting; it
   does not collapse the scan into only known favorites. Structural
   shifts often show up in lanes the user doesn't normally track.
@@ -36,6 +38,13 @@ not a ceiling.
 | 10 | Robotics and embodied AI | Figure, Wayve, Physical Intelligence, 1X | Capital allocation into physical AI, labor-substitution timelines, supply chains |
 
 ## Personal-priority lanes (added based on active work)
+
+> The specific lanes below reflect one user's active work as of this
+> document's authoring. At runtime, this content lives in
+> `prompts/weekly-signal-diff-personal.md` (the personal sidecar),
+> not inlined into the main library prompt. Treat this section as
+> the seed content for the sidecar, not a contract — the sidecar
+> gets edited as the user's projects shift.
 
 These lanes are scoped to the user's current projects. They are
 full members of the scan, not footnotes — structural shifts here are
@@ -67,16 +76,11 @@ construction).
 - BKB returns matches for it across multiple topic clusters (signals
   genuine cross-cutting relevance)
 
-### Demote — but do not drop — an entity or category when…
-
-- it has low connection to the user's current work
-- it generates plenty of headlines but the shifts are benchmark drama
-  or launch hype rather than structural change
-- the user's niche clearly lives elsewhere this week
-
-Demotion means fewer entities scanned and a lower word count in the
-output. It does not mean silence — "Robotics and embodied AI: quiet
-this week, no structural shifts detected" is a valid line.
+Promotion changes which entities inside a lane get scanned first and
+which sub-themes get weighted most heavily in the headline structural
+shifts. Promotion does **not** shrink coverage of any other lane.
+Every lane — promoted or not — still produces a full paragraph of
+scan notes.
 
 ### Add a new lane when…
 
@@ -91,11 +95,13 @@ Do not add a lane for a single mention. Wait for the pattern.
 Use wording like this at the top of the weekly diff so the reader can
 see how the universe was personalized this week:
 
-> This week's scan started from the 15-category starter universe
-> (10 core AI + 5 personal-priority lanes). Coverage was reweighted
-> using BKB context around [focus areas — e.g., "Chargebee billing,
-> Claude Code tooling, Shopify mobile strategy"]. Lanes with no
-> detected structural change this week: [list].
+> This week's scan started from the 10-lane core starter universe
+> [+ N personal lanes from `prompts/weekly-signal-diff-personal.md`
+> | no personal sidecar loaded]. Coverage was reweighted using BKB
+> context around [focus areas — e.g., the user's current top 2–3
+> active projects and critical toolchains]. Every loaded lane
+> received a full scan; headline structural shifts are listed below
+> and per-lane scan notes follow.
 
 ## Notes for future expansion
 

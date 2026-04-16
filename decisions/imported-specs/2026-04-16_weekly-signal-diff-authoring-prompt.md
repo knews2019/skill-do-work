@@ -56,11 +56,10 @@ data.
   offer to append revisions rather than duplicate. State persistence
   lives in the deliverable file itself — do not invent a new state
   file.
-- **BKB is the memory layer, not Open Brain.** All personalization,
-  prior-digest lookup, and durable storage flow through BKB. No
-  references to Open Brain, OpenRouter, Perplexity Sonar, Supabase, or
-  MCP servers. If the reader has heard of those, they are reading the
-  wrong prompt.
+- **BKB is the memory layer.** All personalization, prior-digest
+  lookup, and durable storage flow through BKB. Do not reach for any
+  other memory or retrieval system; if an alternative is genuinely
+  needed, that is a scope change to flag, not a silent substitution.
 - **Web retrieval is optional.** When the environment has web_search
   available, use it. When it does not, accept a source packet pasted by
   the user and say the diff is source-bounded. Do not fail closed.
@@ -70,12 +69,33 @@ data.
   infrastructure, Enterprise software incumbents, Productivity and
   knowledge tools, Creative media generation, Robotics and embodied AI)
   are the scaffold. Re-rank and extend them using BKB context before
-  writing the final diff. Do not drop categories silently just because
-  the week was quiet in them; say the lane was quiet.
-- **Diff, not digest.** A typical weekly output is 3–7 structural shifts
-  plus a "what didn't change" calibration section. Reject benchmark
-  drama, launch hype, and funding theater unless they move a real
-  constraint.
+  writing the final diff. Every loaded lane gets a real paragraph of
+  scan notes every week; lanes are never compressed to a quiet-lane
+  one-liner, regardless of relevance or how noisy the week was.
+- **Personalization lives in a project-local sidecar.** User-specific
+  lanes, toolchain lists, and example focus areas must not be inlined
+  into the library prompt. The skill ships a placeholder at
+  `prompts/weekly-signal-diff-personal.md` that declares no real
+  lanes — it is a template, not a live config. At Phase 3 the main
+  prompt searches the user's project (relative to cwd) for a file
+  named `weekly-signal-diff-personal.md` at prioritized locations
+  (project root → `.claude/` → `do-work/` → glob for any other
+  location) and uses the first match as the live sidecar. The
+  shipped placeholder is never treated as a source of real lanes,
+  only as a copy-me template. A project-local personal-sidecar lane
+  has the same contract as a core lane — full weekly coverage,
+  per-lane scan-notes paragraph, weighted at least as heavily as any
+  core lane. If no project-local copy is found, the scan runs with
+  the 10 core lanes only and says so in the coverage note.
+- **Diff, not digest.** The weekly output leads with whatever
+  structural shifts genuinely emerged — there is no target count and
+  no cap. It then renders a mandatory per-lane scan-notes section
+  covering every loaded lane (10 core + any from the personal
+  sidecar), followed by the "what didn't change" calibration. Reject
+  benchmark drama, launch hype, and funding theater as headline
+  shifts unless they move a real constraint — but still mention them
+  in the relevant lane's scan notes so the reader sees what was
+  considered.
 - **Copyright discipline.** When citing sources, paraphrase. Do not
   reproduce article paragraphs or strings of direct quotes.
 
@@ -122,14 +142,32 @@ to skip, and what to tell the user.
    a short **relevance profile** — what the user is building, what they
    keep revisiting, what they are worried about. This profile shapes
    re-ranking in the next step.
-3. **Build the watchlist.** Start from the ten starter-universe
-   categories. Re-rank using the relevance profile. Promote categories
-   and entities the user mentions repeatedly; demote noisy lanes; add
-   personal-priority entities that aren't in the starter set. Keep all
-   ten categories in scope — demoted does not mean dropped.
+3. **Build the watchlist.** Start from the 10-lane core starter
+   universe. Then search the user's project (relative to cwd) for a
+   file named `weekly-signal-diff-personal.md`, checking prioritized
+   locations in order: project root, `.claude/`, `do-work/`, and
+   finally a bounded glob of the project tree. If a project-local
+   copy is found, load its lanes as full-member lanes with the same
+   contract as the core 10. Do not treat the skill's shipped
+   placeholder at `prompts/weekly-signal-diff-personal.md` as a
+   source of real lanes — it is a copy-me template, not a live
+   config. If no project-local copy is found, proceed with the 10
+   core lanes only and say so in the coverage note. Re-rank using
+   the relevance profile. Promote entities and sub-themes inside
+   each loaded lane that the user mentions repeatedly; swap
+   suggested entities for competitors, upstream suppliers, or
+   downstream customers that better match active work; add a new
+   lane only when a theme appears across three or more recent
+   captures, REQs, or wiki pages and doesn't fit any loaded lane
+   (prefer adding to the project-local sidecar over inlining into
+   the library prompt). **Every loaded lane stays in full scope
+   every week** —
+   promotion only re-orders and re-weights inside the headline-shift
+   list and the per-lane scan notes; it never shrinks any lane's
+   coverage floor.
 4. **Gather evidence.** If web_search is available, run it in two
-   passes: a broad 7-day sweep across the categories, then targeted
-   follow-ups on the 3–7 strongest candidate shifts. If web_search is
+   passes: a broad 7-day sweep across the lanes, then targeted
+   follow-ups on the strongest candidate shifts. If web_search is
    not available, accept a pasted source packet and proceed. Cite
    sources with URLs. Paraphrase — do not quote paragraphs.
 5. **Ask the structural questions** on every candidate signal:
@@ -141,17 +179,23 @@ to skip, and what to tell the user.
    - What changed in regulation, geography, or distribution?
    - Why does this matter for the user's actual projects?
    Discard signals where none of these produce a meaningful answer.
-6. **Score and cut.** Keep 3–7 shifts. Merge duplicates. Label
-   speculation as speculation. If the week was thin, say so — do not
-   manufacture shifts.
+6. **Score and cut.** Merge duplicates. Label speculation as
+   speculation. Select the **headline structural shifts** that
+   emerged this week — there is no target count and no cap; the
+   number floats with how much genuinely moved. If the week was thin
+   on headline shifts, say so — do not manufacture shifts.
 7. **Render the digest inline.** Use this structure:
    - **Coverage note** — scope, window, how the watchlist was
      personalized, whether web_search or a source packet was used
-   - **Structural shifts (3–7)** — for each: what changed, why it
+   - **Headline structural shifts** — for each: what changed, why it
      matters in general, why it matters to this user (grounded in the
-     relevance profile), sources with URLs
-   - **What didn't change** — 2–3 assumptions that held steady despite
-     the noise
+     relevance profile), sources with URLs. No fixed count.
+   - **Per-lane scan notes** — one real paragraph per loaded lane
+     (10 core + any from the personal sidecar), covering what was
+     scanned, what moved, what didn't, and why. Lanes are never
+     compressed to a one-liner.
+   - **What didn't change** — 2–3 cross-cutting assumptions that held
+     steady despite the noise
    - **What changed from last week** — new / rising / fading / resolved
      themes, referencing prior wiki pages by slug
    - **Watch next** — entities, constraints, or questions to monitor
@@ -196,17 +240,22 @@ coverage note so the user sees that they were ignored.
 
 ## Rules (enforced in the prompt body)
 
-- Never manufacture shifts to hit a count target. Three solid shifts
-  beat seven padded ones.
+- Never manufacture shifts to pad the headline list. Three solid
+  shifts beat seven padded ones; zero manufactured shifts beats a
+  fake third.
 - Never quote paragraphs. Paraphrase everything; cite URLs.
 - Never auto-ingest. Stop at the hand-off.
-- Never drop a starter-universe category without saying the lane was
-  quiet this week.
+- **Every loaded lane gets full coverage every week.** No lane is
+  demoted, compressed, or reduced to a one-liner based on relevance
+  or noise. Promotion only re-orders the headline-shift list;
+  per-lane scan notes are mandatory for every loaded lane every week
+  (10 core + however many the personal sidecar declares).
 - Never collapse general analysis into personal implications without
   marking the transition. Keep "why this matters in general" and "why
   this matters to this user" visibly separated.
 - Speculation is allowed but must be labeled.
-- Thin weeks are thin. Say so.
+- Thin weeks are thin on headline shifts. The per-lane scan notes
+  section still fills every week.
 
 ## Common rationalizations to guard against
 
@@ -217,8 +266,7 @@ following the pattern in `actions/prompts.md`. At minimum:
 |---|---|---|
 | "There aren't enough shifts, I'll include this launch announcement" | Cut the count; say the week was thin | Manufactured shifts poison the diff-over-time signal |
 | "The user already knows this, I'll skip the general-audience framing" | Keep both layers | The deliverable also serves as future input to itself; the general framing is what makes cross-week comparison work |
-| "The starter universe is too generic, I'll drop Robotics and Creative media" | Keep all ten; explain which are quiet | Dropping categories silently destroys the baseline scan — the whole point is to surface structural shifts even in lanes the user doesn't usually track |
-| "Open Brain would be better for memory here" | Use BKB | This skill's memory layer is BKB by design; conflating them breaks the ingest loop |
+| "The starter universe is too generic, I'll compress Robotics and Creative media to a one-liner" | Give every lane a full paragraph in the per-lane scan notes | Demotion was removed from the design — compressing lanes silently destroys the baseline scan, and structural shifts often surface in lanes the user doesn't usually track |
 
 ## Verification checklist
 
@@ -231,8 +279,6 @@ Before concluding your work, verify:
 - [ ] The body references BKB commands that actually exist (check
       `actions/build-knowledge-base.md` for the current sub-command
       surface)
-- [ ] The body never mentions Open Brain, OpenRouter, Perplexity,
-      Supabase, or MCP servers
 - [ ] The deliverable path template is
       `do-work/deliverables/weekly-signal-diff/<week-ending>.md`
 - [ ] The ingest hand-off uses `kb/raw/inbox/` (confirm that path
@@ -244,20 +290,37 @@ Before concluding your work, verify:
 - [ ] The body is written as instructions to an agent, not as prose
       about what the prompt does. Use imperatives: "Query BKB for...",
       "Write the deliverable to...", not "This prompt queries BKB..."
+- [ ] The body mandates a **per-lane scan notes** section covering
+      every loaded lane every week (10 core + any from the personal
+      sidecar) — no lane is missing, no lane is reduced to a one-liner
+- [ ] The body searches the user's project (cwd + prioritized
+      locations + bounded glob) for a `weekly-signal-diff-personal.md`
+      at Phase 3 and loads its lanes when a project-local copy is
+      found. The shipped placeholder at
+      `prompts/weekly-signal-diff-personal.md` declares no real
+      lanes. No user-specific data (lane names, project names, vendor
+      names) is hard-coded into either the library prompt or the
+      shipped placeholder.
 
 ## Deliverables for this task
 
-1. The new file `prompts/weekly-signal-diff.md`
-2. An update to `prompts/README.md` adding `weekly-signal-diff` to the
+1. The new file `prompts/weekly-signal-diff.md` (library prompt, no
+   user-specific data)
+2. The new file `prompts/weekly-signal-diff-personal.md` (ships as
+   a placeholder template — no real lanes; users create a
+   project-local copy to personalize; see the "Personalization lives
+   in a project-local sidecar" design constraint)
+3. An update to `prompts/README.md` adding rows for both
+   `weekly-signal-diff` and `weekly-signal-diff-personal` to the
    "Available prompts" table
-3. A summary commit following the repo's commit conventions — use the
+4. A summary commit following the repo's commit conventions — use the
    `[prompts]` label since this is library work, not tied to a
    specific REQ. Do not push.
-4. A short report back to the user: file path, the one-line
-   description you chose, and the exact command they can run to test
-   it (e.g., `do work prompts show weekly-signal-diff` to confirm the
-   file parses, then `do work prompts run weekly-signal-diff --dry-run`
-   for a live preview).
+5. A short report back to the user: file paths, the one-line
+   descriptions you chose, and the exact commands they can run to
+   test it (e.g., `do work prompts show weekly-signal-diff` to
+   confirm the file parses, then `do work prompts run
+   weekly-signal-diff --dry-run` for a live preview).
 
 Do not modify any other files. Do not edit `SKILL.md`, `CLAUDE.md`, or
 the `actions/` directory. If you think any of those need to change to
