@@ -115,7 +115,7 @@ Four independent status fields live in session state. They do not share a lifecy
 | Session | `status` | `in_progress`, `complete` | `in_progress` on session start. Flips to `complete` on the final layer's approval write. Only terminal state. Cleared back to `in_progress` only by `reset` (which starts a new session). |
 | Layer | `approved` | `false`, `true` | `false` on session start. Flips to `true` when the user explicitly approves the layer's checkpoint. Re-approval on `update` re-runs refreshes `approved_at` and each entry's `last_validated_at`. |
 | Entry | `status` | `active`, `stale`, `aspirational` | User-set during the interview. `active` = currently true. `stale` = was true, may no longer hold. `aspirational` = user wants this pattern but it's not yet real. Updated on `update` re-runs when the user reconfirms or relabels an entry. |
-| Export freshness | `.exported_at` file | ISO 8601 timestamp | Written by the `export` sub-command on successful run. Read by the next `export` run to surface staleness (session modified after last export). Cleared by `reset`. |
+| Export freshness | `session.json.last_exported_at` field | ISO 8601 timestamp or `null` | Written by the `export` sub-command on successful run. Read by the next `export` run to surface staleness (session modified after last export). `null` on a fresh session. Reset back to `null` by `fresh`, `version`, or `reset` (all of which write a new empty `session.json`). The stamp deliberately lives on `session.json` and **not** inside `exports/` — the `ingest` sub-command iterates every file in `exports/`, so a sidecar stamp there would land in `kb/raw/inbox/` as a bogus document. |
 
 **There is no `superseded` state anywhere.** Prior runs are not marked superseded — they are archived as immutable `versions/v<N>-<date>/` directories. Comparison against a prior version uses the archived `session.json`, not a flag on the current one.
 
@@ -136,6 +136,7 @@ Session state lives at `./do-work/interview/<template>/session.json`. Full shape
   "previous_version": "<version-id> | null",
   "review_completed_at": "<iso> | null",
   "review_runs": 0,
+  "last_exported_at": "<iso> | null",
   "layers": {
     "<layer-id>": {
       "approved": true,
@@ -153,6 +154,7 @@ Session state lives at `./do-work/interview/<template>/session.json`. Full shape
 - `previous_version` — set when the session was started via `version` re-run mode; carries `v<N>` as a back-reference for comparison queries. Otherwise `null`.
 - `review_completed_at` — ISO timestamp of the most recent `review` sub-command completion. `null` until `review` runs to the end of the contradiction list at least once. Cleared only by `reset`.
 - `review_runs` — monotonically increasing count of completed `review` passes. Starts at `0`. The `export` sub-command requires `review_completed_at != null && review_runs >= 1`.
+- `last_exported_at` — ISO timestamp of the most recent successful `export` sub-command run. `null` until the first export. The `export` sub-command compares this against `last_activity_at` in its freshness preflight to surface staleness (session modified after last export). Reset to `null` by `fresh`, `version`, and `reset`. Not a gate — preflight only announces, never blocks.
 - `layers.<layer-id>.entries[]` — each entry matches the canonical entry contract. Every entry is persisted only after the layer's checkpoint was explicitly approved by the user.
 
 **Gate summary:** the `export` sub-command refuses to run unless every layer in the template is `approved: true` AND `review_completed_at != null` AND `review_runs >= 1`.
@@ -286,7 +288,7 @@ When the user invokes `do work interview <template>` and the existing `session.j
 2. Create `./do-work/interview/<template>/versions/v<N>-<YYYY-MM-DD>/`.
 3. Copy the current `session.json`, the `checkpoints/` directory, and the `exports/` directory into that version folder.
 4. Delete the working `checkpoints/` and `exports/` contents (the versioned copy is now the only archive).
-5. Write a new empty `session.json` — fresh `session_id`, `started_at: <now>`, `status: in_progress`, `pending_layer: <first-layer-id>`, `previous_version: null`, `review_completed_at: null`, `review_runs: 0`, `layers: {}`.
+5. Write a new empty `session.json` — fresh `session_id`, `started_at: <now>`, `status: in_progress`, `pending_layer: <first-layer-id>`, `previous_version: null`, `review_completed_at: null`, `review_runs: 0`, `last_exported_at: null`, `layers: {}`.
 6. Append to `CHANGELOG.md`:
    ```
    ## <YYYY-MM-DD HH:MM> — fresh start: archived as v<N>
