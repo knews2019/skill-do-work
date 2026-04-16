@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.68.1 — The Rename Tag (2026-04-16)
+
+Renames the Weekly Structural Diff prompt so "original" is explicit in the filename — clears the way for variant versions of the same framework to coexist in the library.
+
+- `prompts/weekly-structural-diff.md` → `prompts/weekly-structural-diff-original.md`: renamed; index entry in `prompts/README.md` updated to match. Invoke with `do work prompts run weekly-structural-diff-original` (prefix match `weekly-structural-diff` still resolves unambiguously while it's the only variant).
+
 ## 0.68.0 — The Promptkit Drop (2026-04-16)
 
 Six new reusable prompts ingested from the Prompt Kit article on the 2026 capability-phase → economics-phase transition. They turn the article's analytical framework into runnable tools for tracking AI news, stress-testing product economics, mapping infrastructure risk, pricing SaaS seat compression, sorting vendors, and designing inference architectures.

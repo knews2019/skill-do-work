@@ -44,7 +44,7 @@ The dispatcher (`actions/prompts.md`) reads the header for `list`/`show` output 
 | Name | What it does |
 |---|---|
 | `adr-log` | Create or update a project-wide Architecture Decision Record log at `decisions/`, modeled on the BKB wiki pattern. Layered source mining (`implementation-history.md` → `lessons-learned/` → code, with `CHANGELOG.md` as fallback). Idempotent via REQ/UR keys. Resumable, supersession-aware. |
-| `weekly-structural-diff` | Filter signal from noise in AI news. Sort items into signal/noise, diagnose shifts across five altitudes (physics, monetization, geography, business models, geopolitics), and produce prioritized takeaways with a "what didn't change" calibration. |
+| `weekly-structural-diff-original` | Filter signal from noise in AI news. Sort items into signal/noise, diagnose shifts across five altitudes (physics, monetization, geography, business models, geopolitics), and produce prioritized takeaways with a "what didn't change" calibration. |
 | `inference-economics-stress-test` | Run any AI product through a Sora-style economics stress test — sustainability ratio, three scenarios, emoji verdict (🟢/🟡/🟠/🔴), and a concrete "what would fix it" plan. |
 | `compute-geography-risk` | Map physical-layer risks (power/grid, permitting/politics, geopolitics, data residency) across AI compute locations. Produces a risk matrix, deployment strategy, and per-location contingency playbook. |
 | `saas-repricing-exposure` | Estimate seat compression, compute "The Clock" until it shows in reported numbers, assess pricing-model transition readiness, and benchmark against Atlassian. |
