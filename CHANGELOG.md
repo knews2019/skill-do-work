@@ -4,6 +4,24 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.68.1 — The Rename Tag (2026-04-16)
+
+Renames the Weekly Structural Diff prompt so "original" is explicit in the filename — clears the way for variant versions of the same framework to coexist in the library.
+
+- `prompts/weekly-structural-diff.md` → `prompts/weekly-structural-diff-original.md`: renamed; index entry in `prompts/README.md` updated to match. Invoke with `do work prompts run weekly-structural-diff-original` (prefix match `weekly-structural-diff` still resolves unambiguously while it's the only variant).
+
+## 0.68.0 — The Promptkit Drop (2026-04-16)
+
+Six new reusable prompts ingested from the Prompt Kit article on the 2026 capability-phase → economics-phase transition. They turn the article's analytical framework into runnable tools for tracking AI news, stress-testing product economics, mapping infrastructure risk, pricing SaaS seat compression, sorting vendors, and designing inference architectures.
+
+- `prompts/weekly-structural-diff.md`: Signal/noise sort for AI news across five altitudes (physics, monetization, geography, business models, geopolitics), with a "what didn't change" calibration and prioritized takeaways.
+- `prompts/inference-economics-stress-test.md`: Sora-style economics stress test — sustainability ratio, three-scenario pressure test, emoji verdict (🟢/🟡/🟠/🔴), and a concrete "what would fix it" plan. Benefits from a thinking-capable model.
+- `prompts/compute-geography-risk.md`: Location-by-location risk matrix (power/grid, permitting/politics, geopolitics, data residency) with a deployment strategy and contingency playbook per location.
+- `prompts/saas-repricing-exposure.md`: Seat compression estimate, "The Clock" (months until compression shows in reported numbers), transition readiness score, and an Atlassian benchmark.
+- `prompts/ai-vendor-strategic-sort.md`: Vendor assessment matrix across five structural-sustainability dimensions, one tripwire event per vendor, and a portfolio concentration score.
+- `prompts/inference-architecture-decision.md`: API vs. self-hosted vs. hybrid comparison, model selection matrix, Sora test, and a Now / 3× / 10× migration path with triggers.
+- `prompts/README.md`: Index table extended with the six new prompts.
+
 ## 0.67.4 — The Gap Sealer (2026-04-16)
 
 Folds in the legitimate improvements from a parallel branch that landed alongside 0.67.2/0.67.3. The earlier "Unified Trunk" merge tried to combine both lines but truncated `CHANGELOG.md` and rewrote `actions/version.md` losing the global-install guard and the recap section — that merge was reverted and only the load-bearing changes were re-applied here.
