@@ -34,6 +34,7 @@ actions/              # Action files (each is a standalone prompt)
   pipeline-reference.md # Companion: three Pipeline Completion Report rendering templates (markdown/Marp/HTML) + composition rules
   build-knowledge-base.md # LLM knowledge base — init, triage, ingest, query, lint, and more
   bkb-reference.md    # Companion: seed file templates, agent crew definitions, KB schema content
+  prompts.md          # Dispatcher for the reusable prompt library under prompts/ (list / show / run)
   tutorial.md          # Interactive tutorials — quick start, concepts, recipes, guided tour
   sample-archived-req.md # Example of a fully processed REQ file (reference only)
 specs/                # Reusable specification templates for common task types
@@ -42,6 +43,9 @@ specs/                # Reusable specification templates for common task types
   ui-component.md     # Spec template for frontend UI components
   refactor.md         # Spec template for refactoring tasks
   bug-fix.md          # Spec template for bug fixes
+prompts/              # Reusable prompt library — each file is a standalone, runnable prompt
+  README.md           # Library index + how to add a new prompt
+  adr-log.md          # Create or update a project-wide ADR log at decisions/ (BKB wiki pattern)
 crew-members/         # Agent rules loaded by work action based on domain, phase, or dispatch pattern
 hooks/                # Optional hook scripts (platform-specific, installable)
   hooks.json          # Combined hook config for Claude Code (SessionStart + Stop)
