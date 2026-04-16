@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.67.4 — The Gap Sealer (2026-04-16)
+
+Folds in the legitimate improvements from a parallel branch that landed alongside 0.67.2/0.67.3. The earlier "Unified Trunk" merge tried to combine both lines but truncated `CHANGELOG.md` and rewrote `actions/version.md` losing the global-install guard and the recap section — that merge was reverted and only the load-bearing changes were re-applied here.
+
+- `actions/version.md`: Widened the auto-update dirty check to scope every shipped editable path (`prompts/`, `interviews/`, `specs/`, `docs/`, `decisions/`, `hooks/`, `CLAUDE.md`, `AGENTS.md`, `next-steps.md`) — anything tar would clobber. Anything dirty in those paths now blocks the update.
+- `actions/version.md`: New pre-clean step (4) for `prompts/` and `interviews/` — top-level `.md` files are deleted before extraction so upstream-removed entries don't linger as ghost workflows in `do work prompts list` / `do work interview list`. Subsequent steps renumbered 4→5, 5→6, 6→7.
+- `actions/interview-reference.md`: `update` re-run mode now tracks an in-memory `any_edits` flag. If any layer's approval committed a non-zero diff, the export gate state (`review_completed_at`, `review_runs`) is cleared on completion — the user must re-run `review` before the next `export`. Pure re-confirms leave the gate untouched.
+- `actions/interview-reference.md`: `fresh` and `version` empty session shapes now include `last_activity_at: <now>` so the freshness preflight has something to compare against on the very first export.
+- `actions/interview.md`: Exports gate rule documents that `update` clears the review state when edits are committed.
+- `interviews/work-operating-model.md`: Layer 1 schema fix — `time_windows` entries gain a required `days` field (weekday abbreviations) so `schedule-recommendations.json` can emit `days` without inventing data; `interruptions` is now a list of `{source, priority}` objects (priority drawn from `low`/`medium`/`high`) so `HEARTBEAT.md`'s "What to ignore" section has a real signal to filter on. Template version bumped 1.0.0 → 1.1.0.
+
 ## 0.67.3 — The Right Shelf (2026-04-16)
 
 Moves the 0.67.2 export freshness stamp out of `exports/` and into `session.json.last_exported_at`. The sidecar-file approach would have been picked up by `ingest`'s "for each file" loop and polluted `kb/raw/inbox/` with bogus timestamp documents. Caught in review; the field-on-session.json approach was always the right one.
