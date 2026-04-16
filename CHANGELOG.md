@@ -4,6 +4,21 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.67.0 — The Open Ear (2026-04-16)
+
+New `interview` action — a generalized elicitation framework that runs prescriptive templates to turn tacit work knowledge into agent-ready operating artifacts. First template `work-operating-model` walks the five-layer Work Operating Model (Nate B. Jones and Jonathan Edwards) across ~45 focused minutes and produces `USER.md` / `SOUL.md` / `HEARTBEAT.md` plus machine-readable exports. Session state is resumable, cross-layer contradictions get surfaced explicitly, and exports flow into BKB via `ingest` for querying.
+
+- `actions/interview.md`: New sub-command dispatcher — `list`, `<template>`, `<template> status`, `<template> review`, `<template> export`, `<template> ingest`, `<template> reset`, `<template> versions`. Session state lives at `./interview/<template>/session.json` and persists across sessions per ADR-005. Export gates on all layers approved + at least one review pass complete. Re-run modes (`fresh`, `update`, `version`) archive prior runs as immutable `versions/v<N>-<date>/` directories.
+- `actions/interview-reference.md`: Companion per ADR-001 holding the heavy content — template file format, canonical 11-field entry contract, `session.json` schema (including `review_completed_at` + `review_runs` gate fields), checkpoint format, per-export schemas for the five `work-operating-model` artifacts, re-run mode specifications, versioning scheme, and ingest frontmatter shape.
+- `interviews/work-operating-model.md`: First template. Five layers — operating rhythms, recurring decisions, dependencies, institutional knowledge, friction — each with concrete prompt patterns and layer-specific `details` shape. Declares four named cross-layer contradiction checks the `review` sub-command surfaces.
+- `crew-members/interviewer.md`: New persona loaded during every interview sub-command. Concrete-before-abstract, one-question-at-a-time, checkpoint-gated, honest-confidence standards. Never invents fields the user didn't provide.
+- `docs/interview-guide.md`: Onboarding guide — when to run (45-minute focused session), the five export files, re-run cadence (quarterly), BKB integration flow, multi-repo context separation, and troubleshooting.
+- `decisions/records/adr-011-interview-framework-with-prescriptive-templates.md`: New ADR documenting the prescriptive-not-minimal template shape, single-instance-per-repo design, and local-files-only constraint. Depends on ADR-001, ADR-002, ADR-005; complements ADR-010.
+- `SKILL.md`: Registered in action list, routing table (priority 19), Verb Reference, Action Dispatch table, bare-invocation help menu (new Interviews block), and foreground-dispatch list. Frontmatter `argument-hint` updated.
+- `README.md`: New numbered scenario "19. Run a structured interview"; renumbered later scenarios 20→21, 21→22, 22→23.
+- `decisions/_master_index.md`, `decisions/_progress.md`, `decisions/topics/_index_skill-architecture.md`: ADR-011 added to the index and topic cluster; progress tracker bumped to `Next ADR number: ADR-012`.
+- `.gitignore`: New `interview/` line so per-repo session state isn't accidentally committed. Templates under `interviews/` remain tracked.
+
 ## 0.66.1 — The Local Landlord (2026-04-16)
 
 The `do-work update` flow now refuses to overwrite a global/shared install. If `SKILL.md` lives under `~/.claude/skills/`, `~/.gemini/skills/`, or anywhere else outside the current project's git root, the update stops and tells the user to either `cd` into the owning project or install the skill locally — no more silent updates to a user-wide copy.

@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | bkb [subcommand] | prompts [subcommand] | install-ui-design | install-bowser | version | recap | tutorial [mode] | help"
+argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | bkb [subcommand] | interview [template] | prompts [subcommand] | install-ui-design | install-bowser | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -28,6 +28,7 @@ A unified entry point for task capture and processing.
 - **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination (read-only)
 - **prime**: Create and audit prime files — AI context documents that index utility codebases
 - **build knowledge base (bkb)**: LLM Knowledge Base builder → initialize, triage, ingest, query, lint, and maintain a persistent Markdown wiki compiled from raw sources
+- **interview**: Run a structured elicitation interview against a prescriptive template → produces agent-ready operating artifacts (USER.md, SOUL.md, HEARTBEAT.md, plus machine-readable exports). First template: `work-operating-model`.
 - **prompts**: Run reusable prompts from the library → `list`, `show <name>`, `run <name>`; extensible collection of battle-tested prompts for recurring jobs
 - **commit**: Commit uncommitted files → analyzes, groups atomically, traces to REQs
 - **inspect**: Explain uncommitted changes — what changed, why, and whether it's ready to commit (read-only)
@@ -78,13 +79,14 @@ Check these patterns **in order** — first match wins:
 | 16       | Forensics keywords       | `do work forensics`, `do work diagnose`, `do work health check`, `do work health`                                                  | → forensics                   |
 | 17       | Prime keywords           | `do work prime`, `do work prime create src/auth/`, `do work prime audit`, `do work create prime`, `do work audit primes`           | → prime                       |
 | 18       | BKB keywords             | `do work bkb`, `do work bkb init`, `do work bkb ingest`, `do work build knowledge base`, `do work knowledge base`                 | → build knowledge base        |
-| 19       | Prompts keywords         | `do work prompts`, `do work prompts list`, `do work prompts run adr-log`, `do work prompts show <name>`, `do work prompt <name>` | → prompts                     |
-| 20       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
-| 21       | Scan-ideas keywords      | `do work scan-ideas`, `do work scan-ideas performance`, `do work scan-ideas src/api/`, `do work ideas`, `do work brainstorm`, `do work what should I build`, `do work suggest`, `do work ideate` | → scan-ideas                    |
-| 22       | Deep-explore keywords    | `do work deep-explore`, `do work deep-explore performance`, `do work explore concept`, `do work deep dive`, `do work develop idea`, `do work deep-explore continue` | → deep-explore                  |
-| 23       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
-| 24       | Tutorial keywords        | `do work tutorial`, `do work tutorial quick-start`, `do work tutorial concepts`, `do work tutorial recipes`, `do work tutorial tour` | → tutorial                      |
-| 25       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
+| 19       | Interview keywords       | `do work interview`, `do work interview list`, `do work interview work-operating-model`, `do work interview <template> export`, `do work interview <template> ingest`, `do work elicit`, `do work operating model` | → interview                    |
+| 20       | Prompts keywords         | `do work prompts`, `do work prompts list`, `do work prompts run adr-log`, `do work prompts show <name>`, `do work prompt <name>` | → prompts                     |
+| 21       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
+| 22       | Scan-ideas keywords      | `do work scan-ideas`, `do work scan-ideas performance`, `do work scan-ideas src/api/`, `do work ideas`, `do work brainstorm`, `do work what should I build`, `do work suggest`, `do work ideate` | → scan-ideas                    |
+| 23       | Deep-explore keywords    | `do work deep-explore`, `do work deep-explore performance`, `do work explore concept`, `do work deep dive`, `do work develop idea`, `do work deep-explore continue` | → deep-explore                  |
+| 24       | Install keywords         | `do work install-ui-design`, `do work install ui design`, `do work install-bowser`, `do work install bowser`, `do work install playwright`, `do work setup bowser`, `do work setup playwright` | → install-ui-design / install-bowser |
+| 25       | Tutorial keywords        | `do work tutorial`, `do work tutorial quick-start`, `do work tutorial concepts`, `do work tutorial recipes`, `do work tutorial tour` | → tutorial                      |
+| 26       | Descriptive content      | `do work capture request: add dark mode`, `do work [meeting notes]`, `do work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -125,6 +127,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **forensics** | forensics, diagnose, health check, health | |
 | **prime** | prime, prime create, prime audit, create prime, audit primes, primes | Everything after verb → `$ARGUMENTS`. "audit primes" → prime; plain "audit" → verify |
 | **bkb** | bkb, build knowledge base, knowledge base, kb | Everything after verb → `$ARGUMENTS` (sub-command + params) |
+| **interview** | interview, elicit, operating model | Everything after verb → `$ARGUMENTS` (`list`, `<template>`, or `<template> <sub-command>`). No args → help menu |
 | **prompts** | prompts, prompt | Everything after verb → `$ARGUMENTS` (sub-command + prompt name + args). `prompts` (plural) and `prompt` (singular) both route here. First arg is the sub-command (`list`, `show`, `run`) or a prompt name (shorthand for `run`) |
 | **quick-wins** | quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, what can we improve | "scan" alone or with a bare directory path → quick-wins; bare path = last meaningful token (any text after it is descriptive content → capture) |
 | **install-ui-design** | install-ui-design, install ui design, install ui, install frontend-design, setup ui design, setup design skill | |
@@ -172,6 +175,13 @@ do-work — task queue for agentic coding tools
   Knowledge base:
     do work bkb [sub]                   Sub-commands: init | triage | ingest | query | lint |
                                         resolve | close | status | defrag | garden | rollup | crew
+
+  Interviews:
+    do work interview                   Help menu
+    do work interview list              List available templates
+    do work interview <template>        Start or resume a structured elicitation interview
+    do work interview <template> review Run the cross-layer contradiction pass
+    do work interview <template> export Produce agent-ready operating artifacts
 
   Prompt library:
     do work prompts                     Help menu
@@ -262,6 +272,7 @@ Each action has an action file with full instructions. How you execute it depend
 | forensics          | `./actions/forensics.md`        | (none needed)                  |
 | prime              | `./actions/prime.md`            | `$ARGUMENTS` (sub-command + params) |
 | build knowledge base | `./actions/build-knowledge-base.md` | `$ARGUMENTS` (sub-command + params) |
+| interview          | `./actions/interview.md`        | `$ARGUMENTS` (`list`, `<template>`, or `<template> <sub-command>`) |
 | prompts            | `./actions/prompts.md`          | `$ARGUMENTS` (sub-command + prompt name + args) |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 | recap              | `./actions/version.md`          | `mode: recap`                  |
@@ -273,7 +284,7 @@ Dispatch each action to a subagent. The subagent reads the action file and execu
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
 - **Exception — pipeline dispatch**: When the pipeline action dispatches `work`, it runs in the **foreground** (blocking). The pipeline requires each step to complete before advancing. This override applies only when the pipeline is the caller.
-- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`, `tutorial`, `prompts`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available

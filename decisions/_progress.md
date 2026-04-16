@@ -12,7 +12,7 @@ related:
   - page: log
     rel: complements
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-04-16
 confidence: high
 ---
 
@@ -20,9 +20,9 @@ confidence: high
 
 ## Status
 
-- State: complete for the requested bootstrap pass.
-- Last updated: 2026-04-15.
-- Next ADR number: `ADR-011`.
+- State: complete for the bootstrap pass plus ADR-011 (interview framework).
+- Last updated: 2026-04-16.
+- Next ADR number: `ADR-012`.
 
 ## Completed Scope
 
@@ -42,6 +42,7 @@ confidence: high
 - [x] ADR-008 — [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]]
 - [x] ADR-009 — [[adr-009-build-knowledge-base-as-a-compiled-interlinked-wiki]]
 - [x] ADR-010 — [[adr-010-use-typed-relationships-retrieval-memory-and-agent-crew-in-bkb]]
+- [x] ADR-011 — [[adr-011-interview-framework-with-prescriptive-templates]]
 
 ## Resume Notes
 

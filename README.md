@@ -257,7 +257,22 @@ do work bkb status            # show KB stats and pending items
 
 For the full folder structure, file lifecycle, and wiki page format, see the [BKB Guide](docs/bkb-guide.md).
 
-### 19. Run a saved prompt
+### 19. Run a structured interview
+
+Run a prescriptive elicitation interview against a template and produce agent-ready operating artifacts (`USER.md`, `SOUL.md`, `HEARTBEAT.md`, plus machine-readable exports). The first template is `work-operating-model` — the five-layer Work Operating Model by Nate B. Jones and Jonathan Edwards.
+
+```
+do work interview                              # help menu
+do work interview list                         # list available templates
+do work interview work-operating-model         # start or resume the interview (~45 min)
+do work interview work-operating-model review  # cross-layer contradiction pass
+do work interview work-operating-model export  # produce agent-ready artifacts
+do work interview work-operating-model ingest  # feed exports into BKB
+```
+
+Session state lives at `./interview/<template>/`. Re-runs support `fresh`, `update`, and `version` modes; archived runs stay immutable under `versions/`. See the [Interview Guide](docs/interview-guide.md) for onboarding and `actions/interview-reference.md` for the template authoring spec.
+
+### 20. Run a saved prompt
 
 Execute reusable, battle-tested prompts for recurring jobs — ADR logs, retrospectives, audits, and more. Each prompt lives as a standalone Markdown file under `prompts/`; drop new ones in and they become available instantly.
 
@@ -273,14 +288,14 @@ First entry: `adr-log` — creates or updates a project-wide ADR log at `decisio
 
 To add your own prompt: create `prompts/<kebab-name>.md` with a title, one-line description blockquote, optional metadata, a `---` separator, then the body. See `prompts/README.md` for the template.
 
-### 20. Install companion skills
+### 21. Install companion skills
 
 ```
 do work install-ui-design   # Anthropic's frontend-design skill for production-grade UI
 do work install-bowser      # Playwright CLI + Bowser skill for browser automation
 ```
 
-### 21. Version and history
+### 22. Version and history
 
 ```
 do work version             # current version + last 5 releases
@@ -290,7 +305,7 @@ do work recap               # last 5 completed user requests
 
 See the [Version Guide](docs/version-guide.md) for update behavior and recap format.
 
-### 22. Learn the skill
+### 23. Learn the skill
 
 Interactive tutorials for users new to do-work. Four modes:
 

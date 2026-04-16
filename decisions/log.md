@@ -26,8 +26,10 @@ related:
     rel: evidence-for
   - page: adr-010-use-typed-relationships-retrieval-memory-and-agent-crew-in-bkb
     rel: evidence-for
+  - page: adr-011-interview-framework-with-prescriptive-templates
+    rel: evidence-for
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-04-16
 confidence: high
 ---
 
@@ -70,3 +72,7 @@ Append-only timeline. Historical entries use the original decision dates from `C
 
 - Created `decisions/` with [[_master_index]], four topic indexes, ten retroactive ADRs, this timeline, and [[_progress]].
 - Scope rule for this pass: capture only load-bearing decisions that remain in force as of the current repo state; defer superseded or short-lived experiments to a future expansion pass.
+
+## [2026-04-16] Interview framework lands
+
+- Accepted [[adr-011-interview-framework-with-prescriptive-templates]] from `0.67.0`: added `interview` action with prescriptive templates under `interviews/`, first template `work-operating-model`, stateful/resumable sessions, and BKB integration via `ingest`.
