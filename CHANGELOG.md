@@ -4,6 +4,43 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.3 — The Honored Flag (2026-04-17)
+
+Fixes an inconsistency in the eval-harness prompt flagged in code review: `--tasks <n>` was documented but the interview and output flow were hard-coded to exactly three test cases. The prompt now resolves N from the flag up front (default 3, clamped to 1–7) and uses N everywhere — task inventory, priority selection, case count, verification.
+
+- `prompts/prompt-kit-step5-eval-harness.md`: new Step 0 resolves and clamps N; Steps 1, 2, 3, 5 reference N instead of literal 3; Rules and Verification Checklist enforce the contract; Red Flags call out suite-size drift; template placeholder for the per-case index changed from `[N]` to `[#]` to avoid visual collision with the count variable.
+
+## 0.69.2 — The Topical Shelving (2026-04-17)
+
+Regroups the five AI-industry analytical prompts by the discipline they're drawn from — business, economics, or tech — dropping the redundant `ai-` umbrella (the whole library is AI-oriented). One of the tech prompts gains an `infrastructure` sub-prefix to mark it as an infra decision rather than an architecture one.
+
+- `prompts/ai-vendor-strategic-sort.md` → `prompts/business-vendor-strategic-sort.md`
+- `prompts/inference-economics-stress-test.md` → `prompts/economics-inference-stress-test.md`
+- `prompts/saas-repricing-exposure.md` → `prompts/economics-saas-repricing-exposure.md`
+- `prompts/compute-geography-risk.md` → `prompts/tech-infrastructure-compute-geography-risk.md`
+- `prompts/inference-architecture-decision.md` → `prompts/tech-inference-architecture-decision.md`
+- `prompts/README.md` index rows updated to match. Historical references in `CHANGELOG.md` left as-is.
+
+## 0.69.1 — The Spelled-Out Name (2026-04-17)
+
+Renames the ADR-log prompt so its filename actually says what it does. Establishes a `[noun]_[action]` convention (underscore between the subject and the verb phrase) that leaves room for sibling actions on the same noun later.
+
+- `prompts/adr-log.md` → `prompts/architecture-decisions-log_create-or-expand.md`: renamed; H1 and aliases updated inside the file (`adr`, `adr-log`, `decisions`, `architecture-decisions` all still work as documentation hints — the dispatcher resolves via prefix match against the new filename).
+- Cross-references updated in `SKILL.md`, `CLAUDE.md`, `README.md`, `actions/prompts.md`, and `prompts/README.md`. Historical references in `CHANGELOG.md` left as-is.
+
+## 0.69.0 — The Seven Steps (2026-04-17)
+
+Extracts the Prompt Kit article's progression into the library as seven numbered prompts. One pre-flight pen-and-paper exercise plus six runnable disciplines — diagnostic, context doc, spec engineer, intent framework, eval harness, constraints — all `step[n]`-prefixed so they sort in workflow order.
+
+- `prompts/prompt-kit-step0-pen-and-paper-exercises-to-prepare-prompt.md`: handoff prompt that tells the user to step away from the screen and work the seven questions offline, then structures the returning notes into a PRE-FLIGHT BRIEF.
+- `prompts/prompt-kit-step1-four-discipline-diagnostic.md`: scored audit across Prompt Craft, Context, Intent, Specification — with a 4-month personalized roadmap.
+- `prompts/prompt-kit-step2-personal-context-doc.md`: seven-domain interview producing the user's "CLAUDE.md for everything."
+- `prompts/prompt-kit-step3-spec-engineer.md`: collaborative spec builder for real projects — acceptance criteria, constraint architecture, task decomposition, definition of done.
+- `prompts/prompt-kit-step4-intent-and-delegation-framework.md`: extracts implicit decision rules into a deployable framework, with a Klarna Test self-check.
+- `prompts/prompt-kit-step5-eval-harness.md`: Lütke-pattern test suite over the user's actual recurring tasks.
+- `prompts/prompt-kit-step6-constraint-architecture.md`: pre-delegation Must Do / Must Not / Prefer / Escalate document tied to the user's stated failure modes.
+- `prompts/README.md`: index updated with all seven new entries.
+
 ## 0.68.1 — The Rename Tag (2026-04-16)
 
 Renames the Weekly Structural Diff prompt so "original" is explicit in the filename — clears the way for variant versions of the same framework to coexist in the library.

@@ -39,8 +39,8 @@ prompts — run reusable prompts from the library
   do work prompts <name>            Shorthand for run
 
 Examples:
-  do work prompts run adr-log
-  do work prompts adr-log --dry-run
+  do work prompts run architecture-decisions-log_create-or-expand
+  do work prompts architecture-decisions-log --dry-run
 ```
 
 Then stop — do not execute anything.
@@ -58,8 +58,8 @@ Then stop — do not execute anything.
 ```
 Available prompts:
 
-  NAME          TITLE                     DESCRIPTION
-  adr-log       ADR Log                   Create or update a project-wide ADR log at decisions/…
+  NAME                                          TITLE                                    DESCRIPTION
+  architecture-decisions-log_create-or-expand   Architecture Decisions Log: Create…      Create or update a project-wide ADR log at decisions/…
   ...
 
 Run any of them with: do work prompts run <name>
@@ -87,7 +87,7 @@ Column widths can be approximate — readability beats precision. If the library
 
 ### Resolution rules for `<name>`
 
-1. **Exact match** on filename without `.md` extension wins. `adr-log` → `prompts/adr-log.md`.
+1. **Exact match** on filename without `.md` extension wins. `architecture-decisions-log_create-or-expand` → `prompts/architecture-decisions-log_create-or-expand.md`.
 2. **Unambiguous prefix match** is accepted. If `<name>` is a prefix of exactly one prompt filename, use that. If it's a prefix of multiple, list the candidates and ask the user to disambiguate.
 3. **No match**: tell the user the prompt wasn't found and list available prompts (same output as `list`). Do not "helpfully" create the file.
 
@@ -95,7 +95,7 @@ Column widths can be approximate — readability beats precision. If the library
 
 ## Shorthand: `<name> [args]`
 
-If the first argument isn't `list`, `show`, `run`, or `help`, treat it as shorthand for `run <name> [args]`. `do work prompts adr-log --dry-run` is equivalent to `do work prompts run adr-log --dry-run`.
+If the first argument isn't `list`, `show`, `run`, or `help`, treat it as shorthand for `run <name> [args]`. `do work prompts architecture-decisions-log --dry-run` is equivalent to `do work prompts run architecture-decisions-log_create-or-expand --dry-run` (via prefix match).
 
 ---
 
@@ -119,7 +119,7 @@ Next steps:
   do work prompts show <name>     Inspect a prompt before running it
 ```
 
-If the prompt already committed and pushed its own work (like `adr-log` does), skip the `do work commit` suggestion.
+If the prompt already committed and pushed its own work (like `architecture-decisions-log_create-or-expand` does), skip the `do work commit` suggestion.
 
 ## Common Rationalizations
 

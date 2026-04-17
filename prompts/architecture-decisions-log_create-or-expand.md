@@ -1,8 +1,8 @@
-# ADR Log
+# Architecture Decisions Log: Create or Expand
 
 > Create or update a project-wide Architecture Decision Record log at `decisions/`, modeled on the BKB wiki pattern. Layered source mining (implementation-history → lessons-learned → code). Idempotent via REQ/UR keys. Resumable, supersession-aware, pre-flight-checked.
 
-**Aliases:** `adr`, `decisions`
+**Aliases:** `adr`, `adr-log`, `decisions`, `architecture-decisions`
 
 **When to use:**
 - The repo has an `implementation-history.md` (REQ/UR ledger) or a rich `CHANGELOG.md` and the architectural *why* is scattered
