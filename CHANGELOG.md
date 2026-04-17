@@ -41,6 +41,19 @@ Extracts the Prompt Kit article's progression into the library as seven numbered
 - `prompts/prompt-kit-step6-constraint-architecture.md`: pre-delegation Must Do / Must Not / Prefer / Escalate document tied to the user's stated failure modes.
 - `prompts/README.md`: index updated with all seven new entries.
 
+## 0.68.2 — The Paved Cowpath (2026-04-17)
+
+Closes five v1 gaps in the `interview` action per the v2 imported spec — export templates move into the template file as mechanical render templates, `update` goes entry-level, mid-layer quits become recoverable, and `ingest` lands 10 files in `kb/raw/inbox/` instead of inventing its own frontmatter shape. Surgical patches, not a rewrite. Recorded as ADR-012.
+
+- `interviews/work-operating-model.md`: New `## Export Templates` section with verbatim handlebars-style render templates for `USER.md`, `SOUL.md`, `HEARTBEAT.md`, `operating-model.json`, and `schedule-recommendations.json`. An implementation can now render exports mechanically against the approved session — different runs produce the same file shape.
+- `actions/interview-reference.md`: `## Export Schemas` trimmed to framework-level invariants only (narrative tone, source-confidence filtering, cadence, traceability). Template-specific rendering now lives in the template.
+- `actions/interview-reference.md`: `update` re-run mode rewritten to walk entries individually — `[confirm / edit / mark-stale / delete / skip]` per entry. Explicitly overrides v1's "do not invent a per-entry patch path." CHANGELOG format for update runs is now `N confirmed, N edited, N marked stale, N deleted, N added`.
+- `actions/interview-reference.md`: New `### Mid-layer recovery` section. On resume, the action checks for `.draft-<layer-id>.md` written opportunistically during the interview and offers pick-up vs. start-over.
+- `actions/interview-reference.md`: `## Ingest Frontmatter` rewritten as `## Ingest File Mapping`. Specifies 5 export files + 5 layer summaries = 10 files per run for `work-operating-model`, plus a manifest row per file in `kb/raw/_inbox_queue.md`. Frontmatter aligns with BKB's canonical schema (`sources:` list, `related:` with `rel`, `type: source-summary` for exports, `type: concept` for layer summaries).
+- `actions/interview.md`: New draft-checkpoint step in the layer interview workflow. Subsequent steps renumbered. `ingest` sub-command body rewritten to reference the new File Mapping section in the reference.
+- `decisions/records/adr-012-interview-v2-gap-closure.md`: New ADR documenting the five patches. Extends ADR-011. Crew placement audit confirmed `crew-members/interviewer.md` stays put — the directory is a generic persona pool, not `work`-scoped.
+- `decisions/_master_index.md` + `decisions/topics/_index_skill-architecture.md`: Bumped to list ADR-012.
+
 ## 0.68.1 — The Rename Tag (2026-04-16)
 
 Renames the Weekly Structural Diff prompt so "original" is explicit in the filename — clears the way for variant versions of the same framework to coexist in the library.
