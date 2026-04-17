@@ -196,82 +196,19 @@ On the final layer of a template, replace the last sentence with: "If this looks
 
 ---
 
-## Export Schemas — `work-operating-model`
+## Export Schemas
 
-The `export` sub-command writes these five files to `./do-work/interview/<template>/exports/`. Schemas are referenced from the template's `exports:` declaration; do not duplicate inside the template body.
+The `export` sub-command writes files to `./do-work/interview/<template>/exports/` using render templates defined in the template file itself. For `work-operating-model`, the five mechanical render templates live in `interviews/work-operating-model.md` under `## Export Templates` and use handlebars-style `{{field}}` plus `{{#each …}}` syntax against the canonical entry contract and layer-specific `details`. An implementation should render those templates mechanically against the approved session state.
 
-### `USER.md` — narrative profile
+This section documents the framework-level guarantees every rendered export must satisfy, regardless of template:
 
-Narrative profile of the person at work. Written in third person, present tense. Required sections, in order:
+- **Narrative exports** (`USER.md` and equivalents) are written in third person, present tense. Quote the user's specific language where possible. Do not add generalizations the interview did not produce. If a field was not captured, omit it — do not invent.
+- **Decision-framework exports** (`SOUL.md` and equivalents) derive from entries with `source_confidence` in (`confirmed`, `synthesized`). They must distinguish autonomous-action decisions from escalation decisions, and must list data sources by trust hierarchy.
+- **Checklist exports** (`HEARTBEAT.md` and equivalents) must declare a review cadence. Each check item must name its source signal and the layer entry it derives from.
+- **Machine-readable exports** (`.json`) serialize canonical entries verbatim with all 11 required fields from the entry contract. Shape is template-specific; traceability is not optional.
+- **Derived scheduling exports** (`schedule-recommendations.json` and equivalents) must trace every emitted block, window, or slot to a specific layer entry via `source_entries` — the agent does not invent data unsupported by the approved session.
 
-1. **Name and role** — if known, stated directly. If not captured during interview, omit (do not invent).
-2. **Operating rhythm summary** — one paragraph synthesizing Layer 1 entries: when the user works, where the calendar lies, energy patterns.
-3. **Key recurring decisions** — 3–5 bullets drawn from Layer 2 entries. Each bullet names the decision and the core judgment heuristic.
-4. **Top dependencies** — 3–5 bullets drawn from Layer 3 entries, ordered by frequency or failure impact.
-5. **Institutional knowledge** — 2–4 bullets drawn from Layer 4 entries: what the user carries that isn't written down, why it matters.
-6. **Active friction points** — 3–5 bullets drawn from Layer 5 entries, ordered by priority.
-
-Quote the user's specific language where possible. Do not add generalizations the interview did not produce.
-
-### `SOUL.md` — decision framework
-
-The decision framework an agent would follow when acting on behalf of this person. Derived primarily from Layer 2 entries, cross-referenced with Layer 1 (rhythm) and Layer 3 (dependencies). Required sections:
-
-1. **When to escalate** — conditions under which the agent must pause and ask the user, not decide autonomously. Sourced from each Layer 2 entry's `escalation_rule`.
-2. **When to decide autonomously** — decisions the user has marked `reversible: true` and whose `decision_inputs` the agent can fully observe.
-3. **Tone rules for different audiences** — derived from Layer 3 stakeholders plus explicit tone notes the user provided; organized by audience (team, leadership, external, customers, etc.).
-4. **Data sources to trust** — union of `decision_inputs` across Layer 2 entries, de-duplicated, labeled with the decision each source feeds.
-5. **"Good enough" thresholds** — derived from Layer 2 `thresholds`. For each decision type, the numeric cutoff or qualitative bar the user actually uses.
-
-### `HEARTBEAT.md` — checklist
-
-A checklist an agent reviews on a cadence (default 30 minutes) to decide whether there's work to do for this person. Required sections:
-
-1. **Cadence** — default `every 30 minutes`; override if the user specified a different rhythm.
-2. **What to check** — bullet list drawn from Layer 3 `dependency_owner` + `deliverable` pairs, plus Layer 1 `interruptions`. Each bullet names the source/signal and the polling frequency.
-3. **Signals to act on** — concrete conditions that should trigger agent action (e.g., "approval from X not received by Y time"); derived from Layer 3 `failure_impact` + `needed_by`.
-4. **What to ignore** — noise sources the user explicitly does not want the agent to surface. Derived from Layer 1 `interruptions` the user marked as low-priority.
-
-### `operating-model.json` — machine-readable dump
-
-Full machine-readable dump of the approved session's canonical entries, grouped by layer. Shape:
-
-```json
-{
-  "template": "work-operating-model",
-  "template_version": "<from interviews/work-operating-model.md frontmatter>",
-  "exported_at": "<iso>",
-  "session_id": "<uuid>",
-  "layers": {
-    "operating_rhythms": { "entries": [ /* canonical entries */ ] },
-    "recurring_decisions": { "entries": [ /* canonical entries */ ] },
-    "dependencies": { "entries": [ /* canonical entries */ ] },
-    "institutional_knowledge": { "entries": [ /* canonical entries */ ] },
-    "friction": { "entries": [ /* canonical entries */ ] }
-  }
-}
-```
-
-### `schedule-recommendations.json` — derived schedule
-
-Derived from Layer 1 `operating_rhythms.time_windows` + `energy_pattern` and Layer 3 `dependencies.needed_by`. Shape:
-
-```json
-{
-  "generated_at": "<iso>",
-  "suggested_time_blocks": [
-    { "label": "Deep work", "start": "HH:MM", "end": "HH:MM", "days": ["Mon","Tue"], "rationale": "..." }
-  ],
-  "standing_slots": [
-    { "label": "Dependency handoff — X", "start": "HH:MM", "end": "HH:MM", "days": [...], "source_dependency": "<entry title>" }
-  ],
-  "avoid_windows": [
-    { "label": "Reactive inbox peak", "start": "HH:MM", "end": "HH:MM", "days": [...], "reason": "..." }
-  ]
-}
-```
-
-Every `suggested_time_blocks` entry must trace its rationale to a specific Layer 1 or Layer 3 entry — the agent does not invent blocks that aren't supported by the approved session.
+To add a new template, define its render templates in the template file's `## Export Templates` section using the same handlebars syntax. Do not duplicate per-template rendering here.
 
 ---
 
@@ -298,26 +235,30 @@ When the user invokes `do work interview <template>` and the existing `session.j
 
 ### `update`
 
-**Intent:** walk through the prior run and revalidate in place, keep the same session.
+**Intent:** walk through the prior run and revalidate in place at entry-level granularity, keep the same session.
 
 **Steps:**
 1. Leave `session.json`, `checkpoints/`, `exports/`, and `versions/` untouched. Initialize an in-memory `any_edits = false` flag for this run.
 2. Flip `status` back to `in_progress` and set `pending_layer` to the first layer id.
-3. For each layer in declared order:
-   - Show the stored canonical entries in a compact form (title + cadence + one-line summary).
-   - Ask: "Is this still accurate? Confirm / edit / add / remove entries."
-   - Apply the user's changes: edits update entries in place; additions append; removals splice. Update each touched entry's `last_validated_at`.
-   - **Empty a layer.** If the user says "remove all," "none of these apply anymore," or similar, the Interviewer may propose an empty layer. It writes a checkpoint with `## Entries` section empty and a layer summary explaining why the layer is empty now (e.g., "no standing dependencies this quarter"). The user must still explicitly approve the empty checkpoint — the gate does not bend. On approval, `layers.<layer-id>.entries` is set to `[]` and `approved_at` is refreshed. An empty layer still counts as approved and does not block `review` or `export`.
-   - Write a fresh checkpoint and require explicit approval before committing the edits (same approval gate as a new interview). **Per-entry edit friction is intentional:** fixing one typo regenerates the whole layer's checkpoint. The cost is real; the approval gate is why this recipe is trustworthy. Do not invent a per-entry patch path.
-   - **If the approval committed a non-zero diff** (added, removed, or edited entries — not a pure re-confirm), set `any_edits = true`.
-4. When the final layer is confirmed, set `status: complete`, `pending_layer: null`. **If `any_edits` is true**, also reset `review_completed_at = null` and `review_runs = 0` — the prior review covered a superseded version of the model, and the export gate must force the user back through the cross-layer contradiction pass before the next `export`. If every layer was re-confirmed without edits (`any_edits` stayed `false`), leave `review_completed_at` and `review_runs` untouched.
-5. Append to `CHANGELOG.md`:
+3. For each layer in declared order, walk each entry individually. For each entry in the prior session's `layers.<layer-id>.entries`:
+   1. Display the entry verbatim (all fields).
+   2. Prompt: `Still accurate? [confirm / edit / mark-stale / delete / skip]`
+   3. On `confirm`: set `source_confidence: confirmed`, update `last_validated_at: <now>`, leave all other fields unchanged.
+   4. On `edit`: enter an interactive edit — show current values, let the user override any field, produce a new checkpoint for this entry only, save after approval. Set `last_validated_at: <now>`. Sets `any_edits = true`.
+   5. On `mark-stale`: set `status: stale`, update `last_validated_at: <now>`. The entry remains but is flagged in exports. Sets `any_edits = true`.
+   6. On `delete`: remove the entry from `layers.<layer-id>.entries`. Log the deletion with full prior content in the CHANGELOG. Sets `any_edits = true`.
+   7. On `skip`: leave `last_validated_at` unchanged; the entry carries forward without revalidation.
+4. After walking all existing entries in a layer, offer to add new entries by running the layer's original prompts. New entries follow the normal interview flow (canonical entry contract, per-entry approval). Each addition sets `any_edits = true`.
+5. **Empty a layer.** If the user deletes every entry in a layer, the Interviewer proposes an empty layer with a short summary explaining why (e.g., "no standing dependencies this quarter"). The user explicitly approves the empty state. On approval, `layers.<layer-id>.entries` is set to `[]` and `approved_at` is refreshed. An empty layer still counts as approved and does not block `review` or `export`.
+6. Once all entries are processed in a layer, re-approve the layer as a whole — the layer-level approval gate still applies, now recording that the entry-level walk completed. Set `layers.<layer-id>.approved_at = <now>`.
+7. When the final layer is confirmed, set `status: complete`, `pending_layer: null`. **If `any_edits` is true**, also reset `review_completed_at = null` and `review_runs = 0` — the prior review covered a superseded version of the model, and the export gate must force the user back through the cross-layer contradiction pass before the next `export`. If every layer was re-confirmed without edits (`any_edits` stayed `false`), leave `review_completed_at` and `review_runs` untouched.
+8. Append to `CHANGELOG.md`, one entry per touched layer:
    ```
    ## <YYYY-MM-DD HH:MM> — layer updated: <layer-id>
-   <added N, removed M, edited K> entries. <one-sentence summary of what shifted>
+   <N confirmed, N edited, N marked stale, N deleted, N added>. <one-sentence summary of what shifted>
    ```
-   One entry per touched layer. Layers with no changes emit no entry.
-6. No new version folder is created; this is an in-place update.
+   Layers with no changes (all `confirm` or `skip`) emit no entry.
+9. No new version folder is created; this is an in-place update.
 
 ### `version`
 
@@ -336,6 +277,17 @@ When the user invokes `do work interview <template>` and the existing `session.j
 
 The three modes are mutually exclusive per invocation. The user picks one; the action does not combine them.
 
+### Mid-layer recovery
+
+Session state is only written after a layer's checkpoint is approved. If the user quits in the middle of a layer interview — before that layer's checkpoint was approved — on resume:
+
+1. Detect that `pending_layer` has no approved entries in `layers.<layer-id>.entries`.
+2. Check for a draft checkpoint file at `./do-work/interview/<template>/checkpoints/.draft-<layer-id>.md`. (Draft checkpoints are written opportunistically during the interview — before user approval — as a recovery aid.)
+3. If a draft exists: show it to the user and ask "pick up from this draft or start the layer over?" On `pick up`, load the draft entries as working state and continue from the approval step. On `start over`, delete the draft and begin the layer fresh.
+4. If no draft exists: begin the layer fresh.
+
+The action writes draft checkpoints after the interview has produced candidate entries but before user approval. Drafts are deleted when the layer is approved (normal case) or explicitly discarded (start-over case).
+
 ---
 
 ## Versioning Scheme
@@ -348,21 +300,57 @@ The three modes are mutually exclusive per invocation. The user picks one; the a
 
 ---
 
-## Ingest Frontmatter
+## Ingest File Mapping
 
-The `ingest` sub-command copies exports into `<repo-root>/kb/raw/inbox/` with filenames of the shape `interview-<template>-<export-basename>.md`. Each ingested file gets YAML frontmatter with these fields:
+When `do work interview <template> ingest` runs, it produces files in `<repo-root>/kb/raw/inbox/` (sibling writes — do not overwrite). Two file classes are written per run: one file per export and one summary file per layer.
+
+### 1. One file per export
+
+Filename: `<template>-<export-name>.md`. Body is the full export content. Frontmatter:
 
 ```yaml
 ---
-title: <template-display-name> — <export-title>
-source: ./do-work/interview/<template>/exports/<export-filename>
+title: "{{template.name}} — {{export_filename_without_ext}}"
 type: source-summary
-topic_cluster: <value from template frontmatter>
+topic_cluster: "{{template.topic_cluster}}"
+sources:
+  - "interview/{{template}}/exports/{{export_filename}}"
 confidence: high
-created: <YYYY-MM-DD>
+created: "{{session.last_exported_at}}"
 ---
 ```
 
-`topic_cluster` is copied verbatim from the template's frontmatter. `confidence: high` reflects that the source is the user's own approved operating model, not a third-party claim. The file body is the export content (for `.md` exports) or a short pointer describing the export shape + location (for `.json` exports — BKB does not ingest raw JSON).
+For `.json` exports, include the JSON as a fenced code block inside the markdown body (BKB does not ingest raw JSON).
 
-If `kb/` does not exist when `ingest` is invoked, the action tells the user to run `do work bkb init` first and stops without writing.
+### 2. One summary file per layer
+
+Filename: `<template>-<layer-id>.md`. Body is a markdown summary of that layer's entries (list each entry's `title` and `summary` under the layer heading). Frontmatter:
+
+```yaml
+---
+title: "{{template.name}} — {{layer.title}}"
+type: concept
+topic_cluster: "{{template.topic_cluster}}"
+sources:
+  - "interview/{{template}}/session.json"
+related:
+  - page: "{{template}}-user-md"
+    rel: evidence-for
+confidence: "{{majority source_confidence in layer — confirmed => high, synthesized => medium}}"
+created: "{{session.last_exported_at}}"
+---
+```
+
+This gives BKB one wiki page per layer alongside the full exports.
+
+### 3. Inbox manifest
+
+Append one row to `kb/raw/_inbox_queue.md` for each file added. Each row is marked `ready`, with `topic_hint: {{template.topic_cluster}}` and `priority: normal`.
+
+### Totals and collisions
+
+For the `work-operating-model` template: 5 exports + 5 layer summaries = **10 files** per `ingest` run. If any target filename already exists in `kb/raw/inbox/` or `kb/raw/capture/` (previous ingest of the same template), prefix the new file with the current time (`HHMMSS-<filename>`) per BKB's collision rule.
+
+### Preconditions
+
+If `kb/` does not exist when `ingest` is invoked, the action tells the user to run `do work bkb init` first and stops without writing. `confidence: high` on export files reflects that the source is the user's own approved operating model, not a third-party claim.

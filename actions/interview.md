@@ -153,19 +153,21 @@ For each layer in the template's declared order (starting from `pending_layer`):
 
 2. **Converse and draft.** Convert the user's responses into canonical entries matching the template's entry contract (see `actions/interview-reference.md` — Canonical Entry Contract). One question at a time. Capture the user's specific language. If a canonical field was not mentioned (e.g., `constraints`), ask — do not invent.
 
-3. **Write the checkpoint.** When the layer has 2–5 canonical entries drafted, write `./do-work/interview/<template>/checkpoints/<layer-id>.md` using the Checkpoint File Format from `actions/interview-reference.md`. Include a 1–2 paragraph layer summary, the canonical entries, any unresolved items, and the explicit approval ask.
+3. **Write a draft checkpoint.** Before seeking approval, write the candidate entries to `./do-work/interview/<template>/checkpoints/.draft-<layer-id>.md` as a resume aid. The draft is overwritten as candidate entries evolve. It is deleted when the layer is approved (normal case) or explicitly discarded during mid-layer recovery (see `actions/interview-reference.md` — Mid-layer recovery).
 
-4. **Present and wait for approval.** Show the checkpoint contents to the user in-chat. Accepted confirmations: "save," "looks right," "confirmed," "approve," or semantic equivalents. Corrections: the user edits specific entries — regenerate the checkpoint and ask again. Never persist unconfirmed content.
+4. **Write the checkpoint.** When the layer has 2–5 canonical entries drafted, write `./do-work/interview/<template>/checkpoints/<layer-id>.md` using the Checkpoint File Format from `actions/interview-reference.md`. Include a 1–2 paragraph layer summary, the canonical entries, any unresolved items, and the explicit approval ask.
 
-5. **Persist on approval.** Write approved entries to `session.json` under `layers.<layer-id>.entries[]`. Set `layers.<layer-id>.approved = true`, `layers.<layer-id>.approved_at = <now>`, `last_activity_at = <now>`. Update each entry's `last_validated_at`. Advance `pending_layer` to the next layer id (or `null` if this was the last layer — and flip `status` to `complete`).
+5. **Present and wait for approval.** Show the checkpoint contents to the user in-chat. Accepted confirmations: "save," "looks right," "confirmed," "approve," or semantic equivalents. Corrections: the user edits specific entries — regenerate the checkpoint and ask again. Never persist unconfirmed content.
 
-6. **Append to CHANGELOG.** Add one line:
+6. **Persist on approval.** Write approved entries to `session.json` under `layers.<layer-id>.entries[]`. Set `layers.<layer-id>.approved = true`, `layers.<layer-id>.approved_at = <now>`, `last_activity_at = <now>`. Update each entry's `last_validated_at`. Delete `./do-work/interview/<template>/checkpoints/.draft-<layer-id>.md` if present. Advance `pending_layer` to the next layer id (or `null` if this was the last layer — and flip `status` to `complete`).
+
+7. **Append to CHANGELOG.** Add one line:
    ```
    ## <YYYY-MM-DD HH:MM> — layer approved: <layer-id>
    <one-sentence summary of the real pattern surfaced>
    ```
 
-7. **Advance.** Move to the next layer. When the final layer is approved, suggest: "All layers approved. Run `do work interview <template> review` to surface cross-layer contradictions, then `export` to write deliverables."
+8. **Advance.** Move to the next layer. When the final layer is approved, suggest: "All layers approved. Run `do work interview <template> review` to surface cross-layer contradictions, then `export` to write deliverables."
 
 ---
 
@@ -247,20 +249,22 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
 
 1. **Freshness preflight.** Read `session.json.last_exported_at`. If non-null and `last_activity_at > last_exported_at`, announce: "Exports last written <last_exported_at>; session modified since at <last_activity_at>. Regenerating." If `last_exported_at` is `null`, this is the first export — proceed without announcement. Never block — this step only surfaces staleness. The stamp lives on `session.json`, not in `exports/`, so nothing ever lands in the exports directory that `ingest` could accidentally copy.
 
-2. Read the template's `exports:` frontmatter. For each declared export:
+2. **Stamp the export timestamp in-memory before rendering.** Set `session.last_exported_at = <now>` (ISO 8601) as an in-memory value that the render step below will substitute into templates (e.g. `{{session.last_exported_at}}` in the USER/SOUL/HEARTBEAT/JSON export headers and in the ingest frontmatter `created:`). Do not write `session.json` yet — the file write happens in step 4 after the artifacts are on disk, so a crash mid-render does not leave a stamp pointing at a partial export.
+
+3. Read the template's `exports:` frontmatter. For each declared export:
    - Look up the export's schema in `actions/interview-reference.md` (Export Schemas section — one per export kind and template).
-   - Compose the artifact from the approved session entries. Pull content from `session.json`; do not invent.
+   - Compose the artifact from the approved session entries using the render templates in the template file's `## Export Templates` section. Pull content from `session.json`; do not invent. Substitute the in-memory `last_exported_at` from step 2 wherever a template references it.
    - Write the file to `./do-work/interview/<template>/exports/<path>`. Overwrite any prior export.
 
-3. Update `session.json`: set `last_exported_at = <now>` (ISO 8601). This stamp is what the next export's freshness preflight reads.
+4. **Persist the stamp.** Write `session.json` with the `last_exported_at` value set in step 2. This is what the next export's freshness preflight reads.
 
-4. Append one synthesis line to CHANGELOG:
+5. Append one synthesis line to CHANGELOG:
    ```
    ## <YYYY-MM-DD HH:MM> — exports written
    <list of filenames>
    ```
 
-5. Report to the user:
+6. Report to the user:
    ```
    Exports written to ./do-work/interview/<template>/exports/:
      USER.md                        narrative profile
@@ -285,32 +289,26 @@ Copies exports into `<repo-root>/kb/raw/inbox/` with BKB-compatible frontmatter.
 
 ### Steps
 
-1. For each file in `./do-work/interview/<template>/exports/`, write a companion file to `<repo-root>/kb/raw/inbox/` named `interview-<template>-<export-basename>.md` (e.g., `interview-work-operating-model-USER.md`).
+Follow the Ingest File Mapping section in `actions/interview-reference.md`. Two file classes are written per run — one per export plus one per layer — plus a manifest row in the inbox queue.
 
-2. Prepend YAML frontmatter per the Ingest Frontmatter section in `actions/interview-reference.md`:
-   ```yaml
-   ---
-   title: <template-display-name> — <export-title>
-   source: ./do-work/interview/<template>/exports/<export-filename>
-   type: source-summary
-   topic_cluster: <from template frontmatter>
-   confidence: high
-   created: <YYYY-MM-DD>
-   ---
-   ```
-   `topic_cluster` is copied verbatim from the template's frontmatter.
+1. **Export files.** For each file in `./do-work/interview/<template>/exports/`, write a companion file to `<repo-root>/kb/raw/inbox/<template>-<export-name>.md`. Body is the full export content. For `.json` exports, include the JSON as a fenced code block inside the markdown body. Frontmatter follows the reference's export file shape (`type: source-summary`, `sources:` list, `confidence: high`).
 
-3. For markdown exports, the body is the export content. For JSON exports, the body is a short pointer describing the shape and pointing at the source path — BKB ingests the descriptive summary, not raw JSON.
+2. **Layer summary files.** For every layer in the session, write a summary file to `kb/raw/inbox/<template>-<layer-id>.md`. Body lists each entry's `title` and `summary` under the layer heading. Frontmatter follows the reference's layer summary shape (`type: concept`, `sources:` points to `session.json`, `related:` points to the template's USER wiki page, `confidence` derived from majority `source_confidence` in the layer).
 
-4. Append a per-layer markdown summary at `kb/raw/inbox/interview-<template>-layer-<layer-id>.md` for every layer in the session. Each file's body lists that layer's canonical entries in human-readable form. Same frontmatter shape as above.
+3. **Inbox manifest.** Append one row to `<repo-root>/kb/raw/_inbox_queue.md` for each file added, marked `ready`, with `topic_hint: <template.topic_cluster>` and `priority: normal`.
+
+4. **Collisions.** If any target filename already exists in `kb/raw/inbox/` or `kb/raw/capture/`, prefix the new file with the current time (`HHMMSS-<filename>`) per BKB's collision rule.
 
 5. Report:
    ```
-   Ingested <N> files into kb/raw/inbox/:
-     interview-<template>-USER.md
-     interview-<template>-SOUL.md
+   Ingested <N> files into kb/raw/inbox/ (<E> exports + <L> layer summaries):
+     <template>-USER.md
+     <template>-SOUL.md
+     ...
+     <template>-<layer-id>.md
      ...
 
+   Queued in kb/raw/_inbox_queue.md: <N> rows.
    Next: do work bkb triage && do work bkb ingest
    ```
 

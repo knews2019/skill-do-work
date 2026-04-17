@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.4 — The Review Ratchet (2026-04-17)
+
+Follow-up to 0.68.2: fixes three defects from code review on the interview v2 gap-closure patch. One was a JSON rendering bug, one was a reference to a session field that doesn't exist, and one was a stale-entry leak into agent rules that violated ADR-012's own promise. ADR-012 gets a "Post-merge corrections" section documenting each.
+
+- `interviews/work-operating-model.md`: `operating-model.json` template now uses `{{json_entries <layer>}}` instead of `[ "{{canonical_entries}}" ]` — emits a proper JSON array of entry objects instead of a single-element array of strings.
+- `interviews/work-operating-model.md`: All `{{session.completed_at}}` references changed to `{{session.last_exported_at}}` (the field that actually exists on `session.json`).
+- `actions/interview.md`: `export` sub-command reordered to stamp `last_exported_at` in-memory **before** rendering (step 2), then persist `session.json` after artifacts are on disk (step 4). Prevents templates from substituting a null timestamp on first export.
+- `interviews/work-operating-model.md`: SOUL.md and HEARTBEAT.md templates now filter `where status != "stale"` on every entry-iterating block. USER.md's active sections do the same, plus a new "Stale or deprecated" section labels stale entries at the bottom (narrative context preserved, but they no longer appear as active rules).
+- `actions/interview-reference.md`: Ingest frontmatter `created:` fields follow the template fix (`last_exported_at` in place of `completed_at`).
+- `decisions/records/adr-012-interview-v2-gap-closure.md`: "Post-merge corrections" section added under Consequences.
+
 ## 0.69.3 — The Honored Flag (2026-04-17)
 
 Fixes an inconsistency in the eval-harness prompt flagged in code review: `--tasks <n>` was documented but the interview and output flow were hard-coded to exactly three test cases. The prompt now resolves N from the flag up front (default 3, clamped to 1–7) and uses N everywhere — task inventory, priority selection, case count, verification.
@@ -40,6 +51,19 @@ Extracts the Prompt Kit article's progression into the library as seven numbered
 - `prompts/prompt-kit-step5-eval-harness.md`: Lütke-pattern test suite over the user's actual recurring tasks.
 - `prompts/prompt-kit-step6-constraint-architecture.md`: pre-delegation Must Do / Must Not / Prefer / Escalate document tied to the user's stated failure modes.
 - `prompts/README.md`: index updated with all seven new entries.
+
+## 0.68.2 — The Paved Cowpath (2026-04-17)
+
+Closes five v1 gaps in the `interview` action per the v2 imported spec — export templates move into the template file as mechanical render templates, `update` goes entry-level, mid-layer quits become recoverable, and `ingest` lands 10 files in `kb/raw/inbox/` instead of inventing its own frontmatter shape. Surgical patches, not a rewrite. Recorded as ADR-012.
+
+- `interviews/work-operating-model.md`: New `## Export Templates` section with verbatim handlebars-style render templates for `USER.md`, `SOUL.md`, `HEARTBEAT.md`, `operating-model.json`, and `schedule-recommendations.json`. An implementation can now render exports mechanically against the approved session — different runs produce the same file shape.
+- `actions/interview-reference.md`: `## Export Schemas` trimmed to framework-level invariants only (narrative tone, source-confidence filtering, cadence, traceability). Template-specific rendering now lives in the template.
+- `actions/interview-reference.md`: `update` re-run mode rewritten to walk entries individually — `[confirm / edit / mark-stale / delete / skip]` per entry. Explicitly overrides v1's "do not invent a per-entry patch path." CHANGELOG format for update runs is now `N confirmed, N edited, N marked stale, N deleted, N added`.
+- `actions/interview-reference.md`: New `### Mid-layer recovery` section. On resume, the action checks for `.draft-<layer-id>.md` written opportunistically during the interview and offers pick-up vs. start-over.
+- `actions/interview-reference.md`: `## Ingest Frontmatter` rewritten as `## Ingest File Mapping`. Specifies 5 export files + 5 layer summaries = 10 files per run for `work-operating-model`, plus a manifest row per file in `kb/raw/_inbox_queue.md`. Frontmatter aligns with BKB's canonical schema (`sources:` list, `related:` with `rel`, `type: source-summary` for exports, `type: concept` for layer summaries).
+- `actions/interview.md`: New draft-checkpoint step in the layer interview workflow. Subsequent steps renumbered. `ingest` sub-command body rewritten to reference the new File Mapping section in the reference.
+- `decisions/records/adr-012-interview-v2-gap-closure.md`: New ADR documenting the five patches. Extends ADR-011. Crew placement audit confirmed `crew-members/interviewer.md` stays put — the directory is a generic persona pool, not `work`-scoped.
+- `decisions/_master_index.md` + `decisions/topics/_index_skill-architecture.md`: Bumped to list ADR-012.
 
 ## 0.68.1 — The Rename Tag (2026-04-16)
 
