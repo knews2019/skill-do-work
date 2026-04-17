@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.2 — The Topical Shelving (2026-04-17)
+
+Regroups the five AI-industry analytical prompts by the discipline they're drawn from — business, economics, or tech — dropping the redundant `ai-` umbrella (the whole library is AI-oriented). One of the tech prompts gains an `infrastructure` sub-prefix to mark it as an infra decision rather than an architecture one.
+
+- `prompts/ai-vendor-strategic-sort.md` → `prompts/business-vendor-strategic-sort.md`
+- `prompts/inference-economics-stress-test.md` → `prompts/economics-inference-stress-test.md`
+- `prompts/saas-repricing-exposure.md` → `prompts/economics-saas-repricing-exposure.md`
+- `prompts/compute-geography-risk.md` → `prompts/tech-infrastructure-compute-geography-risk.md`
+- `prompts/inference-architecture-decision.md` → `prompts/tech-inference-architecture-decision.md`
+- `prompts/README.md` index rows updated to match. Historical references in `CHANGELOG.md` left as-is.
+
 ## 0.69.1 — The Spelled-Out Name (2026-04-17)
 
 Renames the ADR-log prompt so its filename actually says what it does. Establishes a `[noun]_[action]` convention (underscore between the subject and the verb phrase) that leaves room for sibling actions on the same noun later.
