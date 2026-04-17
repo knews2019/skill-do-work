@@ -4,6 +4,19 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.0 — The Seven Steps (2026-04-17)
+
+Extracts the Prompt Kit article's progression into the library as seven numbered prompts. One pre-flight pen-and-paper exercise plus six runnable disciplines — diagnostic, context doc, spec engineer, intent framework, eval harness, constraints — all `step[n]`-prefixed so they sort in workflow order.
+
+- `prompts/prompt-kit-step0-pen-and-paper-exercises-to-prepare-prompt.md`: handoff prompt that tells the user to step away from the screen and work the seven questions offline, then structures the returning notes into a PRE-FLIGHT BRIEF.
+- `prompts/prompt-kit-step1-four-discipline-diagnostic.md`: scored audit across Prompt Craft, Context, Intent, Specification — with a 4-month personalized roadmap.
+- `prompts/prompt-kit-step2-personal-context-doc.md`: seven-domain interview producing the user's "CLAUDE.md for everything."
+- `prompts/prompt-kit-step3-spec-engineer.md`: collaborative spec builder for real projects — acceptance criteria, constraint architecture, task decomposition, definition of done.
+- `prompts/prompt-kit-step4-intent-and-delegation-framework.md`: extracts implicit decision rules into a deployable framework, with a Klarna Test self-check.
+- `prompts/prompt-kit-step5-eval-harness.md`: Lütke-pattern test suite over the user's actual recurring tasks.
+- `prompts/prompt-kit-step6-constraint-architecture.md`: pre-delegation Must Do / Must Not / Prefer / Escalate document tied to the user's stated failure modes.
+- `prompts/README.md`: index updated with all seven new entries.
+
 ## 0.68.1 — The Rename Tag (2026-04-16)
 
 Renames the Weekly Structural Diff prompt so "original" is explicit in the filename — clears the way for variant versions of the same framework to coexist in the library.
