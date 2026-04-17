@@ -47,7 +47,7 @@ specs/                # Reusable specification templates for common task types
   bug-fix.md          # Spec template for bug fixes
 prompts/              # Reusable prompt library — each file is a standalone, runnable prompt
   README.md           # Library index + how to add a new prompt
-  adr-log.md          # Create or update a project-wide ADR log at decisions/ (BKB wiki pattern)
+  architecture-decisions-log_create-or-expand.md # Create or update a project-wide ADR log at decisions/ (BKB wiki pattern)
 interviews/           # Prescriptive templates loaded by the interview action
   work-operating-model.md # Five-layer elicitation — rhythms, decisions, dependencies, knowledge, friction
 crew-members/         # Agent rules loaded by work action based on domain, phase, or dispatch pattern

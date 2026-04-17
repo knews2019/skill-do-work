@@ -80,7 +80,7 @@ Check these patterns **in order** — first match wins:
 | 17       | Prime keywords           | `do work prime`, `do work prime create src/auth/`, `do work prime audit`, `do work create prime`, `do work audit primes`           | → prime                       |
 | 18       | BKB keywords             | `do work bkb`, `do work bkb init`, `do work bkb ingest`, `do work build knowledge base`, `do work knowledge base`                 | → build knowledge base        |
 | 19       | Interview keywords       | `do work interview`, `do work interview list`, `do work interview work-operating-model`, `do work interview <template> export`, `do work interview <template> ingest`, `do work elicit`, `do work operating model` | → interview                    |
-| 20       | Prompts keywords         | `do work prompts`, `do work prompts list`, `do work prompts run adr-log`, `do work prompts show <name>`, `do work prompt <name>` | → prompts                     |
+| 20       | Prompts keywords         | `do work prompts`, `do work prompts list`, `do work prompts run architecture-decisions-log`, `do work prompts show <name>`, `do work prompt <name>` | → prompts                     |
 | 21       | Quick-wins keywords      | `do work quick-wins`, `do work quick wins`, `do work low-hanging`, `do work scan`, `do work scan src/`                             | → quick-wins                  |
 | 22       | Scan-ideas keywords      | `do work scan-ideas`, `do work scan-ideas performance`, `do work scan-ideas src/api/`, `do work ideas`, `do work brainstorm`, `do work what should I build`, `do work suggest`, `do work ideate` | → scan-ideas                    |
 | 23       | Deep-explore keywords    | `do work deep-explore`, `do work deep-explore performance`, `do work explore concept`, `do work deep dive`, `do work develop idea`, `do work deep-explore continue` | → deep-explore                  |
@@ -187,7 +187,7 @@ do-work — task queue for agentic coding tools
     do work prompts                     Help menu
     do work prompts list                List every available prompt
     do work prompts show <name>         Print a prompt (read-only)
-    do work prompts run <name> [args]   Execute a prompt (e.g. adr-log)
+    do work prompts run <name> [args]   Execute a prompt (e.g. architecture-decisions-log)
 
   Setup:
     do work install-ui-design           Frontend-design skill for production-grade UI

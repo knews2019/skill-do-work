@@ -279,12 +279,12 @@ Execute reusable, battle-tested prompts for recurring jobs — ADR logs, retrosp
 ```
 do work prompts                   # help menu
 do work prompts list              # list every available prompt
-do work prompts show adr-log      # print the prompt without running it
-do work prompts run adr-log       # execute the prompt
-do work prompts adr-log --dry-run # shorthand: arg after the prompt name passes through
+do work prompts show architecture-decisions-log      # print the prompt without running it
+do work prompts run architecture-decisions-log       # execute the prompt
+do work prompts architecture-decisions-log --dry-run # shorthand: arg after the prompt name passes through
 ```
 
-First entry: `adr-log` — creates or updates a project-wide ADR log at `decisions/`, modeled on the BKB wiki pattern. Mines sources in priority order: `implementation-history.md` as the primary spine, `lessons-learned/` for supplementary context, current code to verify each decision is still in force, and `CHANGELOG.md` as a portable fallback when `implementation-history.md` is absent. Idempotent via REQ/UR frontmatter keys and resumable via `decisions/_progress.md`.
+First entry: `architecture-decisions-log_create-or-expand` — creates or updates a project-wide ADR log at `decisions/`, modeled on the BKB wiki pattern. Mines sources in priority order: `implementation-history.md` as the primary spine, `lessons-learned/` for supplementary context, current code to verify each decision is still in force, and `CHANGELOG.md` as a portable fallback when `implementation-history.md` is absent. Idempotent via REQ/UR frontmatter keys and resumable via `decisions/_progress.md`.
 
 To add your own prompt: create `prompts/<kebab-name>.md` with a title, one-line description blockquote, optional metadata, a `---` separator, then the body. See `prompts/README.md` for the template.
 

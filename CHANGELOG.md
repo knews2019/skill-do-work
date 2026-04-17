@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.1 — The Spelled-Out Name (2026-04-17)
+
+Renames the ADR-log prompt so its filename actually says what it does. Establishes a `[noun]_[action]` convention (underscore between the subject and the verb phrase) that leaves room for sibling actions on the same noun later.
+
+- `prompts/adr-log.md` → `prompts/architecture-decisions-log_create-or-expand.md`: renamed; H1 and aliases updated inside the file (`adr`, `adr-log`, `decisions`, `architecture-decisions` all still work as documentation hints — the dispatcher resolves via prefix match against the new filename).
+- Cross-references updated in `SKILL.md`, `CLAUDE.md`, `README.md`, `actions/prompts.md`, and `prompts/README.md`. Historical references in `CHANGELOG.md` left as-is.
+
 ## 0.69.0 — The Seven Steps (2026-04-17)
 
 Extracts the Prompt Kit article's progression into the library as seven numbered prompts. One pre-flight pen-and-paper exercise plus six runnable disciplines — diagnostic, context doc, spec engineer, intent framework, eval harness, constraints — all `step[n]`-prefixed so they sort in workflow order.
