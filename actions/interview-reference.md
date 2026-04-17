@@ -316,7 +316,7 @@ topic_cluster: "{{template.topic_cluster}}"
 sources:
   - "interview/{{template}}/exports/{{export_filename}}"
 confidence: high
-created: "{{session.completed_at}}"
+created: "{{session.last_exported_at}}"
 ---
 ```
 
@@ -337,7 +337,7 @@ related:
   - page: "{{template}}-user-md"
     rel: evidence-for
 confidence: "{{majority source_confidence in layer — confirmed => high, synthesized => medium}}"
-created: "{{session.completed_at}}"
+created: "{{session.last_exported_at}}"
 ---
 ```
 

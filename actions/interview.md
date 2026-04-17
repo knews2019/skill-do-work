@@ -249,20 +249,22 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
 
 1. **Freshness preflight.** Read `session.json.last_exported_at`. If non-null and `last_activity_at > last_exported_at`, announce: "Exports last written <last_exported_at>; session modified since at <last_activity_at>. Regenerating." If `last_exported_at` is `null`, this is the first export — proceed without announcement. Never block — this step only surfaces staleness. The stamp lives on `session.json`, not in `exports/`, so nothing ever lands in the exports directory that `ingest` could accidentally copy.
 
-2. Read the template's `exports:` frontmatter. For each declared export:
+2. **Stamp the export timestamp in-memory before rendering.** Set `session.last_exported_at = <now>` (ISO 8601) as an in-memory value that the render step below will substitute into templates (e.g. `{{session.last_exported_at}}` in the USER/SOUL/HEARTBEAT/JSON export headers and in the ingest frontmatter `created:`). Do not write `session.json` yet — the file write happens in step 4 after the artifacts are on disk, so a crash mid-render does not leave a stamp pointing at a partial export.
+
+3. Read the template's `exports:` frontmatter. For each declared export:
    - Look up the export's schema in `actions/interview-reference.md` (Export Schemas section — one per export kind and template).
-   - Compose the artifact from the approved session entries. Pull content from `session.json`; do not invent.
+   - Compose the artifact from the approved session entries using the render templates in the template file's `## Export Templates` section. Pull content from `session.json`; do not invent. Substitute the in-memory `last_exported_at` from step 2 wherever a template references it.
    - Write the file to `./do-work/interview/<template>/exports/<path>`. Overwrite any prior export.
 
-3. Update `session.json`: set `last_exported_at = <now>` (ISO 8601). This stamp is what the next export's freshness preflight reads.
+4. **Persist the stamp.** Write `session.json` with the `last_exported_at` value set in step 2. This is what the next export's freshness preflight reads.
 
-4. Append one synthesis line to CHANGELOG:
+5. Append one synthesis line to CHANGELOG:
    ```
    ## <YYYY-MM-DD HH:MM> — exports written
    <list of filenames>
    ```
 
-5. Report to the user:
+6. Report to the user:
    ```
    Exports written to ./do-work/interview/<template>/exports/:
      USER.md                        narrative profile

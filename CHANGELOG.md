@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.4 — The Review Ratchet (2026-04-17)
+
+Follow-up to 0.68.2: fixes three defects from code review on the interview v2 gap-closure patch. One was a JSON rendering bug, one was a reference to a session field that doesn't exist, and one was a stale-entry leak into agent rules that violated ADR-012's own promise. ADR-012 gets a "Post-merge corrections" section documenting each.
+
+- `interviews/work-operating-model.md`: `operating-model.json` template now uses `{{json_entries <layer>}}` instead of `[ "{{canonical_entries}}" ]` — emits a proper JSON array of entry objects instead of a single-element array of strings.
+- `interviews/work-operating-model.md`: All `{{session.completed_at}}` references changed to `{{session.last_exported_at}}` (the field that actually exists on `session.json`).
+- `actions/interview.md`: `export` sub-command reordered to stamp `last_exported_at` in-memory **before** rendering (step 2), then persist `session.json` after artifacts are on disk (step 4). Prevents templates from substituting a null timestamp on first export.
+- `interviews/work-operating-model.md`: SOUL.md and HEARTBEAT.md templates now filter `where status != "stale"` on every entry-iterating block. USER.md's active sections do the same, plus a new "Stale or deprecated" section labels stale entries at the bottom (narrative context preserved, but they no longer appear as active rules).
+- `actions/interview-reference.md`: Ingest frontmatter `created:` fields follow the template fix (`last_exported_at` in place of `completed_at`).
+- `decisions/records/adr-012-interview-v2-gap-closure.md`: "Post-merge corrections" section added under Consequences.
+
 ## 0.69.3 — The Honored Flag (2026-04-17)
 
 Fixes an inconsistency in the eval-harness prompt flagged in code review: `--tasks <n>` was documented but the interview and output flow were hard-coded to exactly three test cases. The prompt now resolves N from the flag up front (default 3, clamped to 1–7) and uses N everywhere — task inventory, priority selection, case count, verification.

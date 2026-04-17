@@ -72,6 +72,14 @@ Exports are now reproducible across runs and across implementations — an agent
 
 The cost is a small ongoing maintenance tax on the template file: when new templates are authored, each one must define its own `## Export Templates` section using the same handlebars syntax. The upside is that the reference stays slim and new templates inherit a clear authoring contract.
 
+### Post-merge corrections (2026-04-17)
+
+Three defects surfaced in code review after the initial commit were accepted and fixed without altering the decision itself:
+
+1. **`operating-model.json` template bug.** The first draft emitted `"entries": [ "{{canonical_entries}}" ]`, which renders as a single-element array of strings — not valid JSON against the entry schema. The template now uses a `{{json_entries <layer>}}` helper that emits the layer's entries as a JSON array of entry objects (all 11 canonical fields, including `status`, so downstream consumers can filter stale themselves).
+2. **Undefined timestamp field.** The export templates and ingest frontmatter referenced `{{session.completed_at}}`, which does not exist in the session schema. All references changed to `{{session.last_exported_at}}`, and the `export` sub-command flow in `actions/interview.md` was reordered so `last_exported_at` is stamped in-memory **before** rendering (then persisted to `session.json` after the artifacts are on disk). Otherwise the templates would substitute a null value on first export.
+3. **Stale entries bleeding into agent rules.** ADR-012 promises that `update` can mark entries stale without forcing a full-layer rewrite, but the initial SOUL.md / HEARTBEAT.md / USER.md templates iterated entries unfiltered — a stale entry would still appear as an active autonomous-action rule or heartbeat check. SOUL.md and HEARTBEAT.md now filter `where status != "stale"` on every entry-iterating block. USER.md's active sections do the same but the export adds a final "Stale or deprecated" section that **labels** (rather than hides) stale entries, preserving the narrative context an agent needs when reading a historical reference.
+
 ## References
 
 - [decisions/imported-specs/2026-04-12_close-gaps-in-interview.md](../imported-specs/2026-04-12_close-gaps-in-interview.md) — v2 spec this ADR implements
