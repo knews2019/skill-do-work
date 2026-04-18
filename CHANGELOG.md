@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.5 — The Dark Code Kit (2026-04-18)
+
+Captures a three-prompt kit for fighting "dark code" — code that was never understood by anyone at any point in its lifecycle. Shared `dark-code-kit_` prefix groups them as sibling tools in the library.
+
+- `prompts/dark-code-kit_audit.md`: four-group interview (architecture, AI tool usage, team/ownership, deployment) that produces a hotspot map across structural and velocity dimensions, with severity ratings, ownership gaps, and a prioritized action plan.
+- `prompts/dark-code-kit_context-layer-generator.md`: per-module interview walking through structural → semantic → philosophical context, emitting a module manifest, behavioral contracts, and a decision log that make the module self-describing.
+- `prompts/dark-code-kit_comprehension-gate.md`: senior-engineer-style PR review across seven dimensions (credentials, cross-service side effects, blast radius, state, tokens, assumptions, comprehension) with CLEAR / REVIEW REQUIRED / HOLD verdicts.
+- `prompts/README.md`: three entries added to the Available prompts table.
+
 ## 0.69.4 — The Review Ratchet (2026-04-17)
 
 Follow-up to 0.68.2: fixes three defects from code review on the interview v2 gap-closure patch. One was a JSON rendering bug, one was a reference to a session field that doesn't exist, and one was a stale-entry leak into agent rules that violated ADR-012's own promise. ADR-012 gets a "Post-merge corrections" section documenting each.
