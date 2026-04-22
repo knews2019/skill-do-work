@@ -37,7 +37,7 @@ For each found:
 
 Report: file name, title, route, how long stuck, last known phase (check which `##` sections exist — Triage, Plan, Exploration, Implementation Summary, etc.)
 
-**Suggested remediation:** Run `do work cleanup` — Pass 0 will sweep any REQ with a terminal status. For a truly stuck `claimed` REQ (still in-progress, not terminal), manually reset `status: pending`, remove `claimed_at` and `route` from frontmatter, strip incomplete sections, and move the file back to `do-work/queue/`, then run `do work cleanup`.
+**Suggested remediation:** Run `do-work cleanup` — Pass 0 will sweep any REQ with a terminal status. For a truly stuck `claimed` REQ (still in-progress, not terminal), manually reset `status: pending`, remove `claimed_at` and `route` from frontmatter, strip incomplete sections, and move the file back to `do-work/queue/`, then run `do-work cleanup`.
 
 ### 2. Hollow Completions
 
@@ -113,7 +113,7 @@ Scan `do-work/queue/REQ-*.md` (queue, not archive) AND `do-work/working/REQ-*.md
 **Working directory findings:** For each terminal-status REQ in `do-work/working/`:
 - **Warning**: "REQ-NNN is in working/ with terminal status '{status}' — finished but never moved out"
 
-**Suggested fix** for all: `do work cleanup` (Pass 0 sweeps finished REQs to archive)
+**Suggested fix** for all: `do-work cleanup` (Pass 0 sweeps finished REQs to archive)
 
 ## Output Format
 
@@ -139,7 +139,7 @@ Scan `do-work/queue/REQ-*.md` (queue, not archive) AND `do-work/working/REQ-*.md
   **Suggested fix:** Classify the failure and create a follow-up REQ with context from the original.
 
 - **[Stale Pending-Answers]** REQ-025 has been pending-answers for 12 days. Questions may no longer be relevant.
-  **Suggested fix:** Run `do work clarify` to review, or discard if the questions are stale.
+  **Suggested fix:** Run `do-work clarify` to review, or discard if the questions are stale.
 
 ## Info
 
@@ -171,3 +171,19 @@ All clear — no issues detected.
 - Before starting a large batch of work (health check)
 - When onboarding to a project that already has `do-work/` history
 - Periodically, as a quality audit
+
+## Red Flags
+
+- Report is "All clear" but `do-work/working/` has claimed REQs — check was scoped too narrowly.
+- A REQ was flagged as `stuck` but its mtime is < 10 minutes old — likely still processing; don't disturb.
+- Hollow-completion check flagged every completed REQ as hollow — rubric is too strict; review before acting.
+- Forensics fixed something on its own — this action is **read-only**; it must only report.
+- Output mixes severities (critical/warning/info) without clear grouping — readability regression; use the documented sections.
+
+## Verification Checklist
+
+- [ ] Action made **zero** changes to `do-work/` — read-only contract held.
+- [ ] Report grouped findings under `## Critical Findings`, `## Warnings`, `## Info`, `## Summary`.
+- [ ] Each finding names a specific file path or REQ/UR id.
+- [ ] Stuck-work detection used a reasonable threshold (not flagging actively-processing work).
+- [ ] If no issues were found, output says "All clear" and the summary lists what was checked.

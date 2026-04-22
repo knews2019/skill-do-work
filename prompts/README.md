@@ -5,11 +5,11 @@ Reusable, battle-tested prompts for recurring jobs — ADR logs, retrospectives,
 **How to use:**
 
 ```
-do work prompts                    # short help menu
-do work prompts list               # list every available prompt
-do work prompts show <name>        # print the prompt body (read-only)
-do work prompts run <name> [args]  # execute the prompt
-do work prompts <name> [args]      # shorthand for run
+do-work prompts                    # short help menu
+do-work prompts list               # list every available prompt
+do-work prompts show <name>        # print the prompt body (read-only)
+do-work prompts run <name> [args]  # execute the prompt
+do-work prompts <name> [args]      # shorthand for run
 ```
 
 Resolution rules: `<name>` matches the filename without the `.md` extension. Exact match wins; otherwise a single unambiguous prefix match is accepted.

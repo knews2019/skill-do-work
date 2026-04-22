@@ -19,7 +19,7 @@ This is not a productivity coaching session. The interview describes reality; it
 
 ## Output files
 
-After `do work interview work-operating-model export`, you get five files in `./do-work/interview/work-operating-model/exports/`:
+After `do-work interview work-operating-model export`, you get five files in `./do-work/interview/work-operating-model/exports/`:
 
 | File | What it is |
 |---|---|
@@ -44,16 +44,16 @@ Hand these to an AI agent (as system prompt context, or via a tool-use loop) and
 After export, feed the operating model into the knowledge base:
 
 ```bash
-do work interview work-operating-model ingest
-do work bkb triage
-do work bkb ingest
+do-work interview work-operating-model ingest
+do-work bkb triage
+do-work bkb ingest
 ```
 
 After ingest, the operating model is queryable alongside everything else in the KB:
 
 ```bash
-do work bkb query "when do I escalate dependency delays?"
-do work bkb query "what's my deep-work window on Tuesdays?"
+do-work bkb query "when do I escalate dependency delays?"
+do-work bkb query "what's my deep-work window on Tuesdays?"
 ```
 
 The `ingest` sub-command writes files to `kb/raw/inbox/` with the `topic_cluster` from the template's frontmatter (default `operating-model`), so BKB groups them in the right cluster on ingest.
@@ -68,16 +68,16 @@ One operating model per repo. If you want distinct operating models for differen
 Push back. Say "ask about last week" or "give me a concrete question about a real day." The Interviewer persona is supposed to start concrete; if it drifted, steer it back.
 
 **A checkpoint feels wrong and I already said "save."**
-The next layer's checkpoint can still reference or revise the prior layer. Alternatively, run `do work interview work-operating-model review` — the contradiction pass often catches "wait, that's not quite right" after the fact, and the review UX lets you revise.
+The next layer's checkpoint can still reference or revise the prior layer. Alternatively, run `do-work interview work-operating-model review` — the contradiction pass often catches "wait, that's not quite right" after the fact, and the review UX lets you revise.
 
 **I want to edit an entry in the middle of a layer.**
 Just say so. The Interviewer overwrites the draft checkpoint on each revision. Don't approve the checkpoint until it matches what you meant.
 
 **`session.json` is corrupt (invalid JSON).**
-Do not try to repair it by hand — the action refuses to load a corrupt file and does not auto-repair. Options: inspect and fix manually (the schema is in `actions/interview-reference.md`), or archive the run with `do work interview <template> reset --confirm` and start over. If reset itself fails because `session.json` can't be parsed, back up the whole `./do-work/interview/<template>/` directory manually, delete it, and start fresh.
+Do not try to repair it by hand — the action refuses to load a corrupt file and does not auto-repair. Options: inspect and fix manually (the schema is in `actions/interview-reference.md`), or archive the run with `do-work interview <template> reset --confirm` and start over. If reset itself fails because `session.json` can't be parsed, back up the whole `./do-work/interview/<template>/` directory manually, delete it, and start fresh.
 
 **Review flagged a contradiction but I want to leave both versions.**
 Pick `both-are-true` during the review pass. The contradiction gets noted on both entries' `constraints` list so the downstream exports acknowledge the tension rather than hiding it.
 
 **I approved a layer but realized I want to change an entry.**
-Two options: run `do work interview work-operating-model` again and pick `update` mode to revalidate in place, or run `review` — any revision inside a review regenerates the checkpoint and requires re-approval.
+Two options: run `do-work interview work-operating-model` again and pick `update` mode to revalidate in place, or run `review` — any revision inside a review regenerates the checkpoint and requires re-approval.

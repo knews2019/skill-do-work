@@ -38,10 +38,10 @@ Effort scales with the work:
 ## Usage
 
 ```
-do work present work             # most recent completed UR
-do work present UR-003           # specific UR
-do work present REQ-005          # specific REQ
-do work present all              # portfolio summary
-do work present portfolio        # same as all
-do work showcase
+do-work present work             # most recent completed UR
+do-work present UR-003           # specific UR
+do-work present REQ-005          # specific REQ
+do-work present all              # portfolio summary
+do-work present portfolio        # same as all
+do-work showcase
 ```

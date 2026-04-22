@@ -62,7 +62,7 @@ Note that this action is part of the do-work skill, references ADR-001 (modular 
 
 **Locating the template.** When a sub-command references `<template>`, resolve as follows: the action reads `interviews/<template>.md` from the repo root. If the file does not exist, list available templates and stop.
 
-**Locating the session.** Session state lives at `./interview/<template>/session.json` in the current working directory. If it does not exist for sub-commands other than the bare `<template>` invocation, tell the user to run `do work interview <template>` to start a session.
+**Locating the session.** Session state lives at `./interview/<template>/session.json` in the current working directory. If it does not exist for sub-commands other than the bare `<template>` invocation, tell the user to run `do-work interview <template>` to start a session.
 
 **Session lifecycle — the `<template>` sub-command.**
 
@@ -122,11 +122,11 @@ created: YYYY-MM-DD
 ---
 ```
 
-If `kb/` does not exist, tell the user to run `do work bkb init` first and stop.
+If `kb/` does not exist, tell the user to run `do-work bkb init` first and stop.
 
 **Error handling.**
 
-- Template file missing → list available templates, suggest `do work interview list`.
+- Template file missing → list available templates, suggest `do-work interview list`.
 - Session corrupt (invalid JSON) → do not attempt repair. Tell the user where the file is and stop.
 - `export` invoked with unapproved layers → list which layers are missing approval.
 - `ingest` invoked without completed exports → tell the user to run `export` first.
@@ -225,7 +225,7 @@ User-facing guide. Match the style of `docs/bkb-guide.md`. Cover:
 - Expected time: ~45 minutes for work-operating-model, possibly more on first run.
 - Output files: list the five exports and what each is for in one line each.
 - Re-run cadence: quarterly, or after a major role change.
-- Integration with bkb: after export, run `do work interview <template> ingest` to turn the operating model into queryable knowledge.
+- Integration with bkb: after export, run `do-work interview <template> ingest` to turn the operating model into queryable knowledge.
 - How to install the skill in multiple repos for context separation (one operating model per repo).
 - Troubleshooting: what to do if a checkpoint feels wrong (answer: edit in chat before confirming; never approve something you'll regret), what to do if session.json is corrupt (don't repair, contact maintainer or start fresh), what to do if the agent starts asking abstract questions (push back: "ask about last week").
 

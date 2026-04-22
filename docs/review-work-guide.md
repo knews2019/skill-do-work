@@ -61,8 +61,8 @@ Structured report with scores table, requirements checklist, findings by severit
 ## Usage
 
 ```
-do work review work              # most recent completed REQ
-do work review REQ-005           # specific REQ
-do work review UR-003            # all completed REQs under a UR
-do work review code
+do-work review work              # most recent completed REQ
+do-work review REQ-005           # specific REQ
+do-work review UR-003            # all completed REQs under a UR
+do-work review code
 ```

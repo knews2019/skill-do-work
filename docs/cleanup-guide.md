@@ -44,7 +44,7 @@ do-work/
 ## Usage
 
 ```
-do work cleanup
-do work tidy
-do work consolidate
+do-work cleanup
+do-work tidy
+do-work consolidate
 ```

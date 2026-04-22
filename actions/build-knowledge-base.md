@@ -4,6 +4,19 @@
 
 The core idea: instead of re-deriving knowledge from scratch on every query (RAG), the LLM incrementally compiles raw sources into a structured, interlinked Markdown wiki. `raw/` is the source code, the LLM is the compiler, the wiki is the executable.
 
+## When to Use
+
+**Use when:**
+- Building or maintaining a persistent, compounding knowledge base of raw sources (articles, PDFs, notes, transcripts).
+- Adding new sources to an existing KB (`triage` → `ingest`).
+- Running health checks or structural maintenance (`lint`, `resolve`, `defrag`, `garden`).
+- Querying the wiki for synthesized answers (`query`) — prefer the compiled wiki over re-reading raw sources.
+
+**Do NOT use when:**
+- The user wants a quick one-off read of a single document — that's a direct file read, not a KB operation.
+- There's no `kb/` directory AND the user hasn't asked to `init` — stop and ask.
+- The user wants project-level AI context (primes) — that's `do-work prime`, not bkb.
+
 ## Sub-Commands
 
 The `bkb` command accepts a sub-command as its first argument. If no sub-command is given, show the help menu.
@@ -43,7 +56,7 @@ Before executing any sub-command (except `init`), find the KB root:
 2. Look for a `kb/` directory in the current working directory.
 3. Look for a `knowledge-base/` directory in the current working directory.
 4. Search parent directories (up to 3 levels) for a directory containing both `raw/` and `wiki/` subdirectories.
-5. If not found, tell the user: "No knowledge base found. Run `do work bkb init` to create one."
+5. If not found, tell the user: "No knowledge base found. Run `do-work bkb init` to create one."
 
 ---
 
@@ -55,7 +68,7 @@ Create the full KB directory structure at the specified path (default: `./kb`).
 
 Before creating anything, check if the target path already contains a KB (has both `raw/` and `wiki/` subdirectories):
 
-- **If KB exists**: Stop and report: "Knowledge base already exists at `<path>/` (N articles, M topic clusters). To repair a broken structure, run `do work bkb init <path> --fill-gaps`."
+- **If KB exists**: Stop and report: "Knowledge base already exists at `<path>/` (N articles, M topic clusters). To repair a broken structure, run `do-work bkb init <path> --fill-gaps`."
 - **If `--fill-gaps` flag is present**: Only create directories and seed files that don't already exist. Never overwrite existing files. Report what was created vs. what was skipped. This is the migration path for legacy KBs — e.g., a KB created before v0.46.0 will gain the `agents/` directory and all 8 built-in agent files without disturbing existing content.
 - **If no KB exists**: Proceed with full initialization.
 
@@ -131,8 +144,8 @@ Knowledge base initialized at <path>/
 
 Next steps:
   Drop files into <path>/raw/inbox/
-  do work bkb triage         Sort inbox items
-  do work bkb ingest         Compile sources into wiki
+  do-work bkb triage         Sort inbox items
+  do-work bkb ingest         Compile sources into wiki
 ```
 
 ---
@@ -435,7 +448,7 @@ Finalize the day's work.
      Sources ingested: N
      Contradictions pending: N
    ```
-5. **Suggest git commit** (do not auto-commit): If there are uncommitted changes in the KB directory, print: "Uncommitted KB changes — run `do work commit` or `git add . && git commit` when ready."
+5. **Suggest git commit** (do not auto-commit): If there are uncommitted changes in the KB directory, print: "Uncommitted KB changes — run `do-work commit` or `git add . && git commit` when ready."
 
 ---
 
@@ -648,40 +661,61 @@ Before executing any sub-command, scan ALL `.md` files in `<kb>/agents/` — not
 When invoked with no sub-command or with `help`:
 
 ```
-do work bkb — LLM Knowledge Base builder
+do-work bkb — LLM Knowledge Base builder
 
   Setup:
-    do work bkb init              Initialize a new knowledge base in ./kb
-    do work bkb init ~/research   Initialize at a custom path
+    do-work bkb init              Initialize a new knowledge base in ./kb
+    do-work bkb init ~/research   Initialize at a custom path
 
   Daily workflow:
-    do work bkb triage            Sort inbox items into capture directories
-    do work bkb ingest            Compile all ready sources into wiki
-    do work bkb query [question]  Search the wiki and synthesize an answer
-    do work bkb close             Finalize today's daily log
+    do-work bkb triage            Sort inbox items into capture directories
+    do-work bkb ingest            Compile all ready sources into wiki
+    do-work bkb query [question]  Search the wiki and synthesize an answer
+    do-work bkb close             Finalize today's daily log
 
   Maintenance:
-    do work bkb lint              Quick health check (recent changes)
-    do work bkb lint full         Full cross-cluster integrity check
-    do work bkb resolve           Walk through and resolve contradictions
-    do work bkb defrag            Weekly structural maintenance (merges, splits)
-    do work bkb garden            Topic cluster and relationship hygiene
-    do work bkb rollup            Monthly summary and trend analysis
-    do work bkb status            Show KB stats and pending items
+    do-work bkb lint              Quick health check (recent changes)
+    do-work bkb lint full         Full cross-cluster integrity check
+    do-work bkb resolve           Walk through and resolve contradictions
+    do-work bkb defrag            Weekly structural maintenance (merges, splits)
+    do-work bkb garden            Topic cluster and relationship hygiene
+    do-work bkb rollup            Monthly summary and trend analysis
+    do-work bkb status            Show KB stats and pending items
 
   Crew:
-    do work bkb crew              List all agents (built-in + custom)
-    do work bkb crew create       Define a new custom agent
-    do work bkb crew edit <name>  Modify a custom agent
-    do work bkb crew remove <name> Remove a custom agent
+    do-work bkb crew              List all agents (built-in + custom)
+    do-work bkb crew create       Define a new custom agent
+    do-work bkb crew edit <name>  Modify a custom agent
+    do-work bkb crew remove <name> Remove a custom agent
 
   Typical flow:
     1. Drop files into kb/raw/inbox/
-    2. do work bkb triage
-    3. do work bkb ingest
-    4. do work bkb query "what are the tradeoffs of X vs Y?"
-    5. do work bkb close
-    Weekly: do work bkb defrag && do work bkb garden
+    2. do-work bkb triage
+    3. do-work bkb ingest
+    4. do-work bkb query "what are the tradeoffs of X vs Y?"
+    5. do-work bkb close
+    Weekly: do-work bkb defrag && do-work bkb garden
 ```
 
 ---
+
+## Red Flags
+
+- `ingest` produced wiki pages but never updated `_master_index.md` or the relevant topic index — Connector/Editor step was skipped.
+- `query` returned an answer that wasn't in any wiki page (hallucinated synthesis) — Seeker should cite sources only from the wiki.
+- `lint` reported zero issues but the KB has 500+ pages — lint was run at the wrong scope; re-run at `full`.
+- `close` was run without `ingest` first — nothing to summarize; the daily log will be empty.
+- `defrag` is overdue by 14+ days (per `status` staleness warning) and the user is adding new sources — structure debt accumulates; defrag before the next ingest.
+- `init` was run on a path that already contains a wiki — abort; re-init would clobber existing data.
+- Custom `crew` agents override built-in ones silently — clarify precedence to the user.
+
+## Verification Checklist
+
+- [ ] The relevant agent files from `<kb>/agents/` were read before executing the sub-command (unless `init`).
+- [ ] `triage` moved files from `inbox/` into type-sorted `capture/` subdirs and updated `_inbox_queue.md`.
+- [ ] `ingest` created wiki pages, updated indexes, and archived sources into `raw/processed/<date>/`.
+- [ ] `query` answers cited only wiki pages (not raw sources directly).
+- [ ] `lint` output lists each finding by file path and category.
+- [ ] `close` appended a timestamped entry to `wiki/log.md` using the documented format.
+- [ ] `status` flagged `defrag` or `garden` if last-run was 14+ days ago.
+- [ ] `init` refused to overwrite an existing wiki.

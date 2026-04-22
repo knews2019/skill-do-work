@@ -75,9 +75,9 @@ Markdown report with summary counts and a checklist of issues organized by categ
 ## Usage
 
 ```
-do work prime                     # show sub-command help
-do work prime create src/auth/    # generate a prime file via Q&A
-do work prime audit               # audit all prime files
-do work create prime src/utils/   # reversed order also works
-do work audit primes              # same as prime audit
+do-work prime                     # show sub-command help
+do-work prime create src/auth/    # generate a prime file via Q&A
+do-work prime audit               # audit all prime files
+do-work create prime src/utils/   # reversed order also works
+do-work audit primes              # same as prime audit
 ```

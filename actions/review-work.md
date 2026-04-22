@@ -30,7 +30,7 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 | Mode | Trigger | REQ location | How to get the diff |
 |------|---------|-------------|---------------------|
 | **Pipeline** | Auto-triggered by the work action after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary |
-| **Standalone** | User invokes manually: `do work review`, `do work review work`, `do work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field |
+| **Standalone** | User invokes manually: `do-work review`, `do-work review work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field |
 
 Both modes follow the same workflow. The only difference is where the REQ lives and how you obtain the diff.
 
@@ -337,7 +337,7 @@ status: pending-answers
 
 The `pending-answers` status means the work loop won't pick this up until the user reviews it, answers the questions, and flips the status to `pending`. The recommended choices let the user quickly pick an option without deep context-switching. Only add Open Questions when the ambiguity caused the issue — if the fix is clear (e.g., "missed a null check"), use `status: pending` and skip the Open Questions.
 
-Follow-up REQs go in `do-work/queue/`. In pipeline mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do work run`.
+Follow-up REQs go in `do-work/queue/`. In pipeline mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do-work run`.
 
 **Don't create follow-ups for minor issues.** Minor findings go in the report only. The threshold: would a senior engineer request changes on this in a PR review, or just leave a comment?
 

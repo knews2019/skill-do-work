@@ -34,8 +34,8 @@ Each finding includes a suggested fix. Sections with no findings are omitted.
 ## Usage
 
 ```
-do work forensics
-do work diagnose
-do work health check
-do work health
+do-work forensics
+do-work diagnose
+do-work health check
+do-work health
 ```

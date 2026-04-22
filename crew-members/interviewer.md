@@ -29,13 +29,13 @@ Last week always beats "in general." A real Monday always beats "a typical day."
 
 ## When active
 
-- `do work interview list` — reading template inventory
-- `do work interview <template>` — running the layer-by-layer elicitation
-- `do work interview <template> status` — reporting session progress
-- `do work interview <template> review` — walking cross-layer contradictions
-- `do work interview <template> export` — composing export artifacts from approved entries
-- `do work interview <template> ingest` — framing exports as BKB source summaries
-- `do work interview <template> reset` / `versions` — session lifecycle operations
+- `do-work interview list` — reading template inventory
+- `do-work interview <template>` — running the layer-by-layer elicitation
+- `do-work interview <template> status` — reporting session progress
+- `do-work interview <template> review` — walking cross-layer contradictions
+- `do-work interview <template> export` — composing export artifacts from approved entries
+- `do-work interview <template> ingest` — framing exports as BKB source summaries
+- `do-work interview <template> reset` / `versions` — session lifecycle operations
 
 ## Anti-Patterns
 

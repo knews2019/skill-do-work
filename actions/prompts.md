@@ -4,6 +4,18 @@
 
 Unlike built-in actions (which have fixed workflows), this action is a dispatcher over a growing collection of user-contributable prompt files. Think of it as a command-palette for recurring jobs the skill doesn't (yet) have a first-class action for.
 
+## When to Use
+
+**Use when:**
+- The user names a prompt (`do-work prompts run adr`) or wants to browse the library (`do-work prompts list`).
+- A recurring job has a reusable prompt in `prompts/` — running it is cheaper than rewriting the instructions.
+- The user wants to inspect a prompt before running it (`do-work prompts show <name>`).
+
+**Do NOT use when:**
+- The user described a task but no prompt matches — suggest `do-work capture request:` instead of forcing an unrelated prompt.
+- The user wants to *edit* a prompt file — that's a normal file edit, not a dispatcher invocation.
+- A first-class action (`review work`, `code-review`, `ui-review`, `interview`, etc.) covers the job — prefer the built-in action.
+
 ## Sub-Commands
 
 The `prompts` command accepts a sub-command as its first argument. If no sub-command is given, show the help menu.
@@ -28,19 +40,19 @@ The library lives at `prompts/` relative to the skill root (the directory contai
 
 ## Help Menu (no sub-command)
 
-When invoked with no sub-command (`do work prompts`), show:
+When invoked with no sub-command (`do-work prompts`), show:
 
 ```
 prompts — run reusable prompts from the library
 
-  do work prompts list              List every available prompt
-  do work prompts show <name>       Print a prompt (read-only)
-  do work prompts run <name>        Execute a prompt
-  do work prompts <name>            Shorthand for run
+  do-work prompts list              List every available prompt
+  do-work prompts show <name>       Print a prompt (read-only)
+  do-work prompts run <name>        Execute a prompt
+  do-work prompts <name>            Shorthand for run
 
 Examples:
-  do work prompts run architecture-decisions-log_create-or-expand
-  do work prompts architecture-decisions-log --dry-run
+  do-work prompts run architecture-decisions-log_create-or-expand
+  do-work prompts architecture-decisions-log --dry-run
 ```
 
 Then stop — do not execute anything.
@@ -62,7 +74,7 @@ Available prompts:
   architecture-decisions-log_create-or-expand   Architecture Decisions Log: Create…      Create or update a project-wide ADR log at decisions/…
   ...
 
-Run any of them with: do work prompts run <name>
+Run any of them with: do-work prompts run <name>
 ```
 
 Column widths can be approximate — readability beats precision. If the library is empty, say so and point the user at `prompts/README.md` for the "how to add a new prompt" section.
@@ -95,7 +107,7 @@ Column widths can be approximate — readability beats precision. If the library
 
 ## Shorthand: `<name> [args]`
 
-If the first argument isn't `list`, `show`, `run`, or `help`, treat it as shorthand for `run <name> [args]`. `do work prompts architecture-decisions-log --dry-run` is equivalent to `do work prompts run architecture-decisions-log_create-or-expand --dry-run` (via prefix match).
+If the first argument isn't `list`, `show`, `run`, or `help`, treat it as shorthand for `run <name> [args]`. `do-work prompts architecture-decisions-log --dry-run` is equivalent to `do-work prompts run architecture-decisions-log_create-or-expand --dry-run` (via prefix match).
 
 ---
 
@@ -114,12 +126,12 @@ After a successful `run`, suggest next steps. Default pattern:
 
 ```
 Next steps:
-  do work commit                  Commit any uncommitted changes
-  do work prompts list            Browse other prompts in the library
-  do work prompts show <name>     Inspect a prompt before running it
+  do-work commit                  Commit any uncommitted changes
+  do-work prompts list            Browse other prompts in the library
+  do-work prompts show <name>     Inspect a prompt before running it
 ```
 
-If the prompt already committed and pushed its own work (like `architecture-decisions-log_create-or-expand` does), skip the `do work commit` suggestion.
+If the prompt already committed and pushed its own work (like `architecture-decisions-log_create-or-expand` does), skip the `do-work commit` suggestion.
 
 ## Common Rationalizations
 
@@ -139,10 +151,10 @@ If the prompt already committed and pushed its own work (like `architecture-deci
 
 ## Verification Checklist
 
-- [ ] `do work prompts` with no args shows the help menu and stops
-- [ ] `do work prompts list` enumerates every `prompts/*.md` except `README.md`
-- [ ] `do work prompts show <name>` prints the file verbatim and does NOT execute it
-- [ ] `do work prompts run <name>` executes only the body (below `---`), not the header metadata
+- [ ] `do-work prompts` with no args shows the help menu and stops
+- [ ] `do-work prompts list` enumerates every `prompts/*.md` except `README.md`
+- [ ] `do-work prompts show <name>` prints the file verbatim and does NOT execute it
+- [ ] `do-work prompts run <name>` executes only the body (below `---`), not the header metadata
 - [ ] Unknown names trigger a "not found" message with the available-prompts list, not silent file creation
-- [ ] `do work prompts <name>` shorthand resolves to `run <name>` when `<name>` isn't a reserved sub-command
+- [ ] `do-work prompts <name>` shorthand resolves to `run <name>` when `<name>` isn't a reserved sub-command
 - [ ] Arguments after `<name>` pass through to the prompt body unchanged
