@@ -2,6 +2,18 @@
 
 > **Part of the do-work skill.** Interactive tutorials that teach users how the skill works. Four modes cover different learning styles — from hands-on walkthrough to reference cheat sheet.
 
+## When to Use
+
+**Use when:**
+- A new user wants to learn the skill — modes cover different learning styles.
+- An experienced user needs a cheat sheet of common recipes.
+- Someone is onboarding and wants to see the mental model before touching the queue.
+
+**Do NOT use when:**
+- The user wants to *do* a task — capture/run it instead.
+- The user wants reference docs — point at `docs/*-guide.md` or `README.md`.
+- The user wants to modify the queue or files — tutorial is strictly read-only.
+
 ## Modes
 
 | Mode | Trigger | What it does |
@@ -327,3 +339,19 @@ Each mode is self-contained — print its content and stop. Do not chain into an
 - **No fake files.** Show example file structures as text illustrations, not actual file creation.
 - **Plain text menus.** Print the menu, then stop and wait for the user to reply. Do not use the ask-user tool for mode selection or topic selection — the menus have too many options for structured prompts. Just print and wait.
 - **Stop after the tutorial.** Do not offer to start capture or run after finishing. Suggest next steps per the standard next-steps format.
+
+## Red Flags
+
+- The tutorial created a real UR or REQ file — that's a bug; tutorials are strictly read-only.
+- Quick Start skipped the "review" step and left a REQ in an intermediate state — finish the walkthrough or don't start it.
+- Recipes mode shows commands that don't match current `SKILL.md` routing — recipes drifted; resync with the routing table before publishing.
+- Interactive Tour topic exists in the menu but has no content section — dead link; remove from the menu.
+- The tutorial finished and then auto-invoked `capture` or `run` — violates the "stop after the tutorial" rule.
+
+## Verification Checklist
+
+- [ ] Mode selection (bare invocation) printed the menu and waited for user reply — did not auto-pick.
+- [ ] Every mode is self-contained — prints content, then stops.
+- [ ] No real files were created, modified, or deleted.
+- [ ] Recipes mode commands match current `SKILL.md` routing (spot-check at least 3).
+- [ ] Next-steps suggestions after completion follow the `next-steps.md` format.

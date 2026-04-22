@@ -11,6 +11,19 @@ A stateful multi-action orchestration that chains six actions in sequence. Each 
 - **Orchestrator only.** The pipeline never re-implements action logic. It dispatches to existing actions and tracks which ones have completed.
 - **Coexists with CHECKPOINT.md.** The pipeline tracks macro-steps (which action to run next). The work action's CHECKPOINT.md tracks micro-state within a single `do-work run` invocation. Both systems operate independently.
 
+## When to Use
+
+**Use when:**
+- The user describes a task and wants it taken end-to-end: investigate → capture → verify → build → review → present, without manual hand-offs between steps.
+- A prior pipeline was interrupted and the user wants to resume (`do-work pipeline` with no args + active state file).
+- The user wants deterministic step-by-step progression with persistent state across sessions.
+
+**Do NOT use when:**
+- The user just wants to *capture* a request without building — that's `do-work capture request:`.
+- The user just wants to *process* the existing queue — that's `do-work run`.
+- An active pipeline already exists and the user wants to start an unrelated one — finish or `abandon` the current pipeline first.
+- The task is too small to benefit from the full six-step cycle — a one-liner fix is fine with plain `capture` + `run`.
+
 ## Input
 
 `$ARGUMENTS` determines behavior:

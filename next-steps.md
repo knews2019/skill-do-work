@@ -273,6 +273,34 @@ Next steps:
   do-work capture request: [describe]  Capture follow-up work as a request
 ```
 
+**After interview (session in progress):**
+```
+Next steps:
+  do-work interview <template>         Resume the session (next checkpoint)
+  do-work interview <template> review  Cross-layer contradiction pass (once all layers complete)
+```
+
+**After interview (all layers complete):**
+```
+Next steps:
+  do-work interview <template> review  Cross-layer contradiction pass before export
+  do-work interview <template> export  Produce agent-ready artifacts
+```
+
+**After interview export:**
+```
+Next steps:
+  do-work interview <template> ingest  Feed exports into the BKB
+  do-work capture request: [describe]  Capture follow-up work the interview surfaced
+```
+
+**After interview list:**
+```
+Next steps:
+  do-work interview <template>         Start or resume a listed template
+  do-work help                         Full command reference
+```
+
 **After tutorial:**
 ```
 Next steps:

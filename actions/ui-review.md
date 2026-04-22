@@ -13,6 +13,18 @@ It combines two layers of design knowledge:
 
 Together, these provide both the structural rigor of a design system review and the aesthetic eye of a visual design audit.
 
+## When to Use
+
+**Use when:**
+- A UI-focused REQ just finished building and you want a design-quality check before calling it done.
+- The user asks to "validate", "audit", or "review" a UI surface, component directory, or prime file scope.
+- A feature looks functional in code review but the rendered result may have spacing, typography, or accessibility issues.
+
+**Do NOT use when:**
+- The user wants structural/logic/security review — that's `do-work code-review`.
+- The change has no UI surface (pure backend, CLI, or infrastructure).
+- The user wants to *build* or *fix* UI — this action is read-only; use `do-work capture request:` or `do-work run` for that.
+
 ## Input
 
 The user specifies what to review. Accepted formats:

@@ -4,6 +4,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.6 — The Audit Ratchet (2026-04-22)
+
+Close the contradictions and gaps found in a self-audit of the skill: a broken link, a missing `next-steps.md` entry, an out-of-date README, a missing docs guide, two action files that didn't follow the template, and a wave of missing `When to Use` / `Red Flags` / `Verification Checklist` sections across core actions. Nothing behavioral — just the docs finally matching the conventions CLAUDE.md claims.
+
+- `decisions/records/adr-012-interview-v2-gap-closure.md`: Fixed broken link to v1 spec — the filename is date-prefixed (`2026-04-16_expand-skill-do-work-interview.md`).
+- `next-steps.md`: New `After interview` blocks covering session-in-progress, all-layers-complete, export, and list — previously absent despite `interview` being a first-class action.
+- `README.md`: `bkb` usage list now includes `defrag`, `garden`, and `crew [action]` — all three were already in the action file and `next-steps.md`, just missing from the README overview.
+- `CLAUDE.md`: `prompts/` tree entry now points at `prompts/README.md` as the authoritative index instead of listing one outdated prompt.
+- `docs/prompts-guide.md`: New guide for the prompts dispatcher — sub-commands, name resolution, safety model, and how to add a new prompt.
+- `actions/install-ui-design.md`, `actions/install-bowser.md`: Restructured to follow the CLAUDE.md action template (When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist).
+- `actions/capture.md`, `actions/clarify.md`, `actions/work.md`, `actions/pipeline.md`, `actions/ui-review.md`, `actions/prompts.md`, `actions/present-work.md`, `actions/prime.md`, `actions/version.md`, `actions/tutorial.md`, `actions/build-knowledge-base.md`, `actions/forensics.md`, `actions/deep-explore.md`, `actions/scan-ideas.md`: Added missing `When to Use`, `Red Flags`, and/or `Verification Checklist` sections per CLAUDE.md's action-template spec. All 14 core actions now carry the full template.
+
 ## 0.69.5 — The Hyphen Hustle (2026-04-22)
 
 Every `do work` command invocation is now written `do-work` across docs, actions, crew rules, and the session-start hook. Matches the skill's actual name and makes it unambiguous to agents that it's a real command, not a verb phrase.

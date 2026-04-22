@@ -4,6 +4,19 @@
 
 The core idea: instead of re-deriving knowledge from scratch on every query (RAG), the LLM incrementally compiles raw sources into a structured, interlinked Markdown wiki. `raw/` is the source code, the LLM is the compiler, the wiki is the executable.
 
+## When to Use
+
+**Use when:**
+- Building or maintaining a persistent, compounding knowledge base of raw sources (articles, PDFs, notes, transcripts).
+- Adding new sources to an existing KB (`triage` → `ingest`).
+- Running health checks or structural maintenance (`lint`, `resolve`, `defrag`, `garden`).
+- Querying the wiki for synthesized answers (`query`) — prefer the compiled wiki over re-reading raw sources.
+
+**Do NOT use when:**
+- The user wants a quick one-off read of a single document — that's a direct file read, not a KB operation.
+- There's no `kb/` directory AND the user hasn't asked to `init` — stop and ask.
+- The user wants project-level AI context (primes) — that's `do-work prime`, not bkb.
+
 ## Sub-Commands
 
 The `bkb` command accepts a sub-command as its first argument. If no sub-command is given, show the help menu.
@@ -685,3 +698,24 @@ do-work bkb — LLM Knowledge Base builder
 ```
 
 ---
+
+## Red Flags
+
+- `ingest` produced wiki pages but never updated `_master_index.md` or the relevant topic index — Connector/Editor step was skipped.
+- `query` returned an answer that wasn't in any wiki page (hallucinated synthesis) — Seeker should cite sources only from the wiki.
+- `lint` reported zero issues but the KB has 500+ pages — lint was run at the wrong scope; re-run at `full`.
+- `close` was run without `ingest` first — nothing to summarize; the daily log will be empty.
+- `defrag` is overdue by 14+ days (per `status` staleness warning) and the user is adding new sources — structure debt accumulates; defrag before the next ingest.
+- `init` was run on a path that already contains a wiki — abort; re-init would clobber existing data.
+- Custom `crew` agents override built-in ones silently — clarify precedence to the user.
+
+## Verification Checklist
+
+- [ ] The relevant agent files from `<kb>/agents/` were read before executing the sub-command (unless `init`).
+- [ ] `triage` moved files from `inbox/` into type-sorted `capture/` subdirs and updated `_inbox_queue.md`.
+- [ ] `ingest` created wiki pages, updated indexes, and archived sources into `raw/processed/<date>/`.
+- [ ] `query` answers cited only wiki pages (not raw sources directly).
+- [ ] `lint` output lists each finding by file path and category.
+- [ ] `close` appended a timestamped entry to `wiki/log.md` using the documented format.
+- [ ] `status` flagged `defrag` or `garden` if last-run was 14+ days ago.
+- [ ] `init` refused to overwrite an existing wiki.

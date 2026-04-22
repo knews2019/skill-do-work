@@ -4,6 +4,18 @@
 
 This is the second human-attention window in the pipeline. After the work action processes requests autonomously, any ambiguities the builder encountered are surfaced here as a batch for efficient review.
 
+## When to Use
+
+**Use when:**
+- A work run just finished and left `pending-answers` REQs in the queue.
+- The user asks "what's blocked?", "show me pending questions", or similar.
+- The pipeline can't advance because builder-decided questions need sign-off.
+
+**Do NOT use when:**
+- No `pending-answers` REQs exist — tell the user the queue is clear and stop.
+- The user wants to answer a *specific* open question by editing the REQ directly — that's just a file edit, not a batch review.
+- The queue has only `pending` REQs — those need `do-work run`, not clarify.
+
 ## Input
 
 Triggered by `do-work clarify` (also: `answers`, `questions`, `pending`, `what's blocked`). No arguments needed.
@@ -83,3 +95,19 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - This action avoids wasting a work cycle on a REQ that just needs sign-off or rejection, while correctly routing approved discovered tasks into the build queue
 - Never block the user — if they skip all questions, exit gracefully
 - Always show the builder's recommended choice prominently so confirming is the fast path
+
+## Red Flags
+
+- A `pending-answers` REQ with no `## Open Questions` section — the marker and the body disagree; investigate before presenting nothing.
+- User confirms every builder choice without reading — they may be rubber-stamping; ask once if they want a summary first.
+- A discovered-task follow-up's `status` flipped to `completed` instead of `pending` after user confirmed "Yes, add to queue" — that's the wrong route (the task never gets built).
+- `pending-answers` REQs pile up across multiple clarify runs without resolution — users are skipping; ask whether to discard the stale ones.
+
+## Verification Checklist
+
+- [ ] Every REQ presented had `status: pending-answers` in its frontmatter before the session started.
+- [ ] Each question shown included the builder's recommended choice (confirming is the fast path).
+- [ ] Answered REQs with all questions resolved flipped to `status: pending` (or `completed` for builder-was-right / discarded).
+- [ ] Approved discovered-task REQs flipped to `pending` and stayed in `do-work/queue/` — not archived.
+- [ ] Skipped REQs remained `pending-answers` — nothing lost.
+- [ ] The final report names each REQ by id and what happened to it.

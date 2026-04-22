@@ -28,6 +28,18 @@ If `do-work/` doesn't exist yet (first invocation in a project):
 2. Do **not** pre-create `working/` or `archive/` — those are created by the work action on demand
 3. Start numbering at REQ-001 and UR-001
 
+## When to Use
+
+**Use when:**
+- The user is describing a task to be done — a feature, bug fix, refactor, idea, or meeting note — and the queue should record it verbatim + structured.
+- The input is ambiguous enough to need a quick clarification pass (RED/GREEN proof, scope boundaries).
+- The user pastes raw content (screenshots, specs, transcripts) that should be preserved as source-of-truth before any building.
+
+**Do NOT use when:**
+- The user wants the work done **right now** in this turn — that's the `work` action (or `pipeline` for full end-to-end).
+- The queue already contains the same request (check for an open UR with matching intent first).
+- The user is asking a question or requesting a read-only report — capture is for *intent*, not conversations.
+
 ## Simple vs Complex
 
 | Mode | When | Approach |

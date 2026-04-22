@@ -252,6 +252,9 @@ do-work bkb lint full         # full structural check
 do-work bkb resolve           # walk through open contradictions
 do-work bkb close             # finalize daily log, refresh overview
 do-work bkb rollup            # monthly summary
+do-work bkb defrag            # weekly structural maintenance — re-evaluate clusters, suggest merges/splits
+do-work bkb garden            # topic cluster and relationship hygiene — balance, orphans, reciprocity
+do-work bkb crew [action]     # manage custom agents — create, list, edit, remove
 do-work bkb status            # show KB stats and pending items
 ```
 

@@ -4,6 +4,19 @@
 
 An orchestrated build system that processes request files created by the capture requests action. Uses complexity triage to route simple requests straight to implementation and complex ones through planning and exploration first.
 
+## When to Use
+
+**Use when:**
+- The queue has `pending` REQs and the user wants them built (`do-work run`, `start`, `go`, etc.).
+- The pipeline dispatches the work action as its build step.
+- A specific REQ id was named (`do-work run REQ-042`) — the action scopes to it.
+
+**Do NOT use when:**
+- The queue is empty — tell the user and stop; suggest `do-work capture request: [describe]` instead.
+- The only REQs left are `pending-answers` — route to `do-work clarify` so the user can resolve them first.
+- The user wants to *inspect* what would happen without running — point them at `do-work inspect` or `do-work verify requests`.
+- The user wants post-build review — that's `do-work review work`.
+
 ## Request Files as Living Logs
 
 Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Plan, Exploration, Implementation Summary (mandatory file manifest), Testing, Review. This ensures full traceability — what was planned vs done, what files were touched, and whether triage was accurate.

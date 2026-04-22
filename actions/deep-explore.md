@@ -272,3 +272,20 @@ DEEP EXPLORATION — [concept name]
 - **Read-only by default.** The session directory is the only thing created. Do not create REQs, modify code, or capture requests. The user decides what to act on after seeing the results.
 - **Respect the seed.** Explore around it, through it, and beyond it — but don't abandon it for something unrelated.
 - **No duplicates.** Check the queue and recent archive. If a direction overlaps with pending or completed work, note the overlap and explore what's different.
+
+## Red Flags
+
+- Orchestrator contributed ideas to the diverge round — that's the Diverger's job; re-run with strict role separation.
+- Converger evaluated during diverge (or vice versa) — modes blurred; the method's value collapses.
+- A round's file was overwritten instead of written under a new round filename — the dialogue trail is lost.
+- Final briefs point at nothing in the codebase or project history — exploration became untethered speculation.
+- The seed concept was silently dropped mid-session — explicitly note the pivot or stop and ask.
+- Deep-explore produced REQs or modified files — it must be read-only; captures happen *after* the user reviews output.
+
+## Verification Checklist
+
+- [ ] Each round wrote to its own file in the session directory — no overwrites.
+- [ ] Diverge → Converge → Synthesis order was followed; modes stayed separate.
+- [ ] Final output includes vision document(s) and/or idea briefs that cite concrete project elements.
+- [ ] No code files, REQs, or UR folders were created by this action.
+- [ ] Overlaps with existing queue/archive were flagged explicitly, not silently elided.

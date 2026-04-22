@@ -4,6 +4,18 @@
 
 Unlike built-in actions (which have fixed workflows), this action is a dispatcher over a growing collection of user-contributable prompt files. Think of it as a command-palette for recurring jobs the skill doesn't (yet) have a first-class action for.
 
+## When to Use
+
+**Use when:**
+- The user names a prompt (`do-work prompts run adr`) or wants to browse the library (`do-work prompts list`).
+- A recurring job has a reusable prompt in `prompts/` — running it is cheaper than rewriting the instructions.
+- The user wants to inspect a prompt before running it (`do-work prompts show <name>`).
+
+**Do NOT use when:**
+- The user described a task but no prompt matches — suggest `do-work capture request:` instead of forcing an unrelated prompt.
+- The user wants to *edit* a prompt file — that's a normal file edit, not a dispatcher invocation.
+- A first-class action (`review work`, `code-review`, `ui-review`, `interview`, etc.) covers the job — prefer the built-in action.
+
 ## Sub-Commands
 
 The `prompts` command accepts a sub-command as its first argument. If no sub-command is given, show the help menu.

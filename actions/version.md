@@ -2,9 +2,21 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps.
 
-**Current version**: 0.69.5
+**Current version**: 0.69.6
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
+
+## When to Use
+
+**Use when:**
+- The user asks "what version", "release notes", "what's new", or "history" → version + last 5 changelog entries.
+- The user asks to "update", "check for updates", or "is there a newer version" → update flow.
+- The user asks for a "recap" of recent work → recap flow across archive + active URs.
+
+**Do NOT use when:**
+- The user wants to see all changelog entries (more than 5) — point them at `CHANGELOG.md` directly instead of loading the full file.
+- The user wants to *install* the skill fresh — that's the README install command, not this action.
+- The install is global (under `~/.claude/skills/` etc.) and the user wants an update — refuse the auto-update per the preflight in Step 2 below, and redirect them.
 
 ## Responding to Version Requests
 
@@ -120,3 +132,21 @@ When user asks "recap":
    ```
    One line per UR, one indented line per REQ. No descriptions, no scores, no file lists.
 6. **If no archive exists AND no active URs found**: Print `No completed work yet.` and skip this section.
+
+## Red Flags
+
+- The update flow is about to `cd` into a path under `~/.claude/skills/`, `~/.gemini/skills/`, or anywhere outside the current project's git root — STOP. Global installs must never be auto-updated from here.
+- Remote version fetched from the upstream URL is empty, malformed, or older than local — abort; don't "update" backwards.
+- The dirty-tree check reported modifications but the update proceeded anyway — user's local customizations will be clobbered.
+- Recap lists the same UR twice (once from archive, once from active) — the dedup step was skipped; archive version should win.
+- Version reported doesn't match the `**Current version**:` line at the top of this file — caching or path confusion; re-read the file from disk.
+
+## Verification Checklist
+
+- [ ] Version output shows the local version, the last 5 changelog entries, newest at the bottom.
+- [ ] Update flow refused to proceed for global installs (Step 2 preflight).
+- [ ] Update flow refused to proceed when shipped files had uncommitted changes (Step 3 dirty check), unless user explicitly confirmed.
+- [ ] Update flow pre-cleaned `prompts/*.md` and `interviews/*.md` (Step 4) before tar extraction.
+- [ ] Post-update verification re-read `actions/version.md` and confirmed the local version matches remote.
+- [ ] Recap merged archive + active sources, deduped by UR id, kept the archive version on conflicts.
+- [ ] Recap output is one line per UR + one indented line per REQ — no scores, no file lists, no descriptions.

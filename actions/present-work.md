@@ -12,6 +12,18 @@ The code is done. Now communicate its value. This action reads the full history 
 - **Pointers over prose.** Reference key files and code — the implementation is the source of truth. Don't rewrite it in paragraphs.
 - **Proportional effort.** A config change gets a 2-paragraph brief. A multi-feature system gets architecture diagrams and a video script.
 
+## When to Use
+
+**Use when:**
+- Work is **completed and archived**, and the user wants a client-facing or stakeholder-facing summary.
+- A pipeline just finished and the user wants briefs/videos/diagrams as the closing step.
+- The user asks for a portfolio summary across everything shipped to date (`do-work present all`).
+
+**Do NOT use when:**
+- Work is still in progress — the archive isn't populated, and briefs would be speculative.
+- The user wants *technical review*, not a brief — use `do-work review work` or `do-work code-review`.
+- The REQ has no user-visible output (infra-only, tooling) — a brief adds no value; skip.
+
 ## Two Modes
 
 | Mode | Trigger | What it does |
@@ -499,3 +511,21 @@ Same as detail mode — save to `do-work/deliverables/` and summarize.
 - Don't generate a video script for non-visual changes
 - Don't write walls of text when pointers to code would be more accurate and durable
 - Don't regenerate deliverables that already exist without the user asking — check `do-work/deliverables/` first and offer to update
+
+## Red Flags
+
+- The target UR/REQ isn't in `do-work/archive/` yet — don't present work that isn't done; stop and tell the user.
+- The brief quotes metrics that don't appear anywhere in the REQ, implementation summary, or commits — fabricated value prop; remove or replace with qualitative framing.
+- The brief copies code snippets instead of pointing at files — client-facing docs shouldn't show diffs.
+- You're about to overwrite an existing deliverable at `do-work/deliverables/` — pause and confirm with the user whether to update in-place or version it.
+- Portfolio mode produced a brief for every archive entry including internal-only cleanup REQs — filter those out; portfolios are about shipped user value.
+
+## Verification Checklist
+
+- [ ] Target UR/REQ was found in `do-work/archive/` (not `working/`, not `queue/`).
+- [ ] Deliverables saved under `do-work/deliverables/{UR-NNN}/` (or portfolio path for all-mode).
+- [ ] No code snippets in the brief — only file path references.
+- [ ] Value prop is qualitative unless a specific metric exists in the archive record.
+- [ ] Architecture diagram was generated only when the work was non-trivial (Route B or C).
+- [ ] Depth matched the work scope per the "Calibrating Depth" table.
+- [ ] If a prior deliverable existed, it was updated in place or versioned — not silently duplicated.

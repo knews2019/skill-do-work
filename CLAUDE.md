@@ -45,9 +45,8 @@ specs/                # Reusable specification templates for common task types
   ui-component.md     # Spec template for frontend UI components
   refactor.md         # Spec template for refactoring tasks
   bug-fix.md          # Spec template for bug fixes
-prompts/              # Reusable prompt library — each file is a standalone, runnable prompt
+prompts/              # Reusable prompt library — each file is a standalone, runnable prompt; see prompts/README.md for the authoritative index
   README.md           # Library index + how to add a new prompt
-  architecture-decisions-log_create-or-expand.md # Create or update a project-wide ADR log at decisions/ (BKB wiki pattern)
 interviews/           # Prescriptive templates loaded by the interview action
   work-operating-model.md # Five-layer elicitation — rhythms, decisions, dependencies, knowledge, friction
 crew-members/         # Agent rules loaded by work action based on domain, phase, or dispatch pattern

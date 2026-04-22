@@ -116,3 +116,21 @@ Aim for 8-15 ideas total. Fewer is fine if the codebase is small or focused. Mor
 - **Grounded in evidence.** Every idea must point at something real — a file, a pattern, a TODO, a gap, a user-facing behavior. If you can't point at evidence, drop the idea.
 - **Respect the focus.** If `$ARGUMENTS` specifies a topic or directory, stay in scope. Don't pad the list with off-topic suggestions.
 - **Read-only.** Do not create files, modify code, or capture requests. The user decides what to act on.
+
+## Red Flags
+
+- Ideas can't cite a specific file, TODO, pattern, or gap — they're generic advice; drop them.
+- The focus argument said "performance" but most ideas are about refactoring or testing — off-scope; re-run with tighter focus.
+- All ideas are low-risk refactors — the scan may have skipped product-level opportunities; broaden the lens.
+- Idea list duplicates pending REQs verbatim — the queue/archive check was skipped.
+- Scan-ideas created a REQ or UR — violates the read-only contract.
+- List has 30+ ideas — dilutes signal; prioritize harder.
+
+## Verification Checklist
+
+- [ ] Every idea points at a concrete file, pattern, TODO, or gap (evidence line present).
+- [ ] Ideas are sized (S/M/L or effort estimate) and sorted by priority/confidence.
+- [ ] No idea duplicates a REQ currently pending or recently completed.
+- [ ] Scope respected the `$ARGUMENTS` focus (topic or directory), if one was given.
+- [ ] Total idea count is within the 8–15 target (fewer if the codebase is small and focused).
+- [ ] No files were created, modified, or deleted by this action.

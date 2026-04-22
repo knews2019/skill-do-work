@@ -171,3 +171,19 @@ All clear — no issues detected.
 - Before starting a large batch of work (health check)
 - When onboarding to a project that already has `do-work/` history
 - Periodically, as a quality audit
+
+## Red Flags
+
+- Report is "All clear" but `do-work/working/` has claimed REQs — check was scoped too narrowly.
+- A REQ was flagged as `stuck` but its mtime is < 10 minutes old — likely still processing; don't disturb.
+- Hollow-completion check flagged every completed REQ as hollow — rubric is too strict; review before acting.
+- Forensics fixed something on its own — this action is **read-only**; it must only report.
+- Output mixes severities (critical/warning/info) without clear grouping — readability regression; use the documented sections.
+
+## Verification Checklist
+
+- [ ] Action made **zero** changes to `do-work/` — read-only contract held.
+- [ ] Report grouped findings under `## Critical Findings`, `## Warnings`, `## Info`, `## Summary`.
+- [ ] Each finding names a specific file path or REQ/UR id.
+- [ ] Stuck-work detection used a reasonable threshold (not flagging actively-processing work).
+- [ ] If no issues were found, output says "All clear" and the summary lists what was checked.
