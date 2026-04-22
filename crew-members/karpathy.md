@@ -21,7 +21,7 @@ Before implementing:
 - If something is unclear, stop. Name what's confusing. Ask.
 
 In do-work terms: open questions get marked `- [~]` with best-judgment reasoning
-and surface later via `do work clarify`. Silent assumptions are the failure mode.
+and surface later via `do-work clarify`. Silent assumptions are the failure mode.
 
 ## 2. Simplicity First
 

@@ -33,7 +33,7 @@ The separation is enforced by spawning each role as a separate subagent with its
 
 ## Scan-Ideas vs Deep-Explore
 
-| `do work scan-ideas` | `do work deep-explore` |
+| `do-work scan-ideas` | `do-work deep-explore` |
 |----------------------|------------------------|
 | Quick scan of existing codebase | In-depth exploration of a concept |
 | Output: ranked list of tasks | Output: vision document + idea briefs |

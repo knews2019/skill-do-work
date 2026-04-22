@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.5 — The Hyphen Hustle (2026-04-22)
+
+Every `do work` command invocation is now written `do-work` across docs, actions, crew rules, and the session-start hook. Matches the skill's actual name and makes it unambiguous to agents that it's a real command, not a verb phrase.
+
+- All `*.md` files and `hooks/session-start.sh`: `do work <action>` → `do-work <action>`, including README examples, SKILL.md routing tables, action files, docs, CHANGELOG prose, crew rules, prompts, and decision records.
+- No behavior change — natural-language triggering still works; the skill's name has always been `do-work`, so hyphenated references stay consistent with the skill manifest.
+
 ## 0.69.4 — The Review Ratchet (2026-04-17)
 
 Follow-up to 0.68.2: fixes three defects from code review on the interview v2 gap-closure patch. One was a JSON rendering bug, one was a reference to a session field that doesn't exist, and one was a stale-entry leak into agent rules that violated ADR-012's own promise. ADR-012 gets a "Post-merge corrections" section documenting each.
@@ -69,7 +76,7 @@ Closes five v1 gaps in the `interview` action per the v2 imported spec — expor
 
 Renames the Weekly Structural Diff prompt so "original" is explicit in the filename — clears the way for variant versions of the same framework to coexist in the library.
 
-- `prompts/weekly-structural-diff.md` → `prompts/weekly-structural-diff-original.md`: renamed; index entry in `prompts/README.md` updated to match. Invoke with `do work prompts run weekly-structural-diff-original` (prefix match `weekly-structural-diff` still resolves unambiguously while it's the only variant).
+- `prompts/weekly-structural-diff.md` → `prompts/weekly-structural-diff-original.md`: renamed; index entry in `prompts/README.md` updated to match. Invoke with `do-work prompts run weekly-structural-diff-original` (prefix match `weekly-structural-diff` still resolves unambiguously while it's the only variant).
 
 ## 0.68.0 — The Promptkit Drop (2026-04-16)
 
@@ -97,7 +104,7 @@ New prompt in the library: `weekly-signal-diff` — a weekly structural diff of 
 Folds in the legitimate improvements from a parallel branch that landed alongside 0.67.2/0.67.3. The earlier "Unified Trunk" merge tried to combine both lines but truncated `CHANGELOG.md` and rewrote `actions/version.md` losing the global-install guard and the recap section — that merge was reverted and only the load-bearing changes were re-applied here.
 
 - `actions/version.md`: Widened the auto-update dirty check to scope every shipped editable path (`prompts/`, `interviews/`, `specs/`, `docs/`, `decisions/`, `hooks/`, `CLAUDE.md`, `AGENTS.md`, `next-steps.md`) — anything tar would clobber. Anything dirty in those paths now blocks the update.
-- `actions/version.md`: New pre-clean step (4) for `prompts/` and `interviews/` — top-level `.md` files are deleted before extraction so upstream-removed entries don't linger as ghost workflows in `do work prompts list` / `do work interview list`. Subsequent steps renumbered 4→5, 5→6, 6→7.
+- `actions/version.md`: New pre-clean step (4) for `prompts/` and `interviews/` — top-level `.md` files are deleted before extraction so upstream-removed entries don't linger as ghost workflows in `do-work prompts list` / `do-work interview list`. Subsequent steps renumbered 4→5, 5→6, 6→7.
 - `actions/interview-reference.md`: `update` re-run mode now tracks an in-memory `any_edits` flag. If any layer's approval committed a non-zero diff, the export gate state (`review_completed_at`, `review_runs`) is cleared on completion — the user must re-run `review` before the next `export`. Pure re-confirms leave the gate untouched.
 - `actions/interview-reference.md`: `fresh` and `version` empty session shapes now include `last_activity_at: <now>` so the freshness preflight has something to compare against on the very first export.
 - `actions/interview.md`: Exports gate rule documents that `update` clears the review state when edits are committed.
@@ -122,7 +129,7 @@ Interview recipe gains a stale-export warning and a consolidated status vocabula
 
 Interview action now works the moment the skill is installed into a project, and session state lives in `do-work/` alongside the rest of the per-repo workspace — tracked in git like URs and REQs.
 
-- Templates resolve from `<skill-root>/interviews/` (the `interviews/` directory inside the skill bundle), not the user's project root. Fixes `do work interview list` and `do work interview <template>` finding nothing when the skill ships from `~/.claude/skills/do-work/`.
+- Templates resolve from `<skill-root>/interviews/` (the `interviews/` directory inside the skill bundle), not the user's project root. Fixes `do-work interview list` and `do-work interview <template>` finding nothing when the skill ships from `~/.claude/skills/do-work/`.
 - Session state moved from `./interview/<template>/` to `./do-work/interview/<template>/`. It joins `queue/`, `user-requests/`, `archive/`, and `working/` under the canonical workspace and is tracked in git — the elicited operating model is durable per-repo knowledge, not transient orchestration state.
 - Removed the stale `interview/` entry from the skill repo's own `.gitignore` so the skill no longer models the wrong behaviour.
 
@@ -220,7 +227,7 @@ Pipeline completion now educates instead of just checking a box. After the six s
 
 ## 0.63.0 — The Closing Act (2026-04-13)
 
-The pipeline now closes the loop. Added `present` as the sixth step so a full pipeline run ends with client-facing deliverables (brief, architecture diagram, video, HTML explainer) — no more remembering to run `do work present` manually after every pipeline.
+The pipeline now closes the loop. Added `present` as the sixth step so a full pipeline run ends with client-facing deliverables (brief, architecture diagram, video, HTML explainer) — no more remembering to run `do-work present` manually after every pipeline.
 
 - `actions/pipeline.md`: Added `present` step after `review` — dispatches to the present work action with the UR ID from the capture step's artifacts. Skips gracefully if capture produced no artifacts.
 - `actions/pipeline.md`: Updated state schema, status block example, help menu, dispatch table, completion check (5 → 6 steps), Rules, and Common Rationalizations to include the new step.
@@ -251,7 +258,7 @@ Gap-closure pass after 0.62.2. The earlier release caught a Rules-at-end orderin
 
 ## 0.62.2 — The Own Medicine (2026-04-12)
 
-Ran `do work code-review` on the skill itself and actually fixed the findings. Four first-class actions (`pipeline`, `scan-ideas`, `deep-explore`, `tutorial`) were missing from the README usage scenarios despite being prominent in the SKILL.md help menu — now every listed action has a README section. Also cleared the remaining template-ordering drift and filled in missing Red Flags blocks.
+Ran `do-work code-review` on the skill itself and actually fixed the findings. Four first-class actions (`pipeline`, `scan-ideas`, `deep-explore`, `tutorial`) were missing from the README usage scenarios despite being prominent in the SKILL.md help menu — now every listed action has a README section. Also cleared the remaining template-ordering drift and filled in missing Red Flags blocks.
 
 - `README.md`: Added four new usage-scenario sections (`pipeline`, `scan-ideas`, `deep-explore`, `tutorial`) and renumbered to 21 scenarios — closes the discoverability gap between the help menu and the README
 - `actions/scan-ideas.md`, `actions/review-work.md`, `actions/deep-explore.md`: Swapped `## Philosophy` and `## When to Use` to match the CLAUDE.md template order
@@ -291,7 +298,7 @@ Round 2 of self-run quick-wins — structural template nits and documentation ac
 
 ## 0.61.2 — The Quick Sweep (2026-04-12)
 
-Fixes from a self-run `do work quick-wins` on the skill itself. Consistency nits the team would notice before users ever would.
+Fixes from a self-run `do-work quick-wins` on the skill itself. Consistency nits the team would notice before users ever would.
 
 - `next-steps.md`: Added missing `**After <action>:**` blocks for `cleanup`, `install-ui-design`, `install-bowser` — SKILL.md's "suggest next steps after every action" rule now holds for every action
 - `actions/deep-explore.md`: Renamed second `## When to Use` (a comparison table, not a use-case section) to `## Scan-Ideas vs Deep-Explore` — no more duplicate headers
@@ -325,7 +332,7 @@ Cross-file contradiction audit — fixes 13 inconsistencies spanning stale paths
 - `actions/scan-ideas.md`, `actions/deep-explore.md`: Fixed stale `do-work/` queue path → `do-work/queue/` (missed by v0.60.3)
 - `CHANGELOG.md`: Renamed 15 duplicate codenames (The Safety Net ×3, The Consistency Pass ×4, The Signpost ×2, The Compass ×2, The Cartographer ×2, The Feedback Loop ×2, The Gap Closer ×2, The Full Picture ×2, The Clarity Pass ×2) — each entry now has a unique codename
 - `CHANGELOG.md`: Corrected v0.60.2 entry that claimed `do-work/` root was canonical (subsequently reversed by v0.60.3)
-- `actions/work.md`: Added Input section with `$ARGUMENTS` support for targeted REQ IDs (e.g., `do work run REQ-042`) — fixes pipeline scoping gap where pipeline.md told work to process specific REQs but work had no mechanism to accept that constraint
+- `actions/work.md`: Added Input section with `$ARGUMENTS` support for targeted REQ IDs (e.g., `do-work run REQ-042`) — fixes pipeline scoping gap where pipeline.md told work to process specific REQs but work had no mechanism to accept that constraint
 - `SKILL.md`: Updated work verb reference to document optional REQ ID arguments; updated priority 4 routing to accept trailing REQ IDs
 - `actions/commit.md`: Documented commit message format distinction from work.md (`Traced-to:` vs `Implements:`) and added commit pathway deconfliction note
 - `actions/verify-requests.md`: Fixed Step 3 to include `do-work/queue/` while keeping `do-work/` as legacy fallback
@@ -367,7 +374,7 @@ Changelog and action file hygiene — fixes that prevent recurring errors.
 
 ## 0.60.1 — The Clear Head (2026-04-10)
 
-Reverted wave-based pipeline processing — it duplicated what `do work run` already handles natively (sequential queue draining with fresh agents per REQ). Pipeline Step 5a is back to the original simple continuation loop.
+Reverted wave-based pipeline processing — it duplicated what `do-work run` already handles natively (sequential queue draining with fresh agents per REQ). Pipeline Step 5a is back to the original simple continuation loop.
 
 - `actions/pipeline.md`: Removed wave-based processing (Step 5a.1), wave output formats, wave rules. Restored original Step 5a with 3-cycle cap.
 
@@ -399,7 +406,7 @@ Quick-wins cleanup: shell script hardening, broken link fix, and next-steps cons
 
 ## 0.57.0 — The Deep Dive (2026-04-10)
 
-New `do work deep-explore` action for multi-round structured exploration of concepts. Spawns divergent/convergent subagent dialogue (Free Thinker, Grounder, Writer, optional Explorer) to develop seed ideas into vision documents and idea briefs. Also renames `ideate` to `scan-ideas` for clarity — `ideate` still works as a trigger keyword.
+New `do-work deep-explore` action for multi-round structured exploration of concepts. Spawns divergent/convergent subagent dialogue (Free Thinker, Grounder, Writer, optional Explorer) to develop seed ideas into vision documents and idea briefs. Also renames `ideate` to `scan-ideas` for clarity — `ideate` still works as a trigger keyword.
 
 - `actions/deep-explore.md`: New action — multi-round exploration with session directories, continue mode, convergence rubric, and 4 subagent roles
 - `actions/deep-explore-reference.md`: Companion file — persona prompts, document templates, state schema, error handling
@@ -413,7 +420,7 @@ New `do work deep-explore` action for multi-round structured exploration of conc
 Two fixes to pipeline queue continuation (Step 5a) from PR review feedback.
 
 - Continuation reviews now always target individual REQ IDs — removed UR shortcut that would re-review all completed REQs under a UR, not just the current batch
-- Error recovery guidance is now context-aware: suggests `do work review REQ-NNN` when review fails (since processed REQs are already completed and `do work run` would no-op), and `do work run` only when the run step itself failed
+- Error recovery guidance is now context-aware: suggests `do-work review REQ-NNN` when review fails (since processed REQs are already completed and `do-work run` would no-op), and `do-work run` only when the run step itself failed
 
 ## 0.56.1 — The Safety Net (2026-04-10)
 
@@ -472,7 +479,7 @@ Fixes two documentation gaps from 20-commit audit: adds Performance dimension to
 
 ## 0.53.0 — The Spark (2026-04-09)
 
-New `do work ideate` action — generates grounded ideas for what to build, improve, or explore next. Scans prime files, project history, TODOs, coverage gaps, and codebase patterns to produce ranked suggestions with effort estimates. Every idea references something concrete in the code.
+New `do-work ideate` action — generates grounded ideas for what to build, improve, or explore next. Scans prime files, project history, TODOs, coverage gaps, and codebase patterns to produce ranked suggestions with effort estimates. Every idea references something concrete in the code.
 
 - `actions/ideate.md`: New action with 7 idea categories (features, improvements, performance, DX, reliability, integrations, docs), size tags (S/M/L), and confidence levels
 - `SKILL.md`: Add ideate routing (priority 20), verb reference, help menu entry, action dispatch, subagent config
@@ -499,7 +506,7 @@ Moved tutorial to a single line in the "Maintenance & info" section, right befor
 
 ## 0.52.0 — The Onboarding (2026-04-09)
 
-New `do work tutorial` command with four modes: quick-start (hands-on walkthrough), concepts (mental model explainer), recipes (scenario → command cheat sheet), and interactive tour (menu-driven deep dives). Bare invocation asks which mode to run.
+New `do-work tutorial` command with four modes: quick-start (hands-on walkthrough), concepts (mental model explainer), recipes (scenario → command cheat sheet), and interactive tour (menu-driven deep dives). Bare invocation asks which mode to run.
 
 - `actions/tutorial.md`: New multi-mode tutorial action with Quick Start, Concepts, Recipes, and Interactive Tour
 - `SKILL.md`: Add tutorial routing (priority 21), verb reference, help menu entry, action dispatch, subagent config
@@ -521,7 +528,7 @@ Strengthens anti-rationalization guards, adds verification checklists, and deepe
 
 ## 0.51.10 — The Help Desk (2026-04-09)
 
-Per-command help — any action now supports `do work <command> help` to show a brief usage summary. Actions with sub-commands (pipeline, prime, bkb) already handled this; all other actions now generate a compact summary from their action file. Footer line added to the main help menu to advertise the feature.
+Per-command help — any action now supports `do-work <command> help` to show a brief usage summary. Actions with sub-commands (pipeline, prime, bkb) already handled this; all other actions now generate a compact summary from their action file. Footer line added to the main help menu to advertise the feature.
 
 - `SKILL.md`: Add "Per-Command Help" section with rendering template and dispatch rules
 - `SKILL.md`: Add tip footer to help menu
@@ -715,8 +722,8 @@ Modularized the skill for clarity — smaller files, explicit conventions, clean
 
 Gave the most important command in the skill a proper help entry and expanded its guide.
 
-- Help menu now shows description text and trigger aliases for `do work run`
-- Added `do work continue` and `do work clarify` to the help menu's "Process the queue" section
+- Help menu now shows description text and trigger aliases for `do-work run`
+- Added `do-work continue` and `do-work clarify` to the help menu's "Process the queue" section
 - Expanded `docs/work-guide.md` with practical session walkthrough, full alias list, and tips
 
 ## 0.47.4 — The Compass (2026-04-06)
@@ -778,7 +785,7 @@ BKB gets smarter queries, richer connections, and zero-friction capture. Inspire
 
 ## 0.44.0 — The Cartographer (2026-04-06)
 
-Prime file operations now live inside do-work. `do work prime create` generates prime files via interactive Q&A; `do work prime audit` runs a full health check on all primes.
+Prime file operations now live inside do-work. `do-work prime create` generates prime files via interactive Q&A; `do-work prime audit` runs a full health check on all primes.
 
 - New `prime` action with `create` and `audit` sub-commands
 - Routing at priority 16 (between forensics and BKB)
@@ -849,7 +856,7 @@ BKB file lifecycle fixed — ingest now moves sources out of capture/ so triage 
 New `bkb` command — build and maintain a persistent LLM Knowledge Base wiki compiled from raw source documents. Based on Karpathy's methodology: raw sources go in, structured interlinked Markdown wiki comes out.
 
 - New action: `build-knowledge-base.md` with sub-commands: init, triage, ingest, query, lint, close, rollup, status
-- Routing: `do work bkb [subcommand]`, `do work build knowledge base`, `do work knowledge base`, `do work kb`
+- Routing: `do-work bkb [subcommand]`, `do-work build knowledge base`, `do-work knowledge base`, `do-work kb`
 - Three-layer architecture: raw pipeline (inbox → capture → daily → processed), wiki (hierarchical indexes → articles), schema file
 - Two-hop index navigation for scaling to thousands of articles
 
@@ -915,7 +922,7 @@ Queue state is now visible everywhere — no more blind spots where completed wo
 
 ## 0.42.1 — The Full Picture (2026-04-04)
 
-Scoped inspect (`do work inspect REQ-NNN` / `UR-NNN`) now shows all files from the Implementation Summary — not just uncommitted ones. Committed files are read via `git show` and reported alongside pending changes so you get the complete picture in one report.
+Scoped inspect (`do-work inspect REQ-NNN` / `UR-NNN`) now shows all files from the Implementation Summary — not just uncommitted ones. Committed files are read via `git show` and reported alongside pending changes so you get the complete picture in one report.
 
 - Inspect: committed files from Implementation Summary included when scoped to REQ/UR
 - Inspect: committed files get "Committed" verdict (informational, not actionable)
@@ -969,11 +976,11 @@ Code review across last 20 commits uncovered logic bugs, stale docs, and routing
 
 ## 0.39.3 — The Clear Intent (2026-03-30)
 
-Use `capture request:` prefix for capture commands so intent is unambiguous. Add `do work help` as an explicit route.
+Use `capture request:` prefix for capture commands so intent is unambiguous. Add `do-work help` as an explicit route.
 
 - SKILL.md: Add `capture request:` as preferred capture prefix in routing, help menu, content signals, and all next-steps suggestions
-- SKILL.md: Route `do work help` to the help menu (priority 1)
-- SKILL.md: Add `do work help` reminder rule to every next-steps block
+- SKILL.md: Route `do-work help` to the help menu (priority 1)
+- SKILL.md: Add `do-work help` reminder rule to every next-steps block
 - README.md: Update capture examples and help section to match
 
 ## 0.39.2 — The Clear Menu (2026-03-30)
@@ -1066,11 +1073,11 @@ Fixed routing conflicts where commands could dispatch to the wrong action.
 
 ## 0.37.0 — The Bowser Install (2026-03-25)
 
-One command to get browser automation. `do work install-bowser` installs Playwright CLI globally and downloads the Bowser skill from github.com/disler/bowser into the project.
+One command to get browser automation. `do-work install-bowser` installs Playwright CLI globally and downloads the Bowser skill from github.com/disler/bowser into the project.
 
 - Added `actions/install-bowser.md` — installs `playwright-cli` (global), Chromium browsers, and Bowser skill (project-scoped from upstream repo)
 - Added `install-bowser` routing, verbs, help menu entry, dispatch table, and routing examples in SKILL.md
-- `ui-review` now recommends `do work install-bowser` (instead of raw npm command) when no browser tools detected
+- `ui-review` now recommends `do-work install-bowser` (instead of raw npm command) when no browser tools detected
 - Updated CLAUDE.md, README.md with install-bowser documentation
 
 ## 0.36.2 — The Bowser Eye (2026-03-25)
@@ -1111,7 +1118,7 @@ Standalone codebase review, scoped by prime files and/or directories. Review con
 
 - Added `actions/code-review.md` — full codebase review action with prime file and directory scoping
 - SKILL.md routing: `code-review`, `audit codebase`, `review codebase` keywords (priority 5, before review work)
-- Supports combined scoping: `do work code-review prime-auth src/utils/` reviews the union of both
+- Supports combined scoping: `do-work code-review prime-auth src/utils/` reviews the union of both
 - Interactive mode when no scope given — lists available prime files and asks
 - Optionally creates follow-up REQs for Critical/Important findings
 - Updated help menu, README, and CLAUDE.md with code-review documentation
@@ -1137,7 +1144,7 @@ Design-only deliverables now flow through the full pipeline without inventing co
 
 ## 0.33.0 — The Design Install (2026-03-24)
 
-One command to get production-grade UI design capabilities. `do work install-ui-design` installs Anthropic's `frontend-design` skill into the current project.
+One command to get production-grade UI design capabilities. `do-work install-ui-design` installs Anthropic's `frontend-design` skill into the current project.
 
 - Added `actions/install-ui-design.md` — installs `frontend-design` Claude skill with automatic fallback to manual curl
 - Added `install-ui-design` routing, verbs, help menu entry, and dispatch table in SKILL.md
@@ -1194,17 +1201,17 @@ Filled in gaps from the recap/version split — missing route examples, dispatch
 - Added "Routes to Version" example section (was the only action without one)
 - Added recap row to Action Dispatch table with `mode: recap` context
 - Added recap to foreground subagent list
-- Split help menu: `do work version` and `do work update` now on separate lines
+- Split help menu: `do-work version` and `do-work update` now on separate lines
 - Added "After version / recap" to Suggest Next Steps
 - Updated version.md header to mention recap handling
 
 ## 0.30.4 — The Recap (2026-03-22)
 
-Split changelog into two focused commands: `do work version` now shows last 5 skill releases alongside the version number, and `do work recap` shows last 5 completed URs with their REQs. No more wall-of-text changelog dumps.
+Split changelog into two focused commands: `do-work version` now shows last 5 skill releases alongside the version number, and `do-work recap` shows last 5 completed URs with their REQs. No more wall-of-text changelog dumps.
 
-- `do work version` now includes last 5 releases from CHANGELOG.md (read first ~80 lines only)
-- Added `do work recap` command — shows last 5 archived URs with REQ titles
-- Removed `do work changelog` / `changelog all` routes (version and recap cover both use cases)
+- `do-work version` now includes last 5 releases from CHANGELOG.md (read first ~80 lines only)
+- Added `do-work recap` command — shows last 5 archived URs with REQ titles
+- Removed `do-work changelog` / `changelog all` routes (version and recap cover both use cases)
 - Updated help menu, routing table, and argument-hint
 
 ## 0.30.2 — The Scoped Check (2026-03-22)
@@ -1399,7 +1406,7 @@ README and SKILL.md now advertise the two new features. Users browsing the docs 
 
 - README: Added Human UAT bullet to Review Work section
 - README: Added Interactive Explainer bullet to Present Work section
-- SKILL.md: Updated help menu description for `do work present work`
+- SKILL.md: Updated help menu description for `do-work present work`
 
 ## 0.25.0 — The Show Floor (2026-03-12)
 
@@ -1483,7 +1490,7 @@ Present work now generates real Remotion video projects instead of markdown vide
 
 ## 0.22.7 — The Missing Step (2026-03-07)
 
-Commits weren't happening during `do work run` because the architecture diagram — the visual flow agents follow — never mentioned Step 9 (Commit). The detailed instructions existed but agents never reached them. Now the diagram shows Commit as an explicit step after Archive.
+Commits weren't happening during `do-work run` because the architecture diagram — the visual flow agents follow — never mentioned Step 9 (Commit). The detailed instructions existed but agents never reached them. Now the diagram shows Commit as an explicit step after Archive.
 
 - **work.md**: Added "Commit (git repos only)" node to the architecture diagram between Archive and Loop
 - **work.md**: Added bold reminder callout below the diagram reinforcing that every completed request gets a commit before looping
@@ -1508,14 +1515,14 @@ Three regressions restored from content that was lost during prior simplificatio
 
 ## 0.22.4 — The Course Correct (2026-03-04)
 
-Two fixes from PR review. CHANGELOG.md moved back to root so `do work changelog` works for installed users (it was accidentally excluded with the `_dev/` move). Standalone reviews now find UR input regardless of whether the UR has been archived yet.
+Two fixes from PR review. CHANGELOG.md moved back to root so `do-work changelog` works for installed users (it was accidentally excluded with the `_dev/` move). Standalone reviews now find UR input regardless of whether the UR has been archived yet.
 
 - Moved `CHANGELOG.md` back to root — the changelog command needs it at install time
 - Fixed `review-work.md` Step 3: UR input lookup now checks `user-requests/` first, falls back to `archive/` — works in both pipeline and standalone modes regardless of UR completion state
 
 ## 0.22.3 — The Lighter Carry (2026-03-04)
 
-Sample deliverables no longer ship with the skill. The three do-work-specific outputs (client brief, video script, portfolio summary) moved to `_dev/deliverables/` so they're excluded from installation. Users generate their own via `do work present`.
+Sample deliverables no longer ship with the skill. The three do-work-specific outputs (client brief, video script, portfolio summary) moved to `_dev/deliverables/` so they're excluded from installation. Users generate their own via `do-work present`.
 
 - Moved 3 sample deliverable files from `do-work/deliverables/` to `_dev/deliverables/`
 
@@ -1559,7 +1566,7 @@ Ten cross-file inconsistencies and instruction gaps cleaned up. Agents following
 - Added overall review score formula to `review-work.md` — average of percentage dimensions with Risk/Acceptance modifiers
 - Closed 200–500 word classification gap in `capture.md` — removed the >500 word floor from Complex (features/constraints matter more than word count)
 - Fixed `review-work.md` Step 2: "Plan (if Route B/C)" → "Plan (if Route C)" — planning is Route C only
-- Fixed `capture.md` leading-slash references (`/do-work verify requests` → `do work verify requests`)
+- Fixed `capture.md` leading-slash references (`/do-work verify requests` → `do-work verify requests`)
 - Fixed `version.md` agent compatibility — replaced tool-specific "WebFetch" with generalized language
 - Documented `hold/` directory in `cleanup.md` archive structure
 - Added review annotation exception to `capture.md` immutability rule (cross-ref to `review-work.md`)
@@ -1624,7 +1631,7 @@ Completed work can now speak for itself. The new "present work" action reads you
 
 - New `present work` action (`actions/present-work.md`) — two modes:
   - **Detail mode** — deep dive on a specific UR or REQ: client brief with architecture diagrams, data flow, value proposition, and optional video script (Remotion/Loom-ready)
-  - **Portfolio mode** (`do work present all`) — summary of all completed work with cumulative value proposition and cross-project lessons learned
+  - **Portfolio mode** (`do-work present all`) — summary of all completed work with cumulative value proposition and cross-project lessons learned
 - Artifacts saved to `do-work/deliverables/` for reuse and sharing
 - New `## Lessons Learned` section in work.md — archived REQs now capture what worked, what didn't, key files, and gotchas (Step 7.5, between Review and Archive)
 - Refined diff hygiene in review-work.md — explicitly protects comments that document reasoning, failed approaches, or architectural decisions
@@ -1650,16 +1657,16 @@ Review and verify got proper names and bigger jobs. "Verify" becomes "verify req
   - **Acceptance testing** — runs the app/tests and verifies the feature works end-to-end, not just in the diff
   - **Suggested additional testing** — recommends manual verification, integration, edge cases, and environment-specific checks
 - Review report now includes a requirements checklist, acceptance result (Pass/Partial/Fail/Untested), and suggested testing section
-- Added "Suggest Next Steps" section to SKILL.md — every action now ends with 2-3 fully qualified prompt suggestions (`do work verify requests`, not just `verify`)
+- Added "Suggest Next Steps" section to SKILL.md — every action now ends with 2-3 fully qualified prompt suggestions (`do-work verify requests`, not just `verify`)
 - Updated capture.md, work.md, README.md with new action names and references
 
 ## 0.18.0 — The Plain English (2026-03-02)
 
-Actions now say what they mean. "Capture" becomes "capture requests," the confusing "answers mode" becomes "clarify questions" with `do work clarify`, and bare `do work` shows a help menu instead of jumping straight to the work loop.
+Actions now say what they mean. "Capture" becomes "capture requests," the confusing "answers mode" becomes "clarify questions" with `do-work clarify`, and bare `do-work` shows a help menu instead of jumping straight to the work loop.
 
 - Renamed action: "capture" → "capture requests" across SKILL.md, README, dispatch table, capture.md, work.md
-- Renamed "answers mode" → "clarify questions" — new primary verb is `do work clarify` (old verbs still work)
-- Bare invocation (`do work` with no arguments) now shows a help menu with sample prompts instead of asking "Start the work loop?"
+- Renamed "answers mode" → "clarify questions" — new primary verb is `do-work clarify` (old verbs still work)
+- Bare invocation (`do-work` with no arguments) now shows a help menu with sample prompts instead of asking "Start the work loop?"
 - Added `clarify questions` row to action dispatch table (routes to work.md with `mode: clarify`)
 - README now documents "Clarify Questions" as a standalone section alongside the other actions
 
@@ -1675,10 +1682,10 @@ The "do action" is now the "capture action." No more confusion between the skill
 
 ## 0.16.0 — The Full Loop (2026-03-02)
 
-The Open Questions system now has a complete lifecycle — from capture to drain. Five improvements tighten the feedback loop: verify resolves ambiguous questions on the spot (user is present, why not ask?), `do work answers` gives users a dedicated command to batch-review accumulated questions, follow-up REQ creation moves to the archive step so timing is unambiguous, confirmed builder choices skip the work loop entirely, and verify's question handling is explicitly documented as different from review's.
+The Open Questions system now has a complete lifecycle — from capture to drain. Five improvements tighten the feedback loop: verify resolves ambiguous questions on the spot (user is present, why not ask?), `do-work answers` gives users a dedicated command to batch-review accumulated questions, follow-up REQ creation moves to the archive step so timing is unambiguous, confirmed builder choices skip the work loop entirely, and verify's question handling is explicitly documented as different from review's.
 
 - `verify.md`: Ambiguous gaps now get presented to the user immediately during verify — resolve on the spot, defer, or leave for the builder
-- `SKILL.md` + `work.md`: New "answers mode" — `do work answers`/`questions`/`pending` presents all `pending-answers` REQs for batch review
+- `SKILL.md` + `work.md`: New "answers mode" — `do-work answers`/`questions`/`pending` presents all `pending-answers` REQs for batch review
 - `work.md`: "Builder Was Right" path — when user confirms builder's choice, follow-up archives directly with no work cycle
 - `work.md`: Follow-up REQ creation moved from Step 3.5 to Step 8 (Archive) with full template — timing is now explicit
 - `verify.md`: Clarified that verify never sets `pending-answers` status — it already asked the user; remaining questions stay on `pending` REQs
@@ -1708,7 +1715,7 @@ Ambiguous requirements now get caught before code gets written. Open Questions i
 Every completed request now gets a code review before it's archived. The work pipeline gained a new step between testing and archive that reads the actual diff, compares it against the original requirements and UR, scores the implementation across five dimensions, and creates follow-up REQs when it finds real issues. You can also invoke it manually on anything already shipped.
 
 - New `review` action (`actions/review.md`) — post-work code review with requirements tracing
-- Two modes: **pipeline** (auto-triggered in the work loop after tests pass) and **standalone** (manual via `do work review`)
+- Two modes: **pipeline** (auto-triggered in the work loop after tests pass) and **standalone** (manual via `do-work review`)
 - Scores on Requirements Compliance, Code Quality, Test Adequacy, Scope Discipline, and Risk Assessment
 - Creates follow-up REQs (using `addendum_to` pattern) for Critical/Important findings — they re-enter the queue automatically
 - Review depth scales with route: quick scan for Route A, standard for B, thorough for C
@@ -1841,13 +1848,13 @@ Keywords like "version" and "changelog" were sneaking past the routing table and
 - Routing table now has numbered priority — first match wins, top to bottom
 - "Descriptive content" catch-all moved to last position (priority 7)
 - Step 2 clarifies that single keywords matching the table are routed actions, not content
-- Fixes: `do work version` no longer asks "Add this as a request?"
+- Fixes: `do-work version` no longer asks "Add this as a request?"
 
 ## 0.9.0 — The Rewind (2026-02-04)
 
 You can now ask "what's new" and actually see what's new — right at the bottom of your terminal where you're already looking. The version action gained changelog display with a twist: it reverses the entries so the latest changes land at the bottom of the output, no scrolling required. Portable across skills — any project with a CHANGELOG.md gets this for free.
 
-- Changelog display added to the version action: `do work changelog`, `release notes`, `what's new`, `updates`, `history`
+- Changelog display added to the version action: `do-work changelog`, `release notes`, `what's new`, `updates`, `history`
 - Entries print oldest-to-newest so the most recent version appears at the bottom of terminal output
 - Routing table updated with changelog keyword detection
 - Works with any skill that has a CHANGELOG.md in its root
@@ -1892,7 +1899,7 @@ Now you can see what changed and when. Added this very changelog so the project 
 
 The archive got a brain. New **cleanup action** automatically tidies your archive at the end of every work loop — closing completed URs, sweeping loose REQs into their folders, and herding legacy files where they belong. Also introduced the **User Request (UR) system** that groups related REQs under a single umbrella, so your work has structure from capture to completion.
 
-- Cleanup action: `do work cleanup` (or automatic after every work loop)
+- Cleanup action: `do-work cleanup` (or automatic after every work loop)
 - UR system: related REQs now live under UR folders with shared context
 - Routing expanded: cleanup/tidy/consolidate keywords recognized
 - Work loop exit now triggers automatic archive consolidation
@@ -1901,8 +1908,8 @@ The archive got a brain. New **cleanup action** automatically tidies your archiv
 
 The skill learned its own version number. New **version action** lets you check what you're running and whether there's an update upstream. Documentation got a glow-up too.
 
-- Version check: `do work version`
-- Update check: `do work check for updates`
+- Version check: `do-work version`
+- Update check: `do-work check for updates`
 - Improved docs across the board
 
 ## 0.2.0 — Trust but Verify (2026-01-27)
@@ -1923,8 +1930,8 @@ Fixed a username typo in the installation command. Small but important — can't
 
 The beginning. Core task capture and processing system with do/work routing, REQ file management, and archive workflow.
 
-- Task capture via `do work <description>`
-- Work loop processing with `do work run`
+- Task capture via `do-work <description>`
+- Work loop processing with `do-work run`
 - REQ file lifecycle: pending → working → archived
 - Git-aware: auto-commits after each completed request
 

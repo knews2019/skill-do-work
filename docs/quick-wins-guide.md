@@ -59,8 +59,8 @@ Plus an "Already Covered" section noting existing good patterns, and recommended
 ## Usage
 
 ```
-do work quick-wins               # scan current directory
-do work quick-wins src/          # scan specific directory
-do work scan src/api/
-do work low-hanging
+do-work quick-wins               # scan current directory
+do-work quick-wins src/          # scan specific directory
+do-work scan src/api/
+do-work low-hanging
 ```

@@ -44,11 +44,11 @@ if [ -f "$PIPELINE_FILE" ]; then
   if command -v jq &>/dev/null; then
     ACTIVE=$(jq -r '.active // false' "$PIPELINE_FILE" 2>/dev/null || echo "false")
     if [ "$ACTIVE" = "true" ]; then
-      PIPELINE_MSG=" | Pipeline active — run 'do work pipeline' to resume"
+      PIPELINE_MSG=" | Pipeline active — run 'do-work pipeline' to resume"
     fi
   elif grep -q '"active"[[:space:]]*:[[:space:]]*true' "$PIPELINE_FILE" 2>/dev/null; then
-    PIPELINE_MSG=" | Pipeline active — run 'do work pipeline' to resume"
+    PIPELINE_MSG=" | Pipeline active — run 'do-work pipeline' to resume"
   fi
 fi
 
-echo "do-work v${VERSION} loaded. ${PENDING} pending REQ(s)${PIPELINE_MSG}. Say 'do work help' for commands."
+echo "do-work v${VERSION} loaded. ${PENDING} pending REQ(s)${PIPELINE_MSG}. Say 'do-work help' for commands."

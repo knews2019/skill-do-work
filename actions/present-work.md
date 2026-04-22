@@ -16,8 +16,8 @@ The code is done. Now communicate its value. This action reads the full history 
 
 | Mode | Trigger | What it does |
 |------|---------|-------------|
-| **Detail** | `do work present UR-003`, `do work present REQ-005`, or `do work present` (most recent) | Deep dive on specific completed work |
-| **Portfolio** | `do work present all` or `do work present portfolio` | Summary of all completed work across the archive |
+| **Detail** | `do-work present UR-003`, `do-work present REQ-005`, or `do-work present` (most recent) | Deep dive on specific completed work |
+| **Portfolio** | `do-work present all` or `do-work present portfolio` | Summary of all completed work across the archive |
 
 ## Detail Mode Workflow
 

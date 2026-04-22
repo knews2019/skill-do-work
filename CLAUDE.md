@@ -133,7 +133,7 @@ Action files follow a consistent structure. When adding or modifying actions, us
 - **State-based actions** (`version.md`, `pipeline.md`) — Response sections keyed by input type instead of sequential steps.
 - **Checklist-based diagnostics** (`forensics.md`) — Use a `## Checks` section with independently-runnable items instead of ordered `## Steps`. Each check is a diagnostic probe, not a sequential step.
 
-Cross-reference other actions by short name (e.g., "the work action", "do work clarify") — not by file path. SKILL.md owns the file-path mappings.
+Cross-reference other actions by short name (e.g., "the work action", "do-work clarify") — not by file path. SKILL.md owns the file-path mappings.
 
 ## Agent Rules
 

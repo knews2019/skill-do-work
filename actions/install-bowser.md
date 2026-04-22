@@ -9,7 +9,7 @@ Installs two components:
 1. **`playwright-cli`** — a token-efficient CLI wrapper for Playwright. Supports headed/headless browsing, parallel named sessions, screenshots, snapshots, and persistent browser profiles.
 2. **Bowser skill** — a skill file that teaches agents how to use `playwright-cli` effectively: session naming, viewport configuration, snapshot-based interaction, and cleanup.
 
-Once installed, `do work ui-review` can use Playwright CLI for visual verification — screenshotting at multiple viewports, running accessibility checks on rendered pages, and catching layout issues that static code analysis misses.
+Once installed, `do-work ui-review` can use Playwright CLI for visual verification — screenshotting at multiple viewports, running accessibility checks on rendered pages, and catching layout issues that static code analysis misses.
 
 ## Steps
 

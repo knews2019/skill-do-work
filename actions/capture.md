@@ -232,7 +232,7 @@ The goal is that every REQ, at every point in time, expresses a single coherent 
 - Create `do-work/user-requests/UR-NNN/input.md` with the addendum input verbatim (new UR, fresh number)
 - Create `do-work/queue/REQ-NNN-slug.md` linking to that new UR, with `addendum_to` pointing at the original
 
-The `addendum_to` field is what connects the addendum to its origin. The new REQ then enters the queue normally and gets picked up by the next `do work run`.
+The `addendum_to` field is what connects the addendum to its origin. The new REQ then enters the queue normally and gets picked up by the next `do-work run`.
 
 ```markdown
 ---
@@ -344,14 +344,14 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 
 Brief summary of created files. If the request was meaningfully complex (complex mode, 3+ REQs, or notably long/nuanced input), add:
 
-> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `do work verify requests` to check coverage against your original input.
+> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `do-work verify requests` to check coverage against your original input.
 
 Always end with next step suggestions:
 
 ```
 Next steps:
-  do work verify requests     Check capture quality before building
-  do work run                 Start processing the queue
+  do-work verify requests     Check capture quality before building
+  do-work run                 Start processing the queue
 ```
 
 Only suggest prompts that provide value given the current state. Use full action names.
@@ -391,7 +391,7 @@ Do not use `git add -A` or `git add .` — stage only the specific files created
 ### Simple Capture
 
 ```
-User: do work add keyboard shortcuts
+User: do-work add keyboard shortcuts
 
 Created:
 - do-work/user-requests/UR-003/input.md
@@ -401,7 +401,7 @@ Created:
 ### Multiple Requests
 
 ```
-User: do work add dark mode, also the search feels slow, and we need an export button
+User: do-work add dark mode, also the search feels slow, and we need an export button
 
 Created:
 - do-work/user-requests/UR-004/input.md
@@ -413,7 +413,7 @@ Created:
 ### Addendum to In-Flight Request
 
 ```
-User: do work dark mode should also affect the sidebar
+User: do-work dark mode should also affect the sidebar
 
 [Checks existing — REQ-005-dark-mode.md is in do-work/working/]
 
@@ -427,7 +427,7 @@ Created:
 ### Addendum to Archived Request
 
 ```
-User: do work dark mode should also apply to modals
+User: do-work dark mode should also apply to modals
 
 [Checks existing — REQ-005-dark-mode.md is in do-work/archive/UR-003/]
 
@@ -441,12 +441,12 @@ Created:
   (user_request: UR-009, addendum_to: REQ-005, includes Prior Implementation summary)
 ```
 
-The new REQ-027 sits in `do-work/queue/` with `status: pending` and will be picked up by the next `do work run`. The archived `UR-003/` folder is not modified.
+The new REQ-027 sits in `do-work/queue/` with `status: pending` and will be picked up by the next `do-work run`. The archived `UR-003/` folder is not modified.
 
 ### Complex Multi-Feature Request
 
 ```
-User: do work [detailed auth system requirements — OAuth, profiles, sessions, password reset...]
+User: do-work [detailed auth system requirements — OAuth, profiles, sessions, password reset...]
 
 Created:
 - do-work/user-requests/UR-001/input.md (full verbatim input, 1847 words)
@@ -456,7 +456,7 @@ Created:
 - do-work/queue/REQ-013-password-reset.md (user_request: UR-001)
 
 That was a pretty detailed request — it's possible the capture missed some
-nuances. You can run `do work verify requests` to check coverage against your original input.
+nuances. You can run `do-work verify requests` to check coverage against your original input.
 ```
 
 ## Edge Cases

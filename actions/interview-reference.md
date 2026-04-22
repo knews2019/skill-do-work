@@ -192,7 +192,7 @@ After the Interviewer finishes asking a layer's questions and drafts canonical e
 This is the <layer-id> model I'd save right now. Correct anything that's off. If this looks right, I'll save it and move to <next-layer-id>.
 ```
 
-On the final layer of a template, replace the last sentence with: "If this looks right, I'll save it and wrap up the session — you can then run `do work interview <template> review` to surface cross-layer contradictions."
+On the final layer of a template, replace the last sentence with: "If this looks right, I'll save it and wrap up the session — you can then run `do-work interview <template> review` to surface cross-layer contradictions."
 
 ---
 
@@ -214,7 +214,7 @@ To add a new template, define its render templates in the template file's `## Ex
 
 ## Re-Run Mode Specifications
 
-When the user invokes `do work interview <template>` and the existing `session.json` has `status: complete`, the action prompts the user to choose a re-run mode. The three modes differ in what gets archived, what gets written, and what the CHANGELOG entry looks like.
+When the user invokes `do-work interview <template>` and the existing `session.json` has `status: complete`, the action prompts the user to choose a re-run mode. The three modes differ in what gets archived, what gets written, and what the CHANGELOG entry looks like.
 
 ### `fresh`
 
@@ -271,7 +271,7 @@ When the user invokes `do work interview <template>` and the existing `session.j
 4. Append to `CHANGELOG.md`:
    ```
    ## <YYYY-MM-DD HH:MM> — versioned: archived as v<N>, new session seeded
-   New session references v<N> as previous_version. Use `do work interview <template> versions` to compare.
+   New session references v<N> as previous_version. Use `do-work interview <template> versions` to compare.
    ```
 5. Begin Layer 1 interview.
 
@@ -302,7 +302,7 @@ The action writes draft checkpoints after the interview has produced candidate e
 
 ## Ingest File Mapping
 
-When `do work interview <template> ingest` runs, it produces files in `<repo-root>/kb/raw/inbox/` (sibling writes — do not overwrite). Two file classes are written per run: one file per export and one summary file per layer.
+When `do-work interview <template> ingest` runs, it produces files in `<repo-root>/kb/raw/inbox/` (sibling writes — do not overwrite). Two file classes are written per run: one file per export and one summary file per layer.
 
 ### 1. One file per export
 
@@ -353,4 +353,4 @@ For the `work-operating-model` template: 5 exports + 5 layer summaries = **10 fi
 
 ### Preconditions
 
-If `kb/` does not exist when `ingest` is invoked, the action tells the user to run `do work bkb init` first and stops without writing. `confidence: high` on export files reflects that the source is the user's own approved operating model, not a third-party claim.
+If `kb/` does not exist when `ingest` is invoked, the action tells the user to run `do-work bkb init` first and stops without writing. `confidence: high` on export files reflects that the source is the user's own approved operating model, not a third-party claim.

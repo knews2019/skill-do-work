@@ -8,24 +8,24 @@ Three ways to define what gets reviewed:
 
 ### Prime file scope
 ```
-do work code-review prime-auth             # everything prime-auth.md references
-do work code-review prime-auth prime-checkout  # union of both
+do-work code-review prime-auth             # everything prime-auth.md references
+do-work code-review prime-auth prime-checkout  # union of both
 ```
 
 ### Directory scope
 ```
-do work code-review src/                   # all source files in src/
-do work code-review src/api/ src/utils/    # multiple directories
+do-work code-review src/                   # all source files in src/
+do-work code-review src/api/ src/utils/    # multiple directories
 ```
 
 ### Combined
 ```
-do work code-review prime-auth src/utils/  # prime file scope + directory
+do-work code-review prime-auth src/utils/  # prime file scope + directory
 ```
 
 ### Interactive (no arguments)
 ```
-do work code-review                        # lists available prime files, asks
+do-work code-review                        # lists available prime files, asks
 ```
 
 ## Review dimensions
@@ -74,10 +74,10 @@ Includes anti-rationalization tables (guards against shortcuts like "this patter
 ## Usage
 
 ```
-do work code-review
-do work code-review prime-auth
-do work code-review src/api/
-do work code-review prime-auth src/utils/
-do work audit codebase
-do work codebase review
+do-work code-review
+do-work code-review prime-auth
+do-work code-review src/api/
+do-work code-review prime-auth src/utils/
+do-work audit codebase
+do-work codebase review
 ```

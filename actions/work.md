@@ -159,7 +159,7 @@ error: "Description"          # Only if failed
 
 The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only three status transitions are written to frontmatter: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8).
 
-**Special status:** `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do work clarify`.
+**Special status:** `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do-work clarify`.
 
 ## Input
 
@@ -189,7 +189,7 @@ Queue: N pending | N completed/done (awaiting archive) | N pending-answers
 Count `completed`, `completed-with-issues`, and `done` statuses together as "completed/done (awaiting archive)." If any completed/done REQs exist in `do-work/queue/`, add:
 
 ```
-⚠ N completed REQs across M URs awaiting archive. Run `do work cleanup` after this session.
+⚠ N completed REQs across M URs awaiting archive. Run `do-work cleanup` after this session.
 ```
 
 **Targeted mode:** If `$ARGUMENTS` contains specific REQ IDs, find only those REQs in `do-work/queue/`. Verify each exists and has `status: pending`. If a targeted REQ is missing or not pending, report the issue and skip it. Process only the targeted REQs, then stop after the last one completes (skip the loop-or-exit logic in Step 10).
@@ -208,12 +208,12 @@ Count `completed`, `completed-with-issues`, and `done` statuses together as "com
     REQ-352 — [title] (completed)
     ...
 
-  Run `do work cleanup` to archive completed work, then `do work recap` to see full history.
+  Run `do-work cleanup` to archive completed work, then `do-work recap` to see full history.
   ```
 
   Read the `user_request` frontmatter field from each completed/done REQ to determine UR grouping. List actual REQ ids, titles, and statuses so the user sees exactly what's sitting there. Then exit.
 
-- **Only `pending-answers` REQs remain (no completed/done):** Report them to the user so they can batch-review the questions via `do work clarify`.
+- **Only `pending-answers` REQs remain (no completed/done):** Report them to the user so they can batch-review the questions via `do-work clarify`.
 
 - **No REQs at all:** Report completion and exit.
 
@@ -266,7 +266,7 @@ The follow-up REQs for builder-decided questions are created during **Step 8 (Ar
 
 **Why not block?** Human time is the bottleneck. The optimal windows for user interaction are: (1) capture time, when the user is actively fleshing out requests, and (2) batch-review time, when the user returns to answer accumulated questions. Blocking mid-build wastes builder capacity on idle waiting.
 
-**`pending-answers` REQs:** These accumulate in the queue. When the user returns, they run `do work clarify` to review all `pending-answers` REQs at once, answer the questions, and flip the status to `pending` so the next work run picks them up. The work loop skips `pending-answers` REQs — it only processes `pending` ones.
+**`pending-answers` REQs:** These accumulate in the queue. When the user returns, they run `do-work clarify` to review all `pending-answers` REQs at once, answer the questions, and flip the status to `pending` so the next work run picks them up. The work loop skips `pending-answers` REQs — it only processes `pending` ones.
 
 If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section exists, skip this step entirely.
 
@@ -679,7 +679,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
      Recommended: [builder's choice — already implemented]
      Also: [other alternatives]
    ```
-   These go in `do-work/queue/` with `status: pending-answers`. The user reviews them via `do work clarify`.
+   These go in `do-work/queue/` with `status: pending-answers`. The user reviews them via `do-work clarify`.
 4. **Queue Discovered Tasks:** Check the REQ file for a `## Discovered Tasks` section (appended by the implementation agent as a separate section — not inside `## Implementation Summary`). For every item listed, classify by severity and create follow-up REQs accordingly.
 
    The builder should classify each discovered task when appending them:
@@ -703,7 +703,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
      `- [ ] I discovered this out-of-scope task while working on [current REQ]: [Task Description]. Should I process this as a new task?`
      `  Recommended: Yes, add to queue (will flip to 'pending').`
      `  Also: No, discard it.`
-   This ensures non-critical discoveries require the user's explicit permission via `do work clarify` before execution.
+   This ensures non-critical discoveries require the user's explicit permission via `do-work clarify` before execution.
 5. **Cycle detection:** Before creating any follow-up REQ, verify the current REQ's own `addendum_to` chain is not already circular. Algorithm: walk `addendum_to` links starting from the current REQ, collecting each visited ID into a seen set. If you encounter the current REQ's ID again during the walk, the chain is already circular — do not create any follow-ups. Report: `⚠ Cycle detected in addendum_to chain: REQ-NNN → REQ-MMM → ... → REQ-NNN. Skipping follow-up — manual resolution needed.` This handles chains of any length.
 6. Archive based on REQ type:
 
@@ -783,7 +783,7 @@ This ensures the `commit:` field in the archived REQ contains the real implement
 Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
 
 - **`pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
-- **Only `pending-answers` REQs remain**: Write a **Session Checkpoint** (see below), run the cleanup action, then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work clarify` when ready. If completed/done REQs also exist in `do-work/queue/`, include them in the summary: `⚠ N completed REQs awaiting archive. Run do work cleanup to archive them.` List the REQ ids, titles, and UR groupings.
+- **Only `pending-answers` REQs remain**: Write a **Session Checkpoint** (see below), run the cleanup action, then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do-work clarify` when ready. If completed/done REQs also exist in `do-work/queue/`, include them in the summary: `⚠ N completed REQs awaiting archive. Run do-work cleanup to archive them.` List the REQ ids, titles, and UR groupings.
 - **No REQs at all**: Write a Session Checkpoint, run cleanup, report final summary and exit. If completed/done REQs exist in `do-work/queue/` (they may have been created during this session but not yet archived due to incomplete URs), include them in the summary with the same `⚠` warning and REQ listing as above.
 
 #### Context Wipe — Verified
@@ -846,7 +846,7 @@ This is NOT a blocking gate. If no checkpoint exists, the session starts normall
 
 ## Clarify Questions
 
-The clarify workflow has its own action. Run `do work clarify` — it handles batch-review of `pending-answers` REQs, where the user confirms, overrides, or discards builder decisions. Resolved REQs flip back to `pending` and re-enter the work queue.
+The clarify workflow has its own action. Run `do-work clarify` — it handles batch-review of `pending-answers` REQs, where the user confirms, overrides, or discards builder decisions. Resolved REQs flip back to `pending` and re-enter the work queue.
 
 ## Reference
 

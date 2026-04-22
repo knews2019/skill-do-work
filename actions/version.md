@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps.
 
-**Current version**: 0.69.4
+**Current version**: 0.69.5
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -54,7 +54,7 @@ When user asks "check for updates", "update", or "is there a newer version":
    - If it's **not** a git repo, check whether shipped skill files (actions/, crew-members/, prompts/, interviews/, specs/, docs/, decisions/, hooks/, SKILL.md, CLAUDE.md, next-steps.md, etc.) differ from a fresh install by looking for user-modified content (custom crew-members, edited action files, local prompt/template additions, ADR edits, etc.).
    - **If any shipped skill files are dirty / have local modifications**: Stop and warn the user. List the modified files and ask for explicit confirmation before proceeding. Do NOT auto-update.
    - **If clean**: Proceed to step 4 (pre-clean) then step 5 (extract).
-4. **Pre-clean discoverable directories.** `prompts/` and `interviews/` are enumerated by `do work prompts list` and `do work interview list` (they glob `prompts/*.md` and `interviews/*.md`), so any upstream-removed file that stays on disk will still appear as a live workflow. The dirty check in step 3 has already confirmed these are clean, so removing the tracked `.md` files here is safe and the tar extraction will restore them fresh:
+4. **Pre-clean discoverable directories.** `prompts/` and `interviews/` are enumerated by `do-work prompts list` and `do-work interview list` (they glob `prompts/*.md` and `interviews/*.md`), so any upstream-removed file that stays on disk will still appear as a live workflow. The dirty check in step 3 has already confirmed these are clean, so removing the tracked `.md` files here is safe and the tar extraction will restore them fresh:
    ```
    find <skill-root>/prompts -maxdepth 1 -name '*.md' ! -name 'README.md' -delete
    find <skill-root>/interviews -maxdepth 1 -name '*.md' -delete
@@ -64,7 +64,7 @@ When user asks "check for updates", "update", or "is there a newer version":
    ```
    cd <skill-root> && curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
    ```
-   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. For non-discoverable directories (`actions/`, `crew-members/`, `specs/`, `docs/`, `decisions/`) leftovers are harmless — the skill only loads files it references by name. For `prompts/` and `interviews/`, the pre-clean step above is what prevents ghost entries; if you skipped it, run `do work prompts list` and `do work interview list` after updating and delete anything that looks obsolete. Never delete `do-work/` (runtime state).
+   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. For non-discoverable directories (`actions/`, `crew-members/`, `specs/`, `docs/`, `decisions/`) leftovers are harmless — the skill only loads files it references by name. For `prompts/` and `interviews/`, the pre-clean step above is what prevents ghost entries; if you skipped it, run `do-work prompts list` and `do-work interview list` after updating and delete anything that looks obsolete. Never delete `do-work/` (runtime state).
 6. **Verify**: Read `<skill-root>/actions/version.md` again and confirm the local version now matches the remote version.
 7. **Report result**: `Updated to v{remote} at <skill-root>.`
 

@@ -17,7 +17,7 @@ Unlike the commit action (which stages and commits), this action only reads and 
 
 ## When This Runs
 
-- **Manually** when the user invokes it (e.g., `do work inspect`, `do work explain changes`)
+- **Manually** when the user invokes it (e.g., `do-work inspect`, `do-work explain changes`)
 
 ## Input
 
@@ -25,15 +25,15 @@ Unlike the commit action (which stages and commits), this action only reads and 
 
 ### Mode 1: All Changes (default)
 
-`do work inspect` — no arguments. Inspects ALL uncommitted changes in the working tree.
+`do-work inspect` — no arguments. Inspects ALL uncommitted changes in the working tree.
 
 ### Mode 2: REQ Scope
 
-`do work inspect REQ-005` — inspects ALL files from REQ-005's Implementation Summary, both uncommitted and already committed. Uncommitted files are assessed for commit readiness; committed files are shown for informational completeness. Unassociated uncommitted files are listed as paths at the bottom of the report without full analysis.
+`do-work inspect REQ-005` — inspects ALL files from REQ-005's Implementation Summary, both uncommitted and already committed. Uncommitted files are assessed for commit readiness; committed files are shown for informational completeness. Unassociated uncommitted files are listed as paths at the bottom of the report without full analysis.
 
 ### Mode 3: UR Scope
 
-`do work inspect UR-003` — inspects files associated with ANY REQ under UR-003 (both uncommitted and committed). Equivalent to Mode 2 across all REQs in the UR, with a unified report.
+`do-work inspect UR-003` — inspects files associated with ANY REQ under UR-003 (both uncommitted and committed). Equivalent to Mode 2 across all REQs in the UR, with a unified report.
 
 ## Steps
 
@@ -352,8 +352,8 @@ No uncommitted changes.
 
 ## What This Action Does NOT Do
 
-- Create commits — use `do work commit` for that
-- Modify files — use your editor or `do work run` to fix issues
+- Create commits — use `do-work commit` for that
+- Modify files — use your editor or `do-work run` to fix issues
 - Create REQ files — it only reads existing REQs for traceability
 - Replace code review — this is a readiness check, not a thorough review
 - Run tests — it checks for test file existence, not test results

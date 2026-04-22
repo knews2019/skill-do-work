@@ -6,10 +6,10 @@
 
 | Mode | Trigger | What it does |
 |------|---------|-------------|
-| **Quick Start** | `do work tutorial quick-start` | Hands-on walkthrough: capture one task, run it, review it. ~5 minutes. |
-| **Concepts** | `do work tutorial concepts` | Explains the mental model: URs, REQs, pipeline stages, trail of intent. Non-interactive. |
-| **Recipes** | `do work tutorial recipes` | Workflow cheat sheet: common scenarios mapped to exact commands. |
-| **Interactive Tour** | `do work tutorial tour` | Menu-driven — pick a topic, get a self-contained explanation with examples. |
+| **Quick Start** | `do-work tutorial quick-start` | Hands-on walkthrough: capture one task, run it, review it. ~5 minutes. |
+| **Concepts** | `do-work tutorial concepts` | Explains the mental model: URs, REQs, pipeline stages, trail of intent. Non-interactive. |
+| **Recipes** | `do-work tutorial recipes` | Workflow cheat sheet: common scenarios mapped to exact commands. |
+| **Interactive Tour** | `do-work tutorial tour` | Menu-driven — pick a topic, get a self-contained explanation with examples. |
 
 ## Input
 
@@ -70,7 +70,7 @@ Type a small request to practice with, or press Enter to use this default:
   "Add a hello-world endpoint that returns { message: 'Hello, world!' }"
 ```
 
-Then explain what `do work capture request: ...` does:
+Then explain what `do-work capture request: ...` does:
 - Creates a UR folder with the verbatim input
 - Creates a REQ file with structured fields (what, why, done-when)
 - Links the REQ back to the UR
@@ -88,7 +88,7 @@ do-work/
 
 ### Step QS-3: Explain Run
 
-Explain what `do work run` does:
+Explain what `do-work run` does:
 - Picks the next REQ from the queue
 - Triages it (simple fix? feature? refactor?)
 - Plans the implementation
@@ -98,7 +98,7 @@ Explain what `do work run` does:
 
 ### Step QS-4: Explain Review
 
-Explain what `do work review work` does:
+Explain what `do-work review work` does:
 - Checks requirements against the original request
 - Reviews the code for quality
 - Runs acceptance tests
@@ -109,12 +109,12 @@ Explain what `do work review work` does:
 ```
 That's the core loop! Here are the commands:
 
-  do work capture request: [describe what you want]
-  do work run
-  do work review work
+  do-work capture request: [describe what you want]
+  do-work run
+  do-work review work
 
 When you're ready for the real thing:
-  do work capture request: [your actual task]
+  do-work capture request: [your actual task]
 ```
 
 ---
@@ -166,7 +166,7 @@ THE PIPELINE
   review     Human-facing review: requirements + code + acceptance
   present    Client-facing deliverables (optional)
 
-  "do work pipeline [request]" runs all stages end-to-end.
+  "do-work pipeline [request]" runs all stages end-to-end.
   Or run each stage individually for more control.
 ```
 
@@ -214,42 +214,42 @@ Print the cheat sheet, then stop.
 WORKFLOW RECIPES — common scenarios → exact commands
 
   "I have a feature request"
-    do work capture request: [describe the feature]
-    do work run
+    do-work capture request: [describe the feature]
+    do-work run
 
   "I have a bug report"
-    do work capture request: [describe the bug and how to reproduce]
-    do work run
+    do-work capture request: [describe the bug and how to reproduce]
+    do-work run
 
   "I got meeting notes / a spec / a screenshot"
-    do work capture request: [paste the content]
-    do work verify requests
-    do work run
+    do-work capture request: [paste the content]
+    do-work verify requests
+    do-work run
 
   "I want the full hands-off pipeline"
-    do work pipeline [describe what you want]
+    do-work pipeline [describe what you want]
 
   "I want to check what was captured before building"
-    do work verify requests
+    do-work verify requests
 
   "Work is done — now what?"
-    do work review work
-    do work present work
+    do-work review work
+    do-work present work
 
   "Something seems stuck"
-    do work forensics
+    do-work forensics
 
   "I want to review code quality (not a specific task)"
-    do work code-review [scope]
+    do-work code-review [scope]
 
   "I want to understand uncommitted changes"
-    do work inspect
+    do-work inspect
 
   "I want to clean up the archive"
-    do work cleanup
+    do-work cleanup
 
   "What happened recently?"
-    do work recap
+    do-work recap
 ```
 
 ---
@@ -311,8 +311,8 @@ When the user says "done" or has visited all topics:
 
 ```
 Tour complete! When you're ready to start:
-  do work capture request: [describe what you want]
-  do work help                 Full command reference
+  do-work capture request: [describe what you want]
+  do-work help                 Full command reference
 ```
 
 ---

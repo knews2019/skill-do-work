@@ -9,7 +9,7 @@
 - **Grounded, not generic.** Every idea must reference something concrete in the codebase or project history — a file, a pattern, a gap, a completed REQ. No "you should add tests" without pointing at what's untested and why it matters.
 - **Product thinking, not just code.** Go beyond refactoring. Think about what users would want, what's missing from the experience, what would make the project more valuable.
 - **Effort-aware.** Tag every idea with a rough size so the user can pick what fits their time budget.
-- **Feed the pipeline.** Ideas should be concrete enough to paste straight into `do work capture request:`.
+- **Feed the pipeline.** Ideas should be concrete enough to paste straight into `do-work capture request:`.
 
 ## When to Use
 
@@ -104,7 +104,7 @@ IDEATION REPORT — [focus or "open exploration"]
   Summary: [N] ideas ([X] high confidence, [Y] medium, [Z] low)
 
   To capture any idea:
-    do work capture request: [paste or rephrase the title + why]
+    do-work capture request: [paste or rephrase the title + why]
 ```
 
 Aim for 8-15 ideas total. Fewer is fine if the codebase is small or focused. More than 15 dilutes signal — prioritize harder instead.

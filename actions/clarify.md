@@ -6,7 +6,7 @@ This is the second human-attention window in the pipeline. After the work action
 
 ## Input
 
-Triggered by `do work clarify` (also: `answers`, `questions`, `pending`, `what's blocked`). No arguments needed.
+Triggered by `do-work clarify` (also: `answers`, `questions`, `pending`, `what's blocked`). No arguments needed.
 
 ## Steps
 
@@ -51,7 +51,7 @@ For each question, the user can:
 
 ### Step 5: Activate answered REQs
 
-For each REQ that wasn't already completed or discarded: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending`. These enter the queue for the next `do work run`.
+For each REQ that wasn't already completed or discarded: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending`. These enter the queue for the next `do-work run`.
 
 ### Step 6: Report
 
@@ -74,7 +74,7 @@ When the user reviews a discovered-task follow-up (one whose question is "Should
 
 1. Update the question to `- [x] [question] → Confirmed: Yes, add to queue`
 2. Update frontmatter: `status: pending` (NOT `completed` — this task needs to be built)
-3. **Do not archive.** The REQ stays in `do-work/queue/` and enters the normal work queue for the next `do work run`
+3. **Do not archive.** The REQ stays in `do-work/queue/` and enters the normal work queue for the next `do-work run`
 
 This is distinct from "Builder Was Right" because confirming a discovered task means the user wants it *executed*, not signed off. The task has no prior implementation to confirm — it's a new piece of work that needs a full work cycle.
 

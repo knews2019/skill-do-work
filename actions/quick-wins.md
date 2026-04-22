@@ -167,8 +167,8 @@ Produce a markdown report with this structure:
 3. {Third priority}
 
 > To act on these findings:
->   do work [describe the fix]     Capture as a request
->   do work run                    Process the queue
+>   do-work [describe the fix]     Capture as a request
+>   do-work run                    Process the queue
 ```
 
 ## Rules

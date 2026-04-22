@@ -67,7 +67,7 @@ Need to modify an in-flight or completed request? Capture creates a new REQ with
 ## Usage
 
 ```
-do work capture request: add dark mode to settings
-do work capture request: the search is slow, add export, fix the header
-do work capture request: [paste meeting notes, specs, or a screenshot]
+do-work capture request: add dark mode to settings
+do-work capture request: the search is slow, add export, fix the header
+do-work capture request: [paste meeting notes, specs, or a screenshot]
 ```

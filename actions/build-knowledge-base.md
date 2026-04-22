@@ -43,7 +43,7 @@ Before executing any sub-command (except `init`), find the KB root:
 2. Look for a `kb/` directory in the current working directory.
 3. Look for a `knowledge-base/` directory in the current working directory.
 4. Search parent directories (up to 3 levels) for a directory containing both `raw/` and `wiki/` subdirectories.
-5. If not found, tell the user: "No knowledge base found. Run `do work bkb init` to create one."
+5. If not found, tell the user: "No knowledge base found. Run `do-work bkb init` to create one."
 
 ---
 
@@ -55,7 +55,7 @@ Create the full KB directory structure at the specified path (default: `./kb`).
 
 Before creating anything, check if the target path already contains a KB (has both `raw/` and `wiki/` subdirectories):
 
-- **If KB exists**: Stop and report: "Knowledge base already exists at `<path>/` (N articles, M topic clusters). To repair a broken structure, run `do work bkb init <path> --fill-gaps`."
+- **If KB exists**: Stop and report: "Knowledge base already exists at `<path>/` (N articles, M topic clusters). To repair a broken structure, run `do-work bkb init <path> --fill-gaps`."
 - **If `--fill-gaps` flag is present**: Only create directories and seed files that don't already exist. Never overwrite existing files. Report what was created vs. what was skipped. This is the migration path for legacy KBs — e.g., a KB created before v0.46.0 will gain the `agents/` directory and all 8 built-in agent files without disturbing existing content.
 - **If no KB exists**: Proceed with full initialization.
 
@@ -131,8 +131,8 @@ Knowledge base initialized at <path>/
 
 Next steps:
   Drop files into <path>/raw/inbox/
-  do work bkb triage         Sort inbox items
-  do work bkb ingest         Compile sources into wiki
+  do-work bkb triage         Sort inbox items
+  do-work bkb ingest         Compile sources into wiki
 ```
 
 ---
@@ -435,7 +435,7 @@ Finalize the day's work.
      Sources ingested: N
      Contradictions pending: N
    ```
-5. **Suggest git commit** (do not auto-commit): If there are uncommitted changes in the KB directory, print: "Uncommitted KB changes — run `do work commit` or `git add . && git commit` when ready."
+5. **Suggest git commit** (do not auto-commit): If there are uncommitted changes in the KB directory, print: "Uncommitted KB changes — run `do-work commit` or `git add . && git commit` when ready."
 
 ---
 
@@ -648,40 +648,40 @@ Before executing any sub-command, scan ALL `.md` files in `<kb>/agents/` — not
 When invoked with no sub-command or with `help`:
 
 ```
-do work bkb — LLM Knowledge Base builder
+do-work bkb — LLM Knowledge Base builder
 
   Setup:
-    do work bkb init              Initialize a new knowledge base in ./kb
-    do work bkb init ~/research   Initialize at a custom path
+    do-work bkb init              Initialize a new knowledge base in ./kb
+    do-work bkb init ~/research   Initialize at a custom path
 
   Daily workflow:
-    do work bkb triage            Sort inbox items into capture directories
-    do work bkb ingest            Compile all ready sources into wiki
-    do work bkb query [question]  Search the wiki and synthesize an answer
-    do work bkb close             Finalize today's daily log
+    do-work bkb triage            Sort inbox items into capture directories
+    do-work bkb ingest            Compile all ready sources into wiki
+    do-work bkb query [question]  Search the wiki and synthesize an answer
+    do-work bkb close             Finalize today's daily log
 
   Maintenance:
-    do work bkb lint              Quick health check (recent changes)
-    do work bkb lint full         Full cross-cluster integrity check
-    do work bkb resolve           Walk through and resolve contradictions
-    do work bkb defrag            Weekly structural maintenance (merges, splits)
-    do work bkb garden            Topic cluster and relationship hygiene
-    do work bkb rollup            Monthly summary and trend analysis
-    do work bkb status            Show KB stats and pending items
+    do-work bkb lint              Quick health check (recent changes)
+    do-work bkb lint full         Full cross-cluster integrity check
+    do-work bkb resolve           Walk through and resolve contradictions
+    do-work bkb defrag            Weekly structural maintenance (merges, splits)
+    do-work bkb garden            Topic cluster and relationship hygiene
+    do-work bkb rollup            Monthly summary and trend analysis
+    do-work bkb status            Show KB stats and pending items
 
   Crew:
-    do work bkb crew              List all agents (built-in + custom)
-    do work bkb crew create       Define a new custom agent
-    do work bkb crew edit <name>  Modify a custom agent
-    do work bkb crew remove <name> Remove a custom agent
+    do-work bkb crew              List all agents (built-in + custom)
+    do-work bkb crew create       Define a new custom agent
+    do-work bkb crew edit <name>  Modify a custom agent
+    do-work bkb crew remove <name> Remove a custom agent
 
   Typical flow:
     1. Drop files into kb/raw/inbox/
-    2. do work bkb triage
-    3. do work bkb ingest
-    4. do work bkb query "what are the tradeoffs of X vs Y?"
-    5. do work bkb close
-    Weekly: do work bkb defrag && do work bkb garden
+    2. do-work bkb triage
+    3. do-work bkb ingest
+    4. do-work bkb query "what are the tradeoffs of X vs Y?"
+    5. do-work bkb close
+    Weekly: do-work bkb defrag && do-work bkb garden
 ```
 
 ---

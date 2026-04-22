@@ -16,13 +16,13 @@ The `prime` command accepts a sub-command as its first argument. If no sub-comma
 
 ## Help Menu (no sub-command)
 
-When invoked with no sub-command (`do work prime`), show:
+When invoked with no sub-command (`do-work prime`), show:
 
 ```
 prime — manage AI context documents (prime files)
 
-  do work prime create src/auth/    Generate a prime file via interactive Q&A
-  do work prime audit               Audit all prime files for staleness and broken links
+  do-work prime create src/auth/    Generate a prime file via interactive Q&A
+  do-work prime audit               Audit all prime files for staleness and broken links
 ```
 
 ---
