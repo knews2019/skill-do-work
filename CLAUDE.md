@@ -20,7 +20,7 @@ actions/              # Action files (each is a standalone prompt)
   present-work.md     # Client-facing deliverables (briefs, videos, diagrams)
   cleanup.md          # Archive consolidation
   commit.md           # Atomic git commits traced to REQs
-  ce-compound-handoff.md # Reference: offers post-review promotion of Lessons Learned into compound-engineering's docs/solutions/
+  kb-lessons-handoff.md # Reference: offers post-review promotion of Lessons Learned into kb/raw/inbox/
   inspect.md          # Explain uncommitted changes — what, why, and readiness (read-only)
   version.md          # Version reporting + update checks (current version lives here)
   quick-wins.md       # Scan for refactoring opportunities and low-hanging tests
@@ -152,28 +152,18 @@ Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_C
 
 Pending REQ files live in `do-work/queue/`. When referencing the queue in action files, always use `do-work/queue/` — not `do-work/` root.
 
-## Compound-engineering Integration
+## Lessons → Knowledge Base Handoff
 
-do-work is compatible with the [compound-engineering plugin](https://github.com/EveryInc/compound-engineering-plugin) (CE). The relationship is **do-work orchestrates, CE augments**: do-work runs the full REQ cycle on its own, and specific seams optionally hand off to CE skills when CE is installed. If CE is absent, do-work behaves exactly as without the integration — no hard dependency.
+do-work ships its own knowledge-base system (see the build-knowledge-base action, alias `bkb`). After a REQ's review passes and `## Lessons Learned` is captured, the review-work action (Step 9.5, standalone mode) and the work action (Step 7.5, pipeline mode) both run the kb-lessons-handoff reference to offer promoting the lessons into the project's KB.
 
-CE writes to three project-local artifact paths. do-work treats these as shared conventions:
+The handoff is pure do-work — zero external dependency. It drops a structured Markdown source document into `<kb>/raw/inbox/` and lets the existing bkb pipeline (`triage` → `ingest`) compile it into the wiki. If no `kb/` exists, the handoff defers to `pending` and points the user at `do-work bkb init`. It never blocks archival.
 
-| Path | Written by | do-work behavior |
-|---|---|---|
-| `docs/brainstorms/YYYY-MM-DD-<topic>.md` | `ce-brainstorm` | Reserved for future integration (capture ingestion) |
-| `docs/plans/YYYY-MM-DD-<slug>-plan.md` | `ce-plan` | Reserved for future integration (Route C planning) |
-| `docs/solutions/<category>/<slug>.md` | `ce-compound` | **Current write target** via the ce-compound handoff |
+**REQ frontmatter extension:** two optional fields, both set by the handoff, both absent on REQs that predate it:
 
-**Current integration points:**
+- `kb_status`: one of `promoted | pending | declined | skipped`
+- `kb_entry`: filename written to `raw/inbox/` when status is `promoted` (filename only, not a path — survives bkb's later moves through `capture/` and `processed/`)
 
-- **review-work Step 9.5 / work Step 7.5** — after Lessons Learned are captured, the action runs the ce-compound handoff (see `actions/ce-compound-handoff.md`) which offers to promote the lessons into `docs/solutions/` via CE's `ce-compound` skill. The handoff asks before dispatching, never auto-promotes, and never blocks when CE is not installed.
-
-**REQ frontmatter extension:** two optional fields, both set by the handoff, both absent on legacy REQs:
-
-- `ce_compound_status`: one of `promoted | pending | declined | skipped`
-- `ce_solution_path`: path under `docs/solutions/...` when status is `promoted`
-
-See `docs/ce-integration-guide.md` for the full user-facing guide, including install pointers and the roadmap for future integration points (reviewer agents, ce-plan, ce-brainstorm).
+See `actions/kb-lessons-handoff.md` for the full handoff contract (payload shape, consent flow, rationalizations, red flags).
 
 ## Agent Compatibility
 

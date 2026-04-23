@@ -657,7 +657,7 @@ After writing the link, verify the resolved path points to an existing file. If 
 
 Only add a link when the lesson is relevant to that prime file's scope — don't spray every lesson into every prime file. If the REQ has no `prime_files` or the lessons aren't relevant to any prime file, skip this.
 
-**Compound-engineering handoff.** After the Lessons Learned section is written and prime-file links are in place, follow `actions/ce-compound-handoff.md` to offer promoting the lessons into `docs/solutions/` via the compound-engineering `ce-compound` skill. The handoff prints a prepared payload, asks the user before dispatching, and records `ce_compound_status` (plus `ce_solution_path` on success) back onto the REQ. In unattended pipeline runs with no human in the loop, the handoff defaults to `ce_compound_status: pending` — it never auto-promotes. If CE is not installed the handoff degrades to a saved prompt the user can run later; it never blocks archival.
+**Knowledge-base handoff.** After the Lessons Learned section is written and prime-file links are in place, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. The handoff asks the user before writing and records `kb_status` (plus `kb_entry` on success) back onto the REQ. In unattended pipeline runs with no human in the loop, the handoff defaults to `kb_status: pending` — it never writes to the KB without consent. If the project has no `kb/` directory, the handoff points the user at `do-work bkb init` and defers; it never blocks archival.
 
 ### Step 8: Archive
 

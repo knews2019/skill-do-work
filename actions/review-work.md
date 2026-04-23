@@ -292,9 +292,9 @@ After presenting the review report, perform a self-validation pass — no human 
 
    Only link lessons relevant to that prime file's scope. In **Pipeline mode**, the work action's Step 7.5 handles prime file updates.
 
-5. **Offer compound-engineering handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow the ce-compound-handoff reference (`actions/ce-compound-handoff.md`) to offer promoting those lessons into `docs/solutions/` via the compound-engineering `ce-compound` skill. Update the REQ's `ce_compound_status` and (if promoted) `ce_solution_path` frontmatter based on the outcome. The handoff prints a prepared payload and asks the user before dispatching — it never auto-promotes and never blocks if CE is not installed. In **Pipeline mode**, the work action's Step 7.5 runs the handoff instead.
+5. **Offer knowledge-base handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. Update the REQ's `kb_status` and (if promoted) `kb_entry` frontmatter based on the outcome. The handoff asks before writing, degrades to `pending` if no `kb/` exists, and never blocks archival. In **Pipeline mode**, the work action's Step 7.5 runs the handoff instead.
 
-Self-validation runs in **both modes**. Lesson capture, prime file updates, and the compound-engineering handoff are **standalone-only** to avoid duplication with the work action.
+Self-validation runs in **both modes**. Lesson capture, prime file updates, and the knowledge-base handoff are **standalone-only** to avoid duplication with the work action.
 
 ### Step 10: Create Follow-up REQs
 

@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.8 — The Homegrown Handoff (2026-04-23)
+
+Replaces the compound-engineering integration from 0.69.7 with a zero-dependency version that uses do-work's own knowledge base (`kb/`). After a REQ's review passes and Lessons Learned are captured, do-work drops a structured source document into `kb/raw/inbox/` so the existing `bkb triage` → `bkb ingest` pipeline compiles it into the wiki. Same consent-driven shape as before, just no external plugin required.
+
+- `actions/kb-lessons-handoff.md`: New handoff reference. Writes to `<kb>/raw/inbox/REQ-NNN-<slug>.md`, defers to `kb_status: pending` if no `kb/` exists (never auto-inits), and stops at the drop — triage and ingest stay in the bkb action's lane.
+- `actions/review-work.md`, `actions/work.md`: Step 9.5 / Step 7.5 now call the kb-lessons handoff instead of the CE one. Unattended runs default to `kb_status: pending`.
+- `actions/sample-archived-req.md`: Frontmatter fields renamed — `ce_compound_status` → `kb_status`, `ce_solution_path` → `kb_entry` (filename only, survives bkb's moves through `capture/` and `processed/`).
+- `CLAUDE.md`: "Compound-engineering Integration" section replaced with a shorter "Lessons → Knowledge Base Handoff" section that documents the in-skill flow only.
+- Removed: `actions/ce-compound-handoff.md`, `docs/ce-integration-guide.md` — both were CE-specific and no longer apply.
+
 ## 0.69.7 — The Compound Handoff (2026-04-23)
 
 First integration point with the [compound-engineering plugin](https://github.com/EveryInc/compound-engineering-plugin). After a REQ's review passes and Lessons Learned are captured, do-work now offers to promote those lessons into CE's `docs/solutions/` knowledge base via the `ce-compound` skill. The handoff asks before dispatching, degrades to a saved prompt if CE isn't installed, and never blocks archival.
