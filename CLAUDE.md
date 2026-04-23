@@ -20,6 +20,7 @@ actions/              # Action files (each is a standalone prompt)
   present-work.md     # Client-facing deliverables (briefs, videos, diagrams)
   cleanup.md          # Archive consolidation
   commit.md           # Atomic git commits traced to REQs
+  ce-compound-handoff.md # Reference: offers post-review promotion of Lessons Learned into compound-engineering's docs/solutions/
   inspect.md          # Explain uncommitted changes — what, why, and readiness (read-only)
   version.md          # Version reporting + update checks (current version lives here)
   quick-wins.md       # Scan for refactoring opportunities and low-hanging tests
@@ -150,6 +151,29 @@ Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_C
 ## Queue Path Convention
 
 Pending REQ files live in `do-work/queue/`. When referencing the queue in action files, always use `do-work/queue/` — not `do-work/` root.
+
+## Compound-engineering Integration
+
+do-work is compatible with the [compound-engineering plugin](https://github.com/EveryInc/compound-engineering-plugin) (CE). The relationship is **do-work orchestrates, CE augments**: do-work runs the full REQ cycle on its own, and specific seams optionally hand off to CE skills when CE is installed. If CE is absent, do-work behaves exactly as without the integration — no hard dependency.
+
+CE writes to three project-local artifact paths. do-work treats these as shared conventions:
+
+| Path | Written by | do-work behavior |
+|---|---|---|
+| `docs/brainstorms/YYYY-MM-DD-<topic>.md` | `ce-brainstorm` | Reserved for future integration (capture ingestion) |
+| `docs/plans/YYYY-MM-DD-<slug>-plan.md` | `ce-plan` | Reserved for future integration (Route C planning) |
+| `docs/solutions/<category>/<slug>.md` | `ce-compound` | **Current write target** via the ce-compound handoff |
+
+**Current integration points:**
+
+- **review-work Step 9.5 / work Step 7.5** — after Lessons Learned are captured, the action runs the ce-compound handoff (see `actions/ce-compound-handoff.md`) which offers to promote the lessons into `docs/solutions/` via CE's `ce-compound` skill. The handoff asks before dispatching, never auto-promotes, and never blocks when CE is not installed.
+
+**REQ frontmatter extension:** two optional fields, both set by the handoff, both absent on legacy REQs:
+
+- `ce_compound_status`: one of `promoted | pending | declined | skipped`
+- `ce_solution_path`: path under `docs/solutions/...` when status is `promoted`
+
+See `docs/ce-integration-guide.md` for the full user-facing guide, including install pointers and the roadmap for future integration points (reviewer agents, ce-plan, ce-brainstorm).
 
 ## Agent Compatibility
 

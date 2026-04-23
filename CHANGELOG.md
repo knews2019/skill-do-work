@@ -4,6 +4,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.7 — The Compound Handoff (2026-04-23)
+
+First integration point with the [compound-engineering plugin](https://github.com/EveryInc/compound-engineering-plugin). After a REQ's review passes and Lessons Learned are captured, do-work now offers to promote those lessons into CE's `docs/solutions/` knowledge base via the `ce-compound` skill. The handoff asks before dispatching, degrades to a saved prompt if CE isn't installed, and never blocks archival.
+
+- `actions/ce-compound-handoff.md`: New reference file describing the handoff payload shape, user consent flow, and REQ frontmatter updates. Both review-work Step 9.5 (standalone) and work Step 7.5 (pipeline) dispatch into this single reference.
+- `actions/review-work.md`: Step 9.5 now runs the compound handoff after lesson capture in standalone mode.
+- `actions/work.md`: Step 7.5 now runs the compound handoff after lesson capture in pipeline mode. Unattended runs default to `ce_compound_status: pending` — no auto-promotion.
+- `actions/sample-archived-req.md`: Sample frontmatter now shows the two new optional fields (`ce_compound_status`, `ce_solution_path`) so REQ authors know the schema.
+- `CLAUDE.md`: New "Compound-engineering Integration" section documents the augmentation model, the three CE artifact paths, and the current integration point.
+- `docs/ce-integration-guide.md`: New user-facing guide covering install, the handoff flow with sample payload, troubleshooting, roadmap for future integration points (reviewer agents, ce-plan, ce-brainstorm), and design principles for contributors wiring up the next seam.
+
 ## 0.69.6 — The Audit Ratchet (2026-04-22)
 
 Close the contradictions and gaps found in a self-audit of the skill: a broken link, a missing `next-steps.md` entry, an out-of-date README, a missing docs guide, two action files that didn't follow the template, and a wave of missing `When to Use` / `Red Flags` / `Verification Checklist` sections across core actions. Nothing behavioral — just the docs finally matching the conventions CLAUDE.md claims.

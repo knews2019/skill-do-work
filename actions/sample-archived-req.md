@@ -8,6 +8,9 @@ route: B
 completed_at: 2025-01-26T11:08:00Z
 commit: a1b2c3d
 prime_files: []
+# Optional — set by the ce-compound handoff. Omit on REQs that predate CE integration.
+ce_compound_status: promoted   # promoted | pending | declined | skipped
+ce_solution_path: docs/solutions/frontend/user-avatar-default-state.md
 ---
 
 # Add User Avatar Component
