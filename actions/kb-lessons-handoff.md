@@ -52,7 +52,7 @@ Pull these fields from the REQ (file at `do-work/working/REQ-*.md` in pipeline m
 | Field | Source in the REQ |
 |---|---|
 | `title` | REQ `title` frontmatter, trimmed |
-| `date` | ISO date from `completed_at` frontmatter (YYYY-MM-DD) |
+| `date` | `completed_at` frontmatter if present (standalone mode on an archived REQ); otherwise today's date in `YYYY-MM-DD` (pipeline mode runs this handoff at Step 7.5, before Step 8 writes `completed_at`, so the fallback is required). Same calendar day either way. |
 | `req_id` | REQ `id` frontmatter (e.g., `REQ-042`) |
 | `req_path` | Absolute path to the REQ file, so the KB entry can back-reference it |
 | `domain` | REQ `domain` frontmatter (e.g., `backend`, `frontend`, `security`) |
@@ -116,7 +116,7 @@ Print a three-block message:
 3. **Ask:** three options, phrased generically so the harness's ask-user prompt can surface them:
    - **a) Drop now** — write the file to `<kb>/raw/inbox/REQ-NNN-<slug>.md`. The user can run `do-work bkb triage` next to sort it into `raw/capture/notes/` and `do-work bkb ingest` to compile it into the wiki.
    - **b) Save for later** — record `kb_status: pending` and move on. Nothing is written to the KB. The user can re-run the handoff later.
-   - **c) Skip** — record `kb_status: skipped` and do not offer again.
+   - **c) Skip** — record `kb_status: declined` (active user refusal, terminal) and do not offer again. `skipped` is reserved for the silent auto-skip path at the top of this file, which never prompts the user.
 
 Use your environment's ask-user prompt. If the harness has no blocking prompt available and the action is running in unattended mode (pipeline without human in the loop), default to (b) `Save for later` — never auto-write to the KB without consent.
 
@@ -132,7 +132,7 @@ Use your environment's ask-user prompt. If the harness has no blocking prompt av
 
 **(b) Save for later:** skip to Step 5 with `status = pending` and `entry = null`.
 
-**(c) Skip:** skip to Step 5 with `status = skipped` and `entry = null`.
+**(c) Skip:** skip to Step 5 with `status = declined` and `entry = null`.
 
 ### Step 5: Update the REQ frontmatter
 
