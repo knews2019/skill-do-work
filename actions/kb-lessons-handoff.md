@@ -37,8 +37,8 @@ Search, in order:
 If none is found, set `kb_status: pending` on the REQ, print:
 
 ```
-No knowledge base found. The REQ's Lessons Learned are captured but not promoted.
-Run `do-work bkb init` to create one, then `do-work bkb triage` to ingest the lesson.
+No knowledge base found. The REQ's Lessons Learned are captured in the REQ but not promoted — kb_status: pending is recorded.
+To promote: run `do-work bkb init`, then re-run this handoff (e.g. `do-work review REQ-NNN`) to drop the lesson into kb/raw/inbox/, then `do-work bkb triage` to sort it and `do-work bkb ingest` to compile it into the wiki.
 ```
 
 …and return. Do not auto-init the KB — that is the user's call.
@@ -152,7 +152,7 @@ Use `declined` when the user actively refused; use `skipped` when you auto-skipp
 ### Step 6: Return control to the caller
 
 Print a one-line confirmation:
-- `Promoted to <kb>/raw/inbox/<filename>. Run \`do-work bkb triage\` next.` for `promoted`
+- `Promoted to <kb>/raw/inbox/<filename>. Run \`do-work bkb triage\` to sort it, then \`do-work bkb ingest\` to compile it into the wiki.` for `promoted`
 - `Handoff pending — run the handoff again later or drop the content manually into <kb>/raw/inbox/.` for `pending`
 - `Skipped KB handoff.` for `skipped` or `declined`
 

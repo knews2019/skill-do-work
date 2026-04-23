@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.11 — The Ingest Correction (2026-04-23)
+
+Fixes the kb-lessons handoff's user-facing messages: both the no-KB fallback and the promoted confirmation told users to run `bkb triage` alone, but triage only sorts inbox files — compilation into the wiki happens in `bkb ingest`. Following the old messages left lessons stuck in `capture/notes/` and invisible in the wiki.
+
+- `actions/kb-lessons-handoff.md`: no-KB fallback now documents the full re-promotion path — `bkb init` → re-run handoff (e.g. `do-work review REQ-NNN`) → `bkb triage` → `bkb ingest`. Previously it stopped at triage and also glossed over the fact that the handoff set `kb_status: pending` without dropping the file, so even a correct triage+ingest pair would have found an empty inbox.
+- `actions/kb-lessons-handoff.md`: "Promoted to …" confirmation now instructs `bkb triage` then `bkb ingest`. Previously users on the happy path were told `bkb triage` was the last step, leaving the lesson sorted but uncompiled.
+
 ## 0.69.10 — The Gap Patrol (2026-04-23)
 
 Audit-driven cleanup of the three recent handoff commits (0.69.7–0.69.9). Fills in the spots where the new `kb_status`/`kb_entry` fields and the handoff flow weren't yet mentioned in sibling docs. Nothing behavioral — just the cross-references finally catching up with the feature.
