@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.12 — The Dark Code Kit (2026-04-23)
+
+Captures a three-prompt kit for fighting "dark code" — code that was never understood by anyone at any point in its lifecycle. Shared `dark-code-kit_` prefix groups them as sibling tools in the library.
+
+- `prompts/dark-code-kit_audit.md`: four-group interview (architecture, AI tool usage, team/ownership, deployment) that produces a hotspot map across structural and velocity dimensions, with severity ratings, ownership gaps, and a prioritized action plan.
+- `prompts/dark-code-kit_context-layer-generator.md`: per-module interview walking through structural → semantic → philosophical context, emitting a module manifest, behavioral contracts, and a decision log that make the module self-describing.
+- `prompts/dark-code-kit_comprehension-gate.md`: senior-engineer-style PR review across seven dimensions (credentials, cross-service side effects, blast radius, state, tokens, assumptions, comprehension) with CLEAR / REVIEW REQUIRED / HOLD verdicts.
+- `prompts/README.md`: three entries added to the Available prompts table.
+
 ## 0.69.11 — The Ingest Correction (2026-04-23)
 
 Fixes the kb-lessons handoff's user-facing messages: both the no-KB fallback and the promoted confirmation told users to run `bkb triage` alone, but triage only sorts inbox files — compilation into the wiki happens in `bkb ingest`. Following the old messages left lessons stuck in `capture/notes/` and invisible in the wiki.
