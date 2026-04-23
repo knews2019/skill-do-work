@@ -20,6 +20,7 @@ actions/              # Action files (each is a standalone prompt)
   present-work.md     # Client-facing deliverables (briefs, videos, diagrams)
   cleanup.md          # Archive consolidation
   commit.md           # Atomic git commits traced to REQs
+  kb-lessons-handoff.md # Reference: offers post-review promotion of Lessons Learned into kb/raw/inbox/
   inspect.md          # Explain uncommitted changes — what, why, and readiness (read-only)
   version.md          # Version reporting + update checks (current version lives here)
   quick-wins.md       # Scan for refactoring opportunities and low-hanging tests
@@ -150,6 +151,19 @@ Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_C
 ## Queue Path Convention
 
 Pending REQ files live in `do-work/queue/`. When referencing the queue in action files, always use `do-work/queue/` — not `do-work/` root.
+
+## Lessons → Knowledge Base Handoff
+
+do-work ships its own knowledge-base system (see the build-knowledge-base action, alias `bkb`). After a REQ's review passes and `## Lessons Learned` is captured, the review-work action (Step 9.5, standalone mode) and the work action (Step 7.5, pipeline mode) both run the kb-lessons-handoff reference to offer promoting the lessons into the project's KB.
+
+The handoff is pure do-work — zero external dependency. It drops a structured Markdown source document into `<kb>/raw/inbox/` and lets the existing bkb pipeline (`triage` → `ingest`) compile it into the wiki. If no `kb/` exists, the handoff defers to `pending` and points the user at `do-work bkb init`. It never blocks archival.
+
+**REQ frontmatter extension:** two optional fields, both set by the handoff, both absent on REQs that predate it:
+
+- `kb_status`: one of `promoted | pending | declined | skipped`
+- `kb_entry`: filename written to `raw/inbox/` when status is `promoted` (filename only, not a path — survives bkb's later moves through `capture/` and `processed/`)
+
+See `actions/kb-lessons-handoff.md` for the full handoff contract (payload shape, consent flow, rationalizations, red flags).
 
 ## Agent Compatibility
 

@@ -292,7 +292,9 @@ After presenting the review report, perform a self-validation pass — no human 
 
    Only link lessons relevant to that prime file's scope. In **Pipeline mode**, the work action's Step 7.5 handles prime file updates.
 
-Self-validation runs in **both modes**. Lesson capture and prime file updates are **standalone-only** to avoid duplication with the work action.
+5. **Offer knowledge-base handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. Update the REQ's `kb_status` and (if promoted) `kb_entry` frontmatter based on the outcome. The handoff asks before writing, degrades to `pending` if no `kb/` exists, and never blocks archival. In **Pipeline mode**, the work action's Step 7.5 runs the handoff instead.
+
+Self-validation runs in **both modes**. Lesson capture, prime file updates, and the knowledge-base handoff are **standalone-only** to avoid duplication with the work action.
 
 ### Step 10: Create Follow-up REQs
 

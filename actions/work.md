@@ -165,6 +165,10 @@ completed_at: 2025-01-26T10:45:00Z
 status: completed | completed-with-issues | failed
 commit: abc1234               # If git repo
 error: "Description"          # Only if failed
+
+# Set by kb-lessons handoff (Step 7.5 pipeline / Step 9.5 standalone). Optional; absent on REQs that predate the handoff.
+kb_status: promoted | pending | declined | skipped
+kb_entry: REQ-042-lesson-slug.md   # filename only (survives bkb moves from inbox/ to capture/ to processed/); present only when kb_status: promoted
 ---
 ```
 
@@ -656,6 +660,8 @@ Append to the request file:
 After writing the link, verify the resolved path points to an existing file. If it doesn't, report the broken link rather than silently writing it.
 
 Only add a link when the lesson is relevant to that prime file's scope — don't spray every lesson into every prime file. If the REQ has no `prime_files` or the lessons aren't relevant to any prime file, skip this.
+
+**Knowledge-base handoff.** After the Lessons Learned section is written and prime-file links are in place, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. The handoff asks the user before writing and records `kb_status` (plus `kb_entry` on success) back onto the REQ. In unattended pipeline runs with no human in the loop, the handoff defaults to `kb_status: pending` — it never writes to the KB without consent. If the project has no `kb/` directory, the handoff points the user at `do-work bkb init` and defers; it never blocks archival.
 
 ### Step 8: Archive
 

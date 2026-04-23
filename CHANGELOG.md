@@ -4,6 +4,49 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.11 — The Ingest Correction (2026-04-23)
+
+Fixes the kb-lessons handoff's user-facing messages: both the no-KB fallback and the promoted confirmation told users to run `bkb triage` alone, but triage only sorts inbox files — compilation into the wiki happens in `bkb ingest`. Following the old messages left lessons stuck in `capture/notes/` and invisible in the wiki.
+
+- `actions/kb-lessons-handoff.md`: no-KB fallback now documents the full re-promotion path — `bkb init` → re-run handoff (e.g. `do-work review REQ-NNN`) → `bkb triage` → `bkb ingest`. Previously it stopped at triage and also glossed over the fact that the handoff set `kb_status: pending` without dropping the file, so even a correct triage+ingest pair would have found an empty inbox.
+- `actions/kb-lessons-handoff.md`: "Promoted to …" confirmation now instructs `bkb triage` then `bkb ingest`. Previously users on the happy path were told `bkb triage` was the last step, leaving the lesson sorted but uncompiled.
+
+## 0.69.10 — The Gap Patrol (2026-04-23)
+
+Audit-driven cleanup of the three recent handoff commits (0.69.7–0.69.9). Fills in the spots where the new `kb_status`/`kb_entry` fields and the handoff flow weren't yet mentioned in sibling docs. Nothing behavioral — just the cross-references finally catching up with the feature.
+
+- `actions/work.md`: `## Request File Schema` now documents the two optional `kb_status` and `kb_entry` frontmatter fields alongside the existing ones. Previously only `sample-archived-req.md` mentioned them, so agents reading the schema block thought they were non-standard.
+- `next-steps.md`: "After work" and "After review work" blocks now suggest `do-work bkb triage` as a follow-up when lessons were promoted, and `do-work bkb init` when the handoff deferred because no `kb/` existed.
+- `actions/build-knowledge-base.md`: `triage` classification table now recognizes `.md` files with `source_type: req_lesson` frontmatter (written by the kb-lessons handoff). They route to `capture/notes/` — no new capture subdir needed — with a note that the `domain` field is a reliable topic hint and `req_path` is a back-reference to the originating REQ.
+
+## 0.69.9 — The Handoff Cleanup (2026-04-23)
+
+Two bot-reviewer findings against the kb-lessons handoff, both legitimate and both fixed. Metadata now populates correctly in pipeline mode, and the `declined` vs `skipped` statuses are actually reachable as designed.
+
+- `actions/kb-lessons-handoff.md`: `date` now falls back to today's date when `completed_at` isn't set yet — the handoff runs at Step 7.5 (pipeline mode), before Step 8 writes `completed_at`, so the old "source from `completed_at`" rule produced empty dates on every pipeline run.
+- `actions/kb-lessons-handoff.md`: user's explicit "Skip" choice in Step 3/4 now records `kb_status: declined` instead of `skipped`, matching Step 5's semantics (`declined` = active refusal, `skipped` = silent auto-skip when trigger conditions aren't met). Previously `declined` was effectively unreachable.
+
+## 0.69.8 — The Homegrown Handoff (2026-04-23)
+
+Replaces the compound-engineering integration from 0.69.7 with a zero-dependency version that uses do-work's own knowledge base (`kb/`). After a REQ's review passes and Lessons Learned are captured, do-work drops a structured source document into `kb/raw/inbox/` so the existing `bkb triage` → `bkb ingest` pipeline compiles it into the wiki. Same consent-driven shape as before, just no external plugin required.
+
+- `actions/kb-lessons-handoff.md`: New handoff reference. Writes to `<kb>/raw/inbox/REQ-NNN-<slug>.md`, defers to `kb_status: pending` if no `kb/` exists (never auto-inits), and stops at the drop — triage and ingest stay in the bkb action's lane.
+- `actions/review-work.md`, `actions/work.md`: Step 9.5 / Step 7.5 now call the kb-lessons handoff instead of the CE one. Unattended runs default to `kb_status: pending`.
+- `actions/sample-archived-req.md`: Frontmatter fields renamed — `ce_compound_status` → `kb_status`, `ce_solution_path` → `kb_entry` (filename only, survives bkb's moves through `capture/` and `processed/`).
+- `CLAUDE.md`: "Compound-engineering Integration" section replaced with a shorter "Lessons → Knowledge Base Handoff" section that documents the in-skill flow only.
+- Removed: `actions/ce-compound-handoff.md`, `docs/ce-integration-guide.md` — both were CE-specific and no longer apply.
+
+## 0.69.7 — The Compound Handoff (2026-04-23)
+
+First integration point with the [compound-engineering plugin](https://github.com/EveryInc/compound-engineering-plugin). After a REQ's review passes and Lessons Learned are captured, do-work now offers to promote those lessons into CE's `docs/solutions/` knowledge base via the `ce-compound` skill. The handoff asks before dispatching, degrades to a saved prompt if CE isn't installed, and never blocks archival.
+
+- `actions/ce-compound-handoff.md`: New reference file describing the handoff payload shape, user consent flow, and REQ frontmatter updates. Both review-work Step 9.5 (standalone) and work Step 7.5 (pipeline) dispatch into this single reference.
+- `actions/review-work.md`: Step 9.5 now runs the compound handoff after lesson capture in standalone mode.
+- `actions/work.md`: Step 7.5 now runs the compound handoff after lesson capture in pipeline mode. Unattended runs default to `ce_compound_status: pending` — no auto-promotion.
+- `actions/sample-archived-req.md`: Sample frontmatter now shows the two new optional fields (`ce_compound_status`, `ce_solution_path`) so REQ authors know the schema.
+- `CLAUDE.md`: New "Compound-engineering Integration" section documents the augmentation model, the three CE artifact paths, and the current integration point.
+- `docs/ce-integration-guide.md`: New user-facing guide covering install, the handoff flow with sample payload, troubleshooting, roadmap for future integration points (reviewer agents, ce-plan, ce-brainstorm), and design principles for contributors wiring up the next seam.
+
 ## 0.69.6 — The Audit Ratchet (2026-04-22)
 
 Close the contradictions and gaps found in a self-audit of the skill: a broken link, a missing `next-steps.md` entry, an out-of-date README, a missing docs guide, two action files that didn't follow the template, and a wave of missing `When to Use` / `Red Flags` / `Verification Checklist` sections across core actions. Nothing behavioral — just the docs finally matching the conventions CLAUDE.md claims.

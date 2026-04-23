@@ -8,6 +8,9 @@ route: B
 completed_at: 2025-01-26T11:08:00Z
 commit: a1b2c3d
 prime_files: []
+# Optional — set by the kb-lessons handoff. Omit on REQs that predate the handoff.
+kb_status: promoted   # promoted | pending | declined | skipped
+kb_entry: REQ-007-add-user-avatar-component.md
 ---
 
 # Add User Avatar Component
