@@ -48,14 +48,14 @@ Before any retrieval, query BKB for:
 - the most recent 2–4 `weekly-signal-diff` wiki pages, if any — these ground the cross-week diff
 - recurring entities or vendors mentioned in archived REQs, prime files, and past deliverables
 
-Use `do work bkb query` with **narrow** queries, not broad ones — one question per call, targeted at a specific concern. Examples:
+Use `do-work bkb query` with **narrow** queries, not broad ones — one question per call, targeted at a specific concern. Examples:
 
-- `do work bkb query "What is the user currently shipping that depends on <vendor or platform>?"`
-- `do work bkb query "Which toolchain or supply-chain risks has the user flagged recently?"`
+- `do-work bkb query "What is the user currently shipping that depends on <vendor or platform>?"`
+- `do-work bkb query "Which toolchain or supply-chain risks has the user flagged recently?"`
 
 Extract a short **relevance profile** from the results — one paragraph covering: what the user is building, what they keep revisiting, what they are worried about. This profile shapes re-ranking in Phase 3.
 
-If BKB is not initialized in this repo (`do work bkb status` returns "not initialized" or `kb/` does not exist), say so explicitly in the coverage note and proceed using only the inlined starter universe. The diff is still valuable; it is just less personalized. Do not silently fail — announce the degraded state.
+If BKB is not initialized in this repo (`do-work bkb status` returns "not initialized" or `kb/` does not exist), say so explicitly in the coverage note and proceed using only the inlined starter universe. The diff is still valuable; it is just less personalized. Do not silently fail — announce the degraded state.
 
 ## Phase 3 — Build the watchlist
 
@@ -197,7 +197,7 @@ Entities, constraints, or questions worth monitoring over the next 1–4 weeks.
 
 ### Actions (optional)
 
-Candidate follow-up REQs the user might capture, formatted as `do work capture request: <short description>` commands the user can run. Do **not** auto-capture — this is the user's call.
+Candidate follow-up REQs the user might capture, formatted as `do-work capture request: <short description>` commands the user can run. Do **not** auto-capture — this is the user's call.
 
 ## Phase 8 — Write the deliverable
 
@@ -230,8 +230,8 @@ Copy the deliverable to `kb/raw/inbox/` using a BKB-conventional name (e.g., `we
 > Deliverable written to `do-work/deliverables/weekly-signal-diff/<week-ending>.md` and staged for BKB ingest at `kb/raw/inbox/weekly-signal-diff-<week-ending>.md`. To ingest, run:
 >
 > ```
-> do work bkb triage
-> do work bkb ingest
+> do-work bkb triage
+> do-work bkb ingest
 > ```
 >
 > Ingest is a lifecycle event — run it when you're ready.
@@ -240,7 +240,7 @@ Do **not** run those commands automatically. Ingest belongs to the user.
 
 If `--no-ingest` or `--dry-run` is set, skip this phase and say so.
 
-If BKB is not initialized (`kb/` does not exist), skip the copy step, say so in the close-the-loop summary, and tell the user they'd need to run `do work bkb init` first if they want the ingest loop to work.
+If BKB is not initialized (`kb/` does not exist), skip the copy step, say so in the close-the-loop summary, and tell the user they'd need to run `do-work bkb init` first if they want the ingest loop to work.
 
 ## Phase 10 — Close the loop
 
@@ -251,9 +251,9 @@ Print a short summary:
 - Per-lane scan notes: "N / N lanes covered (10 core + M personal)" — always a full sweep of whatever lanes were loaded; this is a contract
 - Ingest status: "staged in `kb/raw/inbox/`" / "skipped (flag)" / "BKB not initialized"
 - Suggested next commands:
-  - `do work capture request: <...>` for any action items surfaced
-  - `do work bkb query "..."` to dig deeper on a specific shift
-  - `do work prompts run weekly-signal-diff --week-ending=YYYY-MM-DD` next week
+  - `do-work capture request: <...>` for any action items surfaced
+  - `do-work bkb query "..."` to dig deeper on a specific shift
+  - `do-work prompts run weekly-signal-diff --week-ending=YYYY-MM-DD` next week
 
 ## Rules
 

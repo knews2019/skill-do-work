@@ -34,7 +34,7 @@ Unassociated changes:
 ## Usage
 
 ```
-do work commit
-do work commit changes
-do work save work
+do-work commit
+do-work commit changes
+do-work save work
 ```

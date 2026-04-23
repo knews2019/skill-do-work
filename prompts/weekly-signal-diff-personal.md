@@ -5,7 +5,7 @@
 **Aliases:** (none — this is not invoked directly)
 
 **When to use:**
-- Auto-discovered by `do work prompts run weekly-signal-diff`; not run on its own
+- Auto-discovered by `do-work prompts run weekly-signal-diff`; not run on its own
 - The skill ships this file as a placeholder. To personalize the scan, create a file named `weekly-signal-diff-personal.md` anywhere in your project (project root, `.claude/`, `do-work/`, wherever fits) and declare your real lanes there.
 - Your project-local copy overrides this placeholder at Phase 3 of the main prompt.
 
@@ -25,7 +25,7 @@ This file is a placeholder shipped with the `do-work` skill. It intentionally co
    - Claude config: `./.claude/weekly-signal-diff-personal.md`
    - Do-work directory: `./do-work/weekly-signal-diff-personal.md`
 2. Fill the table below with lanes tied to your active projects, toolchains, and concerns. Replace the placeholder row.
-3. Run `do work prompts run weekly-signal-diff` — the prompt will auto-discover your copy and load the lanes.
+3. Run `do-work prompts run weekly-signal-diff` — the prompt will auto-discover your copy and load the lanes.
 
 ## Lane table shape
 

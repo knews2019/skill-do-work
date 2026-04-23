@@ -23,10 +23,10 @@
 ### Mode 1: Prime File Target
 
 ```
-do work code-review prime-auth
-do work code-review prime-auth.md
-do work code-review src/prime-auth.md
-do work code-review prime-auth prime-checkout
+do-work code-review prime-auth
+do-work code-review prime-auth.md
+do-work code-review src/prime-auth.md
+do-work code-review prime-auth prime-checkout
 ```
 
 When `$ARGUMENTS` contains one or more prime file references:
@@ -38,9 +38,9 @@ When `$ARGUMENTS` contains one or more prime file references:
 ### Mode 2: Directory Target
 
 ```
-do work code-review src/
-do work code-review src/api/ src/utils/
-do work code-review .
+do-work code-review src/
+do-work code-review src/api/ src/utils/
+do-work code-review .
 ```
 
 When `$ARGUMENTS` contains one or more directory paths:
@@ -51,8 +51,8 @@ When `$ARGUMENTS` contains one or more directory paths:
 ### Combined Mode
 
 ```
-do work code-review prime-auth src/utils/
-do work code-review prime-checkout src/shared/
+do-work code-review prime-auth src/utils/
+do-work code-review prime-checkout src/shared/
 ```
 
 When `$ARGUMENTS` contains both prime file references and directory paths:
@@ -63,7 +63,7 @@ When `$ARGUMENTS` contains both prime file references and directory paths:
 ### Default (no arguments)
 
 ```
-do work code-review
+do-work code-review
 ```
 
 If no arguments provided:
@@ -267,7 +267,7 @@ For **Critical** and **Important** findings that warrant action, offer to create
 
 ```
 Found 3 Critical and 5 Important findings.
-Create REQ files for these? (The user can run `do work run` to process them later.)
+Create REQ files for these? (The user can run `do-work run` to process them later.)
 ```
 
 Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward. The code-review action is read-only by default in all modes.

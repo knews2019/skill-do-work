@@ -43,7 +43,7 @@ The completion artifact is part of the product, not optional ceremony. Long pipe
 
 ## Alternatives
 
-1. Stop after review and tell the user to run `do work present` separately.
+1. Stop after review and tell the user to run `do-work present` separately.
 This was rejected because it leaves a predictable final handoff undone.
 
 2. Treat pipeline completion as a one-line status message.

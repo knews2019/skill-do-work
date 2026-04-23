@@ -22,7 +22,7 @@ In the same Phase 7:
 ### Actions this week
 Two mandatory groups. Be concrete; if a group is empty, say so explicitly — that is a finding, not a hole.
 
-**For the operator** — 1–3 things the operator could act on this week, formatted as `do work capture request: <short description>` so they can capture any they want to pursue. Do not auto-capture.
+**For the operator** — 1–3 things the operator could act on this week, formatted as `do-work capture request: <short description>` so they can capture any they want to pursue. Do not auto-capture.
 
 **For clients** — 1–3 proactive client-outreach angles: which client archetype, what finding to raise, one-line draft of the outreach. If no shift this week has a client angle, state "No client-facing actions this week — purely structural."
 

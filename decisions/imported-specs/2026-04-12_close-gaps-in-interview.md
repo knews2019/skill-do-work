@@ -411,15 +411,15 @@ Update `decisions/_master_index.md` and the relevant topic indexes to include AD
 
 Before declaring done, walk one fake session end-to-end as a mental test:
 
-1. Assume `do work interview work-operating-model` is invoked in a fresh repo.
+1. Assume `do-work interview work-operating-model` is invoked in a fresh repo.
 2. Session starts. Layer 1 (operating_rhythms) runs. User answers 3 questions. Agent produces a draft checkpoint, then a formal checkpoint. User says "save." Entry is written.
 3. User quits before Layer 2 starts.
-4. Next day: `do work interview work-operating-model` resumes. Loads session, sees `pending_layer: recurring_decisions`, starts Layer 2.
+4. Next day: `do-work interview work-operating-model` resumes. Loads session, sees `pending_layer: recurring_decisions`, starts Layer 2.
 5. Layers 2, 3, 4, 5 complete normally.
-6. `do work interview work-operating-model review` runs. One tension surfaced (rhythms deep-work window collides with dependency handoff). User revises rhythms. Layer 1 resaved.
-7. `do work interview work-operating-model export` runs. All five files render using the templates in §1.1.
-8. `do work interview work-operating-model ingest` runs. 10 files land in `kb/raw/inbox/` with correct frontmatter. `_inbox_queue.md` gets 10 new rows.
-9. Three months later: `do work interview work-operating-model`. Session is `complete`. User picks `update` mode. Agent walks 14 entries across 5 layers; 8 confirmed, 3 edited, 2 marked stale, 1 deleted, 2 added. CHANGELOG logs the diff.
+6. `do-work interview work-operating-model review` runs. One tension surfaced (rhythms deep-work window collides with dependency handoff). User revises rhythms. Layer 1 resaved.
+7. `do-work interview work-operating-model export` runs. All five files render using the templates in §1.1.
+8. `do-work interview work-operating-model ingest` runs. 10 files land in `kb/raw/inbox/` with correct frontmatter. `_inbox_queue.md` gets 10 new rows.
+9. Three months later: `do-work interview work-operating-model`. Session is `complete`. User picks `update` mode. Agent walks 14 entries across 5 layers; 8 confirmed, 3 edited, 2 marked stale, 1 deleted, 2 added. CHANGELOG logs the diff.
 
 If any step surfaces an unspecified behavior, add a §2.x fix. If all steps round-trip cleanly, proceed.
 

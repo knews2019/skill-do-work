@@ -23,15 +23,15 @@ The action loads templates from `<skill-root>/interviews/<name>.md`, runs a chec
 
 | Invocation | Behavior |
 |---|---|
-| `do work interview` (no args) | Show help menu |
-| `do work interview list` | List available templates |
-| `do work interview <template>` | Start or resume interview for `<template>` |
-| `do work interview <template> status` | Show session progress |
-| `do work interview <template> review` | Run contradiction pass |
-| `do work interview <template> export` | Write export artifacts |
-| `do work interview <template> ingest` | Copy exports into BKB inbox |
-| `do work interview <template> reset` | Archive as a version and start fresh (requires confirmation) |
-| `do work interview <template> versions` | List archived runs |
+| `do-work interview` (no args) | Show help menu |
+| `do-work interview list` | List available templates |
+| `do-work interview <template>` | Start or resume interview for `<template>` |
+| `do-work interview <template> status` | Show session progress |
+| `do-work interview <template> review` | Run contradiction pass |
+| `do-work interview <template> export` | Write export artifacts |
+| `do-work interview <template> ingest` | Copy exports into BKB inbox |
+| `do-work interview <template> reset` | Archive as a version and start fresh (requires confirmation) |
+| `do-work interview <template> versions` | List archived runs |
 
 ## Sub-Commands
 
@@ -55,7 +55,7 @@ The action loads templates from `<skill-root>/interviews/<name>.md`, runs a chec
 
 Templates live at `<skill-root>/interviews/<template>.md`. `<skill-root>` is the directory containing `SKILL.md` (same convention used by `actions/version.md` and `actions/prompts.md`). There is no project-root fallback — adding or modifying a template means editing the file inside the skill install.
 
-If `<skill-root>/interviews/<template>.md` does not exist, list available templates (per the `list` sub-command) and stop with: `Template '<template>' not found. Run 'do work interview list' to see available templates.`
+If `<skill-root>/interviews/<template>.md` does not exist, list available templates (per the `list` sub-command) and stop with: `Template '<template>' not found. Run 'do-work interview list' to see available templates.`
 
 The template's frontmatter is the contract: layers, per-layer prompts, and export declarations come from this file. The action enforces the contract; it does not improvise around missing fields.
 
@@ -64,7 +64,7 @@ The template's frontmatter is the contract: layers, per-layer prompts, and expor
 Session state lives at `./do-work/interview/<template>/session.json` in the current working directory. `do-work/` is the canonical per-repo workspace already used by other actions (`queue/`, `user-requests/`, `archive/`, `working/`); interview output joins that layout and is tracked in git alongside the rest of the project's trail of intent.
 
 - If `./do-work/interview/<template>/session.json` does not exist and the sub-command is bare `<template>`: create the directory structure and start a fresh session (see Step 1 below).
-- If it does not exist and the sub-command is anything else (`status`, `review`, `export`, `ingest`, `reset`, `versions`): stop with `No session found for '<template>'. Run 'do work interview <template>' to start one.`
+- If it does not exist and the sub-command is anything else (`status`, `review`, `export`, `ingest`, `reset`, `versions`): stop with `No session found for '<template>'. Run 'do-work interview <template>' to start one.`
 
 ---
 
@@ -88,7 +88,7 @@ Available templates:
     Elicits the operating model of a person at work. Produces agent-ready
     artifacts (USER.md, SOUL.md, HEARTBEAT.md) plus machine-readable exports.
 
-Start an interview:  do work interview <template>
+Start an interview:  do-work interview <template>
 ```
 
 ---
@@ -167,7 +167,7 @@ For each layer in the template's declared order (starting from `pending_layer`):
    <one-sentence summary of the real pattern surfaced>
    ```
 
-8. **Advance.** Move to the next layer. When the final layer is approved, suggest: "All layers approved. Run `do work interview <template> review` to surface cross-layer contradictions, then `export` to write deliverables."
+8. **Advance.** Move to the next layer. When the final layer is approved, suggest: "All layers approved. Run `do-work interview <template> review` to surface cross-layer contradictions, then `export` to write deliverables."
 
 ---
 
@@ -206,7 +206,7 @@ Runs the cross-layer contradiction pass. Requires all layers approved.
 
 ### Preconditions
 
-- `session.json` exists and every declared layer has `approved: true`. If any layer is unapproved, list the pending layers and stop with: "Review requires all layers approved. Missing: <list>. Run `do work interview <template>` to finish the interview."
+- `session.json` exists and every declared layer has `approved: true`. If any layer is unapproved, list the pending layers and stop with: "Review requires all layers approved. Missing: <list>. Run `do-work interview <template>` to finish the interview."
 
 ### Steps
 
@@ -243,7 +243,7 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
 ### Preconditions
 
 - Every declared layer has `approved: true`. If not, list missing layers and stop.
-- `review_completed_at != null` **AND** `review_runs >= 1`. If not, stop with: "Export requires the review pass to have run at least once. Run `do work interview <template> review` first."
+- `review_completed_at != null` **AND** `review_runs >= 1`. If not, stop with: "Export requires the review pass to have run at least once. Run `do-work interview <template> review` first."
 
 ### Steps
 
@@ -273,7 +273,7 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
      operating-model.json           full session dump
      schedule-recommendations.json  derived schedule
 
-   Next: do work interview <template> ingest   to feed the operating model into BKB.
+   Next: do-work interview <template> ingest   to feed the operating model into BKB.
    ```
 
 ---
@@ -284,8 +284,8 @@ Copies exports into `<repo-root>/kb/raw/inbox/` with BKB-compatible frontmatter.
 
 ### Preconditions
 
-- `./do-work/interview/<template>/exports/` exists and is non-empty. If not, stop with: "No exports found. Run `do work interview <template> export` first."
-- `<repo-root>/kb/` exists. If not, stop with: "No knowledge base found. Run `do work bkb init` first."
+- `./do-work/interview/<template>/exports/` exists and is non-empty. If not, stop with: "No exports found. Run `do-work interview <template> export` first."
+- `<repo-root>/kb/` exists. If not, stop with: "No knowledge base found. Run `do-work bkb init` first."
 
 ### Steps
 
@@ -309,7 +309,7 @@ Follow the Ingest File Mapping section in `actions/interview-reference.md`. Two 
      ...
 
    Queued in kb/raw/_inbox_queue.md: <N> rows.
-   Next: do work bkb triage && do work bkb ingest
+   Next: do-work bkb triage && do-work bkb ingest
    ```
 
 ---
@@ -332,7 +332,7 @@ Archives the current run as a version and starts fresh. Destructive — requires
    Fresh session started; v<N> retained for reference.
    ```
 
-5. Report: "Reset complete. Archived as v<N>. Run `do work interview <template>` to start the new session."
+5. Report: "Reset complete. Archived as v<N>. Run `do-work interview <template>` to start the new session."
 
 ---
 
@@ -426,12 +426,12 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 
 ## Error Handling
 
-- **Template file missing** → list available templates from `<skill-root>/interviews/`, suggest `do work interview list`.
-- **Session corrupt (invalid JSON)** → do not attempt repair. Tell the user the file path and stop: "`./do-work/interview/<template>/session.json` has invalid JSON. Inspect and fix manually, or archive and start fresh with `do work interview <template> reset`."
+- **Template file missing** → list available templates from `<skill-root>/interviews/`, suggest `do-work interview list`.
+- **Session corrupt (invalid JSON)** → do not attempt repair. Tell the user the file path and stop: "`./do-work/interview/<template>/session.json` has invalid JSON. Inspect and fix manually, or archive and start fresh with `do-work interview <template> reset`."
 - **`export` invoked with unapproved layers** → list which layers are missing approval.
 - **`export` invoked before review** → tell the user to run `review` first.
 - **`ingest` invoked without completed exports** → tell the user to run `export` first.
-- **`ingest` invoked without `kb/`** → tell the user to run `do work bkb init` first.
+- **`ingest` invoked without `kb/`** → tell the user to run `do-work bkb init` first.
 - **`reset` without confirmation** → require explicit `--confirm` flag or an interactive "yes" before archiving.
 - **Checkpoint revision cycle exceeds 5 rounds on one layer** → pause and ask the user directly: "We've gone five rounds on this layer. Do you want to skip ahead, take a break, or keep refining?" Do not loop indefinitely.
 
@@ -442,29 +442,29 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 When invoked with no sub-command or with `help`:
 
 ```
-do work interview — Run a structured elicitation interview
+do-work interview — Run a structured elicitation interview
 
   Discover:
-    do work interview list                    List available templates
+    do-work interview list                    List available templates
 
   Run an interview:
-    do work interview <template>              Start or resume an interview
-    do work interview <template> status       Show session progress
-    do work interview <template> review       Run the cross-layer contradiction pass
-    do work interview <template> export       Write export artifacts
-    do work interview <template> ingest       Feed exports into the knowledge base
+    do-work interview <template>              Start or resume an interview
+    do-work interview <template> status       Show session progress
+    do-work interview <template> review       Run the cross-layer contradiction pass
+    do-work interview <template> export       Write export artifacts
+    do-work interview <template> ingest       Feed exports into the knowledge base
 
   Session lifecycle:
-    do work interview <template> versions     List archived runs
-    do work interview <template> reset        Archive current run, start fresh (requires --confirm)
+    do-work interview <template> versions     List archived runs
+    do-work interview <template> reset        Archive current run, start fresh (requires --confirm)
 
   Typical flow:
-    1. do work interview list                            See what templates are available
-    2. do work interview work-operating-model            Walk the five layers, ~45 minutes
-    3. do work interview work-operating-model review     Resolve cross-layer tensions
-    4. do work interview work-operating-model export     Produce USER.md, SOUL.md, HEARTBEAT.md + JSON
-    5. do work interview work-operating-model ingest     Feed into BKB for querying
-    6. do work bkb triage && do work bkb ingest          Compile into the knowledge wiki
+    1. do-work interview list                            See what templates are available
+    2. do-work interview work-operating-model            Walk the five layers, ~45 minutes
+    3. do-work interview work-operating-model review     Resolve cross-layer tensions
+    4. do-work interview work-operating-model export     Produce USER.md, SOUL.md, HEARTBEAT.md + JSON
+    5. do-work interview work-operating-model ingest     Feed into BKB for querying
+    6. do-work bkb triage && do-work bkb ingest          Compile into the knowledge wiki
 
   Re-run cadence:
     Quarterly, or after a major role/responsibility change. Pick:

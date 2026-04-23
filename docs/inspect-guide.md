@@ -6,9 +6,9 @@ Read-only examination of uncommitted changes. Explains what changed, why, traces
 
 | Mode | Command | What it inspects |
 |------|---------|-----------------|
-| All changes | `do work inspect` | Everything uncommitted in the working tree |
-| REQ scope | `do work inspect REQ-005` | Files from that REQ's Implementation Summary |
-| UR scope | `do work inspect UR-003` | Files from all REQs under that UR |
+| All changes | `do-work inspect` | Everything uncommitted in the working tree |
+| REQ scope | `do-work inspect REQ-005` | Files from that REQ's Implementation Summary |
+| UR scope | `do-work inspect UR-003` | Files from all REQs under that UR |
 
 ## What it reports
 
@@ -43,10 +43,10 @@ Hybrid narrative + table format. Each change group gets a What/Why explanation, 
 ## Usage
 
 ```
-do work inspect
-do work inspect REQ-005
-do work inspect UR-003
-do work explain changes
-do work what changed
-do work show changes
+do-work inspect
+do-work inspect REQ-005
+do-work inspect UR-003
+do-work explain changes
+do-work what changed
+do-work show changes
 ```
