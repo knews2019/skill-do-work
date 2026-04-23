@@ -6,7 +6,7 @@ This file is not a standalone action — it is loaded by other actions as a refe
 
 ## Philosophy
 
-- **Zero external dependency.** The handoff writes into do-work's own KB system (see the build-knowledge-base action). Nothing outside this skill is required.
+- **Zero external dependency.** The handoff writes into do-work's own KB system (see the bkb action). Nothing outside this skill is required.
 - **One-way and terminal per REQ.** The handoff runs once per REQ, after lessons are captured. Downstream processing (triage, ingest, wiki compilation) is the bkb action's job, not this handoff's.
 - **User pilots the drop.** do-work prepares a structured source document and asks before writing. That keeps the handoff consistent across harnesses — any agent that can read/write files can run it.
 - **Graceful degradation.** If the project has no `kb/` directory yet, the handoff records the lessons as `pending` on the REQ and points the user at `do-work bkb init`. It never blocks archival.

@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.13 — The Symmetry Patch (2026-04-23)
+
+Closes five findings from a contradictions-and-gaps sweep of the repo. Main move: the bkb action's filename now matches its trigger word, so every action follows the same naming rule.
+
+- Renamed `actions/build-knowledge-base.md` → `actions/bkb.md`; updated live cross-refs in `SKILL.md`, `CLAUDE.md`, `bkb-reference.md`, `kb-lessons-handoff.md`, and `prompts/architecture-decisions-log_create-or-expand.md` (historical references in `decisions/` and CHANGELOG preserved).
+- `CLAUDE.md` Project Structure now lists `_dev/` and `decisions/` — both tracked directories that were absent from the tree.
+- `CLAUDE.md` Agent Rules now documents `interviewer.md` (loaded by the interview action across all sub-commands).
+- `CLAUDE.md` docs exemption now covers `kb-lessons-handoff` explicitly as a reference-only action invoked by other actions.
+- `actions/work.md` Request File Schema now includes the `caveman` frontmatter field with its intensity values (`lite` | `full` | `ultra`).
+
 ## 0.69.12 — The Dark Code Kit (2026-04-23)
 
 Captures a three-prompt kit for fighting "dark code" — code that was never understood by anyone at any point in its lifecycle. Shared `dark-code-kit_` prefix groups them as sibling tools in the library.

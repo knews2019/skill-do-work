@@ -33,7 +33,7 @@ actions/              # Action files (each is a standalone prompt)
   prime.md             # Prime file management — create and audit AI context documents
   pipeline.md          # Full end-to-end orchestration (investigate → capture → verify → run → review → present)
   pipeline-reference.md # Companion: three Pipeline Completion Report rendering templates (markdown/Marp/HTML) + composition rules
-  build-knowledge-base.md # LLM knowledge base — init, triage, ingest, query, lint, and more
+  bkb.md              # LLM knowledge base — init, triage, ingest, query, lint, and more
   bkb-reference.md    # Companion: seed file templates, agent crew definitions, KB schema content
   interview.md        # Generalized elicitation framework — prescriptive templates, checkpoint-gated sessions, agent-ready exports
   interview-reference.md # Companion: template format, canonical entry contract, session schema, export schemas, re-run modes
@@ -55,7 +55,9 @@ hooks/                # Optional hook scripts (platform-specific, installable)
   hooks.json          # Combined hook config for Claude Code (SessionStart + Stop)
   session-start.sh    # Claude Code SessionStart hook — injects status line
   pipeline-guard.sh   # Claude Code Stop hook — prevents stopping mid-pipeline
-docs/                 # User guides for the most commonly used actions (capture-guide.md, work-guide.md, etc.) — not every action has one; small/self-explanatory actions (install-*, tutorial, scan-ideas, deep-explore, pipeline, clarify) rely on their action file + README
+docs/                 # User guides for the most commonly used actions (capture-guide.md, work-guide.md, etc.) — not every action has one; small/self-explanatory actions (install-*, tutorial, scan-ideas, deep-explore, pipeline, clarify) and reference-only actions invoked by other actions (kb-lessons-handoff) rely on their action file + README
+decisions/            # Architecture decisions — ADRs (records/), imported specs, topic indexes, and the running decision log
+_dev/                 # Internal development scratch — self-review reports, audit notes (not loaded by any action)
 AGENTS.md             # Stub — redirects to CLAUDE.md
 CHANGELOG.md          # Release notes (newest on top)
 ```
@@ -128,7 +130,7 @@ Action files follow a consistent structure. When adding or modifying actions, us
 **Required elements:** Description blockquote, Steps (numbered). **Common elements:** Input, Output Format, Rules, When to Use. **Encouraged elements:** Common Rationalizations, Red Flags, Verification Checklist. **Section order matters:** always Philosophy → When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist.
 
 **Accepted variants:**
-- **Sub-command dispatchers** (`prime.md`, `build-knowledge-base.md`) — Use a Sub-Commands table instead of flat steps. Each sub-command has its own workflow section.
+- **Sub-command dispatchers** (`prime.md`, `bkb.md`) — Use a Sub-Commands table instead of flat steps. Each sub-command has its own workflow section.
 - **Multi-mode actions** (`present-work.md`, `review-work.md`, `tutorial.md`) — Use a Modes table, then separate workflow sections per mode. A single `Step 1: Mode Selection` dispatcher at the top is acceptable.
 - **State-based actions** (`version.md`, `pipeline.md`) — Response sections keyed by input type instead of sequential steps.
 - **Checklist-based diagnostics** (`forensics.md`) — Use a `## Checks` section with independently-runnable items instead of ordered `## Steps`. Each check is a diagnostic probe, not a sequential step.
@@ -146,6 +148,7 @@ Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_C
 - `caveman.md` — loaded when `caveman` frontmatter is set (truthy value or intensity: `lite`, `full`, `ultra`); compresses agent prose ~65-75% while keeping code and technical terms exact. Adapted from [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
 - `debugging.md` — loaded during remediation (review fail → retry) and after 2+ test failures
 - `approach-directives.md` — loaded by the work or pipeline action when dispatching multiple sub-agents for parallel/sequential work on related REQs (assigns each agent a distinct implementation lens)
+- `interviewer.md` — loaded by the interview action across all sub-commands (`list`, `<template>`, `status`, `review`, `export`, `ingest`, `reset`, `versions`); runs structured elicitation to turn tacit work knowledge into explicit, delegatable structure
 - If a rules file is missing, proceed without it — never block on a missing rules file
 
 ## Queue Path Convention
@@ -154,7 +157,7 @@ Pending REQ files live in `do-work/queue/`. When referencing the queue in action
 
 ## Lessons → Knowledge Base Handoff
 
-do-work ships its own knowledge-base system (see the build-knowledge-base action, alias `bkb`). After a REQ's review passes and `## Lessons Learned` is captured, the review-work action (Step 9.5, standalone mode) and the work action (Step 7.5, pipeline mode) both run the kb-lessons-handoff reference to offer promoting the lessons into the project's KB.
+do-work ships its own knowledge-base system (see the bkb action). After a REQ's review passes and `## Lessons Learned` is captured, the review-work action (Step 9.5, standalone mode) and the work action (Step 7.5, pipeline mode) both run the kb-lessons-handoff reference to offer promoting the lessons into the project's KB.
 
 The handoff is pure do-work — zero external dependency. It drops a structured Markdown source document into `<kb>/raw/inbox/` and lets the existing bkb pipeline (`triage` → `ingest`) compile it into the wiki. If no `kb/` exists, the handoff defers to `pending` and points the user at `do-work bkb init`. It never blocks archival.
 
