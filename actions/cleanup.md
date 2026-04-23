@@ -18,7 +18,7 @@ The archive should be a collection of self-contained UR folders, each containing
 ## When This Runs
 
 - **Automatically** at the end of every work loop (after all pending REQs are processed)
-- **Manually** when the user invokes it (e.g., `do work cleanup`, `do work tidy`)
+- **Manually** when the user invokes it (e.g., `do-work cleanup`, `do-work tidy`)
 
 ## Steps
 

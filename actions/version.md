@@ -2,9 +2,21 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps.
 
-**Current version**: 0.69.5
+**Current version**: 0.69.12
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
+
+## When to Use
+
+**Use when:**
+- The user asks "what version", "release notes", "what's new", or "history" → version + last 5 changelog entries.
+- The user asks to "update", "check for updates", or "is there a newer version" → update flow.
+- The user asks for a "recap" of recent work → recap flow across archive + active URs.
+
+**Do NOT use when:**
+- The user wants to see all changelog entries (more than 5) — point them at `CHANGELOG.md` directly instead of loading the full file.
+- The user wants to *install* the skill fresh — that's the README install command, not this action.
+- The install is global (under `~/.claude/skills/` etc.) and the user wants an update — refuse the auto-update per the preflight in Step 2 below, and redirect them.
 
 ## Responding to Version Requests
 
@@ -54,7 +66,7 @@ When user asks "check for updates", "update", or "is there a newer version":
    - If it's **not** a git repo, check whether shipped skill files (actions/, crew-members/, prompts/, interviews/, specs/, docs/, decisions/, hooks/, SKILL.md, CLAUDE.md, next-steps.md, etc.) differ from a fresh install by looking for user-modified content (custom crew-members, edited action files, local prompt/template additions, ADR edits, etc.).
    - **If any shipped skill files are dirty / have local modifications**: Stop and warn the user. List the modified files and ask for explicit confirmation before proceeding. Do NOT auto-update.
    - **If clean**: Proceed to step 4 (pre-clean) then step 5 (extract).
-4. **Pre-clean discoverable directories.** `prompts/` and `interviews/` are enumerated by `do work prompts list` and `do work interview list` (they glob `prompts/*.md` and `interviews/*.md`), so any upstream-removed file that stays on disk will still appear as a live workflow. The dirty check in step 3 has already confirmed these are clean, so removing the tracked `.md` files here is safe and the tar extraction will restore them fresh:
+4. **Pre-clean discoverable directories.** `prompts/` and `interviews/` are enumerated by `do-work prompts list` and `do-work interview list` (they glob `prompts/*.md` and `interviews/*.md`), so any upstream-removed file that stays on disk will still appear as a live workflow. The dirty check in step 3 has already confirmed these are clean, so removing the tracked `.md` files here is safe and the tar extraction will restore them fresh:
    ```
    find <skill-root>/prompts -maxdepth 1 -name '*.md' ! -name 'README.md' -delete
    find <skill-root>/interviews -maxdepth 1 -name '*.md' -delete
@@ -64,7 +76,7 @@ When user asks "check for updates", "update", or "is there a newer version":
    ```
    cd <skill-root> && curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
    ```
-   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. For non-discoverable directories (`actions/`, `crew-members/`, `specs/`, `docs/`, `decisions/`) leftovers are harmless — the skill only loads files it references by name. For `prompts/` and `interviews/`, the pre-clean step above is what prevents ghost entries; if you skipped it, run `do work prompts list` and `do work interview list` after updating and delete anything that looks obsolete. Never delete `do-work/` (runtime state).
+   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. For non-discoverable directories (`actions/`, `crew-members/`, `specs/`, `docs/`, `decisions/`) leftovers are harmless — the skill only loads files it references by name. For `prompts/` and `interviews/`, the pre-clean step above is what prevents ghost entries; if you skipped it, run `do-work prompts list` and `do-work interview list` after updating and delete anything that looks obsolete. Never delete `do-work/` (runtime state).
 6. **Verify**: Read `<skill-root>/actions/version.md` again and confirm the local version now matches the remote version.
 7. **Report result**: `Updated to v{remote} at <skill-root>.`
 
@@ -120,3 +132,21 @@ When user asks "recap":
    ```
    One line per UR, one indented line per REQ. No descriptions, no scores, no file lists.
 6. **If no archive exists AND no active URs found**: Print `No completed work yet.` and skip this section.
+
+## Red Flags
+
+- The update flow is about to `cd` into a path under `~/.claude/skills/`, `~/.gemini/skills/`, or anywhere outside the current project's git root — STOP. Global installs must never be auto-updated from here.
+- Remote version fetched from the upstream URL is empty, malformed, or older than local — abort; don't "update" backwards.
+- The dirty-tree check reported modifications but the update proceeded anyway — user's local customizations will be clobbered.
+- Recap lists the same UR twice (once from archive, once from active) — the dedup step was skipped; archive version should win.
+- Version reported doesn't match the `**Current version**:` line at the top of this file — caching or path confusion; re-read the file from disk.
+
+## Verification Checklist
+
+- [ ] Version output shows the local version, the last 5 changelog entries, newest at the bottom.
+- [ ] Update flow refused to proceed for global installs (Step 2 preflight).
+- [ ] Update flow refused to proceed when shipped files had uncommitted changes (Step 3 dirty check), unless user explicitly confirmed.
+- [ ] Update flow pre-cleaned `prompts/*.md` and `interviews/*.md` (Step 4) before tar extraction.
+- [ ] Post-update verification re-read `actions/version.md` and confirmed the local version matches remote.
+- [ ] Recap merged archive + active sources, deduped by UR id, kept the archive version on conflicts.
+- [ ] Recap output is one line per UR + one indented line per REQ — no scores, no file lists, no descriptions.

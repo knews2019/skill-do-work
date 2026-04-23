@@ -26,7 +26,7 @@ The guide documents 5 review dimensions (Consistency, Architecture & Patterns, S
 
 **Severity: Low-Medium**
 
-SKILL.md line 112 documents that hyphenated "code-review" always routes to standalone review while unhyphenated "code review" without scope falls through to review-work (priority 9). The routing table makes this clear, but the help menu shows only `do work code-review [scope]` with no hint about the fallthrough. Users who type `do work code review` expecting a codebase review will silently get review-work instead.
+SKILL.md line 112 documents that hyphenated "code-review" always routes to standalone review while unhyphenated "code review" without scope falls through to review-work (priority 9). The routing table makes this clear, but the help menu shows only `do-work code-review [scope]` with no hint about the fallthrough. Users who type `do-work code review` expecting a codebase review will silently get review-work instead.
 
 **Fix**: Add a short UX note below the code-review help entry warning about the hyphenation-sensitive routing.
 

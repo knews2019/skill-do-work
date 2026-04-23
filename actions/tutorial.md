@@ -2,14 +2,26 @@
 
 > **Part of the do-work skill.** Interactive tutorials that teach users how the skill works. Four modes cover different learning styles — from hands-on walkthrough to reference cheat sheet.
 
+## When to Use
+
+**Use when:**
+- A new user wants to learn the skill — modes cover different learning styles.
+- An experienced user needs a cheat sheet of common recipes.
+- Someone is onboarding and wants to see the mental model before touching the queue.
+
+**Do NOT use when:**
+- The user wants to *do* a task — capture/run it instead.
+- The user wants reference docs — point at `docs/*-guide.md` or `README.md`.
+- The user wants to modify the queue or files — tutorial is strictly read-only.
+
 ## Modes
 
 | Mode | Trigger | What it does |
 |------|---------|-------------|
-| **Quick Start** | `do work tutorial quick-start` | Hands-on walkthrough: capture one task, run it, review it. ~5 minutes. |
-| **Concepts** | `do work tutorial concepts` | Explains the mental model: URs, REQs, pipeline stages, trail of intent. Non-interactive. |
-| **Recipes** | `do work tutorial recipes` | Workflow cheat sheet: common scenarios mapped to exact commands. |
-| **Interactive Tour** | `do work tutorial tour` | Menu-driven — pick a topic, get a self-contained explanation with examples. |
+| **Quick Start** | `do-work tutorial quick-start` | Hands-on walkthrough: capture one task, run it, review it. ~5 minutes. |
+| **Concepts** | `do-work tutorial concepts` | Explains the mental model: URs, REQs, pipeline stages, trail of intent. Non-interactive. |
+| **Recipes** | `do-work tutorial recipes` | Workflow cheat sheet: common scenarios mapped to exact commands. |
+| **Interactive Tour** | `do-work tutorial tour` | Menu-driven — pick a topic, get a self-contained explanation with examples. |
 
 ## Input
 
@@ -70,7 +82,7 @@ Type a small request to practice with, or press Enter to use this default:
   "Add a hello-world endpoint that returns { message: 'Hello, world!' }"
 ```
 
-Then explain what `do work capture request: ...` does:
+Then explain what `do-work capture request: ...` does:
 - Creates a UR folder with the verbatim input
 - Creates a REQ file with structured fields (what, why, done-when)
 - Links the REQ back to the UR
@@ -88,7 +100,7 @@ do-work/
 
 ### Step QS-3: Explain Run
 
-Explain what `do work run` does:
+Explain what `do-work run` does:
 - Picks the next REQ from the queue
 - Triages it (simple fix? feature? refactor?)
 - Plans the implementation
@@ -98,7 +110,7 @@ Explain what `do work run` does:
 
 ### Step QS-4: Explain Review
 
-Explain what `do work review work` does:
+Explain what `do-work review work` does:
 - Checks requirements against the original request
 - Reviews the code for quality
 - Runs acceptance tests
@@ -109,12 +121,12 @@ Explain what `do work review work` does:
 ```
 That's the core loop! Here are the commands:
 
-  do work capture request: [describe what you want]
-  do work run
-  do work review work
+  do-work capture request: [describe what you want]
+  do-work run
+  do-work review work
 
 When you're ready for the real thing:
-  do work capture request: [your actual task]
+  do-work capture request: [your actual task]
 ```
 
 ---
@@ -166,7 +178,7 @@ THE PIPELINE
   review     Human-facing review: requirements + code + acceptance
   present    Client-facing deliverables (optional)
 
-  "do work pipeline [request]" runs all stages end-to-end.
+  "do-work pipeline [request]" runs all stages end-to-end.
   Or run each stage individually for more control.
 ```
 
@@ -214,42 +226,42 @@ Print the cheat sheet, then stop.
 WORKFLOW RECIPES — common scenarios → exact commands
 
   "I have a feature request"
-    do work capture request: [describe the feature]
-    do work run
+    do-work capture request: [describe the feature]
+    do-work run
 
   "I have a bug report"
-    do work capture request: [describe the bug and how to reproduce]
-    do work run
+    do-work capture request: [describe the bug and how to reproduce]
+    do-work run
 
   "I got meeting notes / a spec / a screenshot"
-    do work capture request: [paste the content]
-    do work verify requests
-    do work run
+    do-work capture request: [paste the content]
+    do-work verify requests
+    do-work run
 
   "I want the full hands-off pipeline"
-    do work pipeline [describe what you want]
+    do-work pipeline [describe what you want]
 
   "I want to check what was captured before building"
-    do work verify requests
+    do-work verify requests
 
   "Work is done — now what?"
-    do work review work
-    do work present work
+    do-work review work
+    do-work present work
 
   "Something seems stuck"
-    do work forensics
+    do-work forensics
 
   "I want to review code quality (not a specific task)"
-    do work code-review [scope]
+    do-work code-review [scope]
 
   "I want to understand uncommitted changes"
-    do work inspect
+    do-work inspect
 
   "I want to clean up the archive"
-    do work cleanup
+    do-work cleanup
 
   "What happened recently?"
-    do work recap
+    do-work recap
 ```
 
 ---
@@ -311,8 +323,8 @@ When the user says "done" or has visited all topics:
 
 ```
 Tour complete! When you're ready to start:
-  do work capture request: [describe what you want]
-  do work help                 Full command reference
+  do-work capture request: [describe what you want]
+  do-work help                 Full command reference
 ```
 
 ---
@@ -327,3 +339,19 @@ Each mode is self-contained — print its content and stop. Do not chain into an
 - **No fake files.** Show example file structures as text illustrations, not actual file creation.
 - **Plain text menus.** Print the menu, then stop and wait for the user to reply. Do not use the ask-user tool for mode selection or topic selection — the menus have too many options for structured prompts. Just print and wait.
 - **Stop after the tutorial.** Do not offer to start capture or run after finishing. Suggest next steps per the standard next-steps format.
+
+## Red Flags
+
+- The tutorial created a real UR or REQ file — that's a bug; tutorials are strictly read-only.
+- Quick Start skipped the "review" step and left a REQ in an intermediate state — finish the walkthrough or don't start it.
+- Recipes mode shows commands that don't match current `SKILL.md` routing — recipes drifted; resync with the routing table before publishing.
+- Interactive Tour topic exists in the menu but has no content section — dead link; remove from the menu.
+- The tutorial finished and then auto-invoked `capture` or `run` — violates the "stop after the tutorial" rule.
+
+## Verification Checklist
+
+- [ ] Mode selection (bare invocation) printed the menu and waited for user reply — did not auto-pick.
+- [ ] Every mode is self-contained — prints content, then stops.
+- [ ] No real files were created, modified, or deleted.
+- [ ] Recipes mode commands match current `SKILL.md` routing (spot-check at least 3).
+- [ ] Next-steps suggestions after completion follow the `next-steps.md` format.

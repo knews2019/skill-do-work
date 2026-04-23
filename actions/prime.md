@@ -2,6 +2,18 @@
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to create or audit prime files. Prime files (`prime-*.md`) are AI context documents — semantic indexes that help an AI coder navigate a utility in minimum tokens.
 
+## When to Use
+
+**Use when:**
+- A utility or directory is heavily used by builders and would benefit from a concise routing index (`prime create`).
+- Prime files exist and may have drifted from the code — stale refs, broken links, missing primes for new utilities (`prime audit`).
+- Onboarding a new directory of AI context docs and you want a health check across all of them.
+
+**Do NOT use when:**
+- The utility is tiny (a handful of files) — a prime file adds overhead without saving tokens.
+- The user wants to *read* a prime file — that's just a file read, not this action.
+- The user wants to build something from a prime file — use `do-work run` or `do-work capture request:` and let the builder load the prime as context.
+
 ## Sub-Commands
 
 The `prime` command accepts a sub-command as its first argument. If no sub-command is given, show the help menu.
@@ -16,13 +28,13 @@ The `prime` command accepts a sub-command as its first argument. If no sub-comma
 
 ## Help Menu (no sub-command)
 
-When invoked with no sub-command (`do work prime`), show:
+When invoked with no sub-command (`do-work prime`), show:
 
 ```
 prime — manage AI context documents (prime files)
 
-  do work prime create src/auth/    Generate a prime file via interactive Q&A
-  do work prime audit               Audit all prime files for staleness and broken links
+  do-work prime create src/auth/    Generate a prime file via interactive Q&A
+  do-work prime audit               Audit all prime files for staleness and broken links
 ```
 
 ---
@@ -255,3 +267,19 @@ Report findings as a structured checklist:
 ```
 
 Be concise. Only flag actual issues. "Everything looks fine" for a prime is not worth reporting individually.
+
+## Red Flags
+
+- A newly created prime file is longer than 30 lines — it's drifting into documentation; tighten it or split the utility.
+- `audit` reports no issues across the whole repo, but several primes haven't been touched in months — they're likely stale; spot-check before trusting the clean result.
+- `create <path>` was run on a path that already has a prime — avoid silent overwrite; ask before replacing.
+- A prime file lists line numbers or reproduces code — violates the "pointers over copies" principle; rewrite.
+- Audit flags missing primes for paths the user doesn't care about (experimental, deprecated) — add an exclusion rather than forcing creation.
+
+## Verification Checklist
+
+- [ ] Prime files are 15–30 lines (create mode).
+- [ ] No line numbers, no reproduced code, no volatile metrics in the generated prime.
+- [ ] `audit` output names each issue by file path and type (stale ref / broken link / missing prime).
+- [ ] "Everything looks fine" primes are omitted from the audit report (only issues are listed).
+- [ ] Generated primes follow the PRIME Files Philosophy from `crew-members/general.md`.

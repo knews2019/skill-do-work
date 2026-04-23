@@ -19,7 +19,7 @@ Unlike the commit steps embedded in other actions (capture Step 7, work Step 9, 
 
 ## When This Runs
 
-- **Manually** when the user invokes it (e.g., `do work commit`, `do work save work`)
+- **Manually** when the user invokes it (e.g., `do-work commit`, `do-work save work`)
 
 ## Steps
 
