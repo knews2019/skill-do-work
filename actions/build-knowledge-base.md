@@ -158,6 +158,7 @@ Sort new items from `raw/inbox/` into `raw/capture/` subdirectories by type.
 
 1. **Scan** `raw/inbox/` for all files (non-recursive — files only, not subdirectories).
 2. **Classify** each file by extension and content:
+   - `.md` with `source_type: req_lesson` in frontmatter → `capture/notes/` (lessons promoted from do-work REQs by the kb-lessons handoff; the frontmatter's `domain` field is a reliable `topic_hint` source in Step 4, and `req_path` gives a back-reference to the originating REQ)
    - `.pdf` → `capture/papers/`
    - `.md` from web clippers (has URL in frontmatter or content) → `capture/web/`
    - `.md` that looks like personal notes → `capture/notes/`

@@ -30,6 +30,7 @@ Next steps:
   do-work review work         Review the completed work
   do-work present work        Generate client-facing deliverables
   do-work clarify             Answer any pending questions
+  do-work bkb triage          Sort promoted lessons into the KB (if any REQ has kb_status: promoted)
 ```
 
 **After verify requests:**
@@ -45,6 +46,8 @@ Next steps:
   do-work present work        Generate client-facing deliverables
   do-work ui-review [scope]   Validate UI quality (if domain: ui-design)
   do-work run                 Process follow-up REQs (if any were created)
+  do-work bkb triage          Sort the promoted lesson into the KB (if kb_status: promoted)
+  do-work bkb init            Initialize the KB (if kb_status: pending because no kb/ exists)
 ```
 
 **After code-review:**

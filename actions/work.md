@@ -165,6 +165,10 @@ completed_at: 2025-01-26T10:45:00Z
 status: completed | completed-with-issues | failed
 commit: abc1234               # If git repo
 error: "Description"          # Only if failed
+
+# Set by kb-lessons handoff (Step 7.5 pipeline / Step 9.5 standalone). Optional; absent on REQs that predate the handoff.
+kb_status: promoted | pending | declined | skipped
+kb_entry: REQ-042-lesson-slug.md   # filename only (survives bkb moves from inbox/ to capture/ to processed/); present only when kb_status: promoted
 ---
 ```
 
