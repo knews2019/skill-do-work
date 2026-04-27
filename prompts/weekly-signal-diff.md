@@ -181,6 +181,7 @@ For each shift (no fixed count):
 - **What changed** — 1–2 paragraphs of paraphrased description with source URLs cited inline.
 - **Why it matters in general** — a short paragraph framing the shift in industry-wide terms. This framing is what makes future cross-week comparison work, so keep it even when the user already knows the context.
 - **Why it matters to this user** — a visibly separated paragraph grounding the shift in the relevance profile (active projects, toolchains, constraints). Keep the general framing and the personal framing visually distinct — never collapse them into one.
+- **For client archetypes** — optional per-shift. If this shift is useful to a specific client type the operator serves, name the archetype and a one-line outreach angle. If nothing client-facing, write "No direct client angle." Never collapse this into the "why it matters to this user" paragraph — keep them visually distinct.
 - **Sources** — bullet list of URLs.
 - **Speculation tag** — if any part of the entry is speculative, prefix that sentence with `[Speculation]`.
 
@@ -284,6 +285,7 @@ Print a short summary:
 | "The starter universe is too generic, I'll compress Robotics and Creative media to a one-liner" | Give every lane a full paragraph in the per-lane scan notes | Compressing lanes silently destroys the baseline scan; structural shifts often surface in lanes the user doesn't normally track |
 | "BKB isn't initialized, I'll skip BKB and pretend it worked" | Announce the degraded state in the coverage note and proceed | Silent degradation makes the user trust an output that wasn't personalized |
 | "The deliverable already exists, I'll just overwrite it" | Append a timestamped revision section and bump the `updated:` frontmatter field | The deliverable is its own state file; overwriting destroys the history the diff-over-time signal depends on |
+| "The client angle is obvious from context" | Write it out anyway | Obvious to you ≠ obvious at a glance mid-week — the per-shift client bullet is what makes the digest scannable for outreach planning |
 
 ## Verification checklist (self-check before concluding)
 

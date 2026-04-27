@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.15 — The Archetype Bullet (2026-04-27)
+
+Adds a per-shift "For client archetypes" bullet to every headline structural shift in the `weekly-signal-diff` digest. Naming the archetype and a one-line outreach angle inside the shift itself — kept visually separate from "Why it matters to this user" — turns each shift into a scannable outreach prompt instead of a synthesis the operator has to redo at the desk.
+
+- `prompts/weekly-signal-diff.md`: New `**For client archetypes**` bullet inserted after `**Why it matters to this user**` in the headline-shift template. Optional per-shift; "No direct client angle" is the explicit empty form. New Common Rationalizations row blocks the "obvious from context" shortcut.
+
 ## 0.69.14 — The Action Split (2026-04-27)
 
 Promotes Actions from an optional tail section to a mandatory block at the head of the `weekly-signal-diff` digest, and splits it into two groups: operator-facing captures and proactive client-outreach angles. Pushes the digest's value outward toward the operator's clients, not just inward toward the operator's own backlog.
