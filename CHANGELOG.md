@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.13 — The Top Of Mind (2026-04-27)
+
+Adds a mandatory "Top of mind this week" subsection at the head of the `weekly-signal-diff` digest. Forces the agent to lead with the 3–5 things the operator should hold in working memory — synthesis, not detail — so the rest of the digest reads as support material for mid-week re-reading. Hard cap of 5 bullets / 150 words; thin weeks shrink the bullet count rather than padding.
+
+- `prompts/weekly-signal-diff.md`: New `### Top of mind this week` block in Phase 7, placed before `### Coverage note`. Matching Rule and Verification checklist entry added so the cap is enforceable, not advisory.
+
 ## 0.69.12 — The Dark Code Kit (2026-04-23)
 
 Captures a three-prompt kit for fighting "dark code" — code that was never understood by anyone at any point in its lifecycle. Shared `dark-code-kit_` prefix groups them as sibling tools in the library.

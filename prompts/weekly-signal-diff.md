@@ -153,6 +153,10 @@ The per-lane scan notes section still fills every week, regardless of how many s
 
 Use this structure for the inline digest (the chat output):
 
+### Top of mind this week
+
+Hard cap: 5 bullets, 150 words. Name the 3–5 things the operator should hold in working memory this week — the synthesis, not the detail. Everything else in the digest is support material for mid-week re-reading. If the week is thin, give fewer bullets rather than padding.
+
 ### Coverage note
 
 A short opening block, built from this template:
@@ -264,6 +268,7 @@ Print a short summary:
 - Keep "why this matters in general" and "why this matters to this user" visibly separated in every headline shift. Never collapse them.
 - Speculation is allowed but must be labeled (`[Speculation]`).
 - Thin weeks are thin on headline shifts. The per-lane scan notes section still fills every week.
+- Top of mind is mandatory; hard cap enforced (5 bullets, 150 words); thin weeks produce fewer bullets, not padded ones.
 
 ## Common Rationalizations
 
@@ -283,4 +288,5 @@ Print a short summary:
 - [ ] Frontmatter fields populated: `topic_cluster`, `week_ending`, `sources`, `created`, `updated`.
 - [ ] If a deliverable already existed for this `week-ending` date, a timestamped revision section was appended rather than overwritten.
 - [ ] Coverage note at the top describes the frame, the freshness window, the personalization, and the evidence mode (web_search / source packet / source-bounded).
+- [ ] "Top of mind this week" sits as the first subsection of the digest, holds 3–5 bullets, and stays under 150 words.
 - [ ] Ingest hand-off happened (file copied to `kb/raw/inbox/`) unless `--no-ingest`, `--dry-run`, or uninitialized BKB.
