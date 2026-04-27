@@ -153,6 +153,18 @@ The per-lane scan notes section still fills every week, regardless of how many s
 
 Use this structure for the inline digest (the chat output):
 
+### Top of mind this week
+
+Hard cap: 5 bullets, 150 words. Name the 3–5 things the operator should hold in working memory this week — the synthesis, not the detail. Everything else in the digest is support material for mid-week re-reading. If the week is thin, give fewer bullets rather than padding.
+
+### Actions this week
+
+Two mandatory groups. Be concrete; if a group is empty, say so explicitly — that is a finding, not a hole.
+
+**For the operator** — 1–3 things the operator could act on this week, formatted as `do-work capture request: <short description>` so they can capture any they want to pursue. Do not auto-capture.
+
+**For clients** — 1–3 proactive client-outreach angles: which client archetype, what finding to raise, one-line draft of the outreach. If no shift this week has a client angle, state "No client-facing actions this week — purely structural."
+
 ### Coverage note
 
 A short opening block, built from this template:
@@ -169,6 +181,7 @@ For each shift (no fixed count):
 - **What changed** — 1–2 paragraphs of paraphrased description with source URLs cited inline.
 - **Why it matters in general** — a short paragraph framing the shift in industry-wide terms. This framing is what makes future cross-week comparison work, so keep it even when the user already knows the context.
 - **Why it matters to this user** — a visibly separated paragraph grounding the shift in the relevance profile (active projects, toolchains, constraints). Keep the general framing and the personal framing visually distinct — never collapse them into one.
+- **For client archetypes** — optional per-shift. If this shift is useful to a specific client type the operator serves, name the archetype and a one-line outreach angle. If nothing client-facing, write "No direct client angle." Never collapse this into the "why it matters to this user" paragraph — keep them visually distinct.
 - **Sources** — bullet list of URLs.
 - **Speculation tag** — if any part of the entry is speculative, prefix that sentence with `[Speculation]`.
 
@@ -194,10 +207,6 @@ New / rising / fading / resolved themes, referencing prior `weekly-signal-diff` 
 ### Watch next
 
 Entities, constraints, or questions worth monitoring over the next 1–4 weeks.
-
-### Actions (optional)
-
-Candidate follow-up REQs the user might capture, formatted as `do-work capture request: <short description>` commands the user can run. Do **not** auto-capture — this is the user's call.
 
 ## Phase 8 — Write the deliverable
 
@@ -264,6 +273,8 @@ Print a short summary:
 - Keep "why this matters in general" and "why this matters to this user" visibly separated in every headline shift. Never collapse them.
 - Speculation is allowed but must be labeled (`[Speculation]`).
 - Thin weeks are thin on headline shifts. The per-lane scan notes section still fills every week.
+- Top of mind is mandatory; hard cap enforced (5 bullets, 150 words); thin weeks produce fewer bullets, not padded ones.
+- Actions section is mandatory, split operator vs. client; empty groups are stated explicitly, never omitted.
 
 ## Common Rationalizations
 
@@ -274,6 +285,7 @@ Print a short summary:
 | "The starter universe is too generic, I'll compress Robotics and Creative media to a one-liner" | Give every lane a full paragraph in the per-lane scan notes | Compressing lanes silently destroys the baseline scan; structural shifts often surface in lanes the user doesn't normally track |
 | "BKB isn't initialized, I'll skip BKB and pretend it worked" | Announce the degraded state in the coverage note and proceed | Silent degradation makes the user trust an output that wasn't personalized |
 | "The deliverable already exists, I'll just overwrite it" | Append a timestamped revision section and bump the `updated:` frontmatter field | The deliverable is its own state file; overwriting destroys the history the diff-over-time signal depends on |
+| "The client angle is obvious from context" | Write it out anyway | Obvious to you ≠ obvious at a glance mid-week — the per-shift client bullet is what makes the digest scannable for outreach planning |
 
 ## Verification checklist (self-check before concluding)
 
@@ -283,4 +295,6 @@ Print a short summary:
 - [ ] Frontmatter fields populated: `topic_cluster`, `week_ending`, `sources`, `created`, `updated`.
 - [ ] If a deliverable already existed for this `week-ending` date, a timestamped revision section was appended rather than overwritten.
 - [ ] Coverage note at the top describes the frame, the freshness window, the personalization, and the evidence mode (web_search / source packet / source-bounded).
+- [ ] "Top of mind this week" sits as the first subsection of the digest, holds at most 5 bullets and 150 words, and uses fewer bullets rather than padding when the week is thin.
+- [ ] "Actions this week" sits between "Top of mind" and "Coverage note", with both operator and client groups present (empty groups stated explicitly, not omitted).
 - [ ] Ingest hand-off happened (file copied to `kb/raw/inbox/`) unless `--no-ingest`, `--dry-run`, or uninitialized BKB.

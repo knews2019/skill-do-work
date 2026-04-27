@@ -4,6 +4,30 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.17 — The Thin Week Allowance (2026-04-27)
+
+Resolves an internal contradiction in the `weekly-signal-diff` Verification checklist for the new "Top of mind this week" section. The section spec allows fewer bullets when the week is thin ("give fewer bullets rather than padding"), but the checklist required 3–5 bullets — so a compliant thin-week output would fail self-check or get padded with filler. Codex flagged it on PR #96.
+
+- `prompts/weekly-signal-diff.md`: Verification checklist for "Top of mind this week" now enforces only the upper bound (≤5 bullets, ≤150 words) and explicitly permits fewer bullets in thin weeks.
+
+## 0.69.16 — The Archetype Bullet (2026-04-27)
+
+Adds a per-shift "For client archetypes" bullet to every headline structural shift in the `weekly-signal-diff` digest. Naming the archetype and a one-line outreach angle inside the shift itself — kept visually separate from "Why it matters to this user" — turns each shift into a scannable outreach prompt instead of a synthesis the operator has to redo at the desk.
+
+- `prompts/weekly-signal-diff.md`: New `**For client archetypes**` bullet inserted after `**Why it matters to this user**` in the headline-shift template. Optional per-shift; "No direct client angle" is the explicit empty form. New Common Rationalizations row blocks the "obvious from context" shortcut.
+
+## 0.69.15 — The Action Split (2026-04-27)
+
+Promotes Actions from an optional tail section to a mandatory block at the head of the `weekly-signal-diff` digest, and splits it into two groups: operator-facing captures and proactive client-outreach angles. Pushes the digest's value outward toward the operator's clients, not just inward toward the operator's own backlog.
+
+- `prompts/weekly-signal-diff.md`: Removed `### Actions (optional)` from the bottom of Phase 7. Added `### Actions this week` between "Top of mind this week" and "Coverage note" with two mandatory groups. Empty groups must be stated explicitly — silence isn't allowed. Matching Rule and Verification checklist entry added.
+
+## 0.69.14 — The Top Of Mind (2026-04-27)
+
+Adds a mandatory "Top of mind this week" subsection at the head of the `weekly-signal-diff` digest. Forces the agent to lead with the 3–5 things the operator should hold in working memory — synthesis, not detail — so the rest of the digest reads as support material for mid-week re-reading. Hard cap of 5 bullets / 150 words; thin weeks shrink the bullet count rather than padding.
+
+- `prompts/weekly-signal-diff.md`: New `### Top of mind this week` block in Phase 7, placed before `### Coverage note`. Matching Rule and Verification checklist entry added so the cap is enforceable, not advisory.
+
 ## 0.69.13 — The Symmetry Patch (2026-04-23)
 
 Closes five findings from a contradictions-and-gaps sweep of the repo. Main move: the bkb action's filename now matches its trigger word, so every action follows the same naming rule.
