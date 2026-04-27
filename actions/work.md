@@ -152,6 +152,7 @@ id: REQ-001
 title: Short descriptive title
 status: pending
 domain: frontend  # choose one: frontend, backend, ui-design, or general
+caveman: false   # optional — `true` or intensity `lite` | `full` | `ultra`; loads crew-members/caveman.md to compress agent prose
 prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001          # May be absent on legacy REQs

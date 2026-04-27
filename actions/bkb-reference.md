@@ -1,6 +1,6 @@
 # Build Knowledge Base — Reference
 
-> Companion file to `build-knowledge-base.md`. Contains seed file templates, agent crew definitions, and the KB schema file content. Extracted to keep the main action file focused on procedural steps.
+> Companion file to `bkb.md`. Contains seed file templates, agent crew definitions, and the KB schema file content. Extracted to keep the main action file focused on procedural steps.
 
 ---
 
