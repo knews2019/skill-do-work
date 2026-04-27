@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.14 — The Action Split (2026-04-27)
+
+Promotes Actions from an optional tail section to a mandatory block at the head of the `weekly-signal-diff` digest, and splits it into two groups: operator-facing captures and proactive client-outreach angles. Pushes the digest's value outward toward the operator's clients, not just inward toward the operator's own backlog.
+
+- `prompts/weekly-signal-diff.md`: Removed `### Actions (optional)` from the bottom of Phase 7. Added `### Actions this week` between "Top of mind this week" and "Coverage note" with two mandatory groups. Empty groups must be stated explicitly — silence isn't allowed. Matching Rule and Verification checklist entry added.
+
 ## 0.69.13 — The Top Of Mind (2026-04-27)
 
 Adds a mandatory "Top of mind this week" subsection at the head of the `weekly-signal-diff` digest. Forces the agent to lead with the 3–5 things the operator should hold in working memory — synthesis, not detail — so the rest of the digest reads as support material for mid-week re-reading. Hard cap of 5 bullets / 150 words; thin weeks shrink the bullet count rather than padding.

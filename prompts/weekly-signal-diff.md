@@ -157,6 +157,14 @@ Use this structure for the inline digest (the chat output):
 
 Hard cap: 5 bullets, 150 words. Name the 3–5 things the operator should hold in working memory this week — the synthesis, not the detail. Everything else in the digest is support material for mid-week re-reading. If the week is thin, give fewer bullets rather than padding.
 
+### Actions this week
+
+Two mandatory groups. Be concrete; if a group is empty, say so explicitly — that is a finding, not a hole.
+
+**For the operator** — 1–3 things the operator could act on this week, formatted as `do-work capture request: <short description>` so they can capture any they want to pursue. Do not auto-capture.
+
+**For clients** — 1–3 proactive client-outreach angles: which client archetype, what finding to raise, one-line draft of the outreach. If no shift this week has a client angle, state "No client-facing actions this week — purely structural."
+
 ### Coverage note
 
 A short opening block, built from this template:
@@ -198,10 +206,6 @@ New / rising / fading / resolved themes, referencing prior `weekly-signal-diff` 
 ### Watch next
 
 Entities, constraints, or questions worth monitoring over the next 1–4 weeks.
-
-### Actions (optional)
-
-Candidate follow-up REQs the user might capture, formatted as `do-work capture request: <short description>` commands the user can run. Do **not** auto-capture — this is the user's call.
 
 ## Phase 8 — Write the deliverable
 
@@ -269,6 +273,7 @@ Print a short summary:
 - Speculation is allowed but must be labeled (`[Speculation]`).
 - Thin weeks are thin on headline shifts. The per-lane scan notes section still fills every week.
 - Top of mind is mandatory; hard cap enforced (5 bullets, 150 words); thin weeks produce fewer bullets, not padded ones.
+- Actions section is mandatory, split operator vs. client; empty groups are stated explicitly, never omitted.
 
 ## Common Rationalizations
 
@@ -289,4 +294,5 @@ Print a short summary:
 - [ ] If a deliverable already existed for this `week-ending` date, a timestamped revision section was appended rather than overwritten.
 - [ ] Coverage note at the top describes the frame, the freshness window, the personalization, and the evidence mode (web_search / source packet / source-bounded).
 - [ ] "Top of mind this week" sits as the first subsection of the digest, holds 3–5 bullets, and stays under 150 words.
+- [ ] "Actions this week" sits between "Top of mind" and "Coverage note", with both operator and client groups present (empty groups stated explicitly, not omitted).
 - [ ] Ingest hand-off happened (file copied to `kb/raw/inbox/`) unless `--no-ingest`, `--dry-run`, or uninitialized BKB.
