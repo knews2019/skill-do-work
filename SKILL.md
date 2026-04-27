@@ -271,7 +271,7 @@ Each action has an action file with full instructions. How you execute it depend
 | install-bowser     | `./actions/install-bowser.md`   | (none needed)                  |
 | forensics          | `./actions/forensics.md`        | (none needed)                  |
 | prime              | `./actions/prime.md`            | `$ARGUMENTS` (sub-command + params) |
-| build knowledge base | `./actions/build-knowledge-base.md` | `$ARGUMENTS` (sub-command + params) |
+| build knowledge base | `./actions/bkb.md`              | `$ARGUMENTS` (sub-command + params) |
 | interview          | `./actions/interview.md`        | `$ARGUMENTS` (`list`, `<template>`, or `<template> <sub-command>`) |
 | prompts            | `./actions/prompts.md`          | `$ARGUMENTS` (sub-command + prompt name + args) |
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |

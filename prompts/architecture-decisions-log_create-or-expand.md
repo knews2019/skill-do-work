@@ -19,7 +19,7 @@
 
 ## Instructions for the executing agent
 
-You are maintaining an Architecture Decision Record (ADR) log at `decisions/` in the current repo, modeled on the BKB wiki pattern (see `actions/build-knowledge-base.md`). This prompt is **idempotent and resumable**: it detects existing state and picks up where a prior run left off, keyed on REQ/UR IDs so the same decision is never captured twice.
+You are maintaining an Architecture Decision Record (ADR) log at `decisions/` in the current repo, modeled on the BKB wiki pattern (see `actions/bkb.md`). This prompt is **idempotent and resumable**: it detects existing state and picks up where a prior run left off, keyed on REQ/UR IDs so the same decision is never captured twice.
 
 ### Sources to mine (priority order)
 
