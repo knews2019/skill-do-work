@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.69.17 — The Thin Week Allowance (2026-04-27)
+
+Resolves an internal contradiction in the `weekly-signal-diff` Verification checklist for the new "Top of mind this week" section. The section spec allows fewer bullets when the week is thin ("give fewer bullets rather than padding"), but the checklist required 3–5 bullets — so a compliant thin-week output would fail self-check or get padded with filler. Codex flagged it on PR #96.
+
+- `prompts/weekly-signal-diff.md`: Verification checklist for "Top of mind this week" now enforces only the upper bound (≤5 bullets, ≤150 words) and explicitly permits fewer bullets in thin weeks.
+
 ## 0.69.16 — The Archetype Bullet (2026-04-27)
 
 Adds a per-shift "For client archetypes" bullet to every headline structural shift in the `weekly-signal-diff` digest. Naming the archetype and a one-line outreach angle inside the shift itself — kept visually separate from "Why it matters to this user" — turns each shift into a scannable outreach prompt instead of a synthesis the operator has to redo at the desk.

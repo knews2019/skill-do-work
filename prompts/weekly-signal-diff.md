@@ -295,6 +295,6 @@ Print a short summary:
 - [ ] Frontmatter fields populated: `topic_cluster`, `week_ending`, `sources`, `created`, `updated`.
 - [ ] If a deliverable already existed for this `week-ending` date, a timestamped revision section was appended rather than overwritten.
 - [ ] Coverage note at the top describes the frame, the freshness window, the personalization, and the evidence mode (web_search / source packet / source-bounded).
-- [ ] "Top of mind this week" sits as the first subsection of the digest, holds 3–5 bullets, and stays under 150 words.
+- [ ] "Top of mind this week" sits as the first subsection of the digest, holds at most 5 bullets and 150 words, and uses fewer bullets rather than padding when the week is thin.
 - [ ] "Actions this week" sits between "Top of mind" and "Coverage note", with both operator and client groups present (empty groups stated explicitly, not omitted).
 - [ ] Ingest hand-off happened (file copied to `kb/raw/inbox/`) unless `--no-ingest`, `--dry-run`, or uninitialized BKB.
