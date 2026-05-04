@@ -19,6 +19,7 @@
 - Error format consistent with existing API endpoints in the project
 - Response shape matches existing conventions (envelope pattern, direct data, pagination structure)
 - No N+1 queries — if the handler fetches related data, use eager loading or batch queries
+- Behavioral guardrails in `crew-members/karpathy.md` apply during implementation — think before coding, simplicity first, surgical changes, goal-driven execution
 
 ## Implementation Checklist
 

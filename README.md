@@ -46,6 +46,8 @@ do-work run
 
 Each completed request gets archived with implementation notes and a git commit. A built-in review runs after each item.
 
+The build phase always loads behavioral guardrails (`crew-members/karpathy.md`) — minimal, surgical changes with verifiable success criteria, not "it compiles" handwaves.
+
 Other trigger words: `go`, `start`, `begin`, `process`, `execute`, `build`, `continue`, `resume`.
 
 See the [Work Guide](docs/work-guide.md) for the full pipeline, triage routes, and clarify mode.

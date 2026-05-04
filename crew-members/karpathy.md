@@ -67,6 +67,22 @@ steps. Prefer concrete checks ("invalid email returns 400 with field-level
 error") over vague improvements ("add validation"). If the REQ has a
 `## Red-Green Proof` section, that IS the success criterion — honor it first.
 
+Concrete transformations:
+
+- "Add validation" → "Write tests for invalid inputs, then make them pass"
+- "Fix the bug" → "Write a test that reproduces it, then make it pass"
+- "Refactor X" → "Ensure tests pass before and after"
+
+For multi-step tasks, state a brief plan:
+
+```
+1. [Step] → verify: [check]
+2. [Step] → verify: [check]
+3. [Step] → verify: [check]
+```
+
+Strong success criteria let you loop independently. Weak criteria require constant clarification.
+
 ---
 
 **Success indicators** — observable behaviors that show the principles are landing:

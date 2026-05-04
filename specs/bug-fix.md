@@ -15,6 +15,7 @@
 - No unrelated changes — the diff contains only the fix and its test. No drive-by refactoring, no style cleanup, no "while I'm here" improvements.
 - Fix is minimal and targeted — the smallest change that correctly addresses the root cause
 - Similar bugs checked — after finding the root cause, scan for the same pattern elsewhere in the codebase
+- Surgical-change discipline is enforced at implementation by `crew-members/karpathy.md` — see "Surgical Changes" and "Simplicity First"
 
 ## Implementation Checklist
 

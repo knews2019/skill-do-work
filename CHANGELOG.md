@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.70.0 — The Karpathy Echo (2026-05-04)
+
+Karpathy guardrails were already auto-loaded at implementation, but the principles were invisible elsewhere — specs didn't cite them, entry-point docs didn't name them, and the upstream's verifiable-goals examples never made it into our adaptation. This release surfaces the four principles across the funnel without spamming citations, and backfills the dropped content.
+
+- `crew-members/karpathy.md`: Backfilled upstream's transformation examples and multi-step plan template under Goal-Driven Execution.
+- `specs/api-endpoint.md`, `specs/ui-component.md`, `specs/refactor.md`, `specs/bug-fix.md`: Added one-line guardrail citations to each Quality Standards section.
+- `actions/review-work.md`: Added principle→dimension cross-reference table after the Karpathy Principle Check.
+- `actions/capture.md`, `actions/clarify.md`: Connected the `- [~]` open-question convention to the "Think Before Coding" guardrail.
+- `SKILL.md`, `README.md`: Named the four principles in the entry-point docs.
+
 ## 0.69.17 — The Thin Week Allowance (2026-04-27)
 
 Resolves an internal contradiction in the `weekly-signal-diff` Verification checklist for the new "Top of mind this week" section. The section spec allows fewer bullets when the week is thin ("give fewer bullets rather than padding"), but the checklist required 3–5 bullets — so a compliant thin-week output would fail self-check or get padded with filler. Codex flagged it on PR #96.
