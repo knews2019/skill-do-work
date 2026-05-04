@@ -144,6 +144,13 @@ The directive check is informational — it does not affect the overall score. I
 
 Most Karpathy issues are already caught by Scope Discipline, Code Quality, and Test Adequacy. This check is a mnemonic pass — note anything the rubric missed under a **Minor** finding. Do not double-penalize the same issue across dimensions.
 
+| Principle | Caught by | Tell |
+|---|---|---|
+| Think Before Coding | Scope / Decisions | Clarifying questions logged before code |
+| Simplicity First | Code Quality | Fewest lines; no speculative abstractions |
+| Surgical Changes | Scope Discipline | Only declared files touched |
+| Goal-Driven Execution | Test Adequacy | RED→GREEN proof honored |
+
 **Domain-Specific Review (if domain rules provided)**
 
 If `crew-members/[domain].md` was provided alongside this review, apply any review criteria defined in that file in addition to the standard rubric above. Report domain-specific findings in a separate `### Domain Review` subsection within the `## Review` output. Domain-specific scores are advisory — they inform the overall assessment but don't replace the standard dimensions.

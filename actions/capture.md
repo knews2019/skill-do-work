@@ -19,6 +19,7 @@ Never create one without the other. A REQ without `user_request` is orphaned. A 
 - **Validated artifacts** — captured REQs are not drafts. They are user-validated statements of intent. During capture, ambiguities are resolved with the user, RED/GREEN proofs are confirmed, and the resulting REQ reflects what the user actually wants. Downstream agents treat REQs as the authoritative expression of user intent.
 - Never be lossy — for complex inputs, preserve ALL detail in the UR's verbatim section
 - After capture, **STOP** — do not start processing the queue or transition into the work action unless the user explicitly asked for both (e.g., "add this and start working")
+- Surface assumptions during capture — the user is present *now*; downstream agents will mark unresolved items as `- [~]` per the "Think Before Coding" guardrail in `crew-members/karpathy.md`
 
 ### First-Run Bootstrap
 

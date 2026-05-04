@@ -47,6 +47,8 @@ REQ-025 — Review fix: dark mode sidebar
    Also: Reset on refresh, Follow OS preference
 ```
 
+Builder-marked `- [~]` decisions reflect the "Think Before Coding" guardrail (`crew-members/karpathy.md`) — surface tradeoffs early, not late.
+
 ### Step 4: Collect answers
 
 If your environment has a structured question prompt (multi-question UI), batch questions in groups of **at most 4 per prompt** — chunk by question count, not by REQ. A REQ with 6 questions needs 2 prompts.
