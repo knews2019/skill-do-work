@@ -78,7 +78,7 @@ Check these patterns **in order** — first match wins:
 | 14       | Version keywords         | `do-work version`, `do-work update`, `do-work what's new`, `do-work release notes`, `do-work what's changed`, `do-work updates`, `do-work history` | → version                     |
 | 15       | Recap keywords           | `do-work recap`                                                                                                                    | → version                     |
 | 16       | Forensics keywords       | `do-work forensics`, `do-work diagnose`, `do-work health check`, `do-work health`                                                  | → forensics                   |
-| 17       | Roadmap keywords         | `do-work roadmap`, `do-work queue-status`, `do-work queue status`, `do-work status`, `do-work where are we`, `do-work what's left`, `do-work what's feasible`, `do-work what should I work on next` | → roadmap                     |
+| 17       | Roadmap keywords         | `do-work roadmap`, `do-work queue-status`, `do-work where are we`, `do-work what's left`, `do-work what's feasible`, `do-work what should I work on next` | → roadmap                     |
 | 18       | Prime keywords           | `do-work prime`, `do-work prime create src/auth/`, `do-work prime audit`, `do-work create prime`, `do-work audit primes`           | → prime                       |
 | 19       | BKB keywords             | `do-work bkb`, `do-work bkb init`, `do-work bkb ingest`, `do-work build knowledge base`, `do-work knowledge base`                 | → build knowledge base        |
 | 20       | Interview keywords       | `do-work interview`, `do-work interview list`, `do-work interview work-operating-model`, `do-work interview <template> export`, `do-work interview <template> ingest`, `do-work elicit`, `do-work operating model` | → interview                    |
@@ -127,7 +127,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **recap** | recap | Routes to version action with `mode: recap` |
 | **version** | version, update, check for updates, what's new, release notes, what's changed, updates, history | "updates" (plural) shows last 5 releases; "update" (singular) triggers update check |
 | **forensics** | forensics, diagnose, health check, health | |
-| **roadmap** | roadmap, queue-status, queue status, status, where are we, what's left, what's feasible, what should I work on next | Optional scope: `pending`, `in-progress`, `done`, `UR-NNN`, or `since <date>`. Read-only. "pipeline status" → pipeline (priority 3). "bkb status" → bkb. Plain "status" → roadmap. |
+| **roadmap** | roadmap, queue-status, where are we, what's left, what's feasible, what should I work on next | Optional scope: `pending`, `in-progress`, `done`, `UR-NNN`, or `since <date>`. Read-only. `"<action> status"` → that action (e.g., "pipeline status" → pipeline, "bkb status" → bkb, "interview <template> status" → interview). |
 | **prime** | prime, prime create, prime audit, create prime, audit primes, primes | Everything after verb → `$ARGUMENTS`. "audit primes" → prime; plain "audit" → verify |
 | **bkb** | bkb, build knowledge base, knowledge base, kb | Everything after verb → `$ARGUMENTS` (sub-command + params) |
 | **interview** | interview, elicit, operating model | Everything after verb → `$ARGUMENTS` (`list`, `<template>`, or `<template> <sub-command>`). No args → help menu |

@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.70.4 — The Composed Key (2026-05-06)
+
+Bare `status` and space-form `queue status` removed from the roadmap route — they caused first-match conflicts with any `<action> status` sub-command (interview, bkb, etc.). Use `do-work roadmap` or `do-work queue-status` (hyphenated) instead.
+
+- SKILL.md routing table row 17: removed `do-work status` and `do-work queue status` examples
+- Verb Reference roadmap entry: removed `status` and `queue status` triggers, replaced single-action exceptions with a general `"<action> status" → that action` rule
+
+---
+
 ## 0.70.3 — The Wired Roadmap (2026-05-06)
 
 `roadmap` was drafted but unrouted — the dispatch table didn't list it, the help menu didn't mention it, and no other action ever suggested it. Now it's wired end-to-end so users can actually find and run it.
