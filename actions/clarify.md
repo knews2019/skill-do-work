@@ -32,7 +32,7 @@ If none found: report "No pending questions — queue is clear" and exit.
 
 ### Step 3: Present questions
 
-For each `pending-answers` REQ, show:
+Always include the builder's recommended choice prominently for each question — confirming the recommendation is the intended fast path. For each `pending-answers` REQ, show:
 
 ```
 REQ-025 — Review fix: dark mode sidebar

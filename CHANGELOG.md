@@ -4,6 +4,33 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.71.1 — The Manifest Memory (2026-05-07)
+
+Fix: `do-work update` no longer silently deletes user-authored files in `prompts/` or `interviews/`. The pre-clean used to wipe every top-level `.md` in those directories before extracting the upstream tarball, so projects that committed their own custom prompt or interview templates lost them on every update.
+
+- New `.do-work-upstream-manifest` at the skill root lists upstream-owned files
+- Pre-clean now deletes only files in `union(old-manifest, new-manifest)` — user-authored files survive while upstream renames and removals still get cleaned up
+- One-time bootstrap on installs that predate the manifest (treats old-manifest as empty)
+- Update flow downloads the tarball to a temp file (vs. piping `curl` straight into `tar`) so we can list contents before extracting
+
+---
+
+## 0.71.0 — The Sweep (2026-05-07)
+
+A pass through review findings: stale references, drifting pointers, parallel actions that resolved paths differently, a missing guide, and a template that mixed mechanical handlebars with natural-language directives. Plus a real semver fix on the work-operating-model template.
+
+- `interviews/work-operating-model.md`: bumped to **2.0.0** (breaking) — `details.interruptions` is now `list[{source, priority}]` and `details.time_windows` requires a `days` array. Added a **Migration from v1.x** section with hand-migration steps for in-flight `session.json` files. Previously these schema changes shipped under a 1.1.0 minor bump.
+- `interviews/work-operating-model.md`: declared the Export Templates dialect explicitly (handlebars-style with `where`/`sorted by` extensions and explicit `{{derived.<name>}}` slots). Replaced every natural-language directive embedded in `{{ … }}` (synthesis paragraphs, "items appearing in 2+", `{{#for each}}`, etc.) with named derived fields and per-template **Synthesized fields** blocks that say how each is computed.
+- `actions/install-bowser.md` + `actions/install-ui-design.md`: both install actions now resolve project root the same way (`git rev-parse --show-toplevel || pwd`). Fixed an internal bowser inconsistency where Step 1 was cwd-relative while Step 4 was project-root-relative — these would mismatch when invoked from a subdirectory.
+- `decisions/topics/_index_skill-architecture.md`: `sources:` frontmatter pointed at the deleted `actions/build-knowledge-base.md`; replaced with `actions/bkb.md` and `actions/bkb-reference.md`.
+- `actions/interview.md`: Step 2 of `export` no longer claims `interview-reference.md` has a per-export schema list — the parenthetical now points readers at the template file's `## Export Templates` section directly, matching the reference file's actual content.
+- `docs/forensics-guide.md`: added a "sister action" pointer to roadmap so the broken-vs-intended split is discoverable from either side.
+- `docs/roadmap-guide.md`: new — every other first-class action had a guide except roadmap.
+- `actions/clarify.md`: promoted "always show the builder's recommended choice" from a Rules-line into Step 3, where the verification checklist already asserted it.
+- `decisions/imported-specs/2026-04-16_expand-skill-do-work-interview.md`: added a one-line footer noting that `actions/build-knowledge-base.md` was later split into `actions/bkb.md` + `actions/bkb-reference.md` so anyone reading the imported spec doesn't chase a deleted file.
+
+---
+
 ## 0.70.5 — The Two Buckets (2026-05-07)
 
 Two review findings fixed: roadmap's `kb_status: pending` recovery instruction was wrong (it pointed at `bkb triage`, but pending means no file was ever staged), and prompt aliases declared in headers (`dca`, `clg`, `cg`, `adr`, etc.) were unreachable because the dispatcher only resolved by filename.

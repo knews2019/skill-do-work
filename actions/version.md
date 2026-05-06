@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps.
 
-**Current version**: 0.70.5
+**Current version**: 0.71.1
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -62,23 +62,47 @@ When user asks "check for updates", "update", or "is there a newer version":
    - Only continue once `<skill-root>` is confirmed to live inside the current project's git root.
 3. **Check for local changes** to shipped skill files at `<skill-root>`:
    - **Scope the check to skill-owned files only.** Ignore `do-work/` (queue data, archives, deliverables) — those are generated at runtime and should never block an update.
-   - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ prompts/ interviews/ specs/ docs/ decisions/ hooks/ CLAUDE.md AGENTS.md CHANGELOG.md README.md next-steps.md` (listing every shipped editable path) and check for uncommitted changes. Any dirty file in these paths will be clobbered by the tar extraction in step 5 if you proceed.
+   - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ prompts/ interviews/ specs/ docs/ decisions/ hooks/ CLAUDE.md AGENTS.md CHANGELOG.md README.md next-steps.md .do-work-upstream-manifest` (listing every shipped editable path) and check for uncommitted changes. Any dirty file in these paths will be clobbered by the tar extraction in step 6 if you proceed.
    - If it's **not** a git repo, check whether shipped skill files (actions/, crew-members/, prompts/, interviews/, specs/, docs/, decisions/, hooks/, SKILL.md, CLAUDE.md, next-steps.md, etc.) differ from a fresh install by looking for user-modified content (custom crew-members, edited action files, local prompt/template additions, ADR edits, etc.).
    - **If any shipped skill files are dirty / have local modifications**: Stop and warn the user. List the modified files and ask for explicit confirmation before proceeding. Do NOT auto-update.
-   - **If clean**: Proceed to step 4 (pre-clean) then step 5 (extract).
-4. **Pre-clean discoverable directories.** `prompts/` and `interviews/` are enumerated by `do-work prompts list` and `do-work interview list` (they glob `prompts/*.md` and `interviews/*.md`), so any upstream-removed file that stays on disk will still appear as a live workflow. The dirty check in step 3 has already confirmed these are clean, so removing the tracked `.md` files here is safe and the tar extraction will restore them fresh:
+   - **If clean**: Proceed to step 4 (download), step 5 (manifest-driven pre-clean), then step 6 (extract).
+4. **Download the tarball to a temp file.** We need to read it twice — once to list its contents (for the manifest), once to extract:
    ```
-   find <skill-root>/prompts -maxdepth 1 -name '*.md' ! -name 'README.md' -delete
-   find <skill-root>/interviews -maxdepth 1 -name '*.md' -delete
+   TARBALL=$(mktemp -t do-work-update.XXXXXX.tar.gz)
+   curl -sLf https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz -o "$TARBALL"
    ```
-   Do NOT delete files in `prompts/` or `interviews/` subdirectories — only the top-level `.md` files are globbed. Do NOT touch `do-work/` or any other runtime directory.
-5. **Run the update in place at `<skill-root>`** (the project-local path confirmed in step 2). `cd` there first so the extraction cannot land in a global directory by mistake:
+   `-f` makes curl exit non-zero on HTTP errors instead of saving an HTML error page. If the download fails, fall through to the "fetch fails" branch below.
+5. **Pre-clean discoverable directories using the manifest union.** `prompts/` and `interviews/` are enumerated by `do-work prompts list` and `do-work interview list` (they glob `prompts/*.md` and `interviews/*.md`), so any upstream-removed file that stays on disk would still appear as a live workflow. The pre-clean must (a) remove files upstream owns *now or used to own* — so renames and removals are reflected — and (b) **preserve user-authored files** that upstream has never shipped. Do this by intersecting deletes with the union of two manifests:
    ```
-   cd <skill-root> && curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
+   # New manifest from the incoming tarball (top-level .md under prompts/ and interviews/)
+   tar tzf "$TARBALL" | awk -F/ 'NF==3 && ($2=="prompts" || $2=="interviews") && $3 ~ /\.md$/ {print $2"/"$3}' \
+       > "$TARBALL.new-manifest"
+
+   # Old manifest from the currently-installed skill — may be missing on a pre-fix install
+   if [ -f <skill-root>/.do-work-upstream-manifest ]; then
+       cp <skill-root>/.do-work-upstream-manifest "$TARBALL.old-manifest"
+   else
+       : > "$TARBALL.old-manifest"   # bootstrap: empty old manifest
+   fi
+
+   sort -u "$TARBALL.old-manifest" "$TARBALL.new-manifest" > "$TARBALL.union"
+
+   # Delete only files in the union — user-authored files (in neither manifest) survive.
+   while IFS= read -r relpath; do
+       rm -f "<skill-root>/$relpath"
+   done < "$TARBALL.union"
    ```
-   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. For non-discoverable directories (`actions/`, `crew-members/`, `specs/`, `docs/`, `decisions/`) leftovers are harmless — the skill only loads files it references by name. For `prompts/` and `interviews/`, the pre-clean step above is what prevents ghost entries; if you skipped it, run `do-work prompts list` and `do-work interview list` after updating and delete anything that looks obsolete. Never delete `do-work/` (runtime state).
-6. **Verify**: Read `<skill-root>/actions/version.md` again and confirm the local version now matches the remote version.
-7. **Report result**: `Updated to v{remote} at <skill-root>.`
+   User-authored files are preserved by **omission from the manifest**, not by `git status` — so committed custom prompts/interviews are safe even though the dirty check at Step 3 wouldn't flag them. Do NOT delete files in `prompts/` or `interviews/` subdirectories — only the top-level `.md` files are globbed by the listing actions, and the manifest only tracks those. Do NOT touch `do-work/` or any other runtime directory.
+
+   **Bootstrap (pre-fix installs).** If `.do-work-upstream-manifest` is missing, the old-manifest is empty and the union equals the new manifest. That preserves user-authored files whose names don't collide with current upstream filenames; from the next update onwards the manifest is on disk and steady-state behavior applies.
+6. **Run the extraction in place at `<skill-root>`** (the project-local path confirmed in step 2). `cd` there first so the extraction cannot land in a global directory by mistake:
+   ```
+   cd <skill-root> && tar xzf "$TARBALL" --strip-components=1 --exclude='_dev'
+   rm -f "$TARBALL" "$TARBALL.new-manifest" "$TARBALL.old-manifest" "$TARBALL.union"
+   ```
+   The tarball includes a fresh `.do-work-upstream-manifest`, so the manifest on disk after extraction is automatically up to date for the next update. **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. For non-discoverable directories (`actions/`, `crew-members/`, `specs/`, `docs/`, `decisions/`) leftovers are harmless — the skill only loads files it references by name. For `prompts/` and `interviews/`, the manifest-driven pre-clean above is what prevents ghost entries; if you skipped it, run `do-work prompts list` and `do-work interview list` after updating and delete anything that looks obsolete. Never delete `do-work/` (runtime state).
+7. **Verify**: Read `<skill-root>/actions/version.md` again and confirm the local version now matches the remote version.
+8. **Report result**: `Updated to v{remote} at <skill-root>.`
 
 Do NOT just print the curl command and ask the user to run it. You are the agent — run it yourself.
 
@@ -94,7 +118,7 @@ You're up to date (v{local})
 Couldn't check for updates.
 ```
 
-Attempt the update anyway using the curl command above (still respecting the preflight location check in step 2 and the dirty-tree check in step 3 — refuse if the install is global). If that also fails, report the error and provide the manual command as a fallback:
+Attempt the update anyway using the download + manifest-driven pre-clean + extraction sequence in steps 4–6 above (still respecting the preflight location check in step 2 and the dirty-tree check in step 3 — refuse if the install is global). If that also fails, report the error and provide the manual command as a last-resort fallback:
 
 ```
 To manually update, cd into the **project-local** skill root (where SKILL.md lives inside *this* project — NOT ~/.claude/skills/, ~/.gemini/skills/, or any other global skills directory) and run:
@@ -104,6 +128,8 @@ curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.
 
 Or visit: https://github.com/knews2019/skill-do-work
 ```
+
+Note: this last-resort command skips the manifest-driven pre-clean, so any prompt or interview removed by upstream may linger on disk. Run `do-work prompts list` and `do-work interview list` after a manual update and delete anything that looks obsolete.
 
 ## Responding to Recap Requests
 

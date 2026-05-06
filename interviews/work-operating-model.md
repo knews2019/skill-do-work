@@ -327,6 +327,10 @@ _Review on a 30-minute cadence. For each item: act, defer, or ignore. Log the de
 - Produce a one-page delta: what in `USER.md` no longer matches reality? Flag for the user's next quarterly interview re-run.
 ```
 
+**Synthesized fields for `HEARTBEAT.md`:**
+
+- `derived.overnight_scan_sources` — deduplicated list of strings combining (a) `details.non_calendar_reality` from `operating_rhythms.entries where status != "stale"` and (b) every entry in `details.decision_inputs` across `recurring_decisions.entries where status != "stale"`. Sorted alphabetically.
+
 ### `operating-model.json` — machine-readable dump
 
 ```json
@@ -356,42 +360,51 @@ _Review on a 30-minute cadence. For each item: act, defer, or ignore. Log the de
   "source_template": "work-operating-model",
   "source_session": "{{session.session_id}}",
   "time_blocks": [
+    {{#each derived.time_blocks}}
     {
-      "label": "{{derived from operating_rhythms.details.energy_pattern}}",
-      "days": ["{{day}}"],
-      "start": "HH:MM",
-      "end": "HH:MM",
-      "type": "deep_work | admin | reactive",
-      "source_entries": ["operating_rhythms.<entry_id>"]
-    }
+      "label": "{{label}}",
+      "days": {{json days}},
+      "start": "{{start}}",
+      "end": "{{end}}",
+      "type": "{{type}}",
+      "source_entries": {{json source_entries}}
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
   ],
   "avoid_windows": [
+    {{#each derived.avoid_windows}}
     {
-      "label": "{{why this window should be protected}}",
-      "days": ["{{day}}"],
-      "start": "HH:MM",
-      "end": "HH:MM",
-      "reason": "{{non_calendar_reality or friction source}}",
-      "source_entries": ["<layer>.<entry_id>"]
-    }
+      "label": "{{label}}",
+      "days": {{json days}},
+      "start": "{{start}}",
+      "end": "{{end}}",
+      "reason": "{{reason}}",
+      "source_entries": {{json source_entries}}
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
   ],
   "standing_slots": [
+    {{#each derived.standing_slots}}
     {
-      "label": "{{deliverable or handoff}}",
-      "cadence": "{{from dependency entry}}",
-      "day": "{{day or 'rolling'}}",
-      "time": "HH:MM",
-      "counterparty": "{{dependency_owner}}",
-      "source_entries": ["dependencies.<entry_id>"]
-    }
+      "label": "{{label}}",
+      "cadence": "{{cadence}}",
+      "day": "{{day}}",
+      "time": "{{time}}",
+      "counterparty": "{{counterparty}}",
+      "source_entries": {{json source_entries}}
+    }{{#unless @last}},{{/unless}}
+    {{/each}}
   ]
 }
 ```
 
-Derivation rules:
-- `time_blocks` come from `operating_rhythms.entries[*].details.time_windows` joined against `details.energy_pattern` to classify type.
-- `avoid_windows` come from (a) `operating_rhythms.details.non_calendar_reality` when it describes a consistent interruption pattern, and (b) high-priority `friction.entries` whose `systems_involved` implies a recurring time loss.
-- `standing_slots` come from `dependencies.entries[*]` where `needed_by` has a regular cadence.
+**Synthesized fields for `schedule-recommendations.json`:**
+
+- `derived.time_blocks` — list of `{label, days, start, end, type, source_entries}` from `operating_rhythms.entries[*].details.time_windows` (where `status != "stale"`). `label` echoes the time window's `label`. `days` is the window's `days` array. `start` / `end` are `HH:MM`. `type` is `deep_work | admin | reactive`, classified by joining the entry's `details.energy_pattern` against the window's label (focus/deep → `deep_work`; admin/email/reactive → `admin` or `reactive`). `source_entries` is `["operating_rhythms.<entry_id>"]`.
+- `derived.avoid_windows` — list of `{label, days, start, end, reason, source_entries}` drawn from two sources: (a) `operating_rhythms.entries where status != "stale"` whose `details.non_calendar_reality` describes a consistent recurring interruption pattern (label = a short summary, reason = the `non_calendar_reality` string), and (b) `friction.entries where status != "stale" and details.priority == "high"` whose `details.systems_involved` implies a recurring time loss (label = entry `title`, reason = entry `summary`). `days` / `start` / `end` come from the source entry's nearest time window when one exists; otherwise omit the entry rather than invent times.
+- `derived.standing_slots` — list of `{label, cadence, day, time, counterparty, source_entries}` from `dependencies.entries where status != "stale"` whose `details.needed_by` parses to a regular cadence (daily, weekly, monthly, or named day). `label` = `details.deliverable`; `cadence` = the parsed cadence string; `day` = weekday abbreviation or `"rolling"`; `time` = `HH:MM` or `""` if not specified; `counterparty` = `details.dependency_owner`; `source_entries` = `["dependencies.<entry_id>"]`.
+
+The `{{json X}}` helper emits `X` as a JSON value (array or object) rather than a quoted string, identical in semantics to `{{json_entries X}}` used in `operating-model.json`.
 
 ## Tone
 

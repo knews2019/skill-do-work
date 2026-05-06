@@ -79,6 +79,8 @@ CHANGELOG.md          # Release notes (newest on top)
 
 Keep it brief, newest on top, lead with value not implementation. Every version gets an entry.
 
+3. **Regenerate `.do-work-upstream-manifest`** if you added, removed, or renamed any top-level file in `prompts/` or `interviews/`. The manifest lists upstream-owned files so `do-work update` can preserve user-authored files. From the skill root: `{ ls prompts/*.md 2>/dev/null; ls interviews/*.md 2>/dev/null; } | sort > .do-work-upstream-manifest`.
+
 ## Action File Conventions
 
 Action files follow a consistent structure. When adding or modifying actions, use this template:
