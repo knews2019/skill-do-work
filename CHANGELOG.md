@@ -4,17 +4,6 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.71.1 — The Manifest Memory (2026-05-07)
-
-Fix: `do-work update` no longer silently deletes user-authored files in `prompts/` or `interviews/`. The pre-clean used to wipe every top-level `.md` in those directories before extracting the upstream tarball, so projects that committed their own custom prompt or interview templates lost them on every update.
-
-- New `.do-work-upstream-manifest` at the skill root lists upstream-owned files
-- Pre-clean now deletes only files in `union(old-manifest, new-manifest)` — user-authored files survive while upstream renames and removals still get cleaned up
-- One-time bootstrap on installs that predate the manifest (treats old-manifest as empty)
-- Update flow downloads the tarball to a temp file (vs. piping `curl` straight into `tar`) so we can list contents before extracting
-
----
-
 ## 0.71.0 — The Sweep (2026-05-07)
 
 A pass through review findings: stale references, drifting pointers, parallel actions that resolved paths differently, a missing guide, and a template that mixed mechanical handlebars with natural-language directives. Plus a real semver fix on the work-operating-model template.
