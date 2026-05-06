@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.70.2 — The TDD Telltale (2026-05-06)
+
+The roadmap action now reads `tdd` posture per REQ and flags pending items where TDD is off but the behavior is testable — so reviewers can decide to flip it on before pickup. Also picks up `queue-status` as an explicit trigger phrase.
+
+- `actions/roadmap.md`: New Step 2.5 classifies pending REQs as TDD on / eligible / not applicable, with evidence (frontmatter, `## Red-Green Proof`, domain, input/output examples). Output Format adds a `TDD Eligible` section and per-row `tdd:` annotations across Ready / Needs Clarification / In Progress / Recently Completed.
+- `actions/roadmap.md`: Added `queue-status` and `queue status` to the When-to-Use trigger phrases. Also added a rationalization, two red flags, and a verification-checklist item for TDD reporting.
+
 ## 0.70.1 — The Lookahead Lens (2026-05-05)
 
 Drafted a new `roadmap` action — a read-only survey of the do-work queue that classifies pending REQs as ready / needs-clarification / blocked / stale and rolls up in-progress and recently-completed work. Sits alongside `forensics` (which finds *broken* state) by reporting *intended* state and feasibility instead. Not yet wired into SKILL.md routing.
