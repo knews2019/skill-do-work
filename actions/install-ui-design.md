@@ -12,7 +12,7 @@ Once installed, the skill is available to all agents in the project, including d
 - A ui-review pass flagged the absence of the skill as a cause of low-quality output.
 
 **Do NOT use when:**
-- The skill is already installed (Step 1 detects this and exits).
+- The skill is already installed under `<project-root>/.claude/skills/frontend-design/` (Step 1 detects this and exits, where `<project-root>` is `git rev-parse --show-toplevel || pwd`).
 - The user is asking for browser automation or visual verification — that's `install-bowser`.
 - The project explicitly uses a different design system/skill and adding frontend-design would conflict.
 
@@ -25,7 +25,8 @@ No arguments. The action is idempotent — running it when the skill is already 
 ### Step 1: Check if already installed
 
 ```bash
-ls .claude/skills/frontend-design/SKILL.md 2>/dev/null
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+ls "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" 2>/dev/null
 ```
 
 If the file exists, report "already installed" and stop.
@@ -33,8 +34,9 @@ If the file exists, report "already installed" and stop.
 ### Step 2: Install the skill
 
 ```bash
-mkdir -p .claude/skills/frontend-design
-curl -fsSL -o .claude/skills/frontend-design/SKILL.md \
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design"
+curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" \
   https://raw.githubusercontent.com/anthropics/claude-code/main/skills/frontend-design/SKILL.md
 ```
 
@@ -43,7 +45,8 @@ If `curl` is unavailable or the download fails, check the environment's plugin/s
 ### Step 3: Verify installation
 
 ```bash
-test -s .claude/skills/frontend-design/SKILL.md && echo "Installed successfully" || echo "Installation failed"
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"
 ```
 
 ### Step 4: Report back
@@ -68,7 +71,7 @@ A short status line: either "already installed", "installed successfully", or an
 
 ## Rules
 
-- **Install to the project, not globally.** The skill file goes under `.claude/skills/frontend-design/` in the current project. Do not write to `~/.claude/` or any global path.
+- **Install to the project, not globally.** The skill file goes under `<project-root>/.claude/skills/frontend-design/` (`<project-root>` resolved via `git rev-parse --show-toplevel || pwd`). Do not write to `~/.claude/` or any global path.
 - **Never overwrite an existing `SKILL.md`.** Step 1 is the gate. If the file is present, stop.
 - **Don't silently substitute a different skill.** If the upstream URL fails, report the error — don't download a similarly-named skill from elsewhere.
 
@@ -83,12 +86,13 @@ A short status line: either "already installed", "installed successfully", or an
 ## Red Flags
 
 - `curl` reported success but `test -s` says the file is empty — the URL may have changed; investigate before claiming success.
-- `.claude/skills/frontend-design/SKILL.md` exists but has zero size — treat as not-installed and re-download (with user confirmation).
+- `<project-root>/.claude/skills/frontend-design/SKILL.md` exists but has zero size — treat as not-installed and re-download (with user confirmation).
 - You installed into `~/.claude/skills/` instead of the project — undo and re-install to the correct path.
+- `git rev-parse --show-toplevel` fails (not in a git repo) and you installed the skill into `pwd` — acceptable, but warn the user the path may drift if they `cd` elsewhere.
 
 ## Verification Checklist
 
 - [ ] Step 1 detected existing install and stopped, OR Step 2 ran fetch commands.
-- [ ] `.claude/skills/frontend-design/SKILL.md` exists and is non-empty after Step 3.
+- [ ] `<project-root>/.claude/skills/frontend-design/SKILL.md` exists and is non-empty after Step 3.
 - [ ] The report names the destination path so the user can verify location.
-- [ ] No changes were made outside `.claude/skills/frontend-design/`.
+- [ ] No changes were made outside `<project-root>/.claude/skills/frontend-design/`.

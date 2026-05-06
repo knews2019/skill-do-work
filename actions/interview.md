@@ -252,8 +252,8 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
 2. **Stamp the export timestamp in-memory before rendering.** Set `session.last_exported_at = <now>` (ISO 8601) as an in-memory value that the render step below will substitute into templates (e.g. `{{session.last_exported_at}}` in the USER/SOUL/HEARTBEAT/JSON export headers and in the ingest frontmatter `created:`). Do not write `session.json` yet — the file write happens in step 4 after the artifacts are on disk, so a crash mid-render does not leave a stamp pointing at a partial export.
 
 3. Read the template's `exports:` frontmatter. For each declared export:
-   - Look up the export's schema in `actions/interview-reference.md` (Export Schemas section — one per export kind and template).
-   - Compose the artifact from the approved session entries using the render templates in the template file's `## Export Templates` section. Pull content from `session.json`; do not invent. Substitute the in-memory `last_exported_at` from step 2 wherever a template references it.
+   - Look up the render template in the template file's `## Export Templates` section — one block per export `path`. Per `actions/interview-reference.md` (Export Schemas), all per-export schemas live in the template file itself, not the reference.
+   - Compose the artifact from the approved session entries by mechanically rendering that template block. Pull content from `session.json`; do not invent. Substitute the in-memory `last_exported_at` from step 2 wherever the template references it.
    - Write the file to `./do-work/interview/<template>/exports/<path>`. Overwrite any prior export.
 
 4. **Persist the stamp.** Write `session.json` with the `last_exported_at` value set in step 2. This is what the next export's freshness preflight reads.

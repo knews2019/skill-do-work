@@ -12,7 +12,7 @@ Once installed, `do-work ui-review` can use Playwright CLI for viewport screensh
 - The user asked for headed-browser workflows, parallel named sessions, or persistent profiles.
 
 **Do NOT use when:**
-- `playwright-cli --help` already succeeds AND `.claude/skills/playwright-bowser/SKILL.md` exists (Step 1 detects this and exits).
+- `playwright-cli --help` already succeeds AND `<project-root>/.claude/skills/playwright-bowser/SKILL.md` exists (Step 1 detects this and exits, where `<project-root>` is `git rev-parse --show-toplevel || pwd`).
 - The user is asking for design-quality help — that's `install-ui-design`.
 - The environment can't install global npm packages and the user hasn't consented to a local-only install.
 
@@ -25,8 +25,9 @@ No arguments. The action is idempotent — re-running is a no-op when both compo
 ### Step 1: Check if already installed
 
 ```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 playwright-cli --help >/dev/null 2>&1 && echo "playwright-cli: installed" || echo "playwright-cli: not found"
-ls .claude/skills/playwright-bowser/SKILL.md 2>/dev/null && echo "bowser skill: installed" || echo "bowser skill: not found"
+ls "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" 2>/dev/null && echo "bowser skill: installed" || echo "bowser skill: not found"
 ```
 
 If both are present, report installed and stop.
