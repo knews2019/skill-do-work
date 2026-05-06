@@ -179,7 +179,9 @@ kb_entry: REQ-042-lesson-slug.md   # filename only (survives bkb moves from inbo
 
 The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only three status transitions are written to frontmatter: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8).
 
-**Special status:** `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do-work clarify`.
+**Special statuses — these REQs stay in the queue but Step 1 won't pick them up (they're not `pending`, so the "find next pending REQ" scan walks right past them):**
+- `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do-work clarify`.
+- `blocked-archive-collision` — set by Step 2.0 when a queue file's REQ id is already archived. Non-destructive holding state; the user flips it back to `pending` (or removes/renames the duplicate) after deciding what to do.
 
 ## Input
 
@@ -240,6 +242,25 @@ Count `completed`, `completed-with-issues`, and `done` statuses together as "com
 **REQ validation:** When reading each REQ's frontmatter, verify it has the required fields (`id`, `status`, `title`). If a REQ file has missing or unparseable frontmatter, skip it and report: `⚠ Skipping [filename]: missing required frontmatter ([field]).` Do not let a single malformed REQ block the entire work loop — skip it and continue to the next.
 
 **Exact glob pattern:** `do-work/queue/REQ-*.md` — if this returns no results, do NOT conclude the queue is empty. Verify by listing `do-work/queue/` contents to rule out a bad pattern.
+
+### Step 2.0: Pre-Claim Archive Collision Check
+
+Before claiming the queue file, verify it isn't a duplicate of an already-archived REQ. The most common footgun is rerunning `do-work work` against a queue file whose twin was already archived in a prior run, which silently re-processes and re-commits the duplicate.
+
+Extract `REQ-NNN` from the queue filename or frontmatter. Glob `do-work/archive/**/REQ-NNN-*.md` AND `do-work/archive/**/REQ-NNN.md` (both forms — the second catches REQs archived without a slug suffix). If any match exists, **bail without moving or claiming**:
+
+1. Update the duplicate queue file's frontmatter to `status: blocked-archive-collision`. This is non-destructive — the user can flip it back to `pending` after deciding what to do. It also prevents the next Step 10 → Step 1 re-glob from picking up the same REQ and bailing again (livelock).
+2. Report:
+
+   ```
+   REQ-NNN already archived at <archiveCollisionMatchPath>; remove the duplicate from do-work/queue/ or rename if this is a re-do. Status set to `blocked-archive-collision` to skip future loop iterations.
+   ```
+
+3. Skip the rest of the work loop for this REQ and continue to the next pending REQ. Do not delete the queue file — the user decides whether it's a stale duplicate or an intentional re-do that needs renaming.
+
+**Scope (minimal):** This guard only checks the archive. It does NOT add post-move verification or pre-commit collision guards — those are parallel-orchestrator concerns out of scope for single-orchestrator usage.
+
+If no archive match is found, proceed to Step 2.
 
 ### Step 2: Claim the Request
 
@@ -647,22 +668,18 @@ Append to the request file:
 - "What didn't work" is the most valuable part — it prevents repeating mistakes.
 - File lists are no longer needed here — they're covered by the mandatory Implementation Summary (Step 6.25).
 
-**Update prime files:** After writing the Lessons Learned section, check the REQ's `prime_files` frontmatter. For each listed prime file, append a link to the lesson under a `## Lessons` section in that prime file (create the section if it doesn't exist):
+**Update prime files (deferred to Step 8):** After writing the Lessons Learned section, check the REQ's `prime_files` frontmatter. For each listed prime file relevant to this lesson, **collect a pending prime-link write** — do NOT execute the write here. The REQ is still in `do-work/working/`, so any link pointing to its eventual archive location would either be broken or tempt a link to the transient working path.
 
-```markdown
-## Lessons
+Record each pending write as a tuple: `{ primeFilePath, relativeLinkText, lessonSummary }`. Hold them in memory (or a small scratch file under `do-work/working/`) until Step 8.
 
-- [REQ-NNN: 1-line summary of the lesson](<relative-path-to-req>#lessons-learned)
-```
-
-**Path must be relative to the prime file's location**, not the repo root. To compute the correct relative path: count how many directories deep the prime file sits (i.e., the number of path components before the filename). Prepend that many `../` steps to the REQ's repo-root-relative path. Examples:
+**Path computation rule (for use in Step 8):** the link path must be relative to the prime file's location, not the repo root. Count how many directories deep the prime file sits (i.e., the number of path components before the filename). Prepend that many `../` steps to the REQ's repo-root-relative archive path. Examples:
 - Prime at `prime-auth.md` (0 dirs deep) → `do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
 - Prime at `src/utils/prime-auth.md` (2 dirs deep: `src/` and `utils/`) → `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
 - Prime at `web/src/auth/prime-auth.md` (3 dirs deep) → `../../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
 
-After writing the link, verify the resolved path points to an existing file. If it doesn't, report the broken link rather than silently writing it.
+The existence-verify check on the resolved path runs in Step 8 (post-move) — that's the whole reason for deferring.
 
-Only add a link when the lesson is relevant to that prime file's scope — don't spray every lesson into every prime file. If the REQ has no `prime_files` or the lessons aren't relevant to any prime file, skip this.
+Only add a link when the lesson is relevant to that prime file's scope — don't spray every lesson into every prime file. If the REQ has no `prime_files` or the lessons aren't relevant to any prime file, skip this and clear the pending list.
 
 **Knowledge-base handoff.** After the Lessons Learned section is written and prime-file links are in place, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. The handoff asks the user before writing and records `kb_status` (plus `kb_entry` on success) back onto the REQ. In unattended pipeline runs with no human in the loop, the handoff defaults to `kb_status: pending` — it never writes to the KB without consent. If the project has no `kb/` directory, the handoff points the user at `do-work bkb init` and defers; it never blocks archival.
 
@@ -735,6 +752,19 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 | `context_ref` (legacy) | Move REQ to `archive/`. If all related REQs are now archived, move the CONTEXT doc too. |
 | Neither (standalone legacy) | Move directly to `archive/`. |
 
+7. **Execute deferred prime-link writes (from Step 7.5):** Now that the REQ is at its final archive path, walk the `pendingPrimeLinkWrites` collected during Step 7.5. For each pending entry:
+   - Compute the relative path from the prime file to the REQ's actual archived location (UR folder if the UR was just consolidated, or `archive/` root if the UR is incomplete).
+   - Verify the resolved path points to an existing file. If it doesn't, report the broken link and skip — do NOT silently write a broken link.
+   - Append the link to a `## Lessons` section in the prime file (create the section if it doesn't exist):
+     ```markdown
+     ## Lessons
+
+     - [REQ-NNN: 1-line summary of the lesson](<relative-path-to-archived-req>#lessons-learned)
+     ```
+   - Stage the prime file along with the implementation files in Step 9.
+
+   This is the post-move execution that makes the existence-verify meaningful — Step 7.5 only collected; the writes happen here.
+
 **On failure:**
 
 Before archiving, classify the failure to determine the correct recovery path. Read the error description and any test/build output, then classify:
@@ -783,7 +813,7 @@ EOF
 
 **Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
 
-One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), and any UR-folder moves to `archive/`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
+One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), and any UR-folder moves to `archive/`. If Step 8 substep 7 wrote prime-file lessons links, the modified prime files must also be staged — they are part of the REQ's lifecycle changes even though they aren't listed in the Implementation Summary's `Files changed`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
 
 **Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
 

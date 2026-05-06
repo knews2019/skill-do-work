@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.71.1 — The Deferred Link (2026-05-07)
+
+The work action used to write prime-file lessons links from Step 7.5 — before Step 8 actually moved the REQ to its archive path, so the existence-verify either failed or the agent linked to the transient `working/` location. And nothing stopped a duplicate queue file from being silently re-processed when its twin was already archived. Both fixed.
+
+- `actions/work.md` Step 7.5: prime-link writes are now COLLECTED as pending operations; the actual append + existence-verify happens in Step 8 substep 7, after the archive move.
+- `actions/work.md` Step 8: new substep 7 walks the pending prime-link writes against the actual archived path.
+- `actions/work.md` Step 2.0 (new): pre-claim glob check against `do-work/archive/**/REQ-NNN-*.md` AND `do-work/archive/**/REQ-NNN.md`. Bails cleanly with a clear message if the REQ id is already archived, and sets `status: blocked-archive-collision` on the duplicate to prevent livelock. Minimal scope (single-orchestrator); no post-move verify or pre-commit collision guard added.
+
 ## 0.71.0 — The Sweep (2026-05-07)
 
 A pass through review findings: stale references, drifting pointers, parallel actions that resolved paths differently, a missing guide, and a template that mixed mechanical handlebars with natural-language directives. Plus a real semver fix on the work-operating-model template.
