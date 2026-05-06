@@ -14,6 +14,7 @@ A diagnostic tool for when the work pipeline feels broken, stuck, or produces co
 **Do NOT use when:**
 - User wants to *fix* the archive structure — route to the cleanup action instead
 - User wants to *review completed code* — route to the review-work action instead
+- User wants a *survey of intended state* — what's ready, blocked, stale, in-progress, or recently done — route to the roadmap action instead. Forensics looks for *broken* state; roadmap looks at *intended* state.
 
 ## Core Rules
 

@@ -30,6 +30,7 @@ Next steps:
   do-work review work         Review the completed work
   do-work present work        Generate client-facing deliverables
   do-work clarify             Answer any pending questions
+  do-work roadmap             Survey what's left in the queue (if any REQs remain)
   do-work bkb triage          Sort promoted lessons into the KB (if any REQ has kb_status: promoted)
 ```
 
@@ -37,6 +38,7 @@ Next steps:
 ```
 Next steps:
   do-work run                 Start processing the queue
+  do-work roadmap             Survey feasibility + TDD posture before picking work up
   do-work capture request: [describe changes]  Capture additional requests
 ```
 
@@ -78,7 +80,17 @@ Next steps:
 Next steps:
   do-work cleanup               Fix orphaned URs and misplaced files
   do-work run                   Process stuck or pending REQs
+  do-work roadmap               Survey what's actionable next (pending feasibility + TDD posture)
   do-work capture request: [describe fix]  Capture a specific finding as a request
+```
+
+**After roadmap:**
+```
+Next steps:
+  do-work run REQ-NNN           Pick up the top "Ready" REQ
+  do-work clarify               Drain pending-answers REQs (if any flagged Needs Clarification)
+  do-work bkb triage            Promote pending lessons (if any flagged in Lessons Awaiting Promotion)
+  do-work forensics             Investigate further if any pending REQ looked suspicious
 ```
 
 **After cleanup:**
