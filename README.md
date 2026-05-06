@@ -239,7 +239,19 @@ do-work health check
 
 See the [Forensics Guide](docs/forensics-guide.md) for the full list of checks and severity levels.
 
-### 18. Build a knowledge base
+### 18. Roadmap (queue survey)
+
+Read-only survey of the queue — classifies pending REQs as ready / needs-clarification / blocked / stale, reports TDD posture (on / could-turn-on / not-applicable), and rolls up in-progress and recently-completed work. Sister action to forensics: forensics looks for *broken* state, roadmap looks at *intended* state.
+
+```
+do-work roadmap                # full survey
+do-work queue-status           # alias
+do-work roadmap pending        # only pending REQs
+do-work roadmap UR-042         # scope to a single user request
+do-work roadmap since 2026-04-01
+```
+
+### 19. Build a knowledge base
 
 Build and maintain an LLM-friendly Markdown wiki from raw sources (PDFs, articles, notes). Aliases: `bkb`, `kb`, `build knowledge base`, `knowledge base`.
 
@@ -262,7 +274,7 @@ do-work bkb status            # show KB stats and pending items
 
 For the full folder structure, file lifecycle, and wiki page format, see the [BKB Guide](docs/bkb-guide.md).
 
-### 19. Run a structured interview
+### 20. Run a structured interview
 
 Run a prescriptive elicitation interview against a template and produce agent-ready operating artifacts (`USER.md`, `SOUL.md`, `HEARTBEAT.md`, plus machine-readable exports). The first template is `work-operating-model` — the five-layer Work Operating Model by Nate B. Jones and Jonathan Edwards.
 
@@ -277,7 +289,7 @@ do-work interview work-operating-model ingest  # feed exports into BKB
 
 Session state lives at `./do-work/interview/<template>/` and is tracked in git alongside the rest of the project's trail of intent (URs, REQs, archive). Re-runs support `fresh`, `update`, and `version` modes; archived runs stay immutable under `versions/`. See the [Interview Guide](docs/interview-guide.md) for onboarding and `actions/interview-reference.md` for the template authoring spec.
 
-### 20. Run a saved prompt
+### 21. Run a saved prompt
 
 Execute reusable, battle-tested prompts for recurring jobs — ADR logs, retrospectives, audits, and more. Each prompt lives as a standalone Markdown file under `prompts/`; drop new ones in and they become available instantly.
 
@@ -293,14 +305,14 @@ First entry: `architecture-decisions-log_create-or-expand` — creates or update
 
 To add your own prompt: create `prompts/<kebab-name>.md` with a title, one-line description blockquote, optional metadata, a `---` separator, then the body. See `prompts/README.md` for the template.
 
-### 21. Install companion skills
+### 22. Install companion skills
 
 ```
 do-work install-ui-design   # Anthropic's frontend-design skill for production-grade UI
 do-work install-bowser      # Playwright CLI + Bowser skill for browser automation
 ```
 
-### 22. Version and history
+### 23. Version and history
 
 ```
 do-work version             # current version + last 5 releases
@@ -310,7 +322,7 @@ do-work recap               # last 5 completed user requests
 
 See the [Version Guide](docs/version-guide.md) for update behavior and recap format.
 
-### 23. Learn the skill
+### 24. Learn the skill
 
 Interactive tutorials for users new to do-work. Four modes:
 

@@ -4,6 +4,22 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.70.3 — The Wired Roadmap (2026-05-06)
+
+`roadmap` was drafted but unrouted — the dispatch table didn't list it, the help menu didn't mention it, and no other action ever suggested it. Now it's wired end-to-end so users can actually find and run it.
+
+- `SKILL.md`: Added roadmap to the Actions list, frontmatter argument-hint, routing priority table (priority 17, triggered by `roadmap`, `queue-status`, `status`, `where are we`, `what's left`, `what's feasible`, `what should I work on next`), Verb Reference, Help Menu, Action Dispatch table, and the foreground subagent list.
+- `next-steps.md`: New `After roadmap:` block. Surfaced `do-work roadmap` as a follow-up after `forensics`, `verify requests`, and `work` so users discover it in flow.
+- `README.md`: New section 18 covering the roadmap action with example invocations; sections 19-24 renumbered.
+- `actions/forensics.md`: Added a "Do NOT use when" pointer to roadmap to clarify the broken-vs-intended split between the two read-only surveys.
+
+## 0.70.2 — The TDD Telltale (2026-05-06)
+
+The roadmap action now reads `tdd` posture per REQ and flags pending items where TDD is off but the behavior is testable — so reviewers can decide to flip it on before pickup. Also picks up `queue-status` as an explicit trigger phrase.
+
+- `actions/roadmap.md`: New Step 2.5 classifies pending REQs as TDD on / eligible / not applicable, with evidence (frontmatter, `## Red-Green Proof`, domain, input/output examples). Output Format adds a `TDD Eligible` section and per-row `tdd:` annotations across Ready / Needs Clarification / In Progress / Recently Completed.
+- `actions/roadmap.md`: Added `queue-status` and `queue status` to the When-to-Use trigger phrases. Also added a rationalization, two red flags, and a verification-checklist item for TDD reporting.
+
 ## 0.70.1 — The Lookahead Lens (2026-05-05)
 
 Drafted a new `roadmap` action — a read-only survey of the do-work queue that classifies pending REQs as ready / needs-clarification / blocked / stale and rolls up in-progress and recently-completed work. Sits alongside `forensics` (which finds *broken* state) by reporting *intended* state and feasibility instead. Not yet wired into SKILL.md routing.
