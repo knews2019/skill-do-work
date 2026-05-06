@@ -5,7 +5,7 @@ description: |
   artifacts (USER.md, SOUL.md, HEARTBEAT.md) plus machine-readable exports.
   Based on the five-layer Work Operating Model by Nate B. Jones and
   Jonathan Edwards.
-version: 1.1.0
+version: 2.0.0
 topic_cluster: operating-model
 layers:
   - id: operating_rhythms
@@ -39,6 +39,21 @@ exports:
 # Work Operating Model Template
 
 The first job is not to automate the user. It is to help them see and describe how their work actually runs.
+
+## Migration from v1.x
+
+Two breaking shape changes since v1.0.0:
+
+- `details.interruptions` — was `list[string]`, now `list[{source: string, priority: "low" | "medium" | "high"}]`. Required because `HEARTBEAT.md`'s "What to ignore" section draws from `low`-priority entries.
+- `details.time_windows` — gained a required `days` field (`list` of weekday abbreviations from `Mon … Sun`). Required so `schedule-recommendations.json` can emit `days` without inventing data.
+
+In-flight v1.x sessions will fail validation against v2.0. To migrate a v1.x `session.json` by hand:
+
+1. For each `operating_rhythms` entry's `details.interruptions`, replace each string `"<source>"` with `{"source": "<source>", "priority": "medium"}` (use `"medium"` as a safe default; revisit during the next `review` pass).
+2. For each `details.time_windows` entry, add `"days": ["Mon", "Tue", "Wed", "Thu", "Fri"]` (or the actual days the window applies). Without `days`, the export will refuse.
+3. Bump `template_version` in `session.json` to `2.0.0`.
+
+If you'd rather start fresh, run `do-work interview work-operating-model reset` and re-elicit. Sessions stamped `2.0.0` or higher load without migration.
 
 ## Layer 1: Operating Rhythms
 
@@ -134,7 +149,15 @@ During the `review` sub-command, surface these specific tensions:
 
 ## Export Templates
 
-When the `export` sub-command runs against an approved session of this template, render each artifact below using the session's canonical entries. Field references use handlebars-style `{{field}}` syntax against the canonical entry contract plus layer-specific `details`. Iteration uses `{{#each layers.<layer_id>.entries}} … {{/each}}`. Omit sections whose source layer has no qualifying entries.
+When the `export` sub-command runs against an approved session of this template, render each artifact below using the session's canonical entries.
+
+**Dialect.** Templates are mechanical handlebars with three constructs and nothing else:
+
+1. **Field substitution** — `{{path.to.field}}` resolves against the canonical entry contract plus layer-specific `details`.
+2. **Iteration** — `{{#each <expr>}} … {{/each}}` over a list. `<expr>` may be a path (`recurring_decisions.entries`) or a `where` / `sorted by` extension (`recurring_decisions.entries where status != "stale" and details.reversible == true`, `friction.entries where status != "stale" sorted by details.priority desc, details.time_cost desc`). The `where` predicate uses field comparisons (`==`, `!=`, `exists`, `contains`, `mentions`) and boolean `and`/`or`. `sorted by` takes one or more `<field> asc|desc`.
+3. **Synthesized fields** — `{{derived.<name>}}` resolves to a value pre-computed by the renderer per the **Synthesized fields** block listed immediately under each template. These are the only places prose generation enters the pipeline; everywhere else is mechanical substitution.
+
+Omit sections whose source layer has no qualifying entries. Anything that looks like a natural-language directive embedded inside `{{ … }}` is a bug — promote it to a `{{derived.<name>}}` slot and document it in the template's Synthesized fields block.
 
 ### `USER.md` — narrative profile
 
@@ -145,7 +168,7 @@ _Generated {{session.last_exported_at}}. Based on the work-operating-model templ
 
 ## How the week actually runs
 
-{{synthesis_paragraph from operating_rhythms — describe time_windows, energy_pattern, and non_calendar_reality in 2–3 sentences}}
+{{derived.rhythm_synthesis}}
 
 ### Deep work windows
 {{#each operating_rhythms.entries where details.energy_pattern mentions "deep" or "focus"}}
@@ -200,6 +223,10 @@ _Entries flagged as stale during an `update` run. Kept for context but not appli
 {{/each}}
 ```
 
+**Synthesized fields for `USER.md`:**
+
+- `derived.rhythm_synthesis` — 2–3 sentence prose paragraph that names the time windows, energy pattern, and non-calendar reality across all `operating_rhythms.entries where status != "stale"`. Specific, not generic; cites the user's own phrasing where it appeared in the session.
+
 ### `SOUL.md` — agent decision framework
 
 ```markdown
@@ -227,19 +254,25 @@ Additionally, always escalate when:
 ## Data sources — trust hierarchy
 
 **Authoritative** (cite these directly, do not second-guess):
-{{items appearing in 2+ recurring_decisions.details.decision_inputs (entries where status != "stale")}}
+{{#each derived.authoritative_inputs}}
+- {{this}}
+{{/each}}
 
 **Advisory** (consider, but cross-check before acting):
-{{items appearing in only 1 recurring_decisions.details.decision_inputs (entries where status != "stale")}}
+{{#each derived.advisory_inputs}}
+- {{this}}
+{{/each}}
 
 **Tacit** (do not assume present; ask the user if needed):
-{{institutional_knowledge.entries where status != "stale" and details.where_it_lives contains "head" or "undocumented"}}
+{{#each derived.tacit_knowledge}}
+- {{title}} — {{details.where_it_lives}}
+{{/each}}
 
 ## Tone rules by audience
 
-{{#for each unique stakeholder across all layers}}
-- **{{stakeholder}}**: {{derived tone — terse/formal/informal based on which layers they appear in}}
-{{/for}}
+{{#each derived.stakeholder_tones}}
+- **{{stakeholder}}**: {{tone}}
+{{/each}}
 
 ## "Good enough" thresholds
 
@@ -253,6 +286,13 @@ Additionally, always escalate when:
 - Do not fabricate information for a decision whose `decision_inputs` are unavailable.
 - Do not smooth over contradictions between `USER.md` sections — surface them.
 ```
+
+**Synthesized fields for `SOUL.md`:**
+
+- `derived.authoritative_inputs` — list of input names that appear in `details.decision_inputs` of **2 or more** `recurring_decisions.entries where status != "stale"`. Deduplicated, sorted alphabetically.
+- `derived.advisory_inputs` — list of input names that appear in `details.decision_inputs` of **exactly one** `recurring_decisions.entries where status != "stale"`. Deduplicated, sorted alphabetically.
+- `derived.tacit_knowledge` — `institutional_knowledge.entries where status != "stale"` whose `details.where_it_lives` contains the substring `"head"` or `"undocumented"` (case-insensitive). Each item exposes the entry's full canonical fields plus `details`.
+- `derived.stakeholder_tones` — list of `{stakeholder, tone}` objects, one per unique stakeholder name appearing in any layer's entries. `tone` is one of `terse`, `formal`, `informal`, derived from which layers the stakeholder appears in: appears only in `dependencies` → `formal`; appears in `friction` or `recurring_decisions` and not `dependencies` → `terse`; appears only in `institutional_knowledge` → `informal`. Stakeholders appearing across mixed categories use the strongest signal in that order (formal > terse > informal).
 
 ### `HEARTBEAT.md` — recurring checklist
 
@@ -272,7 +312,10 @@ _Review on a 30-minute cadence. For each item: act, defer, or ignore. Log the de
 ## First heartbeat after 08:00 local
 
 - Load today's calendar. Compare to deep work windows in `USER.md`. Flag conflicts.
-- Scan these sources for overnight changes: {{list derived from operating_rhythms.details.non_calendar_reality + recurring_decisions.details.decision_inputs (entries where status != "stale")}}
+- Scan these sources for overnight changes:
+{{#each derived.overnight_scan_sources}}
+  - {{this}}
+{{/each}}
 
 ## First heartbeat Monday after 08:00
 
