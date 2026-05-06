@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.70.5 — The Two Buckets (2026-05-07)
+
+Two review findings fixed: roadmap's `kb_status: pending` recovery instruction was wrong (it pointed at `bkb triage`, but pending means no file was ever staged), and prompt aliases declared in headers (`dca`, `clg`, `cg`, `adr`, etc.) were unreachable because the dispatcher only resolved by filename.
+
+- `actions/roadmap.md`: Step 3 rollup now splits `kb_status: promoted` (file staged → `bkb triage` + `bkb ingest`) from `kb_status: pending` (nothing staged → re-run handoff via `do-work review REQ-NNN`, possibly after `bkb init`). Output Format replaces the single "Lessons Awaiting Promotion" section with two distinct sections.
+- `next-steps.md`: "After roadmap" block now suggests `bkb triage` only when promoted lessons exist, and points at `do-work review REQ-NNN` for pending lessons.
+- `actions/prompts.md`: Resolution rules now include alias matching (priority 2, between exact filename and prefix). Aliases parsed from each prompt's `**Aliases:**` header line. Cross-file alias collisions are surfaced rather than silently picking one. `list` output gains an ALIASES column and warns on collisions.
+
+---
+
 ## 0.70.4 — The Composed Key (2026-05-06)
 
 Bare `status` and space-form `queue status` removed from the roadmap route — they caused first-match conflicts with any `<action> status` sub-command (interview, bkb, etc.). Use `do-work roadmap` or `do-work queue-status` (hyphenated) instead.
