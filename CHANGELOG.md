@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.70.1 — The Lookahead Lens (2026-05-05)
+
+Drafted a new `roadmap` action — a read-only survey of the do-work queue that classifies pending REQs as ready / needs-clarification / blocked / stale and rolls up in-progress and recently-completed work. Sits alongside `forensics` (which finds *broken* state) by reporting *intended* state and feasibility instead. Not yet wired into SKILL.md routing.
+
+- New `actions/roadmap.md` covering pending-feasibility classification, in-progress reporting, completed-work roll-up by UR, and a "Suggested Next Steps" punch list.
+- Explicit boundaries against `forensics`, `scan-ideas`, `clarify`, and `inspect` so routing stays clean once the action is registered.
+
 ## 0.70.0 — The Karpathy Echo (2026-05-04)
 
 Karpathy guardrails were already auto-loaded at implementation, but the principles were invisible elsewhere — specs didn't cite them, entry-point docs didn't name them, and the upstream's verifiable-goals examples never made it into our adaptation. This release surfaces the four principles across the funnel without spamming citations, and backfills the dropped content.
