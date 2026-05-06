@@ -62,22 +62,25 @@ Then stop — do not execute anything.
 ## Sub-Command: `list`
 
 1. Glob `prompts/*.md` and exclude `README.md`.
-2. For each file, read the first ~15 lines to extract:
+2. For each file, read the header (everything above the first `---`) to extract:
    - The title (first `# ` heading — strip the leading `# `)
    - The one-line description (the blockquote `> …` right under the title)
+   - The aliases (the `**Aliases:**` line, if present — strip backticks and split on commas)
 3. Render as a table:
 
 ```
 Available prompts:
 
-  NAME                                          TITLE                                    DESCRIPTION
-  architecture-decisions-log_create-or-expand   Architecture Decisions Log: Create…      Create or update a project-wide ADR log at decisions/…
+  NAME                                          ALIASES                  TITLE                                    DESCRIPTION
+  architecture-decisions-log_create-or-expand   adr, adr-log, decisions  Architecture Decisions Log: Create…      Create or update a project-wide ADR log at decisions/…
   ...
 
-Run any of them with: do-work prompts run <name>
+Run any of them with: do-work prompts run <name>  (or use any alias as <name>)
 ```
 
-Column widths can be approximate — readability beats precision. If the library is empty, say so and point the user at `prompts/README.md` for the "how to add a new prompt" section.
+Column widths can be approximate — readability beats precision. Omit the ALIASES column entirely if no prompt declares any. If the library is empty, say so and point the user at `prompts/README.md` for the "how to add a new prompt" section.
+
+**Surface alias collisions in `list` output too.** If the alias map has any duplicates, print a one-line warning above the table: `⚠ Alias collisions detected: <alias> declared in <file-a>, <file-b>. These aliases cannot be used until the conflict is resolved.`
 
 ---
 
@@ -99,9 +102,15 @@ Column widths can be approximate — readability beats precision. If the library
 
 ### Resolution rules for `<name>`
 
-1. **Exact match** on filename without `.md` extension wins. `architecture-decisions-log_create-or-expand` → `prompts/architecture-decisions-log_create-or-expand.md`.
-2. **Unambiguous prefix match** is accepted. If `<name>` is a prefix of exactly one prompt filename, use that. If it's a prefix of multiple, list the candidates and ask the user to disambiguate.
-3. **No match**: tell the user the prompt wasn't found and list available prompts (same output as `list`). Do not "helpfully" create the file.
+Try in priority order — first match wins:
+
+1. **Exact filename match** (without `.md` extension). `architecture-decisions-log_create-or-expand` → `prompts/architecture-decisions-log_create-or-expand.md`.
+2. **Exact alias match.** Build an alias map by reading each `prompts/*.md` file's header (everything above the first `---`) and parsing the `**Aliases:**` line. Aliases are backtick-quoted, comma-separated tokens — e.g. `**Aliases:** \`dca\`, \`dark-code-risk\``. Strip backticks and surrounding whitespace. If `<name>` matches exactly one alias, resolve to that prompt's filename.
+   - **Collision detection:** if the same alias is declared in more than one prompt's header, treat it as ambiguous — list the candidate filenames and ask the user to disambiguate by full filename. Never silently pick one. Surface the collision so the library can be cleaned up.
+3. **Unambiguous filename prefix match.** If `<name>` is a prefix of exactly one prompt filename, use that. If it's a prefix of multiple, list the candidates and ask the user to disambiguate.
+4. **No match:** tell the user the prompt wasn't found and list available prompts (same output as `list`). Do not "helpfully" create the file.
+
+The header parse stops at the first `---` separator, so aliases declared in the prompt body (if any) are ignored — only the header's `**Aliases:**` line counts.
 
 ---
 
@@ -158,3 +167,4 @@ If the prompt already committed and pushed its own work (like `architecture-deci
 - [ ] Unknown names trigger a "not found" message with the available-prompts list, not silent file creation
 - [ ] `do-work prompts <name>` shorthand resolves to `run <name>` when `<name>` isn't a reserved sub-command
 - [ ] Arguments after `<name>` pass through to the prompt body unchanged
+- [ ] Aliases declared in prompt headers (`**Aliases:**` line) resolve to their prompt; alias collisions across files are surfaced rather than silently picking one
