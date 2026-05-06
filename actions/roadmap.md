@@ -7,7 +7,7 @@ A planning aid, not a diagnostic. Where `forensics` looks for *broken* state (st
 ## When to Use
 
 **Use when:**
-- User asks "what's left?", "what's done?", "where are we?", "status", "queue-status", "queue status", "roadmap", "what's feasible?", "what should I work on next?"
+- User asks "what's left?", "what's done?", "where are we?", "queue-status", "roadmap", "what's feasible?", "what should I work on next?"
 - Planning a session and wanting to scope what's actionable
 - Onboarding to a project with existing `do-work/` history and wanting a lay of the land
 
@@ -77,7 +77,7 @@ For each REQ in `do-work/archive/`:
 
 - Group by `user_request` (UR-NNN) and by completion week.
 - Note any UR with all REQs completed (candidate for UR archival — surface, don't act).
-- Note `kb_status: pending` lessons that haven't been promoted (candidate for `do-work bkb triage`).
+- Note lessons with non-terminal `kb_status` and split by state — `promoted` lessons have a file staged in `<kb>/raw/inbox/` awaiting `do-work bkb triage` then `do-work bkb ingest`; `pending` lessons have no file staged (handoff was deferred or no `kb/` existed) and need the handoff to be re-run via `do-work review REQ-NNN`, possibly after `do-work bkb init`.
 - Record `tdd` posture per REQ so completed work shows whether tests went in test-first.
 
 ### Step 4: Highlight In-Progress Work
@@ -140,10 +140,19 @@ Grouped by UR or by week:
   - REQ-NNN <title> (commit: abc1234, tdd: on | off)
   - REQ-NNN <title> (commit: def5678, tdd: on | off)
 
-## Lessons Awaiting Promotion
+## Lessons Promoted (Awaiting Triage)
 
-- REQ-NNN — kb_status: pending, kb_entry: <filename or none>
-  Suggested next step: `do-work bkb triage`.
+REQs whose Lessons Learned were dropped into `<kb>/raw/inbox/` but haven't been compiled yet.
+
+- REQ-NNN — kb_status: promoted, kb_entry: <filename>
+  Suggested next step: `do-work bkb triage` to sort, then `do-work bkb ingest` to compile into the wiki.
+
+## Lessons Pending (Awaiting Handoff)
+
+REQs whose Lessons Learned were captured but never staged — either the user chose "save for later", or no `kb/` existed at handoff time. **Nothing is in the inbox**, so `bkb triage` has nothing to find.
+
+- REQ-NNN — kb_status: pending, kb_entry: none
+  Suggested next step: re-run the handoff via `do-work review REQ-NNN` (run `do-work bkb init` first if no `kb/` directory exists).
 
 ## Suggested Next Steps
 

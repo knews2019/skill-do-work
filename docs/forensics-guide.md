@@ -2,6 +2,8 @@
 
 Pipeline diagnostics — detects stuck work, hollow completions, orphaned URs, scope contamination, and other health issues. Read-only and safe to run anytime.
 
+> **Sister action:** `do-work roadmap` is the read-only survey for *intended* state — what's queued, in-progress, and feasible to pick up next. Forensics looks for *broken* state. If nothing is broken but you want to know "where are we and what's next," see `docs/roadmap-guide.md`.
+
 ## What it checks
 
 | Check | What it detects |
