@@ -14,7 +14,8 @@ sources:
   - CHANGELOG.md (0.67.0 The Open Ear)
   - CLAUDE.md
   - README.md
-  - actions/build-knowledge-base.md
+  - actions/bkb.md
+  - actions/bkb-reference.md
   - actions/capture.md
   - actions/interview.md
   - actions/interview-reference.md

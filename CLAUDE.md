@@ -30,6 +30,7 @@ actions/              # Action files (each is a standalone prompt)
   install-ui-design.md # Install the frontend-design skill for UI work
   install-bowser.md   # Install Playwright CLI + Bowser skill for browser automation
   forensics.md        # Pipeline diagnostics — stuck work, hollow completions, orphaned URs
+  roadmap.md          # Read-only queue survey — feasibility classification + TDD posture (sister action to forensics)
   prime.md             # Prime file management — create and audit AI context documents
   pipeline.md          # Full end-to-end orchestration (investigate → capture → verify → run → review → present)
   pipeline-reference.md # Companion: three Pipeline Completion Report rendering templates (markdown/Marp/HTML) + composition rules
