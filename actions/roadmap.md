@@ -120,6 +120,7 @@ Render the report per the Output Format below. Lead with the actionable section 
 **Scope:** [full | pending | in-progress | done | UR-NNN | since <date>]
 **Totals:** [N ready] · [N needs clarification] · [N blocked] · [N in-progress] · [N completed] · [N failed]
 **TDD posture (pending):** [N on] · [N eligible] · [N not applicable]
+**Lessons:** [N awaiting triage] · [N awaiting ingest] · [N processed] · [N pending handoff] · [N missing]
 
 ## Ready to Pick Up
 
@@ -200,7 +201,13 @@ REQs whose Lessons Learned were captured but never staged — either the user ch
 2. Run `do-work clarify` to drain the N pending-answers REQs.
 3. Consider enabling `tdd: true` on the N TDD-eligible REQs before they're picked up.
 4. Confirm or discard the N stale REQs with the user.
+5. Run `do-work bkb triage` then `do-work bkb ingest` for the N lessons in Awaiting Triage.
+6. Run `do-work bkb ingest` for the N lessons in Awaiting Ingest.
+7. Investigate the N File Not Found lessons — restage from the REQ or clear `kb_status` if the file was intentionally removed.
+8. Re-run the handoff via `do-work review REQ-NNN` for the N pending-handoff lessons (run `do-work bkb init` first if no `kb/` directory exists).
 ```
+
+The Suggested Next Steps list is **filtered** — emit only the items whose corresponding section had at least one entry. The numbering in the rendered report stays compact (1, 2, 3 … without gaps); the template above shows the canonical line per category.
 
 Omit sections with no entries. If the queue is empty and nothing is in-progress, report:
 
