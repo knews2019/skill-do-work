@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.72.3 — The Lesson Roll-Up (2026-05-09)
+
+The two P3 carryovers from 0.72.2's self-review. The roadmap report now surfaces lesson workload at the same altitude as REQ workload.
+
+- `actions/roadmap.md` Output Format header: added a `**Lessons:**` totals line next to the existing `**Totals:**` and `**TDD posture (pending):**` lines, rolling up all five lesson buckets (awaiting triage / awaiting ingest / processed / pending handoff / missing) at a glance.
+- `actions/roadmap.md` Suggested Next Steps: added template lines for the four actionable lesson buckets (`bkb triage` + `bkb ingest`, `bkb ingest`, investigate File Not Found, re-run handoff). The list is filtered — items only emit when their bucket has at least one REQ — so the rendered output stays compact when there's nothing to do.
+
 ## 0.72.2 — The Read-Only Honor (2026-05-09)
 
 A self-review of 0.72.1 caught four real issues in the just-shipped code: a read-only subcommand had been quietly turned into a mutator, the migration write had no error path, the work loop's exit semantics weren't explicit, and the KB lookup ignored `bkb`'s collision-prefix rule. All four fixed.
