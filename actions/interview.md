@@ -66,16 +66,7 @@ Session state lives at `./do-work/interview/<template>/session.json` in the curr
 - If `./do-work/interview/<template>/session.json` does not exist and the sub-command is bare `<template>`: create the directory structure and start a fresh session (see Step 1 below).
 - If it does not exist and the sub-command is anything else (`status`, `review`, `export`, `ingest`, `reset`, `versions`): stop with `No session found for '<template>'. Run 'do-work interview <template>' to start one.`
 
-## Session-Load Protocol
-
-Every sub-command that reads `session.json` (`<template>` resume, `status`, `review`, `export`, `ingest`) **must** run the Session-Load Protocol immediately after locating the file and before any other read. `list` and `reset` skip the protocol; `versions` enumerates archived sessions only and never inspects the current `session.json`, so it also skips.
-
-The protocol has two modes:
-
-- **persist** — applies the migration in-memory and writes the result back atomically. Used by every mutating subcommand: `<template>` resume, `review`, `export`, `ingest`.
-- **dry-run** — applies the migration in-memory only and renders a staleness notice without touching disk. Used by `status` so its read-only contract holds even when the session is stale.
-
-The full spec — mode selection rationale, all 4 steps with substeps, version placeholder conventions (`<old>` / `<old-major>` / `<new>` / `<new-major>`), multi-major migration chains, atomic write semantics, and the concrete dry-run output rendering — lives in `actions/interview-reference.md` under "Session-Load Protocol". Read it once, implement once. The per-subcommand sections below tell you which mode to invoke.
+After locating an existing `session.json`, every sub-command that reads it (`<template>` resume, `status`, `review`, `export`, `ingest`) **must** run the **Session-Load Protocol** before any other read — `list` and `reset` skip it, and `versions` only enumerates archived sessions so it skips too. The protocol has two modes: **persist** (used by mutating subcommands — applies migration in-memory and writes the result back atomically) and **dry-run** (used by `status` — applies migration in-memory only and renders a staleness notice without touching disk). Full spec — mode-selection rationale, all four steps with substeps, version placeholder conventions, multi-major migration chains, atomic write semantics, and the concrete dry-run rendering — in `actions/interview-reference.md` (Session-Load Protocol). The per-subcommand sections below tell you which mode to invoke.
 
 ---
 
@@ -148,7 +139,7 @@ Proceed to Step 3 (layer interview workflow) starting at the first layer.
 
 ### Step 2: Existing session
 
-Run the **Session-Load Protocol** (spec in `actions/interview-reference.md`) in **persist** mode to apply any pending migration. Then read `session.json` and branch on `status`:
+Run the **Session-Load Protocol** in **persist** mode to apply any pending migration. Then read `session.json` and branch on `status`:
 
 - **`status: "in_progress"`** — resume. Read `pending_layer` and proceed to Step 3 for that layer. Announce resumption briefly: "Resuming `<template>` at layer <pending_layer>. <N> of <total> layers approved so far." Do not re-show approved layers unless the user asks.
 
@@ -187,7 +178,7 @@ For each layer in the template's declared order (starting from `pending_layer`):
 
 ## Sub-Command: `<template> status`
 
-Run the **Session-Load Protocol** (spec in `actions/interview-reference.md`) in **dry-run** mode — `status` is a pure read and must not mutate session.json or CHANGELOG.md. The protocol's dry-run branch handles staleness reporting; render the status output against the in-memory migrated shape if migration was needed. Then read `session.json` and report.
+Run the **Session-Load Protocol** in **dry-run** mode — `status` is a pure read and must not mutate session.json or CHANGELOG.md. The protocol's dry-run branch handles staleness reporting; render the status output against the in-memory migrated shape if migration was needed. Then read `session.json` and report.
 
 ### Output
 
@@ -220,7 +211,7 @@ Runs the cross-layer contradiction pass. Requires all layers approved.
 
 ### Preconditions
 
-- Run the **Session-Load Protocol** (spec in `actions/interview-reference.md`) in **persist** mode before checking preconditions, so a v1.x session is migrated before its layer-approval state is inspected.
+- Run the **Session-Load Protocol** in **persist** mode before checking preconditions, so a v1.x session is migrated before its layer-approval state is inspected.
 - `session.json` exists and every declared layer has `approved: true`. If any layer is unapproved, list the pending layers and stop with: "Review requires all layers approved. Missing: <list>. Run `do-work interview <template>` to finish the interview."
 
 ### Steps
@@ -257,7 +248,7 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
 
 ### Preconditions
 
-- Run the **Session-Load Protocol** (spec in `actions/interview-reference.md`) in **persist** mode before checking preconditions or rendering — exports must always run against the current template shape, never an unmigrated v1.x layout.
+- Run the **Session-Load Protocol** in **persist** mode before checking preconditions or rendering — exports must always run against the current template shape, never an unmigrated v1.x layout.
 - Every declared layer has `approved: true`. If not, list missing layers and stop.
 - `review_completed_at != null` **AND** `review_runs >= 1`. If not, stop with: "Export requires the review pass to have run at least once. Run `do-work interview <template> review` first."
 
@@ -300,7 +291,7 @@ Copies exports into `<repo-root>/kb/raw/inbox/` with BKB-compatible frontmatter.
 
 ### Preconditions
 
-- Run the **Session-Load Protocol** (spec in `actions/interview-reference.md`) in **persist** mode before reading the session for layer-summary generation — even though ingest reads `exports/` directly for export files, the layer summaries are built from `session.json` and must use the current shape.
+- Run the **Session-Load Protocol** in **persist** mode before reading the session for layer-summary generation — even though ingest reads `exports/` directly for export files, the layer summaries are built from `session.json` and must use the current shape.
 - `./do-work/interview/<template>/exports/` exists and is non-empty. If not, stop with: "No exports found. Run `do-work interview <template> export` first."
 - `<repo-root>/kb/` exists. If not, stop with: "No knowledge base found. Run `do-work bkb init` first."
 
