@@ -205,10 +205,10 @@ Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each 
 **Queue status summary:** After reading all REQ frontmatter, categorize every REQ by status and print a summary before proceeding:
 
 ```
-Queue: N pending | N completed/done (awaiting archive) | N pending-answers
+Queue: N pending | N completed/done (awaiting archive) | N pending-answers | N blocked-archive-collision
 ```
 
-Count `completed`, `completed-with-issues`, and `done` statuses together as "completed/done (awaiting archive)." If any completed/done REQs exist in `do-work/queue/`, add:
+Count `completed`, `completed-with-issues`, and `done` statuses together as "completed/done (awaiting archive)." Count `blocked-archive-collision` separately so held duplicates don't disappear into the silence between "no pending" and "no REQs at all." If any completed/done REQs exist in `do-work/queue/`, add:
 
 ```
 ⚠ N completed REQs across M URs awaiting archive. Run `do-work cleanup` after this session.
@@ -236,6 +236,20 @@ Count `completed`, `completed-with-issues`, and `done` statuses together as "com
   Read the `user_request` frontmatter field from each completed/done REQ to determine UR grouping. List actual REQ ids, titles, and statuses so the user sees exactly what's sitting there. Then exit.
 
 - **Only `pending-answers` REQs remain (no completed/done):** Report them to the user so they can batch-review the questions via `do-work clarify`.
+
+- **Only `blocked-archive-collision` REQs remain (no pending, no completed/done, no pending-answers):** Do NOT silently exit as if the queue were empty. List each blocked REQ with its archived twin and the recovery instruction:
+
+  ```
+  No pending REQs in queue.
+
+  ⚠ N REQs held by archive-collision guard:
+    REQ-NNN — [title] (queue file: do-work/queue/REQ-NNN-slug.md)
+      already archived at <archive-path>
+      recover: rename the queue file (if this is an intentional re-do) or delete it (if it's a stale duplicate), then flip status back to `pending`
+    ...
+  ```
+
+  Read the matching archive path from each blocked REQ's frontmatter if recorded; otherwise re-run the Step 2.0 glob (`do-work/archive/**/REQ-NNN-*.md` and `do-work/archive/**/REQ-NNN.md`) to find it. Then exit.
 
 - **No REQs at all:** Report completion and exit.
 
@@ -836,6 +850,7 @@ Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
 
 - **`pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
 - **Only `pending-answers` REQs remain**: Write a **Session Checkpoint** (see below), run the cleanup action, then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do-work clarify` when ready. If completed/done REQs also exist in `do-work/queue/`, include them in the summary: `⚠ N completed REQs awaiting archive. Run do-work cleanup to archive them.` List the REQ ids, titles, and UR groupings.
+- **Only `blocked-archive-collision` REQs remain**: Write a Session Checkpoint, run cleanup, then report final summary listing each blocked REQ with its archived twin and the recovery instruction (rename the queue file for an intentional re-do, delete it for a stale duplicate, then flip status back to `pending`). Use the same listing format as the Step 1 exit branch. Mixed cases (collisions plus completed/done or pending-answers) include all relevant sections in the summary.
 - **No REQs at all**: Write a Session Checkpoint, run cleanup, report final summary and exit. If completed/done REQs exist in `do-work/queue/` (they may have been created during this session but not yet archived due to incomplete URs), include them in the summary with the same `⚠` warning and REQ listing as above.
 
 #### Context Wipe — Verified
@@ -854,7 +869,7 @@ At the end of every work session (whether all REQs completed, user stops, or ses
 ---
 session_ended: [timestamp]
 last_completed: REQ-NNN
-queue_state: [N pending, N pending-answers, N in-progress]
+queue_state: [N pending, N pending-answers, N blocked-archive-collision, N in-progress]
 reqs_processed_this_session: N
 session_depth: light | moderate | heavy
 ---
