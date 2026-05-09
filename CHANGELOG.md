@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.72.5 — The Polish Bundle (2026-05-09)
+
+The four P3 carryovers from the 0.72.2/0.72.3 self-review pass.
+
+- `actions/roadmap.md` Step 3: added a bash globstar caveat. `**` is opt-in in bash (`shopt -s globstar`, off by default) but on by default in zsh — readers running in bash without globstar get either no match or a literal-`**` match. Recommended `find` instead in that case.
+- `actions/roadmap.md` Step 3: spec'd within-branch tie resolution. When the same `kb_entry` matches multiple files in one branch (re-ingest, `HHMMSS-` collision sibling), the most recent wins — lexicographic sort on `processed/YYYY-MM-DD/`, mtime elsewhere.
+- `actions/roadmap.md` Output Format header: aligned the `**Lessons:**` line's last label with its section header — `[N missing]` is now `[N file not found]`, matching `## Lessons File Not Found` so totals roll up to readable section names.
+- `actions/interview.md` Session-Load Protocol Step 4c: spec'd the dry-run staleness notice's placement in the `status` output — blank-line separator, then the `⚠` line, no trailing blank — and showed the exact format inline.
+
 ## 0.72.4 — The Precondition Fix (2026-05-09)
 
 The Session-Load Protocol's "no migration path documented" branch was sequenced after the migration-apply step instead of before it. If a template lacked a `Migration from vX.x` section, the protocol would attempt to apply zero steps and silently bump `template_version`, corrupting the session shape, instead of bailing with the documented error message. Restructured so the precondition check runs first.
