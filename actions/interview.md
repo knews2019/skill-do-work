@@ -66,6 +66,19 @@ Session state lives at `./do-work/interview/<template>/session.json` in the curr
 - If `./do-work/interview/<template>/session.json` does not exist and the sub-command is bare `<template>`: create the directory structure and start a fresh session (see Step 1 below).
 - If it does not exist and the sub-command is anything else (`status`, `review`, `export`, `ingest`, `reset`, `versions`): stop with `No session found for '<template>'. Run 'do-work interview <template>' to start one.`
 
+## Session-Load Protocol
+
+**Every sub-command that reads `session.json` (`<template>` resume, `status`, `review`, `export`, `ingest`, `versions` — anything except `list` and `reset`) must run this protocol immediately after locating the file and before any other read.** Reset has its own re-init path and skips the protocol; `versions` reads archived sessions only and skips the protocol for those, but still runs it on the current `session.json` if it inspects one.
+
+Steps:
+
+1. Read `template_version` from `session.json`. If absent, treat as `1.x` (sessions written before this field existed).
+2. Read the current template file's frontmatter `version` field.
+3. **If the session's `template_version` is older than the current template version (or absent and the current template has a `version`):** the template's own "Migration from vX.x" section governs. Apply each documented migration step to the in-memory session, then write the migrated session back to disk with `template_version` set to the current template version. Append one line to the interview's `CHANGELOG.md`: `## <YYYY-MM-DD HH:MM> — auto-migrated session: <old> → <new>`. If the template documents no migration path for the gap, stop and tell the user: `Session was authored against template '<old>'; current template is '<new>'; no migration path documented. Run 'do-work interview <template> reset' to start fresh.`
+4. **If `template_version` matches the current template version:** continue without changes.
+
+The protocol is idempotent — a session already at the current version becomes a no-op read. Subcommands invoke it once per execution, before any logic that depends on session shape (status display, review checks, export rendering, ingest copying). Every entry point makes the same guarantee about session shape, so no subcommand can accidentally read a stale v1.x layout just because the user invoked it before re-entering the bare `<template>` resume path.
+
 ---
 
 ## Sub-Command: `list`
@@ -137,14 +150,7 @@ Proceed to Step 3 (layer interview workflow) starting at the first layer.
 
 ### Step 2: Existing session
 
-Read `session.json`. **Before branching on status, run the migration check:**
-
-1. Read `template_version` from `session.json`. If absent, treat as `1.x` (sessions written before this field existed).
-2. Read the current template file's frontmatter `version` field.
-3. If the session's `template_version` is older than the current template version (or absent and the current template has a `version`), the template's own "Migration from vX.x" section governs. Apply each documented migration step to the in-memory session, then write the migrated session back to disk with `template_version` set to the current template version. If the template documents no migration path for the gap, stop and tell the user: "Session was authored against template `<old>`; current template is `<new>`; no migration path documented. Run `do-work interview <template> reset` to start fresh."
-4. If the session's `template_version` matches the current template version, continue without changes.
-
-After migration (if any), branch on `status`:
+Run the **Session-Load Protocol** (see top of this file) to apply any pending migration. Then read `session.json` and branch on `status`:
 
 - **`status: "in_progress"`** — resume. Read `pending_layer` and proceed to Step 3 for that layer. Announce resumption briefly: "Resuming `<template>` at layer <pending_layer>. <N> of <total> layers approved so far." Do not re-show approved layers unless the user asks.
 
@@ -183,7 +189,7 @@ For each layer in the template's declared order (starting from `pending_layer`):
 
 ## Sub-Command: `<template> status`
 
-Read `session.json` and report.
+Run the **Session-Load Protocol** (see top of this file), then read `session.json` and report.
 
 ### Output
 
@@ -216,6 +222,7 @@ Runs the cross-layer contradiction pass. Requires all layers approved.
 
 ### Preconditions
 
+- Run the **Session-Load Protocol** (see top of this file) before checking preconditions, so a v1.x session is migrated before its layer-approval state is inspected.
 - `session.json` exists and every declared layer has `approved: true`. If any layer is unapproved, list the pending layers and stop with: "Review requires all layers approved. Missing: <list>. Run `do-work interview <template>` to finish the interview."
 
 ### Steps
@@ -252,6 +259,7 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
 
 ### Preconditions
 
+- Run the **Session-Load Protocol** (see top of this file) before checking preconditions or rendering — exports must always run against the current template shape, never an unmigrated v1.x layout.
 - Every declared layer has `approved: true`. If not, list missing layers and stop.
 - `review_completed_at != null` **AND** `review_runs >= 1`. If not, stop with: "Export requires the review pass to have run at least once. Run `do-work interview <template> review` first."
 
@@ -294,6 +302,7 @@ Copies exports into `<repo-root>/kb/raw/inbox/` with BKB-compatible frontmatter.
 
 ### Preconditions
 
+- Run the **Session-Load Protocol** (see top of this file) before reading the session for layer-summary generation — even though ingest reads `exports/` directly for export files, the layer summaries are built from `session.json` and must use the current shape.
 - `./do-work/interview/<template>/exports/` exists and is non-empty. If not, stop with: "No exports found. Run `do-work interview <template> export` first."
 - `<repo-root>/kb/` exists. If not, stop with: "No knowledge base found. Run `do-work bkb init` first."
 
