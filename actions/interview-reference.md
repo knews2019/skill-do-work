@@ -128,6 +128,7 @@ Session state lives at `./do-work/interview/<template>/session.json`. Full shape
 ```json
 {
   "template": "work-operating-model",
+  "template_version": "2.0.0",
   "session_id": "<uuid>",
   "started_at": "<iso>",
   "last_activity_at": "<iso>",
@@ -149,6 +150,8 @@ Session state lives at `./do-work/interview/<template>/session.json`. Full shape
 
 **Field semantics:**
 
+- `template` — the template slug (e.g., `work-operating-model`). Identifies which template authored the session; used by load-time routing.
+- `template_version` — semver string of the template the session was authored against. Read at load time to decide whether migration is needed (see the template's own "Migration from vX.x" section). Written on session creation by reading the template file's frontmatter `version` field. Sessions written before this field was introduced are absent — treat absence as `1.x` and apply the template's migration steps before continuing. Re-run modes (`fresh`, `version`, `reset`) write the current template version into the new empty session.
 - `status` — `in_progress` until every declared layer is `approved: true`; flips to `complete` on the final layer's approval write.
 - `pending_layer` — the id of the next layer to interview. `null` when `status: complete`.
 - `previous_version` — set when the session was started via `version` re-run mode; carries `v<N>` as a back-reference for comparison queries. Otherwise `null`.
@@ -225,7 +228,7 @@ When the user invokes `do-work interview <template>` and the existing `session.j
 2. Create `./do-work/interview/<template>/versions/v<N>-<YYYY-MM-DD>/`.
 3. Copy the current `session.json`, the `checkpoints/` directory, and the `exports/` directory into that version folder.
 4. Delete the working `checkpoints/` and `exports/` contents (the versioned copy is now the only archive).
-5. Write a new empty `session.json` — fresh `session_id`, `started_at: <now>`, `last_activity_at: <now>`, `status: in_progress`, `pending_layer: <first-layer-id>`, `previous_version: null`, `review_completed_at: null`, `review_runs: 0`, `last_exported_at: null`, `layers: {}`.
+5. Write a new empty `session.json` — fresh `session_id`, `template: <slug>`, `template_version: <current template version>` (read from the template file's frontmatter `version` field), `started_at: <now>`, `last_activity_at: <now>`, `status: in_progress`, `pending_layer: <first-layer-id>`, `previous_version: null`, `review_completed_at: null`, `review_runs: 0`, `last_exported_at: null`, `layers: {}`.
 6. Append to `CHANGELOG.md`:
    ```
    ## <YYYY-MM-DD HH:MM> — fresh start: archived as v<N>
@@ -267,7 +270,7 @@ When the user invokes `do-work interview <template>` and the existing `session.j
 **Steps:**
 1. Determine next version number `<N>` and archive as in `fresh` (copy session + checkpoints + exports into `versions/v<N>-<YYYY-MM-DD>/`).
 2. Clear the working `checkpoints/` and `exports/`.
-3. Write a new empty `session.json` — same shape as `fresh` (including `last_activity_at: <now>`), except `previous_version: "v<N>"`.
+3. Write a new empty `session.json` — same shape as `fresh` (including `template_version: <current template version>` and `last_activity_at: <now>`), except `previous_version: "v<N>"`.
 4. Append to `CHANGELOG.md`:
    ```
    ## <YYYY-MM-DD HH:MM> — versioned: archived as v<N>, new session seeded

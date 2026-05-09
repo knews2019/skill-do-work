@@ -115,6 +115,7 @@ Initial `session.json`:
 ```json
 {
   "template": "<template>",
+  "template_version": "<current template version>",
   "session_id": "<uuid>",
   "started_at": "<iso>",
   "last_activity_at": "<iso>",
@@ -128,13 +129,22 @@ Initial `session.json`:
 }
 ```
 
+Read `template_version` from the template file's frontmatter `version` field (e.g., `2.0.0` for `interviews/work-operating-model.md`). If the template has no `version` field, write `"template_version": null` and continue — older templates predate the field.
+
 Write a header line to `CHANGELOG.md`: `# Interview CHANGELOG — <template>` followed by a blank line.
 
 Proceed to Step 3 (layer interview workflow) starting at the first layer.
 
 ### Step 2: Existing session
 
-Read `session.json`. Branch on `status`:
+Read `session.json`. **Before branching on status, run the migration check:**
+
+1. Read `template_version` from `session.json`. If absent, treat as `1.x` (sessions written before this field existed).
+2. Read the current template file's frontmatter `version` field.
+3. If the session's `template_version` is older than the current template version (or absent and the current template has a `version`), the template's own "Migration from vX.x" section governs. Apply each documented migration step to the in-memory session, then write the migrated session back to disk with `template_version` set to the current template version. If the template documents no migration path for the gap, stop and tell the user: "Session was authored against template `<old>`; current template is `<new>`; no migration path documented. Run `do-work interview <template> reset` to start fresh."
+4. If the session's `template_version` matches the current template version, continue without changes.
+
+After migration (if any), branch on `status`:
 
 - **`status: "in_progress"`** — resume. Read `pending_layer` and proceed to Step 3 for that layer. Announce resumption briefly: "Resuming `<template>` at layer <pending_layer>. <N> of <total> layers approved so far." Do not re-show approved layers unless the user asks.
 

@@ -47,13 +47,13 @@ Two breaking shape changes since v1.0.0:
 - `details.interruptions` — was `list[string]`, now `list[{source: string, priority: "low" | "medium" | "high"}]`. Required because `HEARTBEAT.md`'s "What to ignore" section draws from `low`-priority entries.
 - `details.time_windows` — gained a required `days` field (`list` of weekday abbreviations from `Mon … Sun`). Required so `schedule-recommendations.json` can emit `days` without inventing data.
 
-In-flight v1.x sessions will fail validation against v2.0. To migrate a v1.x `session.json` by hand:
+In-flight v1.x sessions will fail validation against v2.0. The `actions/interview.md` Step 2 migration check runs these steps automatically when it sees a session whose `template_version` is missing or older than `2.0.0`:
 
-1. For each `operating_rhythms` entry's `details.interruptions`, replace each string `"<source>"` with `{"source": "<source>", "priority": "medium"}` (use `"medium"` as a safe default; revisit during the next `review` pass).
+1. For each `operating_rhythms` entry's `details.interruptions`, replace each string `"<source>"` with `{"source": "<source>", "priority": "medium"}` (use `"medium"` as a safe default; the user revisits during the next `review` pass).
 2. For each `details.time_windows` entry, add `"days": ["Mon", "Tue", "Wed", "Thu", "Fri"]` (or the actual days the window applies). Without `days`, the export will refuse.
-3. Bump `template_version` in `session.json` to `2.0.0`.
+3. Set `template_version` in `session.json` to `2.0.0`.
 
-If you'd rather start fresh, run `do-work interview work-operating-model reset` and re-elicit. Sessions stamped `2.0.0` or higher load without migration.
+Sessions stamped `2.0.0` or higher load without migration. If a hand migration is preferred, the same three steps applied directly to `./do-work/interview/work-operating-model/session.json` produce an equivalent state — the action treats hand-migrated sessions and auto-migrated sessions identically once `template_version: 2.0.0` is recorded. To skip migration entirely and re-elicit from scratch, run `do-work interview work-operating-model reset`.
 
 ## Layer 1: Operating Rhythms
 
