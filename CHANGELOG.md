@@ -4,6 +4,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.73.1 — The Convention Match (2026-05-09)
+
+The two editorial polish items from the 0.73.0 review pass. Both align the just-extracted Session-Load Protocol references with the conventions the rest of the file already uses for extracted heavy content.
+
+- `actions/interview.md`: dropped the standalone `## Session-Load Protocol` heading and folded the stub into "Locating the Session" as a follow-on paragraph. The other heavy content extracted to interview-reference.md (Template File Format, Canonical Entry Contract, Checkpoint File Format, Re-run Modes, Versioning Scheme, Ingest File Mapping, Export Schemas, Mid-layer Recovery) doesn't get parallel `##` headings in the action file — they're referenced inline. The new paragraph names the protocol, lists its two modes, and points to the reference, all inside the existing session-location section.
+- `actions/interview.md`: the per-subcommand pointers no longer repeat the protocol's location on every invocation. The first mention in "Locating the Session" establishes where to find the spec; the per-subcommand calls just say "Run the **Session-Load Protocol** in **persist** mode" without re-pointing. Drops a doubled "Session-Load Protocol" phrase that read awkwardly.
+
 ## 0.73.0 — The Protocol Move (2026-05-09)
 
 The Session-Load Protocol grew to ~50 lines of dense spec across seven patches in 0.72.x. That's the kind of heavy content `actions/interview-reference.md` is for per ADR-001, so the protocol moved there.
