@@ -12,7 +12,11 @@ do-work prompts run <name> [args]  # execute the prompt
 do-work prompts <name> [args]      # shorthand for run
 ```
 
-Resolution rules: `<name>` matches the filename without the `.md` extension. Exact match wins; otherwise a single unambiguous prefix match is accepted.
+Resolution rules (in order):
+
+1. **Exact filename match.** `<name>` matches a `prompts/*.md` filename without the `.md` extension.
+2. **Exact alias match.** `<name>` matches a backtick-quoted token on a prompt header's `**Aliases:**` line. The "Available prompts" table below lists these per prompt — e.g., `adr`, `adr-log`, `decisions` for the ADR-log prompt. If the same alias is declared in two prompt headers, the dispatcher surfaces the collision and asks the user to disambiguate by full filename rather than silently picking one.
+3. **Unambiguous prefix match.** A prefix that matches exactly one filename is accepted; ambiguous prefixes are rejected.
 
 **How a prompt file is shaped:**
 
