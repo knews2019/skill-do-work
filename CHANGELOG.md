@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.72.1 — The Follow-On Four (2026-05-09)
+
+A second-round review caught four follow-on bugs from 0.72.0. Two were narrow scoping mistakes (migration check only on one entry point, exit branches that excluded mixed cases), two were paths I didn't follow deep enough into bkb's directory layout. All four fixed.
+
+- `actions/interview.md`: hoisted the v1→v2 migration into a shared **Session-Load Protocol** at the top of the action. Every subcommand that reads `session.json` (`<template>` resume, `status`, `review`, `export`, `ingest`) now invokes it before any other read, so an updated v1.x session can't bypass migration by entering through a non-bare subcommand. Step 2 now references the protocol instead of duplicating it.
+- `actions/work.md`: Step 1's exit paths and Step 10's loop-or-exit are now **composed from sections** (completed/done, pending-answers, blocked-archive-collision) rather than disjoint "only X" branches. A queue with pending-answers + blocked-archive-collision (the gap the reviewer found) now renders both sections in one report instead of falling through into "no REQs at all."
+- `actions/roadmap.md` Step 3: `kb_entry` lookup is now **recursive** under each `<kb>/raw/` branch. The previous top-level glob missed `raw/capture/<type>/` (triage's type subdirs) and `raw/processed/YYYY-MM-DD/` (ingest's date subdirs) — exactly the cases the new buckets were added to handle. Spelled out as `find <kb>/raw/<branch> -name <kb_entry>` with equivalent recursive globs.
+- `actions/roadmap.md` Output Format: added rendering sections for the new buckets — **Lessons Promoted (Awaiting Ingest)**, **Lessons Processed (Terminal)**, **Lessons File Not Found** — so a `kb_entry` in `raw/capture/` or `raw/processed/` lands in the right section with the right next-step suggestion (`bkb ingest` for capture, no action for processed, investigate for missing) instead of falling back to the awaiting-triage section.
+
 ## 0.72.0 — The Five Patches (2026-05-09)
 
 A review pass turned up five issues across capture, work, roadmap, the interview action, and the prompt-library README. All accepted, all fixed in one batch. The schema addition to interview sessions (a `template_version` field) is what bumps this to a minor.
