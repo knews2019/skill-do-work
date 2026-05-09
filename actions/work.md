@@ -220,38 +220,42 @@ Count `completed`, `completed-with-issues`, and `done` statuses together as "com
 
 **Exit paths when no `pending` REQs found:**
 
-- **Completed/done REQs exist in `do-work/queue/`:** Do NOT silently say "no pending REQs." Instead, list them grouped by UR:
+The exit report is **composed**, not picked from disjoint branches. Whenever no `pending` REQs are found, lead with `No pending REQs in queue.` and then append every section that has at least one REQ. Three sections may apply, in this order:
 
-  ```
-  No pending REQs in queue.
+1. **Completed/done section** — applies if any REQ in `do-work/queue/` has status `completed`, `completed-with-issues`, or `done`. Read the `user_request` frontmatter field from each to group by UR. Render:
 
-  ⚠ N completed REQs awaiting archive (UR-137: 3 REQs, UR-138: 1 REQ, ...):
-    REQ-351 — [title] (done)
-    REQ-352 — [title] (completed)
-    ...
+   ```
+   ⚠ N completed REQs awaiting archive (UR-137: 3 REQs, UR-138: 1 REQ, ...):
+     REQ-351 — [title] (done)
+     REQ-352 — [title] (completed)
+     ...
 
-  Run `do-work cleanup` to archive completed work, then `do-work recap` to see full history.
-  ```
+   Run `do-work cleanup` to archive completed work, then `do-work recap` to see full history.
+   ```
 
-  Read the `user_request` frontmatter field from each completed/done REQ to determine UR grouping. List actual REQ ids, titles, and statuses so the user sees exactly what's sitting there. Then exit.
+2. **Pending-answers section** — applies if any REQ has status `pending-answers`. Render:
 
-- **Only `pending-answers` REQs remain (no completed/done):** Report them to the user so they can batch-review the questions via `do-work clarify`.
+   ```
+   ⚠ N REQs awaiting clarification:
+     REQ-NNN — [title] (pending-answers — [N] open questions)
+     ...
 
-- **Only `blocked-archive-collision` REQs remain (no pending, no completed/done, no pending-answers):** Do NOT silently exit as if the queue were empty. List each blocked REQ with its archived twin and the recovery instruction:
+   Run `do-work clarify` to batch-review the open questions; resolved REQs flip to `pending` and re-enter the queue.
+   ```
 
-  ```
-  No pending REQs in queue.
+3. **Blocked-archive-collision section** — applies if any REQ has status `blocked-archive-collision`. Read the matching archive path from each blocked REQ's frontmatter if recorded; otherwise re-run the Step 2.0 glob (`do-work/archive/**/REQ-NNN-*.md` and `do-work/archive/**/REQ-NNN.md`) to find it. Render:
 
-  ⚠ N REQs held by archive-collision guard:
-    REQ-NNN — [title] (queue file: do-work/queue/REQ-NNN-slug.md)
-      already archived at <archive-path>
-      recover: rename the queue file (if this is an intentional re-do) or delete it (if it's a stale duplicate), then flip status back to `pending`
-    ...
-  ```
+   ```
+   ⚠ N REQs held by archive-collision guard:
+     REQ-NNN — [title] (queue file: do-work/queue/REQ-NNN-slug.md)
+       already archived at <archive-path>
+       recover: rename the queue file (if this is an intentional re-do) or delete it (if it's a stale duplicate), then flip status back to `pending`
+     ...
+   ```
 
-  Read the matching archive path from each blocked REQ's frontmatter if recorded; otherwise re-run the Step 2.0 glob (`do-work/archive/**/REQ-NNN-*.md` and `do-work/archive/**/REQ-NNN.md`) to find it. Then exit.
+If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any of the three sections applies — every non-pending REQ in the queue is something the user needs to see.
 
-- **No REQs at all:** Report completion and exit.
+**Composition is deliberate.** A queue with both `pending-answers` and `blocked-archive-collision` REQs (and no completed/done) renders both sections back-to-back. A queue with all three categories renders all three. The user sees the full picture in one report instead of a single branch's slice.
 
 **REQ validation:** When reading each REQ's frontmatter, verify it has the required fields (`id`, `status`, `title`). If a REQ file has missing or unparseable frontmatter, skip it and report: `⚠ Skipping [filename]: missing required frontmatter ([field]).` Do not let a single malformed REQ block the entire work loop — skip it and continue to the next.
 
@@ -849,9 +853,7 @@ This ensures the `commit:` field in the archived REQ contains the real implement
 Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
 
 - **`pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
-- **Only `pending-answers` REQs remain**: Write a **Session Checkpoint** (see below), run the cleanup action, then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do-work clarify` when ready. If completed/done REQs also exist in `do-work/queue/`, include them in the summary: `⚠ N completed REQs awaiting archive. Run do-work cleanup to archive them.` List the REQ ids, titles, and UR groupings.
-- **Only `blocked-archive-collision` REQs remain**: Write a Session Checkpoint, run cleanup, then report final summary listing each blocked REQ with its archived twin and the recovery instruction (rename the queue file for an intentional re-do, delete it for a stale duplicate, then flip status back to `pending`). Use the same listing format as the Step 1 exit branch. Mixed cases (collisions plus completed/done or pending-answers) include all relevant sections in the summary.
-- **No REQs at all**: Write a Session Checkpoint, run cleanup, report final summary and exit. If completed/done REQs exist in `do-work/queue/` (they may have been created during this session but not yet archived due to incomplete URs), include them in the summary with the same `⚠` warning and REQ listing as above.
+- **No `pending` REQs remain**: Write a **Session Checkpoint** (see below), run the cleanup action, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, and the blocked-archive-collision section in that order, including only those that have at least one REQ. If none of the three sections applies (queue is fully empty), report completion and exit. Mixed cases (e.g., pending-answers + blocked-archive-collision, or all three) render all applicable sections in one summary.
 
 #### Context Wipe — Verified
 
