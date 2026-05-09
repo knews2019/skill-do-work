@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.72.7 — The Semver Honor (2026-05-09)
+
+Two real correctness bugs from the 0.72.6 review pass plus an editorial cleanup. Both bugs would have fired on every minor or patch template bump, so worth the patch.
+
+- `actions/interview.md` Session-Load Protocol Step 4b: dropped the stray leading `v` from the bump expression. The previous text said "bump the in-memory `template_version` to `v<old-major+1>.0.0`" — but the `template_version` field is a bare semver string per `actions/interview-reference.md`'s schema. Implementations writing `v2.0.0` into the field would break version comparison on the next protocol run.
+- `actions/interview.md` Session-Load Protocol Step 3: same-major older versions (e.g., session `2.3.0` against template `2.5.0`) now short-circuit to a stamp-only path instead of falling through to Step 4. Semver minor/patch bumps are non-breaking by contract, so applying a `Migration from v2.x` section to a same-major upgrade would corrupt rather than migrate. Step 4 now triggers only on cross-major drift, which is what the chain logic was designed for.
+- `actions/interview.md` Session-Load Protocol Step 4 header: dropped the backslash-escaped angle brackets (`v\<major\>.x` → `v<major>.x`) so the placeholder convention matches the rest of the section.
+
 ## 0.72.6 — The Spec Sharpening (2026-05-09)
 
 The four review carryovers from the 0.72.4/0.72.5 review pass. The standout was a real spec ambiguity in the migration protocol — `<old>` was used to mean both "full version string" (for messages) and "major-version component" (for section lookup). Two implementations following the spec literally would diverge.
