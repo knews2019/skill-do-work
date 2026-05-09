@@ -77,7 +77,14 @@ For each REQ in `do-work/archive/`:
 
 - Group by `user_request` (UR-NNN) and by completion week.
 - Note any UR with all REQs completed (candidate for UR archival — surface, don't act).
-- Note lessons with non-terminal `kb_status` and split by state — `promoted` lessons have a file staged in `<kb>/raw/inbox/` awaiting `do-work bkb triage` then `do-work bkb ingest`; `pending` lessons have no file staged (handoff was deferred or no `kb/` existed) and need the handoff to be re-run via `do-work review REQ-NNN`, possibly after `do-work bkb init`.
+- Note lessons with non-terminal `kb_status` and split by state. Critical: `kb_status: promoted` is a one-way stamp written when the handoff dropped a file into `raw/inbox/` — it does **not** mean the file is still there. The `kb_entry` filename survives bkb's later moves through `raw/capture/` and `raw/processed/` (per the handoff contract in CLAUDE.md), so the REQ keeps `kb_status: promoted` even after triage and ingest. To bucket correctly, glob for `kb_entry` across `<kb>/raw/inbox/`, `<kb>/raw/capture/`, and `<kb>/raw/processed/`:
+  - **Promoted, awaiting triage** — `kb_entry` found in `<kb>/raw/inbox/`. Surface as needing `do-work bkb triage` then `do-work bkb ingest`.
+  - **Promoted, mid-pipeline** — `kb_entry` found in `<kb>/raw/capture/`. Surface as needing `do-work bkb ingest`.
+  - **Promoted, processed** — `kb_entry` found in `<kb>/raw/processed/`. Terminal for roadmap purposes; report as completed alongside the REQ but do not surface as actionable.
+  - **Promoted, file not found** — `kb_entry` matches no path in any of the three directories. Surface as a data inconsistency (the file may have been deleted or `kb/` may have moved); do not silently treat as awaiting triage.
+  - **Pending** — `kb_status: pending`. No file was staged (handoff was deferred or no `kb/` existed). Needs the handoff to be re-run via `do-work review REQ-NNN`, possibly after `do-work bkb init`.
+
+  If `<kb>/` itself doesn't exist in the project, skip the location check and report all `promoted` REQs together with a single line noting the missing KB root.
 - Record `tdd` posture per REQ so completed work shows whether tests went in test-first.
 
 ### Step 4: Highlight In-Progress Work
