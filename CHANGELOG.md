@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.72.2 — The Read-Only Honor (2026-05-09)
+
+A self-review of 0.72.1 caught four real issues in the just-shipped code: a read-only subcommand had been quietly turned into a mutator, the migration write had no error path, the work loop's exit semantics weren't explicit, and the KB lookup ignored `bkb`'s collision-prefix rule. All four fixed.
+
+- `actions/interview.md`: split the Session-Load Protocol into **persist** and **dry-run** modes. `status` now uses dry-run — migration happens in-memory only, no `session.json` write, no `CHANGELOG.md` append, and the output gets a one-line staleness notice instead. Mutating subcommands (`<template>` resume, `review`, `export`, `ingest`) keep the persist mode but now use atomic write-then-rename and abort the calling subcommand on write failure rather than silently leaving an inconsistent on-disk state. Dropped the misleading `versions` reference from the protocol's enumeration.
+- `actions/work.md`: Step 1's composed exit path now states explicitly "After rendering all applicable sections, exit the work loop" so an agent reading strictly doesn't fall through to Step 2.0 after rendering. The pending-answers section dropped the `[N] open questions` count — Step 1 only reads frontmatter, so the count would have required reaching into REQ bodies. The count belongs to `do-work clarify`, where it lives now.
+- `actions/roadmap.md` Step 3: the recursive `kb_entry` lookup now also matches `HHMMSS-<kb_entry>` (bkb's collision-prefix rule from `bkb.md` Step 6 of ingest), so collision-renamed files surface in the right bucket instead of dropping into "File Not Found." Added an explicit resolution rule for multi-branch matches: later in the pipeline wins (`processed` > `capture` > `inbox`), so a single REQ never appears in two lesson sections.
+
 ## 0.72.1 — The Follow-On Four (2026-05-09)
 
 A second-round review caught four follow-on bugs from 0.72.0. Two were narrow scoping mistakes (migration check only on one entry point, exit branches that excluded mixed cases), two were paths I didn't follow deep enough into bkb's directory layout. All four fixed.
