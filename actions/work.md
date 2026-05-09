@@ -233,11 +233,11 @@ The exit report is **composed**, not picked from disjoint branches. Whenever no 
    Run `do-work cleanup` to archive completed work, then `do-work recap` to see full history.
    ```
 
-2. **Pending-answers section** — applies if any REQ has status `pending-answers`. Render:
+2. **Pending-answers section** — applies if any REQ has status `pending-answers`. Render from frontmatter only — do not open the REQ body to count `## Open Questions` items at this stage (Step 1 reads frontmatter per the queue scan). The count is deferred to `do-work clarify`, which is the action that reads Open Questions sections:
 
    ```
    ⚠ N REQs awaiting clarification:
-     REQ-NNN — [title] (pending-answers — [N] open questions)
+     REQ-NNN — [title] (pending-answers)
      ...
 
    Run `do-work clarify` to batch-review the open questions; resolved REQs flip to `pending` and re-enter the queue.
@@ -252,6 +252,8 @@ The exit report is **composed**, not picked from disjoint branches. Whenever no 
        recover: rename the queue file (if this is an intentional re-do) or delete it (if it's a stale duplicate), then flip status back to `pending`
      ...
    ```
+
+**After rendering all applicable sections, exit the work loop** — do not proceed to Step 2.0 or beyond. There is no `pending` REQ to claim. Step 1's contract on the no-pending path is "render the composed summary, then stop"; the only path that continues is the one where Step 1 finds at least one `pending` REQ.
 
 If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any of the three sections applies — every non-pending REQ in the queue is something the user needs to see.
 
