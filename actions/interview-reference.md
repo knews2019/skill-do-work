@@ -164,6 +164,69 @@ Session state lives at `./do-work/interview/<template>/session.json`. Full shape
 
 ---
 
+## Session-Load Protocol
+
+**Every sub-command that reads `session.json` (`<template>` resume, `status`, `review`, `export`, `ingest`) must run this protocol immediately after locating the file and before any other read.** `list` and `reset` skip the protocol; `versions` enumerates archived sessions only and never inspects the current `session.json`, so it also skips. The protocol has two modes — pick the one that matches the calling subcommand's contract.
+
+### Mode selection
+
+| Subcommand | Mode | Why |
+|---|---|---|
+| `<template>` (resume) | **persist** | Lifecycle subcommand; mutating session.json is in scope. |
+| `review` | **persist** | Already mutates `review_completed_at` / `review_runs`; migration on entry is in scope. |
+| `export` | **persist** | Already writes `last_exported_at`; migration on entry is in scope. |
+| `ingest` | **persist** | Reads layer state to write summaries; persisting the migrated shape avoids re-migrating on every subsequent run. |
+| `status` | **dry-run** | Documented contract is "read and report" with zero side effects. Migration in-memory only; no disk writes, no CHANGELOG entry. |
+
+### Steps (both modes)
+
+1. Read `template_version` from `session.json`. If absent, treat as `1.x` (sessions written before this field existed).
+2. Read the current template file's frontmatter `version` field.
+3. **If the session's `template_version` matches the current template version, OR shares the same major version with it (e.g., session `2.3.0`, current `2.5.0`):** no migration is needed — semver minor/patch bumps are non-breaking by contract, so the session's shape is already current. If the versions are exactly equal, continue without changes (the protocol is a no-op read). If they share a major but differ on minor/patch, **stamp the in-memory `template_version` to the current template's full version string** and treat the result as up-to-date. In **persist mode**, write the stamped session back to disk atomically per 4c's persist rules (atomic temp-write + rename, abort the calling subcommand on write failure) and continue. In **dry-run mode**, skip both the disk write and the staleness notice — there is nothing for a future mutating subcommand to migrate, only a stale stamp.
+4. **If the session's `template_version` is older AND the major version differs from the current template's major** (or absent and the current template has a `version`): the template's own "Migration from v<major>.x" sections govern. Run substeps 4a → 4b → 4c in order.
+
+   **Placeholder conventions used in 4a–4c:**
+   - `<old>` — the session's full version string (e.g., `1.5.2`). Used in user-facing messages.
+   - `<old-major>` — the major-version component of `<old>` (e.g., `1` for `1.5.2`). Used to look up migration sections, since one section per major covers the entire major-version range.
+   - `<new>` — the current template's full version string (e.g., `2.0.0`). Used in user-facing messages.
+   - `<new-major>` — the major-version component of `<new>`.
+
+   - **4a. Verify a migration path exists.** Look for a `## Migration from v<old-major>.x` section in the template file (e.g., `## Migration from v1.x` for any session at `1.0.0`, `1.4.7`, etc., when migrating to a `2.x.x` template). **If no matching section is documented**, stop in either mode with `Session was authored against template '<old>'; current template is '<new>'; no migration path documented. Run 'do-work interview <template> reset' to start fresh.` Do not bump `template_version`. Do not write `session.json`. The migration write in 4c is gated on this check passing.
+
+     **Multi-major gaps:** if `<old-major>` and `<new-major>` are more than one apart (e.g., session at `1.x` against a `3.x` template), 4a must verify that **every** intermediate `## Migration from v<i>.x` section exists for `<i>` in `<old-major>`, `<old-major>+1`, …, `<new-major>-1`. Each step migrates the session one major version forward, so the chain is `v1.x → v2.x → v3.x` not `v1.x → v3.x` directly. If any link in the chain is missing, treat the path as undocumented and bail with the same error message above. Template authors who want to skip an intermediate major must still write a passthrough `Migration from v<i>.x` section that documents "no schema change in this jump" rather than omitting it.
+
+   - **4b. Apply migration steps.** Walk each documented migration step in the matching section and apply it to the in-memory session, then bump the in-memory `template_version` to `<old-major+1>.0.0` — **bare semver, no leading `v`**. The `v` prefix is a Markdown convention for section headers (`## Migration from v1.x`); it does not appear in the field value, which the schema above declares as a bare semver string (`"template_version": "2.0.0"`). For multi-major gaps, repeat 4a's section lookup and 4b's apply for each link in the chain — the session's effective `<old-major>` advances by one each pass, until it reaches `<new-major>`. After the last chain pass, replace the in-memory `template_version` with the current template's full version string (so `2.0.0` becomes `2.5.2` if that's the template's current minor/patch).
+   - **4c. Persist or report.** Mode-dependent:
+     - **persist mode:** write the migrated session back to disk **atomically** — write to `session.json.tmp` in the same directory, fsync, then rename over `session.json`. If the temp write or rename fails, leave the on-disk file untouched, abort the calling subcommand with `Migration write failed: <error>. Session left at v<old>; rerun once the underlying issue (disk space / permissions / locked file) is resolved.`, and do **not** proceed with the subcommand's logic. On success, append one line to the interview's `CHANGELOG.md`: `## <YYYY-MM-DD HH:MM> — auto-migrated session: <old> → <new>`. If the CHANGELOG append fails, the migration itself stays — just report the changelog failure as a warning and continue.
+     - **dry-run mode:** keep the migrated session in-memory only. Do not write `session.json`. Do not append to `CHANGELOG.md`. The caller (e.g., `status`) renders its normal output against the in-memory migrated shape, then appends the staleness notice as a separate stanza: one blank line, then the `⚠` line, then no trailing blank. Concrete rendering for a v1.0.0 session viewed by `status` against a v2.0.0 template:
+
+       ```
+       Interview status — work-operating-model
+
+         Started:       2026-04-01T10:00:00Z
+         Last activity: 2026-05-01T15:30:00Z
+         Status:        in_progress
+         Progress:      3 of 5 layers approved
+
+         Layers:
+           [x] operating_rhythms       approved 2026-04-02T11:00:00Z  (4 entries)
+           [x] recurring_decisions     approved 2026-04-09T14:20:00Z  (3 entries)
+           [x] dependencies            approved 2026-04-16T09:45:00Z  (5 entries)
+           [ ] institutional_knowledge pending
+           [ ] friction                pending
+
+         Review: 0 pass(es), last completed never
+         Previous version: none
+
+       ⚠ Session is at template_version 1.0.0; current template is 2.0.0. Migration will run on the next mutating subcommand (review, export, ingest, or resume).
+       ```
+
+       The `⚠` line replaces `<old>` with the session's full version and `<new>` with the current template's full version. This keeps `status` a pure read while still surfacing the staleness so the user knows what's coming.
+
+The protocol is idempotent — a session already at the current version becomes a no-op read. Subcommands invoke it once per execution, before any logic that depends on session shape (status display, review checks, export rendering, ingest copying). The persist/dry-run split keeps every entry point honest about its surface contract: read-only stays read-only, mutating subcommands handle migration on entry.
+
+---
+
 ## Checkpoint File Format
 
 After the Interviewer finishes asking a layer's questions and drafts canonical entries, it writes `./do-work/interview/<template>/checkpoints/<layer-id>.md` and presents it to the user in-chat for explicit approval. One file per layer. Checkpoints are transient approval artifacts — they are overwritten on re-run or revision; the authoritative record is `session.json`.
