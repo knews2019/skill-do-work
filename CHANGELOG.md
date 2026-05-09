@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.72.4 — The Precondition Fix (2026-05-09)
+
+The Session-Load Protocol's "no migration path documented" branch was sequenced after the migration-apply step instead of before it. If a template lacked a `Migration from vX.x` section, the protocol would attempt to apply zero steps and silently bump `template_version`, corrupting the session shape, instead of bailing with the documented error message. Restructured so the precondition check runs first.
+
+- `actions/interview.md` Session-Load Protocol Step 4: split into 4a (verify a migration path exists; abort with the documented error if not), 4b (apply migration steps), 4c (persist or report). The previous Step 5 is now Step 4a — it gates Step 4b instead of being a never-fires fallback after it.
+
 ## 0.72.3 — The Lesson Roll-Up (2026-05-09)
 
 The two P3 carryovers from 0.72.2's self-review. The roadmap report now surfaces lesson workload at the same altitude as REQ workload.
