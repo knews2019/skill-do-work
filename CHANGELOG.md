@@ -4,6 +4,23 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.72.0 — The Five Patches (2026-05-09)
+
+A review pass turned up five issues across capture, work, roadmap, the interview action, and the prompt-library README. All accepted, all fixed in one batch. The schema addition to interview sessions (a `template_version` field) is what bumps this to a minor.
+
+- `actions/capture.md`: tightened the new TDD-on heuristic. `tdd: true` now requires that a *runnable* failing test can realistically be written first in the project's existing harness — not just a describable RED case. Manual/prompt-only proofs go in `## Red-Green Proof` with `tdd: false` instead, so capture stops creating REQs the work loop's mandatory test-first gate can't complete.
+- `actions/work.md`: queue summary, Step 1 exit branches, and Step 10 loop-or-exit now account for `blocked-archive-collision`. Held duplicates are listed with their archived twin and a recovery instruction instead of disappearing into the silence between "no pending" and "no REQs at all."
+- `actions/roadmap.md` Step 3: `kb_status: promoted` is a one-way stamp — the file moves through `raw/inbox/` → `raw/capture/` → `raw/processed/`. Roadmap now globs `kb_entry` across all three locations and buckets accordingly (awaiting triage / mid-pipeline / processed / not-found), so already-processed lessons stop showing up as actionable.
+- `actions/interview-reference.md` + `actions/interview.md` + `interviews/work-operating-model.md`: added `template_version` to the `session.json` schema, the new-session write path (Step 1), all three re-run modes (`fresh`, `version`, plus the `update` shape via reference), and a new Step 2 migration check that auto-runs the template's documented "Migration from vX.x" steps. The work-operating-model migration text is now actionable instead of pointing at a phantom field.
+- `prompts/README.md`: documented the exact-alias resolution tier the dispatcher already supports, so users can actually invoke aliases like `adr` / `adr-log` / `decisions` from the README's instructions.
+
+## 0.71.2 — The TDD Default (2026-05-09)
+
+Capture now defaults `tdd: true` instead of `tdd: false`. Most behavior-changing work benefits from a RED/GREEN cycle, so the bar is now "turn it off when it doesn't fit" rather than "turn it on when it clearly applies."
+
+- `actions/capture.md` Step 1 TDD assessment: flipped default to true and rewrote the heuristic. Lists the narrow set where `tdd: false` is reasonable (pure styling/layout, copy/content, config bumps, doc-only, explicit throwaway spikes, no definable RED state).
+- `actions/capture.md` Simple REQ frontmatter: `tdd: true` with a comment that flipping it off needs a real reason.
+
 ## 0.71.1 — The Deferred Link (2026-05-07)
 
 The work action used to write prime-file lessons links from Step 7.5 — before Step 8 actually moved the REQ to its archive path, so the existence-verify either failed or the agent linked to the transient `working/` location. And nothing stopped a duplicate queue file from being silently re-processed when its twin was already archived. Both fixed.
