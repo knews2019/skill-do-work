@@ -77,11 +77,21 @@ For each REQ in `do-work/archive/`:
 
 - Group by `user_request` (UR-NNN) and by completion week.
 - Note any UR with all REQs completed (candidate for UR archival — surface, don't act).
-- Note lessons with non-terminal `kb_status` and split by state. Critical: `kb_status: promoted` is a one-way stamp written when the handoff dropped a file into `raw/inbox/` — it does **not** mean the file is still there. The `kb_entry` filename survives bkb's later moves through `raw/capture/` and `raw/processed/` (per the handoff contract in CLAUDE.md), so the REQ keeps `kb_status: promoted` even after triage and ingest. To bucket correctly, glob for `kb_entry` across `<kb>/raw/inbox/`, `<kb>/raw/capture/`, and `<kb>/raw/processed/`:
-  - **Promoted, awaiting triage** — `kb_entry` found in `<kb>/raw/inbox/`. Surface as needing `do-work bkb triage` then `do-work bkb ingest`.
-  - **Promoted, mid-pipeline** — `kb_entry` found in `<kb>/raw/capture/`. Surface as needing `do-work bkb ingest`.
-  - **Promoted, processed** — `kb_entry` found in `<kb>/raw/processed/`. Terminal for roadmap purposes; report as completed alongside the REQ but do not surface as actionable.
-  - **Promoted, file not found** — `kb_entry` matches no path in any of the three directories. Surface as a data inconsistency (the file may have been deleted or `kb/` may have moved); do not silently treat as awaiting triage.
+- Note lessons with non-terminal `kb_status` and split by state. Critical: `kb_status: promoted` is a one-way stamp written when the handoff dropped a file into `raw/inbox/` — it does **not** mean the file is still there. The `kb_entry` filename survives bkb's later moves through `raw/capture/` and `raw/processed/` (per the handoff contract in CLAUDE.md), so the REQ keeps `kb_status: promoted` even after triage and ingest. The bkb pipeline organizes those later locations into subdirectories — `raw/capture/<type>/` (triage sorts by source type) and `raw/processed/YYYY-MM-DD/` (ingest groups by date), so a top-level glob will miss every triaged or processed file. **Search recursively** for `kb_entry` under each branch of `<kb>/raw/`:
+
+  ```
+  find <kb>/raw/inbox -name <kb_entry>      # flat directory by design
+  find <kb>/raw/capture -name <kb_entry>    # recurses into <type>/ subdirs
+  find <kb>/raw/processed -name <kb_entry>  # recurses into YYYY-MM-DD/ subdirs
+  ```
+
+  (Equivalent globs: `<kb>/raw/inbox/<kb_entry>`, `<kb>/raw/capture/**/<kb_entry>`, `<kb>/raw/processed/**/<kb_entry>` — use whichever your environment supports.)
+
+  Bucket each REQ by which branch returned a match:
+  - **Promoted, awaiting triage** — `kb_entry` found under `<kb>/raw/inbox/`. Suggested next step: `do-work bkb triage` then `do-work bkb ingest`.
+  - **Promoted, awaiting ingest** — `kb_entry` found under `<kb>/raw/capture/<type>/`. Triage already ran. Suggested next step: `do-work bkb ingest`.
+  - **Promoted, processed** — `kb_entry` found under `<kb>/raw/processed/<date>/`. Terminal for roadmap purposes; report alongside the REQ but do not surface as actionable.
+  - **Promoted, file not found** — `kb_entry` matches no path in any of the three branches. Surface as a data inconsistency (the file may have been deleted or `kb/` may have moved); do not silently treat as awaiting triage.
   - **Pending** — `kb_status: pending`. No file was staged (handoff was deferred or no `kb/` existed). Needs the handoff to be re-run via `do-work review REQ-NNN`, possibly after `do-work bkb init`.
 
   If `<kb>/` itself doesn't exist in the project, skip the location check and report all `promoted` REQs together with a single line noting the missing KB root.
@@ -149,10 +159,30 @@ Grouped by UR or by week:
 
 ## Lessons Promoted (Awaiting Triage)
 
-REQs whose Lessons Learned were dropped into `<kb>/raw/inbox/` but haven't been compiled yet.
+REQs whose `kb_entry` was found under `<kb>/raw/inbox/` — staged but not yet sorted.
 
-- REQ-NNN — kb_status: promoted, kb_entry: <filename>
+- REQ-NNN — kb_status: promoted, kb_entry: <filename> (located in raw/inbox/)
   Suggested next step: `do-work bkb triage` to sort, then `do-work bkb ingest` to compile into the wiki.
+
+## Lessons Promoted (Awaiting Ingest)
+
+REQs whose `kb_entry` was found under `<kb>/raw/capture/<type>/` — triage already sorted them; ingest hasn't compiled them yet.
+
+- REQ-NNN — kb_status: promoted, kb_entry: <filename> (located in raw/capture/<type>/)
+  Suggested next step: `do-work bkb ingest` to compile into the wiki.
+
+## Lessons Processed (Terminal)
+
+REQs whose `kb_entry` was found under `<kb>/raw/processed/<date>/` — already compiled into the wiki. **Not actionable** — listed only so the reader can see the full lifecycle of each completed REQ's lesson.
+
+- REQ-NNN — kb_status: promoted, kb_entry: <filename> (located in raw/processed/<date>/)
+
+## Lessons File Not Found
+
+REQs with `kb_status: promoted` whose `kb_entry` filename matches no file under `<kb>/raw/inbox/`, `<kb>/raw/capture/`, or `<kb>/raw/processed/`. The stamp says a file was staged but the file is missing — likely deleted manually or `<kb>/` was moved. Surface for investigation; do **not** assume awaiting-triage.
+
+- REQ-NNN — kb_status: promoted, kb_entry: <filename> (not found in any raw/ branch)
+  Suggested next step: confirm whether the file was intentionally removed (e.g., user discarded it during triage) and clear `kb_status` on the REQ if so; otherwise restage from the REQ's Lessons Learned section.
 
 ## Lessons Pending (Awaiting Handoff)
 
