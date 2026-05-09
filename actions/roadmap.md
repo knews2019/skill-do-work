@@ -89,7 +89,11 @@ For each REQ in `do-work/archive/`:
 
   Replace the literal `HHMMSS-` glob in your environment with whatever matches "six digits then a dash" (e.g., `[0-9][0-9][0-9][0-9][0-9][0-9]-<kb_entry>` for `find`; `<kb>/raw/<branch>/**/[0-9][0-9][0-9][0-9][0-9][0-9]-<kb_entry>` for recursive globs). The two patterns combined are the safe lookup; either alone is incomplete.
 
+  **Bash globstar caveat:** `**` is opt-in in bash (`shopt -s globstar`, off by default; available since 4.0). Zsh enables it by default. If your environment is bash without globstar enabled, use the `find` form above instead — it recurses by default — or run `shopt -s globstar` first.
+
   Bucket each REQ by which branch returned a match. **Resolution rule when a match appears in multiple branches:** later in the pipeline wins — `processed` > `capture` > `inbox`. This handles the legitimate case (a file was triaged from inbox but the inbox copy wasn't deleted), the manual-recovery case (operator copied a processed file back into inbox to redo it), and the collision-prefix case (ingest left an `HHMMSS-` copy in processed alongside a same-named original elsewhere). Do **not** report the same REQ in multiple lesson sections.
+
+  **Within-branch ties:** the same `kb_entry` may match multiple files inside one branch (e.g., the file was re-ingested on a later date and now exists in `raw/processed/2026-04-01/` and `raw/processed/2026-05-08/`, or a `HHMMSS-` collision-prefixed copy lives next to the original). Resolution: the **most recent** match wins. For `processed`, that's the latest `YYYY-MM-DD/` subdirectory by name (lexicographic sort works because the format is fixed-width). For `capture`, the latest `<type>/` subdirectory by file mtime. For `inbox`, the latest mtime. Report the location of the winning match in the section's render line — the older copies are not surfaced.
 
   - **Promoted, awaiting triage** — match found under `<kb>/raw/inbox/` and **not** in capture or processed. Suggested next step: `do-work bkb triage` then `do-work bkb ingest`.
   - **Promoted, awaiting ingest** — match found under `<kb>/raw/capture/<type>/` and **not** in processed. Triage already ran. Suggested next step: `do-work bkb ingest`.
@@ -120,7 +124,7 @@ Render the report per the Output Format below. Lead with the actionable section 
 **Scope:** [full | pending | in-progress | done | UR-NNN | since <date>]
 **Totals:** [N ready] · [N needs clarification] · [N blocked] · [N in-progress] · [N completed] · [N failed]
 **TDD posture (pending):** [N on] · [N eligible] · [N not applicable]
-**Lessons:** [N awaiting triage] · [N awaiting ingest] · [N processed] · [N pending handoff] · [N missing]
+**Lessons:** [N awaiting triage] · [N awaiting ingest] · [N processed] · [N pending handoff] · [N file not found]
 
 ## Ready to Pick Up
 
