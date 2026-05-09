@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.72.6 — The Spec Sharpening (2026-05-09)
+
+The four review carryovers from the 0.72.4/0.72.5 review pass. The standout was a real spec ambiguity in the migration protocol — `<old>` was used to mean both "full version string" (for messages) and "major-version component" (for section lookup). Two implementations following the spec literally would diverge.
+
+- `actions/interview.md` Session-Load Protocol Step 4: introduced explicit placeholder conventions — `<old>` and `<new>` for full version strings (used in user-facing messages), `<old-major>` and `<new-major>` for major-version components (used to look up `## Migration from v<major>.x` sections). Section-lookup now unambiguously matches `v1.x` for any session at `1.0.0`/`1.4.7`/etc.
+- `actions/interview.md` Session-Load Protocol Step 4a/4b: spec'd multi-major-version migration chains. A session at `1.x` against a `3.x` template now requires `Migration from v1.x` AND `Migration from v2.x` to both exist; the protocol applies them in order, advancing the in-memory `template_version` by one major per pass. Authors who want to skip a major must write a passthrough section rather than omitting it.
+- `actions/roadmap.md` Step 3: added a durability caveat to the within-branch tie resolution — `processed`'s `YYYY-MM-DD/` lexicographic sort survives `git clone` and archive restores; `capture` and `inbox`'s mtime-based resolution does not. Readers should treat the roadmap as a snapshot of the current filesystem, not a stable identifier across machines.
+- `actions/interview.md` Session-Load Protocol Step 4c: replaced the placeholder dry-run example block with a concrete rendering — full status output (Interview status header, layer table, Review/Previous version lines) followed by the `⚠` staleness notice with real version strings (`1.0.0` → `2.0.0`). Implementations can now diff against a real format instead of reconstructing it.
+
 ## 0.72.5 — The Polish Bundle (2026-05-09)
 
 The four P3 carryovers from the 0.72.2/0.72.3 self-review pass.
