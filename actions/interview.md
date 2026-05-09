@@ -68,16 +68,29 @@ Session state lives at `./do-work/interview/<template>/session.json` in the curr
 
 ## Session-Load Protocol
 
-**Every sub-command that reads `session.json` (`<template>` resume, `status`, `review`, `export`, `ingest`, `versions` — anything except `list` and `reset`) must run this protocol immediately after locating the file and before any other read.** Reset has its own re-init path and skips the protocol; `versions` reads archived sessions only and skips the protocol for those, but still runs it on the current `session.json` if it inspects one.
+**Every sub-command that reads `session.json` (`<template>` resume, `status`, `review`, `export`, `ingest`) must run this protocol immediately after locating the file and before any other read.** `list` and `reset` skip the protocol; `versions` enumerates archived sessions only and never inspects the current `session.json`, so it also skips. The protocol has two modes — pick the one that matches the calling subcommand's contract.
 
-Steps:
+### Mode selection
+
+| Subcommand | Mode | Why |
+|---|---|---|
+| `<template>` (resume) | **persist** | Lifecycle subcommand; mutating session.json is in scope. |
+| `review` | **persist** | Already mutates `review_completed_at` / `review_runs`; migration on entry is in scope. |
+| `export` | **persist** | Already writes `last_exported_at`; migration on entry is in scope. |
+| `ingest` | **persist** | Reads layer state to write summaries; persisting the migrated shape avoids re-migrating on every subsequent run. |
+| `status` | **dry-run** | Documented contract is "read and report" with zero side effects. Migration in-memory only; no disk writes, no CHANGELOG entry. |
+
+### Steps (both modes)
 
 1. Read `template_version` from `session.json`. If absent, treat as `1.x` (sessions written before this field existed).
 2. Read the current template file's frontmatter `version` field.
-3. **If the session's `template_version` is older than the current template version (or absent and the current template has a `version`):** the template's own "Migration from vX.x" section governs. Apply each documented migration step to the in-memory session, then write the migrated session back to disk with `template_version` set to the current template version. Append one line to the interview's `CHANGELOG.md`: `## <YYYY-MM-DD HH:MM> — auto-migrated session: <old> → <new>`. If the template documents no migration path for the gap, stop and tell the user: `Session was authored against template '<old>'; current template is '<new>'; no migration path documented. Run 'do-work interview <template> reset' to start fresh.`
-4. **If `template_version` matches the current template version:** continue without changes.
+3. **If the session's `template_version` matches the current template version:** continue without changes. The protocol is a no-op read.
+4. **If the session's `template_version` is older (or absent and the current template has a `version`):** the template's own "Migration from vX.x" section governs. Apply each documented migration step to the in-memory session. Then:
+   - **persist mode:** write the migrated session back to disk **atomically** — write to `session.json.tmp` in the same directory, fsync, then rename over `session.json`. If the temp write or rename fails, leave the on-disk file untouched, abort the calling subcommand with `Migration write failed: <error>. Session left at v<old>; rerun once the underlying issue (disk space / permissions / locked file) is resolved.`, and do **not** proceed with the subcommand's logic. On success, append one line to the interview's `CHANGELOG.md`: `## <YYYY-MM-DD HH:MM> — auto-migrated session: <old> → <new>`. If the CHANGELOG append fails, the migration itself stays — just report the changelog failure as a warning and continue.
+   - **dry-run mode:** keep the migrated session in-memory only. Do not write `session.json`. Do not append to `CHANGELOG.md`. After rendering its output, the caller (e.g., `status`) appends a single line: `⚠ Session is at template_version <old>; current template is <new>. Migration will run on the next mutating subcommand (review, export, ingest, or resume).` This keeps `status` a pure read while still surfacing the staleness so the user knows what's coming.
+5. **If the template documents no migration path for the gap:** in either mode, stop and tell the user `Session was authored against template '<old>'; current template is '<new>'; no migration path documented. Run 'do-work interview <template> reset' to start fresh.`
 
-The protocol is idempotent — a session already at the current version becomes a no-op read. Subcommands invoke it once per execution, before any logic that depends on session shape (status display, review checks, export rendering, ingest copying). Every entry point makes the same guarantee about session shape, so no subcommand can accidentally read a stale v1.x layout just because the user invoked it before re-entering the bare `<template>` resume path.
+The protocol is idempotent — a session already at the current version becomes a no-op read. Subcommands invoke it once per execution, before any logic that depends on session shape (status display, review checks, export rendering, ingest copying). The persist/dry-run split keeps every entry point honest about its surface contract: read-only stays read-only, mutating subcommands handle migration on entry.
 
 ---
 
@@ -150,7 +163,7 @@ Proceed to Step 3 (layer interview workflow) starting at the first layer.
 
 ### Step 2: Existing session
 
-Run the **Session-Load Protocol** (see top of this file) to apply any pending migration. Then read `session.json` and branch on `status`:
+Run the **Session-Load Protocol** (see top of this file) in **persist** mode to apply any pending migration. Then read `session.json` and branch on `status`:
 
 - **`status: "in_progress"`** — resume. Read `pending_layer` and proceed to Step 3 for that layer. Announce resumption briefly: "Resuming `<template>` at layer <pending_layer>. <N> of <total> layers approved so far." Do not re-show approved layers unless the user asks.
 
@@ -189,7 +202,7 @@ For each layer in the template's declared order (starting from `pending_layer`):
 
 ## Sub-Command: `<template> status`
 
-Run the **Session-Load Protocol** (see top of this file), then read `session.json` and report.
+Run the **Session-Load Protocol** (see top of this file) in **dry-run** mode — `status` is a pure read and must not mutate session.json or CHANGELOG.md. The protocol's dry-run branch handles staleness reporting; render the status output against the in-memory migrated shape if migration was needed. Then read `session.json` and report.
 
 ### Output
 
@@ -222,7 +235,7 @@ Runs the cross-layer contradiction pass. Requires all layers approved.
 
 ### Preconditions
 
-- Run the **Session-Load Protocol** (see top of this file) before checking preconditions, so a v1.x session is migrated before its layer-approval state is inspected.
+- Run the **Session-Load Protocol** (see top of this file) in **persist** mode before checking preconditions, so a v1.x session is migrated before its layer-approval state is inspected.
 - `session.json` exists and every declared layer has `approved: true`. If any layer is unapproved, list the pending layers and stop with: "Review requires all layers approved. Missing: <list>. Run `do-work interview <template>` to finish the interview."
 
 ### Steps
@@ -259,7 +272,7 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
 
 ### Preconditions
 
-- Run the **Session-Load Protocol** (see top of this file) before checking preconditions or rendering — exports must always run against the current template shape, never an unmigrated v1.x layout.
+- Run the **Session-Load Protocol** (see top of this file) in **persist** mode before checking preconditions or rendering — exports must always run against the current template shape, never an unmigrated v1.x layout.
 - Every declared layer has `approved: true`. If not, list missing layers and stop.
 - `review_completed_at != null` **AND** `review_runs >= 1`. If not, stop with: "Export requires the review pass to have run at least once. Run `do-work interview <template> review` first."
 
@@ -302,7 +315,7 @@ Copies exports into `<repo-root>/kb/raw/inbox/` with BKB-compatible frontmatter.
 
 ### Preconditions
 
-- Run the **Session-Load Protocol** (see top of this file) before reading the session for layer-summary generation — even though ingest reads `exports/` directly for export files, the layer summaries are built from `session.json` and must use the current shape.
+- Run the **Session-Load Protocol** (see top of this file) in **persist** mode before reading the session for layer-summary generation — even though ingest reads `exports/` directly for export files, the layer summaries are built from `session.json` and must use the current shape.
 - `./do-work/interview/<template>/exports/` exists and is non-empty. If not, stop with: "No exports found. Run `do-work interview <template> export` first."
 - `<repo-root>/kb/` exists. If not, stop with: "No knowledge base found. Run `do-work bkb init` first."
 
