@@ -90,7 +90,15 @@ Session state lives at `./do-work/interview/<template>/session.json` in the curr
    - **4b. Apply migration steps.** Walk each documented migration step in the matching section and apply it to the in-memory session.
    - **4c. Persist or report.** Mode-dependent:
      - **persist mode:** write the migrated session back to disk **atomically** — write to `session.json.tmp` in the same directory, fsync, then rename over `session.json`. If the temp write or rename fails, leave the on-disk file untouched, abort the calling subcommand with `Migration write failed: <error>. Session left at v<old>; rerun once the underlying issue (disk space / permissions / locked file) is resolved.`, and do **not** proceed with the subcommand's logic. On success, append one line to the interview's `CHANGELOG.md`: `## <YYYY-MM-DD HH:MM> — auto-migrated session: <old> → <new>`. If the CHANGELOG append fails, the migration itself stays — just report the changelog failure as a warning and continue.
-     - **dry-run mode:** keep the migrated session in-memory only. Do not write `session.json`. Do not append to `CHANGELOG.md`. After rendering its output, the caller (e.g., `status`) appends a single line: `⚠ Session is at template_version <old>; current template is <new>. Migration will run on the next mutating subcommand (review, export, ingest, or resume).` This keeps `status` a pure read while still surfacing the staleness so the user knows what's coming.
+     - **dry-run mode:** keep the migrated session in-memory only. Do not write `session.json`. Do not append to `CHANGELOG.md`. The caller (e.g., `status`) renders its normal output against the in-memory migrated shape, then appends the staleness notice as a separate stanza: one blank line, then the `⚠` line, then no trailing blank. Exact format:
+
+       ```
+       <existing status output ending with the Previous version line>
+
+       ⚠ Session is at template_version <old>; current template is <new>. Migration will run on the next mutating subcommand (review, export, ingest, or resume).
+       ```
+
+       This keeps `status` a pure read while still surfacing the staleness so the user knows what's coming.
 
 The protocol is idempotent — a session already at the current version becomes a no-op read. Subcommands invoke it once per execution, before any logic that depends on session shape (status display, review checks, export rendering, ingest copying). The persist/dry-run split keeps every entry point honest about its surface contract: read-only stays read-only, mutating subcommands handle migration on entry.
 
