@@ -4,6 +4,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.73.0 — The Protocol Move (2026-05-09)
+
+The Session-Load Protocol grew to ~50 lines of dense spec across seven patches in 0.72.x. That's the kind of heavy content `actions/interview-reference.md` is for per ADR-001, so the protocol moved there.
+
+- `actions/interview-reference.md`: gained a "Session-Load Protocol" section between the `session.json` schema and the Checkpoint File Format. Full spec — mode-selection table, all four steps with substeps, version placeholder conventions, multi-major chain rules, atomic write semantics, concrete dry-run rendering — lives here now.
+- `actions/interview.md`: collapsed the Session-Load Protocol section to a six-line stub that names the protocol, lists its two modes (persist vs dry-run), and points readers to the reference. Per-subcommand pointers now read `(spec in actions/interview-reference.md)` instead of "see top of this file." The action stays a short entry-point document; the heavy specification stays in the companion file.
+- Top-of-file architecture summary in `actions/interview.md` now lists "Session-Load Protocol" alongside the other heavy-content items extracted per ADR-001.
+
+No behavior change — only the location and discoverability of the spec.
+
 ## 0.72.7 — The Semver Honor (2026-05-09)
 
 Two real correctness bugs from the 0.72.6 review pass plus an editorial cleanup. Both bugs would have fired on every minor or patch template bump, so worth the patch.
