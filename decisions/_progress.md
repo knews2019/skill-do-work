@@ -37,7 +37,7 @@ confidence: high
 - [x] ADR-003 — [[adr-003-always-load-karpathy-guardrails]]
 - [x] ADR-004 — [[adr-004-canonicalize-pending-reqs-under-do-work-queue]]
 - [x] ADR-005 — [[adr-005-pipeline-is-stateful-and-resumable]]
-- [x] ADR-006 — [[adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles]]
+- [x] ADR-006 — [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]]
 - [x] ADR-007 — [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]]
 - [x] ADR-008 — [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]]
 - [x] ADR-009 — [[adr-009-build-knowledge-base-as-a-compiled-interlinked-wiki]]

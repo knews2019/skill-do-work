@@ -204,7 +204,7 @@ REQs whose Lessons Learned were captured but never staged — either the user ch
 ## Suggested Next Steps
 
 1. Pick up REQ-NNN (top of Ready) — clearest scope, no blockers.
-2. Run `do-work clarify` to drain the N pending-answers REQs.
+2. Run `do-work clarify` to work through the N pending-answers REQs.
 3. Consider enabling `tdd: true` on the N TDD-eligible REQs before they're picked up.
 4. Confirm or discard the N stale REQs with the user.
 5. Run `do-work bkb triage` then `do-work bkb ingest` for the N lessons in Awaiting Triage.

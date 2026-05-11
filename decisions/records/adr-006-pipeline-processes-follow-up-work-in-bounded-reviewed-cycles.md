@@ -1,5 +1,5 @@
 ---
-title: "ADR-006: Pipeline Drains Follow-Up Work in Bounded Reviewed Cycles"
+title: "ADR-006: Pipeline Processes Follow-Up Work in Bounded Reviewed Cycles"
 type: architecture-decision-record
 status: accepted
 topic_cluster: workflow-orchestration
@@ -23,7 +23,7 @@ updated: 2026-04-15
 confidence: high
 ---
 
-# ADR-006: Pipeline Drains Follow-Up Work in Bounded Reviewed Cycles
+# ADR-006: Pipeline Processes Follow-Up Work in Bounded Reviewed Cycles
 
 Topic cluster: [[_index_workflow-orchestration]] ([topic index](../topics/_index_workflow-orchestration.md))
 See also: [[adr-004-canonicalize-pending-reqs-under-do-work-queue]] (depends-on), [[adr-005-pipeline-is-stateful-and-resumable]] (depends-on), [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] (complements)
@@ -36,7 +36,7 @@ The current `pipeline.md` still encodes the same bounded continuation design. It
 
 ## Decision
 
-The pipeline may drain remaining pending REQs after its primary request is complete, but only through a bounded post-pipeline continuation loop:
+The pipeline may process remaining pending REQs after its primary request is complete, but only through a bounded post-pipeline continuation loop:
 - capture the pending REQ IDs for the current continuation cycle,
 - run the work action on that batch,
 - review each REQ individually by REQ ID,
@@ -49,7 +49,7 @@ The continuation is intentionally distinct from the formal pipeline state machin
 1. End the pipeline immediately after the primary request finishes.
 This was rejected because review-generated or previously pending work would be left hanging even when the user clearly asked for a full-cycle automation path.
 
-2. Let the continuation drain forever until the queue is empty.
+2. Let the continuation run forever until the queue is empty.
 This was rejected because review steps can create follow-ups indefinitely, which risks runaway loops.
 
 3. Review continuation batches by UR.
@@ -57,7 +57,7 @@ This was rejected because UR-scoped review can re-review unrelated completed REQ
 
 ## Consequences
 
-The benefit is a more complete queue-draining experience that still preserves review rigor and operator control. Follow-up work does not vanish after the first pipeline success.
+The benefit is a more complete queue-processing experience that still preserves review rigor and operator control. Follow-up work does not vanish after the first pipeline success.
 
 The trade-off is extra orchestration complexity. The continuation loop needs careful targeting, user-facing recovery guidance, and clear separation from the main `pipeline.json` lifecycle.
 

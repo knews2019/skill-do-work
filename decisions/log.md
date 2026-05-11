@@ -16,7 +16,7 @@ related:
     rel: evidence-for
   - page: adr-005-pipeline-is-stateful-and-resumable
     rel: evidence-for
-  - page: adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles
+  - page: adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles
     rel: evidence-for
   - page: adr-007-close-the-pipeline-with-present-and-a-technical-debrief
     rel: evidence-for
@@ -56,7 +56,7 @@ Append-only timeline. Historical entries use the original decision dates from `C
 ## [2026-04-10] Queue and workflow coordination harden
 
 - Accepted [[adr-004-canonicalize-pending-reqs-under-do-work-queue]] from `0.60.3`: pending REQs live in `do-work/queue/`.
-- Accepted [[adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles]] from `0.56.0` through `0.56.2`: post-pipeline queue continuation happens in bounded run-review loops.
+- Accepted [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]] from `0.56.0` through `0.56.2`: post-pipeline queue continuation happens in bounded run-review loops.
 - Accepted [[adr-002-load-reusable-spec-templates-during-work]] from `0.59.0`: `specs/` templates are a reusable scaffold for recurring task types.
 
 ## [2026-04-12] Always-on quality guardrails

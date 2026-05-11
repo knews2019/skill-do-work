@@ -183,7 +183,7 @@ Then return. The caller (work Step 7.5 or review-work Step 9.5) resumes its own 
 - `kb_status: promoted` is set but no file matching `kb_entry` exists under `<kb>/raw/` — the write silently failed or the filename was captured wrong.
 - The source document has empty `what_worked` + `what_didnt_work` + `worth_knowing` sections — the extraction failed; do not drop the file, surface the gap to the user first.
 - Multiple REQs in the same session all show `kb_status: pending` and the user clearly intended to promote — remind the user they can re-run the handoff per REQ, or drop files directly into `raw/inbox/`.
-- `raw/inbox/` fills up faster than `bkb triage` drains it — the pipeline is stalled upstream, not a handoff problem, but surface the backlog in the final confirmation message.
+- `raw/inbox/` fills up faster than `bkb triage` processes it — the pipeline is stalled upstream, not a handoff problem, but surface the backlog in the final confirmation message.
 
 ## Verification Checklist
 

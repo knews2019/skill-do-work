@@ -36,5 +36,5 @@ How completed pipeline work is presented, summarized, and linked for different a
 ## Cross-Cluster Links
 
 - [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] depends-on [[adr-005-pipeline-is-stateful-and-resumable]] in [[_index_workflow-orchestration]].
-- [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] complements [[adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles]] in [[_index_workflow-orchestration]].
+- [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] complements [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]] in [[_index_workflow-orchestration]].
 - [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]] depends-on [[adr-001-modular-action-prompts-and-companion-references]] in [[_index_skill-architecture]].

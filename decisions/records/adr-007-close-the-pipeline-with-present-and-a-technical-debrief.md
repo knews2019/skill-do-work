@@ -13,7 +13,7 @@ sources:
 related:
   - page: adr-005-pipeline-is-stateful-and-resumable
     rel: depends-on
-  - page: adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles
+  - page: adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles
     rel: complements
   - page: adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats
     rel: complements
@@ -25,7 +25,7 @@ confidence: high
 # ADR-007: Close the Pipeline with Present and a Technical Debrief
 
 Topic cluster: [[_index_pipeline-deliverables]] ([topic index](../topics/_index_pipeline-deliverables.md))
-See also: [[adr-005-pipeline-is-stateful-and-resumable]] (depends-on), [[adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles]] (complements), [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]] (complements)
+See also: [[adr-005-pipeline-is-stateful-and-resumable]] (depends-on), [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]] (complements), [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]] (complements)
 
 ## Context
 

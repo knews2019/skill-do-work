@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.73.2 — The Dry Verbs (2026-05-11)
+
+Replaced the "drain" metaphor in queue-processing docs with clearer verbs (work through / process / clear). User feedback flagged "drain" as reading wet/unnatural for a task queue.
+
+- Swept SKILL.md, next-steps.md, and action files (work, pipeline, roadmap, kb-lessons-handoff) to swap "drain"/"draining"/"drains" for context-fit alternatives.
+- Renamed ADR-006 from `pipeline-drains-follow-up-work` to `pipeline-processes-follow-up-work` and updated every wikilink reference across decisions/.
+- No behavior change — pure docs/prompts polish.
+
 ## 0.73.1 — The Convention Match (2026-05-09)
 
 The two editorial polish items from the 0.73.0 review pass. Both align the just-extracted Session-Load Protocol references with the conventions the rest of the file already uses for extracted heavy content.

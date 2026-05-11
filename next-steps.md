@@ -2,7 +2,7 @@
 
 After every action completes, suggest the next logical prompts the user might want to run. Use fully qualified action names so the user can copy-paste directly.
 
-**After pipeline (completed — queue fully drained):**
+**After pipeline (completed — queue fully processed):**
 ```
 Next steps:
   do-work present all         Generate portfolio summary across all completed URs
@@ -88,7 +88,7 @@ Next steps:
 ```
 Next steps:
   do-work run REQ-NNN           Pick up the top "Ready" REQ
-  do-work clarify               Drain pending-answers REQs (if any flagged Needs Clarification)
+  do-work clarify               Work through pending-answers REQs (if any flagged Needs Clarification)
   do-work bkb triage            Sort staged lessons (only if any REQ has kb_status: promoted)
   do-work review REQ-NNN        Re-run KB handoff (only if any REQ has kb_status: pending; run do-work bkb init first if no kb/)
   do-work forensics             Investigate further if any pending REQ looked suspicious
