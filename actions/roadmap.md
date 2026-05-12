@@ -79,17 +79,17 @@ For each REQ in `do-work/archive/`:
 - Note any UR with all REQs completed (candidate for UR archival — surface, don't act).
 - Note lessons with non-terminal `kb_status` and split by state. Critical: `kb_status: promoted` is a one-way stamp written when the handoff dropped a file into `raw/inbox/` — it does **not** mean the file is still there. The `kb_entry` filename survives bkb's later moves through `raw/capture/` and `raw/processed/` (per the handoff contract in CLAUDE.md), so the REQ keeps `kb_status: promoted` even after triage and ingest. The bkb pipeline organizes those later locations into subdirectories — `raw/capture/<type>/` (triage sorts by source type) and `raw/processed/YYYY-MM-DD/` (ingest groups by date), so a top-level glob will miss every triaged or processed file. **Search recursively** for `kb_entry` under each branch of `<kb>/raw/`:
 
-  Match the exact filename **and** any `HHMMSS-<kb_entry>` collision-prefixed copy. Per `actions/bkb.md` Step 6 in the ingest sub-command, bkb prefixes `HHMMSS-` when the destination directory already contains a file of that name; without the wildcard, those collision-renamed files would surface as "file not found" even though they exist:
+  Match the exact filename **and** any six-digit-prefixed collision copy. Per `actions/bkb.md` Step 6 in the ingest sub-command, bkb prefixes `HHMMSS-` (six digits + dash) when the destination directory already contains a file of that name; without matching the prefix variant, those collision-renamed files would surface as "file not found" even though they exist:
 
   ```
-  find <kb>/raw/inbox -name '<kb_entry>' -o -name 'HHMMSS-<kb_entry>'      # flat directory by design
-  find <kb>/raw/capture -name '<kb_entry>' -o -name 'HHMMSS-<kb_entry>'    # recurses into <type>/ subdirs
-  find <kb>/raw/processed -name '<kb_entry>' -o -name 'HHMMSS-<kb_entry>'  # recurses into YYYY-MM-DD/ subdirs
+  find <kb>/raw/inbox     \( -name '<kb_entry>' -o -name '[0-9][0-9][0-9][0-9][0-9][0-9]-<kb_entry>' \) -print
+  find <kb>/raw/capture   \( -name '<kb_entry>' -o -name '[0-9][0-9][0-9][0-9][0-9][0-9]-<kb_entry>' \) -print
+  find <kb>/raw/processed \( -name '<kb_entry>' -o -name '[0-9][0-9][0-9][0-9][0-9][0-9]-<kb_entry>' \) -print
   ```
 
-  Replace the literal `HHMMSS-` glob in your environment with whatever matches "six digits then a dash" (e.g., `[0-9][0-9][0-9][0-9][0-9][0-9]-<kb_entry>` for `find`; `<kb>/raw/<branch>/**/[0-9][0-9][0-9][0-9][0-9][0-9]-<kb_entry>` for recursive globs). The two patterns combined are the safe lookup; either alone is incomplete.
+  Inbox is flat by design; `capture` recurses into `<type>/` subdirs; `processed` recurses into `YYYY-MM-DD/` subdirs. The `\( … -o … \)` parentheses plus explicit `-print` are required: without them, `find` binds `-o` lower than the implicit `-print` action and silently drops half the matches as soon as you append any extra predicate. The two `-name` patterns combined are the safe lookup; either alone is incomplete.
 
-  **Bash globstar caveat:** `**` is opt-in in bash (`shopt -s globstar`, off by default; available since 4.0). Zsh enables it by default. If your environment is bash without globstar enabled, use the `find` form above instead — it recurses by default — or run `shopt -s globstar` first.
+  **Bash globstar alternative:** if you prefer recursive globs to `find`, the equivalents are `<kb>/raw/<branch>/**/<kb_entry>` and `<kb>/raw/<branch>/**/[0-9][0-9][0-9][0-9][0-9][0-9]-<kb_entry>`. Note that `**` is opt-in in bash (`shopt -s globstar`, off by default; available since 4.0) and on by default in zsh. If your environment is bash without globstar enabled, use the `find` form above — it recurses by default — or run `shopt -s globstar` first.
 
   Bucket each REQ by which branch returned a match. **Resolution rule when a match appears in multiple branches:** later in the pipeline wins — `processed` > `capture` > `inbox`. This handles the legitimate case (a file was triaged from inbox but the inbox copy wasn't deleted), the manual-recovery case (operator copied a processed file back into inbox to redo it), and the collision-prefix case (ingest left an `HHMMSS-` copy in processed alongside a same-named original elsewhere). Do **not** report the same REQ in multiple lesson sections.
 
