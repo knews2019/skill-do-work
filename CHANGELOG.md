@@ -4,6 +4,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.73.3 — The Downgrade Guard (2026-05-12)
+
+Four bug fixes from a code review of the 0.72.x → 0.73.x cluster. Two were real spec bugs in the Session-Load Protocol (silent template downgrade, ambiguous CHANGELOG noise for stamp-only refreshes); two were defects in the roadmap action's `find` examples (literal `HHMMSS-` placeholder, fragile `-o` precedence).
+
+- `actions/interview-reference.md` Session-Load Protocol Step 3: split the same-major branch by direction. Session-older-than-template stamps forward as before; session-newer-than-template (template was rolled back via `git checkout`) is now a no-op read in both modes — the old wording would have downgraded the stamp and lost the record of which template version generated the session.
+- `actions/interview-reference.md` Session-Load Protocol Step 3: explicitly carved out the CHANGELOG.md append rule. Stamp-only refreshes (same-major minor/patch bumps) skip the CHANGELOG entirely — only cross-major migrations in Step 4c append. Previous wording referenced "4c's persist rules" which would have logged every minor template bump as `auto-migrated session: X → Y` even though no migration ran.
+- `actions/roadmap.md` Step 3: rewrote the `find` examples to use the actual `[0-9][0-9][0-9][0-9][0-9][0-9]-<kb_entry>` glob instead of the literal `HHMMSS-` placeholder. An agent following the code block literally would have searched for files named `HHMMSS-foo.md` and found none; the clarifying paragraph below was a workaround, not a fix.
+- `actions/roadmap.md` Step 3: wrapped the `-name A -o -name B` predicates in `\( … \)` parentheses and added explicit `-print`. Without them, appending any predicate to the command makes `-o` bind lower than the implicit action and silently drops half the matches.
+
 ## 0.73.2 — The Dry Verbs (2026-05-11)
 
 Replaced the "drain" metaphor in queue-processing docs with clearer verbs (work through / process / clear). User feedback flagged "drain" as reading wet/unnatural for a task queue.
