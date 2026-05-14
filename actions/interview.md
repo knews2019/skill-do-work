@@ -178,7 +178,7 @@ For each layer in the template's declared order (starting from `pending_layer`):
 
 ## Sub-Command: `<template> status`
 
-Run the **Session-Load Protocol** in **dry-run** mode — `status` is a pure read and must not mutate session.json or CHANGELOG.md. The protocol's dry-run branch handles staleness reporting; render the status output against the in-memory migrated shape if migration was needed. Then read `session.json` and report.
+Run the **Session-Load Protocol** in **dry-run** mode — `status` is a pure read and must not mutate session.json or CHANGELOG.md. The protocol's dry-run branch handles staleness reporting and hands back an in-memory session object (migrated if a pending migration was detected). Render the status output directly from that in-memory object — do **not** re-read `session.json` from disk, since in dry-run mode the migrated shape is never written back and re-reading would discard it, producing output from stale pre-migration data.
 
 ### Output
 

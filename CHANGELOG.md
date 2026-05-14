@@ -4,6 +4,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.73.4 — The Fresh Read (2026-05-14)
+
+Fixed a spec bug in the interview `status` sub-command that could report stale data after an in-memory migration.
+
+- `actions/interview.md` `<template> status`: the step ran the Session-Load Protocol in dry-run mode (in-memory migration only) but then told the agent to re-read `session.json` from disk — discarding the migrated shape and rendering status from stale pre-migration data. It now renders directly from the in-memory session object the protocol hands back.
+
 ## 0.73.3 — The Downgrade Guard (2026-05-12)
 
 Four bug fixes from a code review of the 0.72.x → 0.73.x cluster. Two were real spec bugs in the Session-Load Protocol (silent template downgrade, ambiguous CHANGELOG noise for stamp-only refreshes); two were defects in the roadmap action's `find` examples (literal `HHMMSS-` placeholder, fragile `-o` precedence).
