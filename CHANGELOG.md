@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.76.2 — The Safety Alias (2026-05-17)
+
+Belt-and-suspenders defensive read for the dependency-aware selection added in 0.74.0. Codex flagged a P1 on the 0.74.0 PR claiming `depends_on` was a rename of a legacy `dependencies:` frontmatter field and that pre-rename queues would silently bypass gating. The premise was wrong — `depends_on` was introduced fresh in 0.74.0 and no `dependencies:` frontmatter ever existed in the schema — but a downstream user typing `dependencies:` from Python/Node/Cargo muscle memory would today have it silently ignored. The alias makes the typo harmless.
+
+- `actions/work.md`: schema, Step 1 dependency-aware selection, Step 1 cycle detection, Step 1 `--wave` depth calculation, and Step 8 upstream-failure short-circuit now all read `dependencies:` as a synonym for `depends_on` when only the alias is present. `depends_on` wins when both are present. Capture and Step 8 follow-up REQs continue to emit only the canonical `depends_on:` — the alias is read-only, never propagated.
+- `actions/roadmap.md`: Ready and Blocked rubrics honor the same alias when classifying pending REQs.
+- `docs/work-guide.md`: the dependency-aware ordering bullet names the alias so it surfaces in the user-facing doc, not just in the action spec.
+
 ## 0.76.1 — The Archive Pointer (2026-05-17)
 
 Post-PR-review fixup for 0.76.0. Codex flagged that tarball-installed users lose access to pre-0.65 release notes once the archives are deleted — `.git` isn't always present, so "git history" isn't always a valid fallback. Restored discoverability without restoring the files.

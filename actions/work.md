@@ -157,7 +157,7 @@ prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001          # May be absent on legacy REQs
 addendum_to: REQ-NNN          # optional — present only when this REQ amends an in-flight or completed REQ; set by capture, or by review when creating follow-ups
-depends_on: []                # optional list of REQ IDs that must reach `completed` or `completed-with-issues` before this REQ runs. Semantically distinct from `addendum_to` ("amends that REQ"): depends_on is "requires that REQ to be done first." A REQ can have both. Honored by Step 1's selection scan and by Step 8's upstream-failure classification.
+depends_on: []                # optional list of REQ IDs that must reach `completed` or `completed-with-issues` before this REQ runs. Semantically distinct from `addendum_to` ("amends that REQ"): depends_on is "requires that REQ to be done first." A REQ can have both. Honored by Step 1's selection scan and by Step 8's upstream-failure classification. **Legacy alias:** every read site (Step 1 selection, Step 1 cycle detection, Step 1 `--wave` depth, Step 8 upstream walk, roadmap classification) also recognizes a `dependencies:` key as a synonym so muscle-memory typos from Python/Node/Cargo conventions don't silently bypass gating; `depends_on` wins when both are present. Capture and follow-up REQs always emit `depends_on:` — never propagate the alias.
 
 # Set by work action when claimed
 claimed_at: 2025-01-26T10:30:00Z
@@ -209,20 +209,20 @@ Once `working/` is empty, proceed with finding the next request.
 
 Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
 
-**Dependency-aware selection.** For each `pending` REQ, evaluate its `depends_on` field (if present). A REQ is **dependency-ready** when every ID in `depends_on` resolves to a REQ with `status: completed` or `status: completed-with-issues`. Resolve each dependency ID by globbing `do-work/archive/**/REQ-NNN-*.md`, `do-work/archive/**/REQ-NNN.md`, `do-work/queue/REQ-NNN-*.md`, and `do-work/working/REQ-NNN-*.md`. Cache resolution within a single Step 1 invocation — a 20-REQ queue with 3 deps each is 60 globs; cache hits keep the cost flat. A REQ with unmet `depends_on` is **dependency-blocked** and is skipped by the scan; it surfaces in the composed exit summary if no other pending REQ is dependency-ready. Process dependency-ready REQs in numeric ID order.
+**Dependency-aware selection.** For each `pending` REQ, evaluate its `depends_on` field (or its legacy alias `dependencies:` — recognized for back-compat; `depends_on` wins when both present). A REQ is **dependency-ready** when every ID in the resolved dependency list reaches a REQ with `status: completed` or `status: completed-with-issues`. Resolve each dependency ID by globbing `do-work/archive/**/REQ-NNN-*.md`, `do-work/archive/**/REQ-NNN.md`, `do-work/queue/REQ-NNN-*.md`, and `do-work/working/REQ-NNN-*.md`. Cache resolution within a single Step 1 invocation — a 20-REQ queue with 3 deps each is 60 globs; cache hits keep the cost flat. A REQ with unmet dependencies is **dependency-blocked** and is skipped by the scan; it surfaces in the composed exit summary if no other pending REQ is dependency-ready. Process dependency-ready REQs in numeric ID order.
 
-**REQs with no `depends_on` are roots** and are always dependency-ready. Existing REQs (captured before the field existed) behave exactly as before.
+**REQs with neither `depends_on` nor `dependencies:` are roots** and are always dependency-ready. Existing REQs (captured before the field existed) behave exactly as before.
 
-**Cycle detection for `depends_on`.** Before evaluating a REQ's dependencies, walk its `depends_on` graph collecting visited IDs into a seen set. If you encounter the current REQ's ID during the walk, the graph contains a cycle — set the REQ's `status` to `blocked-dependency-cycle`, report it, and skip. Mirrors the `addendum_to` cycle-detection approach already used in Step 8 substep 5. Non-destructive — the user breaks the cycle by editing `depends_on` and flips status back to `pending`.
+**Cycle detection for `depends_on`.** Before evaluating a REQ's dependencies, walk its `depends_on` graph (or `dependencies:` if `depends_on` is absent — same alias rule) collecting visited IDs into a seen set. If you encounter the current REQ's ID during the walk, the graph contains a cycle — set the REQ's `status` to `blocked-dependency-cycle`, report it, and skip. Mirrors the `addendum_to` cycle-detection approach already used in Step 8 substep 5. Non-destructive — the user breaks the cycle by editing the dependency list and flips status back to `pending`.
 
 **Wave execution (`--wave N`).** If the `--wave N` flag is set, compute each pending REQ's dependency depth before the dependency-ready filter:
 
-- Depth 0: REQs with no `depends_on`, or whose `depends_on` members are all already archived (completed/completed-with-issues).
-- Depth K (K > 0): `max(depth of each depends_on member in the current pending set) + 1`.
+- Depth 0: REQs with no dependency list (neither `depends_on` nor the legacy `dependencies:` alias), or whose dependency members are all already archived (completed/completed-with-issues).
+- Depth K (K > 0): `max(depth of each dependency member in the current pending set) + 1`.
 
 Filter the pending list to REQs whose depth equals N, then apply the dependency-ready filter normally. If no REQ at depth N is dependency-ready (or none exists at that depth), render the composed exit summary with a leading `No REQs at wave N (depth-N set is empty or fully gated).` line and exit. `--wave` and targeted REQ IDs are mutually exclusive — reject the combination at parse time with a clear error.
 
-**Targeted mode bypasses dependency gating.** When `$ARGUMENTS` contains explicit REQ IDs, process them in the given order regardless of `depends_on`. The user named them explicitly.
+**Targeted mode bypasses dependency gating.** When `$ARGUMENTS` contains explicit REQ IDs, process them in the given order regardless of `depends_on` (or its `dependencies:` alias). The user named them explicitly.
 
 **Queue status summary:** After reading all REQ frontmatter, categorize every REQ by status and print a summary before proceeding:
 
@@ -798,7 +798,7 @@ Before classifying via the symptom table below, **check for upstream failure**. 
 
 Read the frontmatter of every REQ this one depends on:
 - `addendum_to` (single parent, if set)
-- every entry in `depends_on` (if set)
+- every entry in `depends_on` (if set, or every entry in the legacy `dependencies:` alias if `depends_on` is absent — same back-compat rule as Step 1; `depends_on` wins when both present)
 
 Resolve each ID by globbing `do-work/archive/**/REQ-NNN-*.md`, `do-work/archive/**/REQ-NNN.md`, `do-work/queue/REQ-NNN-*.md`, and `do-work/working/REQ-NNN-*.md`. If any referenced REQ has `status: failed`, skip the symptom table and short-circuit classification:
 
@@ -806,7 +806,7 @@ Resolve each ID by globbing `do-work/archive/**/REQ-NNN-*.md`, `do-work/archive/
 - `error_type: spec` (the local approach is downstream-correct only if the upstream is correct; with the upstream broken, the local spec is implicitly unsound)
 - `error: "Upstream REQ-NNN failed (error_type: <ancestor.error_type>); downstream blocked. Original error: <original error message>"`
 
-Create the follow-up REQ per the Spec row below. It inherits `addendum_to: <this failed REQ>`; the cascade is now visible in the addendum chain and the follow-up's error description names the upstream root cause. The follow-up should also carry the original `depends_on` so it re-blocks on the same upstream until the upstream's own follow-up lands.
+Create the follow-up REQ per the Spec row below. It inherits `addendum_to: <this failed REQ>`; the cascade is now visible in the addendum chain and the follow-up's error description names the upstream root cause. The follow-up should also carry the original dependency list so it re-blocks on the same upstream until the upstream's own follow-up lands — and it always emits the canonical `depends_on:` key, even if the failed REQ used the legacy `dependencies:` alias. Don't propagate the alias on follow-ups.
 
 If no upstream REQ is `failed`, fall through to the symptom-based classification table:
 
@@ -821,13 +821,13 @@ If no upstream REQ is `failed`, fall through to the symptom-based classification
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "This REQ failed on a code bug" | Check whether any `addendum_to` or `depends_on` ancestor is also `failed` first | Downstream failures often inherit upstream rot; misclassifying as `code` chases phantom bugs in the wrong domain |
+| "This REQ failed on a code bug" | Check whether any `addendum_to` or `depends_on` ancestor (or `dependencies:` alias) is also `failed` first | Downstream failures often inherit upstream rot; misclassifying as `code` chases phantom bugs in the wrong domain |
 
 **Procedure:**
 1. Run the upstream-failure short-circuit. If it fires, jump to step 3.
 2. Otherwise classify using the symptom table above.
 3. Update frontmatter: `status: failed`, `error: "description"`, `error_type: [intent|spec|code|environment]`
-4. For Intent/Spec/Code failures: create the appropriate follow-up REQ (details above). Set `addendum_to` to the failed REQ's ID so context chains. Preserve the original `depends_on` on the follow-up when the failure was upstream-driven.
+4. For Intent/Spec/Code failures: create the appropriate follow-up REQ (details above). Set `addendum_to` to the failed REQ's ID so context chains. Preserve the original dependency list on the follow-up when the failure was upstream-driven — always emit it under the canonical `depends_on:` key, even if the failed REQ used the legacy `dependencies:` alias.
 5. Move to `archive/` (failed REQs always go to archive root, not into UR folders).
 6. Report to user: `[REQ-NNN] failed ([type]): [description]. Follow-up: [REQ-NNN] / None.` When the short-circuit fired, prefix the report with `(upstream cascade — original failure at REQ-NNN)`.
 

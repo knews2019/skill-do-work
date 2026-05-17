@@ -51,9 +51,9 @@ For each REQ, capture: id, title, status, route (if set), `user_request`, `creat
 
 For each REQ in `do-work/queue/`, assign a feasibility bucket using only what's visible in the file:
 
-- **Ready** — has a clear `## What`, no `pending-answers` status, no unresolved `addendum_to` chain, no unmet `depends_on` references (every ID in `depends_on` resolves to a REQ with `status: completed` or `completed-with-issues`).
+- **Ready** — has a clear `## What`, no `pending-answers` status, no unresolved `addendum_to` chain, no unmet `depends_on` references (every ID in `depends_on` — or in the legacy `dependencies:` alias if `depends_on` is absent, same back-compat rule as the work action's Step 1 — resolves to a REQ with `status: completed` or `completed-with-issues`).
 - **Needs clarification** — `status: pending-answers`, OR the request body contains explicit open questions, OR scope is too vague to triage (one-line title with no `## What` body).
-- **Blocked** — references a REQ in `addendum_to` or `depends_on` that is still pending or in-progress; OR has `status: blocked-dependency-cycle` (a cycle in its `depends_on` graph, set by the work action's Step 1); OR names an external dependency in prose (waiting on an API, a decision, a third-party).
+- **Blocked** — references a REQ in `addendum_to` or `depends_on` (or its `dependencies:` alias) that is still pending or in-progress; OR has `status: blocked-dependency-cycle` (a cycle in its dependency graph, set by the work action's Step 1); OR names an external dependency in prose (waiting on an API, a decision, a third-party).
 - **Stale** — `created_at` more than 30 days old AND not yet claimed. Flag for re-confirmation; the user may no longer want it.
 
 Each classification must cite the specific evidence that drove it (e.g., "status: pending-answers", "addendum_to: REQ-031 (still pending)", "no `## What` section").
