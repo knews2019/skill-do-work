@@ -13,9 +13,7 @@ The action loads templates from `<skill-root>/interviews/<name>.md`, runs a chec
 - A new template has been authored in `<skill-root>/interviews/` and the user wants to run that interview.
 
 **Do NOT use when:**
-- The user wants the agent to act on their behalf right now — that's the `work` or `pipeline` action. Interview produces the instructions; it does not execute them.
-- The user wants a list of ideas or a brainstorm — use `scan-ideas` or `deep-explore`. Interview elicits structure, not possibilities.
-- The user wants to review tacit knowledge that already exists as code or documentation — use `code-review`, `prime`, or `bkb query`. Interview is for knowledge that only lives in the user's head.
+- See `SKILL.md` routing table for sibling action selection. Interview elicits tacit knowledge that only lives in the user's head — it does not execute (`work`/`pipeline`), brainstorm (`scan-ideas`/`deep-explore`), or extract from existing artifacts (`code-review`/`prime`/`bkb query`).
 
 ## Input
 

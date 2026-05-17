@@ -27,9 +27,7 @@ The separation is enforced by spawning each role as a separate subagent with its
 - Needs divergent/convergent thinking to evaluate a direction before committing
 
 **Do NOT use when:**
-- User wants a quick list of *improvement ideas* — route to the scan-ideas action instead
-- User wants specific *refactoring* opportunities — route to the quick-wins action instead
-- User already knows what to build — route to capture instead
+- See `SKILL.md` routing table for sibling action selection. Deep-explore runs multi-round structured dialogue on a *concept*; scan-ideas surfaces breadth, quick-wins surfaces refactors, capture is for known intent.
 
 ## Scan-Ideas vs Deep-Explore
 

@@ -12,8 +12,7 @@
 - Looking for specific, file-level improvements with effort/impact ratings
 
 **Do NOT use when:**
-- User wants *product-level ideas* for what to build next — route to the scan-ideas action instead
-- User wants to *deeply explore* a concept — route to the deep-explore action instead
+- See `SKILL.md` routing table for sibling action selection. Quick-wins surfaces concrete file-level refactors and low-hanging tests; scan-ideas is product-level breadth, deep-explore is concept exploration.
 
 ## Input
 

@@ -2,9 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
-> Older entries: [CHANGELOG-2026-spring.md](./CHANGELOG-2026-spring.md) (0.50.0 – 0.64.x), [CHANGELOG-pre-0.50.md](./CHANGELOG-pre-0.50.md) (0.1.0 – 0.49.x).
-
 ---
+
+## 0.76.0 — The Trim Pass (2026-05-17)
+
+Three-way cleanup: stale CHANGELOG archives removed, `actions/pipeline-reference.md` re-inlined into `actions/pipeline.md`, and "Do NOT use when" routing bullets across seven action files collapsed to a single `SKILL.md` pointer. ~1,800 fewer lines on disk, same functionality.
+
+- `CHANGELOG-2026-spring.md` and `CHANGELOG-pre-0.50.md` removed from the working tree. The split-archive scheme introduced in 0.75.0 went unmaintained; entries remain reachable via git history. `CHANGELOG.md` header pointer and `actions/version.md`'s dirty-file glob updated to match.
+- `actions/pipeline-reference.md` re-inlined into `actions/pipeline.md`'s Output Format section as `#### Composition rules` plus the three numbered template subsections (Plain Markdown Report, Marp Slide Deck, Standalone HTML Debrief). The companion was always loaded with the main action, so the split was paying a cross-file tax for no gain — same proven pattern as 0.75.0's `work-reference.md` re-inline. Combined `pipeline.md` is 564 lines, well under the `work.md` baseline (1058) that's already shipping.
+- `decisions/records/adr-001-modular-action-prompts-and-companion-references.md` and `adr-008-...` updated to acknowledge the re-inline as a counter-example. `decisions/topics/_index_pipeline-deliverables.md` sources list trimmed.
+- "Do NOT use when" sections normalized in 7 action files where 2+ bullets were pure sibling-action routing (`bkb`, `deep-explore`, `interview`, `pipeline`, `quick-wins`, `scan-ideas`, `work`). Routing bullets replaced with one `SKILL.md` pointer; state and scope constraints preserved. The other 13 action files were intentionally left alone — their bullets carry non-routing guidance worth keeping.
 
 ## 0.75.1 — The Review Catch (2026-05-17)
 
