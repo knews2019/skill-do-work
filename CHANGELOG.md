@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.75.1 — The Review Catch (2026-05-17)
+
+Post-PR-review fixups for 0.75.0. Codex caught two real regressions and they're now addressed.
+
+- `crew-members/general.md`: extended with four sections (Lessons Discipline, Test-Writing Posture, Cross-REQ Test-Break Rules, Discovered-Tasks Contract). The 0.75.0 trim of `actions/work.md` Step 6 replaced inline builder rules with a pointer claiming `general.md` carried them — but `general.md` only had PRIME-file philosophy. The pointer claim is now true; enforcement restored for every REQ.
+- `SKILL.md` install dispatch note: explicit normalization rules for the trigger aliases. Hyphenated forms (`install-ui-design`, `install-bowser`) now strip the `install-` prefix before target extraction; `setup`-prefixed forms (`setup bowser`, `setup ui design`) strip the leading `setup`. Previously these aliases would fall through to the help block instead of installing.
+
 ## 0.75.0 — The Lighter Pack (2026-05-17)
 
 Cross-cutting cleanup pass: seven simplifications dispatched as parallel background agents, all touching disjoint file sets. Smaller surface, same functionality.
