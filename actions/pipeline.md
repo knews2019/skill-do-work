@@ -96,7 +96,7 @@ Pipeline state lives at `do-work/pipeline.json`. Created on initialize, read on 
 | Active pipeline? | `$ARGUMENTS` bucket | Mode |
 |-----------------|---------------------|------|
 | No | Request text | **Initialize** (Step 2) |
-| No | Empty or `status` keyword | **Help** (show help menu and stop) |
+| No | Empty, `status` keyword, or `abandon` keyword | **Help** (show help menu and stop — there's nothing to inspect or abandon without an active pipeline; both reserved keywords are no-ops here) |
 | Yes | Request text | **Conflict** — warn the user. Ask: "A pipeline is already active. Resume it, or abandon it and start fresh?" |
 | Yes | Empty | **Resume** (Step 3) |
 | Yes | `status` keyword | **Status** (print status block and stop) |
