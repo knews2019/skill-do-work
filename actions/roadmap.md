@@ -56,7 +56,7 @@ For each REQ in `do-work/queue/`, assign a feasibility bucket using only what's 
 
 - **Ready** — has a clear `## What`, no `pending-answers` status, no unresolved `addendum_to` chain, dependencies (if listed) point to archived/completed REQs.
 - **Needs clarification** — `status: pending-answers`, OR the request body contains explicit open questions, OR scope is too vague to triage (one-line title with no `## What` body).
-- **Blocked** — references a REQ in `addendum_to` or a dependencies list that is still pending or in-progress; or names an external dependency (waiting on an API, a decision, a third-party).
+- **Blocked** — references a REQ in `addendum_to` that is still pending or in-progress; or names an external dependency in prose (waiting on an API, a decision, a third-party).
 - **Stale** — `created_at` more than 30 days old AND not yet claimed. Flag for re-confirmation; the user may no longer want it.
 
 Each classification must cite the specific evidence that drove it (e.g., "status: pending-answers", "addendum_to: REQ-031 (still pending)", "no `## What` section").

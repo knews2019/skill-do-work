@@ -79,6 +79,14 @@ A typical `do-work run` session:
 
 Each REQ is fully processed before the next one starts. If context limits are hit mid-REQ, a checkpoint is written so the next session can resume.
 
+## What `run` does NOT do
+
+A bulk `do-work run` has three properties that often surprise first-time users. Knowing them up front prevents firing the queue and being surprised by the result.
+
+- **No dependency ordering.** Pending REQs are processed in numeric ID order. If REQ-490 logically depends on REQ-486 being complete, the loop won't detect that — it relies on you to either give the prerequisite a lower ID or run scoped batches (`do-work run REQ-486` first, then `do-work run REQ-490`). Run `do-work roadmap` before a bulk run to see which pending REQs are classified as Blocked by an unresolved `addendum_to` parent.
+- **No mid-run pause for clarification.** Open Questions are answered by the builder with logged reasoning and a `pending-answers` follow-up REQ is queued for batch review. You'll see the questions when you next run `do-work clarify` — the loop itself never blocks on a prompt.
+- **No halt on failure.** A failed REQ is classified, archived as `failed` with a follow-up REQ created when appropriate, and the loop continues to the next pending REQ. There is no `--stop-on-failure` flag today.
+
 ## Trigger aliases
 
 All of these do the same thing — process the queue:

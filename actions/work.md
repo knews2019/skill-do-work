@@ -202,6 +202,8 @@ Once `working/` is empty, proceed with finding the next request.
 
 Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
 
+**Queue order is purely numeric** — the work loop does not honor `addendum_to` or any other dependency relationship between REQs. A REQ whose prerequisite is still pending will be picked up if it sorts earlier. Users running bulk queues should run `do-work roadmap` first to see which pending REQs roadmap classifies as Blocked.
+
 **Queue status summary:** After reading all REQ frontmatter, categorize every REQ by status and print a summary before proceeding:
 
 ```

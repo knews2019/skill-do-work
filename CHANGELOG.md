@@ -4,6 +4,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.73.5 — The Honest Run (2026-05-17)
+
+Documents what `do-work run` does (and does not) do across a bulk queue, and removes a roadmap rule that referenced a frontmatter field the REQ schema never defined.
+
+- `docs/work-guide.md`: new "What `run` does NOT do" section — no dependency ordering, no mid-run pause, no halt on failure. Surfaces three properties first-time users routinely hit by surprise.
+- `actions/work.md` Step 1: now states queue order is purely numeric and points readers to `do-work roadmap` before bulk runs, right where the order is established.
+- `actions/roadmap.md` Step 2: Blocked classification no longer references a non-existent `dependencies` frontmatter field; `addendum_to` and external-dependency-in-prose remain — both are real backings.
+
 ## 0.73.4 — The Fresh Read (2026-05-14)
 
 Fixed a spec bug in the interview `status` sub-command that could report stale data after an in-memory migration.
