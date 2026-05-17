@@ -31,7 +31,7 @@ See also: [[adr-005-pipeline-is-stateful-and-resumable]] (complements), [[adr-00
 
 The skill started as a smaller prompt bundle, then grew into a library of actions with richer routing, templates, and reporting requirements. By early April 2026, single files like `work.md`, `build-knowledge-base.md`, and later `pipeline.md` had accumulated enough embedded reference material that they became harder to load, scan, and maintain. The changelog shows a repeated pattern: extract stable scaffolding, templates, or edge-case guidance into adjacent reference files rather than keep inflating the action prompt.
 
-This pattern is still active today. `CLAUDE.md` treats action files as standalone prompts, documents accepted variants, and lists `work-reference.md`, `bkb-reference.md`, and `pipeline-reference.md` as first-class project files. Current action prompts explicitly point readers at their companion references when they need the heavier template payload.
+This pattern is still active today. `CLAUDE.md` treats action files as standalone prompts, documents accepted variants, and lists companion reference files like `bkb-reference.md` and `pipeline-reference.md` as first-class project files. Current action prompts explicitly point readers at their companion references when they need the heavier template payload. (The original `work-reference.md` was later re-inlined back into `work.md` once trimming brought the action under the relevant size budget — the split/inline decision is fluid, not permanent.)
 
 ## Decision
 
@@ -63,6 +63,6 @@ The trade-off is indirection. Readers sometimes need to open two files instead o
 
 - [CHANGELOG.md](../../CHANGELOG.md) — `0.49.0 The Architect`, `0.61.1 The Lean Cut`, `0.64.1 The Companion Split`
 - [CLAUDE.md](../../CLAUDE.md) — project structure and action-file conventions
-- [actions/work.md](../../actions/work.md) and [actions/work-reference.md](../../actions/work-reference.md)
+- [actions/work.md](../../actions/work.md) (originally split into a `work-reference.md` companion; later re-inlined)
 - [actions/build-knowledge-base.md](../../actions/build-knowledge-base.md) and [actions/bkb-reference.md](../../actions/bkb-reference.md)
 - [actions/pipeline.md](../../actions/pipeline.md) and [actions/pipeline-reference.md](../../actions/pipeline-reference.md)

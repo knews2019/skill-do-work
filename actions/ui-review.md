@@ -21,9 +21,9 @@ Together, these provide both the structural rigor of a design system review and 
 - A feature looks functional in code review but the rendered result may have spacing, typography, or accessibility issues.
 
 **Do NOT use when:**
-- The user wants structural/logic/security review — that's `do-work code-review`.
 - The change has no UI surface (pure backend, CLI, or infrastructure).
-- The user wants to *build* or *fix* UI — this action is read-only; use `do-work capture request:` or `do-work run` for that.
+- The user wants to *build* or *fix* UI — this action is read-only.
+- See `SKILL.md` routing table for sibling action selection.
 
 ## Input
 
@@ -62,7 +62,7 @@ Combine all resolved file paths into a single deduplicated list. This is the **r
    - **Bowser skill**: Check if `.claude/skills/playwright-bowser/SKILL.md` exists from the project root. If available, use it — it wraps `playwright-cli` with session management and viewport configuration.
    - **Neither available**: Note in the report that visual verification was skipped. Recommend installing via do-work:
      ```
-     do-work install-bowser
+     do-work install bowser
      ```
      This installs both `playwright-cli` (global) and the Bowser skill (project-scoped) from https://github.com/disler/bowser. Playwright CLI enables rendered-page checks — screenshot comparison, actual color contrast measurement, responsive viewport testing, and accessibility audits — that static code analysis alone cannot provide.
 
@@ -214,8 +214,8 @@ Compile all findings into a structured markdown report. **Do not modify any file
 
 **Scope**: [list of reviewed files/directories]
 **Date**: [today]
-**frontend-design skill**: [Installed / Not installed — recommend `do-work install-ui-design`]
-**Visual verification**: [Playwright CLI / Bowser skill / Skipped — recommend `do-work install-bowser`]
+**frontend-design skill**: [Installed / Not installed — recommend `do-work install ui-design`]
+**Visual verification**: [Playwright CLI / Bowser skill / Skipped — recommend `do-work install bowser`]
 
 ## Summary
 
@@ -297,7 +297,7 @@ If the user declines or doesn't respond, skip this step. The report stands on it
 - **Proportional depth**: A 3-file review gets a focused report. A 50-file review gets broader patterns, not 50x the findings.
 - **Acknowledge strengths**: A report that's all negatives is demoralizing and incomplete. Note what works.
 - **frontend-design skill is additive**: If not installed, still run the full review using `crew-members/ui-design.md`. The skill adds aesthetic depth but isn't required.
-- **Playwright CLI / Bowser skill are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend `do-work install-bowser` when missing — it's high-value and low-effort.
+- **Playwright CLI / Bowser skill are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend `do-work install bowser` when missing — it's high-value and low-effort.
 
 ## Common Rationalizations
 

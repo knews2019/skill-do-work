@@ -12,8 +12,7 @@ Unlike the commit action (which stages and commits), this action only reads and 
 - Read-only examination of uncommitted changes with REQ tracing
 
 **Do NOT use when:**
-- User wants to actually *commit* the changes — route to the commit action instead
-- User wants to *review completed work* against requirements — route to the review-work action instead
+- See `SKILL.md` routing table for sibling action selection.
 
 ## When This Runs
 

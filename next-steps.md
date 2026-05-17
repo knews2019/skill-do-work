@@ -65,7 +65,7 @@ Next steps:
 Next steps:
   do-work capture request: [describe fix]  Capture findings as requests
   do-work run                   Process follow-up REQs (if any were created)
-  do-work install-bowser        Install Playwright CLI + Bowser skill for visual verification (if not installed)
+  do-work install bowser        Install Playwright CLI + Bowser skill for visual verification (if not installed)
 ```
 
 **After present work:**
@@ -102,19 +102,11 @@ Next steps:
   do-work recap                 Summary of recently completed work
 ```
 
-**After install-ui-design:**
+**After install (any target):**
 ```
 Next steps:
-  do-work capture request: [describe UI work]  Capture a UI-design request
-  do-work install-bowser                       Install Playwright CLI + Bowser for visual verification
-  do-work ui-review [scope]                    Validate an existing UI surface
-```
-
-**After install-bowser:**
-```
-Next steps:
-  do-work ui-review [scope]     Validate UI quality (now with visual verification)
-  do-work install-ui-design     Install the frontend-design skill for production-grade UI
+  do-work ui-review [scope]                    Validate UI quality (now with skill/visual verification)
+  do-work install [other target]               Install the companion piece (ui-design ↔ bowser)
   do-work capture request: [describe UI work]  Capture a UI-design request
 ```
 
@@ -222,49 +214,12 @@ Next steps:
   do-work bkb close             Finalize the day
 ```
 
-**After bkb resolve:**
+**After bkb (maintenance subcommands — `close`, `rollup`, `defrag`, `garden`, `crew`, `resolve`):**
 ```
 Next steps:
-  do-work bkb lint              Verify fixes
-  do-work bkb close             Finalize the day
-```
-
-**After bkb close:**
-```
-Next steps:
-  do-work bkb rollup            Generate monthly summary (if end of month)
-  do-work bkb defrag            Weekly structural maintenance
+  do-work bkb lint              Verify integrity after structural / content changes
   do-work bkb status            Review KB state
-```
-
-**After bkb rollup:**
-```
-Next steps:
-  do-work bkb lint full         Full integrity check
-  do-work bkb status            Review KB state
-```
-
-**After bkb defrag:**
-```
-Next steps:
-  do-work bkb lint              Verify structural integrity after changes
-  do-work bkb garden            Check relationship hygiene
-  do-work bkb close             Finalize the day
-```
-
-**After bkb garden:**
-```
-Next steps:
-  do-work bkb defrag            Apply structural changes if needed
-  do-work bkb resolve           Resolve any flagged issues
-  do-work bkb close             Finalize the day
-```
-
-**After bkb crew (any action):**
-```
-Next steps:
-  do-work bkb crew              Review the full agent roster
-  do-work bkb status            Check KB state
+  do-work bkb close             Finalize the day (skip if you just ran close)
 ```
 
 **After prompts list:**

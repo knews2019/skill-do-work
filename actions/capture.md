@@ -366,15 +366,7 @@ Brief summary of created files. If the request was meaningfully complex (complex
 
 > That was a pretty detailed request — it's possible the capture missed some nuances. You can run `do-work verify requests` to check coverage against your original input.
 
-Always end with next step suggestions:
-
-```
-Next steps:
-  do-work verify requests     Check capture quality before building
-  do-work run                 Start processing the queue
-```
-
-Only suggest prompts that provide value given the current state. Use full action names.
+End with next-step suggestions per `next-steps.md` (post-capture flow).
 
 ### Step 7: Commit (Git repos only)
 
@@ -474,9 +466,6 @@ Created:
 - do-work/queue/REQ-011-user-profiles.md (user_request: UR-001)
 - do-work/queue/REQ-012-session-management.md (user_request: UR-001)
 - do-work/queue/REQ-013-password-reset.md (user_request: UR-001)
-
-That was a pretty detailed request — it's possible the capture missed some
-nuances. You can run `do-work verify requests` to check coverage against your original input.
 ```
 
 ## Edge Cases

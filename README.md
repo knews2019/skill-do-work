@@ -15,9 +15,9 @@ curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.
 
 Separate *thinking of things* from *doing things*. You throw ideas at the queue as they come up. When you're ready, you tell the assistant to work. It picks up each request, triages complexity, and builds until the queue is empty.
 
-## Usage scenarios
+## Three core workflows
 
-### 1. Capture requests
+### Capture
 
 Throw tasks at the queue as they come up — one-liners, multi-feature specs, bug reports, screenshots, meeting notes. Each invocation creates a User Request (UR) folder preserving your verbatim input, plus one or more REQ files that enter the queue.
 
@@ -27,12 +27,11 @@ do-work capture request: the search is slow, also add an export button, and fix 
 do-work capture request: [paste meeting notes, specs, or a screenshot]
 ```
 
-The skill splits compound inputs into separate REQ files automatically. It asks clarifying questions during capture (while you're present) but never starts building — capture and execution are strictly separate.
-For testable behavioral work, capture should also infer and confirm the RED case: how we know it's failing or missing now, and what turns GREEN when the work is done.
+The skill splits compound inputs into separate REQ files automatically. It asks clarifying questions during capture (while you're present) but never starts building — capture and execution are strictly separate. For testable behavioral work, capture also infers and confirms the RED case: how we know it's failing or missing now, and what turns GREEN when the work is done.
 
 See the [Capture Guide](docs/capture-guide.md) for folder structure, REQ file format, and full workflow.
 
-### 2. Process the queue
+### Run (process the queue)
 
 When you're ready to build, start the work loop. The assistant triages each request by complexity and works through them one by one:
 
@@ -44,15 +43,13 @@ do-work run
 - **Medium** (clear goal, unknown location) — explore codebase first
 - **Complex** (new features, architectural) — plan, explore, then build
 
-Each completed request gets archived with implementation notes and a git commit. A built-in review runs after each item.
-
-The build phase always loads behavioral guardrails (`crew-members/karpathy.md`) — minimal, surgical changes with verifiable success criteria, not "it compiles" handwaves.
+Each completed request gets archived with implementation notes and a git commit. A built-in review runs after each item. The build phase always loads behavioral guardrails (`crew-members/karpathy.md`) — minimal, surgical changes with verifiable success criteria, not "it compiles" handwaves.
 
 Other trigger words: `go`, `start`, `begin`, `process`, `execute`, `build`, `continue`, `resume`.
 
 See the [Work Guide](docs/work-guide.md) for the full pipeline, triage routes, and clarify mode.
 
-### 3. Run the full pipeline
+### Pipeline (full end-to-end)
 
 One command, full cycle: investigate → capture → verify → run → review → present. Stateful and resumable — if the session ends mid-pipeline (context limit, crash, closed terminal), re-invoking picks up from the last step.
 
@@ -65,278 +62,11 @@ do-work pipeline abandon                      # deactivate without completing
 
 Pipeline state lives at `do-work/pipeline.json`. Each step dispatches to an existing action — the pipeline never re-implements logic.
 
-### 4. Verify captured requests
+## Other actions
 
-Quality-check your captured REQs against the original input before building. Catches missed requirements, lost UX details, or intent drift.
+Run `do-work help` for the full menu. Per-action guides live in [`docs/`](./docs/).
 
-```
-do-work verify requests
-do-work verify UR-003
-do-work check REQ-018
-```
-
-See the [Verify Requests Guide](docs/verify-requests-guide.md) for scoring dimensions and gap severity.
-
-### 5. Review completed work
-
-Post-build review: requirements check, code review, acceptance testing, and suggested testing. Also runs automatically after each work loop item.
-
-```
-do-work review work
-do-work review REQ-005
-do-work review UR-003
-```
-
-See the [Review Work Guide](docs/review-work-guide.md) for the three review phases and scoring.
-
-### 6. Answer pending questions
-
-During the build phase, the assistant makes best-judgment calls on ambiguities instead of blocking. After work completes, review those decisions as a batch — confirm, override, or skip.
-
-```
-do-work clarify
-do-work questions
-```
-
-### 7. Code review (standalone)
-
-Review the actual codebase independent of the task queue. Scoped by prime files (architectural reference docs), directories, or both.
-
-```
-do-work code-review                        # interactive — lists prime files, asks
-do-work code-review prime-auth             # everything prime-auth.md touches
-do-work code-review src/api/               # all source files in a directory
-do-work code-review prime-auth src/utils/  # combined scope
-do-work audit codebase
-```
-
-See the [Code Review Guide](docs/code-review-guide.md) for scoping modes, review dimensions, and health ratings.
-
-### 8. UI review (read-only)
-
-Validate UI quality against design best practices — structure, aesthetics, accessibility, UX copy, interaction patterns. Does not modify code.
-
-```
-do-work ui-review                          # interactive — lists UI files, asks
-do-work ui-review src/components/          # validate a directory
-do-work ui-review prime-dashboard          # validate everything a prime file touches
-do-work design review
-```
-
-See the [UI Review Guide](docs/ui-review-guide.md) for review dimensions and severity levels.
-
-### 9. Scan for quick wins
-
-Find obvious improvements in a directory — dead code, duplication, complexity, missing tests.
-
-```
-do-work quick-wins
-do-work quick-wins src/
-do-work scan src/api/
-```
-
-See the [Quick Wins Guide](docs/quick-wins-guide.md) for what it looks for and ranking criteria.
-
-### 10. Generate ideas
-
-Brainstorm what to build, improve, or explore next — grounded in codebase analysis and project history, not generic advice. Every idea points at something concrete and comes with a size estimate.
-
-```
-do-work scan-ideas                # open exploration of the whole project
-do-work scan-ideas performance    # focused brainstorm on a theme
-do-work scan-ideas src/api/       # ideas scoped to a directory
-do-work ideas
-do-work brainstorm
-```
-
-Output is a ranked list of ideas, sized S/M/L, ready to paste into `do-work capture request:`.
-
-### 11. Explore a concept in depth
-
-Multi-round structured exploration of a concept through specialized subagents — a Free Thinker (divergent generation), a Grounder (convergent evaluation), and a Writer (neutral synthesis). Produces idea briefs and a consolidated vision document.
-
-```
-do-work deep-explore                       # ask what to explore
-do-work deep-explore "streaming rendering" # seed concept
-do-work deep-explore src/renderer/         # explore what a directory suggests
-do-work deep-explore continue              # resume an in-progress session
-```
-
-Use when you have a seed idea and want to develop it, not when you just want a list of tasks (use scan-ideas for that).
-
-### 12. Manage prime files
-
-Create and audit prime files — AI context documents that help an AI coder navigate a utility in minimum tokens. Prime files index entry points, traps, and exclusions so the AI doesn't waste tool calls rediscovering architecture.
-
-```
-do-work prime create src/auth/    # interactive Q&A to generate a prime file
-do-work prime audit               # read-only health check of all prime files
-do-work prime                     # show prime sub-command help
-```
-
-See the [Prime Guide](docs/prime-guide.md) for the create workflow, audit checks, and prime file format.
-
-### 13. Present work to clients
-
-Generate client-facing deliverables from completed work: briefs, architecture diagrams, value propositions, Remotion videos, interactive HTML explainers.
-
-```
-do-work present work
-do-work present UR-003
-do-work present all         # portfolio summary of all completed work
-do-work showcase
-```
-
-Artifacts are saved to `do-work/deliverables/`.
-
-See the [Present Work Guide](docs/present-work-guide.md) for detail mode, portfolio mode, and artifact types.
-
-### 14. Commit changes
-
-Analyze uncommitted files, group them by REQ, and create atomic git commits with traceability.
-
-```
-do-work commit
-do-work save work
-```
-
-See the [Commit Guide](docs/commit-guide.md) for grouping logic and commit message format.
-
-### 15. Inspect changes
-
-Read-only examination of uncommitted changes — explains what changed, why, traces to REQs, and assesses commit readiness.
-
-```
-do-work inspect             # all uncommitted changes
-do-work inspect REQ-005     # changes for a specific REQ
-do-work inspect UR-003      # changes for all REQs under a UR
-```
-
-See the [Inspect Guide](docs/inspect-guide.md) for readiness signals and verdict definitions.
-
-### 16. Cleanup the archive
-
-Consolidate completed work — close finished UR folders, move loose REQs into their URs, organize legacy files.
-
-```
-do-work cleanup
-do-work tidy
-```
-
-Also runs automatically at the end of every work loop.
-
-See the [Cleanup Guide](docs/cleanup-guide.md) for the four consolidation passes.
-
-### 17. Diagnostics
-
-Pipeline health check — detects stuck work, hollow completions, orphaned URs, scope contamination. Read-only.
-
-```
-do-work forensics
-do-work diagnose
-do-work health check
-```
-
-See the [Forensics Guide](docs/forensics-guide.md) for the full list of checks and severity levels.
-
-### 18. Roadmap (queue survey)
-
-Read-only survey of the queue — classifies pending REQs as ready / needs-clarification / blocked / stale, reports TDD posture (on / could-turn-on / not-applicable), and rolls up in-progress and recently-completed work. Sister action to forensics: forensics looks for *broken* state, roadmap looks at *intended* state.
-
-```
-do-work roadmap                # full survey
-do-work queue-status           # alias
-do-work roadmap pending        # only pending REQs
-do-work roadmap UR-042         # scope to a single user request
-do-work roadmap since 2026-04-01
-```
-
-### 19. Build a knowledge base
-
-Build and maintain an LLM-friendly Markdown wiki from raw sources (PDFs, articles, notes). Aliases: `bkb`, `kb`, `build knowledge base`, `knowledge base`.
-
-```
-do-work bkb init              # initialize a new knowledge base at ./kb
-do-work bkb init ~/research   # initialize at a custom path
-do-work bkb triage            # sort inbox items into capture directories
-do-work bkb ingest            # compile sources into wiki pages
-do-work bkb query [question]  # search the wiki and synthesize an answer
-do-work bkb lint              # quick health check
-do-work bkb lint full         # full structural check
-do-work bkb resolve           # walk through open contradictions
-do-work bkb close             # finalize daily log, refresh overview
-do-work bkb rollup            # monthly summary
-do-work bkb defrag            # weekly structural maintenance — re-evaluate clusters, suggest merges/splits
-do-work bkb garden            # topic cluster and relationship hygiene — balance, orphans, reciprocity
-do-work bkb crew [action]     # manage custom agents — create, list, edit, remove
-do-work bkb status            # show KB stats and pending items
-```
-
-For the full folder structure, file lifecycle, and wiki page format, see the [BKB Guide](docs/bkb-guide.md).
-
-### 20. Run a structured interview
-
-Run a prescriptive elicitation interview against a template and produce agent-ready operating artifacts (`USER.md`, `SOUL.md`, `HEARTBEAT.md`, plus machine-readable exports). The first template is `work-operating-model` — the five-layer Work Operating Model by Nate B. Jones and Jonathan Edwards.
-
-```
-do-work interview                              # help menu
-do-work interview list                         # list available templates
-do-work interview work-operating-model         # start or resume the interview (~45 min)
-do-work interview work-operating-model review  # cross-layer contradiction pass
-do-work interview work-operating-model export  # produce agent-ready artifacts
-do-work interview work-operating-model ingest  # feed exports into BKB
-```
-
-Session state lives at `./do-work/interview/<template>/` and is tracked in git alongside the rest of the project's trail of intent (URs, REQs, archive). Re-runs support `fresh`, `update`, and `version` modes; archived runs stay immutable under `versions/`. See the [Interview Guide](docs/interview-guide.md) for onboarding and `actions/interview-reference.md` for the template authoring spec.
-
-### 21. Run a saved prompt
-
-Execute reusable, battle-tested prompts for recurring jobs — ADR logs, retrospectives, audits, and more. Each prompt lives as a standalone Markdown file under `prompts/`; drop new ones in and they become available instantly.
-
-```
-do-work prompts                   # help menu
-do-work prompts list              # list every available prompt
-do-work prompts show architecture-decisions-log      # print the prompt without running it
-do-work prompts run architecture-decisions-log       # execute the prompt
-do-work prompts architecture-decisions-log --dry-run # shorthand: arg after the prompt name passes through
-```
-
-First entry: `architecture-decisions-log_create-or-expand` — creates or updates a project-wide ADR log at `decisions/`, modeled on the BKB wiki pattern. Mines sources in priority order: `implementation-history.md` as the primary spine, `lessons-learned/` for supplementary context, current code to verify each decision is still in force, and `CHANGELOG.md` as a portable fallback when `implementation-history.md` is absent. Idempotent via REQ/UR frontmatter keys and resumable via `decisions/_progress.md`.
-
-To add your own prompt: create `prompts/<kebab-name>.md` with a title, one-line description blockquote, optional metadata, a `---` separator, then the body. See `prompts/README.md` for the template.
-
-### 22. Install companion skills
-
-```
-do-work install-ui-design   # Anthropic's frontend-design skill for production-grade UI
-do-work install-bowser      # Playwright CLI + Bowser skill for browser automation
-```
-
-### 23. Version and history
-
-```
-do-work version             # current version + last 5 releases
-do-work update              # check for upstream updates
-do-work recap               # last 5 completed user requests
-```
-
-See the [Version Guide](docs/version-guide.md) for update behavior and recap format.
-
-### 24. Learn the skill
-
-Interactive tutorials for users new to do-work. Four modes:
-
-```
-do-work tutorial                # ask which mode
-do-work tutorial quick-start    # hands-on walkthrough
-do-work tutorial concepts       # how the pieces fit together
-do-work tutorial recipes        # common workflow patterns
-do-work tutorial tour           # guided tour of the whole system
-```
-
-### Help
-
-Run `do-work help` at any point to get a refresher on all available commands.
+Common ones: `verify requests`, `review work`, `clarify`, `code-review`, `ui-review`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `present work`, `commit`, `inspect`, `cleanup`, `forensics`, `roadmap`, `bkb`, `interview`, `prompts`, `install ui-design`, `install bowser`, `version`, `update`, `recap`, `tutorial`, `help`.
 
 ## File structure
 
@@ -375,10 +105,6 @@ It's not a fixed sequence. The triage system (simple/medium/complex) means Claud
 ### Do I need Claude Code specifically?
 
 No. The skill works with any agentic coding tool that can read/write files and run shell commands. It was written for Claude Code but the action files are standalone prompts — paste them into any chat interface and they work. Subagent support is a nice-to-have, not a requirement.
-
-### What if I only have one or two tasks?
-
-The queue still helps. Even a single request benefits from the triage → build → review → commit pipeline. The overhead is near zero — capture is instant, and `do-work run` processes whatever is there.
 
 ### Can I use this with an existing project?
 
