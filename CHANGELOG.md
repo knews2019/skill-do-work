@@ -4,6 +4,20 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.74.0 — The Linked Run (2026-05-17)
+
+Adds dependency-aware execution to `do-work run`. REQs can now declare `depends_on` in frontmatter; the work loop honors it for selection order, surfaces upstream failures during classification (so cascading failures aren't misdiagnosed as fresh code bugs), and supports `--halt-on-failure` and `--wave N` flags for foundation-phase work where late-stage REQs depend on early-stage ones being correct. Also folds in the Codex P2 finding on `actions/roadmap.md` from the 0.73.5 PR.
+
+- `actions/work.md` Request File Schema: new optional `depends_on: []` field, semantically distinct from `addendum_to` ("requires that REQ to be done first" vs. "amends that REQ"); a REQ can carry both.
+- `actions/work.md` Step 1: honors `depends_on` for selection (a REQ is dependency-ready when all its `depends_on` resolve to completed/completed-with-issues); new `blocked-by-dependencies` section in the composed exit summary; new `blocked-dependency-cycle` held status for cycles in the `depends_on` graph.
+- `actions/work.md` Step 1: optional `--wave N` flag filters the scan to REQs at dependency depth N for checkpointed wave-by-wave execution. Mutually exclusive with targeted REQ IDs.
+- `actions/work.md` Step 8: upstream-failure short-circuit during failure classification — if any `addendum_to` or `depends_on` ancestor is `failed`, classify as `spec` with the original error wrapped in an upstream pointer. Cascades now show up in the follow-up REQ's error message instead of presenting as fresh code bugs in the wrong domain.
+- `actions/work.md` Step 10: optional `--halt-on-failure` halts the loop after a failed or completed-with-issues REQ; default behavior unchanged.
+- `actions/capture.md`: documents emitting `depends_on` and the slicing convention; the optional `## Dependencies` prose section remains for human readers, but frontmatter is the source of truth for tooling.
+- `actions/roadmap.md`: Ready and Blocked rubrics both reference `depends_on` and `blocked-dependency-cycle` — resolves the fall-through bucket the Codex P2 review flagged on the 0.73.5 PR (Ready required dependencies-archived while Blocked no longer included dependency-list checks).
+- `SKILL.md`: work-action routing recognizes `--halt-on-failure` and `--wave N` flags; strips them before extracting REQ IDs.
+- `docs/work-guide.md`: rewrites the "What `run` does NOT do" section to reflect the new opt-ins.
+
 ## 0.73.5 — The Honest Run (2026-05-17)
 
 Documents what `do-work run` does (and does not) do across a bulk queue, and removes a roadmap rule that referenced a frontmatter field the REQ schema never defined.
