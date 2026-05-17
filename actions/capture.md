@@ -89,6 +89,7 @@ domain: frontend  # choose one: frontend, backend, ui-design, or general
 prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 tdd: true  # default true when a runnable RED test can be written in this project's harness; false otherwise (see heuristic below)
 suggested_spec:  # optional — spec template name if one clearly matches (e.g., "api-endpoint", "bug-fix")
+depends_on: []  # optional — list of REQ IDs that must complete before this REQ runs; honored by the work action's selection scan
 ---
 
 # [Brief Title]
@@ -167,6 +168,12 @@ See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
 - `related: [REQ-006, REQ-007]` — other REQs in this batch
 - `batch: auth-system` — batch name grouping related requests
 - `addendum_to: REQ-005` — if this amends an in-flight/completed request
+
+**Populating `depends_on`.** When the request body mentions prior REQs that must complete first (e.g., "after REQ-486 lands", "depends on the auth refactor"), populate `depends_on` in the frontmatter with the REQ IDs. Don't rely on numeric ID ordering — the work action honors `depends_on`, not ID-based heuristics. The optional prose `## Dependencies` section in REQ bodies remains for human readers; the frontmatter field is the source of truth for tooling (work-action selection, roadmap classification, upstream-failure detection).
+
+**Slicing convention.** When a single user request slices into multiple REQs with internal dependencies, the slicer should populate `depends_on` per the dependency graph it produced. The work action then runs roots first, gates downstream REQs on their prerequisites, and supports `--wave N` for checkpointed execution one dependency depth at a time. A clean DAG in `depends_on` makes foundation-phase batches predictable; sloppy or missing `depends_on` returns to numeric-ID order and risks cascade misclassification.
+
+`depends_on` is semantically distinct from `addendum_to`: `addendum_to: REQ-N` says "this REQ amends REQ-N" (used for follow-ups and review-generated remediation); `depends_on: [REQ-N, REQ-M]` says "this REQ requires REQ-N and REQ-M to be completed first." A REQ can carry both.
 
 ### UR input.md
 

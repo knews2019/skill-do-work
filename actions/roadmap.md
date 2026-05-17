@@ -54,9 +54,9 @@ For each REQ, capture: id, title, status, route (if set), `user_request`, `creat
 
 For each REQ in `do-work/queue/`, assign a feasibility bucket using only what's visible in the file:
 
-- **Ready** — has a clear `## What`, no `pending-answers` status, no unresolved `addendum_to` chain, dependencies (if listed) point to archived/completed REQs.
+- **Ready** — has a clear `## What`, no `pending-answers` status, no unresolved `addendum_to` chain, no unmet `depends_on` references (every ID in `depends_on` resolves to a REQ with `status: completed` or `completed-with-issues`).
 - **Needs clarification** — `status: pending-answers`, OR the request body contains explicit open questions, OR scope is too vague to triage (one-line title with no `## What` body).
-- **Blocked** — references a REQ in `addendum_to` or a dependencies list that is still pending or in-progress; or names an external dependency (waiting on an API, a decision, a third-party).
+- **Blocked** — references a REQ in `addendum_to` or `depends_on` that is still pending or in-progress; OR has `status: blocked-dependency-cycle` (a cycle in its `depends_on` graph, set by the work action's Step 1); OR names an external dependency in prose (waiting on an API, a decision, a third-party).
 - **Stale** — `created_at` more than 30 days old AND not yet claimed. Flag for re-confirmation; the user may no longer want it.
 
 Each classification must cite the specific evidence that drove it (e.g., "status: pending-answers", "addendum_to: REQ-031 (still pending)", "no `## What` section").
@@ -140,8 +140,10 @@ Render the report per the Output Format below. Lead with the actionable section 
 
 ## Blocked
 
-- **REQ-NNN — <title>** (depends on REQ-MMM, still pending)
+- **REQ-NNN — <title>** (depends on REQ-MMM via `depends_on`, still pending)
   Unblock when REQ-MMM lands.
+- **REQ-PPP — <title>** (status: blocked-dependency-cycle; chain: REQ-PPP → REQ-QQQ → REQ-PPP)
+  Edit `depends_on` to break the cycle, then flip status back to `pending`.
 
 ## Stale
 

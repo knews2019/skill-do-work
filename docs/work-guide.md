@@ -79,6 +79,14 @@ A typical `do-work run` session:
 
 Each REQ is fully processed before the next one starts. If context limits are hit mid-REQ, a checkpoint is written so the next session can resume.
 
+## What `run` does (and does not) do
+
+A bulk `do-work run` has three properties worth knowing before firing 20 REQs at once.
+
+- **Dependency-aware ordering (opt-in via frontmatter).** If REQs declare `depends_on: [REQ-IDs]` in their frontmatter, the work loop honors it — a REQ is only picked up once every member of its `depends_on` has reached `completed` or `completed-with-issues`. REQs without `depends_on` fall back to numeric ID order. Cycles in `depends_on` are detected and the affected REQs are held under `status: blocked-dependency-cycle` for the user to resolve. Run `do-work roadmap` before a bulk run to see what's classified as Ready vs Blocked. To force a scoped run that ignores dependency gating for a specific REQ, use `do-work run REQ-NNN`. For wave-by-wave execution one dependency depth at a time, use `do-work run --wave N` (roots are depth 0).
+- **No mid-run pause for clarification.** Open Questions are answered by the builder with logged reasoning and a `pending-answers` follow-up REQ is queued for batch review. You'll see the questions when you next run `do-work clarify` — the loop itself never blocks on a prompt.
+- **Halt on failure is opt-in.** By default, a failed REQ is classified, archived as `failed` with a follow-up REQ created when appropriate, and the loop continues to the next pending REQ. Failures that trace back to a failed upstream REQ (via `addendum_to` or `depends_on`) are auto-classified as `spec` with an upstream pointer in the error message — so cascading failures aren't misdiagnosed as fresh code bugs. Add `--halt-on-failure` to stop the loop after the first failed or completed-with-issues REQ; useful for high-stakes foundation work where you want a checkpoint to review before continuing.
+
 ## Trigger aliases
 
 All of these do the same thing — process the queue:

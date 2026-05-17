@@ -158,6 +158,7 @@ prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001          # May be absent on legacy REQs
 addendum_to: REQ-NNN          # optional — present only when this REQ amends an in-flight or completed REQ; set by capture, or by review when creating follow-ups
+depends_on: []                # optional list of REQ IDs that must reach `completed` or `completed-with-issues` before this REQ runs. Semantically distinct from `addendum_to` ("amends that REQ"): depends_on is "requires that REQ to be done first." A REQ can have both. Honored by Step 1's selection scan and by Step 8's upstream-failure classification.
 
 # Set by work action when claimed
 claimed_at: 2025-01-26T10:30:00Z
@@ -182,10 +183,17 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 **Special statuses — these REQs stay in the queue but Step 1 won't pick them up (they're not `pending`, so the "find next pending REQ" scan walks right past them):**
 - `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do-work clarify`.
 - `blocked-archive-collision` — set by Step 2.0 when a queue file's REQ id is already archived. Non-destructive holding state; the user flips it back to `pending` (or removes/renames the duplicate) after deciding what to do.
+- `blocked-dependency-cycle` — set by Step 1 when a REQ's `depends_on` graph contains a cycle (e.g., REQ-A depends on REQ-B which depends on REQ-A). Non-destructive holding state; the user edits the `depends_on` chain to break the cycle, then flips the status back to `pending`.
 
 ## Input
 
-`$ARGUMENTS` may contain specific REQ IDs (e.g., `REQ-042`, `REQ-042 REQ-043`). When REQ IDs are provided, process **only** those REQs and stop — do not process the full queue. This is how the pipeline action scopes work to a specific batch. When no REQ IDs are provided, process all pending REQs in queue order (default behavior).
+`$ARGUMENTS` may contain:
+
+- **Specific REQ IDs** (e.g., `REQ-042`, `REQ-042 REQ-043`) — process only those REQs and stop (do not process the full queue). This is how the pipeline action scopes work to a specific batch. Targeted mode bypasses `depends_on` gating — the user explicitly named the REQs.
+- **`--halt-on-failure`** (boolean flag, default mode only) — stop the loop when a REQ archives as `failed` or `completed-with-issues`. Default: continue past failures. Ignored in targeted mode.
+- **`--wave N`** (integer flag, default mode only) — run only REQs at dependency depth N. Roots (no `depends_on`, or all `depends_on` resolve to archived REQs) are depth 0; depth grows by one per dependency layer. Mutually exclusive with targeted REQ IDs — reject the combination with an error.
+
+When no REQ IDs and no flags are provided, process all pending REQs in dependency-aware order (default behavior).
 
 ## Steps
 
@@ -201,6 +209,21 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 Once `working/` is empty, proceed with finding the next request.
 
 Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
+
+**Dependency-aware selection.** For each `pending` REQ, evaluate its `depends_on` field (if present). A REQ is **dependency-ready** when every ID in `depends_on` resolves to a REQ with `status: completed` or `status: completed-with-issues`. Resolve each dependency ID by globbing `do-work/archive/**/REQ-NNN-*.md`, `do-work/archive/**/REQ-NNN.md`, `do-work/queue/REQ-NNN-*.md`, and `do-work/working/REQ-NNN-*.md`. Cache resolution within a single Step 1 invocation — a 20-REQ queue with 3 deps each is 60 globs; cache hits keep the cost flat. A REQ with unmet `depends_on` is **dependency-blocked** and is skipped by the scan; it surfaces in the composed exit summary if no other pending REQ is dependency-ready. Process dependency-ready REQs in numeric ID order.
+
+**REQs with no `depends_on` are roots** and are always dependency-ready. Existing REQs (captured before the field existed) behave exactly as before.
+
+**Cycle detection for `depends_on`.** Before evaluating a REQ's dependencies, walk its `depends_on` graph collecting visited IDs into a seen set. If you encounter the current REQ's ID during the walk, the graph contains a cycle — set the REQ's `status` to `blocked-dependency-cycle`, report it, and skip. Mirrors the `addendum_to` cycle-detection approach already used in Step 8 substep 5. Non-destructive — the user breaks the cycle by editing `depends_on` and flips status back to `pending`.
+
+**Wave execution (`--wave N`).** If the `--wave N` flag is set, compute each pending REQ's dependency depth before the dependency-ready filter:
+
+- Depth 0: REQs with no `depends_on`, or whose `depends_on` members are all already archived (completed/completed-with-issues).
+- Depth K (K > 0): `max(depth of each depends_on member in the current pending set) + 1`.
+
+Filter the pending list to REQs whose depth equals N, then apply the dependency-ready filter normally. If no REQ at depth N is dependency-ready (or none exists at that depth), render the composed exit summary with a leading `No REQs at wave N (depth-N set is empty or fully gated).` line and exit. `--wave` and targeted REQ IDs are mutually exclusive — reject the combination at parse time with a clear error.
+
+**Targeted mode bypasses dependency gating.** When `$ARGUMENTS` contains explicit REQ IDs, process them in the given order regardless of `depends_on`. The user named them explicitly.
 
 **Queue status summary:** After reading all REQ frontmatter, categorize every REQ by status and print a summary before proceeding:
 
@@ -253,11 +276,22 @@ The exit report is **composed**, not picked from disjoint branches. Whenever no 
      ...
    ```
 
-**After rendering all applicable sections, exit the work loop** — do not proceed to Step 2.0 or beyond. There is no `pending` REQ to claim. Step 1's contract on the no-pending path is "render the composed summary, then stop"; the only path that continues is the one where Step 1 finds at least one `pending` REQ.
+4. **Blocked-by-dependencies section** — applies if any `pending` REQ has an unmet `depends_on` reference (dependency-blocked) or any REQ has status `blocked-dependency-cycle`. Pending REQs stay `pending` (the gating is dynamic — they become ready as upstream REQs complete); only cycle-detected REQs are flipped to a held status. Render both groups under one heading:
 
-If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any of the three sections applies — every non-pending REQ in the queue is something the user needs to see.
+   ```
+   ⚠ N REQs blocked by unmet dependencies:
+     REQ-NNN — [title] (pending; depends on REQ-MMM, status: <pending|claimed|pending-answers>)
+     REQ-PPP — [title] (blocked-dependency-cycle; chain: REQ-PPP → REQ-QQQ → REQ-PPP)
+     ...
 
-**Composition is deliberate.** A queue with both `pending-answers` and `blocked-archive-collision` REQs (and no completed/done) renders both sections back-to-back. A queue with all three categories renders all three. The user sees the full picture in one report instead of a single branch's slice.
+   Resolve the blocking REQs first, then re-run. To force a scoped run that ignores dependency gating for a specific REQ, use `do-work run REQ-NNN`. To break a dependency cycle, edit the REQ's `depends_on` and flip its status back to `pending`.
+   ```
+
+**After rendering all applicable sections, exit the work loop** — do not proceed to Step 2.0 or beyond. There is no `pending` REQ to claim. Step 1's contract on the no-pending path is "render the composed summary, then stop"; the only path that continues is the one where Step 1 finds at least one dependency-ready `pending` REQ.
+
+If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any of the four sections applies — every non-pending or non-ready REQ in the queue is something the user needs to see.
+
+**Composition is deliberate.** A queue with both `pending-answers` and `blocked-archive-collision` REQs (and no completed/done) renders both sections back-to-back. A queue with all four categories renders all four. The user sees the full picture in one report instead of a single branch's slice.
 
 **REQ validation:** When reading each REQ's frontmatter, verify it has the required fields (`id`, `status`, `title`). If a REQ file has missing or unparseable frontmatter, skip it and report: `⚠ Skipping [filename]: missing required frontmatter ([field]).` Do not let a single malformed REQ block the entire work loop — skip it and continue to the next.
 
@@ -787,7 +821,23 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **On failure:**
 
-Before archiving, classify the failure to determine the correct recovery path. Read the error description and any test/build output, then classify:
+Before classifying via the symptom table below, **check for upstream failure**. Cascades from a failed prerequisite often present as plausible-looking `code` or `spec` symptoms in the downstream REQ; misclassifying them sends the builder chasing phantom bugs in the wrong domain.
+
+**Upstream-failure short-circuit:**
+
+Read the frontmatter of every REQ this one depends on:
+- `addendum_to` (single parent, if set)
+- every entry in `depends_on` (if set)
+
+Resolve each ID by globbing `do-work/archive/**/REQ-NNN-*.md`, `do-work/archive/**/REQ-NNN.md`, `do-work/queue/REQ-NNN-*.md`, and `do-work/working/REQ-NNN-*.md`. If any referenced REQ has `status: failed`, skip the symptom table and short-circuit classification:
+
+- `status: failed`
+- `error_type: spec` (the local approach is downstream-correct only if the upstream is correct; with the upstream broken, the local spec is implicitly unsound)
+- `error: "Upstream REQ-NNN failed (error_type: <ancestor.error_type>); downstream blocked. Original error: <original error message>"`
+
+Create the follow-up REQ per the Spec row below. It inherits `addendum_to: <this failed REQ>`; the cascade is now visible in the addendum chain and the follow-up's error description names the upstream root cause. The follow-up should also carry the original `depends_on` so it re-blocks on the same upstream until the upstream's own follow-up lands.
+
+If no upstream REQ is `failed`, fall through to the symptom-based classification table:
 
 | Type | Symptoms | Recovery |
 |------|----------|----------|
@@ -796,12 +846,19 @@ Before archiving, classify the failure to determine the correct recovery path. R
 | **Code** | Approach was right but implementation has bugs (tests fail, runtime errors, logic errors) | Create a follow-up REQ targeting the specific code issue. Set `status: pending`. Archive original with `error_type: code`. |
 | **Environment** | External dependency unavailable, permissions issue, tooling broken | No follow-up REQ — user must fix the environment. Archive with `error_type: environment` and a clear description of what's needed. |
 
+**Anti-rationalization addition.** When checking the symptom table:
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "This REQ failed on a code bug" | Check whether any `addendum_to` or `depends_on` ancestor is also `failed` first | Downstream failures often inherit upstream rot; misclassifying as `code` chases phantom bugs in the wrong domain |
+
 **Procedure:**
-1. Classify using the table above.
-2. Update frontmatter: `status: failed`, `error: "description"`, `error_type: [intent|spec|code|environment]`
-3. For Intent/Spec/Code failures: create the appropriate follow-up REQ (details above). Set `addendum_to` to the failed REQ's ID so context chains.
-4. Move to `archive/` (failed REQs always go to archive root, not into UR folders).
-5. Report to user: `[REQ-NNN] failed ([type]): [description]. Follow-up: [REQ-NNN] / None.`
+1. Run the upstream-failure short-circuit. If it fires, jump to step 3.
+2. Otherwise classify using the symptom table above.
+3. Update frontmatter: `status: failed`, `error: "description"`, `error_type: [intent|spec|code|environment]`
+4. For Intent/Spec/Code failures: create the appropriate follow-up REQ (details above). Set `addendum_to` to the failed REQ's ID so context chains. Preserve the original `depends_on` on the follow-up when the failure was upstream-driven.
+5. Move to `archive/` (failed REQs always go to archive root, not into UR folders).
+6. Report to user: `[REQ-NNN] failed ([type]): [description]. Follow-up: [REQ-NNN] / None.` When the short-circuit fired, prefix the report with `(upstream cascade — original failure at REQ-NNN)`.
 
 ### Step 9: Commit (Git repos only)
 
@@ -852,10 +909,22 @@ This ensures the `commit:` field in the archived REQ contains the real implement
 
 ### Step 10: Loop or Exit
 
-Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
+**Halt-on-failure check (default mode, opt-in).** If the `--halt-on-failure` flag is set and the REQ just processed ended in Step 8 with `status: failed` or `status: completed-with-issues`, skip the queue re-scan and exit:
 
-- **`pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
-- **No `pending` REQs remain**: Write a **Session Checkpoint** (see below), run the cleanup action, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, and the blocked-archive-collision section in that order, including only those that have at least one REQ. If none of the three sections applies (queue is fully empty), report completion and exit. Mixed cases (e.g., pending-answers + blocked-archive-collision, or all three) render all applicable sections in one summary.
+1. Render the composed exit summary per Step 1's "Exit paths" contract (four-section structure: completed/done, pending-answers, blocked-archive-collision, blocked-by-dependencies), but prepend this line:
+   ```
+   Halt: REQ-NNN archived as <status> (error_type: <type>). --halt-on-failure was set.
+   Run scoped recovery (`do-work run <follow-up-REQ-id>`) or `do-work clarify` to triage.
+   ```
+2. Write the Session Checkpoint (see below).
+3. Exit. Do not re-enter Step 1.
+
+The flag is ignored in targeted mode (the user named specific REQs and wants them all processed regardless). Without the flag, behavior is unchanged — failures classify, archive, queue follow-ups, and the loop continues.
+
+Otherwise, re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
+
+- **Dependency-ready `pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
+- **No dependency-ready `pending` REQs remain** (queue may still have dependency-blocked or held REQs): Write a **Session Checkpoint** (see below), run the cleanup action, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, the blocked-archive-collision section, and the blocked-by-dependencies section in that order, including only those that have at least one REQ. If none of the four sections applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
 
 #### Context Wipe — Verified
 
