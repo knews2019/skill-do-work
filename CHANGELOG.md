@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.76.3 — The Typo Guard (2026-05-17)
+
+Extends `0.76.2`'s defensive `dependencies:` alias to every other field where a natural muscle-memory typo would have been silently swallowed. Pairs the read-only field-name alias pattern (when the YAML key is wrong) with a uniform normalize-and-warn contract (when the enum value is wrong), and closes a near-miss-keyword fall-through in the pipeline dispatcher.
+
+- `actions/pipeline.md` Step 1: mode-selection table now normalizes `$ARGUMENTS` first (trim + lowercase), then guards against single-token near-misses of `status`/`abandon` (e.g., `stat`, `aban`) — they trigger a "Did you mean ...?" prompt instead of silently initializing a new pipeline with the typo as the request text. Same shape as the install-dispatch normalization that landed in 0.75.1.
+- `actions/work.md` Schema Read Contract: new section documenting the uniform normalize-and-warn rule for seven enum-or-boolean fields (`domain`, `status`, `route`, `caveman`, `tdd`, `error_type`, `kb_status`) — each gets a per-field alias map (e.g., `back-end` → `backend`, `done` → `completed`) plus a documented default-on-unknown that emits the warning rather than silently dropping. `addendum_to` also gets the 0.76.2 field-name alias treatment (`amends`/`parent`/`amendment_to` recognized when canonical is absent). Step 6 crew-load and Step 8 upstream-walk/cycle-detection updated to honor the contract.
+- `actions/capture.md`: new Schema Aliases section listing the five field-name aliases (`addendum_to`, `depends_on`, `batch`, `related`, `suggested_spec`); points downstream readers at `actions/work.md`'s contract for shared enum normalization. Capture validates non-canonical enum values during emission and prompts for correction — capture is the human-attention window for catching typos at the source.
+- `actions/bkb.md`: new Schema Read Contract for wiki-page frontmatter — normalize-and-warn for `type`, `rel`, `confidence`; field-name alias for `topic_cluster` (`topic`/`topic_category`). Applies across `triage`, `ingest`, `lint`, `garden`, `defrag`, and `query` sub-commands.
+- `actions/roadmap.md`: Ready and Blocked rubrics honor the `addendum_to` aliases; Step 1 inventory paragraph references the work.md contract so the same normalization applies to roadmap classification — REQs with non-canonical field values land in the right bucket instead of being orphaned.
+
 ## 0.76.2 — The Safety Alias (2026-05-17)
 
 Belt-and-suspenders defensive read for the dependency-aware selection added in 0.74.0. Codex flagged a P1 on the 0.74.0 PR claiming `depends_on` was a rename of a legacy `dependencies:` frontmatter field and that pre-rename queues would silently bypass gating. The premise was wrong — `depends_on` was introduced fresh in 0.74.0 and no `dependencies:` frontmatter ever existed in the schema — but a downstream user typing `dependencies:` from Python/Node/Cargo muscle memory would today have it silently ignored. The alias makes the typo harmless.
