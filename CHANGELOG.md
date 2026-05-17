@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.76.4 — The Quiet Drain (2026-05-17)
+
+Removes the `--halt-on-failure` flag from `do-work run`. The flag was redundant with the existing auto-follow-up pattern — `review-work` Step 10 already creates `pending` / `pending-answers` follow-ups for failed and completed-with-issues outcomes, and `do-work clarify` is the documented batch-triage path. The default loop is now the only loop: classify, archive, queue follow-ups, continue.
+
+- `actions/work.md`: dropped the `--halt-on-failure` Input bullet and the halt-check branch at the top of Step 10. The four-section exit summary (completed/done, pending-answers, blocked-archive-collision, blocked-by-dependencies) and Session Checkpoint behavior are unchanged.
+- `SKILL.md`: removed the flag from the priority-4 routing example and rewrote the work-action Notes cell to mention only `--wave N`.
+- `docs/work-guide.md`: rewrote the third "What `run` does" bullet to state the loop-always-continues guarantee and point at `do-work clarify` for triage, instead of describing an opt-in halt.
+
 ## 0.76.3 — The Typo Guard (2026-05-17)
 
 Extends `0.76.2`'s defensive `dependencies:` alias to every other field where a natural muscle-memory typo would have been silently swallowed. Pairs the read-only field-name alias pattern (when the YAML key is wrong) with a uniform normalize-and-warn contract (when the enum value is wrong), and closes a near-miss-keyword fall-through in the pipeline dispatcher.

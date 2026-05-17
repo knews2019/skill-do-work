@@ -215,7 +215,6 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 `$ARGUMENTS` may contain:
 
 - **Specific REQ IDs** (e.g., `REQ-042`, `REQ-042 REQ-043`) — process only those REQs and stop (do not process the full queue). This is how the pipeline action scopes work to a specific batch. Targeted mode bypasses `depends_on` gating — the user explicitly named the REQs.
-- **`--halt-on-failure`** (boolean flag, default mode only) — stop the loop when a REQ archives as `failed` or `completed-with-issues`. Default: continue past failures. Ignored in targeted mode.
 - **`--wave N`** (integer flag, default mode only) — run only REQs at dependency depth N. Roots (no `depends_on`, or all `depends_on` resolve to archived REQs) are depth 0; depth grows by one per dependency layer. Mutually exclusive with targeted REQ IDs — reject the combination with an error.
 
 When no REQ IDs and no flags are provided, process all pending REQs in dependency-aware order (default behavior).
@@ -906,19 +905,7 @@ This ensures the `commit:` field in the archived REQ contains the real implement
 
 ### Step 10: Loop or Exit
 
-**Halt-on-failure check (default mode, opt-in).** If the `--halt-on-failure` flag is set and the REQ just processed ended in Step 8 with `status: failed` or `status: completed-with-issues`, skip the queue re-scan and exit:
-
-1. Render the composed exit summary per Step 1's "Exit paths" contract (four-section structure: completed/done, pending-answers, blocked-archive-collision, blocked-by-dependencies), but prepend this line:
-   ```
-   Halt: REQ-NNN archived as <status> (error_type: <type>). --halt-on-failure was set.
-   Run scoped recovery (`do-work run <follow-up-REQ-id>`) or `do-work clarify` to triage.
-   ```
-2. Write the Session Checkpoint (see below).
-3. Exit. Do not re-enter Step 1.
-
-The flag is ignored in targeted mode (the user named specific REQs and wants them all processed regardless). Without the flag, behavior is unchanged — failures classify, archive, queue follow-ups, and the loop continues.
-
-Otherwise, re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
+Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
 
 - **Dependency-ready `pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
 - **No dependency-ready `pending` REQs remain** (queue may still have dependency-blocked or held REQs): Write a **Session Checkpoint** (see below), run the cleanup action, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, the blocked-archive-collision section, and the blocked-by-dependencies section in that order, including only those that have at least one REQ. If none of the four sections applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
