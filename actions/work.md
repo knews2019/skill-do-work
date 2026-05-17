@@ -498,42 +498,17 @@ Spawn a **general-purpose agent** with the loaded rules, any files listed in the
 - **Route B**: Request + exploration output — "follow existing patterns identified above"
 - **Route C**: Request + plan + exploration output — "implement according to the plan"
 
-All routes include these instructions to the agent:
+All routes include these instructions to the agent (pointers — the underlying rules live in the loaded crew-members files and in the REQ frontmatter the orchestrator already wrote):
 
-```
-- **Prime Files:** If `prime_files` are attached to this REQ, READ THEM FIRST. They are your map to the codebase. If NO prime file exists for the primary utility you are modifying, you MUST investigate the utility and create one (`prime-[name].md`). Prime files must be low-noise, high-value, point to code as the source of truth, and avoid volatile metrics (like test counts). If you create one, update the REQ's frontmatter to include it.
-- **Lessons:** If any prime file you loaded has a `## Lessons` section, read the linked REQ lessons before implementing. These are previous mistakes and discoveries from this exact area of the codebase. Pay particular attention to "What didn't work" entries — these prevent repeating failed approaches. If a lesson directly contradicts your planned approach, note the conflict in your PLAN phase and explain why you're proceeding differently (or adjust your plan).
-- You have full access to edit files and run shell commands
-- If you find the request is more complex than expected, you can explore or plan as needed
-- Document any blockers clearly
-- Identify existing tests related to your changes
-- **Check the prime file for a testing section** — if the prime maps code areas to specific test commands (e.g., "changes to lib/inpainting.js → run `npm run test:api`"), follow that mapping. This takes precedence over generic test detection.
-- **Honor captured proof first:** If the REQ contains a `## Red-Green Proof` section, use its RED prompt/case and GREEN outcome as the primary behavior your tests must prove. Treat that captured RED state as a valuable artifact, not a suggestion. Only adapt it if the codebase requires a nearby equivalent; if you do, document why.
-- **Write pragmatic tests:** For bug fixes and new features, prefer red-green validation. Use RED/GREEN TDD when the change is behavioral and can be proven with a test written first — write or identify tests that validate the request's requirements, run them before implementing (they should fail), then verify they pass after. For refactors, config changes, documentation, and cleanup, red-green may not apply — targeted regression tests, lint/build validation, or non-regression evidence is sufficient. The goal is proof that the change works, not ceremony.
-- Write new tests for new functionality / regression tests for bug fixes
-- Update existing tests if behavior intentionally changed
-- **If existing tests break:** When your changes cause tests from a prior request to fail, determine if the behavior change is intentional. If yes: update the failing tests to match the new behavior and document which REQ's tests changed and why in the Testing section — this creates traceability for which request altered which other request's behavior. If no: fix your implementation to preserve the existing behavior.
-- When complete, report back: list every source file you created, modified, or deleted (with the action — new/modified/deleted), and summarize what tests exist and what new tests were written. The orchestrator uses this to write the formal `## Implementation Summary`.
-- **State Machine Updates:** As you progress, you MUST physically edit this REQ file to change the `[ ]` checkboxes in the "AI Execution State (P-A-U Loop)" section to `[x]`.
-- **TDD Mode:** If the REQ has `tdd: true` in frontmatter, use RED/GREEN TDD and follow the red-green-refactor cycle:
-  1. **RED:** Start from the REQ's `## Red-Green Proof` section if present. Write a failing test that validates that captured behavior. Run it — confirm it fails.
-  2. **GREEN:** Write the minimum code to make the test pass. No more.
-  3. **REFACTOR:** Clean up while tests stay green.
-  Report the red-green evidence in your output: test name, failure message before, pass after. The Testing section (Step 6.5) will verify this evidence is present.
-- **[PLAN] Phase:** Before writing any code, write your brief technical approach next to the `[PLAN]` checkbox in the REQ file.
-- **[APPLY] Phase:** Stay strictly focused on the planned scope. Resist the urge to refactor unrelated code or fix adjacent issues. (Note: You are required to edit this REQ file to update your state checkboxes).
-- **[UNIFY] Phase:** Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked — the orchestrator will audit this in Step 6.3.
-- **Decisions:** When you make a significant implementation decision not covered by the plan or requirements (e.g., choosing between two valid approaches, deciding on an API shape, selecting a library), log it as a numbered decision. Append a `## Decisions` section to the REQ file:
-  ```
-  ## Decisions
-  - **D-01**: [from Open Questions] Sidebar supports dark mode — consistent UX
-  - **D-02**: Used zustand over jotai for state — matches existing project pattern
-  - **D-03**: API returns paginated results (20/page) — no explicit requirement, follows existing endpoints
-  ```
-  Before numbering, check for a `<!-- D-XX counter: ... Next decision: D-NN. -->` comment in the REQ file (written by Step 3.5) and start from that value. If no counter exists and no `- [~]` items are present, start at D-01. Future REQs can reference these: "per D-02 in REQ-003, we use zustand."
-  These decisions are part of the intent trail — they document where implementation diverged from or extended the captured intent, and why. A decision without reasoning is not traceable.
-- **Out-of-Scope Discoveries:** If you discover unrelated bugs, technical debt, or missing prerequisites, do not fix them inline. Instead, append a `## Discovered Tasks` section to your summary and list them as bullet points so the orchestrator can queue them for later.
-```
+- **Crew rules govern behavior:** `crew-members/general.md` (always loaded) carries the Prime Files philosophy, Lessons-discipline, test-writing posture, cross-REQ test-break rules, and Discovered-Tasks contract. `crew-members/karpathy.md` (always loaded) enforces think-before-code, surgical scope, and goal-driven execution. Domain/testing/caveman crews layer on top per Step 6's loading order. The builder reads these — do not re-state their contents inline.
+- **Prime files come first:** Read every path in `prime_files` before touching code. If the primary utility you are modifying has no prime, investigate and create one (`prime-[name].md`), then update REQ frontmatter. Lessons sections in those primes encode prior mistakes — heed them.
+- **P-A-U phasing is mandatory:** Edit the REQ's "AI Execution State (P-A-U Loop)" checkboxes in real time. [PLAN] writes a brief technical approach. [APPLY] stays in declared scope. [UNIFY] runs `git diff --stat`, runs native linters, verifies no debug artifacts, and lists each file checked (the orchestrator audits this in Step 6.3).
+- **TDD mode when `tdd: true`:** Follow RED → GREEN → REFACTOR. Anchor RED on the REQ's `## Red-Green Proof` section if present. Report the red-green evidence (test name, failure-before, pass-after) — Step 6.5 verifies it.
+- **Captured proof first:** If `## Red-Green Proof` is present, its RED prompt/case and GREEN outcome are the primary behavior tests must prove. Only adapt with documented reason.
+- **Log Decisions as D-XX:** Significant implementation choices not dictated by plan/requirements become numbered entries in a `## Decisions` section. Continue numbering from the `<!-- D-XX counter: ... -->` comment Step 3.5 left behind; if none, start at D-01. Each decision needs reasoning — without it, the intent trail breaks.
+- **Out-of-scope finds go to `## Discovered Tasks`** (a separate section, not nested inside Implementation Summary) — do not fix inline. Step 8 classifies and queues them.
+- **Report back the file manifest:** list every source file created/modified/deleted with the action verb, plus tests touched. The orchestrator writes the formal `## Implementation Summary` from your report.
+- **Standard freedoms and obligations:** Full file/shell access. Escalate to explore or plan if the work proves harder than triaged. Document blockers explicitly. Identify and run related existing tests; honor any test-command map in the prime file (takes precedence over generic detection).
 
 ### Step 6.25: Implementation Summary
 
@@ -582,9 +557,6 @@ After the builder returns and the Implementation Summary is written, the **orche
 | "The summary says files changed" | Check the file system | The summary is a claim, not evidence |
 | "Tests pass so requirements are met" | Compare requirements to diff, word by word | Tests can be incomplete |
 | "The builder checked the UNIFY box" | Read the actual diff for debug artifacts | A checked box is a claim, not a fact |
-| "This is probably fine" | Verify it specifically | Probably ≠ verified |
-| "I'll come back and fix this later" | Fix it now or create a follow-up REQ | Later never comes in agentic workflows |
-| "The user probably doesn't care about this edge case" | Check the requirements word by word | You don't know what the user cares about |
 | "This works on my test case" | Test at least 2 additional cases including an edge case | One test case proves nothing about generality |
 | "The existing code was already like this" | Flag it in Discovered Tasks | Pre-existing problems are still problems |
 | "It's just a small deviation from the plan" | Log it as a Decision (D-XX) | Unlogged deviations break traceability |
@@ -988,9 +960,96 @@ This is NOT a blocking gate. If no checkpoint exists, the session starts normall
 
 The clarify workflow has its own action. Run `do-work clarify` — it handles batch-review of `pending-answers` REQs, where the user confirms, overrides, or discards builder decisions. Resolved REQs flip back to `pending` and re-enter the work queue.
 
-## Reference
+## Orchestrator Checklist (per request)
 
-Orchestrator checklist, error handling table, progress reporting template, common mistakes, and constraints are in [`work-reference.md`](./work-reference.md).
+```
+□ Step 1: Find next request (read CHECKPOINT.md if exists, crash recovery, validate frontmatter, pick first pending)
+□ Step 2: Claim request (mkdir -p working/, move REQ, update status & claimed_at)
+□ Step 3: Triage (decide route, append ## Triage, read original if addendum)
+□ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions)
+□ Step 4: Plan (Route C: spawn Plan agent + validate plan / Routes A & B: note skipped)
+□ Step 5: Explore (Routes B & C: spawn Explore agent, include prime file lessons)
+□ Step 5.5: Scope Declaration (Routes B & C: declare files + acceptance criteria in REQ)
+□ Step 5.75: Pre-Flight Check (Routes B & C: git clean, test baseline, dependencies)
+□ Step 6: Implement (spawn agent with lessons + TDD mode if set, log decisions as D-XX)
+□ Step 6.25: Implementation Summary (append file manifest — mandatory for all routes)
+□ Step 6.3: Qualify (orchestrator verifies: files exist, substantive, wired, flowing, requirements traced, P-A-U audit)
+□ Step 6.5: Test (run relevant tests, load debug rules on attempt 2+, verify TDD evidence if tdd:true)
+□ Step 7: Review (spawn review action — gate on acceptance: Pass→archive, Fail→remediate with debug rules)
+□ Step 7.5: Lessons Learned (append section, update prime files, skip for Route A if no surprises)
+□ Step 8: Archive (update status, classify failures, triage discovered tasks, cycle-check follow-ups, queue follow-ups, move to archive/)
+□ Step 9: Commit (stage explicit files, commit if git repo, write hash to REQ in separate metadata commit)
+□ Step 10: Loop or Exit (context wipe + contamination check if looping, else write CHECKPOINT.md with depth + cleanup)
+```
+
+## Common Mistakes
+
+- Spawning implementation agent without first moving file to `working/`
+- Letting spawned agents handle file management (only the orchestrator moves/archives files)
+- Forgetting to update status in frontmatter (only two transitions: `claimed` at Step 2, final status at Step 8)
+- Archiving a UR folder before all its REQs are complete
+- Forgetting Planning status note for Routes A/B ("Planning not required")
+- Using `git add -A` instead of staging specific files
+- Using `--no-verify` to bypass a failing pre-commit hook instead of fixing the issue
+- Committing without validating Implementation Summary file list against staged files
+- Implementation Summary that only lists `do-work/` paths (means the REQ wasn't actually implemented — exception: `domain: ui-design` design artifacts placed in project directories like `docs/design/`)
+- Creating follow-ups for every `- [~]` item instead of only UX-affecting decisions
+
+## Error Handling
+
+| Phase | Action |
+|-------|--------|
+| `pending-answers` REQs remain after queue is empty | Report them to the user: list each REQ and its unresolved questions. Suggest `do-work clarify` to batch-review. |
+| Plan agent fails (Route C) | Classify failure (Intent/Spec/Code/Environment), create follow-up REQ if applicable, archive as failed |
+| Explore agent fails (B/C) | Proceed to implementation with reduced context — builder can explore on its own |
+| Implementation fails | Classify failure (Intent/Spec/Code/Environment), create follow-up REQ if applicable, archive as failed |
+| Tests fail repeatedly | After 3 fix attempts, classify as Code failure, create follow-up REQ with test failure details, archive as failed |
+| Review: Acceptance = Fail | Return to Step 6 for ONE remediation attempt, then re-review. If still failing: archive as `completed-with-issues` with follow-up REQs |
+| Review work agent fails | Skip review, note it in the REQ file, continue to archive — review failure is not a gate |
+| Commit fails | Investigate the error (usually a pre-commit hook failure). Fix the underlying issue, re-stage, and retry as a **new** commit. Do NOT use `--no-verify` to skip hooks or `--no-gpg-sign` to bypass signing — fix the root cause. If unfixable, report the error to the user and continue to next request — changes remain uncommitted but archived. |
+| Unrecoverable error | Stop loop, report clearly, leave queue intact for manual recovery |
+
+## Progress Reporting
+
+Keep the user informed with this format:
+
+```
+Processing REQ-003-dark-mode.md...
+  Triage: Complex (Route C)
+  Open Questions: 2 found → builder decided (follow-ups queued)
+  Planning...     [done]
+  Scope...        [done] 4 files declared
+  Exploring...    [done]
+  Implementing... [done]
+  Summary...      [done] 3 files changed
+  Qualifying...   [done] ✓ files verified, requirements traced
+  Testing...      [done] ✓ 12 tests passing
+  Reviewing...    [done] 92% — 0 follow-ups
+  Archiving...    [done]
+  Committing...   [done] → abc1234
+
+Processing REQ-004-fix-typo.md...
+  Triage: Simple (Route A)
+  Implementing... [done]
+  Summary...      [done] 1 file changed
+  Qualifying...   [done] ✓ verified
+  Testing...      [done] ✓ 3 tests passing
+  Reviewing...    [done] 88% — 0 follow-ups
+  Archiving...    [done]
+  Committing...   [done] → def5678
+
+All 2 requests completed:
+  - REQ-003 (Route C) → abc1234 [review: 92%]
+  - REQ-004 (Route A) → def5678 [review: 88%]
+```
+
+## What This Action Does NOT Do
+
+- Create new request files (use the capture requests action)
+- Make architectural decisions beyond what's in the request
+- Run without user present (this is supervised automation)
+- Modify already-completed requests
+- Allow external modification of files in `working/` or `archive/`
 
 ## Archived Request File Example
 

@@ -21,9 +21,7 @@ A confidence evaluation system that compares extracted REQ files against the ori
 - Quality-checking capture output before running the work queue
 
 **Do NOT use when:**
-- User wants to review *completed work* (code, implementation) — route to the review-work action instead
-- User wants a *codebase* review — route to the code-review action instead
-- User says just "review" without "requests" — that's the review-work action
+- See `SKILL.md` routing table for sibling action selection.
 
 ## Steps
 

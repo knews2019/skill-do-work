@@ -12,9 +12,7 @@
 - Reviewing architectural health, consistency, security, or patterns across a directory or prime file scope
 
 **Do NOT use when:**
-- User wants to review *completed work* against its requirements — route to the review-work action instead
-- User says just "review" without "code" or "codebase" qualifier — that's the review-work action
-- User wants to verify *capture quality* — route to the verify-requests action instead
+- See `SKILL.md` routing table for sibling action selection.
 
 ## Input
 

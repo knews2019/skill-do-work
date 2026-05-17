@@ -11,7 +11,6 @@ README.md             # Installation + quick usage guide
 actions/              # Action files (each is a standalone prompt)
   capture.md          # Capture new requests → UR folders + REQ files
   work.md             # Process the queue — triage, plan, build, test, review
-  work-reference.md   # Orchestrator checklist, error handling, progress template
   clarify.md          # Batch-review pending questions from completed work
   verify-requests.md  # Quality-check captured REQs against original input
   review-work.md      # Post-work code review + acceptance testing
@@ -27,8 +26,7 @@ actions/              # Action files (each is a standalone prompt)
   scan-ideas.md       # Generate ideas for what to build, improve, or explore next
   deep-explore.md     # Multi-round structured exploration — diverge/converge dialogue, vision docs
   deep-explore-reference.md # Companion: persona prompts, rubrics, state schema, error handling
-  install-ui-design.md # Install the frontend-design skill for UI work
-  install-bowser.md   # Install Playwright CLI + Bowser skill for browser automation
+  install.md          # Install companion skills/tooling — targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill)
   forensics.md        # Pipeline diagnostics — stuck work, hollow completions, orphaned URs
   roadmap.md          # Read-only queue survey — feasibility classification + TDD posture (sister action to forensics)
   prime.md             # Prime file management — create and audit AI context documents
@@ -56,7 +54,7 @@ hooks/                # Optional hook scripts (platform-specific, installable)
   hooks.json          # Combined hook config for Claude Code (SessionStart + Stop)
   session-start.sh    # Claude Code SessionStart hook — injects status line
   pipeline-guard.sh   # Claude Code Stop hook — prevents stopping mid-pipeline
-docs/                 # User guides for the most commonly used actions (capture-guide.md, work-guide.md, etc.) — not every action has one; small/self-explanatory actions (install-*, tutorial, scan-ideas, deep-explore, pipeline, clarify) and reference-only actions invoked by other actions (kb-lessons-handoff) rely on their action file + README
+docs/                 # User guides for the most commonly used actions (capture-guide.md, work-guide.md, etc.) — not every action has one; small/self-explanatory actions (install, tutorial, scan-ideas, deep-explore, pipeline, clarify) and reference-only actions invoked by other actions (kb-lessons-handoff) rely on their action file + README
 decisions/            # Architecture decisions — ADRs (records/), imported specs, topic indexes, and the running decision log
 _dev/                 # Internal development scratch — self-review reports, audit notes (not loaded by any action)
 AGENTS.md             # Stub — redirects to CLAUDE.md

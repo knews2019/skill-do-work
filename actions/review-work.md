@@ -21,9 +21,7 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 - Automatically after the work action completes each REQ
 
 **Do NOT use when:**
-- User wants to verify *capture quality* (not code) — route to the verify-requests action instead
-- User wants a standalone *codebase* review unrelated to REQs — route to the code-review action instead
-- User wants to *inspect* uncommitted changes without judgment — route to the inspect action instead
+- See `SKILL.md` routing table for sibling action selection.
 
 ## Two Modes
 

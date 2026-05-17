@@ -12,10 +12,7 @@ A planning aid, not a diagnostic. Where `forensics` looks for *broken* state (st
 - Onboarding to a project with existing `do-work/` history and wanting a lay of the land
 
 **Do NOT use when:**
-- User suspects something is *broken* or *stuck* — route to the forensics action instead
-- User wants to *generate new ideas* for what to build — route to the scan-ideas action instead
-- User wants to *review specific completed code* — route to the review-work or code-review action instead
-- User wants to *explain uncommitted local changes* — route to the inspect action instead
+- See `SKILL.md` routing table for sibling action selection.
 
 ## Core Rules
 

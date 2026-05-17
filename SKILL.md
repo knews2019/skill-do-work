@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | bkb [subcommand] | interview [template] | prompts [subcommand] | install-ui-design | install-bowser | version | recap | tutorial [mode] | help"
+argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -23,8 +23,7 @@ A unified entry point for task capture and processing.
 - **scan-ideas**: Generate ideas for what to build, improve, or explore next — grounded in codebase analysis and project history
 - **deep-explore**: Multi-round structured exploration of a concept — spawns divergent/convergent subagent dialogue, produces vision documents and idea briefs
 - **ui-review**: Validate UI quality against design best practices — read-only audit with structured findings report
-- **install-ui-design**: Install the `frontend-design` Claude skill for production-grade UI design capabilities
-- **install-bowser**: Install Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification
+- **install**: Install companion skills/tooling into the current project. Targets: `ui-design` (Anthropic's `frontend-design` skill) and `bowser` (Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification).
 - **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination (read-only)
 - **roadmap**: Queue survey → classifies pending REQs (ready / needs-clarification / blocked / stale), reports TDD posture, rolls up in-progress and recently-completed work (read-only)
 - **prime**: Create and audit prime files — AI context documents that index utility codebases
@@ -86,7 +85,7 @@ Check these patterns **in order** — first match wins:
 | 22       | Quick-wins keywords      | `do-work quick-wins`, `do-work quick wins`, `do-work low-hanging`, `do-work scan`, `do-work scan src/`                             | → quick-wins                  |
 | 23       | Scan-ideas keywords      | `do-work scan-ideas`, `do-work scan-ideas performance`, `do-work scan-ideas src/api/`, `do-work ideas`, `do-work brainstorm`, `do-work what should I build`, `do-work suggest`, `do-work ideate` | → scan-ideas                    |
 | 24       | Deep-explore keywords    | `do-work deep-explore`, `do-work deep-explore performance`, `do-work explore concept`, `do-work deep dive`, `do-work develop idea`, `do-work deep-explore continue` | → deep-explore                  |
-| 25       | Install keywords         | `do-work install-ui-design`, `do-work install ui design`, `do-work install-bowser`, `do-work install bowser`, `do-work install playwright`, `do-work setup bowser`, `do-work setup playwright` | → install-ui-design / install-bowser |
+| 25       | Install keywords         | `do-work install ui-design`, `do-work install-ui-design`, `do-work install ui design`, `do-work install ui`, `do-work install frontend-design`, `do-work setup ui design`, `do-work setup design skill`, `do-work install bowser`, `do-work install-bowser`, `do-work install playwright`, `do-work install playwright-cli`, `do-work setup bowser`, `do-work setup playwright` | → install (target = `ui-design` or `bowser`) |
 | 26       | Tutorial keywords        | `do-work tutorial`, `do-work tutorial quick-start`, `do-work tutorial concepts`, `do-work tutorial recipes`, `do-work tutorial tour` | → tutorial                      |
 | 27       | Descriptive content      | `do-work capture request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture requests              |
 
@@ -133,8 +132,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **interview** | interview, elicit, operating model | Everything after verb → `$ARGUMENTS` (`list`, `<template>`, or `<template> <sub-command>`). No args → help menu |
 | **prompts** | prompts, prompt | Everything after verb → `$ARGUMENTS` (sub-command + prompt name + args). `prompts` (plural) and `prompt` (singular) both route here. First arg is the sub-command (`list`, `show`, `run`) or a prompt name (shorthand for `run`) |
 | **quick-wins** | quick-wins, quick wins, low-hanging, low hanging fruit, scan, opportunities, what can we improve | "scan" alone or with a bare directory path → quick-wins; bare path = last meaningful token (any text after it is descriptive content → capture) |
-| **install-ui-design** | install-ui-design, install ui design, install ui, install frontend-design, setup ui design, setup design skill | |
-| **install-bowser** | install-bowser, install bowser, install playwright, install playwright-cli, setup bowser, setup playwright | |
+| **install** | install, install ui-design, install-ui-design, install ui design, install ui, install frontend-design, setup ui design, setup design skill, install bowser, install-bowser, install playwright, install playwright-cli, setup bowser, setup playwright | **Normalize the invocation first**, then extract the target token: (a) strip a leading `install-` from hyphenated forms (`install-ui-design` → `ui-design`, `install-bowser` → `bowser`); (b) strip a leading `setup ` (`setup bowser` → `bowser`, `setup ui design` → `ui design`); (c) for `install X` with a space, take everything after `install `. Then map the normalized token: `ui-design`/`ui design`/`ui`/`frontend-design`/`design skill` → target `ui-design`; `bowser`/`playwright`/`playwright-cli` → target `bowser`. Pass the target as `$ARGUMENTS`. Bare `install` with no token (or unknown target after normalization) → help block. |
 | **scan-ideas** | scan-ideas, ideate, ideas, brainstorm, what should I build, suggest, what's next, what could we improve | Everything after keyword → `$ARGUMENTS` (focus topic or directory). No args → open exploration |
 | **deep-explore** | deep-explore, explore concept, deep dive, develop idea, explore idea | Everything after keyword → `$ARGUMENTS` (concept, file path, topic, or "continue"). No args → ask user what to explore |
 | **tutorial** | tutorial, tutorial quick-start, tutorial concepts, tutorial recipes, tutorial tour, learn, getting started, how does this work | Everything after "tutorial" → `$ARGUMENTS` (mode). No args → ask user which mode |
@@ -193,8 +191,8 @@ do-work — task queue for agentic coding tools
     do-work prompts run <name> [args]   Execute a prompt (e.g. architecture-decisions-log)
 
   Setup:
-    do-work install-ui-design           Frontend-design skill for production-grade UI
-    do-work install-bowser              Playwright CLI + Bowser for browser automation
+    do-work install ui-design           Frontend-design skill for production-grade UI
+    do-work install bowser              Playwright CLI + Bowser for browser automation
 
   Maintenance & info:
     do-work cleanup                     Consolidate the archive
@@ -272,8 +270,7 @@ Each action has an action file with full instructions. How you execute it depend
 | quick-wins         | `./actions/quick-wins.md`       | Target directory               |
 | scan-ideas         | `./actions/scan-ideas.md`       | `$ARGUMENTS` (focus topic, directory, or empty) |
 | deep-explore       | `./actions/deep-explore.md`     | `$ARGUMENTS` (concept, file path, topic, "continue", or empty) |
-| install-ui-design  | `./actions/install-ui-design.md`| (none needed)                  |
-| install-bowser     | `./actions/install-bowser.md`   | (none needed)                  |
+| install            | `./actions/install.md`          | `$ARGUMENTS` (target: `ui-design` or `bowser`) |
 | forensics          | `./actions/forensics.md`        | (none needed)                  |
 | roadmap            | `./actions/roadmap.md`          | `$ARGUMENTS` (optional scope: `pending`, `in-progress`, `done`, `UR-NNN`, `since <date>`) |
 | prime              | `./actions/prime.md`            | `$ARGUMENTS` (sub-command + params) |
@@ -290,7 +287,7 @@ Dispatch each action to a subagent. The subagent reads the action file and execu
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
 - **Exception — pipeline dispatch**: When the pipeline action dispatches `work`, it runs in the **foreground** (blocking). The pipeline requires each step to complete before advancing. This override applies only when the pipeline is the caller.
-- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `commit`, `inspect`, `install-ui-design`, `install-bowser`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available
