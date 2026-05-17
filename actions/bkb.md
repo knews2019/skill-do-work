@@ -274,6 +274,24 @@ Set `confidence:` in frontmatter based on source quality:
 
 Confidence can change: medium → high when a second source confirms the claim. High → low when a contradiction is flagged. Low → medium/high when the contradiction is resolved.
 
+### Schema Read Contract
+
+The wiki page frontmatter above has three enum-valued fields (`type`, `rel`, `confidence`) and one namespace-string field (`topic_cluster`). To prevent muscle-memory typos from silently misclassifying articles — the same failure mode that `0.76.2`'s `dependencies:` → `depends_on` patch addressed in `actions/work.md` — every read site in bkb sub-commands (`triage`, `ingest`, `lint`, `garden`, `defrag`, `query`) honors a uniform **normalize-and-warn contract**:
+
+1. **Normalize first.** Apply the per-field alias map below; if a canonical match results, use it silently.
+2. **Warn-on-fallback.** If after normalization the value still doesn't match the canonical enum, emit `⚠ {field}: '{value}' not recognized — expected one of [{enum}]. Treating as '{default}'.` and proceed with the default.
+3. **Never silently drop.** Warnings render in the per-sub-command summary block alongside the file that triggered them, so the operator can correct the typo at the source rather than hunt down misclassified pages later.
+
+| Field (read sites) | Canonical enum | Normalization | Default on unknown |
+|---|---|---|---|
+| `type` (ingest classification, lint type audit, garden balance check) | `concept`, `entity`, `source-summary`, `comparison`, `daily-log`, `monthly-rollup` | snake_case → kebab-case (`source_summary` → `source-summary`, `daily_log` → `daily-log`, `monthly_rollup` → `monthly-rollup`) | `concept` |
+| `rel` (per entry in `related:` arrays — ingest cross-ref, lint reciprocity check, garden audit) | `extends`, `contradicts`, `evidence-for`, `complements`, `supersedes`, `depends-on` | snake_case → kebab-case (`evidence_for` → `evidence-for`, `depends_on` → `depends-on`); singular → plural (`extend` → `extends`, `supersede` → `supersedes`) | skip the relationship edge with the warning text — never silently store an unknown `rel` (would break reciprocity checks) |
+| `confidence` (lint confidence audit, ingest cross-source upgrade, `contradicts` auto-downgrade) | `high`, `medium`, `low` | (no common typo aliases identified) | `medium` |
+
+**Field-name alias for `topic_cluster`:** triage's `topic_hint` resolution, ingest's cluster assignment, garden's balance check, and `_master_index.md` rebuild all recognize `topic:` and `topic_category:` as synonyms when `topic_cluster:` is absent so single-word YAML conventions don't silently orphan an article. `topic_cluster` wins when multiple are present. Ingest and triage always emit the canonical `topic_cluster:` — the alias is read-only, never propagated on write.
+
+**Write paths are unaffected.** Ingest's page creation, triage's queue updates, garden's frontmatter patches, and defrag's cluster merges always write the canonical key and canonical enum value. The normalize-and-warn contract is read-only.
+
 ### Enhanced Transcript Handling
 
 When the Compiler ingests audio or video with a companion transcript, apply these additional steps beyond standard text ingestion:

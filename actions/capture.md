@@ -175,6 +175,20 @@ See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
 
 `depends_on` is semantically distinct from `addendum_to`: `addendum_to: REQ-N` says "this REQ amends REQ-N" (used for follow-ups and review-generated remediation); `depends_on: [REQ-N, REQ-M]` says "this REQ requires REQ-N and REQ-M to be completed first." A REQ can carry both.
 
+### Schema Aliases
+
+Several fields above accept legacy aliases at read time so muscle-memory typos from sister tools don't silently drop information. The canonical key wins when multiple are present; capture always emits the canonical — aliases are read-only, never propagated on write.
+
+| Canonical field | Aliases recognized | Read sites |
+|---|---|---|
+| `addendum_to` | `amends`, `parent`, `amendment_to` | capture's duplicate check (Step 2), `actions/work.md` Step 8 upstream walk + cycle detection, `actions/roadmap.md` Blocked classification |
+| `depends_on` | `dependencies` | capture's slicing convention, `actions/work.md` Step 1 selection / cycle detection / `--wave` depth / Step 8 upstream walk, `actions/roadmap.md` Ready/Blocked rubrics |
+| `batch` | `batch_name` | `actions/roadmap.md` batch grouping; verify-requests cross-REQ summarization |
+| `related` | `related_reqs` | `actions/roadmap.md` cross-REQ surfacing; verify-requests batch coverage |
+| `suggested_spec` | `spec_hint`, `suggested-spec` | `actions/work.md` Step 6 spec pre-load hint |
+
+For enum-valued and boolean fields shared with `actions/work.md` (`status`, `domain`, `route`, `caveman`, `tdd`, `error_type`, `kb_status`), capture honors the **normalize-and-warn contract** defined in `actions/work.md`'s Schema Read Contract: invalid values trigger a warning and a documented default rather than silent acceptance. During Step 5 (Write Files), if the captured value for any normalize-and-warn field doesn't match the canonical enum (after applying the contract's normalization), prompt the user to confirm the intended value before emitting the REQ — capture is the human-attention window for catching typos at the source. Never write a non-canonical value silently.
+
 ### UR input.md
 
 Created for every invocation. For simple requests, it's minimal:

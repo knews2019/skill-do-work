@@ -76,17 +76,31 @@ Pipeline state lives at `do-work/pipeline.json`. Created on initialize, read on 
 
 ### Step 1: Determine Mode
 
-1. Check if `do-work/pipeline.json` exists and has `"active": true`
-2. Check `$ARGUMENTS` for content
+1. Check if `do-work/pipeline.json` exists and has `"active": true`.
 
-| Active pipeline? | $ARGUMENTS | Mode |
-|-----------------|------------|------|
-| No | Has request text | **Initialize** (Step 2) |
-| No | Empty or "status" | **Help** (show help menu and stop) |
-| Yes | Has request text | **Conflict** — warn the user. Ask: "A pipeline is already active. Resume it, or abandon it and start fresh?" |
+2. **Normalize `$ARGUMENTS` and bucket it before consulting the mode table.** Trim leading/trailing whitespace and lowercase the result. The normalized input falls into one of three buckets:
+   - **Empty** — no remaining content
+   - **Reserved keyword** — exact match (post trim+lowercase) against `status` or `abandon`
+   - **Request text** — anything else
+
+3. **Near-miss guard for reserved keywords.** Before treating an unrecognized single-token input as request text, check whether it's a prefix of a reserved keyword. If normalized `$ARGUMENTS` is a single token of ≤8 characters and is a strict prefix of `status` or `abandon` (e.g., `stat`, `statu`, `aban`, `abandn`, `abandon-it`), respond with:
+
+   ```
+   Did you mean 'status' / 'abandon'? Pipeline keywords require an exact match — got '{token}'.
+   ```
+
+   and stop. **Apply this guard in both active and inactive pipeline states** — do not let the Conflict arm (active) or the Initialize arm (inactive) swallow a near-miss as request text. Same shape as the `install-` / `setup ` normalization in `SKILL.md`'s install routing row: normalize and disambiguate before dispatch, so an "almost match" cannot silently route to the wrong action.
+
+4. Consult the mode table:
+
+| Active pipeline? | `$ARGUMENTS` bucket | Mode |
+|-----------------|---------------------|------|
+| No | Request text | **Initialize** (Step 2) |
+| No | Empty, `status` keyword, or `abandon` keyword | **Help** (show help menu and stop — there's nothing to inspect or abandon without an active pipeline; both reserved keywords are no-ops here) |
+| Yes | Request text | **Conflict** — warn the user. Ask: "A pipeline is already active. Resume it, or abandon it and start fresh?" |
 | Yes | Empty | **Resume** (Step 3) |
-| Yes | "status" | **Status** (print status block and stop) |
-| Yes | "abandon" | **Abandon** — set `active: false`, print final status, stop |
+| Yes | `status` keyword | **Status** (print status block and stop) |
+| Yes | `abandon` keyword | **Abandon** — set `active: false`, print final status, stop |
 
 ### Step 2: Initialize (new pipeline)
 
