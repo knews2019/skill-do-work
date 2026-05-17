@@ -2,7 +2,16 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+> Pre-0.65 release notes lived in `CHANGELOG-2026-spring.md` and `CHANGELOG-pre-0.50.md` through 0.75.x, then were removed in 0.76.0. Tarball-installed copies (no local `.git`) can browse both archives at commit [`bf15fe2`](https://github.com/knews2019/skill-do-work/tree/bf15fe2) on GitHub — they're preserved there.
+
 ---
+
+## 0.76.1 — The Archive Pointer (2026-05-17)
+
+Post-PR-review fixup for 0.76.0. Codex flagged that tarball-installed users lose access to pre-0.65 release notes once the archives are deleted — `.git` isn't always present, so "git history" isn't always a valid fallback. Restored discoverability without restoring the files.
+
+- `CHANGELOG.md` header now points tarball users at commit [`bf15fe2`](https://github.com/knews2019/skill-do-work/tree/bf15fe2) on GitHub where both archive files are still readable.
+- `actions/version.md` glob note refined to acknowledge the tarball gap explicitly.
 
 ## 0.76.0 — The Trim Pass (2026-05-17)
 

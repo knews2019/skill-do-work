@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps.
 
-**Current version**: 0.76.0
+**Current version**: 0.76.1
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -62,7 +62,7 @@ When user asks "check for updates", "update", or "is there a newer version":
    - Only continue once `<skill-root>` is confirmed to live inside the current project's git root.
 3. **Check for local changes** to shipped skill files at `<skill-root>`:
    - **Scope the check to skill-owned files only.** Ignore `do-work/` (queue data, archives, deliverables) — those are generated at runtime and should never block an update.
-   - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ prompts/ interviews/ specs/ docs/ decisions/ hooks/ CLAUDE.md AGENTS.md CHANGELOG.md README.md next-steps.md` (listing every shipped editable path) and check for uncommitted changes. Any dirty file in these paths will be clobbered by the tar extraction in step 5 if you proceed. (Previous archive files `CHANGELOG-2026-spring.md` and `CHANGELOG-pre-0.50.md` were removed in 0.76.0 — historical entries remain in git history.)
+   - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ prompts/ interviews/ specs/ docs/ decisions/ hooks/ CLAUDE.md AGENTS.md CHANGELOG.md README.md next-steps.md` (listing every shipped editable path) and check for uncommitted changes. Any dirty file in these paths will be clobbered by the tar extraction in step 5 if you proceed. (Previous archive files `CHANGELOG-2026-spring.md` and `CHANGELOG-pre-0.50.md` were removed in 0.76.0 — tarball-installed copies that want pre-0.65 release notes can browse them at commit `bf15fe2` on GitHub; git-cloned copies can `git show bf15fe2:CHANGELOG-2026-spring.md` locally.)
    - If it's **not** a git repo, check whether shipped skill files (actions/, crew-members/, prompts/, interviews/, specs/, docs/, decisions/, hooks/, SKILL.md, CLAUDE.md, next-steps.md, etc.) differ from a fresh install by looking for user-modified content (custom crew-members, edited action files, local prompt/template additions, ADR edits, etc.).
    - **If any shipped skill files are dirty / have local modifications**: Stop and warn the user. List the modified files and ask for explicit confirmation before proceeding. Do NOT auto-update.
    - **If clean**: Proceed to step 4 (pre-clean) then step 5 (extract).
