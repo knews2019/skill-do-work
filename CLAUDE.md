@@ -30,8 +30,7 @@ actions/              # Action files (each is a standalone prompt)
   forensics.md        # Pipeline diagnostics — stuck work, hollow completions, orphaned URs
   roadmap.md          # Read-only queue survey — feasibility classification + TDD posture (sister action to forensics)
   prime.md             # Prime file management — create and audit AI context documents
-  pipeline.md          # Full end-to-end orchestration (investigate → capture → verify → run → review → present)
-  pipeline-reference.md # Companion: three Pipeline Completion Report rendering templates (markdown/Marp/HTML) + composition rules
+  pipeline.md          # Full end-to-end orchestration (investigate → capture → verify → run → review → present); embeds the three Pipeline Completion Report rendering templates inline (markdown/Marp/HTML) + composition rules
   bkb.md              # LLM knowledge base — init, triage, ingest, query, lint, and more
   bkb-reference.md    # Companion: seed file templates, agent crew definitions, KB schema content
   interview.md        # Generalized elicitation framework — prescriptive templates, checkpoint-gated sessions, agent-ready exports

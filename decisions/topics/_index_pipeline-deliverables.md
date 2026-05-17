@@ -11,7 +11,6 @@ sources:
   - CHANGELOG.md (0.64.0 The Cross-Linked Set)
   - CHANGELOG.md (0.64.1 The Companion Split)
   - README.md
-  - actions/pipeline-reference.md
   - actions/pipeline.md
   - actions/present-work.md
 related:

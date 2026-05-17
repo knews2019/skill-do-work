@@ -9,7 +9,6 @@ sources:
   - CHANGELOG.md (0.64.0 The Cross-Linked Set)
   - CHANGELOG.md (0.64.1 The Companion Split)
   - actions/pipeline.md
-  - actions/pipeline-reference.md
   - actions/present-work.md
 related:
   - page: adr-001-modular-action-prompts-and-companion-references
@@ -28,9 +27,9 @@ See also: [[adr-001-modular-action-prompts-and-companion-references]] (depends-o
 
 ## Context
 
-Once the pipeline produced a debrief at all, the next design question was who that debrief was for. The changelog captures a rapid sequence of decisions: generate three renderings from one dataset, open every summary with a plain-language "What got built" narrative, cross-link sibling artifacts for both stakeholder and developer audiences, and eventually split the bulky rendering templates into `pipeline-reference.md` once the prompt grew too large.
+Once the pipeline produced a debrief at all, the next design question was who that debrief was for. The changelog captures a rapid sequence of decisions: generate three renderings from one dataset, open every summary with a plain-language "What got built" narrative, cross-link sibling artifacts for both stakeholder and developer audiences, and split the bulky rendering templates into a `pipeline-reference.md` companion once the prompt grew too large (later re-inlined back into `pipeline.md` when trimming brought the combined size back under the token budget).
 
-The present files preserve that entire shape. `pipeline.md` requires all three formats, `pipeline-reference.md` holds the templates and composition rules, and `present-work.md` cross-links the interactive explainer, client brief, and pipeline summaries as related reading.
+The present files preserve that entire shape. `pipeline.md` requires all three formats and embeds the templates and composition rules inline, and `present-work.md` cross-links the interactive explainer, client brief, and pipeline summaries as related reading.
 
 ## Decision
 
@@ -39,7 +38,7 @@ Pipeline completion data is rendered three ways from a single source dataset:
 - Marp slides for walkthroughs and stakeholder reviews,
 - standalone HTML for non-technical readers.
 
-All three formats must carry the same facts, start with a plain-language "What got built" entry point, and link readers to sibling artifacts that deepen either understanding or auditability. The rendering templates and cross-format rules live in `pipeline-reference.md` rather than inside `pipeline.md`.
+All three formats must carry the same facts, start with a plain-language "What got built" entry point, and link readers to sibling artifacts that deepen either understanding or auditability. The rendering templates and cross-format rules live inline in `pipeline.md`'s Output Format section.
 
 ## Alternatives
 
@@ -62,5 +61,4 @@ The trade-off is a larger reporting surface area. Template parity, sibling-link 
 
 - [CHANGELOG.md](../../CHANGELOG.md) — `0.63.2 The Triple Render`, `0.64.0 The Cross-Linked Set`, `0.64.1 The Companion Split`
 - [actions/pipeline.md](../../actions/pipeline.md)
-- [actions/pipeline-reference.md](../../actions/pipeline-reference.md)
 - [actions/present-work.md](../../actions/present-work.md)

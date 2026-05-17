@@ -13,9 +13,8 @@ The core idea: instead of re-deriving knowledge from scratch on every query (RAG
 - Querying the wiki for synthesized answers (`query`) — prefer the compiled wiki over re-reading raw sources.
 
 **Do NOT use when:**
-- The user wants a quick one-off read of a single document — that's a direct file read, not a KB operation.
 - There's no `kb/` directory AND the user hasn't asked to `init` — stop and ask.
-- The user wants project-level AI context (primes) — that's `do-work prime`, not bkb.
+- See `SKILL.md` routing table for sibling action selection.
 
 ## Sub-Commands
 

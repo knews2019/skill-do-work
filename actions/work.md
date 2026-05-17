@@ -14,8 +14,7 @@ An orchestrated build system that processes request files created by the capture
 **Do NOT use when:**
 - The queue is empty — tell the user and stop; suggest `do-work capture request: [describe]` instead.
 - The only REQs left are `pending-answers` — route to `do-work clarify` so the user can resolve them first.
-- The user wants to *inspect* what would happen without running — point them at `do-work inspect` or `do-work verify requests`.
-- The user wants post-build review — that's `do-work review work`.
+- See `SKILL.md` routing table for sibling action selection (inspect, verify requests, review work, etc.).
 
 ## Request Files as Living Logs
 
