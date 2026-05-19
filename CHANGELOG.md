@@ -16,7 +16,18 @@ Closeout pass on a dead-code audit of the skill. Tightens the Schema Read Contra
 - 18 action files now end their top-of-file blockquote with a `User-facing walkthrough:` link to the corresponding `docs/*-guide.md`. Previously only `capture`, `work`, and `interview` had docs links (and those weren't in the blockquote). Now uniform across `bkb`, `capture`, `cleanup`, `code-review`, `commit`, `forensics`, `inspect`, `interview`, `present-work`, `prime`, `prompts`, `quick-wins`, `review-work`, `roadmap`, `ui-review`, `verify-requests`, `version`, `work`.
 - `decisions/records/adr-012-interview-v2-gap-closure.md`: removed the broken `References` bullet pointing at `decisions/imported-specs/2026-04-16_expand-skill-do-work-interview.md`. That file was intentionally deleted in `0.71.1` (commit `f7e4b61`); restoring it would re-open a closed decision.
 - `decisions/imported-specs/2026-04-17_improve-weekly-diff-skill.md`: added a Status footer documenting that edits 1–3 from the spec landed in `prompts/weekly-signal-diff.md`. The spec is a candidate for a future ADR-013 if the maintainer wants the decision rationale in the ledger.
-- `DEAD_CODE.md`: full audit report committed at the repo root with findings grouped by confidence. This release is the closeout of the items that were actionable.
+- `DEAD_CODE.md`: full audit report committed at the repo root with findings grouped by confidence. This release is the closeout of the items that were actionable; two other observations in the report (the `AGENTS.md` stub and `.vscode/tasks.json` portability) were independently addressed in 0.76.5.
+
+## 0.76.5 — The Stale Wipe (2026-05-19)
+
+Six janitorial fixes from a `quick-wins` self-scan — stale docs swept out, two shell hooks hardened, and an invariant documented so the non-jq fallback can't silently miscount.
+
+- `CLAUDE.md` Project Structure: dropped the `_dev/` line — the directory was emptied in 0.75.0 and the entry was a dead pointer.
+- `README.md` "fully clean update" path list now matches `actions/version.md`'s authoritative shipped-paths glob (was missing `prompts/`, `interviews/`, `specs/`, `docs/`, `decisions/`, `hooks/`, `CLAUDE.md`, `AGENTS.md`, `next-steps.md`).
+- `.vscode/tasks.json` gained `linux` (`xdg-open`) and `windows` (`cmd /c start`) overrides for the "Open current HTML in browser" task; macOS behavior unchanged.
+- `actions/pipeline.md`: documents the pretty-print invariant for `do-work/pipeline.json` — pipeline.md is the sole writer and the constraint protects `hooks/pipeline-guard.sh`'s line-oriented grep fallback from miscounting on compact JSON.
+- `AGENTS.md`: replaced the newline-less `READ CLAUDE.md` stub with a one-line markdown link (`See [CLAUDE.md](CLAUDE.md).`) — clickable when rendered, POSIX-clean.
+- `hooks/session-start.sh`: anchored the version-line `sed` so it strips only the `**Current version**:` prefix instead of greedily up to the last `: `. Same output today, robust to future colon-containing version lines.
 
 ## 0.76.4 — The Quiet Drain (2026-05-17)
 

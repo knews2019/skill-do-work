@@ -55,7 +55,6 @@ hooks/                # Optional hook scripts (platform-specific, installable)
   pipeline-guard.sh   # Claude Code Stop hook — prevents stopping mid-pipeline
 docs/                 # User guides for the most commonly used actions (capture-guide.md, work-guide.md, etc.) — not every action has one; small/self-explanatory actions (install, tutorial, scan-ideas, deep-explore, pipeline, clarify) and reference-only actions invoked by other actions (kb-lessons-handoff) rely on their action file + README
 decisions/            # Architecture decisions — ADRs (records/), imported specs, topic indexes, and the running decision log
-_dev/                 # Internal development scratch — self-review reports, audit notes (not loaded by any action)
 AGENTS.md             # Stub — redirects to CLAUDE.md
 CHANGELOG.md          # Release notes (newest on top)
 ```

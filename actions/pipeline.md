@@ -72,6 +72,8 @@ Pipeline state lives at `do-work/pipeline.json`. Created on initialize, read on 
 | `steps[].artifacts` | array\|undefined | REQ/UR IDs produced (capture step only) |
 | `steps[].error` | string\|undefined | Error description (failed steps only) |
 
+**Pretty-print invariant.** Every write to `do-work/pipeline.json` must use multi-line pretty-printed JSON (one key per line, as in the example above). The `hooks/pipeline-guard.sh` non-`jq` fallback uses line-oriented `grep -c` to count pending steps — a compact single-line write would silently miscount and let the agent stop mid-pipeline. Use `jq .` (or an equivalent formatter) when writing the file.
+
 ## Steps
 
 ### Step 1: Determine Mode
