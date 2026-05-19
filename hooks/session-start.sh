@@ -25,7 +25,7 @@ VERSION_FILE="$SKILL_ROOT/actions/version.md"
 QUEUE_DIR="${CLAUDE_PROJECT_DIR:-.}/do-work/queue"
 
 # Extract version (format pinned by CLAUDE.md — line starting with `**Current version**:` in actions/version.md)
-VERSION=$(grep -m1 '^\*\*Current version\*\*:' "$VERSION_FILE" 2>/dev/null | sed 's/.*: //')
+VERSION=$(grep -m1 '^\*\*Current version\*\*:' "$VERSION_FILE" 2>/dev/null | sed 's/^\*\*Current version\*\*:[[:space:]]*//')
 if [ -z "$VERSION" ]; then
   echo "do-work: could not parse version from $VERSION_FILE (expected line starting with '**Current version**:')" >&2
   VERSION="unknown"
