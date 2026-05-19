@@ -1,6 +1,6 @@
 # Commit Action
 
-> **Part of the do-work skill.** Invoked when routing determines the user wants to commit accumulated uncommitted files. Analyzes changes, associates them with existing REQs for traceability, groups the rest semantically, and commits everything in small atomic batches.
+> **Part of the do-work skill.** Invoked when routing determines the user wants to commit accumulated uncommitted files. Analyzes changes, associates them with existing REQs for traceability, groups the rest semantically, and commits everything in small atomic batches. User-facing walkthrough: [`docs/commit-guide.md`](../docs/commit-guide.md).
 
 Unlike the commit steps embedded in other actions (capture Step 7, work Step 9, review-work standalone, cleanup), this action handles files that accumulated outside the normal pipeline — manual edits, ad-hoc fixes, or work done between do-work runs.
 

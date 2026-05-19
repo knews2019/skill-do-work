@@ -1,6 +1,6 @@
 # Interview Action
 
-> **Part of the do-work skill.** Generalized interview framework. Runs prescriptive templates that elicit tacit knowledge through structured multi-layer conversations and produce agent-ready operating artifacts.
+> **Part of the do-work skill.** Generalized interview framework. Runs prescriptive templates that elicit tacit knowledge through structured multi-layer conversations and produce agent-ready operating artifacts. User-facing walkthrough: [`docs/interview-guide.md`](../docs/interview-guide.md).
 
 The action loads templates from `<skill-root>/interviews/<name>.md`, runs a checkpoint-gated interview layer by layer, and produces artifacts the user can hand to an agent or feed into `bkb` as queryable knowledge. Session state persists at `./do-work/interview/<template>/session.json` and resumes across sessions per ADR-005. Heavy content — template format, canonical entry contract, session schema, **Session-Load Protocol**, export schemas, re-run mode specs — lives in the companion `actions/interview-reference.md` per ADR-001. The `ingest` sub-command produces files that land in `kb/raw/inbox/` in the format `bkb triage && bkb ingest` expects, per ADR-002.
 

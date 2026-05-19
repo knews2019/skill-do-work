@@ -1,6 +1,6 @@
 # Present Work Action
 
-> **Part of the do-work skill.** Generates client-facing deliverables from completed work — briefs, architecture diagrams, value propositions, and video scripts. Turns the technical archive into something that educates and sells.
+> **Part of the do-work skill.** Generates client-facing deliverables from completed work — briefs, architecture diagrams, value propositions, and video scripts. Turns the technical archive into something that educates and sells. User-facing walkthrough: [`docs/present-work-guide.md`](../docs/present-work-guide.md).
 
 The code is done. Now communicate its value. This action reads the full history of completed work — what was requested, what was built, how it works, and what the Lessons Learned say — and produces artifacts that explain it to someone who doesn't read diffs.
 

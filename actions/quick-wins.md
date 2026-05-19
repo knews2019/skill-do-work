@@ -1,6 +1,6 @@
 # Quick-Wins Action
 
-> **Part of the do-work skill.** Scans a target directory for obvious refactoring opportunities and low-hanging tests to add.
+> **Part of the do-work skill.** Scans a target directory for obvious refactoring opportunities and low-hanging tests to add. User-facing walkthrough: [`docs/quick-wins-guide.md`](../docs/quick-wins-guide.md).
 
 **Read-only** — this action does NOT modify any files. It produces a structured report only.
 

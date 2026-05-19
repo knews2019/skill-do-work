@@ -1,6 +1,6 @@
 # Verify Requests Action
 
-> **Part of the do-work skill.** Invoked when routing determines the user wants to verify the quality of captured requests. Evaluates REQ files against their originating User Request (UR) to find gaps.
+> **Part of the do-work skill.** Invoked when routing determines the user wants to verify the quality of captured requests. Evaluates REQ files against their originating User Request (UR) to find gaps. User-facing walkthrough: [`docs/verify-requests-guide.md`](../docs/verify-requests-guide.md).
 
 A confidence evaluation system that compares extracted REQ files against the original user input to identify lost requirements, dropped UX details, missing intent signals, and incomplete coverage. This is **capture QA** — it checks whether requirements were extracted correctly, not whether the implementation is good.
 

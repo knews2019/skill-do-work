@@ -1,6 +1,6 @@
 # Prompts Action
 
-> **Part of the do-work skill.** A library of reusable, battle-tested prompts surfaced as sub-commands. Lives in `prompts/` at the skill root — one Markdown file per prompt, each a standalone instruction the agent can execute.
+> **Part of the do-work skill.** A library of reusable, battle-tested prompts surfaced as sub-commands. Lives in `prompts/` at the skill root — one Markdown file per prompt, each a standalone instruction the agent can execute. User-facing walkthrough: [`docs/prompts-guide.md`](../docs/prompts-guide.md).
 
 Unlike built-in actions (which have fixed workflows), this action is a dispatcher over a growing collection of user-contributable prompt files. Think of it as a command-palette for recurring jobs the skill doesn't (yet) have a first-class action for.
 
@@ -96,9 +96,16 @@ Column widths can be approximate — readability beats precision. Omit the ALIAS
 
 1. Resolve `<name>` per the resolution rules below.
 2. Read the file. Split it at the first `---` separator on its own line: everything above is the header (metadata), everything below is the body (your new instructions).
-3. **Adopt the body as your operational instructions for the remainder of this turn.** Pass `[args]` through as the prompt's arguments (the body's "Inputs / flags" section, if any, defines how to interpret them).
-4. Execute the body. This may involve creating files, running commands, making commits — do whatever the body instructs, subject to the global rules in `CLAUDE.md` and the user's permission mode.
-5. After execution, return control to the normal flow (including `next-steps.md` suggestions — see "Post-run suggestions" below).
+3. **Check the header for `**Runnable:**`.** Parse it the same way as `**Aliases:**` — single line after the bolded key. Normalize the value: lowercase, trim. If the normalized value is `no`, `false`, or `never`, the prompt is opt-out — refuse with the explanation from the prompt's first blockquote line, e.g.:
+   ```
+   `<name>` is a placeholder, not a runnable instruction. <first-line description from the prompt>.
+   Use `do-work prompts show <name>` to inspect it, or copy it into your project to activate the
+   sidecar — the prompt header explains how.
+   ```
+   Stop without adopting the body. Any other value (or absence of the key) means runnable — proceed to the next step.
+4. **Adopt the body as your operational instructions for the remainder of this turn.** Pass `[args]` through as the prompt's arguments (the body's "Inputs / flags" section, if any, defines how to interpret them).
+5. Execute the body. This may involve creating files, running commands, making commits — do whatever the body instructs, subject to the global rules in `CLAUDE.md` and the user's permission mode.
+6. After execution, return control to the normal flow (including `next-steps.md` suggestions — see "Post-run suggestions" below).
 
 ### Resolution rules for `<name>`
 

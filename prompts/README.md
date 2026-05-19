@@ -26,6 +26,7 @@ Resolution rules (in order):
 > <One-line description>
 
 **Aliases:** <optional>
+**Runnable:** <optional — defaults to yes; set to `no` for placeholder/sidecar files>
 **When to use:** <2-3 bullets>
 **Inputs / flags:** <optional arguments the prompt accepts>
 
@@ -34,7 +35,7 @@ Resolution rules (in order):
 <prompt body — the actual instructions the agent executes>
 ```
 
-The dispatcher (`actions/prompts.md`) reads the header for `list`/`show` output and adopts the body below the `---` separator when `run` is invoked.
+The dispatcher (`actions/prompts.md`) reads the header for `list`/`show` output and adopts the body below the `---` separator when `run` is invoked. `**Runnable:** no` opts the prompt out of execution by the dispatcher — useful for placeholder/sidecar files surfaced in `list` but not meant to be adopted as instructions. The dispatcher refuses `run` against opt-out prompts and points the user at the prompt's first-line description for context.
 
 **How to add a new prompt:**
 

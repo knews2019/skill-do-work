@@ -1,6 +1,6 @@
 # Capture Requests Action
 
-> **Part of the do-work skill.** Invoked when routing determines the user is adding a request. Creates a `do-work/` folder in your project for request tracking.
+> **Part of the do-work skill.** Invoked when routing determines the user is adding a request. Creates a `do-work/` folder in your project for request tracking. User-facing walkthrough: [`docs/capture-guide.md`](../docs/capture-guide.md).
 
 A fast-capture system for turning ideas into structured request files. Speed over perfection — minimal interaction when intent is clear.
 
