@@ -191,7 +191,7 @@ Seven fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depen
 
 | Field (read sites) | Canonical enum | Normalization | Default on unknown |
 |---|---|---|---|
-| `domain` (Step 6 crew load) | `frontend`, `backend`, `ui-design`, `general` | `back-end`/`back_end` → `backend`; `front-end`/`front_end` → `frontend`; `ui_design` → `ui-design` | `general` |
+| `domain` (Step 4 Route C plan-agent spawn, Step 6 crew load, Step 9 review-work spawn) | `frontend`, `backend`, `ui-design`, `general` | `back-end`/`back_end` → `backend`; `front-end`/`front_end` → `frontend`; `ui_design` → `ui-design` | `general` |
 | `status` (Step 1 scan + categorization, Step 10 archive trigger) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `pending-answers`, `blocked-archive-collision`, `blocked-dependency-cycle` | `done`/`finished`/`closed` → `completed` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
 | `route` (Step 3 dispatch, Step 5 scope-drift comparison) | `A`, `B`, `C` | lowercase `a`/`b`/`c` → uppercase | treat as needing re-triage in Step 3 |
 | `caveman` (Step 6 crew load) | `false`, `true`, `lite`, `full`, `ultra` | truthy strings (`yes`/`on`) → `true`; `light` → `lite` | `false` |
@@ -404,7 +404,7 @@ After triage, check if a specification template matches this REQ's domain or tas
 
 ### Step 4: Planning (Route C only)
 
-**Route C:** Spawn a **Plan agent** with the request content, project context, the `crew-members/[domain].md` file (if domain is missing or the file doesn't exist, skip loading it), and any files listed in the `prime_files` array. Instruct it to use the prime files as the strict index for discovering the source of truth. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
+**Route C:** Spawn a **Plan agent** with the request content, project context, the `crew-members/[domain].md` file (normalize `domain` per the Schema Read Contract first; if the resolved domain is missing, falls back to `general` for an unknown value, or the file doesn't exist, skip loading it), and any files listed in the `prime_files` array. Instruct it to use the prime files as the strict index for discovering the source of truth. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
 
 ```markdown
 ## Plan
@@ -655,7 +655,7 @@ Run the review work action in **pipeline mode** against this REQ.
 
 The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation: requirements check (did we build what was asked?), code review (is it solid?), and acceptance testing (does it actually work?).
 
-**How to run it:** Spawn an agent with the review work action file, the REQ path, and the `crew-members/[domain].md` file (if the domain has one and the file exists). Or read the review work action file and follow its pipeline mode instructions in the current session.
+**How to run it:** Spawn an agent with the review work action file, the REQ path, and the `crew-members/[domain].md` file (normalize `domain` per the Schema Read Contract first; if the resolved domain has a matching file, load it; otherwise skip). Or read the review work action file and follow its pipeline mode instructions in the current session.
 
 **What happens next depends on the review result:**
 
