@@ -20,42 +20,46 @@ Reference patterns matched: `actions/X.md`, `crew-members/X.md`, `crew-members/[
 
 ## Certain
 
-Files that cannot be reached by any documented dispatch path.
-
-### `crew-members/performance.md`
-
-**Why it looks dead:**
-
-- No action loads it statically (no `crew-members/performance.md` reference exists in any action file).
-- Its only plausible loader is the dynamic `crew-members/[domain].md` dispatch in `actions/work.md:512`.
-- That dispatch normalizes `domain` against the canonical enum and falls back to `general` for any unknown value. The canonical enum (`actions/work.md:153`, reinforced at `actions/work.md:194`, mirrored at `actions/capture.md:88`) is **`frontend | backend | ui-design | general`** — `performance` is not in it.
-- `actions/capture.md:190` (Schema Read Contract) explicitly requires a typo warning + user confirmation before writing a non-canonical `domain` value. So a REQ with `domain: performance` would either get rewritten to a canonical value at capture time, or get warned-and-fallen-back to `general` at work time. Either way, `performance.md` is never loaded.
-
-**Mismatch with documentation:** `CLAUDE.md:144` lists `performance.md` as one of the example domain crew files, alongside `backend.md`, `frontend.md`, `ui-design.md`. The example is stale — the contract no longer accepts `performance` as a domain.
-
-**Resolution options (don't pick one; just listing them):**
-
-1. Add `performance` to the canonical `domain` enum in `actions/work.md` and `actions/capture.md`, and the contract starts loading the file.
-2. Remove `crew-members/performance.md` and drop the `performance.md` mention from `CLAUDE.md:144`.
-3. Load it directly from a non-domain code path (the way `actions/code-review.md:140` loads `crew-members/security.md`), if there's a specific action where its content belongs.
+(None.) An earlier draft of this report classified `crew-members/performance.md` as certain-dead based on the `domain` Schema Read Contract at `actions/work.md:180` falling back to `general` for unknown values. That was too strong — see the entry in **Probable** below for the corrected analysis. Nothing else in the scan rose to certain-dead.
 
 ---
 
 ## Probable
 
-Files that have no inbound reference and look like historical archives, but where it's plausible the author intends them to be browsable without being individually linked.
+Files where the audit can't find an inbound reference that would actually fire under normal use, but where a plausible path of use exists in edge cases or in documentation that may have drifted.
 
-### `decisions/imported-specs/` — both files
-
-- `decisions/imported-specs/2026-04-12_close-gaps-in-interview.md`
-- `decisions/imported-specs/2026-04-17_improve-weekly-diff-skill.md`
+### `crew-members/performance.md`
 
 **Why it looks dead:**
 
-- No `actions/*.md`, `SKILL.md`, `CLAUDE.md`, `README.md`, or `next-steps.md` mentions the `imported-specs/` path.
-- The sibling `decisions/records/`, `decisions/topics/`, and `decisions/log.md` are part of an ADR system that the `architecture-decisions-log_create-or-expand` prompt knows how to extend, but `imported-specs/` is not mentioned in the prompt's resolution flow either.
+- No action loads it statically — no `crew-members/performance.md` reference exists anywhere.
+- Three sites in `actions/work.md` dispatch on `crew-members/[domain].md` dynamically: Step 4 Route C planning (`actions/work.md:407`), Step 6 implementation (`actions/work.md:512`), and the Step 9 review-work spawn (`actions/work.md:658`).
+- `performance` is not in the canonical `domain` enum. The enum (`actions/work.md:153`, table at `actions/work.md:194`, mirrored at `actions/capture.md:88`) is **`frontend | backend | ui-design | general`**. Capture (`actions/capture.md:190`) prompts the user to correct a non-canonical `domain` value before writing the REQ.
+- The Schema Read Contract narrative at `actions/work.md:180` says *"every read site in this file ... honors a uniform normalize-and-warn contract"*, which would mean Route C and review-spawning both fall back to `general` for `domain: performance` and `performance.md` is never loaded.
 
-**Plausible non-dead use:** these are imported source documents preserved as evidence behind specific ADRs. Linked from inside individual ADR records, but not from any dispatcher. That's a normal pattern for an audit trail — they're "leaves," not entry points. **Recommendation: keep, but verify each is cited from at least one ADR; if not, they can be moved or pruned.**
+**Why it might still be reachable (the reason this isn't certain-dead):**
+
+- The Step 6 entry at `actions/work.md:512` explicitly calls out normalization (*"normalize the REQ's `domain` frontmatter per the Schema Read Contract first"*). The Route C entry at `actions/work.md:407` and the review-spawning entry at `actions/work.md:658` do not — they just check *"if the file exists, load it"*. So whether the contract is enforced at those sites is interpretation-dependent.
+- A manually-authored REQ in `do-work/queue/` (skipping capture) with `domain: performance` would, under the literal reading of Route C and review-spawning, find `crew-members/performance.md` and load it.
+- The Schema Read Contract's per-field table for `domain` lists *"Step 6 crew load"* as the only read site, which lines up with the literal reading rather than the narrative.
+
+**Mismatch with documentation:** `CLAUDE.md:144` lists `performance.md` as one of the example domain crew files. Either the example is stale (and `performance` was dropped from the enum) or the enum drifted away from intent. Don't delete based on this audit — resolve the contract ambiguity first.
+
+**Resolution options (don't pick one; just listing them):**
+
+1. Add `performance` to the canonical `domain` enum in `actions/work.md` and `actions/capture.md` — then all three dispatch sites load the file consistently.
+2. Update `actions/work.md:407` and `actions/work.md:658` to explicitly normalize via the Schema Read Contract (matching the narrative at `actions/work.md:180`), and the file becomes truly unreachable for non-canonical domains. Then it can be removed alongside the `CLAUDE.md:144` mention.
+3. Load it directly from a non-domain code path (the way `actions/code-review.md:140` loads `crew-members/security.md`).
+
+### `decisions/imported-specs/2026-04-17_improve-weekly-diff-skill.md`
+
+**Why it looks dead:** No file outside this audit references it. The only repo-wide grep hits on `improve-weekly-diff-skill` are this report itself, and the `2026-04-17` date string elsewhere is just metadata (ADR-012 frontmatter, topic-index `updated:` field) rather than a citation of this file.
+
+**Plausible non-dead use:** imported specs are typically preserved as evidence behind specific ADRs. If a future ADR needs to cite this spec, it can. Until then, it's an orphaned evidence file.
+
+**Sibling file is NOT dead — `decisions/imported-specs/2026-04-12_close-gaps-in-interview.md`:** an earlier draft of this report grouped both imported specs together as probable-dead. That was wrong — `decisions/records/adr-012-interview-v2-gap-closure.md` cites the 2026-04-12 spec three separate times (frontmatter `sources:` at line 8, in-body reference at line 34, References section at line 85). The 2026-04-12 file is a live ADR-evidence document; only the 2026-04-17 file is orphaned.
+
+**Incidental finding while verifying:** `decisions/records/adr-012-interview-v2-gap-closure.md:86` links to `decisions/imported-specs/2026-04-16_expand-skill-do-work-interview.md`, which does not exist in the directory. Broken link — separate issue, worth fixing in a follow-up.
 
 ### Per-action user guides in `docs/` that are not linked from anywhere except the generic `docs/` directory mention
 
@@ -117,10 +121,11 @@ Recording these so the audit can be re-run against the same scope:
 - **All 4 specs in `specs/`** (`api-endpoint`, `ui-component`, `refactor`, `bug-fix`) are explicitly listed in `actions/work.md:396` for task-type matching and in `specs/README.md`'s "Available specs" section.
 - **All 20 prompt files in `prompts/`** are cataloged in `prompts/README.md`'s "Available prompts" table — the dispatcher's source of truth.
 - **All 3 hooks in `hooks/`** are documented in `README.md:135–140` and referenced from `CLAUDE.md`'s file index.
-- **All 12 crew-members are loaded except `performance.md`:**
+- **11 of 12 crew-members have a clear inbound load path:**
   - Always-loaded: `general.md`, `karpathy.md` (`actions/work.md:510–511`).
   - Action-specific direct loads: `security.md` (code-review), `ui-design.md` (ui-review), `interviewer.md` (interview), `approach-directives.md` (work, parallel-REQ mode), `caveman.md` (work, when `caveman` frontmatter set), `debugging.md` (work, on review-fail retry + after 2+ test failures), `testing.md` (work, when `tdd: true` or `domain: testing`).
-  - Domain-dispatched: `backend.md`, `frontend.md`, `ui-design.md` are loaded by `actions/work.md:512` when the REQ's `domain` matches the canonical enum.
+  - Domain-dispatched: `backend.md`, `frontend.md`, `ui-design.md` are loaded by `actions/work.md:512` when the REQ's `domain` matches the canonical enum, and the same `crew-members/[domain].md` pattern fires again at `actions/work.md:407` (Route C planning) and `actions/work.md:658` (review-work spawn).
+  - The one with an ambiguous inbound path — `performance.md` — is detailed in the **Probable** section above.
 - **The one interview template** (`interviews/work-operating-model.md`) is referenced from `actions/interview.md` and `CLAUDE.md`.
 - **The full `decisions/records/` directory** (12 ADRs) is the corpus the `architecture-decisions-log_create-or-expand` prompt manages; ADR-001 through ADR-012 are sequenced and linked from the topic indexes (`decisions/topics/_index_*.md`).
 
@@ -128,6 +133,7 @@ Recording these so the audit can be re-run against the same scope:
 
 ## Method Notes
 
-- "Reference" means a literal string match for the file's path or basename inside another tracked file. Dynamic dispatch was resolved by reading the actual lookup code: e.g., `crew-members/[domain].md` was checked against every documented value the `domain` frontmatter is allowed to take, not against grep alone.
+- "Reference" means a literal string match for the file's path or basename inside another tracked file. Dynamic dispatch was resolved by enumerating every site that could fire the dispatch and reading what each site actually does — not just one site. A first pass missed the secondary `crew-members/[domain].md` load sites at `actions/work.md:407` (Route C) and `actions/work.md:658` (review-work spawn); both treat `crew-members/[domain].md` as a file-existence check rather than going through the Schema Read Contract's normalize-and-warn step. That's why `performance.md` is **Probable** and not **Certain** — the contract narrative claims universal enforcement, but two of the three read sites don't restate it.
 - Documentation describing a file (e.g., `CLAUDE.md`'s file inventory listing every action) was not counted as a "reference" — that's catalog text, not a dispatch. A reference had to be a path or basename appearing in an executable context (a router table, a load instruction, a "see also" link a reader would follow).
+- Per-ADR evidence files (the `decisions/imported-specs/` directory) require checking the full `decisions/records/` ADR corpus, not just the dispatchers. A first pass missed that ADR-012 cites `2026-04-12_close-gaps-in-interview.md` three times; the audit now scans the ADR corpus for citations before classifying an imported spec as orphaned.
 - This is a static analysis. A file flagged as dead could still be loaded by a user pasting it into an LLM directly or by a feature added after this audit. Re-run the audit when the routing table, the Schema Read Contract, or the crew-loading mechanism changes.
