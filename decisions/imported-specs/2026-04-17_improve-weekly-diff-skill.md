@@ -58,3 +58,7 @@ In input-personal/weekly-signal-diff-personal.md, find lane 42 (Calibration — 
 
 Report: branch name, one-line summary per commit, file paths touched.
 
+---
+
+> **Status (2026-05-19):** Edits 1–3 landed in `prompts/weekly-signal-diff.md` (the "Top of mind this week" subsection at line 156, "Actions this week" at line 160, and the per-shift "For client archetypes" bullet at line 184). Edit 4 targeted a project-local sidecar (`input-personal/weekly-signal-diff-personal.md`), not the placeholder shipped in this repo. No ADR was written to record the decision — this spec is a candidate for a future ADR-013 if the maintainer wants the decision rationale in the ledger.
+
