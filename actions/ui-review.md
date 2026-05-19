@@ -1,6 +1,6 @@
 # UI Review Action
 
-> **Part of the do-work skill.** Validates UI quality against design best practices without making changes. Read-only audit that produces a structured findings report.
+> **Part of the do-work skill.** Validates UI quality against design best practices without making changes. Read-only audit that produces a structured findings report. User-facing walkthrough: [`docs/ui-review-guide.md`](../docs/ui-review-guide.md).
 
 ## Philosophy
 

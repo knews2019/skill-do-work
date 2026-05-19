@@ -6,6 +6,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.77.0 — The Reach Audit (2026-05-19)
+
+Closeout pass on a dead-code audit of the skill. Tightens the Schema Read Contract so the `domain` enum is honored consistently, removes a crew-member file that was reachable in letter but never in spirit, cross-links every action file to its user-facing guide, and adds a machine-readable opt-out marker for placeholder prompts.
+
+- `actions/work.md`: Route C planning (Step 4) and review-work spawning (Step 9) now explicitly normalize `domain` per the Schema Read Contract — matches the narrative claim that "every read site honors a uniform normalize-and-warn contract." The per-field table's read-sites column for `domain` is updated to list all three load sites instead of only Step 6.
+- `crew-members/performance.md`: removed. Unreachable for non-canonical domains under the tightened contract, and `performance` was never in the canonical enum (`frontend | backend | ui-design | general`). `CLAUDE.md`'s example list updated accordingly.
+- `prompts/`: new optional `**Runnable:**` header key for placeholder/sidecar prompts. `prompts/weekly-signal-diff-personal.md` opts in with `Runnable: no`; the dispatcher in `actions/prompts.md` (Sub-Command `run`, step 3) refuses opt-out prompts with a contextual explanation from the prompt's first-line description. Absence of the key means runnable — the safe default.
+- 18 action files now end their top-of-file blockquote with a `User-facing walkthrough:` link to the corresponding `docs/*-guide.md`. Previously only `capture`, `work`, and `interview` had docs links (and those weren't in the blockquote). Now uniform across `bkb`, `capture`, `cleanup`, `code-review`, `commit`, `forensics`, `inspect`, `interview`, `present-work`, `prime`, `prompts`, `quick-wins`, `review-work`, `roadmap`, `ui-review`, `verify-requests`, `version`, `work`.
+- `decisions/records/adr-012-interview-v2-gap-closure.md`: removed the broken `References` bullet pointing at `decisions/imported-specs/2026-04-16_expand-skill-do-work-interview.md`. That file was intentionally deleted in `0.71.1` (commit `f7e4b61`); restoring it would re-open a closed decision.
+- `decisions/imported-specs/2026-04-17_improve-weekly-diff-skill.md`: added a Status footer documenting that edits 1–3 from the spec landed in `prompts/weekly-signal-diff.md`. The spec is a candidate for a future ADR-013 if the maintainer wants the decision rationale in the ledger.
+- `DEAD_CODE.md`: full audit report committed at the repo root with findings grouped by confidence. This release is the closeout of the items that were actionable; two other observations in the report (the `AGENTS.md` stub and `.vscode/tasks.json` portability) were independently addressed in 0.76.5.
+
 ## 0.76.5 — The Stale Wipe (2026-05-19)
 
 Six janitorial fixes from a `quick-wins` self-scan — stale docs swept out, two shell hooks hardened, and an invariant documented so the non-jq fallback can't silently miscount.

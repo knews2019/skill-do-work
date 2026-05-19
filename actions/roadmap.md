@@ -1,6 +1,6 @@
 # Roadmap Action
 
-> **Part of the do-work skill.** Invoked when the user wants a survey of the queue: what's done, what's in progress, what's pending, and a feasibility read on what's actionable next. Read-only — never modifies REQs, frontmatter, or files.
+> **Part of the do-work skill.** Invoked when the user wants a survey of the queue: what's done, what's in progress, what's pending, and a feasibility read on what's actionable next. Read-only — never modifies REQs, frontmatter, or files. User-facing walkthrough: [`docs/roadmap-guide.md`](../docs/roadmap-guide.md).
 
 A planning aid, not a diagnostic. Where `forensics` looks for *broken* state (stuck, hollow, orphaned), `roadmap` looks at *intended* state — the shape of remaining work and whether it's ready to be picked up. Run it when you want to know "where are we, and what's worth doing next?"
 

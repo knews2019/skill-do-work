@@ -1,6 +1,6 @@
 # Prime Action
 
-> **Part of the do-work skill.** Invoked when routing determines the user wants to create or audit prime files. Prime files (`prime-*.md`) are AI context documents — semantic indexes that help an AI coder navigate a utility in minimum tokens.
+> **Part of the do-work skill.** Invoked when routing determines the user wants to create or audit prime files. Prime files (`prime-*.md`) are AI context documents — semantic indexes that help an AI coder navigate a utility in minimum tokens. User-facing walkthrough: [`docs/prime-guide.md`](../docs/prime-guide.md).
 
 ## When to Use
 

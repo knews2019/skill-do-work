@@ -140,7 +140,7 @@ Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_C
 
 - `general.md` — always loaded during implementation (Step 6), regardless of domain
 - `karpathy.md` — always loaded during implementation (Step 6); Karpathy-inspired behavioral guardrails (think before coding, simplicity, surgical changes, goal-driven execution)
-- `[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists (e.g., `backend.md`, `frontend.md`, `performance.md`, `security.md`, `ui-design.md`)
+- `[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists (e.g., `backend.md`, `frontend.md`, `ui-design.md`); domain is normalized against the canonical enum (`actions/work.md` Schema Read Contract) and falls back to `general` when unknown
 - `testing.md` — loaded when `tdd: true` or `domain: testing`, and alongside debugging.md after 2+ test failures
 - `caveman.md` — loaded when `caveman` frontmatter is set (truthy value or intensity: `lite`, `full`, `ultra`); compresses agent prose ~65-75% while keeping code and technical terms exact. Adapted from [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
 - `debugging.md` — loaded during remediation (review fail → retry) and after 2+ test failures

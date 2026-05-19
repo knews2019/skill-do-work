@@ -1,6 +1,6 @@
 # Forensics Action
 
-> **Part of the do-work skill.** Invoked when routing determines the user wants pipeline diagnostics. Read-only — examines the state of the do-work system without modifying anything.
+> **Part of the do-work skill.** Invoked when routing determines the user wants pipeline diagnostics. Read-only — examines the state of the do-work system without modifying anything. User-facing walkthrough: [`docs/forensics-guide.md`](../docs/forensics-guide.md).
 
 A diagnostic tool for when the work pipeline feels broken, stuck, or produces confusing results. Reads git history, file system state, and archived REQs to detect problems and report findings.
 

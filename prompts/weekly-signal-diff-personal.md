@@ -4,6 +4,8 @@
 
 **Aliases:** (none — this is not invoked directly)
 
+**Runnable:** no — placeholder for project-local copies; not executed directly. The dispatcher refuses `run` against this prompt and points the user at activation steps below.
+
 **When to use:**
 - Auto-discovered by `do-work prompts run weekly-signal-diff`; not run on its own
 - The skill ships this file as a placeholder. To personalize the scan, create a file named `weekly-signal-diff-personal.md` anywhere in your project (project root, `.claude/`, `do-work/`, wherever fits) and declare your real lanes there.
