@@ -6,6 +6,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.76.5 — The Stale Wipe (2026-05-19)
+
+Six janitorial fixes from a `quick-wins` self-scan — stale docs swept out, two shell hooks hardened, and an invariant documented so the non-jq fallback can't silently miscount.
+
+- `CLAUDE.md` Project Structure: dropped the `_dev/` line — the directory was emptied in 0.75.0 and the entry was a dead pointer.
+- `README.md` "fully clean update" path list now matches `actions/version.md`'s authoritative shipped-paths glob (was missing `prompts/`, `interviews/`, `specs/`, `docs/`, `decisions/`, `hooks/`, `CLAUDE.md`, `AGENTS.md`, `next-steps.md`).
+- `.vscode/tasks.json` gained `linux` (`xdg-open`) and `windows` (`cmd /c start`) overrides for the "Open current HTML in browser" task; macOS behavior unchanged.
+- `actions/pipeline.md`: documents the pretty-print invariant for `do-work/pipeline.json` — pipeline.md is the sole writer and the constraint protects `hooks/pipeline-guard.sh`'s line-oriented grep fallback from miscounting on compact JSON.
+- `AGENTS.md`: replaced the newline-less `READ CLAUDE.md` stub with a one-line markdown link (`See [CLAUDE.md](CLAUDE.md).`) — clickable when rendered, POSIX-clean.
+- `hooks/session-start.sh`: anchored the version-line `sed` so it strips only the `**Current version**:` prefix instead of greedily up to the last `: `. Same output today, robust to future colon-containing version lines.
+
 ## 0.76.4 — The Quiet Drain (2026-05-17)
 
 Removes the `--halt-on-failure` flag from `do-work run`. The flag was redundant with the existing auto-follow-up pattern — `review-work` Step 10 already creates `pending` / `pending-answers` follow-ups for failed and completed-with-issues outcomes, and `do-work clarify` is the documented batch-triage path. The default loop is now the only loop: classify, archive, queue follow-ups, continue.

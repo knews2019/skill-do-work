@@ -1,1 +1,1 @@
-READ CLAUDE.md
+See [CLAUDE.md](CLAUDE.md).
