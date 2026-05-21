@@ -88,7 +88,7 @@ Check these patterns **in order** — first match wins:
 | 24       | Deep-explore keywords    | `do-work deep-explore`, `do-work deep-explore performance`, `do-work explore concept`, `do-work deep dive`, `do-work develop idea`, `do-work deep-explore continue` | → deep-explore                  |
 | 25       | Install keywords         | `do-work install ui-design`, `do-work install-ui-design`, `do-work install ui design`, `do-work install ui`, `do-work install frontend-design`, `do-work setup ui design`, `do-work setup design skill`, `do-work install bowser`, `do-work install-bowser`, `do-work install playwright`, `do-work install playwright-cli`, `do-work setup bowser`, `do-work setup playwright` | → install (target = `ui-design` or `bowser`) |
 | 26       | Tutorial keywords        | `do-work tutorial`, `do-work tutorial quick-start`, `do-work tutorial concepts`, `do-work tutorial recipes`, `do-work tutorial tour` | → tutorial                      |
-| 27       | Slop-check keywords      | `do-work slop-check`, `do-work slop check`, `do-work anti-slop`, `do-work slop-check do-work/deliverables/UR-003-client-brief.md`, `do-work slop-check REQ-042`, `do-work check slop`, `do-work check draft`, `do-work check artifact` | → slop-check                    |
+| 27       | Slop-check keywords      | `do-work slop-check`, `do-work slop check`, `do-work anti-slop`, `do-work slop-check do-work/deliverables/UR-003-client-brief.md`, `do-work slop-check REQ-042` | → slop-check                    |
 | 28       | Descriptive content      | `do-work capture request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture requests              |
 
 
@@ -138,7 +138,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **scan-ideas** | scan-ideas, ideate, ideas, brainstorm, what should I build, suggest, what's next, what could we improve | Everything after keyword → `$ARGUMENTS` (focus topic or directory). No args → open exploration |
 | **deep-explore** | deep-explore, explore concept, deep dive, develop idea, explore idea | Everything after keyword → `$ARGUMENTS` (concept, file path, topic, or "continue"). No args → ask user what to explore |
 | **tutorial** | tutorial, tutorial quick-start, tutorial concepts, tutorial recipes, tutorial tour, learn, getting started, how does this work | Everything after "tutorial" → `$ARGUMENTS` (mode). No args → ask user which mode |
-| **slop-check** | slop-check, slop check, anti-slop, check slop, check draft, check artifact | Everything after the verb → `$ARGUMENTS` (file path, REQ/UR ID, "most recent", or empty). Distinctive phrases only — do NOT match "check for slop" (collides with verify priority 5) |
+| **slop-check** | slop-check, slop check, anti-slop | Everything after the verb → `$ARGUMENTS` (file path, REQ/UR ID, "most recent", or empty). Triggers must be distinctive — any `check ...` form (e.g., "check slop", "check draft", "check for slop") collides with verify priority 5 and is intentionally not listed here. |
 | **capture requests** | `capture request:` prefix, descriptive text, feature requests, bug reports, "add", "create", "I need", "we should" | Default for multi-word descriptive content that doesn't match any keyword |
 
 ## Examples

@@ -24,7 +24,7 @@
 
 1. **File path** — `do-work slop-check do-work/deliverables/UR-003-client-brief.md`. Read the file directly.
 2. **REQ or UR reference** — `do-work slop-check REQ-042` or `do-work slop-check UR-003`. Resolve to the most relevant artifact: the deliverable if one exists, otherwise the REQ's Implementation Summary or review report.
-3. **"most recent"** or no argument — find the newest file under `do-work/deliverables/` (by mtime) and check that.
+3. **"most recent"** or no argument — find the newest **authored** artifact under `do-work/deliverables/`. Glob `*.md` and `*.single.html` (authored prose). Skip `*.marp.html` (mechanical Marp-CLI export of the `.marp.md` source) and contents of `*-video/` directories (Remotion TSX source, not prose). Among the surviving candidates, pick the newest by mtime. If no authored artifacts exist, ask the user to specify a path or paste the draft.
 4. **Pasted text** — if the input is multi-paragraph prose rather than a path/ID, treat it as the artifact directly.
 
 If the target cannot be resolved, ask the user to specify a path or paste the draft.

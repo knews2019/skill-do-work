@@ -6,13 +6,21 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.78.1 — The Review Trim (2026-05-21)
+
+Codex review pass on 0.78.0. Two precision fixes — both surfaced unreachable or noisy behavior in the just-added slop-check routing and default-target resolution.
+
+- `SKILL.md`: dropped `check slop`, `check draft`, `check artifact` from the priority-27 routing row and the Verb Reference. They collided with priority 5 verify (which already claims any `check ...` form), so users invoking them would have hit the verify route, not slop-check. Distinctive triggers (`slop-check`, `slop check`, `anti-slop`) stay; the Verb Reference now states the exclusion rule directly so future contributors don't re-add the trap.
+- `actions/slop-check.md` (Step 2, point 3): "most recent" resolution now prefers authored artifacts. Globs `*.md` and `*.single.html`; skips `*.marp.html` (mechanical Marp-CLI exports of the `.marp.md` source) and `*-video/` directory contents (Remotion TSX source, not prose). Previous newest-by-mtime heuristic would frequently pick the mechanical Marp HTML right after a pipeline completion, flagging HTML scaffolding instead of the authored draft.
+- `CHANGELOG.md` 0.78.0 entry: corrected the inaccurate trigger list (was claiming `check slop`/`check draft`/`check artifact` as distinctive — they weren't).
+
 ## 0.78.0 — The Slop Filter (2026-05-21)
 
 A guardrail against AI slop — bloated, unverified, conclusion-buried artifacts that pass the cost of clarity onto the reader. Adds a new behavioral crew-member that auto-loads whenever an artifact is being generated for a human, plus a standalone `slop-check` action to grade any draft against the seven principles before it ships.
 
 - `crew-members/anti-slop.md`: new always-on-during-artifact-generation crew-member. Seven principles in one frame — producer absorbs the cost of clarity, reader doesn't. Loaded by present-work (Step 4 drafting), review-work (Step 9 report), pipeline (Step 5 completion-report rendering), and kb-lessons-handoff (Step 2 source-document assembly). Boundaries explicitly exempt code output (karpathy.md territory), agent status updates (caveman.md / general.md), and commit messages.
 - `actions/slop-check.md`: new read-only action that loads the crew-member and grades a target artifact against each of the seven principles. Inputs are flexible — file path, REQ/UR ID, "most recent" deliverable, or pasted text. Outputs a findings table (principle | status | evidence | fix) plus a top-line verdict (Clean / Borderline / Slop) and a single concrete top fix. Optional rewrite only on explicit user confirmation; preserves factual claims verbatim.
-- `SKILL.md`: new priority-27 routing row for slop-check (distinctive triggers only — `slop-check`, `slop check`, `anti-slop`, `check slop`, `check draft`, `check artifact`; intentionally not "check for slop" to avoid colliding with verify priority 5). Verb Reference, Action Dispatch, foreground-actions list, argument-hint, top-of-file action listing, and help menu all updated. Descriptive-content catch-all moved to priority 28.
+- `SKILL.md`: new priority-27 routing row for slop-check (distinctive triggers only — `slop-check`, `slop check`, `anti-slop`; any `check ...` form collides with verify priority 5 and is intentionally excluded). Verb Reference, Action Dispatch, foreground-actions list, argument-hint, top-of-file action listing, and help menu all updated. Descriptive-content catch-all moved to priority 28.
 - `actions/present-work.md`, `actions/review-work.md`, `actions/pipeline.md`, `actions/kb-lessons-handoff.md`: each step that begins composing a human-facing artifact now loads `crew-members/anti-slop.md` explicitly — no behavioral change for any other step.
 - `next-steps.md`: post-`present-work` suggestion now includes `do-work slop-check`; new "After slop-check" block points at re-checks, regeneration, and follow-up capture.
 - `CLAUDE.md`: `actions/` listing gains `slop-check.md`; crew-members loading-behavior list gains `anti-slop.md` with its exact load conditions and boundaries.
