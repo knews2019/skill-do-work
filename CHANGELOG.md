@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.78.2 — The Audit Sunset (2026-05-21)
+
+Removed `DEAD_CODE.md` from the repo root. It was a point-in-time audit snapshot from 0.77.0, and every actionable finding it raised has since been closed out — so the report now describes a tree that no longer exists.
+
+- `DEAD_CODE.md`: deleted. Its findings were all resolved in 0.77.0 (`performance.md` removed, action→guide cross-links added, placeholder-prompt opt-out marker added, broken ADR-012 link fixed, orphaned imported-spec annotated). The file was never wired into the skill — nothing routed to or loaded it — so removal is pure cleanup. Full report remains in git history at commit `73d4955`. The historical 0.77.0 changelog entry that mentions it is left intact as a record.
+
 ## 0.78.1 — The Review Trim (2026-05-21)
 
 Codex review pass on 0.78.0. Two precision fixes — both surfaced unreachable or noisy behavior in the just-added slop-check routing and default-target resolution.
