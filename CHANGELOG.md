@@ -6,6 +6,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.78.0 — The Slop Filter (2026-05-21)
+
+A guardrail against AI slop — bloated, unverified, conclusion-buried artifacts that pass the cost of clarity onto the reader. Adds a new behavioral crew-member that auto-loads whenever an artifact is being generated for a human, plus a standalone `slop-check` action to grade any draft against the seven principles before it ships.
+
+- `crew-members/anti-slop.md`: new always-on-during-artifact-generation crew-member. Seven principles in one frame — producer absorbs the cost of clarity, reader doesn't. Loaded by present-work (Step 4 drafting), review-work (Step 9 report), pipeline (Step 5 completion-report rendering), and kb-lessons-handoff (Step 2 source-document assembly). Boundaries explicitly exempt code output (karpathy.md territory), agent status updates (caveman.md / general.md), and commit messages.
+- `actions/slop-check.md`: new read-only action that loads the crew-member and grades a target artifact against each of the seven principles. Inputs are flexible — file path, REQ/UR ID, "most recent" deliverable, or pasted text. Outputs a findings table (principle | status | evidence | fix) plus a top-line verdict (Clean / Borderline / Slop) and a single concrete top fix. Optional rewrite only on explicit user confirmation; preserves factual claims verbatim.
+- `SKILL.md`: new priority-27 routing row for slop-check (distinctive triggers only — `slop-check`, `slop check`, `anti-slop`, `check slop`, `check draft`, `check artifact`; intentionally not "check for slop" to avoid colliding with verify priority 5). Verb Reference, Action Dispatch, foreground-actions list, argument-hint, top-of-file action listing, and help menu all updated. Descriptive-content catch-all moved to priority 28.
+- `actions/present-work.md`, `actions/review-work.md`, `actions/pipeline.md`, `actions/kb-lessons-handoff.md`: each step that begins composing a human-facing artifact now loads `crew-members/anti-slop.md` explicitly — no behavioral change for any other step.
+- `next-steps.md`: post-`present-work` suggestion now includes `do-work slop-check`; new "After slop-check" block points at re-checks, regeneration, and follow-up capture.
+- `CLAUDE.md`: `actions/` listing gains `slop-check.md`; crew-members loading-behavior list gains `anti-slop.md` with its exact load conditions and boundaries.
+
 ## 0.77.0 — The Reach Audit (2026-05-19)
 
 Closeout pass on a dead-code audit of the skill. Tightens the Schema Read Contract so the `domain` enum is honored consistently, removes a crew-member file that was reachable in letter but never in spirit, cross-links every action file to its user-facing guide, and adds a machine-readable opt-out marker for placeholder prompts.

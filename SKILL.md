@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
+argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | slop-check [target] | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -23,6 +23,7 @@ A unified entry point for task capture and processing.
 - **scan-ideas**: Generate ideas for what to build, improve, or explore next — grounded in codebase analysis and project history
 - **deep-explore**: Multi-round structured exploration of a concept — spawns divergent/convergent subagent dialogue, produces vision documents and idea briefs
 - **ui-review**: Validate UI quality against design best practices — read-only audit with structured findings report
+- **slop-check**: Validate a human-facing artifact (brief, report, summary) against the anti-slop principles before it ships — read-only by default, optional rewrite on confirmation
 - **install**: Install companion skills/tooling into the current project. Targets: `ui-design` (Anthropic's `frontend-design` skill) and `bowser` (Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification).
 - **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination (read-only)
 - **roadmap**: Queue survey → classifies pending REQs (ready / needs-clarification / blocked / stale), reports TDD posture, rolls up in-progress and recently-completed work (read-only)
@@ -87,7 +88,8 @@ Check these patterns **in order** — first match wins:
 | 24       | Deep-explore keywords    | `do-work deep-explore`, `do-work deep-explore performance`, `do-work explore concept`, `do-work deep dive`, `do-work develop idea`, `do-work deep-explore continue` | → deep-explore                  |
 | 25       | Install keywords         | `do-work install ui-design`, `do-work install-ui-design`, `do-work install ui design`, `do-work install ui`, `do-work install frontend-design`, `do-work setup ui design`, `do-work setup design skill`, `do-work install bowser`, `do-work install-bowser`, `do-work install playwright`, `do-work install playwright-cli`, `do-work setup bowser`, `do-work setup playwright` | → install (target = `ui-design` or `bowser`) |
 | 26       | Tutorial keywords        | `do-work tutorial`, `do-work tutorial quick-start`, `do-work tutorial concepts`, `do-work tutorial recipes`, `do-work tutorial tour` | → tutorial                      |
-| 27       | Descriptive content      | `do-work capture request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture requests              |
+| 27       | Slop-check keywords      | `do-work slop-check`, `do-work slop check`, `do-work anti-slop`, `do-work slop-check do-work/deliverables/UR-003-client-brief.md`, `do-work slop-check REQ-042`, `do-work check slop`, `do-work check draft`, `do-work check artifact` | → slop-check                    |
+| 28       | Descriptive content      | `do-work capture request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -136,6 +138,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **scan-ideas** | scan-ideas, ideate, ideas, brainstorm, what should I build, suggest, what's next, what could we improve | Everything after keyword → `$ARGUMENTS` (focus topic or directory). No args → open exploration |
 | **deep-explore** | deep-explore, explore concept, deep dive, develop idea, explore idea | Everything after keyword → `$ARGUMENTS` (concept, file path, topic, or "continue"). No args → ask user what to explore |
 | **tutorial** | tutorial, tutorial quick-start, tutorial concepts, tutorial recipes, tutorial tour, learn, getting started, how does this work | Everything after "tutorial" → `$ARGUMENTS` (mode). No args → ask user which mode |
+| **slop-check** | slop-check, slop check, anti-slop, check slop, check draft, check artifact | Everything after the verb → `$ARGUMENTS` (file path, REQ/UR ID, "most recent", or empty). Distinctive phrases only — do NOT match "check for slop" (collides with verify priority 5) |
 | **capture requests** | `capture request:` prefix, descriptive text, feature requests, bug reports, "add", "create", "I need", "we should" | Default for multi-word descriptive content that doesn't match any keyword |
 
 ## Examples
@@ -161,6 +164,7 @@ do-work — task queue for agentic coding tools
     do-work review work                 Review completed work (requirements + code + acceptance)
     do-work code-review [scope]         Standalone codebase review (prime refs, dirs, or both)
     do-work ui-review [scope]           Read-only UI quality validation
+    do-work slop-check [target]         Validate a draft against the anti-slop principles before it ships
 
   Present & inspect:
     do-work present work                Client brief, architecture, video, HTML explainer
@@ -280,6 +284,7 @@ Each action has an action file with full instructions. How you execute it depend
 | version            | `./actions/version.md`          | `$ARGUMENTS`                   |
 | recap              | `./actions/version.md`          | `mode: recap`                  |
 | tutorial           | `./actions/tutorial.md`         | `$ARGUMENTS` (mode name or empty) |
+| slop-check         | `./actions/slop-check.md`       | `$ARGUMENTS` (file path, REQ/UR ID, "most recent", or empty for newest deliverable) |
 
 ### If subagents are available
 
@@ -287,7 +292,7 @@ Dispatch each action to a subagent. The subagent reads the action file and execu
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
 - **Exception — pipeline dispatch**: When the pipeline action dispatches `work`, it runs in the **foreground** (blocking). The pipeline requires each step to complete before advancing. This override applies only when the pipeline is the caller.
-- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `slop-check`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available

@@ -217,6 +217,8 @@ Nit findings carry zero weight on the overall score — they're stylistic sugges
 
 ### Step 9: Report
 
+Load `crew-members/anti-slop.md` before composing the report — the review output is a human-facing artifact and falls under those principles (lead with the verdict, compress, cite evidence, no padding).
+
 **Pipeline mode:** Report to the work action orchestrator (which reports to the user).
 **Standalone mode:** Report directly to the user.
 

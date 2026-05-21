@@ -70,6 +70,8 @@ Don't just summarize the diff — understand the system that was built.
 
 ### Step 4: Generate Artifacts
 
+Load `crew-members/anti-slop.md` before drafting any artifact below — every output in this step is human-facing and falls under those principles (lead with the conclusion, compress, verify, disclose unchecked AI content, match medium to stakes).
+
 Based on the work scope, generate the appropriate deliverables:
 
 #### 4a: Client Brief (always generated)

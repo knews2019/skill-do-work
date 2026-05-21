@@ -16,6 +16,7 @@ actions/              # Action files (each is a standalone prompt)
   review-work.md      # Post-work code review + acceptance testing
   code-review.md      # Standalone codebase review — consistency, patterns, security, performance, test coverage
   ui-review.md        # Read-only UI quality validation against design best practices
+  slop-check.md       # Validate a human-facing artifact against the anti-slop principles — read-only, optional rewrite on confirmation
   present-work.md     # Client-facing deliverables (briefs, videos, diagrams)
   cleanup.md          # Archive consolidation
   commit.md           # Atomic git commits traced to REQs
@@ -143,6 +144,7 @@ Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_C
 - `[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists (e.g., `backend.md`, `frontend.md`, `ui-design.md`); domain is normalized against the canonical enum (`actions/work.md` Schema Read Contract) and falls back to `general` when unknown
 - `testing.md` — loaded when `tdd: true` or `domain: testing`, and alongside debugging.md after 2+ test failures
 - `caveman.md` — loaded when `caveman` frontmatter is set (truthy value or intensity: `lite`, `full`, `ultra`); compresses agent prose ~65-75% while keeping code and technical terms exact. Adapted from [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)
+- `anti-slop.md` — loaded whenever the agent is about to produce a human-facing artifact: present-work (Step 4 artifact drafting), review-work (Step 9 report), pipeline (Step 5 completion-report rendering), kb-lessons-handoff (Step 2 source-document assembly), and the slop-check action. Encodes seven guardrails (don't send what you wouldn't read, verify, compress, lead with conclusion, disclose unchecked AI, ask if it needs to exist, match medium to stakes). Not loaded for code output, agent status updates, or commit messages.
 - `debugging.md` — loaded during remediation (review fail → retry) and after 2+ test failures
 - `approach-directives.md` — loaded by the work or pipeline action when dispatching multiple sub-agents for parallel/sequential work on related REQs (assigns each agent a distinct implementation lens)
 - `interviewer.md` — loaded by the interview action across all sub-commands (`list`, `<template>`, `status`, `review`, `export`, `ingest`, `reset`, `versions`); runs structured elicitation to turn tacit work knowledge into explicit, delegatable structure

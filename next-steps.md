@@ -72,7 +72,16 @@ Next steps:
 ```
 Next steps:
   do-work present all         Generate portfolio summary (if multiple URs completed)
+  do-work slop-check          Validate the just-generated brief before sending
   do-work capture request: [describe]  Capture new requests
+```
+
+**After slop-check:**
+```
+Next steps:
+  do-work slop-check [other-path]   Check another artifact
+  do-work present work               Regenerate the brief with the fixes applied
+  do-work capture request: [describe]  Capture a follow-up if a flagged issue needs deeper work
 ```
 
 **After forensics:**
