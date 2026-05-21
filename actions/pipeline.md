@@ -170,7 +170,8 @@ When all 6 steps are done:
    - **Carry-forward work (implied, not captured yet)**: Scan for (a) REQs with `status: pending-answers`, (b) `## Lessons Learned` sections mentioning deferred items, (c) TODO/FIXME comments introduced by the pipeline's commits. List them as candidates for a follow-up capture — but **do NOT auto-capture them**; the user decides.
    - **Deliverables**: Paths produced by the `present` step (`do-work/deliverables/{UR-NNN}-client-brief.md`, `-video/`, `-interactive-explainer.single.html`). Read from the present step's artifacts if recorded, or glob `do-work/deliverables/` for matches scoped to this pipeline's UR.
    - **How to verify**: Concrete commands the user can copy-paste — `git show {sha}` for each commit, the project's test command(s), and the path to open the interactive explainer. This is the validation recipe.
-5. **Render the three LLM formats from one dataset, then export the Marp deck to HTML.** Four files total per completion — three authored, one mechanical:
+5. **Load `crew-members/anti-slop.md` before rendering.** The three authored formats are the user's primary debrief — apply the principles (lead with the verdict, compress, cite evidence, match depth to pipeline scope, disclose anything unverified). One dataset, three renderings, no padding.
+6. **Render the three LLM formats from one dataset, then export the Marp deck to HTML.** Four files total per completion — three authored, one mechanical:
 
    | File | Format | Audience | Template / Producer |
    |------|--------|----------|---------------------|
@@ -181,8 +182,8 @@ When all 6 steps are done:
 
    The three authored files carry the same facts — no format-specific editorializing. The `.marp.html` export inherits its content mechanically from the `.marp.md` source; run the marp-cli command after writing the Marp source. Use `{REQ-id}-pipeline-summary.*` as the filename prefix if no UR was captured.
 
-6. **Print the plain-markdown rendering to stdout** so the user sees the debrief immediately. Reference the other three paths (`.marp.md`, `.marp.html`, `.single.html`) in the closing "Deliverables" section so they can open them next.
-7. **Queue continuation check**: Scan `do-work/queue/REQ-*.md` for files with `status: pending` in their frontmatter. Exclude any REQ IDs listed in the current pipeline's `artifacts` array (those should already be completed). If remaining pending REQs exist, proceed to Step 5a. If the queue is empty, suggest next steps and stop.
+7. **Print the plain-markdown rendering to stdout** so the user sees the debrief immediately. Reference the other three paths (`.marp.md`, `.marp.html`, `.single.html`) in the closing "Deliverables" section so they can open them next.
+8. **Queue continuation check**: Scan `do-work/queue/REQ-*.md` for files with `status: pending` in their frontmatter. Exclude any REQ IDs listed in the current pipeline's `artifacts` array (those should already be completed). If remaining pending REQs exist, proceed to Step 5a. If the queue is empty, suggest next steps and stop.
 
 **Proportional depth:** Single-REQ Route A pipelines (config tweak, docs) get a minimal report in all three authored formats (plus the Marp HTML export) — status block + 1-row Final summary + How to verify. The Marp deck collapses to 3–4 slides; the `.single.html` collapses to a single-screen summary. Multi-REQ or Route B/C pipelines get the full treatment shown above. Don't pad short pipelines with empty sections, and don't truncate long ones. Match the report to the scope of the work.
 

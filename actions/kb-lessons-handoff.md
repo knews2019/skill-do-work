@@ -47,6 +47,8 @@ If the KB is found, note its root path as `<kb>` for the next steps.
 
 ### Step 2: Assemble the source document
 
+Load `crew-members/anti-slop.md` before composing the inbox document — the source document is consumed downstream by the bkb compiler and read by humans browsing the wiki, so apply the principles (lead with the lesson, compress, no padding, factual claims preserved verbatim from the REQ).
+
 Pull these fields from the REQ (file at `do-work/working/REQ-*.md` in pipeline mode, or `do-work/archive/...` in standalone mode):
 
 | Field | Source in the REQ |
