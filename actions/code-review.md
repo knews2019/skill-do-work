@@ -123,6 +123,8 @@ Look at the bigger picture within the scoped files:
 | **Abstraction health** | Are abstractions earning their keep? Over-abstracted code (interfaces with one implementation, factories for one type)? Under-abstracted code (duplicated logic that should be shared)? |
 | **State management** | Is state handled consistently? Global mutable state? Unclear ownership? Race condition opportunities? |
 | **Interface contracts** | Are module boundaries clear? Could you swap an implementation without touching callers? Are internal details leaking? |
+| **Folder cohesion / orphan files** | Do files belong in the folder they live in? Imports that don't match the folder's apparent domain (an auth helper in `utils/`)? Naming inconsistent with siblings (one outlier file shape among many uniform ones)? Folders accumulating unrelated files (junk-drawer `lib/`, `misc/`, or `helpers/`)? Distinct from Step 3's structural consistency — this asks "does this file fit here?", not "is the folder layout uniform across the project?" |
+| **Cyclomatic complexity** | Functions with high branch counts — deeply nested conditionals, sprawling switch statements, long chains of early returns, predicates `&&`-ed and `\|\|`-ed past the point of readability. Distinct from Step 3's "Circular dependencies?" check, which is about import cycles between modules; cyclomatic complexity is about decision paths within a single function. |
 
 ### Step 5: Security & Risk Scan
 

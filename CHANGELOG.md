@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.78.3 — The Dimension Pair (2026-05-25)
+
+`code-review` Step 4 (Pattern & Architecture Review) now names two more dimensions reviewers were quietly missing. Folder cohesion catches files that don't belong in the folder they live in; cyclomatic complexity gets promoted from a quick-wins tie-breaker into a first-class architectural check, explicitly distinguished from Step 3's circular-dependency check so the two don't get conflated.
+
+- `actions/code-review.md`: Step 4 dimension table gains two rows. **Folder cohesion / orphan files** — checks whether imports match folder domain, whether file shape matches siblings, and whether folders have become junk drawers; contrasted with Step 3's "structural consistency" angle. **Cyclomatic complexity** — branch counts, nested conditionals, sprawling switches, predicate chains; explicitly contrasted with Step 3's "Circular dependencies?" check to prevent the McCabe-vs-cyclic-deps mix-up. No thresholds named (consistent with the rest of the table). No changes to Step 9's report template — new findings flow into the existing Architecture table.
+- `actions/quick-wins.md`: unchanged. Cyclomatic complexity stays in Step 5 as a risk-impact tie-breaker; this release adds coverage to code-review without removing anything from quick-wins. The two actions stay complementary.
+
 ## 0.78.2 — The Audit Sunset (2026-05-21)
 
 Removed `DEAD_CODE.md` from the repo root. It was a point-in-time audit snapshot from 0.77.0, and every actionable finding it raised has since been closed out — so the report now describes a tree that no longer exists.
