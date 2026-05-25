@@ -17,6 +17,7 @@ actions/              # Action files (each is a standalone prompt)
   code-review.md      # Standalone codebase review — consistency, patterns, security, performance, test coverage
   ui-review.md        # Read-only UI quality validation against design best practices
   slop-check.md       # Validate a human-facing artifact against the anti-slop principles — read-only, optional rewrite on confirmation
+  dream.md            # Manual four-phase consolidation of a plain-text memory directory (orient, lint, heal, prune + reindex) — destructive, explicit invocation only
   present-work.md     # Client-facing deliverables (briefs, videos, diagrams)
   cleanup.md          # Archive consolidation
   commit.md           # Atomic git commits traced to REQs
