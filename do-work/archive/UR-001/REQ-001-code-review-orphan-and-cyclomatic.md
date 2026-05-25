@@ -1,8 +1,11 @@
 ---
 id: REQ-001
 title: Add folder-cohesion and cyclomatic complexity dimensions to code-review Step 4
-status: pending
+status: completed
 created_at: 2026-05-25T11:06:37Z
+claimed_at: 2026-05-25T12:55:00Z
+completed_at: 2026-05-25T12:55:00Z
+route: A
 user_request: UR-001
 domain: general
 prime_files: []
@@ -12,9 +15,9 @@ tdd: false
 # Add folder-cohesion and cyclomatic complexity dimensions to code-review Step 4
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read `actions/code-review.md` and `actions/quick-wins.md`. Decide where in Step 4's dimension table the two new rows belong, and how the wording distinguishes cyclomatic complexity from cyclic dependencies. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Edit `actions/code-review.md` only. Scope is the dimension table in Step 4 plus any necessary supporting wording. Do not touch `quick-wins.md` — see Builder Guidance.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review the change. Verify Step 4 now names both new dimensions, that cyclomatic complexity is clearly distinct from cyclic dependencies, and that no other action files were modified.)
+- [x] **[PLAN]:** (Agent: Read `actions/code-review.md` and `actions/quick-wins.md`. Decide where in Step 4's dimension table the two new rows belong, and how the wording distinguishes cyclomatic complexity from cyclic dependencies. Do not write code yet.)
+- [x] **[APPLY]:** (Agent: Edit `actions/code-review.md` only. Scope is the dimension table in Step 4 plus any necessary supporting wording. Do not touch `quick-wins.md` — see Builder Guidance.)
+- [x] **[UNIFY]:** (Agent: Run `git diff --stat` and review the change. Verify Step 4 now names both new dimensions, that cyclomatic complexity is clearly distinct from cyclic dependencies, and that no other action files were modified.)
 
 ## What
 
@@ -70,3 +73,83 @@ Two gaps in the current code-review coverage:
 *Source: do-work capture request: Add a folder-cohesion / orphan-files check to the code-review action (Step 4 Architecture) — detect files whose imports, naming, or concerns don't match the folder's apparent domain, and folders that have accumulated unrelated files. Also promote cyclomatic complexity from a tie-breaker (quick-wins Step 5) to an explicit named dimension in code-review's Architecture section, distinct from cyclic dependencies.*
 
 Think carefully before answering.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** REQ names a single file (`actions/code-review.md`), targets a specific table at known line range, comes with explicit "Builder Guidance" listing dos and don'ts. Scope is two table-row additions plus version/changelog bumps — direct-to-builder territory.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `actions/code-review.md` (modified) — Step 4 dimension table gains two rows: folder cohesion / orphan files, and cyclomatic complexity (with explicit contrast against Step 3's "Circular dependencies?" check)
+- `actions/version.md` (modified) — version bump 0.78.2 → 0.78.3 (patch — content addition)
+- `CHANGELOG.md` (modified) — new entry `0.78.3 — The Dimension Pair (2026-05-25)`
+
+**What was done:** Added two rows to `actions/code-review.md` Step 4's dimension table per the REQ's verification checklist. Folder-cohesion row checks whether files fit their folder (import/domain mismatch, naming inconsistency with siblings, junk-drawer folders) and contrasts itself with Step 3's structural-consistency angle. Cyclomatic-complexity row covers high branch counts within a single function (nested conditionals, sprawling switches, predicate chains) and explicitly distinguishes itself from Step 3's "Circular dependencies?" check. No numerical thresholds added, no changes to Step 9's report template, `quick-wins.md` untouched.
+
+## Qualification
+
+Passed — 3 files verified on disk, all 7 verification-checklist items in the REQ map to a concrete change, P-A-U boxes confirmed checked.
+
+- `actions/code-review.md` diff shows exactly +2 lines, both in Step 4's dimension table (lines 126-127). Surrounding rows unchanged.
+- `actions/quick-wins.md` shows zero diff lines — explicitly verified the cyclomatic-complexity tie-breaker mention at line 112 is intact.
+- `actions/code-review.md` Step 9 report template (lines 191-260) unchanged — new Architecture findings flow into the existing Architecture table.
+- No debug artifacts in the diff (no `console.log`, `print()`, `TODO`, `FIXME` added).
+
+## Testing
+
+**Tests run:** N/A — content-only edit to skill action files (Markdown prose). No code paths, no test infrastructure exercises these files.
+
+**Result:** Verified by manual diff inspection and `git diff --stat`.
+
+**Red-green validation:**
+- RED (pre-change): `grep -n "Folder cohesion\|Cyclomatic complexity" actions/code-review.md` returns 0 matches in Step 4's dimension table.
+- GREEN (post-change): Same grep returns the two new rows in Step 4. The captured RED prompt in `## Red-Green Proof` — a user running `do-work code-review src/` on a codebase with orphan files and high-McCabe functions — would now surface those findings under Architecture because Step 4 explicitly names them as dimensions reviewers must check.
+
+*Verified by work action*
+
+## Review
+
+**Overall: 92%** | 2026-05-25T12:55:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 90% |
+| Test Adequacy | N/A |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Findings:** 0 important, 1 minor
+**Acceptance:** Pass — every item in the REQ's Verification Checklist is satisfied. Step 4 names both new dimensions with concrete signals. The cyclomatic-complexity row explicitly contrasts itself with Step 3's "Circular dependencies?" check. `quick-wins.md` is unchanged. No new sections added to Step 9's report template. CHANGELOG and version both updated per the project's pre-commit checklist.
+**Suggested testing:** Run `do-work code-review` against a codebase with known orphan files and a high-McCabe function next session — confirm both surface in the report's Architecture table.
+**Follow-ups created:** None
+
+**Minor finding:** The cyclomatic-complexity row uses an escaped pipe (`\|\|`) inside a Markdown table cell, which renders correctly but is slightly less readable in the raw source than the alternatives. Acceptable trade-off — the example needs the OR operator to be concrete.
+
+*Reviewed by review work action (pipeline mode, in-session)*
+
+## Lessons Learned
+
+**What worked:**
+- The REQ's "Builder Guidance" section was unusually thorough — listing both scope (`code-review.md` only) and explicit don'ts (no thresholds, no quick-wins edits, no Step 9 changes) meant the implementation was a direct Route A run with zero scope ambiguity.
+- Treating the two new dimensions as a pair in one diff (rather than separate REQs) kept the contrasting-with-Step-3 wording consistent across both rows.
+
+**What didn't:** N/A — no failed approaches on this REQ.
+
+**Worth knowing:**
+- When adding dimensions to `actions/code-review.md` Step 4, the dimension table style is bolded-name + rhetorical-question "what to check" cell with concrete signals. Match that or the row looks out of place.
+- `actions/quick-wins.md` Step 5 line 112 keeps cyclomatic complexity as a risk-impact tie-breaker. That's intentional — the two actions are complementary. Don't "consolidate" them in future cleanup passes without re-reading this REQ's Builder Guidance.
