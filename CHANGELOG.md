@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.79.0 — The Quiet Pass (2026-05-25)
+
+A new `dream` action — a manual, explicit four-phase pass that consolidates a plain-text memory directory: lint mechanical rot, heal contradictions, prune near-duplicates, rebuild the index. Destructive by design, so it never auto-triggers; invoke it when memory has visibly decayed.
+
+- `actions/dream.md`: new standalone action. Resolves a default memory dir (`./memory`, `./wiki`, `./kb/wiki`, `./knowledge-base/wiki`) or accepts an explicit path. Holds `.lock` for the duration. Phase 1 orients (read index, page frontmatter, recent log). Phase 2 runs seven deterministic checks expressed inline as prompt steps (pages missing from index, index dangling, broken `[[wiki-links]]`, orphan pages, stale frontmatter dates, relative-date occurrences, near-duplicate titles) — no script bundled, every check spelled out with the exact regex and worklist payload so the agent reproduces the deterministic behavior in-prompt. Phase 3 fixes mechanical issues first, then resolves contradictions (newest wins), pins relative dates to absolute, merges duplicates (repoints inbound links before deletion), prunes untrue. Phase 4 rebuilds the index ≤200 lines, bumps `last_updated`, appends a `[dream]` line to `log.md`, removes `.lock`.
+- Auto-detects bkb wikis: `_master_index.md` is a first-class index alongside `MEMORY.md` and `index.md`, so `do-work dream` works against `kb/wiki/` without extra arguments. Coexists with `bkb lint`/`garden`/`defrag` — those are routine read-only or conservative hygiene; dream is the aggressive single-pass consolidation that merges, prunes, and rebuilds.
+- `SKILL.md`: new priority-28 routing row for dream (triggers: `dream`, `consolidate memory`, `clean up wiki`, `lint and merge notes`, `memory cleanup`); descriptive-content catch-all moves to priority 29. Top-of-file actions list, Verb Reference, Action Dispatch table, foreground-actions list, argument-hint frontmatter, and help menu all updated.
+- `next-steps.md`: new "After dream" block suggesting `commit`, `bkb lint`, or another dream pass.
+- `CLAUDE.md`, `README.md`: `actions/` listing and Other-actions reference gain `dream`.
+
 ## 0.78.3 — The Dimension Pair (2026-05-25)
 
 `code-review` Step 4 (Pattern & Architecture Review) now names two more dimensions reviewers were quietly missing. Folder cohesion catches files that don't belong in the folder they live in; cyclomatic complexity gets promoted from a quick-wins tie-breaker into a first-class architectural check, explicitly distinguished from Step 3's circular-dependency check so the two don't get conflated.

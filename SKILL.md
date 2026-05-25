@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | slop-check [target] | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
+argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | slop-check [target] | dream [path] | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -24,6 +24,7 @@ A unified entry point for task capture and processing.
 - **deep-explore**: Multi-round structured exploration of a concept — spawns divergent/convergent subagent dialogue, produces vision documents and idea briefs
 - **ui-review**: Validate UI quality against design best practices — read-only audit with structured findings report
 - **slop-check**: Validate a human-facing artifact (brief, report, summary) against the anti-slop principles before it ships — read-only by default, optional rewrite on confirmation
+- **dream**: Manual four-phase consolidation of a plain-text memory directory — orient, lint, heal, prune + reindex. Destructive; explicit invocation only.
 - **install**: Install companion skills/tooling into the current project. Targets: `ui-design` (Anthropic's `frontend-design` skill) and `bowser` (Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification).
 - **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination (read-only)
 - **roadmap**: Queue survey → classifies pending REQs (ready / needs-clarification / blocked / stale), reports TDD posture, rolls up in-progress and recently-completed work (read-only)
@@ -89,7 +90,8 @@ Check these patterns **in order** — first match wins:
 | 25       | Install keywords         | `do-work install ui-design`, `do-work install-ui-design`, `do-work install ui design`, `do-work install ui`, `do-work install frontend-design`, `do-work setup ui design`, `do-work setup design skill`, `do-work install bowser`, `do-work install-bowser`, `do-work install playwright`, `do-work install playwright-cli`, `do-work setup bowser`, `do-work setup playwright` | → install (target = `ui-design` or `bowser`) |
 | 26       | Tutorial keywords        | `do-work tutorial`, `do-work tutorial quick-start`, `do-work tutorial concepts`, `do-work tutorial recipes`, `do-work tutorial tour` | → tutorial                      |
 | 27       | Slop-check keywords      | `do-work slop-check`, `do-work slop check`, `do-work anti-slop`, `do-work slop-check do-work/deliverables/UR-003-client-brief.md`, `do-work slop-check REQ-042` | → slop-check                    |
-| 28       | Descriptive content      | `do-work capture request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture requests              |
+| 28       | Dream keywords           | `do-work dream`, `do-work dream ./memory`, `do-work consolidate memory`, `do-work clean up wiki`, `do-work lint and merge notes`, `do-work memory cleanup` | → dream                         |
+| 29       | Descriptive content      | `do-work capture request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -139,6 +141,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **deep-explore** | deep-explore, explore concept, deep dive, develop idea, explore idea | Everything after keyword → `$ARGUMENTS` (concept, file path, topic, or "continue"). No args → ask user what to explore |
 | **tutorial** | tutorial, tutorial quick-start, tutorial concepts, tutorial recipes, tutorial tour, learn, getting started, how does this work | Everything after "tutorial" → `$ARGUMENTS` (mode). No args → ask user which mode |
 | **slop-check** | slop-check, slop check, anti-slop | Everything after the verb → `$ARGUMENTS` (file path, REQ/UR ID, "most recent", or empty). Triggers must be distinctive — any `check ...` form (e.g., "check slop", "check draft", "check for slop") collides with verify priority 5 and is intentionally not listed here. |
+| **dream** | dream, consolidate memory, clean up wiki, lint and merge notes, memory cleanup | Everything after the verb → `$ARGUMENTS` (memory directory path or empty). No path → auto-resolve default (`./memory`, `./wiki`, `./kb/wiki`, `./knowledge-base/wiki`). Single-word `dream` is a known keyword, not descriptive content. |
 | **capture requests** | `capture request:` prefix, descriptive text, feature requests, bug reports, "add", "create", "I need", "we should" | Default for multi-word descriptive content that doesn't match any keyword |
 
 ## Examples
@@ -180,6 +183,8 @@ do-work — task queue for agentic coding tools
   Knowledge base:
     do-work bkb [sub]                   Sub-commands: init | triage | ingest | query | lint |
                                         resolve | close | status | defrag | garden | rollup | crew
+    do-work dream [path]                Manual four-phase consolidation of a plain-text memory
+                                        directory (orient, lint, heal, prune + reindex) — destructive
 
   Interviews:
     do-work interview                   Help menu
@@ -285,6 +290,7 @@ Each action has an action file with full instructions. How you execute it depend
 | recap              | `./actions/version.md`          | `mode: recap`                  |
 | tutorial           | `./actions/tutorial.md`         | `$ARGUMENTS` (mode name or empty) |
 | slop-check         | `./actions/slop-check.md`       | `$ARGUMENTS` (file path, REQ/UR ID, "most recent", or empty for newest deliverable) |
+| dream              | `./actions/dream.md`            | `$ARGUMENTS` (memory directory path or empty for default resolution) |
 
 ### If subagents are available
 
@@ -292,7 +298,7 @@ Dispatch each action to a subagent. The subagent reads the action file and execu
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
 - **Exception — pipeline dispatch**: When the pipeline action dispatches `work`, it runs in the **foreground** (blocking). The pipeline requires each step to complete before advancing. This override applies only when the pipeline is the caller.
-- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `slop-check`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `slop-check`, `dream`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available

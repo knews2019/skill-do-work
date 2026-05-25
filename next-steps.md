@@ -231,6 +231,14 @@ Next steps:
   do-work bkb close             Finalize the day (skip if you just ran close)
 ```
 
+**After dream:**
+```
+Next steps:
+  do-work commit                Commit the consolidated memory diff
+  do-work bkb lint              (If memory is a bkb wiki) verify it's still structurally sound
+  do-work dream [other-path]    Consolidate another memory directory
+```
+
 **After prompts list:**
 ```
 Next steps:
