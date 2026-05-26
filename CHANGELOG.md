@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.79.1 — The Dream Lane (2026-05-26)
+
+Routing fix: `consolidate memory` / `clean up wiki` / `memory cleanup` now reach the dream action instead of being swallowed by cleanup.
+
+- Scoped cleanup to archive-only; gave dream's memory/wiki/notes phrases precedence over cleanup's generic verbs.
+
 ## 0.79.0 — The Quiet Pass (2026-05-25)
 
 A new `dream` action — a manual, explicit four-phase pass that consolidates a plain-text memory directory: lint mechanical rot, heal contradictions, prune near-duplicates, rebuild the index. Destructive by design, so it never auto-triggers; invoke it when memory has visibly decayed.

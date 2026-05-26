@@ -73,7 +73,7 @@ Check these patterns **in order** — first match wins:
 | 8        | UI-review keywords       | `do-work ui-review`, `do-work ui-review src/`, `do-work review ui`, `do-work design review`, `do-work validate ui`, `do-work ui audit`, `do-work design audit` | → ui-review                    |
 | 9        | Review keywords          | `do-work review`, `do-work review work`, `do-work review code`, `do-work audit code`                                               | → review work                  |
 | 10       | Present keywords         | `do-work present`, `do-work present work`, `do-work showcase`, `do-work deliver`                                                   | → present work                 |
-| 11       | Cleanup keywords         | `do-work cleanup`, `do-work clean up`, `do-work tidy`, `do-work consolidate`                                                       | → cleanup                     |
+| 11       | Cleanup keywords         | `do-work cleanup`, `do-work clean up`, `do-work tidy`, `do-work consolidate`, `do-work organize archive` — **excluding** any phrase that names memory/wiki/notes (`consolidate memory`, `clean up wiki`, `memory cleanup`, `lint and merge notes` → dream, priority 28) | → cleanup                     |
 | 12       | Commit keywords          | `do-work commit`, `do-work commit changes`, `do-work commit files`, `do-work save changes`, `do-work save work`                    | → commit                      |
 | 13       | Inspect keywords         | `do-work inspect`, `do-work inspect REQ-005`, `do-work inspect UR-003`, `do-work explain changes`, `do-work what changed`, `do-work show changes` | → inspect                     |
 | 14       | Version keywords         | `do-work version`, `do-work update`, `do-work what's new`, `do-work release notes`, `do-work what's changed`, `do-work updates`, `do-work history` | → version                     |
@@ -124,7 +124,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **ui-review** | ui-review, review ui, design review, validate ui, ui audit, design audit | Do NOT use "check ui" — consumed by verify at priority 4. Scope args: file paths, directory paths, prime file refs |
 | **review work** | review, review work, review code, audit code, audit implementation, review REQ-NNN | "review requests" / "review reqs" → verify (priority 4), not here. "code review" → code-review (priority 7), not here |
 | **present work** | present, present work, showcase, deliver, pitch, client brief | No target → most recent UR. "present all" → portfolio mode |
-| **cleanup** | cleanup, clean up, tidy, consolidate, organize archive, fix archive | |
+| **cleanup** | cleanup, clean up, tidy, consolidate, organize archive, fix archive | **Archive consolidation only.** A `clean up` / `consolidate` / `cleanup` that names **memory / wiki / notes** is the dream action (priority 28), not this — evaluate Dream's specific phrases first; a bare verb with no memory/wiki/notes target stays here. |
 | **commit** | commit, commit changes, commit files, save changes, save work | |
 | **inspect** | inspect, inspect changes, explain changes, what changed, show changes, describe changes | "what changed" (no apostrophe) → inspect; "what's changed" → version |
 | **recap** | recap | Routes to version action with `mode: recap` |
@@ -141,7 +141,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **deep-explore** | deep-explore, explore concept, deep dive, develop idea, explore idea | Everything after keyword → `$ARGUMENTS` (concept, file path, topic, or "continue"). No args → ask user what to explore |
 | **tutorial** | tutorial, tutorial quick-start, tutorial concepts, tutorial recipes, tutorial tour, learn, getting started, how does this work | Everything after "tutorial" → `$ARGUMENTS` (mode). No args → ask user which mode |
 | **slop-check** | slop-check, slop check, anti-slop | Everything after the verb → `$ARGUMENTS` (file path, REQ/UR ID, "most recent", or empty). Triggers must be distinctive — any `check ...` form (e.g., "check slop", "check draft", "check for slop") collides with verify priority 5 and is intentionally not listed here. |
-| **dream** | dream, consolidate memory, clean up wiki, lint and merge notes, memory cleanup | Everything after the verb → `$ARGUMENTS` (memory directory path or empty). No path → auto-resolve default (`./memory`, `./wiki`, `./kb/wiki`, `./knowledge-base/wiki`). Single-word `dream` is a known keyword, not descriptive content. |
+| **dream** | dream, consolidate memory, clean up wiki, lint and merge notes, memory cleanup | Everything after the verb → `$ARGUMENTS` (memory directory path or empty). No path → auto-resolve default (`./memory`, `./wiki`, `./kb/wiki`, `./knowledge-base/wiki`). Single-word `dream` is a known keyword, not descriptive content. These memory/wiki/notes phrases take precedence over the generic cleanup verbs (priority 11) even though Dream sits lower in the table. |
 | **capture requests** | `capture request:` prefix, descriptive text, feature requests, bug reports, "add", "create", "I need", "we should" | Default for multi-word descriptive content that doesn't match any keyword |
 
 ## Examples
