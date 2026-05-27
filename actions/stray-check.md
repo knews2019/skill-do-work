@@ -40,7 +40,7 @@ A path and a mode token can be combined (e.g., `do-work stray-check src/ fix`).
 
 ### Step 2: Inventory
 
-- **In a git repo:** use `git ls-files` (tracked files) and `git status --porcelain` (untracked + staged) as the source of truth. Tag each file **tracked** or **untracked**. Use `git check-ignore <path>` to confirm whether an untracked file is already correctly ignored — if so, skip it.
+- **In a git repo:** use `git ls-files` (tracked files) and `git status --porcelain` (untracked + staged) as the source of truth. Tag each file **tracked** or **untracked**. For **untracked** paths, plain `git check-ignore <path>` confirms whether a file is already correctly ignored — if so, skip it. For **tracked** paths you must add `--no-index` (e.g. `git check-ignore --no-index --stdin`): by default `git check-ignore` consults the index and never reports an already-tracked file, so without the flag the "tracked but should-be-gitignored" check (category 2) would silently find nothing.
 - **Outside git:** walk the filesystem under the scan root, honoring the skip-list.
 
 Skip binary files by extension for content-based checks (`.png .jpg .jpeg .gif .webp .ico .pdf .zip .tar .gz .tgz .7z .exe .dll .so .a .o .pyc .class .jar .whl .mp4 .mov .woff .woff2`). For large text files (>500 lines), sample the first 100 and last 50 lines — never full-read a large blob.
@@ -52,7 +52,7 @@ Run each category below. For every finding, record: **path** (tracked/untracked)
 | # | Category | Detection | Severity | Auto-fixable? |
 |---|----------|-----------|----------|---------------|
 | 1 | **Stray temp/backup/OS files** | `*.tmp *.bak *.orig *.rej *.swp *.swo *~ .DS_Store Thumbs.db desktop.ini` | Warning (tracked) / Info (untracked) | Yes — delete (untracked) or `git rm` + gitignore (tracked) |
-| 2 | **Tracked but should-be-gitignored** | `git ls-files` entries that `git check-ignore` matches (committed yet covered by an ignore rule) | Warning | Yes — `git rm --cached` + ensure rule in `.gitignore` |
+| 2 | **Tracked but should-be-gitignored** | feed `git ls-files` into `git check-ignore --no-index --stdin` (committed yet covered by an ignore rule). `--no-index` is required — plain `git check-ignore` never reports tracked paths | Warning | Yes — `git rm --cached` + ensure rule in `.gitignore` |
 | 3 | **Committed build/generated artifacts** | tracked files under `dist/ build/ out/ target/ .next/ __pycache__/ coverage/ .nuxt/`, or `*.min.js *.min.css *.map` that have a source sibling | Warning | Yes — `git rm --cached` + gitignore the dir/pattern |
 | 4 | **Committed secrets / sensitive files** | tracked `.env .env.* *.pem *.key *.p12 *.pfx id_rsa id_dsa credentials* *secret*` | **Critical** | Partial — offer `git rm --cached` + gitignore, but **flag loudly: the secret is already in git history; rotate it and scrub history.** Never silently delete |
 | 5 | **Misplaced files (folder cohesion)** | nested project markers (`package.json`/`go.mod`/`pyproject.toml`/`Cargo.toml` in a non-root subdir of a single-project repo), a wrong-language file in an otherwise single-language tree, a test file outside the project's test dirs | Info | No — suggest a move (manual; moving breaks imports) |

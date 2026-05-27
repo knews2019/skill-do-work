@@ -116,7 +116,7 @@ Print the table from Step 3, the verdict block from Step 4, and either the rewri
 
 | # | Principle | Status | Evidence |
 |---|-----------|--------|----------|
-| 1 | Worth reading | PASS | — |
+| 1 | Worth reading | PASS | opening line states the decision; no filler intro |
 | 2 | Verified | FLAG | "Q3 conversion up 47%" — no source cited |
 | 3 | Compressed | FLAG | 1,847 words; "It's worth noting that..." appears 6× |
 | 4 | Conclusion first | FLAG | First 4 paragraphs are context-setting; verdict in para 5 |

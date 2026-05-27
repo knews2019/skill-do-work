@@ -96,7 +96,7 @@ Column widths can be approximate — readability beats precision. Omit the ALIAS
 
 1. Resolve `<name>` per the resolution rules below.
 2. Read the file. Split it at the first `---` separator on its own line: everything above is the header (metadata), everything below is the body (your new instructions).
-3. **Check the header for `**Runnable:**`.** Parse it the same way as `**Aliases:**` — single line after the bolded key. Normalize the value: lowercase, trim. If the normalized value is `no`, `false`, or `never`, the prompt is opt-out — refuse with the explanation from the prompt's first blockquote line, e.g.:
+3. **Check the header for `**Runnable:**`.** Parse it the same way as `**Aliases:**` — single line after the bolded key. Take the **first token only** — everything up to the first whitespace or punctuation (e.g. `no — placeholder…` → `no`, `false (see below)` → `false`) — then lowercase and trim it. If that first token is `no`, `false`, or `never`, the prompt is opt-out — refuse with the explanation from the prompt's first blockquote line, e.g.:
    ```
    `<name>` is a placeholder, not a runnable instruction. <first-line description from the prompt>.
    Use `do-work prompts show <name>` to inspect it, or copy it into your project to activate the

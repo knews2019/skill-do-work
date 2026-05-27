@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.80.1 — The Root Cause (2026-05-27)
+
+Install-safety fix plus three correctness fixes from a code review. The big one: the shipped `.gitignore` ignored all of `do-work/`, and since the repo installs by extracting its files into your project root, that rule landed in end-user projects and blocked the do-work folder it's supposed to commit. An ignore rule's reach follows where it sits — a project-root rule over-reaches — so nothing `do-work/`-related ships into the root anymore.
+
+- `.gitignore` now ships only `do-work/pipeline.json` (transient state); this source repo keeps its own `do-work/` untracked via local `.git/info/exclude`, which never ships.
+- `stray-check`: the "tracked but should-be-gitignored" check now uses `git check-ignore --no-index` — plain `check-ignore` never reports already-tracked files, so the category was silently finding nothing.
+- `prompts`: the `Runnable:` opt-out guard now parses the first token, so `Runnable: no — placeholder…` correctly refuses to run.
+- `slop-check`: the report template no longer shows a `PASS` row with blank evidence, which had undercut its own "every row needs evidence" rule.
+
 ## 0.80.0 — The Lost and Found (2026-05-27)
 
 New `stray-check` action: a repo-wide sweep for orphan and junk files that pollute where they don't belong — the whole-repo sibling to forensics, which only ever looked at do-work's own files. It reports first and touches nothing until you confirm.
