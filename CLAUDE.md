@@ -31,6 +31,7 @@ actions/              # Action files (each is a standalone prompt)
   install.md          # Install companion skills/tooling — targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill)
   forensics.md        # Pipeline diagnostics — stuck work, hollow completions, orphaned URs
   roadmap.md          # Read-only queue survey — feasibility classification + TDD posture (sister action to forensics)
+  stray-check.md      # Repo-wide orphan/junk file scanner — temp/backup files, committed build artifacts, should-be-gitignored, misplaced/duplicate/empty files, large blobs, AI scratch, best-effort dead code (report-only by default; fixes on confirmation)
   prime.md             # Prime file management — create and audit AI context documents
   pipeline.md          # Full end-to-end orchestration (investigate → capture → verify → run → review → present); embeds the three Pipeline Completion Report rendering templates inline (markdown/Marp/HTML) + composition rules
   bkb.md              # LLM knowledge base — init, triage, ingest, query, lint, and more

@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | slop-check [target] | dream [path] | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
+argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | slop-check [target] | dream [path] | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | stray-check [path] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -28,6 +28,7 @@ A unified entry point for task capture and processing.
 - **install**: Install companion skills/tooling into the current project. Targets: `ui-design` (Anthropic's `frontend-design` skill) and `bowser` (Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification).
 - **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination (read-only)
 - **roadmap**: Queue survey → classifies pending REQs (ready / needs-clarification / blocked / stale), reports TDD posture, rolls up in-progress and recently-completed work (read-only)
+- **stray-check**: Repo-wide orphan/junk scan → temp/backup/OS files, committed build artifacts, should-be-gitignored, misplaced/duplicate/empty files, large blobs, AI scratch, best-effort dead code (report-only by default; fixes on confirmation)
 - **prime**: Create and audit prime files — AI context documents that index utility codebases
 - **build knowledge base (bkb)**: LLM Knowledge Base builder → initialize, triage, ingest, query, lint, and maintain a persistent Markdown wiki compiled from raw sources
 - **interview**: Run a structured elicitation interview against a prescriptive template → produces agent-ready operating artifacts (USER.md, SOUL.md, HEARTBEAT.md, plus machine-readable exports). First template: `work-operating-model`.
@@ -73,7 +74,7 @@ Check these patterns **in order** — first match wins:
 | 8        | UI-review keywords       | `do-work ui-review`, `do-work ui-review src/`, `do-work review ui`, `do-work design review`, `do-work validate ui`, `do-work ui audit`, `do-work design audit` | → ui-review                    |
 | 9        | Review keywords          | `do-work review`, `do-work review work`, `do-work review code`, `do-work audit code`                                               | → review work                  |
 | 10       | Present keywords         | `do-work present`, `do-work present work`, `do-work showcase`, `do-work deliver`                                                   | → present work                 |
-| 11       | Cleanup keywords         | `do-work cleanup`, `do-work clean up`, `do-work tidy`, `do-work consolidate`, `do-work organize archive` — **excluding** any phrase that names memory/wiki/notes (`consolidate memory`, `clean up wiki`, `memory cleanup`, `lint and merge notes` → dream, priority 28) | → cleanup                     |
+| 11       | Cleanup keywords         | `do-work cleanup`, `do-work clean up`, `do-work tidy`, `do-work consolidate`, `do-work organize archive` — **excluding** any phrase that names memory/wiki/notes (`consolidate memory`, `clean up wiki`, `memory cleanup`, `lint and merge notes` → dream, priority 28) or that names stray/orphan/junk files or repo pollution (`clean up junk files`, `remove stray files`, `find orphan files` → stray-check, priority 29) | → cleanup                     |
 | 12       | Commit keywords          | `do-work commit`, `do-work commit changes`, `do-work commit files`, `do-work save changes`, `do-work save work`                    | → commit                      |
 | 13       | Inspect keywords         | `do-work inspect`, `do-work inspect REQ-005`, `do-work inspect UR-003`, `do-work explain changes`, `do-work what changed`, `do-work show changes` | → inspect                     |
 | 14       | Version keywords         | `do-work version`, `do-work update`, `do-work what's new`, `do-work release notes`, `do-work what's changed`, `do-work updates`, `do-work history` | → version                     |
@@ -91,7 +92,8 @@ Check these patterns **in order** — first match wins:
 | 26       | Tutorial keywords        | `do-work tutorial`, `do-work tutorial quick-start`, `do-work tutorial concepts`, `do-work tutorial recipes`, `do-work tutorial tour` | → tutorial                      |
 | 27       | Slop-check keywords      | `do-work slop-check`, `do-work slop check`, `do-work anti-slop`, `do-work slop-check do-work/deliverables/UR-003-client-brief.md`, `do-work slop-check REQ-042` | → slop-check                    |
 | 28       | Dream keywords           | `do-work dream`, `do-work dream ./memory`, `do-work consolidate memory`, `do-work clean up wiki`, `do-work lint and merge notes`, `do-work memory cleanup` | → dream                         |
-| 29       | Descriptive content      | `do-work capture request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture requests              |
+| 29       | Stray-check keywords     | `do-work stray-check`, `do-work stray-check src/`, `do-work find stray files`, `do-work find orphan files`, `do-work junk`, `do-work what doesn't belong`, `do-work file hygiene` | → stray-check                   |
+| 30       | Descriptive content      | `do-work capture request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -124,13 +126,14 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **ui-review** | ui-review, review ui, design review, validate ui, ui audit, design audit | Do NOT use "check ui" — consumed by verify at priority 4. Scope args: file paths, directory paths, prime file refs |
 | **review work** | review, review work, review code, audit code, audit implementation, review REQ-NNN | "review requests" / "review reqs" → verify (priority 4), not here. "code review" → code-review (priority 7), not here |
 | **present work** | present, present work, showcase, deliver, pitch, client brief | No target → most recent UR. "present all" → portfolio mode |
-| **cleanup** | cleanup, clean up, tidy, consolidate, organize archive, fix archive | **Archive consolidation only.** A `clean up` / `consolidate` / `cleanup` that names **memory / wiki / notes** is the dream action (priority 28), not this — evaluate Dream's specific phrases first; a bare verb with no memory/wiki/notes target stays here. |
+| **cleanup** | cleanup, clean up, tidy, consolidate, organize archive, fix archive | **Archive consolidation only.** A `clean up` / `consolidate` / `cleanup` that names **memory / wiki / notes** is the dream action (priority 28); one that names **stray / orphan / junk files** or repo pollution is the stray-check action (priority 29). Evaluate those carve-outs first; a bare verb with no memory/wiki/notes/junk target stays here. |
 | **commit** | commit, commit changes, commit files, save changes, save work | |
 | **inspect** | inspect, inspect changes, explain changes, what changed, show changes, describe changes | "what changed" (no apostrophe) → inspect; "what's changed" → version |
 | **recap** | recap | Routes to version action with `mode: recap` |
 | **version** | version, update, check for updates, what's new, release notes, what's changed, updates, history | "updates" (plural) shows last 5 releases; "update" (singular) triggers update check |
 | **forensics** | forensics, diagnose, health check, health | |
 | **roadmap** | roadmap, queue-status, where are we, what's left, what's feasible, what should I work on next | Optional scope: `pending`, `in-progress`, `done`, `UR-NNN`, or `since <date>`. Read-only. `"<action> status"` → that action (e.g., "pipeline status" → pipeline, "bkb status" → bkb, "interview <template> status" → interview). |
+| **stray-check** | stray files, strays, orphan files, orphans, junk, what doesn't belong, file hygiene, stray-check | Repo-wide file hygiene (NOT do-work's own files — that's cleanup). Optional path scope; `fix` to apply fixes on confirmation, `report` to force read-only. Bare "clean up" / "consolidate" stays cleanup (priority 11). |
 | **prime** | prime, prime create, prime audit, create prime, audit primes, primes | Everything after verb → `$ARGUMENTS`. "audit primes" → prime; plain "audit" → verify |
 | **bkb** | bkb, build knowledge base, knowledge base, kb | Everything after verb → `$ARGUMENTS` (sub-command + params) |
 | **interview** | interview, elicit, operating model | Everything after verb → `$ARGUMENTS` (`list`, `<template>`, or `<template> <sub-command>`). No args → help menu |
@@ -209,6 +212,7 @@ do-work — task queue for agentic coding tools
     do-work forensics                   Pipeline diagnostics — stuck work, orphaned URs
     do-work roadmap [scope]             Queue survey — ready/blocked/stale + TDD posture
     do-work queue-status                Alias for roadmap
+    do-work stray-check [path]          Find orphan/junk files polluting the repo
     do-work version                     Version + last 5 releases
     do-work update                      Check for upstream updates
     do-work recap                       Last 5 completed URs with their REQs
@@ -282,6 +286,7 @@ Each action has an action file with full instructions. How you execute it depend
 | install            | `./actions/install.md`          | `$ARGUMENTS` (target: `ui-design` or `bowser`) |
 | forensics          | `./actions/forensics.md`        | (none needed)                  |
 | roadmap            | `./actions/roadmap.md`          | `$ARGUMENTS` (optional scope: `pending`, `in-progress`, `done`, `UR-NNN`, `since <date>`) |
+| stray-check        | `./actions/stray-check.md`      | `$ARGUMENTS` (optional path scope; `fix` / `report` mode token) |
 | prime              | `./actions/prime.md`            | `$ARGUMENTS` (sub-command + params) |
 | build knowledge base | `./actions/bkb.md`              | `$ARGUMENTS` (sub-command + params) |
 | interview          | `./actions/interview.md`        | `$ARGUMENTS` (`list`, `<template>`, or `<template> <sub-command>`) |
@@ -298,7 +303,7 @@ Dispatch each action to a subagent. The subagent reads the action file and execu
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
 - **Exception — pipeline dispatch**: When the pipeline action dispatches `work`, it runs in the **foreground** (blocking). The pipeline requires each step to complete before advancing. This override applies only when the pipeline is the caller.
-- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `slop-check`, `dream`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `slop-check`, `dream`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `stray-check`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available

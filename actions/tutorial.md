@@ -260,6 +260,9 @@ WORKFLOW RECIPES — common scenarios → exact commands
   "I want to clean up the archive"
     do-work cleanup
 
+  "I want to find stray/junk files polluting the repo"
+    do-work stray-check
+
   "What happened recently?"
     do-work recap
 ```

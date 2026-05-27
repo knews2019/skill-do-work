@@ -111,6 +111,14 @@ Next steps:
   do-work recap                 Summary of recently completed work
 ```
 
+**After stray-check:**
+```
+Next steps:
+  do-work commit                Commit the removals (git rm --cached, deletions)
+  do-work cleanup               Tidy do-work's own files (loose REQs, misplaced do-work/)
+  do-work inspect               Explain the resulting uncommitted changes before committing
+```
+
 **After install (any target):**
 ```
 Next steps:

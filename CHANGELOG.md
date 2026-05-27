@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.80.0 — The Lost and Found (2026-05-27)
+
+New `stray-check` action: a repo-wide sweep for orphan and junk files that pollute where they don't belong — the whole-repo sibling to forensics, which only ever looked at do-work's own files. It reports first and touches nothing until you confirm.
+
+- Detects stray temp/backup/OS files, committed build artifacts, tracked-but-should-be-gitignored files, committed secrets (critical), misplaced/duplicate/empty files, oversized binary blobs, AI scratch droppings, and best-effort dead code.
+- Report-only by default; `fix` applies the safe, reversible fixes (delete untracked junk, `git rm --cached`, gitignore) only on explicit confirmation. Never `git add -A`, never auto-commits.
+- Skips the entire `do-work/` tree and defers misplaced `do-work/` directories to cleanup. Routing carve-out keeps "clean up junk files" / "find orphan files" out of cleanup.
+
 ## 0.79.1 — The Dream Lane (2026-05-26)
 
 Routing fix: `consolidate memory` / `clean up wiki` / `memory cleanup` now reach the dream action instead of being swallowed by cleanup.
