@@ -137,6 +137,15 @@ Action files follow a consistent structure. When adding or modifying actions, us
 
 Cross-reference other actions by short name (e.g., "the work action", "do-work clarify") — not by file path. SKILL.md owns the file-path mappings.
 
+### Prescribed Shell Commands Must Surface What the Steps Consume
+
+Action files are prose that prescribes shell behavior. When a step's logic iterates over the output of a command, the prescribed command must actually emit the items that logic consumes — a mismatch is invisible in the prose and only shows up when run against a real repo. Two traps that have already bitten this skill:
+
+- **`git status --porcelain` collapses wholly-untracked directories** into a single `?? dir/` row — it does not list the files inside. Any step that enumerates untracked files per-item (read each, check extension/size/name) must use `git status --porcelain --untracked-files=all` (`-uall`) or `git ls-files --others --exclude-standard`. The latter also drops correctly-ignored paths, so it doubles as the untracked ignore filter.
+- **A blanket skip/exclude list applied *before* a check silently neuters any check meant to fire inside the excluded set.** Scope skip-lists to the noise they actually target (untracked/ignored) and run tracked-file checks outside the exclusion — e.g. a committed `__pycache__/*.pyc` is correct-to-ignore when untracked but is exactly what a "committed build artifact" check should flag.
+
+When a review finds a bug in prescribed-command logic, **grep the same primitive across all actions before calling it fixed** — these patterns are usually copy-pasted, so the fix is rarely local. (The first trap above had been copy-pasted into four action files; the audit only flagged one of them.)
+
 ## Agent Rules
 
 Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_CONTEXT` comment documenting when it loads. Loading behavior:

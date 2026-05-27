@@ -489,7 +489,7 @@ Quick environment sanity check before the builder starts coding. All checks are 
 
 **Routes B and C:**
 
-1. **Git clean:** Run `git status --porcelain`. If there are uncommitted changes unrelated to `do-work/`, warn: "Uncommitted changes detected — the commit step may stage unrelated files." List the files.
+1. **Git clean:** Run `git status --porcelain --untracked-files=all` (the `-uall` flag lists files inside untracked dirs individually instead of collapsing them to a single `?? dir/` row). If there are uncommitted changes unrelated to `do-work/`, warn: "Uncommitted changes detected — the commit step may stage unrelated files." List the files.
 2. **Tests baseline:** If the project has a test command (check the prime file's testing section, or look for `package.json` test scripts, `pytest.ini`, etc.), run it. If tests already fail on HEAD before any changes, note this: "Baseline tests failing — builder should not be blamed for pre-existing failures." Record which tests fail.
 3. **Dependencies:** If `package.json` exists but `node_modules/` doesn't, or `requirements.txt` exists without an active venv, warn: "Dependencies may not be installed."
 

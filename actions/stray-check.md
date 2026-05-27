@@ -35,12 +35,12 @@ A path and a mode token can be combined (e.g., `do-work stray-check src/ fix`).
 
 1. Check for git: `git rev-parse --git-dir 2>/dev/null`. If not a git repo, run filesystem-only checks (categories 1, 5, 6, 7, 8, 9, 10) and skip the git-dependent ones (2, 3, 4 in their tracked form).
 2. Resolve the path argument to a scan root (default: repo root).
-3. Build the **noise skip-list** — never report findings inside these: `node_modules/`, `vendor/`, `.git/`, `.venv/`, `venv/`, `__pycache__/`, `.cache/`, `.pytest_cache/`, `.mypy_cache/`, plus any untracked path already matched by `.gitignore` (those are *correctly* ignored — not pollution).
+3. Build the **noise skip-list** — `node_modules/`, `vendor/`, `.git/`, `.venv/`, `venv/`, `__pycache__/`, `.cache/`, `.pytest_cache/`, `.mypy_cache/`, plus any untracked path already matched by `.gitignore` (those are *correctly* ignored — not pollution). **The skip-list applies only to untracked/ignored content.** A **tracked (committed)** file inside one of these dirs is *not* skipped — it stays subject to the tracked-artifact checks (categories 2, 3, 4). A committed `__pycache__/foo.pyc` or `dist/bundle.js` is exactly the pollution category 3 hunts for, so never let the skip-list filter a tracked path.
 4. **Always skip the entire `do-work/` tree.** If you find a misplaced `do-work/` directory elsewhere in the repo, do not handle it here — note it once as "see `do-work cleanup` (Pass 3a)" and move on.
 
 ### Step 2: Inventory
 
-- **In a git repo:** use `git ls-files` (tracked files) and `git status --porcelain` (untracked + staged) as the source of truth. Tag each file **tracked** or **untracked**. For **untracked** paths, plain `git check-ignore <path>` confirms whether a file is already correctly ignored — if so, skip it. For **tracked** paths you must add `--no-index` (e.g. `git check-ignore --no-index --stdin`): by default `git check-ignore` consults the index and never reports an already-tracked file, so without the flag the "tracked but should-be-gitignored" check (category 2) would silently find nothing.
+- **In a git repo:** the source of truth is `git ls-files` for **tracked** files and `git ls-files --others --exclude-standard` for **untracked** files. Tag each file accordingly. **Do not use plain `git status --porcelain` for the untracked inventory** — it collapses a wholly-untracked directory into a single `?? dir/` row, so junk like `tmp/debug.log` inside a brand-new directory never reaches the filename/extension/size/content checks. `git ls-files --others --exclude-standard` lists every untracked file individually *and* already drops paths matched by `.gitignore` (those are correctly ignored — not pollution), so it doubles as the untracked ignore filter; no separate `git check-ignore` pass is needed for untracked paths. (If you prefer `git status`, you must pass `--untracked-files=all` / `-uall` to get the same per-file expansion.) For the **tracked but should-be-gitignored** check (category 2) you still feed `git ls-files` into `git check-ignore --no-index --stdin`: by default `git check-ignore` consults the index and never reports an already-tracked file, so without `--no-index` that category would silently find nothing.
 - **Outside git:** walk the filesystem under the scan root, honoring the skip-list.
 
 Skip binary files by extension for content-based checks (`.png .jpg .jpeg .gif .webp .ico .pdf .zip .tar .gz .tgz .7z .exe .dll .so .a .o .pyc .class .jar .whl .mp4 .mov .woff .woff2`). For large text files (>500 lines), sample the first 100 and last 50 lines — never full-read a large blob.
@@ -53,7 +53,7 @@ Run each category below. For every finding, record: **path** (tracked/untracked)
 |---|----------|-----------|----------|---------------|
 | 1 | **Stray temp/backup/OS files** | `*.tmp *.bak *.orig *.rej *.swp *.swo *~ .DS_Store Thumbs.db desktop.ini` | Warning (tracked) / Info (untracked) | Yes — delete (untracked) or `git rm` + gitignore (tracked) |
 | 2 | **Tracked but should-be-gitignored** | feed `git ls-files` into `git check-ignore --no-index --stdin` (committed yet covered by an ignore rule). `--no-index` is required — plain `git check-ignore` never reports tracked paths | Warning | Yes — `git rm --cached` + ensure rule in `.gitignore` |
-| 3 | **Committed build/generated artifacts** | tracked files under `dist/ build/ out/ target/ .next/ __pycache__/ coverage/ .nuxt/`, or `*.min.js *.min.css *.map` that have a source sibling | Warning | Yes — `git rm --cached` + gitignore the dir/pattern |
+| 3 | **Committed build/generated artifacts** | tracked files under `dist/ build/ out/ target/ .next/ __pycache__/ coverage/ .nuxt/`, or `*.min.js *.min.css *.map` that have a source sibling. Run this against the **tracked** inventory (`git ls-files`) — the Step 1 skip-list must not filter these out, since several of these dirs are *on* the skip-list yet a committed file inside them is exactly the pollution to flag | Warning | Yes — `git rm --cached` + gitignore the dir/pattern |
 | 4 | **Committed secrets / sensitive files** | tracked `.env .env.* *.pem *.key *.p12 *.pfx id_rsa id_dsa credentials* *secret*` | **Critical** | Partial — offer `git rm --cached` + gitignore, but **flag loudly: the secret is already in git history; rotate it and scrub history.** Never silently delete |
 | 5 | **Misplaced files (folder cohesion)** | nested project markers (`package.json`/`go.mod`/`pyproject.toml`/`Cargo.toml` in a non-root subdir of a single-project repo), a wrong-language file in an otherwise single-language tree, a test file outside the project's test dirs | Info | No — suggest a move (manual; moving breaks imports) |
 | 6 | **Duplicate / old-copy files** | name patterns: `* copy.*`, `*copy.*`, `*-old.* *.old *-backup.* *-bak.* *.v2.* *-final.* *-deprecated.* *(1).* * 2.*` | Warning | Untracked → delete on confirm; tracked → review manually first |
@@ -155,6 +155,8 @@ All clear — no stray, misplaced, or orphan files detected.
 
 - A file was deleted or `.gitignore` was modified without an explicit user confirmation — the scan phase must be read-only.
 - The report flagged files inside `node_modules/`, `dist/` (untracked + gitignored), or `do-work/` — skip-list or do-work exclusion failed.
+- A committed artifact inside a skip-listed dir (e.g. `__pycache__/x.pyc`, `dist/bundle.js` that is *tracked*) was **not** flagged by category 3 — the skip-list wrongly filtered a tracked path. The skip-list is for untracked/ignored noise only.
+- Untracked junk inside a brand-new directory (e.g. `tmp/debug.log`) was missed — the untracked inventory used plain `git status --porcelain` (which collapses the dir to `?? tmp/`) instead of `git ls-files --others --exclude-standard` / `-uall`.
 - A dead-code candidate was reported as Critical or auto-removed — category 10 is Info-only, never auto-fixed.
 - A tracked file was removed with raw `rm` instead of `git rm` — unrecoverable.
 - `git add -A` or an auto-commit appeared — staging/commit must be scoped and user-driven.
@@ -168,6 +170,8 @@ All clear — no stray, misplaced, or orphan files detected.
 - [ ] Findings grouped under `## Critical Findings`, `## Warnings`, `## Info`, `## Summary`; empty sections omitted.
 - [ ] Every finding names a concrete path and includes a suggested fix; auto-fixable items tagged `[auto-fixable]`.
 - [ ] Untracked files already matched by `.gitignore` were **not** reported as pollution.
+- [ ] The untracked inventory listed files **individually** (via `git ls-files --others --exclude-standard` or `git status --porcelain -uall`), not collapsed untracked directories — junk inside brand-new dirs was seen.
+- [ ] Tracked files inside skip-listed dirs (e.g. a committed `__pycache__/*.pyc`) still reached the tracked-artifact checks (categories 2/3/4); the skip-list did not filter tracked paths.
 - [ ] Dead-code candidates are Info-only with the false-positive caveat; never auto-fixed.
 - [ ] Any committed secret carries a history-retention + rotation warning.
 - [ ] No `git add -A`, no auto-commit; tracked removals used `git rm`.

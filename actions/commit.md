@@ -44,7 +44,7 @@ commit action
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, report and exit.
 
-Run `git status --porcelain` to get all uncommitted changes — staged, unstaged, and untracked.
+Run `git status --porcelain --untracked-files=all` to get all uncommitted changes — staged, unstaged, and untracked. The `--untracked-files=all` (`-uall`) flag matters: plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so Step 2 would never see (or would try to "read") the files inside a new untracked folder. With `-uall`, every untracked file is listed individually.
 
 If the working tree is clean, report "Nothing to commit" and exit.
 

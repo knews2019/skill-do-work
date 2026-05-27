@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.80.2 — The Full Inventory (2026-05-27)
+
+Two more correctness fixes from the same code review, plus the realization that one of them wasn't local. `stray-check` now sees junk inside brand-new untracked directories and stops letting its own skip-list hide committed artifacts — and the untracked-enumeration fix was applied everywhere the same pattern had been copy-pasted.
+
+- `stray-check`: the untracked inventory now uses `git ls-files --others --exclude-standard` (lists files individually, honoring `.gitignore`) instead of `git status --porcelain`, which collapses a wholly-untracked directory into a single `?? dir/` row — junk like `tmp/debug.log` was invisible to every filename/size/content check.
+- `stray-check`: the noise skip-list (`__pycache__/`, `dist/`, …) now applies only to untracked/ignored content; a *tracked* file inside those dirs still reaches the committed-artifact checks, which is the whole point of category 3.
+- Same `git status --porcelain` → `--untracked-files=all` fix applied to `commit`, `inspect`, and `work`, where the identical pattern would have missed (or tried to "read") files inside a new untracked folder.
+- Codified the two git-command traps in CLAUDE.md so future actions avoid them — and the rule that a prescribed-command bug found by review is rarely local: grep the primitive across every action.
+
 ## 0.80.1 — The Root Cause (2026-05-27)
 
 Install-safety fix plus three correctness fixes from a code review. The big one: the shipped `.gitignore` ignored all of `do-work/`, and since the repo installs by extracting its files into your project root, that rule landed in end-user projects and blocked the do-work folder it's supposed to commit. An ignore rule's reach follows where it sits — a project-root rule over-reaches — so nothing `do-work/`-related ships into the root anymore.
