@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Background Agent Durability — how it works</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --surface-2: #f1f5f9;
+    --text: #1e293b;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --disk: #b45309;        /* durable / on-disk */
+    --disk-soft: #fef3c7;
+    --volatile: #dc2626;    /* in-chat / lost */
+    --volatile-soft: #fee2e2;
+    --ok: #15803d;
+    --ok-soft: #dcfce7;
+    --shadow: 0 1px 2px rgba(15,23,42,.06), 0 8px 24px rgba(15,23,42,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f172a;
+      --surface: #1e293b;
+      --surface-2: #273449;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --line: #334155;
+      --accent: #60a5fa;
+      --accent-soft: #1e3a5f;
+      --disk: #fbbf24;
+      --disk-soft: #422006;
+      --volatile: #f87171;
+      --volatile-soft: #450a0a;
+      --ok: #4ade80;
+      --ok-soft: #052e16;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.4);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 24px; }
+  code, .mono { font-family: "SF Mono", ui-monospace, "Cascadia Code", Menlo, Consolas, monospace; font-size: .9em; }
+  code { background: var(--surface-2); padding: .12em .4em; border-radius: 5px; }
+
+  /* hero */
+  header.hero {
+    padding: 88px 24px 56px;
+    background:
+      radial-gradient(900px 400px at 80% -10%, var(--accent-soft), transparent 70%),
+      var(--bg);
+    border-bottom: 1px solid var(--line);
+  }
+  .hero .wrap { padding: 0 24px; }
+  .eyebrow {
+    display: inline-block; font-size: 13px; font-weight: 600; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--accent);
+    background: var(--accent-soft); padding: 5px 12px; border-radius: 999px; margin-bottom: 22px;
+  }
+  h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.1; margin: 0 0 18px; letter-spacing: -.02em; }
+  .verdict { font-size: clamp(18px, 2.6vw, 21px); color: var(--text); max-width: 720px; margin: 0; }
+  .verdict strong { color: var(--accent); }
+  .filepath { margin-top: 26px; font-size: 14px; color: var(--muted); }
+  .filepath code { background: var(--surface); border: 1px solid var(--line); }
+
+  section { padding: 56px 0; border-bottom: 1px solid var(--line); }
+  h2 { font-size: clamp(24px, 3.4vw, 30px); margin: 0 0 8px; letter-spacing: -.01em; }
+  h2 .num { color: var(--accent); font-variant-numeric: tabular-nums; margin-right: 12px; }
+  .lede { color: var(--muted); font-size: 17px; margin: 0 0 28px; max-width: 680px; }
+  h3 { font-size: 18px; margin: 32px 0 10px; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 14px;
+    padding: 24px; box-shadow: var(--shadow);
+  }
+
+  /* toggle */
+  .toggle-group { display: inline-flex; background: var(--surface-2); border-radius: 11px; padding: 4px; gap: 4px; border: 1px solid var(--line); }
+  .toggle-group input { position: absolute; opacity: 0; pointer-events: none; }
+  .toggle-group label {
+    cursor: pointer; padding: 9px 18px; border-radius: 8px; font-weight: 600; font-size: 14px;
+    color: var(--muted); transition: all .15s; user-select: none; display: flex; align-items: center; gap: 7px;
+  }
+  #view-chat:checked + label { background: var(--volatile-soft); color: var(--volatile); }
+  #view-disk:checked ~ label[for="view-disk"] { background: var(--disk-soft); color: var(--disk); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; }
+  .dot.v { background: var(--volatile); } .dot.d { background: var(--disk); }
+
+  .sim { margin-top: 22px; }
+  .sim-stage { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 22px; box-shadow: var(--shadow); }
+  .sim-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+  .sim-title { font-weight: 700; font-size: 16px; }
+  .btn {
+    cursor: pointer; border: 1px solid var(--line); background: var(--surface-2); color: var(--text);
+    font-weight: 600; font-size: 14px; padding: 9px 16px; border-radius: 9px; transition: all .15s; font-family: inherit;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn.danger:hover { border-color: var(--volatile); color: var(--volatile); }
+  .btn.go:hover { border-color: var(--ok); color: var(--ok); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  .lanes { display: grid; grid-template-columns: 1fr; gap: 16px; }
+  @media (min-width: 680px) { .lanes { grid-template-columns: 1fr 1fr; } }
+  .lane-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
+  .orch, .disk-box { border-radius: 11px; padding: 14px; min-height: 132px; transition: all .3s; }
+  .orch { background: var(--volatile-soft); border: 1px dashed var(--volatile); }
+  .disk-box { background: var(--disk-soft); border: 1px solid var(--disk); }
+  .agent-chip {
+    display: flex; align-items: center; gap: 9px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 11px; margin-bottom: 7px; font-size: 13px; transition: all .35s;
+  }
+  .agent-chip .nm { font-weight: 600; }
+  .agent-chip .st { margin-left: auto; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; }
+  .st.pending { background: var(--surface-2); color: var(--muted); }
+  .st.done { background: var(--ok-soft); color: var(--ok); }
+  .st.missing { background: var(--volatile-soft); color: var(--volatile); }
+  .file-chip { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 6px 0; }
+  .file-chip .ic { width: 16px; text-align: center; }
+  .file-chip.gone { opacity: .25; text-decoration: line-through; }
+  .vanished { opacity: 0 !important; transform: translateY(8px); }
+  .narrate {
+    margin-top: 16px; font-size: 14px; color: var(--text); background: var(--surface-2);
+    border-left: 3px solid var(--accent); padding: 11px 14px; border-radius: 0 8px 8px 0; min-height: 22px;
+  }
+  .narrate.crash { border-left-color: var(--volatile); }
+  .narrate.recover { border-left-color: var(--ok); }
+
+  /* stepper */
+  .steps { counter-reset: s; margin-top: 24px; display: grid; gap: 14px; }
+  .step {
+    display: grid; grid-template-columns: 44px 1fr; gap: 16px; align-items: start;
+    background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; box-shadow: var(--shadow);
+  }
+  .step .n {
+    counter-increment: s; width: 34px; height: 34px; border-radius: 9px; background: var(--accent-soft); color: var(--accent);
+    display: grid; place-items: center; font-weight: 800; font-size: 16px;
+  }
+  .step .n::before { content: counter(s); }
+  .step h4 { margin: 2px 0 5px; font-size: 16px; }
+  .step p { margin: 0; color: var(--muted); font-size: 14.5px; }
+
+  /* manifest table */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 6px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  td .pill { font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; text-transform: uppercase; }
+  tr.respawn { background: var(--accent-soft); }
+
+  /* rungs */
+  .rungs { display: grid; gap: 16px; margin-top: 24px; }
+  .rung { display: grid; grid-template-columns: 52px 1fr; gap: 18px; background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 20px; box-shadow: var(--shadow); position: relative; overflow: hidden; }
+  .rung::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; }
+  .rung.r1::before { background: var(--ok); }
+  .rung.r2::before { background: var(--accent); }
+  .rung.r3::before { background: var(--muted); }
+  .rung .badge { width: 44px; height: 44px; border-radius: 11px; display: grid; place-items: center; font-weight: 800; font-size: 18px; background: var(--surface-2); }
+  .rung h4 { margin: 0 0 6px; font-size: 17px; }
+  .rung p { margin: 0; color: var(--muted); font-size: 14.5px; }
+  .tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; background: var(--surface-2); color: var(--muted); margin-top: 9px; }
+
+  .callout {
+    border-radius: 13px; padding: 20px 22px; margin-top: 6px; border: 1px solid;
+  }
+  .callout.warn { background: var(--disk-soft); border-color: var(--disk); }
+  .callout.warn .h { color: var(--disk); font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .callout.danger { background: var(--volatile-soft); border-color: var(--volatile); }
+  .callout.danger .h { color: var(--volatile); font-weight: 800; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+  .callout p { margin: 6px 0 0; font-size: 14.5px; }
+  .callout p:first-of-type { margin-top: 0; }
+
+  .recovery { counter-reset: r; display: grid; gap: 10px; margin-top: 18px; }
+  .rstep { display: grid; grid-template-columns: 30px 1fr; gap: 14px; align-items: baseline; font-size: 14.5px; }
+  .rstep .rn { counter-increment: r; width: 26px; height: 26px; border-radius: 7px; background: var(--ok-soft); color: var(--ok); display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+  .rstep .rn::before { content: counter(r); }
+  .rstep.x .rn { background: var(--volatile-soft); color: var(--volatile); }
+  .rstep.x .rn::before { content: "✕"; }
+
+  .mermaid { background: var(--surface); border: 1px solid var(--line); border-radius: 13px; padding: 24px; text-align: center; box-shadow: var(--shadow); }
+
+  .where { display: grid; gap: 10px; grid-template-columns: 1fr; margin-top: 18px; }
+  @media (min-width: 620px) { .where { grid-template-columns: 1fr 1fr; } }
+  .where-item { display: flex; align-items: center; gap: 11px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 12px 15px; font-size: 14px; }
+  .where-item code { font-size: 13px; }
+  .where-item .role { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+  footer { padding: 40px 24px 70px; color: var(--muted); font-size: 13.5px; }
+  footer .wrap { display: flex; flex-direction: column; gap: 8px; }
+  .src-note { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .src-note code { font-size: 12.5px; }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="eyebrow">do-work · crew rules · explainer</span>
+    <h1>Background-agent work, made survivable</h1>
+    <p class="verdict"><strong>Disk is the source of truth — not the chat transcript.</strong> Sub-agents write their findings to files; the orchestrator synthesizes from those files. When a fan-out session is interrupted, compacted, or hits a provider error, the work is still on disk and a fresh session can finish it.</p>
+    <p class="filepath">Subject: <code>crew-members/background-agents.md</code> · loaded by any action that fans work out to background or parallel sub-agents.</p>
+  </div>
+</header>
+
+<section id="idea">
+  <div class="wrap">
+    <h2><span class="num">01</span>The one idea</h2>
+    <p class="lede">A fan-out has two places it can keep results. Flip the switch and interrupt the session in each — watch which one survives.</p>
+
+    <div class="toggle-group" role="group" aria-label="Where do findings live?">
+      <input type="radio" name="view" id="view-chat" value="chat" checked>
+      <label for="view-chat"><span class="dot v"></span>Findings in chat</label>
+      <input type="radio" name="view" id="view-disk" value="disk">
+      <label for="view-disk"><span class="dot d"></span>Findings on disk</label>
+    </div>
+
+    <div class="sim">
+      <div class="sim-stage">
+        <div class="sim-head">
+          <span class="sim-title" id="sim-title">Findings come back into the conversation</span>
+          <div style="display:flex;gap:10px">
+            <button class="btn danger" id="btn-crash">⚡ Interrupt session</button>
+            <button class="btn" id="btn-reset">↺ Reset</button>
+          </div>
+        </div>
+
+        <div class="lanes">
+          <div>
+            <div class="lane-label">Orchestrator conversation</div>
+            <div class="orch" id="orch">
+              <div class="agent-chip"><span class="nm">agent 1 → consistency</span><span class="st done">in chat</span></div>
+              <div class="agent-chip"><span class="nm">agent 2 → security</span><span class="st done">in chat</span></div>
+              <div class="agent-chip"><span class="nm">agent 3 → performance</span><span class="st done">in chat</span></div>
+            </div>
+          </div>
+          <div>
+            <div class="lane-label">Disk · <code>do-work/runs/…</code></div>
+            <div class="disk-box" id="diskbox">
+              <div class="file-chip" style="opacity:.4"><span class="ic">∅</span> nothing written to disk</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="narrate" id="narrate">Three sub-agents finished and returned their full findings straight into the conversation. Nothing was written to disk.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pattern">
+  <div class="wrap">
+    <h2><span class="num">02</span>The durability pattern</h2>
+    <p class="lede">Four moves. The same four whether you have a native orchestration engine or a single sequential context — only the machinery you hand-roll changes.</p>
+    <div class="steps">
+      <div class="step"><div class="n"></div><div><h4>Create the run directory before any spawn</h4><p>Make <code>do-work/runs/&lt;action&gt;-&lt;YYYY-MM-DD-HHMM&gt;/</code> first, with a shell-derived timestamp so reruns and recovery can find it. Nothing is spawned before it exists.</p></div></div>
+      <div class="step"><div class="n"></div><div><h4>Each sub-agent writes its own file; returns one line</h4><p>The agent writes its <em>full</em> findings to its assigned path and returns <strong>only a one-line status</strong> to the orchestrator — never the findings inline. Small assembly turns stay cheap and shrink the corruption window.</p></div></div>
+      <div class="step"><div class="n"></div><div><h4>Write a manifest; spawn in bounded waves</h4><p>A <code>manifest.md</code> records each agent, its slice, its expected filename, and its landed status. Spawn in waves sized to the concurrency limit — not one unbounded fan-out — updating the manifest as each wave lands.</p></div></div>
+      <div class="step"><div class="n"></div><div><h4>Synthesize from the files on disk</h4><p>When the waves are done, read the findings files and assemble from them — never from what agents "said" in chat. This is what makes synthesis behave identically in the original session and in a fresh recovery session that never saw the spawns.</p></div></div>
+    </div>
+  </div>
+</section>
+
+<section id="flow">
+  <div class="wrap">
+    <h2><span class="num">03</span>How the pieces talk</h2>
+    <p class="lede">The orchestrator never holds the payload. It holds pointers; the bytes live on disk.</p>
+    <pre class="mermaid">
+flowchart LR
+    O([Orchestrator]) -->|1 mkdir| R[(run directory<br/>do-work/runs/…)]
+    O -->|2 spawn wave| A1[agent: consistency]
+    O --> A2[agent: security]
+    O --> A3[agent: performance]
+    A1 -->|writes findings| R
+    A2 -->|writes findings| R
+    A3 -->|writes findings| R
+    A1 -.one-line status.-> O
+    A2 -.one-line status.-> O
+    A3 -.one-line status.-> O
+    O -->|3 update| M[manifest.md]
+    R -->|4 read files| S{{Synthesize<br/>from disk}}
+    M --> S
+    S --> OUT[final output]
+    classDef disk fill:#fef3c7,stroke:#b45309,color:#78350f;
+    classDef synth fill:#dbeafe,stroke:#2563eb,color:#1e3a8a;
+    class R,M disk;
+    class S synth;
+    </pre>
+    <p class="lede" style="margin-top:20px;margin-bottom:0">Solid arrows carry bytes to disk. Dotted arrows carry only a one-line status back to the conversation. The orchestrator's turn stays small — that is both a cost win and a safety win.</p>
+  </div>
+</section>
+
+<section id="waves">
+  <div class="wrap">
+    <h2><span class="num">04</span>Waves &amp; the manifest, live</h2>
+    <p class="lede">Spawn a wave. Let one agent's file fail to land. Then recover — only the <span style="color:var(--volatile);font-weight:700">missing</span> row gets re-spawned; the <span style="color:var(--ok);font-weight:700">done</span> rows are never re-run.</p>
+
+    <div class="sim-stage">
+      <div class="sim-head">
+        <span class="sim-title">Run manifest — <span class="mono">code-review-2026-05-28-1430</span></span>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn go" id="w-run">▶ Run wave</button>
+          <button class="btn danger" id="w-drop" disabled>✕ Drop one file</button>
+          <button class="btn" id="w-recover" disabled>♻ Recover</button>
+          <button class="btn" id="w-reset">↺ Reset</button>
+        </div>
+      </div>
+      <table id="manifest">
+        <thead><tr><th>Agent</th><th>Slice</th><th>Output file</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr data-i="1"><td>1</td><td>Consistency</td><td class="mono">consistency.md</td><td><span class="pill st pending">pending</span></td></tr>
+          <tr data-i="2"><td>2</td><td>Architecture</td><td class="mono">architecture.md</td><td><span class="pill st pending">pending</span></td></tr>
+          <tr data-i="3"><td>3</td><td>Security</td><td class="mono">security.md</td><td><span class="pill st pending">pending</span></td></tr>
+          <tr data-i="4"><td>4</td><td>Performance</td><td class="mono">performance.md</td><td><span class="pill st pending">pending</span></td></tr>
+        </tbody>
+      </table>
+      <div class="narrate" id="w-narrate">Status values: <code>pending</code> (not yet launched) · <code>done</code> (file written) · <code>missing</code> (launched, no file landed — the recovery target).</div>
+    </div>
+  </div>
+</section>
+
+<section id="failure">
+  <div class="wrap">
+    <h2><span class="num">05</span>The failure it can't prevent</h2>
+    <p class="lede">Be honest about the ceiling. This pattern does not <em>stop</em> the corruption below — that fault is harness/API-level, beyond a markdown rule's reach. It makes it <strong>recoverable</strong>.</p>
+
+    <div class="callout danger">
+      <div class="h">⚠ Reasoning-block corruption</div>
+      <p>On harnesses with a signed <em>thinking</em> block, an assistant turn that holds an open signed thinking block <strong>and</strong> long-running background spawns can be corrupted if it's interrupted or re-stitched while still open. Once the malformed turn is written to the session log, every resume replays it and re-throws <code>HTTP 400 — "thinking blocks cannot be modified"</code>.</p>
+      <p>The session becomes <strong>permanently un-resumable</strong>. The corruption is per-transcript — other sessions on the machine are unaffected. The one-line-status rule shrinks the window but is mitigation, not prevention.</p>
+    </div>
+
+    <h3>Recovery — fresh session, re-spawn only what's missing</h3>
+    <div class="recovery">
+      <div class="rstep x"><div class="rn"></div><div><strong>Do NOT resume the poisoned conversation.</strong> Resuming replays the corrupt turn and re-throws the error every time.</div></div>
+      <div class="rstep"><div class="rn"></div><div>Start a <strong>fresh session</strong> and re-invoke the same action.</div></div>
+      <div class="rstep"><div class="rn"></div><div>Let the action <strong>detect the existing run directory</strong> (<code>do-work/runs/&lt;action&gt;-*</code>) and read the manifest.</div></div>
+      <div class="rstep"><div class="rn"></div><div><strong>Re-spawn only the agents whose output files are missing.</strong> Agents that already wrote their file are done.</div></div>
+      <div class="rstep"><div class="rn"></div><div><strong>Synthesize from disk</strong> as normal — identical to the original run.</div></div>
+      <div class="rstep"><div class="rn"></div><div>Delete the poisoned transcript once recovery succeeds.</div></div>
+    </div>
+  </div>
+</section>
+
+<section id="harness">
+  <div class="wrap">
+    <h2><span class="num">06</span>Match the pattern to the harness</h2>
+    <p class="lede">One invariant carries down all three rungs: <strong>disk is the source of truth.</strong> Use the highest rung the harness supports.</p>
+    <div class="rungs">
+      <div class="rung r1">
+        <div class="badge">①</div>
+        <div>
+          <h4>Native orchestration engine</h4>
+          <p>A deterministic fan-out primitive with journaled resume — caps concurrency, returns structured per-agent output, replays cached results on re-run. Prefer it: you get bounded waves, structured hand-off, and manifest-plus-re-spawn recovery for free, usually detached from the orchestrator turn. Still write each slice to disk — journal and files are belt-and-suspenders.</p>
+          <span class="tag">best — least hand-rolling</span>
+        </div>
+      </div>
+      <div class="rung r2">
+        <div class="badge">②</div>
+        <div>
+          <h4>Manual parallel / background spawns</h4>
+          <p>Can spawn concurrent sub-agents but offers no orchestration engine. Hand-roll the pattern exactly as steps 1–4 describe: run directory, per-slice findings files, manifest, bounded waves, synthesize from disk.</p>
+          <span class="tag">hand-roll steps 1–4</span>
+        </div>
+      </div>
+      <div class="rung r3">
+        <div class="badge">③</div>
+        <div>
+          <h4>Sequential in-context</h4>
+          <p>No parallel or background support at all — but don't skip the pattern. Run the slices one at a time in the current context, still create the run dir, still write each slice's file as you complete it, still update the manifest, still synthesize from disk. A sequential run that crashes halfway is recoverable because completed slices are already on disk.</p>
+          <span class="tag">still durable</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="where">
+  <div class="wrap">
+    <h2><span class="num">07</span>Where it's loaded</h2>
+    <p class="lede">The file's <code>JIT_CONTEXT</code> header scopes it to actions that fan work out — not single-agent in-context work that returns one result.</p>
+    <div class="where">
+      <div class="where-item"><code>code-review</code><span class="role">primary user</span></div>
+      <div class="where-item"><code>work</code> (multi-REQ)<span class="role">references</span></div>
+      <div class="where-item"><code>pipeline</code><span class="role">references</span></div>
+      <div class="where-item"><code>deep-explore</code><span class="role">references</span></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="src-note">
+      <strong>About this report.</strong> AI-generated explainer of <code>crew-members/background-agents.md</code>, produced by the do-work <code>ai-report</code> action using its no-screenshots fallback (inline SVG + Mermaid) — the subject is a rules file, not a UI feature, so there are no pixels to capture. Every claim above is drawn directly from the source file; the two simulators are illustrative, not live traces. To read the source: <code>git show HEAD:crew-members/background-agents.md</code> (staged) or open the file directly.
+    </div>
+    <span>Generated 2026-05-28 · do-work skill · interactive diagrams render with Mermaid + vanilla JS, no build step.</span>
+  </div>
+</footer>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'base', themeVariables: {
+    primaryColor: '#dbeafe', primaryTextColor: '#1e293b', primaryBorderColor: '#2563eb',
+    lineColor: '#94a3b8', fontSize: '14px'
+  }});
+
+  /* ---------- Simulator 1: in-chat vs on-disk ---------- */
+  (function () {
+    const titleEl = document.getElementById('sim-title');
+    const orch = document.getElementById('orch');
+    const disk = document.getElementById('diskbox');
+    const narrate = document.getElementById('narrate');
+    const radios = document.querySelectorAll('input[name="view"]');
+    let mode = 'chat', crashed = false;
+
+    const slices = [
+      ['agent 1 → consistency', 'consistency.md'],
+      ['agent 2 → security', 'security.md'],
+      ['agent 3 → performance', 'performance.md'],
+    ];
+
+    function render() {
+      crashed = false;
+      narrate.className = 'narrate';
+      if (mode === 'chat') {
+        titleEl.textContent = 'Findings come back into the conversation';
+        orch.innerHTML = slices.map(s =>
+          `<div class="agent-chip"><span class="nm">${s[0]}</span><span class="st done">in chat</span></div>`).join('');
+        disk.innerHTML = `<div class="file-chip" style="opacity:.4"><span class="ic">∅</span> nothing written to disk</div>`;
+        narrate.textContent = 'Three sub-agents finished and returned their full findings straight into the conversation. Nothing was written to disk.';
+      } else {
+        titleEl.textContent = 'Findings are written to files; the chat holds one-line statuses';
+        orch.innerHTML = slices.map(s =>
+          `<div class="agent-chip"><span class="nm">${s[0]}</span><span class="st done">✓ landed</span></div>`).join('');
+        disk.innerHTML = slices.map(s =>
+          `<div class="file-chip"><span class="ic">📄</span> <span class="mono">${s[1]}</span></div>`).join('');
+        narrate.textContent = 'Each agent wrote its full findings to a file in the run directory and returned only a one-line status. Disk is the source of truth.';
+      }
+    }
+
+    function crash() {
+      if (crashed) return;
+      crashed = true;
+      narrate.className = 'narrate crash';
+      // orchestrator conversation is always lost on interruption
+      orch.querySelectorAll('.agent-chip').forEach(c => c.classList.add('vanished'));
+      if (mode === 'chat') {
+        setTimeout(() => {
+          orch.innerHTML = `<div class="file-chip gone"><span class="ic">✕</span> conversation gone — findings lost</div>`;
+          narrate.innerHTML = '<strong>Session interrupted.</strong> The findings only existed in the conversation, so they\'re gone. The entire fan-out must be re-run from scratch.';
+        }, 380);
+      } else {
+        setTimeout(() => {
+          orch.innerHTML = `<div class="file-chip gone"><span class="ic">✕</span> conversation gone</div>`;
+          narrate.className = 'narrate recover';
+          narrate.innerHTML = '<strong>Session interrupted — but the files survived.</strong> A fresh session reads the run directory, sees all three files landed, and synthesizes from disk. Nothing is re-run.';
+        }, 380);
+      }
+    }
+
+    radios.forEach(r => r.addEventListener('change', e => { mode = e.target.value; render(); }));
+    document.getElementById('btn-crash').addEventListener('click', crash);
+    document.getElementById('btn-reset').addEventListener('click', render);
+    render();
+  })();
+
+  /* ---------- Simulator 2: waves + manifest ---------- */
+  (function () {
+    const rows = Array.from(document.querySelectorAll('#manifest tbody tr'));
+    const narrate = document.getElementById('w-narrate');
+    const bRun = document.getElementById('w-run');
+    const bDrop = document.getElementById('w-drop');
+    const bRecover = document.getElementById('w-recover');
+    const bReset = document.getElementById('w-reset');
+
+    function setStatus(row, status) {
+      const pill = row.querySelector('.pill');
+      pill.className = 'pill st ' + status;
+      pill.textContent = status;
+      row.classList.toggle('respawn', false);
+    }
+    function reset() {
+      rows.forEach(r => setStatus(r, 'pending'));
+      narrate.className = 'narrate';
+      narrate.innerHTML = 'Status values: <code>pending</code> (not yet launched) · <code>done</code> (file written) · <code>missing</code> (launched, no file landed — the recovery target).';
+      bRun.disabled = false; bDrop.disabled = true; bRecover.disabled = true;
+    }
+    function run() {
+      rows.forEach((r, i) => setTimeout(() => setStatus(r, 'done'), 220 * (i + 1)));
+      setTimeout(() => {
+        narrate.className = 'narrate recover';
+        narrate.innerHTML = 'Wave complete — all four files landed in the run directory. The manifest is updated as each file lands.';
+        bRun.disabled = true; bDrop.disabled = false;
+      }, 220 * rows.length + 120);
+    }
+    function drop() {
+      const r = rows[2]; // security
+      setStatus(r, 'missing');
+      narrate.className = 'narrate crash';
+      narrate.innerHTML = '<strong>Session died mid-run.</strong> Agent 3\'s file never landed — its manifest row reads <code>missing</code>. The other three are safe on disk.';
+      bDrop.disabled = true; bRecover.disabled = false;
+    }
+    function recover() {
+      const r = rows[2];
+      r.classList.add('respawn');
+      setStatus(r, 'pending');
+      narrate.className = 'narrate';
+      narrate.innerHTML = 'Fresh session: read the manifest, re-spawn <strong>only the missing row</strong> (highlighted). The three <code>done</code> rows are never re-run.';
+      setTimeout(() => {
+        setStatus(r, 'done');
+        narrate.className = 'narrate recover';
+        narrate.innerHTML = 'Recovered. All four files present — synthesize from disk, identical to an uninterrupted run.';
+        bRecover.disabled = true;
+      }, 900);
+    }
+    bRun.addEventListener('click', run);
+    bDrop.addEventListener('click', drop);
+    bRecover.addEventListener('click', recover);
+    bReset.addEventListener('click', reset);
+  })();
+</script>
+</body>
+</html>
