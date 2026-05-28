@@ -137,6 +137,8 @@ Record your decision in state.json (`research_mode` field).
 
 **If pre-session research:** Spawn a subagent with the Explorer persona from `actions/deep-explore-reference.md`. Input: the concept seed + specific research questions. The Explorer writes its report to `session/research/RESEARCH_<slug>.md`. Wait for completion before proceeding.
 
+**Durability:** When fanning research or thinker work out to multiple background or parallel sub-agents, follow the durability pattern in `crew-members/background-agents.md` (disk-durable run directory as source of truth; survives a dead orchestrator session).
+
 ---
 
 ### Step 4: Round 1 — Free Thinker (Diverge)

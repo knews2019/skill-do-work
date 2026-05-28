@@ -517,6 +517,8 @@ Quick environment sanity check before the builder starts coding. All checks are 
 
 **Approach directive assignment (multi-REQ only):** If multiple REQs are being processed in parallel, read `crew-members/approach-directives.md` and assign each sub-agent a distinct directive from the pool. Include the directive in the sub-agent's context block. Record the assigned directive in the REQ's Implementation Summary section. For single-REQ processing, no directive is needed — skip this.
 
+**Durability (multi-REQ fan-out):** When fanning work out to background or parallel sub-agents, follow the durability pattern in `crew-members/background-agents.md` (disk-durable run directory as source of truth; survives a dead orchestrator session).
+
 Spawn a **general-purpose agent** with the loaded rules, any files listed in the `prime_files` array, and context appropriate to the route:
 
 - **Route A**: Request content only — "triaged as simple, aim for a focused minimal change"

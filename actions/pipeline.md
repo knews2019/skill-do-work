@@ -146,6 +146,8 @@ Dispatch each action the same way the main router dispatches actions: subagent i
 
 **Sub-agent context rule:** Sub-agents do not inherit conversation history. When dispatching via sub-agent, always read `pipeline.json` and include in the sub-agent prompt: (1) the pipeline request text, (2) all artifact IDs from completed steps, and (3) any relevant file paths. Without this, the sub-agent won't know which UR was just created or which REQs to target.
 
+**Durability:** When a dispatched action itself fans work out to background or parallel sub-agents, follow the durability pattern in `crew-members/background-agents.md` (disk-durable run directory as source of truth; survives a dead orchestrator session).
+
 **Foreground dispatch override:** All pipeline-dispatched actions run in the foreground (blocking), even if SKILL.md normally marks them as background (e.g., `work`). The pipeline requires synchronous completion of each step before advancing to the next.
 
 3. **After the action completes**:

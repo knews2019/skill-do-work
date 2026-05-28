@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.0 — The Black Box (2026-05-28)
+
+Fan-out reviews now survive a dead session. Sub-agent findings are written to a durable run directory on disk instead of living only in the chat transcript, so an interrupted, compacted, or corrupted orchestrator can be recovered from a fresh session — the run directory is the flight recorder that outlives the crash.
+
+- New `crew-members/background-agents.md` rule: timestamped `do-work/runs/<action>-*/` as source of truth, sub-agents return one-line statuses (full findings go to files), bounded waves + a manifest, and synthesis reads from disk so recovery is identical to the original run.
+- `actions/code-review.md` now fans its six review dimensions out to sub-agents by default, writes each to its own findings file, and synthesizes from disk; on start it offers to resume an interrupted run.
+- Honest about the ceiling: the reasoning-block corruption (a signed thinking block on an interrupted turn that makes a transcript permanently un-resumable) is a harness-level fault this makes recoverable, not prevented. Recovery: don't resume the poisoned session — start fresh, re-spawn only the missing agents, synthesize from disk.
+- `work` multi-REQ, `pipeline`, and `deep-explore` gained one-line pointers to the new rule for their own fan-outs.
+
 ## 0.82.2 — The Direct Path (2026-05-28)
 
 Action files now cross-reference each other by explicit file path instead of short names, so an agent reading a prompt can open the target directly without resolving "the work action" → a file first. The CLAUDE.md convention is flipped to match.
