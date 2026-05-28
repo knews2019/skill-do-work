@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.2 — The Loose Ends (2026-05-29)
+
+Polish pass closing the remaining minor findings from the background-agents code review.
+
+- Run-directory timestamps now use **seconds resolution** (`YYYY-MM-DD-HHMMSS`) so two runs of the same action in the same minute can't collide on one directory.
+- Reworded the native-orchestration rung to stop overclaiming: the engine's journal recovers the *run*, the on-disk findings files recover the *synthesis* — distinct mechanisms, both kept.
+- Captioned the manifest example as `code-review`-specific, trimmed a redundant paragraph, and added `do-work/runs/` to the shipped `.gitignore` as transient run state.
+
 ## 0.83.1 — The Disk Truth (2026-05-29)
 
 Fixed two correctness gaps in 0.83.0's background-agent recovery that a code review surfaced — the recovery path didn't actually recover, and finished runs nagged you to resume them.

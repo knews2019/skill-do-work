@@ -16,21 +16,19 @@
 ## Why This Matters
 
 A fan-out where each sub-agent returns its findings only into the orchestrator's
-chat has no durability. If the orchestrator session is interrupted, compacted, or
-hits a provider error mid-run, every finding that came back into the conversation
-is gone — there is nothing on disk to recover from, and the whole fan-out has to
-be re-run from scratch.
-
-Moving the source of truth to disk fixes the *recoverability* problem regardless
-of why the session died.
+chat has no durability: if the session is interrupted, compacted, or hits a provider
+error mid-run, every finding that came back into the conversation is gone, there is
+nothing on disk to recover from, and the whole fan-out must be re-run from scratch.
+Disk-as-source-of-truth fixes that *regardless of why the session died*.
 
 ## The Durability Pattern
 
 1. **Create the run directory before any spawn.** Make
-   `do-work/runs/<action>-<YYYY-MM-DD-HHMM>/` first — this directory is the source
+   `do-work/runs/<action>-<YYYY-MM-DD-HHMMSS>/` first — this directory is the source
    of truth for the entire run. Derive the timestamp from the shell (e.g.
-   `date +%Y-%m-%d-%H%M`) so reruns and recovery can find it. Nothing should be
-   spawned before this directory exists.
+   `date +%Y-%m-%d-%H%M%S`); seconds resolution keeps two runs of the same action
+   from colliding on one directory (if it somehow already exists, append a short
+   numeric suffix). Nothing should be spawned before this directory exists.
 
 2. **Each sub-agent writes its own findings file; returns only a one-line
    status.** Give every sub-agent an output path inside the run directory (e.g.
@@ -98,13 +96,15 @@ invariant above carries down all three.
 1. **Native orchestration engine.** The harness exposes a deterministic fan-out
    primitive with journaled resume — a `workflow` / `pipeline`-style API that caps
    concurrency, returns structured per-agent output, and replays cached results when
-   re-run. Prefer it: it gives you the bounded waves (step 3), the structured
-   findings hand-off (step 2), and the manifest-plus-re-spawn recovery (Known Failure
-   Mode) for free, and it usually runs detached from the orchestrator turn, so the
-   reasoning-block corruption above is less likely to strand you in the first place.
-   Still write each slice's findings to the run directory — the engine's journal and
-   the on-disk files are belt-and-suspenders, not an either/or, and the on-disk files
-   are what keep synthesis recovery-identical across harnesses.
+   re-run. Prefer it: bounded waves (step 3) and the structured findings hand-off
+   (step 2) come for free, and its journaled resume covers the *orchestration* —
+   re-running replays already-completed agents instead of re-spawning them. It also
+   usually runs detached from the orchestrator turn, so the reasoning-block
+   corruption above is less likely to strand you in the first place. That resume is
+   not a substitute for the disk files, though: still write each slice's findings to
+   the run directory. The engine's journal recovers the *run*; the on-disk files
+   recover the *synthesis* and keep it identical across harnesses — belt and
+   suspenders, not an either/or.
 
 2. **Manual parallel/background spawns.** The harness can spawn concurrent
    sub-agents but offers no orchestration engine. Hand-roll the pattern exactly as
@@ -120,12 +120,13 @@ invariant above carries down all three.
 
 ## Manifest Format
 
-Keep it small and append-friendly. A minimal `manifest.md`:
+Keep it small and append-friendly. A minimal `manifest.md` (this example uses the
+`code-review` action's six dimensions; your slices will differ):
 
 ```markdown
-# Run Manifest — code-review-2026-05-28-1430
+# Run Manifest — code-review-2026-05-28-143012
 
-Run dir: do-work/runs/code-review-2026-05-28-1430/
+Run dir: do-work/runs/code-review-2026-05-28-143012/
 Concurrency: 4 (wave size)
 Status: in-progress   # flips to `complete` after synthesis succeeds
 

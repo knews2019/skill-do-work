@@ -73,7 +73,7 @@ If no arguments provided:
 
 This action fans its six review dimensions out to sub-agents rather than running them in one long in-context pass. It follows the durability pattern in `crew-members/background-agents.md` — read that file for the full contract. In short:
 
-- After scope is resolved and context is loaded (Steps 1–2), create the run directory `do-work/runs/code-review-<YYYY-MM-DD-HHMM>/` **before any spawn**. This directory is the source of truth for the run, not the chat transcript.
+- After scope is resolved and context is loaded (Steps 1–2), create the run directory `do-work/runs/code-review-<YYYY-MM-DD-HHMMSS>/` **before any spawn**. This directory is the source of truth for the run, not the chat transcript.
 - Dispatch the six dimensions (Consistency, Architecture, Security, Performance, Test Coverage, Automated Checks) as sub-agents in **bounded waves** sized to the harness concurrency limit. Each sub-agent receives the resolved scope, the loaded prime/crew context, and its dimension's checklist (Steps 3–8 below) as its brief.
 - Each sub-agent writes its **full findings** to its own file — `do-work/runs/code-review-<ts>/<dimension>.md` (e.g. `consistency.md`, `security.md`) — and returns only a **one-line status** to the orchestrator. Never return full findings inline. Maintain a `manifest.md` in the run directory and update it as each wave's files land.
 - Step 9 synthesizes from the findings files on disk, not from what the sub-agents returned into the conversation.
@@ -106,7 +106,7 @@ This action fans its six review dimensions out to sub-agents rather than running
 - Check for linter configs (`.eslintrc*`, `.prettierrc*`, `biome.json`, `rustfmt.toml`, `.rubocop.yml`, `ruff.toml`, etc.) — note what the project already enforces automatically
 - Check for CI config (`.github/workflows/`, `.gitlab-ci.yml`, `Makefile`, etc.) — understand what's already validated in the pipeline
 
-**Then create the run directory and dispatch.** Make `do-work/runs/code-review-<YYYY-MM-DD-HHMM>/` (timestamp from the shell, e.g. `date +%Y-%m-%d-%H%M`) and write an initial `manifest.md` with a `Status: in-progress` line and the six dimensions listed as `pending`. Steps 3–8 below each define one review dimension; by default, dispatch each as its own sub-agent (see **Parallel & Background Execution**) carrying the resolved scope, the loaded prime/crew context, and that step's checklist as its brief. Each sub-agent writes its findings to `do-work/runs/code-review-<ts>/<dimension>.md` and returns a one-line status; update the manifest as files land. In sequential graceful-degradation mode, work the dimensions in order but still write each findings file.
+**Then create the run directory and dispatch.** Make `do-work/runs/code-review-<YYYY-MM-DD-HHMMSS>/` (timestamp from the shell, e.g. `date +%Y-%m-%d-%H%M%S`) and write an initial `manifest.md` with a `Status: in-progress` line and the six dimensions listed as `pending`. Steps 3–8 below each define one review dimension; by default, dispatch each as its own sub-agent (see **Parallel & Background Execution**) carrying the resolved scope, the loaded prime/crew context, and that step's checklist as its brief. Each sub-agent writes its findings to `do-work/runs/code-review-<ts>/<dimension>.md` and returns a one-line status; update the manifest as files land. In sequential graceful-degradation mode, work the dimensions in order but still write each findings file.
 
 ### Step 3: Consistency Review
 
