@@ -51,6 +51,10 @@ of why the session died.
    final output from them. Never synthesize from what agents "said" in chat. This
    is the property that makes the run recoverable: synthesis behaves identically in
    the original session and in a fresh recovery session that never saw the spawns.
+   Once synthesis succeeds, **mark the run complete** — write `Status: complete` to
+   the manifest. A completed run must never be offered for resume (see Known Failure
+   Mode); its directory can be deleted or kept as an audit trail, but it is no
+   longer live state.
 
 ## Known Failure Mode & Recovery
 
@@ -72,10 +76,14 @@ by keeping the assembly turn small, but that is mitigation, not prevention.
 1. **Do NOT resume the poisoned conversation.** Resuming replays the corrupt turn
    and re-throws the error every time.
 2. Start a **fresh session** and re-invoke the same action.
-3. Let the action **detect the existing run directory** (`do-work/runs/<action>-*`)
-   and read the manifest.
-4. **Re-spawn only the agents whose output files are missing.** Agents that already
-   wrote their findings file are done — do not re-run them.
+3. Let the action **detect the most recent incomplete run directory** (glob
+   `do-work/runs/<action>-*`; if several match, take the newest by timestamp) and
+   read its manifest. A manifest marked `Status: complete` means that run already
+   finished — skip it; only a run *without* that marker is resumable.
+4. **Re-spawn every agent whose findings file is absent on disk.** Verify against
+   the filesystem — do not trust the manifest's per-row label, because a crashed
+   orchestrator may never have updated it. Agents whose findings file already exists
+   are done; do not re-run them.
 5. **Synthesize from disk** as normal.
 6. The poisoned transcript can be deleted once recovery succeeds.
 
@@ -119,17 +127,22 @@ Keep it small and append-friendly. A minimal `manifest.md`:
 
 Run dir: do-work/runs/code-review-2026-05-28-1430/
 Concurrency: 4 (wave size)
+Status: in-progress   # flips to `complete` after synthesis succeeds
 
 | Agent | Slice | Output file | Status |
 |-------|-------|-------------|--------|
 | 1 | Consistency | consistency.md | done |
 | 2 | Architecture | architecture.md | done |
-| 3 | Security | security.md | missing |
+| 3 | Security | security.md | pending |
 | 4 | Performance | performance.md | done |
 | 5 | Test Coverage | test-coverage.md | pending |
 | 6 | Automated Checks | automated-checks.md | pending |
 ```
 
-Status values: `pending` (not yet launched), `done` (findings file written), `missing`
-(launched but no file landed — the recovery target). On recovery, re-spawn only the
-`missing` rows.
+Per-row status is just `pending` (not yet confirmed on disk) and `done` (findings
+file written and present); the happy path moves rows `pending → done` only. **There
+is no `missing` status to write** — a crashed orchestrator can't be relied on to
+record one. Recovery is derived from the filesystem instead: re-spawn any row whose
+findings file is **absent on disk**, regardless of its label. The run-level
+`Status:` line is the completion signal — `in-progress` until synthesis succeeds,
+then `complete`; a `complete` run is never offered for resume.

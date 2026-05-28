@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.1 — The Disk Truth (2026-05-29)
+
+Fixed two correctness gaps in 0.83.0's background-agent recovery that a code review surfaced — the recovery path didn't actually recover, and finished runs nagged you to resume them.
+
+- Recovery now reads the **filesystem**, not a manifest label: re-spawn any agent whose findings file is absent on disk. The old "re-spawn the `missing` rows" instruction was a no-op in a real crash, because the happy path only ever wrote `pending → done` and a dead orchestrator never recorded `missing`. Dropped `missing` as a stored status.
+- Added a run **completion marker** (`Status: complete`, written after synthesis). The resume check now skips completed runs and takes the newest dir when several match — so a successful review no longer trips the resume prompt on the next invocation.
+- Both fixes applied to `crew-members/background-agents.md` and its consumer `actions/code-review.md`.
+
 ## 0.83.0 — The Black Box (2026-05-28)
 
 Fan-out reviews now survive a dead session. Sub-agent findings are written to a durable run directory on disk instead of living only in the chat transcript, so an interrupted, compacted, or corrupted orchestrator can be recovered from a fresh session — the run directory is the flight recorder that outlives the crash.

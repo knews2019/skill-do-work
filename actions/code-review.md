@@ -86,7 +86,7 @@ This action fans its six review dimensions out to sub-agents rather than running
 
 > This action fans its review dimensions out to sub-agents. Read `crew-members/background-agents.md` first — it defines the disk-durable run-directory pattern this action follows so an interrupted, compacted, or corrupted orchestrator session is recoverable.
 
-**Resume check (before anything else):** Look for an existing `do-work/runs/code-review-*/` directory from an interrupted run. If one exists, read its `manifest.md` and offer to **resume** — re-spawn only the dimensions whose findings file is `missing`, then synthesize from disk (Step 9) — instead of starting a fresh run. Start fresh only if the user declines or no such directory exists.
+**Resume check (before anything else):** Look for the most recent `do-work/runs/code-review-*/` directory (if several match, take the newest by timestamp). If one exists and its `manifest.md` is **not** marked `Status: complete`, it's an interrupted run — read the manifest and offer to **resume**: re-spawn only the dimensions whose findings file is **absent on disk** (verify the filesystem, don't trust the manifest's per-row label — a crashed run may never have updated it), then synthesize from disk (Step 9). Start fresh if the user declines, if no such directory exists, or if the newest run is already marked `complete`.
 
 1. Parse `$ARGUMENTS` into prime file references and directory paths
 2. Resolve prime files: search for matching `prime-*.md` files, read them, extract referenced files and directories
@@ -106,7 +106,7 @@ This action fans its six review dimensions out to sub-agents rather than running
 - Check for linter configs (`.eslintrc*`, `.prettierrc*`, `biome.json`, `rustfmt.toml`, `.rubocop.yml`, `ruff.toml`, etc.) — note what the project already enforces automatically
 - Check for CI config (`.github/workflows/`, `.gitlab-ci.yml`, `Makefile`, etc.) — understand what's already validated in the pipeline
 
-**Then create the run directory and dispatch.** Make `do-work/runs/code-review-<YYYY-MM-DD-HHMM>/` (timestamp from the shell, e.g. `date +%Y-%m-%d-%H%M`) and write an initial `manifest.md` listing the six dimensions as `pending`. Steps 3–8 below each define one review dimension; by default, dispatch each as its own sub-agent (see **Parallel & Background Execution**) carrying the resolved scope, the loaded prime/crew context, and that step's checklist as its brief. Each sub-agent writes its findings to `do-work/runs/code-review-<ts>/<dimension>.md` and returns a one-line status; update the manifest as files land. In sequential graceful-degradation mode, work the dimensions in order but still write each findings file.
+**Then create the run directory and dispatch.** Make `do-work/runs/code-review-<YYYY-MM-DD-HHMM>/` (timestamp from the shell, e.g. `date +%Y-%m-%d-%H%M`) and write an initial `manifest.md` with a `Status: in-progress` line and the six dimensions listed as `pending`. Steps 3–8 below each define one review dimension; by default, dispatch each as its own sub-agent (see **Parallel & Background Execution**) carrying the resolved scope, the loaded prime/crew context, and that step's checklist as its brief. Each sub-agent writes its findings to `do-work/runs/code-review-<ts>/<dimension>.md` and returns a one-line status; update the manifest as files land. In sequential graceful-degradation mode, work the dimensions in order but still write each findings file.
 
 ### Step 3: Consistency Review
 
@@ -205,7 +205,7 @@ If you can't run checks (missing dependencies, env issues), note what you couldn
 
 ### Step 9: Synthesize & Report
 
-**Read the findings files from the run directory** (`do-work/runs/code-review-<ts>/*.md`) and assemble the report from them — not from what the sub-agents returned into the conversation. This is what makes a run recoverable: synthesis behaves identically in the original session and in a fresh recovery session that never saw the spawns. If a dimension's findings file is missing (its sub-agent never completed), note that dimension as **not run** in the report rather than fabricating findings — and prefer re-spawning the missing dimension first (see the Step 1 resume check).
+**Read the findings files from the run directory** (`do-work/runs/code-review-<ts>/*.md`) and assemble the report from them — not from what the sub-agents returned into the conversation. This is what makes a run recoverable: synthesis behaves identically in the original session and in a fresh recovery session that never saw the spawns. If a dimension's findings file is absent on disk (its sub-agent never completed), note that dimension as **not run** in the report rather than fabricating findings — and prefer re-spawning that dimension first (see the Step 1 resume check). Once the report is assembled, **mark the run complete** — set the manifest's `Status:` line to `complete` so a later invocation's resume check won't offer to re-open this finished run.
 
 Produce a structured report:
 
