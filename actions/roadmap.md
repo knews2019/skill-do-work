@@ -53,9 +53,9 @@ All frontmatter reads honor the **Schema Read Contract** documented in `actions/
 
 For each REQ in `do-work/queue/`, assign a feasibility bucket using only what's visible in the file:
 
-- **Ready** — has a clear `## What`, no `pending-answers` status, no unresolved `addendum_to` chain (also recognizes the `amends`/`parent`/`amendment_to` aliases when `addendum_to` is absent, per `actions/work.md`'s Schema Read Contract), no unmet `depends_on` references (every ID in `depends_on` — or in the legacy `dependencies:` alias if `depends_on` is absent, same back-compat rule as the work action's Step 1 — resolves to a REQ with `status: completed` or `completed-with-issues`).
+- **Ready** — has a clear `## What`, no `pending-answers` status, no unresolved `addendum_to` chain (also recognizes the `amends`/`parent`/`amendment_to` aliases when `addendum_to` is absent, per `actions/work.md`'s Schema Read Contract), no unmet `depends_on` references (every ID in `depends_on` — or in the legacy `dependencies:` alias if `depends_on` is absent, same back-compat rule as actions/work.md's Step 1 — resolves to a REQ with `status: completed` or `completed-with-issues`).
 - **Needs clarification** — `status: pending-answers`, OR the request body contains explicit open questions, OR scope is too vague to triage (one-line title with no `## What` body).
-- **Blocked** — references a REQ in `addendum_to` (or its `amends`/`parent`/`amendment_to` aliases) or `depends_on` (or its `dependencies:` alias) that is still pending or in-progress; OR has `status: blocked-dependency-cycle` (a cycle in its dependency graph, set by the work action's Step 1); OR names an external dependency in prose (waiting on an API, a decision, a third-party).
+- **Blocked** — references a REQ in `addendum_to` (or its `amends`/`parent`/`amendment_to` aliases) or `depends_on` (or its `dependencies:` alias) that is still pending or in-progress; OR has `status: blocked-dependency-cycle` (a cycle in its dependency graph, set by actions/work.md's Step 1); OR names an external dependency in prose (waiting on an API, a decision, a third-party).
 - **Stale** — `created_at` more than 30 days old AND not yet claimed. Flag for re-confirmation; the user may no longer want it.
 
 Each classification must cite the specific evidence that drove it (e.g., "status: pending-answers", "addendum_to: REQ-031 (still pending)", "no `## What` section").
@@ -233,7 +233,7 @@ Queue is empty — no pending or in-progress work.
 ## Rules
 
 - **Cap each section at 20 entries** by default; if more exist, list the top 20 and note "(N more — narrow scope with an argument)".
-- **Don't editorialize on REQ quality** — the verify-requests action handles that. Roadmap reports state, not content health.
+- **Don't editorialize on REQ quality** — actions/verify-requests.md handles that. Roadmap reports state, not content health.
 - **Don't recommend code changes.** Suggested next steps must be do-work commands or human decisions, not implementation work.
 
 ## Common Rationalizations
@@ -241,7 +241,7 @@ Queue is empty — no pending or in-progress work.
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
 | "I'll quickly fix this REQ's stale `pending-answers` status while I'm here." | Report it under Needs Clarification and stop. | Roadmap is read-only; mutations belong to clarify/cleanup. |
-| "Let me re-triage this untriaged REQ since I'm reading it anyway." | Note it as Ready (untriaged) and let `do-work work` handle triage. | Triage is part of the work action's contract; doing it here splits responsibility. |
+| "Let me re-triage this untriaged REQ since I'm reading it anyway." | Note it as Ready (untriaged) and let `do-work work` handle triage. | Triage is part of actions/work.md's contract; doing it here splits responsibility. |
 | "These three REQs look like duplicates — I'll consolidate them." | Surface the overlap under Suggested Next Steps and let the user decide. | Consolidation requires user judgment; roadmap is a survey, not an editor. |
 | "Nothing is Ready, so I'll suggest new ideas." | Say "no ready work" and stop. | Ideation is `scan-ideas`. Roadmap surveys what exists. |
 | "This REQ looks testable — I'll set `tdd: true` myself." | Surface it under TDD Eligible and let the user decide. | Roadmap is read-only; `tdd` is an authoring decision. |

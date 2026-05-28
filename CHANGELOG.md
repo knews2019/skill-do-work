@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.82.2 — The Direct Path (2026-05-28)
+
+Action files now cross-reference each other by explicit file path instead of short names, so an agent reading a prompt can open the target directly without resolving "the work action" → a file first. The CLAUDE.md convention is flipped to match.
+
+- Swept ~82 short-name references across 20 action files to `actions/X.md` paths (companion files included: `actions/interview-reference.md`, `actions/bkb-reference.md`, `actions/deep-explore-reference.md`). `do-work <verb>` command invocations are left as-is — they're how an action is *run*, not a pointer to its file.
+- Flipped the CLAUDE.md cross-reference convention from short-name to file-path, with the `do-work <verb>` carve-out documented.
+- version.md gained an `## Input` section naming its three response modes.
+
 ## 0.82.1 — The Wave Floor (2026-05-28)
 
 Closed one real edge gap from a review of `--wave` execution; the review's other three findings were rejected after verification showed they described a stale checkout (the "orphaned" reference files were `git rm`'d back at 0.75.0/0.76.0, and `ai-report` already has a `next-steps.md` block).

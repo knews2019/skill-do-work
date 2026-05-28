@@ -18,7 +18,7 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 **Use when:**
 - Reviewing completed work against its REQ requirements (post-build quality gate)
 - User says "review", "review work", "review code", or "audit code"
-- Automatically after the work action completes each REQ
+- Automatically after actions/work.md completes each REQ
 
 **Do NOT use when:**
 - See `SKILL.md` routing table for sibling action selection.
@@ -27,7 +27,7 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 
 | Mode | Trigger | REQ location | How to get the diff |
 |------|---------|-------------|---------------------|
-| **Pipeline** | Auto-triggered by the work action after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary |
+| **Pipeline** | Auto-triggered by actions/work.md after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary |
 | **Standalone** | User invokes manually: `do-work review`, `do-work review work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field |
 
 Both modes follow the same workflow. The only difference is where the REQ lives and how you obtain the diff.
@@ -36,7 +36,7 @@ Both modes follow the same workflow. The only difference is where the REQ lives 
 
 ### Step 1: Find the Target
 
-**Pipeline mode:** The work action hands you the REQ file path (in `do-work/working/`). Skip to Step 2.
+**Pipeline mode:** actions/work.md hands you the REQ file path (in `do-work/working/`). Skip to Step 2.
 
 **Standalone mode:**
 1. **If user specifies a REQ** (e.g., "review REQ-005"): Find it in `do-work/archive/` or `do-work/archive/UR-NNN/`
@@ -219,7 +219,7 @@ Nit findings carry zero weight on the overall score — they're stylistic sugges
 
 Load `crew-members/anti-slop.md` before composing the report — the review output is a human-facing artifact and falls under those principles (lead with the verdict, compress, cite evidence, no padding).
 
-**Pipeline mode:** Report to the work action orchestrator (which reports to the user).
+**Pipeline mode:** Report to actions/work.md orchestrator (which reports to the user).
 **Standalone mode:** Report directly to the user.
 
 Format:
@@ -285,7 +285,7 @@ After presenting the review report, perform a self-validation pass — no human 
    - **What didn't:** Dead ends, false assumptions, things the review missed initially
    - **Worth knowing:** Gotchas, edge cases, or non-obvious dependencies discovered during review
 
-   In **Pipeline mode**, skip lesson capture — the work action's Step 7.5 handles it after the review returns.
+   In **Pipeline mode**, skip lesson capture — actions/work.md's Step 7.5 handles it after the review returns.
 
 4. **Update prime files (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant, append a link under a `## Lessons` section (create it if it doesn't exist):
 
@@ -297,11 +297,11 @@ After presenting the review report, perform a self-validation pass — no human 
 
    **Path must be relative to the prime file's location**, not the repo root. Compute the correct relative path from the prime file's directory to the archived REQ file. For example, if the prime file is at `src/utils/prime-auth.md` and the REQ is at `do-work/archive/UR-005/REQ-042-auth-fix.md`, the link should use `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`.
 
-   Only link lessons relevant to that prime file's scope. In **Pipeline mode**, the work action's Step 7.5 handles prime file updates.
+   Only link lessons relevant to that prime file's scope. In **Pipeline mode**, actions/work.md's Step 7.5 handles prime file updates.
 
-5. **Offer knowledge-base handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. Update the REQ's `kb_status` and (if promoted) `kb_entry` frontmatter based on the outcome. The handoff asks before writing, degrades to `pending` if no `kb/` exists, and never blocks archival. In **Pipeline mode**, the work action's Step 7.5 runs the handoff instead.
+5. **Offer knowledge-base handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. Update the REQ's `kb_status` and (if promoted) `kb_entry` frontmatter based on the outcome. The handoff asks before writing, degrades to `pending` if no `kb/` exists, and never blocks archival. In **Pipeline mode**, actions/work.md's Step 7.5 runs the handoff instead.
 
-Self-validation runs in **both modes**. Lesson capture, prime file updates, and the knowledge-base handoff are **standalone-only** to avoid duplication with the work action.
+Self-validation runs in **both modes**. Lesson capture, prime file updates, and the knowledge-base handoff are **standalone-only** to avoid duplication with actions/work.md.
 
 ### Step 10: Create Follow-up REQs
 
@@ -380,7 +380,7 @@ In standalone mode, this is an exception to the archive immutability rule — re
 
 ### Commit (Standalone mode, git repos only)
 
-In **standalone mode**, after appending the Review section and creating any follow-up REQs, commit the changes. In **pipeline mode**, skip this — the work action's Step 9 handles the commit.
+In **standalone mode**, after appending the Review section and creating any follow-up REQs, commit the changes. In **pipeline mode**, skip this — actions/work.md's Step 9 handles the commit.
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 

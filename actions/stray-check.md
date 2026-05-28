@@ -134,7 +134,7 @@ All clear — no stray, misplaced, or orphan files detected.
 ## Rules
 
 - **The scan phase makes zero writes.** Findings are reported; fixes happen only after explicit confirmation (Step 5), and never in `report` mode.
-- **Skip the entire `do-work/` tree** and defer misplaced `do-work/` directories to the cleanup action. This action owns repo-wide hygiene, not do-work's bookkeeping.
+- **Skip the entire `do-work/` tree** and defer misplaced `do-work/` directories to actions/cleanup.md. This action owns repo-wide hygiene, not do-work's bookkeeping.
 - **Tracked files are removed with `git rm`, never raw `rm`** — prefer `git rm --cached` when the intent is to stop tracking rather than destroy.
 - **Never `git add -A`**, never auto-commit, never touch paths outside the scan root.
 - **Secrets are flagged loudly** with a history-retention + rotation warning; `git rm --cached` does not remove them from history — say so.

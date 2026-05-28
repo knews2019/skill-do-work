@@ -11,14 +11,14 @@ Every invocation produces exactly two things, always paired:
 1. **A UR folder** at `do-work/user-requests/UR-NNN/` with `input.md` containing the full verbatim input
 2. **One or more REQ files** at `do-work/queue/REQ-NNN-slug.md`, each linked via `user_request: UR-NNN` in frontmatter
 
-Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless. The verify requests action depends on this linkage.
+Never create one without the other. A REQ without `user_request` is orphaned. A UR without REQs is pointless. actions/verify-requests.md depends on this linkage.
 
 **Principles:**
 - Represent, don't expand — if the user says 5 words, write a 5-word request (with structure)
 - The building agent solves technical questions — you're capturing intent, not making architectural decisions
 - **Validated artifacts** — captured REQs are not drafts. They are user-validated statements of intent. During capture, ambiguities are resolved with the user, RED/GREEN proofs are confirmed, and the resulting REQ reflects what the user actually wants. Downstream agents treat REQs as the authoritative expression of user intent.
 - Never be lossy — for complex inputs, preserve ALL detail in the UR's verbatim section
-- After capture, **STOP** — do not start processing the queue or transition into the work action unless the user explicitly asked for both (e.g., "add this and start working")
+- After capture, **STOP** — do not start processing the queue or transition into actions/work.md unless the user explicitly asked for both (e.g., "add this and start working")
 - Surface assumptions during capture — the user is present *now*; downstream agents will mark unresolved items as `- [~]` per the "Think Before Coding" guardrail in `crew-members/karpathy.md`
 
 ### First-Run Bootstrap
@@ -26,7 +26,7 @@ Never create one without the other. A REQ without `user_request` is orphaned. A 
 If `do-work/` doesn't exist yet (first invocation in a project):
 
 1. Create `do-work/` and `do-work/user-requests/`
-2. Do **not** pre-create `working/` or `archive/` — those are created by the work action on demand
+2. Do **not** pre-create `working/` or `archive/` — those are created by actions/work.md on demand
 3. Start numbering at REQ-001 and UR-001
 
 ## When to Use
@@ -54,13 +54,13 @@ If `do-work/` doesn't exist yet (first invocation in a project):
 
 - `do-work/queue/` — ONLY for pending `REQ-*.md` files
 - `do-work/user-requests/UR-NNN/` — verbatim input (`input.md`) and assets (`assets/`)
-- **NEVER write to** `do-work/working/` or `do-work/archive/` — those belong to the work action
+- **NEVER write to** `do-work/working/` or `do-work/archive/` — those belong to actions/work.md
 
 ### Immutability Rule
 
 Files in `working/` and `archive/` are **immutable**. If someone wants to add to an in-flight or completed request, create a new addendum REQ that references the original via `addendum_to` in frontmatter. **The new addendum REQ always goes to `do-work/queue/`** — never into `working/` or `archive/` — so the work loop picks it up on the next run. A new UR is also created (verbatim input of the addendum) paired with the new REQ.
 
-**Exception:** The review work action may append a `## Review` section to archived files — review annotations are post-work metadata, not content changes. See `review-work.md`.
+**Exception:** actions/review-work.md may append a `## Review` section to archived files — review annotations are post-work metadata, not content changes. See `review-work.md`.
 
 ## File Naming
 
@@ -72,7 +72,7 @@ To get the next REQ number, check existing `REQ-*.md` files across `do-work/queu
 
 ### Backward Compatibility
 
-Legacy REQ files (pre-UR system) may lack `user_request` and reference `CONTEXT-*.md` files or `do-work/assets/` instead. This is fine — the work action handles both patterns. New REQs always get `user_request`.
+Legacy REQ files (pre-UR system) may lack `user_request` and reference `CONTEXT-*.md` files or `do-work/assets/` instead. This is fine — actions/work.md handles both patterns. New REQs always get `user_request`.
 
 ## Request File Formats
 
@@ -89,7 +89,7 @@ domain: frontend  # choose one: frontend, backend, ui-design, or general
 prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 tdd: true  # default true when a runnable RED test can be written in this project's harness; false otherwise (see heuristic below)
 suggested_spec:  # optional — spec template name if one clearly matches (e.g., "api-endpoint", "bug-fix")
-depends_on: []  # optional — list of REQ IDs that must complete before this REQ runs; honored by the work action's selection scan
+depends_on: []  # optional — list of REQ IDs that must complete before this REQ runs; honored by actions/work.md's selection scan
 ---
 
 # [Brief Title]
@@ -169,9 +169,9 @@ See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
 - `batch: auth-system` — batch name grouping related requests
 - `addendum_to: REQ-005` — if this amends an in-flight/completed request
 
-**Populating `depends_on`.** When the request body mentions prior REQs that must complete first (e.g., "after REQ-486 lands", "depends on the auth refactor"), populate `depends_on` in the frontmatter with the REQ IDs. Don't rely on numeric ID ordering — the work action honors `depends_on`, not ID-based heuristics. The optional prose `## Dependencies` section in REQ bodies remains for human readers; the frontmatter field is the source of truth for tooling (work-action selection, roadmap classification, upstream-failure detection).
+**Populating `depends_on`.** When the request body mentions prior REQs that must complete first (e.g., "after REQ-486 lands", "depends on the auth refactor"), populate `depends_on` in the frontmatter with the REQ IDs. Don't rely on numeric ID ordering — actions/work.md honors `depends_on`, not ID-based heuristics. The optional prose `## Dependencies` section in REQ bodies remains for human readers; the frontmatter field is the source of truth for tooling (work-action selection, roadmap classification, upstream-failure detection).
 
-**Slicing convention.** When a single user request slices into multiple REQs with internal dependencies, the slicer should populate `depends_on` per the dependency graph it produced. The work action then runs roots first, gates downstream REQs on their prerequisites, and supports `--wave N` for checkpointed execution one dependency depth at a time. A clean DAG in `depends_on` makes foundation-phase batches predictable; sloppy or missing `depends_on` returns to numeric-ID order and risks cascade misclassification.
+**Slicing convention.** When a single user request slices into multiple REQs with internal dependencies, the slicer should populate `depends_on` per the dependency graph it produced. actions/work.md then runs roots first, gates downstream REQs on their prerequisites, and supports `--wave N` for checkpointed execution one dependency depth at a time. A clean DAG in `depends_on` makes foundation-phase batches predictable; sloppy or missing `depends_on` returns to numeric-ID order and risks cascade misclassification.
 
 `depends_on` is semantically distinct from `addendum_to`: `addendum_to: REQ-N` says "this REQ amends REQ-N" (used for follow-ups and review-generated remediation); `depends_on: [REQ-N, REQ-M]` says "this REQ requires REQ-N and REQ-M to be completed first." A REQ can carry both.
 
@@ -222,9 +222,9 @@ Read the user's input. Determine:
 - **Single vs multiple requests** — look for "and also", comma-separated lists, numbered items, distinct topics
 - **Simple vs complex** — apply the detection criteria above
 - **Domain classification** — infer the primary technical domain of the request (e.g., frontend, backend, ui-design, or general) so the downstream builder knows which JIT rules to load.
-- **TDD assessment** — **default `tdd: true` when a *runnable* failing test can realistically be written first** in this project's existing test harness. Most behavior-changing work qualifies, and downstream agents are designed to run the RED/GREEN cycle. The bar is intentionally narrower than "RED can be described" — `tdd: true` triggers a hard gate in the work action (`actions/work.md` Step 6) that requires test-first evidence (failing test written, confirmed failing, then passing) and sends the task back if missing. Heuristic: "Can I, right now, point at the test file and the assertion shape that would fail before the change and pass after?" If yes (pure logic, data transformations, API handlers, utility functions, bug fixes with a runnable repro, behavior changes with assertable output) → keep `tdd: true`. Set `tdd: false` when a runnable RED test isn't realistic: pure UI layout/styling without assertable behavior, copy/content edits, config/dependency bumps, doc-only changes, exploratory spikes framed as throwaway, behavior provable only by manual prompt/click/visual inspection, or projects without an existing test harness for this surface. **`tdd: false` does not mean "no proof needed"** — keep capturing the `## Red-Green Proof` section for any behavior-changing REQ; it's the right channel for describable/manual proof targets and applies independent of `tdd`. **When in doubt between "runnable" and "describable only," prefer `tdd: false` + a strong Red-Green Proof** — that gets the proof captured without creating an REQ the work loop can't complete.
+- **TDD assessment** — **default `tdd: true` when a *runnable* failing test can realistically be written first** in this project's existing test harness. Most behavior-changing work qualifies, and downstream agents are designed to run the RED/GREEN cycle. The bar is intentionally narrower than "RED can be described" — `tdd: true` triggers a hard gate in actions/work.md (`actions/work.md` Step 6) that requires test-first evidence (failing test written, confirmed failing, then passing) and sends the task back if missing. Heuristic: "Can I, right now, point at the test file and the assertion shape that would fail before the change and pass after?" If yes (pure logic, data transformations, API handlers, utility functions, bug fixes with a runnable repro, behavior changes with assertable output) → keep `tdd: true`. Set `tdd: false` when a runnable RED test isn't realistic: pure UI layout/styling without assertable behavior, copy/content edits, config/dependency bumps, doc-only changes, exploratory spikes framed as throwaway, behavior provable only by manual prompt/click/visual inspection, or projects without an existing test harness for this surface. **`tdd: false` does not mean "no proof needed"** — keep capturing the `## Red-Green Proof` section for any behavior-changing REQ; it's the right channel for describable/manual proof targets and applies independent of `tdd`. **When in doubt between "runnable" and "describable only," prefer `tdd: false` + a strong Red-Green Proof** — that gets the proof captured without creating an REQ the work loop can't complete.
 - **Red-green proof inference** — for `tdd: true` requests and any clearly behavioral bug fix or feature, infer the smallest RED prompt/case and GREEN outcome in user-visible terms. Capture how we know the behavior is missing or failing now, and what observable result turns it GREEN later. This is not test code — it is the proof target. Treat this as essential: a strong RED state makes planning, implementation, and review dramatically easier.
-- **Spec hint** — if the request clearly matches a common task type (API endpoint, UI component, refactor, bug fix), set `suggested_spec` in frontmatter to the matching template name. This is a hint for the work action — not binding. If the match is ambiguous or no spec fits, leave it empty.
+- **Spec hint** — if the request clearly matches a common task type (API endpoint, UI component, refactor, bug fix), set `suggested_spec` in frontmatter to the matching template name. This is a hint for actions/work.md — not binding. If the match is ambiguous or no spec fits, leave it empty.
 - **Prime file routing** — check the project's root `CLAUDE.md` (or similar instructions) to see if there are defined prime files that match the requested utility. Note them for inclusion.
 
 ### Step 2: Check for Duplicates
@@ -498,7 +498,7 @@ Guard against these during capture:
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "This is simple enough for one REQ" | Check if the input contains multiple distinct requests | Compound inputs need splitting — the work action processes one REQ at a time |
+| "This is simple enough for one REQ" | Check if the input contains multiple distinct requests | Compound inputs need splitting — actions/work.md processes one REQ at a time |
 | "I'll clarify this during the build phase" | Resolve ambiguities now while the user is present | The capture phase is the first human-attention window — builders run autonomously |
 | "The user probably meant..." | Ask the user — present concrete options | Inventing intent is the fastest path to building the wrong thing |
 | "RED/GREEN isn't needed for this request" | Check if the request describes observable behavior | If it's testable, the RED/GREEN proof helps the builder verify correctness |

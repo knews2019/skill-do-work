@@ -118,15 +118,15 @@ Before creating anything, check if the target path already contains a KB (has bo
 
 ### Step 3: Create Seed Files
 
-Create the seed files listed in the "Seed File Templates" section of the bkb-reference action. These are the initial empty-state files for the inbox queue, processing manifest, master index, activity log, overview, and retrieval agent.
+Create the seed files listed in the "Seed File Templates" section of actions/bkb-reference.md. These are the initial empty-state files for the inbox queue, processing manifest, master index, activity log, overview, and retrieval agent.
 
 ### Step 4: Create the Agent Crew
 
-Create the 8 agent files listed in the "Agent Crew Templates" section of the bkb-reference action. Place them in `<path>/agents/`. Each defines a role the LLM adopts when performing that operation.
+Create the 8 agent files listed in the "Agent Crew Templates" section of actions/bkb-reference.md. Place them in `<path>/agents/`. Each defines a role the LLM adopts when performing that operation.
 
 ### Step 5: Create the Schema File
 
-Create `<path>/CLAUDE.md` with the KB schema (conventions, frontmatter format, workflow triggers). Use the schema content from the "Schema File Content" section of the bkb-reference action.
+Create `<path>/CLAUDE.md` with the KB schema (conventions, frontmatter format, workflow triggers). Use the schema content from the "Schema File Content" section of actions/bkb-reference.md.
 
 ### Step 6: Initialize Git
 

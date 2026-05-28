@@ -1,13 +1,13 @@
 # KB Lessons Handoff
 
-> **Part of the do-work skill.** Reusable handoff instructions called by the work action (Step 7.5) and the review-work action (Step 9.5). Offers to promote a REQ's `## Lessons Learned` into the project's knowledge base by dropping a source file into `kb/raw/inbox/` for the next `bkb triage` + `bkb ingest` cycle.
+> **Part of the do-work skill.** Reusable handoff instructions called by actions/work.md (Step 7.5) and actions/review-work.md (Step 9.5). Offers to promote a REQ's `## Lessons Learned` into the project's knowledge base by dropping a source file into `kb/raw/inbox/` for the next `bkb triage` + `bkb ingest` cycle.
 
-This file is not a standalone action — it is loaded by other actions as a reference. If you reached this file directly, you probably want the review-work action instead.
+This file is not a standalone action — it is loaded by other actions as a reference. If you reached this file directly, you probably want actions/review-work.md instead.
 
 ## Philosophy
 
-- **Zero external dependency.** The handoff writes into do-work's own KB system (see the bkb action). Nothing outside this skill is required.
-- **One-way and terminal per REQ.** The handoff runs once per REQ, after lessons are captured. Downstream processing (triage, ingest, wiki compilation) is the bkb action's job, not this handoff's.
+- **Zero external dependency.** The handoff writes into do-work's own KB system (see actions/bkb.md). Nothing outside this skill is required.
+- **One-way and terminal per REQ.** The handoff runs once per REQ, after lessons are captured. Downstream processing (triage, ingest, wiki compilation) is actions/bkb.md's job, not this handoff's.
 - **User pilots the drop.** do-work prepares a structured source document and asks before writing. That keeps the handoff consistent across harnesses — any agent that can read/write files can run it.
 - **Graceful degradation.** If the project has no `kb/` directory yet, the handoff records the lessons as `pending` on the REQ and points the user at `do-work bkb init`. It never blocks archival.
 
@@ -164,9 +164,9 @@ Then return. The caller (work Step 7.5 or review-work Step 9.5) resumes its own 
 
 - Never auto-drop to `raw/inbox/` without user consent, even if the harness allows unattended tool calls. The KB is a persistent shared artifact; wrong entries cost more than missed ones.
 - Never overwrite an existing file in `raw/inbox/`. Use a numeric suffix on collision.
-- Never write anywhere in the KB other than `raw/inbox/`. Triage and ingest are the bkb action's responsibilities — this handoff stops at the drop.
+- Never write anywhere in the KB other than `raw/inbox/`. Triage and ingest are actions/bkb.md's responsibilities — this handoff stops at the drop.
 - Never modify fields on the REQ other than `kb_status` and `kb_entry`.
-- Never block the rest of the work action on this handoff. If the user ignores the prompt or the interaction times out, default to `pending` and continue.
+- Never block the rest of actions/work.md on this handoff. If the user ignores the prompt or the interaction times out, default to `pending` and continue.
 - Never auto-init the KB. If no `kb/` exists, point the user at `do-work bkb init` and set `kb_status: pending`.
 
 ## Common Rationalizations

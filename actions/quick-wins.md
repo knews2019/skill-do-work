@@ -59,7 +59,7 @@ For each candidate, record:
 
 ### Step 3.5: Security Smell Scan
 
-Scan for obvious security anti-patterns. This is not a full audit (use the code-review action for that) — it catches low-hanging risks:
+Scan for obvious security anti-patterns. This is not a full audit (use actions/code-review.md for that) — it catches low-hanging risks:
 
 | Smell | What to look for |
 |-------|-----------------|

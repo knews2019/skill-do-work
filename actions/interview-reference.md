@@ -2,7 +2,7 @@
 
 > **Companion to `actions/interview.md`.** Heavy content the action file references at runtime: template authoring format, canonical entry contract, `session.json` schema, checkpoint file format, export schemas for the `work-operating-model` template, re-run mode specifications, and versioning scheme. Applies per ADR-001.
 
-Read this file when authoring a new template, implementing the interview action, or debugging session state. The action file stays short; this file holds the specifications.
+Read this file when authoring a new template, implementing actions/interview.md, or debugging session state. The action file stays short; this file holds the specifications.
 
 ---
 

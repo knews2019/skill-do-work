@@ -21,7 +21,7 @@ The report exists to make a UI change **visible**: a stakeholder opens one HTML 
 **Do NOT use when:**
 - The work has no user-visible output (infra-only, refactor, tooling) — the report is empty by construction; use the present-work brief instead.
 - The user wants an *educational* explainer (architecture + value prop + data flow) — use present-work, which writes a `.single.html` Interactive Explainer to `do-work/deliverables/`.
-- The user wants a multi-REQ developer/PM **debrief** of a pipeline run (test deltas, REQ coherence graph, carry-forward work) — use the pipeline action's completion report.
+- The user wants a multi-REQ developer/PM **debrief** of a pipeline run (test deltas, REQ coherence graph, carry-forward work) — use actions/pipeline.md's completion report.
 - Work is still in progress — there's nothing shipped to report on yet.
 
 ## Input

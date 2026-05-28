@@ -282,7 +282,7 @@ If the user wants to act on findings, offer to capture high and medium severity 
 
 If the user confirms:
 - Group related findings into logical units (e.g., all accessibility issues in one REQ, all component inconsistencies in another)
-- Create REQ files using the capture action's format with `domain: ui-design`
+- Create REQ files using actions/capture.md's format with `domain: ui-design`
 - Reference the review report findings by number in each REQ
 
 If the user declines or doesn't respond, skip this step. The report stands on its own.

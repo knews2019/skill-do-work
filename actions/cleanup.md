@@ -12,7 +12,7 @@ The archive should be a collection of self-contained UR folders, each containing
 - Automatically at the end of the work loop
 
 **Do NOT use when:**
-- User wants *diagnostics* on pipeline health — route to the forensics action instead
+- User wants *diagnostics* on pipeline health — route to actions/forensics.md instead
 - User wants to *delete* or discard work — cleanup only reorganizes, never deletes
 
 ## When This Runs
@@ -179,9 +179,9 @@ Do not use `git add -A` or `git add .` — stage only paths within `do-work/arch
 
 - Delete any files — only moves them into the right location
 - Modify file contents or frontmatter — files are relocated as-is. Exception: Pass 0 normalizes non-standard terminal statuses (`done` → `completed`, etc.) in frontmatter before moving.
-- Touch **active** files in `do-work/queue/` (the queue) or `do-work/working/` — `pending`, `pending-answers`, and `claimed` REQs are the work action's responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from `do-work/queue/` and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery.
+- Touch **active** files in `do-work/queue/` (the queue) or `do-work/working/` — `pending`, `pending-answers`, and `claimed` REQs are actions/work.md's responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from `do-work/queue/` and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery.
 - Archive UR folders that still have pending/in-progress REQs
-- Process any REQ files (use the work action for that)
+- Process any REQ files (use actions/work.md for that)
 
 ## Common Rationalizations
 

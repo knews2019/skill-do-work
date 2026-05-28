@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Batch-reviews pending questions from completed work — the user confirms, overrides, or discards builder decisions.
 
-This is the second human-attention window in the pipeline. After the work action processes requests autonomously, any ambiguities the builder encountered are surfaced here as a batch for efficient review.
+This is the second human-attention window in the pipeline. After actions/work.md processes requests autonomously, any ambiguities the builder encountered are surfaced here as a batch for efficient review.
 
 ## When to Use
 

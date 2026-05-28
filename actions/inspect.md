@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to understand uncommitted changes. Read-only — examines the working tree, explains what changed, traces changes to REQs, and assesses commit readiness. When scoped to a REQ or UR, also inspects committed files from the Implementation Summary for a complete picture. User-facing walkthrough: [`docs/inspect-guide.md`](../docs/inspect-guide.md).
 
-Unlike the commit action (which stages and commits), this action only reads and reports. Use it to understand what's in your working tree before deciding whether to commit, fix, or discard.
+Unlike actions/commit.md (which stages and commits), this action only reads and reports. Use it to understand what's in your working tree before deciding whether to commit, fix, or discard.
 
 ## When to Use
 

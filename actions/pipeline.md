@@ -9,7 +9,7 @@ A stateful multi-action orchestration that chains six actions in sequence. Each 
 - **One command, full cycle.** The user describes what they want; the pipeline handles the rest.
 - **Resumable by design.** If the session ends mid-pipeline (context limit, crash, user closes terminal), re-invoking the pipeline picks up from where it left off. The state file is the source of truth.
 - **Orchestrator only.** The pipeline never re-implements action logic. It dispatches to existing actions and tracks which ones have completed.
-- **Coexists with CHECKPOINT.md.** The pipeline tracks macro-steps (which action to run next). The work action's CHECKPOINT.md tracks micro-state within a single `do-work run` invocation. Both systems operate independently.
+- **Coexists with CHECKPOINT.md.** The pipeline tracks macro-steps (which action to run next). actions/work.md's CHECKPOINT.md tracks micro-state within a single `do-work run` invocation. Both systems operate independently.
 
 ## When to Use
 
@@ -135,14 +135,14 @@ For the current step:
 
 | Pipeline step | Action to dispatch | What to pass | Context from prior steps |
 |---------------|-------------------|--------------|--------------------------|
-| `investigate` | the inspect action (`do-work inspect`) | No arguments | None — inspects all uncommitted changes. If there are no uncommitted changes, the inspect action will report that and this step completes immediately (it's a pre-flight check, not a blocker). |
-| `capture` | the capture action (`do-work capture request: {request}`) | The `request` field from pipeline.json | None — request text is the input |
-| `verify` | the verify requests action (`do-work verify requests`) | Target UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work verify UR-018`) |
-| `run` | the work action (`do-work run`) | REQ IDs from capture artifacts | Pass the specific REQ IDs from the capture step's `artifacts` (e.g., `do-work run REQ-042`). The sub-agent prompt MUST instruct the work action to process ONLY these REQs, then stop — do NOT process the full queue. |
-| `review` | the review work action (`do-work review work`) | Target REQ/UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work review UR-018`) so the reviewer knows which work to review |
-| `present` | the present work action (`do-work present work`) | Target UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work present UR-018`) so the deliverables target this pipeline's work. If the capture step produced no artifacts (empty `artifacts` array), skip this step — mark it `done` with no artifacts and proceed to completion. |
+| `investigate` | actions/inspect.md (`do-work inspect`) | No arguments | None — inspects all uncommitted changes. If there are no uncommitted changes, actions/inspect.md will report that and this step completes immediately (it's a pre-flight check, not a blocker). |
+| `capture` | actions/capture.md (`do-work capture request: {request}`) | The `request` field from pipeline.json | None — request text is the input |
+| `verify` | actions/verify-requests.md (`do-work verify requests`) | Target UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work verify UR-018`) |
+| `run` | actions/work.md (`do-work run`) | REQ IDs from capture artifacts | Pass the specific REQ IDs from the capture step's `artifacts` (e.g., `do-work run REQ-042`). The sub-agent prompt MUST instruct actions/work.md to process ONLY these REQs, then stop — do NOT process the full queue. |
+| `review` | actions/review-work.md (`do-work review work`) | Target REQ/UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work review UR-018`) so the reviewer knows which work to review |
+| `present` | actions/present-work.md (`do-work present work`) | Target UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work present UR-018`) so the deliverables target this pipeline's work. If the capture step produced no artifacts (empty `artifacts` array), skip this step — mark it `done` with no artifacts and proceed to completion. |
 
-Dispatch each action the same way the main router dispatches actions: subagent if available, inline otherwise. The pipeline action is the orchestrator — it calls the router's dispatch mechanism, not the action files directly.
+Dispatch each action the same way the main router dispatches actions: subagent if available, inline otherwise. actions/pipeline.md is the orchestrator — it calls the router's dispatch mechanism, not the action files directly.
 
 **Sub-agent context rule:** Sub-agents do not inherit conversation history. When dispatching via sub-agent, always read `pipeline.json` and include in the sub-agent prompt: (1) the pipeline request text, (2) all artifact IDs from completed steps, and (3) any relevant file paths. Without this, the sub-agent won't know which UR was just created or which REQs to target.
 
@@ -165,7 +165,7 @@ When all 6 steps are done:
 3. Print the completion status block (all checkmarks) — use the **Completion Status Block** format from the Output Format section (includes Duration, Branch, Verdict metadata)
 4. **Assemble the Pipeline Completion Report data**. This is the primary user-education artifact. Pull data from:
    - **Final summary table**: Each completed REQ's frontmatter (`id`, `title`, `commit`, `domain`) and the REQ's `## Implementation Summary` → one-line synthesis. Group rows by domain so related work sits together.
-   - **Test state (before → after)**: Each REQ's `## Testing` section records what tests were added/run. Aggregate test-suite counts if the work action logged them (e.g., "Go: 81 → 98"). If no before-baseline was captured, show only the post-state and note "baseline not recorded" rather than inventing numbers.
+   - **Test state (before → after)**: Each REQ's `## Testing` section records what tests were added/run. Aggregate test-suite counts if actions/work.md logged them (e.g., "Go: 81 → 98"). If no before-baseline was captured, show only the post-state and note "baseline not recorded" rather than inventing numbers.
    - **Cross-REQ coherence highlights**: Pull from the review step's output — the reviewer validates that interacting REQs (shared files, shared symbols, shared subsystems) remained consistent. Include each coherence assertion with the REQ pair. If the review didn't produce coherence notes (single-REQ pipelines, Route A REQs), omit this section.
    - **Carry-forward work (implied, not captured yet)**: Scan for (a) REQs with `status: pending-answers`, (b) `## Lessons Learned` sections mentioning deferred items, (c) TODO/FIXME comments introduced by the pipeline's commits. List them as candidates for a follow-up capture — but **do NOT auto-capture them**; the user decides.
    - **Deliverables**: Paths produced by the `present` step (`do-work/deliverables/{UR-NNN}-client-brief.md`, `-video/`, `-interactive-explainer.single.html`). Read from the present step's artifacts if recorded, or glob `do-work/deliverables/` for matches scoped to this pipeline's UR.
@@ -193,8 +193,8 @@ When the pipeline completes and additional pending REQs remain in the queue (fro
 
 1. Print the continuation notice (see Output Format) listing each pending REQ ID and its title
 2. Record the list of pending REQ IDs about to be processed (e.g., `["REQ-043", "REQ-044"]`) — this is needed for review targeting in step 3
-3. Dispatch the work action (`do-work run`) in **standard queue-processing mode** — do NOT scope to pipeline artifacts. Pass the pending REQ IDs (e.g., `do-work run REQ-043 REQ-044`) so the work action processes them.
-4. After the work action completes, dispatch the review work action for each REQ from step 2 individually (e.g., `do-work review REQ-043`, then `do-work review REQ-044`). Always use REQ IDs — never pass a UR ID, since UR-scoped review would re-review all completed REQs under that UR, not just this cycle's batch.
+3. Dispatch actions/work.md (`do-work run`) in **standard queue-processing mode** — do NOT scope to pipeline artifacts. Pass the pending REQ IDs (e.g., `do-work run REQ-043 REQ-044`) so actions/work.md processes them.
+4. After actions/work.md completes, dispatch actions/review-work.md for each REQ from step 2 individually (e.g., `do-work review REQ-043`, then `do-work review REQ-044`). Always use REQ IDs — never pass a UR ID, since UR-scoped review would re-review all completed REQs under that UR, not just this cycle's batch.
 5. **Loop**: Scan `do-work/queue/REQ-*.md` for `status: pending` again. If more pending REQs remain (e.g., follow-ups created during the review step), repeat from step 1. If the queue is empty, print "Queue fully processed." and suggest next steps.
 
 **Max iterations:** The continuation loop runs at most **3 cycles**. If pending REQs still remain after 3 run → review cycles, stop the loop and print:
@@ -209,7 +209,7 @@ Run "do-work run" to continue processing manually.
 
 This prevents runaway loops when review steps keep generating follow-up REQs.
 
-**Error handling:** If the work action or review action fails during continuation:
+**Error handling:** If actions/work.md or actions/review-work.md fails during continuation:
 
 1. Report the error to the user with context about what failed
 2. Print how many REQs were successfully processed before the failure
@@ -520,13 +520,13 @@ pipeline — full end-to-end orchestration
 - **One pipeline at a time.** If an active pipeline exists, the user must complete, resume, or abandon it before starting a new one.
 - **Orchestrator only.** The pipeline dispatches to existing actions. It never re-implements capture, work, verify, review, present, or inspect logic. Each action runs exactly as it would if the user invoked it directly.
 - **Write state before dispatch.** Always update `pipeline.json` to `"in-progress"` before dispatching an action, and to `"done"` after it completes. This ensures the state file reflects reality even if the session ends unexpectedly.
-- **The `run` step may be long.** The work action processes only this pipeline's captured REQs but may still take significant time for complex requests. When starting this step, note: "Starting queue processing — this may take a while if multiple REQs are pending."
+- **The `run` step may be long.** actions/work.md processes only this pipeline's captured REQs but may still take significant time for complex requests. When starting this step, note: "Starting queue processing — this may take a while if multiple REQs are pending."
 - **Platform-agnostic.** No tool-specific APIs. Dispatch actions the same way the main router does. If your environment supports stop hooks, you can optionally install `hooks/pipeline-guard.sh` to prevent accidental stops mid-pipeline — but the pipeline works without it.
 - **Do not commit the state file.** `do-work/pipeline.json` is transient session state. It tracks a single pipeline run and has no value after completion. Ensure it is in `.gitignore`.
 - **Pass context to sub-agents explicitly.** Sub-agents have no conversation history. When dispatching a step via sub-agent, always include the pipeline request text and all artifact IDs from completed steps in the sub-agent prompt. Without this, sub-agents cannot target the correct UR/REQs.
-- **Scope the `run` step to captured REQs only.** The work action is queue-processing by default. When dispatched from the pipeline, it must only process the REQs created by this pipeline's capture step (listed in `artifacts`). Never process unrelated backlog items during a pipeline run.
+- **Scope the `run` step to captured REQs only.** actions/work.md is queue-processing by default. When dispatched from the pipeline, it must only process the REQs created by this pipeline's capture step (listed in `artifacts`). Never process unrelated backlog items during a pipeline run.
 - **Process remaining queue after completion.** After the pipeline's 6 steps finish, check for other pending REQs in the queue. If any exist, continue processing them automatically via run + review cycles until the queue is empty. This continuation uses standard queue-processing mode (not scoped to pipeline artifacts) and does not re-run `present` per cycle — the user can run `do-work present all` after the queue is fully processed if they want a portfolio summary. The pipeline state file remains `active: false` — the continuation is a post-pipeline operation. Maximum 3 continuation cycles — if REQs still remain after 3 cycles, stop and let the user continue manually.
-- **Suggest next steps on completion.** After the pipeline finishes (including any queue continuation), suggest what the user might want to do next (see the next-steps reference).
+- **Suggest next steps on completion.** After the pipeline finishes (including any queue continuation), suggest what the user might want to do next (see `next-steps.md`).
 - **Completion is education, not a checkmark.** When all steps finish, produce the full Pipeline Completion Report (Final summary, Test state, Cross-REQ coherence, Carry-forward work, Deliverables, How to verify) in **all three authored formats** — plain markdown (`{UR-NNN}-pipeline-summary.md`), Marp slide source (`{UR-NNN}-pipeline-summary.marp.md`), and standalone HTML (`{UR-NNN}-pipeline-summary.single.html`) — then export the Marp deck to HTML (`{UR-NNN}-pipeline-summary.marp.html`) via `marp-cli`. One dataset, three renderings, one mechanical export, different audiences. A 12-REQ pipeline that prints only "Pipeline complete" — or writes only the markdown and skips the deck and the HTML — wastes the user's opportunity to understand and validate what shipped. Match report depth to pipeline scope — minimal for Route A, full for multi-REQ URs.
 - **Never author from scratch when re-rendering.** The three report files share one source of truth: the data you extracted in Step 5.4. If you find yourself phrasing the same claim differently across formats, stop and re-render from the data. Divergence between the markdown, Marp, and HTML versions is a bug.
 

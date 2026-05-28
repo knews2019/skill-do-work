@@ -2,13 +2,13 @@
 
 > **Part of the do-work skill.** Invoked when routing determines the user wants to process the queue. Processes pending requests from the `do-work/queue/` folder in your project. User-facing walkthrough: [`docs/work-guide.md`](../docs/work-guide.md).
 
-An orchestrated build system that processes request files created by the capture requests action. Uses complexity triage to route simple requests straight to implementation and complex ones through planning and exploration first.
+An orchestrated build system that processes request files created by actions/capture.md. Uses complexity triage to route simple requests straight to implementation and complex ones through planning and exploration first.
 
 ## When to Use
 
 **Use when:**
 - The queue has `pending` REQs and the user wants them built (`do-work run`, `start`, `go`, etc.).
-- The pipeline dispatches the work action as its build step.
+- The pipeline dispatches actions/work.md as its build step.
 - A specific REQ id was named (`do-work run REQ-042`) — the action scopes to it.
 
 **Do NOT use when:**
@@ -20,7 +20,7 @@ An orchestrated build system that processes request files created by the capture
 
 Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Plan, Exploration, Implementation Summary (mandatory file manifest), Testing, Review. This ensures full traceability — what was planned vs done, what files were touched, and whether triage was accurate.
 
-This living log is also the **trail of intent**. The REQ starts as a validated statement of what the user wants (written by capture). As the work action processes it, each appended section documents how intent was interpreted and realized: builder decisions (## Decisions) record where the builder exercised judgment beyond stated intent, scope declarations (## Scope) record what the builder committed to, and implementation summaries record what was actually built. The gap between captured intent and realized implementation is visible in a single file.
+This living log is also the **trail of intent**. The REQ starts as a validated statement of what the user wants (written by capture). As actions/work.md processes it, each appended section documents how intent was interpreted and realized: builder decisions (## Decisions) record where the builder exercised judgment beyond stated intent, scope declarations (## Scope) record what the builder committed to, and implementation summaries record what was actually built. The gap between captured intent and realized implementation is visible in a single file.
 
 ## Architecture
 
@@ -214,14 +214,14 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 
 `$ARGUMENTS` may contain:
 
-- **Specific REQ IDs** (e.g., `REQ-042`, `REQ-042 REQ-043`) — process only those REQs and stop (do not process the full queue). This is how the pipeline action scopes work to a specific batch. Targeted mode bypasses `depends_on` gating — the user explicitly named the REQs.
+- **Specific REQ IDs** (e.g., `REQ-042`, `REQ-042 REQ-043`) — process only those REQs and stop (do not process the full queue). This is how actions/pipeline.md scopes work to a specific batch. Targeted mode bypasses `depends_on` gating — the user explicitly named the REQs.
 - **`--wave N`** (integer flag, default mode only) — run only REQs at dependency depth N. Roots (no `depends_on`, or all `depends_on` resolve to archived REQs) are depth 0; depth grows by one per dependency layer. Mutually exclusive with targeted REQ IDs — reject the combination with an error.
 
 When no REQ IDs and no flags are provided, process all pending REQs in dependency-aware order (default behavior).
 
 ## Steps
 
-**The work action is an orchestrator.** You handle ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents handle implementation work only.
+**actions/work.md is an orchestrator.** You handle ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents handle implementation work only.
 
 ### Step 1: Find Next Request
 
@@ -652,11 +652,11 @@ When the REQ includes `## Red-Green Proof`, the `Red-green validation` entries s
 
 ### Step 7: Review
 
-Run the review work action in **pipeline mode** against this REQ.
+Run actions/review-work.md in **pipeline mode** against this REQ.
 
 The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation: requirements check (did we build what was asked?), code review (is it solid?), and acceptance testing (does it actually work?).
 
-**How to run it:** Spawn an agent with the review work action file, the REQ path, and the `crew-members/[domain].md` file (normalize `domain` per the Schema Read Contract first; if the resolved domain has a matching file, load it; otherwise skip). Or read the review work action file and follow its pipeline mode instructions in the current session.
+**How to run it:** Spawn an agent with actions/review-work.md file, the REQ path, and the `crew-members/[domain].md` file (normalize `domain` per the Schema Read Contract first; if the resolved domain has a matching file, load it; otherwise skip). Or read actions/review-work.md file and follow its pipeline mode instructions in the current session.
 
 **What happens next depends on the review result:**
 
@@ -909,7 +909,7 @@ This ensures the `commit:` field in the archived REQ contains the real implement
 Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
 
 - **Dependency-ready `pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
-- **No dependency-ready `pending` REQs remain** (queue may still have dependency-blocked or held REQs): Write a **Session Checkpoint** (see below), run the cleanup action, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, the blocked-archive-collision section, and the blocked-by-dependencies section in that order, including only those that have at least one REQ. If none of the four sections applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
+- **No dependency-ready `pending` REQs remain** (queue may still have dependency-blocked or held REQs): Write a **Session Checkpoint** (see below), run actions/cleanup.md, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, the blocked-archive-collision section, and the blocked-by-dependencies section in that order, including only those that have at least one REQ. If none of the four sections applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
 
 #### Context Wipe — Verified
 
@@ -988,7 +988,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 6.25: Implementation Summary (append file manifest — mandatory for all routes)
 □ Step 6.3: Qualify (orchestrator verifies: files exist, substantive, wired, flowing, requirements traced, P-A-U audit)
 □ Step 6.5: Test (run relevant tests, load debug rules on attempt 2+, verify TDD evidence if tdd:true)
-□ Step 7: Review (spawn review action — gate on acceptance: Pass→archive, Fail→remediate with debug rules)
+□ Step 7: Review (spawn actions/review-work.md — gate on acceptance: Pass→archive, Fail→remediate with debug rules)
 □ Step 7.5: Lessons Learned (append section, update prime files, skip for Route A if no surprises)
 □ Step 8: Archive (update status, classify failures, triage discovered tasks, cycle-check follow-ups, queue follow-ups, move to archive/)
 □ Step 9: Commit (stage explicit files, commit if git repo, write hash to REQ in separate metadata commit)
@@ -1058,7 +1058,7 @@ All 2 requests completed:
 
 ## What This Action Does NOT Do
 
-- Create new request files (use the capture requests action)
+- Create new request files (use actions/capture.md)
 - Make architectural decisions beyond what's in the request
 - Run without user present (this is supervised automation)
 - Modify already-completed requests

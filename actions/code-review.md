@@ -270,7 +270,7 @@ Found 3 Critical and 5 Important findings.
 Create REQ files for these? (The user can run `do-work run` to process them later.)
 ```
 
-Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward. The code-review action is read-only by default in all modes.
+Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward. actions/code-review.md is read-only by default in all modes.
 
 When the user confirms, create REQ files using the standard format:
 

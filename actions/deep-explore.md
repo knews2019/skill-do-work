@@ -4,7 +4,7 @@
 
 **Self-contained** — this action does not depend on any external skills or plugins.
 
-**Companion file:** Read `deep-explore-reference.md` for subagent persona prompts, convergence rubric, source capture procedure, state file schema, and error handling.
+**Companion file:** Read `actions/deep-explore-reference.md` for subagent persona prompts, convergence rubric, source capture procedure, state file schema, and error handling.
 
 ## Philosophy
 
@@ -111,11 +111,11 @@ mkdir -p "$SESSION_DIR"/session/sources "$SESSION_DIR"/session/idea-reports "$SE
 
 #### Capture sources
 
-Follow the source capture procedure in `deep-explore-reference.md`. Copy all input materials (files, URLs, images) into `session/sources/` with a manifest.
+Follow the source capture procedure in `actions/deep-explore-reference.md`. Copy all input materials (files, URLs, images) into `session/sources/` with a manifest.
 
 #### Initialize state
 
-Write `session/state.json` with the initial state. See the state file schema in `deep-explore-reference.md`.
+Write `session/state.json` with the initial state. See the state file schema in `actions/deep-explore-reference.md`.
 
 Store the resolved session output path — all subagents need it in their prompts.
 
@@ -135,19 +135,19 @@ After capturing sources, decide whether the **Explorer** subagent is needed.
 
 Record your decision in state.json (`research_mode` field).
 
-**If pre-session research:** Spawn a subagent with the Explorer persona from `deep-explore-reference.md`. Input: the concept seed + specific research questions. The Explorer writes its report to `session/research/RESEARCH_<slug>.md`. Wait for completion before proceeding.
+**If pre-session research:** Spawn a subagent with the Explorer persona from `actions/deep-explore-reference.md`. Input: the concept seed + specific research questions. The Explorer writes its report to `session/research/RESEARCH_<slug>.md`. Wait for completion before proceeding.
 
 ---
 
 ### Step 4: Round 1 — Free Thinker (Diverge)
 
-Spawn a subagent with the Free Thinker persona from `deep-explore-reference.md`.
+Spawn a subagent with the Free Thinker persona from `actions/deep-explore-reference.md`.
 
 **Context to pass:**
 - The concept seed
 - Project context (primes summary, recent work trajectory, queue state)
 - Any Explorer research report (if pre-session research was done)
-- The Round 1 suffix instructions from the reference file
+- The Round 1 suffix instructions from actions/deep-explore-reference.md
 
 **The subagent writes to:** `{session-output}/session/idea-reports/ROUND-01-diverge.md`
 
@@ -160,7 +160,7 @@ Update state.json after the subagent completes.
 You (the orchestrator) read the Free Thinker's output. This is an inline evaluation — do not spawn a subagent.
 
 **Quick check:**
-- Are there at least 6 directions? If < 5, re-spawn the Free Thinker with "push further" guidance (max 1 retry). See error handling in the reference file.
+- Are there at least 6 directions? If < 5, re-spawn the Free Thinker with "push further" guidance (max 1 retry). See error handling in actions/deep-explore-reference.md.
 - Do they show creative range (not all variations of the same idea)?
 - Is there enough material for the Grounder to work with?
 
@@ -170,14 +170,14 @@ If satisfactory, proceed to Step 6. Record evaluation notes in state.json.
 
 ### Step 6: Round 2 — Grounder (Converge)
 
-Spawn a subagent with the Grounder persona from `deep-explore-reference.md`.
+Spawn a subagent with the Grounder persona from `actions/deep-explore-reference.md`.
 
 **Context to pass:**
 - The concept seed
 - Project context
 - The Free Thinker's output (Round 1 file)
 - Any research reports
-- The Grounder round suffix from the reference file
+- The Grounder round suffix from actions/deep-explore-reference.md
 
 **The subagent writes to:** `{session-output}/session/idea-reports/ROUND-02-converge.md`
 
@@ -187,7 +187,7 @@ Update state.json after the subagent completes.
 
 ### Step 7: Arbiter Evaluation 2 — Decide More Rounds
 
-Read the Grounder's output. Apply the convergence rubric from `deep-explore-reference.md`.
+Read the Grounder's output. Apply the convergence rubric from `actions/deep-explore-reference.md`.
 
 **Decision fork:**
 
@@ -200,7 +200,7 @@ At minimum, every session gets 1 round pair (Steps 4-6). Most benefit from 2 pai
 
 For each additional pair:
 
-1. **Free Thinker round** — Spawn with the Round 3+ suffix from the reference file. Input: all prior round files. Output: `session/idea-reports/ROUND-{NN}-diverge.md`.
+1. **Free Thinker round** — Spawn with the Round 3+ suffix from actions/deep-explore-reference.md. Input: all prior round files. Output: `session/idea-reports/ROUND-{NN}-diverge.md`.
 2. **Arbiter evaluation** — Read output, quick check.
 3. **Grounder round** — Spawn with round suffix. Input: all prior round files. Output: `session/idea-reports/ROUND-{NN}-converge.md`.
 4. **Arbiter evaluation** — Apply convergence rubric. Loop or proceed to Step 8.
@@ -213,14 +213,14 @@ Update state.json after each round.
 
 ### Step 8: Writer (Synthesize)
 
-Spawn a subagent with the Writer persona from `deep-explore-reference.md`.
+Spawn a subagent with the Writer persona from `actions/deep-explore-reference.md`.
 
 **Context to pass:**
 - The concept seed
 - Project context
 - **ALL** round transcript files (every `ROUND-*.md` in `session/idea-reports/`)
 - Any research reports in `session/research/`
-- The Writer task suffix from the reference file (specifying all 4 outputs + template paths)
+- The Writer task suffix from actions/deep-explore-reference.md (specifying all 4 outputs + template paths)
 
 **The Writer produces:**
 1. `session/ideation-graph.md` — thread evolution map

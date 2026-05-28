@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.82.1
+**Current version**: 0.82.2
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -17,6 +17,14 @@
 - The user wants to see all changelog entries (more than 5) — point them at `CHANGELOG.md` directly instead of loading the full file.
 - The user wants to *install* the skill fresh — that's the README install command, not this action.
 - The install is global (under `~/.claude/skills/` etc.) and the user wants an update — refuse the auto-update per the preflight in Step 2 below, and redirect them.
+
+## Input
+
+This is a state-based action — the user's phrasing selects one of three response modes (each has its own section below):
+
+- **Version request** — "what version", "version", "what's new", "release notes", "what's changed", "updates", "history" → report the current version + last 5 changelog entries.
+- **Update check** — "update", "check for updates", "is there a newer version" → compare local against upstream and offer to apply.
+- **Recap** — "recap" (dispatched with `mode: recap`) → summarize recent work across the archive and active URs.
 
 ## Responding to Version Requests
 

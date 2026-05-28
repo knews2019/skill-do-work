@@ -136,7 +136,7 @@ Action files follow a consistent structure. When adding or modifying actions, us
 - **State-based actions** (`version.md`, `pipeline.md`) — Response sections keyed by input type instead of sequential steps.
 - **Checklist-based diagnostics** (`forensics.md`) — Use a `## Checks` section with independently-runnable items instead of ordered `## Steps`. Each check is a diagnostic probe, not a sequential step.
 
-Cross-reference other actions by short name (e.g., "the work action", "do-work clarify") — not by file path. SKILL.md owns the file-path mappings.
+Cross-reference other actions by their **file path** (e.g., `actions/work.md`, or `actions/work.md`'s Schema Read Contract) so an agent reading the file can open the target directly without resolving a name to a path. Companion reference files take a path too (`actions/interview-reference.md`, `actions/bkb-reference.md`). The one exception is a `do-work <verb>` **command invocation** (`do-work run`, `do-work clarify`) — that's how an action is *run*, not a pointer to its file, so keep it as a command. SKILL.md remains the authoritative name→path mapping and may use short names in its routing prose.
 
 ### Prescribed Shell Commands Must Surface What the Steps Consume
 
