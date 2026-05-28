@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.82.1 — The Wave Floor (2026-05-28)
+
+Closed one real edge gap from a review of `--wave` execution; the review's other three findings were rejected after verification showed they described a stale checkout (the "orphaned" reference files were `git rm`'d back at 0.75.0/0.76.0, and `ai-report` already has a `next-steps.md` block).
+
+- `actions/work.md` Step 1 (wave depth): the depth formula previously defined a value only for REQs with no deps / all-archived deps (depth 0) and deps "in the current pending set" (+1) — leaving depth **undefined** for a dependency member sitting in `pending-answers`, `blocked-*`, `claimed`, or `failed`. Added a clause making those members contribute depth 0; their actual gating stays with the dependency-ready filter, which holds the dependent REQ until every member reaches `completed`/`completed-with-issues`. Depth is now total over all dependency states.
+
 ## 0.82.0 — The Real Path (2026-05-28)
 
 Closeout pass on five P2 findings from a fresh review of 0.81.0's `ai-report` action — three real bugs, one self-contradictory rule, and one design change to how the report stores its image binaries. One additional finding was rejected after history-check showed the reviewer was describing behavior that never existed.
