@@ -167,7 +167,9 @@ Gives agents browser automation capabilities:
 - Persistent profiles (cookies, localStorage preserved)
 
 Works alongside do-work's `ui-review` action — when Playwright CLI is
-detected, ui-review automatically runs visual verification.
+detected, ui-review automatically runs visual verification. The `ai-report`
+action also consumes Playwright when available for live screenshots;
+without it, ai-report falls back to SVG + Mermaid diagrams.
 
 To use directly: playwright-cli -s=my-session open https://example.com --persistent
 ```

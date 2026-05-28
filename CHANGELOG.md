@@ -6,6 +6,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.81.0 — The Pixel Proof (2026-05-28)
+
+New `ai-report` action: a single-file HTML report that anchors a completed UR/REQ in the literal pixels that changed. Where `present-work` explains the concept and `pipeline`'s `.single.html` debriefs the run, `ai-report` puts the screenshot front-and-centre with SVG callouts pointing at the delta — and falls back to SVG + Mermaid diagrams when bowser isn't available, so the report always ships.
+
+- `actions/ai-report.md`: new standalone action. Inputs: `UR-NNN`, `REQ-NNN`, `most recent`, or empty. Outputs to `ai-reports/yyyy-mm-dd_hhmm_<slug>.html` (chronologically sortable filename per the external skill it was ported from). Pipeline: resolve target → collect before/after assets (UR `assets/`, `do-work/working/`, root `verify-*.png`, git-diff images) → optionally take a live screenshot via `playwright-cli` if a dev server responds → embed everything as base64 data URIs → write the report with hero / The Change / How It Works / What Changed / Verify It Yourself / Lessons sections.
+- Bowser is **optional with graceful fallback**. If `playwright-cli` is missing or no dev server responds on common ports (8080, 5173, 3000), the report drops the live-screenshot pass and uses hand-coded SVG architecture + Mermaid data-flow diagrams instead. No install prompt, no block.
+- Anti-slop applied inline. The action loads `crew-members/anti-slop.md` in Step 1 and runs the seven-principle self-check table at Step 6 before writing the file — no separate `slop-check` pass needed.
+- `SKILL.md`: new priority-30 routing row (triggers: `ai-report`, `ai report`, `make-report`, `screenshot-report`, `visual report`, `proof of work`). Descriptive-content catch-all bumped to priority 31. Verb Reference, Action Dispatch, foreground-actions list, argument-hint frontmatter, top-of-file actions list, and help menu all updated.
+- `actions/pipeline.md` Step 5: completion report now opportunistically links to `ai-reports/*{UR-NNN}*.html` when one exists — one bullet in the markdown rendering's "for the clueless-reader" Deliverables block, one tile in the `.single.html` "Related deliverables" card grid. Pure file-presence check; no dependency on the action having run.
+- `actions/install.md`: bowser target now notes that `ai-report` is the second consumer (alongside `ui-review`) and falls back to diagrams when bowser isn't installed.
+- `CLAUDE.md`: `actions/` listing gains `ai-report.md`.
+
 ## 0.80.2 — The Full Inventory (2026-05-27)
 
 Two more correctness fixes from the same code review, plus the realization that one of them wasn't local. `stray-check` now sees junk inside brand-new untracked directories and stops letting its own skip-list hide committed artifacts — and the untracked-enumeration fix was applied everywhere the same pattern had been copy-pasted.

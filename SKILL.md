@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | slop-check [target] | dream [path] | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | stray-check [path] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
+argument-hint: "pipeline [request] | capture request: (describe a task) | run | verify requests | review work | code-review | ui-review | present work | ai-report [target] | slop-check [target] | dream [path] | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | stray-check [path] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -17,6 +17,7 @@ A unified entry point for task capture and processing.
 - **clarify questions**: Batch-review Open Questions from completed work → user answers, confirms, or skips
 - **review work**: Post-work review → requirements check, code review, acceptance testing, and testing suggestions
 - **present work**: Client-facing deliverables → briefs, architecture diagrams, value propositions, Remotion videos
+- **ai-report**: Single-file HTML report of a completed UR/REQ — live screenshots with SVG callouts, before/after toggles, Mermaid fallback when no screenshots. Output to `ai-reports/`
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
 - **code-review**: Standalone codebase review scoped by prime files and/or directories → consistency, patterns, security, performance, architecture, and risk-driven test coverage
 - **quick-wins**: Scan a target directory for obvious refactoring opportunities and low-hanging tests to add
@@ -93,7 +94,8 @@ Check these patterns **in order** — first match wins:
 | 27       | Slop-check keywords      | `do-work slop-check`, `do-work slop check`, `do-work anti-slop`, `do-work slop-check do-work/deliverables/UR-003-client-brief.md`, `do-work slop-check REQ-042` | → slop-check                    |
 | 28       | Dream keywords           | `do-work dream`, `do-work dream ./memory`, `do-work consolidate memory`, `do-work clean up wiki`, `do-work lint and merge notes`, `do-work memory cleanup` | → dream                         |
 | 29       | Stray-check keywords     | `do-work stray-check`, `do-work stray-check src/`, `do-work find stray files`, `do-work find orphan files`, `do-work junk`, `do-work what doesn't belong`, `do-work file hygiene` | → stray-check                   |
-| 30       | Descriptive content      | `do-work capture request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture requests              |
+| 30       | AI-report keywords       | `do-work ai-report`, `do-work ai-report UR-246`, `do-work ai report`, `do-work make-report`, `do-work make report`, `do-work screenshot-report`, `do-work visual report`, `do-work proof of work` | → ai-report                     |
+| 31       | Descriptive content      | `do-work capture request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture requests              |
 
 
 ### Step 2: Preserve Payload
@@ -126,6 +128,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **ui-review** | ui-review, review ui, design review, validate ui, ui audit, design audit | Do NOT use "check ui" — consumed by verify at priority 4. Scope args: file paths, directory paths, prime file refs |
 | **review work** | review, review work, review code, audit code, audit implementation, review REQ-NNN | "review requests" / "review reqs" → verify (priority 4), not here. "code review" → code-review (priority 7), not here |
 | **present work** | present, present work, showcase, deliver, pitch, client brief | No target → most recent UR. "present all" → portfolio mode |
+| **ai-report** | ai-report, ai report, make-report, make report, screenshot-report, visual report, proof of work | Single-file HTML report with screenshots + SVG callouts + before/after; output to `ai-reports/`. Target arg: `UR-NNN`, `REQ-NNN`, "most recent", or empty. Distinct from present-work (educational explainer) and pipeline's `.single.html` (multi-REQ debrief) |
 | **cleanup** | cleanup, clean up, tidy, consolidate, organize archive, fix archive | **Archive consolidation only.** A `clean up` / `consolidate` / `cleanup` that names **memory / wiki / notes** is the dream action (priority 28); one that names **stray / orphan / junk files** or repo pollution is the stray-check action (priority 29). Evaluate those carve-outs first; a bare verb with no memory/wiki/notes/junk target stays here. |
 | **commit** | commit, commit changes, commit files, save changes, save work | |
 | **inspect** | inspect, inspect changes, explain changes, what changed, show changes, describe changes | "what changed" (no apostrophe) → inspect; "what's changed" → version |
@@ -174,6 +177,7 @@ do-work — task queue for agentic coding tools
 
   Present & inspect:
     do-work present work                Client brief, architecture, video, HTML explainer
+    do-work ai-report [target]          Pixel-anchored HTML report: screenshots + SVG callouts + before/after
     do-work inspect                     Explain uncommitted changes (what, why, readiness)
 
   Scan & improve:
@@ -275,6 +279,7 @@ Each action has an action file with full instructions. How you execute it depend
 | verify requests    | `./actions/verify-requests.md`  | Target UR/REQ or "most recent" |
 | review work        | `./actions/review-work.md`      | Target REQ/UR or "most recent" |
 | present work       | `./actions/present-work.md`     | Target REQ/UR, "most recent", or "all" |
+| ai-report          | `./actions/ai-report.md`        | Target REQ/UR, "most recent", or empty |
 | cleanup            | `./actions/cleanup.md`          | (none needed)                  |
 | commit             | `./actions/commit.md`           | (none needed)                  |
 | inspect            | `./actions/inspect.md`          | Target REQ/UR or (none = all)  |
@@ -303,7 +308,7 @@ Dispatch each action to a subagent. The subagent reads the action file and execu
 
 - **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
 - **Exception — pipeline dispatch**: When the pipeline action dispatches `work`, it runs in the **foreground** (blocking). The pipeline requires each step to complete before advancing. This override applies only when the pipeline is the caller.
-- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `slop-check`, `dream`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `stray-check`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `ai-report`, `slop-check`, `dream`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `stray-check`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available

@@ -19,6 +19,7 @@ actions/              # Action files (each is a standalone prompt)
   slop-check.md       # Validate a human-facing artifact against the anti-slop principles — read-only, optional rewrite on confirmation
   dream.md            # Manual four-phase consolidation of a plain-text memory directory (orient, lint, heal, prune + reindex) — destructive, explicit invocation only
   present-work.md     # Client-facing deliverables (briefs, videos, diagrams)
+  ai-report.md        # Single-file HTML report of a completed UR/REQ — screenshots + SVG callouts + before/after toggle + Mermaid fallback; output to ai-reports/
   cleanup.md          # Archive consolidation
   commit.md           # Atomic git commits traced to REQs
   kb-lessons-handoff.md # Reference: offers post-review promotion of Lessons Learned into kb/raw/inbox/
