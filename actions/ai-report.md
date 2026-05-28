@@ -1,6 +1,6 @@
 # AI Report Action
 
-> **Part of the do-work skill.** Generates a single-file HTML report of a completed feature — live screenshots with SVG callout annotations, before/after toggles, and Mermaid/SVG diagrams as a fallback when screenshots aren't available. Output goes to `ai-reports/` in the project root.
+> **Part of the do-work skill.** Generates an HTML report of a completed feature — live screenshots with SVG callout annotations, before/after toggles, and Mermaid/SVG diagrams as a fallback when screenshots aren't available. Output is one HTML file plus a sibling `.assets/` folder of image binaries, both in `ai-reports/` in the project root.
 
 The report exists to make a UI change **visible**: a stakeholder opens one HTML file and sees the literal pixels that changed, where they changed, and how to verify it themselves. Not a brief. Not a debrief. A pixel-anchored proof-of-work artifact.
 
@@ -8,7 +8,7 @@ The report exists to make a UI change **visible**: a stakeholder opens one HTML 
 
 - **Pixels first, prose second.** The image is the conclusion. Text exists to explain what the eye is already seeing.
 - **Anti-slop or it doesn't ship.** Every section passes the seven principles in `crew-members/anti-slop.md` (loaded in Step 1) — lead with the conclusion, verify every claim, compress, match medium to stakes.
-- **Self-contained.** One `.html` file. Opens offline. All images embedded as base64 data URIs. CDN allowed only for Tailwind + Mermaid.
+- **HTML + sibling assets.** One `.html` file plus a `<report-stem>.assets/` folder of image binaries next to it. The HTML references the images by relative `src` — move the pair together and the report works anywhere. Tailwind + Mermaid load from a CDN.
 - **Graceful when bowser is missing.** Live screenshots are nice-to-have. If `playwright-cli` isn't installed or no dev server responds, fall back to SVG architecture + Mermaid data-flow diagrams. The report still ships.
 
 ## When to Use
@@ -63,10 +63,11 @@ Also read the parent UR's `input.md` for the user's own words.
 
 **3a: Check for stored before/after assets.** Look in these locations, in order:
 
-1. `do-work/user-requests/UR-NNN/assets/` — user-supplied screenshots
-2. `do-work/working/` — screenshots taken during development (match by UR/REQ prefix or date proximity to commit)
-3. Project root — any `verify-*.png` files captured during review
-4. Git diff images: `git show <commit> --name-only | grep -E '\.(png|jpg|gif)$'`
+1. `do-work/archive/UR-NNN/assets/` — archived user-supplied screenshots (the common case; completed URs live here after cleanup)
+2. `do-work/user-requests/UR-NNN/assets/` — live UR assets (target not yet archived)
+3. `do-work/working/` — screenshots taken during development (match by UR/REQ prefix or date proximity to commit)
+4. Project root — any `verify-*.png` files captured during review
+5. Git diff images: `git show <commit> --name-only | grep -E '\.(png|jpg|gif)$'`
 
 Classify found images:
 
@@ -82,12 +83,21 @@ playwright-cli --help >/dev/null 2>&1 && echo "bowser: available" || echo "bowse
 
 If `bowser: missing`, skip to 3c (diagram-only fallback). Do **not** prompt the user to install — note the fallback in the report's hero section and move on. If they want richer reports later, they can run `do-work install bowser`.
 
-If `bowser: available`, check the dev server: `curl -s -o /dev/null -w "%{http_code}" http://localhost:8080/` (try 5173 and 3000 if 8080 fails). If any returns 200:
+If `bowser: available`, probe each candidate dev server in order and capture the first that responds 200:
 
-- Use the bowser skill (`playwright-cli`) to screenshot the relevant view. Default URL: `http://localhost:8080/`. Save to `ai-reports/.screenshots/<UR-NNN>-live.png`.
-- If the REQ's Implementation Summary mentions a specific route or panel (e.g., "align panel", "settings tab"), navigate there before screenshotting.
+```
+DEV_URL=""
+for port in 8080 5173 3000; do
+  [ "$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$port/")" = "200" ] && DEV_URL="http://localhost:$port/" && break
+done
+```
 
-If no server responds, note it in the report and skip live screenshots.
+If `$DEV_URL` is set:
+
+- Use the bowser skill (`playwright-cli`) to screenshot `$DEV_URL`. Save to `ai-reports/<report-stem>.assets/live.png` (the same `<report-stem>` chosen in Step 5 — `yyyy-mm-dd_hhmm_<slug>`).
+- If the REQ's Implementation Summary mentions a specific route or panel (e.g., "align panel", "settings tab"), append it to `$DEV_URL` before screenshotting.
+
+If no server responds (`$DEV_URL` empty), note it in the report and skip live screenshots.
 
 **3c: Decide the visual strategy.**
 
@@ -108,7 +118,7 @@ Callout anatomy:
 
 ```html
 <div class="screenshot-frame" style="position:relative;display:inline-block">
-  <img src="data:image/png;base64,..." alt="..." style="max-width:100%">
+  <img src="./<report-stem>.assets/after.png" alt="..." style="max-width:100%">
   <svg style="position:absolute;top:0;left:0;width:100%;height:100%"
        viewBox="0 0 [img-width] [img-height]">
     <circle cx="320" cy="140" r="14" fill="#2563eb" fill-opacity=".85"/>
@@ -121,7 +131,7 @@ Callout anatomy:
 </ol>
 ```
 
-Place all screenshot images as base64 data URIs so the HTML is fully self-contained. To encode: `base64 -i <file>` and embed as `data:image/png;base64,<output>`.
+Copy every collected image into `ai-reports/<report-stem>.assets/` and reference it with a relative `src` (e.g., `./<report-stem>.assets/before.png`). Use descriptive names — `before.png`, `after.png`, `live.png`, or `before-<slug>.png` when multiple before/after pairs exist. Do **not** base64-inline; the binaries live next to the HTML and travel with it.
 
 **4b: Mermaid data-flow diagram (when no screenshots, or to supplement architecture explanation).**
 
@@ -147,7 +157,7 @@ When the feature touches multiple components, produce a hand-coded SVG that show
 
 ### Step 5: Write the Report HTML
 
-Write a single self-contained HTML file to:
+Write the HTML file to:
 
 ```
 ai-reports/yyyy-mm-dd_hhmm_<description>.html
@@ -160,7 +170,7 @@ ai-reports/yyyy-mm-dd_hhmm_<description>.html
 - Full example: `2026-05-26_1430_UR-246-batch-align-default.html`
 - This handles clashes automatically and keeps the folder sortable.
 
-Ensure `ai-reports/` exists (`mkdir -p ai-reports`).
+Ensure both the reports directory and the per-report assets folder exist (`mkdir -p ai-reports/<report-stem>.assets`).
 
 #### Required sections (in order)
 
@@ -234,9 +244,9 @@ Fix any FLAGs before writing the final file. Do not ship a Borderline or Slop re
 
 ### Step 7: Save and Report
 
-1. `mkdir -p ai-reports`
-2. Write the final HTML file.
-3. Live screenshots in `ai-reports/.screenshots/` can stay — they're reusable.
+1. `mkdir -p ai-reports/<report-stem>.assets` (assets folder already populated in Step 3/4).
+2. Write the final HTML file to `ai-reports/<report-stem>.html`.
+3. The `<report-stem>.assets/` folder lives next to the HTML — keep them together when moving or sharing the report.
 4. Print a short summary:
 
 ```
@@ -253,12 +263,12 @@ Do not pad the summary. No headers or bullet lists unless there are multiple rep
 
 ## Output Format
 
-A single self-contained HTML file at `ai-reports/yyyy-mm-dd_hhmm_<slug>.html`, plus a one-paragraph stdout summary as shown in Step 7. No other artifacts are written to disk.
+An HTML file at `ai-reports/yyyy-mm-dd_hhmm_<slug>.html` plus a sibling `ai-reports/yyyy-mm-dd_hhmm_<slug>.assets/` folder containing the referenced PNG/JPG binaries (each with descriptive names like `before.png`, `after.png`, `live.png`). The HTML references them via relative `src`. Plus a one-paragraph stdout summary as shown in Step 7.
 
 ## Rules
 
 - **Output goes to `ai-reports/` in the project root** — never `do-work/deliverables/` (that's the present-work explainer's home), never `do-work/working/`, never a custom path.
-- **Single file, fully offline.** All images base64-encoded into the HTML. Only Tailwind and Mermaid load from a CDN; everything else inline.
+- **HTML + sibling `.assets/` folder.** Images live in `<report-stem>.assets/` next to the HTML and are referenced by relative `src` — move/copy the pair together. Tailwind and Mermaid load from a CDN; without network, styling is degraded and Mermaid diagrams won't render.
 - **Bowser is optional.** If `playwright-cli` is missing or no dev server responds, fall back to SVG + Mermaid diagrams. Don't error, don't block, don't prompt to install.
 - **No live screenshot if the dev server isn't running** — note the absence in the hero section and use the diagram fallback. Don't fabricate a "before" state from imagination.
 - **Anti-slop principles are loaded inline** (Step 1), not via a separate slop-check pass.
@@ -274,7 +284,7 @@ A single self-contained HTML file at `ai-reports/yyyy-mm-dd_hhmm_<slug>.html`, p
 | "The REQ has no Implementation Summary but I'll write the diagram from the diff" | Stop and tell the user — the REQ wasn't actually completed properly | A missing Implementation Summary means review-work didn't run; the report would be guessing at intent |
 | "I'll add a fancy intro paragraph before the hero" | Cut it — the hero IS the lead | Anti-slop principle 4: conclusion first. Throat-clearing pushes the verdict below the fold |
 | "Two screenshots, one before and one after — I'll show both with no toggle, side by side" | Use the before/after toggle pattern — same screen real estate, one viewport, faster compare | Side-by-side at small screen widths squishes both; the toggle keeps each at full width |
-| "I'll embed the screenshots as `<img src='./screenshot.png'>`" | Base64-encode and inline as data URIs | The file must work offline; relative srcs break the moment the user moves the HTML |
+| "I'll base64-inline the screenshots so the HTML is one file" | Save them to `<report-stem>.assets/` and reference with relative `src` | Base64 bloats the HTML ~33% per image and slows first paint; the `.assets/` folder travels next to the HTML, so the pair is just as portable |
 | "This is the present-work explainer territory, I'll merge them" | Keep them separate — explainer = concept; ai-report = pixels | Two artifacts can coexist for the same UR; they answer different questions for different audiences |
 
 ## Red Flags
@@ -282,7 +292,7 @@ A single self-contained HTML file at `ai-reports/yyyy-mm-dd_hhmm_<slug>.html`, p
 - The report is longer than the implementation it describes — you produced slop. Cut.
 - A "Before" image was used that has no clear connection to the current feature — mislabeled. Remove it or retitle.
 - The data-flow diagram is a generic template — it must match the actual code path from the REQ's Implementation Summary.
-- A screenshot could not be base64-encoded and you used an external `src` path — the file won't open offline. Embed it.
+- A screenshot is base64-inlined as `src="data:image/...;base64,..."` instead of referenced from `.assets/` — contradicts the layout contract and inflates the HTML.
 - The hero section buries the verdict in paragraph 2 or later — move it to sentence 1.
 - Mermaid doesn't render (check CDN, check `startOnLoad:true`) — fall back to an SVG diagram instead.
 - The "Verify It Yourself" section uses placeholder commands — every command must come from the REQ's Testing section or commit SHA.
@@ -293,7 +303,7 @@ A single self-contained HTML file at `ai-reports/yyyy-mm-dd_hhmm_<slug>.html`, p
 ## Verification Checklist
 
 - [ ] Anti-slop principles loaded (Step 1) and Step 6 self-check table completed with no unresolved FLAGs.
-- [ ] All images embedded as base64 data URIs — file opens offline.
+- [ ] All images saved in `<report-stem>.assets/` and referenced via relative `src` — no `src="data:image/...;base64,..."` in the HTML.
 - [ ] Diagrams derived from actual REQ/code content, not generic placeholders.
 - [ ] Hero section leads with the conclusion (feature name + one-sentence verdict).
 - [ ] "Verify It Yourself" commands are copy-pasteable and come from the REQ.

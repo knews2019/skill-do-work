@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.82.0 — The Real Path (2026-05-28)
+
+Closeout pass on five P2 findings from a fresh review of 0.81.0's `ai-report` action — three real bugs, one self-contradictory rule, and one design change to how the report stores its image binaries. One additional finding was rejected after history-check showed the reviewer was describing behavior that never existed.
+
+- `actions/ai-report.md`: **image binaries are now external, not base64-inlined.** Each report owns a sibling `<report-stem>.assets/` folder next to its HTML — screenshots go in there with descriptive names (`before.png`, `after.png`, `live.png`) and the HTML references them via relative `src`. The HTML stays one file; it just has external image resources, like any normal webpage. Drops base64's ~33% per-image bloat, gives the user real binaries to inspect/re-process, and removes the awkward "self-contained but Tailwind+Mermaid via CDN" contradiction. The pair moves together — same portability story, smaller HTML. Updated across Philosophy, Step 3b, Step 4a, Step 5, Step 7, Output Format, Rules, Common Rationalizations, Red Flags, and Verification Checklist.
+- `actions/pipeline.md` (line 349 markdown bullet + line 446 `.single.html` template): the relative path from `do-work/deliverables/` to project-root `ai-reports/` is `../../`, not `../../../` — the latter climbs one directory above the repo, so every generated deliverable link was broken. The markdown URL also pointed at the directory rather than the resolved filename. Both spots fixed; `grep -rn "\.\./\.\./\.\./ai-reports"` now returns zero.
+- `actions/ai-report.md` Step 3a (asset search): `do-work/archive/UR-NNN/assets/` is now searched **first**. The action explicitly targets completed work, which `cleanup` has moved out of `do-work/user-requests/` and into `do-work/archive/` — so the live-only search was missing exactly the assets it most often needed and silently falling back to the weaker diagram path.
+- `actions/ai-report.md` Step 3b (live screenshot): the dev-server probe walks `8080 → 5173 → 3000` but the screenshot URL was hardcoded to `http://localhost:8080/`, so a hit on 5173 or 3000 still tried to capture 8080 and failed. Now the probe captures the responding URL into `$DEV_URL` and the screenshot step uses that — and writes to the new `.assets/` layout.
+- Reviewed and rejected: a fifth finding claimed the `forensics.md` Missing Qualifications check was "new" and would warn on REQs with `## Review acceptance`. Git history (`ab31114`, v0.39.0) shows the check is original to the action, and `## Review acceptance` isn't a heading anywhere in the codebase — `## Qualification` and `## Review` are designed as separate sections per `actions/sample-archived-req.md`. No change.
+
 ## 0.81.0 — The Pixel Proof (2026-05-28)
 
 New `ai-report` action: a single-file HTML report that anchors a completed UR/REQ in the literal pixels that changed. Where `present-work` explains the concept and `pipeline`'s `.single.html` debriefs the run, `ai-report` puts the screenshot front-and-centre with SVG callouts pointing at the delta — and falls back to SVG + Mermaid diagrams when bowser isn't available, so the report always ships.
