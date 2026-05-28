@@ -68,6 +68,15 @@ Next steps:
   do-work install bowser        Install Playwright CLI + Bowser skill for visual verification (if not installed)
 ```
 
+**After ai-report:**
+```
+Next steps:
+  do-work slop-check ai-reports/<file>.html  Validate the report against the anti-slop principles before sharing
+  do-work present work UR-NNN                Generate the complementary client brief / explainer (if not already done)
+  do-work inspect                            Review uncommitted changes (the report + assets folder)
+  do-work commit                             Commit the report (and any code already staged)
+```
+
 **After present work:**
 ```
 Next steps:

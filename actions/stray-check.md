@@ -42,6 +42,7 @@ A path and a mode token can be combined (e.g., `do-work stray-check src/ fix`).
 
 - **In a git repo:** the source of truth is `git ls-files` for **tracked** files and `git ls-files --others --exclude-standard` for **untracked** files. Tag each file accordingly. **Do not use plain `git status --porcelain` for the untracked inventory** — it collapses a wholly-untracked directory into a single `?? dir/` row, so junk like `tmp/debug.log` inside a brand-new directory never reaches the filename/extension/size/content checks. `git ls-files --others --exclude-standard` lists every untracked file individually *and* already drops paths matched by `.gitignore` (those are correctly ignored — not pollution), so it doubles as the untracked ignore filter; no separate `git check-ignore` pass is needed for untracked paths. (If you prefer `git status`, you must pass `--untracked-files=all` / `-uall` to get the same per-file expansion.) For the **tracked but should-be-gitignored** check (category 2) you still feed `git ls-files` into `git check-ignore --no-index --stdin`: by default `git check-ignore` consults the index and never reports an already-tracked file, so without `--no-index` that category would silently find nothing.
 - **Outside git:** walk the filesystem under the scan root, honoring the skip-list.
+- **Empty directories** (category 7) — neither `git ls-files` nor `git ls-files --others` emits directories, so empty dirs are invisible to the git-based inventory. Run a separate filesystem pass to find them: `find <scan-root> -type d -empty` and prune the skip-list paths (`-not -path '*/node_modules/*' -not -path '*/.git/*'` etc.). Outside-git mode already walks the filesystem, so the same `find` works there too.
 
 Skip binary files by extension for content-based checks (`.png .jpg .jpeg .gif .webp .ico .pdf .zip .tar .gz .tgz .7z .exe .dll .so .a .o .pyc .class .jar .whl .mp4 .mov .woff .woff2`). For large text files (>500 lines), sample the first 100 and last 50 lines — never full-read a large blob.
 
@@ -57,7 +58,7 @@ Run each category below. For every finding, record: **path** (tracked/untracked)
 | 4 | **Committed secrets / sensitive files** | tracked `.env .env.* *.pem *.key *.p12 *.pfx id_rsa id_dsa credentials* *secret*` | **Critical** | Partial — offer `git rm --cached` + gitignore, but **flag loudly: the secret is already in git history; rotate it and scrub history.** Never silently delete |
 | 5 | **Misplaced files (folder cohesion)** | nested project markers (`package.json`/`go.mod`/`pyproject.toml`/`Cargo.toml` in a non-root subdir of a single-project repo), a wrong-language file in an otherwise single-language tree, a test file outside the project's test dirs | Info | No — suggest a move (manual; moving breaks imports) |
 | 6 | **Duplicate / old-copy files** | name patterns: `* copy.*`, `*copy.*`, `*-old.* *.old *-backup.* *-bak.* *.v2.* *-final.* *-deprecated.* *(1).* * 2.*` | Warning | Untracked → delete on confirm; tracked → review manually first |
-| 7 | **Empty files / empty dirs** | size-0 files or childless directories, **excluding** the intentional-empty allowlist (`__init__.py .gitkeep .keep py.typed .npmignore`) | Info | Yes — delete on confirm (respect allowlist) |
+| 7 | **Empty files / empty dirs** | size-0 files (from the file inventory) or childless directories (from the `find -type d -empty` pass in Step 2), **excluding** the intentional-empty allowlist (`__init__.py .gitkeep .keep py.typed .npmignore`, plus any directory containing only allowlisted files) | Info | Yes — delete on confirm (respect allowlist) |
 | 8 | **Large binary blobs in git** | tracked binary (by extension) larger than **5 MB** — videos, archives, datasets, model weights | Warning | No — suggest Git LFS or removal (may be an intentional asset) |
 | 9 | **AI scratch artifacts** | `scratch.* notes.txt tmp.* temp.* debug.log untitled* Untitled* output.txt =* nul .aider*`, plus stray `*.log` or draft `*.md` at the repo root that don't match a known doc name (`README CHANGELOG CONTRIBUTING LICENSE AGENTS CLAUDE`) | Info / Warning | Yes — delete (untracked) / `git rm` (tracked) on confirm |
 | 10 | **Dead/unreferenced source files** *(best-effort)* | for each source file, grep the repo for its basename / module path; zero references → candidate. **Exclude** entrypoints (`main index app __init__ conftest setup` and config-declared bins/scripts), test files, and anything dynamically loadable | **Info only** — never Critical | No — verify before removing |
@@ -70,7 +71,7 @@ Emit the severity-grouped report (see Output Format). Group findings under `## C
 
 ### Step 5: Apply Fixes (Guarded)
 
-**Skip this step entirely** if the mode is `report` / `--report-only`, or if there are no auto-fixable findings.
+**Skip this step entirely** unless the mode is `fix` / `--fix` (the default and `report` / `--report-only` are both report-only), or if there are no auto-fixable findings.
 
 Otherwise:
 
