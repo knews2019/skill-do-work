@@ -1,8 +1,11 @@
 ---
 id: REQ-003
 title: "Code review: add ai-report to anti-slop loading lists in CLAUDE.md and anti-slop.md"
-status: pending
+status: completed
 created_at: 2026-05-29T16:43:59Z
+claimed_at: 2026-05-29T18:47:00Z
+completed_at: 2026-05-29T18:47:30Z
+route: A
 review_generated: true
 source: code-review
 scope: CLAUDE.md, crew-members/anti-slop.md
@@ -36,3 +39,52 @@ Found during code review of the full repo on 2026-05-29 (run `do-work/runs/code-
 
 Code review run: `do-work/runs/code-review-2026-05-29-161332/`
 Finding: `architecture.md` F1
+
+---
+
+## Triage
+
+**Route: A** — Simple
+
+**Reasoning:** Two enumerated lists, exact addition known, two files named. No exploration needed beyond the acceptance grep.
+
+**Planning:** Not required.
+
+## Implementation Summary
+
+**Files changed:**
+- `CLAUDE.md` (modified) — L159: added `ai-report (Step 1 principle loading; applied inline to every section per Step 6)` to the anti-slop callers list.
+- `crew-members/anti-slop.md` (modified) — L3 JIT_CONTEXT: added `ai-report's section drafting (Step 1 principle load + applied inline through Step 6)`.
+
+**What was done:** Closed the documentation drift between the anti-slop loading list and the actual callers. Both source-of-truth lists now enumerate the same six callers: present-work, review-work, pipeline, kb-lessons-handoff, ai-report, slop-check.
+
+## Qualification
+
+Passed — 2 files modified per scope. `grep -l 'anti-slop' actions/*.md` returns exactly the six caller files now enumerated in both lists. No other anti-slop callers exist.
+
+## Testing
+
+**Tests run:** `grep -l 'anti-slop' actions/*.md`
+**Result:** ✓ 6 callers: ai-report, kb-lessons-handoff, pipeline, present-work, review-work, slop-check. All six appear in both lists.
+
+*Verified by work action*
+
+## Review
+
+**Overall: 100%** | 2026-05-29T18:47Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 100% |
+| Test Adequacy | 100% |
+| Scope | 100% |
+| Risk | low |
+| Acceptance | Pass |
+
+**Findings:** 0 important, 0 minor
+**Acceptance:** Pass — both lists enumerate the same six callers; grep is clean.
+**Follow-ups created:** None
+
+*Reviewed by work action (Route A self-review)*
+

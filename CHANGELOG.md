@@ -6,6 +6,10 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.7 — The Slop Roster (2026-05-29)
+
+Added `ai-report` to the anti-slop loading lists in CLAUDE.md and `crew-members/anti-slop.md`'s JIT_CONTEXT comment. The list now matches the actual caller set (`grep -l 'anti-slop' actions/*.md`). REQ-003 from the self-review queue.
+
 ## 0.83.6 — The Sample Refresh (2026-05-29)
 
 Refreshed `actions/sample-archived-req.md` — the canonical schema example — to match the current capture/work frontmatter contract. REQ-010 from the self-review queue.
