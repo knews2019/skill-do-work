@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.8 — The Runs Convention (2026-05-29)
+
+`deep-explore` session directories now live under `do-work/runs/`, matching the `crew-members/background-agents.md` durability convention the action already claimed to follow. REQ-007 from the self-review queue.
+
+- New sessions write to `do-work/runs/deep-explore-<slug>-<ts>/` instead of the project root.
+- `continue` mode searches `do-work/runs/` first and falls back to the legacy project-root path for one release with a deprecation warning.
+- Schema example in `actions/deep-explore-reference.md` updated to match.
+
 ## 0.83.7 — The Slop Roster (2026-05-29)
 
 Added `ai-report` to the anti-slop loading lists in CLAUDE.md and `crew-members/anti-slop.md`'s JIT_CONTEXT comment. The list now matches the actual caller set (`grep -l 'anti-slop' actions/*.md`). REQ-003 from the self-review queue.
