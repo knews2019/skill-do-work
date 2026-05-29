@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.6 — The Sample Refresh (2026-05-29)
+
+Refreshed `actions/sample-archived-req.md` — the canonical schema example — to match the current capture/work frontmatter contract. REQ-010 from the self-review queue.
+
+- Added `domain: frontend`, `tdd: true`, and `user_request: UR-004` to the frontmatter.
+- Inserted a `## Red-Green Proof` section (mandatory when `tdd: true`) after `## What`.
+- Added `Red-green validation:` evidence rows inside `## Testing` linking the RED case to the test that proves GREEN.
+
 ## 0.83.5 — The Bare Name (2026-05-29)
 
 Fixed the lone bare-name cross-reference in `actions/capture.md:63` — `review-work.md` → `actions/review-work.md` — to align with CLAUDE.md's cross-reference rule. REQ-002 from the self-review queue.

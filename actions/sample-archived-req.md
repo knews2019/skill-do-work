@@ -2,6 +2,9 @@
 id: REQ-007
 title: Add user avatar component
 status: completed
+domain: frontend
+tdd: true
+user_request: UR-004
 created_at: 2025-01-26T09:30:00Z
 claimed_at: 2025-01-26T11:00:00Z
 route: B
@@ -17,6 +20,12 @@ kb_entry: REQ-007-add-user-avatar-component.md
 
 ## What
 [Original request content]
+
+## Red-Green Proof
+**RED prompt/case:** Render `<UserAvatar user={{ id: '42', name: 'Ada' }} />` with no `imageUrl` prop. Today: no UserAvatar exists — import resolution fails.
+**Why RED now:** No `src/components/UserAvatar.tsx` file in the tree; the closest neighbor is `Avatar.tsx`, which doesn't know about users.
+**GREEN when:** The component renders without throwing, displays the user's initials when `imageUrl` is absent, and the test `tests/user-avatar.spec.ts > renders initials when no image is supplied` passes.
+**Validation:** User confirmed during capture.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** (Agent: Read `crew-members/[domain].md`. Write brief technical approach here. Do not write code yet.) -> Analyzed Avatar.tsx and determined we need to build UserAvatar.tsx wrapping it.
@@ -66,6 +75,11 @@ Passed — 2 files verified, 2 requirements traced, P-A-U confirmed.
 ## Testing
 **Tests run:** npm test -- --testPathPattern="user-avatar"
 **Result:** ✓ All passing (4 tests)
+
+**Red-green validation:**
+- tests/user-avatar.spec.ts > renders initials when no image is supplied: ✗ before implementation → ✓ after
+- tests/user-avatar.spec.ts > falls back to default avatar on missing image: ✗ before implementation → ✓ after
+
 *Verified by work action*
 
 ## Review
