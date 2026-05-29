@@ -60,7 +60,7 @@ If `do-work/` doesn't exist yet (first invocation in a project):
 
 Files in `working/` and `archive/` are **immutable**. If someone wants to add to an in-flight or completed request, create a new addendum REQ that references the original via `addendum_to` in frontmatter. **The new addendum REQ always goes to `do-work/queue/`** — never into `working/` or `archive/` — so the work loop picks it up on the next run. A new UR is also created (verbatim input of the addendum) paired with the new REQ.
 
-**Exception:** actions/review-work.md may append a `## Review` section to archived files — review annotations are post-work metadata, not content changes. See `review-work.md`.
+**Exception:** actions/review-work.md may append a `## Review` section to archived files — review annotations are post-work metadata, not content changes. See `actions/review-work.md`.
 
 ## File Naming
 

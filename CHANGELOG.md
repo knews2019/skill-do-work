@@ -6,6 +6,10 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.5 — The Bare Name (2026-05-29)
+
+Fixed the lone bare-name cross-reference in `actions/capture.md:63` — `review-work.md` → `actions/review-work.md` — to align with CLAUDE.md's cross-reference rule. REQ-002 from the self-review queue.
+
 ## 0.83.4 — The Priority Cleanup (2026-05-29)
 
 Fixed two off-by-one cross-references in SKILL.md's Verb Reference table — the `ui-review` and `review-work` rows pointed at "priority 4" (work) instead of "priority 5" (verify). Surfaced by REQ-005 from the self-review queue.
