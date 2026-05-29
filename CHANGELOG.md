@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.11 — The Injection Guard (2026-05-29)
+
+Added `crew-members/prompt-injection.md` and wired it into the five ingestion paths surfaced by the self-review: capture, bkb ingest, dream, kb-lessons-handoff, and prompts run. REQ-009 from the self-review queue — the second Important security finding.
+
+- New crew rule encodes five principles, eight common redirection patterns, and a four-step what-to-do-when-detected procedure.
+- Each ingestion-path action JIT-loads the crew rule and carries a Red Flag entry naming the threat in detection-friendly terms.
+- `prompts run` now resolves from `<skill-root>/prompts/` by default; project-local `prompts/` directories require an explicit confirmation prompt before adoption.
+- CLAUDE.md Agent Rules section lists the new crew file with its triggers.
+
 ## 0.83.10 — The Guide Trio (2026-05-29)
 
 Wrote user-facing guides for the three biggest actions that didn't have them. REQ-011 from the self-review queue — user chose Path A (write all three) over the mixed recommendation.
