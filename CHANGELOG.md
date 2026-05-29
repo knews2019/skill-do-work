@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.9 — The Dream Gate (2026-05-29)
+
+Added a Phase 2.5 consent gate to `dream`. Phase 3 (the destructive one) can no longer fire without an explicit preview-then-confirm round. The single-bit `do-work dream` invocation token is no longer enough to consent to wiki deletions. REQ-008 from the self-review queue — the highest-impact security finding in the self-review.
+
+- New `### Step 3.5: Phase 2.5 — Preview & Confirm` prints the worklist then asks `Apply these N fixes? [all / dry-run / specific clusters / none]`. Ambiguous responses default to `dry-run` — never escalate to `all` on uncertainty.
+- New `--dry-run` mode token previews without writing; Step 5 (Phase 4) short-circuits writes when dry-run was chosen and only releases the lock.
+- New Rule (`Phases 1–2 must produce a visible worklist before Phase 3 may begin`), two new Common Rationalizations rows, two new Red Flags, two new Verification Checklist items — defense-in-depth against gate-skipping shortcuts.
+
 ## 0.83.8 — The Runs Convention (2026-05-29)
 
 `deep-explore` session directories now live under `do-work/runs/`, matching the `crew-members/background-agents.md` durability convention the action already claimed to follow. REQ-007 from the self-review queue.
