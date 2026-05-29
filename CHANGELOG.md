@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.4 — The Priority Cleanup (2026-05-29)
+
+Fixed two off-by-one cross-references in SKILL.md's Verb Reference table — the `ui-review` and `review-work` rows pointed at "priority 4" (work) instead of "priority 5" (verify). Surfaced by REQ-005 from the self-review queue.
+
+- Hand-audited every `grep -nE 'priority [0-9]+' SKILL.md` hit against the routing table — no other off-by-ones remain.
+
 ## 0.83.3 — The Self Review (2026-05-29)
 
 Ran the skill's own `code-review` action against the whole repo and captured the actionable findings as queue items so they can move through the normal pipeline.
