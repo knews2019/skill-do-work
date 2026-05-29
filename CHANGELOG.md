@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.10 — The Guide Trio (2026-05-29)
+
+Wrote user-facing guides for the three biggest actions that didn't have them. REQ-011 from the self-review queue — user chose Path A (write all three) over the mixed recommendation.
+
+- `docs/dream-guide.md` — the four phases, the Phase 2.5 consent gate, what Phase 3 actually writes.
+- `docs/ai-report-guide.md` — HTML + sibling assets, screenshot → SVG/Mermaid fallback, before/after toggle.
+- `docs/slop-check-guide.md` — the seven anti-slop principles in plain language, the rewrite-mode flow.
+- Each action's description blockquote now links its guide.
+
 ## 0.83.9 — The Dream Gate (2026-05-29)
 
 Added a Phase 2.5 consent gate to `dream`. Phase 3 (the destructive one) can no longer fire without an explicit preview-then-confirm round. The single-bit `do-work dream` invocation token is no longer enough to consent to wiki deletions. REQ-008 from the self-review queue — the highest-impact security finding in the self-review.

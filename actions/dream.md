@@ -1,6 +1,6 @@
 # Dream Action
 
-> **Part of the do-work skill.** A manual, four-phase consolidation pass over a plain-text memory directory — find rot, heal contradictions, merge near-duplicates, rebuild the index. Destructive by design, so it never runs automatically.
+> **Part of the do-work skill.** A manual, four-phase consolidation pass over a plain-text memory directory — find rot, heal contradictions, merge near-duplicates, rebuild the index. Destructive by design, so it never runs automatically. User-facing walkthrough: [`docs/dream-guide.md`](../docs/dream-guide.md).
 
 Operates on any plain-markdown memory store with an index file (`MEMORY.md`, `_master_index.md`, or `index.md`), a `wiki/` page directory, and an append-only `log.md` timeline. Reproduces the "Auto Dream" Orient → Gather → Consolidate → Prune pattern, but only on explicit invocation.
 
