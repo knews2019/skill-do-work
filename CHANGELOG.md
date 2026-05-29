@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.3 — The Self Review (2026-05-29)
+
+Ran the skill's own `code-review` action against the whole repo and captured the actionable findings as queue items so they can move through the normal pipeline.
+
+- Added 11 follow-up REQs (REQ-001…011) to `do-work/queue/` from a full-repo review: split the oversized `work.md` into an orchestrator + reference companion, gate `dream.md`'s destructive phase behind a preview/confirm step, add prompt-injection guardrails to the five ingestion paths, fix SKILL.md routing-priority typos, replace brittle step-number coupling with named contracts, and more.
+- These are development to-do items for the skill itself — captured intent, not shipped behavior changes.
+
 ## 0.83.2 — The Loose Ends (2026-05-29)
 
 Polish pass closing the remaining minor findings from the background-agents code review.
