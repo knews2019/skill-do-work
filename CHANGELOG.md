@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.14 — The Stray Disowned (2026-05-30)
+
+The ai-report action no longer treats a loose PNG at the project root as a before/after asset source. Nothing in do-work writes one there, and `stray-check` already flags root PNGs as junk — so pulling one into a report contradicted our own hygiene rules. Aligns with the same deprecation made independently in the standalone make-ai-report-with-screenshot skill.
+
+- `actions/ai-report.md` Step 3a drops the project-root `verify-*.png` source (and the When-to-Use bullet); git-diff images renumber to #4.
+- Adds an explicit note that a stray root PNG is junk, not an asset — cross-referencing `actions/stray-check.md`.
+
 ## 0.83.13 — The Bracket Insertion (2026-05-30)
 
 REQ-006 was captured with `depends_on: REQ-001` (scalar) instead of `depends_on: [REQ-001]` (list). The schema at `actions/work.md:160` and `actions/capture.md:92` defines this field as a YAML sequence, so the scalar form would silently bypass dependency gating and let REQ-006 run before REQ-001 lands. Caught by Codex review on PR #115.

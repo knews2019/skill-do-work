@@ -16,7 +16,7 @@ The report exists to make a UI change **visible**: a stakeholder opens one HTML 
 **Use when:**
 - A UR/REQ is `status: completed` and the user wants a stakeholder-visible artifact showing *what changed visually*.
 - A feature touches the UI and "show me the change" beats "describe the change."
-- You have before/after assets (in `do-work/user-requests/UR-NNN/assets/`, `do-work/working/`, or root `verify-*.png`) and want a side-by-side comparison.
+- You have before/after assets (in `do-work/archive/UR-NNN/assets/`, `do-work/user-requests/UR-NNN/assets/`, or `do-work/working/`) and want a side-by-side comparison.
 
 **Do NOT use when:**
 - The work has no user-visible output (infra-only, refactor, tooling) — the report is empty by construction; use the present-work brief instead.
@@ -66,8 +66,9 @@ Also read the parent UR's `input.md` for the user's own words.
 1. `do-work/archive/UR-NNN/assets/` — archived user-supplied screenshots (the common case; completed URs live here after cleanup)
 2. `do-work/user-requests/UR-NNN/assets/` — live UR assets (target not yet archived)
 3. `do-work/working/` — screenshots taken during development (match by UR/REQ prefix or date proximity to commit)
-4. Project root — any `verify-*.png` files captured during review
-5. Git diff images: `git show <commit> --name-only | grep -E '\.(png|jpg|gif)$'`
+4. Git diff images: `git show <commit> --name-only | grep -E '\.(png|jpg|gif)$'`
+
+Do **not** treat a loose PNG at the project root as a source — a stray root PNG is junk that `actions/stray-check.md` flags, not an asset to pull in.
 
 Classify found images:
 
