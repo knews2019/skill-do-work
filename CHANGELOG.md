@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.13 — The Bracket Insertion (2026-05-30)
+
+REQ-006 was captured with `depends_on: REQ-001` (scalar) instead of `depends_on: [REQ-001]` (list). The schema at `actions/work.md:160` and `actions/capture.md:92` defines this field as a YAML sequence, so the scalar form would silently bypass dependency gating and let REQ-006 run before REQ-001 lands. Caught by Codex review on PR #115.
+
+- `do-work/queue/REQ-006.md` frontmatter: `depends_on` now uses list form.
+
 ## 0.83.12 — The Sentinel Promoted (2026-05-29)
 
 `crew-members/security.md` is now a first-class crew rule, not a loading-model orphan. REQ-004 from the self-review queue — user chose Path A (promote to crew) over Path B (demote to checklist).
