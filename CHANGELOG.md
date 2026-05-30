@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.12 — The Sentinel Promoted (2026-05-29)
+
+`crew-members/security.md` is now a first-class crew rule, not a loading-model orphan. REQ-004 from the self-review queue — user chose Path A (promote to crew) over Path B (demote to checklist).
+
+- `actions/work.md` Schema Read Contract enum now includes `security` (and formalizes `testing`, which was already de facto a domain via `testing.md`'s JIT trigger).
+- New Step 6 substep 4a loads `crew-members/security.md` on `domain: security` OR on a keyword match against auth/crypto/session/secrets/input-validation/OWASP surfaces — heuristic, lean-toward-loading.
+- CLAUDE.md Agent Rules section now lists `security.md` next to `testing.md`.
+- `crew-members/security.md` JIT_CONTEXT rewritten to point at CLAUDE.md as the canonical loading reference instead of re-describing the rule.
+
 ## 0.83.11 — The Injection Guard (2026-05-29)
 
 Added `crew-members/prompt-injection.md` and wired it into the five ingestion paths surfaced by the self-review: capture, bkb ingest, dream, kb-lessons-handoff, and prompts run. REQ-009 from the self-review queue — the second Important security finding.
