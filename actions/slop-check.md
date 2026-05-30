@@ -1,6 +1,6 @@
 # Slop Check Action
 
-> **Part of the do-work skill.** Validates a human-facing artifact against the anti-slop principles before it ships. Read-only by default — flags findings, offers a rewrite, never auto-applies.
+> **Part of the do-work skill.** Validates a human-facing artifact against the anti-slop principles before it ships. Read-only by default — flags findings, offers a rewrite, never auto-applies. User-facing walkthrough: [`docs/slop-check-guide.md`](../docs/slop-check-guide.md).
 
 **Source-of-truth principles** live in `crew-members/anti-slop.md`. This action loads that file and runs each principle as an explicit check against the target artifact. The crew-member is *what* to enforce; this action is *how* to inspect a specific draft.
 

@@ -320,7 +320,7 @@ After capturing, write `session/sources/manifest.md`:
 {
   "concept": "short concept name",
   "seed_summary": "1-2 sentence summary of the seed",
-  "session_dir": "deep-explore-<slug>-<timestamp>",
+  "session_dir": "do-work/runs/deep-explore-<slug>-<timestamp>",
   "status": "active | complete",
   "research_mode": "pre-session | on-demand | none",
   "created_at": "ISO 8601 timestamp",

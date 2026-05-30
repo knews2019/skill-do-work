@@ -6,6 +6,84 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.83.13 — The Bracket Insertion (2026-05-30)
+
+REQ-006 was captured with `depends_on: REQ-001` (scalar) instead of `depends_on: [REQ-001]` (list). The schema at `actions/work.md:160` and `actions/capture.md:92` defines this field as a YAML sequence, so the scalar form would silently bypass dependency gating and let REQ-006 run before REQ-001 lands. Caught by Codex review on PR #115.
+
+- `do-work/queue/REQ-006.md` frontmatter: `depends_on` now uses list form.
+
+## 0.83.12 — The Sentinel Promoted (2026-05-29)
+
+`crew-members/security.md` is now a first-class crew rule, not a loading-model orphan. REQ-004 from the self-review queue — user chose Path A (promote to crew) over Path B (demote to checklist).
+
+- `actions/work.md` Schema Read Contract enum now includes `security` (and formalizes `testing`, which was already de facto a domain via `testing.md`'s JIT trigger).
+- New Step 6 substep 4a loads `crew-members/security.md` on `domain: security` OR on a keyword match against auth/crypto/session/secrets/input-validation/OWASP surfaces — heuristic, lean-toward-loading.
+- CLAUDE.md Agent Rules section now lists `security.md` next to `testing.md`.
+- `crew-members/security.md` JIT_CONTEXT rewritten to point at CLAUDE.md as the canonical loading reference instead of re-describing the rule.
+
+## 0.83.11 — The Injection Guard (2026-05-29)
+
+Added `crew-members/prompt-injection.md` and wired it into the five ingestion paths surfaced by the self-review: capture, bkb ingest, dream, kb-lessons-handoff, and prompts run. REQ-009 from the self-review queue — the second Important security finding.
+
+- New crew rule encodes five principles, eight common redirection patterns, and a four-step what-to-do-when-detected procedure.
+- Each ingestion-path action JIT-loads the crew rule and carries a Red Flag entry naming the threat in detection-friendly terms.
+- `prompts run` now resolves from `<skill-root>/prompts/` by default; project-local `prompts/` directories require an explicit confirmation prompt before adoption.
+- CLAUDE.md Agent Rules section lists the new crew file with its triggers.
+
+## 0.83.10 — The Guide Trio (2026-05-29)
+
+Wrote user-facing guides for the three biggest actions that didn't have them. REQ-011 from the self-review queue — user chose Path A (write all three) over the mixed recommendation.
+
+- `docs/dream-guide.md` — the four phases, the Phase 2.5 consent gate, what Phase 3 actually writes.
+- `docs/ai-report-guide.md` — HTML + sibling assets, screenshot → SVG/Mermaid fallback, before/after toggle.
+- `docs/slop-check-guide.md` — the seven anti-slop principles in plain language, the rewrite-mode flow.
+- Each action's description blockquote now links its guide.
+
+## 0.83.9 — The Dream Gate (2026-05-29)
+
+Added a Phase 2.5 consent gate to `dream`. Phase 3 (the destructive one) can no longer fire without an explicit preview-then-confirm round. The single-bit `do-work dream` invocation token is no longer enough to consent to wiki deletions. REQ-008 from the self-review queue — the highest-impact security finding in the self-review.
+
+- New `### Step 3.5: Phase 2.5 — Preview & Confirm` prints the worklist then asks `Apply these N fixes? [all / dry-run / specific clusters / none]`. Ambiguous responses default to `dry-run` — never escalate to `all` on uncertainty.
+- New `--dry-run` mode token previews without writing; Step 5 (Phase 4) short-circuits writes when dry-run was chosen and only releases the lock.
+- New Rule (`Phases 1–2 must produce a visible worklist before Phase 3 may begin`), two new Common Rationalizations rows, two new Red Flags, two new Verification Checklist items — defense-in-depth against gate-skipping shortcuts.
+
+## 0.83.8 — The Runs Convention (2026-05-29)
+
+`deep-explore` session directories now live under `do-work/runs/`, matching the `crew-members/background-agents.md` durability convention the action already claimed to follow. REQ-007 from the self-review queue.
+
+- New sessions write to `do-work/runs/deep-explore-<slug>-<ts>/` instead of the project root.
+- `continue` mode searches `do-work/runs/` first and falls back to the legacy project-root path for one release with a deprecation warning.
+- Schema example in `actions/deep-explore-reference.md` updated to match.
+
+## 0.83.7 — The Slop Roster (2026-05-29)
+
+Added `ai-report` to the anti-slop loading lists in CLAUDE.md and `crew-members/anti-slop.md`'s JIT_CONTEXT comment. The list now matches the actual caller set (`grep -l 'anti-slop' actions/*.md`). REQ-003 from the self-review queue.
+
+## 0.83.6 — The Sample Refresh (2026-05-29)
+
+Refreshed `actions/sample-archived-req.md` — the canonical schema example — to match the current capture/work frontmatter contract. REQ-010 from the self-review queue.
+
+- Added `domain: frontend`, `tdd: true`, and `user_request: UR-004` to the frontmatter.
+- Inserted a `## Red-Green Proof` section (mandatory when `tdd: true`) after `## What`.
+- Added `Red-green validation:` evidence rows inside `## Testing` linking the RED case to the test that proves GREEN.
+
+## 0.83.5 — The Bare Name (2026-05-29)
+
+Fixed the lone bare-name cross-reference in `actions/capture.md:63` — `review-work.md` → `actions/review-work.md` — to align with CLAUDE.md's cross-reference rule. REQ-002 from the self-review queue.
+
+## 0.83.4 — The Priority Cleanup (2026-05-29)
+
+Fixed two off-by-one cross-references in SKILL.md's Verb Reference table — the `ui-review` and `review-work` rows pointed at "priority 4" (work) instead of "priority 5" (verify). Surfaced by REQ-005 from the self-review queue.
+
+- Hand-audited every `grep -nE 'priority [0-9]+' SKILL.md` hit against the routing table — no other off-by-ones remain.
+
+## 0.83.3 — The Self Review (2026-05-29)
+
+Ran the skill's own `code-review` action against the whole repo and captured the actionable findings as queue items so they can move through the normal pipeline.
+
+- Added 11 follow-up REQs (REQ-001…011) to `do-work/queue/` from a full-repo review: split the oversized `work.md` into an orchestrator + reference companion, gate `dream.md`'s destructive phase behind a preview/confirm step, add prompt-injection guardrails to the five ingestion paths, fix SKILL.md routing-priority typos, replace brittle step-number coupling with named contracts, and more.
+- These are development to-do items for the skill itself — captured intent, not shipped behavior changes.
+
 ## 0.83.2 — The Loose Ends (2026-05-29)
 
 Polish pass closing the remaining minor findings from the background-agents code review.

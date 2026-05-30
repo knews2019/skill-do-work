@@ -1,6 +1,6 @@
 # AI Report Action
 
-> **Part of the do-work skill.** Generates an HTML report of a completed feature — live screenshots with SVG callout annotations, before/after toggles, and Mermaid/SVG diagrams as a fallback when screenshots aren't available. Output is one HTML file plus a sibling `.assets/` folder of image binaries, both in `ai-reports/` in the project root.
+> **Part of the do-work skill.** Generates an HTML report of a completed feature — live screenshots with SVG callout annotations, before/after toggles, and Mermaid/SVG diagrams as a fallback when screenshots aren't available. Output is one HTML file plus a sibling `.assets/` folder of image binaries, both in `ai-reports/` in the project root. User-facing walkthrough: [`docs/ai-report-guide.md`](../docs/ai-report-guide.md).
 
 The report exists to make a UI change **visible**: a stakeholder opens one HTML file and sees the literal pixels that changed, where they changed, and how to verify it themselves. Not a brief. Not a debrief. A pixel-anchored proof-of-work artifact.
 

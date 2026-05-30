@@ -64,11 +64,12 @@ Triggered when `$ARGUMENTS` starts with **"continue"**.
 **Resolving the session directory:**
 
 1. **Path given and exists** — use it directly as the session directory.
-2. **Keyword given (not a path)** — search the project root for directories matching `deep-explore-*<keyword>*`:
+2. **Keyword given (not a path)** — search `do-work/runs/` for directories matching `deep-explore-*<keyword>*`:
    - **Single match** → use it directly.
    - **Multiple matches** → present matches to the user and let them choose.
-   - **No matches** → ask the user for clarification.
-3. **Nothing found** — stop and ask.
+   - **No matches** → fall through to the legacy back-compat search below.
+3. **Legacy back-compat search** — if `do-work/runs/` returned no match, search the project root for `deep-explore-*<keyword>*` (the pre-0.83.8 location). If found, use it and warn the user: `⚠ Session at legacy project-root path; new sessions will write under do-work/runs/. Consider moving this session there.` This branch is scheduled for removal one release after 0.83.8.
+4. **Nothing found** — stop and ask.
 
 **Once resolved:**
 
@@ -102,12 +103,14 @@ If `$ARGUMENTS` is a file path, read the file as the seed.
 
 #### Create the directory
 
-Each session gets a unique, timestamped directory at the project root:
+Each session gets a unique, timestamped directory under `do-work/runs/` (the shared fan-out convention from `crew-members/background-agents.md` — keeps session state visible to `forensics` / `cleanup` and out of the project root):
 
 ```bash
-SESSION_DIR="deep-explore-$(echo '<concept-slug>' | tr ' ' '-' | tr '[:upper:]' '[:lower:]')-$(date +%Y%m%d-%H%M%S)"
+SESSION_DIR="do-work/runs/deep-explore-$(echo '<concept-slug>' | tr ' ' '-' | tr '[:upper:]' '[:lower:]')-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$SESSION_DIR"/session/sources "$SESSION_DIR"/session/idea-reports "$SESSION_DIR"/session/briefs "$SESSION_DIR"/session/research
 ```
+
+`do-work/runs/` is gitignored by the shipped `.gitignore` — session state is transient. The Writer step still writes its outputs (VISION, briefs, idea-reports) inside the session dir; if a session's output should persist, copy the relevant artifact out before the directory is reclaimed.
 
 #### Capture sources
 

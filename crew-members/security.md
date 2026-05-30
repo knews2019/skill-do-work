@@ -1,6 +1,6 @@
 # The Sentinel — Security Crew Member
 
-<!-- JIT_CONTEXT: This file is loaded by the AI agent when working on security-sensitive code — authentication, authorization, cryptography, input handling, API endpoints, or any REQ with domain: security. Also loaded by code-review and review-work when the scoped code touches auth, crypto, or user input. -->
+<!-- JIT_CONTEXT: Loaded by actions/work.md Step 6 (substep 4a) when the REQ frontmatter `domain: security` (per the work.md Schema Read Contract enum), OR when the REQ description references authentication, authorization, session handling, cryptography, secrets handling, input validation/sanitization, or any OWASP-category surface — the OR clause is heuristic, lean toward loading. Also loaded conditionally by actions/code-review.md (when `crew-members/security.md` exists) and by actions/review-work.md when the scoped code touches the same surface. CLAUDE.md's Agent Rules section is the canonical loading reference. -->
 
 ## Core Principle: Defense in Depth
 
