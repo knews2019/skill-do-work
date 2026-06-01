@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.85.2 — The Forwarding Address (2026-06-01)
+
+Cleanup after the `work.md` split (0.84.0): two crew-member rule files still pointed at `work.md` for content that moved to `work-reference.md`. Repointed them so an agent loading the rules lands on the file that actually holds the table.
+
+- `crew-members/security.md`: JIT_CONTEXT now cites the Schema Read Contract in `actions/work-reference.md` (was `work.md`).
+- `crew-members/debugging.md`: the escalation step now points at the **Failure Classification (Step 8)** table in `actions/work-reference.md` (was "the failure table in work.md Step 8", which now only forwards). (REQ-001)
+
 ## 0.85.1 — The Permanent Marker (2026-06-01)
 
 Notes graduate from sticky to permanent: `do-work/notes.md` is now part of the committable Trail of Intent (like URs and REQs), not working-tree scratch. The old "it's gitignored" line was false in installed repos — where `do-work/` is meant to be committed — so a teammate would never have seen your notes, and you might commit a file the skill swore you wouldn't. Plus a first-run crash fix.
