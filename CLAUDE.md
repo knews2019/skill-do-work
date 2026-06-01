@@ -10,7 +10,8 @@ next-steps.md         # Per-action next-step suggestions (referenced by SKILL.md
 README.md             # Installation + quick usage guide
 actions/              # Action files (each is a standalone prompt)
   capture.md          # Capture new requests → UR folders + REQ files
-  work.md             # Process the queue — triage, plan, build, test, review
+  work.md             # Process the queue — triage, plan, build, test, review (orchestrator; heavy templates in work-reference.md)
+  work-reference.md   # Companion to work.md — full frontmatter schema, Schema Read Contract, step/exit templates, failure classification, commit + checkpoint procedures
   clarify.md          # Batch-review pending questions from completed work
   verify-requests.md  # Quality-check captured REQs against original input
   review-work.md      # Post-work code review + acceptance testing
@@ -137,7 +138,7 @@ Action files follow a consistent structure. When adding or modifying actions, us
 - **State-based actions** (`version.md`, `pipeline.md`) — Response sections keyed by input type instead of sequential steps.
 - **Checklist-based diagnostics** (`forensics.md`) — Use a `## Checks` section with independently-runnable items instead of ordered `## Steps`. Each check is a diagnostic probe, not a sequential step.
 
-Cross-reference other actions by their **file path** (e.g., `actions/work.md`, or `actions/work.md`'s Schema Read Contract) so an agent reading the file can open the target directly without resolving a name to a path. Companion reference files take a path too (`actions/interview-reference.md`, `actions/bkb-reference.md`). The one exception is a `do-work <verb>` **command invocation** (`do-work run`, `do-work clarify`) — that's how an action is *run*, not a pointer to its file, so keep it as a command. SKILL.md remains the authoritative name→path mapping and may use short names in its routing prose.
+Cross-reference other actions by their **file path** (e.g., `actions/work.md`, or `actions/work-reference.md`'s Schema Read Contract) so an agent reading the file can open the target directly without resolving a name to a path. Companion reference files take a path too (`actions/interview-reference.md`, `actions/bkb-reference.md`). The one exception is a `do-work <verb>` **command invocation** (`do-work run`, `do-work clarify`) — that's how an action is *run*, not a pointer to its file, so keep it as a command. SKILL.md remains the authoritative name→path mapping and may use short names in its routing prose.
 
 ### Prescribed Shell Commands Must Surface What the Steps Consume
 
@@ -154,7 +155,7 @@ Domain-specific rules live in `crew-members/[domain].md`. Each file has a `JIT_C
 
 - `general.md` — always loaded during implementation (Step 6), regardless of domain
 - `karpathy.md` — always loaded during implementation (Step 6); Karpathy-inspired behavioral guardrails (think before coding, simplicity, surgical changes, goal-driven execution)
-- `[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists (e.g., `backend.md`, `frontend.md`, `ui-design.md`); domain is normalized against the canonical enum (`actions/work.md` Schema Read Contract) and falls back to `general` when unknown
+- `[domain].md` — loaded when the REQ's `domain` frontmatter matches and the file exists (e.g., `backend.md`, `frontend.md`, `ui-design.md`); domain is normalized against the canonical enum (`actions/work-reference.md` Schema Read Contract) and falls back to `general` when unknown
 - `testing.md` — loaded when `tdd: true` or `domain: testing`, and alongside debugging.md after 2+ test failures
 - `security.md` — loaded when REQ frontmatter `domain: security`, OR when the REQ description references authentication, authorization, session handling, cryptography, secrets handling, input validation/sanitization, or any OWASP-category surface. Also loaded by `actions/code-review.md` when the scoped code touches the same surface. The OR clause is heuristic — when in doubt, load it (cost is low; cost of skipping on real security work is high).
 - `caveman.md` — loaded when `caveman` frontmatter is set (truthy value or intensity: `lite`, `full`, `ultra`); compresses agent prose ~65-75% while keeping code and technical terms exact. Adapted from [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman)

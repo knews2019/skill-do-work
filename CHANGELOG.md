@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.85.3 — The Missing Entry (2026-06-01)
+
+Maintainer-doc hygiene after the `work.md` split (0.84.0): `CLAUDE.md`'s Project Structure tree never listed `work-reference.md`, and two references still attributed the Schema Read Contract to `work.md`. No effect on installed repos — `CLAUDE.md` is the authoring doc, not shipped runtime — but the canonical inventory should match reality.
+
+- `CLAUDE.md` tree: added `work-reference.md` (the only companion that was missing) and noted `work.md` is now an orchestrator.
+- `CLAUDE.md`: repointed two Schema Read Contract mentions to `actions/work-reference.md`. (REQ-001)
+
 ## 0.85.2 — The Forwarding Address (2026-06-01)
 
 Cleanup after the `work.md` split (0.84.0): two crew-member rule files still pointed at `work.md` for content that moved to `work-reference.md`. Repointed them so an agent loading the rules lands on the file that actually holds the table.
