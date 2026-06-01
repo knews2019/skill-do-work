@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.85.1 — The Permanent Marker (2026-06-01)
+
+Notes graduate from sticky to permanent: `do-work/notes.md` is now part of the committable Trail of Intent (like URs and REQs), not working-tree scratch. The old "it's gitignored" line was false in installed repos — where `do-work/` is meant to be committed — so a teammate would never have seen your notes, and you might commit a file the skill swore you wouldn't. Plus a first-run crash fix.
+
+- `note.md` reframed: the file is committed with the rest of `do-work/`; the *action* still runs no git command itself — you commit notes in your normal flow.
+- First-run fix: `note` now `mkdir -p do-work/` before appending, so jotting a note as the very first do-work command in a fresh repo no longer fails.
+- `roadmap`'s `## Notes` example now reads oldest-first, matching the documented append order. (REQ-012, UR-001)
+
 ## 0.85.0 — The Sticky Note (2026-06-01)
 
 New `do-work note "<text>"` command for the thoughts that don't deserve a whole REQ — "investigate xyz next", "check Y before running". It appends a dated line to `do-work/notes.md`, and `do-work roadmap` now surfaces those notes at the top of its survey. Delete a line by hand when it's resolved; there's no ceremony.

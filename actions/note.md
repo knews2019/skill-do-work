@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Invoked when the user wants to jot a lightweight, dated next-step note without going through capture. Appends one line to `do-work/notes.md`; `do-work roadmap` surfaces those lines at the top of its survey.
 
-A note is **not** a REQ. It has no frontmatter, no schema, no RED/GREEN proof, no domain, and triggers no implementation. It is an ephemeral hint — "look at X next", "check Y before running", "revisit after Z lands" — that the user deletes directly from `do-work/notes.md` when it's no longer relevant. There is no delete command and no archival: the file is plain text the user edits by hand.
+A note is **not** a REQ. It has no frontmatter, no schema, no RED/GREEN proof, no domain, and triggers no implementation. It is a lightweight hint — "look at X next", "check Y before running", "revisit after Z lands" — that the user deletes directly from `do-work/notes.md` when it's no longer relevant. There is no delete command and no archival: the file is plain text the user edits by hand.
 
 ## When to Use
 
@@ -38,7 +38,7 @@ If `$ARGUMENTS` is empty after stripping, do not write an empty note — print t
 ### Step 2: Append the dated line
 
 1. Resolve today's date as `YYYY-MM-DD` (e.g. via `date +%F`).
-2. If `do-work/notes.md` does not exist, create it (the file is a plain list — no header, no frontmatter).
+2. Ensure the `do-work/` directory exists first (`mkdir -p do-work/`) — it may be absent if `note` is the first do-work command run in a fresh repo — then create `do-work/notes.md` if it isn't there yet (the file is a plain list — no header, no frontmatter).
 3. Append a single line: `- [YYYY-MM-DD] <text>`.
 
 Do not deduplicate, sort, or reformat existing lines — only append. The file stays in chronological (append) order; the user curates it by hand.
@@ -54,7 +54,7 @@ Noted → do-work/notes.md
 (Surfaces at the top of `do-work roadmap`. Delete the line from do-work/notes.md when it's no longer relevant.)
 ```
 
-Do **not** create a UR or REQ, do not move into the work loop, and do not commit — notes are ephemeral user data and `do-work/notes.md` is intentionally outside the committed pipeline.
+Do **not** create a UR or REQ, do not move into the work loop, and do not run a commit from this action — appending the line is the whole job. `do-work/notes.md` is itself part of the committable Trail of Intent (like URs and REQs); the user commits it in their normal flow, whenever they choose.
 
 ## Output Format
 
@@ -66,7 +66,7 @@ Do **not** create a UR or REQ, do not move into the work loop, and do not commit
 - **A note is not a task.** Never let a note kick off capture, work, or a commit.
 - **Append-only.** Don't rewrite, sort, or dedupe existing lines — the user owns the file's contents.
 - **No frontmatter, no header.** `do-work/notes.md` is a flat list so `roadmap`'s render is trivial (one `## Notes` line per file line).
-- **Don't commit `do-work/notes.md`.** It's ephemeral and `do-work/` is gitignored; leave it as working-tree-only.
+- **The action never commits; the file is committable.** `do-work note` only appends — it runs no git command. `do-work/notes.md` is committed alongside the rest of `do-work/` (the Trail of Intent); only `do-work/pipeline.json` and `do-work/runs/` are gitignored. On a merge conflict it's append-only, so keep both sides.
 - **Empty input is a no-op** with usage, not an empty `- [date]` line.
 
 ## Common Rationalizations
@@ -81,7 +81,7 @@ Do **not** create a UR or REQ, do not move into the work loop, and do not commit
 
 - A UR or REQ folder/file was created by a `do-work note` invocation (note must never enter the capture pipeline).
 - `do-work/notes.md` gained frontmatter, a header, or reordered lines (should be append-only flat list).
-- The note action committed anything (notes are working-tree-only).
+- The note action ran `git commit` (or any git write) itself — it must only append; the user commits `do-work/notes.md` in their own flow.
 
 ## Verification Checklist
 

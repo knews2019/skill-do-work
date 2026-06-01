@@ -140,8 +140,8 @@ Render the report per the Output Format below. Lead with the actionable section 
 
 *(Rendered only when `do-work/notes.md` is non-empty — lightweight next-step hints from `do-work note`, in append order. Omit the whole section when there are no notes. These are user hints, not REQs — surface them, don't classify or act on them.)*
 
-- [2026-06-01] investigate prototype xyz.html
 - [2026-05-30] check the cache TTL before the next perf run
+- [2026-06-01] investigate prototype xyz.html
 
 ## Ready to Pick Up
 
