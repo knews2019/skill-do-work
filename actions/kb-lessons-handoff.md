@@ -1,6 +1,6 @@
 # KB Lessons Handoff
 
-> **Part of the do-work skill.** Reusable handoff instructions called by actions/work.md (Step 7.5) and actions/review-work.md (Step 9.5). Offers to promote a REQ's `## Lessons Learned` into the project's knowledge base by dropping a source file into `kb/raw/inbox/` for the next `bkb triage` + `bkb ingest` cycle.
+> **Part of the do-work skill.** Reusable handoff instructions called by actions/work.md's Lessons-Capture Phase and actions/review-work.md's Self-Validation & Lessons Learned step. Offers to promote a REQ's `## Lessons Learned` into the project's knowledge base by dropping a source file into `kb/raw/inbox/` for the next `bkb triage` + `bkb ingest` cycle.
 
 This file is not a standalone action — it is loaded by other actions as a reference. If you reached this file directly, you probably want actions/review-work.md instead.
 

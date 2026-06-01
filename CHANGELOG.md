@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.84.1 — The Named Handoff (2026-06-01)
+
+Action files used to point at `work.md` by internal step number ("work.md's Step 9 commits…") — brittle the moment steps get renumbered. Promoted the two load-bearing handoff points to named contracts (**Lessons-Capture Phase**, **Commit Phase**) and switched every caller to reference them by name.
+
+- `work.md` Step 7.5 and Step 9 headings now carry the phase name + a "Named entry point" annotation.
+- Callers in `kb-lessons-handoff.md`, `review-work.md`, and `commit.md` reference the phases by name.
+- Swept the rest of the repo: `capture.md`, `roadmap.md`, and `CLAUDE.md` step-number references to work.md are now by-name too, so `grep 'work.md.*Step N'` is clean outside work.md's own internal navigation. (REQ-006)
+
 ## 0.84.0 — The Lean Orchestrator (2026-06-01)
 
 `actions/work.md` was the longest file in the repo (1,074 lines) and it's read on every `do-work run`. Split it the way `bkb`/`interview` are split — a lean 631-line orchestrator plus a new `actions/work-reference.md` companion holding the heavy templates, tables, and sub-procedures. Same instructions, less to load.

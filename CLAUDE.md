@@ -171,7 +171,7 @@ Pending REQ files live in `do-work/queue/`. When referencing the queue in action
 
 ## Lessons → Knowledge Base Handoff
 
-do-work ships its own knowledge-base system (see the bkb action). After a REQ's review passes and `## Lessons Learned` is captured, the review-work action (Step 9.5, standalone mode) and the work action (Step 7.5, pipeline mode) both run the kb-lessons-handoff reference to offer promoting the lessons into the project's KB.
+do-work ships its own knowledge-base system (see the bkb action). After a REQ's review passes and `## Lessons Learned` is captured, the review-work action's Self-Validation & Lessons Learned step (standalone mode) and the work action's Lessons-Capture Phase (pipeline mode) both run the kb-lessons-handoff reference to offer promoting the lessons into the project's KB.
 
 The handoff is pure do-work — zero external dependency. It drops a structured Markdown source document into `<kb>/raw/inbox/` and lets the existing bkb pipeline (`triage` → `ingest`) compile it into the wiki. If no `kb/` exists, the handoff defers to `pending` and points the user at `do-work bkb init`. It never blocks archival.
 
