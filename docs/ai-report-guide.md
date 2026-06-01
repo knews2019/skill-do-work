@@ -25,7 +25,7 @@ The HTML references images by relative `src`, so moving the pair together keeps 
 | Available | Report includes |
 |-----------|-----------------|
 | Live dev server + `playwright-cli` (bowser) | Live screenshots before/after, with SVG callout overlays |
-| Saved before/after assets in `do-work/user-requests/UR-NNN/assets/` or `do-work/working/` or root `verify-*.png` | Side-by-side comparison from the saved assets |
+| Saved before/after assets in `do-work/archive/UR-NNN/assets/` (the common case after cleanup), `do-work/user-requests/UR-NNN/assets/`, `do-work/working/`, or images in the feature commit's diff | Side-by-side comparison from the saved assets |
 | Nothing | Falls back to SVG architecture + Mermaid data-flow diagrams. The report still ships. |
 
 The action picks the highest-fidelity option it can run. A bowser-less environment still produces a usable report — just with diagrams instead of screenshots.

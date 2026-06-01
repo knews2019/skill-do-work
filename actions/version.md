@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.85.3
+**Current version**: 0.86.0
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -82,9 +82,9 @@ When user asks "check for updates", "update", or "is there a newer version":
    Do NOT delete files in `prompts/` or `interviews/` subdirectories — only the top-level `.md` files are globbed. Do NOT touch `do-work/` or any other runtime directory.
 5. **Run the update in place at `<skill-root>`** (the project-local path confirmed in step 2). `cd` there first so the extraction cannot land in a global directory by mistake:
    ```
-   cd <skill-root> && curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
+   cd <skill-root> && curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev' --exclude='do-work' --exclude='ai-reports'
    ```
-   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. For non-discoverable directories (`actions/`, `crew-members/`, `specs/`, `docs/`, `decisions/`) leftovers are harmless — the skill only loads files it references by name. For `prompts/` and `interviews/`, the pre-clean step above is what prevents ghost entries; if you skipped it, run `do-work prompts list` and `do-work interview list` after updating and delete anything that looks obsolete. Never delete `do-work/` (runtime state).
+   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. The `--exclude='do-work' --exclude='ai-reports'` flags keep the upstream repo's own dev queue/archive and sample reports from landing in this install — belt-and-suspenders with the repo's `.gitattributes export-ignore`, which already strips them from the tarball (the flags also cover older tarballs built before that file existed). For non-discoverable directories (`actions/`, `crew-members/`, `specs/`, `docs/`, `decisions/`) leftovers are harmless — the skill only loads files it references by name. For `prompts/` and `interviews/`, the pre-clean step above is what prevents ghost entries; if you skipped it, run `do-work prompts list` and `do-work interview list` after updating and delete anything that looks obsolete. Never delete `do-work/` (runtime state).
 6. **Verify**: Read `<skill-root>/actions/version.md` again and confirm the local version now matches the remote version.
 7. **Report result**: `Updated to v{remote} at <skill-root>.`
 
@@ -108,7 +108,7 @@ Attempt the update anyway using the curl command above (still respecting the pre
 To manually update, cd into the **project-local** skill root (where SKILL.md lives inside *this* project — NOT ~/.claude/skills/, ~/.gemini/skills/, or any other global skills directory) and run:
 
 cd <project-root>/path/to/skill-do-work
-curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
+curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev' --exclude='do-work' --exclude='ai-reports'
 
 Or visit: https://github.com/knews2019/skill-do-work
 ```

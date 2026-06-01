@@ -1,0 +1,13 @@
+# Dev-only paths kept in this repo for the maintainer's own history/tooling but
+# excluded from the distributed archive. GitHub's tarball download and `git archive`
+# honor export-ignore, so these never ship to a consuming repo.
+#
+# Without this, `do-work update` (curl | tar of the main-branch tarball) would extract
+# the maintainer's own queue/archive and sample reports into a consumer's skill
+# directory. They land in the wrong place (nested under the skill dir, not the
+# consumer's project root) so they don't corrupt anything, but they're shipped clutter.
+# The install/update tar command also passes --exclude for do-work/ai-reports as a
+# belt-and-suspenders fallback for tarballs built before this file existed.
+/do-work      export-ignore
+/ai-reports   export-ignore
+/.vscode      export-ignore

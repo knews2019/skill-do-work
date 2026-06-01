@@ -30,6 +30,24 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
    from colliding on one directory (if it somehow already exists, append a short
    numeric suffix). Nothing should be spawned before this directory exists.
 
+   Then ensure this transient state is ignored **regardless of install layout**. The
+   shipped `.gitignore` only covers `do-work/runs/` when do-work is extracted at the
+   project root; in a nested `.claude/skills/do-work/` install it sits in a subdirectory
+   and cannot reach the project-root `do-work/`. So append the path to the enclosing
+   repo's `.git/info/exclude` (local-only — never committed, never shipped) whenever it
+   isn't already ignored:
+
+   ```bash
+   git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+   [ -n "$git_root" ] && { git check-ignore -q do-work/runs/ 2>/dev/null || echo 'do-work/runs/' >> "$git_root/.git/info/exclude"; }
+   ```
+
+   `git check-ignore -q` already succeeds when *any* ignore source covers the path (a
+   root-extract install's shipped `.gitignore`, or the host project's own rules), so the
+   append only fires when genuinely needed and never duplicates. Use `.git/info/exclude`,
+   **not** the project's committable `.gitignore` — run state is local-only and the host
+   project shouldn't carry a committed ignore rule for it.
+
 2. **Each sub-agent writes its own findings file; returns only a one-line
    status.** Give every sub-agent an output path inside the run directory (e.g.
    `<slice>.md`). The agent writes its *full* findings to that file and returns

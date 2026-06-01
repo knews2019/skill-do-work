@@ -6,7 +6,7 @@ A task queue skill for agentic coding tools. Capture requests fast, process them
 
 ```bash
 # Run from the directory where you want the skill installed
-curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev'
+curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev' --exclude='do-work' --exclude='ai-reports'
 ```
 
 **Updating:** Re-run the same command to update. Note that tar extraction overwrites but does not delete files removed upstream — stale files from older versions may linger (generally harmless). For a fully clean update, delete only the known skill paths (`SKILL.md`, `actions/`, `crew-members/`, `prompts/`, `interviews/`, `specs/`, `docs/`, `decisions/`, `hooks/`, `CLAUDE.md`, `AGENTS.md`, `CHANGELOG.md`, `README.md`, `next-steps.md`) before re-extracting — never delete `do-work/` or other project files.

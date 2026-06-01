@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.86.0 — The Local Exclude (2026-06-02)
+
+Transient run and pipeline state now stays untracked no matter how do-work is installed — including the nested `.claude/skills/do-work/` layout, where the shipped `.gitignore` sits too deep to reach the project-root `do-work/`. The installer also stops shipping the maintainer's own queue and reports into your repo. Bundled with a supply-chain tightening for `prompts run` and a stale ai-report guide fix.
+
+- Every action that creates `do-work/runs/` (code-review, deep-explore, and the `background-agents.md` durability pattern) and the pipeline state file now appends the path to the enclosing repo's `.git/info/exclude` (local-only — never committed, never shipped) when it isn't already ignored, instead of relying on a shipped `.gitignore` a nested install can't reach. `pipeline.md` no longer writes to or creates the project's committable `.gitignore`.
+- Install/update no longer ships dev-only state into consumers: a new `.gitattributes` marks `do-work/`, `ai-reports/`, and `.vscode/` as `export-ignore`, and the install/update tar command (`README.md`, `actions/version.md`) adds `--exclude='do-work' --exclude='ai-reports'`. Previously the repo's own `do-work/archive/*` REQs and a sample `ai-reports/*.html` were tracked but not export-ignored, so `do-work update` extracted them into the consumer's skill directory (harmless location, but clutter). They stay in the dev repo's history; they no longer travel in the tarball.
+- `prompts run <name>`: the project-local trust check now compares the resolved cwd against the resolved skill-root, not "does the cwd contain any `SKILL.md`" — so a different skill's repo (or a decoy `SKILL.md`) can no longer bypass the project-local confirmation gate.
+- `docs/ai-report-guide.md`: the asset-source row drops the now-forbidden root `verify-*.png` and lists `do-work/archive/UR-NNN/assets/` first, matching `actions/ai-report.md` Step 3a.
+
 ## 0.85.3 — The Missing Entry (2026-06-01)
 
 Maintainer-doc hygiene after the `work.md` split (0.84.0): `CLAUDE.md`'s Project Structure tree never listed `work-reference.md`, and two references still attributed the Schema Read Contract to `work.md`. No effect on installed repos — `CLAUDE.md` is the authoring doc, not shipped runtime — but the canonical inventory should match reality.

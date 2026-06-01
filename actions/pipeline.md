@@ -113,7 +113,12 @@ Pipeline state lives at `do-work/pipeline.json`. Created on initialize, read on 
    - All 6 steps set to `status: "pending"`
    - `active: true`
    - `started_at` set to current ISO 8601 timestamp
-4. **Exclude state file from git**: If a `.gitignore` exists in the project root and doesn't already contain `do-work/pipeline.json`, append it. If no `.gitignore` exists, create one containing `do-work/pipeline.json`. The state file is transient session state and should not be committed.
+4. **Exclude state file from git**: Ensure `do-work/pipeline.json` is ignored regardless of install layout by appending it to the enclosing repo's `.git/info/exclude` (local-only — never committed, never shipped) when it isn't already ignored. Do **not** touch the project's committable `.gitignore`: a root-extract install's shipped `.gitignore` can't reach `do-work/pipeline.json` from a nested `.claude/skills/do-work/` install, and the host project shouldn't carry a committed ignore rule for transient state.
+
+   ```bash
+   git_root=$(git rev-parse --show-toplevel 2>/dev/null)
+   [ -n "$git_root" ] && { git check-ignore -q do-work/pipeline.json 2>/dev/null || echo 'do-work/pipeline.json' >> "$git_root/.git/info/exclude"; }
+   ```
 5. Print the initial status block
 6. Proceed to Step 4 (execute first step: `investigate`)
 
@@ -524,7 +529,7 @@ pipeline — full end-to-end orchestration
 - **Write state before dispatch.** Always update `pipeline.json` to `"in-progress"` before dispatching an action, and to `"done"` after it completes. This ensures the state file reflects reality even if the session ends unexpectedly.
 - **The `run` step may be long.** actions/work.md processes only this pipeline's captured REQs but may still take significant time for complex requests. When starting this step, note: "Starting queue processing — this may take a while if multiple REQs are pending."
 - **Platform-agnostic.** No tool-specific APIs. Dispatch actions the same way the main router does. If your environment supports stop hooks, you can optionally install `hooks/pipeline-guard.sh` to prevent accidental stops mid-pipeline — but the pipeline works without it.
-- **Do not commit the state file.** `do-work/pipeline.json` is transient session state. It tracks a single pipeline run and has no value after completion. Ensure it is in `.gitignore`.
+- **Do not commit the state file.** `do-work/pipeline.json` is transient session state. It tracks a single pipeline run and has no value after completion. It's excluded from git at initialize via the enclosing repo's `.git/info/exclude` (Step 4 of the New Pipeline flow), not the committable `.gitignore`.
 - **Pass context to sub-agents explicitly.** Sub-agents have no conversation history. When dispatching a step via sub-agent, always include the pipeline request text and all artifact IDs from completed steps in the sub-agent prompt. Without this, sub-agents cannot target the correct UR/REQs.
 - **Scope the `run` step to captured REQs only.** actions/work.md is queue-processing by default. When dispatched from the pipeline, it must only process the REQs created by this pipeline's capture step (listed in `artifacts`). Never process unrelated backlog items during a pipeline run.
 - **Process remaining queue after completion.** After the pipeline's 6 steps finish, check for other pending REQs in the queue. If any exist, continue processing them automatically via run + review cycles until the queue is empty. This continuation uses standard queue-processing mode (not scoped to pipeline artifacts) and does not re-run `present` per cycle — the user can run `do-work present all` after the queue is fully processed if they want a portfolio summary. The pipeline state file remains `active: false` — the continuation is a post-pipeline operation. Maximum 3 continuation cycles — if REQs still remain after 3 cycles, stop and let the user continue manually.
