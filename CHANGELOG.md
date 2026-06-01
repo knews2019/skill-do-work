@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.84.0 — The Lean Orchestrator (2026-06-01)
+
+`actions/work.md` was the longest file in the repo (1,074 lines) and it's read on every `do-work run`. Split it the way `bkb`/`interview` are split — a lean 631-line orchestrator plus a new `actions/work-reference.md` companion holding the heavy templates, tables, and sub-procedures. Same instructions, less to load.
+
+- New `actions/work-reference.md` (22 sections): frontmatter schema, Schema Read Contract, Composed Exit Summary, every step template, failure classification, the commit/metadata-commit procedure, checkpoint + progress examples.
+- `work.md` restored to the canonical section order (Rules → Common Rationalizations → Red Flags → Verification Checklist at file-end) and gained a document-level `## Common Rationalizations` table (8 rows) guarding the most common builder shortcuts.
+- The Step-6.3 qualify-fail/pass logic — orphaned beneath mid-document Red Flags/Verification Checklist — is reconnected to its step.
+- Schema-Read-Contract references in `roadmap.md` and `capture.md` now point at the companion. (REQ-001)
+
 ## 0.83.14 — The Stray Disowned (2026-05-30)
 
 The ai-report action no longer treats a loose PNG at the project root as a before/after asset source. Nothing in do-work writes one there, and `stray-check` already flags root PNGs as junk — so pulling one into a report contradicted our own hygiene rules. Aligns with the same deprecation made independently in the standalone make-ai-report-with-screenshot skill.

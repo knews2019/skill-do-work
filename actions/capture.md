@@ -187,7 +187,7 @@ Several fields above accept legacy aliases at read time so muscle-memory typos f
 | `related` | `related_reqs` | `actions/roadmap.md` cross-REQ surfacing; verify-requests batch coverage |
 | `suggested_spec` | `spec_hint`, `suggested-spec` | `actions/work.md` Step 6 spec pre-load hint |
 
-For enum-valued and boolean fields shared with `actions/work.md` (`status`, `domain`, `route`, `caveman`, `tdd`, `error_type`, `kb_status`), capture honors the **normalize-and-warn contract** defined in `actions/work.md`'s Schema Read Contract: invalid values trigger a warning and a documented default rather than silent acceptance. During Step 5 (Write Files), if the captured value for any normalize-and-warn field doesn't match the canonical enum (after applying the contract's normalization), prompt the user to confirm the intended value before emitting the REQ — capture is the human-attention window for catching typos at the source. Never write a non-canonical value silently.
+For enum-valued and boolean fields shared with `actions/work.md` (`status`, `domain`, `route`, `caveman`, `tdd`, `error_type`, `kb_status`), capture honors the **normalize-and-warn contract** defined in the Schema Read Contract (in the companion `actions/work-reference.md`): invalid values trigger a warning and a documented default rather than silent acceptance. During Step 5 (Write Files), if the captured value for any normalize-and-warn field doesn't match the canonical enum (after applying the contract's normalization), prompt the user to confirm the intended value before emitting the REQ — capture is the human-attention window for catching typos at the source. Never write a non-canonical value silently.
 
 ### UR input.md
 

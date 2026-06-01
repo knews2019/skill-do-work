@@ -24,49 +24,7 @@ This living log is also the **trail of intent**. The REQ starts as a validated s
 
 ## Architecture
 
-```
-work action (orchestrator - lightweight, stays in loop)
-  │
-  ├── Read CHECKPOINT.md if exists (resume context from previous session)
-  │
-  ├── For each pending request (skip pending-answers):
-  │     │
-  │     ├── TRIAGE: Assess complexity (no agent, just read & categorize)
-  │     │
-  │     ├── OPEN QUESTIONS? ── - [ ] items exist ──► Mark - [~], builder decides
-  │     │                      (none / all resolved) ──► continue
-  │     │     │
-  │     │     ├── Route A (Simple) ──────────────────┐
-  │     │     │   Skip plan/explore, direct to build │
-  │     │     │                                      │
-  │     │     ├── Route B (Medium) ───────┐          │
-  │     │     │   Explore, scope declare  │          │
-  │     │     │                           ▼          │
-  │     │     └── Route C (Complex) ──► Plan ──► Explore ──► Scope declare
-  │     │                                            │
-  │     │                                            ▼
-  │     │                                     Implementation agent
-  │     │                                            │
-  │     │                                            ▼
-  │     │                                  Implementation Summary
-  │     │                                            │
-  │     │                                            ▼
-  │     │                              Qualify (orchestrator verifies)
-  │     │                                            │
-  │     │                                            ▼
-  │     │                                        Testing
-  │     │                                            │
-  │     │                                            ▼
-  │     │                                  Review ◄─── Fail? ──► Remediate ──► Re-review
-  │     │                                            │
-  │     │                                            ▼
-  │     ├── Archive ──► classify discovered tasks ──► queue follow-ups
-  │     │                                            │
-  │     │                                            ▼
-  │     └── Commit (git repos only)
-  │
-  └── Context wipe → Loop | Write CHECKPOINT.md → cleanup → report
-```
+The per-REQ orchestration pipeline (triage → plan/explore → implement → qualify → test → review → archive → commit, with the orchestrator handling all file management) is diagrammed in `actions/work-reference.md` → **Architecture**.
 
 > **Remember:** Every completed request gets a git commit (Step 9) before looping to the next request.
 
@@ -116,90 +74,11 @@ Read the request
 
 ## Folder Structure
 
-```
-do-work/
-├── queue/                         # Pending REQ files (the work queue)
-│   └── REQ-018-pending-task.md
-├── user-requests/                 # UR folders (verbatim input + assets)
-│   └── UR-003/
-│       ├── input.md
-│       └── assets/
-├── working/                       # Currently being processed
-│   └── REQ-020-in-progress.md
-└── archive/                       # Completed work
-    ├── UR-001/                    # Archived as self-contained unit
-    │   ├── input.md
-    │   ├── REQ-013-feature.md
-    │   └── assets/
-    ├── REQ-010-legacy-task.md     # Legacy REQs (no UR) archive directly
-    └── legacy/                    # Consolidated legacy items
-```
-
-- **`queue/`**: The queue — only pending `REQ-*.md` files
-- **`working/`**: Claimed requests. Immutable to all actions except the work pipeline.
-- **`archive/`**: Completed UR folders (self-contained) and legacy REQs/CONTEXT docs
-- **`user-requests/`**: Active UR folders. Moved to `archive/` when all REQs complete.
+The `do-work/` folder layout is described in `actions/work-reference.md` → **Folder Structure**. Briefly: `queue/` holds pending REQs, `working/` holds the claimed REQ, `archive/` holds completed work (UR folders + legacy REQs), and `user-requests/` holds active UR folders until all their REQs finish.
 
 ## Request File Schema
 
-Request files use YAML frontmatter added progressively:
-
-```yaml
----
-# Set by capture action
-id: REQ-001
-title: Short descriptive title
-status: pending
-domain: frontend  # choose one: frontend, backend, ui-design, general, security, or testing
-tdd: false       # optional — set true when test-first applies (per capture's TDD heuristic); drives Step 6 testing-crew loading and RED/GREEN mode
-caveman: false   # optional — `true` or intensity `lite` | `full` | `ultra`; loads crew-members/caveman.md to compress agent prose
-prime_files: []  # list paths to relevant prime-*.md files, or leave empty
-created_at: 2025-01-26T10:00:00Z
-user_request: UR-001          # May be absent on legacy REQs
-addendum_to: REQ-NNN          # optional — present only when this REQ amends an in-flight or completed REQ; set by capture, or by review when creating follow-ups. **Legacy alias:** every read site (Step 8 upstream walk, Step 8 cycle detection, Step 8 follow-up generation, and roadmap Blocked classification) also recognizes `amends:`, `parent:`, and `amendment_to:` as synonyms when `addendum_to` is absent so natural-English glosses don't silently drop the parent linkage; `addendum_to` wins when multiple are present. Capture and follow-up REQs always emit `addendum_to:` — never propagate the alias.
-depends_on: []                # optional list of REQ IDs that must reach `completed` or `completed-with-issues` before this REQ runs. Semantically distinct from `addendum_to` ("amends that REQ"): depends_on is "requires that REQ to be done first." A REQ can have both. Honored by Step 1's selection scan and by Step 8's upstream-failure classification. **Legacy alias:** every read site (Step 1 selection, Step 1 cycle detection, Step 1 `--wave` depth, Step 8 upstream walk, roadmap classification) also recognizes a `dependencies:` key as a synonym so muscle-memory typos from Python/Node/Cargo conventions don't silently bypass gating; `depends_on` wins when both are present. Capture and follow-up REQs always emit `depends_on:` — never propagate the alias.
-
-# Set by work action when claimed
-claimed_at: 2025-01-26T10:30:00Z
-route: A | B | C
-
-# Set by work action when finished
-completed_at: 2025-01-26T10:45:00Z
-status: completed | completed-with-issues | failed
-commit: abc1234               # If git repo
-error: "Description"          # Only if failed
-
-# Set by kb-lessons handoff (Step 7.5 pipeline / Step 9.5 standalone). Optional; absent on REQs that predate the handoff.
-kb_status: promoted | pending | declined | skipped
-kb_entry: REQ-042-lesson-slug.md   # filename only (survives bkb moves from inbox/ to capture/ to processed/); present only when kb_status: promoted
----
-```
-
-### Schema Read Contract
-
-Seven fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `dependencies:` → `depends_on` patch surfaced that several silently swallow natural typo variants from sister conventions (snake_case vs kebab-case YAML, `done`/`finished`/`closed` as English glosses of `completed`, lowercase route letters, etc.). Pure silent-alias is risky for enum values because an unknown value should not be quietly remapped — it should leave a footprint. Every read site in this file (and in `actions/roadmap.md`) honors a uniform **normalize-and-warn contract** for these fields:
-
-1. **Normalize first.** Apply the per-field alias map below. If a canonical match results, use it silently.
-2. **Warn-on-fallback.** If after normalization the value still doesn't match the canonical enum, emit:
-
-   ```
-   ⚠ {field}: '{value}' not recognized — expected one of [{enum}]. Treating as '{default}'.
-   ```
-
-   and proceed with the documented default.
-3. **Never silently drop.** The warning is the missing feedback channel that allowed `dependencies:` to go unnoticed pre-0.76.2. Warnings render in the queue-status summary block (Step 1) or, for fields read outside Step 1, alongside the operation that triggered the read.
-
-| Field (read sites) | Canonical enum | Normalization | Default on unknown |
-|---|---|---|---|
-| `domain` (Step 4 Route C plan-agent spawn, Step 6 crew load, Step 9 review-work spawn) | `frontend`, `backend`, `ui-design`, `general`, `security`, `testing` | `back-end`/`back_end` → `backend`; `front-end`/`front_end` → `frontend`; `ui_design` → `ui-design`; `sec` → `security`; `test` → `testing` | `general` |
-| `status` (Step 1 scan + categorization, Step 10 archive trigger) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `pending-answers`, `blocked-archive-collision`, `blocked-dependency-cycle` | `done`/`finished`/`closed` → `completed` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
-| `route` (Step 3 dispatch, Step 5 scope-drift comparison) | `A`, `B`, `C` | lowercase `a`/`b`/`c` → uppercase | treat as needing re-triage in Step 3 |
-| `caveman` (Step 6 crew load) | `false`, `true`, `lite`, `full`, `ultra` | truthy strings (`yes`/`on`) → `true`; `light` → `lite` | `false` |
-| `tdd` (Step 6 testing-crew load, Step 6.5 TDD-evidence gate; emission validated in `actions/capture.md`) | `true`, `false` (YAML boolean) | `test_first`/`yes`/`on`/`t` → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 testing crew not loaded; Step 6.5 gate not enforced) |
-| `error_type` (Step 8 failure classification, Step 8 upstream-failure short-circuit, forensics) | `intent`, `spec`, `code`, `environment` | (no common typo aliases identified) | `code` |
-| `kb_status` (Step 7.5 / Step 9.5 kb-lessons handoff, roadmap lessons rollup) | `promoted`, `pending`, `declined`, `skipped` | `skip` → `skipped`; `rejected` → `declined` | `pending` |
-
-**Write paths are unaffected.** Step 2 claim, Step 8 archive, Step 8 follow-up generation, the kb-lessons handoff, and capture emission always write the canonical key and canonical enum value — never an alias, never the typo'd input. The normalize-and-warn contract is read-only.
+The full annotated frontmatter schema and the **Schema Read Contract** — the normalize-and-warn rules every read site honors for the enum/boolean fields `domain`, `status`, `route`, `caveman`, `tdd`, `error_type`, `kb_status` — live in `actions/work-reference.md` → **Request File Schema — Full Frontmatter** and **Schema Read Contract**. Every reference below to "the Schema Read Contract" points there.
 
 **Status flow (frontmatter values):** `pending` → `claimed` → `completed` / `completed-with-issues` / `failed`
 
@@ -225,12 +104,7 @@ When no REQ IDs and no flags are provided, process all pending REQs in dependenc
 
 ### Step 1: Find Next Request
 
-**Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run was interrupted. For each recovered REQ:
-1. Reset frontmatter: set `status` to `pending`, **unless** the REQ file contains a `## Open Questions` section with at least one unresolved `- [ ]` item — in that case, restore `status` to `pending-answers`. (If the `## Open Questions` section exists but all items are already `[x]` or `[~]`, or if no `## Open Questions` section exists at all, set `status` to `pending`.) Remove `claimed_at` and `route`.
-2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, `## Scope`, `## Pre-Flight`, `## Implementation Summary`, `## Qualification`, `## Testing`, `## Review`, `## Lessons Learned`, `## Decisions`, and `## Discovered Tasks` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact.
-3. Move the REQ back to `do-work/queue/`
-
-Once `working/` is empty, proceed with finding the next request.
+**Crash Recovery:** if `do-work/working/` contains any `REQ-*.md` at session start, a prior run was interrupted — reset and re-queue each per `actions/work-reference.md` → **Crash Recovery (Step 1)** before scanning the queue. Once `working/` is empty, proceed with finding the next request.
 
 Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
 
@@ -266,57 +140,7 @@ Count `completed`, `completed-with-issues`, and `done` statuses together as "com
 
 **Default mode (no REQ IDs in arguments):** Scan for the first REQ with `status: pending` (skip `pending-answers` — those wait for user input).
 
-**Exit paths when no `pending` REQs found:**
-
-The exit report is **composed**, not picked from disjoint branches. Whenever no `pending` REQs are found, lead with `No pending REQs in queue.` and then append every section that has at least one REQ. Three sections may apply, in this order:
-
-1. **Completed/done section** — applies if any REQ in `do-work/queue/` has status `completed`, `completed-with-issues`, or `done`. Read the `user_request` frontmatter field from each to group by UR. Render:
-
-   ```
-   ⚠ N completed REQs awaiting archive (UR-137: 3 REQs, UR-138: 1 REQ, ...):
-     REQ-351 — [title] (done)
-     REQ-352 — [title] (completed)
-     ...
-
-   Run `do-work cleanup` to archive completed work, then `do-work recap` to see full history.
-   ```
-
-2. **Pending-answers section** — applies if any REQ has status `pending-answers`. Render from frontmatter only — do not open the REQ body to count `## Open Questions` items at this stage (Step 1 reads frontmatter per the queue scan). The count is deferred to `do-work clarify`, which is the action that reads Open Questions sections:
-
-   ```
-   ⚠ N REQs awaiting clarification:
-     REQ-NNN — [title] (pending-answers)
-     ...
-
-   Run `do-work clarify` to batch-review the open questions; resolved REQs flip to `pending` and re-enter the queue.
-   ```
-
-3. **Blocked-archive-collision section** — applies if any REQ has status `blocked-archive-collision`. Read the matching archive path from each blocked REQ's frontmatter if recorded; otherwise re-run the Step 2.0 glob (`do-work/archive/**/REQ-NNN-*.md` and `do-work/archive/**/REQ-NNN.md`) to find it. Render:
-
-   ```
-   ⚠ N REQs held by archive-collision guard:
-     REQ-NNN — [title] (queue file: do-work/queue/REQ-NNN-slug.md)
-       already archived at <archive-path>
-       recover: rename the queue file (if this is an intentional re-do) or delete it (if it's a stale duplicate), then flip status back to `pending`
-     ...
-   ```
-
-4. **Blocked-by-dependencies section** — applies if any `pending` REQ has an unmet `depends_on` reference (dependency-blocked) or any REQ has status `blocked-dependency-cycle`. Pending REQs stay `pending` (the gating is dynamic — they become ready as upstream REQs complete); only cycle-detected REQs are flipped to a held status. Render both groups under one heading:
-
-   ```
-   ⚠ N REQs blocked by unmet dependencies:
-     REQ-NNN — [title] (pending; depends on REQ-MMM, status: <pending|claimed|pending-answers>)
-     REQ-PPP — [title] (blocked-dependency-cycle; chain: REQ-PPP → REQ-QQQ → REQ-PPP)
-     ...
-
-   Resolve the blocking REQs first, then re-run. To force a scoped run that ignores dependency gating for a specific REQ, use `do-work run REQ-NNN`. To break a dependency cycle, edit the REQ's `depends_on` and flip its status back to `pending`.
-   ```
-
-**After rendering all applicable sections, exit the work loop** — do not proceed to Step 2.0 or beyond. There is no `pending` REQ to claim. Step 1's contract on the no-pending path is "render the composed summary, then stop"; the only path that continues is the one where Step 1 finds at least one dependency-ready `pending` REQ.
-
-If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any of the four sections applies — every non-pending or non-ready REQ in the queue is something the user needs to see.
-
-**Composition is deliberate.** A queue with both `pending-answers` and `blocked-archive-collision` REQs (and no completed/done) renders both sections back-to-back. A queue with all four categories renders all four. The user sees the full picture in one report instead of a single branch's slice.
+**Exit paths when no `pending` REQs found:** render the *composed* exit summary — lead with `No pending REQs in queue.`, then append every applicable section (completed-awaiting-archive, pending-answers, blocked-archive-collision, blocked-by-dependencies) in that order — per `actions/work-reference.md` → **Composed Exit Summary (Step 1)**, then exit the work loop. Only continue past Step 1 when at least one dependency-ready `pending` REQ exists.
 
 **REQ validation:** When reading each REQ's frontmatter, verify it has the required fields (`id`, `status`, `title`). If a REQ file has missing or unparseable frontmatter, skip it and report: `⚠ Skipping [filename]: missing required frontmatter ([field]).` Do not let a single malformed REQ block the entire work loop — skip it and continue to the next.
 
@@ -350,17 +174,7 @@ If no archive match is found, proceed to Step 2.
 
 Read the request, apply the decision flow, update frontmatter with `route`. If a `## Triage` section does not already exist, append to the request file:
 
-```markdown
----
-
-## Triage
-
-**Route: [A/B/C]** - [Simple/Medium/Complex]
-
-**Reasoning:** [1-2 sentences]
-
-**Planning:** [Required/Not required]
-```
+(append per the **Triage Section Template (Step 3)** in `actions/work-reference.md`)
 
 Report the triage decision briefly to the user.
 
@@ -407,13 +221,7 @@ After triage, check if a specification template matches this REQ's domain or tas
 
 **Route C:** Spawn a **Plan agent** with the request content, project context, the `crew-members/[domain].md` file (normalize `domain` per the Schema Read Contract first; if the resolved domain is missing, falls back to `general` for an unknown value, or the file doesn't exist, skip loading it), and any files listed in the `prime_files` array. Instruct it to use the prime files as the strict index for discovering the source of truth. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
 
-```markdown
-## Plan
-
-[Plan agent output]
-
-*Generated by Plan agent*
-```
+(append the plan per the **Plan Template — Route C (Step 4)** in `actions/work-reference.md`)
 
 **Plan validation (Route C only):** After the Plan agent returns, run a quick quality check before proceeding:
 
@@ -426,13 +234,7 @@ Append validation findings to the `## Plan` section (if any issues found). These
 
 **Routes A and B:** Append a skip note (if not already present):
 
-```markdown
-## Plan
-
-**Planning not required** - [Route A: Direct implementation / Route B: Exploration-guided implementation]
-
-*Skipped by work action*
-```
+(append the skip note per the **Plan Skip Note — Routes A/B (Step 4)** in `actions/work-reference.md`)
 
 ### Step 5: Exploration (Routes B and C)
 
@@ -460,21 +262,7 @@ Before the builder starts coding, declare intent. This prevents scope drift from
 
 **Routes B and C:** Based on the plan (Route C) or exploration output (Route B), write a `## Scope` section into the REQ file:
 
-```markdown
-## Scope
-
-**Files I will touch:**
-- `src/stores/theme-store.ts` (new) — theme state management
-- `src/components/settings/SettingsPanel.tsx` (modify) — add toggle
-- `tests/theme-store.test.js` (new) — unit tests
-
-**Files I will NOT touch:** [any files that seem related but are out of scope]
-
-**Acceptance criteria (restated from REQ):**
-- [ ] Dark mode toggle visible in settings
-- [ ] Theme persists across page reload
-- [ ] OS preference respected on first visit
-```
+(write the `## Scope` section per the **Scope Declaration Template (Step 5.5)** in `actions/work-reference.md` — declared file list + restated acceptance criteria. The review step compares the Implementation Summary's file list against this declaration; any undeclared touch or unused declaration is scope drift.)
 
 The Scope section serves two purposes:
 1. The builder commits to a file list before writing code — drift becomes measurable.
@@ -494,15 +282,7 @@ Quick environment sanity check before the builder starts coding. All checks are 
 2. **Tests baseline:** If the project has a test command (check the prime file's testing section, or look for `package.json` test scripts, `pytest.ini`, etc.), run it. If tests already fail on HEAD before any changes, note this: "Baseline tests failing — builder should not be blamed for pre-existing failures." Record which tests fail.
 3. **Dependencies:** If `package.json` exists but `node_modules/` doesn't, or `requirements.txt` exists without an active venv, warn: "Dependencies may not be installed."
 
-```markdown
-## Pre-Flight
-
-**Git:** ⚠ 3 uncommitted files (src/temp.ts, .env.local, notes.md)
-**Tests baseline:** ✓ All passing (47 tests)
-**Dependencies:** ✓ Installed
-
-*Checked by work action*
-```
+(append findings per the **Pre-Flight Template (Step 5.75)** in `actions/work-reference.md`, only if issues are found — all checks are warnings, not blockers)
 
 ### Step 6: Implementation
 
@@ -546,16 +326,7 @@ After implementation completes, write a manifest of what changed to the request 
 
 Append (or replace) in the request file:
 
-```markdown
-## Implementation Summary
-
-**Files changed:**
-- `src/stores/theme-store.ts` (new)
-- `src/components/settings/SettingsPanel.tsx` (modified)
-- `tests/theme-store.test.js` (new)
-
-**What was done:** [1-2 sentences — what the implementation actually did]
-```
+(write the manifest per the **Implementation Summary Template (Step 6.25)** in `actions/work-reference.md`)
 
 **Rules:**
 - **Mandatory for all routes.** Route A gets a short list. Route C gets a detailed list.
@@ -580,32 +351,7 @@ After the builder returns and the Implementation Summary is written, the **orche
 
 **Anti-rationalization rules** (apply when evaluating the above):
 
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "The summary says files changed" | Check the file system | The summary is a claim, not evidence |
-| "Tests pass so requirements are met" | Compare requirements to diff, word by word | Tests can be incomplete |
-| "The builder checked the UNIFY box" | Read the actual diff for debug artifacts | A checked box is a claim, not a fact |
-| "This works on my test case" | Test at least 2 additional cases including an edge case | One test case proves nothing about generality |
-| "The existing code was already like this" | Flag it in Discovered Tasks | Pre-existing problems are still problems |
-| "It's just a small deviation from the plan" | Log it as a Decision (D-XX) | Unlogged deviations break traceability |
-
-## Red Flags
-
-- REQ in `do-work/working/` for >1 hour with no new git commits (builder may be stuck)
-- Implementation Summary lists files but `git diff` shows no changes in those files (hollow implementation)
-- All P-A-U checkboxes marked complete but diff contains `console.log`, `debugger`, or `TODO` (debug artifacts)
-- No Triage section appended to the REQ after processing begins
-- Scope section declares 3 files but Implementation Summary lists 12 (scope creep)
-- Builder created files only inside `do-work/` and no source files changed (no real work done)
-
-## Verification Checklist
-
-- [ ] All pending REQs processed or explicitly skipped with documented reason
-- [ ] Every completed REQ has an Implementation Summary section with file manifest
-- [ ] No REQ files remain in `do-work/working/` after the work loop ends
-- [ ] CHECKPOINT.md written if ending mid-session (for resume)
-- [ ] Git commit created for each completed REQ
-- [ ] Cleanup pass triggered at end of work loop
+Apply the qualification anti-rationalization table in `actions/work-reference.md` → **Qualification Anti-Rationalization Table (Step 6.3)** (e.g., "the summary says files changed" → check the file system; "the builder checked UNIFY" → read the diff for debug artifacts).
 
 **If qualification fails on any check:**
 1. Append a `## Qualification` section to the REQ noting what failed and why.
@@ -628,24 +374,7 @@ Before marking complete, verify tests pass:
 
 Append to the request file:
 
-```markdown
-## Testing
-
-**Tests run:** [command]
-**Result:** ✓ All passing (X tests)
-
-**Red-green validation:** *(for bug fixes and new features)*
-- [test name/file]: ✗ before implementation → ✓ after
-- [test name/file]: ✗ before implementation → ✓ after
-
-**New tests added:**
-- [list]
-
-**Existing tests updated (cross-REQ impact):**
-- [test file] (from REQ-NNN): [what changed and why — intentional behavior change]
-
-*Verified by work action*
-```
+(append per the **Testing Section Template (Step 6.5)** in `actions/work-reference.md`; omit Red-green validation for non-behavioral changes, and trace it back to `## Red-Green Proof` when present)
 
 Omit `Red-green validation` if no request-specific tests were written or identified, or if the change is non-behavioral (refactor, config, docs, cleanup) — use regression evidence instead. Omit `Existing tests updated` if no prior tests were modified.
 
@@ -680,27 +409,7 @@ The status `completed-with-issues` means the REQ was archived but has known unre
 
 Append to the request file:
 
-```markdown
-## Review
-
-**Overall: [X]%** | [timestamp]
-
-| Dimension | Score |
-|-----------|-------|
-| Requirements | X% |
-| Code Quality | X% |
-| Test Adequacy | X% |
-| Scope | X% |
-| Risk | [level] |
-| Acceptance | [result] |
-
-**Findings:** [count] important, [count] minor
-**Acceptance:** [Pass/Partial/Fail/Untested] — [1-line summary]
-**Suggested testing:** [count] items
-**Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"
-
-*Reviewed by review work action*
-```
+(append per the **Review Section Template (Step 7)** in `actions/work-reference.md`)
 
 ### Step 7.5: Lessons Learned
 
@@ -726,12 +435,7 @@ Append to the request file:
 
 Record each pending write as a tuple: `{ primeFilePath, relativeLinkText, lessonSummary }`. Hold them in memory (or a small scratch file under `do-work/working/`) until Step 8.
 
-**Path computation rule (for use in Step 8):** the link path must be relative to the prime file's location, not the repo root. Count how many directories deep the prime file sits (i.e., the number of path components before the filename). Prepend that many `../` steps to the REQ's repo-root-relative archive path. Examples:
-- Prime at `prime-auth.md` (0 dirs deep) → `do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
-- Prime at `src/utils/prime-auth.md` (2 dirs deep: `src/` and `utils/`) → `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
-- Prime at `web/src/auth/prime-auth.md` (3 dirs deep) → `../../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
-
-The existence-verify check on the resolved path runs in Step 8 (post-move) — that's the whole reason for deferring.
+Compute each deferred prime-link path relative to the prime file's location (not the repo root) per `actions/work-reference.md` → **Deferred Prime-Link Path Computation (Step 7.5)**; the existence-verify on the resolved path runs in Step 8 (post-move), which is why the write is deferred.
 
 Only add a link when the lesson is relevant to that prime file's scope — don't spray every lesson into every prime file. If the REQ has no `prime_files` or the lessons aren't relevant to any prime file, skip this and clear the pending list.
 
@@ -743,60 +447,12 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 1. Update frontmatter: `status: completed`, `completed_at: <timestamp>`
 2. Verify `## Implementation Summary` is present (written in Step 6.25). If missing, append it now — this should not happen in normal flow, but crash recovery may skip it.
-3. **Create follow-ups for builder-decided questions:** If the REQ has any `- [~]` items in Open Questions where the builder's choice affects what the user sees or interacts with, create a follow-up REQ for each. **Create follow-ups for:** UX decisions (interaction behavior, visibility, layout), scope boundaries (what's included/excluded), data representation choices. **Skip follow-ups for:** purely technical decisions (caching strategy, algorithm choice, internal naming, DB indexes) that don't change user-facing behavior. Template:
-   ```markdown
-   ---
-   id: REQ-NNN
-   title: "Confirm: [brief description of the choice]"
-   status: pending-answers
-   created_at: [timestamp]
-   user_request: [same UR as the original REQ]
-   addendum_to: [original REQ id]
-   builder_decided: true
-   ---
+3. **Create follow-ups for builder-decided questions:** If the REQ has any `- [~]` items in Open Questions where the builder's choice affects what the user sees or interacts with, create a follow-up REQ for each. **Create follow-ups for:** UX decisions (interaction behavior, visibility, layout), scope boundaries (what's included/excluded), data representation choices. **Skip follow-ups for:** purely technical decisions (caching strategy, algorithm choice, internal naming, DB indexes) that don't change user-facing behavior.
 
-   # Confirm: [Brief Description]
-
-   ## What
-   During [REQ-id], the builder chose [choice] for [question]. This follow-up
-   confirms whether that choice matches your intent or if you'd prefer a different approach.
-
-   ## What the Builder Chose
-   [Description of the choice and its impact on the implementation]
-
-   ## What Would Change
-   [If the user picks a different option, what would need to change]
-
-   ## Open Questions
-   - [ ] [Original question]
-     Recommended: [builder's choice — already implemented]
-     Also: [other alternatives]
-   ```
-   These go in `do-work/queue/` with `status: pending-answers`. The user reviews them via `do-work clarify`.
+   Create each follow-up per the **Builder-Decided Follow-up Template (Step 8)** in `actions/work-reference.md`; these go in `do-work/queue/` with `status: pending-answers`, and the user reviews them via `do-work clarify`.
 4. **Queue Discovered Tasks:** Check the REQ file for a `## Discovered Tasks` section (appended by the implementation agent as a separate section — not inside `## Implementation Summary`). For every item listed, classify by severity and create follow-up REQs accordingly.
 
-   The builder should classify each discovered task when appending them:
-   ```
-   ## Discovered Tasks
-   - **[critical]** SQL injection vulnerability in user search endpoint
-   - **[normal]** Dead code in utils/legacy-parser.ts can be removed
-   - **[low]** Variable naming inconsistency in auth module
-   ```
-
-   If the builder did not classify them, the orchestrator classifies based on:
-   - **critical**: Security vulnerability, data loss risk, broken functionality in production paths
-   - **normal**: Technical debt, missing tests, minor bugs in non-critical paths
-   - **low**: Style issues, naming, dead code, documentation gaps
-
-   **For `[critical]` discoveries:** Create follow-up REQ with `status: pending` (not `pending-answers`) — these skip user confirmation and go straight into the work queue. Add a note in Open Questions: `- [x] Auto-approved: critical severity (security/data/production risk). → Added to queue immediately.` Report prominently: `⚠ CRITICAL discovered: [description] — auto-queued as REQ-NNN`
-
-   **For `[normal]` and `[low]` discoveries:** Use the existing `pending-answers` flow:
-   - Set frontmatter: `status: pending-answers`, `user_request: [same UR]`, `addendum_to: [current REQ id]`, `domain: [same domain as current REQ]`.
-   - Add an `## Open Questions` section with this checkbox format:
-     `- [ ] I discovered this out-of-scope task while working on [current REQ]: [Task Description]. Should I process this as a new task?`
-     `  Recommended: Yes, add to queue (will flip to 'pending').`
-     `  Also: No, discard it.`
-   This ensures non-critical discoveries require the user's explicit permission via `do-work clarify` before execution.
+   Classify each by severity and queue follow-ups per `actions/work-reference.md` → **Discovered Tasks Classification (Step 8)**: `[critical]` → `status: pending`, auto-queued + prominent report; `[normal]`/`[low]` → `status: pending-answers` via the Open-Questions consent flow.
 5. **Cycle detection:** Before creating any follow-up REQ, verify the current REQ's own `addendum_to` chain is not already circular. Algorithm: walk `addendum_to` links (honoring the `amends`/`parent`/`amendment_to` alias per the Schema Read Contract when the canonical key is absent) starting from the current REQ, collecting each visited ID into a seen set. If you encounter the current REQ's ID again during the walk, the chain is already circular — do not create any follow-ups. Report: `⚠ Cycle detected in addendum_to chain: REQ-NNN → REQ-MMM → ... → REQ-NNN. Skipping follow-up — manual resolution needed.` This handles chains of any length.
 6. Archive based on REQ type:
 
@@ -821,91 +477,13 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **On failure:**
 
-Before classifying via the symptom table below, **check for upstream failure**. Cascades from a failed prerequisite often present as plausible-looking `code` or `spec` symptoms in the downstream REQ; misclassifying them sends the builder chasing phantom bugs in the wrong domain.
-
-**Upstream-failure short-circuit:**
-
-Read the frontmatter of every REQ this one depends on:
-- `addendum_to` (single parent, if set; or `amends`/`parent`/`amendment_to` as the legacy alias if `addendum_to` is absent — same back-compat shape as the `depends_on`/`dependencies:` pair; `addendum_to` wins when multiple are present)
-- every entry in `depends_on` (if set, or every entry in the legacy `dependencies:` alias if `depends_on` is absent — same back-compat rule as Step 1; `depends_on` wins when both present)
-
-Resolve each ID by globbing `do-work/archive/**/REQ-NNN-*.md`, `do-work/archive/**/REQ-NNN.md`, `do-work/queue/REQ-NNN-*.md`, and `do-work/working/REQ-NNN-*.md`. If any referenced REQ has `status: failed`, skip the symptom table and short-circuit classification:
-
-- `status: failed`
-- `error_type: spec` (the local approach is downstream-correct only if the upstream is correct; with the upstream broken, the local spec is implicitly unsound)
-- `error: "Upstream REQ-NNN failed (error_type: <ancestor.error_type>); downstream blocked. Original error: <original error message>"`
-
-Create the follow-up REQ per the Spec row below. It inherits `addendum_to: <this failed REQ>`; the cascade is now visible in the addendum chain and the follow-up's error description names the upstream root cause. The follow-up should also carry the original dependency list so it re-blocks on the same upstream until the upstream's own follow-up lands — and it always emits the canonical `depends_on:` key, even if the failed REQ used the legacy `dependencies:` alias. Don't propagate the alias on follow-ups.
-
-If no upstream REQ is `failed`, fall through to the symptom-based classification table:
-
-| Type | Symptoms | Recovery |
-|------|----------|----------|
-| **Intent** | Requirements are ambiguous or contradictory; builder couldn't determine what to build | Create a follow-up REQ with `status: pending-answers` containing the specific ambiguities as Open Questions. Archive original as `failed` with `error_type: intent`. |
-| **Spec** | Requirements are clear but the technical approach was wrong (wrong files, wrong pattern, wrong architecture) | Create a follow-up REQ with a `## Prior Attempt` section summarizing what was tried and why it failed. Set `status: pending`. Archive original with `error_type: spec`. |
-| **Code** | Approach was right but implementation has bugs (tests fail, runtime errors, logic errors) | Create a follow-up REQ targeting the specific code issue. Set `status: pending`. Archive original with `error_type: code`. |
-| **Environment** | External dependency unavailable, permissions issue, tooling broken | No follow-up REQ — user must fix the environment. Archive with `error_type: environment` and a clear description of what's needed. |
-
-**Anti-rationalization addition.** When checking the symptom table:
-
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "This REQ failed on a code bug" | Check whether any `addendum_to` or `depends_on` ancestor (or `dependencies:` alias) is also `failed` first | Downstream failures often inherit upstream rot; misclassifying as `code` chases phantom bugs in the wrong domain |
-
-**Procedure:**
-1. Run the upstream-failure short-circuit. If it fires, jump to step 3.
-2. Otherwise classify using the symptom table above.
-3. Update frontmatter: `status: failed`, `error: "description"`, `error_type: [intent|spec|code|environment]`
-4. For Intent/Spec/Code failures: create the appropriate follow-up REQ (details above). Set `addendum_to` to the failed REQ's ID so context chains. Preserve the original dependency list on the follow-up when the failure was upstream-driven — always emit it under the canonical `depends_on:` key, even if the failed REQ used the legacy `dependencies:` alias.
-5. Move to `archive/` (failed REQs always go to archive root, not into UR folders).
-6. Report to user: `[REQ-NNN] failed ([type]): [description]. Follow-up: [REQ-NNN] / None.` When the short-circuit fired, prefix the report with `(upstream cascade — original failure at REQ-NNN)`.
+Classify the failure and queue the right follow-up per `actions/work-reference.md` → **Failure Classification (Step 8)**. Run the **upstream-failure short-circuit first** (if any `addendum_to`/`depends_on` ancestor is `failed`, short-circuit to `error_type: spec` with an upstream-cascade error), then fall through to the Intent/Spec/Code/Environment symptom table. Set `status: failed`, `error`, `error_type`; create the follow-up (Intent/Spec/Code) with `addendum_to` chained and the original dependency list preserved; move to `archive/` root.
 
 ### Step 9: Commit (Git repos only)
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
-```bash
-# Stage implementation files + archived REQ
-git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx \
-  do-work/archive/UR-002/REQ-003-dark-mode.md
-
-# Stage follow-up REQs created in Step 8 (if any)
-git add do-work/queue/REQ-025-confirm-sidebar-palette.md
-
-# Stage UR-folder move (if this was the last REQ and the UR moved to archive/)
-# Both the old path (deletion) and new path (addition) must be staged.
-git add do-work/user-requests/UR-002/ do-work/archive/UR-002/
-
-git commit -m "$(cat <<'EOF'
-[REQ-003] Dark Mode (Route C)
-
-Implements: do-work/archive/UR-002/REQ-003-dark-mode.md
-
-- Created src/stores/theme-store.ts
-- Modified src/components/settings/SettingsPanel.tsx
-
-EOF
-)"
-```
-
-**Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
-
-One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), and any UR-folder moves to `archive/`. If Step 8 substep 7 wrote prime-file lessons links, the modified prime files must also be staged — they are part of the REQ's lifecycle changes even though they aren't listed in the Implementation Summary's `Files changed`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
-
-**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
-
-**Write commit hash back to the archived REQ.** After the commit succeeds, retrieve the hash with `git rev-parse --short HEAD` and update the archived REQ's frontmatter `commit:` field with the actual value. Then create a **separate metadata commit** (do not amend — amending changes the hash and invalidates what you just wrote):
-
-```bash
-# After the initial commit succeeds:
-HASH=$(git rev-parse --short HEAD)
-# Update the commit: field in the archived REQ frontmatter
-# (replace "commit:" line or add it if missing)
-git add do-work/archive/UR-NNN/REQ-NNN-slug.md
-git commit -m "[REQ-NNN] record commit hash ${HASH}"
-```
-
-This ensures the `commit:` field in the archived REQ contains the real implementation commit hash, which the review-work and present-work actions depend on for traceability. The metadata commit is a lightweight bookkeeping entry — it does not contain implementation changes.
+One commit per request, format `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Stage only the explicit files (implementation files from the Implementation Summary, the archived REQ, any follow-up REQs, UR-folder moves, and any prime files touched in Step 8 substep 7) — never `git add -A`/`.`. Validate the staged file list against the Implementation Summary (successful REQs only). After the commit, write the real short hash back into the archived REQ's `commit:` field and record it in a **separate metadata commit** (do not amend). Full bash + metadata-commit procedure: `actions/work-reference.md` → **Commit & Metadata-Commit Procedure (Step 9)**.
 
 ### Step 10: Loop or Exit
 
@@ -926,39 +504,7 @@ Before looping to Step 1 for the next REQ:
 
 At the end of every work session (whether all REQs completed, user stops, or session is ending), write `do-work/CHECKPOINT.md`. Scale the checkpoint to how much happened:
 
-```markdown
----
-session_ended: [timestamp]
-last_completed: REQ-NNN
-queue_state: [N pending, N pending-answers, N blocked-archive-collision, N in-progress]
-reqs_processed_this_session: N
-session_depth: light | moderate | heavy
----
-
-# Session Checkpoint
-
-## Completed This Session
-- REQ-NNN: [title] (Route [X], [score]%)
-- REQ-NNN: [title] (Route [X], [score]%)
-
-## In Progress (interrupted)
-- REQ-NNN: [title] — stopped at [phase: triage/planning/exploring/implementing/testing/reviewing]
-  Last known state: [1-2 sentences]
-  Key files being modified: [list]
-  Known issues: [any blockers or concerns]
-
-## Still Queued
-- REQ-NNN: [title] (pending)
-- REQ-NNN: [title] (pending-answers — [N] questions)
-
-## Session Notes
-[Environment issues, user preferences expressed, patterns discovered, decisions made outside REQ files]
-
-## Context Summary (heavy sessions only)
-[Recap of key decisions (D-XX references), architectural patterns encountered, and prime files
-that the next session should re-read before starting. Include this section when 6+ REQs were
-processed — at that volume, carried-over assumptions are unreliable.]
-```
+(write `do-work/CHECKPOINT.md` per the **Session Checkpoint Template (Step 10)** in `actions/work-reference.md`, scaled to session depth: light / moderate / heavy)
 
 **Session depth guide:**
 - **light** (1-2 REQs): Minimal checkpoint — Completed + Still Queued sections are sufficient
@@ -998,18 +544,6 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 10: Loop or Exit (context wipe + contamination check if looping, else write CHECKPOINT.md with depth + cleanup)
 ```
 
-## Common Mistakes
-
-- Spawning implementation agent without first moving file to `working/`
-- Letting spawned agents handle file management (only the orchestrator moves/archives files)
-- Forgetting to update status in frontmatter (only two transitions: `claimed` at Step 2, final status at Step 8)
-- Archiving a UR folder before all its REQs are complete
-- Forgetting Planning status note for Routes A/B ("Planning not required")
-- Using `git add -A` instead of staging specific files
-- Using `--no-verify` to bypass a failing pre-commit hook instead of fixing the issue
-- Committing without validating Implementation Summary file list against staged files
-- Implementation Summary that only lists `do-work/` paths (means the REQ wasn't actually implemented — exception: `domain: ui-design` design artifacts placed in project directories like `docs/design/`)
-- Creating follow-ups for every `- [~]` item instead of only UX-affecting decisions
 
 ## Error Handling
 
@@ -1029,37 +563,35 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 
 Keep the user informed with this format:
 
-```
-Processing REQ-003-dark-mode.md...
-  Triage: Complex (Route C)
-  Open Questions: 2 found → builder decided (follow-ups queued)
-  Planning...     [done]
-  Scope...        [done] 4 files declared
-  Exploring...    [done]
-  Implementing... [done]
-  Summary...      [done] 3 files changed
-  Qualifying...   [done] ✓ files verified, requirements traced
-  Testing...      [done] ✓ 12 tests passing
-  Reviewing...    [done] 92% — 0 follow-ups
-  Archiving...    [done]
-  Committing...   [done] → abc1234
+(keep the user informed in the running per-REQ progress format shown in `actions/work-reference.md` → **Progress Reporting Example**)
 
-Processing REQ-004-fix-typo.md...
-  Triage: Simple (Route A)
-  Implementing... [done]
-  Summary...      [done] 1 file changed
-  Qualifying...   [done] ✓ verified
-  Testing...      [done] ✓ 3 tests passing
-  Reviewing...    [done] 88% — 0 follow-ups
-  Archiving...    [done]
-  Committing...   [done] → def5678
 
-All 2 requests completed:
-  - REQ-003 (Route C) → abc1234 [review: 92%]
-  - REQ-004 (Route A) → def5678 [review: 88%]
-```
+## Archived Request File Example
 
-## What This Action Does NOT Do
+See [sample-archived-req.md](./sample-archived-req.md) for a complete example of what an archived REQ looks like after processing through the full pipeline (Route B). Every section shown there is generated by the steps above.
+
+**Timestamps tell the story:** `created_at` → `claimed_at` = queue wait time. `claimed_at` → `completed_at` = implementation time. Route + timestamps let you calibrate triage accuracy over time.
+
+## Rules
+
+- The orchestrator handles ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents do implementation work only.
+- Only two frontmatter status transitions are written: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8). Intermediate phases are tracked by which `##` sections exist, not by status.
+- One commit per request; stage explicit files only (never `git add -A`/`.`); never bypass a failing pre-commit hook with `--no-verify` — fix the root cause.
+
+**Common mistakes to avoid:**
+
+- Spawning implementation agent without first moving file to `working/`
+- Letting spawned agents handle file management (only the orchestrator moves/archives files)
+- Forgetting to update status in frontmatter (only two transitions: `claimed` at Step 2, final status at Step 8)
+- Archiving a UR folder before all its REQs are complete
+- Forgetting Planning status note for Routes A/B ("Planning not required")
+- Using `git add -A` instead of staging specific files
+- Using `--no-verify` to bypass a failing pre-commit hook instead of fixing the issue
+- Committing without validating Implementation Summary file list against staged files
+- Implementation Summary that only lists `do-work/` paths (means the REQ wasn't actually implemented — exception: `domain: ui-design` design artifacts placed in project directories like `docs/design/`)
+- Creating follow-ups for every `- [~]` item instead of only UX-affecting decisions
+
+**This action does NOT:**
 
 - Create new request files (use actions/capture.md)
 - Make architectural decisions beyond what's in the request
@@ -1067,8 +599,33 @@ All 2 requests completed:
 - Modify already-completed requests
 - Allow external modification of files in `working/` or `archive/`
 
-## Archived Request File Example
+## Common Rationalizations
 
-See [sample-archived-req.md](./sample-archived-req.md) for a complete example of what an archived REQ looks like after processing through the full pipeline (Route B). Every section shown there is generated by the steps above.
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "I'll skip Pre-Flight — the baseline is probably stable" | Run `git status` and the test baseline anyway (Step 5.75) | Pre-existing failures get misattributed to the builder, and unrelated dirty files get swept into the commit |
+| "I wrote the test after the code but it fails without it, so this counts as TDD" | For `tdd: true`, write the failing test first and show it RED before the code | Post-hoc tests encode the implementation's quirks; the RED-before-GREEN ordering is the evidence Step 6.5 gates on |
+| "P-A-U is bookkeeping — I'll just tick the boxes" | Do each phase; Step 6.3 audits the diff against the checked boxes | A checked `[UNIFY]` over a diff containing `console.log` is a false claim the qualifier will catch |
+| "This file change is small — it doesn't need to go in the Scope section" | Declare every file before coding (Step 5.5) | Undeclared touches are exactly what the scope-drift check flags at review; "small" is judged after the fact, not before |
+| "Tests still fail on attempt 2, but I'll just try the same fix again" | Load `crew-members/debugging.md` and `testing.md` before retrying | Unstructured retries repeat the same dead end; the debugging methodology exists for the 2nd+ attempt |
+| "The Implementation Summary is too detailed — I'll just write 'updated logic'" | List every changed file with its action verb + a factual one-liner | The Summary is the primary auditability artifact; "updated logic" is unverifiable and reads as a hollow completion |
+| "I'll fix this out-of-scope thing inline while I'm here" | Record it in `## Discovered Tasks`; Step 8 classifies and queues it | Inline scope creep escapes triage, review, and the per-REQ commit boundary |
+| "The queue file's twin is already archived, but re-running is harmless" | Stop — Step 2.0 sets `blocked-archive-collision` for exactly this | Re-processing a duplicate silently re-commits it and corrupts the archive lineage |
 
-**Timestamps tell the story:** `created_at` → `claimed_at` = queue wait time. `claimed_at` → `completed_at` = implementation time. Route + timestamps let you calibrate triage accuracy over time.
+## Red Flags
+
+- REQ in `do-work/working/` for >1 hour with no new git commits (builder may be stuck)
+- Implementation Summary lists files but `git diff` shows no changes in those files (hollow implementation)
+- All P-A-U checkboxes marked complete but diff contains `console.log`, `debugger`, or `TODO` (debug artifacts)
+- No Triage section appended to the REQ after processing begins
+- Scope section declares 3 files but Implementation Summary lists 12 (scope creep)
+- Builder created files only inside `do-work/` and no source files changed (no real work done)
+
+## Verification Checklist
+
+- [ ] All pending REQs processed or explicitly skipped with documented reason
+- [ ] Every completed REQ has an Implementation Summary section with file manifest
+- [ ] No REQ files remain in `do-work/working/` after the work loop ends
+- [ ] CHECKPOINT.md written if ending mid-session (for resume)
+- [ ] Git commit created for each completed REQ
+- [ ] Cleanup pass triggered at end of work loop
