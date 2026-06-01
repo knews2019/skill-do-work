@@ -36,6 +36,15 @@ If the argument is unrecognized, default to the full survey and note the unrecog
 
 ## Steps
 
+### Step 0: Surface Notes
+
+Before inventorying the queue, check for lightweight notes (written by `do-work note`):
+
+1. If `do-work/notes.md` exists and contains at least one non-blank line, capture its lines verbatim for rendering. Each line is already in `- [YYYY-MM-DD] <text>` form — do not reformat, sort, or dedupe.
+2. If `do-work/notes.md` is absent or empty (or only blank lines), skip the Notes section **silently** — render nothing for it.
+
+These lines render as a `## Notes` block at the very top of the report body (see Output Format), independent of queue state — Notes appear even when the queue is empty. Reading `notes.md` is read-only; the roadmap never writes, prunes, or reorders it (the user curates it by hand, and `do-work note` is the only writer).
+
 ### Step 1: Inventory
 
 Walk the do-work tree and collect:
@@ -126,6 +135,13 @@ Render the report per the Output Format below. Lead with the actionable section 
 **Totals:** [N ready] · [N needs clarification] · [N blocked] · [N in-progress] · [N completed] · [N failed]
 **TDD posture (pending):** [N on] · [N eligible] · [N not applicable]
 **Lessons:** [N awaiting triage] · [N awaiting ingest] · [N processed] · [N pending handoff] · [N file not found]
+
+## Notes
+
+*(Rendered only when `do-work/notes.md` is non-empty — lightweight next-step hints from `do-work note`, in append order. Omit the whole section when there are no notes. These are user hints, not REQs — surface them, don't classify or act on them.)*
+
+- [2026-06-01] investigate prototype xyz.html
+- [2026-05-30] check the cache TTL before the next perf run
 
 ## Ready to Pick Up
 
@@ -223,6 +239,8 @@ Omit sections with no entries. If the queue is empty and nothing is in-progress,
 
 **Scan date:** [timestamp]
 **Scope:** [scope]
+
+[If `do-work/notes.md` is non-empty: render the `## Notes` block here (per Step 0) — notes surface even when the queue is empty.]
 
 Queue is empty — no pending or in-progress work.
 

@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.85.0 — The Sticky Note (2026-06-01)
+
+New `do-work note "<text>"` command for the thoughts that don't deserve a whole REQ — "investigate xyz next", "check Y before running". It appends a dated line to `do-work/notes.md`, and `do-work roadmap` now surfaces those notes at the top of its survey. Delete a line by hand when it's resolved; there's no ceremony.
+
+- New `actions/note.md` — append-only, no UR/REQ, no schema, no commit (notes are working-tree-only).
+- `roadmap` gains a read-only **Step 0: Surface Notes** and a `## Notes` block at the top of the report (skipped silently when there are no notes).
+- `note` wired into SKILL.md routing at priority 31 — deliberately *not* near roadmap, so the priority cross-references to dream/stray-check (28/29) stay intact.
+- `next-steps.md` suggests `do-work note` after capture. (REQ-012, UR-001)
+
 ## 0.84.1 — The Named Handoff (2026-06-01)
 
 Action files used to point at `work.md` by internal step number ("work.md's Step 9 commits…") — brittle the moment steps get renumbered. Promoted the two load-bearing handoff points to named contracts (**Lessons-Capture Phase**, **Commit Phase**) and switched every caller to reference them by name.

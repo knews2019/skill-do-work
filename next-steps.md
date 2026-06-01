@@ -22,6 +22,7 @@ Next steps:
 Next steps:
   do-work verify requests     Check capture quality before building
   do-work run                 Start processing the queue
+  do-work note "[next hint]"  Jot a lightweight follow-up thought (not a REQ)
 ```
 
 **After work (queue processing):**
@@ -110,6 +111,14 @@ Next steps:
   do-work bkb triage            Sort staged lessons (only if any REQ has kb_status: promoted)
   do-work review REQ-NNN        Re-run KB handoff (only if any REQ has kb_status: pending; run do-work bkb init first if no kb/)
   do-work forensics             Investigate further if any pending REQ looked suspicious
+```
+
+**After note:**
+```
+Next steps:
+  do-work roadmap             See the note surfaced at the top of the queue survey
+  do-work note "[next hint]"  Jot another lightweight next-step note
+  do-work capture request: [describe]  Promote it to a real task if it warrants building
 ```
 
 **After cleanup:**
