@@ -109,8 +109,8 @@ Each session gets a unique, timestamped directory under `do-work/runs/` (the sha
 SESSION_DIR="do-work/runs/deep-explore-$(echo '<concept-slug>' | tr ' ' '-' | tr '[:upper:]' '[:lower:]')-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$SESSION_DIR"/session/sources "$SESSION_DIR"/session/idea-reports "$SESSION_DIR"/session/briefs "$SESSION_DIR"/session/research
 # Ensure run state is ignored regardless of install layout (see crew-members/background-agents.md step 1)
-git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-[ -n "$git_root" ] && { git check-ignore -q do-work/runs/ 2>/dev/null || echo 'do-work/runs/' >> "$git_root/.git/info/exclude"; }
+exclude=$(git rev-parse --git-path info/exclude 2>/dev/null)
+[ -n "$exclude" ] && { git check-ignore -q do-work/runs/ 2>/dev/null || echo 'do-work/runs/' >> "$exclude"; }
 ```
 
 `do-work/runs/` is ignored via the enclosing repo's `.git/info/exclude` (added by the line above on first run), so session state stays untracked regardless of install layout — it's transient. The Writer step still writes its outputs (VISION, briefs, idea-reports) inside the session dir; if a session's output should persist, copy the relevant artifact out before the directory is reclaimed.

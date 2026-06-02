@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.86.1 — The Worktree Path (2026-06-02)
+
+The local-exclude snippet from 0.86.0 now works in linked worktrees and submodules, where `.git` is a file rather than a directory. Previously the append silently failed there ("Not a directory"), leaving transient state (`do-work/pipeline.json`, `do-work/runs/`) un-ignored and at risk of being committed by accident.
+
+- All three exclude snippets (`actions/pipeline.md`, `actions/deep-explore.md`, `crew-members/background-agents.md`) now resolve the exclude file with `git rev-parse --git-path info/exclude` instead of `$(git rev-parse --show-toplevel)/.git/info/exclude`. Verified correct in normal clones, nested subdirectories, linked worktrees, and submodules — and still a clean no-op outside a git repo. `actions/code-review.md` defers to the `background-agents.md` snippet, so it inherits the fix.
+
 ## 0.86.0 — The Local Exclude (2026-06-02)
 
 Transient run and pipeline state now stays untracked no matter how do-work is installed — including the nested `.claude/skills/do-work/` layout, where the shipped `.gitignore` sits too deep to reach the project-root `do-work/`. The installer also stops shipping the maintainer's own queue and reports into your repo. Bundled with a supply-chain tightening for `prompts run` and a stale ai-report guide fix.

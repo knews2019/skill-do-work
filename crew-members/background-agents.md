@@ -38,15 +38,15 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
    isn't already ignored:
 
    ```bash
-   git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-   [ -n "$git_root" ] && { git check-ignore -q do-work/runs/ 2>/dev/null || echo 'do-work/runs/' >> "$git_root/.git/info/exclude"; }
+   exclude=$(git rev-parse --git-path info/exclude 2>/dev/null)
+   [ -n "$exclude" ] && { git check-ignore -q do-work/runs/ 2>/dev/null || echo 'do-work/runs/' >> "$exclude"; }
    ```
 
    `git check-ignore -q` already succeeds when *any* ignore source covers the path (a
    root-extract install's shipped `.gitignore`, or the host project's own rules), so the
    append only fires when genuinely needed and never duplicates. Use `.git/info/exclude`,
    **not** the project's committable `.gitignore` — run state is local-only and the host
-   project shouldn't carry a committed ignore rule for it.
+   project shouldn't carry a committed ignore rule for it. Resolve the exclude file with `git rev-parse --git-path info/exclude` — **not** `$(git rev-parse --show-toplevel)/.git/info/exclude`, which breaks in linked worktrees and submodules where `.git` is a file, not a directory (the redirect fails with "Not a directory" and the path is left un-ignored).
 
 2. **Each sub-agent writes its own findings file; returns only a one-line
    status.** Give every sub-agent an output path inside the run directory (e.g.
