@@ -4,12 +4,31 @@ A task queue skill for agentic coding tools. Capture requests fast, process them
 
 ## Installation
 
+do-work installs into `.claude/skills/do-work/`, so it never touches your project's own files. Run from your repo root:
+
 ```bash
-# Run from the directory where you want the skill installed
-curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev' --exclude='do-work' --exclude='ai-reports'
+mkdir -p .claude/skills/do-work
+curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz \
+  | tar xz -C .claude/skills/do-work --strip-components=1 \
+      --exclude='_dev' --exclude='do-work' --exclude='ai-reports'
 ```
 
-**Updating:** Re-run the same command to update. Note that tar extraction overwrites but does not delete files removed upstream — stale files from older versions may linger (generally harmless). For a fully clean update, delete only the known skill paths (`SKILL.md`, `actions/`, `crew-members/`, `prompts/`, `interviews/`, `specs/`, `docs/`, `decisions/`, `hooks/`, `CLAUDE.md`, `AGENTS.md`, `CHANGELOG.md`, `README.md`, `next-steps.md`) before re-extracting — never delete `do-work/` or other project files.
+The entry point is `.claude/skills/do-work/SKILL.md`.
+
+- **Claude Code** auto-discovers it — just say `do-work help`.
+- **Codex / Gemini** don't auto-discover skills — point the agent at `.claude/skills/do-work/SKILL.md` once per session (or add a one-line pointer to your `AGENTS.md` / `GEMINI.md`).
+
+Commit `.claude/skills/do-work/` to your repo — each repo carries its own copy of the skill.
+
+### Install with an AI agent
+
+Paste this into Claude Code, Codex, or Gemini — it fetches the instructions and does the install for you:
+
+> Install the **do-work** skill into this repository by fetching and following the Installation section here: https://raw.githubusercontent.com/knews2019/skill-do-work/refs/heads/main/README.md — install into `.claude/skills/do-work/`, don't modify anything outside that folder, then confirm `SKILL.md` exists and tell me how to run it.
+
+The prompt stays short because the raw README it points at carries the command, the install location, the verify step, and the per-tool invocation notes.
+
+**Updating:** Re-run the install command (or re-paste the prompt) — `tar` overwrites files in place. Tar won't delete files removed upstream, so stale files may linger (generally harmless). For a fully clean update, delete the whole `.claude/skills/do-work/` folder and re-extract — it's self-contained, so nothing else is affected. Never delete the repo-root `do-work/` runtime directory (your queue, archives, and deliverables).
 
 ## The idea
 
