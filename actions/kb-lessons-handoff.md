@@ -56,7 +56,7 @@ Pull these fields from the REQ (file at `do-work/working/REQ-*.md` in pipeline m
 | Field | Source in the REQ |
 |---|---|
 | `title` | REQ `title` frontmatter, trimmed |
-| `date` | `completed_at` frontmatter if present (standalone mode on an archived REQ); otherwise today's date in `YYYY-MM-DD` (pipeline mode runs this handoff at Step 7.5, before Step 8 writes `completed_at`, so the fallback is required). Same calendar day either way. |
+| `date` | `completed_at` frontmatter if present (standalone mode on an archived REQ); otherwise today's date in `YYYY-MM-DD` (pipeline mode runs this handoff in work.md's Lessons-Capture Phase, before the Archive step writes `completed_at`, so the fallback is required). Same calendar day either way. |
 | `req_id` | REQ `id` frontmatter (e.g., `REQ-042`) |
 | `req_path` | Absolute path to the REQ file, so the KB entry can back-reference it |
 | `domain` | REQ `domain` frontmatter (e.g., `backend`, `frontend`, `security`) |
@@ -160,7 +160,7 @@ Print a one-line confirmation:
 - `Handoff pending — run the handoff again later or drop the content manually into <kb>/raw/inbox/.` for `pending`
 - `Skipped KB handoff.` for `skipped` or `declined`
 
-Then return. The caller (work Step 7.5 or review-work Step 9.5) resumes its own flow.
+Then return. The caller (work.md's Lessons-Capture Phase or review-work.md's Self-Validation & Lessons Learned step) resumes its own flow.
 
 ## Rules
 

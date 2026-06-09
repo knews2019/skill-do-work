@@ -8,6 +8,7 @@ Read-only queue survey — what's done, what's in progress, what's pending, and 
 
 | Section | What it shows |
 |---------|---------------|
+| **Notes** | Lightweight next-step hints from `do-work note` (`do-work/notes.md`), verbatim in append order — rendered only when notes exist |
 | **Ready to Pick Up** | Queue REQs with clear scope, no `pending-answers`, no unresolved blockers |
 | **Needs Clarification** | `status: pending-answers` or open questions in the body |
 | **Blocked** | Depends on a REQ still pending/in-progress, or external dependency |
@@ -19,7 +20,7 @@ Read-only queue survey — what's done, what's in progress, what's pending, and 
 
 ## Output
 
-Markdown report. Lead with **Ready to Pick Up** so the actionable section is the first thing the reader sees. Empty sections are omitted — if the queue is empty, the report says so explicitly. Caps each section at 20 entries by default.
+Markdown report. When `do-work/notes.md` is non-empty, a **Notes** block renders first — even when the queue is empty — then **Ready to Pick Up** so the actionable section is the next thing the reader sees. Empty sections are omitted — if the queue is empty, the report says so explicitly. Caps each section at 20 entries by default.
 
 ## Key rules
 

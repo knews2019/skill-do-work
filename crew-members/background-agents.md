@@ -38,13 +38,22 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
    isn't already ignored:
 
    ```bash
-   exclude=$(git rev-parse --git-path info/exclude 2>/dev/null)
-   [ -n "$exclude" ] && { git check-ignore -q do-work/runs/ 2>/dev/null || echo 'do-work/runs/' >> "$exclude"; }
+   exclude=$(git rev-parse --git-path info/exclude 2>/dev/null) || exclude=""
+   if [ -n "$exclude" ]; then
+     git check-ignore -q do-work/runs/ 2>/dev/null || echo '**/do-work/runs/' >> "$exclude"
+   fi
    ```
 
    `git check-ignore -q` already succeeds when *any* ignore source covers the path (a
    root-extract install's shipped `.gitignore`, or the host project's own rules), so the
-   append only fires when genuinely needed and never duplicates. Use `.git/info/exclude`,
+   append only fires when genuinely needed and never duplicates. The appended pattern
+   carries a `**/` prefix because a pattern with an interior slash (`do-work/runs/`) is
+   root-anchored, while `check-ignore` tests the cwd-relative path — without the prefix,
+   a run from a repo subdirectory would never see its own append, re-appending on every
+   run while the actual run directory stayed unignored; `**/` makes the pattern match at
+   any depth, so the check and the pattern agree. The `|| exclude=""` fallback keeps the
+   guard a clean no-op outside a git repo — without it the failed command substitution
+   leaves the assignment nonzero, which aborts the script under `set -e`. Use `.git/info/exclude`,
    **not** the project's committable `.gitignore` — run state is local-only and the host
    project shouldn't carry a committed ignore rule for it. Resolve the exclude file with `git rev-parse --git-path info/exclude` — **not** `$(git rev-parse --show-toplevel)/.git/info/exclude`, which breaks in linked worktrees and submodules where `.git` is a file, not a directory (the redirect fails with "Not a directory" and the path is left un-ignored).
 

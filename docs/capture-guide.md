@@ -35,7 +35,7 @@ title: Brief descriptive title
 status: pending
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001
-domain: frontend | backend | ui-design | general
+domain: frontend | backend | ui-design | general | security | testing
 prime_files: []
 tdd: false
 ---

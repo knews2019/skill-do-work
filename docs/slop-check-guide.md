@@ -27,27 +27,27 @@ A markdown report keyed to each principle:
 ```
 # Slop-check: <artifact source>
 
-| # | Principle | Result | Evidence |
+| # | Principle | Status | Evidence |
 |---|-----------|--------|----------|
-| 1 | Don't send what you wouldn't read | FLAG | 1,400-word draft for a status update — paragraphs 3–6 are throat-clearing |
-| 2 | Do the verification yourself     | N/A  | Slop-check can't verify the cited numbers; flag for self-review |
-| 3 | Compress before sending          | FLAG | Section 4 repeats Section 1's point in three different phrasings |
-| 4 | Lead with the conclusion         | PASS | Verdict in first sentence |
-| 5 | Honest about AI-drafted          | FLAG | No disclosure block; draft reads like considered work |
-| 6 | Does this need to exist?          | FLAG | A two-line message would replace the entire artifact |
-| 7 | Match medium to stakes            | PASS | Low-stakes status update → short prose is right |
+| 1 | Worth reading | FLAG | 1,400-word draft for a status update — paragraphs 3–6 are throat-clearing |
+| 2 | Verified | N-A | Slop-check can't verify the cited numbers; flag for self-review |
+| 3 | Compressed | FLAG | Section 4 repeats Section 1's point in three different phrasings |
+| 4 | Conclusion first | PASS | Verdict in first sentence |
+| 5 | AI honesty | FLAG | No disclosure block; draft reads like considered work |
+| 6 | Needs to exist | FLAG | A two-line message would replace the entire artifact |
+| 7 | Medium matches stakes | PASS | Low-stakes status update → short prose is right |
 ```
 
 The report says what to cut and why. It does not paraphrase the artifact.
 
 ## Rewrite mode
 
-After the findings, slop-check offers a rewrite — but never auto-applies it. The flow:
+When the verdict is Borderline or Slop, slop-check offers a rewrite — but never auto-applies it. (A Clean verdict gets no offer; there's nothing to fix.) The flow:
 
-1. Report findings.
-2. Ask the user: `Want a rewrite addressing these flags? [yes / specific principles / no]`.
-3. If yes, generate the compressed version and **show it for review**.
-4. The user copies or edits before adopting. Slop-check does not overwrite the original file unless the user explicitly approves.
+1. Report findings and the verdict.
+2. Ask the user: `Apply suggested fixes? (compress, lead with conclusion, add disclosure tags) [y/N]`.
+3. If confirmed, write the compressed version to a **sibling file** (`{name}.compressed.md`) — or inline if the input was pasted text — leaving the original untouched.
+4. The user decides whether to replace the original. Slop-check does not overwrite the source file unless the user explicitly approves.
 
 This is deliberate: an AI rewriting AI-flagged prose without human review just shifts the slop one layer down. The point is to surface the cuts, not perform them silently.
 

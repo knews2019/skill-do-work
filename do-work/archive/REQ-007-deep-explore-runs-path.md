@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-05-29T16:43:59Z
 claimed_at: 2026-05-29T18:48:30Z
 completed_at: 2026-05-29T18:49:30Z
+commit: 3ad65f4
 route: B
 review_generated: true
 source: code-review

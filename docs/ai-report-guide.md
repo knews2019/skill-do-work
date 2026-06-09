@@ -10,8 +10,8 @@ A single HTML report plus a sibling assets folder, side by side:
 
 ```
 ai-reports/
-  UR-007-add-user-avatar-component.html
-  UR-007-add-user-avatar-component.assets/
+  2026-06-02_1430_ur-007-add-user-avatar-component.html
+  2026-06-02_1430_ur-007-add-user-avatar-component.assets/
     before-settings.png
     after-settings.png
     architecture.svg
@@ -55,7 +55,7 @@ If nothing is `status: completed` for the target, the action stops and says so �
 
 ## Output
 
-`ai-reports/<UR-or-REQ-slug>.html` plus the sibling `.assets/` folder. The HTML opens directly in a browser. Stakeholders can read it without running anything.
+`ai-reports/yyyy-mm-dd_hhmm_<slug>.html` plus the sibling `ai-reports/yyyy-mm-dd_hhmm_<slug>.assets/` folder. The timestamp prefix is mandatory — never just the UR/REQ ID — so reports sort chronologically. The HTML opens directly in a browser. Stakeholders can read it without running anything.
 
 ## Key rules
 

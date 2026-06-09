@@ -29,7 +29,7 @@ related:
   - page: adr-011-interview-framework-with-prescriptive-templates
     rel: evidence-for
 created: 2026-04-15
-updated: 2026-04-16
+updated: 2026-06-10
 confidence: high
 ---
 
@@ -76,3 +76,7 @@ Append-only timeline. Historical entries use the original decision dates from `C
 ## [2026-04-16] Interview framework lands
 
 - Accepted [[adr-011-interview-framework-with-prescriptive-templates]] from `0.67.0`: added `interview` action with prescriptive templates under `interviews/`, first template `work-operating-model`, stateful/resumable sessions, and BKB integration via `ingest`.
+
+## [2026-06-01] work.md re-split into orchestrator + companion
+
+- Reaffirmed [[adr-001-modular-action-prompts-and-companion-references]] from `0.84.0` (REQ-001): `work.md` regrew past the token budget and was split again into a ten-step orchestrator plus a new `actions/work-reference.md` companion (schema, Schema Read Contract, step/exit templates, failure classification, commit procedures). Supersedes the earlier note that `work-reference.md` had been permanently re-inlined — the split/inline decision remains fluid.

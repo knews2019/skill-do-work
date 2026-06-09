@@ -113,12 +113,7 @@ Pipeline state lives at `do-work/pipeline.json`. Created on initialize, read on 
    - All 6 steps set to `status: "pending"`
    - `active: true`
    - `started_at` set to current ISO 8601 timestamp
-4. **Exclude state file from git**: Ensure `do-work/pipeline.json` is ignored regardless of install layout by appending it to the enclosing repo's `.git/info/exclude` (local-only — never committed, never shipped) when it isn't already ignored. Do **not** touch the project's committable `.gitignore`: a root-extract install's shipped `.gitignore` can't reach `do-work/pipeline.json` from a nested `.claude/skills/do-work/` install, and the host project shouldn't carry a committed ignore rule for transient state.
-
-   ```bash
-   exclude=$(git rev-parse --git-path info/exclude 2>/dev/null)
-   [ -n "$exclude" ] && { git check-ignore -q do-work/pipeline.json 2>/dev/null || echo 'do-work/pipeline.json' >> "$exclude"; }
-   ```
+4. **Exclude state file from git**: Ensure `do-work/pipeline.json` is ignored regardless of install layout by appending it to the enclosing repo's `.git/info/exclude` (local-only — never committed, never shipped) when it isn't already ignored. Do **not** touch the project's committable `.gitignore`: a root-extract install's shipped `.gitignore` can't reach `do-work/pipeline.json` from a nested `.claude/skills/do-work/` install, and the host project shouldn't carry a committed ignore rule for transient state. Use the exact snippet from `crew-members/background-agents.md` step 1, substituting `do-work/pipeline.json` for `do-work/runs/` (appended pattern: `**/do-work/pipeline.json`).
 5. Print the initial status block
 6. Proceed to Step 4 (execute first step: `investigate`)
 

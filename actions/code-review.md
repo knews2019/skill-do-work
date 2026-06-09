@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Standalone codebase review — not tied to the REQ/UR queue. Evaluates consistency, patterns, security, and architectural health across a scoped section of the codebase. User-facing walkthrough: [`docs/code-review-guide.md`](../docs/code-review-guide.md).
 
-**Source-code read-only** — this action does NOT modify any project source files. It produces a structured report only. May write queue metadata (`do-work/queue/REQ-*` files) with explicit user confirmation — see Step 10.
+**Source-code read-only** — this action does NOT modify any project source files. It produces a structured report only. It does write its own run state under `do-work/runs/code-review-<ts>/` (findings files + manifest) and appends `do-work/runs/` to the enclosing repo's `.git/info/exclude` when not already ignored — see Steps 1–2. May also write queue metadata (`do-work/queue/REQ-*` files) with explicit user confirmation — see Step 10.
 
 ## When to Use
 
@@ -289,7 +289,7 @@ Found 3 Critical and 5 Important findings.
 Create REQ files for these? (The user can run `do-work run` to process them later.)
 ```
 
-Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward. actions/code-review.md is read-only by default in all modes.
+Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward. actions/code-review.md is source-code read-only in all modes — the only writes are run state under `do-work/runs/` (plus the `.git/info/exclude` append) and, with explicit consent here in Step 10, queue metadata.
 
 When the user confirms, create REQ files using the standard format:
 

@@ -6,6 +6,21 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.87.0 — The Deep Clean (2026-06-10)
+
+A 20-commit code review (9 finder angles, adversarial verification, gap sweep) surfaced 24 confirmed defects — all fixed. The headliners: deep-explore's session-dir command no longer breaks (or executes arbitrary shell) on punctuation in the concept name, capture's domain enum now includes `security`/`testing` so the security crew rule actually loads for new REQs, and the prompt-injection guardrail now covers all nine ingestion paths instead of five.
+
+- deep-explore: concept slug is sanitized as a text operation before it ever touches the shell — no more apostrophe crashes, nested-dir lost sessions, or injection surface
+- Prompt-injection guardrail extended to bkb triage, deep-explore source capture, verify-requests, and ai-report; CLAUDE.md and the JIT_CONTEXT now state the trigger as a condition, with callers as instances
+- Local-exclude snippet: pattern now `**/`-prefixed so the dedup guard works from repo subdirectories, and the guard is a true exit-0 no-op outside git repos; canonical copy lives only in crew-members/background-agents.md (pipeline and deep-explore defer by reference, like code-review already did)
+- ai-report: asset discovery uses `git diff-tree` — commit-message lines can no longer become phantom image paths, and merge commits list their files
+- dream: the `--dry-run` implicit answer and the `none` branch each had two contradictory specs; both now resolve one way (dry-run → Phase 4 + `(dry-run)` summary; none → Phase 4 + `(declined)` summary)
+- work/work-reference: status-transition count contradiction resolved (two on the normal path + documented exception writes), exit-summary "three sections" → four, Schema Read Contract read-site pointers corrected (Step 7 review spawn, Step 8 archive, Step 5.5/7 route reads), Review Section Template de-duplicated (review-work.md owns it), companion file read-once/named-section guidance added
+- Docs guides re-synced to their actions: ai-report filenames (timestamp prefix), slop-check report table/rewrite flow, roadmap Notes-first ordering, capture domain enum
+- Archive hygiene: nine archived REQs got their missing `commit:` traceability fields; REQ-012's false "do-work/ is gitignored / use `git add -f`" lesson corrected before it could be promoted to a KB
+- Stale records fixed: ADR-001 now records the 2026-06-01 work.md re-split, security.md's JIT comment no longer claims a review-work loading path that doesn't exist, interview.md's gitignore claim updated, prompt-injection's dream load point corrected to Step 2/Phase 1
+- CLAUDE.md gained three new prescribed-shell traps (`git show --name-only` bleed, root-anchored ignore patterns, raw-text shell interpolation) and a "Closed Enumerations Go Stale" convention
+
 ## 0.86.1 — The Worktree Path (2026-06-02)
 
 The local-exclude snippet from 0.86.0 now works in linked worktrees and submodules, where `.git` is a file rather than a directory. Previously the append silently failed there ("Not a directory"), leaving transient state (`do-work/pipeline.json`, `do-work/runs/`) un-ignored and at risk of being committed by accident.

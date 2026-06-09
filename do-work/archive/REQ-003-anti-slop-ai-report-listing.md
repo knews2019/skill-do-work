@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-05-29T16:43:59Z
 claimed_at: 2026-05-29T18:47:00Z
 completed_at: 2026-05-29T18:47:30Z
+commit: bad903e
 route: A
 review_generated: true
 source: code-review

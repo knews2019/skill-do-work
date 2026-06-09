@@ -1,6 +1,6 @@
 # Work Action — Reference
 
-> Companion file to `work.md`. Holds the heavy templates, tables, and sub-procedures the orchestrator references by name — extracted to keep `actions/work.md` focused on the ten-step skeleton. Each section below is pointed to from the matching step in `actions/work.md`. Loading this file is only necessary when you reach the step that references it.
+> Companion file to `work.md`. Holds the heavy templates, tables, and sub-procedures the orchestrator references by name — extracted to keep `actions/work.md` focused on the ten-step skeleton. Each section below is pointed to from the matching step in `actions/work.md`. Loading this file is only necessary when you reach the step that references it — and read only the named section. If this file is already in context from an earlier step this session, reuse it; don't re-read it at every reference site.
 
 ---
 
@@ -103,7 +103,7 @@ status: completed | completed-with-issues | failed
 commit: abc1234               # If git repo
 error: "Description"          # Only if failed
 
-# Set by kb-lessons handoff (Step 7.5 pipeline / Step 9.5 standalone). Optional; absent on REQs that predate the handoff.
+# Set by kb-lessons handoff (work.md's Lessons-Capture Phase in pipeline mode / review-work.md's Self-Validation & Lessons Learned step standalone). Optional; absent on REQs that predate the handoff.
 kb_status: promoted | pending | declined | skipped
 kb_entry: REQ-042-lesson-slug.md   # filename only (survives bkb moves from inbox/ to capture/ to processed/); present only when kb_status: promoted
 ---
@@ -125,13 +125,13 @@ Seven fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depen
 
 | Field (read sites) | Canonical enum | Normalization | Default on unknown |
 |---|---|---|---|
-| `domain` (Step 4 Route C plan-agent spawn, Step 6 crew load, Step 9 review-work spawn) | `frontend`, `backend`, `ui-design`, `general`, `security`, `testing` | `back-end`/`back_end` → `backend`; `front-end`/`front_end` → `frontend`; `ui_design` → `ui-design`; `sec` → `security`; `test` → `testing` | `general` |
-| `status` (Step 1 scan + categorization, Step 10 archive trigger) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `pending-answers`, `blocked-archive-collision`, `blocked-dependency-cycle` | `done`/`finished`/`closed` → `completed` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
-| `route` (Step 3 dispatch, Step 5 scope-drift comparison) | `A`, `B`, `C` | lowercase `a`/`b`/`c` → uppercase | treat as needing re-triage in Step 3 |
+| `domain` (Step 4 Route C plan-agent spawn, Step 6 crew load, Step 7 review-work spawn) | `frontend`, `backend`, `ui-design`, `general`, `security`, `testing` | `back-end`/`back_end` → `backend`; `front-end`/`front_end` → `frontend`; `ui_design` → `ui-design`; `sec` → `security`; `test` → `testing` | `general` |
+| `status` (Step 1 scan + categorization, Step 8 archive trigger) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `pending-answers`, `blocked-archive-collision`, `blocked-dependency-cycle` | `done`/`finished`/`closed` → `completed` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
+| `route` (Step 3 dispatch, Step 5.5 scope declaration, Step 7 scope-drift comparison) | `A`, `B`, `C` | lowercase `a`/`b`/`c` → uppercase | treat as needing re-triage in Step 3 |
 | `caveman` (Step 6 crew load) | `false`, `true`, `lite`, `full`, `ultra` | truthy strings (`yes`/`on`) → `true`; `light` → `lite` | `false` |
 | `tdd` (Step 6 testing-crew load, Step 6.5 TDD-evidence gate; emission validated in `actions/capture.md`) | `true`, `false` (YAML boolean) | `test_first`/`yes`/`on`/`t` → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 testing crew not loaded; Step 6.5 gate not enforced) |
 | `error_type` (Step 8 failure classification, Step 8 upstream-failure short-circuit, forensics) | `intent`, `spec`, `code`, `environment` | (no common typo aliases identified) | `code` |
-| `kb_status` (Step 7.5 / Step 9.5 kb-lessons handoff, roadmap lessons rollup) | `promoted`, `pending`, `declined`, `skipped` | `skip` → `skipped`; `rejected` → `declined` | `pending` |
+| `kb_status` (kb-lessons handoff — work.md's Lessons-Capture Phase / review-work.md's Self-Validation & Lessons Learned step; roadmap lessons rollup) | `promoted`, `pending`, `declined`, `skipped` | `skip` → `skipped`; `rejected` → `declined` | `pending` |
 
 **Write paths are unaffected.** Step 2 claim, Step 8 archive, Step 8 follow-up generation, the kb-lessons handoff, and capture emission always write the canonical key and canonical enum value — never an alias, never the typo'd input. The normalize-and-warn contract is read-only.
 
@@ -148,7 +148,7 @@ Once `working/` is empty, proceed with finding the next request.
 
 **Exit paths when no `pending` REQs found:**
 
-The exit report is **composed**, not picked from disjoint branches. Whenever no `pending` REQs are found, lead with `No pending REQs in queue.` and then append every section that has at least one REQ. Three sections may apply, in this order:
+The exit report is **composed**, not picked from disjoint branches. Whenever no `pending` REQs are found, lead with `No pending REQs in queue.` and then append every section that has at least one REQ. Four sections may apply, in this order:
 
 1. **Completed/done section** — applies if any REQ in `do-work/queue/` has status `completed`, `completed-with-issues`, or `done`. Read the `user_request` frontmatter field from each to group by UR. Render:
 
@@ -307,30 +307,6 @@ If **no section applies** (no REQs at all in `do-work/queue/`), report completio
 *Verified by work action*
 ```
 
-## Review Section Template (Step 7)
-
-```markdown
-## Review
-
-**Overall: [X]%** | [timestamp]
-
-| Dimension | Score |
-|-----------|-------|
-| Requirements | X% |
-| Code Quality | X% |
-| Test Adequacy | X% |
-| Scope | X% |
-| Risk | [level] |
-| Acceptance | [result] |
-
-**Findings:** [count] important, [count] minor
-**Acceptance:** [Pass/Partial/Fail/Untested] — [1-line summary]
-**Suggested testing:** [count] items
-**Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"
-
-*Reviewed by review work action*
-```
-
 ## Deferred Prime-Link Path Computation (Step 7.5)
 
 **Path computation rule (for use in Step 8):** the link path must be relative to the prime file's location, not the repo root. Count how many directories deep the prime file sits (i.e., the number of path components before the filename). Prepend that many `../` steps to the REQ's repo-root-relative archive path. Examples:
@@ -450,6 +426,9 @@ git add do-work/queue/REQ-025-confirm-sidebar-palette.md
 
 # Stage UR-folder move (if this was the last REQ and the UR moved to archive/)
 # Both the old path (deletion) and new path (addition) must be staged.
+# Exception: if the UR was never committed (capture's commit step was skipped,
+# or the repo wasn't git at capture time), the old path matches nothing and
+# `git add` exits 128 — stage only the new archive path in that case.
 git add do-work/user-requests/UR-002/ do-work/archive/UR-002/
 
 git commit -m "$(cat <<'EOF'

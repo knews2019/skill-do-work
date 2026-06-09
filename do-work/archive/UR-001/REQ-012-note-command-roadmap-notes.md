@@ -167,7 +167,7 @@ Passed — `actions/note.md` exists with all required/common action-file section
 
 **What worked:** The note action is prose, but its file logic (append / render / delete / skip) is concrete enough to *execute* in bash as a real GREEN test — simulating the four states gave genuine behavioral evidence without a test harness.
 **What didn't:** The REQ's suggested "near roadmap" routing placement collided with the priority-cross-reference fragility REQ-005 fixed (priorities 28/29 are referenced by number in prose). Priority 31 — after the last keyword, before the descriptive-content fallback — was the only safe slot (D-01).
-**Worth knowing:** `do-work/` is gitignored, so `do-work/notes.md` is correctly working-tree-only and must never be committed (the note action explicitly doesn't). New REQ/UR files under `do-work/` are untracked and need `git add -f` to land in an archive commit — unlike REQ-001/006, which were already tracked.
+**Worth knowing:** *(corrected post-archival by d528aec — the original lesson here generalized falsely from this source repo's local setup)* In end-user installs, `do-work/` is the **committable Trail of Intent**: `notes.md`, URs, and REQs are committed in the user's normal flow, and only `do-work/pipeline.json` and `do-work/runs/` are git-excluded (via the shipped `.gitignore`). The note action itself never commits, but the file is committable. The `git add -f` workaround was only needed because *this source repo* keeps `do-work/` untracked via a local `.git/info/exclude` entry — that does not generalize and `-f` should not be taught as the normal path (it masks real ignore rules).
 
 ## Knowledge-Base Handoff
 

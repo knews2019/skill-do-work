@@ -82,7 +82,7 @@ The full annotated frontmatter schema and the **Schema Read Contract** — the n
 
 **Status flow (frontmatter values):** `pending` → `claimed` → `completed` / `completed-with-issues` / `failed`
 
-The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only three status transitions are written to frontmatter: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8).
+The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only two status transitions are written to frontmatter on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8). Exception paths write their own statuses: the special holding statuses listed below (Step 1's `blocked-dependency-cycle`, Step 2.0's `blocked-archive-collision`) and Step 7's early `completed-with-issues` write after a failed remediation (which Step 8 must not overwrite).
 
 **Special statuses — these REQs stay in the queue but Step 1 won't pick them up (they're not `pending`, so the "find next pending REQ" scan walks right past them):**
 - `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do-work clarify`.
@@ -409,7 +409,7 @@ The status `completed-with-issues` means the REQ was archived but has known unre
 
 Append to the request file:
 
-(append per the **Review Section Template (Step 7)** in `actions/work-reference.md`)
+(append per the **Append to REQ File** template in `actions/review-work.md` — the file dispatched above, so it is already in context; review-work.md owns the Review section format)
 
 ### Step 7.5: Lessons-Capture Phase
 
@@ -579,14 +579,14 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 ## Rules
 
 - The orchestrator handles ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents do implementation work only.
-- Only two frontmatter status transitions are written: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8). Intermediate phases are tracked by which `##` sections exist, not by status.
+- Only two frontmatter status transitions are written on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8); exception paths (Steps 1, 2.0, and 7's failed-remediation write) set the documented special statuses. Intermediate phases are tracked by which `##` sections exist, not by status.
 - One commit per request; stage explicit files only (never `git add -A`/`.`); never bypass a failing pre-commit hook with `--no-verify` — fix the root cause.
 
 **Common mistakes to avoid:**
 
 - Spawning implementation agent without first moving file to `working/`
 - Letting spawned agents handle file management (only the orchestrator moves/archives files)
-- Forgetting to update status in frontmatter (only two transitions: `claimed` at Step 2, final status at Step 8)
+- Forgetting to update status in frontmatter (normal path has only two transitions: `claimed` at Step 2, final status at Step 8)
 - Archiving a UR folder before all its REQs are complete
 - Forgetting Planning status note for Routes A/B ("Planning not required")
 - Using `git add -A` instead of staging specific files

@@ -18,7 +18,7 @@ related:
   - page: adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats
     rel: complements
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-06-10
 confidence: high
 ---
 
@@ -31,7 +31,7 @@ See also: [[adr-005-pipeline-is-stateful-and-resumable]] (complements), [[adr-00
 
 The skill started as a smaller prompt bundle, then grew into a library of actions with richer routing, templates, and reporting requirements. By early April 2026, single files like `work.md`, `build-knowledge-base.md`, and later `pipeline.md` had accumulated enough embedded reference material that they became harder to load, scan, and maintain. The changelog shows a repeated pattern: extract stable scaffolding, templates, or edge-case guidance into adjacent reference files rather than keep inflating the action prompt.
 
-This pattern is still active today. `CLAUDE.md` treats action files as standalone prompts, documents accepted variants, and lists companion reference files like `bkb-reference.md`, `interview-reference.md`, and `deep-explore-reference.md` as first-class project files. Current action prompts explicitly point readers at their companion references when they need the heavier template payload. (`work-reference.md` and later `pipeline-reference.md` were both re-inlined back into their parent actions once trimming brought the combined size under the relevant token budget — the split/inline decision is fluid, not permanent.)
+This pattern is still active today. `CLAUDE.md` treats action files as standalone prompts, documents accepted variants, and lists companion reference files like `bkb-reference.md`, `interview-reference.md`, and `deep-explore-reference.md` as first-class project files. Current action prompts explicitly point readers at their companion references when they need the heavier template payload. (The split/inline decision is fluid, not permanent: `work-reference.md` and later `pipeline-reference.md` were both re-inlined back into their parent actions once trimming brought the combined size under the relevant token budget — and on 2026-06-01, `work.md` was split again into an orchestrator plus a new `actions/work-reference.md` companion when it regrew past the budget (REQ-001, 0.84.0).)
 
 ## Decision
 
@@ -63,6 +63,6 @@ The trade-off is indirection. Readers sometimes need to open two files instead o
 
 - [CHANGELOG.md](../../CHANGELOG.md) — `0.49.0 The Architect`, `0.61.1 The Lean Cut`, `0.64.1 The Companion Split`
 - [CLAUDE.md](../../CLAUDE.md) — project structure and action-file conventions
-- [actions/work.md](../../actions/work.md) (originally split into a `work-reference.md` companion; later re-inlined)
+- [actions/work.md](../../actions/work.md) and [actions/work-reference.md](../../actions/work-reference.md) (split into a companion, re-inlined after trimming, then split again on 2026-06-01 — REQ-001)
 - [actions/pipeline.md](../../actions/pipeline.md) (originally split into a `pipeline-reference.md` companion; later re-inlined)
 - [actions/bkb.md](../../actions/bkb.md) and [actions/bkb-reference.md](../../actions/bkb-reference.md)

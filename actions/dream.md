@@ -25,7 +25,7 @@ The four phases run in order. Phases 1–2 are strictly read-only reconnaissance
 `$ARGUMENTS` accepts (in any order):
 
 - `<path>` — absolute or relative path to the memory directory. If empty, resolve via the default path resolution order in Step 1.
-- `--dry-run` (mode token) — run Phases 1–2 to build the worklist, print the Phase 2.5 preview, then **stop without writing**. The lock is released cleanly. Mirrors `stray-check`'s `report` mode. A `--dry-run` invocation skips the confirmation prompt and the answer is implicitly "none."
+- `--dry-run` (mode token) — run Phases 1–2 to build the worklist, print the Phase 2.5 preview, then **stop without writing**. The lock is released cleanly. Mirrors `stray-check`'s `report` mode. A `--dry-run` invocation skips the confirmation prompt and the answer is implicitly `dry-run` (see Step 3.5 substep 4) — the run proceeds to Phase 4 and emits the summary marked `(dry-run)`.
 
 ## Steps
 
@@ -143,7 +143,7 @@ The worklist is now complete and the disk is still untouched. Before any Phase 3
    - `all` — proceed to Phase 3 with the full worklist.
    - `dry-run` — skip Phase 3 entirely, jump to Phase 4 to release the lock and emit the summary marked `(dry-run)`. Do not bump `last_updated` on any page. Do not append a `[dream]` line to `log.md` (a dry-run is not a pass).
    - `specific clusters` — ask the user to name which clusters (e.g., "merges only", "links only", "duplicates 1 and 3"), filter the worklist to just those, then proceed.
-   - `none` — release the lock and exit without writing.
+   - `none` — skip Phase 3 entirely, jump to Phase 4 to release the lock and emit the summary marked `(declined)`. No fixes are written.
    - **Ambiguous response or no response** (timeout, unparseable token, anything not in the four above) — default to `dry-run`. Never escalate to `all` on uncertainty.
 
 4. **Mode-token short-circuit.** If the user invoked `do-work dream --dry-run`, skip the ask-user prompt entirely and treat the answer as `dry-run`. Still print the preview — that's the whole point of dry-run mode.
