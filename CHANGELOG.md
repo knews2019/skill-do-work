@@ -6,7 +6,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.88.0 — The Model Ladder (2026-06-10)
+## 0.88.1 — The Slim Charter (2026-06-10)
+
+CLAUDE.md went on a diet — from 256 lines to about half that, with zero information loss. Everything cut was a duplicate of content already canonical elsewhere, including three hand-maintained lists that would have silently drifted (the very pattern CLAUDE.md's own "Closed Enumerations Go Stale" rule warns about).
+
+- Project Structure tree now stops at directories and points to SKILL.md as the canonical action index (was a 63-line hand-copy of all 35 action files)
+- Agent Rules section reduced to the loading contract + pointers: `JIT_CONTEXT` comments and `actions/work.md` Step 6 are the canonical homes (was a third copy of the full per-file loading list)
+- Lessons → KB Handoff compressed to a pointer at `actions/kb-lessons-handoff.md`
+- Prompt Retrospectives compressed from 40 lines to ~12 — same triggers, same 4-part shape, examples and cue phrases dropped
+- Kept verbatim: Before Every Commit, the action-file template + shell-trap lessons, Agent Compatibility, Naming Conventions
+
+
 
 New prompt: `ultracode-workflow` — a model-tiered delegation policy (Sonnet executes, Opus escalates and deep-reviews, Fable judges) with mechanical test verification, fresh-context review gates, and an explicit escalation ladder. Run it standalone on any task, or hook it into the queue so the work action dispatches each pipeline step to the right model tier.
 
