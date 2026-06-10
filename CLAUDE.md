@@ -104,7 +104,9 @@ Action files follow a consistent structure. When adding or modifying actions, us
 ## Steps
 
 ### Step 1: [First action]
+
 ### Step 2: [...]
+
 ### Step N: [Final action]
 
 ## Output Format
@@ -117,8 +119,8 @@ Action files follow a consistent structure. When adding or modifying actions, us
 
 ## Common Rationalizations
 
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
+| If you're thinking...              | STOP. Instead...     | Because...               |
+| ---------------------------------- | -------------------- | ------------------------ |
 | [Shortcut the agent might attempt] | [What to do instead] | [Why the shortcut fails] |
 
 ## Red Flags
@@ -133,19 +135,20 @@ Action files follow a consistent structure. When adding or modifying actions, us
 **Required elements:** Description blockquote, Steps (numbered). **Common elements:** Input, Output Format, Rules, When to Use. **Encouraged elements:** Common Rationalizations, Red Flags, Verification Checklist. **Section order matters:** always Philosophy → When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist.
 
 **Accepted variants:**
+
 - **Sub-command dispatchers** (`prime.md`, `bkb.md`) — Use a Sub-Commands table instead of flat steps. Each sub-command has its own workflow section.
 - **Multi-mode actions** (`present-work.md`, `review-work.md`, `tutorial.md`) — Use a Modes table, then separate workflow sections per mode. A single `Step 1: Mode Selection` dispatcher at the top is acceptable.
 - **State-based actions** (`version.md`, `pipeline.md`) — Response sections keyed by input type instead of sequential steps.
 - **Checklist-based diagnostics** (`forensics.md`) — Use a `## Checks` section with independently-runnable items instead of ordered `## Steps`. Each check is a diagnostic probe, not a sequential step.
 
-Cross-reference other actions by their **file path** (e.g., `actions/work.md`, or `actions/work-reference.md`'s Schema Read Contract) so an agent reading the file can open the target directly without resolving a name to a path. Companion reference files take a path too (`actions/interview-reference.md`, `actions/bkb-reference.md`). The one exception is a `do-work <verb>` **command invocation** (`do-work run`, `do-work clarify`) — that's how an action is *run*, not a pointer to its file, so keep it as a command. SKILL.md remains the authoritative name→path mapping and may use short names in its routing prose.
+Cross-reference other actions by their **file path** (e.g., `actions/work.md`, or `actions/work-reference.md`'s Schema Read Contract) so an agent reading the file can open the target directly without resolving a name to a path. Companion reference files take a path too (`actions/interview-reference.md`, `actions/bkb-reference.md`). The one exception is a `do-work <verb>` **command invocation** (`do-work run`, `do-work clarify`) — that's how an action is _run_, not a pointer to its file, so keep it as a command. SKILL.md remains the authoritative name→path mapping and may use short names in its routing prose.
 
 ### Prescribed Shell Commands Must Surface What the Steps Consume
 
 Action files are prose that prescribes shell behavior. When a step's logic iterates over the output of a command, the prescribed command must actually emit the items that logic consumes — a mismatch is invisible in the prose and only shows up when run against a real repo. Two traps that have already bitten this skill:
 
 - **`git status --porcelain` collapses wholly-untracked directories** into a single `?? dir/` row — it does not list the files inside. Any step that enumerates untracked files per-item (read each, check extension/size/name) must use `git status --porcelain --untracked-files=all` (`-uall`) or `git ls-files --others --exclude-standard`. The latter also drops correctly-ignored paths, so it doubles as the untracked ignore filter.
-- **A blanket skip/exclude list applied *before* a check silently neuters any check meant to fire inside the excluded set.** Scope skip-lists to the noise they actually target (untracked/ignored) and run tracked-file checks outside the exclusion — e.g. a committed `__pycache__/*.pyc` is correct-to-ignore when untracked but is exactly what a "committed build artifact" check should flag.
+- **A blanket skip/exclude list applied _before_ a check silently neuters any check meant to fire inside the excluded set.** Scope skip-lists to the noise they actually target (untracked/ignored) and run tracked-file checks outside the exclusion — e.g. a committed `__pycache__/*.pyc` is correct-to-ignore when untracked but is exactly what a "committed build artifact" check should flag.
 - **`git show --name-only` prints the commit header and message before the file list** — a message line can pass a filename grep and become a phantom path, and merge commits list no files at all. Use `git diff-tree --no-commit-id --name-only -r -m <commit>` (or `git show --name-only --format=`) when the output is consumed as file paths.
 - **Ignore patterns with an interior slash are root-anchored, while `git check-ignore` tests cwd-relative paths** — a guard that checks then appends can mismatch from a subdirectory (duplicate appends, path never ignored). Prefix with `**/` when the consumer may run below the repo root. Relatedly, never build `.git/`-internal paths from `--show-toplevel`; use `git rev-parse --git-path <name>` (worktree- and submodule-safe).
 - **Never interpolate raw user text inside shell quoting.** A prescribed command like `$(echo '<user-slug>' | tr ...)` breaks on an apostrophe and is a command-injection vector. Derive a sanitized token as a text operation first, then substitute the already-safe value.
@@ -154,7 +157,7 @@ When a review finds a bug in prescribed-command logic, **grep the same primitive
 
 ### Closed Enumerations Go Stale
 
-When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep a guide in sync), state the trigger *condition* in the rule's canonical home and mark any caller/value list as illustrative, not exhaustive. Hand-enumerated lists silently go stale the moment the set grows — one review traced four independent defects to this pattern (capture's stale domain enum, prompt-injection's five-caller list, the docs-exemption list, security.md's loader claims). When extending a set, grep for every other enumeration of it and update or generalize each one.
+When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep a guide in sync), state the trigger _condition_ in the rule's canonical home and mark any caller/value list as illustrative, not exhaustive. Hand-enumerated lists silently go stale the moment the set grows — one review traced four independent defects to this pattern (capture's stale domain enum, prompt-injection's five-caller list, the docs-exemption list, security.md's loader claims). When extending a set, grep for every other enumeration of it and update or generalize each one.
 
 ## Agent Rules
 
@@ -227,7 +230,7 @@ When a conversation needed multiple clarification turns to land the actual outco
 
 - **It's feedback to the user, not self-flagellation.** Don't dwell on what you got wrong — focus on what phrasing would have pointed you right.
 - **Be concrete.** "Specify the format" is useless. "Say 'Marp slide deck viewed with marp --preview' instead of 'presentation'" is useful.
-- **Separate the receiving agent's job from the content.** When the user wants a prompt for another AI, the canonical split is: *receiving agent should do X (minimal) vs. content to embed Y (maximal)*. Surface this split explicitly if it applies.
+- **Separate the receiving agent's job from the content.** When the user wants a prompt for another AI, the canonical split is: _receiving agent should do X (minimal) vs. content to embed Y (maximal)_. Surface this split explicitly if it applies.
 - **Don't offer unsolicited retrospectives on simple tasks.** If the user asked for one file edit and got one file edit, no retrospective needed.
 
 **Example cue phrases** (signals the retrospective belongs):
@@ -238,3 +241,16 @@ When a conversation needed multiple clarification turns to land the actual outco
 - Final deliverable is noticeably larger or more specific than the initial ask implied.
 
 The retrospective is a teaching moment disguised as a reply. Done well, it reduces the next session's turn count. Done wrong, it's noise. When in doubt, skip it.
+
+## Communication Style
+
+- The user appreciates productive pushback — challenge assumptions, suggest better approaches, and flag potential issues rather than blindly executing instructions
+
+## Naming Conventions
+
+- **No cryptic or single-word variable names.** Every variable and function name should be at least two words
+  (e.g., `invoice_total`, `retry_count`, `alignment_score`) so its purpose is immediately obvious.
+- **Optimize for grepability.** Names should be unique enough across the codebase that a simple text search
+  (ripgrep, fd, sad) locates every usage — no IDE or LSP required to trace where a name has effect.
+- **Favor clarity over brevity.** `pending_invoice_items` beats `pii`. `max_retry_attempts` beats `mra`.
+  If a name needs a comment to explain it, the name isn't good enough.
