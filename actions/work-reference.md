@@ -87,6 +87,7 @@ status: pending
 domain: frontend  # choose one: frontend, backend, ui-design, general, security, or testing
 tdd: false       # optional — set true when test-first applies (per capture's TDD heuristic); drives Step 6 testing-crew loading and RED/GREEN mode
 caveman: false   # optional — `true` or intensity `lite` | `full` | `ultra`; loads crew-members/caveman.md to compress agent prose
+ultracode: false # optional — `true` runs this REQ under the ultracode dispatch policy (model-tiered delegation; Step 6 loads prompts/ultracode-workflow.md → Mode B). An explicit canonical `false` opts the REQ out of a run-level ultracode mode.
 prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001          # May be absent on legacy REQs
@@ -111,7 +112,7 @@ kb_entry: REQ-042-lesson-slug.md   # filename only (survives bkb moves from inbo
 
 ## Schema Read Contract
 
-Seven fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `dependencies:` → `depends_on` patch surfaced that several silently swallow natural typo variants from sister conventions (snake_case vs kebab-case YAML, `done`/`finished`/`closed` as English glosses of `completed`, lowercase route letters, etc.). Pure silent-alias is risky for enum values because an unknown value should not be quietly remapped — it should leave a footprint. Every read site in this file (and in `actions/roadmap.md`) honors a uniform **normalize-and-warn contract** for these fields:
+Eight fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `dependencies:` → `depends_on` patch surfaced that several silently swallow natural typo variants from sister conventions (snake_case vs kebab-case YAML, `done`/`finished`/`closed` as English glosses of `completed`, lowercase route letters, etc.). Pure silent-alias is risky for enum values because an unknown value should not be quietly remapped — it should leave a footprint. Every read site in this file (and in `actions/roadmap.md`) honors a uniform **normalize-and-warn contract** for these fields:
 
 1. **Normalize first.** Apply the per-field alias map below. If a canonical match results, use it silently.
 2. **Warn-on-fallback.** If after normalization the value still doesn't match the canonical enum, emit:
@@ -130,6 +131,7 @@ Seven fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depen
 | `route` (Step 3 dispatch, Step 5.5 scope declaration, Step 7 scope-drift comparison) | `A`, `B`, `C` | lowercase `a`/`b`/`c` → uppercase | treat as needing re-triage in Step 3 |
 | `caveman` (Step 6 crew load) | `false`, `true`, `lite`, `full`, `ultra` | truthy strings (`yes`/`on`) → `true`; `light` → `lite` | `false` |
 | `tdd` (Step 6 testing-crew load, Step 6.5 TDD-evidence gate; emission validated in `actions/capture.md`) | `true`, `false` (YAML boolean) | `test_first`/`yes`/`on`/`t` → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 testing crew not loaded; Step 6.5 gate not enforced) |
+| `ultracode` (Step 6 dispatch-policy load) | `true`, `false` (YAML boolean) | `yes`/`on`/`t` → `true`; `no`/`off`/`f` → `false` | `false` (no per-REQ opt-in; a run-level ultracode mode still applies — opting out of a run-level mode requires a present value that *normalizes* to `false`, not an unknown value falling back to it) |
 | `error_type` (Step 8 failure classification, Step 8 upstream-failure short-circuit, forensics) | `intent`, `spec`, `code`, `environment` | (no common typo aliases identified) | `code` |
 | `kb_status` (kb-lessons handoff — work.md's Lessons-Capture Phase / review-work.md's Self-Validation & Lessons Learned step; roadmap lessons rollup) | `promoted`, `pending`, `declined`, `skipped` | `skip` → `skipped`; `rejected` → `declined` | `pending` |
 

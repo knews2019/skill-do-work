@@ -6,7 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.87.0 — The Deep Clean (2026-06-10)
+## 0.88.0 — The Model Ladder (2026-06-10)
+
+New prompt: `ultracode-workflow` — a model-tiered delegation policy (Sonnet executes, Opus escalates and deep-reviews, Fable judges) with mechanical test verification, fresh-context review gates, and an explicit escalation ladder. Run it standalone on any task, or hook it into the queue so the work action dispatches each pipeline step to the right model tier.
+
+- `prompts/ultracode-workflow.md` — Mode A (standalone workflow via `do-work prompts run ultracode-workflow <task>`) + Mode B (dispatch policy adopted by `actions/work.md`), with a Step 0 host-capability ladder for agents that can't pin models per subagent (announce, degrade to role separation, keep the gates)
+- `actions/work.md` Step 6 conditionally loads Mode B; new `ultracode-workflow` (or `ultracode`) invocation mode word documented in work's Input and SKILL.md routing — composes with REQ IDs and `--wave`
+- New optional `ultracode` REQ frontmatter flag joins the Schema Read Contract (eighth normalize-and-warn field; per-REQ opt-in, explicit `false` opts out of a run-level mode) — field lists in work, work-reference, capture, and roadmap all updated
+- Alias `fable-opus-sonnet-workflow-principles` names the verbatim current-generation model bindings on purpose: when the lineup changes, the IDs update in place
+
+Co-designed gaps closed relative to the original prompt: the ladder's last resort no longer self-reviews (fresh-context judge required), reviews are fresh-context by rule (spec + diff, never the build transcript), there's a no-test-suite fallback, escalation grants a fresh 2-iteration budget, and the report must state cost as measured or "not measured" — never implied.
 
 A 20-commit code review (9 finder angles, adversarial verification, gap sweep) surfaced 24 confirmed defects — all fixed. The headliners: deep-explore's session-dir command no longer breaks (or executes arbitrary shell) on punctuation in the concept name, capture's domain enum now includes `security`/`testing` so the security crew rule actually loads for new REQs, and the prompt-injection guardrail now covers all nine ingestion paths instead of five.
 

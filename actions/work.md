@@ -78,7 +78,7 @@ The `do-work/` folder layout is described in `actions/work-reference.md` → **F
 
 ## Request File Schema
 
-The full annotated frontmatter schema and the **Schema Read Contract** — the normalize-and-warn rules every read site honors for the enum/boolean fields `domain`, `status`, `route`, `caveman`, `tdd`, `error_type`, `kb_status` — live in `actions/work-reference.md` → **Request File Schema — Full Frontmatter** and **Schema Read Contract**. Every reference below to "the Schema Read Contract" points there.
+The full annotated frontmatter schema and the **Schema Read Contract** — the normalize-and-warn rules every read site honors for the enum/boolean fields `domain`, `status`, `route`, `caveman`, `tdd`, `ultracode`, `error_type`, `kb_status` — live in `actions/work-reference.md` → **Request File Schema — Full Frontmatter** and **Schema Read Contract**. Every reference below to "the Schema Read Contract" points there.
 
 **Status flow (frontmatter values):** `pending` → `claimed` → `completed` / `completed-with-issues` / `failed`
 
@@ -95,6 +95,7 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 
 - **Specific REQ IDs** (e.g., `REQ-042`, `REQ-042 REQ-043`) — process only those REQs and stop (do not process the full queue). This is how actions/pipeline.md scopes work to a specific batch. Targeted mode bypasses `depends_on` gating — the user explicitly named the REQs.
 - **`--wave N`** (integer flag, default mode only) — run only REQs at dependency depth N. Roots (no `depends_on`, or all `depends_on` resolve to archived REQs) are depth 0; depth grows by one per dependency layer. Mutually exclusive with targeted REQ IDs — reject the combination with an error.
+- **`ultracode-workflow`** (mode word; `ultracode` accepted as shorthand) — run in ultracode mode: Step 6 loads `prompts/ultracode-workflow.md` → **Mode B — Dispatch Policy** for every REQ in the run (a REQ whose `ultracode` frontmatter is an explicit canonical `false` opts out). Orthogonal to selection — composes with both targeted REQ IDs and `--wave`. Strip the mode word before extracting REQ IDs.
 
 When no REQ IDs and no flags are provided, process all pending REQs in dependency-aware order (default behavior).
 
@@ -294,6 +295,7 @@ Quick environment sanity check before the builder starts coding. All checks are 
 4. **Conditionally load** `crew-members/testing.md` — if the REQ's `tdd` frontmatter normalizes to `true` per the Schema Read Contract (accepts `test_first`/`yes`/`on`/`t` as truthy aliases), or `domain: testing`
 4a. **Conditionally load** `crew-members/security.md` — if the REQ's normalized `domain` is `security`, OR if the REQ description references authentication, authorization, session handling, cryptography, secrets handling, input validation/sanitization, or any OWASP-category surface. The "OR" clause is heuristic — when in doubt, load it; the cost of loading a checklist when not needed is low, the cost of skipping it on real security work is high.
 5. **Conditionally load** `crew-members/caveman.md` — if the REQ's `caveman` frontmatter normalizes to a non-`false` value per the Schema Read Contract (any of `true`, `lite`, `full`, `ultra`, plus `yes`/`on` → `true`, `light` → `lite`). Compresses agent prose ~65-75% while keeping code and technical terms exact.
+5a. **Conditionally load** `prompts/ultracode-workflow.md` → **Mode B — Dispatch Policy** — if the run was invoked in ultracode mode (the `ultracode-workflow` / `ultracode` invocation modifier, see Input) or the REQ's `ultracode` frontmatter normalizes to `true` per the Schema Read Contract. An explicit canonical `ultracode: false` opts the REQ out of a run-level ultracode mode. Mode B assigns a model tier to each pipeline step (plan agent, builder, test-loop escalation, review spawn); **this file's step structure stays authoritative** — never adopt the prompt's standalone Mode A loop here, and never run its subtask iteration cap alongside the Step 6.5 attempt loop. If the host can't pin models per subagent, announce it (the prompt's Step 0 wording) and proceed with normal dispatch.
 6. **If a rules file is missing**, proceed without it — never block on a missing rules file
 
 **Approach directive assignment (multi-REQ only):** If multiple REQs are being processed in parallel, read `crew-members/approach-directives.md` and assign each sub-agent a distinct directive from the pool. Include the directive in the sub-agent's context block. Record the assigned directive in the REQ's Implementation Summary section. For single-REQ processing, no directive is needed — skip this.
