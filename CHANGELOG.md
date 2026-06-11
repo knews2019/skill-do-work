@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.89.0 — The Batch Conductor (2026-06-11)
+
+Ultracode grows up: instead of the session model refereeing every diff itself, it now takes exactly two turns per batch — launch one background Opus orchestrator that owns the queue end-to-end, then audit the result. Session-model turn count is the cost lever that matters (every turn re-reads the whole conversation, usually cache-missed), so the architecture optimizes for touches, not tokens.
+
+- `prompts/ultracode-workflow.md` rewritten around batch orchestration — the former Mode A (standalone task) / Mode B (inline dispatch policy) split is retired. The orchestrator runs `actions/work.md` per REQ with a Tier Table (Sonnet builds, Opus plans/escalates/reviews each diff fresh-context, the session model audits at batch level); work.md's pipeline stays the controller.
+- `do-work run ultracode` repointed: the session diverts to the prompt (launch + audit) instead of running the work loop inline; REQ IDs / `--wave` scope the batch. The mode word is consumed at the diversion, so the orchestrator's per-REQ work runs can't recurse.
+- Per-REQ `ultracode:` frontmatter retired — ignored with a one-line informational note (work-reference's new Retired Fields section); exclusion is done by scoping the batch, not per-REQ opt-outs.
+- New contracts in the prompt: two-touch session model, escalation terminal is BLOCKED-in-digest (no last-resort loops inside the batch), context hygiene (digest hard cap ~20 lines, files over transcript), fixed digest format, and a final audit that reads all elevated/escalated diffs in full. PASS means releasable with commits local — nothing ever pushes.
+- `crew-members/testing.md` gains the caller-seam rule and production-faithful-fixtures rule (plus a Fantasy Fixtures anti-pattern) as the canonical home for two of the prompt's house rules.
+
 ## 0.88.1 — The Slim Charter (2026-06-10)
 
 CLAUDE.md went on a diet — from 256 lines to about half that, with zero information loss. Everything cut was a duplicate of content already canonical elsewhere, including three hand-maintained lists that would have silently drifted (the very pattern CLAUDE.md's own "Closed Enumerations Go Stale" rule warns about).

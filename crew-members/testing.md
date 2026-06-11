@@ -68,6 +68,10 @@ A failing test name should tell you what broke without reading the test body.
 - One logical assertion per test. Multiple `assert` calls are fine if they verify the same behavior (e.g., checking both status code and response body).
 - Use the framework's rich matchers (`toEqual`, `toContain`, `pytest.raises`, `assert_called_with`) — they produce better failure messages than raw `==`.
 
+### Test at the Caller Seam
+
+A test that exercises a unit only through a harness production code never uses can pass while the integration is broken. At least one test per behavior should call through the same seam the real caller hits — the public API, the route handler, the CLI entry point — not just the unit in isolation. Unit tests stay the bulk of the pyramid; the caller-seam test is the one that proves the wiring.
+
 ## Mocking Boundaries
 
 ### What to Mock
@@ -91,6 +95,7 @@ A failing test name should tell you what broke without reading the test body.
 - **Prefer factory functions** over shared fixtures for test data: `make_user(email="test@x.com")` is clearer and more flexible than a global `TEST_USER` constant.
 - **Keep fixtures close** to the tests that use them. A shared `conftest.py` / `testHelper.js` is fine for database setup, but test-specific data belongs in the test file.
 - **Don't share mutable state** between tests. Each test creates its own data, or fixtures return fresh copies.
+- **Fixtures must be production-faithful.** Wrong field names, simplified nesting, or fabricated enum values let a green suite certify broken code — a fixture that lies about store shape is a defect. Derive fixtures from real captured payloads or the schema/type definitions, and validate hand-written ones against them.
 - **Database tests**: use transactions that roll back after each test, or truncate tables in setup. Never rely on data left by a previous test.
 
 ## Flaky Test Prevention
@@ -133,6 +138,7 @@ When the REQ has `tdd: true`:
 - **Asserting on error messages:** Brittle — messages change. Assert on error types, status codes, or structured error fields instead.
 - **Commenting out failing tests:** If a test fails, fix it or delete it. Commented-out tests are dead code that no one re-enables.
 - **Testing the mock:** When assertions verify mock return values you set up yourself, rather than behavior of the code under test.
+- **Fantasy fixtures:** Test data whose shape drifted from production — renamed fields, flattened nesting, made-up enum values. The suite stays green while real payloads break the code.
 - **Test-per-method symmetry:** Mirroring the source file structure 1:1 (one test file per module, one test per method). Test behavior and use cases, not method inventory. Some methods need 5 tests; some need zero.
 - **Catch-all assertions:** `expect(result).toBeTruthy()` or `assert response` without checking specific values. These pass on wrong results and catch nothing.
 - **Ignoring test output:** Re-running a failing test without reading the failure message. The assertion diff usually points directly at the bug.
