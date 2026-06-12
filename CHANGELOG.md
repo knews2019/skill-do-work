@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.90.0 — The Family Name (2026-06-12)
+
+The ultracode trigger now says what it's for: the mode word is renamed to `ultracode-fable-workflow` (shorthand `ultracode-fable`), because the policy's Tier Table is tuned to the Claude family (Fable audits, Opus orchestrates, Sonnet/Haiku build) — and "workflow" says what kind of thing it is. The new name also stops colliding with Claude Code's native bare-word `ultracode` keyword.
+
+- `prompts/ultracode-workflow.md` renamed to `prompts/ultracode-fable-workflow.md`; the prompt's canonical name is now `ultracode-fable-workflow`, with `ultracode-fable` as the short form and the pre-0.90 names (`ultracode-workflow`, bare `ultracode`) kept as legacy aliases so old invocations still resolve.
+- Mode word updated everywhere it's routed or referenced: SKILL.md's work-verb routing, work.md's Input and Step 6 item 5a, work-reference.md's Retired Fields note (including its informational message), and the prompts index row.
+- Behavior is unchanged — same batch orchestration, same Tier Table, same two-touch session contract. Rename only.
+
 ## 0.89.0 — The Batch Conductor (2026-06-11)
 
 Ultracode grows up: instead of the session model refereeing every diff itself, it now takes exactly two turns per batch — launch one background Opus orchestrator that owns the queue end-to-end, then audit the result. Session-model turn count is the cost lever that matters (every turn re-reads the whole conversation, usually cache-missed), so the architecture optimizes for touches, not tokens.

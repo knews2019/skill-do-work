@@ -1,18 +1,18 @@
-# Ultracode Workflow — Fable/Opus/Sonnet Batch Orchestration
+# Ultracode Fable Workflow — Fable/Opus/Sonnet/Haiku Batch Orchestration
 
 > Batch orchestration policy for the work queue: the session model takes two turns per batch — launch one background Opus orchestrator that owns the batch end-to-end, then audit the result. Cheap models execute, mid models orchestrate and judge, the session model audits. The goal is maximum quality per unit of **cost** — not per token, since tokens are priced differently by model.
 
-**Aliases:** `fable-opus-sonnet-workflow-principles`
+**Aliases:** `ultracode-fable` (short form), `ultracode-workflow`, `ultracode` (both pre-0.90 names), `fable-opus-sonnet-workflow-principles`
 **When to use:**
-- `do-work run ultracode` (or `ultracode-workflow`) — `actions/work.md`'s Input diverts the session here instead of running the work loop inline. Optional REQ IDs or `--wave N` scope the batch.
-- `do-work prompts run ultracode-workflow` — same architecture, invoked directly; operates on the queue exactly as above.
-- NOT for ad-hoc free-text tasks — the former standalone mode is retired. Capture the task first (`do-work capture request: ...`), then run a scoped batch (`do-work run REQ-NNN ultracode`).
+- `do-work run ultracode-fable-workflow` (or `ultracode-fable`) — `actions/work.md`'s Input diverts the session here instead of running the work loop inline. Optional REQ IDs or `--wave N` scope the batch.
+- `do-work prompts run ultracode-fable-workflow` — same architecture, invoked directly; operates on the queue exactly as above.
+- NOT for ad-hoc free-text tasks — the former standalone mode is retired. Capture the task first (`do-work capture request: ...`), then run a scoped batch (`do-work run REQ-NNN ultracode-fable`).
 
 **Inputs / flags:** no free-text task. Scope arrives via the work action's Input: targeted REQ IDs or `--wave N` select which pending REQs form the batch; with neither, the batch is the full dependency-ready queue and queue draining applies (see the Orchestrator Contract).
 
-**Maintenance note:** the model IDs below (`claude-fable-5`, `claude-opus-4-8`, `claude-sonnet-4-6`, Haiku) are deliberate, verbatim current-generation bindings — that is why the alias names the trio. When the lineup changes, update the IDs in this file in place; the tier *roles* (executor / orchestrator-judge / auditor) and the filename stay stable.
+**Maintenance note:** the model IDs below (`claude-fable-5`, `claude-opus-4-8`, `claude-sonnet-4-6`, Haiku) are deliberate, verbatim current-generation bindings — the `-fable` in the name marks the Claude family (Fable/Opus/Sonnet/Haiku) this policy's Tier Table is tuned for. When the lineup changes within the family, update the IDs in this file in place; the tier *roles* (executor / orchestrator-judge / auditor) and the filename stay stable.
 
-**Name note:** in Claude Code, the bare word "ultracode" is a native harness keyword that opts a session into built-in multi-agent orchestration. This prompt is related in spirit but independent — it is a delegation policy the agent follows on any host, not a harness feature. The compound trigger `ultracode-workflow` keeps the two greppable and distinct.
+**Name note:** in Claude Code, the bare word "ultracode" is a native harness keyword that opts a session into built-in multi-agent orchestration. This prompt is related in spirit but independent — it is a delegation policy the agent follows on any host, not a harness feature. The compound trigger `ultracode-fable-workflow` keeps the two greppable and distinct, and names the model family the tiers bind to (`ultracode-fable` is the accepted short form). `ultracode-workflow` and bare `ultracode` are the pre-0.90 names, kept as aliases.
 
 **Migration note:** this file replaces the former Mode A / Mode B split (≤ 0.88.x). Batch orchestration is the only ultracode shape. The per-REQ `ultracode:` frontmatter field is retired and ignored — scope the batch with REQ IDs or `--wave` instead (see `actions/work-reference.md` → Schema Read Contract → Retired Fields).
 
@@ -55,7 +55,7 @@ The session model (`claude-fable-5`) takes exactly two turns per batch:
 1. Read the queue (frontmatter scan only — no REQ bodies into the conversation) and apply the scope: targeted REQ IDs, `--wave N`, or the full dependency-ready queue.
 2. **Pre-flight clarity sweep.** This is the only human-attention window before the audit. A REQ that is genuinely unworkable as written (contradictory requirements, missing decision only the user can make) gets flipped to `pending-answers` now, with the question recorded — the user resolves it later via `do-work clarify`. Do not launch a batch whose REQs need answers mid-build.
 3. Create the run directory `do-work/runs/ultracode-<timestamp>/` with a manifest (one status line per REQ) per `crew-members/background-agents.md` — disk is the source of truth, not this conversation.
-4. Start ONE background `claude-opus-4-8` batch orchestrator with a launch packet: the batch scope, the run-directory path, and pointers to this file's **Batch Orchestrator Contract** and to `actions/work.md`. The packet never contains the ultracode mode word — the orchestrator runs the work pipeline plainly (see Anti-recursion in the Orchestrator Contract).
+4. Start ONE background `claude-opus-4-8` batch orchestrator with a launch packet: the batch scope, the run-directory path, and pointers to this file's **Batch Orchestrator Contract** and to `actions/work.md`. The packet never contains the `ultracode-fable-workflow` mode word (in any form) — the orchestrator runs the work pipeline plainly (see Anti-recursion in the Orchestrator Contract).
 5. Yield immediately.
 
 ### Touch 2: Audit
@@ -64,7 +64,7 @@ When the orchestrator's digest arrives, run the **Final Audit** below, then repo
 
 ## Batch Orchestrator Contract (`claude-opus-4-8`, one background agent)
 
-**work.md stays the controller.** Per REQ, you execute `actions/work.md`'s pipeline exactly — its triage routes, 3-attempt test loop, review and remediation gates, archive and commit steps are authoritative. You never invent a parallel per-REQ pipeline; two escalation controllers fighting over one failing subtask is a known failure mode. **Anti-recursion:** you were launched without the ultracode mode word, so `actions/work.md`'s Input never diverts back here — you run its normal Steps 1–10, applying the Tier Table below at each spawn.
+**work.md stays the controller.** Per REQ, you execute `actions/work.md`'s pipeline exactly — its triage routes, 3-attempt test loop, review and remediation gates, archive and commit steps are authoritative. You never invent a parallel per-REQ pipeline; two escalation controllers fighting over one failing subtask is a known failure mode. **Anti-recursion:** you were launched without the `ultracode-fable-workflow` mode word, so `actions/work.md`'s Input never diverts back here — you run its normal Steps 1–10, applying the Tier Table below at each spawn.
 
 Each batch duty lives inside work.md's existing steps:
 

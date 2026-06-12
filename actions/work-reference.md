@@ -137,7 +137,7 @@ Seven fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depen
 
 ### Retired Fields
 
-- **`ultracode`** (retired 0.89.0) — formerly the per-REQ opt-in to the ultracode dispatch policy. Ultracode is now run-level only (`do-work run ultracode` → batch orchestration per `prompts/ultracode-workflow.md`); there is no per-REQ opt-in or opt-out — scope the batch with REQ IDs or `--wave` instead. Read sites ignore the field. When Step 1's queue scan sees it on any queued REQ, append one line to the queue-status summary — once per run, informational, never per-REQ, never blocking: `ℹ N REQs carry the retired 'ultracode:' field — ignored; ultracode now runs at the batch level (do-work run ultracode).`
+- **`ultracode`** (retired 0.89.0) — formerly the per-REQ opt-in to the ultracode dispatch policy. Ultracode is now run-level only (`do-work run ultracode-fable` → batch orchestration per `prompts/ultracode-fable-workflow.md`); there is no per-REQ opt-in or opt-out — scope the batch with REQ IDs or `--wave` instead. Read sites ignore the field. When Step 1's queue scan sees it on any queued REQ, append one line to the queue-status summary — once per run, informational, never per-REQ, never blocking: `ℹ N REQs carry the retired 'ultracode:' field — ignored; ultracode now runs at the batch level (do-work run ultracode-fable).`
 
 ## Crash Recovery (Step 1)
 
