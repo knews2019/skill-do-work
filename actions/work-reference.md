@@ -148,7 +148,7 @@ Once `working/` is empty, proceed with finding the next request.
 
 **Exit paths when no `pending` REQs found:**
 
-The exit report is **composed**, not picked from disjoint branches. Whenever no `pending` REQs are found, lead with `No pending REQs in queue.` and then append every section that has at least one REQ. Four sections may apply, in this order:
+The exit report is **composed**, not picked from disjoint branches. Whenever the scan finds no dependency-ready `pending` REQ, lead with the headline that matches the actual queue state — `No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked (the blocked-by-dependencies section below then enumerates them, so the headline never strands the user). Then append every section that has at least one REQ. Four sections may apply, in this order:
 
 1. **Completed/done section** — applies if any REQ in `do-work/queue/` has status `completed`, `completed-with-issues`, or `done`. Read the `user_request` frontmatter field from each to group by UR. Render:
 

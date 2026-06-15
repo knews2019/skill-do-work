@@ -28,7 +28,7 @@ Paste this into Claude Code, Codex, or Gemini — it fetches the instructions an
 
 The prompt stays short because the raw README it points at carries the command, the install location, the verify step, and the per-tool invocation notes.
 
-**Updating:** Re-run the install command (or re-paste the prompt) — `tar` overwrites files in place. Tar won't delete files removed upstream, so stale files may linger (generally harmless). For a fully clean update, delete the whole `.claude/skills/do-work/` folder and re-extract — it's self-contained, so nothing else is affected. Never delete the repo-root `do-work/` runtime directory (your queue, archives, and deliverables).
+**Updating:** The cleanest path is `do-work update` — it checks the upstream version, snapshots your install, pre-cleans the globbed `prompts/` and `interviews/` directories, then extracts (see `actions/version.md`). If you update manually by re-running the install command instead, note that `tar` overwrites files in place but does **not** delete files removed upstream. For directories the skill loads by name (`actions/`, `crew-members/`, `specs/`, `docs/`) leftover files are harmless. But `prompts/` and `interviews/` are *globbed* — `do-work prompts list`/`run` and `do-work interview list` enumerate every `*.md` in them — so a prompt or interview removed upstream stays runnable until you delete it. For a guaranteed-clean manual update, delete the whole `.claude/skills/do-work/` folder and re-extract — it's self-contained, so nothing else is affected. Never delete the repo-root `do-work/` runtime directory (your queue, archives, and deliverables).
 
 ## The idea
 

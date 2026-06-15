@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.92.0 — The Honest Ledger (2026-06-15)
+
+Squares the release metadata with reality: the `ultracode-fable-workflow` prompt removal now has a version bump and changelog entry behind it, two changelog headings that had gone missing are restored, and the update flow + work-loop exit summary stop misreporting their own state.
+
+- **`ultracode-fable-workflow` prompt removal, documented.** The prompt and every reference to it (SKILL.md routing, work.md Input + Step 6, work-reference.md's Retired Fields note, the `prompts/README.md` index) were deleted in the prior commit but shipped without a version bump — this entry records the removal. `do-work run ultracode` and the prompt library no longer offer it; the removal commit's `_dev` contract-regression test guards against references creeping back in.
+- **Restored two lost changelog headings.** `## 0.88.0 — The Model Ladder` and `## 0.87.0 — The Deep Clean` had their heading lines stripped (by the 0.88.1 CLAUDE.md-prune commit), orphaning their bodies under 0.88.1. Because `do-work version` splits the changelog on `## ` headings to show the last 5 releases, those two versions were being folded into 0.88.1 and skipped. Headings restored.
+- **README update guidance no longer leaves removed prompts runnable.** A manual `tar` re-run doesn't delete upstream-removed files, and `prompts/`/`interviews/` are *globbed* by `do-work prompts list`/`run` and `do-work interview list` — so a prompt removed upstream stayed runnable. The README now points at `do-work update` (which pre-cleans those globbed directories) and flags the manual-update caveat instead of calling stale files "generally harmless."
+- **`do-work update` no longer blocks non-git projects.** The Step 2 location preflight required a project git root, contradicting the non-git install handling in Steps 3–4. It now resolves `<project-root>` with `git rev-parse --show-toplevel || pwd` (the same fallback `actions/install.md` uses), so a project-local install in a non-git project can update while global installs are still refused.
+- **Work-loop exit summary stops claiming an empty queue when work is only blocked.** When `pending` REQs exist but are all dependency-blocked, the summary led with "No pending REQs in queue." — false. It now leads with "No dependency-ready pending REQs." in that case and keeps "No pending REQs in queue." only when the queue genuinely has none.
+
 ## 0.91.0 — The Anchor Hold (2026-06-15)
 
 Fixes a recurring regression where the bundled hooks didn't work and `do-work version update` silently reverted committed local fixes — plus trims maintainer-internal files out of the install tarball.
@@ -43,7 +53,7 @@ CLAUDE.md went on a diet — from 256 lines to about half that, with zero inform
 - Prompt Retrospectives compressed from 40 lines to ~12 — same triggers, same 4-part shape, examples and cue phrases dropped
 - Kept verbatim: Before Every Commit, the action-file template + shell-trap lessons, Agent Compatibility, Naming Conventions
 
-
+## 0.88.0 — The Model Ladder (2026-06-10)
 
 New prompt: `ultracode-workflow` — a model-tiered delegation policy (Sonnet executes, Opus escalates and deep-reviews, Fable judges) with mechanical test verification, fresh-context review gates, and an explicit escalation ladder. Run it standalone on any task, or hook it into the queue so the work action dispatches each pipeline step to the right model tier.
 
@@ -53,6 +63,8 @@ New prompt: `ultracode-workflow` — a model-tiered delegation policy (Sonnet ex
 - Alias `fable-opus-sonnet-workflow-principles` names the verbatim current-generation model bindings on purpose: when the lineup changes, the IDs update in place
 
 Co-designed gaps closed relative to the original prompt: the ladder's last resort no longer self-reviews (fresh-context judge required), reviews are fresh-context by rule (spec + diff, never the build transcript), there's a no-test-suite fallback, escalation grants a fresh 2-iteration budget, and the report must state cost as measured or "not measured" — never implied.
+
+## 0.87.0 — The Deep Clean (2026-06-10)
 
 A 20-commit code review (9 finder angles, adversarial verification, gap sweep) surfaced 24 confirmed defects — all fixed. The headliners: deep-explore's session-dir command no longer breaks (or executes arbitrary shell) on punctuation in the concept name, capture's domain enum now includes `security`/`testing` so the security crew rule actually loads for new REQs, and the prompt-injection guardrail now covers all nine ingestion paths instead of five.
 

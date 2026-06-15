@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.91.0
+**Current version**: 0.92.0
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -58,8 +58,8 @@ When user asks "check for updates", "update", or "is there a newer version":
      - `~/.gemini/skills/...`
      - `~/.cursor/skills/...`
      - `~/.config/*/skills/...`
-     - anything else under `$HOME` that isn't also inside the current project's git repo.
-   - Resolve the current project's git root: `git -C <invocation-dir> rev-parse --show-toplevel`. If `<skill-root>` is **not** a descendant of that project root, stop and report:
+     - anything else under `$HOME` that isn't also inside the current project's root (`<project-root>`, resolved in the next bullet).
+   - Resolve the current project's root with the repo's standard fallback: `git -C <invocation-dir> rev-parse --show-toplevel 2>/dev/null || pwd`. The `|| pwd` matches what `actions/install.md` uses — `git` is **optional** for the consuming project, so a non-git project resolves `<project-root>` to the invocation directory instead of being blocked (which would contradict the non-git install handling in Steps 3–4 below). The global-location refusal in the bullet above still applies in the non-git case — a skill under `~/.claude/skills/…` is rejected regardless of git. If `<skill-root>` is **not** a descendant of `<project-root>`, stop and report:
      ```
      Skill is installed at <skill-root>, which is outside the current project (<project-root>).
      Refusing to update a global/shared install from here. Either:
@@ -67,7 +67,7 @@ When user asks "check for updates", "update", or "is there a newer version":
        - install the skill locally inside this project (e.g. <project-root>/.claude/skills/do-work/) and re-run.
      ```
      Do NOT proceed. Do NOT suggest the curl command.
-   - Only continue once `<skill-root>` is confirmed to live inside the current project's git root.
+   - Only continue once `<skill-root>` is confirmed to live inside `<project-root>` (the git root, or the invocation directory when the project isn't a git repo) and not under any global skills location.
 3. **Check for local changes** to shipped skill files at `<skill-root>`:
    - **Scope the check to skill-owned files only.** Ignore `do-work/` (queue data, archives, deliverables) — those are generated at runtime and should never block an update.
    - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ prompts/ interviews/ specs/ docs/ hooks/ CLAUDE.md AGENTS.md CHANGELOG.md README.md next-steps.md` (listing every shipped editable path) and check for uncommitted changes. Any dirty file in these paths will be clobbered by the tar extraction in step 5 if you proceed. (Previous archive files `CHANGELOG-2026-spring.md` and `CHANGELOG-pre-0.50.md` were removed in 0.76.0 — tarball-installed copies that want pre-0.65 release notes can browse them at commit `bf15fe2` on GitHub; git-cloned copies can `git show bf15fe2:CHANGELOG-2026-spring.md` locally.)
@@ -144,7 +144,7 @@ When user asks "recap":
 
 ## Red Flags
 
-- The update flow is about to `cd` into a path under `~/.claude/skills/`, `~/.gemini/skills/`, or anywhere outside the current project's git root — STOP. Global installs must never be auto-updated from here.
+- The update flow is about to `cd` into a path under `~/.claude/skills/`, `~/.gemini/skills/`, or anywhere outside the current project's root (`<project-root>` — the git root, or the invocation directory for non-git projects) — STOP. Global installs must never be auto-updated from here.
 - Remote version fetched from the upstream URL is empty, malformed, or older than local — abort; don't "update" backwards.
 - The dirty-tree check reported modifications but the update proceeded anyway — user's local customizations will be clobbered.
 - Recap lists the same UR twice (once from archive, once from active) — the dedup step was skipped; archive version should win.
