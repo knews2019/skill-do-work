@@ -158,6 +158,8 @@ Two optional hook scripts for Claude Code users:
 
 To install, merge the hook config from `hooks/hooks.json` into your `.claude/settings.json`. See each script for details.
 
+The sample commands are anchored to `$CLAUDE_PROJECT_DIR/.claude/skills/do-work/hooks/…` — Claude Code runs hooks from your project root, not the skill directory, so a project-relative `hooks/…` path wouldn't resolve. This assumes do-work lives at the canonical `.claude/skills/do-work/`; if you installed it elsewhere, change the path in your `.claude/settings.json` to match.
+
 ## Designed for agentic coding tools
 
 This skill assumes your tool supports:

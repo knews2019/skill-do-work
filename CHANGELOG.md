@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.91.0 — The Anchor Hold (2026-06-15)
+
+Fixes a recurring regression where the bundled hooks didn't work and `do-work version update` silently reverted committed local fixes — plus trims maintainer-internal files out of the install tarball.
+
+- **Hooks work on a default install.** `hooks/hooks.json` and both script header comments now anchor to `${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/…` instead of a project-relative `hooks/…` path. Claude Code runs hooks from the project root, so the old relative path failed with "No such file or directory." Each script carries a "don't revert this" guard, and the README documents the install-location assumption.
+- **Updates no longer silently clobber committed customizations.** `actions/version.md`'s dirty check only looked at _uncommitted_ changes, so a committed local fix (like the hook paths above) left a clean tree and got overwritten by the tar extraction. The update flow now also detects committed customizations, snapshots non-git installs before extracting, and audits the diff afterward so a reverted edit is caught and recoverable.
+- **Leaner tarball.** `.gitattributes` export-ignores `decisions/` (the maintainer's own ADRs — never loaded at runtime), `_dev/`, and the dev dotfiles `.gitignore`/`.gitattributes`. `_dev` previously relied only on the install command's `--exclude` flag, so a GitHub "Download ZIP" would have leaked it. Consumer installs drop from 134 to 107 files.
+- New `decisions/records/adr-013-harden-the-vendored-skill-distribution-model.md` records the rationale.
+
 ## 0.90.0 — The Family Name (2026-06-12)
 
 The ultracode trigger now says what it's for: the mode word is renamed to `ultracode-fable-workflow` (shorthand `ultracode-fable`), because the policy's Tier Table is tuned to the Claude family (Fable audits, Opus orchestrates, Sonnet/Haiku build) — and "workflow" says what kind of thing it is. The new name also stops colliding with Claude Code's native bare-word `ultracode` keyword.

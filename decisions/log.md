@@ -28,8 +28,10 @@ related:
     rel: evidence-for
   - page: adr-011-interview-framework-with-prescriptive-templates
     rel: evidence-for
+  - page: adr-013-harden-the-vendored-skill-distribution-model
+    rel: evidence-for
 created: 2026-04-15
-updated: 2026-06-10
+updated: 2026-06-15
 confidence: high
 ---
 
@@ -80,3 +82,7 @@ Append-only timeline. Historical entries use the original decision dates from `C
 ## [2026-06-01] work.md re-split into orchestrator + companion
 
 - Reaffirmed [[adr-001-modular-action-prompts-and-companion-references]] from `0.84.0` (REQ-001): `work.md` regrew past the token budget and was split again into a ten-step orchestrator plus a new `actions/work-reference.md` companion (schema, Schema Read Contract, step/exit templates, failure classification, commit procedures). Supersedes the earlier note that `work-reference.md` had been permanently re-inlined — the split/inline decision remains fluid.
+
+## [2026-06-15] Vendored-skill distribution hardened
+
+- Accepted [[adr-013-harden-the-vendored-skill-distribution-model]] from `0.91.0`: anchored the bundled hook sample paths to `$CLAUDE_PROJECT_DIR/.claude/skills/do-work/`, made `version update` non-clobbering (committed-customization detection, non-git snapshot, post-update audit), and `export-ignore`d maintainer-internal files (`decisions/`, dev dotfiles, `_dev/`) from the install tarball. Closes a hook-path regression that downstream consumers had been re-patching by hand across multiple releases.

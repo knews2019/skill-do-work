@@ -10,13 +10,19 @@
 #           "hooks": [
 #             {
 #               "type": "command",
-#               "command": "bash hooks/session-start.sh"
+#               "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/session-start.sh\""
 #             }
 #           ]
 #         }
 #       ]
 #     }
 #   }
+#
+# The command is anchored to $CLAUDE_PROJECT_DIR — Claude Code runs hooks from the project
+# root, not from this skill directory, so a bare "hooks/session-start.sh" would resolve to
+# <project-root>/hooks/... and fail with "No such file or directory". The path also assumes
+# the canonical install location .claude/skills/do-work/; if you installed do-work elsewhere,
+# adjust it to match. Do NOT "simplify" this back to a relative path — it has regressed before.
 
 set -euo pipefail
 

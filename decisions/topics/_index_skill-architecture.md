@@ -36,8 +36,10 @@ related:
     rel: complements
   - page: adr-012-interview-v2-gap-closure
     rel: complements
+  - page: adr-013-harden-the-vendored-skill-distribution-model
+    rel: complements
 created: 2026-04-15
-updated: 2026-04-17
+updated: 2026-06-15
 confidence: high
 ---
 
@@ -52,6 +54,7 @@ How the skill is structured, standardized, and behaviorally guided.
 - [[adr-003-always-load-karpathy-guardrails]] — [ADR-003](../records/adr-003-always-load-karpathy-guardrails.md): Apply Karpathy-inspired behavioral guardrails in every implementation pass, then audit them during review without double-counting issues.
 - [[adr-011-interview-framework-with-prescriptive-templates]] — [ADR-011](../records/adr-011-interview-framework-with-prescriptive-templates.md): Add a generalized `interview` action that runs prescriptive templates from `interviews/<name>.md`, enforces a canonical entry contract, and produces agent-ready operating artifacts. Depends on ADR-001 (modular action + companion), ADR-002 (reusable templates at runtime), and ADR-005 (stateful and resumable).
 - [[adr-012-interview-v2-gap-closure]] — [ADR-012](../records/adr-012-interview-v2-gap-closure.md): Patch five v1 gaps — mechanical export render templates in the template file, entry-level `update` granularity, draft-checkpoint mid-layer recovery, aligned `ingest` file mapping (10 files per run), confirmed `crew-members/` placement — as surgical changes rather than a rewrite. Extends ADR-011.
+- [[adr-013-harden-the-vendored-skill-distribution-model]] — [ADR-013](../records/adr-013-harden-the-vendored-skill-distribution-model.md): Anchor bundled hook paths to `$CLAUDE_PROJECT_DIR/.claude/skills/do-work/`, make `version update` non-clobbering (detect committed customizations, snapshot non-git installs, post-update audit), and `export-ignore` maintainer-internal files (`decisions/`, dev dotfiles, `_dev/`) from the install tarball. Complements ADR-001.
 
 ## Cross-Cluster Links
 
