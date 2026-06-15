@@ -135,10 +135,6 @@ Seven fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depen
 
 **Write paths are unaffected.** Step 2 claim, Step 8 archive, Step 8 follow-up generation, the kb-lessons handoff, and capture emission always write the canonical key and canonical enum value — never an alias, never the typo'd input. The normalize-and-warn contract is read-only.
 
-### Retired Fields
-
-- **`ultracode`** (retired 0.89.0) — formerly the per-REQ opt-in to the ultracode dispatch policy. Ultracode is now run-level only (`do-work run ultracode-fable` → batch orchestration per `prompts/ultracode-fable-workflow.md`); there is no per-REQ opt-in or opt-out — scope the batch with REQ IDs or `--wave` instead. Read sites ignore the field. When Step 1's queue scan sees it on any queued REQ, append one line to the queue-status summary — once per run, informational, never per-REQ, never blocking: `ℹ N REQs carry the retired 'ultracode:' field — ignored; ultracode now runs at the batch level (do-work run ultracode-fable).`
-
 ## Crash Recovery (Step 1)
 
 **Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run was interrupted. For each recovered REQ:

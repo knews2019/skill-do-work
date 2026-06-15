@@ -123,7 +123,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | Route | Trigger verbs | Notes |
 |-------|--------------|-------|
 | **pipeline** | pipeline, full, full pipeline | Everything after keyword → `$ARGUMENTS` (request text). "pipeline status" → status mode. "pipeline abandon" → abandon mode. If no args and active pipeline exists, resume. |
-| **work** | run, go, start, begin, work, process, execute, build, continue, resume | Optional REQ IDs after keyword (e.g., `do-work run REQ-042`) → process only those REQs. No args → work through full queue (dependency-aware order). Flag (default mode only): `--wave N` runs only REQs at dependency depth N. Strip the flag before extracting REQ IDs. `--wave` and explicit REQ IDs are mutually exclusive — reject with a clear error. Mode word `ultracode-fable-workflow` (shorthand: `ultracode-fable`; legacy: `ultracode-workflow`, `ultracode`) → batch-orchestration mode: the session diverts to `prompts/ultracode-fable-workflow.md` (launch one background batch orchestrator, audit at the end) instead of running the work loop inline; strip it like `--wave` before extracting REQ IDs; composes with both REQ IDs and `--wave`, which scope the batch. |
+| **work** | run, go, start, begin, work, process, execute, build, continue, resume | Optional REQ IDs after keyword (e.g., `do-work run REQ-042`) → process only those REQs. No args → work through full queue (dependency-aware order). Flag (default mode only): `--wave N` runs only REQs at dependency depth N. Strip the flag before extracting REQ IDs. `--wave` and explicit REQ IDs are mutually exclusive — reject with a clear error. |
 | **clarify** | clarify, answers, questions, pending, pending answers, blocked, what's blocked, what needs answers | Routes to `actions/clarify.md` |
 | **verify requests** | verify, verify requests, check, evaluate, review requests, review reqs, audit | "check" alone → verify; "check for updates" → version (priority 2); "audit" alone → verify; "audit codebase" → code-review; "audit primes" → prime |
 | **code-review** | code-review, code review, review codebase, audit codebase, codebase review | Both hyphenated and unhyphenated forms route here, with or without scope. Scope args: prime file refs, directory paths, or combined |
@@ -278,7 +278,7 @@ Each action has an action file with full instructions. How you execute it depend
 |--------------------|---------------------------------|--------------------------------|
 | pipeline           | `./actions/pipeline.md`         | `$ARGUMENTS` (request text, "status", or "abandon") |
 | capture requests   | `./actions/capture.md`          | Full user input text           |
-| work               | `./actions/work.md`             | (none needed)                  |
+| work               | `./actions/work.md`             | `$ARGUMENTS` (REQ IDs, `--wave`, or empty) |
 | clarify questions  | `./actions/clarify.md`          | (none needed)                  |
 | verify requests    | `./actions/verify-requests.md`  | Target UR/REQ or "most recent" |
 | review work        | `./actions/review-work.md`      | Target REQ/UR or "most recent" |
@@ -311,7 +311,8 @@ Each action has an action file with full instructions. How you execute it depend
 
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
-- **`work` and `cleanup`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
+- **`work`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
+- **`cleanup`**: Run in the background if your environment supports it. Print a status line and return control to the user immediately.
 - **Exception — pipeline dispatch**: When the pipeline action dispatches `work`, it runs in the **foreground** (blocking). The pipeline requires each step to complete before advancing. This override applies only when the pipeline is the caller.
 - **`pipeline`, `capture requests`, `clarify questions`, `verify requests`, `review work`, `code-review`, `ui-review`, `present work`, `ai-report`, `slop-check`, `dream`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `note`, `stray-check`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
