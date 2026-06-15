@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.92.1 — The Typo Net (2026-06-15)
+
+`do-work run <fluffed-argument>` no longer silently builds your entire queue. The work action's parser used to treat any unrecognized token the same as no token at all, so a typo'd REQ ID — or dead muscle memory like a retired mode word — fell straight through to a full-queue run instead of erroring.
+
+- **`work` rejects unrecognized arguments instead of ignoring them.** After stripping `--wave N` and REQ-ID tokens, any leftover token in `$ARGUMENTS` now stops with a usage error rather than defaulting to full-queue processing. This generalizes the pre-existing `--wave`-plus-REQ-IDs rejection to *all* unrecognized residue — both are parse-time guards now (`actions/work.md` Input + Step 1, `SKILL.md` verb reference).
+- **Catches the typo'd-REQ-ID case, not just retired mode words.** `do-work run REG-042` (meant `REQ-042`) previously ran every pending REQ; it now errors and tells you the valid forms. The footgun was never specific to any one removed keyword — it was a gap in the parser that equated "unrecognized argument" with "no argument."
+
 ## 0.92.0 — The Honest Ledger (2026-06-15)
 
 Squares the release metadata with reality: the `ultracode-fable-workflow` prompt removal now has a version bump and changelog entry behind it, two changelog headings that had gone missing are restored, and the update flow + work-loop exit summary stop misreporting their own state.

@@ -96,7 +96,15 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 - **Specific REQ IDs** (e.g., `REQ-042`, `REQ-042 REQ-043`) — process only those REQs and stop (do not process the full queue). This is how actions/pipeline.md scopes work to a specific batch. Targeted mode bypasses `depends_on` gating — the user explicitly named the REQs.
 - **`--wave N`** (integer flag, default mode only) — run only REQs at dependency depth N. Roots (no `depends_on`, or all `depends_on` resolve to archived REQs) are depth 0; depth grows by one per dependency layer. Mutually exclusive with targeted REQ IDs — reject the combination with an error.
 
-When no REQ IDs and no flags are provided, process all pending REQs in dependency-aware order (default behavior).
+**Unrecognized arguments are rejected, not ignored.** After stripping `--wave N` and extracting REQ-ID tokens (shape: `REQ-` followed by digits, case-insensitive), any non-empty token still left in `$ARGUMENTS` is an error. Stop and report:
+
+```
+Unrecognized argument(s): <tokens>. Usage: do-work run [REQ-NNN ...] | do-work run --wave N | do-work run
+```
+
+Do **not** fall through to full-queue processing. A leftover token almost always means the user meant to *scope* the run — a typo'd REQ ID (`REG-042` instead of `REQ-042`), or dead muscle memory (a retired mode word) — so silently building the entire queue is the wrong, hard-to-undo default. This generalizes the existing `--wave`-plus-REQ-IDs rejection to all unrecognized residue; both are parse-time guards.
+
+When `$ARGUMENTS` is empty — no REQ IDs, no flags, no other tokens — process all pending REQs in dependency-aware order (default behavior).
 
 ## Steps
 
@@ -138,7 +146,7 @@ Count `completed`, `completed-with-issues`, and `done` statuses together as "com
 
 **Targeted mode:** If `$ARGUMENTS` contains specific REQ IDs, find only those REQs in `do-work/queue/`. Verify each exists and has `status: pending`. If a targeted REQ is missing or not pending, report the issue and skip it. Process only the targeted REQs, then stop after the last one completes (skip the loop-or-exit logic in Step 10).
 
-**Default mode (no REQ IDs in arguments):** Scan for the first REQ with `status: pending` (skip `pending-answers` — those wait for user input).
+**Default mode (empty `$ARGUMENTS`):** Scan for the first REQ with `status: pending` (skip `pending-answers` — those wait for user input). Reaching default mode requires `$ARGUMENTS` to be genuinely empty — the unrecognized-argument guard in **Input** has already rejected any non-REQ, non-flag token, so a fluffed argument never silently lands here as a full-queue run.
 
 **Exit paths when no dependency-ready `pending` REQ is found:** render the *composed* exit summary — lead with the dependency-aware headline (`No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked), then append every applicable section (completed-awaiting-archive, pending-answers, blocked-archive-collision, blocked-by-dependencies) in that order — per `actions/work-reference.md` → **Composed Exit Summary (Step 1)**, then exit the work loop. Only continue past Step 1 when at least one dependency-ready `pending` REQ exists.
 
