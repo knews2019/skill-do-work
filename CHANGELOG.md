@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.92.2 — The Even Suspenders (2026-06-17)
+
+`decisions/` and `.vscode/` were stripped from consumer installs by only one mechanism (`.gitattributes export-ignore`), while `do-work/ai-reports/_dev` had two. Now they all get the double layer, so a single failure can't leak dev-only paths — and reviewers stop tripping over the asymmetry.
+
+- **`--exclude='.vscode' --exclude='decisions'` added to all three tar commands** (`README.md` install, the two in `actions/version.md`). They already shipped clean via export-ignore on a normal GitHub tarball; the flags are the independent second layer for tarballs built before `.gitattributes` existed, mirrors that don't honor export-ignore, or a broken/edited `.gitattributes`.
+- **The dev dotfiles stay export-ignore-only by design.** `.gitignore`/`.gitattributes` aren't tar-excluded — a vendored `.gitattributes` is inert in a consumer's repo (export-ignore only fires when *that* repo runs `git archive`), so a stale copy leaks nothing. The `.gitattributes` comment and the `version.md` note now spell this out instead of enumerating a list that goes stale.
+
 ## 0.92.1 — The Typo Net (2026-06-15)
 
 `do-work run <fluffed-argument>` no longer silently builds your entire queue. The work action's parser used to treat any unrecognized token the same as no token at all, so a typo'd REQ ID — or dead muscle memory like a retired mode word — fell straight through to a full-queue run instead of erroring.

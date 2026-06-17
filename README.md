@@ -10,7 +10,8 @@ do-work installs into `.claude/skills/do-work/`, so it never touches your projec
 mkdir -p .claude/skills/do-work
 curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz \
   | tar xz -C .claude/skills/do-work --strip-components=1 \
-      --exclude='_dev' --exclude='do-work' --exclude='ai-reports'
+      --exclude='_dev' --exclude='do-work' --exclude='ai-reports' \
+      --exclude='.vscode' --exclude='decisions'
 ```
 
 The entry point is `.claude/skills/do-work/SKILL.md`.

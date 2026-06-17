@@ -6,8 +6,11 @@
 # the maintainer's own queue/archive and sample reports into a consumer's skill
 # directory. They land in the wrong place (nested under the skill dir, not the
 # consumer's project root) so they don't corrupt anything, but they're shipped clutter.
-# The install/update tar command also passes --exclude for do-work/ai-reports/_dev as a
-# belt-and-suspenders fallback for tarballs built before this file existed.
+# The install/update tar command also passes --exclude for do-work/ai-reports/_dev plus
+# .vscode/decisions as a belt-and-suspenders fallback for tarballs built before this file
+# existed. The dev dotfiles (.gitignore/.gitattributes) are export-ignore-only — excluding
+# them via tar is awkward and a stale vendored copy leaks nothing (export-ignore is inert
+# once the skill is a subdirectory of a consumer's repo).
 #
 # decisions/ holds the maintainer's own ADRs about this skill — design history, never
 # loaded at runtime by any action — so consumers don't need it. The dev dotfiles
