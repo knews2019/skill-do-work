@@ -72,9 +72,9 @@ Next steps:
 **After ai-report:**
 ```
 Next steps:
-  do-work slop-check ai-reports/<file>.html  Validate the report against the anti-slop principles before sharing
+  do-work slop-check ai-reports/<slug>/index.html  Validate the report against the anti-slop principles before sharing
   do-work present work UR-NNN                Generate the complementary client brief / explainer (if not already done)
-  do-work inspect                            Review uncommitted changes (the report + assets folder)
+  do-work inspect                            Review uncommitted changes (the report folder)
   do-work commit                             Commit the report (and any code already staged)
 ```
 

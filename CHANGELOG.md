@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.93.0 — The Pixel Forge (2026-06-18)
+
+`ai-report` learned to generate real diagrams. When an image-gen CLI is on PATH it now delegates architecture/concept/hero visuals to it — with SVG/Mermaid as the guaranteed fallback — and reports moved to a self-contained folder so synthetic images stay quarantined from real screenshots. Ported from the standalone make-ai-report-with-screenshot skill, kept platform-agnostic, and without dropping this repo's prompt-injection guard or `git diff-tree` asset discovery.
+
+- **AI raster-image generation (optional, opportunistic).** New "Image Generation Backend" section in `actions/ai-report.md`: probe for an image-gen CLI with `command -v` (`codex` → `gemini` shown as **examples, not a closed list**), write to an exact path, verify the file is non-empty, and fall back to SVG/Mermaid for any section that yields no file. No installer, no prompt-to-install — one tier softer than bowser. Generated images live in their own `generated/` folder, are embedded by relative path (never base64), and each carries a visible "AI-generated" caption.
+- **Self-contained folder layout.** A report is now `ai-reports/<slug>/index.html` + `screenshots/` (+ `generated/`) instead of a flat `<stem>.html` + `<stem>.assets/`. Deleting one is `rm -rf ai-reports/<slug>/`; provenance is physical — `screenshots/` is real, `generated/` is synthetic. Updated across `actions/ai-report.md`, `docs/ai-report-guide.md`, `SKILL.md`, `next-steps.md`, and the two `ai-reports/*{UR-NNN}*/index.html` globs in `actions/pipeline.md`.
+- **Click-to-full-res screenshots.** Each screenshot `<img>` is wrapped in an anchor to its own file and the overlay `<svg>` is set to `pointer-events:none`, so a click opens the native-resolution capture instead of being swallowed by the callout layer.
+- **Anti-slop self-check grows to nine rows.** Two report-local checks added to Step 6 — every generated image earns its place, and every generated image is disclosed as AI-generated. The canonical `crew-members/anti-slop.md` (seven principles) is unchanged.
+
 ## 0.92.2 — The Even Suspenders (2026-06-17)
 
 `decisions/` and `.vscode/` were stripped from consumer installs by only one mechanism (`.gitattributes export-ignore`), while `do-work/ai-reports/_dev` had two. Now they all get the double layer, so a single failure can't leak dev-only paths — and reviewers stop tripping over the asymmetry.

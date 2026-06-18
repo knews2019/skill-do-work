@@ -17,7 +17,7 @@ A unified entry point for task capture and processing.
 - **clarify questions**: Batch-review Open Questions from completed work → user answers, confirms, or skips
 - **review work**: Post-work review → requirements check, code review, acceptance testing, and testing suggestions
 - **present work**: Client-facing deliverables → briefs, architecture diagrams, value propositions, Remotion videos
-- **ai-report**: Single-file HTML report of a completed UR/REQ — live screenshots with SVG callouts, before/after toggles, Mermaid fallback when no screenshots. Output to `ai-reports/`
+- **ai-report**: Self-contained folder report of a completed UR/REQ (`index.html` + `screenshots/`, plus `generated/` for AI images) — live screenshots with SVG callouts, before/after toggles, optional AI-generated diagrams, Mermaid fallback. Output to `ai-reports/`
 - **cleanup**: Consolidate archive → moves loose REQs into UR folders, closes completed URs
 - **code-review**: Standalone codebase review scoped by prime files and/or directories → consistency, patterns, security, performance, architecture, and risk-driven test coverage
 - **quick-wins**: Scan a target directory for obvious refactoring opportunities and low-hanging tests to add
@@ -130,7 +130,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **ui-review** | ui-review, review ui, design review, validate ui, ui audit, design audit | Do NOT use "check ui" — consumed by verify at priority 5. Scope args: file paths, directory paths, prime file refs |
 | **review work** | review, review work, review code, audit code, audit implementation, review REQ-NNN | "review requests" / "review reqs" → verify (priority 5), not here. "code review" → code-review (priority 7), not here |
 | **present work** | present, present work, showcase, deliver, pitch, client brief | No target → most recent UR. "present all" → portfolio mode |
-| **ai-report** | ai-report, ai report, make-report, make report, screenshot-report, visual report, proof of work | Single-file HTML report with screenshots + SVG callouts + before/after; output to `ai-reports/`. Target arg: `UR-NNN`, `REQ-NNN`, "most recent", or empty. Distinct from present-work (educational explainer) and pipeline's `.single.html` (multi-REQ debrief) |
+| **ai-report** | ai-report, ai report, make-report, make report, screenshot-report, visual report, proof of work | Self-contained folder report (`index.html` + `screenshots/`/`generated/`) with screenshots + SVG callouts + before/after + optional AI-generated diagrams; output to `ai-reports/`. Target arg: `UR-NNN`, `REQ-NNN`, "most recent", or empty. Distinct from present-work (educational explainer) and pipeline's `.single.html` (multi-REQ debrief) |
 | **cleanup** | cleanup, clean up, tidy, consolidate, organize archive, fix archive | **Archive consolidation only.** A `clean up` / `consolidate` / `cleanup` that names **memory / wiki / notes** is the dream action (priority 28); one that names **stray / orphan / junk files** or repo pollution is the stray-check action (priority 29). Evaluate those carve-outs first; a bare verb with no memory/wiki/notes/junk target stays here. |
 | **commit** | commit, commit changes, commit files, save changes, save work | |
 | **inspect** | inspect, inspect changes, explain changes, what changed, show changes, describe changes | "what changed" (no apostrophe) → inspect; "what's changed" → version |
