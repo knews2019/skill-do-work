@@ -12,6 +12,12 @@
 Assign one directive per sub-agent. Do not repeat directives within the same
 wave or parallel batch.
 
+> ⚠ **Extensibility-First (#4) and Simplicity-First (#2) are opposing trade-offs.**
+> Extensibility-First deliberately permits speculative structure; Simplicity-First enforces YAGNI
+> (see `crew-members/karpathy.md` § Simplicity First). Assign Extensibility-First only when the REQ
+> requires future-proofing (plugin surface, public API, framework); otherwise default to
+> Simplicity-First — don't future-proof what the REQ didn't ask for.
+
 ### Implementation Lenses
 
 1. **Correctness-First**: Prioritize exhaustive edge case handling, defensive

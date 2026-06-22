@@ -276,6 +276,8 @@ The Scope section serves two purposes:
 1. The builder commits to a file list before writing code — drift becomes measurable.
 2. The acceptance criteria, restated from the REQ, become the word-by-word comparison target for review.
 
+Scope-drift protection enforces **YAGNI**: only declared files get touched, and undeclared exploratory work becomes a discovered task (Step 8) rather than speculative scope creep. See `crew-members/karpathy.md` § Simplicity First.
+
 The review step (Step 7) **MUST** compare the Implementation Summary's file list against the Scope declaration (Routes B and C only). Any file touched that was not declared, or any declared file not touched, is flagged as scope drift (Important finding if significant, Minor if trivial like a forgotten import update). **Route A** has no Scope declaration — skip the scope-drift comparison for Route A REQs.
 
 ### Step 5.75: Pre-Flight Check (Routes B and C)

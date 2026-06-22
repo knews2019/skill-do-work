@@ -136,7 +136,7 @@ The directive check is informational — it does not affect the overall score. I
 `crew-members/karpathy.md` was always-loaded during implementation. Spot-check the diff against its four principles — these overlap with existing dimensions but frame them as observable behaviors:
 
 1. **Think Before Coding** — did Open Questions / Decisions get surfaced (`- [~]` marks, `## Decisions`), or were ambiguities silently resolved?
-2. **Simplicity First** — does the code match the senior-engineer test? Flag speculative abstractions, unrequested configurability, and defensive handling for impossible inputs. (Remember: simplify ≠ strip — if removing it would need restoring next week, it's foundation.)
+2. **Simplicity First (YAGNI)** — does the code match the senior-engineer test? Flag speculative abstractions, unrequested configurability, and defensive handling for impossible inputs. (Remember: simplify ≠ strip — if removing it would need restoring next week, it's foundation.) See `crew-members/karpathy.md` § Simplicity First for the canonical statement.
 3. **Surgical Changes** — every changed line should trace to the REQ. Adjacent-code "improvements", style-only edits, and unrelated refactors are drift.
 4. **Goal-Driven Execution** — does the Testing section show verification (red-green, targeted regression, or equivalent proof), or just "it compiles"?
 

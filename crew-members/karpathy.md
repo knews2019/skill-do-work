@@ -25,6 +25,10 @@ and surface later via `do-work clarify`. Silent assumptions are the failure mode
 
 ## 2. Simplicity First
 
+**Follow YAGNI — "You Aren't Gonna Need It."** Don't build functionality, abstractions, or
+configurability on the theory it might be useful later. Speculated future need is the opposite of
+minimum code. This is the canonical statement of the principle; other files point here.
+
 **Minimum code that solves the problem. Nothing speculative.**
 
 - No features beyond what was asked.

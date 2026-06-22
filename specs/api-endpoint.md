@@ -9,6 +9,7 @@
 - **Validation** — input schema (params, query, body), type coercion
 - **Error responses** — structured error format, appropriate HTTP status codes
 - **Tests** — unit tests for handler logic, integration tests for the full request cycle
+- **No speculative fields** — request/response schemas contain only the fields the REQ asked for; no "just in case" query params or response keys (YAGNI; see `crew-members/karpathy.md` § Simplicity First)
 
 ## Quality Standards
 

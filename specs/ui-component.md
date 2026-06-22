@@ -8,6 +8,7 @@
 - **Styles** — scoped styles following the project's styling approach (CSS modules, Tailwind, styled-components, etc.)
 - **Tests** — rendering tests, interaction tests, accessibility checks
 - **Demo/storybook** — if the project uses Storybook or a similar tool, add a story (optional)
+- **Minimal props** — expose only the props the REQ requires; no speculative options or configurability (YAGNI; see `crew-members/karpathy.md` § Simplicity First)
 
 ## Quality Standards
 

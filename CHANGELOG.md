@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.93.1 — The Named Restraint (2026-06-22)
+
+YAGNI ("You Aren't Gonna Need It") was already baked into the skill's implementation guardrails — it just wasn't named. Now it has a single canonical home plus a handful of pointers at the spots where over-building is most tempting, so builders and reviewers share one word for it.
+
+- **Canonical statement in `crew-members/karpathy.md` § Simplicity First** — the always-loaded minimalist guardrail now names YAGNI explicitly (greppable, citable). The `Simplify ≠ strip` nuance is untouched.
+- **Five load-bearing references** point back to that home: `actions/work.md` (scope-drift = YAGNI), `specs/api-endpoint.md` (no speculative fields), `specs/ui-component.md` (minimal props), and both review surfaces `actions/code-review.md` + `actions/review-work.md` (flag speculative abstraction with shared vocabulary).
+- **One real contradiction reconciled, not deleted** — `crew-members/approach-directives.md` now states the Extensibility-First (#4) vs Simplicity-First (#2) trade-off explicitly: future-proof only when the REQ demands it, otherwise default to Simplicity-First.
+- **Deliberately *not* scattered.** Per CLAUDE.md's "Closed Enumerations Go Stale", YAGNI is stated once and referenced narrowly — over-sprinkling the reminder would itself violate YAGNI. `stray-check` was intentionally skipped (forensic dead-code detection ≠ build-time minimalism).
+
 ## 0.93.0 — The Pixel Forge (2026-06-18)
 
 `ai-report` learned to generate real diagrams. When an image-gen CLI is on PATH it now delegates architecture/concept/hero visuals to it — with SVG/Mermaid as the guaranteed fallback — and reports moved to a self-contained folder so synthetic images stay quarantined from real screenshots. Ported from the standalone make-ai-report-with-screenshot skill, kept platform-agnostic, and without dropping this repo's prompt-injection guard or `git diff-tree` asset discovery.
