@@ -139,7 +139,7 @@ Seven fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depen
 
 **Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run was interrupted. For each recovered REQ:
 1. Reset frontmatter: set `status` to `pending`, **unless** the REQ file contains a `## Open Questions` section with at least one unresolved `- [ ]` item — in that case, restore `status` to `pending-answers`. (If the `## Open Questions` section exists but all items are already `[x]` or `[~]`, or if no `## Open Questions` section exists at all, set `status` to `pending`.) Remove `claimed_at` and `route`.
-2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, `## Scope`, `## Pre-Flight`, `## Implementation Summary`, `## Qualification`, `## Testing`, `## Review`, `## Lessons Learned`, `## Decisions`, and `## Discovered Tasks` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact.
+2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, `## Scope`, `## Pre-Flight`, `## Implementation Summary`, `## Qualification`, `## Testing`, `## Review`, `## Lessons Learned`, `## Orientation`, `## Decisions`, and `## Discovered Tasks` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact.
 3. Move the REQ back to `do-work/queue/`
 
 Once `working/` is empty, proceed with finding the next request.
@@ -344,8 +344,12 @@ The existence-verify check on the resolved path runs in Step 8 (post-move) — t
    ## Open Questions
    - [ ] [Original question]
      Recommended: [builder's choice — already implemented]
+     Value: [what this choice buys — copied from the D-NN record]
+     Risk: [what breaks if it's wrong, and how reversible — copied from the D-NN record]
      Also: [other alternatives]
    ```
+
+   The `Value:`/`Risk:` lines come from the escalated `D-NN` entry's record (work.md Step 3.5/6). They let `do-work clarify` render the **DECISIONS FOR YOU** section of the Decision Brief so the user can judge in seconds. If the original decision was logged without them (older REQ), omit both lines — `clarify`'s fallback renders `Recommended:`/`Also:` alone.
 
 ## Discovered Tasks Classification (Step 8)
 
@@ -529,3 +533,27 @@ All 2 requests completed:
   - REQ-003 (Route C) → abc1234 [review: 92%]
   - REQ-004 (Route A) → def5678 [review: 88%]
 ```
+
+## Decision Brief (hand-back format)
+
+The canonical shape for handing work back to the user. Used by the end-of-run completion hand-back (work.md Step 10 / Progress Reporting), `actions/clarify.md`'s question presentation, and `actions/review-work.md`'s Step 9 report. Lead with what was built and what needs the user; **never lead with a self-grade**. Applies `crew-members/anti-slop.md` § 8 (lead with the decision) and the decide-vs-escalate gate in `crew-members/karpathy.md` § Think Before Coding. Render only the sections that have content.
+
+```
+WHAT'S BEING BUILT            (feature + subsystem altitude — the value)
+  • Now you can X — lives in <subsystem>
+  • [MAP CHANGED] <new data flow / renamed concept / new contract>   ← only if true
+
+DECISIONS FOR YOU             (escalated by exception — each carries value + risk)
+  ▸ <decision, one line>
+      Value:  what you gain / why it matters
+      Risk:   cost, reversibility, what breaks if the choice is wrong
+      → recommend <X>; default if you say nothing: <X>
+
+HANDLED  (FYI — spot-check, don't ratify)
+  • decided <Y> because <Z>     ← reversible calls made without asking
+```
+
+- **WHAT'S BEING BUILT** renders each REQ's `## Orientation` block (work.md Step 7.5) at feature/subsystem altitude — not a file list. Anchor to the touched `prime_files`; flag `[MAP CHANGED]` only when the change alters the system's shape.
+- **DECISIONS FOR YOU** renders the **ESCALATE**-tier decisions — the `- [~]` / `D-NN` entries that became `pending-answers` follow-ups — each with the Value/Risk carried from the decision record. Source Value/Risk from the touched prime's `## Stakes` when present, else builder-derive.
+- **HANDLED** lists the **DECIDE & STATE** decisions (reversible `D-NN` entries) so the user can spot-check without being asked to ratify. Omit if empty.
+- **Scale context to reach.** A leaf REQ collapses to a single WHAT'S BEING BUILT line with no DECISIONS and a short HANDLED list; a map-changing REQ earns a short paragraph and a why-it-matters. Review scores never lead — they live under the decision (review-work Step 9) or in the per-REQ progress lines above.

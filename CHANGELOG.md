@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.94.0 — The Decision Brief (2026-06-25)
+
+Work hand-backs now lead with the decision, not the self-grade. do-work surfaces *what's being built* (at subsystem altitude) and the *value and risk* of every choice it asks you to approve — baked into the actions themselves, so it fires as the action's output instead of a rule you have to remember to run.
+
+- **New canonical hand-back format — the Decision Brief** (`actions/work-reference.md`): WHAT'S BEING BUILT → DECISIONS FOR YOU (each with value + risk) → HANDLED (reversible calls; spot-check, don't ratify). `work.md`, `clarify.md`, and `review-work.md` render it; none redefine it.
+- **A three-tier decide-vs-escalate gate** in `crew-members/karpathy.md` § Think Before Coding (DECIDE & STATE · ESCALATE only on irreversible/taste/genuine-disagreement · SILENT), plus `anti-slop.md` Principle 8 "Lead with the decision, not the self-grade" (scale context to reach; scores go below the decision or nowhere).
+- **Value + risk carry through the decision path** — `work.md` `D-NN` entries → the Step 8 follow-up template → `clarify`'s questions, with a mandatory fallback for the four templates that don't carry the fields.
+- **`review-work` Step 9 leads with a worded verdict** (Approve / Approve-with-follow-ups / Request-changes); the `Overall: %` + score table moved below. The persisted `## Review` block is untouched — `present-work` still parses its score.
+- **Primes gained a `## Stakes` section** (`actions/prime.md`): `prime create` spelunks load-bearing elements' Req/Value/Risk and `prime audit` refreshes them — the durable store the Decision Brief reads from. Exempt from the 15-30 line routing-index budget.
+
 ## 0.93.1 — The Named Restraint (2026-06-22)
 
 YAGNI ("You Aren't Gonna Need It") was already baked into the skill's implementation guardrails — it just wasn't named. Now it has a single canonical home plus a handful of pointers at the spots where over-building is most tempting, so builders and reviewers share one word for it.

@@ -23,6 +23,29 @@ Before implementing:
 In do-work terms: open questions get marked `- [~]` with best-judgment reasoning
 and surface later via `do-work clarify`. Silent assumptions are the failure mode.
 
+### The decide-vs-escalate gate
+
+Not every choice deserves the user's attention, and not every choice should be made
+silently. Sort each one into three tiers — this is the **canonical statement of the
+gate**; `crew-members/anti-slop.md` § 8 and `actions/work.md` Steps 3.5/6 point here.
+
+- **DECIDE & STATE** — reversible, intent inferable from context, no reasonable person
+  would disagree. Just do it, then record it tersely so it surfaces as a *handled* item,
+  not a question. Obvious bugs and typos are always this tier — fixing them isn't a
+  decision, it's the work.
+- **ESCALATE** — surface for the user's call only when one of three is true: **(a)** it's
+  irreversible or expensive to undo, **(b)** it depends on the user's taste or intent you
+  can't infer, or **(c)** reasonable people would genuinely disagree. An escalated decision
+  carries its **value** (what the choice buys) and **risk** (what breaks if it's wrong, and
+  how reversible) — not just a recommendation.
+- **SILENT** — truly trivial / leaf, no downstream reach. Logged only if it aids the trail;
+  otherwise left to the diff.
+
+**Scale the words to the reach:** a leaf change is one line; a change that alters the
+system's shape earns a short paragraph and a "why this matters." Most Step 3.5 *deferred*
+questions are ESCALATE (they're ambiguity by definition); most Step 6 *technical* choices
+are DECIDE & STATE.
+
 ## 2. Simplicity First
 
 **Follow YAGNI — "You Aren't Gonna Need It."** Don't build functionality, abstractions, or

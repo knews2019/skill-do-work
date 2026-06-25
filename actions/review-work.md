@@ -217,7 +217,7 @@ Nit findings carry zero weight on the overall score — they're stylistic sugges
 
 ### Step 9: Report
 
-Load `crew-members/anti-slop.md` before composing the report — the review output is a human-facing artifact and falls under those principles (lead with the verdict, compress, cite evidence, no padding).
+Load `crew-members/anti-slop.md` before composing the report — the review output is a human-facing artifact and falls under those principles, especially **§ 8: lead with the decision/verdict in words, demote the self-grade**. Shape the report as the **Decision Brief** (`actions/work-reference.md` → **Decision Brief (hand-back format)**): the worded verdict and what's-built first; the score table on the record, below. **This restructures only the human-facing report** — the persisted `## Review` block (see **Append to REQ File**) keeps `Overall: [X]%` first, because `actions/present-work.md` parses it for the score.
 
 **Pipeline mode:** Report to actions/work.md orchestrator (which reports to the user).
 **Standalone mode:** Report directly to the user.
@@ -227,25 +227,14 @@ Format:
 ```
 ## Review: REQ-NNN
 
-**Overall: [X]%** | Route [A/B/C] | [commit hash or "uncommitted"]
+**[Approve | Approve with follow-ups | Request changes]** — [one-line verdict in words]
+Route [A/B/C] | [commit hash or "uncommitted"]
 
-### Scores
+### What's built
+- [1-3 lines at feature altitude — what now works, what's still missing]
 
-| Dimension | Score | Notes |
-|-----------|-------|-------|
-| Requirements | 95% | All requirements implemented |
-| Code Quality | 85% | Clean, follows patterns |
-| Test Adequacy | 70% | Missing edge case coverage |
-| Scope | 100% | Focused, no drift |
-| Risk | None | — |
-| Acceptance | Pass | Feature works end-to-end |
-
-### Requirements Checklist
-
-- [x] Dark mode toggle in settings — delivered
-- [x] Persists preference in localStorage — delivered
-- [ ] Applies to sidebar — not delivered (only main content area)
-- [x] Respects OS preference on first visit — delivered
+### Decisions / risks for you
+- [Anything the user must weigh, each with its value + risk; "None" if clean]
 
 ### Findings
 
@@ -257,6 +246,13 @@ Format:
 
 **Nit:**
 - [Optional stylistic suggestion — no score impact]
+
+### Requirements Checklist
+
+- [x] Dark mode toggle in settings — delivered
+- [x] Persists preference in localStorage — delivered
+- [ ] Applies to sidebar — not delivered (only main content area)
+- [x] Respects OS preference on first visit — delivered
 
 ### Acceptance Testing
 
@@ -270,9 +266,24 @@ Format:
 - [Browser testing: verify localStorage persistence in Safari private mode]
 - [Edge case: toggle rapidly between modes to check for flicker/race conditions]
 
+### Scores (on the record — not the headline)
+
+**Overall: [X]%**
+
+| Dimension | Score | Notes |
+|-----------|-------|-------|
+| Requirements | 95% | All requirements implemented |
+| Code Quality | 85% | Clean, follows patterns |
+| Test Adequacy | 70% | Missing edge case coverage |
+| Scope | 100% | Focused, no drift |
+| Risk | None | — |
+| Acceptance | Pass | Feature works end-to-end |
+
 ### Follow-up REQs Created
 - REQ-025: "Add edge case tests for dark mode toggle" (addendum_to: REQ-003)
 ```
+
+**Verdict mapping** (keep consistent with the score bands above and the work.md Step 7 gate): **Approve** = Acceptance Pass *and* Overall ≥ 75%. **Approve with follow-ups** = Acceptance Partial *or* Overall 50–74% (Important findings become follow-up REQs). **Request changes** = Acceptance Fail *or* Overall < 50%. The percentage still appears (under **Scores**) so the Step 7 gate and commit-message format read it unchanged — it just stops leading.
 
 ### Step 9.5: Self-Validation & Lessons Learned
 

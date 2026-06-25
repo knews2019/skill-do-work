@@ -107,3 +107,9 @@ Passed — 2 files verified, 2 requirements traced, P-A-U confirmed.
 **What worked:** Reused existing Avatar.tsx patterns — saved time and kept consistency.
 **What didn't:** Initially tried CSS modules for scoping, but project uses styled-components everywhere — switched after exploration.
 **Worth knowing:** Avatar sizes are constrained by the grid layout in `AppShell.tsx` — don't go above 48px without checking the sidebar.
+
+## Orientation
+
+**Now you can** drop a `UserAvatar` anywhere — it wraps the existing `Avatar.tsx` with user props and a default-state fallback. Lives in the components UI layer.
+
+Map delta: none — leaf addition, no new contract or data flow. (`prime_files: []`, so this is a one-line feature-altitude summary derived from the Implementation Summary.)

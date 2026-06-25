@@ -4,7 +4,7 @@
 
 > Producer absorbs the cost of clarity. Reader does not.
 
-Slop happens when the producer optimizes for their own ease and lets the cost fall wherever. Not-slop is when you absorb the cost of being clear, accurate, and brief so the reader doesn't have to. These seven principles apply for the full artifact-generation phase. Drop them when the phase ends.
+Slop happens when the producer optimizes for their own ease and lets the cost fall wherever. Not-slop is when you absorb the cost of being clear, accurate, and brief so the reader doesn't have to. These eight principles apply for the full artifact-generation phase. Drop them when the phase ends.
 
 ## Principles
 
@@ -36,6 +36,10 @@ Most "let me write this up" instincts could be replaced by a two-line answer. Th
 
 Quick question → quick answer. Real decision → real thinking, which usually means **less** AI scaffolding, not more, because the recipient needs to trust the reasoning is yours. High-stakes deliverables get less template, more judgment.
 
+### 8. Lead with the decision, not the self-grade
+
+When the artifact surfaces a decision, a question, or a verdict, put that first — the decision and its default, in words. Self-grading (scores, confidence %, coverage tables) is not a decision and the reader usually can't independently verify it; demote it below the decision or cut it. A review that opens with "Approve — ships clean" then shows the score table reads faster than one that opens with "87%". Scale context to reach: a leaf change gets one line; a change that alters the system's shape earns a short paragraph and a "why this matters." For *what to surface vs. decide silently*, see `crew-members/karpathy.md` § Think Before Coding (the decide-vs-escalate gate); for the full hand-back shape, see `actions/work-reference.md` → **Decision Brief (hand-back format)**.
+
 ## Persistence
 
 Active for the full artifact-generation phase. Re-engage at every revision pass. Drop when the artifact ships and the next REQ begins.
@@ -45,6 +49,7 @@ Active for the full artifact-generation phase. Re-engage at every revision pass.
 - Before drafting, ask: should this exist? Would two lines do?
 - After drafting, cut by half. If you can't cut, you don't understand it well enough.
 - Surface the conclusion in the first sentence.
+- Lead with the decision/verdict in words; push scores, confidence %, and coverage tables below it or cut them.
 - Tag unverified claims explicitly ("not fact-checked", "first-pass", "AI-drafted").
 - Strip filler: throat-clearing intros, hedge words, headers that don't earn their place, bullet lists where prose is tighter.
 - For high-stakes deliverables, reduce AI scaffolding — the reader needs to trust the reasoning is yours.

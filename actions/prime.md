@@ -45,7 +45,7 @@ Generate a prime file for the utility at `<path>` — a routing index that helps
 
 ### Principles
 
-- **Target: 15-30 lines.** Every line must save the AI more tokens than it costs to read.
+- **Target: 15-30 lines** for the routing index. Every line must save the AI more tokens than it costs to read. (A `## Stakes` section, if present, is decision-context for the user — it sits **outside** this budget; see Step 4.)
 - The AI has `Read`, `Grep`, `Glob`. Don't reproduce what tool calls discover.
 - Only include what the AI CANNOT efficiently find: routing, traps, exclusions.
 - NO: line numbers, code descriptions, DOM anchors, request flow diagrams, URL params, environment tables, external service catalogs. The AI will discover these via tool calls.
@@ -88,6 +88,7 @@ Combine auto-detected facts with user answers. Apply these rules:
 - If a section would be empty, omit it entirely
 - If there's no build step, omit **Must build**
 - Every line must earn its place — "would an AI waste tokens without this?"
+- **Spelunk the Stakes.** For the utility's *load-bearing* elements only (the few whose contract, if changed wrong, has real blast radius), read the code and record `Req:` (what it must do / why it exists), `Value:` (what it enables), `Risk:` (what breaks if changed wrong; reversibility). This becomes the `## Stakes` section — its purpose is to let the user make high-impact decisions confidently without re-deriving the context, and it feeds the Value/Risk that `do-work clarify` surfaces. Load-bearing only; if every element seems to qualify, the utility is too big — split it. No volatile metrics, pointers not copies. Omit the section entirely for a utility with no high-stakes elements.
 
 #### Step 5: Write
 
@@ -110,7 +111,15 @@ Write to `{path}/prime-{short-name}.md` using this template:
 
 ## Traps
 - **{symptom}** — {cause and fix, one line}
+
+## Stakes
+- `{load-bearing element}`
+  Req:   {what it must do / why it exists}
+  Value: {what it enables}
+  Risk:  {what breaks if changed wrong; reversibility}
 ```
+
+(Include `## Stakes` only for load-bearing elements; omit for utilities with no high-stakes surface. It is the one section exempt from the 15-30 line budget.)
 
 #### Step 6: Post-creation checks
 
@@ -136,7 +145,7 @@ Sections: {list of included sections}
 
 Perform a read-only health check on the repo's prime file system. Prime files (`prime-*.md`) are AI context documents that live in utility directories. Your job is to audit them for staleness, missing coverage, and broken references.
 
-**Important: Do NOT modify any files.** This is an audit-only operation. Report findings; let the user decide what to fix.
+**Important: This is audit-only for the routing index — do NOT modify a prime's routing sections (Read first / Do not edit / Must build / Traps).** The one exception is `## Stakes`: audit spelunks and refreshes it (Step 6.5) so the value/risk the user relies on for high-impact decisions stays current. Report all other findings; let the user decide what to fix.
 
 ### Conventions
 
@@ -219,6 +228,16 @@ For each prime, do a quick sanity check:
 
 Don't read every line of source code — just verify the pointers are valid.
 
+### Step 6.5: Refresh Stakes (the one write `audit` performs)
+
+For each prime that has — or load-bearingly needs — a `## Stakes` section, spelunk its load-bearing elements and refresh `Req:` / `Value:` / `Risk:` so the user can make high-impact decisions confidently. This is the purpose the user runs audit for: the producer absorbs the cost of clarity so the reader doesn't (`crew-members/anti-slop.md` § 1). Rules:
+- **Load-bearing only.** Don't annotate every element — only those whose contract has real blast radius. Keep `## Stakes` outside the 15-30 line routing-index budget.
+- **Flag, then refresh.** If a Stakes entry points at a removed file or a requirement that no longer holds, list it under "Stale or missing Stakes" in the report, then rewrite it from the current code.
+- **Add when missing.** If a prime documents a load-bearing utility but has no `## Stakes`, spelunk and add one.
+- **No volatile metrics; pointers not copies** (per the PRIME Files Philosophy in `crew-members/general.md`).
+
+This is the only section `audit` writes — the routing sections stay read-only.
+
 ### Output Format
 
 Report findings as a structured checklist:
@@ -236,6 +255,11 @@ Report findings as a structured checklist:
 
 #### Stale references
 - [ ] `path/prime-foo.md` references `src/old-file.js` which no longer exists
+- [ ] ...
+
+#### Stale or missing Stakes
+- [ ] `path/prime-foo.md` Stakes for `src/x.ts` references a removed contract — refreshed
+- [ ] `path/prime-bar.md` documents a load-bearing utility but has no Stakes — added
 - [ ] ...
 
 #### Missing primes
@@ -270,7 +294,7 @@ Be concise. Only flag actual issues. "Everything looks fine" for a prime is not 
 
 ## Red Flags
 
-- A newly created prime file is longer than 30 lines — it's drifting into documentation; tighten it or split the utility.
+- A newly created prime file's *routing index* (everything but `## Stakes`) is longer than 30 lines — it's drifting into documentation; tighten it or split the utility.
 - `audit` reports no issues across the whole repo, but several primes haven't been touched in months — they're likely stale; spot-check before trusting the clean result.
 - `create <path>` was run on a path that already has a prime — avoid silent overwrite; ask before replacing.
 - A prime file lists line numbers or reproduces code — violates the "pointers over copies" principle; rewrite.
@@ -278,7 +302,7 @@ Be concise. Only flag actual issues. "Everything looks fine" for a prime is not 
 
 ## Verification Checklist
 
-- [ ] Prime files are 15–30 lines (create mode).
+- [ ] Prime files' routing index is 15–30 lines (create mode); a `## Stakes` section, if present, is excluded from that budget and scoped to load-bearing elements.
 - [ ] No line numbers, no reproduced code, no volatile metrics in the generated prime.
 - [ ] `audit` output names each issue by file path and type (stale ref / broken link / missing prime).
 - [ ] "Everything looks fine" primes are omitted from the audit report (only issues are listed).

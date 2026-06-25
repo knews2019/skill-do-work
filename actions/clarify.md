@@ -32,20 +32,26 @@ If none found: report "No pending questions — queue is clear" and exit.
 
 ### Step 3: Present questions
 
-Always include the builder's recommended choice prominently for each question — confirming the recommendation is the intended fast path. For each `pending-answers` REQ, show:
+Always lead with the builder's decision and its default — confirming is the intended fast path — and, for builder-decided follow-ups, show the **value and risk** so the user can judge in seconds instead of spelunking. This is the **DECISIONS FOR YOU** section of the Decision Brief (`actions/work-reference.md` → **Decision Brief (hand-back format)**). For each `pending-answers` REQ, show:
 
 ```
 REQ-025 — Review fix: dark mode sidebar
 (follow-up to REQ-003, from review)
 
 1. [ ] Should the sidebar use the same dark palette as the main content?
-   Recommended: Yes, match main content palette
-   Also: Separate sidebar palette, User-configurable
+   Decision: Yes, match main content palette   ·   Default if you say nothing: same
+   Value: one consistent dark surface; nothing to re-theme later
+   Risk:  if you wanted a distinct sidebar, this is a quick CSS revert (low, reversible)
+   Also:  Separate sidebar palette, User-configurable
 
 2. [ ] Should dark mode persist across sessions?
-   Recommended: Yes, save to localStorage
-   Also: Reset on refresh, Follow OS preference
+   Decision: Yes, save to localStorage   ·   Default if you say nothing: same
+   Value: returning users keep their choice
+   Risk:  a stale stored value can mask the OS-preference path (medium, reversible)
+   Also:  Reset on refresh, Follow OS preference
 ```
+
+**Fallback (mandatory).** Many `pending-answers` REQs come from templates that don't carry Value/Risk — capture, verify-requests, review-work follow-ups, and discovered tasks all emit `Recommended:`/`Also:` only. When a question has no `Value:`/`Risk:` lines, render it in that older form (`Recommended:` + `Also:`) — never block on the missing fields.
 
 Builder-marked `- [~]` decisions reflect the "Think Before Coding" guardrail (`crew-members/karpathy.md`) — surface tradeoffs early, not late.
 
