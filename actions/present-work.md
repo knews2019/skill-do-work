@@ -38,10 +38,10 @@ The code is done. Now communicate its value. This action reads the full history 
 Same pattern as review work standalone mode:
 
 1. **If user specifies a REQ** (e.g., "present REQ-005"): Find it in `do-work/archive/` or `do-work/archive/UR-NNN/`
-2. **If user specifies a UR** (e.g., "present UR-003"): Find all completed REQs under that UR — present them as one deliverable
-3. **If no target specified**: Find the most recently completed UR (or REQ if no UR). Check `do-work/archive/` for the highest UR/REQ number with `status: completed`
+2. **If user specifies a UR** (e.g., "present UR-003"): Find all terminally-successful REQs (`completed` or `completed-with-issues`) under that UR — present them as one deliverable
+3. **If no target specified**: Find the most recently completed UR (or REQ if no UR). Check `do-work/archive/` for the highest UR/REQ number with a terminal-success status (`status: completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set)
 
-If the target has no completed REQs, report that there's nothing to present and exit.
+If the target has no terminally-successful REQs, report that there's nothing to present and exit.
 
 ### Step 2: Read the Full History
 
@@ -521,6 +521,7 @@ Same as detail mode — save to `do-work/deliverables/` and summarize.
 - The brief copies code snippets instead of pointing at files — client-facing docs shouldn't show diffs.
 - You're about to overwrite an existing deliverable at `do-work/deliverables/` — pause and confirm with the user whether to update in-place or version it.
 - Portfolio mode produced a brief for every archive entry including internal-only cleanup REQs — filter those out; portfolios are about shipped user value.
+- "Most recent" target or a UR sweep skips a `completed-with-issues` REQ — Step 1 is filtering on the literal `completed` instead of the terminal-success set (`completed` or `completed-with-issues`; see `actions/work-reference.md`).
 
 ## Verification Checklist
 

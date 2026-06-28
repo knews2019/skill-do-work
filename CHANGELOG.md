@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.96.0 — The Terminal Set (2026-06-28)
+
+Acting on the validate-feedback triage of the skill's own internals: remediated-with-issues work no longer falls through the cracks, and AI image generation can't be hijacked by hostile archived content. Two of these were live correctness/security gaps the skill's own doctrine predicted.
+
+- **`completed-with-issues` is now first-class across every reader** (P2): defined once as the canonical **Terminal-success status set** (`completed | completed-with-issues`) in `actions/work-reference.md`'s Schema Read Contract, with the *condition* — not a caller list — as the trigger. Fixed five readers that filtered on the literal `completed` and silently dropped remediated work: `cleanup.md` (UR close), `ai-report.md` (report target), `review-work.md` (review target), `commit.md` (REQ association), and `present-work.md` (the one the original review missed — caught by grepping the primitive). Each carries a greppable Red Flag guard. `inspect.md`, `forensics.md`, and `roadmap.md` already handled both.
+- **AI image generation is sandbox-hardened** (P1): the `$2` prompt is now an explicit trust boundary — `actions/ai-report.md` requires a Claude-authored, sanitized visual description and forbids relaying verbatim UR/REQ/Lessons content to a sandbox-bypassed (`codex exec --dangerously-bypass-approvals-and-sandbox`) generator, preferring a non-agentic backend when available. The Step 1 prompt-injection guard now explicitly extends to the image path.
+- **AI image output paths are now cwd-independent** (P3): the generation helper's `$1` is canonicalized to an absolute path (`cd … && pwd`) before generation; HTML still embeds the portable relative `generated/…` path. Fixes the contract-vs-example contradiction in both caller copies.
+
 ## 0.95.0 — The Pushback Pass (2026-06-28)
 
 External review feedback finally has a home. Paste a code review, a PR thread, or an audit report and do-work triages it item by item against the real code — telling you what to accept, what's already done, and what to push back on (with the evidence to back the pushback).

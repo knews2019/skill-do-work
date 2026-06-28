@@ -40,8 +40,8 @@ Both modes follow the same workflow. The only difference is where the REQ lives 
 
 **Standalone mode:**
 1. **If user specifies a REQ** (e.g., "review REQ-005"): Find it in `do-work/archive/` or `do-work/archive/UR-NNN/`
-2. **If user specifies a UR** (e.g., "review UR-003"): Find all completed REQs under that UR and review each
-3. **If no target specified**: Find the most recently completed REQ — check both `do-work/archive/` (root) and all `do-work/archive/UR-NNN/` subdirectories for the highest REQ number with `status: completed`
+2. **If user specifies a UR** (e.g., "review UR-003"): Find all terminally-successful REQs (`completed` or `completed-with-issues`) under that UR and review each
+3. **If no target specified**: Find the most recently completed REQ — check both `do-work/archive/` (root) and all `do-work/archive/UR-NNN/` subdirectories for the highest REQ number with a terminal-success status (`status: completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set)
 
 If the target REQ has no `commit` field (standalone mode) or no implementation changes (pipeline mode), report that there's nothing to review and exit.
 
@@ -459,6 +459,7 @@ If any of these are true, escalate review depth regardless of route:
 - Tests pass but test file has trivial assertions (`expect(true).toBe(true)` style)
 - Scope section declares 3 files but Implementation Summary lists 8
 - No red-green evidence on a behavioral change with `tdd: true`
+- "Most recent work" silently skips a `completed-with-issues` REQ — Step 1 is filtering on the literal `completed` instead of the terminal-success set (`completed` or `completed-with-issues`; see `actions/work-reference.md`)
 
 ## Verification Checklist
 

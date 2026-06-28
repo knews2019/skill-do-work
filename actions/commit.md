@@ -77,7 +77,7 @@ Scan `do-work/archive/` for completed REQs that might own some of the uncommitte
 
 1. Glob for `do-work/archive/**/REQ-*.md` — find all archived REQs
 2. For each archived REQ:
-   - Read the frontmatter — check for `commit:` field and `status: completed`
+   - Read the frontmatter — check for `commit:` field and a terminal-success `status` (`completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set)
    - Read the `## Implementation Summary` section — extract the list of files created/modified
 3. Also check `do-work/working/` for in-flight REQs with file lists
 
@@ -248,6 +248,7 @@ Guard against these when committing:
 - Single commit with >20 files (likely needs splitting)
 - Commit message has no REQ reference when matching REQs exist in the system
 - Files from multiple unrelated REQs grouped in a single commit
+- Uncommitted files belonging to a `completed-with-issues` REQ aren't associated to it — Step 3 is filtering on the literal `completed` instead of the terminal-success set (`completed` or `completed-with-issues`; see `actions/work-reference.md`)
 
 ## Verification Checklist
 
