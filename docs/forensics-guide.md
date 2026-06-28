@@ -17,6 +17,7 @@ Pipeline diagnostics — detects stuck work, hollow completions, orphaned URs, s
 | **Stale pending-answers** | REQs waiting for user input for >7 days |
 | **Git divergence** | Files from completed REQs later modified or deleted without tracking |
 | **Stranded finished REQs** | Terminal-status REQs left in `do-work/queue/` or `working/` instead of archived |
+| **Recurring corrections** | The same lesson/correction theme surfacing across 2+ archived REQs (2 = watch, 3+ = strong signal) — a sign to fix the harness, not the next run |
 
 ## Output
 

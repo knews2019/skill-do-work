@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.97.0 — The Broken Record (2026-06-28)
+
+Forensics now spots when the *same* lesson keeps coming back. If a correction recurs across multiple archived REQs, that's a sign to fix the harness — not patch the next run again.
+
+- **New forensics check: Recurring Corrections** — aggregates the `## Lessons Learned` across every archived REQ (loose and UR-nested) and flags any theme that recurs: 2 REQs is a **watch** (Info), 3+ is a **strong signal** (Warning), each with the contributing REQ IDs and a "fix the harness, not the next run" pointer. Read-only, like the rest of forensics.
+- Check-list enumerations updated so the new check isn't orphaned (`docs/forensics-guide.md` table, `SKILL.md` teaser) — per "Closed Enumerations Go Stale."
+
 ## 0.96.0 — The Terminal Set (2026-06-28)
 
 Acting on the validate-feedback triage of the skill's own internals: remediated-with-issues work no longer falls through the cracks, and AI image generation can't be hijacked by hostile archived content. Two of these were live correctness/security gaps the skill's own doctrine predicted.

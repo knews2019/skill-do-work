@@ -28,7 +28,7 @@ A unified entry point for task capture and processing.
 - **slop-check**: Validate a human-facing artifact (brief, report, summary) against the anti-slop principles before it ships — read-only by default, optional rewrite on confirmation
 - **dream**: Manual four-phase consolidation of a plain-text memory directory — orient, lint, heal, prune + reindex. Destructive; explicit invocation only.
 - **install**: Install companion skills/tooling into the current project. Targets: `ui-design` (Anthropic's `frontend-design` skill) and `bowser` (Playwright CLI + Bowser skill for browser automation, screenshots, and visual UI verification).
-- **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination (read-only)
+- **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination, recurring corrections (read-only)
 - **roadmap**: Queue survey → classifies pending REQs (ready / needs-clarification / blocked / stale), reports TDD posture, rolls up in-progress and recently-completed work (read-only)
 - **note**: Append a lightweight, dated next-step hint to `do-work/notes.md` → surfaced at the top of `do-work roadmap`. Not a REQ; no capture, no schema, no implementation. User deletes lines by hand when resolved
 - **stray-check**: Repo-wide orphan/junk scan → temp/backup/OS files, committed build artifacts, should-be-gitignored, misplaced/duplicate/empty files, large blobs, AI scratch, best-effort dead code (report-only by default; fixes on confirmation)

@@ -114,6 +114,21 @@ Scan `do-work/queue/REQ-*.md` (queue, not archive) AND `do-work/working/REQ-*.md
 
 **Suggested fix** for all: `do-work cleanup` (Pass 0 sweeps finished REQs to archive)
 
+### 10. Recurring Corrections
+
+Aggregate the `## Lessons Learned` sections across **all** archived REQs and flag any correction or lesson theme that recurs across multiple REQs. A one-off lesson is noise; the *same* correction surfacing in REQ after REQ is a signal the harness — not the next run — should change. (Imports the Agent Maintenance Loop's "the same correction across multiple runs means the harness is teaching the wrong thing.")
+
+Enumerate every archived REQ — loose and UR-nested — with `find do-work/archive -name 'REQ-*.md'`. `find` recurses by default, so this surfaces both `do-work/archive/REQ-*.md` and `do-work/archive/UR-*/REQ-*.md` in one pass; a top-level glob (`ls do-work/archive/REQ-*.md`) would silently miss every UR-nested REQ. For each result, read its `## Lessons Learned` section (the `What worked` / `What didn't` / `Worth knowing` bullets); skip REQs that have no such section.
+
+Group the lessons by **theme** — a short, normalized phrase capturing the correction's intent (e.g., "author one canonical source, point all callers at it" or "read complementary source files before editing"). This is a deliberately simple, explainable string/intent match on the lesson phrasing — not a classifier (you are reading Markdown, not building NLP). Count the **distinct REQs** per theme (a REQ that states the same theme twice counts once).
+
+- **Info** (watch) — a theme recurs across exactly **2** distinct REQs.
+- **Warning** (strong signal) — a theme recurs across **3+** distinct REQs.
+
+Report each recurring theme with its label, the contributing REQ IDs, and the pointer: "this correction has recurred — consider a harness fix, not another per-run patch." A theme seen in only one REQ is not a finding.
+
+Read-only: this check reads Lessons sections and reports; it never edits, moves, or annotates any REQ or archive file.
+
 ## Output Format
 
 ```markdown
@@ -144,6 +159,7 @@ Scan `do-work/queue/REQ-*.md` (queue, not archive) AND `do-work/working/REQ-*.md
 
 - **[Scope Contamination]** `src/utils/auth.ts` was modified by REQ-003, REQ-015, and REQ-031 (3 different URs). This file is a hotspot.
 - **[Git Divergence]** `src/components/Header.tsx` (from REQ-020) was modified by 2 later commits.
+- **[Recurring Correction]** "author one canonical source, point all callers at it" recurs across REQ-009 and REQ-011 (2 REQs, watch). This correction has recurred — consider a harness fix, not another per-run patch.
 
 ## Summary
 
@@ -176,6 +192,7 @@ All clear — no issues detected.
 - Report is "All clear" but `do-work/working/` has claimed REQs — check was scoped too narrowly.
 - A REQ was flagged as `stuck` but its mtime is < 10 minutes old — likely still processing; don't disturb.
 - Hollow-completion check flagged every completed REQ as hollow — rubric is too strict; review before acting.
+- Recurring-corrections check collapsed every distinct lesson into one theme (or split obvious duplicates into separate themes) — the grouping heuristic is degenerate; re-read the lessons before reporting.
 - Forensics fixed something on its own — this action is **read-only**; it must only report.
 - Output mixes severities (critical/warning/info) without clear grouping — readability regression; use the documented sections.
 
