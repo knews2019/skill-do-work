@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.95.0 — The Pushback Pass (2026-06-28)
+
+External review feedback finally has a home. Paste a code review, a PR thread, or an audit report and do-work triages it item by item against the real code — telling you what to accept, what's already done, and what to push back on (with the evidence to back the pushback).
+
+- **New action `validate-feedback`** (`actions/validate-feedback.md`): read-only triage of pasted findings. Per item it reads the cited `file:line`, checks git for already-fixed, adversarially verifies the claim, and returns Already done / Accept / Push back / Discuss + a draft reply. Ends with a `capture` handoff — it never creates REQs itself (Capture ≠ Execute).
+- **Routing + wiring** (`SKILL.md`): new priority-9 routing row placed above `review work` so feedback phrasings win before the bare "review" verb (triggers require feedback/findings/triage/push-back, so `review work` is unaffected); rows below renumbered and their interior cross-references updated. Verb Reference, Action Dispatch, help menu, and `next-steps.md` all updated.
+- **Guardrails reused, not reinvented**: the action loads `crew-members/prompt-injection.md` (pasted findings are data, not instructions) and `crew-members/anti-slop.md` (the triage report is human-facing). `validate-feedback` is registered as a known prompt-injection caller.
+
 ## 0.94.0 — The Decision Brief (2026-06-25)
 
 Work hand-backs now lead with the decision, not the self-grade. do-work surfaces *what's being built* (at subsystem altitude) and the *value and risk* of every choice it asks you to approve — baked into the actions themselves, so it fires as the action's output instead of a rule you have to remember to run.

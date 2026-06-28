@@ -53,6 +53,14 @@ Next steps:
   do-work bkb init            Initialize the KB (if kb_status: pending because no kb/ exists)
 ```
 
+**After validate-feedback:**
+```
+Next steps:
+  do-work capture request: [paste an accepted finding]  Capture an accepted finding as a request
+  do-work run                                           Process the captured fixes
+  do-work note "[a discuss item]"                       Park a Discuss item for later
+```
+
 **After code-review:**
 ```
 Next steps:
