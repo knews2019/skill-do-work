@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.98.0 — The Delete Key (2026-06-28)
+
+A new maintenance crew rule: when a skill instruction has drifted, try *removing* before adding. Most harnesses rot because every fix is one more rule — this is the counterweight.
+
+- **New crew member: `crew-members/maintenance.md`** — codifies delete-before-you-add for deliberate maintenance passes. Ask the deletion questions (stale source? bad example? tool too broad? job too vague?) before writing a new instruction, and prove any addition against a replay case (fails without it, passes with it). Explicitly complementary to `karpathy.md`: maintenance-time removal vs implementation-time surgical changes.
+- Wired in: added as a third "contract worth knowing" in CLAUDE.md's Agent Rules, and referenced from `actions/quick-wins.md` (the read-only action that surfaces removal candidates).
+
 ## 0.97.0 — The Broken Record (2026-06-28)
 
 Forensics now spots when the *same* lesson keeps coming back. If a correction recurs across multiple archived REQs, that's a sign to fix the harness — not patch the next run again.

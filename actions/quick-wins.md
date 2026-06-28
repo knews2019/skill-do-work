@@ -178,6 +178,7 @@ Produce a markdown report with this structure:
 - **Skip vendored and generated files.** Don't report issues in `node_modules/`, `vendor/`, `.next/`, compiled output, or generated code.
 - **Check before suggesting tests.** If a function already has test coverage, don't suggest testing it again. Note it in "Already Covered" instead.
 - **Respect project conventions.** If `prime-*.md` files describe deliberate patterns (e.g., "we use god files for route handlers"), don't flag those as problems.
+- **Removal findings invoke the maintenance discipline.** Quick-wins is read-only — it only *surfaces* dead code, redundant rules, and over-broad config. When the user acts on a removal finding (via capture → `do-work run`), that is a deliberate maintenance pass, so `crew-members/maintenance.md` (delete-before-you-add) applies: prefer removing or narrowing before adding, and prove any addition against a replay case. This is the maintenance-time complement to `karpathy.md`'s implementation-time surgical-changes rule.
 
 ## Common Rationalizations
 
