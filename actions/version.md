@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.99.3
+**Current version**: 0.99.4
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -77,7 +77,8 @@ When user asks "check for updates", "update", or "is there a newer version":
      UPSTREAM_TARBALL="$UPDATE_TMP/upstream.tar.gz"
      FRESH_UPSTREAM="$UPDATE_TMP/fresh"
      mkdir -p "$FRESH_UPSTREAM"
-     curl -fsSL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz -o "$UPSTREAM_TARBALL"
+     curl -fsSL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz -o "$UPSTREAM_TARBALL" \
+       || { echo "Upstream tarball download failed; aborting before any destructive write."; rm -rf "$UPDATE_TMP"; exit 1; }
      tar xzf "$UPSTREAM_TARBALL" -C "$FRESH_UPSTREAM" --strip-components=1 \
        --exclude='_dev' --exclude='do-work' --exclude='ai-reports' \
        --exclude='.vscode' --exclude='decisions'
@@ -86,7 +87,7 @@ When user asks "check for updates", "update", or "is there a newer version":
        diff -ru --new-file "$FRESH_UPSTREAM/$shipped_path" "<skill-root>/$shipped_path" || true
      done
      ```
-     This diff includes legitimate upstream release changes, so don't treat every hunk as a blocker. Scan it before overwriting: current-side additions, local rewrites, or files present only in `<skill-root>` are committed/non-git customizations that would be clobbered. Surface them to the user and require explicit confirmation before proceeding. If the diff is only the expected upstream update, keep `$UPDATE_TMP`, `$UPSTREAM_TARBALL`, and `$FRESH_UPSTREAM` for Steps 5-6; do not re-download a different archive.
+     This diff includes legitimate upstream release changes, so don't treat every hunk as a blocker. Scan it before overwriting: current-side additions, local rewrites, or files present only in `<skill-root>` are committed/non-git customizations that would be clobbered (a file present only on the current side could instead be one upstream *removed* this release rather than a local addition — when unsure, surface it rather than assume). Surface them to the user and require explicit confirmation before proceeding. If the diff is only the expected upstream update, keep `$UPDATE_TMP`, `$UPSTREAM_TARBALL`, and `$FRESH_UPSTREAM` for Steps 5-6; do not re-download a different archive.
    - **If any shipped skill files are dirty / have local modifications**: Stop and warn the user. List the modified files and ask for explicit confirmation before proceeding. Do NOT auto-update.
    - **If no local customizations are present**: Proceed to step 4 (snapshot + pre-clean) then step 5 (extract).
 4. **Snapshot for rollback, then pre-clean discoverable directories.** First make the overwrite recoverable: a git-repo install already is (Step 3 confirmed a clean tree, so `git -C <skill-root> restore <file>` undoes any clobber after the fact); for a **non-git** install, copy the tree first — `cp -R <skill-root> <skill-root>.preupdate-bak`. Then pre-clean. `prompts/` and `interviews/` are upstream-controlled — their contents are owned by this skill, not the consuming project. `do-work prompts list` and `do-work interview list` glob `prompts/*.md` and `interviews/*.md`, so any upstream-removed file that stays on disk will still appear as a live workflow. The dirty check in step 3 has already confirmed these are clean, so removing the tracked `.md` files here is safe and the tar extraction will restore them fresh:

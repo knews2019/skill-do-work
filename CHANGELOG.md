@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.99.4 — The Fine Print (2026-06-30)
+
+Polish on the 0.99.3 safety fixes — three small clarifications so the prescribed steps don't mislead.
+
+- **ai-report:** the generation-helper intro no longer says "two probes" — it points at the tiered branches (non-agentic first; the agentic branch only when explicitly opted in).
+- **version:** the pre-extraction tarball download now aborts cleanly if `curl` fails, instead of falling into a confusing `tar` error before anything is overwritten.
+- **version:** the customization-diff note flags that a file present only on the current side can be one upstream *removed* this release, not just a local addition — surface it when unsure.
+
 ## 0.99.3 — The Fresh Mirror (2026-06-30)
 
 Follow-up on the validate-feedback re-run: the two already-fixed findings stay closed, and the two open safety gaps now have concrete guardrails rather than soft reminders.
