@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.99.3 — The Fresh Mirror (2026-06-30)
+
+Follow-up on the validate-feedback re-run: the two already-fixed findings stay closed, and the two open safety gaps now have concrete guardrails rather than soft reminders.
+
+- **AI report image generation is opt-in for agentic backends.** `actions/ai-report.md` now prefers a non-agentic image renderer, falls back to SVG/Mermaid when none exists, and only runs sandbox-bypassed Codex when `DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=1`. The opt-in path runs from a `chmod 700` temporary directory and copies out only the verified PNG.
+- **Version update customization checks moved before the destructive write.** `actions/version.md` now downloads the upstream tarball once, extracts a fresh upstream tree, runs a `diff -ru` preflight against the current install, and reuses those reviewed bytes for extraction. The fragile "last commit touching version.md" sync heuristic is gone.
+- **Contract regressions cover both fixes** so future edits can't quietly re-enable default agentic image generation or restore the baseline-fragile updater heuristic.
+
 ## 0.99.2 — The Kebab Case (2026-06-30)
 
 The three space-separated action names now match their already-hyphenated filenames and the rest of the multi-word actions, so a single grep for `review-work` (or `verify-requests`, `present-work`, `capture-request:`) finds every reference instead of only the file paths.
@@ -1036,4 +1044,3 @@ New `prompts` action — a dispatcher over a growing library of reusable, battle
 - `next-steps.md`: Three new post-action sections (`prompts list`, `prompts show`, `prompts run`).
 - `README.md`: New numbered scenario "19. Run a saved prompt"; renumbered later scenarios 19→20, 20→21, 21→22.
 - `CLAUDE.md`: Registered `actions/prompts.md` and the `prompts/` directory in the Project Structure tree.
-

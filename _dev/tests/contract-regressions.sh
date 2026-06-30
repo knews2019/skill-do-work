@@ -78,6 +78,36 @@ assert_block_not_contains \
   '^1\. Update frontmatter: `status: completed`, `completed_at: <timestamp>`$' \
   'actions/work.md Archive success path must not unconditionally overwrite status with completed.'
 
+assert_contains \
+  "actions/ai-report.md" \
+  'DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND' \
+  'actions/ai-report.md must keep sandbox-bypassed agentic image generation behind an explicit opt-in.'
+
+assert_contains \
+  "actions/ai-report.md" \
+  'mktemp -d' \
+  'actions/ai-report.md must run any agentic image fallback from a locked temporary directory, not the repo cwd.'
+
+assert_contains \
+  "actions/ai-report.md" \
+  'chmod 700' \
+  'actions/ai-report.md must lock down the temporary image-generation directory before invoking an agentic backend.'
+
+assert_contains \
+  "actions/version.md" \
+  'fresh upstream tarball|fresh upstream tree' \
+  'actions/version.md update flow must compare against a freshly extracted upstream tarball before overwriting.'
+
+assert_contains \
+  "actions/version.md" \
+  'diff -ru' \
+  'actions/version.md update flow must prescribe a recursive pre-extraction diff against the fresh upstream tree.'
+
+assert_file_not_contains \
+  "actions/version.md" \
+  'log -1 --format=%H -- actions/version\.md' \
+  'actions/version.md must not use the last version.md-touching commit as the committed-customization baseline.'
+
 assert_file_missing \
   "prompts/ultracode-fable-workflow.md" \
   'retired ultracode/fable prompt file must be removed from the active prompt library.'

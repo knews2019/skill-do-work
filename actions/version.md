@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.99.2
+**Current version**: 0.99.3
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -71,22 +71,36 @@ When user asks "check for updates", "update", or "is there a newer version":
 3. **Check for local changes** to shipped skill files at `<skill-root>`:
    - **Scope the check to skill-owned files only.** Ignore `do-work/` (queue data, archives, deliverables) — those are generated at runtime and should never block an update.
    - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ prompts/ interviews/ specs/ docs/ hooks/ CLAUDE.md AGENTS.md CHANGELOG.md README.md next-steps.md` (listing every shipped editable path) and check for uncommitted changes. Any dirty file in these paths will be clobbered by the tar extraction in step 5 if you proceed. (Previous archive files `CHANGELOG-2026-spring.md` and `CHANGELOG-pre-0.50.md` were removed in 0.76.0 — tarball-installed copies that want pre-0.65 release notes can browse them at commit `bf15fe2` on GitHub; git-cloned copies can `git show bf15fe2:CHANGELOG-2026-spring.md` locally.)
-   - **Also catch _committed_ customizations** (git-repo installs). `git status --porcelain` only reports _uncommitted_ edits — a customization that was committed (e.g. a local hook-path fix) leaves a clean tree and would be silently overwritten by the Step 5 extraction. Find the commit that last synced this skill — `SYNC=$(git -C <skill-root> log -1 --format=%H -- actions/version.md)` (version.md changes only on a version update) — then list shipped files committed locally since it: `git -C <skill-root> diff --name-only "$SYNC"..HEAD -- <the shipped paths listed above>`. Treat anything it prints exactly like a dirty file: surface it to the user before proceeding. This is best-effort (a past sync that hand-merged a customization into its own commit can hide it), so it is backed by the Step 6 post-update audit.
-   - If it's **not** a git repo, check whether shipped skill files (actions/, crew-members/, prompts/, interviews/, specs/, docs/, hooks/, SKILL.md, CLAUDE.md, next-steps.md, etc.) differ from a fresh install by looking for user-modified content (custom crew-members, edited action files, local prompt/template additions, etc.).
+   - **Also catch _committed_ customizations before extraction** (git-repo installs) and local edits in non-git installs with a fresh upstream tarball diff. `git status --porcelain` only reports _uncommitted_ edits; a customization committed locally (including an edit to `actions/version.md` itself) otherwise looks clean. Before any destructive write (no pre-clean, no delete, no extraction yet), download the upstream tarball once, extract it to a temporary fresh upstream tree, and diff the current install against that tree:
+     ```bash
+     UPDATE_TMP="$(mktemp -d "${TMPDIR:-/tmp}/do-work-update.XXXXXX")"
+     UPSTREAM_TARBALL="$UPDATE_TMP/upstream.tar.gz"
+     FRESH_UPSTREAM="$UPDATE_TMP/fresh"
+     mkdir -p "$FRESH_UPSTREAM"
+     curl -fsSL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz -o "$UPSTREAM_TARBALL"
+     tar xzf "$UPSTREAM_TARBALL" -C "$FRESH_UPSTREAM" --strip-components=1 \
+       --exclude='_dev' --exclude='do-work' --exclude='ai-reports' \
+       --exclude='.vscode' --exclude='decisions'
+     SHIPPED_PATHS=(SKILL.md actions crew-members prompts interviews specs docs hooks CLAUDE.md AGENTS.md CHANGELOG.md README.md next-steps.md)
+     for shipped_path in "${SHIPPED_PATHS[@]}"; do
+       diff -ru --new-file "$FRESH_UPSTREAM/$shipped_path" "<skill-root>/$shipped_path" || true
+     done
+     ```
+     This diff includes legitimate upstream release changes, so don't treat every hunk as a blocker. Scan it before overwriting: current-side additions, local rewrites, or files present only in `<skill-root>` are committed/non-git customizations that would be clobbered. Surface them to the user and require explicit confirmation before proceeding. If the diff is only the expected upstream update, keep `$UPDATE_TMP`, `$UPSTREAM_TARBALL`, and `$FRESH_UPSTREAM` for Steps 5-6; do not re-download a different archive.
    - **If any shipped skill files are dirty / have local modifications**: Stop and warn the user. List the modified files and ask for explicit confirmation before proceeding. Do NOT auto-update.
-   - **If clean**: Proceed to step 4 (snapshot + pre-clean) then step 5 (extract).
+   - **If no local customizations are present**: Proceed to step 4 (snapshot + pre-clean) then step 5 (extract).
 4. **Snapshot for rollback, then pre-clean discoverable directories.** First make the overwrite recoverable: a git-repo install already is (Step 3 confirmed a clean tree, so `git -C <skill-root> restore <file>` undoes any clobber after the fact); for a **non-git** install, copy the tree first — `cp -R <skill-root> <skill-root>.preupdate-bak`. Then pre-clean. `prompts/` and `interviews/` are upstream-controlled — their contents are owned by this skill, not the consuming project. `do-work prompts list` and `do-work interview list` glob `prompts/*.md` and `interviews/*.md`, so any upstream-removed file that stays on disk will still appear as a live workflow. The dirty check in step 3 has already confirmed these are clean, so removing the tracked `.md` files here is safe and the tar extraction will restore them fresh:
    ```
    find <skill-root>/prompts -maxdepth 1 -name '*.md' ! -name 'README.md' -delete
    find <skill-root>/interviews -maxdepth 1 -name '*.md' -delete
    ```
    Do NOT delete files in `prompts/` or `interviews/` subdirectories — only the top-level `.md` files are globbed. Do NOT touch `do-work/` or any other runtime directory.
-5. **Run the update in place at `<skill-root>`** (the project-local path confirmed in step 2). `cd` there first so the extraction cannot land in a global directory by mistake:
+5. **Run the update in place at `<skill-root>`** (the project-local path confirmed in step 2). Reuse the exact `$UPSTREAM_TARBALL` downloaded and diffed in Step 3 so the reviewed bytes are the bytes extracted. `cd` there first so the extraction cannot land in a global directory by mistake:
    ```
-   cd <skill-root> && curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev' --exclude='do-work' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
+   cd <skill-root> && tar xzf "$UPSTREAM_TARBALL" --strip-components=1 --exclude='_dev' --exclude='do-work' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
    ```
    **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. The `--exclude` flags (`_dev`, `do-work`, `ai-reports`, `.vscode`, `decisions`) keep the upstream repo's own dev tooling, queue/archive, sample reports, editor settings, and design-decision ADRs from landing in this install — belt-and-suspenders with the repo's `.gitattributes export-ignore`, which already strips all of them (plus the dev dotfiles `.gitignore`/`.gitattributes`) from the tarball (the flags also cover older tarballs built before that file existed). For non-discoverable directories (`actions/`, `crew-members/`, `specs/`, `docs/`) leftovers are harmless — the skill only loads files it references by name. For `prompts/` and `interviews/`, the pre-clean step above is what prevents ghost entries; if you skipped it, run `do-work prompts list` and `do-work interview list` after updating and delete anything that looks obsolete. Never delete `do-work/` (runtime state).
-6. **Verify, then audit the overwrite**: Read `<skill-root>/actions/version.md` again and confirm the local version now matches the remote version. Then confirm the extraction didn't revert a local customization — the Step 3 checks are best-effort, so this after-the-fact audit is the real safety net. For a git install, run `git -C <skill-root> diff -- <the shipped paths from Step 3>` (or `git -C <skill-root> status`) and scan the changes: a hunk that _introduces_ upstream's new content is expected, but a hunk that _undoes_ something local (a reverted edit, a re-added line you had deleted) is a clobbered customization — restore it with `git -C <skill-root> restore <file>` (or re-apply by hand) and re-commit. For a non-git install, diff against the snapshot (`diff -ru <skill-root>.preupdate-bak <skill-root>`) and apply the same judgment. Once the update looks right, delete the `.preupdate-bak` snapshot.
+6. **Verify, then audit the overwrite**: Read `<skill-root>/actions/version.md` again and confirm the local version now matches the remote version. Then compare the post-update install to the same fresh upstream tree from Step 3 by re-running the `SHIPPED_PATHS` diff loop. It should now be empty except for user-approved customizations that were deliberately re-applied. For a git install, `git -C <skill-root> diff -- <the shipped paths from Step 3>` or `git -C <skill-root> status` is still useful for the commit, but it is no longer the customization detector. For a non-git install, keep the `<skill-root>.preupdate-bak` snapshot until this audit passes, then delete the snapshot and `$UPDATE_TMP`.
 7. **Report result**: `Updated to v{remote} at <skill-root>.`
 
 Do NOT just print the curl command and ask the user to run it. You are the agent — run it yourself.
