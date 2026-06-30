@@ -30,8 +30,10 @@ related:
     rel: evidence-for
   - page: adr-013-harden-the-vendored-skill-distribution-model
     rel: evidence-for
+  - page: adr-014-considered-declined-autonomous-loop-until-done
+    rel: evidence-for
 created: 2026-04-15
-updated: 2026-06-15
+updated: 2026-06-29
 confidence: high
 ---
 
@@ -86,3 +88,7 @@ Append-only timeline. Historical entries use the original decision dates from `C
 ## [2026-06-15] Vendored-skill distribution hardened
 
 - Accepted [[adr-013-harden-the-vendored-skill-distribution-model]] from `0.91.0`: anchored the bundled hook sample paths to `$CLAUDE_PROJECT_DIR/.claude/skills/do-work/`, made `version update` non-clobbering (committed-customization detection, non-git snapshot, post-update audit), and `export-ignore`d maintainer-internal files (`decisions/`, dev dotfiles, `_dev/`) from the install tarball. Closes a hook-path regression that downstream consumers had been re-patching by hand across multiple releases.
+
+## [2026-06-29] Autonomous loop-until-done re-add considered and declined
+
+- Declined [[adr-014-considered-declined-autonomous-loop-until-done]]: re-adding the `ultracode-fable` / loop-until-done workflow (deleted in `ecbe59f`, guarded by `_dev/tests/contract-regressions.sh`) was re-proposed and re-verified read-only. Every model-agnostic capability already survives as canon (`crew-members/background-agents.md`, `crew-members/karpathy.md`, `actions/work.md` Step 10, `SKILL.md` dispatch, the explicit-staging guards, `crew-members/testing.md`, `actions/review-work.md`); only the model-specific Fable/Opus/Sonnet/Haiku tier table was lost, intentionally, as out of scope for a model-agnostic skill. No gap cleared `crew-members/maintenance.md`'s replay bar. Recorded to stop the recurring re-investigation; aligns with 0.98.0 "The Delete Key".

@@ -12,7 +12,7 @@ related:
   - page: log
     rel: complements
 created: 2026-04-15
-updated: 2026-06-15
+updated: 2026-06-29
 confidence: high
 ---
 
@@ -20,9 +20,9 @@ confidence: high
 
 ## Status
 
-- State: complete for the bootstrap pass plus ADR-011/012 (interview framework) and ADR-013 (distribution hardening).
-- Last updated: 2026-06-15.
-- Next ADR number: `ADR-014`.
+- State: complete for the bootstrap pass plus ADR-011/012 (interview framework), ADR-013 (distribution hardening), and ADR-014 (declined: autonomous loop-until-done / ultracode-fable workflow).
+- Last updated: 2026-06-29.
+- Next ADR number: `ADR-015`.
 
 ## Completed Scope
 
@@ -45,6 +45,7 @@ confidence: high
 - [x] ADR-011 — [[adr-011-interview-framework-with-prescriptive-templates]]
 - [x] ADR-012 — [[adr-012-interview-v2-gap-closure]]
 - [x] ADR-013 — [[adr-013-harden-the-vendored-skill-distribution-model]]
+- [x] ADR-014 — [[adr-014-considered-declined-autonomous-loop-until-done]] (declined)
 
 ## Resume Notes
 
