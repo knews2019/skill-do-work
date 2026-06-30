@@ -108,6 +108,31 @@ assert_file_not_contains \
   'log -1 --format=%H -- actions/version\.md' \
   'actions/version.md must not use the last version.md-touching commit as the committed-customization baseline.'
 
+assert_contains \
+  "actions/capture.md" \
+  'maintenance: false' \
+  'actions/capture.md base REQ schema must carry maintenance:false so the marker is discoverable, not documented only for complex requests.'
+
+assert_contains \
+  "actions/capture.md" \
+  'Maintenance assessment' \
+  'actions/capture.md Step 1 must assess skill-instruction removal/narrowing and set the maintenance marker (work.md is marker-only and never infers it).'
+
+assert_contains \
+  "docs/ai-report-guide.md" \
+  'completed-with-issues' \
+  'docs/ai-report-guide.md must reflect the terminal-success set (completed | completed-with-issues), not only completed.'
+
+assert_contains \
+  "docs/ai-report-guide.md" \
+  'DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND' \
+  'docs/ai-report-guide.md must document agentic image backends as opt-in via the env flag, not the opportunistic default.'
+
+assert_contains \
+  "docs/cleanup-guide.md" \
+  'completed-with-issues' \
+  'docs/cleanup-guide.md sweep wording must include completed-with-issues in the terminal-status set.'
+
 assert_file_missing \
   "prompts/ultracode-fable-workflow.md" \
   'retired ultracode/fable prompt file must be removed from the active prompt library.'

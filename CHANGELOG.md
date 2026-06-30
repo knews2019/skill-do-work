@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.99.5 — The Marker Pen (2026-06-30)
+
+Acts on a validate-feedback triage of the skill's own internals — closes a gap where the maintenance marker could silently never get set, and re-syncs two user guides that lagged earlier action-file fixes.
+
+- **capture now sets `maintenance: true` itself.** `actions/work.md` loads the delete-before-you-add crew marker-only, but capture only documented the marker for complex requests and never assessed for it — so a small "remove this skill rule" request captured simple lost the marker and skipped `crew-members/maintenance.md`. capture's Step 1 now makes the intent call, the base schema carries `maintenance: false`, and Step 5 emits it.
+- **AI-report guide matches the hardened action.** The guide no longer advertises Codex/Gemini as the opportunistic default — non-agentic backends are default; sandbox-bypassed agentic CLIs are opt-in via `DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=1` or skipped.
+- **Guides use the canonical terminal-success set.** `docs/ai-report-guide.md` and `docs/cleanup-guide.md` now say `completed | completed-with-issues` instead of bare `completed`.
+- **Contract regressions now cover docs and the capture marker**, so these surfaces can't silently drift again while the action files get fixed.
+
 ## 0.99.4 — The Fine Print (2026-06-30)
 
 Polish on the 0.99.3 safety fixes — three small clarifications so the prescribed steps don't mislead.

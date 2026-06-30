@@ -90,6 +90,7 @@ prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 tdd: true  # default true when a runnable RED test can be written in this project's harness; false otherwise (see heuristic below)
 suggested_spec:  # optional — spec template name if one clearly matches (e.g., "api-endpoint", "bug-fix")
 depends_on: []  # optional — list of REQ IDs that must complete before this REQ runs; honored by actions/work.md's selection scan
+maintenance: false  # set true ONLY for a deliberate removal/narrowing of the skill's OWN operating instructions — see Step 1's maintenance assessment; loads crew-members/maintenance.md in actions/work.md Step 6
 ---
 
 # [Brief Title]
@@ -168,7 +169,8 @@ See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
 - `related: [REQ-006, REQ-007]` — other REQs in this batch
 - `batch: auth-system` — batch name grouping related requests
 - `addendum_to: REQ-005` — if this amends an in-flight/completed request
-- `maintenance: true` — set when this REQ removes or narrows the skill's **own** operating instructions (a drifting agent/action/crew/prime file) — e.g. acting on a `do-work quick-wins` removal finding (redundant rule, over-broad config) or any deliberate maintenance pass. Loads `crew-members/maintenance.md` (delete-before-you-add) in `actions/work.md` Step 6, *alongside* the normal crew. **Do NOT set it for ordinary dead-code removal in application source** — that runs under `karpathy.md`'s implementation-time surgical-changes rule, not as a maintenance pass.
+
+(`maintenance` is **not** complex-only — it lives in the base schema above. Step 1's *Maintenance assessment* is its authoritative home.)
 
 **Populating `depends_on`.** When the request body mentions prior REQs that must complete first (e.g., "after REQ-486 lands", "depends on the auth refactor"), populate `depends_on` in the frontmatter with the REQ IDs. Don't rely on numeric ID ordering — actions/work.md honors `depends_on`, not ID-based heuristics. The optional prose `## Dependencies` section in REQ bodies remains for human readers; the frontmatter field is the source of truth for tooling (work-action selection, roadmap classification, upstream-failure detection).
 
@@ -231,6 +233,7 @@ Read the user's input. Determine:
 - **Red-green proof inference** — for `tdd: true` requests and any clearly behavioral bug fix or feature, infer the smallest RED prompt/case and GREEN outcome in user-visible terms. Capture how we know the behavior is missing or failing now, and what observable result turns it GREEN later. This is not test code — it is the proof target. Treat this as essential: a strong RED state makes planning, implementation, and review dramatically easier.
 - **Spec hint** — if the request clearly matches a common task type (API endpoint, UI component, refactor, bug fix), set `suggested_spec` in frontmatter to the matching template name. This is a hint for actions/work.md — not binding. If the match is ambiguous or no spec fits, leave it empty.
 - **Prime file routing** — check the project's root `CLAUDE.md` (or similar instructions) to see if there are defined prime files that match the requested utility. Note them for inclusion.
+- **Maintenance assessment** — set `maintenance: true` **only** when the request's goal is to remove or narrow the skill's **own** operating instructions (a drifting `actions/`, `crew-members/`, prime, `SKILL.md`, or `CLAUDE.md` file) — e.g. acting on a `do-work quick-wins` finding like "drop this redundant rule" or "narrow this over-broad config." It loads `crew-members/maintenance.md` (delete-before-you-add) alongside the normal crew in `actions/work.md` Step 6. This is a judgment about **intent**, made here at capture: `actions/work.md` is deliberately marker-only and never infers it from a description, so if capture doesn't set the marker the maintenance crew never loads. Default `maintenance: false`. **Do NOT set it for ordinary dead-code removal in application source** — that's plain implementation under `karpathy.md`'s surgical-changes rule, not a maintenance pass on the skill's instructions.
 
 ### Step 2: Check for Duplicates
 
@@ -367,7 +370,7 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 
 **For all requests (simple and complex):**
 1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially)
-2. Create REQ-NNN-slug.md files using the appropriate format, adding user_request: UR-NNN, the inferred domain, and the prime_files array populated with any discovered paths.
+2. Create REQ-NNN-slug.md files using the appropriate format, adding user_request: UR-NNN, the inferred domain, the prime_files array populated with any discovered paths, and `maintenance: true` when the Step 1 maintenance assessment flagged this as a removal/narrowing pass on the skill's own instructions (otherwise emit `maintenance: false`).
 3. If the request is behavior-changing and has a meaningful RED/GREEN proof target, add a `## Red-Green Proof` section. If `tdd: true`, this section is required.
 4. Update the UR's `requests` array with all created REQ IDs
 

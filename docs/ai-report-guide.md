@@ -27,14 +27,14 @@ The HTML references images by relative `src`, so moving the whole folder keeps t
 |-----------|-----------------|
 | Live dev server + `playwright-cli` (bowser) | Live screenshots before/after, with SVG callout overlays |
 | Saved before/after assets in `do-work/archive/UR-NNN/assets/` (the common case after cleanup), `do-work/user-requests/UR-NNN/assets/`, `do-work/working/`, or images in the feature commit's diff | Side-by-side comparison from the saved assets |
-| An image-gen CLI on PATH (e.g. `codex`, `gemini`) | Optional AI-generated architecture/concept/hero visuals, each disclosed with an "AI-generated" caption, in `generated/` |
+| A dedicated **non-agentic** image backend on PATH (prompt→PNG, no shell access) | Optional AI-generated architecture/concept/hero visuals, each disclosed with an "AI-generated" caption, in `generated/`. Agentic Codex/Gemini-style CLIs are sandbox-bypassed, so they're opt-in (`DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=1`) or skipped for SVG/Mermaid |
 | Nothing | Falls back to SVG architecture + Mermaid data-flow diagrams. The report still ships. |
 
 The action picks the highest-fidelity option it can run. A bowser-less environment still produces a usable report — just with diagrams instead of screenshots.
 
 ## AI-generated visuals (optional)
 
-Claude can't draw raster images itself, so when an image-gen CLI is on PATH (`command -v` finds it) the action delegates a few architecture/concept/hero visuals to it, keeping them in their own `generated/` folder so provenance is physical — `screenshots/` is real, `generated/` is synthetic. Every generated image carries a visible "AI-generated" caption and is verified non-empty before the HTML references it. This is strictly opportunistic: no CLI on PATH means the same SVG/Mermaid diagrams stand in, and the report is no worse off. Screenshots always outrank generated images — they're proof; generated visuals only explain structure and flow.
+Claude can't draw raster images itself, so when a **non-agentic** image backend is on PATH — a dedicated prompt→PNG renderer with no shell or filesystem access — the action delegates a few architecture/concept/hero visuals to it, keeping them in their own `generated/` folder so provenance is physical (`screenshots/` is real, `generated/` is synthetic). Every generated image carries a visible "AI-generated" caption and is verified non-empty before the HTML references it. **Agentic, sandbox-bypassed CLIs (Codex/Gemini-style) are not used by default** — they run a prompt derived from archived content with shell + write access, a prompt-injection→RCE surface — so they're opt-in only: set `DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=1` and the action confines them to a throwaway temp dir, otherwise the section falls back to SVG/Mermaid. Either way it's strictly opportunistic: no eligible backend means the same SVG/Mermaid diagrams stand in, and the report is no worse off. Screenshots always outrank generated images — they're proof; generated visuals only explain structure and flow.
 
 ## SVG callout annotations
 
@@ -57,7 +57,7 @@ do-work ai-report                 Most recently completed UR in do-work/archive/
 do-work ai-report most recent     Same — explicit form
 ```
 
-If nothing is `status: completed` for the target, the action stops and says so — there's nothing to report on.
+If nothing is terminally successful (`status: completed` or `completed-with-issues`) for the target, the action stops and says so — there's nothing to report on.
 
 ## Output
 
