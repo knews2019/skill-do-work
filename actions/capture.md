@@ -383,7 +383,7 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 
 Brief summary of created files. If the request was meaningfully complex (complex mode, 3+ REQs, or notably long/nuanced input), add:
 
-> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `do-work verify requests` to check coverage against your original input.
+> That was a pretty detailed request — it's possible the capture missed some nuances. You can run `do-work verify-requests` to check coverage against your original input.
 
 End with next-step suggestions per `next-steps.md` (post-capture flow).
 

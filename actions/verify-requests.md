@@ -17,7 +17,7 @@ A confidence evaluation system that compares extracted REQ files against the ori
 
 **Use when:**
 - User wants to verify that captured REQs accurately represent the original input
-- User says "verify", "verify requests", "check REQ-NNN", "evaluate", or "review requests"
+- User says "verify", "verify-requests", "check REQ-NNN", "evaluate", or "review requests"
 - Quality-checking capture output before running the work queue
 
 **Do NOT use when:**

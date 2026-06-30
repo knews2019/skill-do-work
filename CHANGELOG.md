@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.99.2 — The Kebab Case (2026-06-30)
+
+The three space-separated action names now match their already-hyphenated filenames and the rest of the multi-word actions, so a single grep for `review-work` (or `verify-requests`, `present-work`, `capture-request:`) finds every reference instead of only the file paths.
+
+- Renamed the command/invocation labels: `verify requests` → `verify-requests`, `review work` → `review-work`, `present work` → `present-work`, and capture's `capture requests` / `capture request:` → `capture-requests` / `capture-request:`.
+- Title-Case headings ("Review Work Action") stay spaced — that matches "Code Review Action" / "UI Review Action" and is the existing convention.
+- The spaced forms still route (matching is verb-keyed) and remain listed as accepted aliases in the keyword table.
+
 ## 0.99.0 — The Maintenance Hook (2026-06-30)
 
 The delete-before-you-add rule shipped in 0.98.0 but nothing actually loaded it during the work that needed it. Now a `maintenance: true` REQ marker wires it into the pipeline — so a deliberate maintenance pass gets the subtraction discipline, while ordinary feature work stays surgical.

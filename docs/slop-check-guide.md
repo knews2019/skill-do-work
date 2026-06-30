@@ -2,7 +2,7 @@
 
 Validates a human-facing artifact against the seven anti-slop principles before it ships. Read-only by default — flags findings, offers a rewrite, never auto-applies.
 
-> **Not to be confused with code-review or ui-review.** `do-work code-review` reviews source code for consistency, security, performance. `do-work ui-review` validates UI quality against design best practices. `do-work review work` is a REQ-scoped acceptance check that runs as part of `do-work run`. Slop-check is the anti-slop guardrail for *prose* — briefs, reports, summaries, drafts.
+> **Not to be confused with code-review or ui-review.** `do-work code-review` reviews source code for consistency, security, performance. `do-work ui-review` validates UI quality against design best practices. `do-work review-work` is a REQ-scoped acceptance check that runs as part of `do-work run`. Slop-check is the anti-slop guardrail for *prose* — briefs, reports, summaries, drafts.
 
 ## The seven principles checked
 
@@ -75,6 +75,6 @@ For "most recent", the action skips `.marp.html` (mechanical Marp-CLI exports) a
 
 - Reviewing code → `do-work code-review`.
 - Reviewing UI quality → `do-work ui-review`.
-- REQ-scoped acceptance check → `do-work review work` (auto-runs in `do-work run`).
+- REQ-scoped acceptance check → `do-work review-work` (auto-runs in `do-work run`).
 - Internal agent status updates — `caveman.md` governs that. Slop-check is for *human-facing* output.
 - Commit messages and PR titles — already short by convention. The principles apply implicitly, no check needed.

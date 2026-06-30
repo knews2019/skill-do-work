@@ -2,7 +2,7 @@
 
 Generates a self-contained HTML report — live screenshots + SVG callout annotations, before/after toggles, optional AI-generated diagrams when an image-gen CLI is available, and Mermaid/SVG diagrams as the always-available fallback. Output is a folder per report (`index.html` + a `screenshots/` folder, plus a `generated/` folder when AI images are used) under `ai-reports/` at the project root. Pixel-anchored proof-of-work, not a brief.
 
-> **Not to be confused with present-work or pipeline's completion report.** `do-work present work` writes a client-facing brief, an Interactive Explainer (`.single.html`), and optionally a video — explanation of value, not literal pixels. `do-work pipeline`'s completion report is a multi-REQ developer/PM debrief (test deltas, REQ coherence graph, carry-forward work). AI Report is the *visual* artifact: "here are the screenshots, here are the annotated changes, here is the verify-it-yourself link."
+> **Not to be confused with present-work or pipeline's completion report.** `do-work present-work` writes a client-facing brief, an Interactive Explainer (`.single.html`), and optionally a video — explanation of value, not literal pixels. `do-work pipeline`'s completion report is a multi-REQ developer/PM debrief (test deltas, REQ coherence graph, carry-forward work). AI Report is the *visual* artifact: "here are the screenshots, here are the annotated changes, here is the verify-it-yourself link."
 
 ## What it produces
 
@@ -72,7 +72,7 @@ If nothing is `status: completed` for the target, the action stops and says so �
 
 ## When NOT to use
 
-- The work has no user-visible output (infra-only, refactor, tooling) — the report is empty by construction. Use `do-work present work` instead.
-- You want a value-prop / explainer artifact for a stakeholder — use `do-work present work` (it writes a `.single.html` Interactive Explainer to `do-work/deliverables/`).
+- The work has no user-visible output (infra-only, refactor, tooling) — the report is empty by construction. Use `do-work present-work` instead.
+- You want a value-prop / explainer artifact for a stakeholder — use `do-work present-work` (it writes a `.single.html` Interactive Explainer to `do-work/deliverables/`).
 - You want a multi-REQ developer/PM debrief of a pipeline run — use `do-work pipeline`'s completion report.
 - The work is still in progress — there's nothing shipped to report on.

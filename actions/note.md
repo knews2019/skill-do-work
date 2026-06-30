@@ -11,7 +11,7 @@ A note is **not** a REQ. It has no frontmatter, no schema, no RED/GREEN proof, n
 - Capturing planning context for the next `do-work roadmap` without committing to implementation work.
 
 **Do NOT use when:**
-- The thought is an actual task to build → use `do-work capture request: [describe]` (it creates the UR + REQ pairing).
+- The thought is an actual task to build → use `do-work capture-request: [describe]` (it creates the UR + REQ pairing).
 - The user wants to survey or remove existing notes → that's `do-work roadmap` (display) and a manual edit of `do-work/notes.md` (removal).
 
 ## Input

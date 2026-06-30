@@ -48,7 +48,7 @@ Ambiguous gaps are surfaced as questions with concrete options. You can resolve 
 ## Usage
 
 ```
-do-work verify requests          # most recent UR
+do-work verify-requests          # most recent UR
 do-work verify UR-003            # specific UR
 do-work check REQ-018            # specific REQ (finds its UR)
 do-work evaluate

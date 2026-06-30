@@ -12,9 +12,9 @@ Unlike built-in actions (which have fixed workflows), this action is a dispatche
 - The user wants to inspect a prompt before running it (`do-work prompts show <name>`).
 
 **Do NOT use when:**
-- The user described a task but no prompt matches — suggest `do-work capture request:` instead of forcing an unrelated prompt.
+- The user described a task but no prompt matches — suggest `do-work capture-request:` instead of forcing an unrelated prompt.
 - The user wants to *edit* a prompt file — that's a normal file edit, not a dispatcher invocation.
-- A first-class action (`review work`, `code-review`, `ui-review`, `interview`, etc.) covers the job — prefer the built-in action.
+- A first-class action (`review-work`, `code-review`, `ui-review`, `interview`, etc.) covers the job — prefer the built-in action.
 
 ## Sub-Commands
 

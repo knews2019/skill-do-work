@@ -13,7 +13,7 @@
 - Pre-handoff validation of any human-facing artifact (client brief, review report, completion summary)
 
 **Do NOT use when:**
-- Reviewing code — use `do-work code-review` (or `do-work review work` for REQ-scoped work)
+- Reviewing code — use `do-work code-review` (or `do-work review-work` for REQ-scoped work)
 - Reviewing UI quality — use `do-work ui-review`
 - Internal agent status updates — caveman.md handles that
 - Commit messages or PR titles — already short by convention; principles apply implicitly

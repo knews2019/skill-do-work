@@ -17,7 +17,7 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 
 **Use when:**
 - Reviewing completed work against its REQ requirements (post-build quality gate)
-- User says "review", "review work", "review code", or "audit code"
+- User says "review", "review-work", "review code", or "audit code"
 - Automatically after actions/work.md completes each REQ
 
 **Do NOT use when:**
@@ -28,7 +28,7 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 | Mode | Trigger | REQ location | How to get the diff |
 |------|---------|-------------|---------------------|
 | **Pipeline** | Auto-triggered by actions/work.md after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary |
-| **Standalone** | User invokes manually: `do-work review`, `do-work review work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field |
+| **Standalone** | User invokes manually: `do-work review`, `do-work review-work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field |
 
 Both modes follow the same workflow. The only difference is where the REQ lives and how you obtain the diff.
 
@@ -384,7 +384,7 @@ After generating the report, append a Review section to the REQ file:
 **Suggested testing:** [count] items
 **Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"
 
-*Reviewed by review work action*
+*Reviewed by review-work action*
 ```
 
 In standalone mode, this is an exception to the archive immutability rule — review annotations are post-work metadata, not content changes.

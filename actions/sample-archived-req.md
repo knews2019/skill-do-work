@@ -100,7 +100,7 @@ Passed — 2 files verified, 2 requirements traced, P-A-U confirmed.
 **Suggested testing:** 1 item
 **Follow-ups created:** None
 
-*Reviewed by review work action*
+*Reviewed by review-work action*
 
 ## Lessons Learned
 

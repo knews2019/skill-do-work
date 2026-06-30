@@ -12,7 +12,7 @@
 **Do NOT use when:**
 - The utility is tiny (a handful of files) — a prime file adds overhead without saving tokens.
 - The user wants to *read* a prime file — that's just a file read, not this action.
-- The user wants to build something from a prime file — use `do-work run` or `do-work capture request:` and let the builder load the prime as context.
+- The user wants to build something from a prime file — use `do-work run` or `do-work capture-request:` and let the builder load the prime as context.
 
 ## Sub-Commands
 

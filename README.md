@@ -42,9 +42,9 @@ Separate *thinking of things* from *doing things*. You throw ideas at the queue 
 Throw tasks at the queue as they come up — one-liners, multi-feature specs, bug reports, screenshots, meeting notes. Each invocation creates a User Request (UR) folder preserving your verbatim input, plus one or more REQ files that enter the queue.
 
 ```
-do-work capture request: add dark mode to the settings page
-do-work capture request: the search is slow, also add an export button, and fix the header alignment
-do-work capture request: [paste meeting notes, specs, or a screenshot]
+do-work capture-request: add dark mode to the settings page
+do-work capture-request: the search is slow, also add an export button, and fix the header alignment
+do-work capture-request: [paste meeting notes, specs, or a screenshot]
 ```
 
 The skill splits compound inputs into separate REQ files automatically. It asks clarifying questions during capture (while you're present) but never starts building — capture and execution are strictly separate. For testable behavioral work, capture also infers and confirms the RED case: how we know it's failing or missing now, and what turns GREEN when the work is done.
@@ -86,7 +86,7 @@ Pipeline state lives at `do-work/pipeline.json`. Each step dispatches to an exis
 
 Run `do-work help` for the full menu. Per-action guides live in [`docs/`](./docs/).
 
-Common ones: `verify requests`, `review work`, `validate-feedback`, `clarify`, `code-review`, `ui-review`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `present work`, `commit`, `inspect`, `cleanup`, `forensics`, `roadmap`, `stray-check`, `bkb`, `dream`, `interview`, `prompts`, `install ui-design`, `install bowser`, `version`, `update`, `recap`, `tutorial`, `help`.
+Common ones: `verify-requests`, `review-work`, `validate-feedback`, `clarify`, `code-review`, `ui-review`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `present-work`, `commit`, `inspect`, `cleanup`, `forensics`, `roadmap`, `stray-check`, `bkb`, `dream`, `interview`, `prompts`, `install ui-design`, `install bowser`, `version`, `update`, `recap`, `tutorial`, `help`.
 
 ## File structure
 
@@ -112,7 +112,7 @@ do-work/
 
 ### Why separate capture from processing? Why not just build immediately?
 
-Because capture preserves what you asked for, and processing tracks how it was built — and neither interferes with the other. When you say `do-work capture request: ...`, your exact words are saved in a UR folder as the permanent source of truth. Nothing is paraphrased, nothing is lost. When `do-work run` picks up that request later, the REQ file tracks every decision: what was planned, what was explored, what was built, what was reviewed. You end up with a clear trail from intent to implementation — what the user wanted, what the builder decided, and why. Without this separation, Claude tends to hear your request, immediately start coding, and leave no trace of what was asked or how decisions were made. The two-phase split means capture is fast and cheap (dump ideas anytime), processing is thorough and auditable (every change is traceable back to a request).
+Because capture preserves what you asked for, and processing tracks how it was built — and neither interferes with the other. When you say `do-work capture-request: ...`, your exact words are saved in a UR folder as the permanent source of truth. Nothing is paraphrased, nothing is lost. When `do-work run` picks up that request later, the REQ file tracks every decision: what was planned, what was explored, what was built, what was reviewed. You end up with a clear trail from intent to implementation — what the user wanted, what the builder decided, and why. Without this separation, Claude tends to hear your request, immediately start coding, and leave no trace of what was asked or how decisions were made. The two-phase split means capture is fast and cheap (dump ideas anytime), processing is thorough and auditable (every change is traceable back to a request).
 
 ### Why not just let Claude decide what to do?
 

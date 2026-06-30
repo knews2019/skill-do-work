@@ -12,9 +12,9 @@ An orchestrated build system that processes request files created by actions/cap
 - A specific REQ id was named (`do-work run REQ-042`) — the action scopes to it.
 
 **Do NOT use when:**
-- The queue is empty — tell the user and stop; suggest `do-work capture request: [describe]` instead.
+- The queue is empty — tell the user and stop; suggest `do-work capture-request: [describe]` instead.
 - The only REQs left are `pending-answers` — route to `do-work clarify` so the user can resolve them first.
-- See `SKILL.md` routing table for sibling action selection (inspect, verify requests, review work, etc.).
+- See `SKILL.md` routing table for sibling action selection (inspect, verify-requests, review-work, etc.).
 
 ## Request Files as Living Logs
 

@@ -136,11 +136,11 @@ For the current step:
 | Pipeline step | Action to dispatch | What to pass | Context from prior steps |
 |---------------|-------------------|--------------|--------------------------|
 | `investigate` | actions/inspect.md (`do-work inspect`) | No arguments | None — inspects all uncommitted changes. If there are no uncommitted changes, actions/inspect.md will report that and this step completes immediately (it's a pre-flight check, not a blocker). |
-| `capture` | actions/capture.md (`do-work capture request: {request}`) | The `request` field from pipeline.json | None — request text is the input |
-| `verify` | actions/verify-requests.md (`do-work verify requests`) | Target UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work verify UR-018`) |
+| `capture` | actions/capture.md (`do-work capture-request: {request}`) | The `request` field from pipeline.json | None — request text is the input |
+| `verify` | actions/verify-requests.md (`do-work verify-requests`) | Target UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work verify UR-018`) |
 | `run` | actions/work.md (`do-work run`) | REQ IDs from capture artifacts | Pass the specific REQ IDs from the capture step's `artifacts` (e.g., `do-work run REQ-042`). The sub-agent prompt MUST instruct actions/work.md to process ONLY these REQs, then stop — do NOT process the full queue. |
-| `review` | actions/review-work.md (`do-work review work`) | Target REQ/UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work review UR-018`) so the reviewer knows which work to review |
-| `present` | actions/present-work.md (`do-work present work`) | Target UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work present UR-018`) so the deliverables target this pipeline's work. If the capture step produced no artifacts (empty `artifacts` array), skip this step — mark it `done` with no artifacts and proceed to completion. |
+| `review` | actions/review-work.md (`do-work review-work`) | Target REQ/UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work review UR-018`) so the reviewer knows which work to review |
+| `present` | actions/present-work.md (`do-work present-work`) | Target UR from capture artifacts | Pass the UR ID from the capture step's `artifacts` (e.g., `do-work present UR-018`) so the deliverables target this pipeline's work. If the capture step produced no artifacts (empty `artifacts` array), skip this step — mark it `done` with no artifacts and proceed to completion. |
 
 Dispatch each action the same way the main router dispatches actions: subagent if available, inline otherwise. actions/pipeline.md is the orchestrator — it calls the router's dispatch mechanism, not the action files directly.
 
@@ -335,7 +335,7 @@ Developer-facing. Read in a terminal with `cat`, grepped, or pasted into a PR de
 
 ## Carry-forward work (implied, not captured yet)
 
-- [Deferred item] — capture with `do-work capture request: ...`
+- [Deferred item] — capture with `do-work capture-request: ...`
 - [TODO/FIXME introduced and left for a follow-up]
 - [`pending-answers` REQs awaiting user input — run `do-work clarify`]
 

@@ -21,7 +21,7 @@ The code is done. Now communicate its value. This action reads the full history 
 
 **Do NOT use when:**
 - Work is still in progress — the archive isn't populated, and briefs would be speculative.
-- The user wants *technical review*, not a brief — use `do-work review work` or `do-work code-review`.
+- The user wants *technical review*, not a brief — use `do-work review-work` or `do-work code-review`.
 - The REQ has no user-visible output (infra-only, tooling) — a brief adds no value; skip.
 
 ## Two Modes
@@ -35,7 +35,7 @@ The code is done. Now communicate its value. This action reads the full history 
 
 ### Step 1: Find the Target
 
-Same pattern as review work standalone mode:
+Same pattern as review-work standalone mode:
 
 1. **If user specifies a REQ** (e.g., "present REQ-005"): Find it in `do-work/archive/` or `do-work/archive/UR-NNN/`
 2. **If user specifies a UR** (e.g., "present UR-003"): Find all terminally-successful REQs (`completed` or `completed-with-issues`) under that UR — present them as one deliverable
@@ -516,7 +516,7 @@ Same as detail mode — save to `do-work/deliverables/` and summarize.
 
 ## Red Flags
 
-- The target UR/REQ isn't in `do-work/archive/` yet — don't present work that isn't done; stop and tell the user.
+- The target UR/REQ isn't in `do-work/archive/` yet — don't present-work that isn't done; stop and tell the user.
 - The brief quotes metrics that don't appear anywhere in the REQ, implementation summary, or commits — fabricated value prop; remove or replace with qualitative framing.
 - The brief copies code snippets instead of pointing at files — client-facing docs shouldn't show diffs.
 - You're about to overwrite an existing deliverable at `do-work/deliverables/` — pause and confirm with the user whether to update in-place or version it.

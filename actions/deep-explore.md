@@ -276,7 +276,7 @@ DEEP EXPLORATION — [concept name]
 - **Orchestrator never generates ideas.** You coordinate, evaluate, and decide convergence. You do not add your own ideas to the mix.
 - **File-based communication.** Each round writes to its own file. The Writer needs the full dialogue trail — not just the final state. Never overwrite prior round files.
 - **Ground in context.** Every direction should connect to something real — the project's architecture, its users, its trajectory, or the seed concept itself.
-- **Read-only by default.** The session directory is the only thing created. Do not create REQs, modify code, or capture requests. The user decides what to act on after seeing the results.
+- **Read-only by default.** The session directory is the only thing created. Do not create REQs, modify code, or capture-requests. The user decides what to act on after seeing the results.
 - **Respect the seed.** Explore around it, through it, and beyond it — but don't abandon it for something unrelated.
 - **No duplicates.** Check the queue and recent archive. If a direction overlaps with pending or completed work, note the overlap and explore what's different.
 

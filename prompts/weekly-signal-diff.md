@@ -161,7 +161,7 @@ Hard cap: 5 bullets, 150 words. Name the 3–5 things the operator should hold i
 
 Two mandatory groups. Be concrete; if a group is empty, say so explicitly — that is a finding, not a hole.
 
-**For the operator** — 1–3 things the operator could act on this week, formatted as `do-work capture request: <short description>` so they can capture any they want to pursue. Do not auto-capture.
+**For the operator** — 1–3 things the operator could act on this week, formatted as `do-work capture-request: <short description>` so they can capture any they want to pursue. Do not auto-capture.
 
 **For clients** — 1–3 proactive client-outreach angles: which client archetype, what finding to raise, one-line draft of the outreach. If no shift this week has a client angle, state "No client-facing actions this week — purely structural."
 
@@ -260,7 +260,7 @@ Print a short summary:
 - Per-lane scan notes: "N / N lanes covered (10 core + M personal)" — always a full sweep of whatever lanes were loaded; this is a contract
 - Ingest status: "staged in `kb/raw/inbox/`" / "skipped (flag)" / "BKB not initialized"
 - Suggested next commands:
-  - `do-work capture request: <...>` for any action items surfaced
+  - `do-work capture-request: <...>` for any action items surfaced
   - `do-work bkb query "..."` to dig deeper on a specific shift
   - `do-work prompts run weekly-signal-diff --week-ending=YYYY-MM-DD` next week
 

@@ -82,7 +82,7 @@ Type a small request to practice with, or press Enter to use this default:
   "Add a hello-world endpoint that returns { message: 'Hello, world!' }"
 ```
 
-Then explain what `do-work capture request: ...` does:
+Then explain what `do-work capture-request: ...` does:
 - Creates a UR folder with the verbatim input
 - Creates a REQ file with structured fields (what, why, done-when)
 - Links the REQ back to the UR
@@ -110,7 +110,7 @@ Explain what `do-work run` does:
 
 ### Step QS-4: Explain Review
 
-Explain what `do-work review work` does:
+Explain what `do-work review-work` does:
 - Checks requirements against the original request
 - Reviews the code for quality
 - Runs acceptance tests
@@ -121,12 +121,12 @@ Explain what `do-work review work` does:
 ```
 That's the core loop! Here are the commands:
 
-  do-work capture request: [describe what you want]
+  do-work capture-request: [describe what you want]
   do-work run
-  do-work review work
+  do-work review-work
 
 When you're ready for the real thing:
-  do-work capture request: [your actual task]
+  do-work capture-request: [your actual task]
 ```
 
 ---
@@ -226,27 +226,27 @@ Print the cheat sheet, then stop.
 WORKFLOW RECIPES — common scenarios → exact commands
 
   "I have a feature request"
-    do-work capture request: [describe the feature]
+    do-work capture-request: [describe the feature]
     do-work run
 
   "I have a bug report"
-    do-work capture request: [describe the bug and how to reproduce]
+    do-work capture-request: [describe the bug and how to reproduce]
     do-work run
 
   "I got meeting notes / a spec / a screenshot"
-    do-work capture request: [paste the content]
-    do-work verify requests
+    do-work capture-request: [paste the content]
+    do-work verify-requests
     do-work run
 
   "I want the full hands-off pipeline"
     do-work pipeline [describe what you want]
 
   "I want to check what was captured before building"
-    do-work verify requests
+    do-work verify-requests
 
   "Work is done — now what?"
-    do-work review work
-    do-work present work
+    do-work review-work
+    do-work present-work
 
   "Something seems stuck"
     do-work forensics
@@ -297,13 +297,13 @@ Print the menu and stop. Wait for the user's reply. Accept a number (1-8), topic
 For each topic, provide a self-contained explanation (8-15 lines) with the relevant commands and a concrete example. After each explanation, show the topic menu again and wait for the user to pick another or say "done".
 
 **Topic 1 — Capturing requests:**
-Explain the UR/REQ pairing, how multi-part requests become multiple REQs, the role of the RED case / GREEN proof, and how verbatim input is preserved. Key commands: `capture request:`, `verify requests`.
+Explain the UR/REQ pairing, how multi-part requests become multiple REQs, the role of the RED case / GREEN proof, and how verbatim input is preserved. Key commands: `capture-request:`, `verify-requests`.
 
 **Topic 2 — Running the queue:**
 Explain triage routes (A/B/C), autonomous build cycle, test-first approach, self-review, and how Open Questions work. Key commands: `run`, `continue`, `clarify`.
 
 **Topic 3 — Reviewing work:**
-Explain requirements checking, code review, acceptance testing, pass/fail, and what happens on failure (re-queue). Key commands: `review work`, `review work REQ-NNN`.
+Explain requirements checking, code review, acceptance testing, pass/fail, and what happens on failure (re-queue). Key commands: `review-work`, `review-work REQ-NNN`.
 
 **Topic 4 — The pipeline:**
 Explain the 5-stage sequence, persistent state tracking, resume behavior, and when to use pipeline vs individual commands. Key commands: `pipeline [request]`, `pipeline status`, `pipeline abandon`.
@@ -326,7 +326,7 @@ When the user says "done" or has visited all topics:
 
 ```
 Tour complete! When you're ready to start:
-  do-work capture request: [describe what you want]
+  do-work capture-request: [describe what you want]
   do-work help                 Full command reference
 ```
 

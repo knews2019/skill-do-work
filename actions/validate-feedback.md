@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Triages external review feedback / audit findings — per item, verifies against the real code + git history and recommends Already done / Accept / Push back / Discuss. Read-only; offers a capture handoff for accepted items.
 
-**Read-only** — this action does NOT modify any files and does NOT create REQs. It produces a triage report only. Accepted items become work through a separate, user-gated `do-work capture request:` step (Capture ≠ Execute).
+**Read-only** — this action does NOT modify any files and does NOT create REQs. It produces a triage report only. Accepted items become work through a separate, user-gated `do-work capture-request:` step (Capture ≠ Execute).
 
 ## Philosophy
 
@@ -107,7 +107,7 @@ Lead with the framing line, then one block per finding, then the summary and a d
 [Draft response to the feedback provider — acknowledges the accepts, explains the push-backs with rationale, flags the discuss items. Skip if no external provider.]
 
 ## To act on the accepted findings:
->   do-work capture request: [paste an accepted finding]   Capture it as a request
+>   do-work capture-request: [paste an accepted finding]   Capture it as a request
 >   do-work run                                            Process the captured fixes
 >   do-work note "[a discuss item]"                        Park a Discuss item for later
 ```
