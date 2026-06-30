@@ -168,6 +168,7 @@ See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
 - `related: [REQ-006, REQ-007]` — other REQs in this batch
 - `batch: auth-system` — batch name grouping related requests
 - `addendum_to: REQ-005` — if this amends an in-flight/completed request
+- `maintenance: true` — set when this REQ removes or narrows the skill's **own** operating instructions (a drifting agent/action/crew/prime file) — e.g. acting on a `do-work quick-wins` removal finding (redundant rule, over-broad config) or any deliberate maintenance pass. Loads `crew-members/maintenance.md` (delete-before-you-add) in `actions/work.md` Step 6, *alongside* the normal crew. **Do NOT set it for ordinary dead-code removal in application source** — that runs under `karpathy.md`'s implementation-time surgical-changes rule, not as a maintenance pass.
 
 **Populating `depends_on`.** When the request body mentions prior REQs that must complete first (e.g., "after REQ-486 lands", "depends on the auth refactor"), populate `depends_on` in the frontmatter with the REQ IDs. Don't rely on numeric ID ordering — actions/work.md honors `depends_on`, not ID-based heuristics. The optional prose `## Dependencies` section in REQ bodies remains for human readers; the frontmatter field is the source of truth for tooling (work-action selection, roadmap classification, upstream-failure detection).
 
@@ -187,7 +188,7 @@ Several fields above accept legacy aliases at read time so muscle-memory typos f
 | `related` | `related_reqs` | `actions/roadmap.md` cross-REQ surfacing; verify-requests batch coverage |
 | `suggested_spec` | `spec_hint`, `suggested-spec` | `actions/work.md`'s spec pre-load hint |
 
-For enum-valued and boolean fields shared with `actions/work.md` (`status`, `domain`, `route`, `caveman`, `tdd`, `error_type`, `kb_status`), capture honors the **normalize-and-warn contract** defined in the Schema Read Contract (in the companion `actions/work-reference.md`): invalid values trigger a warning and a documented default rather than silent acceptance. When writing the REQ files, if the captured value for any normalize-and-warn field doesn't match the canonical enum (after applying the contract's normalization), prompt the user to confirm the intended value before emitting the REQ — capture is the human-attention window for catching typos at the source. Never write a non-canonical value silently.
+For enum-valued and boolean fields shared with `actions/work.md` (`status`, `domain`, `route`, `caveman`, `tdd`, `maintenance`, `error_type`, `kb_status`), capture honors the **normalize-and-warn contract** defined in the Schema Read Contract (in the companion `actions/work-reference.md`): invalid values trigger a warning and a documented default rather than silent acceptance. When writing the REQ files, if the captured value for any normalize-and-warn field doesn't match the canonical enum (after applying the contract's normalization), prompt the user to confirm the intended value before emitting the REQ — capture is the human-attention window for catching typos at the source. Never write a non-canonical value silently.
 
 ### UR input.md
 

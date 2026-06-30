@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.99.0 — The Maintenance Hook (2026-06-30)
+
+The delete-before-you-add rule shipped in 0.98.0 but nothing actually loaded it during the work that needed it. Now a `maintenance: true` REQ marker wires it into the pipeline — so a deliberate maintenance pass gets the subtraction discipline, while ordinary feature work stays surgical.
+
+- **New `maintenance` REQ marker** — capture sets it for removal/narrowing findings against the skill's *own* instructions (e.g. `do-work quick-wins` removals of redundant rules or over-broad config), and `do-work run` Step 6 loads `crew-members/maintenance.md` alongside the normal crew.
+- **Marker-only by design** — no description heuristic — so it never misfires on implementation REQs that happen to touch adjacent dead code and load the opposite posture from karpathy's surgical-changes rule.
+- Tightened `quick-wins` so plain app-source dead-code removal stays under karpathy's implementation-time rule instead of being mislabeled a maintenance pass.
+- Documented the call in **ADR-015**, closing REQ-014's deferred D-01 loader gap (also raised as an external P2 review finding).
+
 ## 0.98.0 — The Delete Key (2026-06-28)
 
 A new maintenance crew rule: when a skill instruction has drifted, try *removing* before adding. Most harnesses rot because every fix is one more rule — this is the counterweight.

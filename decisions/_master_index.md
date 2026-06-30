@@ -22,12 +22,12 @@ confidence: high
 
 # Decision Index
 
-Read this first. This ADR log captures 13 load-bearing, still-in-force decisions mined from `CHANGELOG.md` and corroborated against the current repo state, plus one declined-decision record (ADR-014) documenting a path considered and rejected.
+Read this first. This ADR log captures 14 load-bearing, still-in-force decisions mined from `CHANGELOG.md` and corroborated against the current repo state, plus one declined-decision record (ADR-014) documenting a path considered and rejected.
 
 ## Topic Clusters
 
 - [Skill Architecture](./topics/_index_skill-architecture.md) — 6 ADRs — How the skill is structured, standardized, behaviorally guided, and distributed. Related pages: [[adr-001-modular-action-prompts-and-companion-references]], [[adr-002-load-reusable-spec-templates-during-work]], [[adr-003-always-load-karpathy-guardrails]], [[adr-011-interview-framework-with-prescriptive-templates]], [[adr-012-interview-v2-gap-closure]], [[adr-013-harden-the-vendored-skill-distribution-model]].
-- [Workflow Orchestration](./topics/_index_workflow-orchestration.md) — 3 ADRs + 1 declined — How pending work is stored and how the pipeline coordinates queue processing. Related pages: [[adr-004-canonicalize-pending-reqs-under-do-work-queue]], [[adr-005-pipeline-is-stateful-and-resumable]], [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]], [[adr-014-considered-declined-autonomous-loop-until-done]].
+- [Workflow Orchestration](./topics/_index_workflow-orchestration.md) — 4 ADRs + 1 declined — How pending work is stored and how the pipeline coordinates queue processing. Related pages: [[adr-004-canonicalize-pending-reqs-under-do-work-queue]], [[adr-005-pipeline-is-stateful-and-resumable]], [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]], [[adr-014-considered-declined-autonomous-loop-until-done]], [[adr-015-load-maintenance-crew-via-req-marker]].
 - [Pipeline Deliverables](./topics/_index_pipeline-deliverables.md) — 2 ADRs — How completed pipeline work is presented, summarized, and linked for different audiences. Related pages: [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]], [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]].
 - [Knowledge Base](./topics/_index_knowledge-base.md) — 2 ADRs — How the BKB is structured, linked, and operated as a persistent wiki system. Related pages: [[adr-009-build-knowledge-base-as-a-compiled-interlinked-wiki]], [[adr-010-use-typed-relationships-retrieval-memory-and-agent-crew-in-bkb]].
 
