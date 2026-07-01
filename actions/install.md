@@ -178,54 +178,44 @@ The `last30days` target vendors the engagement-ranked social-research engine (ht
 
 #### Phase 1: Check if already installed
 
-Run the full guarantee check from Phase 3 (same commands — skill file, `.gitignore` coverage, project config, `uv`). The install promises all four; detecting on the skill file alone would let a half-completed prior run masquerade as installed.
+Run the full guarantee check from Phase 3 (same commands — skill file, ignore rule, Python 3.12+). The install promises all three; detecting on the skill file alone would let a half-completed prior run masquerade as installed.
 
-- **All checks pass** (gitignore counts as passing when the project isn't a git repo) → report "already installed" and stop.
-- **Skill file present but another guarantee failed** → a prior run half-completed. Proceed to Phase 2 in *repair mode*: skip the clone/copy and run only the additive steps (`.gitignore` append, config write, `mkdir -p`) — each is guarded, so re-running is safe.
+- **All checks pass** (the ignore rule counts as passing when the project isn't a git repo) → report "already installed" and stop.
+- **Skill file present but the ignore rule failed** → a prior run half-completed. Proceed to Phase 2 in *repair mode*: skip the clone/copy and run only the ignore step — it's guarded, so re-running is safe. (A missing Python 3.12+ interpreter isn't repairable by this action — report it per Phase 3.)
 - **Skill file missing** → run Phase 2 in full.
 
-#### Phase 2: Vendor the skill + write the keyless project config
+#### Phase 2: Vendor the skill
 
-The upstream repo keeps the actual skill at `skills/last30days/` (self-contained: `SKILL.md` + `scripts/` + `agents/` + `assets/` + `references/`). Shallow-clone to a temp dir, copy only that subdirectory, discard the clone — skipped in repair mode, since the skill file already exists:
+The upstream repo keeps the actual skill at `skills/last30days/` (self-contained — `SKILL.md`, `scripts/`, and supporting directories). Shallow-clone to a temp dir, copy only that subdirectory's contents, discard the clone — skipped in repair mode, since the skill file already exists:
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 if [ ! -s "$PROJECT_ROOT/.claude/skills/last30days/SKILL.md" ]; then
   CLONE_DIR="$(mktemp -d)"
-  git clone --depth 1 https://github.com/mvanhorn/last30days-skill "$CLONE_DIR"
-  mkdir -p "$PROJECT_ROOT/.claude/skills"
-  cp -R "$CLONE_DIR/skills/last30days" "$PROJECT_ROOT/.claude/skills/last30days"
+  git clone --depth 1 https://github.com/mvanhorn/last30days-skill "$CLONE_DIR" \
+    && mkdir -p "$PROJECT_ROOT/.claude/skills/last30days" \
+    && cp -R "$CLONE_DIR/skills/last30days/." "$PROJECT_ROOT/.claude/skills/last30days/"
+  COPY_STATUS=$?
   rm -rf "$CLONE_DIR"
+  [ "$COPY_STATUS" -eq 0 ] || echo "last30days: clone/copy FAILED"
 fi
 ```
 
-If the directory exists but `SKILL.md` is missing or empty, that's a broken partial copy — confirm with the user, remove the directory, and re-run the block. Don't `cp -R` over an existing directory: it nests a second `last30days/` inside instead of merging.
+If the block prints FAILED (offline, upstream repo moved), **stop here** — report the error and skip the ignore step below; a failed install must not leave stray side effects in the consuming repo. The `cp -R …/. ` form copies the *contents* into the destination, so re-running over a broken partial directory merges cleanly instead of nesting a second `last30days/` inside (Phase 1's skill-file gate keeps healthy installs from ever reaching this block).
 
-Then make the git-ignore claim true — the vendored engine is ~15 MB of upstream Python that must never become committable in the consuming repo. If the project is a git repo and the path isn't already ignored, append it:
-
-```bash
-if git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-  git -C "$PROJECT_ROOT" check-ignore -q .claude/skills/last30days/SKILL.md || \
-    printf '\n.claude/skills/last30days/\n' >> "$PROJECT_ROOT/.gitignore"
-fi
-```
-
-Then, **only if it doesn't already exist** (never overwrite an edited one), write a keyless project config, and create the memory dir so it exists before first run:
+Then make the ignore claim true — the vendored engine is ~15 MB of upstream Python that must never become committable in the consuming repo. Add it to the enclosing repo's `.git/info/exclude` (machine-local — never committed, never shipped); do **not** touch the project's committable `.gitignore`. This is the exact snippet from `crew-members/background-agents.md` step 1, substituting this path (see that file for why, including the linked-worktree caveat):
 
 ```bash
-if [ ! -f "$PROJECT_ROOT/.claude/last30days.env" ]; then
-  cat > "$PROJECT_ROOT/.claude/last30days.env" <<EOF
-LAST30DAYS_TRUST_PROJECT_CONFIG=1
-LAST30DAYS_MEMORY_DIR=$PROJECT_ROOT/do-work/working/last30days
-LAST30DAYS_DEFAULT_EMIT=compact
-EOF
+exclude=$(git rev-parse --git-path info/exclude 2>/dev/null) || exclude=""
+if [ -n "$exclude" ]; then
+  git check-ignore -q .claude/skills/last30days/SKILL.md 2>/dev/null \
+    || echo '**/.claude/skills/last30days/' >> "$exclude"
 fi
-mkdir -p "$PROJECT_ROOT/do-work/working/last30days"
 ```
 
 Two hard constraints on this phase:
 
-- **Never write an API key into `.claude/last30days.env`.** That file is a non-secret config in a tracked repo. Real keys (for X/TikTok/Instagram) belong only in the user-global `~/.config/last30days/.env`, which the engine reads on its own.
+- **Write no config file — anywhere.** The engine reads API keys and settings from the user-global `~/.config/last30days/.env`, which the user manages themselves. Upstream also supports a project-local `.claude/last30days.env`, but it is trust-gated: the engine only reads it when `LAST30DAYS_TRUST_PROJECT_CONFIG` is already set in the environment or the user-global config — writing the trust flag *inside* the project file it gates is circular and does nothing. If the user wants project-local overrides, they create that file (keyless — never an API key in any repo file) and set the trust flag themselves.
 - **Reject the global install paths.** Upstream documents `npx skills add … -g` and `/plugin marketplace add` — both write to `~/.claude`, which this skill's norms avoid. The vendored project copy above is the only supported install.
 
 #### Phase 3: Verify
@@ -236,28 +226,37 @@ Check every guarantee the workflow promises, one line per component (this is als
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 test -s "$PROJECT_ROOT/.claude/skills/last30days/SKILL.md" && echo "skill file: OK" || echo "skill file: FAILED"
 if git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-  git -C "$PROJECT_ROOT" check-ignore -q .claude/skills/last30days/SKILL.md && echo "gitignore: OK" || echo "gitignore: FAILED"
+  git -C "$PROJECT_ROOT" check-ignore -q .claude/skills/last30days/SKILL.md && echo "ignore rule: OK" || echo "ignore rule: FAILED"
 else
-  echo "gitignore: n/a (not a git repo)"
+  echo "ignore rule: n/a (not a git repo)"
 fi
-test -f "$PROJECT_ROOT/.claude/last30days.env" && echo "project config: OK" || echo "project config: FAILED"
-command -v uv >/dev/null && echo "uv toolchain: OK" || echo "uv toolchain: FAILED"
+FOUND_PYTHON=""
+for python_candidate in python3.13 python3.12 python3 python; do
+  command -v "$python_candidate" >/dev/null 2>&1 \
+    && "$python_candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)' 2>/dev/null \
+    && { FOUND_PYTHON="$python_candidate"; break; }
+done
+[ -n "$FOUND_PYTHON" ] && echo "python 3.12+: OK ($FOUND_PYTHON)" || echo "python 3.12+: FAILED"
 ```
 
-Report "Installed successfully" only when no line prints FAILED. The engine runs via `uv run`, so a missing `uv` toolchain is a real failure, not a warning — report the install as failed and name `uv` as the missing piece. A FAILED gitignore line means the vendored ~15 MB is committable in the consuming repo — that's a broken install even though the engine itself would run.
+Report "Installed successfully" only when no line prints FAILED. The engine resolves a Python 3.12+ interpreter at run time (upstream keeps it in `LAST30DAYS_PYTHON`), so no qualifying interpreter is a real failure, not a warning — report the install as failed and name Python 3.12+ as the missing piece. A FAILED ignore line means the vendored ~15 MB is committable in the consuming repo — that's a broken install even though the engine itself would run.
 
 #### Phase 4: Report back
 
 ```
 Installed: last30days skill (vendored)
 
-Destination: <project-root>/.claude/skills/last30days/ (git-ignored, keyless)
+Destination: <project-root>/.claude/skills/last30days/
+  (ignored via .git/info/exclude — machine-local; your .gitignore is untouched)
 
 - Auto-discovers as the /last30days slash command.
 - Reddit, Hacker News, Polymarket, GitHub, and YouTube work with no API keys.
 - X/TikTok/Instagram need keys in the user-global ~/.config/last30days/.env
   — never in project files.
-- Research memory lands in do-work/working/last30days/.
+- Research memory defaults to ~/Documents/Last30Days/ (outside this repo).
+  To relocate it, set LAST30DAYS_MEMORY_DIR in your environment or the
+  user-global config — if you point it inside this repo, add an ignore
+  rule for that path too.
 
 Usage doctrine — when it's appropriate to invoke and what NOT to use it
 for — is this project's responsibility to document. Add it wherever the
@@ -284,7 +283,7 @@ Then stop.
 
 - **`ui-design`**: a short status line — "already installed", "installed successfully", or an error describing what failed and how to finish manually.
 - **`bowser`**: a two-line status — one for `playwright-cli`, one for the Bowser skill. Each is either "OK" (installed and verified), "already installed" (detected in Phase 1), or an error with the exact command the user can re-run.
-- **`last30days`**: a per-guarantee status (skill file, `.gitignore` coverage, project config, `uv` toolchain) — "already installed" only when every guarantee holds; otherwise "installed successfully" with the destination path, or the FAILED line(s) and the exact command the user can re-run.
+- **`last30days`**: a per-guarantee status (skill file, ignore rule, Python 3.12+) — "already installed" only when every guarantee holds; otherwise "installed successfully" with the destination path, or the FAILED line(s) and the exact command the user can re-run.
 - **Unknown / missing target**: the help block above.
 
 ## Rules
@@ -294,8 +293,8 @@ Then stop.
 - **Never overwrite an existing skill `SKILL.md`.** Phase 1 of each workflow is the gate. If the file is present, stop.
 - **Only Chromium by default (bowser).** Other browsers bloat install time and aren't needed for ui-review's default flow.
 - **Don't silently substitute a different skill or repo.** If the upstream URL fails, report the error — don't download a similarly-named skill from elsewhere.
-- **Keyless in the project (last30days).** `$PROJECT_ROOT/.claude/last30days.env` never contains API keys — real keys live only in the user-global `~/.config/last30days/.env`. Never write a secret into any file inside the repo.
-- **The vendor drop must be git-ignored (last30days).** Phase 2 appends `.claude/skills/last30days/` to `.gitignore` when it isn't already covered — ~15 MB of upstream Python must never become committable in the consuming repo.
+- **Keyless in the project (last30days).** This install writes no config file at all. If a project-local `.claude/last30days.env` ever exists, it must never contain API keys — real keys live only in the user-global `~/.config/last30days/.env`. Never write a secret into any file inside the repo.
+- **The vendor drop must be ignored (last30days).** Phase 2 adds `**/.claude/skills/last30days/` to the enclosing repo's `.git/info/exclude` when it isn't already covered — machine-local, never the project's committable `.gitignore` — because ~15 MB of upstream Python must never become committable in the consuming repo.
 - **One target per invocation.** If the user wants both, they run two separate commands. The action never chains targets.
 
 ## Common Rationalizations
@@ -304,11 +303,12 @@ Then stop.
 |---|---|---|
 | "The file is already there but looks stale — I'll overwrite it" | Report installed; let the user decide whether to re-download | Overwriting a user-customized skill file silently destroys their edits |
 | "`curl` failed, I'll fetch it with `wget` from a mirror" | Report the failure and the URL; let the user install manually | Unknown mirrors risk installing a tampered skill file |
-| "The user wanted UI help, I should install both targets while I'm here" | Stop after the requested target; mention the other as a next step if relevant | Each install target has a single, documented scope |
+| "The user wanted UI help, I should install the other targets while I'm here" | Stop after the requested target; mention the others as next steps if relevant | Each install target has a single, documented scope |
 | "I'll install all three browsers to be safe (bowser)" | Install only Chromium; mention the manual command for the others | Firefox + WebKit roughly triple the install time and disk use, for a feature ui-review doesn't need |
 | "npm install failed, I'll try yarn and pnpm and bun until something works (bowser)" | Try npm, then yarn; if both fail, stop and report | Quiet package-manager shopping leaves the user unsure what got installed |
 | "Upstream's README says `npx skills add … -g` — I'll just follow upstream (last30days)" | Vendor into `$PROJECT_ROOT/.claude/skills/last30days/` per the workflow | Both `-g` and `/plugin marketplace add` write to `~/.claude`, which this skill never touches |
-| "The user gave me an X API key — I'll put it in `.claude/last30days.env` so it works right away" | Direct them to `~/.config/last30days/.env`; keep the project config keyless | The project env is a non-secret file in a tracked repo — a key there leaks on the next commit |
+| "The user gave me an X API key — I'll put it in `.claude/last30days.env` so it works right away" | Direct them to `~/.config/last30days/.env`; never write a key into a project file | A key in a repo file leaks on the next commit |
+| "I'll write `LAST30DAYS_TRUST_PROJECT_CONFIG=1` into `.claude/last30days.env` so project config just works (last30days)" | Write no config file; tell the user the trust flag must come from their environment or user-global config | The flag gates whether the engine reads the project file — setting it *inside* that file is circular and inert |
 
 ## Red Flags
 
@@ -318,9 +318,9 @@ Then stop.
 - `git rev-parse --show-toplevel` fails (not in a git repo) and you installed into `pwd` — acceptable, but warn the user the path may drift if they `cd` elsewhere.
 - (bowser) `playwright-cli --help` succeeds but `playwright-cli install` fails silently — browsers aren't actually installed; headless runs will error later.
 - (bowser) You installed `playwright-cli` into a project-local `node_modules` instead of globally — the CLI won't be on PATH for other sessions.
-- (last30days) `git status` in the consuming repo shows `.claude/skills/last30days/` as addable — the `.gitignore` append was skipped or mismatched; fix it before anything gets committed.
-- (last30days) `.claude/last30days.env` contains anything that looks like a credential — remove it and move the key to the user-global `~/.config/last30days/.env`.
-- (last30days) Verify failed on `command -v uv` — the engine can't run via `uv run`; treat it as a failed install, not a soft warning.
+- (last30days) `git check-ignore -q .claude/skills/last30days/SKILL.md` exits non-zero in a git repo — the exclude entry was skipped or mismatched; fix it before anything gets committed. (Don't eyeball `git status` for this: a wholly-untracked `.claude/` collapses to a single `?? .claude/` row that hides the path either way.)
+- (last30days) A project file (e.g. `.claude/last30days.env`) contains anything that looks like a credential — remove it and move the key to the user-global `~/.config/last30days/.env`.
+- (last30days) Verify found no Python 3.12+ interpreter — the engine can't run; treat it as a failed install, not a soft warning.
 
 ## Verification Checklist
 
@@ -328,6 +328,6 @@ Then stop.
 - [ ] Phase 1 detected an existing install and stopped, OR Phase 2+ ran the fetch/install commands.
 - [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty.
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
-- [ ] (last30days only) `uv` is on PATH, `.claude/skills/last30days/` is covered by `.gitignore`, and `.claude/last30days.env` contains no API keys.
+- [ ] (last30days only) a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
 - [ ] The report names the destination path so the user can verify location.
-- [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the documented `.gitignore` append, `.claude/last30days.env`, and `do-work/working/last30days/`).
+- [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the machine-local `.git/info/exclude` entry).
