@@ -33,3 +33,7 @@ queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that
   Req:   `generate` (static) and `serve` (live) render from the SAME embedded `web/` assets; the static output must run from `file://` with zero network via the `board-data.js` sibling.
   Value: one hand-authored frontend source powers two outputs — a manager-shareable static artifact and a live local board.
   Risk:  editing `web/` without rebuilding ships stale UI; breaking the offline `board-data.js` contract makes the shared static artifact render blank for anyone opening it from disk.
+
+## Lessons
+
+- [REQ-015: synthetic test tickets must set `OriginalStatus` for unrecognized-status warning assertions to exercise the real path; `deferred` removed from the recognized set](../../do-work/archive/REQ-015-deferred-status-vocabulary-sync.md#lessons-learned)

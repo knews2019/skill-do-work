@@ -113,7 +113,7 @@ type CalendarEntry struct {
 type BoardColumns struct {
 	Pending             []*RequestTicket // status pending
 	Claimed             []*RequestTicket // status claimed
-	NeedsInputOrBlocked []*RequestTicket // pending-answers / blocked-* / failed / deferred
+	NeedsInputOrBlocked []*RequestTicket // pending-answers / blocked-* / failed
 	RecentlyDone        []*RequestTicket // completed* whose completion instant is within the window
 }
 
@@ -406,8 +406,7 @@ func isNeedsInputOrBlockedStatus(normalizedStatus string) bool {
 	case "pending-answers",
 		"blocked-archive-collision",
 		"blocked-dependency-cycle",
-		"failed",
-		"deferred":
+		"failed":
 		return true
 	default:
 		return false

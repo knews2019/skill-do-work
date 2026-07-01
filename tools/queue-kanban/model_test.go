@@ -24,7 +24,7 @@ func TestNormalizeStatus(t *testing.T) {
 		{"pending", "pending"},
 		{"pending-answers", "pending-answers"},
 		{"claimed", "claimed"},
-		{"deferred", "deferred"},
+		{"custom-status", "custom-status"},
 	}
 	for _, testCase := range testCases {
 		if got := normalizeStatus(testCase.raw); got != testCase.want {
@@ -40,13 +40,16 @@ func TestStatusClassifiers(t *testing.T) {
 	if isCompletedStatus("pending") {
 		t.Fatalf("pending must not classify as completed")
 	}
-	for _, blocked := range []string{"pending-answers", "blocked-archive-collision", "blocked-dependency-cycle", "failed", "deferred"} {
+	for _, blocked := range []string{"pending-answers", "blocked-archive-collision", "blocked-dependency-cycle", "failed"} {
 		if !isNeedsInputOrBlockedStatus(blocked) {
 			t.Fatalf("%q should be a needs-input/blocked status", blocked)
 		}
 	}
 	if isNeedsInputOrBlockedStatus("pending") || isNeedsInputOrBlockedStatus("claimed") {
 		t.Fatalf("pending/claimed are their own columns, not needs-input/blocked")
+	}
+	if isNeedsInputOrBlockedStatus("deferred") {
+		t.Fatalf("deferred is not in the Schema Read Contract enum (actions/work-reference.md) — it must route through the unrecognized-status warning path, not the recognized list")
 	}
 }
 
@@ -278,8 +281,8 @@ func TestBucketColumns(t *testing.T) {
 		{RequestId: "REQ-3", Status: "pending"},
 		{RequestId: "REQ-4", Status: "claimed"},
 		{RequestId: "REQ-5", Status: "pending-answers"},
-		{RequestId: "REQ-6", Status: "deferred"},
-		{RequestId: "REQ-7", Status: "pnding", OriginalStatus: "pnding"}, // typo'd status — must never be silently dropped
+		{RequestId: "REQ-6", Status: "deferred", OriginalStatus: "deferred"}, // hand-edited status outside the Schema Read Contract enum — must still land in Needs-input/Blocked, now via the unrecognized-status warning path
+		{RequestId: "REQ-7", Status: "pnding", OriginalStatus: "pnding"},     // typo'd status — must never be silently dropped
 		recentDone,
 		oldDone,
 	}
@@ -291,12 +294,28 @@ func TestBucketColumns(t *testing.T) {
 		t.Fatalf("Claimed = %+v", columns.Claimed)
 	}
 	if len(columns.NeedsInputOrBlocked) != 3 {
-		t.Fatalf("NeedsInputOrBlocked should hold pending-answers + deferred + the unrecognized status, got %d", len(columns.NeedsInputOrBlocked))
+		t.Fatalf("NeedsInputOrBlocked should hold pending-answers + the deferred and pnding unrecognized statuses, got %d", len(columns.NeedsInputOrBlocked))
 	}
 	if len(columns.RecentlyDone) != 1 || columns.RecentlyDone[0].RequestId != "REQ-1" {
 		t.Fatalf("RecentlyDone should hold only the in-window completion, got %+v", columns.RecentlyDone)
 	}
-	if len(statusWarnings) != 1 || !strings.Contains(statusWarnings[0], "REQ-7") || !strings.Contains(statusWarnings[0], "pnding") {
-		t.Fatalf("expected one unrecognized-status warning naming REQ-7/pnding, got %v", statusWarnings)
+	if len(statusWarnings) != 2 {
+		t.Fatalf("expected two unrecognized-status warnings (deferred + pnding), got %d: %v", len(statusWarnings), statusWarnings)
+	}
+	foundDeferredWarning := false
+	foundTypoWarning := false
+	for _, warning := range statusWarnings {
+		if strings.Contains(warning, "REQ-6") && strings.Contains(warning, "deferred") {
+			foundDeferredWarning = true
+		}
+		if strings.Contains(warning, "REQ-7") && strings.Contains(warning, "pnding") {
+			foundTypoWarning = true
+		}
+	}
+	if !foundDeferredWarning {
+		t.Fatalf("expected an unrecognized-status warning naming REQ-6/deferred, got %v", statusWarnings)
+	}
+	if !foundTypoWarning {
+		t.Fatalf("expected an unrecognized-status warning naming REQ-7/pnding, got %v", statusWarnings)
 	}
 }

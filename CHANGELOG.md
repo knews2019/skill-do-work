@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.103.1 — The Matched Set (2026-07-02)
+
+The kanban board's parser no longer recognizes a status the schema never defined. `deferred` is out of the recognized set, so the board vocabulary and the Schema Read Contract finally agree exactly.
+
+- Removed the `deferred` case from `isNeedsInputOrBlockedStatus` in `tools/queue-kanban/model.go` (plus the stale column comment) — no producer of `status: deferred` exists anywhere in the skill
+- A hand-edited `status: deferred` ticket still lands in Needs-input/Blocked, now via the unrecognized-status warning path instead of a silent pass
+- Test coverage repointed, not deleted: warning-path assertions verify the deferred + typo cases both warn (REQ-015, TDD red→green)
+
 ## 0.103.0 — The Recipe Card (2026-07-02)
 
 `do-work install` gains a fourth target: `just-kanban` wires `just run-kanban` (plus `kanban-static` / `kanban-summary`) into your project's justfile, so the board runs without going through the agent. The justfile is project-owned — updates never touch it — while the recipes rebuild the vendored tool on every run, so each `do-work update` takes effect automatically.
