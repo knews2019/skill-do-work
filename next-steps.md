@@ -119,6 +119,15 @@ Next steps:
   do-work bkb triage            Sort staged lessons (only if any REQ has kb_status: promoted)
   do-work review REQ-NNN        Re-run KB handoff (only if any REQ has kb_status: pending; run do-work bkb init first if no kb/)
   do-work forensics             Investigate further if any pending REQ looked suspicious
+  do-work board                 See the same queue as a live Kanban board (needs Go)
+```
+
+**After board:**
+```
+Next steps:
+  do-work run                 Pick up a Ready REQ shown on the board
+  do-work roadmap             Text survey of the same queue — ready/blocked/stale + TDD posture
+  do-work board static        Generate a shareable static HTML snapshot to hand off
 ```
 
 **After note:**

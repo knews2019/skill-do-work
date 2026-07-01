@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>PROJECT_NAME — do-work queue board</title>
+    <style>
+      /* INLINE_BOARD_STYLES */
+    </style>
+  </head>
+  <body>
+    <a class="skip-link" href="#board-main">Skip to board</a>
+
+    <header class="board-topbar">
+      <div class="board-identity">
+        <h1 class="board-wordmark">do&#8209;work<span class="board-wordmark-mark">/ queue</span></h1>
+        <p class="board-project" id="board-project">PROJECT_NAME</p>
+        <p class="board-generated" id="board-generated">Generated GENERATED_AT_DISPLAY</p>
+      </div>
+
+      <nav class="board-controls" aria-label="Board views and lenses">
+        <div class="control-group" role="group" aria-label="View">
+          <button type="button" class="control-button is-active" data-view-target="board" aria-pressed="true">
+            Board
+          </button>
+          <button type="button" class="control-button" data-view-target="calendar" aria-pressed="false">
+            Calendar
+          </button>
+        </div>
+
+        <div class="control-group" role="group" aria-label="Grouping lens" id="lens-group">
+          <span class="control-label">Lens</span>
+          <button type="button" class="control-button is-active" data-lens-target="flat" aria-pressed="true">
+            Columns
+          </button>
+          <button type="button" class="control-button" data-lens-target="user-request" aria-pressed="false">
+            By&nbsp;UR
+          </button>
+        </div>
+
+        <div class="control-group" role="group" aria-label="Recently-done window" id="recent-window-group">
+          <span class="control-label">Recently done</span>
+          <button type="button" class="control-button is-active" data-window-hours="24" aria-pressed="true">24h</button>
+          <button type="button" class="control-button" data-window-hours="48" aria-pressed="false">48h</button>
+          <button type="button" class="control-button" data-window-hours="168" aria-pressed="false">7d</button>
+        </div>
+      </nav>
+    </header>
+
+    <main id="board-main" class="board-main" tabindex="-1">
+      <!-- Flat Kanban columns -->
+      <section id="view-board" class="view-panel is-active" aria-label="Kanban board">
+        <div class="kanban-columns" id="kanban-columns">
+          <section class="kanban-column" data-column="pending">
+            <header class="column-header">
+              <h2 class="column-title">Pending</h2>
+              <span class="column-count" data-count="pending">0</span>
+            </header>
+            <div class="column-cards" data-cards="pending"></div>
+          </section>
+
+          <section class="kanban-column" data-column="claimed">
+            <header class="column-header">
+              <h2 class="column-title">Claimed</h2>
+              <span class="column-count" data-count="claimed">0</span>
+            </header>
+            <div class="column-cards" data-cards="claimed"></div>
+          </section>
+
+          <section class="kanban-column" data-column="needs-input">
+            <header class="column-header">
+              <h2 class="column-title">Needs input &middot; Blocked</h2>
+              <span class="column-count" data-count="needsInputOrBlocked">0</span>
+            </header>
+            <div class="column-cards" data-cards="needsInputOrBlocked"></div>
+          </section>
+
+          <section class="kanban-column" data-column="recently-done">
+            <header class="column-header">
+              <h2 class="column-title">Recently done</h2>
+              <span class="column-count" data-count="recentlyDone">0</span>
+            </header>
+            <div class="column-cards" data-cards="recentlyDone"></div>
+          </section>
+        </div>
+
+        <!-- By-UR lens (rendered client-side, shown only when the lens is active) -->
+        <div class="user-request-lens" id="user-request-lens" hidden></div>
+      </section>
+
+      <!-- Completion calendar -->
+      <section id="view-calendar" class="view-panel" aria-label="Completion calendar" hidden>
+        <div class="calendar-intro">
+          <h2 class="calendar-heading">Completed work, by day</h2>
+          <p class="calendar-subhead" id="calendar-summary"></p>
+        </div>
+        <div class="calendar-scroll" id="calendar-scroll"></div>
+      </section>
+    </main>
+
+    <!-- Card detail drawer -->
+    <div class="detail-overlay" id="detail-overlay" hidden></div>
+    <aside
+      class="detail-drawer"
+      id="detail-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="detail-drawer-title"
+      hidden
+      tabindex="-1"
+    >
+      <header class="detail-head">
+        <div class="detail-head-ids">
+          <span class="detail-kind" id="detail-kind">REQ</span>
+          <span class="detail-id" id="detail-id"></span>
+        </div>
+        <button type="button" class="detail-close" id="detail-close" aria-label="Close detail panel">
+          Close
+        </button>
+      </header>
+      <h2 class="detail-title" id="detail-drawer-title"></h2>
+      <dl class="detail-meta" id="detail-meta"></dl>
+      <div class="detail-body markdown-body" id="detail-body"></div>
+    </aside>
+
+    <script src="board-data.js"></script>
+    <script>
+      /* INLINE_BOARD_SCRIPT */
+    </script>
+  </body>
+</html>

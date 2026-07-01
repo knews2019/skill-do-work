@@ -1,0 +1,144 @@
+package main
+
+import (
+	"fmt"
+	"io/fs"
+	"os"
+	"path/filepath"
+	"strings"
+)
+
+// requestFileReference is one discovered REQ-*.md path plus which section of the
+// do-work tree it was found under ("queue", "working", or "archive"). The
+// section is recorded for provenance; status — not location — drives column
+// bucketing.
+type requestFileReference struct {
+	AbsolutePath string
+	TreeSection  string
+}
+
+// discoveredTreeFiles is the raw output of walking the do-work tree: every REQ
+// file reference and every UR input.md path, before any frontmatter is parsed.
+type discoveredTreeFiles struct {
+	RequestFiles     []requestFileReference
+	UserRequestFiles []string
+}
+
+// resolveRepoRoot walks upward from startDirectory until it finds a directory
+// that contains a `do-work/` subdirectory, and returns that directory as the
+// repo root. It errors only if the filesystem root is reached without finding
+// one.
+func resolveRepoRoot(startDirectory string) (string, error) {
+	currentDirectory := startDirectory
+	for {
+		candidate := filepath.Join(currentDirectory, "do-work")
+		if info, statError := os.Stat(candidate); statError == nil && info.IsDir() {
+			return currentDirectory, nil
+		}
+		parentDirectory := filepath.Dir(currentDirectory)
+		if parentDirectory == currentDirectory {
+			return "", fmt.Errorf("queue-kanban: no do-work/ directory found walking up from %s", startDirectory)
+		}
+		currentDirectory = parentDirectory
+	}
+}
+
+// deriveProjectName returns a human-facing project name for a repo root: the base
+// name of its absolute path (e.g. "/Users/t2/2code/g1w-game-find-the-difference"
+// → "g1w-game-find-the-difference"). It falls back to the un-absolutized base when
+// filepath.Abs fails, and to "do-work" when even that collapses to "." or "/", so
+// the board title is never blank.
+func deriveProjectName(repoRoot string) string {
+	resolvedRoot := repoRoot
+	if absoluteRoot, absError := filepath.Abs(repoRoot); absError == nil {
+		resolvedRoot = absoluteRoot
+	}
+	projectName := filepath.Base(resolvedRoot)
+	if projectName == "." || projectName == string(filepath.Separator) {
+		return "do-work"
+	}
+	return projectName
+}
+
+// resolveRepoRootOrDefault returns the override when it is non-empty, otherwise
+// it resolves the repo root by walking up from the current working directory.
+func resolveRepoRootOrDefault(repoRootOverride string) (string, error) {
+	if strings.TrimSpace(repoRootOverride) != "" {
+		return repoRootOverride, nil
+	}
+	workingDirectory, getwdError := os.Getwd()
+	if getwdError != nil {
+		return "", getwdError
+	}
+	return resolveRepoRoot(workingDirectory)
+}
+
+// enumerateDoWorkTree walks repoRoot/do-work and collects every REQ-*.md file
+// (from queue/, working/, and the entire archive/** subtree — handling both the
+// flat archive/UR-NNN/ shape and the banded archive/UR-NNN-MMM/ shape with its
+// nested UR-NNN/ subfolders) plus every UR input.md (from user-requests/** and
+// archive/**).
+//
+// The do-work/deliverables/ and do-work/runs/ subtrees are skipped entirely.
+// The kb/wiki/sources/ mirror lives OUTSIDE do-work and so is never reached —
+// walking only under do-work is what keeps the REQ count from roughly doubling.
+func enumerateDoWorkTree(repoRoot string) (discoveredTreeFiles, error) {
+	var discovered discoveredTreeFiles
+
+	doWorkDirectory := filepath.Join(repoRoot, "do-work")
+	info, statError := os.Stat(doWorkDirectory)
+	if statError != nil || !info.IsDir() {
+		return discovered, fmt.Errorf("queue-kanban: do-work directory not found at %s", doWorkDirectory)
+	}
+
+	walkError := filepath.WalkDir(doWorkDirectory, func(path string, dirEntry fs.DirEntry, entryError error) error {
+		if entryError != nil {
+			// Best-effort: skip an unreadable entry rather than aborting the whole walk.
+			return nil
+		}
+
+		relativePath, relativeError := filepath.Rel(doWorkDirectory, path)
+		if relativeError != nil {
+			return nil
+		}
+		topSection := strings.Split(relativePath, string(filepath.Separator))[0]
+
+		if dirEntry.IsDir() {
+			if path != doWorkDirectory && isSkippedSection(topSection, dirEntry.Name()) {
+				return fs.SkipDir
+			}
+			return nil
+		}
+
+		baseName := dirEntry.Name()
+		switch {
+		case strings.HasPrefix(baseName, "REQ-") && strings.HasSuffix(baseName, ".md"):
+			switch topSection {
+			case "queue", "working", "archive":
+				discovered.RequestFiles = append(discovered.RequestFiles, requestFileReference{
+					AbsolutePath: path,
+					TreeSection:  topSection,
+				})
+			}
+		case baseName == "input.md":
+			switch topSection {
+			case "user-requests", "archive":
+				discovered.UserRequestFiles = append(discovered.UserRequestFiles, path)
+			}
+		}
+		return nil
+	})
+
+	return discovered, walkError
+}
+
+// isSkippedSection reports whether a directory should be pruned from the walk.
+// The deliverables (reports, not REQs) and runs (run logs) sections are excluded
+// per the data model, and any hidden directory (a leading dot, e.g. .git) is
+// skipped defensively.
+func isSkippedSection(topSection string, directoryName string) bool {
+	if topSection == "deliverables" || topSection == "runs" {
+		return true
+	}
+	return strings.HasPrefix(directoryName, ".")
+}

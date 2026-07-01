@@ -99,7 +99,8 @@ Check these patterns **in order** — first match wins:
 | 30       | Stray-check keywords     | `do-work stray-check`, `do-work stray-check src/`, `do-work find stray files`, `do-work find orphan files`, `do-work junk`, `do-work what doesn't belong`, `do-work file hygiene` | → stray-check                   |
 | 31       | AI-report keywords       | `do-work ai-report`, `do-work ai-report UR-246`, `do-work ai report`, `do-work make-report`, `do-work make report`, `do-work screenshot-report`, `do-work visual report`, `do-work proof of work` | → ai-report                     |
 | 32       | Note keywords            | `do-work note investigate xyz`, `do-work note "check Y before running"`, `do-work note add revisit after Z`, `do-work add note revisit after Z` | → note                          |
-| 33       | Descriptive content      | `do-work capture-request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture-requests              |
+| 33       | Board keywords           | `do-work board`, `do-work kanban`, `do-work board static`, `do-work board summary`, `do-work queue board`                          | → board                         |
+| 34       | Descriptive content      | `do-work capture-request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture-requests              |
 
 
 ### Step 2: Preserve Payload
@@ -154,6 +155,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **tutorial** | tutorial, tutorial quick-start, tutorial concepts, tutorial recipes, tutorial tour, learn, getting started, how does this work | Everything after "tutorial" → `$ARGUMENTS` (mode). No args → ask user which mode |
 | **slop-check** | slop-check, slop check, anti-slop | Everything after the verb → `$ARGUMENTS` (file path, REQ/UR ID, "most recent", or empty). Triggers must be distinctive — any `check ...` form (e.g., "check slop", "check draft", "check for slop") collides with verify priority 5 and is intentionally not listed here. |
 | **dream** | dream, consolidate memory, clean up wiki, lint and merge notes, memory cleanup | Everything after the verb → `$ARGUMENTS` (memory directory path or empty). No path → auto-resolve default (`./memory`, `./wiki`, `./kb/wiki`, `./knowledge-base/wiki`). Single-word `dream` is a known keyword, not descriptive content. These memory/wiki/notes phrases take precedence over the generic cleanup verbs (priority 12) even though Dream sits lower in the table. |
+| **board** | board, kanban, kanban board, queue board, visualize queue, show the board | Builds + runs the shipped `queue-kanban` Go tool against this repo's `do-work/` queue. `$ARGUMENTS` selects mode: empty / `serve` / `live` → live board at `:8090`; `static` / `generate` / `html` → static HTML in `build/queue-kanban-board/`; `summary` / `status` → column counts. Read-only viewer; needs the Go toolchain. Routes to `actions/board.md`. |
 | **capture-requests** | `capture-request:` prefix (the spaced `capture request:` form is also accepted), descriptive text, feature requests, bug reports, "add", "create", "I need", "we should" | Default for multi-word descriptive content that doesn't match any keyword |
 
 ## Examples
@@ -223,6 +225,7 @@ do-work — task queue for agentic coding tools
     do-work forensics                   Pipeline diagnostics — stuck work, orphaned URs
     do-work roadmap [scope]             Queue survey — ready/blocked/stale + TDD posture
     do-work queue-status                Alias for roadmap
+    do-work board [mode]                Kanban board of the queue — live (serve) / static / summary (needs Go)
     do-work note "investigate xyz"      Jot a dated next-step hint (surfaces atop roadmap)
     do-work stray-check [path]          Find orphan/junk files polluting the repo
     do-work version                     Version + last 5 releases
@@ -311,6 +314,7 @@ Each action has an action file with full instructions. How you execute it depend
 | tutorial           | `./actions/tutorial.md`         | `$ARGUMENTS` (mode name or empty) |
 | slop-check         | `./actions/slop-check.md`       | `$ARGUMENTS` (file path, REQ/UR ID, "most recent", or empty for newest deliverable) |
 | dream              | `./actions/dream.md`            | `$ARGUMENTS` (memory directory path or empty for default resolution) |
+| board              | `./actions/board.md`            | `$ARGUMENTS` (mode: `serve` / `static` / `summary`) |
 
 ### If subagents are available
 
@@ -318,6 +322,7 @@ Dispatch each action to a subagent. The subagent reads the action file and execu
 
 - **`work`**: Run in the background if your environment supports it. Print a status line (e.g., "Work queue processing in background...") and return control to the user immediately.
 - **`cleanup`**: Run in the background if your environment supports it. Print a status line and return control to the user immediately.
+- **`board`** (`serve` mode): Run in the background if your environment supports it — it's a long-running local server. Print the URL (`http://localhost:8090`) and return control to the user. The `static` and `summary` modes run in the foreground (immediate output).
 - **Exception — pipeline dispatch**: When the pipeline action dispatches `work`, it runs in the **foreground** (blocking). The pipeline requires each step to complete before advancing. This override applies only when the pipeline is the caller.
 - **`pipeline`, `capture-requests`, `clarify questions`, `verify-requests`, `review-work`, `validate-feedback`, `code-review`, `ui-review`, `present-work`, `ai-report`, `slop-check`, `dream`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `note`, `stray-check`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture-requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.

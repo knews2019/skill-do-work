@@ -25,6 +25,8 @@ sources:
   - crew-members/karpathy.md
   - interviews/work-operating-model.md
   - specs/README.md
+  - tools/queue-kanban/
+  - actions/board.md
 related:
   - page: adr-001-modular-action-prompts-and-companion-references
     rel: complements
@@ -38,8 +40,10 @@ related:
     rel: complements
   - page: adr-013-harden-the-vendored-skill-distribution-model
     rel: complements
+  - page: adr-016-vendor-queue-kanban-into-the-skill
+    rel: complements
 created: 2026-04-15
-updated: 2026-06-15
+updated: 2026-07-01
 confidence: high
 ---
 
@@ -55,6 +59,7 @@ How the skill is structured, standardized, and behaviorally guided.
 - [[adr-011-interview-framework-with-prescriptive-templates]] — [ADR-011](../records/adr-011-interview-framework-with-prescriptive-templates.md): Add a generalized `interview` action that runs prescriptive templates from `interviews/<name>.md`, enforces a canonical entry contract, and produces agent-ready operating artifacts. Depends on ADR-001 (modular action + companion), ADR-002 (reusable templates at runtime), and ADR-005 (stateful and resumable).
 - [[adr-012-interview-v2-gap-closure]] — [ADR-012](../records/adr-012-interview-v2-gap-closure.md): Patch five v1 gaps — mechanical export render templates in the template file, entry-level `update` granularity, draft-checkpoint mid-layer recovery, aligned `ingest` file mapping (10 files per run), confirmed `crew-members/` placement — as surgical changes rather than a rewrite. Extends ADR-011.
 - [[adr-013-harden-the-vendored-skill-distribution-model]] — [ADR-013](../records/adr-013-harden-the-vendored-skill-distribution-model.md): Anchor bundled hook paths to `$CLAUDE_PROJECT_DIR/.claude/skills/do-work/`, make `version update` non-clobbering (detect committed customizations, snapshot non-git installs, post-update audit), and `export-ignore` maintainer-internal files (`decisions/`, dev dotfiles, `_dev/`) from the install tarball. Complements ADR-001.
+- [[adr-016-vendor-queue-kanban-into-the-skill]] — [ADR-016](../records/adr-016-vendor-queue-kanban-into-the-skill.md): Vendor the standalone `queue-kanban` Go tool into `tools/queue-kanban/` as shipped source (built on demand), drive it with a read-only `do-work board` action, and fold its versioning into the skill's — so `do-work update` carries the board into every consumer from one upstream and the board's parser sits beside the Schema Read Contract it tracks. Extends ADR-013's whole-tree tarball distribution.
 
 ## Cross-Cluster Links
 

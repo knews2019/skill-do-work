@@ -6,6 +6,23 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.100.0 — The Board Room (2026-07-01)
+
+The `queue-kanban` board now ships inside the skill, so `do-work update` carries it into every repo alongside the skill files — no more per-repo copy-install that kept drifting into divergent versions. A new `do-work board` action builds and runs it for you.
+
+- **`tools/queue-kanban/` vendored in** — the standalone Go module that renders your `do-work/` queue as a Kanban board + completion calendar is now shipped source. The tarball carries it; the compiled binary stays gitignored and is built on demand (needs the Go toolchain).
+- **New `do-work board` action** — `do-work board` serves a live board at `http://localhost:8090`, `do-work board static` writes a shareable HTML snapshot, `do-work board summary` prints column counts. It's a read-only viewer and the one action that needs a compiler — precondition-checked so a missing Go toolchain never blocks the rest of the skill.
+- **Versioning folded into the skill** — the tool's separate semver changelog is retired; its changes now ride do-work's version. The update path treats `tools/` as a shipped path and ignores the built binary in its customization diff. See ADR-016 for the full rationale.
+
+## 0.99.6 — The Wide Screen (2026-07-01)
+
+ai-report's HTML layout gets a real redesign — pulled in from a sibling project's more-recently-tuned report skill so both stay in sync.
+
+- **Full-bleed page, no more centered column.** `.page` fills the viewport width (only per-element prose gets a `74ch` reading cap) instead of capping the whole report at a fixed max-width and leaving empty gutters on wide monitors.
+- **Side-by-side before/after is now the default**, laid out in wrapping `flex-wrap` bands that stack automatically on narrow screens. The click-toggle pattern survives only as a fallback for frames that genuinely can't fit side by side.
+- **Screenshots render at native max-resolution** — frames are capped at the capture's real pixel width and centered, never upscaled to fill a column.
+- Updated Design rules, Common Rationalizations, Red Flags, and the Verification Checklist in `actions/ai-report.md` to match.
+
 ## 0.99.5 — The Marker Pen (2026-06-30)
 
 Acts on a validate-feedback triage of the skill's own internals — closes a gap where the maintenance marker could silently never get set, and re-syncs two user guides that lagged earlier action-file fixes.

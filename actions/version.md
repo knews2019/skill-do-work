@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.99.5
+**Current version**: 0.100.0
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -70,7 +70,7 @@ When user asks "check for updates", "update", or "is there a newer version":
    - Only continue once `<skill-root>` is confirmed to live inside `<project-root>` (the git root, or the invocation directory when the project isn't a git repo) and not under any global skills location.
 3. **Check for local changes** to shipped skill files at `<skill-root>`:
    - **Scope the check to skill-owned files only.** Ignore `do-work/` (queue data, archives, deliverables) — those are generated at runtime and should never block an update.
-   - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ prompts/ interviews/ specs/ docs/ hooks/ CLAUDE.md AGENTS.md CHANGELOG.md README.md next-steps.md` (listing every shipped editable path) and check for uncommitted changes. Any dirty file in these paths will be clobbered by the tar extraction in step 5 if you proceed. (Previous archive files `CHANGELOG-2026-spring.md` and `CHANGELOG-pre-0.50.md` were removed in 0.76.0 — tarball-installed copies that want pre-0.65 release notes can browse them at commit `bf15fe2` on GitHub; git-cloned copies can `git show bf15fe2:CHANGELOG-2026-spring.md` locally.)
+   - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ prompts/ interviews/ specs/ docs/ hooks/ tools/ CLAUDE.md AGENTS.md CHANGELOG.md README.md next-steps.md` (listing every shipped editable path) and check for uncommitted changes. Any dirty file in these paths will be clobbered by the tar extraction in step 5 if you proceed. (Previous archive files `CHANGELOG-2026-spring.md` and `CHANGELOG-pre-0.50.md` were removed in 0.76.0 — tarball-installed copies that want pre-0.65 release notes can browse them at commit `bf15fe2` on GitHub; git-cloned copies can `git show bf15fe2:CHANGELOG-2026-spring.md` locally.)
    - **Also catch _committed_ customizations before extraction** (git-repo installs) and local edits in non-git installs with a fresh upstream tarball diff. `git status --porcelain` only reports _uncommitted_ edits; a customization committed locally (including an edit to `actions/version.md` itself) otherwise looks clean. Before any destructive write (no pre-clean, no delete, no extraction yet), download the upstream tarball once, extract it to a temporary fresh upstream tree, and diff the current install against that tree:
      ```bash
      UPDATE_TMP="$(mktemp -d "${TMPDIR:-/tmp}/do-work-update.XXXXXX")"
@@ -82,12 +82,12 @@ When user asks "check for updates", "update", or "is there a newer version":
      tar xzf "$UPSTREAM_TARBALL" -C "$FRESH_UPSTREAM" --strip-components=1 \
        --exclude='_dev' --exclude='do-work' --exclude='ai-reports' \
        --exclude='.vscode' --exclude='decisions'
-     SHIPPED_PATHS=(SKILL.md actions crew-members prompts interviews specs docs hooks CLAUDE.md AGENTS.md CHANGELOG.md README.md next-steps.md)
+     SHIPPED_PATHS=(SKILL.md actions crew-members prompts interviews specs docs hooks tools CLAUDE.md AGENTS.md CHANGELOG.md README.md next-steps.md)
      for shipped_path in "${SHIPPED_PATHS[@]}"; do
-       diff -ru --new-file "$FRESH_UPSTREAM/$shipped_path" "<skill-root>/$shipped_path" || true
+       diff -ru --new-file -x queue-kanban "$FRESH_UPSTREAM/$shipped_path" "<skill-root>/$shipped_path" || true
      done
      ```
-     This diff includes legitimate upstream release changes, so don't treat every hunk as a blocker. Scan it before overwriting: current-side additions, local rewrites, or files present only in `<skill-root>` are committed/non-git customizations that would be clobbered (a file present only on the current side could instead be one upstream *removed* this release rather than a local addition — when unsure, surface it rather than assume). Surface them to the user and require explicit confirmation before proceeding. If the diff is only the expected upstream update, keep `$UPDATE_TMP`, `$UPSTREAM_TARBALL`, and `$FRESH_UPSTREAM` for Steps 5-6; do not re-download a different archive.
+     This diff includes legitimate upstream release changes, so don't treat every hunk as a blocker. Scan it before overwriting: current-side additions, local rewrites, or files present only in `<skill-root>` are committed/non-git customizations that would be clobbered (a file present only on the current side could instead be one upstream *removed* this release rather than a local addition — when unsure, surface it rather than assume). Surface them to the user and require explicit confirmation before proceeding. If the diff is only the expected upstream update, keep `$UPDATE_TMP`, `$UPSTREAM_TARBALL`, and `$FRESH_UPSTREAM` for Steps 5-6; do not re-download a different archive. (The `-x queue-kanban` flag skips the compiled `tools/queue-kanban/queue-kanban` binary — it's a gitignored build artifact that only exists on the current side, so without the exclusion it would surface as a phantom local customization on every update.)
    - **If any shipped skill files are dirty / have local modifications**: Stop and warn the user. List the modified files and ask for explicit confirmation before proceeding. Do NOT auto-update.
    - **If no local customizations are present**: Proceed to step 4 (snapshot + pre-clean) then step 5 (extract).
 4. **Snapshot for rollback, then pre-clean discoverable directories.** First make the overwrite recoverable: a git-repo install already is (Step 3 confirmed a clean tree, so `git -C <skill-root> restore <file>` undoes any clobber after the fact); for a **non-git** install, copy the tree first — `cp -R <skill-root> <skill-root>.preupdate-bak`. Then pre-clean. `prompts/` and `interviews/` are upstream-controlled — their contents are owned by this skill, not the consuming project. `do-work prompts list` and `do-work interview list` glob `prompts/*.md` and `interviews/*.md`, so any upstream-removed file that stays on disk will still appear as a live workflow. The dirty check in step 3 has already confirmed these are clean, so removing the tracked `.md` files here is safe and the tar extraction will restore them fresh:

@@ -86,7 +86,11 @@ Pipeline state lives at `do-work/pipeline.json`. Each step dispatches to an exis
 
 Run `do-work help` for the full menu. Per-action guides live in [`docs/`](./docs/).
 
-Common ones: `verify-requests`, `review-work`, `validate-feedback`, `clarify`, `code-review`, `ui-review`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `present-work`, `commit`, `inspect`, `cleanup`, `forensics`, `roadmap`, `stray-check`, `bkb`, `dream`, `interview`, `prompts`, `install ui-design`, `install bowser`, `version`, `update`, `recap`, `tutorial`, `help`.
+Common ones: `verify-requests`, `review-work`, `validate-feedback`, `clarify`, `code-review`, `ui-review`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `present-work`, `commit`, `inspect`, `cleanup`, `forensics`, `roadmap`, `board`, `stray-check`, `bkb`, `dream`, `interview`, `prompts`, `install ui-design`, `install bowser`, `version`, `update`, `recap`, `tutorial`, `help`.
+
+### Queue board (`do-work board`)
+
+`do-work board` builds and runs a small Go tool (`tools/queue-kanban/`, shipped with the skill) that renders your `do-work/` queue as a live Kanban board + completion calendar. `do-work board` serves it at `http://localhost:8090`; `do-work board static` writes a self-contained HTML snapshot you can hand off; `do-work board summary` prints column counts. It's a read-only viewer and it's the one part of the skill that needs the **Go toolchain**. Because the tool ships inside the skill, `do-work update` keeps it current — no separate install.
 
 ## File structure
 

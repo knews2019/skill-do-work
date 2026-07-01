@@ -20,9 +20,9 @@ confidence: high
 
 ## Status
 
-- State: complete for the bootstrap pass plus ADR-011/012 (interview framework), ADR-013 (distribution hardening), and ADR-014 (declined: autonomous loop-until-done / ultracode-fable workflow).
-- Last updated: 2026-06-29.
-- Next ADR number: `ADR-015`.
+- State: complete for the bootstrap pass plus ADR-011/012 (interview framework), ADR-013 (distribution hardening), ADR-014 (declined: autonomous loop-until-done / ultracode-fable workflow), ADR-015 (maintenance-crew load marker), and ADR-016 (queue-kanban vendored into the skill).
+- Last updated: 2026-07-01.
+- Next ADR number: `ADR-017`.
 
 ## Completed Scope
 
@@ -46,6 +46,8 @@ confidence: high
 - [x] ADR-012 — [[adr-012-interview-v2-gap-closure]]
 - [x] ADR-013 — [[adr-013-harden-the-vendored-skill-distribution-model]]
 - [x] ADR-014 — [[adr-014-considered-declined-autonomous-loop-until-done]] (declined)
+- [x] ADR-015 — [[adr-015-load-maintenance-crew-via-req-marker]]
+- [x] ADR-016 — [[adr-016-vendor-queue-kanban-into-the-skill]]
 
 ## Resume Notes
 

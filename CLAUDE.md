@@ -14,6 +14,7 @@ prompts/              # Reusable prompt library (see prompts/README.md for the a
 interviews/           # Prescriptive templates loaded by the interview action
 crew-members/         # Agent rules loaded just-in-time — each file's JIT_CONTEXT comment states when it loads
 hooks/                # Optional hook scripts (platform-specific, installable; hooks.json + shell scripts)
+tools/                # Shipped compiled tooling — queue-kanban/ (standalone Go module) renders the do-work queue as a Kanban board; built on demand via `do-work board`
 docs/                 # User guides for the most commonly used actions — not every action has one
 decisions/            # Architecture decisions — ADRs (records/), imported specs, topic indexes, decision log
 AGENTS.md             # Stub — redirects to CLAUDE.md
@@ -127,6 +128,15 @@ Just-in-time rules live in `crew-members/[name].md`. Each file's `JIT_CONTEXT` c
 ## Queue Path Convention
 
 Pending REQ files live in `do-work/queue/`. When referencing the queue in action files, always use `do-work/queue/` — not `do-work/` root.
+
+## Shipped Tooling (`tools/`)
+
+`tools/queue-kanban/` is a standalone Go module (its own `go.mod`, embedded `web/` frontend) that renders the `do-work/` queue as a Kanban board. It ships in the tarball (it is **not** `export-ignore`'d) so `do-work update` carries it into every consumer; the `do-work board` action (`actions/board.md`) builds and runs it. Conventions:
+
+- **Versioning is folded into the skill.** The tool has no independent changelog — its changes get entries in the root `CHANGELOG.md` and a normal skill version bump, exactly like any action. (It was independently versioned through 1.1.0 before being vendored in; that history lives in `decisions/records/adr-016-*`.)
+- **Keep the parser in lock-step with the schema.** The board buckets tickets by the `status`/`depends_on`/`domain` vocabularies defined in `actions/work-reference.md`'s Schema Read Contract. Any change to that contract must be mirrored in `tools/queue-kanban/model.go` (and vice-versa) in the same commit — co-location is the whole point.
+- **Toolchain exception to "design for the floor."** The board is the one capability that needs a compiler (Go, per `tools/queue-kanban/go.mod`). `actions/board.md` precondition-checks `go` and degrades gracefully when it's absent — it never blocks the rest of the skill. Don't reach for a compiled tool in any other action.
+- **Never commit build outputs.** The compiled `queue-kanban` binary is gitignored by `tools/queue-kanban/.gitignore` (which ships, keeping it ignored downstream); the `do-work board static` artifact lands in `build/` at the repo root.
 
 ## Lessons → Knowledge Base Handoff
 
