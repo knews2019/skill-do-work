@@ -1,6 +1,6 @@
 # Install Action
 
-> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports two targets: `ui-design` (frontend-design skill) and `bowser` (Playwright CLI + Bowser skill for browser automation).
+> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports three targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), and `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless).
 
 Each target is idempotent — running it when the target is already present is a no-op. The action dispatches on the first argument; everything else (detect → install → verify → report) follows the same shape.
 
@@ -11,6 +11,7 @@ Each target is idempotent — running it when the target is already present is a
 - A `ui-review` pass flagged "frontend-design skill not installed" or "visual verification skipped" — install the missing piece.
 - A `domain: ui-design` REQ is about to be built and the builder would benefit from skill-level design knowledge (`install ui-design`).
 - The user asked for headed-browser workflows, screenshots, or visual verification (`install bowser`).
+- The user asked for social research, trend scanning, or "what's the discourse on X" capabilities (`install last30days`).
 
 **Do NOT use when:**
 - The target is already installed (Step 1 of the matching workflow detects this and exits).
@@ -23,6 +24,7 @@ Each target is idempotent — running it when the target is already present is a
 
 - `ui-design` — Install Anthropic's `frontend-design` skill for production-grade UI design capabilities.
 - `bowser` — Install Playwright CLI (global) plus the Bowser skill (project-scoped) for browser automation, screenshots, and visual UI verification.
+- `last30days` — Vendor the engagement-ranked social-research engine (project-scoped, git-ignored, keyless).
 
 If `$ARGUMENTS` is empty or doesn't match a known target, print the help block (target list + one-line blurb each) and stop.
 
@@ -34,6 +36,7 @@ Every target follows the same four-step shape (detect → install → verify →
 |--------|------------|-------------|------------|-------|
 | `ui-design` | `ls "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" 2>/dev/null` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
 | `bowser` | `playwright-cli --help >/dev/null 2>&1 && ls "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" 2>/dev/null` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
+| `last30days` | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | (multi-step — see `last30days` workflow below) | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | Engagement-ranked social-research engine — Reddit/HN/Polymarket/GitHub/YouTube keyless out of the box; X/TikTok/Instagram unlock only via user-global API keys. |
 
 In every command above, resolve `PROJECT_ROOT` first:
 
@@ -50,7 +53,7 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 ### Step 2: Run the target's workflow
 
-Each workflow follows the same four phases. The `ui-design` workflow uses the manifest commands directly. The `bowser` workflow has multi-part install/verify and is spelled out below.
+Each workflow follows the same four-step shape. The `ui-design` workflow uses the manifest commands directly. The `bowser` and `last30days` workflows have multi-part installs and are spelled out below.
 
 ---
 
@@ -169,6 +172,100 @@ To use directly: playwright-cli -s=my-session open https://example.com --persist
 
 ---
 
+## Workflow: `last30days`
+
+The `last30days` target vendors the engagement-ranked social-research engine (https://github.com/mvanhorn/last30days-skill) into the project as a git-ignored, keyless drop. Reddit, Hacker News, Polymarket, GitHub, and YouTube work with no API keys; X/TikTok/Instagram unlock only via user-global keys — never via project files.
+
+#### Phase 1: Check if already installed
+
+Run the full guarantee check from Phase 3 (same commands — skill file, `.gitignore` coverage, project config, `uv`). The install promises all four; detecting on the skill file alone would let a half-completed prior run masquerade as installed.
+
+- **All checks pass** (gitignore counts as passing when the project isn't a git repo) → report "already installed" and stop.
+- **Skill file present but another guarantee failed** → a prior run half-completed. Proceed to Phase 2 in *repair mode*: skip the clone/copy and run only the additive steps (`.gitignore` append, config write, `mkdir -p`) — each is guarded, so re-running is safe.
+- **Skill file missing** → run Phase 2 in full.
+
+#### Phase 2: Vendor the skill + write the keyless project config
+
+The upstream repo keeps the actual skill at `skills/last30days/` (self-contained: `SKILL.md` + `scripts/` + `agents/` + `assets/` + `references/`). Shallow-clone to a temp dir, copy only that subdirectory, discard the clone — skipped in repair mode, since the skill file already exists:
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+if [ ! -s "$PROJECT_ROOT/.claude/skills/last30days/SKILL.md" ]; then
+  CLONE_DIR="$(mktemp -d)"
+  git clone --depth 1 https://github.com/mvanhorn/last30days-skill "$CLONE_DIR"
+  mkdir -p "$PROJECT_ROOT/.claude/skills"
+  cp -R "$CLONE_DIR/skills/last30days" "$PROJECT_ROOT/.claude/skills/last30days"
+  rm -rf "$CLONE_DIR"
+fi
+```
+
+If the directory exists but `SKILL.md` is missing or empty, that's a broken partial copy — confirm with the user, remove the directory, and re-run the block. Don't `cp -R` over an existing directory: it nests a second `last30days/` inside instead of merging.
+
+Then make the git-ignore claim true — the vendored engine is ~15 MB of upstream Python that must never become committable in the consuming repo. If the project is a git repo and the path isn't already ignored, append it:
+
+```bash
+if git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  git -C "$PROJECT_ROOT" check-ignore -q .claude/skills/last30days/SKILL.md || \
+    printf '\n.claude/skills/last30days/\n' >> "$PROJECT_ROOT/.gitignore"
+fi
+```
+
+Then, **only if it doesn't already exist** (never overwrite an edited one), write a keyless project config, and create the memory dir so it exists before first run:
+
+```bash
+if [ ! -f "$PROJECT_ROOT/.claude/last30days.env" ]; then
+  cat > "$PROJECT_ROOT/.claude/last30days.env" <<EOF
+LAST30DAYS_TRUST_PROJECT_CONFIG=1
+LAST30DAYS_MEMORY_DIR=$PROJECT_ROOT/do-work/working/last30days
+LAST30DAYS_DEFAULT_EMIT=compact
+EOF
+fi
+mkdir -p "$PROJECT_ROOT/do-work/working/last30days"
+```
+
+Two hard constraints on this phase:
+
+- **Never write an API key into `.claude/last30days.env`.** That file is a non-secret config in a tracked repo. Real keys (for X/TikTok/Instagram) belong only in the user-global `~/.config/last30days/.env`, which the engine reads on its own.
+- **Reject the global install paths.** Upstream documents `npx skills add … -g` and `/plugin marketplace add` — both write to `~/.claude`, which this skill's norms avoid. The vendored project copy above is the only supported install.
+
+#### Phase 3: Verify
+
+Check every guarantee the workflow promises, one line per component (this is also the Phase 1 detect check):
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+test -s "$PROJECT_ROOT/.claude/skills/last30days/SKILL.md" && echo "skill file: OK" || echo "skill file: FAILED"
+if git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  git -C "$PROJECT_ROOT" check-ignore -q .claude/skills/last30days/SKILL.md && echo "gitignore: OK" || echo "gitignore: FAILED"
+else
+  echo "gitignore: n/a (not a git repo)"
+fi
+test -f "$PROJECT_ROOT/.claude/last30days.env" && echo "project config: OK" || echo "project config: FAILED"
+command -v uv >/dev/null && echo "uv toolchain: OK" || echo "uv toolchain: FAILED"
+```
+
+Report "Installed successfully" only when no line prints FAILED. The engine runs via `uv run`, so a missing `uv` toolchain is a real failure, not a warning — report the install as failed and name `uv` as the missing piece. A FAILED gitignore line means the vendored ~15 MB is committable in the consuming repo — that's a broken install even though the engine itself would run.
+
+#### Phase 4: Report back
+
+```
+Installed: last30days skill (vendored)
+
+Destination: <project-root>/.claude/skills/last30days/ (git-ignored, keyless)
+
+- Auto-discovers as the /last30days slash command.
+- Reddit, Hacker News, Polymarket, GitHub, and YouTube work with no API keys.
+- X/TikTok/Instagram need keys in the user-global ~/.config/last30days/.env
+  — never in project files.
+- Research memory lands in do-work/working/last30days/.
+
+Usage doctrine — when it's appropriate to invoke and what NOT to use it
+for — is this project's responsibility to document. Add it wherever the
+project keeps its action-usage docs.
+```
+
+---
+
 ## Help Block (no/unknown target)
 
 When `$ARGUMENTS` is empty or doesn't match a known target, print:
@@ -178,6 +275,7 @@ install — install companion skills/tooling into the current project
 
   do-work install ui-design   Anthropic's frontend-design skill for production-grade UI
   do-work install bowser      Playwright CLI + Bowser skill for browser automation
+  do-work install last30days  Engagement-ranked social-research engine (vendored, keyless)
 ```
 
 Then stop.
@@ -186,6 +284,7 @@ Then stop.
 
 - **`ui-design`**: a short status line — "already installed", "installed successfully", or an error describing what failed and how to finish manually.
 - **`bowser`**: a two-line status — one for `playwright-cli`, one for the Bowser skill. Each is either "OK" (installed and verified), "already installed" (detected in Phase 1), or an error with the exact command the user can re-run.
+- **`last30days`**: a per-guarantee status (skill file, `.gitignore` coverage, project config, `uv` toolchain) — "already installed" only when every guarantee holds; otherwise "installed successfully" with the destination path, or the FAILED line(s) and the exact command the user can re-run.
 - **Unknown / missing target**: the help block above.
 
 ## Rules
@@ -195,6 +294,8 @@ Then stop.
 - **Never overwrite an existing skill `SKILL.md`.** Phase 1 of each workflow is the gate. If the file is present, stop.
 - **Only Chromium by default (bowser).** Other browsers bloat install time and aren't needed for ui-review's default flow.
 - **Don't silently substitute a different skill or repo.** If the upstream URL fails, report the error — don't download a similarly-named skill from elsewhere.
+- **Keyless in the project (last30days).** `$PROJECT_ROOT/.claude/last30days.env` never contains API keys — real keys live only in the user-global `~/.config/last30days/.env`. Never write a secret into any file inside the repo.
+- **The vendor drop must be git-ignored (last30days).** Phase 2 appends `.claude/skills/last30days/` to `.gitignore` when it isn't already covered — ~15 MB of upstream Python must never become committable in the consuming repo.
 - **One target per invocation.** If the user wants both, they run two separate commands. The action never chains targets.
 
 ## Common Rationalizations
@@ -206,6 +307,8 @@ Then stop.
 | "The user wanted UI help, I should install both targets while I'm here" | Stop after the requested target; mention the other as a next step if relevant | Each install target has a single, documented scope |
 | "I'll install all three browsers to be safe (bowser)" | Install only Chromium; mention the manual command for the others | Firefox + WebKit roughly triple the install time and disk use, for a feature ui-review doesn't need |
 | "npm install failed, I'll try yarn and pnpm and bun until something works (bowser)" | Try npm, then yarn; if both fail, stop and report | Quiet package-manager shopping leaves the user unsure what got installed |
+| "Upstream's README says `npx skills add … -g` — I'll just follow upstream (last30days)" | Vendor into `$PROJECT_ROOT/.claude/skills/last30days/` per the workflow | Both `-g` and `/plugin marketplace add` write to `~/.claude`, which this skill never touches |
+| "The user gave me an X API key — I'll put it in `.claude/last30days.env` so it works right away" | Direct them to `~/.config/last30days/.env`; keep the project config keyless | The project env is a non-secret file in a tracked repo — a key there leaks on the next commit |
 
 ## Red Flags
 
@@ -215,6 +318,9 @@ Then stop.
 - `git rev-parse --show-toplevel` fails (not in a git repo) and you installed into `pwd` — acceptable, but warn the user the path may drift if they `cd` elsewhere.
 - (bowser) `playwright-cli --help` succeeds but `playwright-cli install` fails silently — browsers aren't actually installed; headless runs will error later.
 - (bowser) You installed `playwright-cli` into a project-local `node_modules` instead of globally — the CLI won't be on PATH for other sessions.
+- (last30days) `git status` in the consuming repo shows `.claude/skills/last30days/` as addable — the `.gitignore` append was skipped or mismatched; fix it before anything gets committed.
+- (last30days) `.claude/last30days.env` contains anything that looks like a credential — remove it and move the key to the user-global `~/.config/last30days/.env`.
+- (last30days) Verify failed on `command -v uv` — the engine can't run via `uv run`; treat it as a failed install, not a soft warning.
 
 ## Verification Checklist
 
@@ -222,5 +328,6 @@ Then stop.
 - [ ] Phase 1 detected an existing install and stopped, OR Phase 2+ ran the fetch/install commands.
 - [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty.
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
+- [ ] (last30days only) `uv` is on PATH, `.claude/skills/last30days/` is covered by `.gitignore`, and `.claude/last30days.env` contains no API keys.
 - [ ] The report names the destination path so the user can verify location.
-- [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (and, for `bowser`, the global npm install).
+- [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the documented `.gitignore` append, `.claude/last30days.env`, and `do-work/working/last30days/`).

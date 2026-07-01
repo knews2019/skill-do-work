@@ -157,9 +157,9 @@ Next steps:
 **After install (any target):**
 ```
 Next steps:
-  do-work ui-review [scope]                    Validate UI quality (now with skill/visual verification)
-  do-work install [other target]               Install the companion piece (ui-design ↔ bowser)
-  do-work capture-request: [describe UI work]  Capture a UI-design request
+  do-work ui-review [scope]                    Validate UI quality (ui-design/bowser installs — skill/visual verification)
+  do-work install [other target]               Install another target (ui-design, bowser, last30days)
+  do-work capture-request: [describe work]     Capture a request that uses the new capability
 ```
 
 **After prime create:**

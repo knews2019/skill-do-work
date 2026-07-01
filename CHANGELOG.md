@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.101.0 — The Trend Scout (2026-07-01)
+
+`do-work install` gains a third target: `last30days`, the engagement-ranked social-research engine, vendored straight into the consuming project — keyless, git-ignored, and never touching `~/.claude`.
+
+- **New `install last30days` target** — shallow-clones github.com/mvanhorn/last30days-skill, copies just the self-contained `skills/last30days/` subtree into `<project-root>/.claude/skills/last30days/`, and discards the clone. Auto-discovers as the `/last30days` slash command; Reddit/HN/Polymarket/GitHub/YouTube work with no keys.
+- **Keyless by design** — the project config (`.claude/last30days.env`) carries only non-secret settings plus a `do-work/working/last30days/` memory dir; X/TikTok/Instagram keys belong only in the user-global `~/.config/last30days/.env`. Upstream's `-g` and `/plugin marketplace` install paths are explicitly rejected since both write to `~/.claude`.
+- **Git-ignored vendor drop, verified end to end** — the ~15 MB of upstream Python gets an automatic `.gitignore` entry so it can never become committable, and both detect and verify gate on the full guarantee set (skill file, gitignore coverage, project config, `uv` toolchain — the engine runs via `uv run`). A half-completed prior install gets repaired additively instead of masquerading as installed.
+
 ## 0.100.0 — The Board Room (2026-07-01)
 
 The `queue-kanban` board now ships inside the skill, so `do-work update` carries it into every repo alongside the skill files — no more per-repo copy-install that kept drifting into divergent versions. A new `do-work board` action builds and runs it for you.
