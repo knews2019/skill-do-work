@@ -99,13 +99,24 @@
       </section>
     </main>
 
-    <!-- Card detail drawer -->
-    <div class="detail-overlay" id="detail-overlay" hidden></div>
+    <!-- Divider between the board and the docked detail panel. Drag it (or use
+         arrow keys while it has focus) to resize the panel; double-click resets
+         the width. Width limits live in board.js next to the drag logic. -->
+    <div
+      class="detail-resizer"
+      id="detail-resizer"
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize the detail panel"
+      aria-valuemin="360"
+      tabindex="0"
+      hidden
+    ></div>
+
+    <!-- Card detail panel — docked beside the board, not a modal overlay -->
     <aside
       class="detail-drawer"
       id="detail-drawer"
-      role="dialog"
-      aria-modal="true"
       aria-labelledby="detail-drawer-title"
       hidden
       tabindex="-1"

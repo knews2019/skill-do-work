@@ -6,11 +6,11 @@
    neutral ink on a deep, slightly cool ground.
    =========================================================================== */
 
-/* The board toggles visibility through the `hidden` attribute (drawer, overlay,
-   calendar/board panels, the By-UR lens). Component rules set `display: flex`
-   etc., which would otherwise override the user-agent `[hidden] { display: none }`
-   and leave those elements visible on load. This guard keeps `hidden`
-   authoritative for every toggled element. */
+/* The board toggles visibility through the `hidden` attribute (detail panel,
+   its resizer, calendar/board panels, the By-UR lens). Component rules set
+   `display: flex` etc., which would otherwise override the user-agent
+   `[hidden] { display: none }` and leave those elements visible on load. This
+   guard keeps `hidden` authoritative for every toggled element. */
 [hidden] {
   display: none !important;
 }
@@ -60,7 +60,6 @@
   --radius-chip: 6px;
   --radius-pill: 999px;
 
-  --shadow-drawer: -24px 0 60px rgba(0, 0, 0, 0.55);
   --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.28);
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
@@ -69,6 +68,11 @@
     monospace;
 
   --topbar-height: 68px;
+
+  /* Width of the docked detail panel. board.js updates this custom property as
+     the user drags the resizer (and restores a persisted value on load); the
+     clamp() in .detail-drawer keeps any value sane for the current viewport. */
+  --detail-panel-width: 620px;
 }
 
 /* ---------------------------------------------------------------------------
@@ -80,8 +84,7 @@
    explicit override (it has a hardcoded translucent dark fill, and its controls
    are token-driven so they re-tone automatically once the bar is light); that
    rule lives at the END of this file so it wins on source order over the base
-   `.board-topbar`. The modal scrim is intentionally left dark in both schemes —
-   a dark dim correctly focuses the drawer over a light board too.
+   `.board-topbar`.
    --------------------------------------------------------------------------- */
 @media (prefers-color-scheme: light) {
   :root {
@@ -120,7 +123,6 @@
     --tint-ur: rgba(122, 89, 189, 0.14);
 
     /* Shadows — soft and slate-tinted; faint top highlight instead of dark. */
-    --shadow-drawer: -24px 0 60px rgba(17, 24, 39, 0.16);
     --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.7), 0 6px 18px rgba(17, 24, 39, 0.09);
   }
 }
@@ -135,6 +137,11 @@ body {
   height: 100%;
 }
 
+/* The page is a fixed grid: top bar across the top, then board | resizer |
+   detail panel side by side (Jira-style split). The board — not the page — is
+   the scroll container, so opening or resizing the panel never hides content
+   behind an overlay; the board simply gets narrower. When the panel is hidden
+   its two columns collapse to zero and the board spans the full width. */
 body {
   background-color: var(--bg-base);
   color: var(--ink-base);
@@ -143,6 +150,17 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  overflow: hidden;
+}
+
+/* While the divider is being dragged: keep the col-resize cursor everywhere and
+   stop the drag from selecting board text. board.js toggles this class. */
+body.is-resizing-detail {
+  cursor: col-resize;
+  user-select: none;
 }
 
 .skip-link {
@@ -164,8 +182,7 @@ body {
    -------------------------------------------------------------------------- */
 
 .board-topbar {
-  position: sticky;
-  top: 0;
+  grid-column: 1 / -1;
   z-index: 30;
   display: flex;
   align-items: center;
@@ -272,8 +289,17 @@ body {
    -------------------------------------------------------------------------- */
 
 .board-main {
+  grid-row: 2;
+  grid-column: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
   padding: 24px 28px 56px;
   outline: none;
+  /* The board is a size container so the kanban columns can respond to the
+     width the detail panel leaves them, not to the viewport — see the
+     @container rules in the responsive section. */
+  container-type: inline-size;
 }
 
 /* Data warnings banner (duplicate REQ ids, unrecognized statuses) — rendered
@@ -666,8 +692,10 @@ body {
 }
 
 .calendar-day-label {
+  /* Sticks within .board-main (the scroll container), which starts below the
+     top bar — so no top-bar offset is needed here. */
   position: sticky;
-  top: calc(var(--topbar-height) + 16px);
+  top: 16px;
   align-self: start;
   display: flex;
   flex-direction: column;
@@ -736,32 +764,59 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Detail drawer
+   Detail panel — docked beside the board with a draggable divider (like Jira's
+   issue split view), not a modal overlay. The board keeps working while it is
+   open; the divider adjusts how the width is shared.
    -------------------------------------------------------------------------- */
 
-.detail-overlay {
-  position: fixed;
-  inset: 0;
-  background-color: rgba(6, 7, 9, 0.62);
-  z-index: 40;
-  animation: overlay-in 140ms ease;
+.detail-resizer {
+  grid-row: 2;
+  grid-column: 2;
+  width: 10px;
+  cursor: col-resize;
+  /* Let pointer events own touch drags instead of scrolling the page. */
+  touch-action: none;
+  position: relative;
+  background: transparent;
+  transition: background-color 120ms ease;
 }
-@keyframes overlay-in {
-  from {
-    opacity: 0;
-  }
+.detail-resizer:hover,
+.detail-resizer:focus-visible,
+body.is-resizing-detail .detail-resizer {
+  background-color: var(--tint-claimed);
+}
+.detail-resizer:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: -2px;
+}
+/* Centered grab pill — the always-visible affordance that this edge drags. */
+.detail-resizer::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 36px;
+  border-radius: 3px;
+  background-color: var(--line-bright);
+}
+.detail-resizer:hover::before,
+.detail-resizer:focus-visible::before,
+body.is-resizing-detail .detail-resizer::before {
+  background-color: var(--accent-claimed);
 }
 
 .detail-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  z-index: 41;
-  height: 100%;
-  width: min(620px, 94vw);
+  grid-row: 2;
+  grid-column: 3;
+  min-height: 0;
+  /* The custom property is set by the resizer drag; the clamp keeps any stored
+     or dragged value inside [minimum panel, viewport minus visible board]. The
+     360px/340px bounds mirror the constants in board.js. */
+  width: clamp(360px, var(--detail-panel-width), calc(100vw - 340px));
   background-color: var(--surface-1);
   border-left: 1px solid var(--line-firm);
-  box-shadow: var(--shadow-drawer);
   display: flex;
   flex-direction: column;
   padding: 22px 26px 32px;
@@ -972,11 +1027,22 @@ body {
 
 /* --------------------------------------------------------------------------
    Responsive — hold up down to a laptop width, then degrade gracefully.
+
+   The kanban columns respond to the BOARD's width (container queries against
+   .board-main), not the viewport — opening or widening the detail panel
+   narrows the board, and the columns re-wrap exactly as if the window itself
+   had shrunk.
    -------------------------------------------------------------------------- */
 
-@media (max-width: 1180px) {
+@container (max-width: 1120px) {
   .kanban-columns {
     grid-template-columns: repeat(2, minmax(240px, 1fr));
+  }
+}
+
+@container (max-width: 560px) {
+  .kanban-columns {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -988,9 +1054,6 @@ body {
   }
   .board-controls {
     justify-content: flex-start;
-  }
-  .kanban-columns {
-    grid-template-columns: 1fr;
   }
   .calendar-day {
     grid-template-columns: 1fr;
@@ -1004,6 +1067,18 @@ body {
   }
   .board-main {
     padding: 18px 16px 48px;
+  }
+  /* Too narrow for a split view: the panel takes the whole screen and the
+     divider disappears (the Close button and Escape still dismiss it). */
+  .detail-resizer {
+    display: none !important;
+  }
+  .detail-drawer {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    z-index: 40;
+    border-left: 0;
   }
 }
 

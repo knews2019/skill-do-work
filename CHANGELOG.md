@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.105.0 — The Split View (2026-07-02)
+
+The kanban board's card detail is no longer a modal overlay — it docks beside the board Jira-style, with a draggable divider so you can make the details as wide as you like. The board stays live while it's open.
+
+- Drag the divider to resize (arrow keys work when it's focused; double-click resets; width persists across reloads via localStorage)
+- No more scrim or focus trap: switch lenses, change the recently-done window, or open another card while the panel is up; Escape and Close still dismiss it
+- Kanban columns now respond to the board's own width via container queries, so they re-wrap as the panel grows instead of overflowing
+- Under 760px the panel falls back to full-screen (no divider) — same Close/Escape to dismiss
+
 ## 0.104.1 — The Field Notes (2026-07-02)
 
 REQ-017's archival lesson lands in the kanban prime, inline per the new no-archive-links convention.

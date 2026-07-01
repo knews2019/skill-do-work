@@ -2,7 +2,7 @@
    queue-kanban — static board behaviour
    Reads the embedded JSON data island and renders every view client-side, with
    zero network. No framework: plain DOM construction, event delegation, and a
-   small focus-managed detail drawer.
+   docked detail panel with a drag-to-resize divider.
    =========================================================================== */
 (function () {
   "use strict";
@@ -307,9 +307,9 @@
     return section;
   }
 
-  // ---- detail drawer ------------------------------------------------------
+  // ---- detail panel (docked beside the board, non-modal) -------------------
 
-  var overlay = document.getElementById("detail-overlay");
+  var detailResizer = document.getElementById("detail-resizer");
   var drawer = document.getElementById("detail-drawer");
   var drawerKind = document.getElementById("detail-kind");
   var drawerId = document.getElementById("detail-id");
@@ -400,59 +400,32 @@
     if (drawer.hidden) {
       lastFocusedElement = document.activeElement;
     }
-    overlay.hidden = false;
     drawer.hidden = false;
+    detailResizer.hidden = false;
     drawerBody.scrollTop = 0;
     drawer.scrollTop = 0;
-    document.body.style.overflow = "hidden";
     drawer.focus();
-    document.addEventListener("keydown", onDrawerKeydown, true);
+    document.addEventListener("keydown", onDetailPanelKeydown, true);
   }
 
   function closeDrawer() {
     if (drawer.hidden) {
       return;
     }
-    overlay.hidden = true;
     drawer.hidden = true;
-    document.body.style.overflow = "";
-    document.removeEventListener("keydown", onDrawerKeydown, true);
+    detailResizer.hidden = true;
+    document.removeEventListener("keydown", onDetailPanelKeydown, true);
     if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
       lastFocusedElement.focus();
     }
   }
 
-  function onDrawerKeydown(keyEvent) {
+  // The panel is docked, not modal — the board stays interactive, so there is
+  // no focus trap and no scrim. Escape still dismisses it from anywhere.
+  function onDetailPanelKeydown(keyEvent) {
     if (keyEvent.key === "Escape") {
       keyEvent.preventDefault();
       closeDrawer();
-      return;
-    }
-    if (keyEvent.key === "Tab") {
-      trapFocus(keyEvent);
-    }
-  }
-
-  function trapFocus(keyEvent) {
-    // Disabled inputs must be excluded like disabled buttons: goldmark renders
-    // GFM task-list items ("- [ ]") as disabled checkbox inputs, and a disabled
-    // element can never be document.activeElement — if it were selected as
-    // first/last, the wrap condition would never fire and Tab would escape the
-    // aria-modal drawer.
-    var focusable = drawer.querySelectorAll(
-      'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
-    );
-    if (focusable.length === 0) {
-      return;
-    }
-    var first = focusable[0];
-    var last = focusable[focusable.length - 1];
-    if (keyEvent.shiftKey && document.activeElement === first) {
-      keyEvent.preventDefault();
-      last.focus();
-    } else if (!keyEvent.shiftKey && document.activeElement === last) {
-      keyEvent.preventDefault();
-      first.focus();
     }
   }
 
@@ -463,6 +436,103 @@
       openRequestDetail(id);
     }
   }
+
+  // ---- detail panel resizing ------------------------------------------------
+  // The divider drags like Jira's issue split view: pointer capture for
+  // mouse/touch, arrow keys while focused, double-click to reset. The width
+  // lives in the --detail-panel-width custom property so CSS grid does the
+  // layout, and it persists across reloads via localStorage (best-effort —
+  // a denied storage context only loses persistence, never the resize).
+
+  var detailPanelDefaultWidthPx = 620;
+  var detailPanelMinWidthPx = 360; // mirrored by the clamp() in board.css
+  var boardMinVisibleWidthPx = 340; // never let the panel push the board below this
+  var detailPanelWidthStorageKey = "queueKanbanDetailPanelWidthPx";
+  var detailResizeState = null;
+
+  function applyDetailPanelWidth(candidateWidthPx) {
+    var maxWidthPx = Math.max(detailPanelMinWidthPx, window.innerWidth - boardMinVisibleWidthPx);
+    var clampedWidthPx = Math.min(Math.max(candidateWidthPx, detailPanelMinWidthPx), maxWidthPx);
+    document.documentElement.style.setProperty("--detail-panel-width", clampedWidthPx + "px");
+    detailResizer.setAttribute("aria-valuenow", String(Math.round(clampedWidthPx)));
+    detailResizer.setAttribute("aria-valuemax", String(Math.round(maxWidthPx)));
+    return clampedWidthPx;
+  }
+
+  function persistDetailPanelWidth(widthPx) {
+    try {
+      localStorage.setItem(detailPanelWidthStorageKey, String(Math.round(widthPx)));
+    } catch (storageError) {
+      // Persistence is best-effort; the in-page resize already applied.
+    }
+  }
+
+  (function restoreDetailPanelWidth() {
+    var storedWidthPx = NaN;
+    try {
+      storedWidthPx = parseFloat(localStorage.getItem(detailPanelWidthStorageKey));
+    } catch (storageError) {
+      // Fall through to the stylesheet default.
+    }
+    if (!isNaN(storedWidthPx)) {
+      applyDetailPanelWidth(storedWidthPx);
+    }
+  })();
+
+  detailResizer.addEventListener("pointerdown", function (pointerEvent) {
+    detailResizeState = {
+      pointerId: pointerEvent.pointerId,
+      startClientX: pointerEvent.clientX,
+      startWidthPx: drawer.getBoundingClientRect().width
+    };
+    detailResizer.setPointerCapture(pointerEvent.pointerId);
+    document.body.classList.add("is-resizing-detail");
+    pointerEvent.preventDefault();
+  });
+
+  detailResizer.addEventListener("pointermove", function (pointerEvent) {
+    if (!detailResizeState || pointerEvent.pointerId !== detailResizeState.pointerId) {
+      return;
+    }
+    // The panel sits on the right, so dragging the divider left grows it.
+    applyDetailPanelWidth(
+      detailResizeState.startWidthPx + (detailResizeState.startClientX - pointerEvent.clientX)
+    );
+  });
+
+  function endDetailPanelResize(pointerEvent) {
+    if (!detailResizeState || pointerEvent.pointerId !== detailResizeState.pointerId) {
+      return;
+    }
+    detailResizeState = null;
+    document.body.classList.remove("is-resizing-detail");
+    persistDetailPanelWidth(drawer.getBoundingClientRect().width);
+  }
+  detailResizer.addEventListener("pointerup", endDetailPanelResize);
+  detailResizer.addEventListener("pointercancel", endDetailPanelResize);
+
+  detailResizer.addEventListener("dblclick", function () {
+    persistDetailPanelWidth(applyDetailPanelWidth(detailPanelDefaultWidthPx));
+  });
+
+  detailResizer.addEventListener("keydown", function (keyEvent) {
+    var stepPx = keyEvent.shiftKey ? 64 : 16;
+    var currentWidthPx = drawer.getBoundingClientRect().width;
+    var nextWidthPx = null;
+    if (keyEvent.key === "ArrowLeft") {
+      nextWidthPx = currentWidthPx + stepPx; // divider moves left → panel grows
+    } else if (keyEvent.key === "ArrowRight") {
+      nextWidthPx = currentWidthPx - stepPx;
+    } else if (keyEvent.key === "Home") {
+      nextWidthPx = detailPanelMinWidthPx;
+    } else if (keyEvent.key === "End") {
+      nextWidthPx = window.innerWidth; // applyDetailPanelWidth clamps to the max
+    }
+    if (nextWidthPx !== null) {
+      keyEvent.preventDefault();
+      persistDetailPanelWidth(applyDetailPanelWidth(nextWidthPx));
+    }
+  });
 
   // ---- view / lens / window switching ------------------------------------
 
@@ -546,7 +616,6 @@
   });
 
   document.getElementById("detail-close").addEventListener("click", closeDrawer);
-  overlay.addEventListener("click", closeDrawer);
 
   // ---- boot ---------------------------------------------------------------
 
