@@ -40,15 +40,14 @@ const boardDataJsFilename = "board-data.js"
 // the single source of truth the client-side script renders every view from, so
 // the board works with zero network once the file is open.
 type generatedBoardData struct {
-	GeneratedAt       string                          `json:"generatedAt"`
-	RecentWindowHours float64                         `json:"recentWindowHours"`
-	Columns           generatedColumns                `json:"columns"`
-	RequestOrder      []string                        `json:"requestOrder"`
-	Requests          map[string]generatedRequest     `json:"requests"`
-	UserRequestOrder  []string                        `json:"userRequestOrder"`
-	UserRequests      map[string]generatedUserRequest `json:"userRequests"`
-	Calendar          []generatedCalendarEntry        `json:"calendar"`
-	Warnings          []string                        `json:"warnings,omitempty"` // duplicate ids / unrecognized statuses — rendered as a banner
+	GeneratedAt      string                          `json:"generatedAt"`
+	Columns          generatedColumns                `json:"columns"`
+	RequestOrder     []string                        `json:"requestOrder"`
+	Requests         map[string]generatedRequest     `json:"requests"`
+	UserRequestOrder []string                        `json:"userRequestOrder"`
+	UserRequests     map[string]generatedUserRequest `json:"userRequests"`
+	Calendar         []generatedCalendarEntry        `json:"calendar"`
+	Warnings         []string                        `json:"warnings,omitempty"` // duplicate ids / unrecognized statuses — rendered as a banner
 }
 
 // generatedColumns lists the active-board buckets as REQ id slices. RecentlyDone
@@ -147,11 +146,10 @@ func generateStaticSite(outputDirectory string, board *Board) error {
 // pre-rendering every REQ and UR body to HTML along the way.
 func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 	data := generatedBoardData{
-		GeneratedAt:       formatTimestamp(board.GeneratedAt),
-		RecentWindowHours: board.RecentWindow.Hours(),
-		Warnings:          board.Warnings,
-		Requests:          map[string]generatedRequest{},
-		UserRequests:      map[string]generatedUserRequest{},
+		GeneratedAt:  formatTimestamp(board.GeneratedAt),
+		Warnings:     board.Warnings,
+		Requests:     map[string]generatedRequest{},
+		UserRequests: map[string]generatedUserRequest{},
 		Columns: generatedColumns{
 			Pending:             requestIdsOf(board.Columns.Pending),
 			Claimed:             requestIdsOf(board.Columns.Claimed),
@@ -258,24 +256,6 @@ func encodeBoardDataForJsAssignment(boardData generatedBoardData) (string, error
 	}
 	jsonText := strings.TrimRight(jsonBuffer.String(), "\n")
 	return "window.queueKanbanBoardData = " + jsonText + ";\n", nil
-}
-
-// encodeBoardDataForScriptTag marshals the data island with HTML escaping OFF
-// (so a body's `<h2>` survives verbatim into the page — the goldmark proof the
-// GREEN test greps for) and then neutralizes every `</` to `<\/`. The latter is
-// the standard "JSON inside a <script> element" guard: it keeps any `</script>`
-// inside a REQ body from prematurely closing the data island, while `\/` remains
-// a valid JSON escape that JSON.parse reads straight back to `/`.
-func encodeBoardDataForScriptTag(boardData generatedBoardData) (string, error) {
-	var jsonBuffer bytes.Buffer
-	encoder := json.NewEncoder(&jsonBuffer)
-	encoder.SetEscapeHTML(false)
-	if encodeError := encoder.Encode(boardData); encodeError != nil {
-		return "", fmt.Errorf("queue-kanban: encoding board data: %w", encodeError)
-	}
-	jsonText := strings.TrimRight(jsonBuffer.String(), "\n")
-	jsonText = strings.ReplaceAll(jsonText, "</", "<\\/")
-	return jsonText, nil
 }
 
 // requestIdsOf projects a column's tickets to their REQ ids, preserving order.

@@ -176,3 +176,39 @@ func truncateText(s string, maxLen int) string {
 	}
 	return s[:maxLen]
 }
+
+// TestResolveServeListenAddressBindsLoopbackByDefault asserts the security
+// contract from the external review: the default address and bare port numbers
+// (flag or env var) bind loopback only; LAN exposure requires an explicit
+// host:port (or the deliberate host-less ":port" all-interfaces syntax).
+func TestResolveServeListenAddressBindsLoopbackByDefault(t *testing.T) {
+	t.Setenv(kanbanServePortEnvVar, "")
+
+	addressCases := []struct {
+		flagValue   string
+		wantAddress string
+	}{
+		{"", "127.0.0.1:8090"},               // default
+		{"9000", "127.0.0.1:9000"},           // bare flag port → loopback
+		{":9000", ":9000"},                   // explicit all-interfaces syntax passes through
+		{"0.0.0.0:9000", "0.0.0.0:9000"},     // explicit host passes through
+		{"192.168.1.5:9000", "192.168.1.5:9000"},
+	}
+	for _, addressCase := range addressCases {
+		resolvedAddress := resolveServeListenAddress(addressCase.flagValue)
+		if resolvedAddress != addressCase.wantAddress {
+			t.Errorf("resolveServeListenAddress(%q) = %q, want %q",
+				addressCase.flagValue, resolvedAddress, addressCase.wantAddress)
+		}
+	}
+}
+
+// TestResolveServeListenAddressEnvVarBarePortBindsLoopback asserts the env-var
+// path applies the same loopback prefix as the flag path.
+func TestResolveServeListenAddressEnvVarBarePortBindsLoopback(t *testing.T) {
+	t.Setenv(kanbanServePortEnvVar, "9100")
+	resolvedAddress := resolveServeListenAddress("")
+	if resolvedAddress != "127.0.0.1:9100" {
+		t.Errorf("resolveServeListenAddress with bare env port = %q, want %q", resolvedAddress, "127.0.0.1:9100")
+	}
+}

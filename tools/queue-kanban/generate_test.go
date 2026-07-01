@@ -210,21 +210,34 @@ func TestRenderMarkdownEscapesRawHtml(t *testing.T) {
 	}
 }
 
-func TestEncodeBoardDataNeutralizesScriptClose(t *testing.T) {
+// TestEncodeBoardDataJsAssignmentPreservesRawHtml covers the one encoder both
+// generate and serve actually ship (board-data.js is a plain .js file, never
+// HTML-parsed, so no </script> neutralization is involved): the assignment
+// wrapper must be exact and pre-rendered body HTML must survive unescaped
+// (SetEscapeHTML off — the goldmark proof the GREEN test greps for).
+func TestEncodeBoardDataJsAssignmentPreservesRawHtml(t *testing.T) {
 	data := generatedBoardData{
 		Requests: map[string]generatedRequest{
-			"REQ-1": {RequestId: "REQ-1", BodyHtml: "<p>before</script>after</p>"},
+			"REQ-1": {RequestId: "REQ-1", BodyHtml: "<h2>Lessons & Notes</h2>"},
 		},
 	}
-	encoded, encodeError := encodeBoardDataForScriptTag(data)
+	encoded, encodeError := encodeBoardDataForJsAssignment(data)
 	if encodeError != nil {
-		t.Fatalf("encodeBoardDataForScriptTag: %v", encodeError)
+		t.Fatalf("encodeBoardDataForJsAssignment: %v", encodeError)
 	}
-	if strings.Contains(encoded, "</script>") {
-		t.Fatalf("encoded data island still contains a literal </script>: %s", encoded)
+	if !strings.HasPrefix(encoded, "window.queueKanbanBoardData = ") {
+		t.Fatalf("expected the window.queueKanbanBoardData assignment prefix: %s", encoded)
 	}
-	if !strings.Contains(encoded, `<\/script>`) {
-		t.Fatalf("expected the </script> to be neutralized to <\\/script>: %s", encoded)
+	if !strings.HasSuffix(encoded, ";\n") {
+		t.Fatalf("expected the assignment to end with a semicolon + newline: %s", encoded)
+	}
+	if !strings.Contains(encoded, "<h2>Lessons & Notes</h2>") {
+		t.Fatalf("expected pre-rendered HTML to survive verbatim (HTML escaping off): %s", encoded)
+	}
+	escapedLessThan := "\\u003c"
+	escapedAmpersand := "\\u0026"
+	if strings.Contains(encoded, escapedLessThan) || strings.Contains(encoded, escapedAmpersand) {
+		t.Fatalf("body HTML was unicode-escaped by the JSON encoder: %s", encoded)
 	}
 }
 

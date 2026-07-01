@@ -16,10 +16,14 @@ import (
 // external CLI library — with each subcommand owning its own flag.FlagSet:
 //
 //	queue-kanban summary  [--repo-root DIR] [--recent-window DUR]
-//	queue-kanban generate --out DIR [--repo-root DIR] [--recent-window DUR]
-//	queue-kanban serve    [--port PORT] [--repo-root DIR] [--recent-window DUR]
+//	queue-kanban generate --out DIR [--repo-root DIR]
+//	queue-kanban serve    [--port PORT] [--repo-root DIR]
 //
 // Invoking the binary with no subcommand prints the model summary.
+//
+// Only summary exposes --recent-window: the HTML board picks its visible
+// Recently-done window client-side (the 24h/48h/7d toggle, default 24h), so a
+// server-side window flag on generate/serve would be advertised but inert.
 func main() {
 	subcommand := ""
 	subcommandArgs := os.Args[1:]
@@ -47,11 +51,17 @@ func isFlagArgument(argument string) bool {
 	return len(argument) > 0 && argument[0] == '-'
 }
 
+// defaultRecentWindow is the Recently-done horizon used to bucket the board
+// model's RecentlyDone column. Summary lets the user override it via
+// --recent-window; generate and serve always use this default because their
+// visible window is chosen client-side in board.js.
+const defaultRecentWindow = 7 * 24 * time.Hour
+
 // runSummaryCommand prints the parsed board model's counts — the REQ-1207 smoke.
 func runSummaryCommand(args []string) {
 	flagSet := flag.NewFlagSet("summary", flag.ExitOnError)
 	repoRootOverride := flagSet.String("repo-root", "", "repo root containing do-work/ (default: walk up from the working directory)")
-	recentWindow := flagSet.Duration("recent-window", 7*24*time.Hour, "window for the Recently-done column")
+	recentWindow := flagSet.Duration("recent-window", defaultRecentWindow, "window for the Recently-done column")
 	_ = flagSet.Parse(args)
 
 	board := loadBoardOrExit(*repoRootOverride, *recentWindow)
@@ -78,7 +88,6 @@ func runGenerateCommand(args []string) {
 	flagSet := flag.NewFlagSet("generate", flag.ExitOnError)
 	outputDirectory := flagSet.String("out", "", "output directory for the self-contained static board (required)")
 	repoRootOverride := flagSet.String("repo-root", "", "repo root containing do-work/ (default: walk up from the working directory)")
-	recentWindow := flagSet.Duration("recent-window", 7*24*time.Hour, "window for the Recently-done column")
 	_ = flagSet.Parse(args)
 
 	if *outputDirectory == "" {
@@ -86,7 +95,7 @@ func runGenerateCommand(args []string) {
 		os.Exit(2)
 	}
 
-	board := loadBoardOrExit(*repoRootOverride, *recentWindow)
+	board := loadBoardOrExit(*repoRootOverride, defaultRecentWindow)
 	if generateError := generateStaticSite(*outputDirectory, board); generateError != nil {
 		fmt.Fprintln(os.Stderr, "queue-kanban:", generateError)
 		os.Exit(1)

@@ -3,7 +3,7 @@
 queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that walks the version-controlled `do-work/` Markdown tree and renders it as a Kanban board + completion calendar. Subcommands: `summary` | `generate --out DIR` | `serve`. It ships as part of the do-work skill and rides its version bumps; the ergonomic entry point is the `do-work board` action (`actions/board.md`), which builds and runs it for you.
 
 ## Read first
-- `main.go` — subcommand dispatch + flags (`--repo-root`, `--recent-window`, `--out`, `--port`)
+- `main.go` — subcommand dispatch + flags (`--repo-root`, `--out`, `--port`; `--recent-window` on summary only)
 - `walk.go` — repo-root resolution (walks up for `do-work/`) + tree enumeration
 - `model.go` — Board model; column bucketing driven by REQ status
 - `generate.go` — static self-contained site; `//go:embed web/` + inline placeholders
@@ -22,7 +22,7 @@ queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that
 - **Repo root is auto-discovered from CWD** — run from inside the repo or pass `--repo-root DIR`; from outside a `do-work/` ancestor it exits non-zero.
 - **`web/` is embedded, not read at runtime** — edits need a rebuild; `serve` re-serves the SAME embedded assets `generate` inlines, never files on disk.
 - **Separate Go module** — build inside `tools/queue-kanban/`; a repo-root `go build ./...` from the consuming project won't reach it (it lives under `.claude/skills/do-work/`).
-- **Port :8090, not :8080** — `serve` defaults to :8090 (env `QUEUE_KANBAN_PORT`) to avoid the main goserver.
+- **Loopback-only by default** — `serve` binds `127.0.0.1:8090` (env `QUEUE_KANBAN_PORT`; 8090 avoids the main goserver :8080). Bare port values also bind loopback; LAN exposure requires an explicit `host:port`.
 
 ## Stakes
 - `model.go` + `walk.go` — status → column bucketing (`LoadBoard`)
@@ -36,5 +36,9 @@ queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that
 
 ## Lessons
 
-- [REQ-015: synthetic test tickets must set `OriginalStatus` for unrecognized-status warning assertions to exercise the real path; `deferred` removed from the recognized set](../../do-work/archive/UR-003/REQ-015-deferred-status-vocabulary-sync.md#lessons-learned)
-- [REQ-016: the `severity` frontmatter vertical was dead (no producer) and is fully removed; the similar-looking `batch` field HAS real producers — re-check before any same-shape cleanup](../../do-work/archive/UR-003/REQ-016-remove-severity-dead-field.md#lessons-learned)
+<!-- Lessons are inlined, not linked: this repo's do-work/ tree is machine-local
+     (git-excluded) and export-ignored, so an archive link would be dead in every
+     other clone and in every consumer install. -->
+
+- REQ-015: synthetic test tickets must set `OriginalStatus` for unrecognized-status warning assertions to exercise the real path; `deferred` removed from the recognized set
+- REQ-016: the `severity` frontmatter vertical was dead (no producer) and is fully removed; the similar-looking `batch` field HAS real producers — re-check before any same-shape cleanup

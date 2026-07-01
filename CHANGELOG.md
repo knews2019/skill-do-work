@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.103.3 — The Loopback Latch (2026-07-02)
+
+Four external review findings, all confirmed and fixed. The big one: the live board now binds loopback by default instead of every interface — your queue's rendered REQ bodies are no longer LAN-readable while the console claims "localhost".
+
+- `queue-kanban serve` defaults to `127.0.0.1:8090`; bare `--port` / `QUEUE_KANBAN_PORT` values also bind loopback. An explicit `host:port` (or host-less `:port`) still opts into LAN exposure — now with a printed warning
+- Removed the advertised-but-inert `--recent-window` flag from `generate`/`serve` (the board picks its Recently-done window client-side via the 24h/48h/7d toggle; the flag stays on `summary`, where it actually works) plus the unread `recentWindowHours` JSON field
+- Deleted the dead `encodeBoardDataForScriptTag` encoder; its test now covers the production `encodeBoardDataForJsAssignment` encoder, which previously had no direct coverage
+- `prime-do-kanban.md` lessons are inlined instead of linked — `do-work/` is machine-local (git-excluded) and export-ignored, so archive links were dead in every other clone and consumer install
+
 ## 0.103.2 — The Dead Vertical (2026-07-02)
 
 The kanban board sheds a feature that could never fire: the `severity` frontmatter badge. No REQ schema in this repo ever emits a top-level `severity:` key, yet the tool carried a full parse → JSON → badge pipeline for it. Gone, all four layers.

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -20,8 +21,10 @@ import (
 const kanbanServePortEnvVar = "QUEUE_KANBAN_PORT"
 
 // kanbanServeDefaultListenAddress is the default listen address for
-// queue-kanban serve, chosen to avoid colliding with the main goserver :8080.
-const kanbanServeDefaultListenAddress = ":8090"
+// queue-kanban serve — loopback only, because the board data carries every
+// rendered REQ/UR body and must not be LAN-readable unless the user asks for
+// it with an explicit host. Port 8090 avoids the main goserver :8080.
+const kanbanServeDefaultListenAddress = "127.0.0.1:8090"
 
 // liveBoardServer is the http.Handler for queue-kanban serve. It holds the
 // mtime cache that keeps repeated requests cheap: each request stats the
@@ -226,20 +229,22 @@ func setKanbanSecurityHeaders(responseHeader http.Header) {
 }
 
 // resolveServeListenAddress determines the listen address from the --port flag,
-// the QUEUE_KANBAN_PORT env var, or the hardcoded default :8090. The flag takes
-// priority over the env var. Bare port numbers (no leading colon) are accepted
-// from either source, mirroring the goserver resolveListenAddress pattern.
+// the QUEUE_KANBAN_PORT env var, or the hardcoded default 127.0.0.1:8090. The
+// flag takes priority over the env var. Bare port numbers (no colon) are
+// accepted from either source and bind loopback only; a value containing a
+// colon (host:port, or a host-less ":port" meaning all interfaces) passes
+// through verbatim — LAN exposure is always an explicit choice.
 func resolveServeListenAddress(portFlagValue string) string {
 	if portFlagValue != "" {
 		if !strings.Contains(portFlagValue, ":") {
-			return ":" + portFlagValue
+			return "127.0.0.1:" + portFlagValue
 		}
 		return portFlagValue
 	}
 	envValue := os.Getenv(kanbanServePortEnvVar)
 	if envValue != "" {
 		if !strings.Contains(envValue, ":") {
-			return ":" + envValue
+			return "127.0.0.1:" + envValue
 		}
 		return envValue
 	}
@@ -253,11 +258,9 @@ func resolveServeListenAddress(portFlagValue string) string {
 func runServeCommand(args []string) {
 	flagSet := flag.NewFlagSet("serve", flag.ExitOnError)
 	portFlag := flagSet.String("port", "",
-		fmt.Sprintf("listen port (default %s; override: %s env var)", kanbanServeDefaultListenAddress, kanbanServePortEnvVar))
+		fmt.Sprintf("listen port (default %s; override: %s env var; bare ports bind loopback, use host:port for LAN exposure)", kanbanServeDefaultListenAddress, kanbanServePortEnvVar))
 	repoRootFlag := flagSet.String("repo-root", "",
 		"repo root containing do-work/ (default: walk up from the working directory)")
-	recentWindowFlag := flagSet.Duration("recent-window", 7*24*time.Hour,
-		"window for the Recently-done column")
 	_ = flagSet.Parse(args)
 
 	repoRoot, resolveErr := resolveRepoRootOrDefault(*repoRootFlag)
@@ -267,11 +270,12 @@ func runServeCommand(args []string) {
 	}
 
 	listenAddress := resolveServeListenAddress(*portFlag)
-	liveServer := newLiveBoardServer(repoRoot, *recentWindowFlag)
+	liveServer := newLiveBoardServer(repoRoot, defaultRecentWindow)
 
 	displayAddress := listenAddress
 	if strings.HasPrefix(displayAddress, ":") {
 		displayAddress = "localhost" + displayAddress
+		fmt.Printf("queue-kanban: warning: %s binds ALL interfaces — the board (including REQ bodies) is reachable from the local network\n", listenAddress)
 	}
 	fmt.Printf("queue-kanban: live board at http://%s  (re-walks do-work/ per /board-data.js request)\n", displayAddress)
 	fmt.Printf("queue-kanban: serving do-work/ from %s\n", repoRoot)
