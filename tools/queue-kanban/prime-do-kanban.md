@@ -36,4 +36,5 @@ queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that
 
 ## Lessons
 
-- [REQ-015: synthetic test tickets must set `OriginalStatus` for unrecognized-status warning assertions to exercise the real path; `deferred` removed from the recognized set](../../do-work/archive/REQ-015-deferred-status-vocabulary-sync.md#lessons-learned)
+- [REQ-015: synthetic test tickets must set `OriginalStatus` for unrecognized-status warning assertions to exercise the real path; `deferred` removed from the recognized set](../../do-work/archive/UR-003/REQ-015-deferred-status-vocabulary-sync.md#lessons-learned)
+- [REQ-016: the `severity` frontmatter vertical was dead (no producer) and is fully removed; the similar-looking `batch` field HAS real producers — re-check before any same-shape cleanup](../../do-work/archive/UR-003/REQ-016-remove-severity-dead-field.md#lessons-learned)

@@ -74,7 +74,6 @@ type generatedRequest struct {
 	BlockedBy            []string `json:"blockedBy"`
 	Related              []string `json:"related"`
 	Route                string   `json:"route"`
-	Severity             string   `json:"severity"`
 	Batch                string   `json:"batch"`
 	TreeSection          string   `json:"treeSection"`
 	CreatedAt            string   `json:"createdAt"`
@@ -178,7 +177,6 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			BlockedBy:            ticket.BlockedBy,
 			Related:              ticket.Related,
 			Route:                ticket.Route,
-			Severity:             ticket.Severity,
 			Batch:                ticket.Batch,
 			TreeSection:          ticket.TreeSection,
 			CreatedAt:            ticket.CreatedAt,

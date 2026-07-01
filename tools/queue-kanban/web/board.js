@@ -118,11 +118,6 @@
     if (request.route) {
       badges.appendChild(makeBadge("badge-route", "route", request.route));
     }
-    if (request.severity) {
-      badges.appendChild(
-        makeBadge("badge-severity", "sev", request.severity, "severity", request.severity.toLowerCase())
-      );
-    }
     if (badges.childNodes.length > 0) {
       card.appendChild(badges);
     }
@@ -362,9 +357,6 @@
     }
     if (request.route) {
       appendMetaRow("Route", request.route);
-    }
-    if (request.severity) {
-      appendMetaRow("Severity", request.severity);
     }
     if (request.createdAt) {
       appendMetaRow("Created", request.createdAt);

@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.103.2 — The Dead Vertical (2026-07-02)
+
+The kanban board sheds a feature that could never fire: the `severity` frontmatter badge. No REQ schema in this repo ever emits a top-level `severity:` key, yet the tool carried a full parse → JSON → badge pipeline for it. Gone, all four layers.
+
+- Removed `RequestTicket.Severity` + its frontmatter parse (`model.go`), the JSON export field (`generate.go`), the card badge + drawer row (`web/board.js`), and the `.badge-severity` styles (`web/board.css`)
+- Schema-first stance: the parser reads only fields the Schema Read Contract defines — if severity frontmatter is ever wanted, it enters the contract first, then gets mirrored here (REQ-016)
+- Verified end to end: grep sweep empty, `go build`/`go test` green, live board render against a real queue unaffected
+
 ## 0.103.1 — The Matched Set (2026-07-02)
 
 The kanban board's parser no longer recognizes a status the schema never defined. `deferred` is out of the recognized set, so the board vocabulary and the Schema Read Contract finally agree exactly.

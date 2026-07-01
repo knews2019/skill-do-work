@@ -55,9 +55,8 @@ type RequestTicket struct {
 	BlockedBy []string // legacy blocked_by ids, kept distinct from DependsOn
 	Related   []string // soft relations (not dependency edges)
 
-	Route    string
-	Batch    string
-	Severity string
+	Route string
+	Batch string
 
 	BodyMarkdown string // raw Markdown body after the closing frontmatter fence
 
@@ -320,7 +319,6 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		Related:        coerceToStringList(fields["related"]),
 		Route:          coerceScalarToString(fields["route"]),
 		Batch:          coerceScalarToString(fields["batch"]),
-		Severity:       coerceScalarToString(fields["severity"]),
 		BodyMarkdown:   bodyText,
 		FilePath:       filePath,
 		TreeSection:    treeSection,
