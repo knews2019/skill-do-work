@@ -158,7 +158,7 @@ Next steps:
 ```
 Next steps:
   do-work ui-review [scope]                    Validate UI quality (ui-design/bowser installs — skill/visual verification)
-  do-work install [other target]               Install another target (ui-design, bowser, last30days)
+  do-work install [other target]               Install another target (list: `do-work install help`, or actions/install.md)
   do-work capture-request: [describe work]     Capture a request that uses the new capability
 ```
 

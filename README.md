@@ -86,7 +86,7 @@ Pipeline state lives at `do-work/pipeline.json`. Each step dispatches to an exis
 
 Run `do-work help` for the full menu. Per-action guides live in [`docs/`](./docs/).
 
-Common ones: `verify-requests`, `review-work`, `validate-feedback`, `clarify`, `code-review`, `ui-review`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `present-work`, `commit`, `inspect`, `cleanup`, `forensics`, `roadmap`, `board`, `stray-check`, `bkb`, `dream`, `interview`, `prompts`, `install ui-design`, `install bowser`, `install last30days`, `version`, `update`, `recap`, `tutorial`, `help`.
+Common ones: `verify-requests`, `review-work`, `validate-feedback`, `clarify`, `code-review`, `ui-review`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `present-work`, `commit`, `inspect`, `cleanup`, `forensics`, `roadmap`, `board`, `stray-check`, `bkb`, `dream`, `interview`, `prompts`, `install ui-design`, `install bowser`, `install last30days`, `install just-kanban`, `version`, `update`, `recap`, `tutorial`, `help`.
 
 ### Queue board (`do-work board`)
 

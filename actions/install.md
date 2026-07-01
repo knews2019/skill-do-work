@@ -1,6 +1,6 @@
 # Install Action
 
-> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports three targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), and `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless).
+> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports four targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless), and `just-kanban` (justfile recipes wiring `just run-kanban` to the shipped queue-kanban board).
 
 Each target is idempotent — running it when the target is already present is a no-op. The action dispatches on the first argument; everything else (detect → install → verify → report) follows the same shape.
 
@@ -12,11 +12,13 @@ Each target is idempotent — running it when the target is already present is a
 - A `domain: ui-design` REQ is about to be built and the builder would benefit from skill-level design knowledge (`install ui-design`).
 - The user asked for headed-browser workflows, screenshots, or visual verification (`install bowser`).
 - The user asked for social research, trend scanning, or "what's the discourse on X" capabilities (`install last30days`).
+- The user wants a standing `just run-kanban` shortcut so the board runs without invoking the agent (`install just-kanban`).
 
 **Do NOT use when:**
 - The target is already installed (Step 1 of the matching workflow detects this and exits).
 - The project explicitly uses a different design system or browser-automation tool and adding the do-work default would conflict.
 - The environment can't install global npm packages (for `bowser`) and the user hasn't consented to a local-only install.
+- The user just wants to view the board once — that's `do-work board` (`actions/board.md`), no install needed.
 
 ## Input
 
@@ -25,6 +27,7 @@ Each target is idempotent — running it when the target is already present is a
 - `ui-design` — Install Anthropic's `frontend-design` skill for production-grade UI design capabilities.
 - `bowser` — Install Playwright CLI (global) plus the Bowser skill (project-scoped) for browser automation, screenshots, and visual UI verification.
 - `last30days` — Vendor the engagement-ranked social-research engine (project-scoped, git-ignored, keyless).
+- `just-kanban` — Append `just` recipes (`run-kanban`, `kanban-static`, `kanban-summary`) for the shipped queue-kanban board to the project's justfile.
 
 If `$ARGUMENTS` is empty or doesn't match a known target, print the help block (target list + one-line blurb each) and stop.
 
@@ -37,6 +40,7 @@ Every target follows the same four-step shape (detect → install → verify →
 | `ui-design` | `ls "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" 2>/dev/null` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
 | `bowser` | `playwright-cli --help >/dev/null 2>&1 && ls "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" 2>/dev/null` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
 | `last30days` | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | (multi-step — see `last30days` workflow below) | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | Engagement-ranked social-research engine — Reddit/HN/Polymarket/GitHub/YouTube keyless out of the box; X/TikTok/Instagram unlock only via user-global API keys. |
+| `just-kanban` | (multi-step — see `just-kanban` workflow below) | (multi-step — see `just-kanban` workflow below; append-only) | (multi-step — see `just-kanban` workflow below) | Justfile recipes for the shipped queue-kanban board — `just run-kanban` serves the live board, `kanban-static`/`kanban-summary` cover the other modes; rebuilds the tool each run so `do-work update` refreshes take effect. |
 
 In every command above, resolve `PROJECT_ROOT` first:
 
@@ -53,7 +57,7 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 ### Step 2: Run the target's workflow
 
-Each workflow follows the same four-step shape. The `ui-design` workflow uses the manifest commands directly. The `bowser` and `last30days` workflows have multi-part installs and are spelled out below.
+Each workflow follows the same four-step shape. The `ui-design` workflow uses the manifest commands directly. The `bowser`, `last30days`, and `just-kanban` workflows have multi-part installs and are spelled out below.
 
 ---
 
@@ -265,6 +269,94 @@ project keeps its action-usage docs.
 
 ---
 
+## Workflow: `just-kanban`
+
+The `just-kanban` target appends [`just`](https://github.com/casey/just) recipes for the shipped queue-kanban board (`tools/queue-kanban/`, normally run via `actions/board.md`) to the consuming project's justfile, so `just run-kanban` serves the live board without going through the agent. The justfile is a **project-owned** file — `do-work update` never touches it — while the tool source the recipes point at is refreshed by every update; the recipes rebuild the binary on each run so those refreshes take effect automatically.
+
+#### Phase 1: Check if already installed
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+JUSTFILE_PATH=""
+for justfile_candidate in justfile Justfile .justfile; do
+  [ -f "$PROJECT_ROOT/$justfile_candidate" ] && { JUSTFILE_PATH="$PROJECT_ROOT/$justfile_candidate"; break; }
+done
+[ -n "$JUSTFILE_PATH" ] && grep -qE '^run-kanban[ :]' "$JUSTFILE_PATH" \
+  && echo "run-kanban recipe: present" || echo "run-kanban recipe: absent"
+```
+
+If a `run-kanban` recipe is present — even one that differs from the block below — report "already installed" and stop. Never replace an existing recipe; if the user wants the shipped version, they remove theirs first.
+
+#### Phase 2: Append the recipes
+
+Resolve the two paths as a text operation first, then substitute the literal result into the block below (deriving values before they enter a file is the same discipline CLAUDE.md prescribes for shell quoting):
+
+1. `<skill-root>` — the absolute directory containing `SKILL.md` (this action lives in its `actions/` subdir).
+2. **Global-install gate:** if `<skill-root>` is not inside `PROJECT_ROOT`, stop and report — a project justfile must not point outside the project, and this skill's norms reject global installs anyway.
+3. `<kanban-dir>` — the `PROJECT_ROOT`-relative path of `<skill-root>/tools/queue-kanban` (e.g. `.claude/skills/do-work/tools/queue-kanban`).
+
+Pick the justfile the same way Phase 1 does (`justfile` / `Justfile` / `.justfile` at `PROJECT_ROOT`, first match); when none exists, create `PROJECT_ROOT/justfile`. Append the block with your file-editing capability (or a quoted heredoc — `<<'RECIPES'` quoting keeps every token literal), adding one blank line of separation when the file already has content. Substitute `<kanban-dir>`; keep the `{{…}}` tokens **verbatim** — that is `just`'s own interpolation, resolved when the recipe runs, not by this install:
+
+```just
+# --- do-work board recipes (installed by `do-work install just-kanban`) ---
+
+# Serve the do-work queue as a live Kanban board (Ctrl-C to stop; reload the page to refresh)
+run-kanban port="8090":
+    cd <kanban-dir> && go build -o queue-kanban . && ./queue-kanban serve --repo-root "{{justfile_directory()}}" --port {{port}}
+
+# Shareable static snapshot → build/queue-kanban-board/index.html
+kanban-static:
+    cd <kanban-dir> && go build -o queue-kanban . && ./queue-kanban generate --out "{{justfile_directory()}}/build/queue-kanban-board" --repo-root "{{justfile_directory()}}"
+
+# Column counts in the terminal, no browser
+kanban-summary:
+    cd <kanban-dir> && go build -o queue-kanban . && ./queue-kanban summary --repo-root "{{justfile_directory()}}"
+```
+
+Two deliberate choices in these recipes:
+
+- **`go build` on every run** (`actions/board.md` Step 4's rule): `do-work update` overwrites the tool's source but leaves the previously compiled binary in place — a cached binary silently renders old logic. The incremental rebuild is near-instant when nothing changed, and the binary stays uncommittable via the tool's shipped `.gitignore`.
+- **Each `cd … && …` chain stays on one logical line**: `just` runs every recipe line in a fresh shell, so a bare `cd` on its own line would not carry into the next — the same cross-shell state trap CLAUDE.md documents for prescribed action steps.
+
+#### Phase 3: Verify
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+JUSTFILE_PATH=""
+for justfile_candidate in justfile Justfile .justfile; do
+  [ -f "$PROJECT_ROOT/$justfile_candidate" ] && { JUSTFILE_PATH="$PROJECT_ROOT/$justfile_candidate"; break; }
+done
+[ -n "$JUSTFILE_PATH" ] && grep -qE '^run-kanban[ :]' "$JUSTFILE_PATH" && echo "recipes: OK" || echo "recipes: FAILED"
+if command -v just >/dev/null; then
+  just --justfile "$JUSTFILE_PATH" --list >/dev/null 2>&1 && echo "justfile parses: OK" || echo "justfile parses: FAILED"
+else
+  echo "just: MISSING (recipes are installed; install just to run them)"
+fi
+command -v go >/dev/null && echo "go toolchain: OK" || echo "go toolchain: MISSING (the board needs Go to build — see tools/queue-kanban/go.mod)"
+```
+
+Report "Installed successfully" only when `recipes: OK` and — whenever `just` is available to check — `justfile parses: OK` (a FAILED parse means the append corrupted the file: restore it and re-append). Missing `just` or `go` are **warnings, not failures**: the recipes are inert text until run, and `actions/board.md` already treats a missing Go toolchain as a graceful stop rather than a blocker.
+
+#### Phase 4: Report back
+
+```
+Installed: just recipes for the queue-kanban board
+
+Appended to: <project-root>/justfile
+
+  just run-kanban          Live board at http://localhost:8090 (reload to refresh)
+  just run-kanban 9000     Same, custom port
+  just kanban-static       Snapshot → build/queue-kanban-board/index.html
+  just kanban-summary      Column counts in the terminal
+
+- Recipes rebuild the tool on every run, so `do-work update` refreshes take
+  effect automatically (needs the Go toolchain — same requirement as
+  `do-work board`).
+- The justfile is project-owned: `do-work update` never touches it.
+```
+
+---
+
 ## Help Block (no/unknown target)
 
 When `$ARGUMENTS` is empty or doesn't match a known target, print:
@@ -275,6 +367,7 @@ install — install companion skills/tooling into the current project
   do-work install ui-design   Anthropic's frontend-design skill for production-grade UI
   do-work install bowser      Playwright CLI + Bowser skill for browser automation
   do-work install last30days  Engagement-ranked social-research engine (vendored, keyless)
+  do-work install just-kanban  Justfile recipes for the queue-kanban board (needs Go to run)
 ```
 
 Then stop.
@@ -284,6 +377,7 @@ Then stop.
 - **`ui-design`**: a short status line — "already installed", "installed successfully", or an error describing what failed and how to finish manually.
 - **`bowser`**: a two-line status — one for `playwright-cli`, one for the Bowser skill. Each is either "OK" (installed and verified), "already installed" (detected in Phase 1), or an error with the exact command the user can re-run.
 - **`last30days`**: a per-guarantee status (skill file, ignore rule, Python 3.12+) — "already installed" only when every guarantee holds; otherwise "installed successfully" with the destination path, or the FAILED line(s) and the exact command the user can re-run.
+- **`just-kanban`**: a per-component status (recipes appended, justfile parses, `just`/`go` availability) — "already installed" when a `run-kanban` recipe already exists; missing toolchains are warnings, not failures.
 - **Unknown / missing target**: the help block above.
 
 ## Rules
@@ -295,6 +389,7 @@ Then stop.
 - **Don't silently substitute a different skill or repo.** If the upstream URL fails, report the error — don't download a similarly-named skill from elsewhere.
 - **Keyless in the project (last30days).** This install writes no config file at all. If a project-local `.claude/last30days.env` ever exists, it must never contain API keys — real keys live only in the user-global `~/.config/last30days/.env`. Never write a secret into any file inside the repo.
 - **The vendor drop must be ignored (last30days).** Phase 2 adds `**/.claude/skills/last30days/` to the enclosing repo's `.git/info/exclude` when it isn't already covered — machine-local, never the project's committable `.gitignore` — because ~15 MB of upstream Python must never become committable in the consuming repo.
+- **Append-only in the justfile (just-kanban).** Never reorder, reformat, or replace existing justfile content; an existing `run-kanban` recipe — even a divergent one — means "already installed", not "overwrite". Create a `justfile` only when none of `justfile`/`Justfile`/`.justfile` exists at the project root.
 - **One target per invocation.** If the user wants both, they run two separate commands. The action never chains targets.
 
 ## Common Rationalizations
@@ -309,6 +404,8 @@ Then stop.
 | "Upstream's README says `npx skills add … -g` — I'll just follow upstream (last30days)" | Vendor into `$PROJECT_ROOT/.claude/skills/last30days/` per the workflow | Both `-g` and `/plugin marketplace add` write to `~/.claude`, which this skill never touches |
 | "The user gave me an X API key — I'll put it in `.claude/last30days.env` so it works right away" | Direct them to `~/.config/last30days/.env`; never write a key into a project file | A key in a repo file leaks on the next commit |
 | "I'll write `LAST30DAYS_TRUST_PROJECT_CONFIG=1` into `.claude/last30days.env` so project config just works (last30days)" | Write no config file; tell the user the trust flag must come from their environment or user-global config | The flag gates whether the engine reads the project file — setting it *inside* that file is circular and inert |
+| "Their existing `run-kanban` recipe is outdated — I'll replace it with the shipped block (just-kanban)" | Report already-installed and show the shipped block for manual comparison | The existing recipe may carry deliberate project-specific flags; replacing it destroys their edits |
+| "The skill is installed globally — I'll hard-code its absolute path into the recipe (just-kanban)" | Stop at the Phase 2 global-install gate and report | A recipe pointing outside the project breaks on every other clone and machine, and the skill's norms reject global installs |
 
 ## Red Flags
 
@@ -321,13 +418,16 @@ Then stop.
 - (last30days) `git check-ignore -q .claude/skills/last30days/SKILL.md` exits non-zero in a git repo — the exclude entry was skipped or mismatched; fix it before anything gets committed. (Don't eyeball `git status` for this: a wholly-untracked `.claude/` collapses to a single `?? .claude/` row that hides the path either way.)
 - (last30days) A project file (e.g. `.claude/last30days.env`) contains anything that looks like a credential — remove it and move the key to the user-global `~/.config/last30days/.env`.
 - (last30days) Verify found no Python 3.12+ interpreter — the engine can't run; treat it as a failed install, not a soft warning.
+- (just-kanban) The justfile diff shows anything beyond one appended block — existing recipes were reordered or rewritten; restore the file and re-append.
+- (just-kanban) The appended recipe contains an absolute path (especially into `$HOME`) — the skill-root resolution went wrong; recipes must use project-relative paths.
 
 ## Verification Checklist
 
 - [ ] Step 1 correctly dispatched on `$ARGUMENTS` (known target → workflow; unknown/empty → help block).
 - [ ] Phase 1 detected an existing install and stopped, OR Phase 2+ ran the fetch/install commands.
-- [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty.
+- [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty (skill-file targets: `ui-design`, `bowser`, `last30days`).
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
 - [ ] (last30days only) a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
+- [ ] (just-kanban only) the justfile gained exactly one appended block, `run-kanban` greps present, `just --list` parses when `just` is available, and no existing recipe was modified.
 - [ ] The report names the destination path so the user can verify location.
-- [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the machine-local `.git/info/exclude` entry).
+- [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the machine-local `.git/info/exclude` entry; for `just-kanban`, the project justfile).

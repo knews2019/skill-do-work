@@ -76,6 +76,8 @@ From `<skill-root>/tools/queue-kanban`:
 - **static** — `./queue-kanban generate --out "$REPO_ROOT/build/queue-kanban-board" --repo-root "$REPO_ROOT"`, then point the user at `build/queue-kanban-board/index.html`. This artifact is a throwaway — mention it's safe to delete or gitignore.
 - **summary** — `./queue-kanban summary --repo-root "$REPO_ROOT"` and relay the printed counts.
 
+**Standing shortcut:** if the user wants the board runnable without the agent, `do-work install just-kanban` (`actions/install.md`) appends `just run-kanban` / `kanban-static` / `kanban-summary` recipes to the project's justfile — same build-then-run contract as this action.
+
 ## Output Format
 
 - **serve:** the live URL + how to stop it.

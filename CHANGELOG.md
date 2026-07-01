@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.103.0 — The Recipe Card (2026-07-02)
+
+`do-work install` gains a fourth target: `just-kanban` wires `just run-kanban` (plus `kanban-static` / `kanban-summary`) into your project's justfile, so the board runs without going through the agent. The justfile is project-owned — updates never touch it — while the recipes rebuild the vendored tool on every run, so each `do-work update` takes effect automatically.
+
+- **Append-only and idempotent** — an existing `run-kanban` recipe (even a divergent one) means "already installed", never overwrite; a justfile is created only when none exists, and verify checks the file still parses (`just --list`) after the append.
+- **Paths resolved at install time** — the recipe gets the project-relative path to wherever the skill actually lives; a global install is refused at the gate rather than hard-coding a path outside the project.
+- **Toolchain-honest** — missing `just`/`go` are warnings (the recipes are inert text until run), matching `do-work board`'s graceful degradation. The recipe block is validated end-to-end against a real queue before shipping.
+
 ## 0.102.1 — The Honest Board (2026-07-01)
 
 Acts on a deep multi-agent review of the last 20 commits: fifteen confirmed findings fixed. The update flow can no longer silently clobber local queue-kanban customizations, the board tool stops hiding or fabricating data, and several instruction files stop promising things the code doesn't do.
