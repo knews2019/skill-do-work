@@ -183,6 +183,31 @@
     fillColumn("recentlyDone", recentlyDoneIds(viewState.windowHours), { showCompleted: true });
   }
 
+  // ---- data warnings banner ------------------------------------------------
+
+  function renderWarningsBanner() {
+    var warnings = boardData.warnings || [];
+    if (warnings.length === 0) {
+      return;
+    }
+    var banner = createElement("aside", "board-warnings");
+    banner.setAttribute("role", "note");
+    banner.appendChild(
+      createElement(
+        "strong",
+        "board-warnings-title",
+        warnings.length === 1 ? "1 data warning" : warnings.length + " data warnings"
+      )
+    );
+    var list = createElement("ul", "board-warnings-list");
+    warnings.forEach(function (warningText) {
+      list.appendChild(createElement("li", null, warningText));
+    });
+    banner.appendChild(list);
+    var main = document.getElementById("board-main");
+    main.insertBefore(banner, main.firstChild);
+  }
+
   // ---- by-UR lens ---------------------------------------------------------
 
   function renderUserRequestLens() {
@@ -417,8 +442,13 @@
   }
 
   function trapFocus(keyEvent) {
+    // Disabled inputs must be excluded like disabled buttons: goldmark renders
+    // GFM task-list items ("- [ ]") as disabled checkbox inputs, and a disabled
+    // element can never be document.activeElement — if it were selected as
+    // first/last, the wrap condition would never fire and Tab would escape the
+    // aria-modal drawer.
     var focusable = drawer.querySelectorAll(
-      'a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])'
+      'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
     );
     if (focusable.length === 0) {
       return;
@@ -529,6 +559,7 @@
   // ---- boot ---------------------------------------------------------------
 
   wireControls();
+  renderWarningsBanner();
   renderColumns();
   applyView();
 })();

@@ -10,7 +10,7 @@ The tool is a standalone Go module that ships inside the skill at `tools/queue-k
 
 **Use when:**
 - The user says "board", "kanban", "show the queue", "queue board", or "visualize the queue".
-- The user wants a live, auto-refreshing view of pending/claimed/blocked/recently-done REQs.
+- The user wants a live board of pending/claimed/blocked/recently-done REQs (serve mode rebuilds from disk on every browser reload — refresh the page to see new state; it does not push updates to an open tab).
 - The user wants a shareable static HTML snapshot of queue state (`static` mode).
 - The user wants quick column counts without a browser (`summary` mode).
 
@@ -50,7 +50,13 @@ Do not attempt to install Go, and do not block any other do-work action — this
 
 ### Step 3: Resolve the queue's repo root
 
-Run `git rev-parse --show-toplevel` to get the consuming repo root (where `do-work/` lives). Call it `REPO_ROOT`. The tool can auto-discover this by walking up for `do-work/`, but pass `--repo-root "$REPO_ROOT"` explicitly so discovery is deterministic regardless of where the binary sits (it's nested under `.claude/skills/do-work/`). If there is no `do-work/` at `REPO_ROOT`, report that the queue is empty/missing and stop.
+Resolve the consuming project root (where `do-work/` lives) with the repo-standard fallback — `git` is optional for the consuming project, matching `actions/install.md` and `actions/version.md`:
+
+```bash
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+```
+
+In a non-git project the invocation directory is the root, so run this from the project root. Pass `--repo-root "$REPO_ROOT"` explicitly so discovery is deterministic regardless of where the binary sits (it's nested under `.claude/skills/do-work/`); the tool's own walk-up discovery (`resolveRepoRoot`) is the last resort, not the default. If there is no `do-work/` at `REPO_ROOT`, report that the queue is empty/missing and stop.
 
 ### Step 4: Build
 
@@ -66,7 +72,7 @@ The first build on a machine whose Go module cache lacks the deps fetches `goldm
 
 From `<skill-root>/tools/queue-kanban`:
 
-- **serve** — `./queue-kanban serve --repo-root "$REPO_ROOT"` (honor `QUEUE_KANBAN_PORT` or a passed `--port`). Tell the user the URL (`http://localhost:8090` by default) and that it's a long-running process — stop it with Ctrl-C. Run it in the background if your environment supports it, so the session isn't blocked.
+- **serve** — `./queue-kanban serve --repo-root "$REPO_ROOT"` (honor `QUEUE_KANBAN_PORT` or a passed `--port`). Tell the user the URL (`http://localhost:8090` by default), that reloading the page refreshes the data (the server re-walks the tree per request; it does not push updates), and that it's a long-running process — stop it with Ctrl-C. Run it in the background if your environment supports it, so the session isn't blocked.
 - **static** — `./queue-kanban generate --out "$REPO_ROOT/build/queue-kanban-board" --repo-root "$REPO_ROOT"`, then point the user at `build/queue-kanban-board/index.html`. This artifact is a throwaway — mention it's safe to delete or gitignore.
 - **summary** — `./queue-kanban summary --repo-root "$REPO_ROOT"` and relay the printed counts.
 
@@ -80,7 +86,7 @@ From `<skill-root>/tools/queue-kanban`:
 
 - Never edit the `do-work/` queue from this action — it is strictly a viewer.
 - Never commit the compiled `queue-kanban` binary (the tool's nested `.gitignore` already excludes it) or the generated `build/queue-kanban-board/` artifact.
-- Pass `--repo-root` explicitly — do not rely on CWD-based discovery.
+- Pass `--repo-root` explicitly (resolved via `git rev-parse --show-toplevel 2>/dev/null || pwd`) — the tool's CWD walk-up is the non-git last resort, not the default.
 - Do not vendor or modify the Go source to "make it build" — a build failure is a toolchain/environment issue to report, not a code change.
 - If you change the tool's parser, keep it in lock-step with `actions/work-reference.md`'s Schema Read Contract (the `status`/`depends_on`/`domain` vocabularies the board buckets on).
 
@@ -90,7 +96,7 @@ From `<skill-root>/tools/queue-kanban`:
 | --- | --- | --- |
 | "Go isn't installed, I'll rewrite the board in shell/JS" | Report the missing toolchain per Step 2 and stop | The tool is the shipped, tested renderer; a one-off reimplementation drifts from the schema and misleads viewers |
 | "I'll skip the rebuild, the binary's already there" | Always `go build` first | A `do-work update` overwrites the source but leaves a stale binary — running it renders old logic |
-| "I'll just run it from the current directory" | Pass `--repo-root "$(git rev-parse --show-toplevel)"` | From a subdir or the nested skill path, CWD discovery can find the wrong `do-work/` or none |
+| "I'll just run it from the current directory" | Pass `--repo-root "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"` | From a subdir or the nested skill path, CWD discovery can find the wrong `do-work/` or none |
 
 ## Red Flags
 
@@ -102,6 +108,6 @@ From `<skill-root>/tools/queue-kanban`:
 
 - [ ] `go version` checked before any build; missing Go reported, not worked around.
 - [ ] Built fresh via `go build -o queue-kanban .` inside `tools/queue-kanban/`.
-- [ ] `--repo-root` resolved from `git rev-parse --show-toplevel` and passed explicitly.
+- [ ] `--repo-root` resolved from `git rev-parse --show-toplevel 2>/dev/null || pwd` and passed explicitly.
 - [ ] Correct mode dispatched (serve / static / summary) with the user told the URL, artifact path, or counts.
 - [ ] No binary or generated artifact staged or committed.

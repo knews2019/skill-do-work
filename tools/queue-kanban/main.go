@@ -65,6 +65,12 @@ func runSummaryCommand(args []string) {
 	fmt.Printf("  recently-done       : %d\n", len(board.Columns.RecentlyDone))
 	fmt.Printf("  calendar entries    : %d\n", len(board.Calendar))
 	fmt.Printf("  dependency edges    : %d\n", len(board.DependencyGraph.Edges))
+	if len(board.Warnings) > 0 {
+		fmt.Printf("  warnings            : %d\n", len(board.Warnings))
+		for _, warningText := range board.Warnings {
+			fmt.Printf("    ! %s\n", warningText)
+		}
+	}
 }
 
 // runGenerateCommand writes the self-contained static board into --out.

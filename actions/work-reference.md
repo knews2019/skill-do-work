@@ -376,13 +376,20 @@ The existence-verify check on the resolved path runs in Step 8 (post-move) — t
 
    **For `[critical]` discoveries:** Create follow-up REQ with `status: pending` (not `pending-answers`) — these skip user confirmation and go straight into the work queue. Add a note in Open Questions: `- [x] Auto-approved: critical severity (security/data/production risk). → Added to queue immediately.` Report prominently: `⚠ CRITICAL discovered: [description] — auto-queued as REQ-NNN`
 
-   **For `[normal]` and `[low]` discoveries:** Use the existing `pending-answers` flow:
+   **Test-hygiene carve-out:** A `[normal]` or `[low]` discovery ALSO auto-queues with `status: pending` (same as critical) when ALL three hold:
+   - The fix touches **only test files** (`tests/**`, `*.test.*`, `*.spec.*`, test helpers/fixtures) — zero production-source changes.
+   - It is **mechanical hygiene** — silencing warnings/console noise, deflaking, lint/format cleanup in tests — with no behavior or assertion-meaning changes.
+   - It is **small** — a single file or a couple of files, no new infrastructure.
+
+   Failing ANY bullet keeps the `pending-answers` flow below. The paper trail mirrors the critical flow: add a note in Open Questions: `- [x] Auto-approved: test-only mechanical hygiene ([severity]). → Added to queue.` Report visibly: `↺ test-hygiene discovery auto-queued as REQ-NNN`. The user can still discard the REQ from the queue afterwards — that stays the escape hatch.
+
+   **For `[normal]` and `[low]` discoveries (when the test-hygiene carve-out does not apply):** Use the existing `pending-answers` flow:
    - Set frontmatter: `status: pending-answers`, `user_request: [same UR]`, `addendum_to: [current REQ id]`, `domain: [same domain as current REQ]`.
    - Add an `## Open Questions` section with this checkbox format:
      `- [ ] I discovered this out-of-scope task while working on [current REQ]: [Task Description]. Should I process this as a new task?`
      `  Recommended: Yes, add to queue (will flip to 'pending').`
      `  Also: No, discard it.`
-   This ensures non-critical discoveries require the user's explicit permission via `do-work clarify` before execution.
+   This ensures non-critical discoveries — other than qualifying test-only hygiene — require the user's explicit permission via `do-work clarify` before execution.
 
 ## Failure Classification (Step 8)
 

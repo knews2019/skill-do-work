@@ -33,7 +33,7 @@ If the target cannot be resolved, ask the user to specify a path or paste the dr
 
 ### Step 1: Load the Principles
 
-Read `crew-members/anti-slop.md`. The seven principles in that file are the checklist — do not paraphrase, do not skip any.
+Read `crew-members/anti-slop.md`. The principles in that file are the checklist — **all of them, however many the file currently carries** (eight as of this writing); do not paraphrase, do not skip any. If the crew file has grown a principle this action's table doesn't list yet, add the row — the crew file is canonical, the table below is illustrative.
 
 ### Step 2: Resolve the Artifact
 
@@ -47,7 +47,7 @@ If the artifact is huge (>5,000 words), confirm with the user before proceeding 
 
 ### Step 3: Run Each Principle as a Check
 
-For each of the seven principles, produce a PASS or FLAG with one-line evidence:
+For each principle, produce a PASS or FLAG with one-line evidence:
 
 | # | Principle | Status | Evidence |
 |---|-----------|--------|----------|
@@ -58,11 +58,12 @@ For each of the seven principles, produce a PASS or FLAG with one-line evidence:
 | 5 | AI honesty | PASS / FLAG / N-A | quote or "no disclosure tag" |
 | 6 | Needs to exist | PASS / FLAG | one-sentence argument |
 | 7 | Medium matches stakes | PASS / FLAG | judgment call with rationale |
+| 8 | Decision first, not self-grade | PASS / FLAG / N-A | quote of what leads — the verdict in words, or the score table that displaced it |
 
 Evidence rules:
 
 - For FLAGs, quote the specific phrase or cite the line number — never editorialize generically.
-- N-A is only valid for #2 (no factual claims to verify) and #5 (no AI was used at all). Document the N-A reason.
+- N-A is only valid for #2 (no factual claims to verify), #5 (no AI was used at all), and #8 (the artifact surfaces no decision, question, or verdict). Document the N-A reason.
 - A PASS without evidence is a skipped check — every row needs something concrete.
 
 ### Step 4: Summarize
@@ -164,7 +165,7 @@ Print the table from Step 3, the verdict block from Step 4, and either the rewri
 
 ## Verification Checklist
 
-- [ ] Loaded `crew-members/anti-slop.md` and applied all seven principles (no skips except documented N-A for #2 and #5)
+- [ ] Loaded `crew-members/anti-slop.md` and applied every principle in the file (no skips except documented N-A for #2, #5, and #8)
 - [ ] Every row in the findings table has concrete evidence (quote or line ref), not generic prose
 - [ ] Verdict matches the threshold rules in Step 4 — no "Clean" with 3 FLAGs, no "Slop" with 0 FLAGs
 - [ ] Top fix is specific (`cut to 200 words, conclusion first`) — not generic (`be more concise`)

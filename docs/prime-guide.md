@@ -48,7 +48,7 @@ Target: 15-30 lines. Empty sections are omitted. Every line must save the AI mor
 
 ## Audit checks
 
-The audit is read-only — it reports findings but never modifies files.
+The audit is read-only for the **routing index** — it reports index findings (staleness, broken links, coverage gaps) and lets you decide what to fix. It **does write one thing**: each prime's `## Stakes` section (Req / Value / Risk) is spelunked and refreshed as part of every audit, so run it on a clean tree if you have in-progress edits to your prime files.
 
 | Check | What it detects |
 |-------|----------------|
@@ -70,7 +70,7 @@ Markdown report with summary counts and a checklist of issues organized by categ
 
 - Follows the PRIME Files Philosophy from `crew-members/general.md`: low noise, high value, pointers not copies, no volatile metrics
 - Multiple primes per directory are valid for different concerns
-- `create` is interactive (asks 3 questions); `audit` is fully automated and read-only
+- `create` is interactive (asks 3 questions); `audit` is fully automated — read-only on the routing index, but it writes/refreshes each prime's `## Stakes` section
 
 ## Usage
 

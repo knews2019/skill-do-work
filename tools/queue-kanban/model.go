@@ -21,11 +21,17 @@ const (
 	CompletionFromFrontmatter CompletionTimeSource = "frontmatter"
 	// CompletionFromGitLog means the commit hash's git committer date was used.
 	CompletionFromGitLog CompletionTimeSource = "git"
-	// CompletionFromFileModTime means the file's modification time was used.
-	CompletionFromFileModTime CompletionTimeSource = "mtime"
 	// CompletionUnresolved means no completion instant could be determined.
+	// (File mtime is deliberately NOT a source: a clone, checkout, or tarball
+	// extraction resets every mtime to "now", which stamped months-old REQs as
+	// completed today and buried the real recent work.)
 	CompletionUnresolved CompletionTimeSource = "unresolved"
 )
+
+// undatedCalendarDayKey buckets completed REQs whose completion instant could
+// not be resolved. They stay visible on the calendar (never silently dropped)
+// but carry no fabricated date.
+const undatedCalendarDayKey = "undated"
 
 // RequestTicket is one parsed REQ-*.md file: its frontmatter fields (with status
 // normalized and commit-hash variants collapsed), the raw Markdown body kept for
@@ -128,7 +134,9 @@ type Board struct {
 
 	Columns         BoardColumns
 	DependencyGraph DependencyGraph
-	Calendar        []CalendarEntry // completed REQs sorted most-recent-first
+	Calendar        []CalendarEntry // completed REQs sorted most-recent-first (undated entries last)
+
+	Warnings []string // data-shape warnings (duplicate ids, unrecognized statuses) — surfaced, never silently dropped
 }
 
 // gitCommitDateLookup resolves a commit hash to its committer date. It is an
@@ -163,11 +171,21 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 		UserRequestsById: map[string]*UserRequestTicket{},
 	}
 
+	var parsedTickets []*RequestTicket
 	for _, reference := range discovered.RequestFiles {
 		ticket, parseError := parseRequestTicket(reference.AbsolutePath, reference.TreeSection)
 		if parseError != nil {
 			continue // best-effort: skip an unreadable REQ file
 		}
+		parsedTickets = append(parsedTickets, ticket)
+	}
+
+	// Keep exactly one ticket per REQ id (with a warning per duplicate) BEFORE
+	// building any view, so the columns, calendar, UR groups, and the id-keyed
+	// JSON map all render the same copy instead of contradicting each other.
+	board.AllRequests, board.Warnings = dedupeTicketsByRequestId(parsedTickets)
+
+	for _, ticket := range board.AllRequests {
 		if isCompletedStatus(ticket.Status) {
 			completionTime, completionSource := resolveCompletionTime(ticket, repoRoot, gitLookup)
 			ticket.CompletionTime = completionTime
@@ -175,10 +193,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 		} else {
 			ticket.CompletionTimeSource = CompletionUnresolved
 		}
-		board.AllRequests = append(board.AllRequests, ticket)
-		if _, exists := board.RequestsById[ticket.RequestId]; !exists {
-			board.RequestsById[ticket.RequestId] = ticket
-		}
+		board.RequestsById[ticket.RequestId] = ticket
 	}
 	sortRequestTickets(board.AllRequests)
 
@@ -201,11 +216,68 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 		sortRequestIdList(userRequestTicket.RequestIds)
 	}
 
-	board.Columns = bucketColumns(board.AllRequests, now, recentWindow)
+	columns, columnWarnings := bucketColumns(board.AllRequests, now, recentWindow)
+	board.Columns = columns
+	board.Warnings = append(board.Warnings, columnWarnings...)
 	board.DependencyGraph = buildDependencyGraph(board.AllRequests, board.RequestsById)
 	board.Calendar = buildCalendar(board.AllRequests)
 
 	return board, nil
+}
+
+// treeSectionPrecedence orders tree sections for duplicate-id resolution: the
+// active copy (queue, then working) wins over the archive copy — it is the copy
+// the work pipeline would act on, and it is the copy cleanup marks
+// `blocked-archive-collision`, which lands the collision in the visible
+// Needs-input/Blocked column.
+func treeSectionPrecedence(treeSection string) int {
+	switch treeSection {
+	case "queue":
+		return 0
+	case "working":
+		return 1
+	case "archive":
+		return 2
+	default:
+		return 3
+	}
+}
+
+// dedupeTicketsByRequestId keeps one ticket per REQ id (queue > working >
+// archive precedence) and reports every duplicate as a warning naming both
+// file paths. Without this, an id present in two tree sections rendered in two
+// views while the id-keyed JSON map could only carry one copy's content.
+func dedupeTicketsByRequestId(parsedTickets []*RequestTicket) ([]*RequestTicket, []string) {
+	winnersByRequestId := map[string]*RequestTicket{}
+	var orderedWinners []*RequestTicket
+	var duplicateWarnings []string
+
+	for _, ticket := range parsedTickets {
+		existing, exists := winnersByRequestId[ticket.RequestId]
+		if !exists {
+			winnersByRequestId[ticket.RequestId] = ticket
+			orderedWinners = append(orderedWinners, ticket)
+			continue
+		}
+		keptTicket, ignoredTicket := existing, ticket
+		if treeSectionPrecedence(ticket.TreeSection) < treeSectionPrecedence(existing.TreeSection) {
+			keptTicket, ignoredTicket = ticket, existing
+		}
+		if keptTicket != existing {
+			winnersByRequestId[ticket.RequestId] = keptTicket
+			for winnerIndex, winner := range orderedWinners {
+				if winner == existing {
+					orderedWinners[winnerIndex] = keptTicket
+					break
+				}
+			}
+		}
+		duplicateWarnings = append(duplicateWarnings, fmt.Sprintf(
+			"duplicate REQ id %s: showing the %s copy (%s); ignoring the %s copy (%s)",
+			ticket.RequestId, keptTicket.TreeSection, keptTicket.FilePath,
+			ignoredTicket.TreeSection, ignoredTicket.FilePath))
+	}
+	return orderedWinners, duplicateWarnings
 }
 
 // parseRequestTicket reads and parses a single REQ-*.md file into a ticket.
@@ -364,8 +436,12 @@ func resolveDependsOn(fields map[string]any) []string {
 }
 
 // resolveCompletionTime applies the completion fallback chain: frontmatter
-// completed_at → the commit hash's git committer date → file modification time.
-// The git step is best-effort (a nil or failing lookup falls through to mtime).
+// completed_at → the commit hash's git committer date → unresolved. The git
+// step is best-effort (a nil or failing lookup leaves the completion undated).
+// File mtime is deliberately NOT a fallback — a fresh clone, branch checkout,
+// or tarball extraction resets every mtime to "now", which stamped months-old
+// REQs as completed today; undated completions land in the calendar's
+// "undated" bucket instead.
 func resolveCompletionTime(ticket *RequestTicket, repoRoot string, gitLookup gitCommitDateLookup) (time.Time, CompletionTimeSource) {
 	if ticket.CompletedAt != "" {
 		if parsed, ok := parseTimestamp(ticket.CompletedAt); ok {
@@ -377,20 +453,22 @@ func resolveCompletionTime(ticket *RequestTicket, repoRoot string, gitLookup git
 			return committedAt, CompletionFromGitLog
 		}
 	}
-	if info, statError := os.Stat(ticket.FilePath); statError == nil {
-		return info.ModTime(), CompletionFromFileModTime
-	}
 	return time.Time{}, CompletionUnresolved
 }
 
 // lookupGitCommitDate resolves a commit hash to its committer date via
 // `git -C <repoRoot> log -1 --format=%cI <hash>`. It is best-effort: a missing
 // git binary, an unknown hash, or an unparseable date all return (zero, false).
+// The hash comes from untrusted REQ frontmatter, so it is validated as plain
+// hex before being placed in argv — an option-shaped value like "--all" or
+// "--output=<path>" would otherwise be parsed by git as a flag (argument
+// injection).
 func lookupGitCommitDate(repoRoot string, commitHash string) (time.Time, bool) {
-	if strings.TrimSpace(commitHash) == "" {
+	trimmedHash := strings.TrimSpace(commitHash)
+	if !isPlausibleCommitHash(trimmedHash) {
 		return time.Time{}, false
 	}
-	command := exec.Command("git", "-C", repoRoot, "log", "-1", "--format=%cI", commitHash)
+	command := exec.Command("git", "-C", repoRoot, "log", "-1", "--format=%cI", trimmedHash)
 	output, runError := command.Output()
 	if runError != nil {
 		return time.Time{}, false
@@ -404,6 +482,25 @@ func lookupGitCommitDate(repoRoot string, commitHash string) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return parsed, true
+}
+
+// isPlausibleCommitHash reports whether text looks like an abbreviated or full
+// git object hash: 4–64 hex digits (64 covers sha256-object repos). Anything
+// else is rejected before it can reach a git argv.
+func isPlausibleCommitHash(text string) bool {
+	if len(text) < 4 || len(text) > 64 {
+		return false
+	}
+	for _, character := range text {
+		switch {
+		case character >= '0' && character <= '9':
+		case character >= 'a' && character <= 'f':
+		case character >= 'A' && character <= 'F':
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 // parseTimestamp parses the timestamp shapes seen across REQ frontmatter:
@@ -429,8 +526,12 @@ func parseTimestamp(text string) (time.Time, bool) {
 // bucketColumns sorts every ticket into the active-work columns by normalized
 // status. Completed* tickets only enter RecentlyDone when their completion
 // instant falls inside the window; older completions are left for the calendar.
-func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Duration) BoardColumns {
+// A status outside the known vocabulary is never silently dropped (Schema Read
+// Contract, actions/work-reference.md): the ticket lands in Needs-input/Blocked
+// so it stays visible, plus a warning naming the unrecognized status.
+func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Duration) (BoardColumns, []string) {
 	var columns BoardColumns
+	var statusWarnings []string
 	for _, ticket := range tickets {
 		switch {
 		case ticket.Status == "pending":
@@ -443,12 +544,17 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 			if isWithinRecentWindow(ticket.CompletionTime, now, recentWindow) {
 				columns.RecentlyDone = append(columns.RecentlyDone, ticket)
 			}
+		default:
+			columns.NeedsInputOrBlocked = append(columns.NeedsInputOrBlocked, ticket)
+			statusWarnings = append(statusWarnings, fmt.Sprintf(
+				"%s has unrecognized status %q — shown under Needs input / Blocked",
+				ticket.RequestId, ticket.OriginalStatus))
 		}
 	}
 	sort.SliceStable(columns.RecentlyDone, func(i, j int) bool {
 		return columns.RecentlyDone[i].CompletionTime.After(columns.RecentlyDone[j].CompletionTime)
 	})
-	return columns
+	return columns, statusWarnings
 }
 
 // isWithinRecentWindow reports whether a completion instant is non-zero and falls
@@ -484,11 +590,22 @@ func buildDependencyGraph(tickets []*RequestTicket, requestsById map[string]*Req
 }
 
 // buildCalendar produces a completion-time-keyed index over every completed*
-// ticket with a resolved instant, sorted most-recent-first.
+// ticket, sorted most-recent-first. Tickets whose completion instant could not
+// be resolved are kept — never silently dropped — under the trailing "undated"
+// day bucket (the zero CompletionTime sorts them after every dated entry, and
+// board.js falls back to rendering the raw day key as the group label).
 func buildCalendar(tickets []*RequestTicket) []CalendarEntry {
 	var entries []CalendarEntry
 	for _, ticket := range tickets {
-		if !isCompletedStatus(ticket.Status) || ticket.CompletionTime.IsZero() {
+		if !isCompletedStatus(ticket.Status) {
+			continue
+		}
+		if ticket.CompletionTime.IsZero() {
+			entries = append(entries, CalendarEntry{
+				RequestId:  ticket.RequestId,
+				TimeSource: ticket.CompletionTimeSource,
+				DayKey:     undatedCalendarDayKey,
+			})
 			continue
 		}
 		entries = append(entries, CalendarEntry{

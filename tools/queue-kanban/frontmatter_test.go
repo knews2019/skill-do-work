@@ -98,6 +98,36 @@ func TestParseFrontmatterFieldsRecoversDuplicateKeys(t *testing.T) {
 	}
 }
 
+func TestParseFrontmatterFieldsRecoversDuplicateBlockListKeys(t *testing.T) {
+	// A repeated BLOCK-LIST key is the dangerous duplicate shape: dropping only
+	// the earlier "depends_on:" line would orphan its "  - item" lines, which
+	// YAML then folds into the preceding field (here `id`) as a multiline
+	// scalar — silently corrupting the REQ id. The whole earlier block must go.
+	yamlText := strings.Join([]string{
+		"id: REQ-1",
+		"depends_on:",
+		"  - REQ-2",
+		"  - REQ-3",
+		"status: pending",
+		"depends_on:",
+		"  - REQ-4",
+	}, "\n")
+
+	fields, parseError := parseFrontmatterFields(yamlText)
+	if parseError != nil {
+		t.Fatalf("expected duplicate-key recovery, got error: %v", parseError)
+	}
+	if got := coerceScalarToString(fields["id"]); got != "REQ-1" {
+		t.Fatalf("id = %q, want REQ-1 (earlier block's list items leaked into the preceding field)", got)
+	}
+	if got := coerceScalarToString(fields["status"]); got != "pending" {
+		t.Fatalf("status = %q, want pending", got)
+	}
+	if got := coerceToStringList(fields["depends_on"]); !reflect.DeepEqual(got, []string{"REQ-4"}) {
+		t.Fatalf("depends_on = %v, want the last block's [REQ-4]", got)
+	}
+}
+
 func TestParseFrontmatterFieldsRecoversMalformedTitleLine(t *testing.T) {
 	// Two real malformed-title shapes that strict YAML rejects: a quoted prefix
 	// with trailing text, and a bare colon inside the value. Both must still

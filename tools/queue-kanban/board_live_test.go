@@ -12,7 +12,7 @@ import (
 // liveBoard builds the board against the REAL do-work tree, resolving the repo
 // root by walking up from the test's working directory. The git lookup is
 // stubbed to false so the whole-tree build is deterministic and fast: completed
-// REQs missing completed_at fall through to their file mtime rather than spawning
+// REQs missing a parseable completed_at resolve as undated rather than spawning
 // one git process per file. (lookupGitCommitDate itself is exercised separately.)
 func liveBoard(t *testing.T) *Board {
 	t.Helper()
@@ -167,14 +167,24 @@ func TestLiveTreeUserRequestLinkage(t *testing.T) {
 	}
 }
 
-func TestLiveTreeCompletionTimeResolved(t *testing.T) {
+// TestLiveTreeCompletionTimeConsistent asserts the completion-resolution
+// contract: a resolved (non-zero) instant always carries a real source
+// (frontmatter or git), and an unresolved completion is exactly the zero time
+// with the unresolved source. Mtime is never a source — a clone or tarball
+// extraction resets mtimes, so it fabricates completion dates.
+func TestLiveTreeCompletionTimeConsistent(t *testing.T) {
 	board := liveBoard(t)
 	for _, ticket := range board.AllRequests {
 		if !isCompletedStatus(ticket.Status) {
 			continue
 		}
-		if ticket.CompletionTime.IsZero() || ticket.CompletionTimeSource == CompletionUnresolved {
-			t.Fatalf("completed REQ %s has no resolved completion time (source=%q)", ticket.RequestId, ticket.CompletionTimeSource)
+		if ticket.CompletionTime.IsZero() != (ticket.CompletionTimeSource == CompletionUnresolved) {
+			t.Fatalf("completed REQ %s: zero-time=%v disagrees with source=%q",
+				ticket.RequestId, ticket.CompletionTime.IsZero(), ticket.CompletionTimeSource)
+		}
+		if !ticket.CompletionTime.IsZero() &&
+			ticket.CompletionTimeSource != CompletionFromFrontmatter && ticket.CompletionTimeSource != CompletionFromGitLog {
+			t.Fatalf("completed REQ %s resolved via unexpected source %q", ticket.RequestId, ticket.CompletionTimeSource)
 		}
 	}
 }

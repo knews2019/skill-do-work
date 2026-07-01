@@ -146,12 +146,19 @@ func (liveServer *liveBoardServer) refreshBoardData() (*generatedBoardData, erro
 	currentFileMtimes := buildTreeMtimeFingerprint(discovered)
 
 	if liveServer.cachedBoardData != nil && treeMtimeFingerprintsEqual(liveServer.cachedFileMtimes, currentFileMtimes) {
-		return liveServer.cachedBoardData, nil
+		// The tree is unchanged but time has moved on: serve a copy with a fresh
+		// GeneratedAt, because the client computes the Recently-done cutoff from
+		// generatedAt as "now" — returning the frozen build instant would stop
+		// completed items from ever aging out of the 24h/48h/7d window while the
+		// page header (stamped per request) claims the data is current.
+		refreshedBoardData := *liveServer.cachedBoardData
+		refreshedBoardData.GeneratedAt = formatTimestamp(time.Now())
+		return &refreshedBoardData, nil
 	}
 
 	// Cache miss (or first request): rebuild using the same path as generate.
-	// The real git lookup is used (best-effort; falls through to mtime when git
-	// is unavailable), matching generate's behavior exactly.
+	// The real git lookup is used (best-effort; a failed lookup leaves the
+	// completion undated), matching generate's behavior exactly.
 	board, buildErr := buildBoard(liveServer.repoRoot, time.Now(), liveServer.recentWindow, lookupGitCommitDate)
 	if buildErr != nil {
 		return nil, fmt.Errorf("building board model: %w", buildErr)

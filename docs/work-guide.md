@@ -42,7 +42,7 @@ As the request moves through the pipeline, sections are appended:
 - `## Testing` — test results, red-green validation
 - `## Review` — scores, findings, acceptance result
 - `## Decisions` — numbered implementation choices (D-01, D-02...)
-- `## Discovered Tasks` — out-of-scope issues found during work
+- `## Discovered Tasks` — out-of-scope issues found during work; critical items and small test-only hygiene fixes auto-queue, the rest await your OK via `do-work clarify`
 - `## Lessons Learned` — what worked, what didn't
 
 ## Review gate

@@ -48,6 +48,7 @@ type generatedBoardData struct {
 	UserRequestOrder  []string                        `json:"userRequestOrder"`
 	UserRequests      map[string]generatedUserRequest `json:"userRequests"`
 	Calendar          []generatedCalendarEntry        `json:"calendar"`
+	Warnings          []string                        `json:"warnings,omitempty"` // duplicate ids / unrecognized statuses — rendered as a banner
 }
 
 // generatedColumns lists the active-board buckets as REQ id slices. RecentlyDone
@@ -149,6 +150,7 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 	data := generatedBoardData{
 		GeneratedAt:       formatTimestamp(board.GeneratedAt),
 		RecentWindowHours: board.RecentWindow.Hours(),
+		Warnings:          board.Warnings,
 		Requests:          map[string]generatedRequest{},
 		UserRequests:      map[string]generatedUserRequest{},
 		Columns: generatedColumns{

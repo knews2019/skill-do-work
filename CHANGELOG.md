@@ -6,6 +6,22 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.102.1 — The Honest Board (2026-07-01)
+
+Acts on a deep multi-agent review of the last 20 commits: fifteen confirmed findings fixed. The update flow can no longer silently clobber local queue-kanban customizations, the board tool stops hiding or fabricating data, and several instruction files stop promising things the code doesn't do.
+
+- **`do-work update` sees the whole vendored tool again.** The customization diff dropped `-x queue-kanban` — `diff -x` matches *directory* basenames too, so it had excluded the entire Go module from the check — in favor of filtering only the compiled binary out of the output. Every prescribed block now re-derives its temp paths (shell state doesn't survive between steps), and Step 5 refuses to extract when the reviewed tarball is missing instead of re-downloading un-diffed bytes. Both traps are now documented in CLAUDE.md.
+- **Board tool integrity fixes** (`tools/queue-kanban/`): frontmatter commit values are hex-validated before reaching git argv (argument-injection guard); duplicate-key recovery drops the whole earlier block instead of corrupting the preceding field; queue/archive id collisions keep one copy (active wins) with a warning instead of rendering contradictions; unrecognized statuses land visibly in Needs-input/Blocked with a warning instead of vanishing; the serve-mode Recently-done window keeps aging on cache hits; completion dates are never fabricated from file mtimes (a fresh clone showed everything as "completed today") — undated completions get an explicit calendar bucket; the drawer focus trap no longer breaks on REQ checkbox bodies. Warnings surface in the UI banner, the JSON island, and `board summary`.
+- **Docs stop overpromising.** prime audit's Stakes-writing is disclosed in the guide and help menu; slop-check/ai-report check all **eight** anti-slop principles (the decision-first rule was invisible behind hard-coded "seven"s, and ai-report's image checks no longer collide with principle #8's number); forensics loads the prompt-injection guardrail before ingesting archived Lessons; pipeline debriefs find legacy single-file ai-reports again; `do-work board` resolves non-git roots like every other action and no longer claims auto-refresh; `board` joined SKILL.md's argument hint.
+
+## 0.102.0 — The Rubber Stamp (2026-07-01)
+
+Trivial test-hygiene discoveries no longer wait on a rubber-stamp: a `[normal]`/`[low]` discovered task that is test-only, mechanical, and small now auto-queues as `pending` instead of parking in `pending-answers` for a `do-work clarify` round-trip the user always approves anyway — so the parent UR consolidates without stalling.
+
+- **Test-hygiene carve-out** in the Step 8 discovered-task classification (`actions/work-reference.md`) — fires only when ALL three gates hold: test files only (zero production-source changes), mechanical hygiene (warning-silencing, deflaking, lint/format in tests — no behavior or assertion-meaning changes), and small (a file or two, no new infrastructure). Failing any gate keeps the existing consent flow.
+- **Same paper trail as the critical flow** — an `Auto-approved: test-only mechanical hygiene` note in Open Questions plus a visible `↺ test-hygiene discovery auto-queued as REQ-NNN` report line; discarding the REQ from the queue stays the escape hatch.
+- Restatements swept for consistency: `actions/work.md` Step 8 summary and `docs/work-guide.md`'s section list.
+
 ## 0.101.0 — The Trend Scout (2026-07-01)
 
 `do-work install` gains a third target: `last30days`, the engagement-ranked social-research engine, vendored straight into the consuming project — keyless, git-ignored, and never touching `~/.claude`.

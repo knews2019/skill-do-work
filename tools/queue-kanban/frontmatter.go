@@ -141,10 +141,14 @@ func unquoteScalar(value string) string {
 }
 
 // dropDuplicateTopLevelKeys returns a copy of the YAML frontmatter with earlier
-// occurrences of any repeated top-level key removed, keeping the last value of
-// each. It only inspects unindented "key:" lines, so indented block content and
-// list items ("  - foo") are left untouched. This is a narrow recovery for the
-// lone duplicate-key file in the tree, not a general YAML rewriter.
+// occurrences of any repeated top-level key removed — together with their
+// indented continuation lines — keeping the last value of each. Dropping only
+// the "key:" line while leaving its block content (e.g. the "  - item" lines of
+// a repeated depends_on list) would fold those orphaned lines into the previous
+// field's value as a multiline scalar, silently corrupting it. Everything
+// between a dropped key line and the next top-level key belongs to the dropped
+// key, so it is dropped too. This is a narrow recovery for duplicate-key files,
+// not a general YAML rewriter.
 func dropDuplicateTopLevelKeys(yamlText string) string {
 	lines := strings.Split(yamlText, "\n")
 
@@ -156,11 +160,15 @@ func dropDuplicateTopLevelKeys(yamlText string) string {
 	}
 
 	keptLines := make([]string, 0, len(lines))
+	droppingKeyBlock := false
 	for lineIndex, line := range lines {
 		if key, isKey := topLevelKeyName(line); isKey {
-			if lastIndexByKey[key] != lineIndex {
+			droppingKeyBlock = lastIndexByKey[key] != lineIndex
+			if droppingKeyBlock {
 				continue
 			}
+		} else if droppingKeyBlock {
+			continue // continuation line of a dropped earlier occurrence
 		}
 		keptLines = append(keptLines, line)
 	}

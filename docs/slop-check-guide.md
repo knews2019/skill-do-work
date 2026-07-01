@@ -1,12 +1,12 @@
 # Slop Check
 
-Validates a human-facing artifact against the seven anti-slop principles before it ships. Read-only by default — flags findings, offers a rewrite, never auto-applies.
+Validates a human-facing artifact against the anti-slop principles before it ships. Read-only by default — flags findings, offers a rewrite, never auto-applies.
 
 > **Not to be confused with code-review or ui-review.** `do-work code-review` reviews source code for consistency, security, performance. `do-work ui-review` validates UI quality against design best practices. `do-work review-work` is a REQ-scoped acceptance check that runs as part of `do-work run`. Slop-check is the anti-slop guardrail for *prose* — briefs, reports, summaries, drafts.
 
-## The seven principles checked
+## The principles checked
 
-The source of truth is `crew-members/anti-slop.md`; slop-check loads it and runs each principle as an explicit check:
+The source of truth is `crew-members/anti-slop.md` — slop-check loads it and runs **every** principle in the file as an explicit check (eight as of this writing; the table below is illustrative, the crew file is canonical):
 
 | # | Principle | What it means |
 |---|-----------|---------------|
@@ -17,8 +17,9 @@ The source of truth is `crew-members/anti-slop.md`; slop-check loads it and runs
 | 5 | **Be honest about what's AI-generated and unchecked** | "First-pass draft, numbers not fact-checked" lets the reader calibrate. Pretending unreviewed output is your own erodes trust. |
 | 6 | **Ask whether the artifact needs to exist at all** | Most "let me write this up" instincts could be a two-line answer. Default to less. |
 | 7 | **Match the medium to the stakes** | Quick question → quick answer. Real decision → real thinking, which usually means *less* AI scaffolding, not more. |
+| 8 | **Lead with the decision, not the self-grade** | When the artifact surfaces a decision or verdict, it comes first — in words. Scores, confidence %, and coverage tables sit below it or get cut. |
 
-Each check produces PASS or FLAG with one-line evidence. Principles 2 and 5 can come back N/A — slop-check can't verify upstream claims for you, and "be honest about what's AI-generated" only applies if the artifact was AI-drafted. N/A is a documented outcome, not a silent skip.
+Each check produces PASS or FLAG with one-line evidence. Principles 2, 5, and 8 can come back N/A — slop-check can't verify upstream claims for you, "be honest about what's AI-generated" only applies if the artifact was AI-drafted, and "decision first" only applies when there's a decision to lead with. N/A is a documented outcome, not a silent skip.
 
 ## Output
 
@@ -36,6 +37,7 @@ A markdown report keyed to each principle:
 | 5 | AI honesty | FLAG | No disclosure block; draft reads like considered work |
 | 6 | Needs to exist | FLAG | A two-line message would replace the entire artifact |
 | 7 | Medium matches stakes | PASS | Low-stakes status update → short prose is right |
+| 8 | Decision first, not self-grade | FLAG | Opens with "Overall: 87%" — the worded verdict is buried in section 3 |
 ```
 
 The report says what to cut and why. It does not paraphrase the artifact.
@@ -67,8 +69,8 @@ For "most recent", the action skips `.marp.html` (mechanical Marp-CLI exports) a
 ## Key rules
 
 - **Read-only by default.** The original artifact is never modified without explicit user consent on the rewrite.
-- **The seven principles come from `crew-members/anti-slop.md`** — don't paraphrase, don't skip any. The crew-member is the source of truth.
-- **N/A is a real outcome.** Principles 2 (verify-yourself) and 5 (disclose-AI) can be N/A when the action can't verify or the artifact wasn't AI-drafted. Document the N/A, don't silently skip.
+- **The principles come from `crew-members/anti-slop.md`** — don't paraphrase, don't skip any. The crew-member is the source of truth; if it grows a principle, the check grows with it.
+- **N/A is a real outcome.** Principles 2 (verify-yourself), 5 (disclose-AI), and 8 (decision-first) can be N/A when the action can't verify, the artifact wasn't AI-drafted, or no decision is surfaced. Document the N/A, don't silently skip.
 - **Don't run slop-check on the slop-check report itself.** Recursive self-check produces no signal.
 
 ## When NOT to use

@@ -109,8 +109,9 @@ func TestIdentifierLessNumericOrder(t *testing.T) {
 }
 
 // TestResolveCompletionTimeFallbackChain exercises every step of the fallback
-// chain (frontmatter → git → mtime → unresolved) deterministically, with the git
-// lookup injected so no subprocess is spawned.
+// chain (frontmatter → git → unresolved) deterministically, with the git
+// lookup injected so no subprocess is spawned. File mtime is deliberately NOT
+// in the chain — a clone/checkout/extraction resets it, fabricating dates.
 func TestResolveCompletionTimeFallbackChain(t *testing.T) {
 	temporaryDirectory := t.TempDir()
 	knownModificationTime := time.Date(2025, 1, 2, 3, 4, 5, 0, time.UTC)
@@ -154,14 +155,17 @@ func TestResolveCompletionTimeFallbackChain(t *testing.T) {
 		}
 	})
 
-	t.Run("file mtime is the third step", func(t *testing.T) {
+	t.Run("file mtime is NOT a fallback", func(t *testing.T) {
+		// The file exists with a known old mtime, but no frontmatter timestamp and
+		// no resolvable commit — the completion must stay unresolved instead of
+		// adopting the mtime (which a clone/checkout/extraction would have reset).
 		ticket := &RequestTicket{FilePath: existingFile}
 		got, source := resolveCompletionTime(ticket, temporaryDirectory, stubGitLookup)
-		if source != CompletionFromFileModTime {
-			t.Fatalf("source = %q, want mtime", source)
+		if source != CompletionUnresolved {
+			t.Fatalf("source = %q, want unresolved (mtime must not be used)", source)
 		}
-		if got.Unix() != knownModificationTime.Unix() {
-			t.Fatalf("mtime = %v, want %v", got.UTC(), knownModificationTime)
+		if !got.IsZero() {
+			t.Fatalf("time = %v, want zero (mtime must not be used)", got)
 		}
 	})
 
@@ -175,6 +179,44 @@ func TestResolveCompletionTimeFallbackChain(t *testing.T) {
 			t.Fatalf("time = %v, want zero", got)
 		}
 	})
+}
+
+// TestDedupeTicketsByRequestId covers the queue+archive id-collision state the
+// skill explicitly models (blocked-archive-collision): exactly one copy per id
+// may reach the views (the id-keyed JSON map can only carry one), the active
+// copy wins, and the duplicate is surfaced as a warning — never dropped silently.
+func TestDedupeTicketsByRequestId(t *testing.T) {
+	archiveCopy := &RequestTicket{RequestId: "REQ-42", Status: "completed", TreeSection: "archive", FilePath: "/a/REQ-42.md"}
+	queueCopy := &RequestTicket{RequestId: "REQ-42", Status: "pending", TreeSection: "queue", FilePath: "/q/REQ-42.md"}
+	unrelated := &RequestTicket{RequestId: "REQ-7", Status: "pending", TreeSection: "queue", FilePath: "/q/REQ-7.md"}
+
+	// Archive walks first in the real tree order — the later queue copy must still win.
+	winners, warnings := dedupeTicketsByRequestId([]*RequestTicket{archiveCopy, queueCopy, unrelated})
+	if len(winners) != 2 {
+		t.Fatalf("winners = %d tickets, want 2", len(winners))
+	}
+	if winners[0] != queueCopy {
+		t.Fatalf("winner for REQ-42 = %s copy, want the queue copy", winners[0].TreeSection)
+	}
+	if len(warnings) != 1 ||
+		!strings.Contains(warnings[0], "REQ-42") ||
+		!strings.Contains(warnings[0], "/q/REQ-42.md") ||
+		!strings.Contains(warnings[0], "/a/REQ-42.md") {
+		t.Fatalf("expected one duplicate warning naming both copies, got %v", warnings)
+	}
+}
+
+func TestIsPlausibleCommitHashRejectsOptionShapedValues(t *testing.T) {
+	for _, valid := range []string{"deadbeef", "096dacba", "0123456789abcdefABCDEF00"} {
+		if !isPlausibleCommitHash(valid) {
+			t.Fatalf("isPlausibleCommitHash(%q) = false, want true", valid)
+		}
+	}
+	for _, invalid := range []string{"", "abc", "--all", "--output=/tmp/pwned", "HEAD", "main", "dead beef", strings.Repeat("a", 65)} {
+		if isPlausibleCommitHash(invalid) {
+			t.Fatalf("isPlausibleCommitHash(%q) = true, want false", invalid)
+		}
+	}
 }
 
 func TestParseRequestTicketNormalizesAndResolves(t *testing.T) {
@@ -237,20 +279,24 @@ func TestBucketColumns(t *testing.T) {
 		{RequestId: "REQ-4", Status: "claimed"},
 		{RequestId: "REQ-5", Status: "pending-answers"},
 		{RequestId: "REQ-6", Status: "deferred"},
+		{RequestId: "REQ-7", Status: "pnding", OriginalStatus: "pnding"}, // typo'd status — must never be silently dropped
 		recentDone,
 		oldDone,
 	}
-	columns := bucketColumns(tickets, now, window)
+	columns, statusWarnings := bucketColumns(tickets, now, window)
 	if len(columns.Pending) != 1 || columns.Pending[0].RequestId != "REQ-3" {
 		t.Fatalf("Pending = %+v", columns.Pending)
 	}
 	if len(columns.Claimed) != 1 || columns.Claimed[0].RequestId != "REQ-4" {
 		t.Fatalf("Claimed = %+v", columns.Claimed)
 	}
-	if len(columns.NeedsInputOrBlocked) != 2 {
-		t.Fatalf("NeedsInputOrBlocked should hold pending-answers + deferred, got %d", len(columns.NeedsInputOrBlocked))
+	if len(columns.NeedsInputOrBlocked) != 3 {
+		t.Fatalf("NeedsInputOrBlocked should hold pending-answers + deferred + the unrecognized status, got %d", len(columns.NeedsInputOrBlocked))
 	}
 	if len(columns.RecentlyDone) != 1 || columns.RecentlyDone[0].RequestId != "REQ-1" {
 		t.Fatalf("RecentlyDone should hold only the in-window completion, got %+v", columns.RecentlyDone)
+	}
+	if len(statusWarnings) != 1 || !strings.Contains(statusWarnings[0], "REQ-7") || !strings.Contains(statusWarnings[0], "pnding") {
+		t.Fatalf("expected one unrecognized-status warning naming REQ-7/pnding, got %v", statusWarnings)
 	}
 }

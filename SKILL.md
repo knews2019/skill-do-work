@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture-request: (describe a task) | run | verify-requests | review-work | code-review | ui-review | validate-feedback [paste findings] | present-work | ai-report [target] | slop-check [target] | dream [path] | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | note [text] | stray-check [path] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
+argument-hint: "pipeline [request] | capture-request: (describe a task) | run | verify-requests | review-work | code-review | ui-review | validate-feedback [paste findings] | present-work | ai-report [target] | slop-check [target] | dream [path] | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | board [mode] | note [text] | stray-check [path] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -194,7 +194,7 @@ do-work — task queue for agentic coding tools
     do-work scan-ideas [focus]          Generate ideas for what to build next
     do-work deep-explore [concept]      Multi-round structured exploration of a concept
     do-work prime create src/auth/      Generate a prime file via interactive Q&A
-    do-work prime audit                 Audit prime files for staleness and broken links
+    do-work prime audit                 Health-check primes + refresh their Stakes (writes Stakes)
 
   Knowledge base:
     do-work bkb [sub]                   Sub-commands: init | triage | ingest | query | lint |
