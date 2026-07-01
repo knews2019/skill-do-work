@@ -17,7 +17,7 @@ import (
 //
 //	queue-kanban summary  [--repo-root DIR] [--recent-window DUR]
 //	queue-kanban generate --out DIR [--repo-root DIR]
-//	queue-kanban serve    [--port PORT] [--repo-root DIR]
+//	queue-kanban serve    [--port PORT] [--repo-root DIR] [--open]
 //
 // Invoking the binary with no subcommand prints the model summary.
 //

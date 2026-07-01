@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.104.0 — The Grand Opening (2026-07-02)
+
+`just run-kanban` now ends with the board on your screen, not a URL in your scrollback. The recipe replaces a stale queue-kanban instance holding the port, and the server opens your default browser once it's actually up.
+
+- New `queue-kanban serve --open` flag (default off): opens the platform browser (`open` / `xdg-open` / `rundll32`) at the board URL — only after a successful bind, fire-and-forget, never fatal
+- Bind-before-announce: a port collision now exits with the raw bind error and prints **no** "live board at …" banner (previously it announced a server that never came up)
+- The `just run-kanban` recipe kills a stale instance on the port first — but only a process actually named `queue-kanban`; any other squatter is left running and named in an error. Skips gracefully when `lsof` is missing
+- `do-work board` serve mode deliberately does **not** auto-open (agents drive it); the justfile recipe is the caller that opts in
+- Already-installed projects: the installer is append-only, so delete the old `# --- do-work board recipes ---` block and re-run `do-work install just-kanban` to pick this up
+
 ## 0.103.3 — The Loopback Latch (2026-07-02)
 
 Four external review findings, all confirmed and fixed. The big one: the live board now binds loopback by default instead of every interface — your queue's rendered REQ bodies are no longer LAN-readable while the console claims "localhost".

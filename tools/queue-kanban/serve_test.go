@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -188,10 +190,10 @@ func TestResolveServeListenAddressBindsLoopbackByDefault(t *testing.T) {
 		flagValue   string
 		wantAddress string
 	}{
-		{"", "127.0.0.1:8090"},               // default
-		{"9000", "127.0.0.1:9000"},           // bare flag port → loopback
-		{":9000", ":9000"},                   // explicit all-interfaces syntax passes through
-		{"0.0.0.0:9000", "0.0.0.0:9000"},     // explicit host passes through
+		{"", "127.0.0.1:8090"},           // default
+		{"9000", "127.0.0.1:9000"},       // bare flag port → loopback
+		{":9000", ":9000"},               // explicit all-interfaces syntax passes through
+		{"0.0.0.0:9000", "0.0.0.0:9000"}, // explicit host passes through
 		{"192.168.1.5:9000", "192.168.1.5:9000"},
 	}
 	for _, addressCase := range addressCases {
@@ -210,5 +212,87 @@ func TestResolveServeListenAddressEnvVarBarePortBindsLoopback(t *testing.T) {
 	resolvedAddress := resolveServeListenAddress("")
 	if resolvedAddress != "127.0.0.1:9100" {
 		t.Errorf("resolveServeListenAddress with bare env port = %q, want %q", resolvedAddress, "127.0.0.1:9100")
+	}
+}
+
+// findFreeTcpPort asks the OS for an ephemeral port by binding to 127.0.0.1:0,
+// reading the assigned port back, then releasing it immediately. There is a
+// theoretical reuse race between release and the caller's own bind, but this
+// is the standard Go testing idiom for "give me a free port" and is not flaky
+// in practice within a single test process.
+func findFreeTcpPort(t *testing.T) int {
+	t.Helper()
+	probeListener, listenErr := net.Listen("tcp", "127.0.0.1:0")
+	if listenErr != nil {
+		t.Fatalf("probe for a free port: %v", listenErr)
+	}
+	freePort := probeListener.Addr().(*net.TCPAddr).Port
+	probeListener.Close()
+	return freePort
+}
+
+// TestBindServeListenerAndAnnounceSkipsOpenerOnBindFailure is the regression
+// test for the false-positive banner: when the port is already held, the bind
+// must fail with an error and the browser opener must never be invoked —
+// nothing "opens" a URL for a server that never came up.
+func TestBindServeListenerAndAnnounceSkipsOpenerOnBindFailure(t *testing.T) {
+	listenAddress := fmt.Sprintf("127.0.0.1:%d", findFreeTcpPort(t))
+
+	blockingListener, listenErr := net.Listen("tcp", listenAddress)
+	if listenErr != nil {
+		t.Fatalf("pre-occupy %s: %v", listenAddress, listenErr)
+	}
+	defer blockingListener.Close()
+
+	openerCallCount := 0
+	stubOpener := func(string) { openerCallCount++ }
+
+	_, bindErr := bindServeListenerAndAnnounce(listenAddress, "/tmp/fixture-repo", true, stubOpener)
+	if bindErr == nil {
+		t.Fatalf("bindServeListenerAndAnnounce on an occupied port: got nil error, want a bind failure")
+	}
+	if openerCallCount != 0 {
+		t.Fatalf("browser opener called %d times on bind failure, want 0", openerCallCount)
+	}
+}
+
+// TestBindServeListenerAndAnnounceOpensAfterSuccessWhenRequested asserts the
+// happy path: a successful bind with openAfterBind=true invokes the opener
+// exactly once with the printed board URL.
+func TestBindServeListenerAndAnnounceOpensAfterSuccessWhenRequested(t *testing.T) {
+	listenAddress := fmt.Sprintf("127.0.0.1:%d", findFreeTcpPort(t))
+	wantUrl := fmt.Sprintf("http://%s", listenAddress)
+
+	var openedUrls []string
+	stubOpener := func(url string) { openedUrls = append(openedUrls, url) }
+
+	listener, bindErr := bindServeListenerAndAnnounce(listenAddress, "/tmp/fixture-repo", true, stubOpener)
+	if bindErr != nil {
+		t.Fatalf("bindServeListenerAndAnnounce: %v", bindErr)
+	}
+	defer listener.Close()
+
+	if len(openedUrls) != 1 || openedUrls[0] != wantUrl {
+		t.Fatalf("browser opener calls = %v, want exactly one call with %q", openedUrls, wantUrl)
+	}
+}
+
+// TestBindServeListenerAndAnnounceDefaultOffLeavesOpenerUntouched asserts
+// that a successful bind with openAfterBind=false — the --open flag's default
+// — never touches the opener seam at all.
+func TestBindServeListenerAndAnnounceDefaultOffLeavesOpenerUntouched(t *testing.T) {
+	listenAddress := fmt.Sprintf("127.0.0.1:%d", findFreeTcpPort(t))
+
+	openerCallCount := 0
+	stubOpener := func(string) { openerCallCount++ }
+
+	listener, bindErr := bindServeListenerAndAnnounce(listenAddress, "/tmp/fixture-repo", false, stubOpener)
+	if bindErr != nil {
+		t.Fatalf("bindServeListenerAndAnnounce: %v", bindErr)
+	}
+	defer listener.Close()
+
+	if openerCallCount != 0 {
+		t.Fatalf("browser opener called %d times with openAfterBind=false, want 0", openerCallCount)
 	}
 }

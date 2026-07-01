@@ -271,7 +271,7 @@ project keeps its action-usage docs.
 
 ## Workflow: `just-kanban`
 
-The `just-kanban` target appends [`just`](https://github.com/casey/just) recipes for the shipped queue-kanban board (`tools/queue-kanban/`, normally run via `actions/board.md`) to the consuming project's justfile, so `just run-kanban` serves the live board without going through the agent. The justfile is a **project-owned** file — `do-work update` never touches it — while the tool source the recipes point at is refreshed by every update; the recipes rebuild the binary on each run so those refreshes take effect automatically.
+The `just-kanban` target appends [`just`](https://github.com/casey/just) recipes for the shipped queue-kanban board (`tools/queue-kanban/`, normally run via `actions/board.md`) to the consuming project's justfile, so `just run-kanban` serves the live board — replacing a stale queue-kanban instance still holding the port, then opening your default browser at it — without going through the agent. The justfile is a **project-owned** file — `do-work update` never touches it — while the tool source the recipes point at is refreshed by every update; the recipes rebuild the binary on each run so those refreshes take effect automatically.
 
 #### Phase 1: Check if already installed
 
@@ -287,6 +287,8 @@ done
 
 If a `run-kanban` recipe is present — even one that differs from the block below — report "already installed" and stop. Never replace an existing recipe; if the user wants the shipped version, they remove theirs first.
 
+**Upgrading an already-installed project:** because installs are append-only, a project that ran `just-kanban` before the recipe gained the replace-stale-instance and auto-open behavior (or any future recipe change) will not pick it up automatically — Phase 1 only checks for *presence* of a `run-kanban` recipe, not which version. To pull in the new behavior: delete the `# --- do-work board recipes ... ---` block from the project's justfile, then re-run `do-work install just-kanban`.
+
 #### Phase 2: Append the recipes
 
 Resolve the two paths as a text operation first, then substitute the literal result into the block below (deriving values before they enter a file is the same discipline CLAUDE.md prescribes for shell quoting):
@@ -300,9 +302,10 @@ Pick the justfile the same way Phase 1 does (`justfile` / `Justfile` / `.justfil
 ```just
 # --- do-work board recipes (installed by `do-work install just-kanban`) ---
 
-# Serve the do-work queue as a live Kanban board (Ctrl-C to stop; reload the page to refresh)
+# Serve the do-work queue as a live Kanban board, replacing a stale instance on the port and opening your browser (Ctrl-C to stop; reload the page to refresh)
 run-kanban port="8090":
-    cd <kanban-dir> && go build -o queue-kanban . && ./queue-kanban serve --repo-root "{{justfile_directory()}}" --port {{port}}
+    if command -v lsof >/dev/null 2>&1; then PID="$(lsof -ti tcp:{{port}} -sTCP:LISTEN 2>/dev/null | head -n1)"; if [ -n "$PID" ]; then COMM="$(ps -p "$PID" -o comm= 2>/dev/null)"; COMM="${COMM##*/}"; if [ "$COMM" = "queue-kanban" ]; then kill "$PID" 2>/dev/null; i=0; while kill -0 "$PID" 2>/dev/null && [ "$i" -lt 20 ]; do sleep 0.1; i=$((i+1)); done; else echo "queue-kanban: port {{port}} is already in use by another process ($COMM, pid $PID) - refusing to kill it. Stop it manually, or run 'just run-kanban <port>' with a different port." >&2; exit 1; fi; fi; fi
+    cd <kanban-dir> && go build -o queue-kanban . && ./queue-kanban serve --open --repo-root "{{justfile_directory()}}" --port {{port}}
 
 # Shareable static snapshot → build/queue-kanban-board/index.html
 kanban-static:
@@ -313,10 +316,11 @@ kanban-summary:
     cd <kanban-dir> && go build -o queue-kanban . && ./queue-kanban summary --repo-root "{{justfile_directory()}}"
 ```
 
-Two deliberate choices in these recipes:
+Three deliberate choices in these recipes:
 
 - **`go build` on every run** (`actions/board.md` Step 4's rule): `do-work update` overwrites the tool's source but leaves the previously compiled binary in place — a cached binary silently renders old logic. The incremental rebuild is near-instant when nothing changed, and the binary stays uncommittable via the tool's shipped `.gitignore`.
 - **Each `cd … && …` chain stays on one logical line**: `just` runs every recipe line in a fresh shell, so a bare `cd` on its own line would not carry into the next — the same cross-shell state trap CLAUDE.md documents for prescribed action steps.
+- **The kill-stale check is its own recipe line and needs no `cd`**: it only touches `lsof`/`ps`/`kill` against `{{port}}`, so it doesn't need the `<kanban-dir>` context the build+serve line does. `just` aborts a recipe on the first line that exits non-zero, so a squatting non-`queue-kanban` process's `exit 1` here stops the recipe *before* the build+serve line ever runs — no build is attempted and nothing gets killed. It kills only a process whose own command name (verified via `ps -p PID -o comm=`) is `queue-kanban`; anything else is left running and named in the error. A missing `lsof` degrades gracefully — the check is skipped and the recipe proceeds straight to build+serve — rather than blocking the recipe on a tool that isn't guaranteed to exist.
 
 #### Phase 3: Verify
 
@@ -344,11 +348,14 @@ Installed: just recipes for the queue-kanban board
 
 Appended to: <project-root>/justfile
 
-  just run-kanban          Live board at http://localhost:8090 (reload to refresh)
+  just run-kanban          Live board at http://localhost:8090, opens in your browser (reload to refresh)
   just run-kanban 9000     Same, custom port
   just kanban-static       Snapshot → build/queue-kanban-board/index.html
   just kanban-summary      Column counts in the terminal
 
+- `just run-kanban` replaces a stale queue-kanban instance already holding
+  the port and opens your default browser at the board URL automatically —
+  a non-queue-kanban process on the port is left alone and named in an error.
 - Recipes rebuild the tool on every run, so `do-work update` refreshes take
   effect automatically (needs the Go toolchain — same requirement as
   `do-work board`).

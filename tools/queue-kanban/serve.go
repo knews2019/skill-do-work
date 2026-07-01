@@ -251,6 +251,37 @@ func resolveServeListenAddress(portFlagValue string) string {
 	return kanbanServeDefaultListenAddress
 }
 
+// bindServeListenerAndAnnounce binds listenAddress via TCP and, ONLY on a
+// successful bind, prints the startup banner (and the all-interfaces warning,
+// when applicable) and — if openAfterBind is true — invokes browserOpener
+// with the printed board URL. This ordering is deliberate: binding before
+// announcing is the fix for the false-positive "live board at …" line a port
+// collision used to print (immediately followed by a fatal bind error) —
+// nothing is announced and no browser opens for a server that never came up.
+// browserOpener is injected so tests can assert it fires (or doesn't) without
+// launching a real browser.
+func bindServeListenerAndAnnounce(listenAddress string, repoRoot string, openAfterBind bool, browserOpener func(string)) (net.Listener, error) {
+	listener, listenErr := net.Listen("tcp", listenAddress)
+	if listenErr != nil {
+		return nil, listenErr
+	}
+
+	displayAddress := listenAddress
+	if strings.HasPrefix(displayAddress, ":") {
+		displayAddress = "localhost" + displayAddress
+		fmt.Printf("queue-kanban: warning: %s binds ALL interfaces — the board (including REQ bodies) is reachable from the local network\n", listenAddress)
+	}
+	boardUrl := fmt.Sprintf("http://%s", displayAddress)
+	fmt.Printf("queue-kanban: live board at %s  (re-walks do-work/ per /board-data.js request)\n", boardUrl)
+	fmt.Printf("queue-kanban: serving do-work/ from %s\n", repoRoot)
+
+	if openAfterBind {
+		browserOpener(boardUrl)
+	}
+
+	return listener, nil
+}
+
 // runServeCommand starts the live local board server, resolving the repo root
 // and listen address from flags/env, then serving until SIGINT or SIGTERM.
 // The shutdown sequence mirrors the goserver bootstrap in
@@ -261,6 +292,8 @@ func runServeCommand(args []string) {
 		fmt.Sprintf("listen port (default %s; override: %s env var; bare ports bind loopback, use host:port for LAN exposure)", kanbanServeDefaultListenAddress, kanbanServePortEnvVar))
 	repoRootFlag := flagSet.String("repo-root", "",
 		"repo root containing do-work/ (default: walk up from the working directory)")
+	openFlag := flagSet.Bool("open", false,
+		"open the default browser at the board URL after a successful bind")
 	_ = flagSet.Parse(args)
 
 	repoRoot, resolveErr := resolveRepoRootOrDefault(*repoRootFlag)
@@ -272,13 +305,11 @@ func runServeCommand(args []string) {
 	listenAddress := resolveServeListenAddress(*portFlag)
 	liveServer := newLiveBoardServer(repoRoot, defaultRecentWindow)
 
-	displayAddress := listenAddress
-	if strings.HasPrefix(displayAddress, ":") {
-		displayAddress = "localhost" + displayAddress
-		fmt.Printf("queue-kanban: warning: %s binds ALL interfaces — the board (including REQ bodies) is reachable from the local network\n", listenAddress)
+	listener, listenErr := bindServeListenerAndAnnounce(listenAddress, repoRoot, *openFlag, openBrowser)
+	if listenErr != nil {
+		fmt.Fprintln(os.Stderr, "queue-kanban serve:", listenErr)
+		os.Exit(1)
 	}
-	fmt.Printf("queue-kanban: live board at http://%s  (re-walks do-work/ per /board-data.js request)\n", displayAddress)
-	fmt.Printf("queue-kanban: serving do-work/ from %s\n", repoRoot)
 
 	httpServer := &http.Server{
 		Addr:         listenAddress,
@@ -302,7 +333,7 @@ func runServeCommand(args []string) {
 		close(shutdownComplete)
 	}()
 
-	serverErr := httpServer.ListenAndServe()
+	serverErr := httpServer.Serve(listener)
 	if serverErr != nil && serverErr != http.ErrServerClosed {
 		log.Fatalf("queue-kanban serve: server failed: %v", serverErr)
 	}
