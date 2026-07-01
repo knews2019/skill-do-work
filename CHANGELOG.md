@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.104.1 — The Field Notes (2026-07-02)
+
+REQ-017's archival lesson lands in the kanban prime, inline per the new no-archive-links convention.
+
+- `prime-do-kanban.md` Lessons: bind before announcing (`net.Listen` → banner/open → `Serve`), and prefer parameter-injected seams over mutable package vars for opener-style side effects
+
 ## 0.104.0 — The Grand Opening (2026-07-02)
 
 `just run-kanban` now ends with the board on your screen, not a URL in your scrollback. The recipe replaces a stale queue-kanban instance holding the port, and the server opens your default browser once it's actually up.

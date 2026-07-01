@@ -42,3 +42,4 @@ queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that
 
 - REQ-015: synthetic test tickets must set `OriginalStatus` for unrecognized-status warning assertions to exercise the real path; `deferred` removed from the recognized set
 - REQ-016: the `severity` frontmatter vertical was dead (no producer) and is fully removed; the similar-looking `batch` field HAS real producers — re-check before any same-shape cleanup
+- REQ-017: bind before announcing — `serve` must `net.Listen` first, then print the banner / open the browser, then `Serve(listener)`; the old `ListenAndServe` ordering printed a false "live board at …" line on port collisions. For opener-style side effects, prefer parameter-injected seams (`browserOpener func`, `goos` as an argument) over mutable package vars — testable without launching anything
