@@ -1,6 +1,6 @@
 # AI Report Action
 
-> **Part of the do-work skill.** Generates an HTML report of a completed feature — live screenshots with SVG callout annotations, before/after toggles, AI-generated section diagrams/visuals when an image-gen CLI is available, and Mermaid/SVG diagrams as the always-available fallback. Output is a **self-contained folder** — `index.html` plus a `screenshots/` folder (and a `generated/` folder when AI images are used) — under `ai-reports/` in the project root. User-facing walkthrough: [`docs/ai-report-guide.md`](../docs/ai-report-guide.md).
+> **Part of the do-work skill.** Generates an HTML report of a completed feature — live screenshots with SVG callout annotations, side-by-side before/after comparisons, AI-generated section diagrams/visuals when an image-gen CLI is available, and Mermaid/SVG diagrams as the always-available fallback. Output is a **self-contained folder** — `index.html` plus a `screenshots/` folder (and a `generated/` folder when AI images are used) — under `ai-reports/` in the project root. User-facing walkthrough: [`docs/ai-report-guide.md`](../docs/ai-report-guide.md).
 
 The report exists to make a UI change **visible**: a stakeholder opens one HTML file and sees the literal pixels that changed, where they changed, and how to verify it themselves. Not a brief. Not a debrief. A pixel-anchored proof-of-work artifact.
 
@@ -185,7 +185,7 @@ If no server responds (`$DEV_URL` empty), note it in the report and skip live sc
 
 | Situation | Strategy |
 |-----------|----------|
-| Both before and after images found | Side-by-side toggle + SVG callout annotations |
+| Both before and after images found | Side-by-side (wrapping flex row) + SVG callout annotations; toggle only if the frames genuinely can't fit side by side |
 | Only after (or only live screenshot) | Annotated screenshot with SVG callout arrows |
 | No screenshots at all | SVG architecture diagram + Mermaid data-flow chart — or an AI-generated diagram (Step 4d) when an image-gen CLI is available |
 | Mixed (some REQs have screenshots, some don't) | Per-REQ strategy — screenshots where available, diagrams where not |
@@ -276,8 +276,8 @@ Ensure the report folder and its screenshots folder exist (`mkdir -p ai-reports/
 
 **Hero** — Feature name + one-sentence verdict ("What shipped and whether it works"). Large type. No throat-clearing. Lead with the conclusion. Optionally anchor the hero with a generated title/banner image (Step 4d) — but the verdict text still carries the section; the image must not push it below the fold, and it gets the "AI-generated" caption like any other.
 
-**The Change** — Two columns or a before/after toggle:
-- If before+after images: sliding toggle or side-by-side with SVG callouts.
+**The Change** — Two columns or a before/after comparison:
+- If before+after images: side-by-side (preferred — both states visible at once) with SVG callouts; fall back to a sliding toggle only when the two frames genuinely can't fit side by side.
 - If only current state: annotated screenshot with callout legend.
 - If no screenshots: "What it looked like before" described in a styled callout box + Mermaid diagram of the new flow.
 
@@ -297,7 +297,11 @@ Ensure the report folder and its screenshots folder exist (`mkdir -p ai-reports/
 - CSS custom properties at `:root` for `--bg`, `--surface`, `--text`, `--accent`, `--muted`. Light: white/slate-50 bg, slate-800 text, blue-600 accent. Dark: slate-900 bg, slate-100 text, blue-400 accent.
 - Large readable type: body 16px min, headings 24–40px.
 - Generous whitespace: section padding ≥ 40px.
-- Before/after toggle: CSS-only or minimal vanilla JS — no framework.
+- **Full-bleed layout — the arrangement fills the width, not a fixed column and not stretched pixels.** The page is edge-to-edge with breathing room, never a centered reading column: `.page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }` (no `max-width` cap on the page). Keep *running text* readable with a per-element cap (`.measure { max-width: 74ch }` on ledes/verdicts/prose) — but media, grids, and cards use the full width. A fixed `max-width: 940px`/`1600px` on the container is the bug that leaves big empty gutters on a wide monitor; do not do it.
+- **Responsive via `flex-wrap` + `flex-basis` — side-by-side on wide, stacked when narrow.** Lay the report out as horizontal editorial *bands* (`.row { display:flex; flex-wrap:wrap; gap:28px }`), each child given a `flex: <grow> 1 <basis>` so unequal blocks size to their natural width and **wrap to stacked** when the viewport gets narrow — no manual media queries needed for the common cases. This is the primary responsive tool; reach for `grid` with `repeat(auto-fit, minmax(...))` only when you truly want equal columns.
+- **Minimize scrolling by arranging horizontally — intuitive, not crammed.** Scrolling is friction; a wide monitor is spare horizontal space. Put related information side by side so more is visible per screen: prefer a **side-by-side before/after** (both states visible at once) over a click-toggle that hides half the evidence and forces interaction; sit an explanation *beside* its diagram; flow the reference blocks (files-changed table, verify commands, small setting crop) into **one wrapping card row** instead of four stacked full-width sections. The goal is an intuitive at-a-glance layout, not maximum density.
+- **Images at native max-resolution — never upscaled.** The *layout* fills the width; the *image* does not stretch. Cap each screenshot frame at the capture's native pixel width and center it (`.shot { max-width: 1280px; margin: 0 auto }`), with `.shot img { width: 100%; height: auto }` so the image fills the frame but never grows past native (no blur, no dead gutter). Put the overlay `<svg>` on the frame with a `viewBox` and `inset: 0` so callouts stay pixel-aligned to the image at any column width.
+- Before/after: prefer **side-by-side** on wide screens (see above). A CSS-only/vanilla-JS toggle is a fallback for when the two frames genuinely cannot fit side by side — never a framework.
 - Mermaid theme: `base` (works in both light and dark via CSS overrides).
 - No emoji in headers or body unless the REQ itself uses them.
 - No marketing language ("game-changing", "powerful", "seamless"). Factual only.
@@ -306,7 +310,9 @@ Ensure the report folder and its screenshots folder exist (`mkdir -p ai-reports/
 - **Click-to-full-res screenshots:** wrap each screenshot `<img>` in an anchor to its own file (`<a href="screenshots/after.png" target="_blank" rel="noopener">`) so a click opens the capture at native resolution; give any overlay `<svg>` `pointer-events:none` so it does not swallow the click.
 - **Disclose generated images:** each carries a small visible caption/badge reading "AI-generated" (or "AI-generated diagram"). Never style a synthetic image to look like a captured screenshot.
 
-#### Before/after toggle pattern (reference implementation)
+#### Before/after toggle pattern (fallback reference implementation)
+
+Use side-by-side (a wrapping flex row) by default. Reach for this toggle only when the two frames genuinely cannot fit side by side even after wrapping.
 
 ```html
 <div class="toggle-group" role="group">
@@ -391,7 +397,8 @@ A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `inde
 | "No image-gen CLI is on PATH, so I'll skip the How-It-Works visual entirely" | Use the SVG/Mermaid fallback for that section | Image generation is a bonus tier, not a requirement — every section still gets a diagram |
 | "The REQ has no Implementation Summary but I'll write the diagram from the diff" | Stop and tell the user — the REQ wasn't actually completed properly | A missing Implementation Summary means review-work didn't run; the report would be guessing at intent |
 | "I'll add a fancy intro paragraph before the hero" | Cut it — the hero IS the lead | Anti-slop principle 4: conclusion first. Throat-clearing pushes the verdict below the fold |
-| "Two screenshots, one before and one after — I'll show both with no toggle, side by side" | Use the before/after toggle pattern — same screen real estate, one viewport, faster compare | Side-by-side at small screen widths squishes both; the toggle keeps each at full width |
+| "Two screenshots, one before and one after — I'll build a click-toggle so only one shows at a time" | Show both **side by side** in a wrapping flex row (`flex-wrap` stacks them automatically on narrow screens) | Side-by-side keeps both states visible at once for faster comparison; reserve the toggle for the rare case where the two frames genuinely can't fit side by side even after wrapping |
+| "I'll cap the report at `max-width: 1600px` so it looks like a normal centered page" | Let `.page` run full-width (`width: 100%`, no `max-width` cap) and cap only running-text elements at `74ch` | A fixed page max-width leaves big empty gutters on a wide monitor — the layout should fill the space, not float in it |
 | "I'll base64-inline the screenshots so the HTML is one file" | Save them to `screenshots/` (generated images to `generated/`) and reference with relative `src` | Base64 bloats the HTML ~33% per image and slows first paint; the report folder travels as one unit, so the pair is just as portable |
 | "A generated diagram looks clean — I'll drop the 'AI-generated' caption so it reads as a real screenshot" | Keep the caption/badge on every generated image | Undisclosed synthetic evidence is anti-slop principle #5; it misrepresents what's proof and what's illustration |
 | "This is the present-work explainer territory, I'll merge them" | Keep them separate — explainer = concept; ai-report = pixels | Two artifacts can coexist for the same UR; they answer different questions for different audiences |
@@ -411,6 +418,9 @@ A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `inde
 - `gen_image` is called with a relative `$1` — it must be absolute (canonicalize `$GEN` with `cd … && pwd`), or generation can fail verification or write outside the report folder when cwd isn't the repo root.
 - A sandbox-bypassed agentic backend runs without `DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=1`, or runs from the repo cwd instead of a `mktemp -d` directory locked with `chmod 700` — the report should fall back to SVG/Mermaid instead.
 - The output landed in `do-work/deliverables/` instead of `ai-reports/<report-slug>/` — wrong action's home; move it.
+- The page has a fixed `max-width` (e.g. 940px/1600px) wrapping the whole `.page` — leaves big empty gutters on a wide monitor; only per-element prose (`.measure`) should cap width, never the page container.
+- Two before/after images were built as a click-toggle when they'd fit side by side — that hides half the evidence and forces interaction the layout didn't need; use a wrapping flex row instead.
+- A screenshot frame stretched past the capture's native pixel width — upscaled and blurry; cap the frame at native resolution and center it, don't stretch to fill a column.
 - bowser was missing and you stopped instead of falling back to diagrams — the report should always ship.
 - A generated image is generic "AI stock art" (abstract tech swooshes, glowing brains, robots) that conveys nothing about *this* feature — it's slop. Cut it or regenerate with a concrete, code-derived prompt.
 - A generated image is presented without an "AI-generated" caption and could be mistaken for a real screenshot — undisclosed synthetic evidence. Label it.
@@ -432,3 +442,4 @@ A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `inde
 - [ ] Report saved as `ai-reports/<report-slug>/index.html` (a folder with `screenshots/` beside it), not a lone `.html` and not `do-work/deliverables/`.
 - [ ] No build step required — `index.html` opens in a browser with images resolving from the co-located `screenshots/` / `generated/` folders (CDN-only externals: Tailwind + Mermaid).
 - [ ] If bowser was missing, the report still shipped using SVG/Mermaid fallback — no install prompt, no block.
+- [ ] Layout is full-bleed (`.page` has no `max-width` cap) with horizontal `flex-wrap` bands that stack on narrow viewports; before/after uses side-by-side (not a toggle) unless the frames genuinely can't fit; screenshot frames are capped at native resolution, not upscaled.

@@ -453,8 +453,8 @@ Non-technical-reader-facing. Single `.html` file, zero build steps. Same content
 - Light theme default; dark theme via `@media (prefers-color-scheme: dark)` overriding CSS custom properties on `:root`
 - Palette: CSS variables for `--bg`, `--surface`, `--text`, `--muted`, `--accent`, `--accent-soft`, `--border`. Light: white/slate-50 / slate-900 / blue-600. Dark: slate-900 / slate-100 / blue-400.
 - Font: `system-ui, -apple-system, sans-serif`
-- Max content width: `max-w-6xl` centred
-- Generous spacing (`py-10` / `py-16` on sections) — readable like a long-form article, not cramped like a dashboard
+- **Full-bleed — no fixed centered column.** The page fills the viewport width with side padding only (`px-6` and up), not a `max-w-6xl mx-auto` reading column that leaves empty gutters on a wide monitor and forces needless scrolling. Cap width only on *running prose* (the "What got built" block → `max-w-prose`, ≈74ch); let the stat-card grid, the shipped/test tables, and the coherence/deliverable card grids use the full width and wrap responsively (`flex-wrap` / `grid` with `auto-fit minmax(...)`) so more is visible per screen — side-by-side on a wide monitor, stacked when narrow.
+- Generous spacing (`py-10` / `py-16` on sections) — breathing room between the bands, not crammed
 - Mermaid init: `mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' })`
 
 **What NOT to do:**
@@ -559,6 +559,7 @@ pipeline — full end-to-end orchestration
 - Only one or two of the three authored rendering files (`.md`, `.marp.md`, `.single.html`) exist in `do-work/deliverables/`, or the `.marp.html` export is missing
 - The three renderings disagree — e.g., the Marp deck lists 11 REQs but the markdown lists 12, or the HTML shows a test delta the markdown doesn't
 - The `.single.html` file references external scripts beyond Tailwind + Mermaid, or requires `npm install` to render (the `.marp.html` export is exempt — its assets are whatever marp-cli bundles)
+- The `.single.html` debrief caps the whole page at a fixed centered width (`max-w-6xl mx-auto` or similar) — a narrow reading column with empty gutters on a wide monitor; only running prose should cap width, while stat cards, tables, and card grids use the full width and wrap responsively (the Marp deck's fixed-size slides are exempt — full-bleed applies to the scrolling `.single.html` page only)
 - The Marp deck is missing its `marp: true` frontmatter header or uses a custom theme name (`marp --preview` will fail silently)
 - Any of the three summary formats opens straight into the audit (Final summary table, stat cards) with no "What got built" narrative — the clueless reader has no entry point
 - The three formats disagree on the "What got built" narrative — summary `.html` says one thing, client brief says another
@@ -582,3 +583,4 @@ pipeline — full end-to-end orchestration
 - [ ] Each summary file's "What got built" narrative matches the client brief word-for-word (no paraphrasing drift)
 - [ ] Marp file starts with `marp: true` YAML frontmatter and uses `---` slide separators
 - [ ] HTML file is fully standalone: Tailwind + Mermaid via CDN only, no other external dependencies, no build step required
+- [ ] The `.single.html` debrief is full-bleed — no page-level `max-w-*` centered cap (only running prose capped ≈74ch), with stat cards, tables, and card grids using the full width and wrapping responsively (Marp slides exempt)

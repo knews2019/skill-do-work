@@ -1,6 +1,6 @@
 # AI Report
 
-Generates a self-contained HTML report — live screenshots + SVG callout annotations, before/after toggles, optional AI-generated diagrams when an image-gen CLI is available, and Mermaid/SVG diagrams as the always-available fallback. Output is a folder per report (`index.html` + a `screenshots/` folder, plus a `generated/` folder when AI images are used) under `ai-reports/` at the project root. Pixel-anchored proof-of-work, not a brief.
+Generates a self-contained HTML report — live screenshots + SVG callout annotations, side-by-side before/after comparisons, optional AI-generated diagrams when an image-gen CLI is available, and Mermaid/SVG diagrams as the always-available fallback. Output is a folder per report (`index.html` + a `screenshots/` folder, plus a `generated/` folder when AI images are used) under `ai-reports/` at the project root. Pixel-anchored proof-of-work, not a brief.
 
 > **Not to be confused with present-work or pipeline's completion report.** `do-work present-work` writes a client-facing brief, an Interactive Explainer (`.single.html`), and optionally a video — explanation of value, not literal pixels. `do-work pipeline`'s completion report is a multi-REQ developer/PM debrief (test deltas, REQ coherence graph, carry-forward work). AI Report is the *visual* artifact: "here are the screenshots, here are the annotated changes, here is the verify-it-yourself link."
 
@@ -40,9 +40,13 @@ Claude can't draw raster images itself, so when a **non-agentic** image backend 
 
 Screenshots are inert; callouts make them actionable. Each callout is an SVG overlay anchored to a pixel region with a one-line label naming what changed and why it matters. Anti-slop rules apply: lead with the conclusion (the change), justify in the prose below. The point of a callout is "your eye should land here first."
 
-## Before/after toggle
+## Before/after comparison
 
-When both before and after images exist, the report renders a single image element with a toggle (button or hover). The toggle lives in the HTML — no build step. The user sees the change as a flip, not as two adjacent images they have to scan for differences.
+When both before and after images exist, the report shows them **side by side** by default — a wrapping flex row that stacks automatically on narrow screens, so both states stay visible at once instead of requiring a click to flip between them. A toggle (button or hover) is used only as a fallback when the two frames genuinely can't fit side by side. Either way it lives in the HTML — no build step.
+
+## Layout
+
+The page is full-bleed — it fills the browser width instead of sitting in a fixed centered column, with only running prose capped for readability. Sections lay out as horizontal, wrapping bands so related information (an explanation beside its diagram, files-changed + verify commands in one row) stays visible together on a wide screen and stacks cleanly on a narrow one. Screenshots render at their native resolution, centered — never stretched to fill a column.
 
 ## Anti-slop applied inline
 
