@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.106.0 — The Moving Crew (2026-07-03)
+
+New `file-reorg` action: reorganize a repo's file layout without breaking anything. Adapted from the standalone tidy-repo-layout skill — it maps every reference (imports, configs, scripts, doc links) before moving a single file, presents the move plan for approval, then executes with `git mv` and explicit per-file rewrites, and verifies all of it.
+
+- `do-work file-reorg [path] [plan]` — plan-only mode stops at the report; default mode gates execution behind your approval
+- Historical records (archives, old REQs, dated reports) move as a whole but their contents are never edited — stale paths inside them are correct history
+- Junk deletion stays with `stray-check`, do-work's own files stay with `cleanup`; this action relocates legitimate files into canonical homes
+- Ends by suggesting `do-work commit` — the reorg lands as one atomic, revertable commit
+
 ## 0.105.0 — The Split View (2026-07-02)
 
 The kanban board's card detail is no longer a modal overlay — it docks beside the board Jira-style, with a draggable divider so you can make the details as wide as you like. The board stays live while it's open.

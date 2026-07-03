@@ -154,6 +154,22 @@ Next steps:
   do-work inspect               Explain the resulting uncommitted changes before committing
 ```
 
+**After file-reorg (plan-only):**
+```
+Next steps:
+  do-work file-reorg [path]     Execute the plan (re-runs with the consent gate)
+  do-work stray-check [path]    Find junk files the reorg shouldn't relocate — delete them first
+  do-work capture-request: [flagged follow-up]  Capture a flagged-not-moved item (e.g. splitting a big code folder)
+```
+
+**After file-reorg (executed):**
+```
+Next steps:
+  do-work commit                Commit the reorg as ONE atomic commit (renames + rewrites + doc updates), separate from unrelated work
+  do-work inspect               Explain the resulting changes before committing
+  do-work stray-check           Sweep for junk the reorg surfaced
+```
+
 **After install (any target):**
 ```
 Next steps:
