@@ -31,6 +31,7 @@ A unified entry point for task capture and processing.
 - **forensics**: Pipeline diagnostics → detects stuck work, hollow completions, orphaned URs, scope contamination, recurring corrections (read-only)
 - **roadmap**: Queue survey → classifies pending REQs (ready / needs-clarification / blocked / stale), reports TDD posture, rolls up in-progress and recently-completed work (read-only)
 - **note**: Append a lightweight, dated next-step hint to `do-work/notes.md` → surfaced at the top of `do-work roadmap`. Not a REQ; no capture, no schema, no implementation. User deletes lines by hand when resolved
+- **board**: Kanban board of the queue → builds and runs the shipped `tools/queue-kanban/` Go tool; live server at `:8090`, static HTML snapshot, or column-count summary. Read-only viewer; the one action that needs the Go toolchain
 - **stray-check**: Repo-wide orphan/junk scan → temp/backup/OS files, committed build artifacts, should-be-gitignored, misplaced/duplicate/empty files, large blobs, AI scratch, best-effort dead code (report-only by default; fixes on confirmation)
 - **file-reorg**: Safe repository layout reorganization → declutter the root, fold strays into canonical homes; maps every reference before moving, presents a plan for approval, then `git mv` + rewrite + verify. Plan-only mode available; never moves first and greps later
 - **prime**: Create and audit prime files — AI context documents that index utility codebases

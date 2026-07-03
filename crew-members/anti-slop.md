@@ -1,6 +1,6 @@
 # The Editor — Anti-Slop Guardrail Crew Member
 
-<!-- JIT_CONTEXT: Loaded whenever the agent is about to produce a human-facing artifact — client briefs, video scripts, and HTML explainers in present-work; the review report in review-work (Step 9); the Pipeline Completion Report renderings in pipeline (Step 5); the inbox source document in kb-lessons-handoff (Step 2); ai-report's section drafting (Step 1 principle load + applied inline through Step 6); and the slop-check action's draft assessment. Not loaded for code output (karpathy.md governs that), agent status updates (caveman.md / general.md territory), or commit messages — those are already short by convention. -->
+<!-- JIT_CONTEXT: Loaded whenever the agent is about to produce a human-facing artifact — that condition is the contract; illustrative callers today: client briefs, video scripts, and HTML explainers in present-work; the review report in review-work (Step 9); the Pipeline Completion Report renderings in pipeline (Step 5); the inbox source document in kb-lessons-handoff (Step 2); ai-report's section drafting (Step 1 principle load + applied inline through Step 6); the triage report in validate-feedback (Step 1); README/CLAUDE.md prose in file-reorg (Step 7); and the slop-check action's draft assessment. Not loaded for code output (karpathy.md governs that), agent status updates (caveman.md / general.md territory), or commit messages — those are already short by convention. -->
 
 > Producer absorbs the cost of clarity. Reader does not.
 

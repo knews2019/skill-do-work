@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.106.1 — The Caller List (2026-07-03)
+
+A 31-agent audit ran over the whole skill after the file-reorg integration; twelve raw findings, five survived adversarial verification, and the four pre-existing ones land here (the fifth shipped inside 0.106.0).
+
+- SKILL.md's top-level Actions list finally includes `board` — it was wired into all six other surfaces (routing, verb reference, help, dispatch, background rules, argument-hint) but missing from the master enumeration since 0.100.0
+- `crew-members/anti-slop.md` JIT_CONTEXT caller list caught up with reality (validate-feedback's triage report, file-reorg's README/CLAUDE.md prose) and is now explicitly illustrative — the trigger condition is the contract
+- The board lock-step rule in CLAUDE.md and `actions/board.md` no longer overstates itself: only the `status` vocabulary drives column bucketing; `depends_on`/`domain` are display-only in `model.go`
+
 ## 0.106.0 — The Moving Crew (2026-07-03)
 
 New `file-reorg` action: reorganize a repo's file layout without breaking anything. Adapted from the standalone tidy-repo-layout skill — it maps every reference (imports, configs, scripts, doc links) before moving a single file, presents the move plan for approval, then executes with `git mv` and explicit per-file rewrites, and verifies all of it.
