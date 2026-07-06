@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.106.4 — The List Keeper (2026-07-06)
+
+Two validate-feedback follow-ups: the board no longer loses block-list `depends_on` entries when a REQ's frontmatter needs lenient recovery, and static board snapshots stop showing up as untracked noise in `git status`.
+
+- The lenient frontmatter fallback in `tools/queue-kanban` now recovers block-style lists (a bare `depends_on:` line followed by `- REQ-…` items) — previously a malformed title on the same file silently dropped every dependency edge. Regression tests cover indented, column-zero, blank-separated, and quoted item shapes.
+- `do-work board` static mode and the `kanban-static` just recipe (repo justfile + the shipped template in `actions/install.md`) add a one-line, idempotent `/build/queue-kanban-board/` entry to `.git/info/exclude` after generating — local-only, no tracked file touched. The skill repo's own `.gitignore` gains `/build/` too.
+
 ## 0.106.3 — The Port Authority (2026-07-06)
 
 Four external review findings, now actually fixed: the `run-kanban` recipe can no longer be used to inject shell commands through the port argument, and the board got stricter about what counts as done and what counts as exposed.

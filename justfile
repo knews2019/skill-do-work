@@ -6,9 +6,10 @@ run-kanban $port="8090":
     if command -v lsof >/dev/null 2>&1; then PID="$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null | head -n1)"; if [ -n "$PID" ]; then COMM="$(ps -p "$PID" -o comm= 2>/dev/null)"; COMM="${COMM##*/}"; if [ "$COMM" = "queue-kanban" ]; then kill "$PID" 2>/dev/null; i=0; while kill -0 "$PID" 2>/dev/null && [ "$i" -lt 20 ]; do sleep 0.1; i=$((i+1)); done; else echo "queue-kanban: port $port is already in use by another process ($COMM, pid $PID) - refusing to kill it. Stop it manually, or run 'just run-kanban <port>' with a different port." >&2; exit 1; fi; fi; fi
     cd tools/queue-kanban && go build -o queue-kanban . && ./queue-kanban serve --open --repo-root "{{justfile_directory()}}" --port "$port"
 
-# Shareable static snapshot → build/queue-kanban-board/index.html
+# Shareable static snapshot → build/queue-kanban-board/index.html (locally git-excluded so it never dirties git status)
 kanban-static:
     cd tools/queue-kanban && go build -o queue-kanban . && ./queue-kanban generate --out "{{justfile_directory()}}/build/queue-kanban-board" --repo-root "{{justfile_directory()}}"
+    cd "{{justfile_directory()}}" && if git rev-parse --git-dir >/dev/null 2>&1 && ! git check-ignore -q build/queue-kanban-board/index.html; then exclude_file="$(git rev-parse --git-path info/exclude)"; mkdir -p "$(dirname "$exclude_file")"; echo '/build/queue-kanban-board/' >> "$exclude_file"; echo "kanban-static: added /build/queue-kanban-board/ to .git/info/exclude (local-only ignore)"; fi
 
 # Column counts in the terminal, no browser
 kanban-summary:

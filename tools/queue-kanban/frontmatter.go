@@ -87,26 +87,58 @@ func parseFrontmatterFields(yamlText string) (map[string]any, error) {
 	return lenientFrontmatterFields(yamlText), nil
 }
 
-// lenientFrontmatterFields recovers top-level scalar and flow-list fields from a
-// frontmatter block that strict YAML could not parse. It splits each unindented
-// "key: value" line on its FIRST colon (so a colon inside the value survives in
-// the value), unquotes a fully-quoted scalar, and expands a "[a, b]" flow list.
-// Block (multi-line) lists and nested maps are not recovered — only the flat
-// top-level fields the board model reads.
+// lenientFrontmatterFields recovers top-level scalar, flow-list, and block-list
+// fields from a frontmatter block that strict YAML could not parse. It splits
+// each unindented "key: value" line on its FIRST colon (so a colon inside the
+// value survives in the value), unquotes a fully-quoted scalar, and expands a
+// "[a, b]" flow list. A bare "key:" line followed by "- item" lines is
+// recovered as a block list — without that, one malformed sibling line (a bad
+// title) would silently drop a block-style depends_on and the board would lose
+// dependency edges. Nested maps and block scalars are still not recovered —
+// only the flat top-level fields the board model reads.
 func lenientFrontmatterFields(yamlText string) map[string]any {
 	fields := map[string]any{}
-	for _, line := range strings.Split(yamlText, "\n") {
+	frontmatterLines := strings.Split(yamlText, "\n")
+	for lineIndex, line := range frontmatterLines {
 		key, isKey := topLevelKeyName(line)
 		if !isKey {
 			continue
 		}
 		rawValue := strings.TrimSpace(line[len(key)+1:])
-		if rawValue == "" {
+		if rawValue != "" {
+			fields[key] = parseLenientScalarOrList(rawValue)
 			continue
 		}
-		fields[key] = parseLenientScalarOrList(rawValue)
+		if blockListItems := collectLenientBlockListItems(frontmatterLines[lineIndex+1:]); len(blockListItems) > 0 {
+			fields[key] = blockListItems
+		}
 	}
 	return fields
+}
+
+// collectLenientBlockListItems gathers the "- item" lines that immediately
+// follow a bare "key:" line — indented or at column zero, both valid YAML
+// block-list shapes. Blank lines between items are allowed; the first line
+// that is neither blank nor a list item ends the list. The caller's loop needs
+// no line-consumption bookkeeping: an item line starts with "-" or whitespace,
+// so topLevelKeyName can never mistake one for the next top-level key.
+func collectLenientBlockListItems(followingLines []string) []any {
+	var blockListItems []any
+	for _, followingLine := range followingLines {
+		trimmedLine := strings.TrimSpace(followingLine)
+		if trimmedLine == "" {
+			continue
+		}
+		itemText, isListItem := strings.CutPrefix(trimmedLine, "- ")
+		if !isListItem {
+			if trimmedLine != "-" {
+				break
+			}
+			itemText = "" // a lone dash is YAML's empty item
+		}
+		blockListItems = append(blockListItems, unquoteScalar(strings.TrimSpace(itemText)))
+	}
+	return blockListItems
 }
 
 // parseLenientScalarOrList turns a raw frontmatter value into a flow-list slice

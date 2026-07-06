@@ -226,10 +226,10 @@ func TestDescribeListenExposureWarnsOnEveryNonLoopbackBind(t *testing.T) {
 		wantDisplayAddress string
 		wantWarning        bool
 	}{
-		{":9000", "localhost:9000", true},              // host-less all-interfaces syntax
-		{"0.0.0.0:9000", "0.0.0.0:9000", true},         // IPv4 wildcard host
-		{"[::]:9000", "[::]:9000", true},               // IPv6 wildcard host
-		{"192.168.1.5:9000", "192.168.1.5:9000", true}, // explicit LAN IP
+		{":9000", "localhost:9000", true},                // host-less all-interfaces syntax
+		{"0.0.0.0:9000", "0.0.0.0:9000", true},           // IPv4 wildcard host
+		{"[::]:9000", "[::]:9000", true},                 // IPv6 wildcard host
+		{"192.168.1.5:9000", "192.168.1.5:9000", true},   // explicit LAN IP
 		{"myhost.local:9000", "myhost.local:9000", true}, // non-localhost hostname — may resolve anywhere
 		{"127.0.0.1:8090", "127.0.0.1:8090", false},
 		{"localhost:8090", "localhost:8090", false},

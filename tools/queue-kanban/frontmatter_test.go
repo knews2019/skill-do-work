@@ -168,6 +168,25 @@ func TestParseFrontmatterFieldsRecoversMalformedTitleLine(t *testing.T) {
 			wantDependsOn:  nil,
 			wantTitleHasIt: "Review fix: resolve",
 		},
+		{
+			// External-review regression: a malformed title used to make the
+			// lenient fallback silently drop a block-style depends_on — the
+			// board lost dependency edges with no warning.
+			name: "block-list depends_on survives lenient recovery",
+			yamlText: strings.Join([]string{
+				`id: REQ-1201`,
+				`title: "Wire up" the board — with block-list deps`,
+				`status: pending`,
+				`user_request: UR-450`,
+				`depends_on:`,
+				`  - REQ-1199`,
+				`  - REQ-1200`,
+			}, "\n"),
+			wantStatus:     "pending",
+			wantUserReq:    "UR-450",
+			wantDependsOn:  []string{"REQ-1199", "REQ-1200"},
+			wantTitleHasIt: "board",
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -189,6 +208,56 @@ func TestParseFrontmatterFieldsRecoversMalformedTitleLine(t *testing.T) {
 				t.Fatalf("title %q missing %q", got, testCase.wantTitleHasIt)
 			}
 		})
+	}
+}
+
+// TestLenientFrontmatterFieldsBlockListShapes exercises the block-list
+// recovery directly: column-zero items (valid YAML), a blank line between
+// items, a quoted item, and a following "key: value" line terminating the
+// list without being swallowed by it.
+func TestLenientFrontmatterFieldsBlockListShapes(t *testing.T) {
+	yamlText := strings.Join([]string{
+		`title: "Broken" title forcing lenient recovery`,
+		`depends_on:`,
+		`- REQ-1`,
+		``,
+		`- "REQ-2"`,
+		`domain: [frontend]`,
+		`status: pending`,
+	}, "\n")
+	fields := lenientFrontmatterFields(yamlText)
+	if got := coerceToStringList(fields["depends_on"]); !reflect.DeepEqual(got, []string{"REQ-1", "REQ-2"}) {
+		t.Fatalf("depends_on = %v, want [REQ-1 REQ-2]", got)
+	}
+	if got := coerceToStringList(fields["domain"]); !reflect.DeepEqual(got, []string{"frontend"}) {
+		t.Fatalf("domain = %v, want [frontend] (list terminator line must still parse as its own key)", got)
+	}
+	if got := coerceScalarToString(fields["status"]); got != "pending" {
+		t.Fatalf("status = %q, want pending", got)
+	}
+}
+
+// TestLenientFrontmatterFieldsBareKeyWithoutItemsStaysAbsent pins the
+// non-list bare-key behavior: a "key:" line followed by anything other than
+// list items (a nested map, another key) contributes no field, exactly as
+// before block-list recovery existed.
+func TestLenientFrontmatterFieldsBareKeyWithoutItemsStaysAbsent(t *testing.T) {
+	yamlText := strings.Join([]string{
+		`title: "Broken" title forcing lenient recovery`,
+		`metadata:`,
+		`  type: user`,
+		`tags:`,
+		`status: pending`,
+	}, "\n")
+	fields := lenientFrontmatterFields(yamlText)
+	if _, present := fields["metadata"]; present {
+		t.Fatalf("metadata = %v, want absent (nested maps are not recovered)", fields["metadata"])
+	}
+	if _, present := fields["tags"]; present {
+		t.Fatalf("tags = %v, want absent (bare key with no items)", fields["tags"])
+	}
+	if got := coerceScalarToString(fields["status"]); got != "pending" {
+		t.Fatalf("status = %q, want pending", got)
 	}
 }
 

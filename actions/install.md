@@ -308,21 +308,23 @@ run-kanban $port="8090":
     if command -v lsof >/dev/null 2>&1; then PID="$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null | head -n1)"; if [ -n "$PID" ]; then COMM="$(ps -p "$PID" -o comm= 2>/dev/null)"; COMM="${COMM##*/}"; if [ "$COMM" = "queue-kanban" ]; then kill "$PID" 2>/dev/null; i=0; while kill -0 "$PID" 2>/dev/null && [ "$i" -lt 20 ]; do sleep 0.1; i=$((i+1)); done; else echo "queue-kanban: port $port is already in use by another process ($COMM, pid $PID) - refusing to kill it. Stop it manually, or run 'just run-kanban <port>' with a different port." >&2; exit 1; fi; fi; fi
     cd <kanban-dir> && go build -o queue-kanban . && ./queue-kanban serve --open --repo-root "{{justfile_directory()}}" --port "$port"
 
-# Shareable static snapshot → build/queue-kanban-board/index.html
+# Shareable static snapshot → build/queue-kanban-board/index.html (locally git-excluded so it never dirties git status)
 kanban-static:
     cd <kanban-dir> && go build -o queue-kanban . && ./queue-kanban generate --out "{{justfile_directory()}}/build/queue-kanban-board" --repo-root "{{justfile_directory()}}"
+    cd "{{justfile_directory()}}" && if git rev-parse --git-dir >/dev/null 2>&1 && ! git check-ignore -q build/queue-kanban-board/index.html; then exclude_file="$(git rev-parse --git-path info/exclude)"; mkdir -p "$(dirname "$exclude_file")"; echo '/build/queue-kanban-board/' >> "$exclude_file"; echo "kanban-static: added /build/queue-kanban-board/ to .git/info/exclude (local-only ignore)"; fi
 
 # Column counts in the terminal, no browser
 kanban-summary:
     cd <kanban-dir> && go build -o queue-kanban . && ./queue-kanban summary --repo-root "{{justfile_directory()}}"
 ```
 
-Four deliberate choices in these recipes:
+Five deliberate choices in these recipes:
 
 - **`$port` is an exported parameter, validated before anything else runs**: `just` interpolates `{{…}}` tokens textually into each recipe line's shell source, so a raw `{{port}}` would let `just run-kanban '8090; echo PWNED'` inject arbitrary commands (CLAUDE.md's never-interpolate-raw-user-text rule applies to justfiles too). The `$` prefix hands the parameter to every recipe line as an environment variable instead — the shell reads `"$port"` as data, never code — and the first line rejects anything but digits before the kill-stale or build+serve lines can see it.
 - **`go build` on every run** (`actions/board.md` Step 4's rule): `do-work update` overwrites the tool's source but leaves the previously compiled binary in place — a cached binary silently renders old logic. The incremental rebuild is near-instant when nothing changed, and the binary stays uncommittable via the tool's shipped `.gitignore`.
 - **Each `cd … && …` chain stays on one logical line**: `just` runs every recipe line in a fresh shell, so a bare `cd` on its own line would not carry into the next — the same cross-shell state trap CLAUDE.md documents for prescribed action steps.
 - **The kill-stale check is its own recipe line and needs no `cd`**: it only touches `lsof`/`ps`/`kill` against `"$port"`, so it doesn't need the `<kanban-dir>` context the build+serve line does. `just` aborts a recipe on the first line that exits non-zero, so a squatting non-`queue-kanban` process's `exit 1` here stops the recipe *before* the build+serve line ever runs — no build is attempted and nothing gets killed. It kills only a process whose own command name (verified via `ps -p PID -o comm=`) is `queue-kanban`; anything else is left running and named in the error. A missing `lsof` degrades gracefully — the check is skipped and the recipe proceeds straight to build+serve — rather than blocking the recipe on a tool that isn't guaranteed to exist.
+- **`kanban-static` excludes its own output locally instead of dirtying the project**: the snapshot lands at `build/queue-kanban-board/`, which would otherwise sit in `git status` as untracked noise forever. The second recipe line appends a root-anchored pattern to `.git/info/exclude` — git's local-only ignore list — so no tracked file (like the project's `.gitignore`) is modified by a viewer command. The `check-ignore` test makes the append idempotent, it runs from `{{justfile_directory()}}` so the root-anchored pattern and the cwd-relative check can't mismatch (CLAUDE.md's interior-slash trap), and the exclude path comes from `git rev-parse --git-path` (never assembled from `--show-toplevel`), keeping it worktree-safe. In a non-git project the guard skips silently.
 
 #### Phase 3: Verify
 

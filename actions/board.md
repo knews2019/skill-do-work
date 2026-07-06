@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Builds and runs the shipped `queue-kanban` Go tool to render this repo's `do-work/` queue as a Kanban board + completion calendar. Invoked by `do-work board` / `do-work kanban`.
 
-**Read-only.** The board only *reads* the `do-work/` Markdown tree — it never writes to the queue, claims REQs, or changes state. The one thing it writes is the compiled binary (gitignored) and, in `static` mode, a throwaway HTML artifact under `build/`.
+**Read-only.** The board only *reads* the `do-work/` Markdown tree — it never writes to the queue, claims REQs, or changes state. The one thing it writes is the compiled binary (gitignored) and, in `static` mode, a throwaway HTML artifact under `build/` (kept out of `git status` via a one-line `.git/info/exclude` entry — see Step 5).
 
 The tool is a standalone Go module that ships inside the skill at `tools/queue-kanban/` (its module, `go.mod`, and embedded `web/` frontend). It rides do-work version bumps, so `do-work update` carries the latest board into every repo. Because it's compiled, this action needs the **Go toolchain** — the one action that does. It degrades gracefully when Go is absent: it reports and stops, never blocking the rest of the skill.
 
@@ -73,7 +73,19 @@ The first build on a machine whose Go module cache lacks the deps fetches `goldm
 From `<skill-root>/tools/queue-kanban`:
 
 - **serve** — `./queue-kanban serve --repo-root "$REPO_ROOT"` (honor `QUEUE_KANBAN_PORT` or a passed `--port`). Tell the user the URL (`http://localhost:8090` by default), that reloading the page refreshes the data (the server re-walks the tree per request; it does not push updates), and that it's a long-running process — stop it with Ctrl-C. Run it in the background if your environment supports it, so the session isn't blocked.
-- **static** — `./queue-kanban generate --out "$REPO_ROOT/build/queue-kanban-board" --repo-root "$REPO_ROOT"`, then point the user at `build/queue-kanban-board/index.html`. This artifact is a throwaway — mention it's safe to delete or gitignore.
+- **static** — `./queue-kanban generate --out "$REPO_ROOT/build/queue-kanban-board" --repo-root "$REPO_ROOT"`, then point the user at `build/queue-kanban-board/index.html`. This artifact is a throwaway — mention it's safe to delete. After generating to the **default** `--out` (a user-chosen `--out` is theirs to manage), add a local git exclude so the snapshot never sits in `git status` as untracked noise:
+
+  ```bash
+  REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"   # re-derive — shell state does not survive between blocks
+  cd "$REPO_ROOT"
+  if git rev-parse --git-dir >/dev/null 2>&1 && ! git check-ignore -q build/queue-kanban-board/index.html; then
+    exclude_file="$(git rev-parse --git-path info/exclude)"
+    mkdir -p "$(dirname "$exclude_file")"
+    echo '/build/queue-kanban-board/' >> "$exclude_file"
+  fi
+  ```
+
+  `.git/info/exclude` is git's local-only ignore list — no tracked file changes, so this stays inside the action's read-only contract for the project. The `check-ignore` guard makes the append idempotent, and the root-anchored pattern is checked from `$REPO_ROOT` so a subdirectory invocation can't mismatch (the CLAUDE.md interior-slash trap). In a non-git project the guard skips silently.
 - **summary** — `./queue-kanban summary --repo-root "$REPO_ROOT"` and relay the printed counts.
 
 **Standing shortcut:** if the user wants the board runnable without the agent, `do-work install just-kanban` (`actions/install.md`) appends `just run-kanban` / `kanban-static` / `kanban-summary` recipes to the project's justfile — same build-then-run contract as this action. One difference: `just run-kanban` auto-opens your default browser at the board URL (a user-initiated shortcut, not an agent action); this action's serve mode (Step 5) never does.
@@ -112,4 +124,5 @@ From `<skill-root>/tools/queue-kanban`:
 - [ ] Built fresh via `go build -o queue-kanban .` inside `tools/queue-kanban/`.
 - [ ] `--repo-root` resolved from `git rev-parse --show-toplevel 2>/dev/null || pwd` and passed explicitly.
 - [ ] Correct mode dispatched (serve / static / summary) with the user told the URL, artifact path, or counts.
+- [ ] Static mode with the default `--out`: `build/queue-kanban-board/` no longer appears untracked in `git status` (the info/exclude entry landed, or was already covered).
 - [ ] No binary or generated artifact staged or committed.
