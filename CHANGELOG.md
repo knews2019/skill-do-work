@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.108.0 — The Diff Gate (2026-07-06)
+
+`do-work install just-kanban` now upgrades outdated recipes instead of shrugging "already installed". If your justfile's board recipes have drifted from the shipped block (say, they predate auto-open), it shows you the diff and asks before replacing anything.
+
+- New Phase 1b in `actions/install.md`: present recipes are compared against the rendered shipped block — identical means "already installed (current)", divergent means a unified diff plus a consent prompt
+- Consent is the load-bearing gate: an old shipped version and a deliberate project customization look the same to the installer, so the user decides from the diff; declining keeps their recipes and names the shipped behaviors they lack
+- Upgrades touch only the three do-work recipes (`run-kanban`, `kanban-static`, `kanban-summary`) — the rest of the justfile is never reordered or reformatted; recipes missing from the trio are appended
+- Retires the manual "delete the block and re-run install" upgrade path
+
 ## 0.107.0 — The Won't-Do (2026-07-06)
 
 You can finally decline work honestly: `do-work abandon REQ-042 [reason]` marks a REQ `cancelled`, records why, and archives it — and the kanban board files it with the done work (struck-through, grey dot) instead of flagging an unrecognized status under Blocked.

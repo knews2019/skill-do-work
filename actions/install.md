@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports four targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless), and `just-kanban` (justfile recipes wiring `just run-kanban` to the shipped queue-kanban board).
 
-Each target is idempotent — running it when the target is already present is a no-op. The action dispatches on the first argument; everything else (detect → install → verify → report) follows the same shape.
+Each target is idempotent — running it when the target is already present and current is a no-op. One target goes further: `just-kanban` compares an already-present recipe block against the shipped version and offers a consent-gated upgrade when they diverge (Phase 1b of its workflow). The action dispatches on the first argument; everything else (detect → install → verify → report) follows the same shape.
 
 ## When to Use
 
@@ -15,7 +15,7 @@ Each target is idempotent — running it when the target is already present is a
 - The user wants a standing `just run-kanban` shortcut so the board runs without invoking the agent (`install just-kanban`).
 
 **Do NOT use when:**
-- The target is already installed (Step 1 of the matching workflow detects this and exits).
+- The target is already installed and current (Phase 1 of the matching workflow detects this and exits; for `just-kanban`, an outdated recipe block gets a diff and a consent-gated upgrade instead of a plain exit).
 - The project explicitly uses a different design system or browser-automation tool and adding the do-work default would conflict.
 - The environment can't install global npm packages (for `bowser`) and the user hasn't consented to a local-only install.
 - The user just wants to view the board once — that's `do-work board` (`actions/board.md`), no install needed.
@@ -27,7 +27,7 @@ Each target is idempotent — running it when the target is already present is a
 - `ui-design` — Install Anthropic's `frontend-design` skill for production-grade UI design capabilities.
 - `bowser` — Install Playwright CLI (global) plus the Bowser skill (project-scoped) for browser automation, screenshots, and visual UI verification.
 - `last30days` — Vendor the engagement-ranked social-research engine (project-scoped, git-ignored, keyless).
-- `just-kanban` — Append `just` recipes (`run-kanban`, `kanban-static`, `kanban-summary`) for the shipped queue-kanban board to the project's justfile.
+- `just-kanban` — Append `just` recipes (`run-kanban`, `kanban-static`, `kanban-summary`) for the shipped queue-kanban board to the project's justfile; if the recipes are already present but diverge from the shipped block, offer a consent-gated upgrade.
 
 If `$ARGUMENTS` is empty or doesn't match a known target, print the help block (target list + one-line blurb each) and stop.
 
@@ -40,7 +40,7 @@ Every target follows the same four-step shape (detect → install → verify →
 | `ui-design` | `ls "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" 2>/dev/null` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
 | `bowser` | `playwright-cli --help >/dev/null 2>&1 && ls "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" 2>/dev/null` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
 | `last30days` | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | (multi-step — see `last30days` workflow below) | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | Engagement-ranked social-research engine — Reddit/HN/Polymarket/GitHub/YouTube keyless out of the box; X/TikTok/Instagram unlock only via user-global API keys. |
-| `just-kanban` | (multi-step — see `just-kanban` workflow below) | (multi-step — see `just-kanban` workflow below; append-only) | (multi-step — see `just-kanban` workflow below) | Justfile recipes for the shipped queue-kanban board — `just run-kanban` serves the live board, `kanban-static`/`kanban-summary` cover the other modes; rebuilds the tool each run so `do-work update` refreshes take effect. |
+| `just-kanban` | (multi-step — see `just-kanban` workflow below) | (multi-step — see `just-kanban` workflow below; appends fresh, consent-gated upgrade when present-but-divergent) | (multi-step — see `just-kanban` workflow below) | Justfile recipes for the shipped queue-kanban board — `just run-kanban` serves the live board, `kanban-static`/`kanban-summary` cover the other modes; rebuilds the tool each run so `do-work update` refreshes take effect. |
 
 In every command above, resolve `PROJECT_ROOT` first:
 
@@ -271,7 +271,7 @@ project keeps its action-usage docs.
 
 ## Workflow: `just-kanban`
 
-The `just-kanban` target appends [`just`](https://github.com/casey/just) recipes for the shipped queue-kanban board (`tools/queue-kanban/`, normally run via `actions/board.md`) to the consuming project's justfile, so `just run-kanban` serves the live board — replacing a stale queue-kanban instance still holding the port, then opening your default browser at it — without going through the agent. The justfile is a **project-owned** file — `do-work update` never touches it — while the tool source the recipes point at is refreshed by every update; the recipes rebuild the binary on each run so those refreshes take effect automatically.
+The `just-kanban` target appends [`just`](https://github.com/casey/just) recipes for the shipped queue-kanban board (`tools/queue-kanban/`, normally run via `actions/board.md`) to the consuming project's justfile, so `just run-kanban` serves the live board — replacing a stale queue-kanban instance still holding the port, then opening your default browser at it — without going through the agent. The justfile is a **project-owned** file — `do-work update` never touches it — while the tool source the recipes point at is refreshed by every update; the recipes rebuild the binary on each run so those refreshes take effect automatically. Changes to the recipe *text* itself don't propagate that way, which is why re-running this install on an already-installed project compares and offers an upgrade (Phase 1b) instead of stopping at "already installed".
 
 #### Phase 1: Check if already installed
 
@@ -285,9 +285,22 @@ done
   && echo "run-kanban recipe: present" || echo "run-kanban recipe: absent"
 ```
 
-If a `run-kanban` recipe is present — even one that differs from the block below — report "already installed" and stop. Never replace an existing recipe; if the user wants the shipped version, they remove theirs first.
+If no `run-kanban` recipe is present, skip to Phase 2 (fresh append). If one is present, do **not** stop at "already installed" — presence alone doesn't mean current. Continue to Phase 1b.
 
-**Upgrading an already-installed project:** because installs are append-only, a project that ran `just-kanban` before the recipe gained the replace-stale-instance and auto-open behavior (or any future recipe change) will not pick it up automatically — Phase 1 only checks for *presence* of a `run-kanban` recipe, not which version. To pull in the new behavior: delete the `# --- do-work board recipes ... ---` block from the project's justfile, then re-run `do-work install just-kanban`.
+#### Phase 1b: Compare and upgrade (recipe already present)
+
+A project that installed before a recipe change (auto-open, stale-instance replacement, port validation, or any future one) still carries the old text — the justfile is project-owned, so nothing else ever refreshes it. Compare before deciding:
+
+1. Render the current shipped block: resolve `<kanban-dir>` per Phase 2's path-resolution steps and substitute it into Phase 2's recipe block.
+2. Extract the installed do-work recipes from the justfile: for each of `run-kanban`, `kanban-static`, `kanban-summary`, the span from the comment line(s) immediately above its `name …:` header line through its last indented line. A recipe that is missing entirely counts as divergent.
+3. Compare each extracted recipe against its rendered shipped version, ignoring trailing whitespace.
+
+Then branch on the result:
+
+- **All three identical** → report "already installed (current)" and stop.
+- **Any divergence** → show the user a unified diff (installed vs. shipped) and ask with your environment's ask-user prompt whether to upgrade. This consent gate is the load-bearing safety step, not a formality: the divergence may be an older shipped version, but it may equally be deliberate project-specific edits — only the user can tell those apart, and the diff is what lets them.
+  - **User accepts** → replace each divergent recipe span in place with its shipped version, and append any of the three that were missing (inside the `# --- do-work board recipes … ---` block when that header comment exists, else at the end of the file). Touch nothing else in the justfile — no reordering, no reformatting of the user's own recipes or variables. Then continue to Phase 3 (verify).
+  - **User declines** → stop and report "kept existing recipes", naming the shipped behaviors their version lacks so the choice is informed, not final by accident.
 
 #### Phase 2: Append the recipes
 
@@ -363,8 +376,12 @@ Appended to: <project-root>/justfile
 - Recipes rebuild the tool on every run, so `do-work update` refreshes take
   effect automatically (needs the Go toolchain — same requirement as
   `do-work board`).
-- The justfile is project-owned: `do-work update` never touches it.
+- The justfile is project-owned: `do-work update` never touches it. When the
+  shipped recipes change, re-run `do-work install just-kanban` — it diffs
+  your installed block against the shipped one and offers an upgrade.
 ```
+
+For the Phase 1b upgrade path, the first two lines read `Upgraded: just recipes for the queue-kanban board` / `Updated in: <project-root>/justfile` instead — the rest is identical.
 
 ---
 
@@ -388,7 +405,7 @@ Then stop.
 - **`ui-design`**: a short status line — "already installed", "installed successfully", or an error describing what failed and how to finish manually.
 - **`bowser`**: a two-line status — one for `playwright-cli`, one for the Bowser skill. Each is either "OK" (installed and verified), "already installed" (detected in Phase 1), or an error with the exact command the user can re-run.
 - **`last30days`**: a per-guarantee status (skill file, ignore rule, Python 3.12+) — "already installed" only when every guarantee holds; otherwise "installed successfully" with the destination path, or the FAILED line(s) and the exact command the user can re-run.
-- **`just-kanban`**: a per-component status (recipes appended, justfile parses, `just`/`go` availability) — "already installed" when a `run-kanban` recipe already exists; missing toolchains are warnings, not failures.
+- **`just-kanban`**: a per-component status (recipes appended or upgraded, justfile parses, `just`/`go` availability) — "already installed (current)" only when the installed recipes match the shipped block; a divergent block gets a diff and a consent-gated upgrade (Phase 1b), reported as "Upgraded" or "kept existing recipes". Missing toolchains are warnings, not failures.
 - **Unknown / missing target**: the help block above.
 
 ## Rules
@@ -400,7 +417,7 @@ Then stop.
 - **Don't silently substitute a different skill or repo.** If the upstream URL fails, report the error — don't download a similarly-named skill from elsewhere.
 - **Keyless in the project (last30days).** This install writes no config file at all. If a project-local `.claude/last30days.env` ever exists, it must never contain API keys — real keys live only in the user-global `~/.config/last30days/.env`. Never write a secret into any file inside the repo.
 - **The vendor drop must be ignored (last30days).** Phase 2 adds `**/.claude/skills/last30days/` to the enclosing repo's `.git/info/exclude` when it isn't already covered — machine-local, never the project's committable `.gitignore` — because ~15 MB of upstream Python must never become committable in the consuming repo.
-- **Append-only in the justfile (just-kanban).** Never reorder, reformat, or replace existing justfile content; an existing `run-kanban` recipe — even a divergent one — means "already installed", not "overwrite". Create a `justfile` only when none of `justfile`/`Justfile`/`.justfile` exists at the project root.
+- **Touch only the three do-work recipes in the justfile (just-kanban).** Never reorder, reformat, or modify justfile content outside `run-kanban`/`kanban-static`/`kanban-summary`. A divergent installed recipe is replaced only after the user has seen the diff and accepted (Phase 1b) — never silently, and never on the assumption that different means stale. Create a `justfile` only when none of `justfile`/`Justfile`/`.justfile` exists at the project root.
 - **One target per invocation.** If the user wants both, they run two separate commands. The action never chains targets.
 
 ## Common Rationalizations
@@ -415,7 +432,8 @@ Then stop.
 | "Upstream's README says `npx skills add … -g` — I'll just follow upstream (last30days)" | Vendor into `$PROJECT_ROOT/.claude/skills/last30days/` per the workflow | Both `-g` and `/plugin marketplace add` write to `~/.claude`, which this skill never touches |
 | "The user gave me an X API key — I'll put it in `.claude/last30days.env` so it works right away" | Direct them to `~/.config/last30days/.env`; never write a key into a project file | A key in a repo file leaks on the next commit |
 | "I'll write `LAST30DAYS_TRUST_PROJECT_CONFIG=1` into `.claude/last30days.env` so project config just works (last30days)" | Write no config file; tell the user the trust flag must come from their environment or user-global config | The flag gates whether the engine reads the project file — setting it *inside* that file is circular and inert |
-| "Their existing `run-kanban` recipe is outdated — I'll replace it with the shipped block (just-kanban)" | Report already-installed and show the shipped block for manual comparison | The existing recipe may carry deliberate project-specific flags; replacing it destroys their edits |
+| "Their existing `run-kanban` recipe differs from the shipped one — I'll just swap it out (just-kanban)" | Run Phase 1b: show the unified diff and get explicit consent before replacing anything | The divergence may be deliberate project-specific edits, not staleness — only the user can tell, and a silent swap destroys their edits |
+| "The diff is obviously just an older shipped version — asking is pointless (just-kanban)" | Ask anyway; the consent prompt is one question and the diff makes it fast | "Obviously stale" is exactly how a deliberate one-flag customization gets flattened; there is no reliable way to distinguish old-shipped from hand-edited |
 | "The skill is installed globally — I'll hard-code its absolute path into the recipe (just-kanban)" | Stop at the Phase 2 global-install gate and report | A recipe pointing outside the project breaks on every other clone and machine, and the skill's norms reject global installs |
 
 ## Red Flags
