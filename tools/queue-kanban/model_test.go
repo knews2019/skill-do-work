@@ -40,6 +40,11 @@ func TestStatusClassifiers(t *testing.T) {
 	if isCompletedStatus("pending") {
 		t.Fatalf("pending must not classify as completed")
 	}
+	for _, typoStatus := range []string{"completed-wth-issues", "completedish", "completed-with-issues-again"} {
+		if isCompletedStatus(typoStatus) {
+			t.Fatalf("%q is outside the terminal-success enum (completed | completed-with-issues) — a completed-prefixed typo must route through the unrecognized-status warning path, not classify as done", typoStatus)
+		}
+	}
 	for _, blocked := range []string{"pending-answers", "blocked-archive-collision", "blocked-dependency-cycle", "failed"} {
 		if !isNeedsInputOrBlockedStatus(blocked) {
 			t.Fatalf("%q should be a needs-input/blocked status", blocked)
@@ -283,6 +288,7 @@ func TestBucketColumns(t *testing.T) {
 		{RequestId: "REQ-5", Status: "pending-answers"},
 		{RequestId: "REQ-6", Status: "deferred", OriginalStatus: "deferred"}, // hand-edited status outside the Schema Read Contract enum — must still land in Needs-input/Blocked, now via the unrecognized-status warning path
 		{RequestId: "REQ-7", Status: "pnding", OriginalStatus: "pnding"},     // typo'd status — must never be silently dropped
+		{RequestId: "REQ-8", Status: "completed-wth-issues", OriginalStatus: "completed-wth-issues", CompletionTime: now.Add(-1 * time.Hour)}, // completed-prefixed typo — must warn, never pass as terminal success
 		recentDone,
 		oldDone,
 	}
@@ -293,17 +299,18 @@ func TestBucketColumns(t *testing.T) {
 	if len(columns.Claimed) != 1 || columns.Claimed[0].RequestId != "REQ-4" {
 		t.Fatalf("Claimed = %+v", columns.Claimed)
 	}
-	if len(columns.NeedsInputOrBlocked) != 3 {
-		t.Fatalf("NeedsInputOrBlocked should hold pending-answers + the deferred and pnding unrecognized statuses, got %d", len(columns.NeedsInputOrBlocked))
+	if len(columns.NeedsInputOrBlocked) != 4 {
+		t.Fatalf("NeedsInputOrBlocked should hold pending-answers + the deferred, pnding, and completed-wth-issues unrecognized statuses, got %d", len(columns.NeedsInputOrBlocked))
 	}
 	if len(columns.RecentlyDone) != 1 || columns.RecentlyDone[0].RequestId != "REQ-1" {
 		t.Fatalf("RecentlyDone should hold only the in-window completion, got %+v", columns.RecentlyDone)
 	}
-	if len(statusWarnings) != 2 {
-		t.Fatalf("expected two unrecognized-status warnings (deferred + pnding), got %d: %v", len(statusWarnings), statusWarnings)
+	if len(statusWarnings) != 3 {
+		t.Fatalf("expected three unrecognized-status warnings (deferred + pnding + completed-wth-issues), got %d: %v", len(statusWarnings), statusWarnings)
 	}
 	foundDeferredWarning := false
 	foundTypoWarning := false
+	foundCompletedTypoWarning := false
 	for _, warning := range statusWarnings {
 		if strings.Contains(warning, "REQ-6") && strings.Contains(warning, "deferred") {
 			foundDeferredWarning = true
@@ -311,11 +318,17 @@ func TestBucketColumns(t *testing.T) {
 		if strings.Contains(warning, "REQ-7") && strings.Contains(warning, "pnding") {
 			foundTypoWarning = true
 		}
+		if strings.Contains(warning, "REQ-8") && strings.Contains(warning, "completed-wth-issues") {
+			foundCompletedTypoWarning = true
+		}
 	}
 	if !foundDeferredWarning {
 		t.Fatalf("expected an unrecognized-status warning naming REQ-6/deferred, got %v", statusWarnings)
 	}
 	if !foundTypoWarning {
 		t.Fatalf("expected an unrecognized-status warning naming REQ-7/pnding, got %v", statusWarnings)
+	}
+	if !foundCompletedTypoWarning {
+		t.Fatalf("expected an unrecognized-status warning naming REQ-8/completed-wth-issues, got %v", statusWarnings)
 	}
 }

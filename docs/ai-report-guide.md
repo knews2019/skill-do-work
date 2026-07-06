@@ -50,7 +50,7 @@ The page is full-bleed — it fills the browser width instead of sitting in a fi
 
 ## Anti-slop applied inline
 
-Every section passes the seven `crew-members/anti-slop.md` principles, applied as you write — there is no separate `slop-check` step inside `ai-report`. If a section can't justify its existence, it doesn't ship. Pixels first, prose second.
+Every section passes **all** of the `crew-members/anti-slop.md` principles (eight as of this writing — the crew file is canonical if the count has moved), applied as you write — there is no separate `slop-check` step inside `ai-report`. If a section can't justify its existence, it doesn't ship. Pixels first, prose second.
 
 ## Input
 

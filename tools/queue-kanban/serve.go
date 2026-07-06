@@ -251,8 +251,52 @@ func resolveServeListenAddress(portFlagValue string) string {
 	return kanbanServeDefaultListenAddress
 }
 
+// describeListenExposure classifies listenAddress for the startup banner. It
+// returns the address to print in the board URL plus, when the bind is
+// reachable beyond loopback, a warning line. The board data carries every
+// rendered REQ/UR body, so *every* non-loopback bind must warn — not just the
+// host-less ":port" spelling: the wildcard hosts ("0.0.0.0", "[::]") bind all
+// interfaces exactly like ":port" does, and an explicit LAN IP or machine
+// hostname is likewise network-reachable. Loopback binds (127.0.0.1 and
+// friends, ::1, "localhost") stay silent. An address SplitHostPort cannot
+// parse gets no warning — net.Listen rejects it before anything is announced.
+func describeListenExposure(listenAddress string) (displayAddress string, exposureWarning string) {
+	allInterfacesWarning := fmt.Sprintf(
+		"queue-kanban: warning: %s binds ALL interfaces — the board (including REQ bodies) is reachable from the local network",
+		listenAddress)
+	if strings.HasPrefix(listenAddress, ":") {
+		return "localhost" + listenAddress, allInterfacesWarning
+	}
+	bindHost, _, splitError := net.SplitHostPort(listenAddress)
+	if splitError != nil {
+		return listenAddress, ""
+	}
+	switch {
+	case bindHost == "" || bindHost == "0.0.0.0" || bindHost == "::":
+		return listenAddress, allInterfacesWarning
+	case isLoopbackBindHost(bindHost):
+		return listenAddress, ""
+	default:
+		return listenAddress, fmt.Sprintf(
+			"queue-kanban: warning: %s binds a non-loopback address — the board (including REQ bodies) is reachable from the network",
+			listenAddress)
+	}
+}
+
+// isLoopbackBindHost reports whether a bind host is loopback: the literal
+// "localhost" or any IP the net package classifies as loopback. A hostname
+// that is not "localhost" returns false — it may resolve anywhere, so the
+// caller treats it as exposed.
+func isLoopbackBindHost(bindHost string) bool {
+	if strings.EqualFold(bindHost, "localhost") {
+		return true
+	}
+	parsedBindIp := net.ParseIP(bindHost)
+	return parsedBindIp != nil && parsedBindIp.IsLoopback()
+}
+
 // bindServeListenerAndAnnounce binds listenAddress via TCP and, ONLY on a
-// successful bind, prints the startup banner (and the all-interfaces warning,
+// successful bind, prints the startup banner (and the non-loopback exposure warning,
 // when applicable) and — if openAfterBind is true — invokes browserOpener
 // with the printed board URL. This ordering is deliberate: binding before
 // announcing is the fix for the false-positive "live board at …" line a port
@@ -266,10 +310,9 @@ func bindServeListenerAndAnnounce(listenAddress string, repoRoot string, openAft
 		return nil, listenErr
 	}
 
-	displayAddress := listenAddress
-	if strings.HasPrefix(displayAddress, ":") {
-		displayAddress = "localhost" + displayAddress
-		fmt.Printf("queue-kanban: warning: %s binds ALL interfaces — the board (including REQ bodies) is reachable from the local network\n", listenAddress)
+	displayAddress, exposureWarning := describeListenExposure(listenAddress)
+	if exposureWarning != "" {
+		fmt.Println(exposureWarning)
 	}
 	boardUrl := fmt.Sprintf("http://%s", displayAddress)
 	fmt.Printf("queue-kanban: live board at %s  (re-walks do-work/ per /board-data.js request)\n", boardUrl)

@@ -380,7 +380,7 @@ func linkRequestsToUserRequests(board *Board) {
 
 // normalizeStatus collapses the legacy completion synonyms to "completed" and
 // lower-cases/trims the rest. "completed-with-issues" is intentionally left as
-// is — it is already a completed* state recognized by isCompletedStatus.
+// is — it is the other exact terminal-success state isCompletedStatus accepts.
 func normalizeStatus(rawStatus string) string {
 	normalized := strings.ToLower(strings.TrimSpace(rawStatus))
 	switch normalized {
@@ -391,10 +391,14 @@ func normalizeStatus(rawStatus string) string {
 	}
 }
 
-// isCompletedStatus reports whether a normalized status is any completed* state
-// (covers "completed" and "completed-with-issues").
+// isCompletedStatus reports whether a normalized status is a terminal-success
+// state — exactly "completed" or "completed-with-issues", the Terminal-success
+// status set from actions/work-reference.md's Schema Read Contract. The exact
+// match is deliberate: a prefix match would let a typo like
+// "completed-wth-issues" bypass bucketColumns' unrecognized-status warning and
+// silently enter the calendar / Recently done column.
 func isCompletedStatus(normalizedStatus string) bool {
-	return strings.HasPrefix(normalizedStatus, "completed")
+	return normalizedStatus == "completed" || normalizedStatus == "completed-with-issues"
 }
 
 // isNeedsInputOrBlockedStatus reports whether a normalized status belongs in the

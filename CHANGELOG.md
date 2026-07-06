@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.106.3 — The Port Authority (2026-07-06)
+
+Four external review findings, now actually fixed: the `run-kanban` recipe can no longer be used to inject shell commands through the port argument, and the board got stricter about what counts as done and what counts as exposed.
+
+- `just run-kanban` takes the port as an exported `$port` shell variable, digit-validated before any other recipe line runs — `just run-kanban '8090; echo PWNED'` now exits 1 with a clear error instead of rendering the payload into shell source (repo justfile + the shipped template in `actions/install.md`)
+- The board's terminal-success check is an exact enum (`completed` | `completed-with-issues`): a typo like `completed-wth-issues` lands in Needs input / Blocked with an unrecognized-status warning instead of silently entering the calendar and Recently done
+- `queue-kanban serve` warns about REQ-body exposure on every non-loopback bind — `0.0.0.0:port`, `[::]:port`, LAN IPs, non-localhost hostnames — not just the host-less `:port` spelling
+- `docs/ai-report-guide.md` no longer hardcodes "seven" anti-slop principles; it defers to the crew file's canonical count (eight today), matching `actions/ai-report.md`
+
 ## 0.106.2 — The Namesake (2026-07-06)
 
 An external reviewer caught queue-kanban's repo-root walk-up matching any ancestor that contains a directory *named* `do-work` — in consumer installs that's the skill's own install dir (`.claude/skills/do-work/`), so running the tool from inside it silently rendered an empty board while the real queue sat further up.
