@@ -97,6 +97,9 @@
       return card;
     }
     card.setAttribute("aria-label", requestId + ": " + (request.title || "untitled"));
+    if (request.status) {
+      card.dataset.status = request.status; // lets CSS restyle terminal-but-unsuccessful cards (cancelled)
+    }
 
     var top = createElement("div", "req-card-top");
     top.appendChild(createElement("span", "req-card-id", requestId));
@@ -132,8 +135,9 @@
     }
 
     if (options && options.showCompleted && request.completionTime) {
+      var completionVerb = request.status === "cancelled" ? "cancelled" : "done";
       card.appendChild(
-        createElement("div", "req-card-completed", "done " + formatShortInstant(request.completionTime))
+        createElement("div", "req-card-completed", completionVerb + " " + formatShortInstant(request.completionTime))
       );
     }
 

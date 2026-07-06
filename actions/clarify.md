@@ -67,7 +67,7 @@ For each question, the user can:
   - *All other REQs* (builder-decision follow-ups): mark `status: completed` (no implementation needed — see "Builder Was Right" below)
 - **Pick a different option** → update to `- [x] [question] → [user's chosen option]`
 - **Skip for now** → leave as `- [ ]`, REQ stays `pending-answers`
-- **Discard it** → update to `- [x] [question] → Discarded`, then mark the REQ `status: completed`, `completed_at: <timestamp>`, and archive it directly (same pattern as "Builder Was Right" — no implementation work)
+- **Discard it** → update to `- [x] [question] → Discarded`, then mark the REQ `status: cancelled`, `completed_at: <timestamp>`, and archive it directly (same fast-path as "Builder Was Right", but with the honest won't-do status — no work happened and none is wanted; see "Discarded" below)
 
 ### Step 5: Activate answered REQs
 
@@ -86,7 +86,15 @@ When the user reviews a `pending-answers` follow-up and confirms that the builde
 3. Archive the follow-up REQ directly (skip the work loop — there's nothing to build)
 4. Append a brief note: `## Implementation\n\n**No changes needed.** User confirmed builder's choice from [original REQ].\n\n*Resolved via clarify questions*`
 
-**Discarded discovered tasks:** When the user reviews a discovered-task follow-up and chooses "No, discard it", the same fast-path applies. Mark `status: completed`, archive directly, and append: `## Implementation\n\n**Discarded.** User chose not to process this discovered task from [original REQ].\n\n*Resolved via clarify questions*`
+**Discarded** (questions or discovered tasks the user declines): the same fast-path applies, but the status is `cancelled`, not `completed` — nothing was built and nothing is wanted, and `cancelled` is the canonical won't-do terminal status (`actions/work-reference.md` → Terminal-resolved status set; it closes URs and shows with done work on the board). Mark `status: cancelled`, `completed_at: <timestamp>`, archive directly, and append:
+
+```markdown
+## Cancelled
+
+- **When:** <timestamp>
+- **Why:** user discarded this during clarify — [the question/task, one line]
+- **Decided by:** user, via `do-work clarify`
+```
 
 ## Approved Discovered Task
 
@@ -115,7 +123,7 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 
 - [ ] Every REQ presented had `status: pending-answers` in its frontmatter before the session started.
 - [ ] Each question shown included the builder's recommended choice (confirming is the fast path).
-- [ ] Answered REQs with all questions resolved flipped to `status: pending` (or `completed` for builder-was-right / discarded).
+- [ ] Answered REQs with all questions resolved flipped to `status: pending` (or `completed` for builder-was-right, `cancelled` for discarded).
 - [ ] Approved discovered-task REQs flipped to `pending` and stayed in `do-work/queue/` — not archived.
 - [ ] Skipped REQs remained `pending-answers` — nothing lost.
 - [ ] The final report names each REQ by id and what happened to it.

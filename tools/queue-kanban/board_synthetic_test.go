@@ -18,6 +18,7 @@ import (
 //	do-work/working/REQ-9002-claimed.md                    status claimed
 //	do-work/archive/UR-100/input.md                        flat UR
 //	do-work/archive/UR-100/REQ-9003-flat.md                legacy "complete" → completed, grouped under UR-100
+//	do-work/archive/UR-100/REQ-9005-cancelled.md           cancelled (completed_at inside the window), grouped under UR-100
 //	do-work/archive/UR-200-209/UR-205/input.md             banded UR
 //	do-work/archive/UR-200-209/UR-205/REQ-9004-banded.md   completed (completed_at), grouped under UR-205
 func createSyntheticDoWorkTree(t *testing.T) string {
@@ -48,6 +49,8 @@ func createSyntheticDoWorkTree(t *testing.T) string {
 	writeFixture(filepath.Join("do-work", "archive", "UR-100", "input.md"), userRequestContent("UR-100"))
 	writeFixture(filepath.Join("do-work", "archive", "UR-100", "REQ-9003-flat.md"),
 		requestContent("REQ-9003", "complete", "user_request: UR-100\ncommit_hash: deadbeef\n"))
+	writeFixture(filepath.Join("do-work", "archive", "UR-100", "REQ-9005-cancelled.md"),
+		requestContent("REQ-9005", "cancelled", "user_request: UR-100\ncompleted_at: 2026-06-28T10:00:00Z\n"))
 
 	writeFixture(filepath.Join("do-work", "archive", "UR-200-209", "UR-205", "input.md"), userRequestContent("UR-205"))
 	writeFixture(filepath.Join("do-work", "archive", "UR-200-209", "UR-205", "REQ-9004-banded.md"),
@@ -138,6 +141,18 @@ func TestSyntheticColumnBucketing(t *testing.T) {
 	if !columnContainsRequestId(board.Columns.Claimed, "REQ-9002") {
 		t.Fatalf("REQ-9002 (claimed) missing from the Claimed column")
 	}
+	if !columnContainsRequestId(board.Columns.RecentlyDone, "REQ-9005") {
+		t.Fatalf("REQ-9005 (cancelled, completed_at inside the window) missing from the Recently-done column")
+	}
+	if columnContainsRequestId(board.Columns.NeedsInputOrBlocked, "REQ-9005") {
+		t.Fatalf("REQ-9005 (cancelled) must not land in Needs-input/Blocked — cancelled is a recognized terminal status")
+	}
+	if columnContainsRequestId(board.Columns.RecentlyDone, "REQ-9004") {
+		t.Fatalf("REQ-9004 (completed 2026-06-10) is outside the recent window and belongs to the calendar only")
+	}
+	if len(board.Warnings) != 0 {
+		t.Fatalf("synthetic tree should produce no data warnings, got %v", board.Warnings)
+	}
 }
 
 func TestSyntheticLegacyCompleteNormalized(t *testing.T) {
@@ -156,19 +171,29 @@ func TestSyntheticLegacyCompleteNormalized(t *testing.T) {
 
 func TestSyntheticCountsAndCalendar(t *testing.T) {
 	board := syntheticBoard(t)
-	if got := len(board.AllRequests); got != 4 {
-		t.Fatalf("AllRequests = %d, want 4", got)
+	if got := len(board.AllRequests); got != 5 {
+		t.Fatalf("AllRequests = %d, want 5", got)
 	}
 	archivedCompleted := 0
+	archivedResolved := 0
 	for _, ticket := range board.AllRequests {
-		if ticket.TreeSection == "archive" && isCompletedStatus(ticket.Status) {
+		if ticket.TreeSection != "archive" {
+			continue
+		}
+		if isCompletedStatus(ticket.Status) {
 			archivedCompleted++
+		}
+		if isTerminalResolvedStatus(ticket.Status) {
+			archivedResolved++
 		}
 	}
 	if archivedCompleted != 2 {
-		t.Fatalf("archived completed = %d, want 2", archivedCompleted)
+		t.Fatalf("archived completed = %d, want 2 (cancelled must NOT count as terminal success)", archivedCompleted)
 	}
-	if got := len(board.Calendar); got != 2 {
-		t.Fatalf("calendar entries = %d, want 2 (both completed REQs resolve a completion time)", got)
+	if archivedResolved != 3 {
+		t.Fatalf("archived terminally resolved = %d, want 3 (completed pair + cancelled)", archivedResolved)
+	}
+	if got := len(board.Calendar); got != 3 {
+		t.Fatalf("calendar entries = %d, want 3 (both completed REQs and the cancelled REQ resolve a completion time)", got)
 	}
 }

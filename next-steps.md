@@ -242,6 +242,14 @@ Next steps:
   do-work clarify             Continue answering (if skipped any)
 ```
 
+**After abandon:**
+```
+Next steps:
+  do-work cleanup             Close the UR if every sibling REQ is now resolved
+  do-work board               See the cancelled REQ land with the done work
+  do-work roadmap             Survey what's still worth doing in the queue
+```
+
 **After bkb init:**
 ```
 Next steps:

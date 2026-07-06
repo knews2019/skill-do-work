@@ -51,7 +51,7 @@ Walk the do-work tree and collect:
 
 - `do-work/queue/REQ-*.md` — pending and `pending-answers`
 - `do-work/working/REQ-*.md` — actively claimed
-- `do-work/archive/**/REQ-*.md` — terminal status (completed, completed-with-issues, failed)
+- `do-work/archive/**/REQ-*.md` — terminal status (completed, completed-with-issues, failed, cancelled)
 - `do-work/user-requests/UR-*/` — open URs and their referenced REQs
 
 For each REQ, capture: id, title, status, route (if set), `user_request`, `created_at`, `claimed_at`, `completed_at`, `domain`, `addendum_to`, `kb_status`, `tdd` (frontmatter, default false if absent), and which `##` sections exist (note especially the presence/absence of `## Red-Green Proof`).
@@ -132,7 +132,7 @@ Render the report per the Output Format below. Lead with the actionable section 
 
 **Scan date:** [timestamp]
 **Scope:** [full | pending | in-progress | done | UR-NNN | since <date>]
-**Totals:** [N ready] · [N needs clarification] · [N blocked] · [N in-progress] · [N completed] · [N failed]
+**Totals:** [N ready] · [N needs clarification] · [N blocked] · [N in-progress] · [N completed] · [N failed] · [N cancelled]
 **TDD posture (pending):** [N on] · [N eligible] · [N not applicable]
 **Lessons:** [N awaiting triage] · [N awaiting ingest] · [N processed] · [N pending handoff] · [N file not found]
 

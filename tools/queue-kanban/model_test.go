@@ -21,6 +21,12 @@ func TestNormalizeStatus(t *testing.T) {
 		{"closed", "completed"},
 		{"  Complete ", "completed"},
 		{"completed-with-issues", "completed-with-issues"},
+		{"cancelled", "cancelled"},
+		{"canceled", "cancelled"},
+		{"abandoned", "cancelled"},
+		{"wont-do", "cancelled"},
+		{"wontfix", "cancelled"},
+		{"  Cancelled ", "cancelled"},
 		{"pending", "pending"},
 		{"pending-answers", "pending-answers"},
 		{"claimed", "claimed"},
@@ -55,6 +61,30 @@ func TestStatusClassifiers(t *testing.T) {
 	}
 	if isNeedsInputOrBlockedStatus("deferred") {
 		t.Fatalf("deferred is not in the Schema Read Contract enum (actions/work-reference.md) — it must route through the unrecognized-status warning path, not the recognized list")
+	}
+	if !isCancelledStatus("cancelled") {
+		t.Fatalf("cancelled should classify as the cancelled terminal status")
+	}
+	for _, notCancelled := range []string{"cancel", "cancelledish", "cancelled-maybe"} {
+		if isCancelledStatus(notCancelled) {
+			t.Fatalf("%q is outside the canonical enum — a cancelled-prefixed typo must route through the unrecognized-status warning path", notCancelled)
+		}
+	}
+	if isCompletedStatus("cancelled") {
+		t.Fatalf("cancelled must NOT classify as terminal success — success-readers exclude it (Terminal-success status set, actions/work-reference.md)")
+	}
+	if isNeedsInputOrBlockedStatus("cancelled") {
+		t.Fatalf("cancelled is terminally resolved — it belongs with done work, not the Needs-input/Blocked column")
+	}
+	for _, resolved := range []string{"completed", "completed-with-issues", "cancelled"} {
+		if !isTerminalResolvedStatus(resolved) {
+			t.Fatalf("%q should classify as terminally resolved (Terminal-resolved status set, actions/work-reference.md)", resolved)
+		}
+	}
+	for _, notResolved := range []string{"failed", "pending", "claimed", "pending-answers"} {
+		if isTerminalResolvedStatus(notResolved) {
+			t.Fatalf("%q must not classify as terminally resolved", notResolved)
+		}
 	}
 }
 
@@ -282,6 +312,8 @@ func TestBucketColumns(t *testing.T) {
 	window := 48 * time.Hour
 	recentDone := &RequestTicket{RequestId: "REQ-1", Status: "completed", CompletionTime: now.Add(-1 * time.Hour)}
 	oldDone := &RequestTicket{RequestId: "REQ-2", Status: "completed", CompletionTime: now.Add(-200 * time.Hour)}
+	recentCancelled := &RequestTicket{RequestId: "REQ-9", Status: "cancelled", CompletionTime: now.Add(-2 * time.Hour)}
+	oldCancelled := &RequestTicket{RequestId: "REQ-10", Status: "cancelled", CompletionTime: now.Add(-300 * time.Hour)}
 	tickets := []*RequestTicket{
 		{RequestId: "REQ-3", Status: "pending"},
 		{RequestId: "REQ-4", Status: "claimed"},
@@ -291,6 +323,8 @@ func TestBucketColumns(t *testing.T) {
 		{RequestId: "REQ-8", Status: "completed-wth-issues", OriginalStatus: "completed-wth-issues", CompletionTime: now.Add(-1 * time.Hour)}, // completed-prefixed typo — must warn, never pass as terminal success
 		recentDone,
 		oldDone,
+		recentCancelled,
+		oldCancelled,
 	}
 	columns, statusWarnings := bucketColumns(tickets, now, window)
 	if len(columns.Pending) != 1 || columns.Pending[0].RequestId != "REQ-3" {
@@ -302,8 +336,9 @@ func TestBucketColumns(t *testing.T) {
 	if len(columns.NeedsInputOrBlocked) != 4 {
 		t.Fatalf("NeedsInputOrBlocked should hold pending-answers + the deferred, pnding, and completed-wth-issues unrecognized statuses, got %d", len(columns.NeedsInputOrBlocked))
 	}
-	if len(columns.RecentlyDone) != 1 || columns.RecentlyDone[0].RequestId != "REQ-1" {
-		t.Fatalf("RecentlyDone should hold only the in-window completion, got %+v", columns.RecentlyDone)
+	if len(columns.RecentlyDone) != 2 ||
+		columns.RecentlyDone[0].RequestId != "REQ-1" || columns.RecentlyDone[1].RequestId != "REQ-9" {
+		t.Fatalf("RecentlyDone should hold the in-window completion then the in-window cancellation (most-recent first), got %+v", columns.RecentlyDone)
 	}
 	if len(statusWarnings) != 3 {
 		t.Fatalf("expected three unrecognized-status warnings (deferred + pnding + completed-wth-issues), got %d: %v", len(statusWarnings), statusWarnings)

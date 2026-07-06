@@ -132,11 +132,12 @@ func TestLiveTreeColumnBucketingMatchesStatus(t *testing.T) {
 			t.Fatalf("status %q does not belong in the Needs-input column (%s)", ticket.Status, ticket.RequestId)
 		}
 	}
-	// Recently-done holds only completed* tickets (the within-window subset; the
-	// rest of the completed history lives in the calendar).
+	// Recently-done holds only terminally resolved tickets — completed* or
+	// cancelled (the within-window subset; the rest of the resolved history
+	// lives in the calendar).
 	for _, ticket := range board.Columns.RecentlyDone {
-		if !isCompletedStatus(ticket.Status) {
-			t.Fatalf("non-completed status %q in the Recently-done column (%s)", ticket.Status, ticket.RequestId)
+		if !isTerminalResolvedStatus(ticket.Status) {
+			t.Fatalf("non-resolved status %q in the Recently-done column (%s)", ticket.Status, ticket.RequestId)
 		}
 	}
 }
@@ -175,23 +176,23 @@ func TestLiveTreeUserRequestLinkage(t *testing.T) {
 func TestLiveTreeCompletionTimeConsistent(t *testing.T) {
 	board := liveBoard(t)
 	for _, ticket := range board.AllRequests {
-		if !isCompletedStatus(ticket.Status) {
+		if !isTerminalResolvedStatus(ticket.Status) {
 			continue
 		}
 		if ticket.CompletionTime.IsZero() != (ticket.CompletionTimeSource == CompletionUnresolved) {
-			t.Fatalf("completed REQ %s: zero-time=%v disagrees with source=%q",
+			t.Fatalf("resolved REQ %s: zero-time=%v disagrees with source=%q",
 				ticket.RequestId, ticket.CompletionTime.IsZero(), ticket.CompletionTimeSource)
 		}
 		if !ticket.CompletionTime.IsZero() &&
 			ticket.CompletionTimeSource != CompletionFromFrontmatter && ticket.CompletionTimeSource != CompletionFromGitLog {
-			t.Fatalf("completed REQ %s resolved via unexpected source %q", ticket.RequestId, ticket.CompletionTimeSource)
+			t.Fatalf("resolved REQ %s resolved via unexpected source %q", ticket.RequestId, ticket.CompletionTimeSource)
 		}
 	}
 }
 
 // TestLiveTreeCalendarCoversCompletions asserts a repo-independent invariant: the
-// completion calendar holds exactly one entry per completed* REQ (each of which
-// resolves a completion time — see TestLiveTreeCompletionTimeResolved). The old
+// completion calendar holds exactly one entry per terminally resolved REQ —
+// completed* or cancelled (see TestLiveTreeCompletionTimeResolved). The old
 // absolute ">= 900 tickets" ballpark was a source-monorepo snapshot that breaks
 // in this 33-REQ extraction; exact counts now live in TestSyntheticCountsAndCalendar.
 func TestLiveTreeCalendarCoversCompletions(t *testing.T) {
@@ -200,14 +201,14 @@ func TestLiveTreeCalendarCoversCompletions(t *testing.T) {
 		t.Fatalf("live tree parsed zero REQ tickets — the do-work walk found nothing")
 	}
 
-	completedCount := 0
+	resolvedCount := 0
 	for _, ticket := range board.AllRequests {
-		if isCompletedStatus(ticket.Status) {
-			completedCount++
+		if isTerminalResolvedStatus(ticket.Status) {
+			resolvedCount++
 		}
 	}
-	if len(board.Calendar) != completedCount {
-		t.Fatalf("calendar entries = %d, want %d (one per completed REQ)", len(board.Calendar), completedCount)
+	if len(board.Calendar) != resolvedCount {
+		t.Fatalf("calendar entries = %d, want %d (one per terminally resolved REQ)", len(board.Calendar), resolvedCount)
 	}
 }
 

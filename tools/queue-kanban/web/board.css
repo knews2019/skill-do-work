@@ -490,6 +490,17 @@ body.is-resizing-detail {
   flex: none;
 }
 
+/* Cancelled (won't-do) — terminally resolved, so it shares the done column,
+   but visibly NOT a success: struck-through muted title, grey dot. */
+.req-card[data-status="cancelled"] .req-card-title {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  color: var(--ink-soft);
+}
+.req-card[data-status="cancelled"] .status-dot {
+  background-color: var(--ink-faint);
+}
+
 .req-card-title {
   margin: 0;
   font-size: 14px;

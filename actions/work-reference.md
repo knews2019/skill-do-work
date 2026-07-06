@@ -104,6 +104,10 @@ status: completed | completed-with-issues | failed
 commit: abc1234               # If git repo
 error: "Description"          # Only if failed
 
+# Set by abandon action (do-work abandon — user-directed won't-do decision)
+status: cancelled             # terminal, NOT successful; the reason lives in the REQ body's `## Cancelled` section
+completed_at: 2025-01-26T10:45:00Z  # stamped at cancellation — the terminal timestamp the board's recently-done window reads
+
 # Set by kb-lessons handoff (work.md's Lessons-Capture Phase in pipeline mode / review-work.md's Self-Validation & Lessons Learned step standalone). Optional; absent on REQs that predate the handoff.
 kb_status: promoted | pending | declined | skipped
 kb_entry: REQ-042-lesson-slug.md   # filename only (survives bkb moves from inbox/ to capture/ to processed/); present only when kb_status: promoted
@@ -127,7 +131,7 @@ Eight fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depen
 | Field (read sites) | Canonical enum | Normalization | Default on unknown |
 |---|---|---|---|
 | `domain` (Step 4 Route C plan-agent spawn, Step 6 crew load, Step 7 review-work spawn) | `frontend`, `backend`, `ui-design`, `general`, `security`, `testing` | `back-end`/`back_end` → `backend`; `front-end`/`front_end` → `frontend`; `ui_design` → `ui-design`; `sec` → `security`; `test` → `testing` | `general` |
-| `status` (Step 1 scan + categorization, Step 8 archive trigger) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `pending-answers`, `blocked-archive-collision`, `blocked-dependency-cycle` | `done`/`finished`/`closed` → `completed` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
+| `status` (Step 1 scan + categorization, Step 8 archive trigger, abandon action) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `cancelled`, `pending-answers`, `blocked-archive-collision`, `blocked-dependency-cycle` | `done`/`finished`/`closed` → `completed`; `canceled`/`abandoned`/`wont-do`/`wontfix` → `cancelled` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
 | `route` (Step 3 dispatch, Step 5.5 scope declaration, Step 7 scope-drift comparison) | `A`, `B`, `C` | lowercase `a`/`b`/`c` → uppercase | treat as needing re-triage in Step 3 |
 | `caveman` (Step 6 crew load) | `false`, `true`, `lite`, `full`, `ultra` | truthy strings (`yes`/`on`) → `true`; `light` → `lite` | `false` |
 | `maintenance` (Step 6 crew load) | `true`, `false` (YAML boolean) | truthy strings (`yes`/`on`/`t`) → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 maintenance crew not loaded) |
@@ -142,6 +146,14 @@ Eight fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depen
 **A REQ counts as *terminally successful* when its `status` is `completed` or `completed-with-issues`.** This is the canonical set every reader that selects "completed work" must honor — `completed-with-issues` is terminal and counts toward UR completion (it just carries known follow-ups, per `actions/work.md` Step 8), so a filter that accepts only the literal `completed` silently drops remediated-with-issues work. `failed` is terminal but **not** successful — success-readers exclude it.
 
 The trigger is the *condition above*, not the caller list: **any reader that filters for "the completed/most-recent work" inherits this contract.** The known consumers are illustrative, not exhaustive — `actions/cleanup.md` (UR close), `actions/ai-report.md` (report target), `actions/review-work.md` (standalone target), and `actions/commit.md` (REQ association); `actions/forensics.md` and `actions/roadmap.md` already honor both. When adding a new reader, accept both values and point back here. (See `CLAUDE.md` → "Closed Enumerations Go Stale.")
+
+### Terminal-resolved status set
+
+**A REQ counts as *terminally resolved* when its `status` is `completed`, `completed-with-issues`, or `cancelled`.** This is the set archive-sweep and UR-closure readers honor (`actions/cleanup.md` Pass 0 + Pass 1, `actions/work.md` Step 8's UR-final check, this file's Composed Exit Summary): `cancelled` records a deliberate won't-do decision — made via `do-work abandon` — so it archives like finished work and must never hold a UR open the way `failed` does. Three boundaries keep the sets honest:
+
+- `cancelled` is **not** successful. Success-readers (the Terminal-success set above) exclude it — a cancelled REQ is never a review-work target, an ai-report subject, or a commit association.
+- `cancelled` does **not** satisfy `depends_on` gating. A dependent presumably needed the cancelled REQ's output; the abandon action surfaces dependents at cancellation time so the user can cascade the cancellation or re-point `depends_on`.
+- `failed` stays outside this set: it is terminal and unsuccessful, but it signals work that *should* have happened — Step 8's failure classification spawns follow-ups, and a UR with a `failed` REQ needs those follow-ups before it can close. Cancelling is the explicit way to say "no follow-up wanted."
 
 ## Crash Recovery (Step 1)
 
@@ -158,12 +170,13 @@ Once `working/` is empty, proceed with finding the next request.
 
 The exit report is **composed**, not picked from disjoint branches. Whenever the scan finds no dependency-ready `pending` REQ, lead with the headline that matches the actual queue state — `No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked (the blocked-by-dependencies section below then enumerates them, so the headline never strands the user). Then append every section that has at least one REQ. Four sections may apply, in this order:
 
-1. **Completed/done section** — applies if any REQ in `do-work/queue/` has status `completed`, `completed-with-issues`, or `done`. Read the `user_request` frontmatter field from each to group by UR. Render:
+1. **Completed/done section** — applies if any REQ in `do-work/queue/` has status `completed`, `completed-with-issues`, `cancelled`, or `done`. Read the `user_request` frontmatter field from each to group by UR. Render:
 
    ```
-   ⚠ N completed REQs awaiting archive (UR-137: 3 REQs, UR-138: 1 REQ, ...):
+   ⚠ N finished REQs awaiting archive (UR-137: 3 REQs, UR-138: 1 REQ, ...):
      REQ-351 — [title] (done)
      REQ-352 — [title] (completed)
+     REQ-353 — [title] (cancelled)
      ...
 
    Run `do-work cleanup` to archive completed work, then `do-work recap` to see full history.
@@ -193,11 +206,11 @@ The exit report is **composed**, not picked from disjoint branches. Whenever the
 
    ```
    ⚠ N REQs blocked by unmet dependencies:
-     REQ-NNN — [title] (pending; depends on REQ-MMM, status: <pending|claimed|pending-answers>)
+     REQ-NNN — [title] (pending; depends on REQ-MMM, status: <pending|claimed|pending-answers|failed|cancelled>)
      REQ-PPP — [title] (blocked-dependency-cycle; chain: REQ-PPP → REQ-QQQ → REQ-PPP)
      ...
 
-   Resolve the blocking REQs first, then re-run. To force a scoped run that ignores dependency gating for a specific REQ, use `do-work run REQ-NNN`. To break a dependency cycle, edit the REQ's `depends_on` and flip its status back to `pending`.
+   Resolve the blocking REQs first, then re-run. To force a scoped run that ignores dependency gating for a specific REQ, use `do-work run REQ-NNN`. To break a dependency cycle, edit the REQ's `depends_on` and flip its status back to `pending`. A dependency on a `cancelled` (or `failed`) REQ never self-resolves — re-point the dependent's `depends_on`, or abandon it too (`do-work abandon REQ-NNN`).
    ```
 
 **After rendering all applicable sections, exit the work loop** — do not proceed to Step 2.0 or beyond. There is no `pending` REQ to claim. Step 1's contract on the no-pending path is "render the composed summary, then stop"; the only path that continues is the one where Step 1 finds at least one dependency-ready `pending` REQ.

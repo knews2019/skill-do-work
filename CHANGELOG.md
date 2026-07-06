@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.107.0 — The Won't-Do (2026-07-06)
+
+You can finally decline work honestly: `do-work abandon REQ-042 [reason]` marks a REQ `cancelled`, records why, and archives it — and the kanban board files it with the done work (struck-through, grey dot) instead of flagging an unrecognized status under Blocked.
+
+- New `actions/abandon.md` + `abandon`/`cancel` routing — confirmed, reasoned (`## Cancelled` section), dependents surfaced for cascade/re-point, never deletes the file
+- `cancelled` joins the Schema Read Contract (read-side aliases: `canceled`, `abandoned`, `wont-do`, `wontfix`) with a new **Terminal-resolved status set** (`completed`, `completed-with-issues`, `cancelled`) driving UR closure and archive sweeps — `failed` still holds URs open; `cancelled` never satisfies `depends_on` and never counts as terminal success
+- Board parser mirrors the contract in the same commit: cancelled tickets land in Recently done + the calendar with a "cancelled" timestamp label
+- `do-work clarify`'s discard path now writes `cancelled` instead of pretending the REQ was `completed`
+
 ## 0.106.4 — The List Keeper (2026-07-06)
 
 Two validate-feedback follow-ups: the board no longer loses block-list `depends_on` entries when a REQ's frontmatter needs lenient recovery, and static board snapshots stop showing up as untracked noise in `git status`.

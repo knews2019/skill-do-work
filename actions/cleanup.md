@@ -30,12 +30,12 @@ Scan `do-work/queue/` and the working directory for REQs with terminal statuses 
 
 1. **Glob `do-work/queue/REQ-*.md`**
 2. **Read each REQ's frontmatter** `status` field
-3. **If status is any terminal value** — `completed`, `completed-with-issues`, `failed`, or any non-standard terminal status (`done`, `finished`, `closed`):
-   - **Normalize non-standard statuses** before moving: change `done` → `completed`, `finished` → `completed`, `closed` → `completed` in frontmatter
+3. **If status is any terminal value** — `completed`, `completed-with-issues`, `failed`, `cancelled`, or any non-standard terminal status (`done`, `finished`, `closed`, `canceled`, `abandoned`, `wont-do`):
+   - **Normalize non-standard statuses** before moving: change `done` → `completed`, `finished` → `completed`, `closed` → `completed`, `canceled`/`abandoned`/`wont-do` → `cancelled` in frontmatter
    - Move the REQ to `do-work/archive/` root (Pass 1 and Pass 2 will then consolidate it into the correct UR folder)
    - Report: `Swept REQ-NNN from do-work/queue/ (was status: {original}) → archive`
 4. **Leave `pending`, `pending-answers`, and `claimed` REQs untouched** — those are active queue items
-5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`), it was finished but never moved out. Same treatment: normalize status, move to `do-work/archive/` root, report it.
+5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`, `cancelled`), it was finished but never moved out. Same treatment: normalize status, move to `do-work/archive/` root, report it.
 
 ### Pass 1: Close Completed User Requests
 
@@ -44,15 +44,15 @@ Check `do-work/user-requests/` for UR folders that are ready to archive.
 For each UR folder in `do-work/user-requests/`:
 
 1. Read `input.md` and parse the `requests` array from frontmatter (e.g., `[REQ-044, REQ-045, REQ-046]`)
-2. For each REQ ID in the array, check if it exists with a **terminal-success status** (`completed` or `completed-with-issues` — see `actions/work-reference.md`'s Schema Read Contract → Terminal-success status set) in ANY of these locations:
+2. For each REQ ID in the array, check if it exists with a **terminal-resolved status** (`completed`, `completed-with-issues`, or `cancelled` — see `actions/work-reference.md`'s Schema Read Contract → Terminal-resolved status set) in ANY of these locations:
    - `do-work/archive/UR-NNN/` (already consolidated)
    - `do-work/archive/` root (loose in archive)
    If the same REQ-ID is found in **both** locations simultaneously, flag it and leave the UR in `user-requests/` untouched: `⚠ Duplicate: REQ-NNN found in both archive/ root and archive/UR-NNN/. Resolve manually, then re-run cleanup.`
-3. If **ALL** REQs are terminally successful — `completed` or `completed-with-issues` (and no duplicates flagged):
-   - Gather any loose completed REQ files from `do-work/archive/` root into the UR folder
+3. If **ALL** REQs are terminally resolved — `completed`, `completed-with-issues`, or `cancelled` (and no duplicates flagged):
+   - Gather any loose completed/cancelled REQ files from `do-work/archive/` root into the UR folder
    - Move the entire UR folder to `do-work/archive/UR-NNN/`
-   - Report: `Archived UR-NNN (all N REQs complete)`
-4. If **NOT all** REQs are terminally successful:
+   - Report: `Archived UR-NNN (all N REQs resolved)` — when any were cancelled, say so: `(N-K complete, K cancelled)`
+4. If **NOT all** REQs are terminally resolved:
    - Leave the UR folder in `user-requests/` — it's not ready yet
    - Report: `UR-NNN still open (X/Y REQs complete)`
 
@@ -200,7 +200,8 @@ Guard against these during cleanup:
 - UR archived but some of its REQs still pending in the queue
 - Duplicate REQs found in multiple locations (queue + archive, or working + archive)
 - UR folder in archive with no REQ files inside
-- A UR whose REQs are all `completed-with-issues` never closes (stays in `user-requests/`) — Pass 1 is filtering on the literal `completed` instead of the terminal-success set (`completed` or `completed-with-issues`; see `actions/work-reference.md`)
+- A UR whose REQs are all `completed-with-issues` never closes (stays in `user-requests/`) — Pass 1 is filtering on the literal `completed` instead of the terminal-resolved set (`completed`, `completed-with-issues`, or `cancelled`; see `actions/work-reference.md`)
+- A UR held open forever by a `cancelled` REQ — same bug class: `cancelled` is terminally resolved and must count toward UR closure
 
 ## Verification Checklist
 

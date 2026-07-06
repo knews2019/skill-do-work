@@ -82,7 +82,7 @@ The full annotated frontmatter schema and the **Schema Read Contract** — the n
 
 **Status flow (frontmatter values):** `pending` → `claimed` → `completed` / `completed-with-issues` / `failed`
 
-The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only two status transitions are written to frontmatter on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8). Exception paths write their own statuses: the special holding statuses listed below (Step 1's `blocked-dependency-cycle`, Step 2.0's `blocked-archive-collision`) and Step 7's early `completed-with-issues` write after a failed remediation (which Step 8 must not overwrite).
+The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only two status transitions are written to frontmatter on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8). Exception paths write their own statuses: the special holding statuses listed below (Step 1's `blocked-dependency-cycle`, Step 2.0's `blocked-archive-collision`) and Step 7's early `completed-with-issues` write after a failed remediation (which Step 8 must not overwrite). One terminal status is never written by this action: `cancelled` — a user-directed won't-do decision made via `do-work abandon` (`actions/abandon.md`); the scan treats it like any other terminal status (never claim it).
 
 **Special statuses — these REQs stay in the queue but Step 1 won't pick them up (they're not `pending`, so the "find next pending REQ" scan walks right past them):**
 - `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do-work clarify`.
@@ -126,7 +126,7 @@ Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each 
 
 - Depth 0: REQs with no dependency list (neither `depends_on` nor the legacy `dependencies:` alias), or whose dependency members are all already archived (completed/completed-with-issues).
 - Depth K (K > 0): `max(depth of each dependency member in the current pending set) + 1`.
-- A dependency member that is neither archived (completed/completed-with-issues) nor in the current pending set — i.e. it sits in `pending-answers`, `blocked-archive-collision`, `blocked-dependency-cycle`, `claimed`, or `failed` — contributes depth 0 to this computation. Depth is only about ordering waves; the member's own gating is handled separately by the dependency-ready filter below, which holds the dependent REQ until every member reaches `completed`/`completed-with-issues`.
+- A dependency member that is neither archived (completed/completed-with-issues) nor in the current pending set — i.e. it sits in `pending-answers`, `blocked-archive-collision`, `blocked-dependency-cycle`, `claimed`, `failed`, or `cancelled` — contributes depth 0 to this computation. Depth is only about ordering waves; the member's own gating is handled separately by the dependency-ready filter below, which holds the dependent REQ until every member reaches `completed`/`completed-with-issues`.
 
 Filter the pending list to REQs whose depth equals N, then apply the dependency-ready filter normally. If no REQ at depth N is dependency-ready (or none exists at that depth), render the composed exit summary with a leading `No REQs at wave N (depth-N set is empty or fully gated).` line and exit. `--wave` and targeted REQ IDs are mutually exclusive — reject the combination at parse time with a clear error.
 
@@ -138,7 +138,7 @@ Filter the pending list to REQs whose depth equals N, then apply the dependency-
 Queue: N pending | N completed/done (awaiting archive) | N pending-answers | N blocked-archive-collision
 ```
 
-Count `completed`, `completed-with-issues`, and `done` statuses together as "completed/done (awaiting archive)." Count `blocked-archive-collision` separately so held duplicates don't disappear into the silence between "no pending" and "no REQs at all." If any completed/done REQs exist in `do-work/queue/`, add:
+Count `completed`, `completed-with-issues`, `cancelled`, and `done` statuses together as "completed/done (awaiting archive)." Count `blocked-archive-collision` separately so held duplicates don't disappear into the silence between "no pending" and "no REQs at all." If any completed/done REQs exist in `do-work/queue/`, add:
 
 ```
 ⚠ N completed REQs across M URs awaiting archive. Run `do-work cleanup` after this session.
@@ -473,7 +473,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
-| `user_request: UR-NNN` | Check if ALL REQs in the UR are finished (status: `completed`, `completed-with-issues`, or `failed`). Check `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` for REQs belonging to this UR. If all finished: move completed/completed-with-issues REQs into UR folder (failed REQs stay at archive root), move entire UR folder to `archive/`. If any REQ is still `pending`, `pending-answers`, or `claimed`: move this REQ to `archive/` root; UR stays in `user-requests/` until last REQ finishes. |
+| `user_request: UR-NNN` | Check if ALL REQs in the UR are finished (status: `completed`, `completed-with-issues`, `cancelled`, or `failed`). Check `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` for REQs belonging to this UR. If all finished: move completed/completed-with-issues/cancelled REQs into UR folder (failed REQs stay at archive root — they signal follow-up work; cancelled REQs are resolved-by-decision and consolidate like completed ones), move entire UR folder to `archive/`. If any REQ is still `pending`, `pending-answers`, or `claimed`: move this REQ to `archive/` root; UR stays in `user-requests/` until last REQ finishes. |
 | `context_ref` (legacy) | Move REQ to `archive/`. If all related REQs are now archived, move the CONTEXT doc too. |
 | Neither (standalone legacy) | Move directly to `archive/`. |
 

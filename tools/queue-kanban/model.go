@@ -98,8 +98,9 @@ type DependencyGraph struct {
 	Dependents map[string][]string // RequestId → ids that depend on it
 }
 
-// CalendarEntry places one completed REQ on the completion timeline, recording
-// the resolved instant, how it was resolved, and a UTC day bucket key.
+// CalendarEntry places one terminally resolved REQ (completed*/cancelled) on
+// the completion timeline, recording the resolved instant, how it was
+// resolved, and a UTC day bucket key.
 type CalendarEntry struct {
 	RequestId      string
 	CompletionTime time.Time
@@ -113,7 +114,7 @@ type BoardColumns struct {
 	Pending             []*RequestTicket // status pending
 	Claimed             []*RequestTicket // status claimed
 	NeedsInputOrBlocked []*RequestTicket // pending-answers / blocked-* / failed
-	RecentlyDone        []*RequestTicket // completed* whose completion instant is within the window
+	RecentlyDone        []*RequestTicket // completed*/cancelled whose completion instant is within the window
 }
 
 // Board is the complete parsed model of the do-work queue: every ticket, the
@@ -133,7 +134,7 @@ type Board struct {
 
 	Columns         BoardColumns
 	DependencyGraph DependencyGraph
-	Calendar        []CalendarEntry // completed REQs sorted most-recent-first (undated entries last)
+	Calendar        []CalendarEntry // terminally resolved REQs sorted most-recent-first (undated entries last)
 
 	Warnings []string // data-shape warnings (duplicate ids, unrecognized statuses) — surfaced, never silently dropped
 }
@@ -185,7 +186,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	board.AllRequests, board.Warnings = dedupeTicketsByRequestId(parsedTickets)
 
 	for _, ticket := range board.AllRequests {
-		if isCompletedStatus(ticket.Status) {
+		if isTerminalResolvedStatus(ticket.Status) {
 			completionTime, completionSource := resolveCompletionTime(ticket, repoRoot, gitLookup)
 			ticket.CompletionTime = completionTime
 			ticket.CompletionTimeSource = completionSource
@@ -379,13 +380,17 @@ func linkRequestsToUserRequests(board *Board) {
 }
 
 // normalizeStatus collapses the legacy completion synonyms to "completed" and
-// lower-cases/trims the rest. "completed-with-issues" is intentionally left as
-// is — it is the other exact terminal-success state isCompletedStatus accepts.
+// the won't-do synonyms to "cancelled" (both alias maps mirror the Schema Read
+// Contract in actions/work-reference.md), lower-casing/trimming the rest.
+// "completed-with-issues" is intentionally left as is — it is the other exact
+// terminal-success state isCompletedStatus accepts.
 func normalizeStatus(rawStatus string) string {
 	normalized := strings.ToLower(strings.TrimSpace(rawStatus))
 	switch normalized {
 	case "complete", "done", "finished", "closed":
 		return "completed"
+	case "canceled", "abandoned", "wont-do", "wontfix":
+		return "cancelled"
 	default:
 		return normalized
 	}
@@ -399,6 +404,23 @@ func normalizeStatus(rawStatus string) string {
 // silently enter the calendar / Recently done column.
 func isCompletedStatus(normalizedStatus string) bool {
 	return normalizedStatus == "completed" || normalizedStatus == "completed-with-issues"
+}
+
+// isCancelledStatus reports whether a normalized status is the terminal
+// won't-do state written by the abandon action (do-work abandon). Cancelled is
+// terminal but NOT successful — it shares the Recently-done column and the
+// calendar with completed work, while success-only readers keep excluding it
+// via isCompletedStatus.
+func isCancelledStatus(normalizedStatus string) bool {
+	return normalizedStatus == "cancelled"
+}
+
+// isTerminalResolvedStatus reports whether a normalized status is terminally
+// resolved — the Terminal-resolved status set from actions/work-reference.md's
+// Schema Read Contract: the terminal-success pair plus "cancelled". This set
+// gates completion-time resolution, Recently-done bucketing, and the calendar.
+func isTerminalResolvedStatus(normalizedStatus string) bool {
+	return isCompletedStatus(normalizedStatus) || isCancelledStatus(normalizedStatus)
 }
 
 // isNeedsInputOrBlockedStatus reports whether a normalized status belongs in the
@@ -525,11 +547,12 @@ func parseTimestamp(text string) (time.Time, bool) {
 }
 
 // bucketColumns sorts every ticket into the active-work columns by normalized
-// status. Completed* tickets only enter RecentlyDone when their completion
-// instant falls inside the window; older completions are left for the calendar.
-// A status outside the known vocabulary is never silently dropped (Schema Read
-// Contract, actions/work-reference.md): the ticket lands in Needs-input/Blocked
-// so it stays visible, plus a warning naming the unrecognized status.
+// status. Terminally resolved tickets (completed*/cancelled) only enter
+// RecentlyDone when their completion instant falls inside the window; older
+// resolutions are left for the calendar. A status outside the known vocabulary
+// is never silently dropped (Schema Read Contract, actions/work-reference.md):
+// the ticket lands in Needs-input/Blocked so it stays visible, plus a warning
+// naming the unrecognized status.
 func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Duration) (BoardColumns, []string) {
 	var columns BoardColumns
 	var statusWarnings []string
@@ -541,7 +564,7 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 			columns.Claimed = append(columns.Claimed, ticket)
 		case isNeedsInputOrBlockedStatus(ticket.Status):
 			columns.NeedsInputOrBlocked = append(columns.NeedsInputOrBlocked, ticket)
-		case isCompletedStatus(ticket.Status):
+		case isTerminalResolvedStatus(ticket.Status):
 			if isWithinRecentWindow(ticket.CompletionTime, now, recentWindow) {
 				columns.RecentlyDone = append(columns.RecentlyDone, ticket)
 			}
@@ -590,15 +613,16 @@ func buildDependencyGraph(tickets []*RequestTicket, requestsById map[string]*Req
 	return graph
 }
 
-// buildCalendar produces a completion-time-keyed index over every completed*
-// ticket, sorted most-recent-first. Tickets whose completion instant could not
-// be resolved are kept — never silently dropped — under the trailing "undated"
-// day bucket (the zero CompletionTime sorts them after every dated entry, and
-// board.js falls back to rendering the raw day key as the group label).
+// buildCalendar produces a completion-time-keyed index over every terminally
+// resolved (completed*/cancelled) ticket, sorted most-recent-first. Tickets
+// whose completion instant could not be resolved are kept — never silently
+// dropped — under the trailing "undated" day bucket (the zero CompletionTime
+// sorts them after every dated entry, and board.js falls back to rendering the
+// raw day key as the group label).
 func buildCalendar(tickets []*RequestTicket) []CalendarEntry {
 	var entries []CalendarEntry
 	for _, ticket := range tickets {
-		if !isCompletedStatus(ticket.Status) {
+		if !isTerminalResolvedStatus(ticket.Status) {
 			continue
 		}
 		if ticket.CompletionTime.IsZero() {

@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture-request: (describe a task) | run | verify-requests | review-work | code-review | ui-review | validate-feedback [paste findings] | present-work | ai-report [target] | slop-check [target] | dream [path] | clarify | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | board [mode] | note [text] | stray-check [path] | file-reorg [path] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
+argument-hint: "pipeline [request] | capture-request: (describe a task) | run | verify-requests | review-work | code-review | ui-review | validate-feedback [paste findings] | present-work | ai-report [target] | slop-check [target] | dream [path] | clarify | abandon [REQ-NNN] | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | board [mode] | note [text] | stray-check [path] | file-reorg [path] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -15,6 +15,7 @@ A unified entry point for task capture and processing.
 - **verify-requests**: Evaluate captured REQs against original input → quality check
 - **work**: Process pending requests → executes the queue
 - **clarify questions**: Batch-review Open Questions from completed work → user answers, confirms, or skips
+- **abandon**: Mark a REQ won't-do → sets `status: cancelled` with a recorded reason and archives the file; the decision shows with finished work on the board instead of lingering in the queue
 - **review-work**: Post-work review → requirements check, code review, acceptance testing, and testing suggestions
 - **validate-feedback**: Triage external review feedback / audit findings → per item, verify against the real code + git history and recommend Already done / Accept / Push back / Discuss. Read-only; offers a capture handoff for accepted items
 - **present-work**: Client-facing deliverables → briefs, architecture diagrams, value propositions, Remotion videos
@@ -103,7 +104,8 @@ Check these patterns **in order** — first match wins:
 | 32       | Note keywords            | `do-work note investigate xyz`, `do-work note "check Y before running"`, `do-work note add revisit after Z`, `do-work add note revisit after Z` | → note                          |
 | 33       | Board keywords           | `do-work board`, `do-work kanban`, `do-work board static`, `do-work board summary`, `do-work queue board`                          | → board                         |
 | 34       | File-reorg keywords      | `do-work file-reorg`, `do-work file-reorg docs/`, `do-work file-reorg plan`, `do-work reorg`, `do-work reorganize`, `do-work restructure`, `do-work declutter`, `do-work declutter root`, `do-work tidy layout`, `do-work fix the layout`, `do-work clean up the root` | → file-reorg                    |
-| 35       | Descriptive content      | `do-work capture-request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture-requests              |
+| 35       | Abandon keywords         | `do-work abandon REQ-042`, `do-work abandon REQ-042 superseded by REQ-051`, `do-work cancel REQ-042`, `do-work wont-do REQ-042`, `do-work abandon` — only when the args are empty or contain a `REQ-NNN` ID; `abandon`/`cancel` followed by ID-less prose is descriptive content (priority 36). `do-work pipeline abandon` already matched at priority 3. | → abandon                       |
+| 36       | Descriptive content      | `do-work capture-request: add dark mode`, `do-work [meeting notes]`, `do-work the button is broken`                                | → capture-requests              |
 
 
 ### Step 2: Preserve Payload
@@ -131,6 +133,7 @@ If routing is genuinely unclear AND multi-word content was provided:
 | **pipeline** | pipeline, full, full pipeline | Everything after keyword → `$ARGUMENTS` (request text). "pipeline status" → status mode. "pipeline abandon" → abandon mode. If no args and active pipeline exists, resume. |
 | **work** | run, go, start, begin, work, process, execute, build, continue, resume | Optional REQ IDs after keyword (e.g., `do-work run REQ-042`) → process only those REQs. No args → work through full queue (dependency-aware order). Flag (default mode only): `--wave N` runs only REQs at dependency depth N. Strip the flag before extracting REQ IDs. `--wave` and explicit REQ IDs are mutually exclusive — reject with a clear error. An argument that is neither a `REQ-NNN` ID nor `--wave N` is **rejected** with a usage error — it is **not** treated as "no args" (which would silently build the whole queue). See `actions/work.md` Input → "Unrecognized arguments are rejected, not ignored." |
 | **clarify** | clarify, answers, questions, pending, pending answers, blocked, what's blocked, what needs answers | Routes to `actions/clarify.md` |
+| **abandon** | abandon, cancel, wont-do, won't do | Everything after the verb → `$ARGUMENTS` (REQ IDs + optional reason). Routes here only when args are empty or contain a `REQ-NNN` ID — `abandon`/`cancel` followed by ID-less prose (e.g., `do-work cancel button is broken`) is descriptive content → capture-requests. `do-work pipeline abandon` → pipeline (priority 3), not here. Bare verb with no ID → list cancellable REQs and ask. |
 | **verify-requests** | verify, verify-requests, verify requests, check, evaluate, review requests, review reqs, audit | "check" alone → verify; "check for updates" → version (priority 2); "audit" alone → verify; "audit codebase" → code-review; "audit primes" → prime |
 | **code-review** | code-review, code review, review codebase, audit codebase, codebase review | Both hyphenated and unhyphenated forms route here, with or without scope. Scope args: prime file refs, directory paths, or combined |
 | **ui-review** | ui-review, review ui, design review, validate ui, ui audit, design audit | Do NOT use "check ui" — consumed by verify at priority 5. Scope args: file paths, directory paths, prime file refs |
@@ -179,6 +182,7 @@ do-work — task queue for agentic coding tools
   Process the queue:
     do-work run                         Triage, build, test, review — one REQ at a time
     do-work clarify                     Review pending questions from completed work
+    do-work abandon REQ-042 [why]       Mark a REQ won't-do — cancelled + archived, shows with done work
 
   Verify & review:
     do-work verify-requests             Check capture quality against original input
@@ -294,6 +298,7 @@ Each action has an action file with full instructions. How you execute it depend
 | capture-requests   | `./actions/capture.md`          | Full user input text           |
 | work               | `./actions/work.md`             | `$ARGUMENTS` (REQ IDs, `--wave`, or empty) |
 | clarify questions  | `./actions/clarify.md`          | (none needed)                  |
+| abandon            | `./actions/abandon.md`          | `$ARGUMENTS` (REQ IDs + optional reason) |
 | verify-requests    | `./actions/verify-requests.md`  | Target UR/REQ or "most recent" |
 | review-work        | `./actions/review-work.md`      | Target REQ/UR or "most recent" |
 | validate-feedback  | `./actions/validate-feedback.md`| `$ARGUMENTS` (the pasted feedback / findings) |
@@ -332,7 +337,7 @@ Dispatch each action to a subagent. The subagent reads the action file and execu
 - **`cleanup`**: Run in the background if your environment supports it. Print a status line and return control to the user immediately.
 - **`board`** (`serve` mode): Run in the background if your environment supports it — it's a long-running local server. Print the URL (`http://localhost:8090`) and return control to the user. The `static` and `summary` modes run in the foreground (immediate output).
 - **Exception — pipeline dispatch**: When the pipeline action dispatches `work`, it runs in the **foreground** (blocking). The pipeline requires each step to complete before advancing. This override applies only when the pipeline is the caller.
-- **`pipeline`, `capture-requests`, `clarify questions`, `verify-requests`, `review-work`, `validate-feedback`, `code-review`, `ui-review`, `present-work`, `ai-report`, `slop-check`, `dream`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `note`, `stray-check`, `file-reorg`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
+- **`pipeline`, `capture-requests`, `clarify questions`, `abandon`, `verify-requests`, `review-work`, `validate-feedback`, `code-review`, `ui-review`, `present-work`, `ai-report`, `slop-check`, `dream`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `forensics`, `roadmap`, `note`, `stray-check`, `file-reorg`, `commit`, `inspect`, `install`, `version`, `recap`, `tutorial`, `prompts`, `interview`**: Run in the foreground (blocking). These need user interaction or produce small immediate output.
 - **Screenshots (`capture-requests` only):** Subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
 
 ### If subagents are not available

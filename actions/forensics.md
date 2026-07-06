@@ -103,7 +103,7 @@ For recently archived REQs (last 10 with `commit` in frontmatter):
 
 ### 9. Stranded Finished REQs
 
-Scan `do-work/queue/REQ-*.md` (queue, not archive) AND `do-work/working/REQ-*.md` for REQs with any terminal status: `completed`, `completed-with-issues`, `failed`, or non-standard variants like `done`, `finished`, `closed`.
+Scan `do-work/queue/REQ-*.md` (queue, not archive) AND `do-work/working/REQ-*.md` for REQs with any terminal status: `completed`, `completed-with-issues`, `failed`, `cancelled`, or non-standard variants like `done`, `finished`, `closed`, `abandoned`, `wont-do`.
 
 **Queue findings:** Group by `user_request` frontmatter field. For each UR group:
 - **Warning**: "UR-NNN has N completed REQs stranded in queue awaiting archive: REQ-NNN, REQ-NNN, ..."
@@ -138,7 +138,7 @@ Read-only: this check reads Lessons sections and reports; it never edits, moves,
 
 **Scan date:** [timestamp]
 **Queue:** [N pending, N completed/done (awaiting archive), N pending-answers]
-**Archive:** [N completed, N completed-with-issues, N failed]
+**Archive:** [N completed, N completed-with-issues, N failed, N cancelled]
 **Working:** [N in-progress]
 
 ## Critical Findings
