@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.106.2 — The Namesake (2026-07-06)
+
+An external reviewer caught queue-kanban's repo-root walk-up matching any ancestor that contains a directory *named* `do-work` — in consumer installs that's the skill's own install dir (`.claude/skills/do-work/`), so running the tool from inside it silently rendered an empty board while the real queue sat further up.
+
+- `resolveRepoRoot` now skips skill installs (SKILL.md at the candidate's top level) and keeps climbing to the directory holding the actual queue; with no queue-holding ancestor it errors loudly instead of building an empty board from the install
+- Regression tests seed the consumer layout (`skills/do-work/tools/queue-kanban/` + root `do-work/`) and pin both the skip and the loud-error path
+- `prime-do-kanban.md`'s Direct instructions now pass `--repo-root`, and its trap note describes the real failure mode (the old text claimed "exits non-zero"; the consumer reality was a silent 0-ticket success)
+
 ## 0.106.1 — The Caller List (2026-07-03)
 
 A 31-agent audit ran over the whole skill after the file-reorg integration; twelve raw findings, five survived adversarial verification, and the four pre-existing ones land here (the fifth shipped inside 0.106.0).

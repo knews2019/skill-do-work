@@ -15,11 +15,11 @@ queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that
 
 ## Must build
 - Easiest: run `do-work board` (builds + serves for you; `do-work board static` for the shareable static artifact, `do-work board summary` for counts). See `actions/board.md`.
-- Direct (portable, any repo with a `do-work/`): `cd <skill-dir>/tools/queue-kanban && go build -o queue-kanban .` → `./queue-kanban serve` (live board) or `./queue-kanban generate --out DIR` (static). The binary is gitignored in-place. Needs the Go toolchain (see `go.mod` for the required version).
+- Direct (portable, any repo with a `do-work/`): `cd <skill-dir>/tools/queue-kanban && go build -o queue-kanban .` → `./queue-kanban serve --repo-root <consumer-repo-root>` (live board) or `./queue-kanban generate --out DIR --repo-root <consumer-repo-root>` (static). The binary is gitignored in-place. Needs the Go toolchain (see `go.mod` for the required version).
 
 ## Traps
 - **Columns track REQ status, not folder** — `walk.go` keeps queue/working/archive only as provenance; `model.go` buckets by normalized `status`. A status-alias drift sends tickets to the wrong column.
-- **Repo root is auto-discovered from CWD** — run from inside the repo or pass `--repo-root DIR`; from outside a `do-work/` ancestor it exits non-zero.
+- **Repo root is auto-discovered from CWD** — prefer `--repo-root DIR` (what `actions/board.md` prescribes); the walk-up skips directories merely *named* `do-work` that are skill installs (SKILL.md at their top level, e.g. `.claude/skills/do-work/`) and errors non-zero only when no queue-holding ancestor exists.
 - **`web/` is embedded, not read at runtime** — edits need a rebuild; `serve` re-serves the SAME embedded assets `generate` inlines, never files on disk.
 - **Separate Go module** — build inside `tools/queue-kanban/`; a repo-root `go build ./...` from the consuming project won't reach it (it lives under `.claude/skills/do-work/`).
 - **Loopback-only by default** — `serve` binds `127.0.0.1:8090` (env `QUEUE_KANBAN_PORT`; 8090 avoids the main goserver :8080). Bare port values also bind loopback; LAN exposure requires an explicit `host:port`.

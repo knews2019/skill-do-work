@@ -26,13 +26,14 @@ type discoveredTreeFiles struct {
 
 // resolveRepoRoot walks upward from startDirectory until it finds a directory
 // that contains a `do-work/` subdirectory, and returns that directory as the
-// repo root. It errors only if the filesystem root is reached without finding
-// one.
+// repo root. A `do-work/` that is a skill install rather than a queue tree
+// (see isSkillInstallDirectory) is skipped and the walk continues upward. It
+// errors only if the filesystem root is reached without finding one.
 func resolveRepoRoot(startDirectory string) (string, error) {
 	currentDirectory := startDirectory
 	for {
 		candidate := filepath.Join(currentDirectory, "do-work")
-		if info, statError := os.Stat(candidate); statError == nil && info.IsDir() {
+		if info, statError := os.Stat(candidate); statError == nil && info.IsDir() && !isSkillInstallDirectory(candidate) {
 			return currentDirectory, nil
 		}
 		parentDirectory := filepath.Dir(currentDirectory)
@@ -41,6 +42,18 @@ func resolveRepoRoot(startDirectory string) (string, error) {
 		}
 		currentDirectory = parentDirectory
 	}
+}
+
+// isSkillInstallDirectory reports whether a directory named `do-work` is the
+// do-work skill's install tree rather than a queue tree. Consumer repos vendor
+// the skill at a path itself named do-work (e.g. `.claude/skills/do-work/`), so
+// an upward walk from the vendored tool would otherwise match the install's
+// parent and silently build an empty board while the real queue sits further
+// up. SKILL.md at the directory's top level is the discriminator: every skill
+// install ships it; a queue tree never contains one.
+func isSkillInstallDirectory(candidateDirectory string) bool {
+	_, statError := os.Stat(filepath.Join(candidateDirectory, "SKILL.md"))
+	return statError == nil
 }
 
 // deriveProjectName returns a human-facing project name for a repo root: the base
