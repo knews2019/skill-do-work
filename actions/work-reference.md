@@ -446,12 +446,45 @@ If no upstream REQ is `failed`, fall through to the symptom-based classification
 5. Move to `archive/` (failed REQs always go to archive root, not into UR folders).
 6. Report to user: `[REQ-NNN] failed ([type]): [description]. Follow-up: [REQ-NNN] / None.` When the short-circuit fired, prefix the report with `(upstream cascade — original failure at REQ-NNN)`.
 
+## Changelog Entry Procedure (Step 9)
+
+Every successful REQ (`completed` / `completed-with-issues`) gets an entry in the target repo's root `CHANGELOG.md`, written **before** the commit so it ships inside it. Failed and cancelled REQs get no entry — the changelog records delivered change, not attempts. A changelog entry is a human-facing artifact: load `crew-members/anti-slop.md` before writing it (its JIT_CONTEXT condition already covers this — noted here so it isn't skipped).
+
+**Precedence check first.** If the repo already has a `CHANGELOG.md` whose entries follow a different convention (keep-a-changelog categories, generated conventional-commit logs, plain dated lists), **match the existing format** — never impose the house voice on a repo with its own. Everything below applies when there is no changelog yet or the existing one already follows this format.
+
+**Bootstrap.** If no root `CHANGELOG.md` exists, create one:
+
+```markdown
+# Changelog
+
+What's new, what's better, what's different. Most recent stuff on top.
+
+---
+```
+
+**Entry key.** `## YYYY-MM-DD — The [Fun Two-Word Name]`. If the repo versions itself (a version line, package manifest, or release tags the project actually maintains), use `## X.Y.Z — The [Fun Two-Word Name] (YYYY-MM-DD)` with the repo's own version instead — do-work never invents a version line for a repo that doesn't have one. The codename must be unique against every existing entry in the file (grep before writing — duplicates have occurred).
+
+**Voice contract (house style).** 1–2 casual sentences leading with *why it matters* — the situation that prompted the change and what's better now — then bullets for the specifics. Lead with value, not implementation; file paths and flags belong in the bullets, not the lead. Keep it brief. Newest on top, one entry per REQ (this matches one-commit-per-request).
+
+```markdown
+## 2026-07-07 — The Translator
+
+Agents kept asking questions only they could parse — codenames coined
+mid-analysis, options with no stated consequence. Question wording is
+now a contract, not a hope.
+
+- New `crew-members/clear-questions.md`, loaded before any interactive ask
+- Six principles: one decision per question, decode your own shorthand, say the consequence…
+```
+
+The `CHANGELOG.md` change is part of the REQ's lifecycle files — stage it in the commit below.
+
 ## Commit & Metadata-Commit Procedure (Step 9)
 
 ```bash
-# Stage implementation files + archived REQ
+# Stage implementation files + archived REQ + the changelog entry
 git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx \
-  do-work/archive/UR-002/REQ-003-dark-mode.md
+  do-work/archive/UR-002/REQ-003-dark-mode.md CHANGELOG.md
 
 # Stage follow-up REQs created in Step 8 (if any)
 git add do-work/queue/REQ-025-confirm-sidebar-palette.md
@@ -477,9 +510,9 @@ EOF
 
 **Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
 
-One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), and any UR-folder moves to `archive/`. If Step 8 substep 7 wrote prime-file lessons links, the modified prime files must also be staged — they are part of the REQ's lifecycle changes even though they aren't listed in the Implementation Summary's `Files changed`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
+One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, the `CHANGELOG.md` entry (successful REQs only — see the Changelog Entry Procedure above), any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), and any UR-folder moves to `archive/`. If Step 8 substep 7 wrote prime-file lessons links, the modified prime files must also be staged — they are part of the REQ's lifecycle changes even though they aren't listed in the Implementation Summary's `Files changed`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
 
-**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
+**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata and/or `CHANGELOG.md` (the changelog entry describes the implementation, it isn't the implementation), flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
 
 **Write commit hash back to the archived REQ.** After the commit succeeds, retrieve the hash with `git rev-parse --short HEAD` and update the archived REQ's frontmatter `commit:` field with the actual value. Then create a **separate metadata commit** (do not amend — amending changes the hash and invalidates what you just wrote):
 

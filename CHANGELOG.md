@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.110.0 — The Court Scribe (2026-07-07)
+
+This changelog was the only one do-work ever kept — every target repo's history lived in commit messages nobody rereads. Now the work pipeline writes a changelog entry in every repo it works in, by default, in the house voice (picked from a six-voice side-by-side style lab over four real entries).
+
+- New **Changelog Entry Procedure (Step 9)** in `actions/work-reference.md`: house-style contract (value-first lead + technical bullets), `## YYYY-MM-DD — The [Codename]` keys for unversioned repos, the repo's own version when it has one — never invented
+- Bootstrap when `CHANGELOG.md` is missing; an existing changelog in a different format wins over the house voice
+- Successful REQs only — failed and cancelled work gets no entry; `CHANGELOG.md` joins the explicit staging list and doesn't count as implementation in the commit validation check
+- Wired into `actions/work.md`'s Commit Phase; entries load `crew-members/anti-slop.md` like any human-facing artifact
+
 ## 0.109.0 — The Translator (2026-07-07)
 
 Agents kept asking questions only they could parse — codenames coined mid-analysis, three decisions folded into one sentence, options with no stated consequence. New crew member `crew-members/clear-questions.md` makes question *wording* a contract, complementing the existing options-not-open-ended rule which only governed question *structure*.
