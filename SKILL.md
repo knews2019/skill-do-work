@@ -53,7 +53,7 @@ A unified entry point for task capture and processing.
 
 > **Human time has two optimal windows.** The system is designed to maximize the value of human attention:
 >
-> 1. **Capture phase** (capture-requests action) — The user is present, actively thinking about the request. This is the best time for back-and-forth: clarifying ambiguities, resolving contradictions, making scope decisions. Use the ask tool if your environment provides one; otherwise use your environment's normal ask-user prompt/tool. Every question must present concrete options — never open-ended "what do you mean?" prompts.
+> 1. **Capture phase** (capture-requests action) — The user is present, actively thinking about the request. This is the best time for back-and-forth: clarifying ambiguities, resolving contradictions, making scope decisions. Use the ask tool if your environment provides one; otherwise use your environment's normal ask-user prompt/tool. Every question must present concrete options — never open-ended "what do you mean?" prompts — and be worded so the user can answer it cold (`crew-members/clear-questions.md` is the contract for question wording, loaded before any interactive ask).
 >
 > 2. **Batch question review** (clarify questions action) — After the build phase completes everything it can without feedback, any remaining `pending-answers` REQs are surfaced as a batch. The user reviews all builder-decided questions together, confirms or adjusts, and resolved REQs re-enter the queue.
 >

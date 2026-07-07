@@ -317,7 +317,7 @@ encounter the work in progress naturally.]
 
 **When to ask:** Only when the request is genuinely ambiguous (could mean two very different things), or when a duplicate/similar request makes intent unclear. Don't ask about implementation details — that's for the building agent.
 
-**How to ask:** Use the ask tool if available, otherwise use your environment's normal ask-user prompt/tool, and always present concrete options. Every question must present choices the user can pick from — not open-ended "what do you mean?" prompts. The choices themselves clarify the question: even if the user doesn't fully understand the question, selecting the closest option moves things forward.
+**How to ask:** Load `crew-members/clear-questions.md` before writing the questions — it governs wording (one decision per question, decode your own shorthand, state each option's consequence). Use the ask tool if available, otherwise use your environment's normal ask-user prompt/tool, and always present concrete options. Every question must present choices the user can pick from — not open-ended "what do you mean?" prompts. The choices themselves clarify the question: even if the user doesn't fully understand the question, selecting the closest option moves things forward.
 
 ```
 Good: "Should dark mode apply to the sidebar?" — options: (yes, full app / no, main content only / builder decides)

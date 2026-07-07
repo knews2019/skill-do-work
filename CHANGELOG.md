@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.109.0 — The Translator (2026-07-07)
+
+Agents kept asking questions only they could parse — codenames coined mid-analysis, three decisions folded into one sentence, options with no stated consequence. New crew member `crew-members/clear-questions.md` makes question *wording* a contract, complementing the existing options-not-open-ended rule which only governed question *structure*.
+
+- Loads before any interactive ask (ask-tool prompt, clarifying question, option menu) per its JIT_CONTEXT
+- Six principles: one decision per question, decode your own shorthand, say the consequence, plain words over field jargon, concrete options, the read-once test
+- Wired into `actions/capture.md`'s "How to ask" and SKILL.md's capture-phase window; listed as the fourth always-know contract in CLAUDE.md
+
 ## 0.108.2 — The Answer Key (2026-07-07)
 
 Field-testing 0.108.1's trap question showed it still put the burden on the wrong side: the agent had already found the traps, then asked the user to approve them item-by-item. Now scan-found traps go straight into the prime draft, and the user is asked only two things — is anything wrong, and do you know something the code can't show (a past incident, a prod-only quirk).
