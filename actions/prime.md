@@ -78,15 +78,16 @@ Use your environment's ask-user prompt/tool to ask these questions (free-text an
 - Dead code kept for reference, generated output, vendor files, config that looks editable but isn't
 - This becomes the **Do not edit** section
 
-**Q3: Traps — propose candidates, then confirm.**
+**Q3: Traps — document what the scan found; ask the user only for what the code can't reveal.**
 
 A trap is a **repo-specific fact where the obvious reading of the code is wrong** and which an AI cannot discover by reading files: dev/prod differences, a file that looks editable but is generated, naming that misleads, two-directory patterns. Litmus test: *would a competent AI, reading the code cold, reach a wrong conclusion?* If the code itself reveals it, it's not a trap. If it's a universal truism ("don't break the build"), it's noise.
 
-Don't ask the bare question cold — users discover traps by getting burned, they don't recall them on demand, and an empty prompt pressures them to invent filler. Instead, propose 0-3 candidate traps you actually noticed in the Step 1 scan (generated output that looks hand-written, twin directories, misleading names), then ask:
+The burden of finding traps is on **you**, not the user. Traps you surfaced in the Step 1 scan that pass the litmus test go into the draft directly — do not ask the user to generate traps from memory or approve yours item-by-item (users discover traps by getting burned, not on demand; an empty prompt pressures them to invent filler like "the server shouldn't crash"). When presenting each trap, phrase it as *what you'd naturally do → what silently goes wrong* — that shape is what makes a trap legible to the user. Then ask one light question:
 
-> "Are there traps here — places where the obvious reading of the code is wrong, like a file that looks editable but is generated, a misleading name, or a dev/prod difference? From my scan I'd flag: {candidates, or 'nothing'}. Confirm, correct, or add your own — **'none' is a common and perfectly good answer.**"
+> "I'll record these traps I found: {drafted trap lines}. Two things: (1) is any of them wrong? (2) is there anything only you would know — a prod-only quirk, a past incident, something that bit you that the code doesn't show? **'Nothing to add' is a common and perfectly good answer.**"
 
-- This becomes the **Traps** section; if the answer is "none", omit the section entirely — a prime without Traps is healthy, not incomplete
+- The user's role is **veto + lived experience**, not generation — scans reliably find the structural traps (generated files, twin directories, module boundaries) but never the historical ones (that one outage, the port chosen to dodge a collision)
+- This becomes the **Traps** section; if the scan found nothing and the user adds nothing, omit the section entirely — a prime without Traps is healthy, not incomplete
 
 #### Step 4: Generate
 

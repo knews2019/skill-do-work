@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.108.2 — The Answer Key (2026-07-07)
+
+Field-testing 0.108.1's trap question showed it still put the burden on the wrong side: the agent had already found the traps, then asked the user to approve them item-by-item. Now scan-found traps go straight into the prime draft, and the user is asked only two things — is anything wrong, and do you know something the code can't show (a past incident, a prod-only quirk).
+
+- `actions/prime.md` Q3: the user's role is veto + lived experience, not generation; traps are presented as "what you'd naturally do → what silently goes wrong" so non-experts can judge them
+- Rationale from the test: the hand-written queue-kanban prime holds 5 traps — the scan found the 3 structural ones, but the 2 historical ones (status-alias drift, the port picked to dodge :8080) only a human could contribute
+- `docs/prime-guide.md` synced
+
 ## 0.108.1 — The Trap Door (2026-07-07)
 
 `prime create` no longer asks "what traps?" cold — a question that confused users into inventing filler traps ("the car should not blow up"). The agent now proposes candidate traps from its own scan and the user just confirms, corrects, or adds; "none" is explicitly a good answer.
