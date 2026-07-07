@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.108.1 — The Trap Door (2026-07-07)
+
+`prime create` no longer asks "what traps?" cold — a question that confused users into inventing filler traps ("the car should not blow up"). The agent now proposes candidate traps from its own scan and the user just confirms, corrects, or adds; "none" is explicitly a good answer.
+
+- Q3 in `actions/prime.md` now defines what a trap actually is — a repo-specific fact where the obvious reading of the code is wrong AND an AI can't discover it from files — with a litmus test that Step 4 also applies to the user's answers (truisms and code-discoverable facts get filtered out)
+- New Red Flag: a Traps section full of truisms means the filter wasn't applied
+- `docs/prime-guide.md` synced with the propose-then-confirm flow
+
 ## 0.108.0 — The Diff Gate (2026-07-06)
 
 `do-work install just-kanban` now upgrades outdated recipes instead of shrugging "already installed". If your justfile's board recipes have drifted from the shipped block (say, they predate auto-open), it shows you the diff and asks before replacing anything.

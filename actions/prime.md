@@ -78,14 +78,21 @@ Use your environment's ask-user prompt/tool to ask these questions (free-text an
 - Dead code kept for reference, generated output, vendor files, config that looks editable but isn't
 - This becomes the **Do not edit** section
 
-**Q3: "What traps would waste an AI's debugging time?"**
-- Dev/prod differences, path resolution gotchas, naming that misleads, two-directory patterns
-- This becomes the **Traps** section
+**Q3: Traps — propose candidates, then confirm.**
+
+A trap is a **repo-specific fact where the obvious reading of the code is wrong** and which an AI cannot discover by reading files: dev/prod differences, a file that looks editable but is generated, naming that misleads, two-directory patterns. Litmus test: *would a competent AI, reading the code cold, reach a wrong conclusion?* If the code itself reveals it, it's not a trap. If it's a universal truism ("don't break the build"), it's noise.
+
+Don't ask the bare question cold — users discover traps by getting burned, they don't recall them on demand, and an empty prompt pressures them to invent filler. Instead, propose 0-3 candidate traps you actually noticed in the Step 1 scan (generated output that looks hand-written, twin directories, misleading names), then ask:
+
+> "Are there traps here — places where the obvious reading of the code is wrong, like a file that looks editable but is generated, a misleading name, or a dev/prod difference? From my scan I'd flag: {candidates, or 'nothing'}. Confirm, correct, or add your own — **'none' is a common and perfectly good answer.**"
+
+- This becomes the **Traps** section; if the answer is "none", omit the section entirely — a prime without Traps is healthy, not incomplete
 
 #### Step 4: Generate
 
 Combine auto-detected facts with user answers. Apply these rules:
 - If a section would be empty, omit it entirely
+- **Filter trap answers.** Drop any trap that an AI could discover from the code itself, and any universal truism — keep only repo-specific facts where the obvious reading misleads (the Q3 litmus test applies to the user's answers too)
 - If there's no build step, omit **Must build**
 - Every line must earn its place — "would an AI waste tokens without this?"
 - **Spelunk the Stakes.** For the utility's *load-bearing* elements only (the few whose contract, if changed wrong, has real blast radius), read the code and record `Req:` (what it must do / why it exists), `Value:` (what it enables), `Risk:` (what breaks if changed wrong; reversibility). This becomes the `## Stakes` section — its purpose is to let the user make high-impact decisions confidently without re-deriving the context, and it feeds the Value/Risk that `do-work clarify` surfaces. Load-bearing only; if every element seems to qualify, the utility is too big — split it. No volatile metrics, pointers not copies. Omit the section entirely for a utility with no high-stakes elements.
@@ -301,6 +308,7 @@ Be concise. Only flag actual issues. "Everything looks fine" for a prime is not 
 - `audit` reports no issues across the whole repo, but several primes haven't been touched in months — they're likely stale; spot-check before trusting the clean result.
 - `create <path>` was run on a path that already has a prime — avoid silent overwrite; ask before replacing.
 - A prime file lists line numbers or reproduces code — violates the "pointers over copies" principle; rewrite.
+- The **Traps** section contains truisms or facts derivable from the code — the Q3 litmus test wasn't applied; a trap must be a repo-specific fact an AI would read wrong.
 - Audit flags missing primes for paths the user doesn't care about (experimental, deprecated) — add an exclusion rather than forcing creation.
 
 ## Verification Checklist
