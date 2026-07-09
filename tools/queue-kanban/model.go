@@ -55,6 +55,11 @@ type RequestTicket struct {
 	BlockedBy []string // legacy blocked_by ids, kept distinct from DependsOn
 	Related   []string // soft relations (not dependency edges)
 
+	// Derived by annotateDependencyState after every ticket is parsed — never
+	// read from frontmatter.
+	UnmetDependencies []string // DependsOn entries that have not reached terminal success (a dangling id counts as unmet)
+	Dependents        []string // REQ ids whose depends_on names this ticket, in id order — the reverse edge
+
 	Route string
 	Batch string
 
@@ -121,7 +126,9 @@ type QueueNote struct {
 // BoardColumns holds the active-work buckets. Completed REQs older than the
 // recent window are NOT represented here — they live in Board.Calendar.
 type BoardColumns struct {
-	Pending             []*RequestTicket // status pending
+	Pending             []*RequestTicket // status pending (the union of PendingReady and PendingWaiting)
+	PendingReady        []*RequestTicket // pending with every depends_on target at terminal success — actionable now
+	PendingWaiting      []*RequestTicket // pending with at least one unmet dependency — not yet actionable
 	Claimed             []*RequestTicket // status claimed
 	NeedsInputOrBlocked []*RequestTicket // pending-answers / blocked-* / failed
 	RecentlyDone        []*RequestTicket // completed*/cancelled whose completion instant is within the window
@@ -227,10 +234,15 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 		sortRequestIdList(userRequestTicket.RequestIds)
 	}
 
+	board.DependencyGraph = buildDependencyGraph(board.AllRequests, board.RequestsById)
+
+	// Dependency state must be annotated BEFORE bucketing: the Pending column is
+	// split into ready vs waiting by each ticket's UnmetDependencies.
+	board.Warnings = append(board.Warnings, annotateDependencyState(board)...)
+
 	columns, columnWarnings := bucketColumns(board.AllRequests, now, recentWindow)
 	board.Columns = columns
 	board.Warnings = append(board.Warnings, columnWarnings...)
-	board.DependencyGraph = buildDependencyGraph(board.AllRequests, board.RequestsById)
 	board.Calendar = buildCalendar(board.AllRequests)
 	board.Notes = loadQueueNotes(discovered.NotesFilePath)
 
@@ -624,7 +636,12 @@ func parseTimestamp(text string) (time.Time, bool) {
 }
 
 // bucketColumns sorts every ticket into the active-work columns by normalized
-// status. Terminally resolved tickets (completed*/cancelled) only enter
+// status. Pending additionally splits on dependency readiness (annotated by
+// annotateDependencyState, which must have run first): a pending ticket with no
+// unmet dependency is what the work loop would actually claim next. The split is
+// a view, not a status change — the gating is dynamic, so a waiting ticket stays
+// `pending` on disk and becomes ready the moment its upstream completes.
+// Terminally resolved tickets (completed*/cancelled) only enter
 // RecentlyDone when their completion instant falls inside the window; older
 // resolutions are left for the calendar. A status outside the known vocabulary
 // is never silently dropped (Schema Read Contract, actions/work-reference.md):
@@ -637,6 +654,11 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 		switch {
 		case ticket.Status == "pending":
 			columns.Pending = append(columns.Pending, ticket)
+			if len(ticket.UnmetDependencies) == 0 {
+				columns.PendingReady = append(columns.PendingReady, ticket)
+			} else {
+				columns.PendingWaiting = append(columns.PendingWaiting, ticket)
+			}
 		case ticket.Status == "claimed":
 			columns.Claimed = append(columns.Claimed, ticket)
 		case isNeedsInputOrBlockedStatus(ticket.Status):
@@ -688,6 +710,56 @@ func buildDependencyGraph(tickets []*RequestTicket, requestsById map[string]*Req
 		}
 	}
 	return graph
+}
+
+// annotateDependencyState walks every depends_on edge once and fills in the two
+// derived views the board renders from: each ticket's UnmetDependencies (the
+// forward edge — what still has to land) and each ticket's Dependents (the
+// reverse edge — what unblocks when this lands). It returns one warning per
+// dangling dependency.
+//
+// A dependency is MET only when its target reached terminal SUCCESS — exactly
+// the `completed` / `completed-with-issues` pair (actions/work-reference.md's
+// Schema Read Contract, which the work loop's Step 1 selection scan gates on).
+// Two consequences follow from that contract and are deliberate here:
+//
+//   - `cancelled` does NOT satisfy a dependency. The dependent presumably needed
+//     the cancelled REQ's output, so it stays waiting until the user re-points
+//     depends_on or abandons it too — it must never quietly read as ready.
+//   - A dangling id (no such REQ anywhere in the tree) counts as UNMET, never as
+//     satisfied. Failing open would silently promote a REQ into Ready on the
+//     strength of a typo'd dependency. It is also surfaced as a warning, because
+//     a pointer to nothing can never self-resolve — no amount of work clears it.
+func annotateDependencyState(board *Board) []string {
+	var danglingDependencyWarnings []string
+
+	for _, ticket := range board.AllRequests {
+		alreadySeenDependencyIds := map[string]bool{}
+		for _, dependencyId := range ticket.DependsOn {
+			if alreadySeenDependencyIds[dependencyId] {
+				continue // a repeated depends_on entry must not double-count as a dependent
+			}
+			alreadySeenDependencyIds[dependencyId] = true
+
+			dependencyTicket, dependencyExists := board.RequestsById[dependencyId]
+			if !dependencyExists {
+				ticket.UnmetDependencies = append(ticket.UnmetDependencies, dependencyId)
+				danglingDependencyWarnings = append(danglingDependencyWarnings, fmt.Sprintf(
+					"%s depends on %s, which is not in the do-work tree — treated as unmet",
+					ticket.RequestId, dependencyId))
+				continue
+			}
+			dependencyTicket.Dependents = append(dependencyTicket.Dependents, ticket.RequestId)
+			if !isCompletedStatus(dependencyTicket.Status) {
+				ticket.UnmetDependencies = append(ticket.UnmetDependencies, dependencyId)
+			}
+		}
+	}
+
+	for _, ticket := range board.AllRequests {
+		sortRequestIdList(ticket.Dependents)
+	}
+	return danglingDependencyWarnings
 }
 
 // buildCalendar produces a completion-time-keyed index over every terminally

@@ -94,7 +94,7 @@ From `<skill-root>/tools/queue-kanban`:
 
 - **serve:** the live URL + how to stop it.
 - **static:** the path to `index.html` and a one-line column-count recap.
-- **summary:** the tool's column-count block (total REQs, pending, claimed, needs-input/blocked, recently-done, calendar entries, dependency edges).
+- **summary:** the tool's column-count block (total REQs, pending — split into ready-to-work and waiting-on-deps — claimed, needs-input/blocked, recently-done, calendar entries, dependency edges).
 
 ## Rules
 
@@ -102,7 +102,7 @@ From `<skill-root>/tools/queue-kanban`:
 - Never commit the compiled `queue-kanban` binary (the tool's nested `.gitignore` already excludes it) or the generated `build/queue-kanban-board/` artifact.
 - Pass `--repo-root` explicitly (resolved via `git rev-parse --show-toplevel 2>/dev/null || pwd`) — the tool's CWD walk-up is the non-git last resort, not the default.
 - Do not vendor or modify the Go source to "make it build" — a build failure is a toolchain/environment issue to report, not a code change.
-- If you change the tool's parser, keep it in lock-step with `actions/work-reference.md`'s Schema Read Contract — the `status` vocabulary drives column bucketing; `depends_on` and `domain` are parsed for display only (badges, drawer metadata), never for column placement.
+- If you change the tool's parser, keep it in lock-step with `actions/work-reference.md`'s Schema Read Contract — the `status` vocabulary drives column bucketing, and `depends_on` drives the Ready/Waiting split *within* the Pending column (never placement into a different column: gating is dynamic, so a waiting REQ stays `pending` on disk). A dependency counts as met only when its target reached `completed` or `completed-with-issues`; `cancelled` never satisfies gating, and a `depends_on` id that names no REQ in the tree is treated as unmet **and** raised as a data warning. `domain` is parsed for display only.
 - `do-work/notes.md` renders as a collapsible Notes strip above the columns (visible in both the board and calendar views), mirroring how `actions/roadmap.md` surfaces it. Notes are plain text, never Markdown, and never tickets: they get no column, no calendar entry, and no detail drawer. The board only reads the file — `do-work note` is still the only writer, and the user still deletes lines by hand.
 
 ## Common Rationalizations

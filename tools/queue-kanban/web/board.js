@@ -69,6 +69,30 @@
     return columnDayFormatter.format(new Date(ms)) + " UTC";
   }
 
+  // ---- dependency helpers -------------------------------------------------
+  // Mirrors model.go's isTerminalResolvedStatus / isCompletedStatus. The board
+  // never re-derives which dependencies are unmet — the Go side annotates that
+  // (a dangling id counts as unmet, and `cancelled` never satisfies a
+  // dependency) and ships it as request.unmetDependencies.
+
+  function isTerminalResolvedStatus(status) {
+    return status === "completed" || status === "completed-with-issues" || status === "cancelled";
+  }
+
+  // The REQs still waiting on this one. A dependent that already resolved is not
+  // "unblocked by" anything anymore, so it drops out of the count.
+  function activeDependentIds(request) {
+    return (request.dependents || []).filter(function (dependentId) {
+      var dependent = requestsById[dependentId];
+      return dependent && !isTerminalResolvedStatus(dependent.status);
+    });
+  }
+
+  function describeRequestStatus(requestId) {
+    var request = requestsById[requestId];
+    return request && request.status ? request.status : "not in tree";
+  }
+
   // ---- card construction --------------------------------------------------
 
   function makeBadge(className, labelText, valueText, datasetName, datasetValue) {
@@ -121,15 +145,25 @@
     if (request.route) {
       badges.appendChild(makeBadge("badge-route", "route", request.route));
     }
+    var unblockedRequestIds = activeDependentIds(request);
+    if (unblockedRequestIds.length > 0 && !isTerminalResolvedStatus(request.status)) {
+      var unblocksBadge = makeBadge("badge-unblocks", "unblocks", String(unblockedRequestIds.length));
+      unblocksBadge.title = "Unblocks " + unblockedRequestIds.join(", ") + " when this lands";
+      badges.appendChild(unblocksBadge);
+    }
     if (badges.childNodes.length > 0) {
       card.appendChild(badges);
     }
 
     if (request.dependsOn && request.dependsOn.length > 0) {
+      var unmetDependencyIds = request.unmetDependencies || [];
       var deps = createElement("div", "req-card-deps");
       deps.appendChild(createElement("span", "dep-chip-lead", "needs"));
       request.dependsOn.forEach(function (dependencyId) {
-        deps.appendChild(createElement("span", "dep-chip", dependencyId));
+        var isUnmet = unmetDependencyIds.indexOf(dependencyId) !== -1;
+        var chip = createElement("span", isUnmet ? "dep-chip is-unmet" : "dep-chip is-met", dependencyId);
+        chip.title = dependencyId + " — " + describeRequestStatus(dependencyId);
+        deps.appendChild(chip);
       });
       card.appendChild(deps);
     }
@@ -160,6 +194,47 @@
     });
   }
 
+  // The Pending column is the only one that sub-groups: what the work loop could
+  // claim right now, versus what is still waiting on an upstream REQ. When
+  // nothing is waiting, the headers are noise — the column renders as a flat
+  // list, exactly as it did before dependency readiness was computed.
+  function fillPendingColumn(readyIds, waitingIds) {
+    var container = document.querySelector('[data-cards="pending"]');
+    var countNode = document.querySelector('[data-count="pending"]');
+    container.textContent = "";
+    countNode.textContent = String(readyIds.length + waitingIds.length);
+
+    if (readyIds.length === 0 && waitingIds.length === 0) {
+      container.appendChild(createElement("p", "column-empty", "Nothing here"));
+      return;
+    }
+    if (waitingIds.length === 0) {
+      readyIds.forEach(function (requestId) {
+        container.appendChild(makeRequestCard(requestId));
+      });
+      return;
+    }
+    container.appendChild(makePendingGroup("Ready", readyIds, "Nothing ready — every pending REQ is waiting"));
+    container.appendChild(makePendingGroup("Waiting on dependencies", waitingIds, ""));
+  }
+
+  function makePendingGroup(labelText, requestIds, emptyText) {
+    var group = createElement("section", "pending-group");
+    var header = createElement("h3", "pending-group-label");
+    header.appendChild(createElement("span", "pending-group-name", labelText));
+    header.appendChild(createElement("span", "pending-group-count", String(requestIds.length)));
+    group.appendChild(header);
+
+    if (requestIds.length === 0) {
+      group.appendChild(createElement("p", "column-empty", emptyText));
+      return group;
+    }
+    requestIds.forEach(function (requestId) {
+      group.appendChild(makeRequestCard(requestId));
+    });
+    return group;
+  }
+
   // ---- recently-done window (recomputed client-side) ----------------------
 
   function recentlyDoneIds(windowHours) {
@@ -176,7 +251,7 @@
 
   function renderColumns() {
     var columns = boardData.columns || {};
-    fillColumn("pending", columns.pending || []);
+    fillPendingColumn(columns.pendingReady || [], columns.pendingWaiting || []);
     fillColumn("claimed", columns.claimed || []);
     fillColumn("needsInputOrBlocked", columns.needsInputOrBlocked || []);
     fillColumn("recentlyDone", recentlyDoneIds(viewState.windowHours), { showCompleted: true });
@@ -363,6 +438,21 @@
     drawerMeta.appendChild(dd);
   }
 
+  // Each dependency listed with the status that decides whether it is met, so
+  // "why is this still waiting?" is answerable without opening the upstream REQ.
+  function makeDependencyDetailList(request) {
+    var unmetDependencyIds = request.unmetDependencies || [];
+    var list = createElement("div", "detail-dep-list");
+    request.dependsOn.forEach(function (dependencyId) {
+      var isUnmet = unmetDependencyIds.indexOf(dependencyId) !== -1;
+      var row = createElement("span", isUnmet ? "detail-dep is-unmet" : "detail-dep is-met");
+      row.appendChild(createElement("span", "detail-dep-id", dependencyId));
+      row.appendChild(createElement("span", "detail-dep-status", describeRequestStatus(dependencyId)));
+      list.appendChild(row);
+    });
+    return list;
+  }
+
   function openRequestDetail(requestId) {
     var request = requestsById[requestId];
     if (!request) {
@@ -386,7 +476,11 @@
       appendMetaRow("User request", urLink);
     }
     if (request.dependsOn && request.dependsOn.length > 0) {
-      appendMetaRow("Depends on", request.dependsOn.join(", "));
+      appendMetaRow("Depends on", makeDependencyDetailList(request));
+    }
+    var unblockedRequestIds = activeDependentIds(request);
+    if (unblockedRequestIds.length > 0) {
+      appendMetaRow("Unblocks", unblockedRequestIds.join(", "));
     }
     if (request.route) {
       appendMetaRow("Route", request.route);

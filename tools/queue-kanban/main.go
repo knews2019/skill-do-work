@@ -70,6 +70,8 @@ func runSummaryCommand(args []string) {
 	fmt.Printf("  total REQ tickets   : %d\n", len(board.AllRequests))
 	fmt.Printf("  user requests       : %d\n", len(board.UserRequests))
 	fmt.Printf("  pending             : %d\n", len(board.Columns.Pending))
+	fmt.Printf("    ready to work     : %d\n", len(board.Columns.PendingReady))
+	fmt.Printf("    waiting on deps   : %d\n", len(board.Columns.PendingWaiting))
 	fmt.Printf("  claimed             : %d\n", len(board.Columns.Claimed))
 	fmt.Printf("  needs-input/blocked : %d\n", len(board.Columns.NeedsInputOrBlocked))
 	fmt.Printf("  recently-done       : %d\n", len(board.Columns.RecentlyDone))

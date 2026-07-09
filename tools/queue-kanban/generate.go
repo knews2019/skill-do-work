@@ -54,8 +54,12 @@ type generatedBoardData struct {
 // generatedColumns lists the active-board buckets as REQ id slices. RecentlyDone
 // is the generate-time default-window snapshot; the client recomputes it from the
 // calendar for the 24h/48h/7d toggle, so this slice is just the initial paint.
+// PendingReady and PendingWaiting partition Pending — the full list is kept so a
+// consumer that ignores dependency readiness still sees every pending ticket.
 type generatedColumns struct {
 	Pending             []string `json:"pending"`
+	PendingReady        []string `json:"pendingReady"`
+	PendingWaiting      []string `json:"pendingWaiting"`
 	Claimed             []string `json:"claimed"`
 	NeedsInputOrBlocked []string `json:"needsInputOrBlocked"`
 	RecentlyDone        []string `json:"recentlyDone"`
@@ -71,6 +75,8 @@ type generatedRequest struct {
 	Domain               string   `json:"domain"`
 	UserRequestId        string   `json:"userRequestId"`
 	DependsOn            []string `json:"dependsOn"`
+	UnmetDependencies    []string `json:"unmetDependencies"`
+	Dependents           []string `json:"dependents"`
 	BlockedBy            []string `json:"blockedBy"`
 	Related              []string `json:"related"`
 	Route                string   `json:"route"`
@@ -161,6 +167,8 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 		UserRequests: map[string]generatedUserRequest{},
 		Columns: generatedColumns{
 			Pending:             requestIdsOf(board.Columns.Pending),
+			PendingReady:        requestIdsOf(board.Columns.PendingReady),
+			PendingWaiting:      requestIdsOf(board.Columns.PendingWaiting),
 			Claimed:             requestIdsOf(board.Columns.Claimed),
 			NeedsInputOrBlocked: requestIdsOf(board.Columns.NeedsInputOrBlocked),
 			RecentlyDone:        requestIdsOf(board.Columns.RecentlyDone),
@@ -181,6 +189,8 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			Domain:               ticket.Domain,
 			UserRequestId:        ticket.UserRequestId,
 			DependsOn:            ticket.DependsOn,
+			UnmetDependencies:    ticket.UnmetDependencies,
+			Dependents:           ticket.Dependents,
 			BlockedBy:            ticket.BlockedBy,
 			Related:              ticket.Related,
 			Route:                ticket.Route,

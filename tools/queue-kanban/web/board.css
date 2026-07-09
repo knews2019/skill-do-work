@@ -507,6 +507,34 @@ body.is-resizing-detail {
   text-align: center;
 }
 
+/* Pending sub-groups (Ready / Waiting on dependencies). Rendered only when at
+   least one pending REQ is waiting — otherwise the column stays a flat list. */
+.pending-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pending-group + .pending-group {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.pending-group-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.pending-group-count {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
 /* --------------------------------------------------------------------------
    Cards
    -------------------------------------------------------------------------- */
@@ -635,6 +663,14 @@ body.is-resizing-detail {
 .badge-route {
   font-family: var(--font-mono);
 }
+/* "unblocks N" — this REQ is what N unresolved REQs are waiting on. Carries the
+   done accent: landing it is what turns other cards green. */
+.badge-unblocks {
+  color: var(--accent-done);
+  background-color: var(--tint-done);
+  border-color: rgba(102, 181, 133, 0.28);
+  font-variant-numeric: tabular-nums;
+}
 
 .req-card-deps {
   display: flex;
@@ -650,6 +686,18 @@ body.is-resizing-detail {
   border: 1px solid var(--line-soft);
   border-radius: var(--radius-chip);
   padding: 3px 7px;
+}
+/* A dependency that has landed recedes; one that has not is what holds the card
+   back, so it carries the blocked accent. */
+.dep-chip.is-met {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--line-bright);
+}
+.dep-chip.is-unmet {
+  color: var(--accent-blocked);
+  background-color: var(--tint-blocked);
+  border-color: rgba(217, 122, 89, 0.28);
 }
 .dep-chip-lead {
   color: var(--ink-faint);
@@ -1009,6 +1057,32 @@ body.is-resizing-detail .detail-resizer::before {
 }
 .detail-meta .meta-chip {
   font-family: var(--font-mono);
+}
+
+/* "Depends on" in the drawer: each dependency with the status that decides
+   whether it is met, so the reason a REQ is waiting is readable in place. */
+.detail-dep-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.detail-dep {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.detail-dep-id {
+  font-family: var(--font-mono);
+}
+.detail-dep-status {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.detail-dep.is-unmet .detail-dep-status {
+  color: var(--accent-blocked);
+}
+.detail-dep.is-met .detail-dep-id {
+  color: var(--ink-faint);
 }
 
 /* Rendered Markdown body */
