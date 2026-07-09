@@ -6,6 +6,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.111.0 — The Odometer (2026-07-09)
+
+Changelog entries in unversioned repos came out keyed by date alone, so nothing told you whether an entry was a typo fix or a rewrite. Every entry now carries a version and a date, and the number is earned — bumped by what the change actually did to people using the code.
+
+- Entry key is always `## X.Y.Z — The [Codename] (YYYY-MM-DD)`
+- Version source resolves in order: a version file in the repo (bumped and staged with the REQ commit), release tags (read, never created — a tag is a human's release call), or the changelog's own counter seeded at `0.1.0` for repos with no version at all
+- Bump size reads the delivered change: breaking a consumer is major, a new user-invocable capability is minor, everything else is patch. Ties break downward; below `1.0.0` a breaking change bumps the minor, so a seeded repo never silently promotes itself to a `1.0.0` release
+- Fixes a duplicate-header bug on the versioned path, which reused the repo's current version for every entry instead of bumping it
+- Guards added for disagreeing version files (leave them alone, fall back to the counter, report it) and for out-of-band releases (bump from whichever source is higher)
+- The commit's "did we actually stage an implementation?" check now knows the version file is bookkeeping, not implementation — so a lone version bump can't masquerade as delivered work
+
 ## 0.110.0 — The Court Scribe (2026-07-07)
 
 This changelog was the only one do-work ever kept — every target repo's history lived in commit messages nobody rereads. Now the work pipeline writes a changelog entry in every repo it works in, by default, in the house voice (picked from a six-voice side-by-side style lab over four real entries).

@@ -462,12 +462,32 @@ What's new, what's better, what's different. Most recent stuff on top.
 ---
 ```
 
-**Entry key.** `## YYYY-MM-DD — The [Fun Two-Word Name]`. If the repo versions itself (a version line, package manifest, or release tags the project actually maintains), use `## X.Y.Z — The [Fun Two-Word Name] (YYYY-MM-DD)` with the repo's own version instead — do-work never invents a version line for a repo that doesn't have one. The codename must be unique against every existing entry in the file (grep before writing — duplicates have occurred).
+**Entry key.** Always `## X.Y.Z — The [Fun Two-Word Name] (YYYY-MM-DD)` — every entry carries both a version and a date. The codename must be unique against every existing entry in the file (grep before writing — duplicates have occurred), and the new `X.Y.Z` must be **strictly greater** than the version in the file's first existing entry (duplicate version numbers have occurred).
+
+**Where `X.Y.Z` comes from.** Resolve the version source once per entry, in this order:
+
+1. **A version in a repo file** — `package.json`'s `"version"`, `Cargo.toml`, `pyproject.toml`, a `VERSION` file, or the like (this list is illustrative; any file the project maintains a version line in qualifies). Bump that line by the rule below, write the bumped value into the file, and **stage the file with the REQ's commit**. The repo's version and the changelog header stay in lock-step.
+2. **Version only in release tags** (no version line in any file) — take the highest release tag as the current version and bump from it, but write the result **only into the changelog header**. do-work never creates a git tag: a tag is a release announcement, and only a human decides when one happens.
+3. **No version anywhere** — the changelog is the source of truth. Take the highest `X.Y.Z` across the file's existing entries and bump from it. If there are no entries yet (bootstrap), seed the first entry at `0.1.0`. Nothing outside `CHANGELOG.md` is touched — an unversioned repo stays unversioned, and the header number is a changelog fact, not a claim that a release was cut.
+
+Two guards on source resolution. If **two or more version files disagree** with each other, do not guess which one the release process uses: leave every file untouched, fall back to the changelog counter (source 3), and say so in the Step 9 report. If the resolved source is **behind** the newest changelog entry (someone released or edited out of band), bump from whichever is higher — never emit a version below one already in the file.
+
+**Bump size.** Read the change the REQ actually delivered, not its wording:
+
+| Bump      | When                                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| **major** | An existing consumer breaks: a public API or CLI flag removed or renamed, an on-disk or wire format changed, a documented default reversed. |
+| **minor** | A user-invocable capability exists that didn't before, and nothing existing breaks.                                                          |
+| **patch** | Everything else — bug fixes, performance, refactors, tests, docs, internal-only changes.                                                    |
+
+Tie-breakers, in order: a breaking change outranks an additive one in the same REQ (bump major, not minor); when genuinely torn between two levels, pick the **smaller** one. **Below `1.0.0`, a breaking change bumps the minor, not the major** — `0.x` is unstable by semver's own definition, so the first breaking change in a seeded repo must not silently promote it to a `1.0.0` release. A `completed-with-issues` REQ is bumped on what it delivered, exactly like `completed`.
+
+The `CHANGELOG.md` change — and the version file, when source 1 applied — are part of the REQ's lifecycle files. Stage them in the commit below.
 
 **Voice contract (house style).** 1–2 casual sentences leading with *why it matters* — the situation that prompted the change and what's better now — then bullets for the specifics. Lead with value, not implementation; file paths and flags belong in the bullets, not the lead. Keep it brief. Newest on top, one entry per REQ (this matches one-commit-per-request).
 
 ```markdown
-## 2026-07-07 — The Translator
+## 0.4.0 — The Translator (2026-07-07)
 
 Agents kept asking questions only they could parse — codenames coined
 mid-analysis, options with no stated consequence. Question wording is
@@ -477,14 +497,16 @@ now a contract, not a hope.
 - Six principles: one decision per question, decode your own shorthand, say the consequence…
 ```
 
-The `CHANGELOG.md` change is part of the REQ's lifecycle files — stage it in the commit below.
-
 ## Commit & Metadata-Commit Procedure (Step 9)
 
 ```bash
 # Stage implementation files + archived REQ + the changelog entry
 git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx \
   do-work/archive/UR-002/REQ-003-dark-mode.md CHANGELOG.md
+
+# Stage the bumped version file — only when the changelog resolved to a repo
+# version file (source 1). Tag-versioned and unversioned repos have none.
+git add package.json
 
 # Stage follow-up REQs created in Step 8 (if any)
 git add do-work/queue/REQ-025-confirm-sidebar-palette.md
@@ -510,9 +532,9 @@ EOF
 
 **Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
 
-One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, the `CHANGELOG.md` entry (successful REQs only — see the Changelog Entry Procedure above), any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), and any UR-folder moves to `archive/`. If Step 8 substep 7 wrote prime-file lessons links, the modified prime files must also be staged — they are part of the REQ's lifecycle changes even though they aren't listed in the Implementation Summary's `Files changed`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
+One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, the `CHANGELOG.md` entry and the version file it bumped, if any (successful REQs only — see the Changelog Entry Procedure above), any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), and any UR-folder moves to `archive/`. If Step 8 substep 7 wrote prime-file lessons links, the modified prime files must also be staged — they are part of the REQ's lifecycle changes even though they aren't listed in the Implementation Summary's `Files changed`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
 
-**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata and/or `CHANGELOG.md` (the changelog entry describes the implementation, it isn't the implementation), flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
+**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, `CHANGELOG.md`, and/or the version file it bumped (the changelog entry and the version bump describe the implementation, they aren't the implementation), flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
 
 **Write commit hash back to the archived REQ.** After the commit succeeds, retrieve the hash with `git rev-parse --short HEAD` and update the archived REQ's frontmatter `commit:` field with the actual value. Then create a **separate metadata commit** (do not amend — amending changes the hash and invalidates what you just wrote):
 
