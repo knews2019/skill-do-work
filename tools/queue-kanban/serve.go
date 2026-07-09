@@ -178,10 +178,13 @@ func (liveServer *liveBoardServer) refreshBoardData() (*generatedBoardData, erro
 }
 
 // buildTreeMtimeFingerprint stats every file discovered by enumerateDoWorkTree
-// and returns a map of absPath → mtime. Files that cannot be stat'd are omitted
-// (consistent with the best-effort walk contract in walk.go).
+// — REQ files, UR input.md files, and notes.md — and returns a map of absPath →
+// mtime. Files that cannot be stat'd are omitted (consistent with the
+// best-effort walk contract in walk.go). notes.md must be fingerprinted like
+// any other input: it feeds the rendered board, so appending a note has to
+// invalidate the cache or the live server would keep serving the old strip.
 func buildTreeMtimeFingerprint(discovered discoveredTreeFiles) map[string]time.Time {
-	fingerprint := make(map[string]time.Time, len(discovered.RequestFiles)+len(discovered.UserRequestFiles))
+	fingerprint := make(map[string]time.Time, len(discovered.RequestFiles)+len(discovered.UserRequestFiles)+1)
 	for _, ref := range discovered.RequestFiles {
 		if fileInfo, statErr := os.Stat(ref.AbsolutePath); statErr == nil {
 			fingerprint[ref.AbsolutePath] = fileInfo.ModTime()
@@ -190,6 +193,11 @@ func buildTreeMtimeFingerprint(discovered discoveredTreeFiles) map[string]time.T
 	for _, urFilePath := range discovered.UserRequestFiles {
 		if fileInfo, statErr := os.Stat(urFilePath); statErr == nil {
 			fingerprint[urFilePath] = fileInfo.ModTime()
+		}
+	}
+	if discovered.NotesFilePath != "" {
+		if fileInfo, statErr := os.Stat(discovered.NotesFilePath); statErr == nil {
+			fingerprint[discovered.NotesFilePath] = fileInfo.ModTime()
 		}
 	}
 	return fingerprint

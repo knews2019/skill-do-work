@@ -1,6 +1,6 @@
 # Note Action
 
-> **Part of the do-work skill.** Invoked when the user wants to jot a lightweight, dated next-step note without going through capture. Appends one line to `do-work/notes.md`; `do-work roadmap` surfaces those lines at the top of its survey.
+> **Part of the do-work skill.** Invoked when the user wants to jot a lightweight, dated next-step note without going through capture. Appends one line to `do-work/notes.md`; `do-work roadmap` surfaces those lines at the top of its survey, and `do-work board` renders them as a Notes strip above the columns.
 
 A note is **not** a REQ. It has no frontmatter, no schema, no RED/GREEN proof, no domain, and triggers no implementation. It is a lightweight hint — "look at X next", "check Y before running", "revisit after Z lands" — that the user deletes directly from `do-work/notes.md` when it's no longer relevant. There is no delete command and no archival: the file is plain text the user edits by hand.
 
@@ -51,7 +51,7 @@ Confirm what was added and where, in one or two lines:
 Noted → do-work/notes.md
   - [2026-06-01] investigate prototype xyz.html
 
-(Surfaces at the top of `do-work roadmap`. Delete the line from do-work/notes.md when it's no longer relevant.)
+(Surfaces at the top of `do-work roadmap` and in the Notes strip of `do-work board`. Delete the line from do-work/notes.md when it's no longer relevant.)
 ```
 
 Do **not** create a UR or REQ, do not move into the work loop, and do not run a commit from this action — appending the line is the whole job. `do-work/notes.md` is itself part of the committable Trail of Intent (like URs and REQs); the user commits it in their normal flow, whenever they choose.

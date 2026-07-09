@@ -103,6 +103,7 @@ From `<skill-root>/tools/queue-kanban`:
 - Pass `--repo-root` explicitly (resolved via `git rev-parse --show-toplevel 2>/dev/null || pwd`) — the tool's CWD walk-up is the non-git last resort, not the default.
 - Do not vendor or modify the Go source to "make it build" — a build failure is a toolchain/environment issue to report, not a code change.
 - If you change the tool's parser, keep it in lock-step with `actions/work-reference.md`'s Schema Read Contract — the `status` vocabulary drives column bucketing; `depends_on` and `domain` are parsed for display only (badges, drawer metadata), never for column placement.
+- `do-work/notes.md` renders as a collapsible Notes strip above the columns (visible in both the board and calendar views), mirroring how `actions/roadmap.md` surfaces it. Notes are plain text, never Markdown, and never tickets: they get no column, no calendar entry, and no detail drawer. The board only reads the file — `do-work note` is still the only writer, and the user still deletes lines by hand.
 
 ## Common Rationalizations
 

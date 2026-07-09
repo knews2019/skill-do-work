@@ -18,10 +18,12 @@ type requestFileReference struct {
 }
 
 // discoveredTreeFiles is the raw output of walking the do-work tree: every REQ
-// file reference and every UR input.md path, before any frontmatter is parsed.
+// file reference, every UR input.md path, and the do-work/notes.md path when it
+// exists — all before any parsing.
 type discoveredTreeFiles struct {
 	RequestFiles     []requestFileReference
 	UserRequestFiles []string
+	NotesFilePath    string // absolute path to do-work/notes.md, "" when absent
 }
 
 // resolveRepoRoot walks upward from startDirectory until it finds a directory
@@ -90,7 +92,7 @@ func resolveRepoRootOrDefault(repoRootOverride string) (string, error) {
 // (from queue/, working/, and the entire archive/** subtree — handling both the
 // flat archive/UR-NNN/ shape and the banded archive/UR-NNN-MMM/ shape with its
 // nested UR-NNN/ subfolders) plus every UR input.md (from user-requests/** and
-// archive/**).
+// archive/**) and the top-level notes.md written by `do-work note`.
 //
 // The do-work/deliverables/ and do-work/runs/ subtrees are skipped entirely.
 // The kb/wiki/sources/ mirror lives OUTSIDE do-work and so is never reached —
@@ -138,6 +140,11 @@ func enumerateDoWorkTree(repoRoot string) (discoveredTreeFiles, error) {
 			case "user-requests", "archive":
 				discovered.UserRequestFiles = append(discovered.UserRequestFiles, path)
 			}
+		case relativePath == "notes.md":
+			// Only the notes file at the top level of do-work/ — a notes.md
+			// nested under a UR or archive folder is somebody's scratch file,
+			// not the queue's note list.
+			discovered.NotesFilePath = path
 		}
 		return nil
 	})

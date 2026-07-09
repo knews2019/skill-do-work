@@ -49,6 +49,18 @@
     </header>
 
     <main id="board-main" class="board-main" tabindex="-1">
+      <!-- do-work/notes.md — lightweight dated hints, not REQs. Filled by
+           board.js and left hidden when the file is absent or empty. It sits
+           outside the view panels so notes stay visible on the calendar too. -->
+      <details class="board-notes" id="board-notes" hidden open>
+        <summary class="board-notes-summary">
+          <span class="board-notes-title">Notes</span>
+          <span class="board-notes-count" id="board-notes-count">0</span>
+          <span class="board-notes-source">do-work/notes.md</span>
+        </summary>
+        <ul class="board-notes-list" id="board-notes-list"></ul>
+      </details>
+
       <!-- Flat Kanban columns -->
       <section id="view-board" class="view-panel is-active" aria-label="Kanban board">
         <div class="kanban-columns" id="kanban-columns">

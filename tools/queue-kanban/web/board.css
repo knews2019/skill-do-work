@@ -320,6 +320,90 @@ body.is-resizing-detail {
   padding-left: 20px;
 }
 
+/* Notes strip (do-work/notes.md) — hand-written next-step hints, not tickets.
+   Deliberately quieter than a card: a flat surface with a hairline, no shadow
+   and no accent bar, so it reads as marginalia above the queue rather than as a
+   fifth column. Collapsible, open by default. */
+.board-notes {
+  margin: 0 0 20px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-card);
+  background-color: var(--surface-1);
+}
+.board-notes-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+.board-notes-summary::-webkit-details-marker {
+  display: none;
+}
+.board-notes-summary:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: -2px;
+  border-radius: var(--radius-card);
+}
+.board-notes-title {
+  color: var(--ink-strong);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.board-notes-count {
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--surface-3);
+  color: var(--ink-base);
+  font-variant-numeric: tabular-nums;
+}
+/* The source path is orientation, not content — it yields first when narrow. */
+.board-notes-source {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+.board-notes-list {
+  margin: 0;
+  padding: 2px 16px 14px;
+  list-style: none;
+}
+.board-note {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-base);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.board-note-date {
+  flex: none;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+.board-note-text {
+  min-width: 0;
+}
+
+@container (max-width: 640px) {
+  .board-notes-source {
+    display: none;
+  }
+  .board-note {
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
 .view-panel {
   display: none;
 }

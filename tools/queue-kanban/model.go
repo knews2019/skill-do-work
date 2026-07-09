@@ -108,6 +108,16 @@ type CalendarEntry struct {
 	DayKey         string // "2006-01-02" UTC bucket
 }
 
+// QueueNote is one line of do-work/notes.md — a lightweight, dated next-step
+// hint written by `do-work note`. A note is deliberately NOT a REQ: it has no
+// frontmatter, no status, and no id, so it never enters a column, the calendar,
+// or the dependency graph. The board surfaces notes the way `do-work roadmap`
+// does — verbatim, in append order, above the queue.
+type QueueNote struct {
+	NoteDate string // "YYYY-MM-DD" from the standard `- [date] text` prefix, "" when the line carries none
+	NoteText string // the note text with its bullet and date prefix stripped
+}
+
 // BoardColumns holds the active-work buckets. Completed REQs older than the
 // recent window are NOT represented here — they live in Board.Calendar.
 type BoardColumns struct {
@@ -135,6 +145,7 @@ type Board struct {
 	Columns         BoardColumns
 	DependencyGraph DependencyGraph
 	Calendar        []CalendarEntry // terminally resolved REQs sorted most-recent-first (undated entries last)
+	Notes           []QueueNote     // do-work/notes.md lines in append order (nil when the file is absent or empty)
 
 	Warnings []string // data-shape warnings (duplicate ids, unrecognized statuses) — surfaced, never silently dropped
 }
@@ -221,8 +232,74 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	board.Warnings = append(board.Warnings, columnWarnings...)
 	board.DependencyGraph = buildDependencyGraph(board.AllRequests, board.RequestsById)
 	board.Calendar = buildCalendar(board.AllRequests)
+	board.Notes = loadQueueNotes(discovered.NotesFilePath)
 
 	return board, nil
+}
+
+// loadQueueNotes reads do-work/notes.md into one QueueNote per non-blank line,
+// preserving append order (the user curates the file by hand; `do-work note` only
+// appends, so file order IS chronological order). It is best-effort: an absent or
+// unreadable file yields no notes rather than failing the board build.
+func loadQueueNotes(notesFilePath string) []QueueNote {
+	if notesFilePath == "" {
+		return nil
+	}
+	contentBytes, readError := os.ReadFile(notesFilePath)
+	if readError != nil {
+		return nil
+	}
+	var notes []QueueNote
+	for _, rawLine := range strings.Split(string(contentBytes), "\n") {
+		trimmedLine := strings.TrimSpace(rawLine)
+		if trimmedLine == "" {
+			continue
+		}
+		note := parseQueueNoteLine(trimmedLine)
+		if note.NoteText == "" && note.NoteDate == "" {
+			continue
+		}
+		notes = append(notes, note)
+	}
+	return notes
+}
+
+// parseQueueNoteLine splits one notes.md line into its optional date prefix and
+// its text. The canonical shape written by `do-work note` is `- [YYYY-MM-DD] text`,
+// but the file is hand-edited plain text, so a line missing the bullet or the date
+// still renders — the text is never dropped just because the prefix drifted.
+func parseQueueNoteLine(trimmedLine string) QueueNote {
+	noteText := trimmedLine
+	for _, bulletPrefix := range []string{"- ", "* ", "+ "} {
+		if strings.HasPrefix(noteText, bulletPrefix) {
+			noteText = strings.TrimSpace(strings.TrimPrefix(noteText, bulletPrefix))
+			break
+		}
+	}
+
+	noteDate := ""
+	if strings.HasPrefix(noteText, "[") {
+		closingBracketIndex := strings.Index(noteText, "]")
+		if closingBracketIndex > 1 {
+			candidateDate := noteText[1:closingBracketIndex]
+			if isBareDateText(candidateDate) {
+				noteDate = candidateDate
+				noteText = strings.TrimSpace(noteText[closingBracketIndex+1:])
+			}
+		}
+	}
+	return QueueNote{NoteDate: noteDate, NoteText: noteText}
+}
+
+// isBareDateText reports whether text is exactly a `YYYY-MM-DD` calendar date.
+// The length check is what keeps parseTimestamp's other accepted layouts (and a
+// Markdown task-list marker like `[ ]` or `[x]`) from being mistaken for a note date.
+func isBareDateText(text string) bool {
+	if len(text) != len("2006-01-02") {
+		return false
+	}
+	_, parsedOk := parseTimestamp(text)
+	return parsedOk
 }
 
 // treeSectionPrecedence orders tree sections for duplicate-id resolution: the

@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.112.0 — The Pinboard (2026-07-10)
+
+Your `do-work note` hints now show up on the Kanban board, not just in `do-work roadmap`. They sit in a collapsible Notes strip above the columns, so the thing you told yourself to check next is visible while you're staring at the queue.
+
+- `do-work board` reads `do-work/notes.md` and renders each line with its date, in append order.
+- The strip stays visible in the calendar view too, and disappears entirely when there are no notes.
+- Notes render as plain text, never Markdown — they're hints, not tickets, so they get no column, no calendar entry, and no detail drawer.
+- Serve mode watches `notes.md`, so appending a note and reloading the page shows it.
+
 ## 0.111.0 — The Odometer (2026-07-09)
 
 Changelog entries in unversioned repos came out keyed by date alone, so nothing told you whether an entry was a typo fix or a rewrite. Every entry now carries a version and a date, and the number is earned — bumped by what the change actually did to people using the code.

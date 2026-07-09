@@ -47,6 +47,7 @@ type generatedBoardData struct {
 	UserRequestOrder []string                        `json:"userRequestOrder"`
 	UserRequests     map[string]generatedUserRequest `json:"userRequests"`
 	Calendar         []generatedCalendarEntry        `json:"calendar"`
+	Notes            []generatedNote                 `json:"notes,omitempty"`    // do-work/notes.md lines — rendered as a strip above the queue
 	Warnings         []string                        `json:"warnings,omitempty"` // duplicate ids / unrecognized statuses — rendered as a banner
 }
 
@@ -91,6 +92,14 @@ type generatedUserRequest struct {
 	InputFilePresent bool     `json:"inputFilePresent"`
 	RequestIds       []string `json:"requestIds"`
 	BodyHtml         string   `json:"bodyHtml"`
+}
+
+// generatedNote is one do-work/notes.md line. The text stays plain — notes are
+// rendered with textContent, not as Markdown, so a hand-typed `<script>` in a
+// note is inert and no renderer is needed for a one-line hint.
+type generatedNote struct {
+	NoteDate string `json:"date"`
+	NoteText string `json:"text"`
 }
 
 // generatedCalendarEntry plots one completed REQ on the completion timeline.
@@ -199,6 +208,13 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			RequestIds:       userRequest.RequestIds,
 			BodyHtml:         bodyHtml,
 		}
+	}
+
+	for _, note := range board.Notes {
+		data.Notes = append(data.Notes, generatedNote{
+			NoteDate: note.NoteDate,
+			NoteText: note.NoteText,
+		})
 	}
 
 	for _, entry := range board.Calendar {

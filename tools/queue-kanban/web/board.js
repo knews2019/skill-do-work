@@ -207,6 +207,35 @@
     main.insertBefore(banner, main.firstChild);
   }
 
+  // ---- notes strip (do-work/notes.md) -------------------------------------
+  // Notes are plain text, never Markdown: they are appended verbatim by
+  // `do-work note` and rendered with textContent, so a stray `<` or a pasted
+  // tag in a hint can never become markup.
+
+  function renderNotesStrip() {
+    var notes = boardData.notes || [];
+    var strip = document.getElementById("board-notes");
+    if (notes.length === 0) {
+      strip.hidden = true;
+      return;
+    }
+    strip.hidden = false;
+    document.getElementById("board-notes-count").textContent = String(notes.length);
+
+    var list = document.getElementById("board-notes-list");
+    list.textContent = "";
+    notes.forEach(function (note) {
+      var item = createElement("li", "board-note");
+      if (note.date) {
+        var dateNode = createElement("time", "board-note-date", note.date);
+        dateNode.setAttribute("datetime", note.date);
+        item.appendChild(dateNode);
+      }
+      item.appendChild(createElement("span", "board-note-text", note.text || ""));
+      list.appendChild(item);
+    });
+  }
+
   // ---- by-UR lens ---------------------------------------------------------
 
   function renderUserRequestLens() {
@@ -625,6 +654,7 @@
 
   wireControls();
   renderWarningsBanner();
+  renderNotesStrip();
   renderColumns();
   applyView();
 })();
