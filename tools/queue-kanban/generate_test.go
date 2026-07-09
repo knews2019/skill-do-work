@@ -200,6 +200,40 @@ func TestRenderMarkdownBodyToHtmlHeadingsAndTaskLists(t *testing.T) {
 	}
 }
 
+func TestRenderMarkdownQuestionOptionsKeepTheirOwnLines(t *testing.T) {
+	// The Open Questions format (actions/capture.md) indents Recommended:/Also:
+	// continuation lines under the checkbox item; plain Markdown would lazily
+	// merge them into the question paragraph. The renderer must emit a <br>
+	// before each so they stay separate visual lines in the drawer.
+	body := "## Open Questions\n\n" +
+		"- [ ] Should I process this as a new task?\n" +
+		"  Recommended: Yes, add to queue.\n" +
+		"  Also: No, discard it.\n"
+	rendered, renderError := renderMarkdownBodyToHtml(body)
+	if renderError != nil {
+		t.Fatalf("renderMarkdownBodyToHtml: %v", renderError)
+	}
+	if strings.Count(rendered, "<br") != 2 {
+		t.Fatalf("expected 2 hard breaks (before Recommended: and Also:), got: %s", rendered)
+	}
+	if !strings.Contains(rendered, `type="checkbox"`) {
+		t.Fatalf("checkbox item must survive the option-line preprocessing, got: %s", rendered)
+	}
+}
+
+func TestRenderMarkdownLeavesCodeFencesVerbatim(t *testing.T) {
+	// A fenced block whose content happens to start with an option keyword must
+	// not have hard-break backslashes injected into its verbatim content.
+	body := "```\nsome output\nRecommended: not a question option\n```\n"
+	rendered, renderError := renderMarkdownBodyToHtml(body)
+	if renderError != nil {
+		t.Fatalf("renderMarkdownBodyToHtml: %v", renderError)
+	}
+	if strings.Contains(rendered, "\\") || strings.Contains(rendered, "<br") {
+		t.Fatalf("code fence content must stay verbatim, got: %s", rendered)
+	}
+}
+
 func TestRenderMarkdownEscapesRawHtml(t *testing.T) {
 	rendered, renderError := renderMarkdownBodyToHtml("a <script>alert(1)</script> b")
 	if renderError != nil {

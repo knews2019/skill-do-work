@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.113.2 — The Typesetter (2026-07-10)
+
+The drawer was mashing a REQ's Open Questions into one run-on paragraph and stretching prose across the whole panel. Both readable now.
+
+- `Recommended:` / `Also:` / `Value:` / `Risk:` / `→` continuation lines render on their own lines instead of lazily merging into the question sentence (fenced code blocks stay verbatim).
+- Markdown body text caps at ~90 characters per line, so a wide drawer no longer means 200-character lines.
+
 ## 0.113.1 — The Blue Pencil (2026-07-10)
 
 The Notes strip was reading a real `notes.md` as eighteen notes when it held two. Only bullet lines are notes now.

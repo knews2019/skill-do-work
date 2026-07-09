@@ -1091,6 +1091,10 @@ body.is-resizing-detail .detail-resizer::before {
   font-size: 14px;
   line-height: 1.62;
   word-wrap: break-word;
+  /* Cap the measure: on a wide drawer, uncapped prose runs 200+ characters
+     per line and becomes unreadable. ~90ch keeps paragraphs scannable while
+     tables and code blocks still get their own overflow-x scrolling. */
+  max-width: 90ch;
 }
 .markdown-body h1,
 .markdown-body h2,
