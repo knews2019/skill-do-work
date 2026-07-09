@@ -40,8 +40,9 @@ If the argument is unrecognized, default to the full survey and note the unrecog
 
 Before inventorying the queue, check for lightweight notes (written by `do-work note`):
 
-1. If `do-work/notes.md` exists and contains at least one non-blank line, capture its lines verbatim for rendering. Each line is already in `- [YYYY-MM-DD] <text>` form — do not reformat, sort, or dedupe.
-2. If `do-work/notes.md` is absent or empty (or only blank lines), skip the Notes section **silently** — render nothing for it.
+1. If `do-work/notes.md` exists, capture its **bullet lines** verbatim for rendering — each is already in `- [YYYY-MM-DD] <text>` form. Do not reformat, sort, or dedupe.
+2. A bullet is what marks a line as a note. Skip everything else the file carries: a `#` heading, prose preamble lines, horizontal rules, and — before testing for bullets — the contents of any `<!-- ... -->` HTML comment block, which is where pruned entries get parked and whose own bullets must not resurface.
+3. If `do-work/notes.md` is absent, or holds no bullet lines once comments are stripped, skip the Notes section **silently** — render nothing for it.
 
 These lines render as a `## Notes` block at the very top of the report body (see Output Format), independent of queue state — Notes appear even when the queue is empty. Reading `notes.md` is read-only; the roadmap never writes, prunes, or reorders it (the user curates it by hand, and `do-work note` is the only writer).
 

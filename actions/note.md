@@ -65,7 +65,8 @@ Do **not** create a UR or REQ, do not move into the work loop, and do not run a 
 
 - **A note is not a task.** Never let a note kick off capture, work, or a commit.
 - **Append-only.** Don't rewrite, sort, or dedupe existing lines — the user owns the file's contents.
-- **No frontmatter, no header.** `do-work/notes.md` is a flat list so `roadmap`'s render is trivial (one `## Notes` line per file line).
+- **Write bullets, never frontmatter.** `do-work note` appends a `- [YYYY-MM-DD] <text>` bullet and nothing else — it never adds a heading, a preamble, or frontmatter of its own.
+- **The bullet is what makes a line a note.** Users do add a `#` heading, a prose preamble, and `<!-- ... -->` blocks parking pruned entries, so every *reader* of this file (`actions/roadmap.md` Step 0, the `do-work board` Notes strip) strips HTML comments first, then renders only the bullet lines. A reader that treats every non-blank line as a note renders the boilerplate — and the bullets buried inside the pruned-entries comment — as notes.
 - **The action never commits; the file is committable.** `do-work note` only appends — it runs no git command. `do-work/notes.md` is committed alongside the rest of `do-work/` (the Trail of Intent); only `do-work/pipeline.json` and `do-work/runs/` are git-excluded (transient state — kept out of git regardless of install layout, via the shipped `.gitignore` or `.git/info/exclude`). On a merge conflict it's append-only, so keep both sides.
 - **Empty input is a no-op** with usage, not an empty `- [date]` line.
 

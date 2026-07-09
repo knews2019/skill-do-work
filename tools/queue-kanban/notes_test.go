@@ -33,29 +33,100 @@ func writeNotesTree(t *testing.T, notesContent string) string {
 	return repoRoot
 }
 
-// TestParseQueueNoteLineShapes covers the canonical `- [date] text` shape plus
-// the hand-edited drift the file tolerates: a missing bullet, a missing date, a
-// bracketed prefix that is not a date, and a task-list marker.
+// TestParseQueueNoteLineShapes covers the canonical `- [date] text` shape, the
+// bullet-less lines that are NOT notes (heading, prose, rule, fence), and the
+// hand-edited drift a bullet still tolerates: a missing date, a bracketed prefix
+// that is not a date, and a task-list marker.
 func TestParseQueueNoteLineShapes(t *testing.T) {
 	testCases := []struct {
-		inputLine    string
-		expectedDate string
-		expectedText string
+		inputLine      string
+		expectedIsNote bool
+		expectedDate   string
+		expectedText   string
 	}{
-		{"- [2026-07-09] check the retry budget", "2026-07-09", "check the retry budget"},
-		{"* [2026-01-02] star bullet still parses", "2026-01-02", "star bullet still parses"},
-		{"[2026-07-09] no bullet at all", "2026-07-09", "no bullet at all"},
-		{"- undated hint with no bracket", "", "undated hint with no bracket"},
-		{"- [not-a-date] keeps its bracket text", "", "[not-a-date] keeps its bracket text"},
-		{"- [ ] a task marker is not a date", "", "[ ] a task marker is not a date"},
-		{"- [2026-07-09] revisit REQ-1 [after] the merge", "2026-07-09", "revisit REQ-1 [after] the merge"},
+		{"- [2026-07-09] check the retry budget", true, "2026-07-09", "check the retry budget"},
+		{"* [2026-01-02] star bullet still parses", true, "2026-01-02", "star bullet still parses"},
+		{"+ [2026-01-02] plus bullet too", true, "2026-01-02", "plus bullet too"},
+		{"- undated hint with no bracket", true, "", "undated hint with no bracket"},
+		{"- [not-a-date] keeps its bracket text", true, "", "[not-a-date] keeps its bracket text"},
+		{"- [ ] a task marker is not a date", true, "", "[ ] a task marker is not a date"},
+		{"- [2026-07-09] revisit REQ-1 [after] the merge", true, "2026-07-09", "revisit REQ-1 [after] the merge"},
+
+		// Not notes — the boilerplate a real notes.md carries.
+		{"# do-work notes", false, "", ""},
+		{"Lightweight, dated next-step hints. Surfaced atop `do-work roadmap`.", false, "", ""},
+		{"[2026-07-09] a bullet-less line is not a note", false, "", ""},
+		{"---", false, "", ""},
+		{"-", false, "", ""},
+		{"- ", false, "", ""},
 	}
 	for _, testCase := range testCases {
-		parsedNote := parseQueueNoteLine(testCase.inputLine)
-		if parsedNote.NoteDate != testCase.expectedDate || parsedNote.NoteText != testCase.expectedText {
+		parsedNote, isNote := parseQueueNoteLine(testCase.inputLine)
+		if isNote != testCase.expectedIsNote {
+			t.Errorf("parseQueueNoteLine(%q) isNote = %v, want %v", testCase.inputLine, isNote, testCase.expectedIsNote)
+			continue
+		}
+		if isNote && (parsedNote.NoteDate != testCase.expectedDate || parsedNote.NoteText != testCase.expectedText) {
 			t.Errorf("parseQueueNoteLine(%q) = {%q, %q}, want {%q, %q}",
 				testCase.inputLine, parsedNote.NoteDate, parsedNote.NoteText,
 				testCase.expectedDate, testCase.expectedText)
+		}
+	}
+}
+
+// TestLoadQueueNotesSkipsBoilerplateAndComments is the regression for the board
+// rendering 18 notes from a file holding one: the heading, the wrapped prose
+// preamble, and — the subtle one — the bullets INSIDE a pruned-entries HTML
+// comment block must all stay off the board.
+func TestLoadQueueNotesSkipsBoilerplateAndComments(t *testing.T) {
+	repoRoot := writeNotesTree(t, `# do-work notes
+
+Lightweight, dated next-step hints. Surfaced atop `+"`do-work roadmap`"+`. Delete lines by hand when resolved.
+
+Keep this file short-lived. A hint that survives more than a few days is telling you it wants a
+durable home: a REQ if it is work, the prime if it is knowledge. Notes are not a backlog.
+
+<!-- Pruned 2026-07-10, all seven entries verified against the tree before removal:
+     - REQ-848/849 follow-ups (4 entries, 2026-06-30) — still accurate; relocated to the
+       REQ-849 bullets in docs/prime-g3-segment-anything.md ("Lessons Learned").
+     - Fresh-session start point (2026-07-04) — pointed at a dead link, dropped. -->
+
+- [2026-07-09] the one real note
+`)
+
+	notes := loadQueueNotes(filepath.Join(repoRoot, "do-work", "notes.md"))
+	if len(notes) != 1 {
+		t.Fatalf("loadQueueNotes returned %d notes, want exactly 1:\n%+v", len(notes), notes)
+	}
+	if notes[0].NoteDate != "2026-07-09" || notes[0].NoteText != "the one real note" {
+		t.Fatalf("wrong note survived: %+v", notes[0])
+	}
+}
+
+// TestStripHtmlCommentsShapes covers the comment spans a hand-edited notes.md
+// produces: a whole-line comment, a trailing comment after real content, several
+// comments on one line, and a block that spans lines.
+func TestStripHtmlCommentsShapes(t *testing.T) {
+	testCases := []struct {
+		inputLine       string
+		startsInComment bool
+		expectedVisible string
+		expectedInside  bool
+	}{
+		{"- [2026-07-09] a note", false, "- [2026-07-09] a note", false},
+		{"<!-- whole line -->", false, "", false},
+		{"- a note <!-- trailing -->", false, "- a note ", false},
+		{"<!-- a --> kept <!-- b -->", false, " kept ", false},
+		{"<!-- opens here", false, "", true},
+		{"     - swallowed bullet", true, "", true},
+		{"closes here --> visible", true, " visible", false},
+	}
+	for _, testCase := range testCases {
+		visibleText, insideAfter := stripHtmlComments(testCase.inputLine, testCase.startsInComment)
+		if visibleText != testCase.expectedVisible || insideAfter != testCase.expectedInside {
+			t.Errorf("stripHtmlComments(%q, %v) = (%q, %v), want (%q, %v)",
+				testCase.inputLine, testCase.startsInComment, visibleText, insideAfter,
+				testCase.expectedVisible, testCase.expectedInside)
 		}
 	}
 }

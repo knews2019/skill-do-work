@@ -249,10 +249,17 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	return board, nil
 }
 
-// loadQueueNotes reads do-work/notes.md into one QueueNote per non-blank line,
+// loadQueueNotes reads do-work/notes.md into one QueueNote per note BULLET,
 // preserving append order (the user curates the file by hand; `do-work note` only
 // appends, so file order IS chronological order). It is best-effort: an absent or
 // unreadable file yields no notes rather than failing the board build.
+//
+// Only bullet lines are notes. Real notes.md files in the wild carry a `#`
+// heading, a wrapped prose preamble, and HTML-comment blocks recording pruned
+// entries — an earlier "every non-blank line is a note" read rendered all of
+// that as boilerplate notes. HTML comments are stripped BEFORE the bullet test,
+// because a pruned-entries comment block is itself full of bullets that must
+// not resurface on the board.
 func loadQueueNotes(notesFilePath string) []QueueNote {
 	if notesFilePath == "" {
 		return nil
@@ -261,14 +268,19 @@ func loadQueueNotes(notesFilePath string) []QueueNote {
 	if readError != nil {
 		return nil
 	}
+
 	var notes []QueueNote
+	insideHtmlComment := false
 	for _, rawLine := range strings.Split(string(contentBytes), "\n") {
-		trimmedLine := strings.TrimSpace(rawLine)
+		var visibleText string
+		visibleText, insideHtmlComment = stripHtmlComments(rawLine, insideHtmlComment)
+
+		trimmedLine := strings.TrimSpace(visibleText)
 		if trimmedLine == "" {
 			continue
 		}
-		note := parseQueueNoteLine(trimmedLine)
-		if note.NoteText == "" && note.NoteDate == "" {
+		note, isNote := parseQueueNoteLine(trimmedLine)
+		if !isNote {
 			continue
 		}
 		notes = append(notes, note)
@@ -276,17 +288,58 @@ func loadQueueNotes(notesFilePath string) []QueueNote {
 	return notes
 }
 
-// parseQueueNoteLine splits one notes.md line into its optional date prefix and
-// its text. The canonical shape written by `do-work note` is `- [YYYY-MM-DD] text`,
-// but the file is hand-edited plain text, so a line missing the bullet or the date
-// still renders — the text is never dropped just because the prefix drifted.
-func parseQueueNoteLine(trimmedLine string) QueueNote {
-	noteText := trimmedLine
-	for _, bulletPrefix := range []string{"- ", "* ", "+ "} {
-		if strings.HasPrefix(noteText, bulletPrefix) {
-			noteText = strings.TrimSpace(strings.TrimPrefix(noteText, bulletPrefix))
+// stripHtmlComments removes every `<!-- ... -->` span from one line, given
+// whether the previous line left an unterminated comment open. It returns the
+// visible remainder and the comment state for the next line. A comment that
+// opens and closes several times on one line is handled by the loop; a comment
+// that never closes swallows the rest of the file, which is what the Markdown
+// renderer would do too.
+func stripHtmlComments(rawLine string, insideHtmlComment bool) (string, bool) {
+	const commentOpenMarker = "<!--"
+	const commentCloseMarker = "-->"
+
+	var visibleBuilder strings.Builder
+	remainingText := rawLine
+	for remainingText != "" {
+		if insideHtmlComment {
+			closeIndex := strings.Index(remainingText, commentCloseMarker)
+			if closeIndex < 0 {
+				return visibleBuilder.String(), true // comment continues past this line
+			}
+			remainingText = remainingText[closeIndex+len(commentCloseMarker):]
+			insideHtmlComment = false
+			continue
+		}
+		openIndex := strings.Index(remainingText, commentOpenMarker)
+		if openIndex < 0 {
+			visibleBuilder.WriteString(remainingText)
 			break
 		}
+		visibleBuilder.WriteString(remainingText[:openIndex])
+		remainingText = remainingText[openIndex+len(commentOpenMarker):]
+		insideHtmlComment = true
+	}
+	return visibleBuilder.String(), insideHtmlComment
+}
+
+// parseQueueNoteLine splits one notes.md line into its optional date prefix and
+// its text, reporting whether the line is a note at all. The canonical shape
+// written by `do-work note` is `- [YYYY-MM-DD] text`; the bullet is what marks a
+// line as a note, so a heading, a preamble sentence, a horizontal rule, or a
+// frontmatter fence is skipped rather than rendered. The DATE is still optional —
+// a hand-typed bullet whose date prefix drifted keeps its text.
+func parseQueueNoteLine(trimmedLine string) (QueueNote, bool) {
+	noteText := ""
+	foundBullet := false
+	for _, bulletPrefix := range []string{"- ", "* ", "+ "} {
+		if strings.HasPrefix(trimmedLine, bulletPrefix) {
+			noteText = strings.TrimSpace(strings.TrimPrefix(trimmedLine, bulletPrefix))
+			foundBullet = true
+			break
+		}
+	}
+	if !foundBullet || noteText == "" {
+		return QueueNote{}, false
 	}
 
 	noteDate := ""
@@ -300,7 +353,7 @@ func parseQueueNoteLine(trimmedLine string) QueueNote {
 			}
 		}
 	}
-	return QueueNote{NoteDate: noteDate, NoteText: noteText}
+	return QueueNote{NoteDate: noteDate, NoteText: noteText}, true
 }
 
 // isBareDateText reports whether text is exactly a `YYYY-MM-DD` calendar date.

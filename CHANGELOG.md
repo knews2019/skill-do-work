@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.113.1 — The Blue Pencil (2026-07-10)
+
+The Notes strip was reading a real `notes.md` as eighteen notes when it held two. Only bullet lines are notes now.
+
+- The `#` heading, the prose preamble, and horizontal rules are skipped instead of rendered as notes.
+- `<!-- ... -->` comment blocks are stripped **before** the bullet test — that's where pruned entries get parked, and their bullets were resurfacing on the board.
+- `do-work roadmap` and `do-work note` carry the same rule, so every reader of `notes.md` agrees on what a note is.
+
 ## 0.113.0 — The Critical Path (2026-07-10)
 
 The board finally draws the dependency graph it was already parsing. Pending now separates what you can pick up right now from what's still waiting on an upstream REQ, and every card tells you how much is waiting on *it*.
