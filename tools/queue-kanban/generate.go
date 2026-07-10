@@ -72,6 +72,7 @@ type generatedRequest struct {
 	Title                string   `json:"title"`
 	Status               string   `json:"status"`
 	OriginalStatus       string   `json:"originalStatus"`
+	StatusUnrecognized   bool     `json:"statusUnrecognized,omitempty"`
 	Domain               string   `json:"domain"`
 	UserRequestId        string   `json:"userRequestId"`
 	DependsOn            []string `json:"dependsOn"`
@@ -186,6 +187,7 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			Title:                ticket.Title,
 			Status:               ticket.Status,
 			OriginalStatus:       ticket.OriginalStatus,
+			StatusUnrecognized:   ticket.StatusUnrecognized,
 			Domain:               ticket.Domain,
 			UserRequestId:        ticket.UserRequestId,
 			DependsOn:            ticket.DependsOn,

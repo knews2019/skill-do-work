@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.115.0 — The Red Pen (2026-07-10)
+
+The Kanban board now marks a REQ whose `status:` is outside the schema vocabulary as *invalid* — red status, an INVALID pill on the card, and a drawer note telling you exactly how to fix it — instead of letting it blend in with normal blocked tickets. Came out of triaging review feedback: the live-tree bucketing test contradicted the board's own deliberate catch-all and would have failed on any off-vocabulary status.
+
+- `bucketColumns` flags off-vocabulary tickets (`StatusUnrecognized`), and its warning now carries the fix prompt (edit `status:` per the Schema Read Contract, or run `do-work forensics`).
+- New forensics check 11 sweeps queue/working/archive for unrecognized statuses — the mechanical fix path the board's warning points at.
+- `TestLiveTreeColumnBucketingMatchesStatus` now asserts the real invariant (unrecognized statuses legitimately live in Needs-input *when flagged*), plus a seeded synthetic regression test so the live queue can't mask it.
+
 ## 0.114.0 — The Sole Home (2026-07-10)
 
 Retired the `weekly-signal-diff` prompt from the library. It graduated into the consumer project's own `wsd-skill` (as `daily-signal-diff`, driven by the `wsd-full` / `wsd-go` / `wsd-refresh` family) months ago — the shipped copy was a stale duplicate that every `do-work update` kept reinstalling.

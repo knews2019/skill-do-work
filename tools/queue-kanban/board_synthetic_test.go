@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -166,6 +167,64 @@ func TestSyntheticLegacyCompleteNormalized(t *testing.T) {
 	}
 	if ticket.Status != "completed" {
 		t.Fatalf("legacy 'complete' on REQ-9003 normalized to %q, want completed", ticket.Status)
+	}
+}
+
+// TestSyntheticUnrecognizedStatusFlagged pins the off-vocabulary contract
+// (found via REQ-950's review feedback): a status outside the Schema Read
+// Contract set is parked in Needs input / Blocked, flagged StatusUnrecognized
+// for the frontend's invalid-status highlight, and produces a warning that
+// carries the fix prompt — while recognized statuses stay unflagged. It seeds
+// its own tree because the shared synthetic tree asserts zero warnings.
+func TestSyntheticUnrecognizedStatusFlagged(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeFixture := func(relativePath string, content string) {
+		absolutePath := filepath.Join(repoRoot, relativePath)
+		if mkdirError := os.MkdirAll(filepath.Dir(absolutePath), 0o755); mkdirError != nil {
+			t.Fatalf("mkdir %s: %v", relativePath, mkdirError)
+		}
+		if writeError := os.WriteFile(absolutePath, []byte(content), 0o644); writeError != nil {
+			t.Fatalf("write %s: %v", relativePath, writeError)
+		}
+	}
+	writeFixture(filepath.Join("do-work", "queue", "REQ-9101-pending.md"),
+		"---\nid: REQ-9101\ntitle: Fixture REQ-9101\nstatus: pending\n---\n\nBody.\n")
+	writeFixture(filepath.Join("do-work", "working", "REQ-9102-off-vocab.md"),
+		"---\nid: REQ-9102\ntitle: Fixture REQ-9102\nstatus: in-progress\n---\n\nBody.\n")
+
+	stubGitLookup := func(string, string) (time.Time, bool) { return time.Time{}, false }
+	fixedNow := time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC)
+	board, buildError := buildBoard(repoRoot, fixedNow, 7*24*time.Hour, stubGitLookup)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+
+	offVocabTicket := board.RequestsById["REQ-9102"]
+	if offVocabTicket == nil {
+		t.Fatalf("REQ-9102 not parsed")
+	}
+	if !offVocabTicket.StatusUnrecognized {
+		t.Fatalf("REQ-9102 (status in-progress) should be flagged StatusUnrecognized")
+	}
+	if !columnContainsRequestId(board.Columns.NeedsInputOrBlocked, "REQ-9102") {
+		t.Fatalf("REQ-9102 (unrecognized status) must be parked in Needs-input/Blocked, never dropped")
+	}
+
+	pendingTicket := board.RequestsById["REQ-9101"]
+	if pendingTicket == nil || pendingTicket.StatusUnrecognized {
+		t.Fatalf("REQ-9101 (recognized status pending) must not be flagged StatusUnrecognized")
+	}
+
+	sawFixPromptWarning := false
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "REQ-9102") &&
+			strings.Contains(warningText, `"in-progress"`) &&
+			strings.Contains(warningText, "do-work forensics") {
+			sawFixPromptWarning = true
+		}
+	}
+	if !sawFixPromptWarning {
+		t.Fatalf("expected a warning naming REQ-9102, its status, and the fix prompt; got %v", board.Warnings)
 	}
 }
 

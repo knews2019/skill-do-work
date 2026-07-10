@@ -131,6 +131,17 @@ Report each recurring theme with its label, the contributing REQ IDs, and the po
 
 Read-only: this check reads Lessons sections and reports; it never edits, moves, or annotates any REQ or archive file.
 
+### 11. Unrecognized Status Vocabulary
+
+Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, and `find do-work/archive -name 'REQ-*.md'` — and read each frontmatter `status:` value.
+
+Judge each value against the `status` row of the Schema Read Contract in `actions/work-reference.md` — that table is the canonical vocabulary and alias list; do not re-enumerate it here. A value is a finding when it is neither a recognized status nor a documented alias (aliases like `done` → `completed` are normalization inputs, not defects — check 9 already covers *terminal* statuses stranded in queue/working).
+
+- **Warning** for each REQ whose status is outside the vocabulary and alias set (e.g., a hand-edited `in-progress`, a typo like `pnding`, or a foreign tool's status): "REQ-NNN has unrecognized status '{status}' — the work scan skips it and the Kanban board parks it under Needs input / Blocked with an invalid-status highlight."
+  **Suggested fix:** Edit the REQ's `status:` field to the recognized value that matches its actual state (see the Schema Read Contract). A REQ mid-work is `claimed`; one waiting in the queue is `pending`.
+
+This check is the mechanical sweep behind the board's invalid-status warning (`tools/queue-kanban/model.go` `bucketColumns`), which points users at `do-work forensics`.
+
 ## Output Format
 
 ```markdown

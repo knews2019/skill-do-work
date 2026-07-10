@@ -43,6 +43,12 @@ type RequestTicket struct {
 	Status         string // normalized status (complete/done/finished/closed → completed)
 	OriginalStatus string // verbatim frontmatter status before normalization
 
+	// Set by bucketColumns when the normalized status falls outside the Schema
+	// Read Contract vocabulary (actions/work-reference.md). The ticket is parked
+	// in Needs input / Blocked and the frontend highlights it as invalid with a
+	// fix prompt — never silently dropped.
+	StatusUnrecognized bool
+
 	CreatedAt   string // raw frontmatter timestamp text, "" when absent
 	ClaimedAt   string
 	CompletedAt string // raw frontmatter completed_at text, "" when absent
@@ -721,9 +727,10 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 				columns.RecentlyDone = append(columns.RecentlyDone, ticket)
 			}
 		default:
+			ticket.StatusUnrecognized = true
 			columns.NeedsInputOrBlocked = append(columns.NeedsInputOrBlocked, ticket)
 			statusWarnings = append(statusWarnings, fmt.Sprintf(
-				"%s has unrecognized status %q — shown under Needs input / Blocked",
+				"%s has unrecognized status %q — shown under Needs input / Blocked; fix: edit its status: to a Schema Read Contract value (actions/work-reference.md) or run do-work forensics",
 				ticket.RequestId, ticket.OriginalStatus))
 		}
 	}

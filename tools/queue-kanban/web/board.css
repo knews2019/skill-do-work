@@ -602,6 +602,35 @@ body.is-resizing-detail {
   flex: none;
 }
 
+/* Unrecognized status — outside the Schema Read Contract vocabulary, parked in
+   Needs input / Blocked by bucketColumns. Highlighted so it reads as a data
+   defect to fix, not a normal blocked ticket; the drawer carries the fix prompt. */
+.req-card-status.is-status-unrecognized {
+  color: var(--accent-blocked);
+  font-weight: 600;
+}
+.req-card-status.is-status-unrecognized .status-dot {
+  background-color: var(--accent-blocked);
+}
+.status-invalid-flag {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--accent-blocked);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-blocked);
+  background-color: var(--tint-blocked);
+}
+.detail-status-invalid {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-blocked);
+  font-weight: 600;
+}
+
 /* Cancelled (won't-do) — terminally resolved, so it shares the done column,
    but visibly NOT a success: struck-through muted title, grey dot. */
 .req-card[data-status="cancelled"] .req-card-title {

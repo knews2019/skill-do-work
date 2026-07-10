@@ -113,6 +113,10 @@ func TestLiveTreeColumnBucketingMatchesStatus(t *testing.T) {
 			if !needsInputColumn[ticket.RequestId] {
 				t.Fatalf("needs-input/blocked %s is missing from the Needs-input column", ticket.RequestId)
 			}
+		case ticket.StatusUnrecognized:
+			if !needsInputColumn[ticket.RequestId] {
+				t.Fatalf("unrecognized-status %s (%q) is missing from the Needs-input column — the catch-all must keep it visible", ticket.RequestId, ticket.Status)
+			}
 		}
 	}
 
@@ -127,8 +131,11 @@ func TestLiveTreeColumnBucketingMatchesStatus(t *testing.T) {
 			t.Fatalf("non-claimed status %q in the Claimed column (%s)", ticket.Status, ticket.RequestId)
 		}
 	}
+	// Unrecognized statuses are deliberately parked here by bucketColumns (Schema
+	// Read Contract: never silently dropped), so they are legitimate residents —
+	// but only when flagged as such. Anything else with a foreign status is a bug.
 	for _, ticket := range board.Columns.NeedsInputOrBlocked {
-		if !isNeedsInputOrBlockedStatus(ticket.Status) {
+		if !isNeedsInputOrBlockedStatus(ticket.Status) && !ticket.StatusUnrecognized {
 			t.Fatalf("status %q does not belong in the Needs-input column (%s)", ticket.Status, ticket.RequestId)
 		}
 	}

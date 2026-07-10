@@ -130,6 +130,14 @@
     var status = createElement("span", "req-card-status");
     status.appendChild(createElement("span", "status-dot"));
     status.appendChild(document.createTextNode(request.status || "—"));
+    if (request.statusUnrecognized) {
+      status.className += " is-status-unrecognized";
+      status.appendChild(createElement("span", "status-invalid-flag", "invalid"));
+      status.title =
+        'Unrecognized status "' +
+        (request.originalStatus || request.status) +
+        "\" — edit the REQ's status: to a Schema Read Contract value or run do-work forensics";
+    }
     top.appendChild(status);
     card.appendChild(top);
 
@@ -463,7 +471,20 @@
     drawerTitle.textContent = request.title || "untitled";
 
     drawerMeta.textContent = "";
-    appendMetaRow("Status", request.originalStatus || request.status || "—");
+    if (request.statusUnrecognized) {
+      var invalidStatus = createElement("span", "detail-status-invalid");
+      invalidStatus.appendChild(document.createTextNode(request.originalStatus || request.status || "—"));
+      invalidStatus.appendChild(createElement("span", "status-invalid-flag", "invalid"));
+      appendMetaRow("Status", invalidStatus);
+      appendMetaRow(
+        "Fix",
+        "This status is not in the schema vocabulary, so the ticket is parked under Needs input / Blocked. " +
+          "Edit the REQ's status: field to a recognized value (actions/work-reference.md → Schema Read Contract) " +
+          "or run do-work forensics to sweep the tree for invalid statuses."
+      );
+    } else {
+      appendMetaRow("Status", request.originalStatus || request.status || "—");
+    }
     if (request.domain) {
       appendMetaRow("Domain", request.domain);
     }
