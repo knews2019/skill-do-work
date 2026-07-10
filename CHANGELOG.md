@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.114.0 — The Sole Home (2026-07-10)
+
+Retired the `weekly-signal-diff` prompt from the library. It graduated into the consumer project's own `wsd-skill` (as `daily-signal-diff`, driven by the `wsd-full` / `wsd-go` / `wsd-refresh` family) months ago — the shipped copy was a stale duplicate that every `do-work update` kept reinstalling.
+
+- Removed `prompts/weekly-signal-diff.md` and `prompts/weekly-signal-diff-personal.md`; dropped their rows from `prompts/README.md`.
+- `decisions/imported-specs/2026-04-17_improve-weekly-diff-skill.md` gained a Status footer recording the removal; changelog history stays as-is.
+- The `**Runnable:**` header key in `actions/prompts.md` is generic and remains — it just no longer has a shipped opt-out example.
+
 ## 0.113.2 — The Typesetter (2026-07-10)
 
 The drawer was mashing a REQ's Open Questions into one run-on paragraph and stretching prose across the whole panel. Both readable now.

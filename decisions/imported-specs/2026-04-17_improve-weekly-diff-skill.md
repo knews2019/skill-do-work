@@ -61,4 +61,6 @@ Report: branch name, one-line summary per commit, file paths touched.
 ---
 
 > **Status (2026-05-19):** Edits 1–3 landed in `prompts/weekly-signal-diff.md` (the "Top of mind this week" subsection at line 156, "Actions this week" at line 160, and the per-shift "For client archetypes" bullet at line 184). Edit 4 targeted a project-local sidecar (`input-personal/weekly-signal-diff-personal.md`), not the placeholder shipped in this repo. No ADR was written to record the decision — this spec is a candidate for a future ADR-013 if the maintainer wants the decision rationale in the ledger.
+>
+> **Status (2026-07-10):** `prompts/weekly-signal-diff.md` and `prompts/weekly-signal-diff-personal.md` were removed from the skill (0.114.0). The functionality was long since superseded by the consumer project's own `skills/wsd-skill/` carve-out (`daily-signal-diff`), which is the sole home of the `wsd-full` / `wsd-go` / `wsd-refresh` family. This spec remains as the historical record of the edits that shaped the prompt while it lived here.
 
