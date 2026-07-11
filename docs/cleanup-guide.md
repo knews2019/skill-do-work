@@ -18,6 +18,9 @@ Moves REQ files sitting in `archive/` root into their UR folders (`archive/UR-NN
 ### Pass 4: Fix misplaced directories
 Detects `do-work/` directories accidentally created in subdirectories and relocates them. Catches UR folders nested under `archive/user-requests/` and moves them up.
 
+### After all passes: repoint doc links
+Every move above changes a file's path. Cleanup tracks each old → new path and rewrites links in the repo's tracked markdown outside `do-work/` that pointed at the moved file (e.g. a prime doc's Lessons link to an archived REQ), so consolidation doesn't leave broken links behind. The summary reports `Repointed: N doc links in M files` (or `Repointed: none`).
+
 ## Result
 
 ```
@@ -38,7 +41,7 @@ do-work/
 ## Key rules
 
 - Deletes nothing — only moves files
-- No content modification except normalizing non-standard statuses (`done` → `completed`)
+- No content modification except normalizing non-standard statuses (`done` → `completed`) and repointing doc links to moved files
 - Skips active queue items (`pending`, `claimed`)
 
 ## Usage

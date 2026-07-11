@@ -101,6 +101,25 @@ Check for UR folders that ended up in wrong locations within the archive.
 Also check for and consolidate any loose CONTEXT-*.md files:
 - Move to `do-work/archive/legacy/` alongside legacy REQs
 
+### Repoint Documentation Links
+
+Durable docs outside `do-work/` may link to files the passes above just moved (e.g. a prime doc's `## Lessons` section linking `[REQ-987](../do-work/archive/REQ-987-slug.md)`). The move is the only moment both the old and new path are known, so repointing is part of cleanup — not a separate "find broken links" sweep afterward.
+
+1. **As any pass moves a file, record its old → new repo-relative path.** This applies to every move cleanup makes, whichever pass makes it — the passes above are the current set, not a closed list.
+2. **After all passes**, for each moved file, search the repo's tracked markdown outside `do-work/` for references to it. Match on the **filename** — REQ filenames are unique, and referrers use relative paths, so matching the full old path would miss them:
+
+   ```bash
+   git grep -l -F 'REQ-987-slug.md' -- '*.md' ':(exclude)do-work'
+   ```
+
+   `-F` because filenames contain dots; `git grep` searches tracked files only, so untracked noise and `do-work/` internals are excluded by construction.
+3. **For each hit, rewrite the link target** to the correct relative path from the linking file's directory to the file's new location, using the old → new mapping from step 1. Three guards:
+   - **Preserve anchors.** A link like `REQ-987-slug.md#lessons-learned` keeps its `#fragment` suffix — rewrite only the path portion of the target.
+   - **Rewrite path occurrences, not bare mentions.** The filename grep also hits prose that mentions `REQ-987-slug.md` with no path component. Rewrite occurrences of the old path (any relative spelling of it); leave a bare filename with no path component alone — never graft a path onto a prose mention.
+   - **Tracked files only, by design.** `git grep` won't see an untracked, not-yet-committed doc that links to a moved file. That scope is deliberate (link-checking tests validate tracked files); the repoint does not guarantee zero broken links in untracked drafts.
+
+Risk note: a bad rewrite could mangle a doc, but it's git-reversible, the change is reviewable in the cleanup commit diff, and any link-checking test the repo runs doubles as the regression detector.
+
 ## Reporting
 
 Print a summary at the end:
@@ -113,8 +132,11 @@ Archive cleanup complete:
   - Legacy: 24 REQs moved to archive/legacy/
   - Misplaced do-work/: relocated 7 REQs, 6 URs from exp/g3-segment-anything/do-work/
   - Fixed: 1 misplaced UR folder in archive
+  - Repointed: 39 doc links in 5 files
   - Still open: UR-015 (2/4 REQs complete)
 ```
+
+When files were moved but no referrers were found, still print `Repointed: none` — the line is evidence the repoint step ran.
 
 If nothing needed fixing:
 ```
@@ -156,6 +178,8 @@ git add do-work/archive/ do-work/user-requests/
 # git add do-work/queue/REQ-NNN-*.md do-work/working/REQ-NNN-*.md  (the deletion side of the moves)
 # If Pass 3a found misplaced directories, also stage those paths:
 # git add exp/g3-segment-anything/do-work/  (the deletion side of the move)
+# If the repoint step rewrote doc links, also stage each rewritten doc file:
+# git add docs/prime-foo.md docs/prime-bar.md  (so the repoint lands in the same commit as the moves it repairs)
 
 git commit -m "$(cat <<'EOF'
 do-work: cleanup — consolidated {N} REQs, closed {M} URs
@@ -164,6 +188,7 @@ do-work: cleanup — consolidated {N} REQs, closed {M} URs
 - Consolidated: {X} loose REQs into UR folders
 - Legacy: {Y} items moved to archive/legacy/
 - Fixed: {Z} misplaced folders
+- Repointed: {W} doc links
 
 EOF
 )"
@@ -173,12 +198,12 @@ EOF
 
 If nothing was moved (archive was already clean), skip the commit entirely.
 
-Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/`, `do-work/user-requests/`, any `do-work/queue/` or working/ REQs swept by Pass 0, and any misplaced `do-work/` directories relocated by Pass 3a. Don't bypass pre-commit hooks.
+Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/`, `do-work/user-requests/`, any `do-work/queue/` or working/ REQs swept by Pass 0, any misplaced `do-work/` directories relocated by Pass 3a, and the specific doc files rewritten by the repoint step. Don't bypass pre-commit hooks.
 
 ## What This Action Does NOT Do
 
 - Delete any files — only moves them into the right location
-- Modify file contents or frontmatter — files are relocated as-is. Exception: Pass 0 normalizes non-standard terminal statuses (`done` → `completed`, etc.) in frontmatter before moving.
+- Modify file contents or frontmatter — files are relocated as-is. Exceptions: Pass 0 normalizes non-standard terminal statuses (`done` → `completed`, etc.) in frontmatter before moving, and the Repoint Documentation Links step rewrites link targets in docs that reference moved files.
 - Touch **active** files in `do-work/queue/` (the queue) or `do-work/working/` — `pending`, `pending-answers`, and `claimed` REQs are actions/work.md's responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from `do-work/queue/` and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery.
 - Archive UR folders that still have pending/in-progress REQs
 - Process any REQ files (use actions/work.md for that)
@@ -202,6 +227,7 @@ Guard against these during cleanup:
 - UR folder in archive with no REQ files inside
 - A UR whose REQs are all `completed-with-issues` never closes (stays in `user-requests/`) — Pass 1 is filtering on the literal `completed` instead of the terminal-resolved set (`completed`, `completed-with-issues`, or `cancelled`; see `actions/work-reference.md`)
 - A UR held open forever by a `cancelled` REQ — same bug class: `cancelled` is terminally resolved and must count toward UR closure
+- A moved file still referenced by its old path in tracked markdown after cleanup — the repoint step was skipped or missed a referrer
 
 ## Verification Checklist
 
@@ -209,3 +235,4 @@ Guard against these during cleanup:
 - [ ] No terminal-status REQs remain in `do-work/queue/` or `do-work/working/`
 - [ ] Every archived REQ with `user_request` field is inside its UR folder
 - [ ] No empty UR folders remain in archive (unless REQs are still pending elsewhere)
+- [ ] Every moved file's old path greps to zero hits in tracked markdown outside `do-work/`

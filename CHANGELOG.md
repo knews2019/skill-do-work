@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.118.0 — Cleanup Repoints Doc Links to Moved Files (2026-07-11)
+
+Cleanup's consolidation passes move REQ files around the archive, which used to silently break any doc that linked to them (one consumer repo hit 39 broken prime-doc links). Cleanup now records every move's old → new path and rewrites the referring links itself.
+
+- New `Repoint Documentation Links` step in `actions/cleanup.md`: after all passes, filename-grep tracked markdown outside `do-work/` for each moved file and rewrite link targets from the per-move mapping — preserving `#anchors`, skipping bare prose mentions, tracked files only by design.
+- Summary gains a `Repointed: N doc links in M files` line (`Repointed: none` when nothing referenced the moved files, so the step visibly ran).
+- The cleanup commit stages the rewritten docs alongside the moves they repair; `docs/cleanup-guide.md` documents the behavior.
+
 ## 0.117.1 — Retroactive Descriptive Changelog Titles (2026-07-11)
 
 The descriptive-title convention from 0.117.0 now applies to the whole file: all 152 pre-0.117.0 codename headings ("The Red Pen", "The Court Scribe", …) were rewritten to say what each release delivered. Bodies are untouched — only the heading titles changed.
