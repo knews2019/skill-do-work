@@ -89,6 +89,7 @@ type generatedRequest struct {
 	CompletionTime       string   `json:"completionTime"`
 	CompletionTimeSource string   `json:"completionTimeSource"`
 	BodyHtml             string   `json:"bodyHtml"`
+	BodyMarkdown         string   `json:"bodyMarkdown"`
 }
 
 // generatedUserRequest is one UR node for the by-UR lens, with its grouped REQ
@@ -99,6 +100,7 @@ type generatedUserRequest struct {
 	InputFilePresent bool     `json:"inputFilePresent"`
 	RequestIds       []string `json:"requestIds"`
 	BodyHtml         string   `json:"bodyHtml"`
+	BodyMarkdown     string   `json:"bodyMarkdown"`
 }
 
 // generatedNote is one do-work/notes.md line. The text stays plain — notes are
@@ -204,6 +206,7 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			CompletionTime:       formatTimestamp(ticket.CompletionTime),
 			CompletionTimeSource: string(ticket.CompletionTimeSource),
 			BodyHtml:             bodyHtml,
+			BodyMarkdown:         ticket.BodyMarkdown,
 		}
 	}
 
@@ -219,6 +222,7 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			InputFilePresent: userRequest.InputFilePresent,
 			RequestIds:       userRequest.RequestIds,
 			BodyHtml:         bodyHtml,
+			BodyMarkdown:     userRequest.BodyMarkdown,
 		}
 	}
 

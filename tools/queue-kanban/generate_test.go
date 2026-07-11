@@ -186,6 +186,29 @@ func TestGenerateEmbedsGoldmarkRenderedBody(t *testing.T) {
 	}
 }
 
+func TestGenerateCarriesRawMarkdownForCopyButton(t *testing.T) {
+	// The drawer's Copy button hands over the ticket's raw Markdown source, so
+	// the data island must ship bodyMarkdown beside the pre-rendered bodyHtml
+	// and the page shell must contain the button it wires to.
+	outputDirectory := generateLiveSiteInDir(t)
+
+	boardDataBytes, readError := os.ReadFile(filepath.Join(outputDirectory, "board-data.js"))
+	if readError != nil {
+		t.Fatalf("reading board-data.js: %v", readError)
+	}
+	if !strings.Contains(string(boardDataBytes), `"bodyMarkdown"`) {
+		t.Fatalf("board-data.js has no bodyMarkdown field — the drawer Copy button would have nothing to copy")
+	}
+
+	indexBytes, indexReadError := os.ReadFile(filepath.Join(outputDirectory, "index.html"))
+	if indexReadError != nil {
+		t.Fatalf("reading generated index.html: %v", indexReadError)
+	}
+	if !strings.Contains(string(indexBytes), `id="detail-copy"`) {
+		t.Fatalf("detail drawer Copy button (id=\"detail-copy\") not found in index.html")
+	}
+}
+
 func TestRenderMarkdownBodyToHtmlHeadingsAndTaskLists(t *testing.T) {
 	body := "## What\n\nA paragraph.\n\n- [ ] unchecked item\n- [x] checked item\n"
 	rendered, renderError := renderMarkdownBodyToHtml(body)

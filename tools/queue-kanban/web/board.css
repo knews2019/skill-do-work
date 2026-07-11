@@ -1094,7 +1094,14 @@ body.is-resizing-detail .detail-resizer::before {
   color: var(--ink-strong);
 }
 
-.detail-close {
+.detail-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-close,
+.detail-copy {
   appearance: none;
   border: 1px solid var(--line-firm);
   background-color: var(--surface-2);
@@ -1105,13 +1112,24 @@ body.is-resizing-detail .detail-resizer::before {
   border-radius: var(--radius-pill);
   cursor: pointer;
 }
-.detail-close:hover {
+.detail-close:hover,
+.detail-copy:hover {
   color: var(--ink-strong);
   background-color: var(--surface-3);
 }
-.detail-close:focus-visible {
+.detail-close:focus-visible,
+.detail-copy:focus-visible {
   outline: 2px solid var(--accent-claimed);
   outline-offset: 2px;
+}
+/* Transient feedback states set by board.js after a copy attempt. */
+.detail-copy.is-copied {
+  color: var(--accent-done);
+  border-color: currentColor;
+}
+.detail-copy.is-copy-failed {
+  color: var(--accent-blocked);
+  border-color: currentColor;
 }
 
 .detail-title {

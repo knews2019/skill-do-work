@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.119.0 — Board Drawer Copy Button (2026-07-11)
+
+The Kanban board's ticket drawer gets a Copy button next to Close: one click puts the open REQ's (or UR's) raw Markdown on the clipboard, ready to paste into chat, email, or another ticket without losing headings, checkboxes, or links.
+
+- The data island now ships `bodyMarkdown` beside the pre-rendered `bodyHtml`, so the copy is the ticket's source text, not scraped HTML.
+- Transient feedback ("Copied ✓" / "Copy failed") resets on every drawer open; a hidden-textarea fallback covers contexts where the async Clipboard API is missing or denied (file://, plain http).
+
 ## 0.118.0 — Cleanup Repoints Doc Links to Moved Files (2026-07-11)
 
 Cleanup's consolidation passes move REQ files around the archive, which used to silently break any doc that linked to them (one consumer repo hit 39 broken prime-doc links). Cleanup now records every move's old → new path and rewrites the referring links itself.

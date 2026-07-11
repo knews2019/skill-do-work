@@ -624,7 +624,13 @@
   var drawerTitle = document.getElementById("detail-drawer-title");
   var drawerMeta = document.getElementById("detail-meta");
   var drawerBody = document.getElementById("detail-body");
+  var drawerCopyButton = document.getElementById("detail-copy");
   var lastFocusedElement = null;
+
+  // The raw Markdown of whatever the drawer currently shows, set on every
+  // open. Copying hands over the ticket's source text, not the rendered HTML,
+  // so a paste into chat/email/another REQ keeps headings, checkboxes, links.
+  var currentDetailMarkdown = "";
 
   function appendMetaRow(label, valueNode) {
     var dt = createElement("dt", null, label);
@@ -707,6 +713,7 @@
     appendMetaRow("Tree", request.treeSection || "—");
 
     drawerBody.innerHTML = request.bodyHtml || "<p>(empty body)</p>";
+    currentDetailMarkdown = request.bodyMarkdown || "";
     showDrawer();
   }
 
@@ -728,6 +735,7 @@
     appendMetaRow("input.md", userRequest.inputFilePresent ? "present" : "synthesized from REQ pointers");
 
     drawerBody.innerHTML = userRequest.bodyHtml || "<p>(no input.md body)</p>";
+    currentDetailMarkdown = userRequest.bodyMarkdown || "";
     showDrawer();
   }
 
@@ -742,6 +750,10 @@
     }
     drawer.hidden = false;
     detailResizer.hidden = false;
+    // A lingering "Copied ✓" from the previous ticket would misreport what is
+    // on the clipboard — reset the button on every open.
+    drawerCopyButton.textContent = "Copy";
+    drawerCopyButton.classList.remove("is-copied", "is-copy-failed");
     drawerBody.scrollTop = 0;
     drawer.scrollTop = 0;
     drawer.focus();
@@ -1006,6 +1018,73 @@
   });
 
   document.getElementById("detail-close").addEventListener("click", closeDrawer);
+
+  // ---- copy-to-clipboard for the open ticket --------------------------------
+  // Prefers the async Clipboard API; falls back to a hidden textarea +
+  // execCommand when the API is unavailable (the static board is often opened
+  // over plain file:// or http://) or when it rejects (permission denied).
+
+  function writeTextToClipboard(clipboardText) {
+    if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
+      return navigator.clipboard.writeText(clipboardText).catch(function () {
+        return writeTextViaHiddenTextarea(clipboardText);
+      });
+    }
+    return writeTextViaHiddenTextarea(clipboardText);
+  }
+
+  function writeTextViaHiddenTextarea(clipboardText) {
+    return new Promise(function (resolve, reject) {
+      var scratchTextarea = document.createElement("textarea");
+      scratchTextarea.value = clipboardText;
+      scratchTextarea.setAttribute("readonly", "");
+      scratchTextarea.style.position = "fixed";
+      scratchTextarea.style.opacity = "0";
+      document.body.appendChild(scratchTextarea);
+      scratchTextarea.select();
+      var copySucceeded = false;
+      try {
+        copySucceeded = document.execCommand("copy");
+      } catch (execError) {
+        copySucceeded = false;
+      }
+      document.body.removeChild(scratchTextarea);
+      if (copySucceeded) {
+        resolve();
+      } else {
+        reject(new Error("execCommand copy failed"));
+      }
+    });
+  }
+
+  var copyFeedbackTimer = null;
+
+  function showCopyFeedback(labelText, stateClass) {
+    drawerCopyButton.textContent = labelText;
+    drawerCopyButton.classList.remove("is-copied", "is-copy-failed");
+    drawerCopyButton.classList.add(stateClass);
+    if (copyFeedbackTimer) {
+      clearTimeout(copyFeedbackTimer);
+    }
+    copyFeedbackTimer = setTimeout(function () {
+      drawerCopyButton.textContent = "Copy";
+      drawerCopyButton.classList.remove("is-copied", "is-copy-failed");
+    }, 1600);
+  }
+
+  drawerCopyButton.addEventListener("click", function () {
+    // Stale board-data.js (generated before bodyMarkdown shipped) carries no
+    // raw source — degrade to the rendered text so the button still works.
+    var clipboardText = currentDetailMarkdown || drawerBody.innerText || "";
+    writeTextToClipboard(clipboardText).then(
+      function () {
+        showCopyFeedback("Copied ✓", "is-copied");
+      },
+      function () {
+        showCopyFeedback("Copy failed", "is-copy-failed");
+      }
+    );
+  });
 
   // ---- boot ---------------------------------------------------------------
 
