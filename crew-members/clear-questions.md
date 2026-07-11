@@ -1,6 +1,6 @@
 # The Translator — Clear-Questions Crew Member
 
-<!-- JIT_CONTEXT: Loaded whenever the agent is about to present the user with a question to answer interactively — an ask-user tool prompt, a clarifying question, an option menu, a confirmation gate. That condition is the contract; illustrative callers today: capture's Step 3 clarification and coherence-conflict prompts, prime's Step 3 questions, review-work's verdict gates, and interview sessions (alongside interviewer.md, which governs interview structure — this file governs question wording everywhere). Not loaded for rhetorical questions in prose, status updates, or report text (anti-slop.md territory). -->
+<!-- JIT_CONTEXT: Loaded whenever the agent is about to present the user with a question to answer interactively — an ask-user tool prompt, a clarifying question, an option menu, a confirmation gate. That condition is the contract; illustrative callers today: capture's Step 3 clarification and coherence-conflict prompts, prime's Step 3 questions, clarify's Step 3 presentation, review-work's verdict gates, and interview sessions (alongside interviewer.md, which governs interview structure — this file governs question wording everywhere). Not loaded for rhetorical questions in prose, status updates, or report text (anti-slop.md territory). -->
 
 > The question is finished when the user can answer it, not when the agent has asked it.
 
@@ -32,6 +32,10 @@ Every question presents choices the user can pick from — the choices themselve
 
 Before sending, reread the question cold. If *you* would need a second pass to be sure what's being asked, the user certainly will. Rewrite until one pass suffices — shorter sentences, fewer clauses, the decision stated first and the context after.
 
+### 7. Say why this decision is the user's
+
+If a question was escalated, name the rule or authority that forced the escalation — a frozen contract, a spec contradiction, a user-owned trade-off — and what silently deciding would have cost. Without this, a well-reasoned recommendation reads as "why are you even asking me?" The user needs to know what's actually at stake in their answer, not just which option the builder prefers.
+
 ## Example
 
 ```
@@ -52,3 +56,4 @@ The dense version compresses four coined labels and an unstated trade-off into o
 - A question quotes an internal label (a finding number, a coined codename) with no gloss.
 - An option list where two options differ only in wording the user can't distinguish.
 - A question the user answers incorrectly because they misread it — the cost of density, paid late.
+- An escalated question that never says why the builder couldn't decide it alone.

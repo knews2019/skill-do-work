@@ -32,6 +32,8 @@ If none found: report "No pending questions — queue is clear" and exit.
 
 ### Step 3: Present questions
 
+**Load `crew-members/clear-questions.md` first** — it is the contract for every question you're about to show. Then **rewrite** each REQ's question to that contract instead of rendering the stored `## Open Questions` text verbatim: that text was authored mid-implementation by a builder with the whole spec in its head, and is presumed too dense for a cold reader. Gloss every coined label or section reference, and state why the decision was escalated to the user (Principle 7). The rewrite applies to the question and option *wording* — the Decision Brief structure below stays as-is.
+
 Always lead with the builder's decision and its default — confirming is the intended fast path — and, for builder-decided follow-ups, show the **value and risk** so the user can judge in seconds instead of spelunking. This is the **DECISIONS FOR YOU** section of the Decision Brief (`actions/work-reference.md` → **Decision Brief (hand-back format)**). For each `pending-answers` REQ, show:
 
 ```
@@ -114,6 +116,7 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 
 ## Red Flags
 
+- A question shown to the user still contains unglossed builder shorthand (a coined label, a spec §-reference, a finding number) — the stored text was rendered verbatim instead of rewritten per `crew-members/clear-questions.md`.
 - A `pending-answers` REQ with no `## Open Questions` section — the marker and the body disagree; investigate before presenting nothing.
 - User confirms every builder choice without reading — they may be rubber-stamping; ask once if they want a summary first.
 - A discovered-task follow-up's `status` flipped to `completed` instead of `pending` after user confirmed "Yes, add to queue" — that's the wrong route (the task never gets built).
@@ -121,6 +124,7 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 
 ## Verification Checklist
 
+- [ ] `crew-members/clear-questions.md` was loaded before the first question was presented, and stored question text was rewritten to its contract (not rendered verbatim).
 - [ ] Every REQ presented had `status: pending-answers` in its frontmatter before the session started.
 - [ ] Each question shown included the builder's recommended choice (confirming is the fast path).
 - [ ] Answered REQs with all questions resolved flipped to `status: pending` (or `completed` for builder-was-right, `cancelled` for discarded).

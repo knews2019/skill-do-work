@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.116.0 — The Cold Reader (2026-07-11)
+
+Escalated questions were reaching the user written in builder shorthand — technically asked, practically unanswerable. Now clarity is enforced at both ends: builders author Open Questions for a cold reader, and clarify rewrites what slips through.
+
+- `actions/clarify.md` Step 3 now loads `crew-members/clear-questions.md` and rewrites stored question text to its contract instead of rendering it verbatim.
+- New clear-questions Principle 7: an escalated question must say why the decision is the user's — the rule that forced the escalation and what silently deciding would have cost.
+- `actions/work.md` Step 8 and the follow-up template in `actions/work-reference.md` require Open Questions destined for clarify to meet the contract at authoring time.
+
 ## 0.115.0 — The Red Pen (2026-07-10)
 
 The Kanban board now marks a REQ whose `status:` is outside the schema vocabulary as *invalid* — red status, an INVALID pill on the card, and a drawer note telling you exactly how to fix it — instead of letting it blend in with normal blocked tickets. Came out of triaging review feedback: the live-tree bucketing test contradicted the board's own deliberate catch-all and would have failed on any off-vocabulary status.
