@@ -27,7 +27,7 @@ For the per-action file list with descriptions, read `SKILL.md` — it is the ca
 
 1. **Bump the version** in `actions/version.md` (line starting with `**Current version**:`). Use semver — patch for fixes, minor for features, major for breaking changes. When in doubt, patch. **Verify the new version number is strictly greater than the first existing entry in `CHANGELOG.md`** — duplicate version numbers have occurred before.
 
-2. **Add a changelog entry** at the top of `CHANGELOG.md` (below the header). The title must **say what was delivered** — a reader scanning only headings should know what changed ("Board View Filters", not "The Fine Sieve"). No whimsical codenames. **Verify the title is not already used** by an earlier entry. (Entries before 0.117.0 used fun codenames; leave them as-is.)
+2. **Add a changelog entry** at the top of `CHANGELOG.md` (below the header). The title must **say what was delivered** — a reader scanning only headings should know what changed ("Board View Filters", not "The Fine Sieve"). No whimsical codenames. **Verify the title is not already used** by an earlier entry. (Historical entries were retroactively retitled to this convention in 0.117.1.)
 
 ```markdown
 ## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)

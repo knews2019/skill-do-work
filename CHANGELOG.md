@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.117.1 — Retroactive Descriptive Changelog Titles (2026-07-11)
+
+The descriptive-title convention from 0.117.0 now applies to the whole file: all 152 pre-0.117.0 codename headings ("The Red Pen", "The Court Scribe", …) were rewritten to say what each release delivered. Bodies are untouched — only the heading titles changed.
+
+- Every `## X.Y.Z — The [Codename] (date)` heading from 0.65.0 through 0.115.0 replaced with a short descriptive title derived from that entry's own body.
+- Verified no duplicate titles across the file and no codename headings remain.
+- CLAUDE.md's "leave pre-0.117.0 entries as-is" note removed — it no longer applies.
+
 ## 0.117.0 — Board View Filters (2026-07-11)
 
 The board's By-UR lens rendered the entire archive — after months of history it was an archive dump, not a work view. Every view now filters: a shared search + domain/status bar in the topbar, and an Active/All toggle that hides fully resolved URs by default.
@@ -28,7 +36,7 @@ Escalated questions were reaching the user written in builder shorthand — tech
 - New clear-questions Principle 7: an escalated question must say why the decision is the user's — the rule that forced the escalation and what silently deciding would have cost.
 - `actions/work.md` Step 8 and the follow-up template in `actions/work-reference.md` require Open Questions destined for clarify to meet the contract at authoring time.
 
-## 0.115.0 — The Red Pen (2026-07-10)
+## 0.115.0 — Board Flags Invalid REQ Statuses (2026-07-10)
 
 The Kanban board now marks a REQ whose `status:` is outside the schema vocabulary as *invalid* — red status, an INVALID pill on the card, and a drawer note telling you exactly how to fix it — instead of letting it blend in with normal blocked tickets. Came out of triaging review feedback: the live-tree bucketing test contradicted the board's own deliberate catch-all and would have failed on any off-vocabulary status.
 
@@ -36,7 +44,7 @@ The Kanban board now marks a REQ whose `status:` is outside the schema vocabular
 - New forensics check 11 sweeps queue/working/archive for unrecognized statuses — the mechanical fix path the board's warning points at.
 - `TestLiveTreeColumnBucketingMatchesStatus` now asserts the real invariant (unrecognized statuses legitimately live in Needs-input *when flagged*), plus a seeded synthetic regression test so the live queue can't mask it.
 
-## 0.114.0 — The Sole Home (2026-07-10)
+## 0.114.0 — Retire the Weekly-Signal-Diff Prompt (2026-07-10)
 
 Retired the `weekly-signal-diff` prompt from the library. It graduated into the consumer project's own `wsd-skill` (as `daily-signal-diff`, driven by the `wsd-full` / `wsd-go` / `wsd-refresh` family) months ago — the shipped copy was a stale duplicate that every `do-work update` kept reinstalling.
 
@@ -44,14 +52,14 @@ Retired the `weekly-signal-diff` prompt from the library. It graduated into the 
 - `decisions/imported-specs/2026-04-17_improve-weekly-diff-skill.md` gained a Status footer recording the removal; changelog history stays as-is.
 - The `**Runnable:**` header key in `actions/prompts.md` is generic and remains — it just no longer has a shipped opt-out example.
 
-## 0.113.2 — The Typesetter (2026-07-10)
+## 0.113.2 — Drawer Formatting for Questions and Prose (2026-07-10)
 
 The drawer was mashing a REQ's Open Questions into one run-on paragraph and stretching prose across the whole panel. Both readable now.
 
 - `Recommended:` / `Also:` / `Value:` / `Risk:` / `→` continuation lines render on their own lines instead of lazily merging into the question sentence (fenced code blocks stay verbatim).
 - Markdown body text caps at ~90 characters per line, so a wide drawer no longer means 200-character lines.
 
-## 0.113.1 — The Blue Pencil (2026-07-10)
+## 0.113.1 — Notes Strip Parses Only Bullet Lines (2026-07-10)
 
 The Notes strip was reading a real `notes.md` as eighteen notes when it held two. Only bullet lines are notes now.
 
@@ -59,7 +67,7 @@ The Notes strip was reading a real `notes.md` as eighteen notes when it held two
 - `<!-- ... -->` comment blocks are stripped **before** the bullet test — that's where pruned entries get parked, and their bullets were resurfacing on the board.
 - `do-work roadmap` and `do-work note` carry the same rule, so every reader of `notes.md` agrees on what a note is.
 
-## 0.113.0 — The Critical Path (2026-07-10)
+## 0.113.0 — Board Dependency Graph: Ready vs Waiting (2026-07-10)
 
 The board finally draws the dependency graph it was already parsing. Pending now separates what you can pick up right now from what's still waiting on an upstream REQ, and every card tells you how much is waiting on *it*.
 
@@ -69,7 +77,7 @@ The board finally draws the dependency graph it was already parsing. Pending now
 - Dependency chips show met (struck through) vs. unmet (amber), and the drawer lists each dependency with the status that decides it. `cancelled` never satisfies gating, matching the work loop.
 - `do-work board summary` now prints the ready / waiting breakdown.
 
-## 0.112.0 — The Pinboard (2026-07-10)
+## 0.112.0 — Notes Strip on the Kanban Board (2026-07-10)
 
 Your `do-work note` hints now show up on the Kanban board, not just in `do-work roadmap`. They sit in a collapsible Notes strip above the columns, so the thing you told yourself to check next is visible while you're staring at the queue.
 
@@ -78,7 +86,7 @@ Your `do-work note` hints now show up on the Kanban board, not just in `do-work 
 - Notes render as plain text, never Markdown — they're hints, not tickets, so they get no column, no calendar entry, and no detail drawer.
 - Serve mode watches `notes.md`, so appending a note and reloading the page shows it.
 
-## 0.111.0 — The Odometer (2026-07-09)
+## 0.111.0 — Versioned Changelog Entries in Target Repos (2026-07-09)
 
 Changelog entries in unversioned repos came out keyed by date alone, so nothing told you whether an entry was a typo fix or a rewrite. Every entry now carries a version and a date, and the number is earned — bumped by what the change actually did to people using the code.
 
@@ -89,7 +97,7 @@ Changelog entries in unversioned repos came out keyed by date alone, so nothing 
 - Guards added for disagreeing version files (leave them alone, fall back to the counter, report it) and for out-of-band releases (bump from whichever source is higher)
 - The commit's "did we actually stage an implementation?" check now knows the version file is bookkeeping, not implementation — so a lone version bump can't masquerade as delivered work
 
-## 0.110.0 — The Court Scribe (2026-07-07)
+## 0.110.0 — Work Pipeline Writes Target-Repo Changelogs (2026-07-07)
 
 This changelog was the only one do-work ever kept — every target repo's history lived in commit messages nobody rereads. Now the work pipeline writes a changelog entry in every repo it works in, by default, in the house voice (picked from a six-voice side-by-side style lab over four real entries).
 
@@ -98,7 +106,7 @@ This changelog was the only one do-work ever kept — every target repo's histor
 - Successful REQs only — failed and cancelled work gets no entry; `CHANGELOG.md` joins the explicit staging list and doesn't count as implementation in the commit validation check
 - Wired into `actions/work.md`'s Commit Phase; entries load `crew-members/anti-slop.md` like any human-facing artifact
 
-## 0.109.0 — The Translator (2026-07-07)
+## 0.109.0 — Clear-Questions Crew Rule (2026-07-07)
 
 Agents kept asking questions only they could parse — codenames coined mid-analysis, three decisions folded into one sentence, options with no stated consequence. New crew member `crew-members/clear-questions.md` makes question *wording* a contract, complementing the existing options-not-open-ended rule which only governed question *structure*.
 
@@ -106,7 +114,7 @@ Agents kept asking questions only they could parse — codenames coined mid-anal
 - Six principles: one decision per question, decode your own shorthand, say the consequence, plain words over field jargon, concrete options, the read-once test
 - Wired into `actions/capture.md`'s "How to ask" and SKILL.md's capture-phase window; listed as the fourth always-know contract in CLAUDE.md
 
-## 0.108.2 — The Answer Key (2026-07-07)
+## 0.108.2 — Prime Traps Pre-Filled from the Scan (2026-07-07)
 
 Field-testing 0.108.1's trap question showed it still put the burden on the wrong side: the agent had already found the traps, then asked the user to approve them item-by-item. Now scan-found traps go straight into the prime draft, and the user is asked only two things — is anything wrong, and do you know something the code can't show (a past incident, a prod-only quirk).
 
@@ -114,7 +122,7 @@ Field-testing 0.108.1's trap question showed it still put the burden on the wron
 - Rationale from the test: the hand-written queue-kanban prime holds 5 traps — the scan found the 3 structural ones, but the 2 historical ones (status-alias drift, the port picked to dodge :8080) only a human could contribute
 - `docs/prime-guide.md` synced
 
-## 0.108.1 — The Trap Door (2026-07-07)
+## 0.108.1 — Prime Proposes Candidate Traps (2026-07-07)
 
 `prime create` no longer asks "what traps?" cold — a question that confused users into inventing filler traps ("the car should not blow up"). The agent now proposes candidate traps from its own scan and the user just confirms, corrects, or adds; "none" is explicitly a good answer.
 
@@ -122,7 +130,7 @@ Field-testing 0.108.1's trap question showed it still put the burden on the wron
 - New Red Flag: a Traps section full of truisms means the filter wasn't applied
 - `docs/prime-guide.md` synced with the propose-then-confirm flow
 
-## 0.108.0 — The Diff Gate (2026-07-06)
+## 0.108.0 — just-kanban Install Upgrades Outdated Recipes (2026-07-06)
 
 `do-work install just-kanban` now upgrades outdated recipes instead of shrugging "already installed". If your justfile's board recipes have drifted from the shipped block (say, they predate auto-open), it shows you the diff and asks before replacing anything.
 
@@ -131,7 +139,7 @@ Field-testing 0.108.1's trap question showed it still put the burden on the wron
 - Upgrades touch only the three do-work recipes (`run-kanban`, `kanban-static`, `kanban-summary`) — the rest of the justfile is never reordered or reformatted; recipes missing from the trio are appended
 - Retires the manual "delete the block and re-run install" upgrade path
 
-## 0.107.0 — The Won't-Do (2026-07-06)
+## 0.107.0 — Abandon Action and Cancelled Status (2026-07-06)
 
 You can finally decline work honestly: `do-work abandon REQ-042 [reason]` marks a REQ `cancelled`, records why, and archives it — and the kanban board files it with the done work (struck-through, grey dot) instead of flagging an unrecognized status under Blocked.
 
@@ -140,14 +148,14 @@ You can finally decline work honestly: `do-work abandon REQ-042 [reason]` marks 
 - Board parser mirrors the contract in the same commit: cancelled tickets land in Recently done + the calendar with a "cancelled" timestamp label
 - `do-work clarify`'s discard path now writes `cancelled` instead of pretending the REQ was `completed`
 
-## 0.106.4 — The List Keeper (2026-07-06)
+## 0.106.4 — Board depends_on Recovery + Static Snapshot Exclude (2026-07-06)
 
 Two validate-feedback follow-ups: the board no longer loses block-list `depends_on` entries when a REQ's frontmatter needs lenient recovery, and static board snapshots stop showing up as untracked noise in `git status`.
 
 - The lenient frontmatter fallback in `tools/queue-kanban` now recovers block-style lists (a bare `depends_on:` line followed by `- REQ-…` items) — previously a malformed title on the same file silently dropped every dependency edge. Regression tests cover indented, column-zero, blank-separated, and quoted item shapes.
 - `do-work board` static mode and the `kanban-static` just recipe (repo justfile + the shipped template in `actions/install.md`) add a one-line, idempotent `/build/queue-kanban-board/` entry to `.git/info/exclude` after generating — local-only, no tracked file touched. The skill repo's own `.gitignore` gains `/build/` too.
 
-## 0.106.3 — The Port Authority (2026-07-06)
+## 0.106.3 — run-kanban Port Injection Fix + Stricter Board Checks (2026-07-06)
 
 Four external review findings, now actually fixed: the `run-kanban` recipe can no longer be used to inject shell commands through the port argument, and the board got stricter about what counts as done and what counts as exposed.
 
@@ -156,7 +164,7 @@ Four external review findings, now actually fixed: the `run-kanban` recipe can n
 - `queue-kanban serve` warns about REQ-body exposure on every non-loopback bind — `0.0.0.0:port`, `[::]:port`, LAN IPs, non-localhost hostnames — not just the host-less `:port` spelling
 - `docs/ai-report-guide.md` no longer hardcodes "seven" anti-slop principles; it defers to the crew file's canonical count (eight today), matching `actions/ai-report.md`
 
-## 0.106.2 — The Namesake (2026-07-06)
+## 0.106.2 — Repo-Root Walk-Up Skips Skill Installs (2026-07-06)
 
 An external reviewer caught queue-kanban's repo-root walk-up matching any ancestor that contains a directory *named* `do-work` — in consumer installs that's the skill's own install dir (`.claude/skills/do-work/`), so running the tool from inside it silently rendered an empty board while the real queue sat further up.
 
@@ -164,7 +172,7 @@ An external reviewer caught queue-kanban's repo-root walk-up matching any ancest
 - Regression tests seed the consumer layout (`skills/do-work/tools/queue-kanban/` + root `do-work/`) and pin both the skip and the loud-error path
 - `prime-do-kanban.md`'s Direct instructions now pass `--repo-root`, and its trap note describes the real failure mode (the old text claimed "exits non-zero"; the consumer reality was a silent 0-ticket success)
 
-## 0.106.1 — The Caller List (2026-07-03)
+## 0.106.1 — Post-Reorg Audit Fixes (2026-07-03)
 
 A 31-agent audit ran over the whole skill after the file-reorg integration; twelve raw findings, five survived adversarial verification, and the four pre-existing ones land here (the fifth shipped inside 0.106.0).
 
@@ -172,7 +180,7 @@ A 31-agent audit ran over the whole skill after the file-reorg integration; twel
 - `crew-members/anti-slop.md` JIT_CONTEXT caller list caught up with reality (validate-feedback's triage report, file-reorg's README/CLAUDE.md prose) and is now explicitly illustrative — the trigger condition is the contract
 - The board lock-step rule in CLAUDE.md and `actions/board.md` no longer overstates itself: only the `status` vocabulary drives column bucketing; `depends_on`/`domain` are display-only in `model.go`
 
-## 0.106.0 — The Moving Crew (2026-07-03)
+## 0.106.0 — New file-reorg Action (2026-07-03)
 
 New `file-reorg` action: reorganize a repo's file layout without breaking anything. Adapted from the standalone tidy-repo-layout skill — it maps every reference (imports, configs, scripts, doc links) before moving a single file, presents the move plan for approval, then executes with `git mv` and explicit per-file rewrites, and verifies all of it.
 
@@ -181,7 +189,7 @@ New `file-reorg` action: reorganize a repo's file layout without breaking anythi
 - Junk deletion stays with `stray-check`, do-work's own files stay with `cleanup`; this action relocates legitimate files into canonical homes
 - Ends by suggesting `do-work commit` — the reorg lands as one atomic, revertable commit
 
-## 0.105.0 — The Split View (2026-07-02)
+## 0.105.0 — Docked Resizable Board Detail Panel (2026-07-02)
 
 The kanban board's card detail is no longer a modal overlay — it docks beside the board Jira-style, with a draggable divider so you can make the details as wide as you like. The board stays live while it's open.
 
@@ -190,13 +198,13 @@ The kanban board's card detail is no longer a modal overlay — it docks beside 
 - Kanban columns now respond to the board's own width via container queries, so they re-wrap as the panel grows instead of overflowing
 - Under 760px the panel falls back to full-screen (no divider) — same Close/Escape to dismiss
 
-## 0.104.1 — The Field Notes (2026-07-02)
+## 0.104.1 — Kanban Prime Gains REQ-017 Lessons (2026-07-02)
 
 REQ-017's archival lesson lands in the kanban prime, inline per the new no-archive-links convention.
 
 - `prime-do-kanban.md` Lessons: bind before announcing (`net.Listen` → banner/open → `Serve`), and prefer parameter-injected seams over mutable package vars for opener-style side effects
 
-## 0.104.0 — The Grand Opening (2026-07-02)
+## 0.104.0 — run-kanban Auto-Opens the Browser (2026-07-02)
 
 `just run-kanban` now ends with the board on your screen, not a URL in your scrollback. The recipe replaces a stale queue-kanban instance holding the port, and the server opens your default browser once it's actually up.
 
@@ -206,7 +214,7 @@ REQ-017's archival lesson lands in the kanban prime, inline per the new no-archi
 - `do-work board` serve mode deliberately does **not** auto-open (agents drive it); the justfile recipe is the caller that opts in
 - Already-installed projects: the installer is append-only, so delete the old `# --- do-work board recipes ---` block and re-run `do-work install just-kanban` to pick this up
 
-## 0.103.3 — The Loopback Latch (2026-07-02)
+## 0.103.3 — Board Serves on Loopback by Default (2026-07-02)
 
 Four external review findings, all confirmed and fixed. The big one: the live board now binds loopback by default instead of every interface — your queue's rendered REQ bodies are no longer LAN-readable while the console claims "localhost".
 
@@ -215,7 +223,7 @@ Four external review findings, all confirmed and fixed. The big one: the live bo
 - Deleted the dead `encodeBoardDataForScriptTag` encoder; its test now covers the production `encodeBoardDataForJsAssignment` encoder, which previously had no direct coverage
 - `prime-do-kanban.md` lessons are inlined instead of linked — `do-work/` is machine-local (git-excluded) and export-ignored, so archive links were dead in every other clone and consumer install
 
-## 0.103.2 — The Dead Vertical (2026-07-02)
+## 0.103.2 — Remove the Unused Severity Badge (2026-07-02)
 
 The kanban board sheds a feature that could never fire: the `severity` frontmatter badge. No REQ schema in this repo ever emits a top-level `severity:` key, yet the tool carried a full parse → JSON → badge pipeline for it. Gone, all four layers.
 
@@ -223,7 +231,7 @@ The kanban board sheds a feature that could never fire: the `severity` frontmatt
 - Schema-first stance: the parser reads only fields the Schema Read Contract defines — if severity frontmatter is ever wanted, it enters the contract first, then gets mirrored here (REQ-016)
 - Verified end to end: grep sweep empty, `go build`/`go test` green, live board render against a real queue unaffected
 
-## 0.103.1 — The Matched Set (2026-07-02)
+## 0.103.1 — Board Status Vocabulary Matches the Schema (2026-07-02)
 
 The kanban board's parser no longer recognizes a status the schema never defined. `deferred` is out of the recognized set, so the board vocabulary and the Schema Read Contract finally agree exactly.
 
@@ -231,7 +239,7 @@ The kanban board's parser no longer recognizes a status the schema never defined
 - A hand-edited `status: deferred` ticket still lands in Needs-input/Blocked, now via the unrecognized-status warning path instead of a silent pass
 - Test coverage repointed, not deleted: warning-path assertions verify the deferred + typo cases both warn (REQ-015, TDD red→green)
 
-## 0.103.0 — The Recipe Card (2026-07-02)
+## 0.103.0 — just-kanban Install Target (2026-07-02)
 
 `do-work install` gains a fourth target: `just-kanban` wires `just run-kanban` (plus `kanban-static` / `kanban-summary`) into your project's justfile, so the board runs without going through the agent. The justfile is project-owned — updates never touch it — while the recipes rebuild the vendored tool on every run, so each `do-work update` takes effect automatically.
 
@@ -239,7 +247,7 @@ The kanban board's parser no longer recognizes a status the schema never defined
 - **Paths resolved at install time** — the recipe gets the project-relative path to wherever the skill actually lives; a global install is refused at the gate rather than hard-coding a path outside the project.
 - **Toolchain-honest** — missing `just`/`go` are warnings (the recipes are inert text until run), matching `do-work board`'s graceful degradation. The recipe block is validated end-to-end against a real queue before shipping.
 
-## 0.102.1 — The Honest Board (2026-07-01)
+## 0.102.1 — Update-Diff and Board Integrity Fixes (2026-07-01)
 
 Acts on a deep multi-agent review of the last 20 commits: fifteen confirmed findings fixed. The update flow can no longer silently clobber local queue-kanban customizations, the board tool stops hiding or fabricating data, and several instruction files stop promising things the code doesn't do.
 
@@ -247,7 +255,7 @@ Acts on a deep multi-agent review of the last 20 commits: fifteen confirmed find
 - **Board tool integrity fixes** (`tools/queue-kanban/`): frontmatter commit values are hex-validated before reaching git argv (argument-injection guard); duplicate-key recovery drops the whole earlier block instead of corrupting the preceding field; queue/archive id collisions keep one copy (active wins) with a warning instead of rendering contradictions; unrecognized statuses land visibly in Needs-input/Blocked with a warning instead of vanishing; the serve-mode Recently-done window keeps aging on cache hits; completion dates are never fabricated from file mtimes (a fresh clone showed everything as "completed today") — undated completions get an explicit calendar bucket; the drawer focus trap no longer breaks on REQ checkbox bodies. Warnings surface in the UI banner, the JSON island, and `board summary`.
 - **Docs stop overpromising.** prime audit's Stakes-writing is disclosed in the guide and help menu; slop-check/ai-report check all **eight** anti-slop principles (the decision-first rule was invisible behind hard-coded "seven"s, and ai-report's image checks no longer collide with principle #8's number); forensics loads the prompt-injection guardrail before ingesting archived Lessons; pipeline debriefs find legacy single-file ai-reports again; `do-work board` resolves non-git roots like every other action and no longer claims auto-refresh; `board` joined SKILL.md's argument hint.
 
-## 0.102.0 — The Rubber Stamp (2026-07-01)
+## 0.102.0 — Auto-Queue Trivial Test-Hygiene Discoveries (2026-07-01)
 
 Trivial test-hygiene discoveries no longer wait on a rubber-stamp: a `[normal]`/`[low]` discovered task that is test-only, mechanical, and small now auto-queues as `pending` instead of parking in `pending-answers` for a `do-work clarify` round-trip the user always approves anyway — so the parent UR consolidates without stalling.
 
@@ -255,7 +263,7 @@ Trivial test-hygiene discoveries no longer wait on a rubber-stamp: a `[normal]`/
 - **Same paper trail as the critical flow** — an `Auto-approved: test-only mechanical hygiene` note in Open Questions plus a visible `↺ test-hygiene discovery auto-queued as REQ-NNN` report line; discarding the REQ from the queue stays the escape hatch.
 - Restatements swept for consistency: `actions/work.md` Step 8 summary and `docs/work-guide.md`'s section list.
 
-## 0.101.0 — The Trend Scout (2026-07-01)
+## 0.101.0 — last30days Install Target (2026-07-01)
 
 `do-work install` gains a third target: `last30days`, the engagement-ranked social-research engine, vendored straight into the consuming project — keyless, git-ignored, and never touching `~/.claude`.
 
@@ -263,7 +271,7 @@ Trivial test-hygiene discoveries no longer wait on a rubber-stamp: a `[normal]`/
 - **Keyless by design** — the install writes no config file at all (upstream's project-local `.claude/last30days.env` is trust-gated from the environment, so a self-written trust flag would be circular and inert); X/TikTok/Instagram keys belong only in the user-global `~/.config/last30days/.env`. Upstream's `-g` and `/plugin marketplace` install paths are explicitly rejected since both write to `~/.claude`.
 - **Ignored vendor drop, verified end to end** — the ~15 MB of upstream Python gets a machine-local `.git/info/exclude` entry (the project's committable `.gitignore` stays untouched), and both detect and verify gate on the full guarantee set (skill file, ignore rule, and the Python 3.12+ interpreter the engine resolves at run time). A half-completed prior install gets repaired additively instead of masquerading as installed.
 
-## 0.100.0 — The Board Room (2026-07-01)
+## 0.100.0 — Vendored queue-kanban Board + board Action (2026-07-01)
 
 The `queue-kanban` board now ships inside the skill, so `do-work update` carries it into every repo alongside the skill files — no more per-repo copy-install that kept drifting into divergent versions. A new `do-work board` action builds and runs it for you.
 
@@ -271,7 +279,7 @@ The `queue-kanban` board now ships inside the skill, so `do-work update` carries
 - **New `do-work board` action** — `do-work board` serves a live board at `http://localhost:8090`, `do-work board static` writes a shareable HTML snapshot, `do-work board summary` prints column counts. It's a read-only viewer and the one action that needs a compiler — precondition-checked so a missing Go toolchain never blocks the rest of the skill.
 - **Versioning folded into the skill** — the tool's separate semver changelog is retired; its changes now ride do-work's version. The update path treats `tools/` as a shipped path and ignores the built binary in its customization diff. See ADR-016 for the full rationale.
 
-## 0.99.6 — The Wide Screen (2026-07-01)
+## 0.99.6 — Full-Width ai-report Layout (2026-07-01)
 
 ai-report's HTML layout gets a real redesign — pulled in from a sibling project's more-recently-tuned report skill so both stay in sync.
 
@@ -280,7 +288,7 @@ ai-report's HTML layout gets a real redesign — pulled in from a sibling projec
 - **Screenshots render at native max-resolution** — frames are capped at the capture's real pixel width and centered, never upscaled to fill a column.
 - Updated Design rules, Common Rationalizations, Red Flags, and the Verification Checklist in `actions/ai-report.md` to match.
 
-## 0.99.5 — The Marker Pen (2026-06-30)
+## 0.99.5 — Capture Sets the Maintenance Marker (2026-06-30)
 
 Acts on a validate-feedback triage of the skill's own internals — closes a gap where the maintenance marker could silently never get set, and re-syncs two user guides that lagged earlier action-file fixes.
 
@@ -289,7 +297,7 @@ Acts on a validate-feedback triage of the skill's own internals — closes a gap
 - **Guides use the canonical terminal-success set.** `docs/ai-report-guide.md` and `docs/cleanup-guide.md` now say `completed | completed-with-issues` instead of bare `completed`.
 - **Contract regressions now cover docs and the capture marker**, so these surfaces can't silently drift again while the action files get fixed.
 
-## 0.99.4 — The Fine Print (2026-06-30)
+## 0.99.4 — Clarifications to the 0.99.3 Safety Fixes (2026-06-30)
 
 Polish on the 0.99.3 safety fixes — three small clarifications so the prescribed steps don't mislead.
 
@@ -297,7 +305,7 @@ Polish on the 0.99.3 safety fixes — three small clarifications so the prescrib
 - **version:** the pre-extraction tarball download now aborts cleanly if `curl` fails, instead of falling into a confusing `tar` error before anything is overwritten.
 - **version:** the customization-diff note flags that a file present only on the current side can be one upstream *removed* this release, not just a local addition — surface it when unsure.
 
-## 0.99.3 — The Fresh Mirror (2026-06-30)
+## 0.99.3 — Opt-In Agentic Image Gen + Pre-Write Update Checks (2026-06-30)
 
 Follow-up on the validate-feedback re-run: the two already-fixed findings stay closed, and the two open safety gaps now have concrete guardrails rather than soft reminders.
 
@@ -305,7 +313,7 @@ Follow-up on the validate-feedback re-run: the two already-fixed findings stay c
 - **Version update customization checks moved before the destructive write.** `actions/version.md` now downloads the upstream tarball once, extracts a fresh upstream tree, runs a `diff -ru` preflight against the current install, and reuses those reviewed bytes for extraction. The fragile "last commit touching version.md" sync heuristic is gone.
 - **Contract regressions cover both fixes** so future edits can't quietly re-enable default agentic image generation or restore the baseline-fragile updater heuristic.
 
-## 0.99.2 — The Kebab Case (2026-06-30)
+## 0.99.2 — Hyphenated Multi-Word Action Names (2026-06-30)
 
 The three space-separated action names now match their already-hyphenated filenames and the rest of the multi-word actions, so a single grep for `review-work` (or `verify-requests`, `present-work`, `capture-request:`) finds every reference instead of only the file paths.
 
@@ -313,7 +321,7 @@ The three space-separated action names now match their already-hyphenated filena
 - Title-Case headings ("Review Work Action") stay spaced — that matches "Code Review Action" / "UI Review Action" and is the existing convention.
 - The spaced forms still route (matching is verb-keyed) and remain listed as accepted aliases in the keyword table.
 
-## 0.99.0 — The Maintenance Hook (2026-06-30)
+## 0.99.0 — maintenance Marker Loads the Maintenance Crew Rule (2026-06-30)
 
 The delete-before-you-add rule shipped in 0.98.0 but nothing actually loaded it during the work that needed it. Now a `maintenance: true` REQ marker wires it into the pipeline — so a deliberate maintenance pass gets the subtraction discipline, while ordinary feature work stays surgical.
 
@@ -322,21 +330,21 @@ The delete-before-you-add rule shipped in 0.98.0 but nothing actually loaded it 
 - Tightened `quick-wins` so plain app-source dead-code removal stays under karpathy's implementation-time rule instead of being mislabeled a maintenance pass.
 - Documented the call in **ADR-015**, closing REQ-014's deferred D-01 loader gap (also raised as an external P2 review finding).
 
-## 0.98.0 — The Delete Key (2026-06-28)
+## 0.98.0 — Delete-Before-You-Add Maintenance Rule (2026-06-28)
 
 A new maintenance crew rule: when a skill instruction has drifted, try *removing* before adding. Most harnesses rot because every fix is one more rule — this is the counterweight.
 
 - **New crew member: `crew-members/maintenance.md`** — codifies delete-before-you-add for deliberate maintenance passes. Ask the deletion questions (stale source? bad example? tool too broad? job too vague?) before writing a new instruction, and prove any addition against a replay case (fails without it, passes with it). Explicitly complementary to `karpathy.md`: maintenance-time removal vs implementation-time surgical changes.
 - Wired in: added as a third "contract worth knowing" in CLAUDE.md's Agent Rules, and referenced from `actions/quick-wins.md` (the read-only action that surfaces removal candidates).
 
-## 0.97.0 — The Broken Record (2026-06-28)
+## 0.97.0 — Forensics Flags Recurring Corrections (2026-06-28)
 
 Forensics now spots when the *same* lesson keeps coming back. If a correction recurs across multiple archived REQs, that's a sign to fix the harness — not patch the next run again.
 
 - **New forensics check: Recurring Corrections** — aggregates the `## Lessons Learned` across every archived REQ (loose and UR-nested) and flags any theme that recurs: 2 REQs is a **watch** (Info), 3+ is a **strong signal** (Warning), each with the contributing REQ IDs and a "fix the harness, not the next run" pointer. Read-only, like the rest of forensics.
 - Check-list enumerations updated so the new check isn't orphaned (`docs/forensics-guide.md` table, `SKILL.md` teaser) — per "Closed Enumerations Go Stale."
 
-## 0.96.0 — The Terminal Set (2026-06-28)
+## 0.96.0 — Terminal-Success Status Set + Image-Gen Hardening (2026-06-28)
 
 Acting on the validate-feedback triage of the skill's own internals: remediated-with-issues work no longer falls through the cracks, and AI image generation can't be hijacked by hostile archived content. Two of these were live correctness/security gaps the skill's own doctrine predicted.
 
@@ -344,7 +352,7 @@ Acting on the validate-feedback triage of the skill's own internals: remediated-
 - **AI image generation is sandbox-hardened** (P1): the `$2` prompt is now an explicit trust boundary — `actions/ai-report.md` requires a Claude-authored, sanitized visual description and forbids relaying verbatim UR/REQ/Lessons content to a sandbox-bypassed (`codex exec --dangerously-bypass-approvals-and-sandbox`) generator, preferring a non-agentic backend when available. The Step 1 prompt-injection guard now explicitly extends to the image path.
 - **AI image output paths are now cwd-independent** (P3): the generation helper's `$1` is canonicalized to an absolute path (`cd … && pwd`) before generation; HTML still embeds the portable relative `generated/…` path. Fixes the contract-vs-example contradiction in both caller copies.
 
-## 0.95.0 — The Pushback Pass (2026-06-28)
+## 0.95.0 — New validate-feedback Action (2026-06-28)
 
 External review feedback finally has a home. Paste a code review, a PR thread, or an audit report and do-work triages it item by item against the real code — telling you what to accept, what's already done, and what to push back on (with the evidence to back the pushback).
 
@@ -352,7 +360,7 @@ External review feedback finally has a home. Paste a code review, a PR thread, o
 - **Routing + wiring** (`SKILL.md`): new priority-9 routing row placed above `review work` so feedback phrasings win before the bare "review" verb (triggers require feedback/findings/triage/push-back, so `review work` is unaffected); rows below renumbered and their interior cross-references updated. Verb Reference, Action Dispatch, help menu, and `next-steps.md` all updated.
 - **Guardrails reused, not reinvented**: the action loads `crew-members/prompt-injection.md` (pasted findings are data, not instructions) and `crew-members/anti-slop.md` (the triage report is human-facing). `validate-feedback` is registered as a known prompt-injection caller.
 
-## 0.94.0 — The Decision Brief (2026-06-25)
+## 0.94.0 — Decision-Brief Hand-Back Format (2026-06-25)
 
 Work hand-backs now lead with the decision, not the self-grade. do-work surfaces *what's being built* (at subsystem altitude) and the *value and risk* of every choice it asks you to approve — baked into the actions themselves, so it fires as the action's output instead of a rule you have to remember to run.
 
@@ -362,7 +370,7 @@ Work hand-backs now lead with the decision, not the self-grade. do-work surfaces
 - **`review-work` Step 9 leads with a worded verdict** (Approve / Approve-with-follow-ups / Request-changes); the `Overall: %` + score table moved below. The persisted `## Review` block is untouched — `present-work` still parses its score.
 - **Primes gained a `## Stakes` section** (`actions/prime.md`): `prime create` spelunks load-bearing elements' Req/Value/Risk and `prime audit` refreshes them — the durable store the Decision Brief reads from. Exempt from the 15-30 line routing-index budget.
 
-## 0.93.1 — The Named Restraint (2026-06-22)
+## 0.93.1 — YAGNI Gets a Canonical Home (2026-06-22)
 
 YAGNI ("You Aren't Gonna Need It") was already baked into the skill's implementation guardrails — it just wasn't named. Now it has a single canonical home plus a handful of pointers at the spots where over-building is most tempting, so builders and reviewers share one word for it.
 
@@ -371,7 +379,7 @@ YAGNI ("You Aren't Gonna Need It") was already baked into the skill's implementa
 - **One real contradiction reconciled, not deleted** — `crew-members/approach-directives.md` now states the Extensibility-First (#4) vs Simplicity-First (#2) trade-off explicitly: future-proof only when the REQ demands it, otherwise default to Simplicity-First.
 - **Deliberately *not* scattered.** Per CLAUDE.md's "Closed Enumerations Go Stale", YAGNI is stated once and referenced narrowly — over-sprinkling the reminder would itself violate YAGNI. `stray-check` was intentionally skipped (forensic dead-code detection ≠ build-time minimalism).
 
-## 0.93.0 — The Pixel Forge (2026-06-18)
+## 0.93.0 — ai-report Image Generation + Folder Layout (2026-06-18)
 
 `ai-report` learned to generate real diagrams. When an image-gen CLI is on PATH it now delegates architecture/concept/hero visuals to it — with SVG/Mermaid as the guaranteed fallback — and reports moved to a self-contained folder so synthetic images stay quarantined from real screenshots. Ported from the standalone make-ai-report-with-screenshot skill, kept platform-agnostic, and without dropping this repo's prompt-injection guard or `git diff-tree` asset discovery.
 
@@ -380,21 +388,21 @@ YAGNI ("You Aren't Gonna Need It") was already baked into the skill's implementa
 - **Click-to-full-res screenshots.** Each screenshot `<img>` is wrapped in an anchor to its own file and the overlay `<svg>` is set to `pointer-events:none`, so a click opens the native-resolution capture instead of being swallowed by the callout layer.
 - **Anti-slop self-check grows to nine rows.** Two report-local checks added to Step 6 — every generated image earns its place, and every generated image is disclosed as AI-generated. The canonical `crew-members/anti-slop.md` (seven principles) is unchanged.
 
-## 0.92.2 — The Even Suspenders (2026-06-17)
+## 0.92.2 — Tar Excludes Mirror Export-Ignore (2026-06-17)
 
 `decisions/` and `.vscode/` were stripped from consumer installs by only one mechanism (`.gitattributes export-ignore`), while `do-work/ai-reports/_dev` had two. Now they all get the double layer, so a single failure can't leak dev-only paths — and reviewers stop tripping over the asymmetry.
 
 - **`--exclude='.vscode' --exclude='decisions'` added to all three tar commands** (`README.md` install, the two in `actions/version.md`). They already shipped clean via export-ignore on a normal GitHub tarball; the flags are the independent second layer for tarballs built before `.gitattributes` existed, mirrors that don't honor export-ignore, or a broken/edited `.gitattributes`.
 - **The dev dotfiles stay export-ignore-only by design.** `.gitignore`/`.gitattributes` aren't tar-excluded — a vendored `.gitattributes` is inert in a consumer's repo (export-ignore only fires when *that* repo runs `git archive`), so a stale copy leaks nothing. The `.gitattributes` comment and the `version.md` note now spell this out instead of enumerating a list that goes stale.
 
-## 0.92.1 — The Typo Net (2026-06-15)
+## 0.92.1 — work Rejects Unrecognized Arguments (2026-06-15)
 
 `do-work run <fluffed-argument>` no longer silently builds your entire queue. The work action's parser used to treat any unrecognized token the same as no token at all, so a typo'd REQ ID — or dead muscle memory like a retired mode word — fell straight through to a full-queue run instead of erroring.
 
 - **`work` rejects unrecognized arguments instead of ignoring them.** After stripping `--wave N` and REQ-ID tokens, any leftover token in `$ARGUMENTS` now stops with a usage error rather than defaulting to full-queue processing. This generalizes the pre-existing `--wave`-plus-REQ-IDs rejection to *all* unrecognized residue — both are parse-time guards now (`actions/work.md` Input + Step 1, `SKILL.md` verb reference).
 - **Catches the typo'd-REQ-ID case, not just retired mode words.** `do-work run REG-042` (meant `REQ-042`) previously ran every pending REQ; it now errors and tells you the valid forms. The footgun was never specific to any one removed keyword — it was a gap in the parser that equated "unrecognized argument" with "no argument."
 
-## 0.92.0 — The Honest Ledger (2026-06-15)
+## 0.92.0 — Release-Metadata Corrections (2026-06-15)
 
 Squares the release metadata with reality: the `ultracode-fable-workflow` prompt removal now has a version bump and changelog entry behind it, two changelog headings that had gone missing are restored, and the update flow + work-loop exit summary stop misreporting their own state.
 
@@ -404,7 +412,7 @@ Squares the release metadata with reality: the `ultracode-fable-workflow` prompt
 - **`do-work update` no longer blocks non-git projects.** The Step 2 location preflight required a project git root, contradicting the non-git install handling in Steps 3–4. It now resolves `<project-root>` with `git rev-parse --show-toplevel || pwd` (the same fallback `actions/install.md` uses), so a project-local install in a non-git project can update while global installs are still refused.
 - **Work-loop exit summary stops claiming an empty queue when work is only blocked.** When `pending` REQs exist but are all dependency-blocked, the summary led with "No pending REQs in queue." — false. It now leads with "No dependency-ready pending REQs." in that case and keeps "No pending REQs in queue." only when the queue genuinely has none.
 
-## 0.91.0 — The Anchor Hold (2026-06-15)
+## 0.91.0 — Hook Path Fix + Update Protects Committed Customizations (2026-06-15)
 
 Fixes a recurring regression where the bundled hooks didn't work and `do-work version update` silently reverted committed local fixes — plus trims maintainer-internal files out of the install tarball.
 
@@ -413,7 +421,7 @@ Fixes a recurring regression where the bundled hooks didn't work and `do-work ve
 - **Leaner tarball.** `.gitattributes` export-ignores `decisions/` (the maintainer's own ADRs — never loaded at runtime), `_dev/`, and the dev dotfiles `.gitignore`/`.gitattributes`. `_dev` previously relied only on the install command's `--exclude` flag, so a GitHub "Download ZIP" would have leaked it. Consumer installs drop from 134 to 107 files.
 - New `decisions/records/adr-013-harden-the-vendored-skill-distribution-model.md` records the rationale.
 
-## 0.90.0 — The Family Name (2026-06-12)
+## 0.90.0 — Rename ultracode Mode to ultracode-fable-workflow (2026-06-12)
 
 The ultracode trigger now says what it's for: the mode word is renamed to `ultracode-fable-workflow` (shorthand `ultracode-fable`), because the policy's Tier Table is tuned to the Claude family (Fable audits, Opus orchestrates, Sonnet/Haiku build) — and "workflow" says what kind of thing it is. The new name also stops colliding with Claude Code's native bare-word `ultracode` keyword.
 
@@ -421,7 +429,7 @@ The ultracode trigger now says what it's for: the mode word is renamed to `ultra
 - Mode word updated everywhere it's routed or referenced: SKILL.md's work-verb routing, work.md's Input and Step 6 item 5a, work-reference.md's Retired Fields note (including its informational message), and the prompts index row.
 - Behavior is unchanged — same batch orchestration, same Tier Table, same two-touch session contract. Rename only.
 
-## 0.89.0 — The Batch Conductor (2026-06-11)
+## 0.89.0 — Ultracode Batch Orchestrator (2026-06-11)
 
 Ultracode grows up: instead of the session model refereeing every diff itself, it now takes exactly two turns per batch — launch one background Opus orchestrator that owns the queue end-to-end, then audit the result. Session-model turn count is the cost lever that matters (every turn re-reads the whole conversation, usually cache-missed), so the architecture optimizes for touches, not tokens.
 
@@ -431,7 +439,7 @@ Ultracode grows up: instead of the session model refereeing every diff itself, i
 - New contracts in the prompt: two-touch session model, escalation terminal is BLOCKED-in-digest (no last-resort loops inside the batch), context hygiene (digest hard cap ~20 lines, files over transcript), fixed digest format, and a final audit that reads all elevated/escalated diffs in full. PASS means releasable with commits local — nothing ever pushes.
 - `crew-members/testing.md` gains the caller-seam rule and production-faithful-fixtures rule (plus a Fantasy Fixtures anti-pattern) as the canonical home for two of the prompt's house rules.
 
-## 0.88.1 — The Slim Charter (2026-06-10)
+## 0.88.1 — CLAUDE.md Halved with No Information Loss (2026-06-10)
 
 CLAUDE.md went on a diet — from 256 lines to about half that, with zero information loss. Everything cut was a duplicate of content already canonical elsewhere, including three hand-maintained lists that would have silently drifted (the very pattern CLAUDE.md's own "Closed Enumerations Go Stale" rule warns about).
 
@@ -441,7 +449,7 @@ CLAUDE.md went on a diet — from 256 lines to about half that, with zero inform
 - Prompt Retrospectives compressed from 40 lines to ~12 — same triggers, same 4-part shape, examples and cue phrases dropped
 - Kept verbatim: Before Every Commit, the action-file template + shell-trap lessons, Agent Compatibility, Naming Conventions
 
-## 0.88.0 — The Model Ladder (2026-06-10)
+## 0.88.0 — New ultracode-workflow Prompt (2026-06-10)
 
 New prompt: `ultracode-workflow` — a model-tiered delegation policy (Sonnet executes, Opus escalates and deep-reviews, Fable judges) with mechanical test verification, fresh-context review gates, and an explicit escalation ladder. Run it standalone on any task, or hook it into the queue so the work action dispatches each pipeline step to the right model tier.
 
@@ -452,7 +460,7 @@ New prompt: `ultracode-workflow` — a model-tiered delegation policy (Sonnet ex
 
 Co-designed gaps closed relative to the original prompt: the ladder's last resort no longer self-reviews (fresh-context judge required), reviews are fresh-context by rule (spec + diff, never the build transcript), there's a no-test-suite fallback, escalation grants a fresh 2-iteration budget, and the report must state cost as measured or "not measured" — never implied.
 
-## 0.87.0 — The Deep Clean (2026-06-10)
+## 0.87.0 — 24 Defects Fixed from a 20-Commit Review (2026-06-10)
 
 A 20-commit code review (9 finder angles, adversarial verification, gap sweep) surfaced 24 confirmed defects — all fixed. The headliners: deep-explore's session-dir command no longer breaks (or executes arbitrary shell) on punctuation in the concept name, capture's domain enum now includes `security`/`testing` so the security crew rule actually loads for new REQs, and the prompt-injection guardrail now covers all nine ingestion paths instead of five.
 
@@ -467,13 +475,13 @@ A 20-commit code review (9 finder angles, adversarial verification, gap sweep) s
 - Stale records fixed: ADR-001 now records the 2026-06-01 work.md re-split, security.md's JIT comment no longer claims a review-work loading path that doesn't exist, interview.md's gitignore claim updated, prompt-injection's dream load point corrected to Step 2/Phase 1
 - CLAUDE.md gained three new prescribed-shell traps (`git show --name-only` bleed, root-anchored ignore patterns, raw-text shell interpolation) and a "Closed Enumerations Go Stale" convention
 
-## 0.86.1 — The Worktree Path (2026-06-02)
+## 0.86.1 — Local-Exclude Works in Worktrees and Submodules (2026-06-02)
 
 The local-exclude snippet from 0.86.0 now works in linked worktrees and submodules, where `.git` is a file rather than a directory. Previously the append silently failed there ("Not a directory"), leaving transient state (`do-work/pipeline.json`, `do-work/runs/`) un-ignored and at risk of being committed by accident.
 
 - All three exclude snippets (`actions/pipeline.md`, `actions/deep-explore.md`, `crew-members/background-agents.md`) now resolve the exclude file with `git rev-parse --git-path info/exclude` instead of `$(git rev-parse --show-toplevel)/.git/info/exclude`. Verified correct in normal clones, nested subdirectories, linked worktrees, and submodules — and still a clean no-op outside a git repo. `actions/code-review.md` defers to the `background-agents.md` snippet, so it inherits the fix.
 
-## 0.86.0 — The Local Exclude (2026-06-02)
+## 0.86.0 — Local Excludes for Transient State + Leaner Tarball (2026-06-02)
 
 Transient run and pipeline state now stays untracked no matter how do-work is installed — including the nested `.claude/skills/do-work/` layout, where the shipped `.gitignore` sits too deep to reach the project-root `do-work/`. The installer also stops shipping the maintainer's own queue and reports into your repo. Bundled with a supply-chain tightening for `prompts run` and a stale ai-report guide fix.
 
@@ -482,21 +490,21 @@ Transient run and pipeline state now stays untracked no matter how do-work is in
 - `prompts run <name>`: the project-local trust check now compares the resolved cwd against the resolved skill-root, not "does the cwd contain any `SKILL.md`" — so a different skill's repo (or a decoy `SKILL.md`) can no longer bypass the project-local confirmation gate.
 - `docs/ai-report-guide.md`: the asset-source row drops the now-forbidden root `verify-*.png` and lists `do-work/archive/UR-NNN/assets/` first, matching `actions/ai-report.md` Step 3a.
 
-## 0.85.3 — The Missing Entry (2026-06-01)
+## 0.85.3 — CLAUDE.md Tree Lists work-reference.md (2026-06-01)
 
 Maintainer-doc hygiene after the `work.md` split (0.84.0): `CLAUDE.md`'s Project Structure tree never listed `work-reference.md`, and two references still attributed the Schema Read Contract to `work.md`. No effect on installed repos — `CLAUDE.md` is the authoring doc, not shipped runtime — but the canonical inventory should match reality.
 
 - `CLAUDE.md` tree: added `work-reference.md` (the only companion that was missing) and noted `work.md` is now an orchestrator.
 - `CLAUDE.md`: repointed two Schema Read Contract mentions to `actions/work-reference.md`. (REQ-001)
 
-## 0.85.2 — The Forwarding Address (2026-06-01)
+## 0.85.2 — Crew Rules Repointed to work-reference.md (2026-06-01)
 
 Cleanup after the `work.md` split (0.84.0): two crew-member rule files still pointed at `work.md` for content that moved to `work-reference.md`. Repointed them so an agent loading the rules lands on the file that actually holds the table.
 
 - `crew-members/security.md`: JIT_CONTEXT now cites the Schema Read Contract in `actions/work-reference.md` (was `work.md`).
 - `crew-members/debugging.md`: the escalation step now points at the **Failure Classification (Step 8)** table in `actions/work-reference.md` (was "the failure table in work.md Step 8", which now only forwards). (REQ-001)
 
-## 0.85.1 — The Permanent Marker (2026-06-01)
+## 0.85.1 — Notes Are Committed, Not Gitignored (2026-06-01)
 
 Notes graduate from sticky to permanent: `do-work/notes.md` is now part of the committable Trail of Intent (like URs and REQs), not working-tree scratch. The old "it's gitignored" line was false in installed repos — where `do-work/` is meant to be committed — so a teammate would never have seen your notes, and you might commit a file the skill swore you wouldn't. Plus a first-run crash fix.
 
@@ -504,7 +512,7 @@ Notes graduate from sticky to permanent: `do-work/notes.md` is now part of the c
 - First-run fix: `note` now `mkdir -p do-work/` before appending, so jotting a note as the very first do-work command in a fresh repo no longer fails.
 - `roadmap`'s `## Notes` example now reads oldest-first, matching the documented append order. (REQ-012, UR-001)
 
-## 0.85.0 — The Sticky Note (2026-06-01)
+## 0.85.0 — New note Command (2026-06-01)
 
 New `do-work note "<text>"` command for the thoughts that don't deserve a whole REQ — "investigate xyz next", "check Y before running". It appends a dated line to `do-work/notes.md`, and `do-work roadmap` now surfaces those notes at the top of its survey. Delete a line by hand when it's resolved; there's no ceremony.
 
@@ -513,7 +521,7 @@ New `do-work note "<text>"` command for the thoughts that don't deserve a whole 
 - `note` wired into SKILL.md routing at priority 31 — deliberately *not* near roadmap, so the priority cross-references to dream/stray-check (28/29) stay intact.
 - `next-steps.md` suggests `do-work note` after capture. (REQ-012, UR-001)
 
-## 0.84.1 — The Named Handoff (2026-06-01)
+## 0.84.1 — Named Phase Contracts Replace Step Numbers (2026-06-01)
 
 Action files used to point at `work.md` by internal step number ("work.md's Step 9 commits…") — brittle the moment steps get renumbered. Promoted the two load-bearing handoff points to named contracts (**Lessons-Capture Phase**, **Commit Phase**) and switched every caller to reference them by name.
 
@@ -521,7 +529,7 @@ Action files used to point at `work.md` by internal step number ("work.md's Step
 - Callers in `kb-lessons-handoff.md`, `review-work.md`, and `commit.md` reference the phases by name.
 - Swept the rest of the repo: `capture.md`, `roadmap.md`, and `CLAUDE.md` step-number references to work.md are now by-name too, so `grep 'work.md.*Step N'` is clean outside work.md's own internal navigation. (REQ-006)
 
-## 0.84.0 — The Lean Orchestrator (2026-06-01)
+## 0.84.0 — Split work.md into Orchestrator + Reference (2026-06-01)
 
 `actions/work.md` was the longest file in the repo (1,074 lines) and it's read on every `do-work run`. Split it the way `bkb`/`interview` are split — a lean 631-line orchestrator plus a new `actions/work-reference.md` companion holding the heavy templates, tables, and sub-procedures. Same instructions, less to load.
 
@@ -530,20 +538,20 @@ Action files used to point at `work.md` by internal step number ("work.md's Step
 - The Step-6.3 qualify-fail/pass logic — orphaned beneath mid-document Red Flags/Verification Checklist — is reconnected to its step.
 - Schema-Read-Contract references in `roadmap.md` and `capture.md` now point at the companion. (REQ-001)
 
-## 0.83.14 — The Stray Disowned (2026-05-30)
+## 0.83.14 — ai-report Drops the Root-PNG Asset Source (2026-05-30)
 
 The ai-report action no longer treats a loose PNG at the project root as a before/after asset source. Nothing in do-work writes one there, and `stray-check` already flags root PNGs as junk — so pulling one into a report contradicted our own hygiene rules. Aligns with the same deprecation made independently in the standalone make-ai-report-with-screenshot skill.
 
 - `actions/ai-report.md` Step 3a drops the project-root `verify-*.png` source (and the When-to-Use bullet); git-diff images renumber to #4.
 - Adds an explicit note that a stray root PNG is junk, not an asset — cross-referencing `actions/stray-check.md`.
 
-## 0.83.13 — The Bracket Insertion (2026-05-30)
+## 0.83.13 — REQ-006 depends_on List-Form Fix (2026-05-30)
 
 REQ-006 was captured with `depends_on: REQ-001` (scalar) instead of `depends_on: [REQ-001]` (list). The schema at `actions/work.md:160` and `actions/capture.md:92` defines this field as a YAML sequence, so the scalar form would silently bypass dependency gating and let REQ-006 run before REQ-001 lands. Caught by Codex review on PR #115.
 
 - `do-work/queue/REQ-006.md` frontmatter: `depends_on` now uses list form.
 
-## 0.83.12 — The Sentinel Promoted (2026-05-29)
+## 0.83.12 — security Domain Joins the Schema (2026-05-29)
 
 `crew-members/security.md` is now a first-class crew rule, not a loading-model orphan. REQ-004 from the self-review queue — user chose Path A (promote to crew) over Path B (demote to checklist).
 
@@ -552,7 +560,7 @@ REQ-006 was captured with `depends_on: REQ-001` (scalar) instead of `depends_on:
 - CLAUDE.md Agent Rules section now lists `security.md` next to `testing.md`.
 - `crew-members/security.md` JIT_CONTEXT rewritten to point at CLAUDE.md as the canonical loading reference instead of re-describing the rule.
 
-## 0.83.11 — The Injection Guard (2026-05-29)
+## 0.83.11 — Prompt-Injection Crew Rule (2026-05-29)
 
 Added `crew-members/prompt-injection.md` and wired it into the five ingestion paths surfaced by the self-review: capture, bkb ingest, dream, kb-lessons-handoff, and prompts run. REQ-009 from the self-review queue — the second Important security finding.
 
@@ -561,7 +569,7 @@ Added `crew-members/prompt-injection.md` and wired it into the five ingestion pa
 - `prompts run` now resolves from `<skill-root>/prompts/` by default; project-local `prompts/` directories require an explicit confirmation prompt before adoption.
 - CLAUDE.md Agent Rules section lists the new crew file with its triggers.
 
-## 0.83.10 — The Guide Trio (2026-05-29)
+## 0.83.10 — Guides for dream, ai-report, and slop-check (2026-05-29)
 
 Wrote user-facing guides for the three biggest actions that didn't have them. REQ-011 from the self-review queue — user chose Path A (write all three) over the mixed recommendation.
 
@@ -570,7 +578,7 @@ Wrote user-facing guides for the three biggest actions that didn't have them. RE
 - `docs/slop-check-guide.md` — the seven anti-slop principles in plain language, the rewrite-mode flow.
 - Each action's description blockquote now links its guide.
 
-## 0.83.9 — The Dream Gate (2026-05-29)
+## 0.83.9 — Consent Gate Before Dream's Destructive Phase (2026-05-29)
 
 Added a Phase 2.5 consent gate to `dream`. Phase 3 (the destructive one) can no longer fire without an explicit preview-then-confirm round. The single-bit `do-work dream` invocation token is no longer enough to consent to wiki deletions. REQ-008 from the self-review queue — the highest-impact security finding in the self-review.
 
@@ -578,7 +586,7 @@ Added a Phase 2.5 consent gate to `dream`. Phase 3 (the destructive one) can no 
 - New `--dry-run` mode token previews without writing; Step 5 (Phase 4) short-circuits writes when dry-run was chosen and only releases the lock.
 - New Rule (`Phases 1–2 must produce a visible worklist before Phase 3 may begin`), two new Common Rationalizations rows, two new Red Flags, two new Verification Checklist items — defense-in-depth against gate-skipping shortcuts.
 
-## 0.83.8 — The Runs Convention (2026-05-29)
+## 0.83.8 — deep-explore Sessions Move Under do-work/runs/ (2026-05-29)
 
 `deep-explore` session directories now live under `do-work/runs/`, matching the `crew-members/background-agents.md` durability convention the action already claimed to follow. REQ-007 from the self-review queue.
 
@@ -586,11 +594,11 @@ Added a Phase 2.5 consent gate to `dream`. Phase 3 (the destructive one) can no 
 - `continue` mode searches `do-work/runs/` first and falls back to the legacy project-root path for one release with a deprecation warning.
 - Schema example in `actions/deep-explore-reference.md` updated to match.
 
-## 0.83.7 — The Slop Roster (2026-05-29)
+## 0.83.7 — ai-report Added to Anti-Slop Loading Lists (2026-05-29)
 
 Added `ai-report` to the anti-slop loading lists in CLAUDE.md and `crew-members/anti-slop.md`'s JIT_CONTEXT comment. The list now matches the actual caller set (`grep -l 'anti-slop' actions/*.md`). REQ-003 from the self-review queue.
 
-## 0.83.6 — The Sample Refresh (2026-05-29)
+## 0.83.6 — Sample Archived REQ Matches the Current Schema (2026-05-29)
 
 Refreshed `actions/sample-archived-req.md` — the canonical schema example — to match the current capture/work frontmatter contract. REQ-010 from the self-review queue.
 
@@ -598,24 +606,24 @@ Refreshed `actions/sample-archived-req.md` — the canonical schema example — 
 - Inserted a `## Red-Green Proof` section (mandatory when `tdd: true`) after `## What`.
 - Added `Red-green validation:` evidence rows inside `## Testing` linking the RED case to the test that proves GREEN.
 
-## 0.83.5 — The Bare Name (2026-05-29)
+## 0.83.5 — File-Path Cross-Reference Fix in capture.md (2026-05-29)
 
 Fixed the lone bare-name cross-reference in `actions/capture.md:63` — `review-work.md` → `actions/review-work.md` — to align with CLAUDE.md's cross-reference rule. REQ-002 from the self-review queue.
 
-## 0.83.4 — The Priority Cleanup (2026-05-29)
+## 0.83.4 — SKILL.md Routing-Priority Cross-Reference Fixes (2026-05-29)
 
 Fixed two off-by-one cross-references in SKILL.md's Verb Reference table — the `ui-review` and `review-work` rows pointed at "priority 4" (work) instead of "priority 5" (verify). Surfaced by REQ-005 from the self-review queue.
 
 - Hand-audited every `grep -nE 'priority [0-9]+' SKILL.md` hit against the routing table — no other off-by-ones remain.
 
-## 0.83.3 — The Self Review (2026-05-29)
+## 0.83.3 — Self-Review Findings Captured as Queue REQs (2026-05-29)
 
 Ran the skill's own `code-review` action against the whole repo and captured the actionable findings as queue items so they can move through the normal pipeline.
 
 - Added 11 follow-up REQs (REQ-001…011) to `do-work/queue/` from a full-repo review: split the oversized `work.md` into an orchestrator + reference companion, gate `dream.md`'s destructive phase behind a preview/confirm step, add prompt-injection guardrails to the five ingestion paths, fix SKILL.md routing-priority typos, replace brittle step-number coupling with named contracts, and more.
 - These are development to-do items for the skill itself — captured intent, not shipped behavior changes.
 
-## 0.83.2 — The Loose Ends (2026-05-29)
+## 0.83.2 — Background-Agents Review Polish (2026-05-29)
 
 Polish pass closing the remaining minor findings from the background-agents code review.
 
@@ -623,7 +631,7 @@ Polish pass closing the remaining minor findings from the background-agents code
 - Reworded the native-orchestration rung to stop overclaiming: the engine's journal recovers the *run*, the on-disk findings files recover the *synthesis* — distinct mechanisms, both kept.
 - Captioned the manifest example as `code-review`-specific, trimmed a redundant paragraph, and added `do-work/runs/` to the shipped `.gitignore` as transient run state.
 
-## 0.83.1 — The Disk Truth (2026-05-29)
+## 0.83.1 — Recovery Reads the Filesystem + Run Completion Marker (2026-05-29)
 
 Fixed two correctness gaps in 0.83.0's background-agent recovery that a code review surfaced — the recovery path didn't actually recover, and finished runs nagged you to resume them.
 
@@ -631,7 +639,7 @@ Fixed two correctness gaps in 0.83.0's background-agent recovery that a code rev
 - Added a run **completion marker** (`Status: complete`, written after synthesis). The resume check now skips completed runs and takes the newest dir when several match — so a successful review no longer trips the resume prompt on the next invocation.
 - Both fixes applied to `crew-members/background-agents.md` and its consumer `actions/code-review.md`.
 
-## 0.83.0 — The Black Box (2026-05-28)
+## 0.83.0 — Durable Run Directories for Fan-Out Reviews (2026-05-28)
 
 Fan-out reviews now survive a dead session. Sub-agent findings are written to a durable run directory on disk instead of living only in the chat transcript, so an interrupted, compacted, or corrupted orchestrator can be recovered from a fresh session — the run directory is the flight recorder that outlives the crash.
 
@@ -640,7 +648,7 @@ Fan-out reviews now survive a dead session. Sub-agent findings are written to a 
 - Honest about the ceiling: the reasoning-block corruption (a signed thinking block on an interrupted turn that makes a transcript permanently un-resumable) is a harness-level fault this makes recoverable, not prevented. Recovery: don't resume the poisoned session — start fresh, re-spawn only the missing agents, synthesize from disk.
 - `work` multi-REQ, `pipeline`, and `deep-explore` gained one-line pointers to the new rule for their own fan-outs.
 
-## 0.82.2 — The Direct Path (2026-05-28)
+## 0.82.2 — File-Path Cross-References Everywhere (2026-05-28)
 
 Action files now cross-reference each other by explicit file path instead of short names, so an agent reading a prompt can open the target directly without resolving "the work action" → a file first. The CLAUDE.md convention is flipped to match.
 
@@ -648,13 +656,13 @@ Action files now cross-reference each other by explicit file path instead of sho
 - Flipped the CLAUDE.md cross-reference convention from short-name to file-path, with the `do-work <verb>` carve-out documented.
 - version.md gained an `## Input` section naming its three response modes.
 
-## 0.82.1 — The Wave Floor (2026-05-28)
+## 0.82.1 — Wave Depth Defined for All Dependency States (2026-05-28)
 
 Closed one real edge gap from a review of `--wave` execution; the review's other three findings were rejected after verification showed they described a stale checkout (the "orphaned" reference files were `git rm`'d back at 0.75.0/0.76.0, and `ai-report` already has a `next-steps.md` block).
 
 - `actions/work.md` Step 1 (wave depth): the depth formula previously defined a value only for REQs with no deps / all-archived deps (depth 0) and deps "in the current pending set" (+1) — leaving depth **undefined** for a dependency member sitting in `pending-answers`, `blocked-*`, `claimed`, or `failed`. Added a clause making those members contribute depth 0; their actual gating stays with the dependency-ready filter, which holds the dependent REQ until every member reaches `completed`/`completed-with-issues`. Depth is now total over all dependency states.
 
-## 0.82.0 — The Real Path (2026-05-28)
+## 0.82.0 — ai-report External Assets + Path Fixes (2026-05-28)
 
 Closeout pass on five P2 findings from a fresh review of 0.81.0's `ai-report` action — three real bugs, one self-contradictory rule, and one design change to how the report stores its image binaries. One additional finding was rejected after history-check showed the reviewer was describing behavior that never existed.
 
@@ -671,7 +679,7 @@ Plus four adjacent fixes from a second review pass on related surfaces:
 - `actions/install.md` (line 35 + line 137): both upstream raw-GitHub URLs were 404. The `frontend-design` skill moved to a dedicated `anthropics/skills` repo (was `anthropics/claude-code`), and `disler/bowser` houses its SKILL.md under `.claude/skills/playwright-bowser/`, not `skills/playwright-bowser/`. Verified the new URLs with `curl -fsI` before swapping. Old fallback URL removed (it pointed at the same wrong path family).
 - `next-steps.md`: added an **After ai-report** block. `SKILL.md` (line 324) requires next-step suggestions after every action, and ai-report was the only routable action without one. Suggests `slop-check` (validate against anti-slop), `present work` (complementary explainer), `inspect`, and `commit`.
 
-## 0.81.0 — The Pixel Proof (2026-05-28)
+## 0.81.0 — New ai-report Action (2026-05-28)
 
 New `ai-report` action: a single-file HTML report that anchors a completed UR/REQ in the literal pixels that changed. Where `present-work` explains the concept and `pipeline`'s `.single.html` debriefs the run, `ai-report` puts the screenshot front-and-centre with SVG callouts pointing at the delta — and falls back to SVG + Mermaid diagrams when bowser isn't available, so the report always ships.
 
@@ -683,7 +691,7 @@ New `ai-report` action: a single-file HTML report that anchors a completed UR/RE
 - `actions/install.md`: bowser target now notes that `ai-report` is the second consumer (alongside `ui-review`) and falls back to diagrams when bowser isn't installed.
 - `CLAUDE.md`: `actions/` listing gains `ai-report.md`.
 
-## 0.80.2 — The Full Inventory (2026-05-27)
+## 0.80.2 — Untracked-File Enumeration Fixed Everywhere (2026-05-27)
 
 Two more correctness fixes from the same code review, plus the realization that one of them wasn't local. `stray-check` now sees junk inside brand-new untracked directories and stops letting its own skip-list hide committed artifacts — and the untracked-enumeration fix was applied everywhere the same pattern had been copy-pasted.
 
@@ -692,7 +700,7 @@ Two more correctness fixes from the same code review, plus the realization that 
 - Same `git status --porcelain` → `--untracked-files=all` fix applied to `commit`, `inspect`, and `work`, where the identical pattern would have missed (or tried to "read") files inside a new untracked folder.
 - Codified the two git-command traps in CLAUDE.md so future actions avoid them — and the rule that a prescribed-command bug found by review is rarely local: grep the primitive across every action.
 
-## 0.80.1 — The Root Cause (2026-05-27)
+## 0.80.1 — Shipped .gitignore No Longer Blocks do-work/ (2026-05-27)
 
 Install-safety fix plus three correctness fixes from a code review. The big one: the shipped `.gitignore` ignored all of `do-work/`, and since the repo installs by extracting its files into your project root, that rule landed in end-user projects and blocked the do-work folder it's supposed to commit. An ignore rule's reach follows where it sits — a project-root rule over-reaches — so nothing `do-work/`-related ships into the root anymore.
 
@@ -701,7 +709,7 @@ Install-safety fix plus three correctness fixes from a code review. The big one:
 - `prompts`: the `Runnable:` opt-out guard now parses the first token, so `Runnable: no — placeholder…` correctly refuses to run.
 - `slop-check`: the report template no longer shows a `PASS` row with blank evidence, which had undercut its own "every row needs evidence" rule.
 
-## 0.80.0 — The Lost and Found (2026-05-27)
+## 0.80.0 — New stray-check Action (2026-05-27)
 
 New `stray-check` action: a repo-wide sweep for orphan and junk files that pollute where they don't belong — the whole-repo sibling to forensics, which only ever looked at do-work's own files. It reports first and touches nothing until you confirm.
 
@@ -709,13 +717,13 @@ New `stray-check` action: a repo-wide sweep for orphan and junk files that pollu
 - Report-only by default; `fix` applies the safe, reversible fixes (delete untracked junk, `git rm --cached`, gitignore) only on explicit confirmation. Never `git add -A`, never auto-commits.
 - Skips the entire `do-work/` tree and defers misplaced `do-work/` directories to cleanup. Routing carve-out keeps "clean up junk files" / "find orphan files" out of cleanup.
 
-## 0.79.1 — The Dream Lane (2026-05-26)
+## 0.79.1 — Memory-Cleanup Phrases Route to dream (2026-05-26)
 
 Routing fix: `consolidate memory` / `clean up wiki` / `memory cleanup` now reach the dream action instead of being swallowed by cleanup.
 
 - Scoped cleanup to archive-only; gave dream's memory/wiki/notes phrases precedence over cleanup's generic verbs.
 
-## 0.79.0 — The Quiet Pass (2026-05-25)
+## 0.79.0 — New dream Action (2026-05-25)
 
 A new `dream` action — a manual, explicit four-phase pass that consolidates a plain-text memory directory: lint mechanical rot, heal contradictions, prune near-duplicates, rebuild the index. Destructive by design, so it never auto-triggers; invoke it when memory has visibly decayed.
 
@@ -725,20 +733,20 @@ A new `dream` action — a manual, explicit four-phase pass that consolidates a 
 - `next-steps.md`: new "After dream" block suggesting `commit`, `bkb lint`, or another dream pass.
 - `CLAUDE.md`, `README.md`: `actions/` listing and Other-actions reference gain `dream`.
 
-## 0.78.3 — The Dimension Pair (2026-05-25)
+## 0.78.3 — Two New code-review Dimensions (2026-05-25)
 
 `code-review` Step 4 (Pattern & Architecture Review) now names two more dimensions reviewers were quietly missing. Folder cohesion catches files that don't belong in the folder they live in; cyclomatic complexity gets promoted from a quick-wins tie-breaker into a first-class architectural check, explicitly distinguished from Step 3's circular-dependency check so the two don't get conflated.
 
 - `actions/code-review.md`: Step 4 dimension table gains two rows. **Folder cohesion / orphan files** — checks whether imports match folder domain, whether file shape matches siblings, and whether folders have become junk drawers; contrasted with Step 3's "structural consistency" angle. **Cyclomatic complexity** — branch counts, nested conditionals, sprawling switches, predicate chains; explicitly contrasted with Step 3's "Circular dependencies?" check to prevent the McCabe-vs-cyclic-deps mix-up. No thresholds named (consistent with the rest of the table). No changes to Step 9's report template — new findings flow into the existing Architecture table.
 - `actions/quick-wins.md`: unchanged. Cyclomatic complexity stays in Step 5 as a risk-impact tie-breaker; this release adds coverage to code-review without removing anything from quick-wins. The two actions stay complementary.
 
-## 0.78.2 — The Audit Sunset (2026-05-21)
+## 0.78.2 — Remove the Resolved DEAD_CODE.md (2026-05-21)
 
 Removed `DEAD_CODE.md` from the repo root. It was a point-in-time audit snapshot from 0.77.0, and every actionable finding it raised has since been closed out — so the report now describes a tree that no longer exists.
 
 - `DEAD_CODE.md`: deleted. Its findings were all resolved in 0.77.0 (`performance.md` removed, action→guide cross-links added, placeholder-prompt opt-out marker added, broken ADR-012 link fixed, orphaned imported-spec annotated). The file was never wired into the skill — nothing routed to or loaded it — so removal is pure cleanup. Full report remains in git history at commit `73d4955`. The historical 0.77.0 changelog entry that mentions it is left intact as a record.
 
-## 0.78.1 — The Review Trim (2026-05-21)
+## 0.78.1 — slop-check Routing and Default-Target Fixes (2026-05-21)
 
 Codex review pass on 0.78.0. Two precision fixes — both surfaced unreachable or noisy behavior in the just-added slop-check routing and default-target resolution.
 
@@ -746,7 +754,7 @@ Codex review pass on 0.78.0. Two precision fixes — both surfaced unreachable o
 - `actions/slop-check.md` (Step 2, point 3): "most recent" resolution now prefers authored artifacts. Globs `*.md` and `*.single.html`; skips `*.marp.html` (mechanical Marp-CLI exports of the `.marp.md` source) and `*-video/` directory contents (Remotion TSX source, not prose). Previous newest-by-mtime heuristic would frequently pick the mechanical Marp HTML right after a pipeline completion, flagging HTML scaffolding instead of the authored draft.
 - `CHANGELOG.md` 0.78.0 entry: corrected the inaccurate trigger list (was claiming `check slop`/`check draft`/`check artifact` as distinctive — they weren't).
 
-## 0.78.0 — The Slop Filter (2026-05-21)
+## 0.78.0 — Anti-Slop Crew Rule + slop-check Action (2026-05-21)
 
 A guardrail against AI slop — bloated, unverified, conclusion-buried artifacts that pass the cost of clarity onto the reader. Adds a new behavioral crew-member that auto-loads whenever an artifact is being generated for a human, plus a standalone `slop-check` action to grade any draft against the seven principles before it ships.
 
@@ -757,7 +765,7 @@ A guardrail against AI slop — bloated, unverified, conclusion-buried artifacts
 - `next-steps.md`: post-`present-work` suggestion now includes `do-work slop-check`; new "After slop-check" block points at re-checks, regeneration, and follow-up capture.
 - `CLAUDE.md`: `actions/` listing gains `slop-check.md`; crew-members loading-behavior list gains `anti-slop.md` with its exact load conditions and boundaries.
 
-## 0.77.0 — The Reach Audit (2026-05-19)
+## 0.77.0 — Dead-Code Audit Closeout (2026-05-19)
 
 Closeout pass on a dead-code audit of the skill. Tightens the Schema Read Contract so the `domain` enum is honored consistently, removes a crew-member file that was reachable in letter but never in spirit, cross-links every action file to its user-facing guide, and adds a machine-readable opt-out marker for placeholder prompts.
 
@@ -769,7 +777,7 @@ Closeout pass on a dead-code audit of the skill. Tightens the Schema Read Contra
 - `decisions/imported-specs/2026-04-17_improve-weekly-diff-skill.md`: added a Status footer documenting that edits 1–3 from the spec landed in `prompts/weekly-signal-diff.md`. The spec is a candidate for a future ADR-013 if the maintainer wants the decision rationale in the ledger.
 - `DEAD_CODE.md`: full audit report committed at the repo root with findings grouped by confidence. This release is the closeout of the items that were actionable; two other observations in the report (the `AGENTS.md` stub and `.vscode/tasks.json` portability) were independently addressed in 0.76.5.
 
-## 0.76.5 — The Stale Wipe (2026-05-19)
+## 0.76.5 — Six Janitorial quick-wins Fixes (2026-05-19)
 
 Six janitorial fixes from a `quick-wins` self-scan — stale docs swept out, two shell hooks hardened, and an invariant documented so the non-jq fallback can't silently miscount.
 
@@ -780,7 +788,7 @@ Six janitorial fixes from a `quick-wins` self-scan — stale docs swept out, two
 - `AGENTS.md`: replaced the newline-less `READ CLAUDE.md` stub with a one-line markdown link (`See [CLAUDE.md](CLAUDE.md).`) — clickable when rendered, POSIX-clean.
 - `hooks/session-start.sh`: anchored the version-line `sed` so it strips only the `**Current version**:` prefix instead of greedily up to the last `: `. Same output today, robust to future colon-containing version lines.
 
-## 0.76.4 — The Quiet Drain (2026-05-17)
+## 0.76.4 — Remove the --halt-on-failure Flag (2026-05-17)
 
 Removes the `--halt-on-failure` flag from `do-work run`. The flag was redundant with the existing auto-follow-up pattern — `review-work` Step 10 already creates `pending` / `pending-answers` follow-ups for failed and completed-with-issues outcomes, and `do-work clarify` is the documented batch-triage path. The default loop is now the only loop: classify, archive, queue follow-ups, continue.
 
@@ -788,7 +796,7 @@ Removes the `--halt-on-failure` flag from `do-work run`. The flag was redundant 
 - `SKILL.md`: removed the flag from the priority-4 routing example and rewrote the work-action Notes cell to mention only `--wave N`.
 - `docs/work-guide.md`: rewrote the third "What `run` does" bullet to state the loop-always-continues guarantee and point at `do-work clarify` for triage, instead of describing an opt-in halt.
 
-## 0.76.3 — The Typo Guard (2026-05-17)
+## 0.76.3 — Normalize-and-Warn Contract for Frontmatter Fields (2026-05-17)
 
 Extends `0.76.2`'s defensive `dependencies:` alias to every other field where a natural muscle-memory typo would have been silently swallowed. Pairs the read-only field-name alias pattern (when the YAML key is wrong) with a uniform normalize-and-warn contract (when the enum value is wrong), and closes a near-miss-keyword fall-through in the pipeline dispatcher.
 
@@ -798,7 +806,7 @@ Extends `0.76.2`'s defensive `dependencies:` alias to every other field where a 
 - `actions/bkb.md`: new Schema Read Contract for wiki-page frontmatter — normalize-and-warn for `type`, `rel`, `confidence`; field-name alias for `topic_cluster` (`topic`/`topic_category`). Applies across `triage`, `ingest`, `lint`, `garden`, `defrag`, and `query` sub-commands.
 - `actions/roadmap.md`: Ready and Blocked rubrics honor the `addendum_to` aliases; Step 1 inventory paragraph references the work.md contract so the same normalization applies to roadmap classification — REQs with non-canonical field values land in the right bucket instead of being orphaned.
 
-## 0.76.2 — The Safety Alias (2026-05-17)
+## 0.76.2 — dependencies: Read Alias for depends_on (2026-05-17)
 
 Belt-and-suspenders defensive read for the dependency-aware selection added in 0.74.0. Codex flagged a P1 on the 0.74.0 PR claiming `depends_on` was a rename of a legacy `dependencies:` frontmatter field and that pre-rename queues would silently bypass gating. The premise was wrong — `depends_on` was introduced fresh in 0.74.0 and no `dependencies:` frontmatter ever existed in the schema — but a downstream user typing `dependencies:` from Python/Node/Cargo muscle memory would today have it silently ignored. The alias makes the typo harmless.
 
@@ -806,14 +814,14 @@ Belt-and-suspenders defensive read for the dependency-aware selection added in 0
 - `actions/roadmap.md`: Ready and Blocked rubrics honor the same alias when classifying pending REQs.
 - `docs/work-guide.md`: the dependency-aware ordering bullet names the alias so it surfaces in the user-facing doc, not just in the action spec.
 
-## 0.76.1 — The Archive Pointer (2026-05-17)
+## 0.76.1 — Archive Changelogs Reachable for Tarball Installs (2026-05-17)
 
 Post-PR-review fixup for 0.76.0. Codex flagged that tarball-installed users lose access to pre-0.65 release notes once the archives are deleted — `.git` isn't always present, so "git history" isn't always a valid fallback. Restored discoverability without restoring the files.
 
 - `CHANGELOG.md` header now points tarball users at commit [`bf15fe2`](https://github.com/knews2019/skill-do-work/tree/bf15fe2) on GitHub where both archive files are still readable.
 - `actions/version.md` glob note refined to acknowledge the tarball gap explicitly.
 
-## 0.76.0 — The Trim Pass (2026-05-17)
+## 0.76.0 — Remove Changelog Archives + Re-Inline pipeline-reference (2026-05-17)
 
 Three-way cleanup: stale CHANGELOG archives removed, `actions/pipeline-reference.md` re-inlined into `actions/pipeline.md`, and "Do NOT use when" routing bullets across seven action files collapsed to a single `SKILL.md` pointer. ~1,800 fewer lines on disk, same functionality.
 
@@ -822,14 +830,14 @@ Three-way cleanup: stale CHANGELOG archives removed, `actions/pipeline-reference
 - `decisions/records/adr-001-modular-action-prompts-and-companion-references.md` and `adr-008-...` updated to acknowledge the re-inline as a counter-example. `decisions/topics/_index_pipeline-deliverables.md` sources list trimmed.
 - "Do NOT use when" sections normalized in 7 action files where 2+ bullets were pure sibling-action routing (`bkb`, `deep-explore`, `interview`, `pipeline`, `quick-wins`, `scan-ideas`, `work`). Routing bullets replaced with one `SKILL.md` pointer; state and scope constraints preserved. The other 13 action files were intentionally left alone — their bullets carry non-routing guidance worth keeping.
 
-## 0.75.1 — The Review Catch (2026-05-17)
+## 0.75.1 — Restore Builder Rules + Install-Alias Normalization (2026-05-17)
 
 Post-PR-review fixups for 0.75.0. Codex caught two real regressions and they're now addressed.
 
 - `crew-members/general.md`: extended with four sections (Lessons Discipline, Test-Writing Posture, Cross-REQ Test-Break Rules, Discovered-Tasks Contract). The 0.75.0 trim of `actions/work.md` Step 6 replaced inline builder rules with a pointer claiming `general.md` carried them — but `general.md` only had PRIME-file philosophy. The pointer claim is now true; enforcement restored for every REQ.
 - `SKILL.md` install dispatch note: explicit normalization rules for the trigger aliases. Hyphenated forms (`install-ui-design`, `install-bowser`) now strip the `install-` prefix before target extraction; `setup`-prefixed forms (`setup bowser`, `setup ui design`) strip the leading `setup`. Previously these aliases would fall through to the help block instead of installing.
 
-## 0.75.0 — The Lighter Pack (2026-05-17)
+## 0.75.0 — Seven-Way Simplification Pass (2026-05-17)
 
 Cross-cutting cleanup pass: seven simplifications dispatched as parallel background agents, all touching disjoint file sets. Smaller surface, same functionality.
 
@@ -843,7 +851,7 @@ Cross-cutting cleanup pass: seven simplifications dispatched as parallel backgro
 - `next-steps.md`: 6 BKB maintenance sub-commands (close, rollup, defrag, garden, crew, resolve) merged into one "After bkb (maintenance subcommands)" block; install blocks merged into a single "After install".
 - `_dev/code-review-20-commits.md` deleted — marked RESOLVED back in April 2026 and retained "as historical artifact"; no longer needed.
 
-## 0.74.0 — The Linked Run (2026-05-17)
+## 0.74.0 — Dependency-Aware Execution via depends_on (2026-05-17)
 
 Adds dependency-aware execution to `do-work run`. REQs can now declare `depends_on` in frontmatter; the work loop honors it for selection order, surfaces upstream failures during classification (so cascading failures aren't misdiagnosed as fresh code bugs), and supports `--halt-on-failure` and `--wave N` flags for foundation-phase work where late-stage REQs depend on early-stage ones being correct. Also folds in the Codex P2 finding on `actions/roadmap.md` from the 0.73.5 PR.
 
@@ -857,7 +865,7 @@ Adds dependency-aware execution to `do-work run`. REQs can now declare `depends_
 - `SKILL.md`: work-action routing recognizes `--halt-on-failure` and `--wave N` flags; strips them before extracting REQ IDs.
 - `docs/work-guide.md`: rewrites the "What `run` does NOT do" section to reflect the new opt-ins.
 
-## 0.73.5 — The Honest Run (2026-05-17)
+## 0.73.5 — Document What run Does Not Do (2026-05-17)
 
 Documents what `do-work run` does (and does not) do across a bulk queue, and removes a roadmap rule that referenced a frontmatter field the REQ schema never defined.
 
@@ -865,13 +873,13 @@ Documents what `do-work run` does (and does not) do across a bulk queue, and rem
 - `actions/work.md` Step 1: now states queue order is purely numeric and points readers to `do-work roadmap` before bulk runs, right where the order is established.
 - `actions/roadmap.md` Step 2: Blocked classification no longer references a non-existent `dependencies` frontmatter field; `addendum_to` and external-dependency-in-prose remain — both are real backings.
 
-## 0.73.4 — The Fresh Read (2026-05-14)
+## 0.73.4 — interview status Renders the In-Memory Session (2026-05-14)
 
 Fixed a spec bug in the interview `status` sub-command that could report stale data after an in-memory migration.
 
 - `actions/interview.md` `<template> status`: the step ran the Session-Load Protocol in dry-run mode (in-memory migration only) but then told the agent to re-read `session.json` from disk — discarding the migrated shape and rendering status from stale pre-migration data. It now renders directly from the in-memory session object the protocol hands back.
 
-## 0.73.3 — The Downgrade Guard (2026-05-12)
+## 0.73.3 — Session-Load Downgrade Guard + roadmap find Fixes (2026-05-12)
 
 Four bug fixes from a code review of the 0.72.x → 0.73.x cluster. Two were real spec bugs in the Session-Load Protocol (silent template downgrade, ambiguous CHANGELOG noise for stamp-only refreshes); two were defects in the roadmap action's `find` examples (literal `HHMMSS-` placeholder, fragile `-o` precedence).
 
@@ -880,7 +888,7 @@ Four bug fixes from a code review of the 0.72.x → 0.73.x cluster. Two were rea
 - `actions/roadmap.md` Step 3: rewrote the `find` examples to use the actual `[0-9][0-9][0-9][0-9][0-9][0-9]-<kb_entry>` glob instead of the literal `HHMMSS-` placeholder. An agent following the code block literally would have searched for files named `HHMMSS-foo.md` and found none; the clarifying paragraph below was a workaround, not a fix.
 - `actions/roadmap.md` Step 3: wrapped the `-name A -o -name B` predicates in `\( … \)` parentheses and added explicit `-print`. Without them, appending any predicate to the command makes `-o` bind lower than the implicit action and silently drops half the matches.
 
-## 0.73.2 — The Dry Verbs (2026-05-11)
+## 0.73.2 — Replace the Drain Metaphor (2026-05-11)
 
 Replaced the "drain" metaphor in queue-processing docs with clearer verbs (work through / process / clear). User feedback flagged "drain" as reading wet/unnatural for a task queue.
 
@@ -888,14 +896,14 @@ Replaced the "drain" metaphor in queue-processing docs with clearer verbs (work 
 - Renamed ADR-006 from `pipeline-drains-follow-up-work` to `pipeline-processes-follow-up-work` and updated every wikilink reference across decisions/.
 - No behavior change — pure docs/prompts polish.
 
-## 0.73.1 — The Convention Match (2026-05-09)
+## 0.73.1 — Session-Load Protocol Reference Polish (2026-05-09)
 
 The two editorial polish items from the 0.73.0 review pass. Both align the just-extracted Session-Load Protocol references with the conventions the rest of the file already uses for extracted heavy content.
 
 - `actions/interview.md`: dropped the standalone `## Session-Load Protocol` heading and folded the stub into "Locating the Session" as a follow-on paragraph. The other heavy content extracted to interview-reference.md (Template File Format, Canonical Entry Contract, Checkpoint File Format, Re-run Modes, Versioning Scheme, Ingest File Mapping, Export Schemas, Mid-layer Recovery) doesn't get parallel `##` headings in the action file — they're referenced inline. The new paragraph names the protocol, lists its two modes, and points to the reference, all inside the existing session-location section.
 - `actions/interview.md`: the per-subcommand pointers no longer repeat the protocol's location on every invocation. The first mention in "Locating the Session" establishes where to find the spec; the per-subcommand calls just say "Run the **Session-Load Protocol** in **persist** mode" without re-pointing. Drops a doubled "Session-Load Protocol" phrase that read awkwardly.
 
-## 0.73.0 — The Protocol Move (2026-05-09)
+## 0.73.0 — Session-Load Protocol Moves to the Reference (2026-05-09)
 
 The Session-Load Protocol grew to ~50 lines of dense spec across seven patches in 0.72.x. That's the kind of heavy content `actions/interview-reference.md` is for per ADR-001, so the protocol moved there.
 
@@ -905,7 +913,7 @@ The Session-Load Protocol grew to ~50 lines of dense spec across seven patches i
 
 No behavior change — only the location and discoverability of the spec.
 
-## 0.72.7 — The Semver Honor (2026-05-09)
+## 0.72.7 — Same-Major Sessions Stamp Instead of Migrate (2026-05-09)
 
 Two real correctness bugs from the 0.72.6 review pass plus an editorial cleanup. Both bugs would have fired on every minor or patch template bump, so worth the patch.
 
@@ -913,7 +921,7 @@ Two real correctness bugs from the 0.72.6 review pass plus an editorial cleanup.
 - `actions/interview.md` Session-Load Protocol Step 3: same-major older versions (e.g., session `2.3.0` against template `2.5.0`) now short-circuit to a stamp-only path instead of falling through to Step 4. Semver minor/patch bumps are non-breaking by contract, so applying a `Migration from v2.x` section to a same-major upgrade would corrupt rather than migrate. Step 4 now triggers only on cross-major drift, which is what the chain logic was designed for.
 - `actions/interview.md` Session-Load Protocol Step 4 header: dropped the backslash-escaped angle brackets (`v\<major\>.x` → `v<major>.x`) so the placeholder convention matches the rest of the section.
 
-## 0.72.6 — The Spec Sharpening (2026-05-09)
+## 0.72.6 — Migration Placeholder and Chain-Spec Fixes (2026-05-09)
 
 The four review carryovers from the 0.72.4/0.72.5 review pass. The standout was a real spec ambiguity in the migration protocol — `<old>` was used to mean both "full version string" (for messages) and "major-version component" (for section lookup). Two implementations following the spec literally would diverge.
 
@@ -922,7 +930,7 @@ The four review carryovers from the 0.72.4/0.72.5 review pass. The standout was 
 - `actions/roadmap.md` Step 3: added a durability caveat to the within-branch tie resolution — `processed`'s `YYYY-MM-DD/` lexicographic sort survives `git clone` and archive restores; `capture` and `inbox`'s mtime-based resolution does not. Readers should treat the roadmap as a snapshot of the current filesystem, not a stable identifier across machines.
 - `actions/interview.md` Session-Load Protocol Step 4c: replaced the placeholder dry-run example block with a concrete rendering — full status output (Interview status header, layer table, Review/Previous version lines) followed by the `⚠` staleness notice with real version strings (`1.0.0` → `2.0.0`). Implementations can now diff against a real format instead of reconstructing it.
 
-## 0.72.5 — The Polish Bundle (2026-05-09)
+## 0.72.5 — roadmap and Interview P3 Polish (2026-05-09)
 
 The four P3 carryovers from the 0.72.2/0.72.3 self-review pass.
 
@@ -931,20 +939,20 @@ The four P3 carryovers from the 0.72.2/0.72.3 self-review pass.
 - `actions/roadmap.md` Output Format header: aligned the `**Lessons:**` line's last label with its section header — `[N missing]` is now `[N file not found]`, matching `## Lessons File Not Found` so totals roll up to readable section names.
 - `actions/interview.md` Session-Load Protocol Step 4c: spec'd the dry-run staleness notice's placement in the `status` output — blank-line separator, then the `⚠` line, no trailing blank — and showed the exact format inline.
 
-## 0.72.4 — The Precondition Fix (2026-05-09)
+## 0.72.4 — Migration-Path Check Runs Before Apply (2026-05-09)
 
 The Session-Load Protocol's "no migration path documented" branch was sequenced after the migration-apply step instead of before it. If a template lacked a `Migration from vX.x` section, the protocol would attempt to apply zero steps and silently bump `template_version`, corrupting the session shape, instead of bailing with the documented error message. Restructured so the precondition check runs first.
 
 - `actions/interview.md` Session-Load Protocol Step 4: split into 4a (verify a migration path exists; abort with the documented error if not), 4b (apply migration steps), 4c (persist or report). The previous Step 5 is now Step 4a — it gates Step 4b instead of being a never-fires fallback after it.
 
-## 0.72.3 — The Lesson Roll-Up (2026-05-09)
+## 0.72.3 — roadmap Lessons Totals Line (2026-05-09)
 
 The two P3 carryovers from 0.72.2's self-review. The roadmap report now surfaces lesson workload at the same altitude as REQ workload.
 
 - `actions/roadmap.md` Output Format header: added a `**Lessons:**` totals line next to the existing `**Totals:**` and `**TDD posture (pending):**` lines, rolling up all five lesson buckets (awaiting triage / awaiting ingest / processed / pending handoff / missing) at a glance.
 - `actions/roadmap.md` Suggested Next Steps: added template lines for the four actionable lesson buckets (`bkb triage` + `bkb ingest`, `bkb ingest`, investigate File Not Found, re-run handoff). The list is filtered — items only emit when their bucket has at least one REQ — so the rendered output stays compact when there's nothing to do.
 
-## 0.72.2 — The Read-Only Honor (2026-05-09)
+## 0.72.2 — status Stays Read-Only + Atomic Session Writes (2026-05-09)
 
 A self-review of 0.72.1 caught four real issues in the just-shipped code: a read-only subcommand had been quietly turned into a mutator, the migration write had no error path, the work loop's exit semantics weren't explicit, and the KB lookup ignored `bkb`'s collision-prefix rule. All four fixed.
 
@@ -952,7 +960,7 @@ A self-review of 0.72.1 caught four real issues in the just-shipped code: a read
 - `actions/work.md`: Step 1's composed exit path now states explicitly "After rendering all applicable sections, exit the work loop" so an agent reading strictly doesn't fall through to Step 2.0 after rendering. The pending-answers section dropped the `[N] open questions` count — Step 1 only reads frontmatter, so the count would have required reaching into REQ bodies. The count belongs to `do-work clarify`, where it lives now.
 - `actions/roadmap.md` Step 3: the recursive `kb_entry` lookup now also matches `HHMMSS-<kb_entry>` (bkb's collision-prefix rule from `bkb.md` Step 6 of ingest), so collision-renamed files surface in the right bucket instead of dropping into "File Not Found." Added an explicit resolution rule for multi-branch matches: later in the pipeline wins (`processed` > `capture` > `inbox`), so a single REQ never appears in two lesson sections.
 
-## 0.72.1 — The Follow-On Four (2026-05-09)
+## 0.72.1 — Shared Session-Load Protocol + Recursive kb_entry Lookup (2026-05-09)
 
 A second-round review caught four follow-on bugs from 0.72.0. Two were narrow scoping mistakes (migration check only on one entry point, exit branches that excluded mixed cases), two were paths I didn't follow deep enough into bkb's directory layout. All four fixed.
 
@@ -961,7 +969,7 @@ A second-round review caught four follow-on bugs from 0.72.0. Two were narrow sc
 - `actions/roadmap.md` Step 3: `kb_entry` lookup is now **recursive** under each `<kb>/raw/` branch. The previous top-level glob missed `raw/capture/<type>/` (triage's type subdirs) and `raw/processed/YYYY-MM-DD/` (ingest's date subdirs) — exactly the cases the new buckets were added to handle. Spelled out as `find <kb>/raw/<branch> -name <kb_entry>` with equivalent recursive globs.
 - `actions/roadmap.md` Output Format: added rendering sections for the new buckets — **Lessons Promoted (Awaiting Ingest)**, **Lessons Processed (Terminal)**, **Lessons File Not Found** — so a `kb_entry` in `raw/capture/` or `raw/processed/` lands in the right section with the right next-step suggestion (`bkb ingest` for capture, no action for processed, investigate for missing) instead of falling back to the awaiting-triage section.
 
-## 0.72.0 — The Five Patches (2026-05-09)
+## 0.72.0 — Five Review Fixes + template_version Field (2026-05-09)
 
 A review pass turned up five issues across capture, work, roadmap, the interview action, and the prompt-library README. All accepted, all fixed in one batch. The schema addition to interview sessions (a `template_version` field) is what bumps this to a minor.
 
@@ -971,14 +979,14 @@ A review pass turned up five issues across capture, work, roadmap, the interview
 - `actions/interview-reference.md` + `actions/interview.md` + `interviews/work-operating-model.md`: added `template_version` to the `session.json` schema, the new-session write path (Step 1), all three re-run modes (`fresh`, `version`, plus the `update` shape via reference), and a new Step 2 migration check that auto-runs the template's documented "Migration from vX.x" steps. The work-operating-model migration text is now actionable instead of pointing at a phantom field.
 - `prompts/README.md`: documented the exact-alias resolution tier the dispatcher already supports, so users can actually invoke aliases like `adr` / `adr-log` / `decisions` from the README's instructions.
 
-## 0.71.2 — The TDD Default (2026-05-09)
+## 0.71.2 — Capture Defaults to tdd: true (2026-05-09)
 
 Capture now defaults `tdd: true` instead of `tdd: false`. Most behavior-changing work benefits from a RED/GREEN cycle, so the bar is now "turn it off when it doesn't fit" rather than "turn it on when it clearly applies."
 
 - `actions/capture.md` Step 1 TDD assessment: flipped default to true and rewrote the heuristic. Lists the narrow set where `tdd: false` is reasonable (pure styling/layout, copy/content, config bumps, doc-only, explicit throwaway spikes, no definable RED state).
 - `actions/capture.md` Simple REQ frontmatter: `tdd: true` with a comment that flipping it off needs a real reason.
 
-## 0.71.1 — The Deferred Link (2026-05-07)
+## 0.71.1 — Prime Links After Archive + Duplicate-REQ Guard (2026-05-07)
 
 The work action used to write prime-file lessons links from Step 7.5 — before Step 8 actually moved the REQ to its archive path, so the existence-verify either failed or the agent linked to the transient `working/` location. And nothing stopped a duplicate queue file from being silently re-processed when its twin was already archived. Both fixed.
 
@@ -986,7 +994,7 @@ The work action used to write prime-file lessons links from Step 7.5 — before 
 - `actions/work.md` Step 8: new substep 7 walks the pending prime-link writes against the actual archived path.
 - `actions/work.md` Step 2.0 (new): pre-claim glob check against `do-work/archive/**/REQ-NNN-*.md` AND `do-work/archive/**/REQ-NNN.md`. Bails cleanly with a clear message if the REQ id is already archived, and sets `status: blocked-archive-collision` on the duplicate to prevent livelock. Minimal scope (single-orchestrator); no post-move verify or pre-commit collision guard added.
 
-## 0.71.0 — The Sweep (2026-05-07)
+## 0.71.0 — Stale-Reference Sweep + Interview Template 2.0.0 (2026-05-07)
 
 A pass through review findings: stale references, drifting pointers, parallel actions that resolved paths differently, a missing guide, and a template that mixed mechanical handlebars with natural-language directives. Plus a real semver fix on the work-operating-model template.
 
@@ -1002,7 +1010,7 @@ A pass through review findings: stale references, drifting pointers, parallel ac
 
 ---
 
-## 0.70.5 — The Two Buckets (2026-05-07)
+## 0.70.5 — Split kb_status Buckets + Prompt Alias Resolution (2026-05-07)
 
 Two review findings fixed: roadmap's `kb_status: pending` recovery instruction was wrong (it pointed at `bkb triage`, but pending means no file was ever staged), and prompt aliases declared in headers (`dca`, `clg`, `cg`, `adr`, etc.) were unreachable because the dispatcher only resolved by filename.
 
@@ -1012,7 +1020,7 @@ Two review findings fixed: roadmap's `kb_status: pending` recovery instruction w
 
 ---
 
-## 0.70.4 — The Composed Key (2026-05-06)
+## 0.70.4 — Remove Bare status Roadmap Triggers (2026-05-06)
 
 Bare `status` and space-form `queue status` removed from the roadmap route — they caused first-match conflicts with any `<action> status` sub-command (interview, bkb, etc.). Use `do-work roadmap` or `do-work queue-status` (hyphenated) instead.
 
@@ -1021,7 +1029,7 @@ Bare `status` and space-form `queue status` removed from the roadmap route — t
 
 ---
 
-## 0.70.3 — The Wired Roadmap (2026-05-06)
+## 0.70.3 — roadmap Wired into Routing (2026-05-06)
 
 `roadmap` was drafted but unrouted — the dispatch table didn't list it, the help menu didn't mention it, and no other action ever suggested it. Now it's wired end-to-end so users can actually find and run it.
 
@@ -1030,21 +1038,21 @@ Bare `status` and space-form `queue status` removed from the roadmap route — t
 - `README.md`: New section 18 covering the roadmap action with example invocations; sections 19-24 renumbered.
 - `actions/forensics.md`: Added a "Do NOT use when" pointer to roadmap to clarify the broken-vs-intended split between the two read-only surveys.
 
-## 0.70.2 — The TDD Telltale (2026-05-06)
+## 0.70.2 — roadmap Flags TDD-Eligible REQs (2026-05-06)
 
 The roadmap action now reads `tdd` posture per REQ and flags pending items where TDD is off but the behavior is testable — so reviewers can decide to flip it on before pickup. Also picks up `queue-status` as an explicit trigger phrase.
 
 - `actions/roadmap.md`: New Step 2.5 classifies pending REQs as TDD on / eligible / not applicable, with evidence (frontmatter, `## Red-Green Proof`, domain, input/output examples). Output Format adds a `TDD Eligible` section and per-row `tdd:` annotations across Ready / Needs Clarification / In Progress / Recently Completed.
 - `actions/roadmap.md`: Added `queue-status` and `queue status` to the When-to-Use trigger phrases. Also added a rationalization, two red flags, and a verification-checklist item for TDD reporting.
 
-## 0.70.1 — The Lookahead Lens (2026-05-05)
+## 0.70.1 — Draft roadmap Action (2026-05-05)
 
 Drafted a new `roadmap` action — a read-only survey of the do-work queue that classifies pending REQs as ready / needs-clarification / blocked / stale and rolls up in-progress and recently-completed work. Sits alongside `forensics` (which finds *broken* state) by reporting *intended* state and feasibility instead. Not yet wired into SKILL.md routing.
 
 - New `actions/roadmap.md` covering pending-feasibility classification, in-progress reporting, completed-work roll-up by UR, and a "Suggested Next Steps" punch list.
 - Explicit boundaries against `forensics`, `scan-ideas`, `clarify`, and `inspect` so routing stays clean once the action is registered.
 
-## 0.70.0 — The Karpathy Echo (2026-05-04)
+## 0.70.0 — Karpathy Principles Surfaced Across the Funnel (2026-05-04)
 
 Karpathy guardrails were already auto-loaded at implementation, but the principles were invisible elsewhere — specs didn't cite them, entry-point docs didn't name them, and the upstream's verifiable-goals examples never made it into our adaptation. This release surfaces the four principles across the funnel without spamming citations, and backfills the dropped content.
 
@@ -1054,31 +1062,31 @@ Karpathy guardrails were already auto-loaded at implementation, but the principl
 - `actions/capture.md`, `actions/clarify.md`: Connected the `- [~]` open-question convention to the "Think Before Coding" guardrail.
 - `SKILL.md`, `README.md`: Named the four principles in the entry-point docs.
 
-## 0.69.17 — The Thin Week Allowance (2026-04-27)
+## 0.69.17 — Thin Weeks May Emit Fewer Digest Bullets (2026-04-27)
 
 Resolves an internal contradiction in the `weekly-signal-diff` Verification checklist for the new "Top of mind this week" section. The section spec allows fewer bullets when the week is thin ("give fewer bullets rather than padding"), but the checklist required 3–5 bullets — so a compliant thin-week output would fail self-check or get padded with filler. Codex flagged it on PR #96.
 
 - `prompts/weekly-signal-diff.md`: Verification checklist for "Top of mind this week" now enforces only the upper bound (≤5 bullets, ≤150 words) and explicitly permits fewer bullets in thin weeks.
 
-## 0.69.16 — The Archetype Bullet (2026-04-27)
+## 0.69.16 — Per-Shift Client-Archetype Bullet (2026-04-27)
 
 Adds a per-shift "For client archetypes" bullet to every headline structural shift in the `weekly-signal-diff` digest. Naming the archetype and a one-line outreach angle inside the shift itself — kept visually separate from "Why it matters to this user" — turns each shift into a scannable outreach prompt instead of a synthesis the operator has to redo at the desk.
 
 - `prompts/weekly-signal-diff.md`: New `**For client archetypes**` bullet inserted after `**Why it matters to this user**` in the headline-shift template. Optional per-shift; "No direct client angle" is the explicit empty form. New Common Rationalizations row blocks the "obvious from context" shortcut.
 
-## 0.69.15 — The Action Split (2026-04-27)
+## 0.69.15 — Mandatory Actions Block at the Digest Head (2026-04-27)
 
 Promotes Actions from an optional tail section to a mandatory block at the head of the `weekly-signal-diff` digest, and splits it into two groups: operator-facing captures and proactive client-outreach angles. Pushes the digest's value outward toward the operator's clients, not just inward toward the operator's own backlog.
 
 - `prompts/weekly-signal-diff.md`: Removed `### Actions (optional)` from the bottom of Phase 7. Added `### Actions this week` between "Top of mind this week" and "Coverage note" with two mandatory groups. Empty groups must be stated explicitly — silence isn't allowed. Matching Rule and Verification checklist entry added.
 
-## 0.69.14 — The Top Of Mind (2026-04-27)
+## 0.69.14 — Top-of-Mind Section Leads the Digest (2026-04-27)
 
 Adds a mandatory "Top of mind this week" subsection at the head of the `weekly-signal-diff` digest. Forces the agent to lead with the 3–5 things the operator should hold in working memory — synthesis, not detail — so the rest of the digest reads as support material for mid-week re-reading. Hard cap of 5 bullets / 150 words; thin weeks shrink the bullet count rather than padding.
 
 - `prompts/weekly-signal-diff.md`: New `### Top of mind this week` block in Phase 7, placed before `### Coverage note`. Matching Rule and Verification checklist entry added so the cap is enforceable, not advisory.
 
-## 0.69.13 — The Symmetry Patch (2026-04-23)
+## 0.69.13 — Rename build-knowledge-base to bkb + Doc Sweep (2026-04-23)
 
 Closes five findings from a contradictions-and-gaps sweep of the repo. Main move: the bkb action's filename now matches its trigger word, so every action follows the same naming rule.
 
@@ -1088,7 +1096,7 @@ Closes five findings from a contradictions-and-gaps sweep of the repo. Main move
 - `CLAUDE.md` docs exemption now covers `kb-lessons-handoff` explicitly as a reference-only action invoked by other actions.
 - `actions/work.md` Request File Schema now includes the `caveman` frontmatter field with its intensity values (`lite` | `full` | `ultra`).
 
-## 0.69.12 — The Dark Code Kit (2026-04-23)
+## 0.69.12 — Dark-Code Prompt Kit (2026-04-23)
 
 Captures a three-prompt kit for fighting "dark code" — code that was never understood by anyone at any point in its lifecycle. Shared `dark-code-kit_` prefix groups them as sibling tools in the library.
 
@@ -1097,14 +1105,14 @@ Captures a three-prompt kit for fighting "dark code" — code that was never und
 - `prompts/dark-code-kit_comprehension-gate.md`: senior-engineer-style PR review across seven dimensions (credentials, cross-service side effects, blast radius, state, tokens, assumptions, comprehension) with CLEAR / REVIEW REQUIRED / HOLD verdicts.
 - `prompts/README.md`: three entries added to the Available prompts table.
 
-## 0.69.11 — The Ingest Correction (2026-04-23)
+## 0.69.11 — Handoff Messages Include bkb ingest (2026-04-23)
 
 Fixes the kb-lessons handoff's user-facing messages: both the no-KB fallback and the promoted confirmation told users to run `bkb triage` alone, but triage only sorts inbox files — compilation into the wiki happens in `bkb ingest`. Following the old messages left lessons stuck in `capture/notes/` and invisible in the wiki.
 
 - `actions/kb-lessons-handoff.md`: no-KB fallback now documents the full re-promotion path — `bkb init` → re-run handoff (e.g. `do-work review REQ-NNN`) → `bkb triage` → `bkb ingest`. Previously it stopped at triage and also glossed over the fact that the handoff set `kb_status: pending` without dropping the file, so even a correct triage+ingest pair would have found an empty inbox.
 - `actions/kb-lessons-handoff.md`: "Promoted to …" confirmation now instructs `bkb triage` then `bkb ingest`. Previously users on the happy path were told `bkb triage` was the last step, leaving the lesson sorted but uncompiled.
 
-## 0.69.10 — The Gap Patrol (2026-04-23)
+## 0.69.10 — kb_status Cross-References Caught Up (2026-04-23)
 
 Audit-driven cleanup of the three recent handoff commits (0.69.7–0.69.9). Fills in the spots where the new `kb_status`/`kb_entry` fields and the handoff flow weren't yet mentioned in sibling docs. Nothing behavioral — just the cross-references finally catching up with the feature.
 
@@ -1112,14 +1120,14 @@ Audit-driven cleanup of the three recent handoff commits (0.69.7–0.69.9). Fill
 - `next-steps.md`: "After work" and "After review work" blocks now suggest `do-work bkb triage` as a follow-up when lessons were promoted, and `do-work bkb init` when the handoff deferred because no `kb/` existed.
 - `actions/build-knowledge-base.md`: `triage` classification table now recognizes `.md` files with `source_type: req_lesson` frontmatter (written by the kb-lessons handoff). They route to `capture/notes/` — no new capture subdir needed — with a note that the `domain` field is a reliable topic hint and `req_path` is a back-reference to the originating REQ.
 
-## 0.69.9 — The Handoff Cleanup (2026-04-23)
+## 0.69.9 — Handoff Date Fallback + Reachable declined Status (2026-04-23)
 
 Two bot-reviewer findings against the kb-lessons handoff, both legitimate and both fixed. Metadata now populates correctly in pipeline mode, and the `declined` vs `skipped` statuses are actually reachable as designed.
 
 - `actions/kb-lessons-handoff.md`: `date` now falls back to today's date when `completed_at` isn't set yet — the handoff runs at Step 7.5 (pipeline mode), before Step 8 writes `completed_at`, so the old "source from `completed_at`" rule produced empty dates on every pipeline run.
 - `actions/kb-lessons-handoff.md`: user's explicit "Skip" choice in Step 3/4 now records `kb_status: declined` instead of `skipped`, matching Step 5's semantics (`declined` = active refusal, `skipped` = silent auto-skip when trigger conditions aren't met). Previously `declined` was effectively unreachable.
 
-## 0.69.8 — The Homegrown Handoff (2026-04-23)
+## 0.69.8 — Zero-Dependency KB Lessons Handoff (2026-04-23)
 
 Replaces the compound-engineering integration from 0.69.7 with a zero-dependency version that uses do-work's own knowledge base (`kb/`). After a REQ's review passes and Lessons Learned are captured, do-work drops a structured source document into `kb/raw/inbox/` so the existing `bkb triage` → `bkb ingest` pipeline compiles it into the wiki. Same consent-driven shape as before, just no external plugin required.
 
@@ -1129,7 +1137,7 @@ Replaces the compound-engineering integration from 0.69.7 with a zero-dependency
 - `CLAUDE.md`: "Compound-engineering Integration" section replaced with a shorter "Lessons → Knowledge Base Handoff" section that documents the in-skill flow only.
 - Removed: `actions/ce-compound-handoff.md`, `docs/ce-integration-guide.md` — both were CE-specific and no longer apply.
 
-## 0.69.7 — The Compound Handoff (2026-04-23)
+## 0.69.7 — Compound-Engineering Lessons Handoff (2026-04-23)
 
 First integration point with the [compound-engineering plugin](https://github.com/EveryInc/compound-engineering-plugin). After a REQ's review passes and Lessons Learned are captured, do-work now offers to promote those lessons into CE's `docs/solutions/` knowledge base via the `ce-compound` skill. The handoff asks before dispatching, degrades to a saved prompt if CE isn't installed, and never blocks archival.
 
@@ -1140,7 +1148,7 @@ First integration point with the [compound-engineering plugin](https://github.co
 - `CLAUDE.md`: New "Compound-engineering Integration" section documents the augmentation model, the three CE artifact paths, and the current integration point.
 - `docs/ce-integration-guide.md`: New user-facing guide covering install, the handoff flow with sample payload, troubleshooting, roadmap for future integration points (reviewer agents, ce-plan, ce-brainstorm), and design principles for contributors wiring up the next seam.
 
-## 0.69.6 — The Audit Ratchet (2026-04-22)
+## 0.69.6 — Self-Audit Template-Compliance Pass (2026-04-22)
 
 Close the contradictions and gaps found in a self-audit of the skill: a broken link, a missing `next-steps.md` entry, an out-of-date README, a missing docs guide, two action files that didn't follow the template, and a wave of missing `When to Use` / `Red Flags` / `Verification Checklist` sections across core actions. Nothing behavioral — just the docs finally matching the conventions CLAUDE.md claims.
 
@@ -1152,14 +1160,14 @@ Close the contradictions and gaps found in a self-audit of the skill: a broken l
 - `actions/install-ui-design.md`, `actions/install-bowser.md`: Restructured to follow the CLAUDE.md action template (When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist).
 - `actions/capture.md`, `actions/clarify.md`, `actions/work.md`, `actions/pipeline.md`, `actions/ui-review.md`, `actions/prompts.md`, `actions/present-work.md`, `actions/prime.md`, `actions/version.md`, `actions/tutorial.md`, `actions/build-knowledge-base.md`, `actions/forensics.md`, `actions/deep-explore.md`, `actions/scan-ideas.md`: Added missing `When to Use`, `Red Flags`, and/or `Verification Checklist` sections per CLAUDE.md's action-template spec. All 14 core actions now carry the full template.
 
-## 0.69.5 — The Hyphen Hustle (2026-04-22)
+## 0.69.5 — Write do-work Hyphenated Everywhere (2026-04-22)
 
 Every `do work` command invocation is now written `do-work` across docs, actions, crew rules, and the session-start hook. Matches the skill's actual name and makes it unambiguous to agents that it's a real command, not a verb phrase.
 
 - All `*.md` files and `hooks/session-start.sh`: `do work <action>` → `do-work <action>`, including README examples, SKILL.md routing tables, action files, docs, CHANGELOG prose, crew rules, prompts, and decision records.
 - No behavior change — natural-language triggering still works; the skill's name has always been `do-work`, so hyphenated references stay consistent with the skill manifest.
 
-## 0.69.4 — The Review Ratchet (2026-04-17)
+## 0.69.4 — Interview v2 Review Fixes (2026-04-17)
 
 Follow-up to 0.68.2: fixes three defects from code review on the interview v2 gap-closure patch. One was a JSON rendering bug, one was a reference to a session field that doesn't exist, and one was a stale-entry leak into agent rules that violated ADR-012's own promise. ADR-012 gets a "Post-merge corrections" section documenting each.
 
@@ -1170,13 +1178,13 @@ Follow-up to 0.68.2: fixes three defects from code review on the interview v2 ga
 - `actions/interview-reference.md`: Ingest frontmatter `created:` fields follow the template fix (`last_exported_at` in place of `completed_at`).
 - `decisions/records/adr-012-interview-v2-gap-closure.md`: "Post-merge corrections" section added under Consequences.
 
-## 0.69.3 — The Honored Flag (2026-04-17)
+## 0.69.3 — Eval Harness Honors --tasks N (2026-04-17)
 
 Fixes an inconsistency in the eval-harness prompt flagged in code review: `--tasks <n>` was documented but the interview and output flow were hard-coded to exactly three test cases. The prompt now resolves N from the flag up front (default 3, clamped to 1–7) and uses N everywhere — task inventory, priority selection, case count, verification.
 
 - `prompts/prompt-kit-step5-eval-harness.md`: new Step 0 resolves and clamps N; Steps 1, 2, 3, 5 reference N instead of literal 3; Rules and Verification Checklist enforce the contract; Red Flags call out suite-size drift; template placeholder for the per-case index changed from `[N]` to `[#]` to avoid visual collision with the count variable.
 
-## 0.69.2 — The Topical Shelving (2026-04-17)
+## 0.69.2 — Prompts Regrouped by Discipline (2026-04-17)
 
 Regroups the five AI-industry analytical prompts by the discipline they're drawn from — business, economics, or tech — dropping the redundant `ai-` umbrella (the whole library is AI-oriented). One of the tech prompts gains an `infrastructure` sub-prefix to mark it as an infra decision rather than an architecture one.
 
@@ -1187,14 +1195,14 @@ Regroups the five AI-industry analytical prompts by the discipline they're drawn
 - `prompts/inference-architecture-decision.md` → `prompts/tech-inference-architecture-decision.md`
 - `prompts/README.md` index rows updated to match. Historical references in `CHANGELOG.md` left as-is.
 
-## 0.69.1 — The Spelled-Out Name (2026-04-17)
+## 0.69.1 — Descriptive Rename for the ADR-Log Prompt (2026-04-17)
 
 Renames the ADR-log prompt so its filename actually says what it does. Establishes a `[noun]_[action]` convention (underscore between the subject and the verb phrase) that leaves room for sibling actions on the same noun later.
 
 - `prompts/adr-log.md` → `prompts/architecture-decisions-log_create-or-expand.md`: renamed; H1 and aliases updated inside the file (`adr`, `adr-log`, `decisions`, `architecture-decisions` all still work as documentation hints — the dispatcher resolves via prefix match against the new filename).
 - Cross-references updated in `SKILL.md`, `CLAUDE.md`, `README.md`, `actions/prompts.md`, and `prompts/README.md`. Historical references in `CHANGELOG.md` left as-is.
 
-## 0.69.0 — The Seven Steps (2026-04-17)
+## 0.69.0 — Prompt Kit Seven-Step Prompt Series (2026-04-17)
 
 Extracts the Prompt Kit article's progression into the library as seven numbered prompts. One pre-flight pen-and-paper exercise plus six runnable disciplines — diagnostic, context doc, spec engineer, intent framework, eval harness, constraints — all `step[n]`-prefixed so they sort in workflow order.
 
@@ -1207,7 +1215,7 @@ Extracts the Prompt Kit article's progression into the library as seven numbered
 - `prompts/prompt-kit-step6-constraint-architecture.md`: pre-delegation Must Do / Must Not / Prefer / Escalate document tied to the user's stated failure modes.
 - `prompts/README.md`: index updated with all seven new entries.
 
-## 0.68.2 — The Paved Cowpath (2026-04-17)
+## 0.68.2 — Interview v2 Gap Closure (2026-04-17)
 
 Closes five v1 gaps in the `interview` action per the v2 imported spec — export templates move into the template file as mechanical render templates, `update` goes entry-level, mid-layer quits become recoverable, and `ingest` lands 10 files in `kb/raw/inbox/` instead of inventing its own frontmatter shape. Surgical patches, not a rewrite. Recorded as ADR-012.
 
@@ -1220,13 +1228,13 @@ Closes five v1 gaps in the `interview` action per the v2 imported spec — expor
 - `decisions/records/adr-012-interview-v2-gap-closure.md`: New ADR documenting the five patches. Extends ADR-011. Crew placement audit confirmed `crew-members/interviewer.md` stays put — the directory is a generic persona pool, not `work`-scoped.
 - `decisions/_master_index.md` + `decisions/topics/_index_skill-architecture.md`: Bumped to list ADR-012.
 
-## 0.68.1 — The Rename Tag (2026-04-16)
+## 0.68.1 — Rename weekly-structural-diff to -original (2026-04-16)
 
 Renames the Weekly Structural Diff prompt so "original" is explicit in the filename — clears the way for variant versions of the same framework to coexist in the library.
 
 - `prompts/weekly-structural-diff.md` → `prompts/weekly-structural-diff-original.md`: renamed; index entry in `prompts/README.md` updated to match. Invoke with `do-work prompts run weekly-structural-diff-original` (prefix match `weekly-structural-diff` still resolves unambiguously while it's the only variant).
 
-## 0.68.0 — The Promptkit Drop (2026-04-16)
+## 0.68.0 — Six Prompt Kit Analytical Prompts (2026-04-16)
 
 Six new reusable prompts ingested from the Prompt Kit article on the 2026 capability-phase → economics-phase transition. They turn the article's analytical framework into runnable tools for tracking AI news, stress-testing product economics, mapping infrastructure risk, pricing SaaS seat compression, sorting vendors, and designing inference architectures.
 
@@ -1238,7 +1246,7 @@ Six new reusable prompts ingested from the Prompt Kit article on the 2026 capabi
 - `prompts/inference-architecture-decision.md`: API vs. self-hosted vs. hybrid comparison, model selection matrix, Sora test, and a Now / 3× / 10× migration path with triggers.
 - `prompts/README.md`: Index table extended with the six new prompts.
 
-## 0.67.5 — The Weekly Witness (2026-04-17)
+## 0.67.5 — New weekly-signal-diff Prompt (2026-04-17)
 
 New prompt in the library: `weekly-signal-diff` — a weekly structural diff of AI-industry news, personalized via BKB. Ships with a 10-lane core starter universe and auto-loads a personal sidecar at `prompts/weekly-signal-diff-personal.md` when present for user-specific lanes. Every loaded lane gets full coverage every week — no lane is ever compressed or dropped.
 
@@ -1247,7 +1255,7 @@ New prompt in the library: `weekly-signal-diff` — a weekly structural diff of 
 - `prompts/README.md`: New rows for `weekly-signal-diff` and `weekly-signal-diff-personal` in the Available prompts table.
 - `decisions/imported-specs/2026-04-16_weekly-signal-diff-authoring-prompt.md`, `decisions/imported-specs/2026-04-17_starter-universe.md`: Spec updates — demotion language removed, 3–7 shift cap removed, forbidden-memory-layer name-drops stripped, personal sidecar pattern documented.
 
-## 0.67.4 — The Gap Sealer (2026-04-16)
+## 0.67.4 — Re-Apply the Parallel-Branch Improvements (2026-04-16)
 
 Folds in the legitimate improvements from a parallel branch that landed alongside 0.67.2/0.67.3. The earlier "Unified Trunk" merge tried to combine both lines but truncated `CHANGELOG.md` and rewrote `actions/version.md` losing the global-install guard and the recap section — that merge was reverted and only the load-bearing changes were re-applied here.
 
@@ -1258,14 +1266,14 @@ Folds in the legitimate improvements from a parallel branch that landed alongsid
 - `actions/interview.md`: Exports gate rule documents that `update` clears the review state when edits are committed.
 - `interviews/work-operating-model.md`: Layer 1 schema fix — `time_windows` entries gain a required `days` field (weekday abbreviations) so `schedule-recommendations.json` can emit `days` without inventing data; `interruptions` is now a list of `{source, priority}` objects (priority drawn from `low`/`medium`/`high`) so `HEARTBEAT.md`'s "What to ignore" section has a real signal to filter on. Template version bumped 1.0.0 → 1.1.0.
 
-## 0.67.3 — The Right Shelf (2026-04-16)
+## 0.67.3 — Export Stamp Moves onto session.json (2026-04-16)
 
 Moves the 0.67.2 export freshness stamp out of `exports/` and into `session.json.last_exported_at`. The sidecar-file approach would have been picked up by `ingest`'s "for each file" loop and polluted `kb/raw/inbox/` with bogus timestamp documents. Caught in review; the field-on-session.json approach was always the right one.
 
 - `actions/interview.md`: `export` preflight and stamp-write now read/write `session.json.last_exported_at` instead of a sidecar file. Empty session shape gains the new field.
 - `actions/interview-reference.md`: `session.json` schema gains `last_exported_at`. Status Vocabulary row updated with a note explaining why the stamp lives on the session, not in `exports/`. `fresh` re-run mode writes `last_exported_at: null` in the new empty session.
 
-## 0.67.2 — The Status Ledger (2026-04-16)
+## 0.67.2 — Stale-Export Warning + Status Vocabulary (2026-04-16)
 
 Interview recipe gains a stale-export warning and a consolidated status vocabulary — small operational patches for when an operating model gets re-run in anger. Addresses gaps surfaced by a recent design review of the `work-operating-model` activation path.
 
@@ -1273,7 +1281,7 @@ Interview recipe gains a stale-export warning and a consolidated status vocabula
 - `actions/interview-reference.md`: New Status Vocabulary table consolidates the four independent status fields (session `status`, layer `approved`, entry `status`, export freshness stamp) into a single reference. Explicitly notes that prior runs are archived directories, not `superseded` flags.
 - `actions/interview-reference.md`: `update` re-run mode now documents the "empty a layer" path (user can nuke a layer; same approval gate applies, empty layer still counts as approved) and calls out that per-entry edit friction is intentional — the approval gate is the whole point.
 
-## 0.67.1 — The Settled Tenant (2026-04-16)
+## 0.67.1 — Interview Templates Resolve from the Skill Root (2026-04-16)
 
 Interview action now works the moment the skill is installed into a project, and session state lives in `do-work/` alongside the rest of the per-repo workspace — tracked in git like URs and REQs.
 
@@ -1281,7 +1289,7 @@ Interview action now works the moment the skill is installed into a project, and
 - Session state moved from `./interview/<template>/` to `./do-work/interview/<template>/`. It joins `queue/`, `user-requests/`, `archive/`, and `working/` under the canonical workspace and is tracked in git — the elicited operating model is durable per-repo knowledge, not transient orchestration state.
 - Removed the stale `interview/` entry from the skill repo's own `.gitignore` so the skill no longer models the wrong behaviour.
 
-## 0.67.0 — The Open Ear (2026-04-16)
+## 0.67.0 — New interview Action (2026-04-16)
 
 New `interview` action — a generalized elicitation framework that runs prescriptive templates to turn tacit work knowledge into agent-ready operating artifacts. First template `work-operating-model` walks the five-layer Work Operating Model (Nate B. Jones and Jonathan Edwards) across ~45 focused minutes and produces `USER.md` / `SOUL.md` / `HEARTBEAT.md` plus machine-readable exports. Session state is resumable, cross-layer contradictions get surfaced explicitly, and exports flow into BKB via `ingest` for querying.
 
@@ -1296,13 +1304,13 @@ New `interview` action — a generalized elicitation framework that runs prescri
 - `decisions/_master_index.md`, `decisions/_progress.md`, `decisions/topics/_index_skill-architecture.md`: ADR-011 added to the index and topic cluster; progress tracker bumped to `Next ADR number: ADR-012`.
 - `.gitignore`: New `interview/` line so per-repo session state isn't accidentally committed. Templates under `interviews/` remain tracked.
 
-## 0.66.1 — The Local Landlord (2026-04-16)
+## 0.66.1 — Update Refuses Global Installs (2026-04-16)
 
 The `do-work update` flow now refuses to overwrite a global/shared install. If `SKILL.md` lives under `~/.claude/skills/`, `~/.gemini/skills/`, or anywhere else outside the current project's git root, the update stops and tells the user to either `cd` into the owning project or install the skill locally — no more silent updates to a user-wide copy.
 
 - `actions/version.md`: Added an explicit preflight location check as step 2 of the update flow that resolves the skill root, compares it to `git rev-parse --show-toplevel`, and refuses to proceed if the skill sits under a user-wide skills directory. Renumbered the dirty-tree / run / verify / report steps accordingly. The curl command is now prefixed with `cd <skill-root> &&` so extraction can't land in a global directory by mistake. The fetch-failed fallback message was rewritten to call out the global paths by name.
 
-## 0.66.0 — The Four Corners (2026-04-16)
+## 0.66.0 — Deliverable Filename Convention (2026-04-16)
 
 Deliverables now follow an unambiguous naming convention: `.marp.md` for LLM-authored Marp source, `.marp.html` for the marp-cli export of that source, and `.single.html` for LLM-authored standalone HTML (explainer or debrief). The pipeline now ships four files per completion — three LLM renderings plus the mechanical Marp HTML export — so a stakeholder without marp-cli can still view the deck.
 
@@ -1310,21 +1318,21 @@ Deliverables now follow an unambiguous naming convention: `.marp.md` for LLM-aut
 - `actions/pipeline-reference.md`: Section 3 heading + filename renamed to `.single.html`. Section 2 (Marp Slide Deck) now calls out the `.marp.html` export with the exact command. Sibling-link lists, preview commands, and the HTML Related-deliverables card grid updated to link both `.marp.html` and `.single.html` where relevant.
 - `actions/present-work.md`: Interactive explainer renamed to `{UR-NNN}-interactive-explainer.single.html` with a note explaining the `.single.` vs `.marp.` distinction. Client-brief "Related Reading" footer and the terminal summary updated to the new filenames, and the Keep-exploring footer now links both pipeline summary formats.
 
-## 0.65.2 — The Dry-Run Reprieve (2026-04-15)
+## 0.65.2 — adr-log Dry-Run and Main-Branch Fixes (2026-04-15)
 
 Fixes two review findings on the `adr-log` prompt. Phase 0 no longer hard-blocks every run on `main`/`master` — `--dry-run` now skips the tree/branch blockers entirely (they're zero-risk in a read-only run), and non-dry-run invocations on `main` pause and ask for authorization instead of refusing outright. README's description of the prompt's source model was stale; it now accurately reflects the layered spine (`implementation-history.md` primary, `lessons-learned/` secondary, code verification, `CHANGELOG.md` fallback).
 
 - `prompts/adr-log.md`: Rewrote Phase 0 to parse flags first, skip dirty-tree / branch-name blockers under `--dry-run`, and prompt for authorization on `main`/`master` (with three accepted responses: yes / feature-branch-name / no). Authorization persists across resume via `authorized_main_branch: true` in `_progress.md`. Updated the "Never push to main/master" and "`--dry-run` means read-only" rules to match. Added two new Common Rationalization rows (--no-push on main is still a write; dry-run can't skip source verification).
 - `README.md`: Replaced the stale "mines CHANGELOG.md for load-bearing decisions" description in scenario 19 with the current layered source model (implementation-history primary, lessons-learned secondary, code verification, CHANGELOG fallback).
 
-## 0.65.1 — The Layered Spine (2026-04-15)
+## 0.65.1 — adr-log Rewritten with Layered Sources (2026-04-15)
 
 Rewrote `prompts/adr-log.md` to merge the better ideas from the user's own ADR-extraction prompt with the safety envelope from the first draft. Same prompt, much sharper — layered source mining with `implementation-history.md` as the primary spine, REQ/UR-keyed idempotency instead of fuzzy CHANGELOG-version matching, proper YAML `related: [{page, rel}]` relationships, per-cluster `topics/_index_*.md` wiki pages, and a completion report that forecasts remaining work sized S/M/L.
 
 - `prompts/adr-log.md`: Replaced the mining spine (`CHANGELOG.md` → `implementation-history.md` primary, `lessons-learned/` secondary, current code for verification, `CHANGELOG.md` as portable fallback). Replaced the frontmatter schema (now `req:`, `ur:`, `sources:`, `related: [{page, rel}]`, `confidence`). Moved ADR files into `decisions/records/` and clusters into `decisions/topics/_index_<cluster>.md` as first-class wiki pages. Added explicit supersession workflow that flips the old ADR's `status` and adds the inverse `rel: superseded-by` to its `related` list in the same commit. Commit messages now follow `docs(adr): …` conventional shape. Added a completion-report section with a remaining-candidates forecast (sized S/M/L per UR). Kept the pre-flight safety checks, `--dry-run` / `--no-push` / `--batch-size` / `--from` flags, "infer alternatives if absent and mark `(inferred)`" guidance, and the Common Rationalizations / Red Flags / Verification Checklist guardrails.
 - `prompts/README.md`: Updated the `adr-log` description to reflect the layered source model and REQ/UR-based idempotency.
 
-## 0.65.0 — The Prompt Shelf (2026-04-15)
+## 0.65.0 — New prompts Action + adr-log (2026-04-15)
 
 New `prompts` action — a dispatcher over a growing library of reusable, battle-tested prompts for recurring jobs the skill doesn't have a first-class action for. Seeded with `adr-log`, a create-or-update prompt that builds a project-wide Architecture Decision Record log at `decisions/` (BKB wiki pattern) by mining `CHANGELOG.md` for load-bearing decisions. Idempotent, resumable, supersession-aware.
 
