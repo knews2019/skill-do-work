@@ -6,7 +6,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.117.0 — The Fine Sieve (2026-07-11)
+## 0.117.0 — Board View Filters (2026-07-11)
 
 The board's By-UR lens rendered the entire archive — after months of history it was an archive dump, not a work view. Every view now filters: a shared search + domain/status bar in the topbar, and an Active/All toggle that hides fully resolved URs by default.
 
@@ -14,13 +14,13 @@ The board's By-UR lens rendered the entire archive — after months of history i
 - Shared filter bar applies to whichever view is active: search matches REQ/UR ids and titles, domain and status selects populate from the data. Column and UR counts read "shown / total" while filtering; the calendar hides days with no matches.
 - A search hit on a UR header keeps its whole group visible (domain/status still filter the cards inside).
 
-## 0.116.1 — The Third Sibling (2026-07-11)
+## 0.116.1 — Clear Questions in Review-Work Follow-Ups (2026-07-11)
 
 0.116.0 required cold-reader question authoring in work.md's follow-ups but missed the copy-paste sibling: review-work's ambiguous-requirements follow-ups emit the same `Recommended:`/`Also:` template. A grep for every `pending-answers` authoring site found this one remaining gap.
 
 - `actions/review-work.md` ambiguous-requirements follow-ups now load `crew-members/clear-questions.md` and author Open Questions for a cold reader (gloss shorthand, state why the decision is the user's — Principle 7), matching work.md Step 8.
 
-## 0.116.0 — The Cold Reader (2026-07-11)
+## 0.116.0 — Escalated Questions Explain Themselves (2026-07-11)
 
 Escalated questions were reaching the user written in builder shorthand — technically asked, practically unanswerable. Now clarity is enforced at both ends: builders author Open Questions for a cold reader, and clarify rewrites what slips through.
 

@@ -464,7 +464,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 ---
 ```
 
-**Entry key.** Always `## X.Y.Z — The [Fun Two-Word Name] (YYYY-MM-DD)` — every entry carries both a version and a date. The codename must be unique against every existing entry in the file (grep before writing — duplicates have occurred), and the new `X.Y.Z` must be **strictly greater** than the version in the file's first existing entry (duplicate version numbers have occurred).
+**Entry key.** Always `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)` — every entry carries both a version and a date. The title must say what was delivered so a reader scanning only headings knows what changed ("Board View Filters", not a whimsical codename). It must be unique against every existing entry in the file (grep before writing — duplicates have occurred), and the new `X.Y.Z` must be **strictly greater** than the version in the file's first existing entry (duplicate version numbers have occurred).
 
 **Where `X.Y.Z` comes from.** Resolve the version source once per entry, in this order:
 
