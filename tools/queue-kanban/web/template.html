@@ -20,6 +20,36 @@
       </div>
 
       <nav class="board-controls" aria-label="Board views and lenses">
+        <!-- Shared filter bar — applies to whichever view is active (columns,
+             by-UR, calendar). Selects are populated by board.js from the data
+             island; the clear button appears only while a filter is set. -->
+        <div class="control-group control-group-filters" role="group" aria-label="Filters" id="filter-group">
+          <input
+            type="search"
+            class="filter-search"
+            id="filter-search"
+            placeholder="Filter id or title"
+            aria-label="Filter by REQ or UR id and title"
+          />
+          <select class="filter-select" id="filter-domain" aria-label="Filter by domain">
+            <option value="">All domains</option>
+          </select>
+          <select class="filter-select" id="filter-status" aria-label="Filter by status">
+            <option value="">All statuses</option>
+          </select>
+          <button type="button" class="control-button filter-clear" id="filter-clear" hidden>Clear</button>
+        </div>
+
+        <!-- By-UR lens only: hide user requests whose REQs are all resolved.
+             board.js toggles this group's visibility with the lens. -->
+        <div class="control-group" role="group" aria-label="User-request activity" id="ur-activity-group" hidden>
+          <span class="control-label">URs</span>
+          <button type="button" class="control-button is-active" data-ur-activity="active" aria-pressed="true">
+            Active
+          </button>
+          <button type="button" class="control-button" data-ur-activity="all" aria-pressed="false">All</button>
+        </div>
+
         <div class="control-group" role="group" aria-label="View">
           <button type="button" class="control-button is-active" data-view-target="board" aria-pressed="true">
             Board

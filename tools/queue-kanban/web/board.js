@@ -27,6 +27,15 @@
     windowHours: 24
   };
 
+  // Shared filters — applied to whichever view is active. userRequestActivity
+  // only affects the by-UR lens ("active" hides URs whose REQs are all resolved).
+  var filterState = {
+    searchText: "",
+    domain: "",
+    status: "",
+    userRequestActivity: "active" // "active" | "all"
+  };
+
   var renderedOnce = { userRequestLens: false, calendar: false };
 
   // ---- small DOM helpers --------------------------------------------------
@@ -91,6 +100,107 @@
   function describeRequestStatus(requestId) {
     var request = requestsById[requestId];
     return request && request.status ? request.status : "not in tree";
+  }
+
+  // ---- filtering ------------------------------------------------------------
+  // Pure client-side: the data island already carries status, domain, UR id,
+  // and titles, so every view filters the same record set with the same rules.
+
+  function hasActiveFilters() {
+    return filterState.searchText !== "" || filterState.domain !== "" || filterState.status !== "";
+  }
+
+  function searchMatchesRequest(request, requestId, searchNeedle) {
+    if (requestId.toLowerCase().indexOf(searchNeedle) !== -1) {
+      return true;
+    }
+    if (request.title && request.title.toLowerCase().indexOf(searchNeedle) !== -1) {
+      return true;
+    }
+    if (request.userRequestId && request.userRequestId.toLowerCase().indexOf(searchNeedle) !== -1) {
+      return true;
+    }
+    return false;
+  }
+
+  function searchMatchesUserRequest(userRequest, userRequestId, searchNeedle) {
+    if (userRequestId.toLowerCase().indexOf(searchNeedle) !== -1) {
+      return true;
+    }
+    return Boolean(userRequest.title && userRequest.title.toLowerCase().indexOf(searchNeedle) !== -1);
+  }
+
+  // options.skipSearch: the by-UR lens sets it when the search already matched
+  // the UR header — every card in a matched group stays visible (domain/status
+  // still apply).
+  function requestMatchesFilters(requestId, options) {
+    var request = requestsById[requestId];
+    if (!request) {
+      // Ids outside the current tree carry no fields to filter on — hide them
+      // whenever any filter is set, show them otherwise.
+      return !hasActiveFilters();
+    }
+    if (filterState.domain !== "" && request.domain !== filterState.domain) {
+      return false;
+    }
+    if (filterState.status !== "" && request.status !== filterState.status) {
+      return false;
+    }
+    if (filterState.searchText !== "" && !(options && options.skipSearch)) {
+      return searchMatchesRequest(request, requestId, filterState.searchText);
+    }
+    return true;
+  }
+
+  function userRequestIsActive(userRequest) {
+    return (userRequest.requestIds || []).some(function (requestId) {
+      var request = requestsById[requestId];
+      return request && !isTerminalResolvedStatus(request.status);
+    });
+  }
+
+  function populateFilterSelects() {
+    var domainSet = {};
+    var statusSet = {};
+    Object.keys(requestsById).forEach(function (requestId) {
+      var request = requestsById[requestId];
+      if (request.domain) {
+        domainSet[request.domain] = true;
+      }
+      if (request.status) {
+        statusSet[request.status] = true;
+      }
+    });
+    fillSelectOptions(document.getElementById("filter-domain"), Object.keys(domainSet).sort());
+    fillSelectOptions(document.getElementById("filter-status"), Object.keys(statusSet).sort());
+  }
+
+  function fillSelectOptions(selectNode, values) {
+    values.forEach(function (value) {
+      var option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      selectNode.appendChild(option);
+    });
+  }
+
+  // A filter change re-renders whatever is on screen; the other views are
+  // marked stale so they re-render with the new filters when switched to.
+  function onFiltersChanged() {
+    document.getElementById("filter-clear").hidden = !hasActiveFilters();
+    // Columns have no renderedOnce guard (they render at boot), so refresh
+    // them unconditionally; the lazily-rendered views refresh if visible and
+    // go stale otherwise, re-rendering on their next activation.
+    renderColumns();
+    renderedOnce.userRequestLens = false;
+    renderedOnce.calendar = false;
+    if (viewState.view === "calendar") {
+      renderCalendar();
+      renderedOnce.calendar = true;
+    } else if (viewState.lens === "user-request") {
+      renderUserRequestLens();
+      renderedOnce.userRequestLens = true;
+    }
   }
 
   // ---- card construction --------------------------------------------------
@@ -186,15 +296,25 @@
     return card;
   }
 
-  function fillColumn(columnKey, requestIds, options) {
+  // Column counts read "shown / total" while a filter hides cards, so a
+  // filtered column is never mistaken for an empty one.
+  function formatFilteredCount(shownCount, totalCount) {
+    return shownCount < totalCount ? shownCount + " / " + totalCount : String(shownCount);
+  }
+
+  function columnEmptyText() {
+    return hasActiveFilters() ? "No matches" : "Nothing here";
+  }
+
+  function fillColumn(columnKey, requestIds, options, totalCount) {
     var container = document.querySelector('[data-cards="' + columnKey + '"]');
     var countNode = document.querySelector('[data-count="' + columnKey + '"]');
     container.textContent = "";
     if (countNode) {
-      countNode.textContent = String(requestIds.length);
+      countNode.textContent = formatFilteredCount(requestIds.length, totalCount != null ? totalCount : requestIds.length);
     }
     if (requestIds.length === 0) {
-      container.appendChild(createElement("p", "column-empty", "Nothing here"));
+      container.appendChild(createElement("p", "column-empty", columnEmptyText()));
       return;
     }
     requestIds.forEach(function (requestId) {
@@ -206,14 +326,14 @@
   // claim right now, versus what is still waiting on an upstream REQ. When
   // nothing is waiting, the headers are noise — the column renders as a flat
   // list, exactly as it did before dependency readiness was computed.
-  function fillPendingColumn(readyIds, waitingIds) {
+  function fillPendingColumn(readyIds, waitingIds, totalCount) {
     var container = document.querySelector('[data-cards="pending"]');
     var countNode = document.querySelector('[data-count="pending"]');
     container.textContent = "";
-    countNode.textContent = String(readyIds.length + waitingIds.length);
+    countNode.textContent = formatFilteredCount(readyIds.length + waitingIds.length, totalCount);
 
     if (readyIds.length === 0 && waitingIds.length === 0) {
-      container.appendChild(createElement("p", "column-empty", "Nothing here"));
+      container.appendChild(createElement("p", "column-empty", columnEmptyText()));
       return;
     }
     if (waitingIds.length === 0) {
@@ -257,12 +377,27 @@
     return ids; // calendar is already most-recent-first
   }
 
+  function filterRequestIds(requestIds) {
+    return requestIds.filter(function (requestId) {
+      return requestMatchesFilters(requestId);
+    });
+  }
+
   function renderColumns() {
     var columns = boardData.columns || {};
-    fillPendingColumn(columns.pendingReady || [], columns.pendingWaiting || []);
-    fillColumn("claimed", columns.claimed || []);
-    fillColumn("needsInputOrBlocked", columns.needsInputOrBlocked || []);
-    fillColumn("recentlyDone", recentlyDoneIds(viewState.windowHours), { showCompleted: true });
+    var pendingReadyIds = columns.pendingReady || [];
+    var pendingWaitingIds = columns.pendingWaiting || [];
+    fillPendingColumn(
+      filterRequestIds(pendingReadyIds),
+      filterRequestIds(pendingWaitingIds),
+      pendingReadyIds.length + pendingWaitingIds.length
+    );
+    var claimedIds = columns.claimed || [];
+    fillColumn("claimed", filterRequestIds(claimedIds), null, claimedIds.length);
+    var needsInputIds = columns.needsInputOrBlocked || [];
+    fillColumn("needsInputOrBlocked", filterRequestIds(needsInputIds), null, needsInputIds.length);
+    var recentIds = recentlyDoneIds(viewState.windowHours);
+    fillColumn("recentlyDone", filterRequestIds(recentIds), { showCompleted: true }, recentIds.length);
   }
 
   // ---- data warnings banner ------------------------------------------------
@@ -324,11 +459,31 @@
   function renderUserRequestLens() {
     var host = document.getElementById("user-request-lens");
     host.textContent = "";
+    var hiddenResolvedCount = 0;
+
     (boardData.userRequestOrder || []).forEach(function (userRequestId) {
       var userRequest = userRequestsById[userRequestId];
       if (!userRequest) {
         return;
       }
+      if (filterState.userRequestActivity === "active" && !userRequestIsActive(userRequest)) {
+        hiddenResolvedCount += 1;
+        return;
+      }
+
+      // A search hit on the UR header keeps the whole group; domain/status
+      // still filter the cards inside it.
+      var groupMatchesSearch =
+        filterState.searchText !== "" &&
+        searchMatchesUserRequest(userRequest, userRequestId, filterState.searchText);
+      var requestIds = userRequest.requestIds || [];
+      var shownRequestIds = requestIds.filter(function (requestId) {
+        return requestMatchesFilters(requestId, { skipSearch: groupMatchesSearch });
+      });
+      if (hasActiveFilters() && shownRequestIds.length === 0) {
+        return;
+      }
+
       var group = createElement("section", "ur-group");
 
       var head = createElement("button", "ur-group-head");
@@ -340,18 +495,45 @@
       if (!userRequest.inputFilePresent) {
         head.appendChild(createElement("span", "ur-synthetic", "no input.md"));
       }
-      var requestIds = userRequest.requestIds || [];
-      head.appendChild(createElement("span", "ur-count", requestIds.length + " REQ"));
+      head.appendChild(
+        createElement(
+          "span",
+          "ur-count",
+          shownRequestIds.length < requestIds.length
+            ? shownRequestIds.length + " / " + requestIds.length + " REQ"
+            : requestIds.length + " REQ"
+        )
+      );
       group.appendChild(head);
 
       var cards = createElement("div", "ur-group-cards");
-      requestIds.forEach(function (requestId) {
+      shownRequestIds.forEach(function (requestId) {
         cards.appendChild(makeRequestCard(requestId, { showCompleted: true }));
       });
       group.appendChild(cards);
 
       host.appendChild(group);
     });
+
+    if (host.childNodes.length === 0) {
+      var emptyText = hasActiveFilters()
+        ? "No user requests match the current filters."
+        : "No active user requests — every UR is fully resolved. Switch URs to All to browse the archive.";
+      host.appendChild(createElement("p", "ur-lens-empty", emptyText));
+      return;
+    }
+    if (hiddenResolvedCount > 0) {
+      host.appendChild(
+        createElement(
+          "p",
+          "ur-lens-hidden-note",
+          hiddenResolvedCount +
+            " fully resolved UR" +
+            (hiddenResolvedCount === 1 ? "" : "s") +
+            " hidden — switch URs to All to see them."
+        )
+      );
+    }
   }
 
   // ---- calendar -----------------------------------------------------------
@@ -362,22 +544,32 @@
     scroll.textContent = "";
 
     var calendar = boardData.calendar || [];
-    summary.textContent =
-      calendar.length + " completed REQ" + (calendar.length === 1 ? "" : "s") + " across the archive";
+    var shownEntries = calendar.filter(function (entry) {
+      return requestMatchesFilters(entry.id);
+    });
+    summary.textContent = hasActiveFilters()
+      ? shownEntries.length +
+        " of " +
+        calendar.length +
+        " completed REQ" +
+        (calendar.length === 1 ? "" : "s") +
+        " match the current filters"
+      : calendar.length + " completed REQ" + (calendar.length === 1 ? "" : "s") + " across the archive";
 
     // The calendar is sorted most-recent-first, so equal day keys are
-    // contiguous — group by walking the list.
+    // contiguous — group by walking the list. Days whose entries are all
+    // filtered out never flush, so they disappear entirely.
     var currentDayKey = null;
     var currentEntries = null;
 
     function flushDay() {
-      if (!currentDayKey || !currentEntries) {
+      if (!currentDayKey || !currentEntries || currentEntries.length === 0) {
         return;
       }
       scroll.appendChild(makeCalendarDay(currentDayKey, currentEntries));
     }
 
-    calendar.forEach(function (entry) {
+    shownEntries.forEach(function (entry) {
       if (entry.dayKey !== currentDayKey) {
         flushDay();
         currentDayKey = entry.dayKey;
@@ -709,6 +901,8 @@
     }
     if (!showCalendar) {
       applyLens();
+    } else {
+      updateUserRequestActivityVisibility();
     }
   }
 
@@ -719,11 +913,19 @@
 
     columns.hidden = byUserRequest;
     lensHost.hidden = !byUserRequest;
+    updateUserRequestActivityVisibility();
 
     if (byUserRequest && !renderedOnce.userRequestLens) {
       renderUserRequestLens();
       renderedOnce.userRequestLens = true;
     }
+  }
+
+  // The Active/All toggle only means something on the by-UR lens — hide it
+  // everywhere else so the topbar doesn't advertise a dead control.
+  function updateUserRequestActivityVisibility() {
+    document.getElementById("ur-activity-group").hidden =
+      viewState.view !== "board" || viewState.lens !== "user-request";
   }
 
   function wireControls() {
@@ -752,6 +954,46 @@
         renderColumns();
       });
     });
+
+    var searchInput = document.getElementById("filter-search");
+    searchInput.addEventListener("input", function () {
+      filterState.searchText = searchInput.value.trim().toLowerCase();
+      onFiltersChanged();
+    });
+
+    var domainSelect = document.getElementById("filter-domain");
+    domainSelect.addEventListener("change", function () {
+      filterState.domain = domainSelect.value;
+      onFiltersChanged();
+    });
+
+    var statusSelect = document.getElementById("filter-status");
+    statusSelect.addEventListener("change", function () {
+      filterState.status = statusSelect.value;
+      onFiltersChanged();
+    });
+
+    document.getElementById("filter-clear").addEventListener("click", function () {
+      filterState.searchText = "";
+      filterState.domain = "";
+      filterState.status = "";
+      searchInput.value = "";
+      domainSelect.value = "";
+      statusSelect.value = "";
+      onFiltersChanged();
+    });
+
+    document.querySelectorAll("[data-ur-activity]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        filterState.userRequestActivity = button.getAttribute("data-ur-activity");
+        setActiveButton("#ur-activity-group", "data-ur-activity", filterState.userRequestActivity);
+        renderedOnce.userRequestLens = false;
+        if (viewState.view === "board" && viewState.lens === "user-request") {
+          renderUserRequestLens();
+          renderedOnce.userRequestLens = true;
+        }
+      });
+    });
   }
 
   // Event delegation: any element carrying data-detail-kind opens the drawer.
@@ -768,6 +1010,7 @@
   // ---- boot ---------------------------------------------------------------
 
   wireControls();
+  populateFilterSelects();
   renderWarningsBanner();
   renderNotesStrip();
   renderColumns();

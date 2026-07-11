@@ -284,6 +284,56 @@ body.is-resizing-detail {
   outline-offset: 2px;
 }
 
+/* Shared filter bar — search box + domain/status selects, styled like the
+   surrounding pill groups. */
+.control-group-filters {
+  gap: 6px;
+  padding: 4px 6px;
+}
+.filter-search {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-strong);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  width: 170px;
+  border-radius: var(--radius-pill);
+}
+.filter-search::placeholder {
+  color: var(--ink-faint);
+}
+.filter-search:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: -1px;
+}
+.filter-select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  max-width: 150px;
+}
+.filter-select:hover {
+  color: var(--ink-strong);
+  background-color: var(--surface-2);
+}
+.filter-select:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: -1px;
+}
+.filter-select option {
+  color: initial;
+  background-color: initial;
+}
+
 /* --------------------------------------------------------------------------
    View panels
    -------------------------------------------------------------------------- */
@@ -825,6 +875,20 @@ body.is-resizing-detail {
 }
 .ur-group-cards .req-card {
   --column-accent: var(--ink-faint);
+}
+
+/* Empty state and the "n resolved URs hidden" footer for the by-UR lens. */
+.ur-lens-empty {
+  color: var(--ink-faint);
+  font-size: 14px;
+  padding: 32px 4px;
+  text-align: center;
+}
+.ur-lens-hidden-note {
+  color: var(--ink-faint);
+  font-size: 12px;
+  padding: 12px 4px 0;
+  text-align: center;
 }
 
 /* --------------------------------------------------------------------------
