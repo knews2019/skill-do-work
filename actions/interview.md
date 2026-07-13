@@ -386,7 +386,7 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 - **Versions are immutable.** Once written to `versions/`, a directory is never edited by the action. The user's `previous_version` reference is the only back-link.
 - **Exports gate on review.** `export` refuses to run unless all layers are approved and at least one review pass has completed. The gate exists to catch cross-layer tensions before they propagate into agent instructions. An `update` re-run that edits approved entries clears the review state (`review_completed_at = null`, `review_runs = 0`) — the user must re-run `review` before the next `export`.
 - **Local files only.** No MCP dependencies. No external services. Session state, templates, and exports are plain files the user can diff, grep, and commit.
-- **Session state is tracked, not ignored.** `./do-work/interview/<template>/` holds durable per-repo knowledge (checkpoints, exports, versioned archives). Commit it alongside the project's other trail-of-intent artifacts (URs, REQs). Only `do-work/pipeline.json` and `do-work/runs/` are git-excluded (transient state) — interview output is part of the committable Trail of Intent.
+- **Session state is tracked, not ignored.** `./do-work/interview/<template>/` holds durable per-repo knowledge (checkpoints, exports, versioned archives). Commit it alongside the project's other trail-of-intent artifacts (URs, REQs). Only `do-work/pipeline.json` is git-excluded (transient live state); `do-work/runs/` is committable while a run is live, then deleted once consumed — interview output is part of the committable Trail of Intent.
 
 ---
 

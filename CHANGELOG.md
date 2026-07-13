@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.120.0 — Run Dirs Are Committed, Then Cleaned Up on Consumption (2026-07-13)
+
+Fan-out run directories (`do-work/runs/`) are no longer gitignored transient scratch — they're now committable, so a review or exploration is visible and doesn't get silently lost mid-run. In exchange, the run dir gets deleted the moment its findings are consumed (synthesized and promoted to a report, REQs, or deliverables), which keeps `do-work/runs/` from growing without bound. That whole create → inspect → promote → delete lifecycle is now part of the job, not an afterthought.
+
+- `.gitignore` no longer excludes `do-work/runs/` (`do-work/pipeline.json` stays excluded — it's live state, not work).
+- `crew-members/background-agents.md` is the canonical lifecycle: run dirs are committable (step 1) and deleted once consumed (new step 5). The old `.git/info/exclude` append for run dirs is gone.
+- `code-review` and `deep-explore` now delete their run/session directory as the final step, after promoting anything worth keeping into `do-work/deliverables/`.
+- `cleanup` gains a safety-net pass that sweeps abandoned `Status: complete` run dirs (and leaves incomplete, possibly-resumable ones alone).
+- The shared local-ignore snippet still used by `pipeline.json`, the vendored `last30days` engine, and build artifacts moved to a dedicated section in `background-agents.md`; its former callers point there.
+
 ## 0.119.0 — Board Drawer Copy Button (2026-07-11)
 
 The Kanban board's ticket drawer gets a Copy button next to Close: one click puts the open REQ's (or UR's) raw Markdown on the clipboard, ready to paste into chat, email, or another ticket without losing headings, checkboxes, or links.

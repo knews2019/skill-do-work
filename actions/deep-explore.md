@@ -112,7 +112,7 @@ SESSION_DIR="do-work/runs/deep-explore-<sanitized-slug>-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$SESSION_DIR"/session/sources "$SESSION_DIR"/session/idea-reports "$SESSION_DIR"/session/briefs "$SESSION_DIR"/session/research
 ```
 
-Then ensure run state stays untracked regardless of install layout — append `do-work/runs/` to the enclosing repo's `.git/info/exclude` when not already ignored (the shipped `.gitignore` can't reach project-root `do-work/` from a nested `.claude/skills/do-work/` install; see `crew-members/background-agents.md` step 1 for the exact snippet). Session state is transient. The Writer step still writes its outputs (VISION, briefs, idea-reports) inside the session dir; if a session's output should persist, copy the relevant artifact out before the directory is reclaimed.
+The session directory is a committable path under `do-work/` (not gitignored) so an in-progress exploration is inspectable and survives across sessions; it is deleted once consumed (Step 9, and `crew-members/background-agents.md` steps 1 and 5). The Writer step writes its outputs (VISION, briefs, idea-reports) inside the session dir — these are working artifacts, not the permanent record; the artifacts worth keeping are promoted to `do-work/deliverables/` at the end.
 
 #### Capture sources
 
@@ -267,6 +267,8 @@ DEEP EXPLORATION — [concept name]
 
   [Individual Briefs]
 ```
+
+**Then promote and clean up.** The session's findings are now consumed — presented to the user and captured in the vision document and briefs. Copy any artifact worth keeping (the VISION document, developed briefs) into `do-work/deliverables/`, then **delete the session directory** as the final step (`crew-members/background-agents.md` step 5). The promoted deliverables carry the durable record; the raw session scratch is redundant once presented. The deletion rides the user's normal commit flow — this action does not force-commit.
 
 ---
 

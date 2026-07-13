@@ -30,32 +30,14 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
    from colliding on one directory (if it somehow already exists, append a short
    numeric suffix). Nothing should be spawned before this directory exists.
 
-   Then ensure this transient state is ignored **regardless of install layout**. The
-   shipped `.gitignore` only covers `do-work/runs/` when do-work is extracted at the
-   project root; in a nested `.claude/skills/do-work/` install it sits in a subdirectory
-   and cannot reach the project-root `do-work/`. So append the path to the enclosing
-   repo's `.git/info/exclude` (local-only — never committed, never shipped) whenever it
-   isn't already ignored:
-
-   ```bash
-   exclude=$(git rev-parse --git-path info/exclude 2>/dev/null) || exclude=""
-   if [ -n "$exclude" ]; then
-     git check-ignore -q do-work/runs/ 2>/dev/null || echo '**/do-work/runs/' >> "$exclude"
-   fi
-   ```
-
-   `git check-ignore -q` already succeeds when *any* ignore source covers the path (a
-   root-extract install's shipped `.gitignore`, or the host project's own rules), so the
-   append only fires when genuinely needed and never duplicates. The appended pattern
-   carries a `**/` prefix because a pattern with an interior slash (`do-work/runs/`) is
-   root-anchored, while `check-ignore` tests the cwd-relative path — without the prefix,
-   a run from a repo subdirectory would never see its own append, re-appending on every
-   run while the actual run directory stayed unignored; `**/` makes the pattern match at
-   any depth, so the check and the pattern agree. The `|| exclude=""` fallback keeps the
-   guard a clean no-op outside a git repo — without it the failed command substitution
-   leaves the assignment nonzero, which aborts the script under `set -e`. Use `.git/info/exclude`,
-   **not** the project's committable `.gitignore` — run state is local-only and the host
-   project shouldn't carry a committed ignore rule for it. Resolve the exclude file with `git rev-parse --git-path info/exclude` — **not** `$(git rev-parse --show-toplevel)/.git/info/exclude`, which breaks in linked worktrees and submodules where `.git` is a file, not a directory (the redirect fails with "Not a directory" and the path is left un-ignored).
+   The run directory is an ordinary **committable** path under `do-work/` (the
+   Trail of Intent) — not gitignored, not added to `.git/info/exclude`. Keeping it
+   trackable is what lets a run be inspected and survive across sessions while it is
+   live: if the user commits their `do-work/` tree mid-run (common in a multi-session
+   pipeline), the run travels with the commit instead of sitting as untracked noise or
+   being lost. It is not permanent, though — see the lifecycle in step 5: once its
+   findings are consumed, the run directory is deleted, and the permanent record is the
+   promoted output, never the raw scratch.
 
 2. **Each sub-agent writes its own findings file; returns only a one-line
    status.** Give every sub-agent an output path inside the run directory (e.g.
@@ -78,8 +60,52 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
    the original session and in a fresh recovery session that never saw the spawns.
    Once synthesis succeeds, **mark the run complete** — write `Status: complete` to
    the manifest. A completed run must never be offered for resume (see Known Failure
-   Mode); its directory can be deleted or kept as an audit trail, but it is no
-   longer live state.
+   Mode); it is no longer live state.
+
+5. **Delete the run directory once its findings are consumed.** The run directory is
+   working memory, not the deliverable. The moment its findings have been *synthesized
+   and promoted to the run's permanent output* — a report, captured REQs, or artifacts
+   copied into `do-work/deliverables/` — that scratch is redundant, so the action that
+   owns the run **deletes the directory as its final step**. This is the normal end of
+   the information's lifecycle, not an optional tidy-up: it keeps `do-work/runs/` from
+   growing without bound (nothing else prunes it) while the promoted output carries the
+   durable record. State the trigger as this *condition* — "findings consumed and
+   promoted" — for whatever action owns the run; do not tie it to a fixed list of
+   callers. The delete is a filesystem change that rides the normal commit flow; no
+   action force-commits on its own. `Status: complete` is the bridge for the window
+   between synthesis and deletion — if a run is abandoned after finishing but before its
+   owner deletes it, `actions/cleanup.md` sweeps any `complete`-marked directory as a
+   safety net (an incomplete one is left alone, because it may still be resumable).
+
+## Local-ignore snippet (for genuinely-transient paths — NOT run dirs)
+
+Run directories are committable (step 1) and must **never** be added to any ignore list.
+But some sibling paths *are* genuinely transient and must stay out of git regardless of
+install layout — `do-work/pipeline.json` (live pipeline state), a vendored engine install,
+a `build/` artifact. The shipped `.gitignore` can't reach a project-root path from a nested
+`.claude/skills/do-work/` install, so those paths append to the enclosing repo's
+`.git/info/exclude` (local-only — never committed, never shipped). This is the canonical
+snippet they reference; substitute the path being ignored:
+
+```bash
+exclude=$(git rev-parse --git-path info/exclude 2>/dev/null) || exclude=""
+if [ -n "$exclude" ]; then
+  git check-ignore -q <path> 2>/dev/null || echo '**/<path>' >> "$exclude"
+fi
+```
+
+`git check-ignore -q` already succeeds when *any* ignore source covers the path, so the
+append only fires when genuinely needed and never duplicates. The appended pattern carries
+a `**/` prefix because a pattern with an interior slash is root-anchored, while
+`check-ignore` tests the cwd-relative path — without the prefix, a run from a repo
+subdirectory would never see its own append, re-appending on every run while the path
+stayed unignored; `**/` makes the pattern match at any depth, so the check and the pattern
+agree. The `|| exclude=""` fallback keeps the guard a clean no-op outside a git repo —
+without it the failed command substitution leaves the assignment nonzero, which aborts the
+script under `set -e`. Resolve the exclude file with `git rev-parse --git-path info/exclude`
+— **not** `$(git rev-parse --show-toplevel)/.git/info/exclude`, which breaks in linked
+worktrees and submodules where `.git` is a file, not a directory (the redirect fails with
+"Not a directory" and the path is left un-ignored).
 
 ## Known Failure Mode & Recovery
 

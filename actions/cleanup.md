@@ -13,7 +13,7 @@ The archive should be a collection of self-contained UR folders, each containing
 
 **Do NOT use when:**
 - User wants *diagnostics* on pipeline health — route to actions/forensics.md instead
-- User wants to *delete* or discard work — cleanup only reorganizes, never deletes
+- User wants to *delete* or discard work — cleanup only reorganizes work items (URs, REQs), never deletes them. (The lone exception is Pass 4, which sweeps *consumed* run scratch — a `Status: complete` directory under `do-work/runs/` — after its findings have been promoted. That is spent scratch, not work.)
 
 ## When This Runs
 
@@ -22,7 +22,7 @@ The archive should be a collection of self-contained UR folders, each containing
 
 ## Steps
 
-Four passes, in order:
+Five passes, in order:
 
 ### Pass 0: Sweep Finished Queue Items
 
@@ -100,6 +100,17 @@ Check for UR folders that ended up in wrong locations within the archive.
 
 Also check for and consolidate any loose CONTEXT-*.md files:
 - Move to `do-work/archive/legacy/` alongside legacy REQs
+
+### Pass 4: Sweep Consumed Run Directories
+
+Fan-out actions (code-review, deep-explore, multi-REQ work — see `crew-members/background-agents.md`) each delete their own `do-work/runs/<action>-<ts>/` directory once its findings are consumed. This pass is the **safety net** for runs abandoned after they finished but before their owner deleted them — e.g. a session that crashed between synthesis and cleanup.
+
+1. **Glob `do-work/runs/*/`** (each is one run directory).
+2. **Read each run's `manifest.md`** and check its `Status:` line.
+3. **If `Status: complete`** — the run's findings were already synthesized and promoted; the directory is spent scratch. **Delete it.** Report: `Swept run dir do-work/runs/{name} (Status: complete)`.
+4. **If the manifest is missing, or `Status:` is anything other than `complete`** (e.g. `in-progress`) — **leave it untouched** and report: `Left run dir do-work/runs/{name} (incomplete — may be resumable)`. A crashed run with unfinished dimensions is recoverable from its files (see `crew-members/background-agents.md` recovery procedure); never delete it here.
+
+This is the one place cleanup deletes rather than reorganizes, and it is scoped strictly to **consumed run scratch** — a `Status: complete` directory under `do-work/runs/` only. URs, REQs, and every other `do-work/` artifact are still only ever moved, never deleted.
 
 ### Repoint Documentation Links
 

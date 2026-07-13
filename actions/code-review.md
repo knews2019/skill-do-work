@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Standalone codebase review — not tied to the REQ/UR queue. Evaluates consistency, patterns, security, and architectural health across a scoped section of the codebase. User-facing walkthrough: [`docs/code-review-guide.md`](../docs/code-review-guide.md).
 
-**Source-code read-only** — this action does NOT modify any project source files. It produces a structured report only. It does write its own run state under `do-work/runs/code-review-<ts>/` (findings files + manifest) and appends `do-work/runs/` to the enclosing repo's `.git/info/exclude` when not already ignored — see Steps 1–2. May also write queue metadata (`do-work/queue/REQ-*` files) with explicit user confirmation — see Step 10.
+**Source-code read-only** — this action does NOT modify any project source files. It produces a structured report only. It does write its own run state under `do-work/runs/code-review-<ts>/` (findings files + manifest — a committable path, then deleted once consumed; see Steps 1 and 10). May also write queue metadata (`do-work/queue/REQ-*` files) with explicit user confirmation — see Step 10.
 
 ## When to Use
 
@@ -73,7 +73,7 @@ If no arguments provided:
 
 This action fans its six review dimensions out to sub-agents rather than running them in one long in-context pass. It follows the durability pattern in `crew-members/background-agents.md` — read that file for the full contract. In short:
 
-- After scope is resolved and context is loaded (Steps 1–2), create the run directory `do-work/runs/code-review-<YYYY-MM-DD-HHMMSS>/` **before any spawn**. This directory is the source of truth for the run, not the chat transcript. Then ensure it's gitignore-covered regardless of install layout — append `do-work/runs/` to the enclosing repo's `.git/info/exclude` when not already ignored (the shipped `.gitignore` can't reach project-root `do-work/` from a nested `.claude/skills/do-work/` install; see `crew-members/background-agents.md` step 1 for the exact snippet).
+- After scope is resolved and context is loaded (Steps 1–2), create the run directory `do-work/runs/code-review-<YYYY-MM-DD-HHMMSS>/` **before any spawn**. This directory is the source of truth for the run, not the chat transcript. It is a committable path under `do-work/` (not gitignored) so the run is inspectable and survives across sessions; it is deleted once its findings are consumed (Step 10). See `crew-members/background-agents.md` steps 1 and 5 for the full lifecycle.
 - Dispatch the six dimensions (Consistency, Architecture, Security, Performance, Test Coverage, Automated Checks) as sub-agents in **bounded waves** sized to the harness concurrency limit. Each sub-agent receives the resolved scope, the loaded prime/crew context, and its dimension's checklist (Steps 3–8 below) as its brief.
 - Each sub-agent writes its **full findings** to its own file — `do-work/runs/code-review-<ts>/<dimension>.md` (e.g. `consistency.md`, `security.md`) — and returns only a **one-line status** to the orchestrator. Never return full findings inline. Maintain a `manifest.md` in the run directory and update it as each wave's files land.
 - Step 9 synthesizes from the findings files on disk, not from what the sub-agents returned into the conversation.
@@ -289,7 +289,7 @@ Found 3 Critical and 5 Important findings.
 Create REQ files for these? (The user can run `do-work run` to process them later.)
 ```
 
-Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward. actions/code-review.md is source-code read-only in all modes — the only writes are run state under `do-work/runs/` (plus the `.git/info/exclude` append) and, with explicit consent here in Step 10, queue metadata.
+Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward. actions/code-review.md is source-code read-only in all modes — the only writes are run state under `do-work/runs/` and, with explicit consent here in Step 10, queue metadata.
 
 When the user confirms, create REQ files using the standard format:
 
@@ -317,6 +317,8 @@ Found during code review of [scope]. [1 sentence on the specific finding.]
 ```
 
 Do NOT auto-create REQs without confirmation. The report itself is the primary output.
+
+**Then delete the run directory.** Once the report has been delivered and the REQ-capture decision is made (created, declined, or skipped as non-interactive), the run's findings are fully consumed — the report and any REQs are the permanent record. Delete `do-work/runs/code-review-<ts>/` as the final step (`crew-members/background-agents.md` step 5). Deleting its *own* scratch is not a project source-file write, so this stays inside the source-code-read-only contract; the deletion rides the user's normal commit flow. If the user asked to keep the raw findings, copy them into `do-work/deliverables/` first, then delete the run directory.
 
 ## Health Rating Guidelines
 
