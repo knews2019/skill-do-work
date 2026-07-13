@@ -154,15 +154,15 @@ Next steps:
   do-work inspect               Explain the resulting uncommitted changes before committing
 ```
 
-**After file-reorg (plan-only):**
+**After tidy-repo (plan-only):**
 ```
 Next steps:
-  do-work file-reorg [path]     Execute the plan (re-runs with the consent gate)
+  do-work tidy-repo [path]      Execute the plan (re-runs with the consent gate)
   do-work stray-check [path]    Find junk files the reorg shouldn't relocate — delete them first
   do-work capture-request: [flagged follow-up]  Capture a flagged-not-moved item (e.g. splitting a big code folder)
 ```
 
-**After file-reorg (executed):**
+**After tidy-repo (executed):**
 ```
 Next steps:
   do-work commit                Commit the reorg as ONE atomic commit (renames + rewrites + doc updates), separate from unrelated work

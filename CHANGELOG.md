@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.121.0 — Tidy-Repo Rename and Safer Layout Planning (2026-07-13)
+
+`file-reorg` is now `tidy-repo`: a clearer name for the same reference-safe repository-layout job, with the old command retained as a compatibility alias. The workflow is tighter about what belongs in a layout pass and more careful around real-world repositories that already have local changes, generators, or platform-sensitive paths.
+
+- Renamed `actions/file-reorg.md` to `actions/tidy-repo.md` and promoted `do-work tidy-repo [path] [plan]` across routing, help, dispatch, README, and next-step guidance
+- Added an explicit target-design step, dirty-path overlap handling, generated-source mapping, case-only rename handling, and post-move diff verification
+- Made README/CLAUDE edits conditional on actual layout drift; unrelated link fixes, boilerplate rewrites, and permanent link-checker creation are follow-up work instead of mandatory side effects
+- Preserved `do-work file-reorg` as a legacy alias so existing prompts keep working
+
 ## 0.120.0 — Run Dirs Are Committed, Then Cleaned Up on Consumption (2026-07-13)
 
 Fan-out run directories (`do-work/runs/`) are no longer gitignored transient scratch — they're now committable, so a review or exploration is visible and doesn't get silently lost mid-run. In exchange, the run dir gets deleted the moment its findings are consumed (synthesized and promoted to a report, REQs, or deliverables), which keeps `do-work/runs/` from growing without bound. That whole create → inspect → promote → delete lifecycle is now part of the job, not an afterthought.

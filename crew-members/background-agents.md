@@ -1,6 +1,6 @@
 # Background Agent Durability
 
-<!-- JIT_CONTEXT: This file is loaded by any action that fans work out to background or parallel sub-agents — that condition is the contract; illustrative callers today include code-review, work (multi-REQ), pipeline, deep-explore, and file-reorg (Step 3 reference mapping). It prescribes a disk-durable run-directory pattern so fan-out work survives an interrupted, compacted, or corrupted orchestrator session. Not loaded for single-agent in-context work that returns one result. -->
+<!-- JIT_CONTEXT: This file is loaded by any action that fans work out to background or parallel sub-agents — that condition is the contract; illustrative callers today include code-review, work (multi-REQ), pipeline, deep-explore, and tidy-repo (Step 4 gap pass). It prescribes a disk-durable run-directory pattern so fan-out work survives an interrupted, compacted, or corrupted orchestrator session. Not loaded for single-agent in-context work that returns one result. -->
 
 > When you fan work out to background or parallel sub-agents, the chat transcript
 > is the worst possible place to keep the results. Make a directory on disk the
