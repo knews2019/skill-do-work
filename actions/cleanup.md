@@ -13,7 +13,7 @@ The archive should be a collection of self-contained UR folders, each containing
 
 **Do NOT use when:**
 - User wants *diagnostics* on pipeline health — route to actions/forensics.md instead
-- User wants to *delete* or discard work — cleanup only reorganizes work items (URs, REQs), never deletes them. (The lone exception is Pass 4, which sweeps *consumed* run scratch — a `Status: complete` directory under `do-work/runs/` — after its findings have been promoted. That is spent scratch, not work.)
+- User wants to *delete* or discard work — cleanup only reorganizes work items (URs, REQs), never deletes them. (The lone exception is Pass 4, which sweeps *consumed* run scratch — a `Status: consumed` directory under `do-work/runs/` — after its findings have been promoted. That is spent scratch, not work.)
 
 ## When This Runs
 
@@ -103,14 +103,14 @@ Also check for and consolidate any loose CONTEXT-*.md files:
 
 ### Pass 4: Sweep Consumed Run Directories
 
-Fan-out actions (code-review, deep-explore, multi-REQ work — see `crew-members/background-agents.md`) each delete their own `do-work/runs/<action>-<ts>/` directory once its findings are consumed. This pass is the **safety net** for runs abandoned after they finished but before their owner deleted them — e.g. a session that crashed between synthesis and cleanup.
+Fan-out actions (code-review, deep-explore, multi-REQ work — see `crew-members/background-agents.md`) each delete their own `do-work/runs/<action>-<ts>/` directory once its findings are consumed. This pass is the **safety net** for the narrow case where an owner recorded `Status: consumed` after delivery/promotion but the session ended before the following deletion. Synthesis alone never qualifies.
 
 1. **Glob `do-work/runs/*/`** (each is one run directory).
 2. **Read each run's `manifest.md`** and check its `Status:` line.
-3. **If `Status: complete`** — the run's findings were already synthesized and promoted; the directory is spent scratch. **Delete it.** Report: `Swept run dir do-work/runs/{name} (Status: complete)`.
-4. **If the manifest is missing, or `Status:` is anything other than `complete`** (e.g. `in-progress`) — **leave it untouched** and report: `Left run dir do-work/runs/{name} (incomplete — may be resumable)`. A crashed run with unfinished dimensions is recoverable from its files (see `crew-members/background-agents.md` recovery procedure); never delete it here.
+3. **If `Status: consumed`** — the run's findings were delivered/promoted and the directory is spent scratch. **Delete it.** Record the exact deleted path for the Commit section and report: `Swept run dir do-work/runs/{name} (Status: consumed)`.
+4. **If the manifest is missing, or `Status:` is anything other than `consumed`** (`in-progress`, `synthesized`, or the legacy `complete`) — **leave it untouched** and report its actual status. An in-progress run may need missing work; a synthesized/legacy-complete run may contain an assembled output the user never received. See `crew-members/background-agents.md` for the recovery branches; never infer consumption from synthesis.
 
-This is the one place cleanup deletes rather than reorganizes, and it is scoped strictly to **consumed run scratch** — a `Status: complete` directory under `do-work/runs/` only. URs, REQs, and every other `do-work/` artifact are still only ever moved, never deleted.
+This is the one place cleanup deletes rather than reorganizes, and it is scoped strictly to **consumed run scratch** — a `Status: consumed` directory under `do-work/runs/` only. URs, REQs, and every other `do-work/` artifact are still only ever moved, never deleted.
 
 ### Repoint Documentation Links
 
@@ -143,6 +143,7 @@ Archive cleanup complete:
   - Legacy: 24 REQs moved to archive/legacy/
   - Misplaced do-work/: relocated 7 REQs, 6 URs from exp/g3-segment-anything/do-work/
   - Fixed: 1 misplaced UR folder in archive
+  - Swept runs: 2 consumed run directories
   - Repointed: 39 doc links in 5 files
   - Still open: UR-015 (2/4 REQs complete)
 ```
@@ -177,7 +178,7 @@ do-work/archive/
 
 ## Commit (Git repos only)
 
-After all passes complete, if any files were moved or consolidated, commit the structural changes.
+After all passes complete, if any files were moved, consolidated, repointed, or swept from `do-work/runs/`, commit the structural changes.
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
@@ -191,6 +192,10 @@ git add do-work/archive/ do-work/user-requests/
 # git add exp/g3-segment-anything/do-work/  (the deletion side of the move)
 # If the repoint step rewrote doc links, also stage each rewritten doc file:
 # git add docs/prime-foo.md docs/prime-bar.md  (so the repoint lands in the same commit as the moves it repairs)
+# If Pass 4 deleted a tracked consumed run, stage only that exact deletion prefix:
+# git add -u -- do-work/runs/code-review-2026-07-13-143012/
+# Repeat for each swept run. `-u` stages tracked modifications/deletions only,
+# so neighboring live or untracked runs cannot be pulled into the commit.
 
 git commit -m "$(cat <<'EOF'
 do-work: cleanup — consolidated {N} REQs, closed {M} URs
@@ -200,6 +205,7 @@ do-work: cleanup — consolidated {N} REQs, closed {M} URs
 - Legacy: {Y} items moved to archive/legacy/
 - Fixed: {Z} misplaced folders
 - Repointed: {W} doc links
+- Swept runs: {R} consumed run directories
 
 EOF
 )"
@@ -207,13 +213,13 @@ EOF
 
 **Format:** `do-work: cleanup — consolidated {N} REQs, closed {M} URs` — adjust the counts and bullet list to reflect what actually changed. Omit bullet categories where the count is zero.
 
-If nothing was moved (archive was already clean), skip the commit entirely.
+If nothing was moved, rewritten, or swept (archive and run scratch were already clean), skip the commit entirely.
 
-Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/`, `do-work/user-requests/`, any `do-work/queue/` or working/ REQs swept by Pass 0, any misplaced `do-work/` directories relocated by Pass 3a, and the specific doc files rewritten by the repoint step. Don't bypass pre-commit hooks.
+Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/`, `do-work/user-requests/`, any `do-work/queue/` or working/ REQs swept by Pass 0, any misplaced `do-work/` directories relocated by Pass 3a, the specific doc files rewritten by the repoint step, and exact consumed-run deletion prefixes from Pass 4 via `git add -u -- <deleted-run-path>`. Don't bypass pre-commit hooks.
 
 ## What This Action Does NOT Do
 
-- Delete any files — only moves them into the right location
+- Delete work items — only consumed run scratch (`Status: consumed`) is deleted; URs, REQs, and other durable artifacts are moved
 - Modify file contents or frontmatter — files are relocated as-is. Exceptions: Pass 0 normalizes non-standard terminal statuses (`done` → `completed`, etc.) in frontmatter before moving, and the Repoint Documentation Links step rewrites link targets in docs that reference moved files.
 - Touch **active** files in `do-work/queue/` (the queue) or `do-work/working/` — `pending`, `pending-answers`, and `claimed` REQs are actions/work.md's responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from `do-work/queue/` and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery.
 - Archive UR folders that still have pending/in-progress REQs
@@ -228,7 +234,7 @@ Guard against these during cleanup:
 | "This REQ is probably done" | Check the actual status in frontmatter and verify against git history | Premature archival loses in-progress work |
 | "Close enough to completed — archive it" | Only archive REQs with terminal status (completed, failed, cancelled) | Non-terminal REQs belong in the queue, not the archive |
 | "This UR folder looks empty, delete it" | Check if REQs reference it via `user_request` field | Empty UR folders may have REQs still in the queue or working/ |
-| "The archive structure is fine, skip reorganization" | Run all 4 passes even if the archive looks clean | Loose files accumulate gradually — what looks clean may have orphans |
+| "The archive structure is fine, skip reorganization" | Run all 5 passes even if the archive looks clean | Loose files and consumed run scratch accumulate independently — either can need cleanup |
 
 ## Red Flags
 
@@ -242,8 +248,10 @@ Guard against these during cleanup:
 
 ## Verification Checklist
 
-- [ ] All 4 consolidation passes attempted
+- [ ] All 5 cleanup passes attempted (Passes 0–4; Pass 3 includes 3a and 3b)
 - [ ] No terminal-status REQs remain in `do-work/queue/` or `do-work/working/`
 - [ ] Every archived REQ with `user_request` field is inside its UR folder
 - [ ] No empty UR folders remain in archive (unless REQs are still pending elsewhere)
 - [ ] Every moved file's old path greps to zero hits in tracked markdown outside `do-work/`
+- [ ] Every `do-work/runs/` directory deleted by Pass 4 had `Status: consumed`; `in-progress`, `synthesized`, legacy `complete`, and missing-manifest runs remain
+- [ ] Every tracked consumed-run deletion is staged by its exact path
