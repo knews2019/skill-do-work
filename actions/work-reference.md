@@ -489,7 +489,7 @@ The `CHANGELOG.md` change — and the version file, when source 1 applied — ar
 **Voice contract (house style).** 1–2 casual sentences leading with *why it matters* — the situation that prompted the change and what's better now — then bullets for the specifics. Lead with value, not implementation; file paths and flags belong in the bullets, not the lead. Keep it brief. Newest on top, one entry per REQ (this matches one-commit-per-request).
 
 ```markdown
-## 0.4.0 — The Translator (2026-07-07)
+## 0.4.0 — Clear Questions for Interactive Prompts (2026-07-07)
 
 Agents kept asking questions only they could parse — codenames coined
 mid-analysis, options with no stated consequence. Question wording is
