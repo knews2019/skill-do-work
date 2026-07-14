@@ -9,7 +9,8 @@ The report exists to make a UI change **visible**: a stakeholder opens one HTML 
 - **Pixels first, prose second.** The image is the conclusion. Text exists to explain what the eye is already seeing.
 - **Anti-slop or it doesn't ship.** Every section passes every principle in `crew-members/anti-slop.md` (loaded in Step 1) — lead with the conclusion, verify every claim, compress, match medium to stakes, decision before self-grade — plus two report-local checks for generated images (Step 6).
 - **Self-contained folder.** One report = one folder: `ai-reports/<report-slug>/index.html` plus a sibling `screenshots/` folder of image binaries (and a `generated/` folder for AI images). The HTML references every image by relative `src` — move the folder and the report works anywhere. Deleting a report is `rm -rf ai-reports/<report-slug>/`. Tailwind + Mermaid load from a CDN.
-- **Graceful when tools are missing.** Live screenshots and AI-generated images are both nice-to-have. If `playwright-cli` (bowser) isn't installed or no dev server responds, fall back to SVG architecture + Mermaid data-flow diagrams. If no image-gen CLI is on PATH, the same SVG/Mermaid diagrams stand in for any section that would have used a generated visual. The report always ships.
+- **Graceful when tools are missing.** Live screenshots and AI-generated images are both nice-to-have. If `playwright-cli` (bowser) isn't installed or no dev server responds, fall back to SVG architecture + Mermaid data-flow diagrams. If no image-gen CLI is on PATH, the same SVG/Mermaid diagrams stand in for any section that would have used a generated visual. The same browser automation also drives the Step 7 render-and-judge pass — when it's missing, the report still ships, with a footer note that the layout was not render-verified. The report always ships.
+- **Look at the rendered page before shipping.** Layout defects — dead gutters, colliding SVG labels, a page collapsed into a skinny column — are invisible in the HTML source and obvious in a full-page screenshot. Step 7 renders and judges the actual pixels; source-reading is never layout verification.
 
 ## Image Generation Backend
 
@@ -242,6 +243,13 @@ Derive the diagram content from the REQ's Implementation Summary — trace the a
 
 When the feature touches multiple components, produce a hand-coded SVG that shows the component graph: boxes with names, arrows for data/event flow, brief labels on edges. Keep it to one viewport (no scrolling). Use the same color palette as the report. This hand-authored SVG is also the fallback whenever an AI-generated image (4d) fails to produce a file.
 
+**Data-viz rules for every hand-authored SVG** (architecture graphs, timelines, rings, stage diagrams, stat tiles):
+
+- **Color by job.** Ordered data (rings, stages, tiers, severity ladders) takes a **single-hue ordinal ramp**, light→dark — never a handful of unrelated hues, which tells the eye the items are unrelated categories when they're actually a sequence. Identity (components, actors, series) takes fixed categorical hues. Status colors (good/warn/bad) are reserved for status and never reused as series colors.
+- **Text wears ink-colored tokens, never the series color.** Labels use the report's text color (`--text`/`--muted`); identity is carried by a small solid swatch beside the label, not by coloring the words — colored text fails contrast in at least one theme.
+- **Labels never collide or clip.** On timelines and dense diagrams, stagger labels into above/below lanes; use `text-anchor="start"`/`"end"` so each label leans *away* from its neighbors and the canvas edges; shorten strings rather than letting them touch. A center-anchored label near a canvas edge always clips.
+- **Stat tiles:** label in sentence case + value in sans-serif semibold with proportional figures at ~40px + optional mono sub-line. `tabular-nums` belongs in table columns only, not tiles.
+
 **4d: AI-generated section images (optional — when an image-gen CLI is available).**
 
 For sections marked in Step 3c (concept/architecture/data-flow visuals, or a hero/title image), generate real images using the **Image Generation Backend** described above. Do not hand-write the invocation logic here — follow that section. In short:
@@ -294,7 +302,8 @@ Ensure the report folder and its screenshots folder exist (`mkdir -p ai-reports/
 - Single `index.html` inside the report folder; images linked from `screenshots/` (and `generated/`) beside it. Zero build steps. No npm installs.
 - External CDN allowed only for: Tailwind CSS, Mermaid.js. Everything else inline.
 - Light theme by default; dark via `@media (prefers-color-scheme: dark)`.
-- CSS custom properties at `:root` for `--bg`, `--surface`, `--text`, `--accent`, `--muted`. Light: white/slate-50 bg, slate-800 text, blue-600 accent. Dark: slate-900 bg, slate-100 text, blue-400 accent.
+- CSS custom properties at `:root` for `--bg`, `--surface`, `--text`, `--accent`, `--muted`. Light: white/slate-50 bg, slate-800 text, blue-600 accent. Dark: slate-900 bg, slate-100 text, blue-400 accent. These values are the fallback palette, not a mandate — restyle them to the chosen aesthetic direction (next rule), keeping the light/dark pair.
+- **Commit to one coherent aesthetic direction per report** instead of the default generic look — e.g. "engineering dossier": serif display headlines + mono kickers/labels + warm-paper neutrals. The CDN allowlist stays Tailwind + Mermaid only — **no font CDNs** — so distinctive typography comes from characterful system stacks (`Iowan Old Style, Palatino, Georgia, serif` for display; `ui-monospace` for kickers/code). One direction, carried through every section; not a different flourish per section.
 - Large readable type: body 16px min, headings 24–40px.
 - Generous whitespace: section padding ≥ 40px.
 - **Full-bleed layout — the arrangement fills the width, not a fixed column and not stretched pixels.** The page is edge-to-edge with breathing room, never a centered reading column: `.page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }` (no `max-width` cap on the page). Keep *running text* readable with a per-element cap (`.measure { max-width: 74ch }` on ledes/verdicts/prose) — but media, grids, and cards use the full width. A fixed `max-width: 940px`/`1600px` on the container is the bug that leaves big empty gutters on a wide monitor; do not do it.
@@ -354,7 +363,41 @@ Before saving the file, run through every anti-slop principle explicitly, plus t
 
 Fix any FLAGs before writing the final file. Do not ship a Borderline or Slop report.
 
-### Step 7: Save and Report
+### Step 7: Render and Judge
+
+The layout defects worth catching — dead gutters, colliding SVG labels, clipped text, a page collapsed into a skinny column — are invisible in the HTML source and obvious in a full-page screenshot. This step renders the report and judges the actual pixels. It is **mandatory when browser automation is available** (Step 3b already probed for `playwright-cli`; any equivalent your environment provides works the same way).
+
+**If browser automation is available:**
+
+1. **Serve the report folder over HTTP — never verify via `file://`.** `file://` URLs screenshot **blank** in headless Chrome, so a `file://` "verification" verifies nothing. Serve and screenshot:
+
+   ```bash
+   python3 -m http.server 8123 -d "ai-reports/<report-slug>" >/dev/null 2>&1 &
+   # screenshot http://localhost:8123/ — pick another port if 8123 is taken
+   ```
+
+   When the judge loop is done, kill the server by **port lookup** (`lsof -ti :8123 | xargs kill`), not a remembered `$!` — shell state does not survive between command blocks.
+
+2. **Take FULL-PAGE screenshots in light AND dark.** Full-page, not viewport — the defects live below the fold too. Dark comes from the browser's rendering context (e.g. playwright `contextOptions: { colorScheme: 'dark' }`), **never** by editing the report's CSS. Save both to a temporary directory *outside* the report folder — they are judge artifacts, not report assets, and must not ship.
+
+3. **Actually look at both images.** Open each screenshot and judge it against the rubric below. Judging from the HTML source is the exact failure mode this step exists to prevent.
+
+4. **Fix defects and re-render until a pass is clean.** **Two passes minimum whenever the report contains any SVG with text labels** — label collisions routinely survive the first fix.
+
+**Judge rubric** — every dimension is judged from the full-page screenshot, not from the source:
+
+| Dimension | Pass looks like | Failure mode to name |
+|---|---|---|
+| **Width usage** | No dead gutters; sections are wrapping flex bands that fill the viewport | The prose cap (`.measure`, 74ch) applied to tables/cards/sections so everything after the first section inherits a skinny column — e.g. a ~640px column with 55% dead gutter on a 1440px screen |
+| **Table shape** | Column widths match their content | A cell wrapping to 5+ lines while the page has free width; rowspan pills floating in empty cells |
+| **Diagram informativeness** | The diagram carries content — labels and facts live *inside* it | All information sits in the prose beside it and the diagram only shows ordering — that's decoration; enrich it or cut it |
+| **Emphasis hierarchy** | The one finding that changes the reader's decision gets the loudest visual treatment (callout + stat tiles) | The decision-relevant finding buried as prose under a table; every section at uniform weight |
+| **Theme robustness** | Dark render verified from the dark screenshot: text contrast holds and SVG text stays legible | Dark mode "checked" by reading the CSS instead of the render |
+| **SVG labels** | Every SVG inspected: no label collisions, no text clipped at canvas edges | Overlapping labels; center-anchored labels running off the left/right edge |
+
+**If browser automation is missing:** degrade gracefully as this skill does everywhere else — ship the report without a render pass, but add a line to the report's footer stating the layout was **not render-verified**. No install prompt, no block.
+
+### Step 8: Save and Report
 
 1. `mkdir -p ai-reports/<report-slug>/screenshots` (and `generated/` if AI images were used — both already populated in Step 3/4).
 2. Write the final HTML to `ai-reports/<report-slug>/index.html`.
@@ -367,6 +410,7 @@ Report generated: ai-reports/<report-slug>/index.html
   Feature: <title>
   Evidence: <what visual assets were used>
   Diagrams/visuals: <hand-authored SVG/Mermaid, and any AI-generated images + which backend>
+  Render-verified: <yes — N judge passes, light+dark | no — browser automation unavailable (noted in report footer)>
 
 Open ai-reports/<report-slug>/index.html in any browser. If the browser blocks local image
 loads, serve the folder: python3 -m http.server -d ai-reports/<report-slug>
@@ -376,13 +420,13 @@ Do not pad the summary. No headers or bullet lists unless there are multiple rep
 
 ## Output Format
 
-A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `index.html`, a `screenshots/` folder of referenced PNG/JPG binaries (descriptive names like `before.png`, `after.png`, `live.png`), and a `generated/` folder of AI-generated images when any were produced. The HTML references every image via relative `src`. Plus a one-paragraph stdout summary as shown in Step 7.
+A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `index.html`, a `screenshots/` folder of referenced PNG/JPG binaries (descriptive names like `before.png`, `after.png`, `live.png`), and a `generated/` folder of AI-generated images when any were produced. The HTML references every image via relative `src`. Plus a one-paragraph stdout summary as shown in Step 8.
 
 ## Rules
 
 - **Output goes to `ai-reports/<report-slug>/` in the project root** — never `do-work/deliverables/` (that's the present-work explainer's home), never `do-work/working/`, never a custom path.
 - **Self-contained folder.** `index.html` plus `screenshots/` (and `generated/`) referenced by relative `src` — move/copy the whole folder together. Tailwind and Mermaid load from a CDN; without network, styling is degraded and Mermaid diagrams won't render.
-- **Bowser is optional.** If `playwright-cli` is missing or no dev server responds, fall back to SVG + Mermaid diagrams. Don't error, don't block, don't prompt to install.
+- **Bowser is optional — the render-judge pass is not, when bowser is present.** If `playwright-cli` (or equivalent browser automation) is missing, fall back to SVG + Mermaid diagrams and ship with the "not render-verified" footer note — don't error, don't block, don't prompt to install. But when it IS available, Step 7's full-page light+dark screenshot review is mandatory, over HTTP, never `file://`.
 - **Image generation is optional and opportunistic.** Probe with `command -v`; if no image-gen CLI is found, use SVG/Mermaid for every section. Never prompt to install one, and never reference a generated path that wasn't verified non-empty.
 - **No live screenshot if the dev server isn't running** — note the absence in the hero section and use the diagram fallback. Don't fabricate a "before" state from imagination.
 - **Anti-slop principles are loaded inline** (Step 1), not via a separate slop-check pass.
@@ -402,6 +446,9 @@ A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `inde
 | "I'll cap the report at `max-width: 1600px` so it looks like a normal centered page" | Let `.page` run full-width (`width: 100%`, no `max-width` cap) and cap only running-text elements at `74ch` | A fixed page max-width leaves big empty gutters on a wide monitor — the layout should fill the space, not float in it |
 | "I'll base64-inline the screenshots so the HTML is one file" | Save them to `screenshots/` (generated images to `generated/`) and reference with relative `src` | Base64 bloats the HTML ~33% per image and slows first paint; the report folder travels as one unit, so the pair is just as portable |
 | "A generated diagram looks clean — I'll drop the 'AI-generated' caption so it reads as a real screenshot" | Keep the caption/badge on every generated image | Undisclosed synthetic evidence is anti-slop principle #5; it misrepresents what's proof and what's illustration |
+| "The HTML source looks right — I don't need to screenshot the render" | Run Step 7: serve over HTTP, take full-page light+dark screenshots, and look at them | Every layout defect this step catches (dead gutters, label collisions, clipped SVG text, a collapsed column) is invisible in the source and obvious in the screenshot |
+| "I'll screenshot the `file://` URL and skip the HTTP server" | Serve the folder with `python3 -m http.server` and screenshot the `http://localhost` URL | `file://` pages screenshot **blank** in headless Chrome — a blank-page "pass" verifies nothing |
+| "One judge pass was clean, the SVG labels are probably fine now" | Re-render and judge again — two passes minimum when any SVG has text labels | Label collisions routinely survive the first fix; the second render is where the regression shows |
 | "This is the present-work explainer territory, I'll merge them" | Keep them separate — explainer = concept; ai-report = pixels | Two artifacts can coexist for the same UR; they answer different questions for different audiences |
 
 ## Red Flags
@@ -420,6 +467,11 @@ A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `inde
 - A sandbox-bypassed agentic backend runs without `DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=1`, or runs from the repo cwd instead of a `mktemp -d` directory locked with `chmod 700` — the report should fall back to SVG/Mermaid instead.
 - The output landed in `do-work/deliverables/` instead of `ai-reports/<report-slug>/` — wrong action's home; move it.
 - The page has a fixed `max-width` (e.g. 940px/1600px) wrapping the whole `.page` — leaves big empty gutters on a wide monitor; only per-element prose (`.measure`) should cap width, never the page container.
+- The full-page screenshot shows a dead right gutter — sections after the first collapsed into a skinny column, usually because the prose cap (`.measure`) leaked onto tables/cards/sections. This is exactly what the Step 7 rubric's width-usage row exists to catch; if it shipped, the judge pass was skipped or judged from source.
+- SVG text overlaps a neighboring label or clips at a canvas edge in the rendered screenshot — stagger into above/below lanes, lean labels away from edges with `text-anchor`, shorten strings (Step 4c rules).
+- Ordered data (rings, stages, tiers) colored with unrelated hues — sequence data takes a single-hue ordinal ramp; unrelated hues misread as categories.
+- The report was "verified" only via a `file://` URL — headless Chrome screenshots `file://` pages blank, so nothing was actually verified; serve over HTTP and re-judge.
+- Browser automation was available but the report shipped with no full-page light+dark screenshots taken — Step 7 is mandatory when the tooling is present.
 - Two before/after images were built as a click-toggle when they'd fit side by side — that hides half the evidence and forces interaction the layout didn't need; use a wrapping flex row instead.
 - A screenshot frame stretched past the capture's native pixel width — upscaled and blurry; cap the frame at native resolution and center it, don't stretch to fill a column.
 - bowser was missing and you stopped instead of falling back to diagrams — the report should always ship.
@@ -444,3 +496,6 @@ A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `inde
 - [ ] No build step required — `index.html` opens in a browser with images resolving from the co-located `screenshots/` / `generated/` folders (CDN-only externals: Tailwind + Mermaid).
 - [ ] If bowser was missing, the report still shipped using SVG/Mermaid fallback — no install prompt, no block.
 - [ ] Layout is full-bleed (`.page` has no `max-width` cap) with horizontal `flex-wrap` bands that stack on narrow viewports; before/after uses side-by-side (not a toggle) unless the frames genuinely can't fit; screenshot frames are capped at native resolution, not upscaled.
+- [ ] Render-and-judge pass (Step 7) ran when browser automation was available: report served over HTTP (never `file://`), full-page screenshots taken in light AND dark (dark via the browser's color-scheme emulation, not CSS edits), both images actually reviewed, and every rubric dimension applied to each.
+- [ ] Every SVG with text labels was checked in the rendered screenshot for label collisions and edge clipping, across a minimum of two judge passes; ordered-data diagrams use a single-hue ordinal ramp.
+- [ ] If browser automation was missing, the report footer states the layout was not render-verified.

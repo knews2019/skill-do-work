@@ -46,7 +46,9 @@ When both before and after images exist, the report shows them **side by side** 
 
 ## Layout
 
-The page is full-bleed — it fills the browser width instead of sitting in a fixed centered column, with only running prose capped for readability. Sections lay out as horizontal, wrapping bands so related information (an explanation beside its diagram, files-changed + verify commands in one row) stays visible together on a wide screen and stacks cleanly on a narrow one. Screenshots render at their native resolution, centered — never stretched to fill a column.
+The page is full-bleed — it fills the browser width instead of sitting in a fixed centered column, with only running prose capped for readability. Sections lay out as horizontal, wrapping bands so related information (an explanation beside its diagram, files-changed + verify commands in one row) stays visible together on a wide screen and stacks cleanly on a narrow one. Screenshots render at their native resolution, centered — never stretched to fill a column. Each report commits to one coherent aesthetic direction (distinctive typography from system font stacks — no font CDNs) rather than a generic default look.
+
+Before shipping, the action **renders the report and judges the pixels**: when browser automation is available, it serves the folder over HTTP, takes full-page screenshots in light and dark, and reviews both against a layout rubric (width usage, table shape, diagram informativeness, emphasis hierarchy, theme robustness, SVG label collisions) — fixing and re-rendering until clean. Without browser automation the report still ships, with a footer note that the layout was not render-verified.
 
 ## Anti-slop applied inline
 
