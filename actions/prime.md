@@ -65,29 +65,40 @@ Generate a prime file for the utility at `<path>` — a routing index that helps
 
 Show the user a 3-line summary: entry points, build system, files to skip. Then proceed to questions.
 
-#### Step 3: Ask 3 Questions
+#### Step 3: Confirm the Scan with Focused Questions
 
-Use your environment's ask-user prompt/tool to ask these questions (free-text answers):
+Load `crew-members/clear-questions.md`, then use your environment's ask-user prompt/tool. Ask one decision per prompt with concrete options. When the environment supplies a free-form `Other` path, use that path for corrections/additions instead of presenting a separate “Change” choice that cannot collect the change. Without an `Other` path, offer the conditional “Change”/“Add” choice and collect its text in one short follow-up detail prompt.
 
-**Q1: "Which files should an AI read first to understand this utility?"**
-- The files that contain the core logic, not config or boilerplate
-- This becomes the **Read first** section
-- Files that drive the rest of the code so that the project becomes discoverable
+**Q1: Confirm Read-first files.** Present the 2–4 entry points found in Step 1 and ask: `Should the prime use this Read first list?`
+- `Use this list` — record the scan result as-is
+- `Omit the section` — the utility is already self-discoverable
+- `Change the list` (only when the tool has no `Other`) — collect specific additions/removals next
 
-**Q2: "What files or code sections should the AI NOT edit?"**
-- Dead code kept for reference, generated output, vendor files, config that looks editable but isn't
-- This becomes the **Do not edit** section
+The confirmed core-logic entry points (not config or boilerplate) become the **Read first** section.
+
+**Q2: Confirm Do-not-edit files.** Present the generated/vendor/dead/config candidates found in Step 1 and ask: `Should the prime warn agents not to edit these paths?`
+- `Use this list` — record the scan result as-is
+- `Omit the section` — none of the candidates needs a durable warning
+- `Change the list` (only when the tool has no `Other`) — collect specific corrections next
+
+The confirmed dead-code, generated-output, vendor, or misleading-config paths become the **Do not edit** section.
 
 **Q3: Traps — document what the scan found; ask the user only for what the code can't reveal.**
 
 A trap is a **repo-specific fact where the obvious reading of the code is wrong** and which an AI cannot discover by reading files: dev/prod differences, a file that looks editable but is generated, naming that misleads, two-directory patterns. Litmus test: *would a competent AI, reading the code cold, reach a wrong conclusion?* If the code itself reveals it, it's not a trap. If it's a universal truism ("don't break the build"), it's noise.
 
-The burden of finding traps is on **you**, not the user. Traps you surfaced in the Step 1 scan that pass the litmus test go into the draft directly — do not ask the user to generate traps from memory or approve yours item-by-item (users discover traps by getting burned, not on demand; an empty prompt pressures them to invent filler like "the server shouldn't crash"). When presenting each trap, phrase it as *what you'd naturally do → what silently goes wrong* — that shape is what makes a trap legible to the user. Then ask one light question:
+The burden of finding traps is on **you**, not the user. Traps you surfaced in the Step 1 scan that pass the litmus test go into the draft directly — do not ask the user to generate traps from memory or approve yours item-by-item (users discover traps by getting burned, not on demand; an empty prompt pressures them to invent filler like "the server shouldn't crash"). When presenting each trap, phrase it as *what you'd naturally do → what silently goes wrong* — that shape is what makes a trap legible to the user.
 
-> "I'll record these traps I found: {drafted trap lines}. Two things: (1) is any of them wrong? (2) is there anything only you would know — a prod-only quirk, a past incident, something that bit you that the code doesn't show? **'Nothing to add' is a common and perfectly good answer.**"
+If the scan found traps, first ask one correction decision: `Should I keep these drafted trap lines? Use Other to type a specific correction.`
+- `Keep them` — record all drafted lines
+- `Record none` — omit the scan-found traps
+- `Correct them` (only when the tool has no `Other`) — collect the corrected line(s) next
 
-- The user's role is **veto + lived experience**, not generation — scans reliably find the structural traps (generated files, twin directories, module boundaries) but never the historical ones (that one outage, the port chosen to dodge a collision)
-- This becomes the **Traps** section; if the scan found nothing and the user adds nothing, omit the section entirely — a prime without Traps is healthy, not incomplete
+Then ask the separate lived-experience decision: `Is there a hidden trap only you would know, such as a production-only quirk or a past incident the files do not reveal?`
+- `Nothing to add` — finish without another trap; this is a common, healthy answer
+- `Add a hidden trap` — collect its description in the prompt's text field or one short follow-up detail prompt; when the environment provides `Other`, use that path to collect it directly
+
+The user's role is **veto + lived experience**, not cold generation: scans reliably find structural candidates, while the separate lived-experience prompt captures historical ones (that one outage, the port chosen to dodge a collision). The result becomes the **Traps** section; if the scan found nothing and the user adds nothing, omit the section entirely — a prime without Traps is healthy, not incomplete.
 
 #### Step 4: Generate
 
