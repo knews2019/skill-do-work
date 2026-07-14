@@ -73,7 +73,7 @@ Triggered when `$ARGUMENTS` starts with **"continue"**.
 
 **Once resolved:**
 
-1. Read `session/state.json` to understand session state.
+1. Read the root `manifest.md` and `session/state.json` to understand lifecycle and session state. If the root status is `synthesized`, skip all spawning and continue at Step 9 with the Writer outputs already on disk. If it is `consumed`, do not resume; cleanup may delete the leftover directory. A session created before root manifests existed is recoverable: create `manifest.md` as `synthesized` only when the complete Writer output set from Step 8 exists on disk; otherwise create it as `in-progress`. Never translate nested `state.json`'s legacy `status: "complete"` directly to `consumed` — it recorded synthesis, not user delivery.
 2. Read existing artifacts: `session/VISION_*.md`, `session/briefs/*.md`, `session/ideation-graph.md`, `session/sources/manifest.md`.
 3. Skip Steps 1-2 (context and directory creation — already done).
 4. Still assess research needs (Step 3) — the user may have new research questions.
@@ -112,7 +112,17 @@ SESSION_DIR="do-work/runs/deep-explore-<sanitized-slug>-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$SESSION_DIR"/session/sources "$SESSION_DIR"/session/idea-reports "$SESSION_DIR"/session/briefs "$SESSION_DIR"/session/research
 ```
 
-The session directory is a committable path under `do-work/` (not gitignored) so an in-progress exploration is inspectable and survives across sessions; it is deleted once consumed (Step 9, and `crew-members/background-agents.md` steps 1 and 5). The Writer step writes its outputs (VISION, briefs, idea-reports) inside the session dir — these are working artifacts, not the permanent record; the artifacts worth keeping are promoted to `do-work/deliverables/` at the end.
+Create `$SESSION_DIR/manifest.md` at the same time using this minimal root lifecycle manifest:
+
+```markdown
+# Deep Explore Run
+
+Run dir: <SESSION_DIR>
+State: session/state.json
+Status: in-progress
+```
+
+This root lifecycle manifest is distinct from `session/sources/manifest.md`, which inventories input sources. The session directory is a committable path under `do-work/` (not gitignored) so an in-progress exploration is inspectable and survives across sessions; it is deleted once consumed (Step 9, and `crew-members/background-agents.md` steps 1 and 5). The Writer step writes its outputs (VISION, briefs, idea-reports) inside the session dir — these are working artifacts, not the permanent record; the artifacts worth keeping are promoted to `do-work/deliverables/` at the end.
 
 #### Capture sources
 
@@ -237,7 +247,7 @@ Spawn a subagent with the Writer persona from `actions/deep-explore-reference.md
 3. `session/VISION_<concept>.md` — consolidated vision document (source of truth)
 4. `session/SESSION_SUMMARY.md` — session recap
 
-Update state.json: set `writer_status: "done"`, `status: "complete"`, `completed_at: <timestamp>`, `surviving_directions: <count of briefs produced>`, and `total_directions_explored: <count of all directions across all rounds>`.
+Update state.json: set `writer_status: "done"`, `status: "complete"`, `completed_at: <timestamp>`, `surviving_directions: <count of briefs produced>`, and `total_directions_explored: <count of all directions across all rounds>`. Verify all Writer outputs exist, then set the root `manifest.md` to `Status: synthesized`. This records that spawning is finished while presentation/promotion is still pending.
 
 ---
 
@@ -268,7 +278,7 @@ DEEP EXPLORATION — [concept name]
   [Individual Briefs]
 ```
 
-**Then promote and clean up.** The session's findings are now consumed — presented to the user and captured in the vision document and briefs. Copy any artifact worth keeping (the VISION document, developed briefs) into `do-work/deliverables/`, then **delete the session directory** as the final step (`crew-members/background-agents.md` step 5). The promoted deliverables carry the durable record; the raw session scratch is redundant once presented. The deletion rides the user's normal commit flow — this action does not force-commit.
+**Then promote and clean up.** The session's findings are now consumed — presented to the user and captured in the vision document and briefs. Copy any artifact worth keeping (the VISION document, developed briefs) into `do-work/deliverables/`, set the root manifest to `Status: consumed`, then **delete the session directory** as the final step (`crew-members/background-agents.md` step 5). The promoted deliverables carry the durable record; the raw session scratch is redundant once presented. The deletion rides the user's normal commit flow — this action does not force-commit.
 
 ---
 

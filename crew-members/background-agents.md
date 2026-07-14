@@ -58,24 +58,29 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
    final output from them. Never synthesize from what agents "said" in chat. This
    is the property that makes the run recoverable: synthesis behaves identically in
    the original session and in a fresh recovery session that never saw the spawns.
-   Once synthesis succeeds, **mark the run complete** — write `Status: complete` to
-   the manifest. A completed run must never be offered for resume (see Known Failure
-   Mode); it is no longer live state.
+   Persist the assembled output inside the run directory (for example `report.md`),
+   then write `Status: synthesized` to the manifest. `synthesized` means no agents
+   need re-spawning, but delivery/promotion is still pending — a fresh session reads
+   the saved output and continues that final handoff instead of declaring the run done.
 
 5. **Delete the run directory once its findings are consumed.** The run directory is
-   working memory, not the deliverable. The moment its findings have been *synthesized
-   and promoted to the run's permanent output* — a report, captured REQs, or artifacts
-   copied into `do-work/deliverables/` — that scratch is redundant, so the action that
-   owns the run **deletes the directory as its final step**. This is the normal end of
-   the information's lifecycle, not an optional tidy-up: it keeps `do-work/runs/` from
-   growing without bound (nothing else prunes it) while the promoted output carries the
-   durable record. State the trigger as this *condition* — "findings consumed and
-   promoted" — for whatever action owns the run; do not tie it to a fixed list of
-   callers. The delete is a filesystem change that rides the normal commit flow; no
-   action force-commits on its own. `Status: complete` is the bridge for the window
-   between synthesis and deletion — if a run is abandoned after finishing but before its
-   owner deletes it, `actions/cleanup.md` sweeps any `complete`-marked directory as a
-   safety net (an incomplete one is left alone, because it may still be resumable).
+   working memory, not the deliverable. Consumption requires the assembled output to
+   be **delivered to the user** and any durable artifact the action promises to be
+   promoted — captured REQs, or files copied into `do-work/deliverables/`. A saved
+   `report.md` inside the run proves synthesis only; it is not delivery and cannot
+   justify deletion. Once the action's handoff is complete, the scratch is redundant,
+   so the action that owns the run **deletes the directory as its final step**. This is
+   the normal end of the information's lifecycle, not an optional tidy-up: it keeps
+   `do-work/runs/` from growing without bound (nothing else prunes it) while the
+   delivered/promoted output carries the durable record. State the trigger as this
+   *condition* — "findings delivered and promised artifacts promoted" — for whatever
+   action owns the run; do not tie it to a fixed list of callers. Immediately before
+   deletion, write `Status: consumed` to the manifest.
+   The delete is a filesystem change that rides the normal commit flow; no action
+   force-commits on its own. `consumed` is the bridge for the narrow window between
+   promotion and deletion — if a run is abandoned there, `actions/cleanup.md` can
+   safely sweep it. It must never sweep `in-progress` or `synthesized` runs: the former
+   still needs work, and the latter may hold an assembled output the user never received.
 
 ## Local-ignore snippet (for genuinely-transient paths — NOT run dirs)
 
@@ -127,11 +132,20 @@ by keeping the assembly turn small, but that is mitigation, not prevention.
 1. **Do NOT resume the poisoned conversation.** Resuming replays the corrupt turn
    and re-throws the error every time.
 2. Start a **fresh session** and re-invoke the same action.
-3. Let the action **detect the most recent incomplete run directory** (glob
+3. Let the action **detect the most recent unfinished run directory** (glob
    `do-work/runs/<action>-*`; if several match, take the newest by timestamp) and
-   read its manifest. A manifest marked `Status: complete` means that run already
-   finished — skip it; only a run *without* that marker is resumable.
-4. **Re-spawn every agent whose findings file is absent on disk.** Verify against
+   read its manifest. Resume by run status:
+   - `in-progress` — continue the fan-out using step 4 below.
+   - `synthesized` — do not re-spawn; read the saved assembled output and resume its
+     delivery/promotion step.
+   - `consumed` — never resume; cleanup may safely delete the leftover directory.
+   - Legacy `complete` — treat as `synthesized`, not `consumed`. Older actions wrote
+     it before delivery, so deleting it would recreate the data-loss window this
+     lifecycle closes.
+   - Missing/unrecognized root status — preserve the directory and reconstruct its
+     manifest from disk: use `synthesized` only when the action's complete assembled
+     output exists; otherwise use `in-progress`. Never guess `consumed`.
+4. For an `in-progress` run, **re-spawn every agent whose findings file is absent on disk.** Verify against
    the filesystem — do not trust the manifest's per-row label, because a crashed
    orchestrator may never have updated it. Agents whose findings file already exists
    are done; do not re-run them.
@@ -181,7 +195,7 @@ Keep it small and append-friendly. A minimal `manifest.md` (this example uses th
 
 Run dir: do-work/runs/code-review-2026-05-28-143012/
 Concurrency: 4 (wave size)
-Status: in-progress   # flips to `complete` after synthesis succeeds
+Status: in-progress   # then `synthesized` after report.md lands; `consumed` only after delivery/promotion
 
 | Agent | Slice | Output file | Status |
 |-------|-------|-------------|--------|
@@ -198,5 +212,6 @@ file written and present); the happy path moves rows `pending → done` only. **
 is no `missing` status to write** — a crashed orchestrator can't be relied on to
 record one. Recovery is derived from the filesystem instead: re-spawn any row whose
 findings file is **absent on disk**, regardless of its label. The run-level
-`Status:` line is the completion signal — `in-progress` until synthesis succeeds,
-then `complete`; a `complete` run is never offered for resume.
+`Status:` line is the lifecycle signal: `in-progress` while slices may still be
+missing, `synthesized` after the assembled output is saved, and `consumed` only after
+that output is delivered or promoted. Cleanup may delete only `consumed` runs.
