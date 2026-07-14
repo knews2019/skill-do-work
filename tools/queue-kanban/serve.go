@@ -34,9 +34,10 @@ type liveBoardServer struct {
 	repoRoot     string
 	recentWindow time.Duration
 
-	cacheMu          sync.Mutex
-	cachedFileMtimes map[string]time.Time // absPath → last-seen mtime
-	cachedBoardData  *generatedBoardData  // nil until the first request
+	cacheMu             sync.Mutex
+	cachedFileMtimes    map[string]time.Time        // absPath → last-seen mtime
+	cachedBoardData     *generatedBoardData         // nil until the first request
+	cachedBoardMarkdown *generatedBoardMarkdownData // rebuilt with cachedBoardData, served lazily
 }
 
 // newLiveBoardServer creates a liveBoardServer for the given repoRoot and
@@ -53,7 +54,8 @@ func newLiveBoardServer(repoRoot string, recentWindow time.Duration) *liveBoardS
 // ServeHTTP dispatches HTTP requests for the live board. Routes:
 //
 //	GET /              → board HTML shell (same template as generate's index.html)
-//	GET /board-data.js → fresh board data as a JS global assignment
+//	GET /board-data.js     → fresh board data as a JS global assignment
+//	GET /board-markdown.js → raw Markdown for Copy, loaded only on demand
 //
 // Every other path returns 404. Security headers are set on all responses,
 // mirroring the goserver pattern (REQ-782).
@@ -71,6 +73,8 @@ func (liveServer *liveBoardServer) ServeHTTP(responseWriter http.ResponseWriter,
 		liveServer.serveBoardHtml(responseWriter, httpRequest)
 	case "/board-data.js":
 		liveServer.serveLiveBoardDataJs(responseWriter, httpRequest)
+	case "/board-markdown.js":
+		liveServer.serveLiveBoardMarkdownJs(responseWriter, httpRequest)
 	default:
 		http.NotFound(responseWriter, httpRequest)
 	}
@@ -133,6 +137,33 @@ func (liveServer *liveBoardServer) serveLiveBoardDataJs(responseWriter http.Resp
 	_, _ = responseWriter.Write([]byte(jsText))
 }
 
+// serveLiveBoardMarkdownJs emits the raw REQ/UR bodies used by the Copy button.
+// The main page does not request this route; board.js loads it on the first copy.
+func (liveServer *liveBoardServer) serveLiveBoardMarkdownJs(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+	if httpRequest.Method != http.MethodGet && httpRequest.Method != http.MethodHead {
+		http.Error(responseWriter, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	markdownData, refreshError := liveServer.refreshBoardMarkdownData()
+	if refreshError != nil {
+		log.Printf("queue-kanban serve: refreshing raw Markdown data: %v", refreshError)
+		http.Error(responseWriter, "Internal error building Markdown data", http.StatusInternalServerError)
+		return
+	}
+	jsText, encodeError := encodeBoardMarkdownForJsAssignment(*markdownData)
+	if encodeError != nil {
+		log.Printf("queue-kanban serve: encoding raw Markdown data: %v", encodeError)
+		http.Error(responseWriter, "Internal error encoding Markdown data", http.StatusInternalServerError)
+		return
+	}
+
+	responseWriter.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+	responseWriter.Header().Set("Cache-Control", "no-cache")
+	responseWriter.WriteHeader(http.StatusOK)
+	_, _ = responseWriter.Write([]byte(jsText))
+}
+
 // refreshBoardData checks whether any file in the do-work tree has changed
 // since the last build (by comparing mtime fingerprints). Returns the cached
 // board data unchanged if the tree is clean; otherwise rebuilds via the shared
@@ -174,7 +205,24 @@ func (liveServer *liveBoardServer) refreshBoardData() (*generatedBoardData, erro
 
 	liveServer.cachedFileMtimes = currentFileMtimes
 	liveServer.cachedBoardData = &boardData
+	boardMarkdownData := buildGeneratedBoardMarkdownData(board)
+	liveServer.cachedBoardMarkdown = &boardMarkdownData
 	return liveServer.cachedBoardData, nil
+}
+
+// refreshBoardMarkdownData shares refreshBoardData's tree walk and mtime cache,
+// then returns the matching raw-source payload. The payload is immutable after a
+// rebuild, so returning its cached pointer after releasing the lock is safe.
+func (liveServer *liveBoardServer) refreshBoardMarkdownData() (*generatedBoardMarkdownData, error) {
+	if _, refreshError := liveServer.refreshBoardData(); refreshError != nil {
+		return nil, refreshError
+	}
+	liveServer.cacheMu.Lock()
+	defer liveServer.cacheMu.Unlock()
+	if liveServer.cachedBoardMarkdown == nil {
+		return nil, fmt.Errorf("raw Markdown cache was not built with board data")
+	}
+	return liveServer.cachedBoardMarkdown, nil
 }
 
 // buildTreeMtimeFingerprint stats every file discovered by enumerateDoWorkTree

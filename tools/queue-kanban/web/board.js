@@ -1,8 +1,9 @@
 /* ===========================================================================
    queue-kanban — static board behaviour
-   Reads the embedded JSON data island and renders every view client-side, with
-   zero network. No framework: plain DOM construction, event delegation, and a
-   docked detail panel with a drag-to-resize divider.
+   Reads the sibling board-data.js payload and renders every view client-side.
+   Raw Markdown stays in board-markdown.js until the first Copy click. No
+   framework: plain DOM construction, event delegation, and a docked detail
+   panel with a drag-to-resize divider.
    =========================================================================== */
 (function () {
   "use strict";
@@ -627,10 +628,11 @@
   var drawerCopyButton = document.getElementById("detail-copy");
   var lastFocusedElement = null;
 
-  // The raw Markdown of whatever the drawer currently shows, set on every
-  // open. Copying hands over the ticket's source text, not the rendered HTML,
-  // so a paste into chat/email/another REQ keeps headings, checkboxes, links.
-  var currentDetailMarkdown = "";
+  // The initial board payload deliberately omits raw Markdown. Remember only
+  // the open record's identity; the Copy button loads board-markdown.js on its
+  // first use, then looks up the exact source by kind + id.
+  var currentDetailKind = "";
+  var currentDetailId = "";
 
   function appendMetaRow(label, valueNode) {
     var dt = createElement("dt", null, label);
@@ -713,7 +715,8 @@
     appendMetaRow("Tree", request.treeSection || "—");
 
     drawerBody.innerHTML = request.bodyHtml || "<p>(empty body)</p>";
-    currentDetailMarkdown = request.bodyMarkdown || "";
+    currentDetailKind = "req";
+    currentDetailId = requestId;
     showDrawer();
   }
 
@@ -735,7 +738,8 @@
     appendMetaRow("input.md", userRequest.inputFilePresent ? "present" : "synthesized from REQ pointers");
 
     drawerBody.innerHTML = userRequest.bodyHtml || "<p>(no input.md body)</p>";
-    currentDetailMarkdown = userRequest.bodyMarkdown || "";
+    currentDetailKind = "ur";
+    currentDetailId = userRequestId;
     showDrawer();
   }
 
@@ -766,6 +770,8 @@
     }
     drawer.hidden = true;
     detailResizer.hidden = true;
+    currentDetailKind = "";
+    currentDetailId = "";
     document.removeEventListener("keydown", onDetailPanelKeydown, true);
     if (lastFocusedElement && typeof lastFocusedElement.focus === "function") {
       lastFocusedElement.focus();
@@ -1020,9 +1026,53 @@
   document.getElementById("detail-close").addEventListener("click", closeDrawer);
 
   // ---- copy-to-clipboard for the open ticket --------------------------------
-  // Prefers the async Clipboard API; falls back to a hidden textarea +
-  // execCommand when the API is unavailable (the static board is often opened
-  // over plain file:// or http://) or when it rejects (permission denied).
+  // Raw source is a separate sibling script so the initial board does not pay
+  // for both rendered HTML and Markdown. Loading a script instead of fetch()
+  // preserves direct file:// use. Clipboard writes prefer the async API and
+  // fall back to a hidden textarea when permission or protocol blocks it.
+
+  var boardMarkdownLoadPromise = null;
+
+  function loadBoardMarkdownData() {
+    if (window.queueKanbanBoardMarkdownData) {
+      return Promise.resolve(window.queueKanbanBoardMarkdownData);
+    }
+    if (boardMarkdownLoadPromise) {
+      return boardMarkdownLoadPromise;
+    }
+
+    boardMarkdownLoadPromise = new Promise(function (resolve, reject) {
+      var markdownScript = document.createElement("script");
+      markdownScript.src = "board-markdown.js";
+      markdownScript.onload = function () {
+        var markdownData = window.queueKanbanBoardMarkdownData;
+        if (markdownData && typeof markdownData === "object") {
+          resolve(markdownData);
+        } else {
+          reject(new Error("board-markdown.js did not define Markdown data"));
+        }
+      };
+      markdownScript.onerror = function () {
+        reject(new Error("board-markdown.js could not be loaded"));
+      };
+      document.head.appendChild(markdownScript);
+    }).catch(function (loadError) {
+      // A generated bundle may have been copied without its lazy sibling.
+      // Clear the promise so a later click can retry after the file appears.
+      boardMarkdownLoadPromise = null;
+      throw loadError;
+    });
+
+    return boardMarkdownLoadPromise;
+  }
+
+  function rawMarkdownForDetail(markdownData, detailKind, detailId) {
+    var markdownById = detailKind === "ur" ? markdownData.userRequests : markdownData.requests;
+    if (markdownById && Object.prototype.hasOwnProperty.call(markdownById, detailId)) {
+      return markdownById[detailId];
+    }
+    return null;
+  }
 
   function writeTextToClipboard(clipboardText) {
     if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
@@ -1073,17 +1123,38 @@
   }
 
   drawerCopyButton.addEventListener("click", function () {
-    // Stale board-data.js (generated before bodyMarkdown shipped) carries no
-    // raw source — degrade to the rendered text so the button still works.
-    var clipboardText = currentDetailMarkdown || drawerBody.innerText || "";
-    writeTextToClipboard(clipboardText).then(
-      function () {
-        showCopyFeedback("Copied ✓", "is-copied");
-      },
-      function () {
-        showCopyFeedback("Copy failed", "is-copy-failed");
-      }
-    );
+    var requestedKind = currentDetailKind;
+    var requestedId = currentDetailId;
+    var renderedTextFallback = drawerBody.innerText || "";
+
+    drawerCopyButton.textContent = "Copying…";
+    drawerCopyButton.classList.remove("is-copied", "is-copy-failed");
+
+    loadBoardMarkdownData()
+      .then(
+        function (markdownData) {
+          var rawMarkdown = rawMarkdownForDetail(markdownData, requestedKind, requestedId);
+          return rawMarkdown === null ? renderedTextFallback : rawMarkdown;
+        },
+        function () {
+          // Keep Copy useful for stale/incomplete generated bundles that lack
+          // board-markdown.js, while current bundles retain exact source text.
+          return renderedTextFallback;
+        }
+      )
+      .then(writeTextToClipboard)
+      .then(
+        function () {
+          if (!drawer.hidden && currentDetailKind === requestedKind && currentDetailId === requestedId) {
+            showCopyFeedback("Copied ✓", "is-copied");
+          }
+        },
+        function () {
+          if (!drawer.hidden && currentDetailKind === requestedKind && currentDetailId === requestedId) {
+            showCopyFeedback("Copy failed", "is-copy-failed");
+          }
+        }
+      );
   });
 
   // ---- boot ---------------------------------------------------------------

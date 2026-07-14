@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -186,18 +187,25 @@ func TestGenerateEmbedsGoldmarkRenderedBody(t *testing.T) {
 	}
 }
 
-func TestGenerateCarriesRawMarkdownForCopyButton(t *testing.T) {
-	// The drawer's Copy button hands over the ticket's raw Markdown source, so
-	// the data island must ship bodyMarkdown beside the pre-rendered bodyHtml
-	// and the page shell must contain the button it wires to.
+func TestGenerateSeparatesRawMarkdownForLazyCopy(t *testing.T) {
+	// Copy still needs exact source, but shipping it beside bodyHtml nearly
+	// doubles the initial payload. Raw bodies belong in a lazy sibling script.
 	outputDirectory := generateLiveSiteInDir(t)
 
 	boardDataBytes, readError := os.ReadFile(filepath.Join(outputDirectory, "board-data.js"))
 	if readError != nil {
 		t.Fatalf("reading board-data.js: %v", readError)
 	}
-	if !strings.Contains(string(boardDataBytes), `"bodyMarkdown"`) {
-		t.Fatalf("board-data.js has no bodyMarkdown field — the drawer Copy button would have nothing to copy")
+	if strings.Contains(string(boardDataBytes), `"bodyMarkdown"`) {
+		t.Fatalf("board-data.js still carries bodyMarkdown — raw source must stay out of the initial payload")
+	}
+
+	boardMarkdownBytes, markdownReadError := os.ReadFile(filepath.Join(outputDirectory, boardMarkdownJsFilename))
+	if markdownReadError != nil {
+		t.Fatalf("reading %s: %v", boardMarkdownJsFilename, markdownReadError)
+	}
+	if !strings.HasPrefix(string(boardMarkdownBytes), "window.queueKanbanBoardMarkdownData = ") {
+		t.Fatalf("%s does not assign the lazy Markdown global", boardMarkdownJsFilename)
 	}
 
 	indexBytes, indexReadError := os.ReadFile(filepath.Join(outputDirectory, "index.html"))
@@ -206,6 +214,31 @@ func TestGenerateCarriesRawMarkdownForCopyButton(t *testing.T) {
 	}
 	if !strings.Contains(string(indexBytes), `id="detail-copy"`) {
 		t.Fatalf("detail drawer Copy button (id=\"detail-copy\") not found in index.html")
+	}
+	if strings.Contains(string(indexBytes), `<script src="board-markdown.js"></script>`) {
+		t.Fatalf("index.html eagerly loads board-markdown.js; raw source must load only after Copy")
+	}
+	if !strings.Contains(string(indexBytes), `markdownScript.src = "board-markdown.js"`) {
+		t.Fatalf("inlined board.js has no lazy board-markdown.js loader")
+	}
+}
+
+func TestBuildGeneratedBoardMarkdownDataKeepsExactSources(t *testing.T) {
+	board := &Board{
+		AllRequests: []*RequestTicket{
+			{RequestId: "REQ-1", BodyMarkdown: "## What\n\n- [ ] keep formatting\n"},
+		},
+		UserRequests: []*UserRequestTicket{
+			{UserRequestId: "UR-1", BodyMarkdown: "# Original request\n\nExact text.\n"},
+		},
+	}
+
+	markdownData := buildGeneratedBoardMarkdownData(board)
+	if got := markdownData.Requests["REQ-1"]; got != board.AllRequests[0].BodyMarkdown {
+		t.Fatalf("REQ raw Markdown changed: got %q, want %q", got, board.AllRequests[0].BodyMarkdown)
+	}
+	if got := markdownData.UserRequests["UR-1"]; got != board.UserRequests[0].BodyMarkdown {
+		t.Fatalf("UR raw Markdown changed: got %q, want %q", got, board.UserRequests[0].BodyMarkdown)
 	}
 }
 
@@ -295,6 +328,30 @@ func TestEncodeBoardDataJsAssignmentPreservesRawHtml(t *testing.T) {
 	escapedAmpersand := "\\u0026"
 	if strings.Contains(encoded, escapedLessThan) || strings.Contains(encoded, escapedAmpersand) {
 		t.Fatalf("body HTML was unicode-escaped by the JSON encoder: %s", encoded)
+	}
+}
+
+func TestEncodeBoardMarkdownJsAssignmentRoundTripsRawSource(t *testing.T) {
+	want := generatedBoardMarkdownData{
+		Requests:     map[string]string{"REQ-1": "## What\n\nA <literal> & text.\n"},
+		UserRequests: map[string]string{"UR-1": "# Ask\n\nCopy me.\n"},
+	}
+	encoded, encodeError := encodeBoardMarkdownForJsAssignment(want)
+	if encodeError != nil {
+		t.Fatalf("encodeBoardMarkdownForJsAssignment: %v", encodeError)
+	}
+
+	const prefix = "window.queueKanbanBoardMarkdownData = "
+	if !strings.HasPrefix(encoded, prefix) || !strings.HasSuffix(encoded, ";\n") {
+		t.Fatalf("unexpected lazy Markdown assignment envelope: %q", encoded)
+	}
+	jsonText := strings.TrimSuffix(strings.TrimPrefix(encoded, prefix), ";\n")
+	var got generatedBoardMarkdownData
+	if decodeError := json.Unmarshal([]byte(jsonText), &got); decodeError != nil {
+		t.Fatalf("decode lazy Markdown assignment: %v", decodeError)
+	}
+	if got.Requests["REQ-1"] != want.Requests["REQ-1"] || got.UserRequests["UR-1"] != want.UserRequests["UR-1"] {
+		t.Fatalf("raw Markdown did not round-trip: got %#v, want %#v", got, want)
 	}
 }
 

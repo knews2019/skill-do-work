@@ -36,6 +36,12 @@ const (
 // in index.html loads it before board.js so the board renders offline from file://.
 const boardDataJsFilename = "board-data.js"
 
+// boardMarkdownJsFilename carries raw REQ/UR Markdown for the drawer Copy button.
+// It is deliberately NOT referenced by index.html: board.js injects it on the
+// first copy, keeping duplicate raw bodies out of the initial board payload while
+// preserving file:// support (a dynamically-added script works without fetch/CORS).
+const boardMarkdownJsFilename = "board-markdown.js"
+
 // generatedBoardData is the JSON data island embedded in the static page. It is
 // the single source of truth the client-side script renders every view from, so
 // the board works with zero network once the file is open.
@@ -89,7 +95,6 @@ type generatedRequest struct {
 	CompletionTime       string   `json:"completionTime"`
 	CompletionTimeSource string   `json:"completionTimeSource"`
 	BodyHtml             string   `json:"bodyHtml"`
-	BodyMarkdown         string   `json:"bodyMarkdown"`
 }
 
 // generatedUserRequest is one UR node for the by-UR lens, with its grouped REQ
@@ -100,7 +105,14 @@ type generatedUserRequest struct {
 	InputFilePresent bool     `json:"inputFilePresent"`
 	RequestIds       []string `json:"requestIds"`
 	BodyHtml         string   `json:"bodyHtml"`
-	BodyMarkdown     string   `json:"bodyMarkdown"`
+}
+
+// generatedBoardMarkdownData is the lazy raw-source payload used only by the
+// drawer Copy button. Keeping it separate avoids loading every Markdown body
+// twice (source + rendered HTML) during the initial board paint.
+type generatedBoardMarkdownData struct {
+	Requests     map[string]string `json:"requests"`
+	UserRequests map[string]string `json:"userRequests"`
 }
 
 // generatedNote is one do-work/notes.md line. The text stays plain — notes are
@@ -119,12 +131,12 @@ type generatedCalendarEntry struct {
 	TimeSource     string `json:"timeSource"`
 }
 
-// generateStaticSite writes a two-file static board into outputDirectory:
-//   - index.html  — the page shell with CSS + board.js inlined; references board-data.js
-//   - board-data.js — a JS assignment (window.queueKanbanBoardData = {...}) carrying
-//     the full JSON data island (all REQ bodies pre-rendered to HTML)
+// generateStaticSite writes a three-file static board into outputDirectory:
+//   - index.html — the page shell with CSS + board.js inlined; references board-data.js
+//   - board-data.js — the initial board payload (including pre-rendered body HTML)
+//   - board-markdown.js — raw REQ/UR bodies, loaded lazily on the first Copy click
 //
-// Both files together are self-contained and open directly from disk (file://) or
+// All three files together are self-contained and open directly from disk (file://) or
 // any static server with zero build steps.
 func generateStaticSite(outputDirectory string, board *Board) error {
 	if strings.TrimSpace(outputDirectory) == "" {
@@ -135,6 +147,7 @@ func generateStaticSite(outputDirectory string, board *Board) error {
 	if buildError != nil {
 		return buildError
 	}
+	boardMarkdownData := buildGeneratedBoardMarkdownData(board)
 
 	if mkdirError := os.MkdirAll(outputDirectory, 0o755); mkdirError != nil {
 		return fmt.Errorf("queue-kanban: cannot create --out directory %s: %w", outputDirectory, mkdirError)
@@ -147,6 +160,15 @@ func generateStaticSite(outputDirectory string, board *Board) error {
 	boardDataPath := filepath.Join(outputDirectory, boardDataJsFilename)
 	if writeError := os.WriteFile(boardDataPath, []byte(boardDataJs), 0o644); writeError != nil {
 		return fmt.Errorf("queue-kanban: cannot write %s: %w", boardDataPath, writeError)
+	}
+
+	boardMarkdownJs, markdownEncodeError := encodeBoardMarkdownForJsAssignment(boardMarkdownData)
+	if markdownEncodeError != nil {
+		return markdownEncodeError
+	}
+	boardMarkdownPath := filepath.Join(outputDirectory, boardMarkdownJsFilename)
+	if writeError := os.WriteFile(boardMarkdownPath, []byte(boardMarkdownJs), 0o644); writeError != nil {
+		return fmt.Errorf("queue-kanban: cannot write %s: %w", boardMarkdownPath, writeError)
 	}
 
 	pageHtml, assembleError := assembleStaticPage(board.GeneratedAt, board.ProjectName)
@@ -206,7 +228,6 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			CompletionTime:       formatTimestamp(ticket.CompletionTime),
 			CompletionTimeSource: string(ticket.CompletionTimeSource),
 			BodyHtml:             bodyHtml,
-			BodyMarkdown:         ticket.BodyMarkdown,
 		}
 	}
 
@@ -222,7 +243,6 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			InputFilePresent: userRequest.InputFilePresent,
 			RequestIds:       userRequest.RequestIds,
 			BodyHtml:         bodyHtml,
-			BodyMarkdown:     userRequest.BodyMarkdown,
 		}
 	}
 
@@ -243,6 +263,23 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 	}
 
 	return data, nil
+}
+
+// buildGeneratedBoardMarkdownData projects raw Markdown into a compact id-keyed
+// payload. It is separated from buildGeneratedBoardData so the initial page does
+// not download source text that is only needed after a Copy click.
+func buildGeneratedBoardMarkdownData(board *Board) generatedBoardMarkdownData {
+	markdownData := generatedBoardMarkdownData{
+		Requests:     map[string]string{},
+		UserRequests: map[string]string{},
+	}
+	for _, ticket := range board.AllRequests {
+		markdownData.Requests[ticket.RequestId] = ticket.BodyMarkdown
+	}
+	for _, userRequest := range board.UserRequests {
+		markdownData.UserRequests[userRequest.UserRequestId] = userRequest.BodyMarkdown
+	}
+	return markdownData
 }
 
 // assembleStaticPage inlines the CSS and board.js into the HTML template,
@@ -288,6 +325,19 @@ func encodeBoardDataForJsAssignment(boardData generatedBoardData) (string, error
 	}
 	jsonText := strings.TrimRight(jsonBuffer.String(), "\n")
 	return "window.queueKanbanBoardData = " + jsonText + ";\n", nil
+}
+
+// encodeBoardMarkdownForJsAssignment emits the lazy raw-source payload as a
+// script assignment so both HTTP and file:// boards can load it on demand.
+func encodeBoardMarkdownForJsAssignment(markdownData generatedBoardMarkdownData) (string, error) {
+	var jsonBuffer bytes.Buffer
+	encoder := json.NewEncoder(&jsonBuffer)
+	encoder.SetEscapeHTML(false)
+	if encodeError := encoder.Encode(markdownData); encodeError != nil {
+		return "", fmt.Errorf("queue-kanban: encoding lazy Markdown data for js file: %w", encodeError)
+	}
+	jsonText := strings.TrimRight(jsonBuffer.String(), "\n")
+	return "window.queueKanbanBoardMarkdownData = " + jsonText + ";\n", nil
 }
 
 // requestIdsOf projects a column's tickets to their REQ ids, preserving order.

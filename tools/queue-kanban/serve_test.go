@@ -127,6 +127,18 @@ func TestServeMtimeCacheInvalidatesOnStatusChange(t *testing.T) {
 	}
 }
 
+func TestServeLazyMarkdownEndpointReturnsExactSources(t *testing.T) {
+	repoRoot := createFixtureDoWorkTree(t)
+	liveServer := newLiveBoardServer(repoRoot, 7*24*time.Hour)
+	testServer := httptest.NewServer(liveServer)
+	defer testServer.Close()
+
+	markdownData := fetchServedBoardMarkdownData(t, testServer.URL)
+	if got, want := markdownData.Requests["REQ-0001"], "\n# REQ-0001\n"; got != want {
+		t.Fatalf("served REQ Markdown = %q, want %q", got, want)
+	}
+}
+
 // fetchServedBoardData requests /board-data.js from baseURL and decodes the
 // window.queueKanbanBoardData = {...}; JS assignment into a generatedBoardData.
 func fetchServedBoardData(t *testing.T, baseURL string) generatedBoardData {
@@ -159,6 +171,32 @@ func fetchServedBoardData(t *testing.T, baseURL string) generatedBoardData {
 		t.Fatalf("decode board data JSON: %v; raw[:200]=%q", jsonErr, truncateText(rawText, 200))
 	}
 	return boardData
+}
+
+// fetchServedBoardMarkdownData requests the lazily loaded raw-source payload
+// and decodes its JavaScript assignment envelope.
+func fetchServedBoardMarkdownData(t *testing.T, baseURL string) generatedBoardMarkdownData {
+	t.Helper()
+	resp, httpErr := http.Get(baseURL + "/board-markdown.js")
+	if httpErr != nil {
+		t.Fatalf("GET /board-markdown.js: %v", httpErr)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET /board-markdown.js status = %d, want 200", resp.StatusCode)
+	}
+
+	rawText := readTestResponseBody(t, resp)
+	const jsPrefix = "window.queueKanbanBoardMarkdownData = "
+	const jsSuffix = ";\n"
+	jsonText := strings.TrimSuffix(strings.TrimPrefix(rawText, jsPrefix), jsSuffix)
+
+	var markdownData generatedBoardMarkdownData
+	if jsonErr := json.Unmarshal([]byte(jsonText), &markdownData); jsonErr != nil {
+		t.Fatalf("decode Markdown data JSON: %v; raw[:200]=%q", jsonErr, truncateText(rawText, 200))
+	}
+	return markdownData
 }
 
 // readTestResponseBody drains and returns the response body as a string.

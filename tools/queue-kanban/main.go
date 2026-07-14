@@ -102,7 +102,7 @@ func runGenerateCommand(args []string) {
 		fmt.Fprintln(os.Stderr, "queue-kanban:", generateError)
 		os.Exit(1)
 	}
-	fmt.Printf("queue-kanban: wrote static board to %s/ (index.html + board-data.js, %d REQs, %d URs, %d calendar entries)\n",
+	fmt.Printf("queue-kanban: wrote static board to %s/ (index.html + board-data.js + lazy board-markdown.js, %d REQs, %d URs, %d calendar entries)\n",
 		*outputDirectory, len(board.AllRequests), len(board.UserRequests), len(board.Calendar))
 }
 
