@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Why do-work is useful — auto-ticketing, mechanism by mechanism</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>mermaid.initialize({startOnLoad:true, theme:'base'});</script>
+<style>
+:root{
+  --bg:#ffffff; --surface:#f8fafc; --surface-2:#f1f5f9;
+  --text:#1e293b; --muted:#64748b; --accent:#2563eb; --border:#e2e8f0;
+  --warn-bg:#fef2f2; --warn-border:#fecaca; --warn-text:#7f1d1d;
+  --ok-bg:#eff6ff; --ok-border:#bfdbfe; --ok-text:#1e3a8a;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0f172a; --surface:#1e293b; --surface-2:#172033;
+    --text:#e2e8f0; --muted:#94a3b8; --accent:#60a5fa; --border:#334155;
+    --warn-bg:#2a1518; --warn-border:#7f1d1d; --warn-text:#fca5a5;
+    --ok-bg:#152238; --ok-border:#1e3a8a; --ok-text:#bfdbfe;
+  }
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  font-size:17px; line-height:1.6;
+}
+.page{width:100%; padding:0 clamp(20px,2.6vw,60px) 96px;}
+.measure{max-width:74ch}
+a{color:var(--accent)}
+h1{font-size:clamp(30px,4vw,40px); line-height:1.15; margin:0 0 14px; letter-spacing:-.02em}
+h2{font-size:clamp(23px,2.6vw,30px); margin:0 0 8px; letter-spacing:-.01em}
+h3{font-size:19px; margin:0 0 6px}
+section{padding:44px 0; border-top:1px solid var(--border)}
+section:first-of-type{border-top:none}
+.eyebrow{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); font-weight:700; margin:0 0 10px}
+.lead{font-size:20px; color:var(--text)}
+.muted{color:var(--muted)}
+.row{display:flex; flex-wrap:wrap; gap:28px}
+.card{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:22px 24px}
+.diagram{background:var(--surface); border:1px solid var(--border); border-radius:14px; padding:20px}
+code,kbd{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:.9em}
+code{background:var(--surface-2); padding:1.5px 6px; border-radius:5px; border:1px solid var(--border)}
+.filepath{color:var(--accent); font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:.88em}
+.contrast{display:flex; flex-wrap:wrap; gap:18px; margin-top:18px}
+.contrast > div{flex:1 1 300px; border-radius:12px; padding:18px 20px; border:1px solid}
+.without{background:var(--warn-bg); border-color:var(--warn-border)}
+.without h4{color:var(--warn-text)}
+.with{background:var(--ok-bg); border-color:var(--ok-border)}
+.with h4{color:var(--ok-text)}
+.contrast h4{margin:0 0 8px; font-size:14px; letter-spacing:.06em; text-transform:uppercase}
+.contrast p{margin:0; font-size:16px}
+.mermaid{display:flex; justify-content:center; overflow-x:auto}
+.scroller{overflow-x:auto}
+.statebar{display:flex; flex-wrap:wrap; gap:8px; margin:16px 0 0}
+.chip{font-family:ui-monospace,monospace; font-size:13px; padding:4px 10px; border-radius:20px; border:1px solid var(--border); background:var(--surface-2)}
+.chip.terminal{border-color:var(--accent); color:var(--accent)}
+table{border-collapse:collapse; width:100%; font-size:15px}
+th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--border); vertical-align:top}
+th{font-size:12px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted)}
+td code{white-space:nowrap}
+footer{padding:34px 0 0; border-top:1px solid var(--border); color:var(--muted); font-size:13px}
+svg.loop{width:100%; height:auto; color:var(--text)}
+.grow2{flex:2 1 380px}
+.grow1{flex:1 1 260px}
+ul.tight{margin:10px 0 0; padding-left:20px}
+ul.tight li{margin:4px 0}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <section aria-label="Hero">
+    <p class="eyebrow">Why do-work is useful</p>
+    <h1>Auto-ticketing that executes, tests, reviews, and presents the work.</h1>
+    <p class="lead measure">Every request becomes a ticket, and the tickets close themselves — that is the claim, and this page walks the mechanism behind each part of it: <em>what file, what field, what action</em> actually delivers it. If you already drive an agent all day but work ad-hoc — one long thread, no tickets — this is not a pitch; everything here is checkable against the skill's own files.</p>
+  </section>
+
+  <section>
+    <p class="eyebrow">Mechanism 1 — Durable intent</p>
+    <div class="row">
+      <div class="grow2 measure">
+        <h2>Requests become files, so work survives context loss</h2>
+        <p>Every capture writes two things to disk: a <strong>UR folder</strong> holding your verbatim input as the permanent source of truth, and one or more <strong>REQ files</strong> — plain Markdown with YAML frontmatter — that enter <span class="filepath">do-work/queue/</span>. The frontmatter carries a machine-readable <code>status</code>, so the request's position is a fact on disk, not a memory of the conversation.</p>
+        <p>Because the state lives in <span class="filepath">do-work/</span> rather than the transcript, it doesn't matter if the context window fills, the terminal crashes, or you hand the thread to a different model tomorrow. The next agent reads <code>status: pending</code> and knows exactly what's left. Even a multi-step run persists its position in <span class="filepath">do-work/pipeline.json</span> and resumes from the last completed step.</p>
+      </div>
+      <div class="grow1">
+        <div class="card">
+          <h3 style="margin-bottom:12px">A REQ on disk</h3>
+          <div class="scroller"><pre style="margin:0"><code>---
+id: REQ-042
+title: Add dark mode
+status: pending
+domain: frontend
+user_request: UR-013
+depends_on: []
+---
+
+## What
+...</code></pre></div>
+        </div>
+      </div>
+    </div>
+    <div class="contrast measure">
+      <div class="without"><h4>Without do-work</h4><p>The plan lives in the scrollback. Close the tab, hit the context limit, or switch models and it's gone — you re-explain from memory.</p></div>
+      <div class="with"><h4>With do-work</h4><p><code>REQ-042-pending.md</code> sits in the queue until an action moves it. Any agent, any session, can pick up where the last one stopped.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Mechanism 2 — Separation of capture and execution</p>
+    <div class="row measure">
+      <div class="grow2">
+        <h2>You can bank an idea mid-task without derailing</h2>
+        <p>The <code>capture-requests</code> action writes the UR and REQ files and then <strong>stops</strong>. It is designed to never "helpfully" slide into building — SKILL.md states the rule plainly: <em>capture captures, work executes, and they are strictly separate.</em> So dropping a new request into the queue while you're deep in something else costs you nothing: the idea is banked, the current work is untouched.</p>
+        <p>Capture is also where your attention is worth the most. Clarifying questions — each one offering concrete options, not open-ended "what do you mean?" — happen <em>while you're present</em>. Compound inputs ("the search is slow, also add an export button, and fix the header") split into separate REQs automatically. Then the build phase runs later, on its own, without blocking on you.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">The REQ lifecycle</p>
+    <div class="row">
+      <div class="grow2 diagram">
+        <pre class="mermaid">
+stateDiagram-v2
+    [*] --> pending: capture writes REQ
+    pending --> claimed: work claims it
+    claimed --> completed
+    claimed --> completed_with_issues: completed-with-issues
+    claimed --> failed
+    claimed --> pending_answers: ambiguous — pending-answers
+    pending_answers --> pending: clarify, answered
+    pending --> cancelled: abandon (won't-do)
+    failed --> pending: follow-up REQ
+    completed --> [*]
+    completed_with_issues --> [*]
+    cancelled --> [*]
+</pre>
+      </div>
+      <div class="grow1 measure">
+        <h2>One field, one lifecycle</h2>
+        <p>The <code>status</code> field is the whole state machine. <code>work</code> claims a <code>pending</code> REQ, builds it, and stamps a terminal status. Ambiguity doesn't stall the loop — the builder marks it <code>pending-answers</code> and moves on, and <code>do-work clarify</code> collects those questions as a batch for you to answer later. A won't-do decision becomes <code>cancelled</code> (terminal, recorded, not a silent delete). A failure spawns a follow-up REQ so nothing evaporates.</p>
+        <div class="statebar">
+          <span class="chip">pending</span>
+          <span class="chip">claimed</span>
+          <span class="chip">pending-answers</span>
+          <span class="chip terminal">completed</span>
+          <span class="chip terminal">completed-with-issues</span>
+          <span class="chip terminal">failed</span>
+          <span class="chip terminal">cancelled</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Mechanism 3 — Built-in quality gates</p>
+    <div class="row measure">
+      <div class="grow2">
+        <h2>Review and guardrails are structural, not optional politeness</h2>
+        <p>After a REQ is built, <code>review-work</code> runs a requirements check, a code review, and acceptance testing against the original intent — not a vibe-check that it compiled. Each action file ends with a Verification Checklist that demands <em>evidence</em>, not a self-declared pass.</p>
+        <p>The guardrails load by trigger condition, just-in-time from <span class="filepath">crew-members/</span>. <code>karpathy.md</code> is always active during implementation — think before coding, surgical changes, verifiable success criteria. <code>anti-slop.md</code> loads before any human-facing artifact and enforces eight principles (lead with the conclusion, verify every claim, compress, disclose what's AI-generated). This very report was written under those rules.</p>
+      </div>
+      <div class="grow1">
+        <div class="card">
+          <h3 style="margin-bottom:10px">Loaded when its trigger fires</h3>
+          <ul class="tight">
+            <li><code>karpathy.md</code> — always, during build</li>
+            <li><code>anti-slop.md</code> — before human-facing artifacts</li>
+            <li><code>prompt-injection.md</code> — before ingesting outside content</li>
+            <li><code>clear-questions.md</code> — before any interactive question</li>
+            <li><code>maintenance.md</code> — on a <code>maintenance: true</code> REQ</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Mechanism 4 — Observability</p>
+    <div class="row measure">
+      <div class="grow2">
+        <h2>The queue is inspectable at a glance</h2>
+        <p>Because work is files with a known schema, tools can read it. <code>do-work board</code> builds the shipped Go tool in <span class="filepath">tools/queue-kanban/</span> and renders the queue as a live Kanban board at <code>:8090</code> (or a static HTML snapshot, or a column-count summary). <code>do-work forensics</code> is a read-only diagnostic that flags stuck work, hollow completions, and orphaned URs. <code>do-work roadmap</code> classifies pending REQs as ready, needs-clarification, blocked, or stale. <code>do-work inspect</code> explains what's uncommitted and whether it's ready.</p>
+      </div>
+      <div class="grow1">
+        <div class="card">
+          <h3 style="margin-bottom:10px">Read-only lenses on the same queue</h3>
+          <ul class="tight">
+            <li><code>board</code> — Kanban view of every status column</li>
+            <li><code>roadmap</code> — ready / blocked / stale + TDD posture</li>
+            <li><code>forensics</code> — stuck, hollow, orphaned work</li>
+            <li><code>inspect</code> — what changed, and is it shippable</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Mechanism 5 — Knowledge compounding</p>
+    <div class="row measure">
+      <div class="grow2">
+        <h2>What one REQ learned becomes context for the next</h2>
+        <p>A completed REQ can carry a <code>## Lessons Learned</code> section — the surprising thing the build revealed. Once review passes, do-work offers to promote those lessons into the project's knowledge base via the <code>kb-lessons-handoff</code>. The REQ's own frontmatter tracks the outcome in <code>kb_status</code> — <code>promoted</code>, <code>pending</code>, <code>declined</code>, or <code>skipped</code> — so the handoff is auditable and never blocks archival.</p>
+        <p>The effect over time: insight stops dying with the thread that produced it. An ad-hoc chat forgets what it discovered the moment it scrolls off. A queue with a KB handoff turns each finished task into reusable ground for the tasks that come after it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">The value loop</p>
+    <h2 class="measure">Idea to queue to pipeline to archive to knowledge base</h2>
+    <p class="measure muted">Each stage writes a durable artifact the next stage reads. The knowledge base feeds back into future work, which is where the loop compounds.</p>
+    <div class="diagram scroller" style="margin-top:18px">
+      <svg class="loop" viewBox="0 0 1180 300" role="img" aria-label="Value loop: idea to capture to queue to work pipeline to review to archive to knowledge base, feeding back into future work.">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+          <marker id="arrowAccent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+        <!-- nodes -->
+        <g font-family="ui-monospace,monospace" font-size="15" text-anchor="middle">
+          <!-- idea -->
+          <rect x="20" y="90" width="130" height="60" rx="12" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.5"/>
+          <text x="85" y="116" font-weight="700" fill="currentColor">idea</text>
+          <text x="85" y="136" font-size="12" fill="var(--muted)">in your head</text>
+          <!-- capture -->
+          <rect x="205" y="90" width="150" height="60" rx="12" fill="var(--surface-2)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="280" y="114" font-weight="700" fill="var(--accent)">capture</text>
+          <text x="280" y="134" font-size="12" fill="var(--muted)">UR + REQ files</text>
+          <!-- queue -->
+          <rect x="410" y="90" width="150" height="60" rx="12" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.5"/>
+          <text x="485" y="114" font-weight="700" fill="currentColor">queue</text>
+          <text x="485" y="134" font-size="12" fill="var(--muted)">status: pending</text>
+          <!-- work pipeline -->
+          <rect x="615" y="90" width="160" height="60" rx="12" fill="var(--surface-2)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="695" y="114" font-weight="700" fill="var(--accent)">work + review</text>
+          <text x="695" y="134" font-size="12" fill="var(--muted)">build, gate, verify</text>
+          <!-- archive -->
+          <rect x="830" y="90" width="150" height="60" rx="12" fill="var(--surface-2)" stroke="currentColor" stroke-width="1.5"/>
+          <text x="905" y="114" font-weight="700" fill="currentColor">archive</text>
+          <text x="905" y="134" font-size="12" fill="var(--muted)">completed + commit</text>
+          <!-- KB -->
+          <rect x="1035" y="90" width="130" height="60" rx="12" fill="var(--surface-2)" stroke="var(--accent)" stroke-width="2"/>
+          <text x="1100" y="114" font-weight="700" fill="var(--accent)">KB</text>
+          <text x="1100" y="134" font-size="12" fill="var(--muted)">lessons</text>
+        </g>
+        <!-- forward arrows -->
+        <g stroke="currentColor" stroke-width="2" fill="none">
+          <line x1="152" y1="120" x2="201" y2="120" marker-end="url(#arrow)"/>
+          <line x1="357" y1="120" x2="406" y2="120" marker-end="url(#arrow)"/>
+          <line x1="562" y1="120" x2="611" y2="120" marker-end="url(#arrow)"/>
+          <line x1="777" y1="120" x2="826" y2="120" marker-end="url(#arrow)"/>
+          <line x1="982" y1="120" x2="1031" y2="120" marker-end="url(#arrow)"/>
+        </g>
+        <!-- feedback loop KB -> work pipeline -->
+        <g stroke="var(--accent)" stroke-width="2" fill="none" stroke-dasharray="6 5">
+          <path d="M1100,152 L1100,250 L695,250 L695,152" marker-end="url(#arrowAccent)"/>
+        </g>
+        <text x="897" y="272" text-anchor="middle" font-family="ui-monospace,monospace" font-size="13" fill="var(--accent)">compounds: past lessons inform future builds</text>
+      </svg>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Where the value concentrates</p>
+    <div class="row measure">
+      <div class="grow2">
+        <h2>The trail of intent is the point; the code is the side effect</h2>
+        <p>Read together, the five mechanisms produce one artifact an ad-hoc chat can't: a living record that traces from the words you typed, through every builder decision and scope call, to the commit that shipped. The UR preserves the verbatim ask, the REQ preserves the validated intent, and the appended sections preserve how that intent got realized.</p>
+        <p>None of this requires Claude Code specifically — the action files are standalone prompts that run in any agent that can read files and run shell commands. The skill doesn't replace the agent's judgment; it raises the floor, so the same good steps happen every time instead of only when the agent happens to feel careful.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="measure">
+    Generated by do-work ai-report — repurposed to describe the skill itself rather than a completed REQ. All diagrams hand-authored (no image-gen backend available).
+  </footer>
+
+</div>
+</body>
+</html>
