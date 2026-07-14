@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.121.1 — Recoverable Runs and Leaner Board Loading (2026-07-13)
+
+Fan-out runs now distinguish “assembled” from “delivered,” so an interrupted review or exploration can resume without cleanup deleting its only result. The board also keeps exact-copy Markdown out of the initial payload until someone actually presses Copy.
+
+- Added `in-progress` → `synthesized` → `consumed` run states, persisted code-review reports, a root deep-explore manifest, and consumed-only cleanup with explicit staging for deleted run paths
+- Aligned cleanup's five-pass documentation, changelog-title examples, and prime's interactive questions with their canonical contracts
+- Moved raw REQ/UR Markdown into lazy `board-markdown.js`; the current tree's initial `board-data.js` is 43% smaller while generated and live boards still copy exact source text
+
 ## 0.121.0 — Tidy-Repo Rename and Safer Layout Planning (2026-07-13)
 
 `file-reorg` is now `tidy-repo`: a clearer name for the same reference-safe repository-layout job, with the old command retained as a compatibility alias. The workflow is tighter about what belongs in a layout pass and more careful around real-world repositories that already have local changes, generators, or platform-sensitive paths.
