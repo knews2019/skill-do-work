@@ -15,6 +15,7 @@ depends_on: []
 related: [REQ-020]
 batch: harness-bloat-cleanup
 maintenance: true
+commit: da6cf19
 ---
 
 # SKILL.md router diet
