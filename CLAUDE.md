@@ -41,6 +41,8 @@ Keep it brief, newest on top, lead with value not implementation. Every version 
 
 ## Action File Conventions
 
+**Every NEW action must justify not being a sibling skill.** Before an action file is added, state — in its description blockquote or an accompanying ADR — why it belongs inside do-work rather than in a separate skill: what queue/pipeline machinery it needs, or which existing action it completes. Reviewers reject additions without this justification. (Ratchet from the 2026-07 bloat cleanup: bkb, interview, dream, and the prompt library accreted ~47k words with no such gate — see `decisions/audits/2026-07-15-relocation-extraction-plans.md`.) Every new action also adds a routing row, a dispatch row, a help-menu block, and a next-steps block — SKILL.md's word budget is enforced by `_dev/tests/contract-regressions.sh`, and the answer to hitting it is a merge or lazy-load, not a bigger budget.
+
 Action files follow a consistent structure. When adding or modifying actions, use this template:
 
 ```markdown
