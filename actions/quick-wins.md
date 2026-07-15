@@ -186,10 +186,8 @@ Guard against these when producing the report:
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "This file is long so it must be a refactoring candidate" | Check if the length serves a purpose (state machine, migration, parser) | Length alone is not a smell |
 | "No quick wins found" after scanning 3 files | Verify you scanned all source files in scope | Small scan = invisible problems |
 | "This looks like dead code" | Grep for dynamic references, re-exports, and framework conventions | Static analysis misses dynamic usage |
-| "I'll pad the report with low-impact findings" | Only report findings above the effort/impact threshold | Padding erodes trust in the report |
 
 ## Red Flags
 
