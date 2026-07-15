@@ -15,6 +15,7 @@ depends_on: [REQ-015]
 related: [REQ-015]
 batch: harness-bloat-cleanup
 maintenance: false
+commit: 5570ee4
 ---
 
 # Phase-4 ratchets
