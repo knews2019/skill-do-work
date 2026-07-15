@@ -39,8 +39,9 @@ non_dowork_count=0
 
 # --- Check 1: every listed file matches its claimed state on disk / in diff ---
 while IFS= read -r summary_line; do
-  file_path="$(printf '%s' "$summary_line" | grep -oP '(?<=`)[^`]+' | head -1)"
-  change_verb="$(printf '%s' "$summary_line" | grep -oP '\((new|modified|modify|deleted)\)' | tr -d '()')"
+  # Portable extraction (no GNU-only grep -P): first backtick-quoted token, then the verb.
+  file_path="$(printf '%s' "$summary_line" | sed -n 's/^[^`]*`\([^`]*\)`.*/\1/p')"
+  change_verb="$(printf '%s' "$summary_line" | grep -oE '\((new|modified|modify|deleted)\)' | head -1 | tr -d '()')"
   [ -z "$file_path" ] && continue
   case "$file_path" in do-work/*) continue;; esac
   non_dowork_count=$((non_dowork_count + 1))
@@ -82,14 +83,14 @@ if [ "$non_dowork_count" -eq 0 ]; then
 fi
 
 # --- Check 4: P-A-U box audit + debug artifacts in the diff ---
-unchecked_boxes="$(grep -cE '^\s*-\s\[ \]\s\*\*\[(PLAN|APPLY|UNIFY)\]' "$request_file" || true)"
+unchecked_boxes="$(grep -cE '^[[:space:]]*-[[:space:]]\[ \][[:space:]]\*\*\[(PLAN|APPLY|UNIFY)\]' "$request_file" || true)"
 if [ "${unchecked_boxes:-0}" -gt 0 ]; then
   echo "FAIL: $unchecked_boxes P-A-U checkbox(es) still unchecked — the builder did not complete those phases"
   failure_count=$((failure_count + 1))
 fi
 if [ "$git_available" -eq 1 ]; then
   debug_artifact_lines="$({ git diff; git diff --staged; } | grep -E '^\+' | grep -nE 'console\.log|debugger|(^|[^[:alnum:]_])print\(|TODO|FIXME' | grep -v 'do-work/' || true)"
-  if [ -n "$debug_artifact_lines" ] && grep -qE '^\s*-\s\[x\]\s\*\*\[UNIFY\]' "$request_file"; then
+  if [ -n "$debug_artifact_lines" ] && grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file"; then
     echo "FAIL: [UNIFY] is checked but the diff adds debug artifacts — un-check it and flag:"
     printf '%s\n' "$debug_artifact_lines" | head -10 | sed 's/^/  /'
     failure_count=$((failure_count + 1))

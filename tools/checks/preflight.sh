@@ -34,6 +34,9 @@ if [ "$#" -gt 0 ]; then
   baseline_output="$("$@" 2>&1)" && baseline_status=0 || baseline_status=$?
   if [ "$baseline_status" -eq 0 ]; then
     echo "OK: test baseline passing ($*)"
+    # A stale failures file from an earlier failing preflight would make Step 6.5
+    # misclassify a new regression as pre-existing — clear it on a passing baseline.
+    rm -f "$baseline_dir/baseline-failures.txt"
   else
     echo "WARN: baseline tests failing BEFORE any changes — builder is not to blame for these:"
     printf '%s\n' "$baseline_output" | tail -n 20 | sed 's/^/  /'

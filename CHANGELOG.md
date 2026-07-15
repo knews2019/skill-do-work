@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.124.3 — Portable Check Scripts and Stale-Baseline Cleanup (2026-07-15)
+
+Two PR-review fixes to the new tools/checks/ scripts (thanks, Codex review on #117).
+
+- Replaced GNU-only `grep -P` extraction (and `\s` ERE classes) with portable `sed`/`grep -E [[:space:]]` — the checks now run on BSD/macOS grep, matching the skill's any-environment contract.
+- `preflight.sh` deletes a stale `baseline-failures.txt` when the baseline passes, so Step 6.5 can never misclassify a new regression as pre-existing.
+
 ## 0.124.2 — Regrowth Ratchets: Router Word Budget and Sibling-Skill Gate (2026-07-15)
 
 Two guards so the bloat this cleanup removed can't quietly come back.

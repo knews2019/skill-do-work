@@ -26,7 +26,7 @@ extract_section_paths() {
     $0 ~ section {inside=1; next}
     inside && /^## / {inside=0}
     inside {print}
-  ' "$request_file" | grep -oP '(?<=- `)[^`]+' | grep -v '^do-work/' | sort -u
+  ' "$request_file" | sed -n 's/^[[:space:]]*- `\([^`]*\)`.*/\1/p' | grep -v '^do-work/' | sort -u
 }
 
 declared_paths="$(extract_section_paths 'Scope')"
