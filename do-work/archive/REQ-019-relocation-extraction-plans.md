@@ -15,6 +15,7 @@ depends_on: []
 related: []
 batch: harness-bloat-cleanup
 maintenance: false
+commit: b8acdbb
 ---
 
 # RELOCATE extraction plans (no extraction in this pass)
