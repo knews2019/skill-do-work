@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.124.1 — Extraction Plans for the Three Relocatable Subsystems (2026-07-15)
+
+Plan-only release: grep-verified extraction plans for the prompt library, the interview framework, and bkb+dream now live in `decisions/audits/2026-07-15-relocation-extraction-plans.md` (maintainer docs, not shipped). No files moved; nothing changes for consumers in this release.
+
+- Each plan names the target sibling repo, the full manifest with word counts, every inbound-reference seam to cut, and a migration note for git-clone and tarball installs.
+- Recommended sequence: prompts → interview → bkb+dream (~47k words would leave the shipped skill if all three run).
+
 ## 0.124.0 — Mechanical Work-Loop Checks Ship as Scripts (2026-07-15)
 
 Four parts of the work loop that were pure shell-logic-in-prose are now shipped executables under `tools/checks/`, so they run the same way every time instead of being re-derived from paragraphs. Judgment stays in the prose; mechanics move to code.

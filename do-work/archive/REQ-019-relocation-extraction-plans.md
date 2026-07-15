@@ -1,9 +1,12 @@
 ---
 id: REQ-019
 title: "Extraction plans (plan-only) for prompts library, interview subsystem, bkb + dream"
-status: pending
+status: completed
 created_at: 2026-07-15T17:33:04Z
 user_request: UR-003
+claimed_at: 2026-07-15T18:38:00Z
+completed_at: 2026-07-15T18:47:00Z
+route: B
 domain: general
 prime_files: []
 tdd: false
@@ -38,9 +41,9 @@ update` does to the removed files, how to install the sibling).
 User-approved RELOCATE bucket; Message 1 explicitly scopes phase 3 to plans only.
 
 ## Acceptance criteria
-- [ ] One plan per package with complete file manifest (verified against the repo).
-- [ ] Every inbound reference to each package enumerated by grep, with its fate.
-- [ ] Migration note covers both git-clone and tarball consumers.
+- [x] One plan per package with complete file manifest (verified against the repo).
+- [x] Every inbound reference to each package enumerated by grep, with its fate.
+- [x] Migration note covers both git-clone and tarball consumers.
 
 ## Open Questions
 - [ ] Do the 4 dev-adjacent prompts (ADR log, dark-code kit ×3) move with the
@@ -51,6 +54,6 @@ User-approved RELOCATE bucket; Message 1 explicitly scopes phase 3 to plans only
       user's final call.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:**
-- [ ] **[APPLY]:**
-- [ ] **[UNIFY]:**
+- [x] **[PLAN]:** Grep-enumerated inbound refs per package across SKILL.md, next-steps.md, actions/, crew-members/, docs/, README, _dev/, hooks/ before writing any seam list.
+- [x] **[APPLY]:** Wrote decisions/audits/2026-07-15-relocation-extraction-plans.md — three plans (prompt library ~19.8k words, interview ~12.6k, bkb+dream ~14.9k), each with manifest, seams, migration note; recommended sequence A→B→C.
+- [x] **[UNIFY]:** No shipped file modified (plan doc is export-ignored under decisions/); kb-lessons-handoff boundary explicitly kept in do-work with kb_status/kb_entry schema fields; D-01 (dev-adjacent prompts move, marked "may stay") recorded for user's final call.
