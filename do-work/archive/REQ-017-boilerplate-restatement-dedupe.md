@@ -15,6 +15,7 @@ depends_on: []
 related: []
 batch: harness-bloat-cleanup
 maintenance: true
+commit: 66b0c7b
 ---
 
 # Boilerplate restatement dedupe (4 files)
@@ -53,7 +54,7 @@ defect is triple-stating within a file. Audit DELETE bucket (revised scope).
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Read all four files' guard sections in full; built the deletion→surviving-rule mapping before cutting anything (maintenance.md: subtraction is not vandalism).
 - [x] **[APPLY]:** note.md CR+RF+VC removed (each row maps to Rules: not-a-task, append-only, bullets-only, never-commits, empty-input); scan-ideas.md RF+VC removed (map to Philosophy/Rules/Output: grounded, focus, product-breadth, no-dupes, read-only, 8-15 cap); commit.md Checklist + Common-mistakes blocks removed (.env was stated 7x; now in What-NOT-Do + Red Flags + Verification only) and 3 generic CR rows dropped; quick-wins.md 2 generic CR rows dropped (long-file row = generic wisdom; padding row = restates Rules "Be honest about impact").
-- [x] **[UNIFY]:** Word deltas: note 1,027→800, scan-ideas 1,027→856, commit 1,904→1,527, quick-wins 1,844→1,801 (net −818). Kept intact: commit.md terminal-status Red Flag + REQ-traceability CR rows; quick-wins scan-breadth + dynamic-refs rows and the maintenance-marker Rules paragraph. Out-of-scope files untouched.
+- [x] **[UNIFY]:** Word deltas: note 1,027→814, scan-ideas 1,027→868, commit 1,904→1,629, quick-wins 1,844→1,788 (net −703, measured post-edit). Kept intact: commit.md terminal-status Red Flag + REQ-traceability CR rows; quick-wins scan-breadth + dynamic-refs rows and the maintenance-marker Rules paragraph. Out-of-scope files untouched.
 
 ## Triage
 
