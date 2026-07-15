@@ -15,6 +15,7 @@ depends_on: []
 related: []
 batch: harness-bloat-cleanup
 maintenance: true
+commit: 99cdec2
 ---
 
 # Harden machine-checkable work.md steps
