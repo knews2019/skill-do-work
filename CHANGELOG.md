@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.123.0 — Router Diet: One Routing Table, Help Menu Loads Lazily (2026-07-15)
+
+SKILL.md dropped from ~5,500 to ~2,400 words with zero routing changes. The router used to enumerate the action set five times; now the priority table (with the old Verb Reference's disambiguation folded into its Notes column) and the Action Dispatch table are the only two, and the help menu lives in its own action file that loads only when you actually ask for help.
+
+- Actions bullet list deleted — each action file's own blockquote already carries its description.
+- Verb Reference merged into the routing table; every trigger verb and precedence rule preserved.
+- Help menu + per-command help moved to `actions/help.md` (new `help` dispatch row).
+- Every invocation now loads ~3,100 fewer words of router text before your content is touched.
+
 ## 0.122.0 — AI-Report Render-Judge Pass and SVG Design Rules (2026-07-14)
 
 The ai-report action now looks at its own output before shipping: when browser automation is available it serves the report over HTTP, takes full-page light+dark screenshots, and judges them against an explicit layout rubric — catching the dead-gutter columns, SVG label collisions, and buried-lede layouts that read fine in source and broke on screen.
