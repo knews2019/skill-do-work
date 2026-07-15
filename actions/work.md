@@ -156,22 +156,15 @@ Count `completed`, `completed-with-issues`, `cancelled`, and `done` statuses tog
 
 ### Step 2.0: Pre-Claim Archive Collision Check
 
-Before claiming the queue file, verify it isn't a duplicate of an already-archived REQ. The most common footgun is rerunning `do-work work` against a queue file whose twin was already archived in a prior run, which silently re-processes and re-commits the duplicate.
+Before claiming the queue file, verify it isn't a duplicate of an already-archived REQ — rerunning against a file whose twin was archived in a prior run silently re-processes and re-commits it. Run the shipped check:
 
-Extract `REQ-NNN` from the queue filename or frontmatter. Glob `do-work/archive/**/REQ-NNN-*.md` AND `do-work/archive/**/REQ-NNN.md` (both forms — the second catches REQs archived without a slug suffix). If any match exists, **bail without moving or claiming**:
+```bash
+<skill-root>/tools/checks/archive-collision.sh REQ-NNN
+```
 
-1. Update the duplicate queue file's frontmatter to `status: blocked-archive-collision`. This is non-destructive — the user can flip it back to `pending` after deciding what to do. It also prevents the next Step 10 → Step 1 re-glob from picking up the same REQ and bailing again (livelock).
-2. Report:
+Exit 0 → no collision, proceed to Step 2. Exit 1 (matching archive paths printed) → **bail without moving or claiming**: set the queue file's frontmatter to `status: blocked-archive-collision` (non-destructive — the user flips it back to `pending` after deciding; it also prevents Step 10 → Step 1 livelock), report `REQ-NNN already archived at <path>; remove the duplicate from do-work/queue/ or rename if this is a re-do.`, and continue to the next pending REQ. Never delete the queue file — stale-duplicate vs intentional re-do is the user's call. If the script is missing, glob `do-work/archive/**/REQ-NNN-*.md` and `do-work/archive/**/REQ-NNN.md` (both forms) yourself — same decision rule.
 
-   ```
-   REQ-NNN already archived at <archiveCollisionMatchPath>; remove the duplicate from do-work/queue/ or rename if this is a re-do. Status set to `blocked-archive-collision` to skip future loop iterations.
-   ```
-
-3. Skip the rest of the work loop for this REQ and continue to the next pending REQ. Do not delete the queue file — the user decides whether it's a stale duplicate or an intentional re-do that needs renaming.
-
-**Scope (minimal):** This guard only checks the archive. It does NOT add post-move verification or pre-commit collision guards — those are parallel-orchestrator concerns out of scope for single-orchestrator usage.
-
-If no archive match is found, proceed to Step 2.
+**Scope (minimal):** archive-only; no post-move or pre-commit collision guards (parallel-orchestrator concerns, out of scope).
 
 ### Step 2: Claim the Request
 
@@ -278,7 +271,7 @@ The Scope section serves two purposes:
 
 Scope-drift protection enforces **YAGNI**: only declared files get touched, and undeclared exploratory work becomes a discovered task (Step 8) rather than speculative scope creep. See `crew-members/karpathy.md` § Simplicity First.
 
-The review step (Step 7) **MUST** compare the Implementation Summary's file list against the Scope declaration (Routes B and C only). Any file touched that was not declared, or any declared file not touched, is flagged as scope drift (Important finding if significant, Minor if trivial like a forgotten import update). **Route A** has no Scope declaration — skip the scope-drift comparison for Route A REQs.
+The review step (Step 7) **MUST** run the scope-drift comparison (Routes B and C only): `<skill-root>/tools/checks/scope-drift.sh <req-file>` computes both set-differences (touched-but-undeclared, declared-but-untouched); severity stays your judgment — Important if significant, Minor if trivial like a forgotten import update. Exit 2 means a section is missing (Route A REQs have no Scope declaration — skip the comparison, exactly as the script reports). If the script is missing, compare the two file lists by hand.
 
 ### Step 5.75: Pre-Flight Check (Routes B and C)
 
@@ -286,11 +279,13 @@ Quick environment sanity check before the builder starts coding. All checks are 
 
 **Route A:** Skip pre-flight — too lightweight to justify the overhead.
 
-**Routes B and C:**
+**Routes B and C:** resolve the project's test command first (the prime file's testing section is primary; else `package.json` test scripts, `pytest.ini`, etc. — that resolution is your judgment), then run the shipped check:
 
-1. **Git clean:** Run `git status --porcelain --untracked-files=all` (the `-uall` flag lists files inside untracked dirs individually instead of collapsing them to a single `?? dir/` row). If there are uncommitted changes unrelated to `do-work/`, warn: "Uncommitted changes detected — the commit step may stage unrelated files." List the files.
-2. **Tests baseline:** If the project has a test command (check the prime file's testing section, or look for `package.json` test scripts, `pytest.ini`, etc.), run it. If tests already fail on HEAD before any changes, note this: "Baseline tests failing — builder should not be blamed for pre-existing failures." Record which tests fail.
-3. **Dependencies:** If `package.json` exists but `node_modules/` doesn't, or `requirements.txt` exists without an active venv, warn: "Dependencies may not be installed."
+```bash
+<skill-root>/tools/checks/preflight.sh [test-command ...]
+```
+
+It performs the three checks (git clean with `-uall`, test baseline, dependencies present), prints WARN/OK lines, always exits 0, and — when a test command was given — records `do-work/working/baseline.json` + `baseline-failures.txt` so Step 6.5 can separate pre-existing failures from new regressions. If the script is missing, run the same three checks by hand (`git status --porcelain --untracked-files=all`; run the test command; check `node_modules`/venv presence).
 
 (append findings per the **Pre-Flight Template (Step 5.75)** in `actions/work-reference.md`, only if issues are found — all checks are warnings, not blockers)
 
@@ -351,13 +346,18 @@ Append (or replace) in the request file:
 
 After the builder returns and the Implementation Summary is written, the **orchestrator** (not the builder) independently verifies the builder's claims before proceeding. This is not self-reporting — the orchestrator reads actual output, not the builder's description of it.
 
-**Qualification checklist:**
+**Mechanical checks (run the shipped script):**
 
-1. **Files exist:** For every file listed in the Implementation Summary, verify on disk. `(new)` files must exist. `(modified)` files must show in `git diff` or `git diff --staged`. `(deleted)` files must be gone. Run the commands — don't trust the summary.
+```bash
+<skill-root>/tools/checks/qualify.sh <req-file>
+```
+
+It verifies checklist items **1 (files exist / show in diff)**, **4 (P-A-U box audit + debug artifacts in the diff)**, and the grep half of **5 (wiring)** — plus Step 6.25's "only `do-work/` paths ⇒ not implemented" rule. FAIL lines are qualification failures; WARN lines are evidence handed to your judgment — in particular, an unreferenced `(new)` file is only dead code if it isn't an **exception**: entry points, config files, test files, standalone scripts, framework-convention files discovered by file-system routing (Next.js `pages/`/`app/`, SvelteKit/Remix `routes/`, Nuxt/Astro `pages/`), barrel re-exports, side-effect-only imports (CSS modules, polyfills), and dynamic-import-only files that static grep can't see. If the script is missing, run items 1/4/5 by hand per its header comment.
+
+**Judgment checks (yours, not the script's):**
+
 2. **Changes are substantive:** For each `(new)` file, verify it is not a placeholder (more than boilerplate/empty exports/TODO comments — minimum 10 meaningful lines for source files, 3 for config). For `(modified)` files, verify the diff contains changes related to the REQ's requirements, not just whitespace or import shuffling.
 3. **Requirements traced:** Re-read the REQ's What/Detailed Requirements section. For each stated requirement, confirm at least one file in the Implementation Summary plausibly addresses it (by filename and diff content). Flag any requirement with no corresponding file change.
-4. **P-A-U box audit:** Read the REQ's AI Execution State section. If any box is still `[ ]`, the builder did not complete that phase — flag it. If `[UNIFY]` is checked but the diff contains debug artifacts (`console.log`, `print()`, `debugger`, TODO/FIXME added by this change), un-check it and flag.
-5. **Wired:** For each `(new)` source file, verify it is imported or referenced by at least one other file in the project (grep for the filename or an exported symbol). A new component/module that nothing imports is dead code — flag it. **Exceptions** (do not flag): Entry points (e.g., `main.ts`, `index.html`), config files, test files, standalone scripts, framework-convention files discovered by file-system routing (e.g., Next.js `pages/`/`app/` routes, SvelteKit `routes/`, Remix `routes/`, Nuxt `pages/`, Astro `pages/`), files re-exported through a barrel index (`index.ts`/`index.js` that re-exports them), files that are side-effect-only imports (CSS modules, polyfills, global stylesheets imported for their side effects), and files used exclusively via dynamic import (`import()` or `require()` with a variable path) where static grep won't find a reference.
 6. **Flowing:** For files that handle data (API endpoints, data stores, handlers, services), verify the data path isn't hardcoded or stubbed. Check for: hardcoded empty arrays `return []`, placeholder strings like `"TODO"` or `"placeholder"`, `return null` in data-fetching functions, commented-out database calls. If found, flag as hollow implementation — the file exists and is wired but doesn't actually do anything.
 
 **Anti-rationalization rules** (apply when evaluating the above):
@@ -380,7 +380,7 @@ Before marking complete, verify tests pass:
 1. **Check the prime file for test guidance** — if the REQ's `prime_files` reference a prime with a testing section (test commands, code-area-to-test mappings), use that as the primary source for what to run. **Before running, verify each listed command still exists**: for npm scripts check it's present in `package.json`; for other tools verify the config file exists (`jest.config.*`, `pytest.ini`, `Cargo.toml`, etc.). If a prime test command is no longer valid, fall back to generic detection for that command and note: `Prime test command '[cmd]' not found — falling back to generic detection.` Prime test maps are project-specific knowledge that generic detection can't replicate (e.g., "changes to `lib/inpainting.js` require `npm run test:api`" or "`npm test` is always safe but `npm run test:e2e` costs money").
 2. **Fall back to generic detection for unmapped files** — if the prime has no testing section, or if you changed files the prime's test map doesn't cover, fall back to generic detection for those files: look for `package.json` test scripts, `jest.config.*`, `pytest.ini`, `Cargo.toml`, `*_test.go`, etc. A partial prime map is not an excuse to skip tests — matched files use the prime's commands, unmatched files use generic detection. If neither source yields test commands for a file, skip testing for it and note it.
 3. **Run relevant tests** — target tests related to changed code, not the full suite (unless it's fast). If the prime specifies different commands for different code areas, run only the commands relevant to the files you changed. For unmapped files, run whatever generic detection found.
-4. **If tests fail** — check whether the failures were already recorded as baseline failures in Step 5.75 (Pre-Flight). If a failing test matches a pre-existing baseline failure (same test name/file, same failure mode), exclude it from the pass/fail gate — the builder should not be blamed for pre-existing failures. Only **new regressions** (tests that passed at baseline but fail after implementation) require fixing. Return to implementation to fix new regressions. On attempt 2+, load `crew-members/debugging.md` and `crew-members/testing.md` for the builder to follow the structured debugging methodology and review test quality. Loop until passing or mark as failed after 3 attempts.
+4. **If tests fail** — check whether the failures were already recorded as baseline failures in Step 5.75 (Pre-Flight); if `do-work/working/baseline.json` / `baseline-failures.txt` exist (written by `tools/checks/preflight.sh`), compare against those records mechanically. If a failing test matches a pre-existing baseline failure (same test name/file, same failure mode), exclude it from the pass/fail gate — the builder should not be blamed for pre-existing failures. Only **new regressions** (tests that passed at baseline but fail after implementation) require fixing. Return to implementation to fix new regressions. On attempt 2+, load `crew-members/debugging.md` and `crew-members/testing.md` for the builder to follow the structured debugging methodology and review test quality. Loop until passing or mark as failed after 3 attempts.
 5. **If new tests are needed** — spawn a general-purpose agent to write them following existing patterns, then run them.
 
 Append to the request file:

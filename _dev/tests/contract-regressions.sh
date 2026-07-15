@@ -155,6 +155,26 @@ for runtime_doc in "${active_runtime_docs[@]}"; do
   fi
 done
 
+# Hardened checks (REQ-018): the work.md prose pointers and the shipped scripts
+# must not drift apart — a pointer at a missing script silently un-hardens the step.
+hardened_check_scripts=(
+  "tools/checks/archive-collision.sh"
+  "tools/checks/preflight.sh"
+  "tools/checks/scope-drift.sh"
+  "tools/checks/qualify.sh"
+)
+
+for check_script in "${hardened_check_scripts[@]}"; do
+  if [ ! -x "$repo_root/$check_script" ]; then
+    printf 'FAIL: %s must exist and be executable (work.md points at it).\n' "$check_script" >&2
+    fail_count=$((fail_count + 1))
+  fi
+  assert_contains \
+    "actions/work.md" \
+    "$(basename "$check_script")" \
+    "actions/work.md must reference $check_script — the hardened step's pointer was removed without un-hardening."
+done
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi

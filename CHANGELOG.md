@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.124.0 — Mechanical Work-Loop Checks Ship as Scripts (2026-07-15)
+
+Four parts of the work loop that were pure shell-logic-in-prose are now shipped executables under `tools/checks/`, so they run the same way every time instead of being re-derived from paragraphs. Judgment stays in the prose; mechanics move to code.
+
+- `archive-collision.sh` (Step 2.0, full), `preflight.sh` (Step 5.75, full — also records a machine-readable test baseline for Step 6.5), `scope-drift.sh` (Step 5.5's review-time comparison), `qualify.sh` (Step 6.3's items 1/4/5 + the only-do-work-paths rule).
+- work.md steps shrink to pointers + the judgment that remains; every pointer has a script-missing fallback.
+- Contract tests now assert the pointers and scripts stay in sync.
+
 ## 0.123.2 — Small Actions State Each Guard Once (2026-07-15)
 
 Four action files said the same rules two to seven times over (commit.md stated the .env exclusion in seven places). The guard content survives — stated once, in the section that owns it.
