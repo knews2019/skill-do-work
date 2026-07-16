@@ -51,14 +51,19 @@ while IFS= read -r summary_line; do
         echo "FAIL: listed (new) but not on disk: $file_path"; failure_count=$((failure_count + 1))
       fi ;;
     modified|modify)
+      # Deliberately only working+staged diffs: Step 6.3 runs BEFORE this REQ's
+      # commit, and including the previous commit (HEAD~1) would let a no-op
+      # builder pass on the back of the last REQ's work.
       if [ ! -f "$file_path" ]; then
         echo "FAIL: listed (modified) but not on disk: $file_path"; failure_count=$((failure_count + 1))
-      elif [ "$git_available" -eq 1 ] && ! { git diff --name-only; git diff --staged --name-only; git diff HEAD~1 --name-only 2>/dev/null; } | grep -qxF "$file_path"; then
-        echo "WARN: listed (modified) but not in working/staged/last-commit diff: $file_path"
+      elif [ "$git_available" -eq 1 ] && ! { git diff --name-only; git diff --staged --name-only; } | grep -qxF "$file_path"; then
+        echo "WARN: listed (modified) but not in working/staged diff: $file_path"
       fi ;;
     deleted)
       if [ -f "$file_path" ]; then
         echo "FAIL: listed (deleted) but still on disk: $file_path"; failure_count=$((failure_count + 1))
+      elif [ "$git_available" -eq 1 ] && ! { git diff --name-only; git diff --staged --name-only; } | grep -qxF "$file_path"; then
+        echo "WARN: listed (deleted) and absent from disk, but no deletion in working/staged diff: $file_path — verify the path is not a typo and the file was deleted by THIS REQ"
       fi ;;
     *) echo "WARN: no (new|modified|deleted) verb on summary line: $summary_line" ;;
   esac

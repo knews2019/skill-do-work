@@ -29,7 +29,18 @@ extract_section_paths() {
   ' "$request_file" | sed -n 's/^[[:space:]]*- `\([^`]*\)`.*/\1/p' | grep -v '^do-work/' | sort -u
 }
 
-declared_paths="$(extract_section_paths 'Scope')"
+# Declared work is ONLY the "Files I will touch" list — the template's
+# "Files I will NOT touch" bullets document exclusions and must not count
+# as declarations (they'd surface as false "declared but never touched" drift).
+declared_paths="$(awk '
+    /^## Scope$/ {inside=1; next}
+    inside && /^## / {inside=0}
+    inside {print}
+  ' "$request_file" | awk '
+    /\*\*Files I will touch:\*\*/ {take=1; next}
+    take && /^\*\*/ {take=0}
+    take {print}
+  ' | sed -n 's/^[[:space:]]*- `\([^`]*\)`.*/\1/p' | grep -v '^do-work/' | sort -u)"
 reported_paths="$(extract_section_paths 'Implementation Summary')"
 
 if [ -z "$declared_paths" ]; then

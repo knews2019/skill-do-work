@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.124.4 — Qualify and Scope-Drift Checks Tightened Against False Passes (2026-07-15)
+
+Second Codex review round on #117 caught three ways the new checks could be fooled; all three are closed.
+
+- `qualify.sh` no longer counts the previous commit's diff as current work — a no-op builder can't pass on the back of the last REQ's changes.
+- `(deleted)` summary entries now need deletion evidence in the working/staged diff, not just disk absence — a typo'd path no longer qualifies.
+- `scope-drift.sh` reads only the "Files I will touch" list, so documenting out-of-scope files in "Files I will NOT touch" no longer reports false drift.
+
 ## 0.124.3 — Portable Check Scripts and Stale-Baseline Cleanup (2026-07-15)
 
 Two PR-review fixes to the new tools/checks/ scripts (thanks, Codex review on #117).
