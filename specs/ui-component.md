@@ -8,7 +8,7 @@
 - **Styles** — scoped styles following the project's styling approach (CSS modules, Tailwind, styled-components, etc.)
 - **Tests** — rendering tests, interaction tests, accessibility checks
 - **Demo/storybook** — if the project uses Storybook or a similar tool, add a story (optional)
-- **Minimal props** — expose only the props the REQ requires; no speculative options or configurability (YAGNI; see `crew-members/karpathy.md` § Simplicity First)
+- **Minimal props** — expose only the props the REQ requires; no speculative options or configurability (YAGNI; see `crew-members/coding-guardrails.md` § Simplicity First)
 
 ## Quality Standards
 
@@ -19,7 +19,7 @@
 - No hardcoded strings for user-facing text — use the project's i18n system if one exists
 - Error boundaries — component failures don't crash the entire page
 - `prefers-reduced-motion` respected for animations
-- Behavioral guardrails in `crew-members/karpathy.md` apply during implementation — think before coding, simplicity first, surgical changes, goal-driven execution
+- Behavioral guardrails in `crew-members/coding-guardrails.md` apply during implementation — think before coding, simplicity first, surgical changes, goal-driven execution
 
 ## Implementation Checklist
 

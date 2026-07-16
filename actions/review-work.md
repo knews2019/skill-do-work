@@ -131,16 +131,16 @@ If the REQ's Implementation Summary notes an assigned approach directive (e.g., 
 
 The directive check is informational — it does not affect the overall score. Its purpose is to track whether approach diversity produces better outcomes over time.
 
-**Karpathy Principle Check (informational)**
+**Coding-Guardrails Principle Check (informational)**
 
-`crew-members/karpathy.md` was always-loaded during implementation. Spot-check the diff against its four principles — these overlap with existing dimensions but frame them as observable behaviors:
+`crew-members/coding-guardrails.md` was always-loaded during implementation. Spot-check the diff against its four principles — these overlap with existing dimensions but frame them as observable behaviors:
 
 1. **Think Before Coding** — did Open Questions / Decisions get surfaced (`- [~]` marks, `## Decisions`), or were ambiguities silently resolved?
-2. **Simplicity First (YAGNI)** — does the code match the senior-engineer test? Flag speculative abstractions, unrequested configurability, and defensive handling for impossible inputs. (Remember: simplify ≠ strip — if removing it would need restoring next week, it's foundation.) See `crew-members/karpathy.md` § Simplicity First for the canonical statement.
+2. **Simplicity First (YAGNI)** — does the code match the senior-engineer test? Flag speculative abstractions, unrequested configurability, and defensive handling for impossible inputs. (Remember: simplify ≠ strip — if removing it would need restoring next week, it's foundation.) See `crew-members/coding-guardrails.md` § Simplicity First for the canonical statement.
 3. **Surgical Changes** — every changed line should trace to the REQ. Adjacent-code "improvements", style-only edits, and unrelated refactors are drift.
 4. **Goal-Driven Execution** — does the Testing section show verification (red-green, targeted regression, or equivalent proof), or just "it compiles"?
 
-Most Karpathy issues are already caught by Scope Discipline, Code Quality, and Test Adequacy. This check is a mnemonic pass — note anything the rubric missed under a **Minor** finding. Do not double-penalize the same issue across dimensions.
+Most guardrail issues are already caught by Scope Discipline, Code Quality, and Test Adequacy. This check is a mnemonic pass — note anything the rubric missed under a **Minor** finding. Do not double-penalize the same issue across dimensions.
 
 | Principle | Caught by | Tell |
 |---|---|---|

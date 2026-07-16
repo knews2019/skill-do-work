@@ -9,7 +9,7 @@
 - **Validation** — input schema (params, query, body), type coercion
 - **Error responses** — structured error format, appropriate HTTP status codes
 - **Tests** — unit tests for handler logic, integration tests for the full request cycle
-- **No speculative fields** — request/response schemas contain only the fields the REQ asked for; no "just in case" query params or response keys (YAGNI; see `crew-members/karpathy.md` § Simplicity First)
+- **No speculative fields** — request/response schemas contain only the fields the REQ asked for; no "just in case" query params or response keys (YAGNI; see `crew-members/coding-guardrails.md` § Simplicity First)
 
 ## Quality Standards
 
@@ -20,7 +20,7 @@
 - Error format consistent with existing API endpoints in the project
 - Response shape matches existing conventions (envelope pattern, direct data, pagination structure)
 - No N+1 queries — if the handler fetches related data, use eager loading or batch queries
-- Behavioral guardrails in `crew-members/karpathy.md` apply during implementation — think before coding, simplicity first, surgical changes, goal-driven execution
+- Behavioral guardrails in `crew-members/coding-guardrails.md` apply during implementation — think before coding, simplicity first, surgical changes, goal-driven execution
 
 ## Implementation Checklist
 

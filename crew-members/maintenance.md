@@ -1,6 +1,6 @@
 # The Subtractor — Maintenance Crew Member
 
-<!-- JIT_CONTEXT: Loaded before a deliberate *maintenance pass* on the skill's own operating instructions — an agent/action/crew/prime file that has drifted, bloated, or started teaching the wrong thing — where removing or narrowing is a candidate fix. This is the maintenance-time window where removal IS the task, distinct from feature implementation (karpathy.md governs that). Auto-loaded by `actions/work.md` Step 6 when a REQ carries the `maintenance: true` marker, which capture sets for a removal/narrowing finding on the skill's own instructions — e.g. one surfaced by `actions/quick-wins.md` (read-only — it *surfaces* removable rules/config). The marker is deliberately the *only* trigger: there is no description heuristic, because one would misfire on ordinary implementation REQs (which routinely touch adjacent dead code) and load the opposite posture from karpathy's. The trigger is the condition above, not any one caller — callers are illustrative, not the boundary; a future dedicated `maintain` action sets the same marker. -->
+<!-- JIT_CONTEXT: Loaded before a deliberate *maintenance pass* on the skill's own operating instructions — an agent/action/crew/prime file that has drifted, bloated, or started teaching the wrong thing — where removing or narrowing is a candidate fix. This is the maintenance-time window where removal IS the task, distinct from feature implementation (coding-guardrails.md governs that). Auto-loaded by `actions/work.md` Step 6 when a REQ carries the `maintenance: true` marker, which capture sets for a removal/narrowing finding on the skill's own instructions — e.g. one surfaced by `actions/quick-wins.md` (read-only — it *surfaces* removable rules/config). The marker is deliberately the *only* trigger: there is no description heuristic, because one would misfire on ordinary implementation REQs (which routinely touch adjacent dead code) and load the opposite posture from coding-guardrails'. The trigger is the condition above, not any one caller — callers are illustrative, not the boundary; a future dedicated `maintain` action sets the same marker. -->
 
 > Maintenance is the deliberate window where removal is the task. Before you add an instruction to fix a drift, try deleting or narrowing one — most harnesses rot because every fix is one more rule.
 
@@ -27,14 +27,14 @@ If you must add, earn it. An addition is justified only when a concrete case **f
 
 ## Persistence
 
-Active for the duration of a maintenance pass — from the moment removal or narrowing is on the table as a fix until the pass is committed. Re-engage for each drifting file in the same pass. Drops when the work transitions from maintenance into feature implementation, where `karpathy.md`'s surgical-changes rule takes over.
+Active for the duration of a maintenance pass — from the moment removal or narrowing is on the table as a fix until the pass is committed. Re-engage for each drifting file in the same pass. Drops when the work transitions from maintenance into feature implementation, where `coding-guardrails.md`'s surgical-changes rule takes over.
 
 ## Boundaries
 
-- **Complementary to `karpathy.md`, never in conflict.** karpathy § 3 "Surgical Changes" says *don't* delete adjacent or pre-existing dead code **while implementing a feature** — there, removal is scope creep. This file governs the opposite window: a deliberate maintenance pass where removal IS the assigned task. Implementation-time = leave it alone; maintenance-time = removal is the point. If you can't tell which window you're in, you're implementing — default to karpathy.
-- **Points at YAGNI, doesn't restate it.** karpathy § 2 "Simplicity First" is the canonical YAGNI home (don't add speculative code). This file is its maintenance-time twin: don't add speculative *instructions*. Read them together.
-- **Subtraction is not vandalism.** karpathy's "Simplify ≠ strip" still holds: if removing something would have to be restored next week, it was foundation, not bloat. Delete what causes the drift, not what holds the thing up. When in doubt, narrow rather than delete — and record the call.
-- **Loaded alongside other crew rules**, not instead of them — general, karpathy, anti-slop, and domain rules still apply.
+- **Complementary to `coding-guardrails.md`, never in conflict.** coding-guardrails § 3 "Surgical Changes" says *don't* delete adjacent or pre-existing dead code **while implementing a feature** — there, removal is scope creep. This file governs the opposite window: a deliberate maintenance pass where removal IS the assigned task. Implementation-time = leave it alone; maintenance-time = removal is the point. If you can't tell which window you're in, you're implementing — default to coding-guardrails.
+- **Points at YAGNI, doesn't restate it.** coding-guardrails § 2 "Simplicity First" is the canonical YAGNI home (don't add speculative code). This file is its maintenance-time twin: don't add speculative *instructions*. Read them together.
+- **Subtraction is not vandalism.** coding-guardrails' "Simplify ≠ strip" still holds: if removing something would have to be restored next week, it was foundation, not bloat. Delete what causes the drift, not what holds the thing up. When in doubt, narrow rather than delete — and record the call.
+- **Loaded alongside other crew rules**, not instead of them — general, coding-guardrails, anti-slop, and domain rules still apply.
 
 ## What this looks like in practice
 

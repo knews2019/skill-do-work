@@ -137,7 +137,7 @@ Look at the bigger picture within the scoped files:
 |-----------|--------------|
 | **Separation of concerns** | Are responsibilities clearly divided? Business logic mixed with I/O? Presentation mixed with data access? |
 | **Dependency direction** | Do dependencies flow in a sensible direction? Higher-level modules importing lower-level, or spaghetti? |
-| **Abstraction health** | Are abstractions earning their keep? Over-abstracted code (interfaces with one implementation, factories for one type)? Under-abstracted code (duplicated logic that should be shared)? Treat speculative flexibility as architectural debt (YAGNI; see `crew-members/karpathy.md` § Simplicity First). |
+| **Abstraction health** | Are abstractions earning their keep? Over-abstracted code (interfaces with one implementation, factories for one type)? Under-abstracted code (duplicated logic that should be shared)? Treat speculative flexibility as architectural debt (YAGNI; see `crew-members/coding-guardrails.md` § Simplicity First). |
 | **State management** | Is state handled consistently? Global mutable state? Unclear ownership? Race condition opportunities? |
 | **Interface contracts** | Are module boundaries clear? Could you swap an implementation without touching callers? Are internal details leaking? |
 | **Folder cohesion / orphan files** | Do files belong in the folder they live in? Imports that don't match the folder's apparent domain (an auth helper in `utils/`)? Naming inconsistent with siblings (one outlier file shape among many uniform ones)? Folders accumulating unrelated files (junk-drawer `lib/`, `misc/`, or `helpers/`)? Distinct from Step 3's structural consistency — this asks "does this file fit here?", not "is the folder layout uniform across the project?" |

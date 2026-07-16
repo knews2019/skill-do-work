@@ -63,7 +63,7 @@ do-work run
 - **Medium** (clear goal, unknown location) — explore codebase first
 - **Complex** (new features, architectural) — plan, explore, then build
 
-Each completed request gets archived with implementation notes and a git commit. A built-in review runs after each item. The build phase always loads behavioral guardrails (`crew-members/karpathy.md`) — minimal, surgical changes with verifiable success criteria, not "it compiles" handwaves.
+Each completed request gets archived with implementation notes and a git commit. A built-in review runs after each item. The build phase always loads behavioral guardrails (`crew-members/coding-guardrails.md`) — minimal, surgical changes with verifiable success criteria, not "it compiles" handwaves.
 
 Other trigger words: `go`, `start`, `begin`, `process`, `execute`, `build`, `continue`, `resume`.
 

@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.125.2 — Crew Member Renamed: karpathy.md → coding-guardrails.md (2026-07-16)
+
+The always-loaded implementation crew member is now named for what it does, not for a person — Andrej Karpathy is more than four coding rules. The source attribution inside the file stays.
+
+- `crew-members/karpathy.md` → `crew-members/coding-guardrails.md`; H1 retitled to "Coding Guardrails Crew Member".
+- All live references updated (SKILL.md, CLAUDE.md, README, actions, specs, sibling crew files); review-work's audit heading is now "Coding-Guardrails Principle Check".
+- Historical records (ADRs, archives) left as written; ADR-003 gained a one-line rename pointer.
+
 ## 0.125.1 — Reservation Review Fixes: UR Closure, Release Routing, Roadmap Section (2026-07-16)
 
 Three PR-review catches on the new reservation feature (thanks, Codex review on #118).

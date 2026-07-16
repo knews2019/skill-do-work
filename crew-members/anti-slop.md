@@ -1,6 +1,6 @@
 # The Editor — Anti-Slop Guardrail Crew Member
 
-<!-- JIT_CONTEXT: Loaded whenever the agent is about to produce a human-facing artifact — that condition is the contract; illustrative callers today: client briefs, video scripts, and HTML explainers in present-work; the review report in review-work (Step 9); the Pipeline Completion Report renderings in pipeline (Step 5); the inbox source document in kb-lessons-handoff (Step 2); ai-report's section drafting (Step 1 principle load + applied inline through Step 6); the triage report in validate-feedback (Step 1); layout-documentation prose in tidy-repo (Step 6); and the slop-check action's draft assessment. Not loaded for code output (karpathy.md governs that), agent status updates (caveman.md / general.md territory), or commit messages — those are already short by convention. -->
+<!-- JIT_CONTEXT: Loaded whenever the agent is about to produce a human-facing artifact — that condition is the contract; illustrative callers today: client briefs, video scripts, and HTML explainers in present-work; the review report in review-work (Step 9); the Pipeline Completion Report renderings in pipeline (Step 5); the inbox source document in kb-lessons-handoff (Step 2); ai-report's section drafting (Step 1 principle load + applied inline through Step 6); the triage report in validate-feedback (Step 1); layout-documentation prose in tidy-repo (Step 6); and the slop-check action's draft assessment. Not loaded for code output (coding-guardrails.md governs that), agent status updates (caveman.md / general.md territory), or commit messages — those are already short by convention. -->
 
 > Producer absorbs the cost of clarity. Reader does not.
 
@@ -38,7 +38,7 @@ Quick question → quick answer. Real decision → real thinking, which usually 
 
 ### 8. Lead with the decision, not the self-grade
 
-When the artifact surfaces a decision, a question, or a verdict, put that first — the decision and its default, in words. Self-grading (scores, confidence %, coverage tables) is not a decision and the reader usually can't independently verify it; demote it below the decision or cut it. A review that opens with "Approve — ships clean" then shows the score table reads faster than one that opens with "87%". Scale context to reach: a leaf change gets one line; a change that alters the system's shape earns a short paragraph and a "why this matters." For *what to surface vs. decide silently*, see `crew-members/karpathy.md` § Think Before Coding (the decide-vs-escalate gate); for the full hand-back shape, see `actions/work-reference.md` → **Decision Brief (hand-back format)**.
+When the artifact surfaces a decision, a question, or a verdict, put that first — the decision and its default, in words. Self-grading (scores, confidence %, coverage tables) is not a decision and the reader usually can't independently verify it; demote it below the decision or cut it. A review that opens with "Approve — ships clean" then shows the score table reads faster than one that opens with "87%". Scale context to reach: a leaf change gets one line; a change that alters the system's shape earns a short paragraph and a "why this matters." For *what to surface vs. decide silently*, see `crew-members/coding-guardrails.md` § Think Before Coding (the decide-vs-escalate gate); for the full hand-back shape, see `actions/work-reference.md` → **Decision Brief (hand-back format)**.
 
 ## Persistence
 
@@ -56,7 +56,7 @@ Active for the full artifact-generation phase. Re-engage at every revision pass.
 
 ## Boundaries
 
-- **Code output** — karpathy.md governs that. Don't compress code or remove necessary error handling under the guise of anti-slop.
+- **Code output** — coding-guardrails.md governs that. Don't compress code or remove necessary error handling under the guise of anti-slop.
 - **Agent status updates during implementation** — general.md and caveman.md handle those. This layer governs *artifacts*, not internal session prose.
 - **Commit messages, PR titles** — already short by convention. Principles apply implicitly, no special handling.
 - **Capture artifacts (URs, REQs)** — these are intent records, not deliverables. Compression here can erase signal the user needs preserved.

@@ -224,13 +224,13 @@ stateDiagram-v2
       <div class="grow2 measure">
         <h2>Review and guardrails are structural, not optional politeness</h2>
         <p>After a REQ is built, <code>review-work</code> runs a requirements check, a code review, and acceptance testing against the original intent — not a vibe-check that it compiled. Each action file ends with a Verification Checklist that demands <em>evidence</em>, not a self-declared pass.</p>
-        <p>The guardrails load by trigger condition, just-in-time from <span class="filepath">crew-members/</span>. <code>karpathy.md</code> is always active during implementation — think before coding, surgical changes, verifiable success criteria. <code>anti-slop.md</code> loads before any human-facing artifact and enforces eight principles (lead with the conclusion, verify every claim, compress, disclose what's AI-generated). This very report was written under those rules.</p>
+        <p>The guardrails load by trigger condition, just-in-time from <span class="filepath">crew-members/</span>. <code>coding-guardrails.md</code> is always active during implementation — think before coding, surgical changes, verifiable success criteria. <code>anti-slop.md</code> loads before any human-facing artifact and enforces eight principles (lead with the conclusion, verify every claim, compress, disclose what's AI-generated). This very report was written under those rules.</p>
       </div>
       <div class="grow1">
         <div class="card">
           <h3 style="margin-bottom:10px">Loaded when its trigger fires</h3>
           <ul class="tight">
-            <li><code>karpathy.md</code> — always, during build</li>
+            <li><code>coding-guardrails.md</code> — always, during build</li>
             <li><code>anti-slop.md</code> — before human-facing artifacts</li>
             <li><code>prompt-injection.md</code> — before ingesting outside content</li>
             <li><code>clear-questions.md</code> — before any interactive question</li>

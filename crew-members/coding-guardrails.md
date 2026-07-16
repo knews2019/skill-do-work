@@ -1,4 +1,4 @@
-# The Minimalist — Karpathy Principles Crew Member
+# Coding Guardrails Crew Member
 
 <!-- JIT_CONTEXT: This file is always loaded during implementation (Step 6) alongside general.md, regardless of domain. It encodes four behavioral guardrails adapted from Andrej Karpathy's observations on LLM coding pitfalls (via forrestchang/andrej-karpathy-skills). These rules shape *how* code is written at every step; they are orthogonal to the workflow machinery. -->
 

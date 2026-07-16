@@ -55,7 +55,7 @@ REQ-025 — Review fix: dark mode sidebar
 
 **Fallback (mandatory).** Many `pending-answers` REQs come from templates that don't carry Value/Risk — capture, verify-requests, review-work follow-ups, and discovered tasks all emit `Recommended:`/`Also:` only. When a question has no `Value:`/`Risk:` lines, render it in that older form (`Recommended:` + `Also:`) — never block on the missing fields.
 
-Builder-marked `- [~]` decisions reflect the "Think Before Coding" guardrail (`crew-members/karpathy.md`) — surface tradeoffs early, not late.
+Builder-marked `- [~]` decisions reflect the "Think Before Coding" guardrail (`crew-members/coding-guardrails.md`) — surface tradeoffs early, not late.
 
 ### Step 4: Collect answers
 
