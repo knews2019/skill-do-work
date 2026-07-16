@@ -91,6 +91,14 @@ For each, check `created_at`:
 - **Info** if 3-7 days old
 - **Warning** if >7 days old — these questions are going stale and may no longer be relevant
 
+### 7.5. Stale Reservations
+
+Scan `do-work/queue/` for REQs with `status: reserved` (allocated to another worktree/cloud session via `do-work reserve`, `actions/reserve.md`).
+
+For each, check `reserved_at`:
+- **Warning** if >24 hours old — the owning session may be dead. Suggest recategorizing: `do-work release REQ-NNN` (back to the queue), `do-work run REQ-NNN` (claim here), or leave it if the session named in `reserved_for` is still active. Never auto-release.
+- **Warning** if `reserved_for` is missing/empty — the owner is unknowable; ask the user.
+
 ### 8. Git Divergence (git repos only)
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.

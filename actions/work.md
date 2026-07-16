@@ -88,6 +88,7 @@ The intermediate phases (planning, exploring, implementing, testing, reviewing) 
 - `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do-work clarify`.
 - `blocked-archive-collision` — set by Step 2.0 when a queue file's REQ id is already archived. Non-destructive holding state; the user flips it back to `pending` (or removes/renames the duplicate) after deciding what to do.
 - `blocked-dependency-cycle` — set by Step 1 when a REQ's `depends_on` graph contains a cycle (e.g., REQ-A depends on REQ-B which depends on REQ-A). Non-destructive holding state; the user edits the `depends_on` chain to break the cycle, then flips the status back to `pending`.
+- `reserved` — allocated to a **different worktree/cloud session** via `do-work reserve` (`actions/reserve.md`); carries `reserved_for` (owner label) and `reserved_at`. The default scan never claims it; **targeted mode does** (`do-work run REQ-NNN` — explicit naming is how the owning session picks up its reservation, and the human override for everyone else). A reservation is not a claim: the file stays in `do-work/queue/` and never enters `working/`, so crash recovery cannot steal it.
 
 ## Input
 
@@ -126,7 +127,7 @@ Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each 
 
 - Depth 0: REQs with no dependency list (neither `depends_on` nor the legacy `dependencies:` alias), or whose dependency members are all already archived (completed/completed-with-issues).
 - Depth K (K > 0): `max(depth of each dependency member in the current pending set) + 1`.
-- A dependency member that is neither archived (completed/completed-with-issues) nor in the current pending set — i.e. it sits in `pending-answers`, `blocked-archive-collision`, `blocked-dependency-cycle`, `claimed`, `failed`, or `cancelled` — contributes depth 0 to this computation. Depth is only about ordering waves; the member's own gating is handled separately by the dependency-ready filter below, which holds the dependent REQ until every member reaches `completed`/`completed-with-issues`.
+- A dependency member that is neither archived (completed/completed-with-issues) nor in the current pending set — i.e. it sits in `pending-answers`, `blocked-archive-collision`, `blocked-dependency-cycle`, `claimed`, `reserved`, `failed`, or `cancelled` — contributes depth 0 to this computation. Depth is only about ordering waves; the member's own gating is handled separately by the dependency-ready filter below, which holds the dependent REQ until every member reaches `completed`/`completed-with-issues`.
 
 Filter the pending list to REQs whose depth equals N, then apply the dependency-ready filter normally. If no REQ at depth N is dependency-ready (or none exists at that depth), render the composed exit summary with a leading `No REQs at wave N (depth-N set is empty or fully gated).` line and exit. `--wave` and targeted REQ IDs are mutually exclusive — reject the combination at parse time with a clear error.
 
@@ -135,7 +136,7 @@ Filter the pending list to REQs whose depth equals N, then apply the dependency-
 **Queue status summary:** After reading all REQ frontmatter, categorize every REQ by status and print a summary before proceeding:
 
 ```
-Queue: N pending | N completed/done (awaiting archive) | N pending-answers | N blocked-archive-collision
+Queue: N pending | N reserved | N completed/done (awaiting archive) | N pending-answers | N blocked-archive-collision
 ```
 
 Count `completed`, `completed-with-issues`, `cancelled`, and `done` statuses together as "completed/done (awaiting archive)." Count `blocked-archive-collision` separately so held duplicates don't disappear into the silence between "no pending" and "no REQs at all." If any completed/done REQs exist in `do-work/queue/`, add:
@@ -144,11 +145,18 @@ Count `completed`, `completed-with-issues`, `cancelled`, and `done` statuses tog
 ⚠ N completed REQs across M URs awaiting archive. Run `do-work cleanup` after this session.
 ```
 
-**Targeted mode:** If `$ARGUMENTS` contains specific REQ IDs, find only those REQs in `do-work/queue/`. Verify each exists and has `status: pending`. If a targeted REQ is missing or not pending, report the issue and skip it. Process only the targeted REQs, then stop after the last one completes (skip the loop-or-exit logic in Step 10).
+**Stale-reservation check:** for each `reserved` REQ, compare `reserved_at` against now. Any reservation older than **24 hours** gets a suggestion line — the owning session may be dead, so the user should recategorize (never auto-release):
+
+```
+⚠ N stale reservations (>24h): REQ-NNN (reserved for: <label>, <age> ago). Recategorize: `do-work release REQ-NNN`
+  to return it to the queue, `do-work run REQ-NNN` to claim it here, or leave it if that session is still active.
+```
+
+**Targeted mode:** If `$ARGUMENTS` contains specific REQ IDs, find only those REQs in `do-work/queue/`. Verify each exists and has `status: pending` **or `status: reserved`** — explicitly naming a reserved REQ claims it (that's the designed pickup path for the session the reservation is for; Step 2 clears the reservation fields). If a targeted REQ is missing or has any other status, report the issue and skip it. Process only the targeted REQs, then stop after the last one completes (skip the loop-or-exit logic in Step 10).
 
 **Default mode (empty `$ARGUMENTS`):** Scan for the first REQ with `status: pending` (skip `pending-answers` — those wait for user input). Reaching default mode requires `$ARGUMENTS` to be genuinely empty — the unrecognized-argument guard in **Input** has already rejected any non-REQ, non-flag token, so a fluffed argument never silently lands here as a full-queue run.
 
-**Exit paths when no dependency-ready `pending` REQ is found:** render the *composed* exit summary — lead with the dependency-aware headline (`No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked), then append every applicable section (completed-awaiting-archive, pending-answers, blocked-archive-collision, blocked-by-dependencies) in that order — per `actions/work-reference.md` → **Composed Exit Summary (Step 1)**, then exit the work loop. Only continue past Step 1 when at least one dependency-ready `pending` REQ exists.
+**Exit paths when no dependency-ready `pending` REQ is found:** render the *composed* exit summary — lead with the dependency-aware headline (`No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked), then append every applicable section (completed-awaiting-archive, pending-answers, blocked-archive-collision, blocked-by-dependencies, reserved) in that order — per `actions/work-reference.md` → **Composed Exit Summary (Step 1)**, then exit the work loop. Only continue past Step 1 when at least one dependency-ready `pending` REQ exists.
 
 **REQ validation:** When reading each REQ's frontmatter, verify it has the required fields (`id`, `status`, `title`). If a REQ file has missing or unparseable frontmatter, skip it and report: `⚠ Skipping [filename]: missing required frontmatter ([field]).` Do not let a single malformed REQ block the entire work loop — skip it and continue to the next.
 
@@ -170,6 +178,7 @@ Exit 0 → no collision, proceed to Step 2. Exit 1 (matching archive paths print
 
 1. `mkdir -p do-work/working` and move the REQ file there
 2. Update frontmatter: `status: claimed`, `claimed_at: <timestamp>`
+3. If the REQ was `reserved` (targeted mode only): remove `reserved_for` and `reserved_at` — the claim consumes the reservation.
 
 ### Step 3: Triage
 
@@ -509,7 +518,7 @@ Before committing a successful REQ, write a changelog entry in the target repo's
 Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
 
 - **Dependency-ready `pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
-- **No dependency-ready `pending` REQs remain** (queue may still have dependency-blocked or held REQs): Write a **Session Checkpoint** (see below), run actions/cleanup.md, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, the blocked-archive-collision section, and the blocked-by-dependencies section in that order, including only those that have at least one REQ. If none of the four sections applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
+- **No dependency-ready `pending` REQs remain** (queue may still have dependency-blocked or held REQs): Write a **Session Checkpoint** (see below), run actions/cleanup.md, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, the blocked-archive-collision section, the blocked-by-dependencies section, and the reserved section in that order, including only those that have at least one REQ. If none of the five sections applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
 
 #### Context Wipe — Verified
 

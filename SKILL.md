@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture-request: (describe a task) | run | verify-requests | review-work | code-review | ui-review | validate-feedback [paste findings] | present-work | ai-report [target] | slop-check [target] | dream [path] | clarify | abandon [REQ-NNN] | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | board [mode] | note [text] | stray-check [path] | tidy-repo [path] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
+argument-hint: "pipeline [request] | capture-request: (describe a task) | run | verify-requests | review-work | code-review | ui-review | validate-feedback [paste findings] | present-work | ai-report [target] | slop-check [target] | dream [path] | clarify | abandon [REQ-NNN] | reserve [REQ-NNN for label] | release [REQ-NNN|label] | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | board [mode] | note [text] | stray-check [path] | tidy-repo [path] | bkb [subcommand] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -44,7 +44,7 @@ Examine what follows "do-work". Check the patterns below **in order** — first 
 | 20 | `bkb`, `build knowledge base`, `knowledge base`, `kb` (± sub-command) | bkb | Rest → `$ARGUMENTS` |
 | 21 | `interview`, `elicit`, `operating model` (± template ± sub-command) | interview | Rest → `$ARGUMENTS` (`list`, `<template>`, `<template> <sub-command>`); no args → its help menu |
 | 22 | `prompts`, `prompt` (± sub-command ± name) | prompts | Rest → `$ARGUMENTS`; first arg is `list`/`show`/`run` or a prompt name (shorthand for `run`) |
-| 23 | `quick-wins`, `quick wins`, `low-hanging`, `low hanging fruit`, `scan`, `opportunities`, `what can we improve` | quick-wins | `scan` alone or with a bare directory path lands here; bare path = last meaningful token — any text after it is descriptive content → capture (36) |
+| 23 | `quick-wins`, `quick wins`, `low-hanging`, `low hanging fruit`, `scan`, `opportunities`, `what can we improve` | quick-wins | `scan` alone or with a bare directory path lands here; bare path = last meaningful token — any text after it is descriptive content → capture (37) |
 | 24 | `scan-ideas`, `ideas`, `ideate`, `brainstorm`, `what should I build`, `suggest`, `what's next`, `what could we improve` (± focus) | scan-ideas | Rest → `$ARGUMENTS` (topic or directory); no args → open exploration |
 | 25 | `deep-explore`, `explore concept`, `deep dive`, `develop idea`, `explore idea` (± concept/path/`continue`) | deep-explore | Rest → `$ARGUMENTS`; no args → ask what to explore |
 | 26 | `install <target>`, `install-<target>`, `setup <target>` | install | Normalize first: strip leading `install-`/`setup `; then map: `ui-design`/`ui design`/`ui`/`frontend-design`/`design skill` → `ui-design`; `bowser`/`playwright`/`playwright-cli` → `bowser`; `last30days`/`last 30 days` → `last30days`; `just-kanban`/`justfile`/`run-kanban` → `just-kanban`. Pass target as `$ARGUMENTS`. Bare `install` or unknown target → help block. Canonical target list: `actions/install.md` |
@@ -56,8 +56,9 @@ Examine what follows "do-work". Check the patterns below **in order** — first 
 | 32 | `note <text>`, `note add <text>`, `add note <text>` | note | Rest → `$ARGUMENTS` (strips a leading `add `); appends `- [YYYY-MM-DD] text` to `do-work/notes.md`. Not a capture — no UR/REQ, no work loop, no commit |
 | 33 | `board` (± mode), `kanban`, `kanban board`, `queue board`, `visualize queue`, `show the board` | board | Mode: empty/`serve`/`live` → live board at `:8090`; `static`/`generate`/`html` → static HTML; `summary`/`status` → column counts. Needs the Go toolchain |
 | 34 | `tidy-repo`, `tidy repo`, `file-reorg` (legacy), `reorg`, `reorganize`, `restructure`, `declutter`, `tidy layout`, `fix the layout`, `clean up the root` (± path ± `plan`) | tidy-repo | Junk deletion → stray-check (30); do-work bookkeeping → cleanup (12); code architecture changes → the work pipeline |
-| 35 | `abandon`, `cancel`, `wont-do`, `won't do` — only with empty args or a `REQ-NNN` ID | abandon | Rest → `$ARGUMENTS` (REQ IDs + optional reason). `abandon`/`cancel` + ID-less prose is descriptive content → capture (36). `pipeline abandon` already matched (3). Bare verb → list cancellable REQs and ask |
-| 36 | `capture-request:` / `capture request:` prefix, or descriptive multi-word content (feature requests, bug reports, "add …", "I need …") | capture-requests | The default for multi-word descriptive content that matches no keyword |
+| 35 | `abandon`, `cancel`, `wont-do`, `won't do` — only with empty args or a `REQ-NNN` ID | abandon | Rest → `$ARGUMENTS` (REQ IDs + optional reason). `abandon`/`cancel` + ID-less prose is descriptive content → capture (37). `pipeline abandon` already matched (3). Bare verb → list cancellable REQs and ask |
+| 36 | `reserve` (± REQ IDs ± `for <label>`), `release`, `unreserve` (± REQ IDs or label) | reserve | Rest → `$ARGUMENTS`. Allocates pending REQs to another worktree/cloud session (or releases them); bare `reserve` lists reservations with staleness flags |
+| 37 | `capture-request:` / `capture request:` prefix, or descriptive multi-word content (feature requests, bug reports, "add …", "I need …") | capture-requests | The default for multi-word descriptive content that matches no keyword |
 
 **Single-word rule:** a single word is either a known keyword (route it) or ambiguous — never "descriptive content." For an unknown single word (e.g. "refactor"), ask: "Do you want to add '`{word}`' as a new request, or did you mean something else?"
 
@@ -81,6 +82,7 @@ Each action has an action file with full instructions. How you execute it depend
 | work               | `./actions/work.md`             | `$ARGUMENTS` (REQ IDs, `--wave`, or empty) |
 | clarify questions  | `./actions/clarify.md`          | (none needed)                  |
 | abandon            | `./actions/abandon.md`          | `$ARGUMENTS` (REQ IDs + optional reason) |
+| reserve            | `./actions/reserve.md`          | `$ARGUMENTS` (REQ IDs + `for <label>`, `release …`, or empty to list) |
 | verify-requests    | `./actions/verify-requests.md`  | Target UR/REQ or "most recent" |
 | review-work        | `./actions/review-work.md`      | Target REQ/UR or "most recent" |
 | validate-feedback  | `./actions/validate-feedback.md`| `$ARGUMENTS` (the pasted feedback / findings) |

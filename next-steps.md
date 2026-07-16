@@ -17,6 +17,14 @@ Next steps:
   do-work pipeline status     Check pipeline progress
 ```
 
+**After reserve (reservations created, released, or listed):**
+```
+Next steps:
+  do-work commit              Sync the queue edit so other sessions see the reservation
+  do-work run REQ-NNN         Claim a reserved REQ in this session (explicit naming overrides)
+  do-work release [REQ-NNN|label]  Return stale reservations to the queue
+```
+
 **After capture-requests:**
 ```
 Next steps:
