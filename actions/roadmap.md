@@ -66,6 +66,7 @@ For each REQ in `do-work/queue/`, assign a feasibility bucket using only what's 
 - **Ready** — has a clear `## What`, no `pending-answers` status, no unresolved `addendum_to` chain (also recognizes the `amends`/`parent`/`amendment_to` aliases when `addendum_to` is absent, per the Schema Read Contract in `actions/work-reference.md`), no unmet `depends_on` references (every ID in `depends_on` — or in the legacy `dependencies:` alias if `depends_on` is absent, same back-compat rule as actions/work.md's dependency-aware selection — resolves to a REQ with `status: completed` or `completed-with-issues`).
 - **Needs clarification** — `status: pending-answers`, OR the request body contains explicit open questions, OR scope is too vague to triage (one-line title with no `## What` body).
 - **Blocked** — references a REQ in `addendum_to` (or its `amends`/`parent`/`amendment_to` aliases) or `depends_on` (or its `dependencies:` alias) that is still pending or in-progress; OR has `status: blocked-dependency-cycle` (a cycle in its dependency graph, set by actions/work.md's dependency-aware selection); OR names an external dependency in prose (waiting on an API, a decision, a third-party).
+- **Reserved** — `status: reserved` (allocated to another worktree/cloud session via `do-work reserve`; `reserved_for` names it). Not local work. Flag as **stale** when `reserved_at` is more than 24 hours old and suggest recategorizing (`do-work release REQ-NNN` / `do-work run REQ-NNN` / leave it).
 - **Stale** — `created_at` more than 30 days old AND not yet claimed. Flag for re-confirmation; the user may no longer want it.
 
 Each classification must cite the specific evidence that drove it (e.g., "status: pending-answers", "addendum_to: REQ-031 (still pending)", "no `## What` section").
@@ -133,7 +134,7 @@ Render the report per the Output Format below. Lead with the actionable section 
 
 **Scan date:** [timestamp]
 **Scope:** [full | pending | in-progress | done | UR-NNN | since <date>]
-**Totals:** [N ready] · [N needs clarification] · [N blocked] · [N in-progress] · [N completed] · [N failed] · [N cancelled]
+**Totals:** [N ready] · [N needs clarification] · [N blocked] · [N reserved] · [N in-progress] · [N completed] · [N failed] · [N cancelled]
 **TDD posture (pending):** [N on] · [N eligible] · [N not applicable]
 **Lessons:** [N awaiting triage] · [N awaiting ingest] · [N processed] · [N pending handoff] · [N file not found]
 
@@ -160,6 +161,13 @@ Render the report per the Output Format below. Lead with the actionable section 
   Unblock when REQ-MMM lands.
 - **REQ-PPP — <title>** (status: blocked-dependency-cycle; chain: REQ-PPP → REQ-QQQ → REQ-PPP)
   Edit `depends_on` to break the cycle, then flip status back to `pending`.
+
+## Reserved (Other Sessions)
+
+- **REQ-NNN — <title>** (reserved for: <label>, 3h ago)
+  Allocated to another worktree/cloud session — not local work.
+- **REQ-MMM — <title>** (reserved for: <label>, 31h ago) ⚠ STALE
+  Older than 24h — recategorize: `do-work release REQ-MMM` (back to queue), `do-work run REQ-MMM` (claim here), or leave it if that session is still active.
 
 ## Stale
 
@@ -225,10 +233,11 @@ REQs whose Lessons Learned were captured but never staged — either the user ch
 2. Run `do-work clarify` to work through the N pending-answers REQs.
 3. Consider enabling `tdd: true` on the N TDD-eligible REQs before they're picked up.
 4. Confirm or discard the N stale REQs with the user.
-5. Run `do-work bkb triage` then `do-work bkb ingest` for the N lessons in Awaiting Triage.
-6. Run `do-work bkb ingest` for the N lessons in Awaiting Ingest.
-7. Investigate the N File Not Found lessons — restage from the REQ or clear `kb_status` if the file was intentionally removed.
-8. Re-run the handoff via `do-work review REQ-NNN` for the N pending-handoff lessons (run `do-work bkb init` first if no `kb/` directory exists).
+5. Recategorize the N stale (>24h) reservations — `do-work release`, `do-work run REQ-NNN`, or leave them if their sessions are still active.
+6. Run `do-work bkb triage` then `do-work bkb ingest` for the N lessons in Awaiting Triage.
+7. Run `do-work bkb ingest` for the N lessons in Awaiting Ingest.
+8. Investigate the N File Not Found lessons — restage from the REQ or clear `kb_status` if the file was intentionally removed.
+9. Re-run the handoff via `do-work review REQ-NNN` for the N pending-handoff lessons (run `do-work bkb init` first if no `kb/` directory exists).
 ```
 
 The Suggested Next Steps list is **filtered** — emit only the items whose corresponding section had at least one entry. The numbering in the rendered report stays compact (1, 2, 3 … without gaps); the template above shows the canonical line per category.

@@ -33,6 +33,12 @@ const (
 // but carry no fabricated date.
 const undatedCalendarDayKey = "undated"
 
+// reservationStaleAfter is how old a reservation (status: reserved, written by
+// do-work reserve — actions/reserve.md) may grow before the board flags it as
+// stale and suggests recategorizing. Mirrors the 24h threshold in
+// actions/work.md Step 1's stale-reservation check — keep the two in lock-step.
+const reservationStaleAfter = 24 * time.Hour
+
 // RequestTicket is one parsed REQ-*.md file: its frontmatter fields (with status
 // normalized and commit-hash variants collapsed), the raw Markdown body kept for
 // later HTML rendering, where it was found in the tree, and how its completion
@@ -52,6 +58,15 @@ type RequestTicket struct {
 	CreatedAt   string // raw frontmatter timestamp text, "" when absent
 	ClaimedAt   string
 	CompletedAt string // raw frontmatter completed_at text, "" when absent
+
+	ReservedFor string // reserve action (do-work reserve): owning worktree/cloud-session label, "" when absent
+	ReservedAt  string // raw frontmatter reserved_at text, "" when absent
+
+	// Derived by bucketColumns for status "reserved": true when reserved_at is
+	// missing, unparseable, or more than reservationStaleAfter before the
+	// board's `now` — the owning session may be dead, so the frontend shows a
+	// recategorize hint. Never read from frontmatter.
+	ReservationStale bool
 
 	CommitHash    string // resolved from commit / commit_hash / green_commit / commit_green / impl_commit
 	UserRequestId string // "UR-NNN" upward pointer (the reliable REQ→UR link), "" when absent
@@ -460,6 +475,8 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		CreatedAt:      coerceScalarToString(fields["created_at"]),
 		ClaimedAt:      coerceScalarToString(fields["claimed_at"]),
 		CompletedAt:    coerceScalarToString(fields["completed_at"]),
+		ReservedFor:    coerceScalarToString(fields["reserved_for"]),
+		ReservedAt:     coerceScalarToString(fields["reserved_at"]),
 		CommitHash:     resolveCommitHash(fields),
 		UserRequestId:  coerceScalarToString(fields["user_request"]),
 		Domain:         coerceScalarToString(fields["domain"]),
@@ -720,6 +737,15 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 			}
 		case ticket.Status == "claimed":
 			columns.Claimed = append(columns.Claimed, ticket)
+		case ticket.Status == "reserved":
+			// Allocated to a DIFFERENT worktree/cloud session (do-work reserve,
+			// actions/reserve.md). Someone owns it, so it shares the Claimed
+			// column — but the frontend grays it out because that someone is not
+			// this board's session.
+			columns.Claimed = append(columns.Claimed, ticket)
+			if staleWarning := annotateReservationStaleness(ticket, now); staleWarning != "" {
+				statusWarnings = append(statusWarnings, staleWarning)
+			}
 		case isNeedsInputOrBlockedStatus(ticket.Status):
 			columns.NeedsInputOrBlocked = append(columns.NeedsInputOrBlocked, ticket)
 		case isTerminalResolvedStatus(ticket.Status):
@@ -738,6 +764,29 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 		return columns.RecentlyDone[i].CompletionTime.After(columns.RecentlyDone[j].CompletionTime)
 	})
 	return columns, statusWarnings
+}
+
+// annotateReservationStaleness marks a reserved ticket stale when its
+// reserved_at is missing, unparseable, or more than reservationStaleAfter
+// before now, and returns a recategorize-suggestion warning ("" when the
+// reservation is fresh). The suggestion mirrors actions/work.md Step 1's
+// stale-reservation check: the owning session may be dead, but the decision
+// stays with the user — the board never auto-releases.
+func annotateReservationStaleness(ticket *RequestTicket, now time.Time) string {
+	reservedInstant, parsedOk := parseTimestamp(ticket.ReservedAt)
+	if !parsedOk {
+		ticket.ReservationStale = true
+		return fmt.Sprintf(
+			"%s is reserved (for %q) but has no parseable reserved_at — treated as stale; recategorize: do-work release %s, do-work run %s, or leave it if that session is still active",
+			ticket.RequestId, ticket.ReservedFor, ticket.RequestId, ticket.RequestId)
+	}
+	if now.Sub(reservedInstant) <= reservationStaleAfter {
+		return ""
+	}
+	ticket.ReservationStale = true
+	return fmt.Sprintf(
+		"%s has been reserved for %q for more than 24h — recategorize: do-work release %s (back to queue), do-work run %s (claim here), or leave it if that session is still active",
+		ticket.RequestId, ticket.ReservedFor, ticket.RequestId, ticket.RequestId)
 }
 
 // isWithinRecentWindow reports whether a completion instant is non-zero and falls

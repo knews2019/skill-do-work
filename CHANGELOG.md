@@ -6,6 +6,24 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.125.1 — Reservation Review Fixes: UR Closure, Release Routing, Roadmap Section (2026-07-16)
+
+Three PR-review catches on the new reservation feature (thanks, Codex review on #118).
+
+- Step 8's UR-finalization check now holds a UR open for **any non-terminal** sibling — a reserved REQ no longer lets its UR archive out from under it.
+- `do-work release REQ-042` now actually releases: the router passes `release <rest>` for the `release`/`unreserve` triggers so the reserve action enters release mode instead of trying to reserve the bare ID.
+- The roadmap report gained the promised `## Reserved (Other Sessions)` section (with the stale-reservation recategorize hint), a reserved total, and a matching next-step line.
+
+## 0.125.0 — REQ Reservations for Other Worktrees and Cloud Sessions (2026-07-16)
+
+You can now reserve pending REQs for a different worktree or cloud session (`do-work reserve REQ-042 for cloud-alpha`) so the local work loop walks past them. Unlike a claim, a reservation stays in `do-work/queue/` — crash recovery can't steal it — and it travels to sibling checkouts via a normal git sync.
+
+- New `reserved` status in the Schema Read Contract, with `reserved_for` (owner label) and `reserved_at` frontmatter; new `actions/reserve.md` (reserve / release / list).
+- The default queue scan skips reserved REQs; targeted `do-work run REQ-NNN` claims them — that's how the owning session picks up its slice.
+- Reservations older than 24 hours are flagged as stale everywhere they render (work-loop queue summary, exit summary, forensics, roadmap, board) with a recategorize suggestion — release, claim here, or leave it. Never auto-released.
+- The Kanban board shows reserved REQs grayed out in the Claimed column with a "reserved for" badge and a stale marker.
+- Intent and contract recorded in `actions/prime-req-reservation.md`.
+
 ## 0.124.4 — Qualify and Scope-Drift Checks Tightened Against False Passes (2026-07-15)
 
 Second Codex review round on #117 caught three ways the new checks could be fooled; all three are closed.

@@ -314,9 +314,13 @@ func TestBucketColumns(t *testing.T) {
 	oldDone := &RequestTicket{RequestId: "REQ-2", Status: "completed", CompletionTime: now.Add(-200 * time.Hour)}
 	recentCancelled := &RequestTicket{RequestId: "REQ-9", Status: "cancelled", CompletionTime: now.Add(-2 * time.Hour)}
 	oldCancelled := &RequestTicket{RequestId: "REQ-10", Status: "cancelled", CompletionTime: now.Add(-300 * time.Hour)}
+	freshReservation := &RequestTicket{RequestId: "REQ-11", Status: "reserved", ReservedFor: "cloud-alpha", ReservedAt: "2026-06-29T10:00:00Z"}   // 2h old — fresh
+	staleReservation := &RequestTicket{RequestId: "REQ-12", Status: "reserved", ReservedFor: "worktree-beta", ReservedAt: "2026-06-27T12:00:00Z"} // 48h old — stale, must warn
 	tickets := []*RequestTicket{
 		{RequestId: "REQ-3", Status: "pending"},
 		{RequestId: "REQ-4", Status: "claimed"},
+		freshReservation,
+		staleReservation,
 		{RequestId: "REQ-5", Status: "pending-answers"},
 		{RequestId: "REQ-6", Status: "deferred", OriginalStatus: "deferred"}, // hand-edited status outside the Schema Read Contract enum — must still land in Needs-input/Blocked, now via the unrecognized-status warning path
 		{RequestId: "REQ-7", Status: "pnding", OriginalStatus: "pnding"},     // typo'd status — must never be silently dropped
@@ -330,8 +334,15 @@ func TestBucketColumns(t *testing.T) {
 	if len(columns.Pending) != 1 || columns.Pending[0].RequestId != "REQ-3" {
 		t.Fatalf("Pending = %+v", columns.Pending)
 	}
-	if len(columns.Claimed) != 1 || columns.Claimed[0].RequestId != "REQ-4" {
-		t.Fatalf("Claimed = %+v", columns.Claimed)
+	if len(columns.Claimed) != 3 ||
+		columns.Claimed[0].RequestId != "REQ-4" || columns.Claimed[1].RequestId != "REQ-11" || columns.Claimed[2].RequestId != "REQ-12" {
+		t.Fatalf("Claimed should hold the claimed REQ plus both reserved REQs (reserved shares the column, grayed out client-side), got %+v", columns.Claimed)
+	}
+	if freshReservation.ReservationStale {
+		t.Fatalf("a 2h-old reservation must not be flagged stale")
+	}
+	if !staleReservation.ReservationStale {
+		t.Fatalf("a 48h-old reservation must be flagged stale (24h threshold)")
 	}
 	if len(columns.NeedsInputOrBlocked) != 4 {
 		t.Fatalf("NeedsInputOrBlocked should hold pending-answers + the deferred, pnding, and completed-wth-issues unrecognized statuses, got %d", len(columns.NeedsInputOrBlocked))
@@ -340,12 +351,13 @@ func TestBucketColumns(t *testing.T) {
 		columns.RecentlyDone[0].RequestId != "REQ-1" || columns.RecentlyDone[1].RequestId != "REQ-9" {
 		t.Fatalf("RecentlyDone should hold the in-window completion then the in-window cancellation (most-recent first), got %+v", columns.RecentlyDone)
 	}
-	if len(statusWarnings) != 3 {
-		t.Fatalf("expected three unrecognized-status warnings (deferred + pnding + completed-wth-issues), got %d: %v", len(statusWarnings), statusWarnings)
+	if len(statusWarnings) != 4 {
+		t.Fatalf("expected four warnings (deferred + pnding + completed-wth-issues unrecognized statuses, plus the stale reservation), got %d: %v", len(statusWarnings), statusWarnings)
 	}
 	foundDeferredWarning := false
 	foundTypoWarning := false
 	foundCompletedTypoWarning := false
+	foundStaleReservationWarning := false
 	for _, warning := range statusWarnings {
 		if strings.Contains(warning, "REQ-6") && strings.Contains(warning, "deferred") {
 			foundDeferredWarning = true
@@ -356,6 +368,9 @@ func TestBucketColumns(t *testing.T) {
 		if strings.Contains(warning, "REQ-8") && strings.Contains(warning, "completed-wth-issues") {
 			foundCompletedTypoWarning = true
 		}
+		if strings.Contains(warning, "REQ-12") && strings.Contains(warning, "recategorize") {
+			foundStaleReservationWarning = true
+		}
 	}
 	if !foundDeferredWarning {
 		t.Fatalf("expected an unrecognized-status warning naming REQ-6/deferred, got %v", statusWarnings)
@@ -365,5 +380,39 @@ func TestBucketColumns(t *testing.T) {
 	}
 	if !foundCompletedTypoWarning {
 		t.Fatalf("expected an unrecognized-status warning naming REQ-8/completed-wth-issues, got %v", statusWarnings)
+	}
+	if !foundStaleReservationWarning {
+		t.Fatalf("expected a stale-reservation warning naming REQ-12 with a recategorize suggestion, got %v", statusWarnings)
+	}
+}
+
+func TestParseRequestTicketReadsReservationFields(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-777-reserved-for-cloud.md")
+	fixtureContent := `---
+id: REQ-777
+title: Reserved for another session
+status: reserved
+reserved_for: "cloud-alpha"
+reserved_at: 2026-06-29T10:00:00Z
+---
+
+Body.
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.Status != "reserved" {
+		t.Fatalf("Status = %q, want reserved (a recognized Schema Read Contract status, never unrecognized)", ticket.Status)
+	}
+	if ticket.ReservedFor != "cloud-alpha" {
+		t.Fatalf("ReservedFor = %q, want cloud-alpha", ticket.ReservedFor)
+	}
+	if ticket.ReservedAt == "" {
+		t.Fatalf("ReservedAt not parsed from frontmatter")
 	}
 }

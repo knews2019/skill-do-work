@@ -92,6 +92,9 @@ type generatedRequest struct {
 	CreatedAt            string   `json:"createdAt"`
 	ClaimedAt            string   `json:"claimedAt"`
 	CompletedAt          string   `json:"completedAt"`
+	ReservedFor          string   `json:"reservedFor,omitempty"`
+	ReservedAt           string   `json:"reservedAt,omitempty"`
+	ReservationStale     bool     `json:"reservationStale,omitempty"`
 	CompletionTime       string   `json:"completionTime"`
 	CompletionTimeSource string   `json:"completionTimeSource"`
 	BodyHtml             string   `json:"bodyHtml"`
@@ -225,6 +228,9 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			CreatedAt:            ticket.CreatedAt,
 			ClaimedAt:            ticket.ClaimedAt,
 			CompletedAt:          ticket.CompletedAt,
+			ReservedFor:          ticket.ReservedFor,
+			ReservedAt:           ticket.ReservedAt,
+			ReservationStale:     ticket.ReservationStale,
 			CompletionTime:       formatTimestamp(ticket.CompletionTime),
 			CompletionTimeSource: string(ticket.CompletionTimeSource),
 			BodyHtml:             bodyHtml,

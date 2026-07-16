@@ -264,6 +264,26 @@
     if (request.route) {
       badges.appendChild(makeBadge("badge-route", "route", request.route));
     }
+    if (request.status === "reserved") {
+      // Allocated to a DIFFERENT worktree/cloud session (do-work reserve) — the
+      // card is grayed out via [data-status="reserved"] CSS; the badge names the
+      // owner and the stale flag (>24h) carries the recategorize suggestion.
+      var reservedBadge = makeBadge("badge-reserved", "reserved for", request.reservedFor || "unknown session");
+      reservedBadge.title =
+        "Allocated to a different worktree/cloud session" +
+        (request.reservedAt ? " since " + formatShortInstant(request.reservedAt) : "");
+      badges.appendChild(reservedBadge);
+      if (request.reservationStale) {
+        var staleBadge = makeBadge("badge-reservation-stale", null, "stale >24h");
+        staleBadge.title =
+          "Reserved for more than 24h — the owning session may be dead. Recategorize: do-work release " +
+          requestId +
+          " (back to queue), do-work run " +
+          requestId +
+          " (claim here), or leave it if that session is still active.";
+        badges.appendChild(staleBadge);
+      }
+    }
     var unblockedRequestIds = activeDependentIds(request);
     if (unblockedRequestIds.length > 0 && !isTerminalResolvedStatus(request.status)) {
       var unblocksBadge = makeBadge("badge-unblocks", "unblocks", String(unblockedRequestIds.length));
