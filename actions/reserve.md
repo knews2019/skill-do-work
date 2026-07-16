@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Invoked when the user wants to reserve pending REQs for a *different* worktree or cloud session working the same repo, or to release such a reservation. A reservation is a queue-resident holding state — the REQ stays in `do-work/queue/` with `status: reserved`, so the local default work loop walks past it while the other session (in its own checkout, after a git sync) picks it up by naming it explicitly. This action belongs in do-work rather than a sibling skill because it manipulates the do-work queue's own status vocabulary (`actions/work-reference.md` → Schema Read Contract) — it is inseparable from the queue schema it writes.
 
-**Reservation ≠ claim.** A claim (`status: claimed`, `actions/work.md` Step 2) moves the REQ into `do-work/working/` and means *this* session is building it right now; crash recovery treats anything in `working/` as interrupted work and re-queues it. A reservation never touches `working/`, never survives into crash recovery, and carries an owner label — it means "allocated to someone else; hands off by default."
+**Reservation ≠ claim.** A claim (`status: claimed`, `actions/work.md` Step 2) moves the REQ into `do-work/working/` and means *this* session is building it right now; crash recovery treats anything in `working/` as interrupted work and re-queues it. A reservation never touches `working/`, never survives into crash recovery, and carries an owner label — it means "allocated to someone else; hands off by default." Design intent, cross-file contract, and traps: `actions/prime-req-reservation.md`.
 
 ## When to Use
 
