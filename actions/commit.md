@@ -203,43 +203,13 @@ Excluded:
 - Replace the commit steps in other actions — those remain for their specific pipelines
 - Stage `.env`, credentials, keys, or other secret files — these are always excluded
 
-## Checklist
-
-```
-□ Step 1: Check for git repo
-□ Step 1: Run git status, categorize files (M/A/D)
-□ Step 1: Exclude dangerous files (.env, credentials, keys)
-□ Step 2: Read diffs for modified files
-□ Step 2: Read contents for new files (skip binaries)
-□ Step 2: Note deleted file paths
-□ Step 3: Scan archive for completed REQs with Implementation Summaries
-□ Step 3: Match uncommitted files to REQ file lists
-□ Step 4: Semantically group unassociated files (1-5 per group)
-□ Step 4: Assign descriptive labels to each group
-□ Step 5: Commit REQ-associated groups (specific staging, no -A)
-□ Step 5: Commit unassociated groups (specific staging, no -A)
-□ Step 6: Print summary table of all commits
-□ Step 6: Report any excluded files
-```
-
-**Common mistakes to avoid:**
-- Using `git add -A` or `git add .` instead of staging specific files
-- Using `--no-verify` to bypass a failing pre-commit hook instead of fixing the issue
-- Committing `.env` or credential files
-- Making one giant commit instead of atomic groups
-- Grouping unrelated files just because they're in the same directory
-- Skipping the exclusion check for dangerous files
-
 ## Common Rationalizations
 
 Guard against these when committing:
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "One big commit is fine for all these changes" | Group by REQ association, then by semantic relationship | Atomic commits enable targeted reverts and clear history |
-| "These files are related enough to commit together" | Check if they trace to the same REQ or serve the same semantic purpose | False grouping makes git history unreliable for debugging |
 | "No REQ matches — just commit everything together" | Group unassociated files by semantic purpose (feature, fix, config, etc.) | Even outside the pipeline, commits should be atomic and meaningful |
-| "This .env file is fine to commit" | Never commit files containing secrets, credentials, or environment-specific config | Credential leaks are irreversible — err on the side of excluding |
 | "The commit message doesn't need a REQ reference" | Include REQ reference when REQs exist — it's the traceability link | Without REQ references, the trail of intent is broken |
 
 ## Red Flags

@@ -155,6 +155,40 @@ for runtime_doc in "${active_runtime_docs[@]}"; do
   fi
 done
 
+# Router word budget (REQ-020 ratchet). The 2026-07 bloat cleanup cut SKILL.md
+# from 5,507 to 2,396 words by deleting duplicate enumerations of the action set
+# (the router loads on EVERY invocation — words here tax all 30+ verbs). Budget =
+# post-diet count + ~10% headroom. If you hit this limit: the fix is a merge or a
+# lazy-load (see actions/help.md for the pattern), not a bigger budget — raise it
+# only with an accompanying decisions/ note saying why routing itself had to grow.
+router_word_budget=2650
+router_word_count="$(wc -w < "$repo_root/SKILL.md")"
+if [ "$router_word_count" -gt "$router_word_budget" ]; then
+  printf 'FAIL: SKILL.md is %s words — over the %s-word router budget. Merge or lazy-load; do not grow the always-loaded router.\n' \
+    "$router_word_count" "$router_word_budget" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# Hardened checks (REQ-018): the work.md prose pointers and the shipped scripts
+# must not drift apart — a pointer at a missing script silently un-hardens the step.
+hardened_check_scripts=(
+  "tools/checks/archive-collision.sh"
+  "tools/checks/preflight.sh"
+  "tools/checks/scope-drift.sh"
+  "tools/checks/qualify.sh"
+)
+
+for check_script in "${hardened_check_scripts[@]}"; do
+  if [ ! -x "$repo_root/$check_script" ]; then
+    printf 'FAIL: %s must exist and be executable (work.md points at it).\n' "$check_script" >&2
+    fail_count=$((fail_count + 1))
+  fi
+  assert_contains \
+    "actions/work.md" \
+    "$(basename "$check_script")" \
+    "actions/work.md must reference $check_script — the hardened step's pointer was removed without un-hardening."
+done
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi

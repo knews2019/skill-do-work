@@ -70,23 +70,4 @@ Do **not** create a UR or REQ, do not move into the work loop, and do not run a 
 - **The action never commits; the file is committable.** `do-work note` only appends — it runs no git command. `do-work/notes.md` is committed alongside the rest of `do-work/` (the Trail of Intent); only `do-work/pipeline.json` is git-excluded (transient live state — kept out of git regardless of install layout, via the shipped `.gitignore` or `.git/info/exclude`). `do-work/runs/` is committable while a run is live and is deleted once its findings are consumed (see `crew-members/background-agents.md`). On a merge conflict it's append-only, so keep both sides.
 - **Empty input is a no-op** with usage, not an empty `- [date]` line.
 
-## Common Rationalizations
-
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "This note sounds like real work — I'll capture it as a REQ too" | Just append the note; suggest `do-work capture` only if the user asks | A note is deliberately lighter than a REQ; auto-promoting it defeats the purpose |
-| "I'll tidy up / sort the existing notes while I'm here" | Append only; leave the rest untouched | The user curates `notes.md` by hand; reordering loses their intent |
-| "The text is empty, I'll just write `- [date]`" | Print usage and stop | An empty dated bullet is noise in the roadmap |
-
-## Red Flags
-
-- A UR or REQ folder/file was created by a `do-work note` invocation (note must never enter the capture pipeline).
-- `do-work/notes.md` gained frontmatter, a header, or reordered lines (should be append-only flat list).
-- The note action ran `git commit` (or any git write) itself — it must only append; the user commits `do-work/notes.md` in their own flow.
-
-## Verification Checklist
-
-- [ ] Exactly one `- [YYYY-MM-DD] <text>` line appended to `do-work/notes.md` (file created if absent).
-- [ ] Leading `add ` and surrounding quotes stripped; whitespace trimmed.
-- [ ] Empty input produced usage output and no file write.
-- [ ] No UR, REQ, work-loop transition, or commit was triggered.
+(The Rules above are the complete contract — every guard this action needs is stated there once.)
