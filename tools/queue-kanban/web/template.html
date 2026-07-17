@@ -57,6 +57,9 @@
           <button type="button" class="control-button" data-view-target="calendar" aria-pressed="false">
             Calendar
           </button>
+          <button type="button" class="control-button" data-view-target="testing" aria-pressed="false">
+            Testing
+          </button>
         </div>
 
         <div class="control-group" role="group" aria-label="Grouping lens" id="lens-group">
@@ -138,6 +141,70 @@
           <p class="calendar-subhead" id="calendar-summary"></p>
         </div>
         <div class="calendar-scroll" id="calendar-scroll"></div>
+      </section>
+
+      <!-- Testing tracking — who tested which finished REQ, and where it
+           stands. The markdown files are the database: actions write the
+           testing_* placeholder frontmatter fields via the live server's
+           /api/testing/* endpoints; a static snapshot renders read-only. -->
+      <section id="view-testing" class="view-panel" aria-label="Testing tracking" hidden>
+        <div class="testing-toolbar" role="group" aria-label="Tester profile">
+          <label class="control-label" for="testing-profile-select">Tester</label>
+          <select class="filter-select" id="testing-profile-select" aria-label="Active tester profile">
+            <option value="">Select tester…</option>
+          </select>
+          <button type="button" class="control-button" id="testing-profile-add-toggle">Add tester</button>
+          <span class="testing-profile-add" id="testing-profile-add-form" hidden>
+            <input
+              type="text"
+              class="filter-search"
+              id="testing-profile-add-name"
+              placeholder="Tester name"
+              maxlength="80"
+              aria-label="New tester name"
+            />
+            <button type="button" class="control-button" id="testing-profile-add-confirm">Save</button>
+            <button type="button" class="control-button" id="testing-profile-add-cancel">Cancel</button>
+          </span>
+          <span class="testing-toolbar-note" id="testing-readonly-note" hidden>
+            Static snapshot — testing actions need the live board (<code>do-work board</code>).
+          </span>
+          <span class="testing-toolbar-error" id="testing-error" role="alert" hidden></span>
+        </div>
+
+        <div class="kanban-columns testing-columns" id="testing-columns">
+          <section class="kanban-column" data-column="testing-ready">
+            <header class="column-header">
+              <h2 class="column-title">Ready to test</h2>
+              <span class="column-count" data-count="testingReady">0</span>
+            </header>
+            <div class="column-cards" data-cards="testingReady"></div>
+          </section>
+
+          <section class="kanban-column" data-column="testing-in-testing">
+            <header class="column-header">
+              <h2 class="column-title">In testing</h2>
+              <span class="column-count" data-count="testingInTesting">0</span>
+            </header>
+            <div class="column-cards" data-cards="testingInTesting"></div>
+          </section>
+
+          <section class="kanban-column" data-column="testing-returned">
+            <header class="column-header">
+              <h2 class="column-title">Returned with feedback</h2>
+              <span class="column-count" data-count="testingReturned">0</span>
+            </header>
+            <div class="column-cards" data-cards="testingReturned"></div>
+          </section>
+
+          <section class="kanban-column" data-column="testing-tested">
+            <header class="column-header">
+              <h2 class="column-title">Tested</h2>
+              <span class="column-count" data-count="testingTested">0</span>
+            </header>
+            <div class="column-cards" data-cards="testingTested"></div>
+          </section>
+        </div>
       </section>
     </main>
 

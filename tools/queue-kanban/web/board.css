@@ -1407,3 +1407,162 @@ body.is-resizing-detail .detail-resizer::before {
     background-color: rgba(245, 247, 250, 0.85);
   }
 }
+
+/* --------------------------------------------------------------------------
+   Testing view — who tested which finished REQ. Reuses the kanban column
+   shell; each testing column gets its own restrained accent, and cards gain a
+   meta line, an optional feedback note, and an action row.
+   -------------------------------------------------------------------------- */
+
+.kanban-column[data-column="testing-ready"] {
+  --column-accent: var(--accent-pending);
+  --column-tint: var(--tint-pending);
+}
+.kanban-column[data-column="testing-in-testing"] {
+  --column-accent: var(--accent-claimed);
+  --column-tint: var(--tint-claimed);
+}
+.kanban-column[data-column="testing-returned"] {
+  --column-accent: var(--accent-blocked);
+  --column-tint: var(--tint-blocked);
+}
+.kanban-column[data-column="testing-tested"] {
+  --column-accent: var(--accent-done);
+  --column-tint: var(--tint-done);
+}
+
+.testing-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  background-color: var(--surface-1);
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+}
+.testing-toolbar .filter-select,
+.testing-toolbar .filter-search {
+  background-color: var(--surface-2);
+  border-radius: var(--radius-chip);
+}
+.testing-profile-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.testing-toolbar-note {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.testing-toolbar-note code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.testing-toolbar-error {
+  font-size: 12px;
+  color: var(--accent-blocked);
+}
+
+.testing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.testing-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 2px;
+}
+.testing-meta-chip {
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--line-soft);
+  background-color: var(--surface-1);
+  color: var(--ink-soft);
+}
+.testing-meta-chip.is-invalid {
+  color: var(--accent-blocked);
+  border-color: rgba(217, 122, 89, 0.4);
+  font-weight: 600;
+}
+
+.testing-feedback {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-base);
+  background-color: var(--tint-blocked);
+  border: 1px solid rgba(217, 122, 89, 0.28);
+  border-radius: var(--radius-chip);
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 130px;
+  overflow-y: auto;
+}
+
+.testing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.testing-action {
+  font-size: 12px;
+  padding: 5px 12px;
+  background-color: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+.testing-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.testing-action-clear {
+  color: var(--ink-faint);
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.testing-feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.testing-feedback-input {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-strong);
+  background-color: var(--surface-1);
+  border: 1px solid var(--line-firm);
+  border-radius: var(--radius-chip);
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 64px;
+}
+.testing-feedback-input:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: 1px;
+}
+
+/* Testing badge on the main board/calendar cards — the same record, visible
+   without switching views. */
+.badge-testing-tested {
+  color: var(--accent-done);
+  background-color: var(--tint-done);
+  border-color: rgba(102, 181, 133, 0.28);
+}
+.badge-testing-in-testing {
+  color: var(--accent-claimed);
+  background-color: var(--tint-claimed);
+  border-color: rgba(111, 156, 230, 0.28);
+}
+.badge-testing-returned {
+  color: var(--accent-blocked);
+  background-color: var(--tint-blocked);
+  border-color: rgba(217, 122, 89, 0.28);
+}

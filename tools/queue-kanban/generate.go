@@ -55,6 +55,12 @@ type generatedBoardData struct {
 	Calendar         []generatedCalendarEntry        `json:"calendar"`
 	Notes            []generatedNote                 `json:"notes,omitempty"`    // do-work/notes.md lines — rendered as a strip above the queue
 	Warnings         []string                        `json:"warnings,omitempty"` // duplicate ids / unrecognized statuses — rendered as a banner
+
+	TestingProfiles []string `json:"testingProfiles,omitempty"` // do-work/testers.md profiles for the testing view's tester picker
+	// True only when served by the live server (serve.go sets it): the testing
+	// view's write actions need the /api/testing/* endpoints, so a static
+	// snapshot renders the view read-only.
+	LiveTestingApi bool `json:"liveTestingApi,omitempty"`
 }
 
 // generatedColumns lists the active-board buckets as REQ id slices. RecentlyDone
@@ -98,6 +104,13 @@ type generatedRequest struct {
 	CompletionTime       string   `json:"completionTime"`
 	CompletionTimeSource string   `json:"completionTimeSource"`
 	BodyHtml             string   `json:"bodyHtml"`
+
+	TestingStatus             string `json:"testingStatus,omitempty"`
+	OriginalTestingStatus     string `json:"originalTestingStatus,omitempty"`
+	TestingStatusUnrecognized bool   `json:"testingStatusUnrecognized,omitempty"`
+	TestedBy                  string `json:"testedBy,omitempty"`
+	TestingUpdatedAt          string `json:"testingUpdatedAt,omitempty"`
+	TestingFeedback           string `json:"testingFeedback,omitempty"`
 }
 
 // generatedUserRequest is one UR node for the by-UR lens, with its grouped REQ
@@ -189,10 +202,11 @@ func generateStaticSite(outputDirectory string, board *Board) error {
 // pre-rendering every REQ and UR body to HTML along the way.
 func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 	data := generatedBoardData{
-		GeneratedAt:  formatTimestamp(board.GeneratedAt),
-		Warnings:     board.Warnings,
-		Requests:     map[string]generatedRequest{},
-		UserRequests: map[string]generatedUserRequest{},
+		GeneratedAt:     formatTimestamp(board.GeneratedAt),
+		Warnings:        board.Warnings,
+		TestingProfiles: board.TestingProfiles,
+		Requests:        map[string]generatedRequest{},
+		UserRequests:    map[string]generatedUserRequest{},
 		Columns: generatedColumns{
 			Pending:             requestIdsOf(board.Columns.Pending),
 			PendingReady:        requestIdsOf(board.Columns.PendingReady),
@@ -234,6 +248,13 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			CompletionTime:       formatTimestamp(ticket.CompletionTime),
 			CompletionTimeSource: string(ticket.CompletionTimeSource),
 			BodyHtml:             bodyHtml,
+
+			TestingStatus:             ticket.TestingStatus,
+			OriginalTestingStatus:     ticket.OriginalTestingStatus,
+			TestingStatusUnrecognized: ticket.TestingStatusUnrecognized,
+			TestedBy:                  ticket.TestedBy,
+			TestingUpdatedAt:          ticket.TestingUpdatedAt,
+			TestingFeedback:           ticket.TestingFeedback,
 		}
 	}
 

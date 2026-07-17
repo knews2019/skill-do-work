@@ -72,6 +72,19 @@ type RequestTicket struct {
 	UserRequestId string // "UR-NNN" upward pointer (the reliable REQ→UR link), "" when absent
 	Domain        string
 
+	// Testing-track placeholders written by the board's testing view (see
+	// testing.go). Orthogonal to Status: the work pipeline never reads them and
+	// the board never writes Status.
+	TestingStatus         string // normalized testing status ("" = not tested yet)
+	OriginalTestingStatus string // verbatim frontmatter testing_status before normalization
+	// Set when a non-empty testing_status normalizes to nothing in the canonical
+	// vocabulary — the ticket renders as not-yet-tested with an invalid flag and
+	// a data warning, never silently.
+	TestingStatusUnrecognized bool
+	TestedBy                  string // tester profile name, "" when absent
+	TestingUpdatedAt          string // raw frontmatter timestamp text, "" when absent
+	TestingFeedback           string // feedback text (present while testing_status is returned)
+
 	DependsOn []string // canonical dependency REQ ids (depends_on wins over legacy dependencies)
 	BlockedBy []string // legacy blocked_by ids, kept distinct from DependsOn
 	Related   []string // soft relations (not dependency edges)
@@ -175,6 +188,8 @@ type Board struct {
 	Calendar        []CalendarEntry // terminally resolved REQs sorted most-recent-first (undated entries last)
 	Notes           []QueueNote     // do-work/notes.md lines in append order (nil when the file is absent or empty)
 
+	TestingProfiles []string // do-work/testers.md bullet lines in file order (nil when the file is absent or empty)
+
 	Warnings []string // data-shape warnings (duplicate ids, unrecognized statuses) — surfaced, never silently dropped
 }
 
@@ -264,8 +279,10 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	columns, columnWarnings := bucketColumns(board.AllRequests, now, recentWindow)
 	board.Columns = columns
 	board.Warnings = append(board.Warnings, columnWarnings...)
+	board.Warnings = append(board.Warnings, collectTestingWarnings(board.AllRequests)...)
 	board.Calendar = buildCalendar(board.AllRequests)
 	board.Notes = loadQueueNotes(discovered.NotesFilePath)
+	board.TestingProfiles = loadTestingProfiles(discovered.TestersFilePath)
 
 	return board, nil
 }
@@ -466,28 +483,43 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		requestId = deriveRequestIdFromFilename(filePath)
 	}
 	originalStatus := coerceScalarToString(fields["status"])
+	originalTestingStatus := coerceScalarToString(fields["testing_status"])
+	normalizedTestingStatus := normalizeTestingStatus(originalTestingStatus)
+	testingStatusUnrecognized := false
+	if originalTestingStatus != "" && !isKnownTestingStatus(normalizedTestingStatus) {
+		// Outside the canonical vocabulary: render as not-yet-tested with an
+		// invalid flag (collectTestingWarnings raises the matching data warning).
+		normalizedTestingStatus = ""
+		testingStatusUnrecognized = true
+	}
 
 	ticket := &RequestTicket{
-		RequestId:      requestId,
-		Title:          coerceScalarToString(fields["title"]),
-		Status:         normalizeStatus(originalStatus),
-		OriginalStatus: originalStatus,
-		CreatedAt:      coerceScalarToString(fields["created_at"]),
-		ClaimedAt:      coerceScalarToString(fields["claimed_at"]),
-		CompletedAt:    coerceScalarToString(fields["completed_at"]),
-		ReservedFor:    coerceScalarToString(fields["reserved_for"]),
-		ReservedAt:     coerceScalarToString(fields["reserved_at"]),
-		CommitHash:     resolveCommitHash(fields),
-		UserRequestId:  coerceScalarToString(fields["user_request"]),
-		Domain:         coerceScalarToString(fields["domain"]),
-		DependsOn:      resolveDependsOn(fields),
-		BlockedBy:      coerceToStringList(fields["blocked_by"]),
-		Related:        coerceToStringList(fields["related"]),
-		Route:          coerceScalarToString(fields["route"]),
-		Batch:          coerceScalarToString(fields["batch"]),
-		BodyMarkdown:   bodyText,
-		FilePath:       filePath,
-		TreeSection:    treeSection,
+		RequestId:                 requestId,
+		Title:                     coerceScalarToString(fields["title"]),
+		Status:                    normalizeStatus(originalStatus),
+		OriginalStatus:            originalStatus,
+		CreatedAt:                 coerceScalarToString(fields["created_at"]),
+		ClaimedAt:                 coerceScalarToString(fields["claimed_at"]),
+		CompletedAt:               coerceScalarToString(fields["completed_at"]),
+		ReservedFor:               coerceScalarToString(fields["reserved_for"]),
+		ReservedAt:                coerceScalarToString(fields["reserved_at"]),
+		CommitHash:                resolveCommitHash(fields),
+		UserRequestId:             coerceScalarToString(fields["user_request"]),
+		Domain:                    coerceScalarToString(fields["domain"]),
+		TestingStatus:             normalizedTestingStatus,
+		OriginalTestingStatus:     originalTestingStatus,
+		TestingStatusUnrecognized: testingStatusUnrecognized,
+		TestedBy:                  coerceScalarToString(fields["tested_by"]),
+		TestingUpdatedAt:          coerceScalarToString(fields["testing_updated_at"]),
+		TestingFeedback:           coerceScalarToString(fields["testing_feedback"]),
+		DependsOn:                 resolveDependsOn(fields),
+		BlockedBy:                 coerceToStringList(fields["blocked_by"]),
+		Related:                   coerceToStringList(fields["related"]),
+		Route:                     coerceScalarToString(fields["route"]),
+		Batch:                     coerceScalarToString(fields["batch"]),
+		BodyMarkdown:              bodyText,
+		FilePath:                  filePath,
+		TreeSection:               treeSection,
 	}
 	return ticket, nil
 }

@@ -24,6 +24,7 @@ type discoveredTreeFiles struct {
 	RequestFiles     []requestFileReference
 	UserRequestFiles []string
 	NotesFilePath    string // absolute path to do-work/notes.md, "" when absent
+	TestersFilePath  string // absolute path to do-work/testers.md, "" when absent
 }
 
 // resolveRepoRoot walks upward from startDirectory until it finds a directory
@@ -145,6 +146,10 @@ func enumerateDoWorkTree(repoRoot string) (discoveredTreeFiles, error) {
 			// nested under a UR or archive folder is somebody's scratch file,
 			// not the queue's note list.
 			discovered.NotesFilePath = path
+		case relativePath == testersFileRelativePath:
+			// Same top-level-only rule as notes.md: do-work/testers.md is the
+			// testing view's profile store (see testing.go).
+			discovered.TestersFilePath = path
 		}
 		return nil
 	})
