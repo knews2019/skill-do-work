@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -162,6 +163,13 @@ func appendTestingProfile(testersFilePath string, rawProfileName string) ([]stri
 		}
 	}
 
+	// Guard the append the same way the REQ write path is guarded: a
+	// testers.md that is a symlink (or any non-regular file) planted in the
+	// tree must not redirect the write elsewhere.
+	if lstatInfo, lstatError := os.Lstat(testersFilePath); lstatError == nil && !lstatInfo.Mode().IsRegular() {
+		return nil, fmt.Errorf("%s is not a regular file — refusing to write through it", testersFilePath)
+	}
+
 	fileHandle, openError := os.OpenFile(testersFilePath, os.O_CREATE|os.O_WRONLY, 0o644)
 	if openError != nil {
 		return nil, fmt.Errorf("opening testers file: %w", openError)
@@ -183,6 +191,38 @@ func appendTestingProfile(testersFilePath string, rawProfileName string) ([]stri
 		return nil, fmt.Errorf("appending tester profile: %w", writeError)
 	}
 	return append(existingProfiles, profileName), nil
+}
+
+// validateTestingWriteTarget rejects a REQ write target that would escape the
+// do-work tree. The path itself always comes from the parsed tree (never from
+// client input), but a checked-out repo can contain a symlink named
+// REQ-*.md — or a symlinked parent directory — whose target is outside
+// do-work/; following it would let a testing write modify an arbitrary
+// frontmatter-bearing file. The file must be a regular file (no symlink), and
+// its parent directory must resolve (symlinks evaluated) to somewhere inside
+// the resolved do-work root.
+func validateTestingWriteTarget(repoRoot string, requestFilePath string) error {
+	lstatInfo, lstatError := os.Lstat(requestFilePath)
+	if lstatError != nil {
+		return fmt.Errorf("stat %s: %w", requestFilePath, lstatError)
+	}
+	if !lstatInfo.Mode().IsRegular() {
+		return fmt.Errorf("%s is not a regular file — refusing to write testing placeholders through a symlink", requestFilePath)
+	}
+
+	resolvedDoWorkRoot, rootEvalError := filepath.EvalSymlinks(filepath.Join(repoRoot, "do-work"))
+	if rootEvalError != nil {
+		return fmt.Errorf("resolving do-work root: %w", rootEvalError)
+	}
+	resolvedParentDirectory, parentEvalError := filepath.EvalSymlinks(filepath.Dir(requestFilePath))
+	if parentEvalError != nil {
+		return fmt.Errorf("resolving %s: %w", filepath.Dir(requestFilePath), parentEvalError)
+	}
+	relativeToRoot, relativeError := filepath.Rel(resolvedDoWorkRoot, resolvedParentDirectory)
+	if relativeError != nil || relativeToRoot == ".." || strings.HasPrefix(relativeToRoot, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("%s resolves outside the do-work tree — refusing to write testing placeholders", requestFilePath)
+	}
+	return nil
 }
 
 // frontmatterFieldUpdate is one placeholder mutation for
@@ -236,31 +276,62 @@ func upsertFrontmatterFields(filePath string, fieldUpdates []frontmatterFieldUpd
 // applyFrontmatterFieldUpdate performs one field's upsert/removal against the
 // frontmatter lines (indexes 1..closingFenceIndex-1) and returns the updated
 // line slice plus the (possibly shifted) closing-fence index.
+//
+// EVERY occurrence of the key is consumed, not just the first: real REQ files
+// carry duplicate top-level keys, and the YAML reader's duplicate-key recovery
+// (parseFrontmatterFields) keeps the LAST value — so an edit that touched only
+// the first occurrence would look successful yet read back as the untouched
+// last value. The replacement value lands once, at the first occurrence's
+// position; the duplicates are dropped with their continuation lines.
 func applyFrontmatterFieldUpdate(fileLines []string, closingFenceIndex int, fieldUpdate frontmatterFieldUpdate) ([]string, int) {
-	for lineIndex := 1; lineIndex < closingFenceIndex; lineIndex++ {
+	type frontmatterLineSpan struct{ startIndex, endIndex int } // [start, end)
+	var occurrenceSpans []frontmatterLineSpan
+	for lineIndex := 1; lineIndex < closingFenceIndex; {
 		keyName, isKeyLine := topLevelKeyName(strings.TrimRight(fileLines[lineIndex], "\r"))
 		if !isKeyLine || keyName != fieldUpdate.FieldKey {
+			lineIndex++
 			continue
 		}
 		continuationEndIndex := frontmatterContinuationEnd(fileLines, lineIndex+1, closingFenceIndex)
-		removedLineCount := continuationEndIndex - lineIndex
-		if fieldUpdate.RemoveField {
-			fileLines = append(fileLines[:lineIndex], fileLines[continuationEndIndex:]...)
-			return fileLines, closingFenceIndex - removedLineCount
-		}
-		replacementLine := fieldUpdate.FieldKey + ": " + fieldUpdate.FieldValue
-		fileLines = append(fileLines[:lineIndex+1], fileLines[continuationEndIndex:]...)
-		fileLines[lineIndex] = replacementLine
-		return fileLines, closingFenceIndex - (removedLineCount - 1)
+		occurrenceSpans = append(occurrenceSpans, frontmatterLineSpan{lineIndex, continuationEndIndex})
+		lineIndex = continuationEndIndex
 	}
 
-	if fieldUpdate.RemoveField {
-		return fileLines, closingFenceIndex // nothing to remove
+	if len(occurrenceSpans) == 0 {
+		if fieldUpdate.RemoveField {
+			return fileLines, closingFenceIndex // nothing to remove
+		}
+		insertedLine := fieldUpdate.FieldKey + ": " + fieldUpdate.FieldValue
+		fileLines = append(fileLines[:closingFenceIndex],
+			append([]string{insertedLine}, fileLines[closingFenceIndex:]...)...)
+		return fileLines, closingFenceIndex + 1
 	}
-	insertedLine := fieldUpdate.FieldKey + ": " + fieldUpdate.FieldValue
-	fileLines = append(fileLines[:closingFenceIndex],
-		append([]string{insertedLine}, fileLines[closingFenceIndex:]...)...)
-	return fileLines, closingFenceIndex + 1
+
+	rebuiltLines := make([]string, 0, len(fileLines))
+	replacementInserted := false
+	spanCursor := 0
+	for lineIndex := 0; lineIndex < len(fileLines); lineIndex++ {
+		if spanCursor < len(occurrenceSpans) && lineIndex == occurrenceSpans[spanCursor].startIndex {
+			if !fieldUpdate.RemoveField && !replacementInserted {
+				rebuiltLines = append(rebuiltLines, fieldUpdate.FieldKey+": "+fieldUpdate.FieldValue)
+				replacementInserted = true
+			}
+			lineIndex = occurrenceSpans[spanCursor].endIndex - 1 // loop increment lands on endIndex
+			spanCursor++
+			continue
+		}
+		rebuiltLines = append(rebuiltLines, fileLines[lineIndex])
+	}
+
+	removedLineCount := 0
+	for _, span := range occurrenceSpans {
+		removedLineCount += span.endIndex - span.startIndex
+	}
+	newClosingFenceIndex := closingFenceIndex - removedLineCount
+	if replacementInserted {
+		newClosingFenceIndex++
+	}
+	return rebuiltLines, newClosingFenceIndex
 }
 
 // frontmatterContinuationEnd returns the index of the first line at or after

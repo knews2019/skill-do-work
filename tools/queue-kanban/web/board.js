@@ -680,7 +680,11 @@
       if (!request) {
         return;
       }
-      if (!isTerminalSuccessStatus(request.status) && !request.testingStatus) {
+      // An unrecognized testing_status is still a testing record — it must
+      // stay visible (in Ready to test, with the invalid flag) even when the
+      // REQ's pipeline status is no longer terminal-success.
+      var hasTestingRecord = Boolean(request.testingStatus) || Boolean(request.testingStatusUnrecognized);
+      if (!isTerminalSuccessStatus(request.status) && !hasTestingRecord) {
         return;
       }
       if (request.testingStatus === "in-testing") {

@@ -251,6 +251,121 @@ func TestUpsertFrontmatterFieldsSurgicalEdit(t *testing.T) {
 	}
 }
 
+// TestUpsertFrontmatterFieldsConsumesDuplicateKeys asserts the duplicate-key
+// contract: the YAML reader's recovery keeps the LAST occurrence of a repeated
+// key, so an upsert must consume every occurrence — otherwise a transition
+// looks successful but reads back as the untouched last value.
+func TestUpsertFrontmatterFieldsConsumesDuplicateKeys(t *testing.T) {
+	reqFilePath := filepath.Join(t.TempDir(), "REQ-0105-dup.md")
+	duplicatedContent := "---\n" +
+		"id: REQ-0105\n" +
+		"status: completed\n" +
+		"testing_status: in-testing\n" +
+		"tested_by: \"Old\"\n" +
+		"testing_status: tested\n" + // duplicate — the reader would keep this one
+		"---\nbody\n"
+	if writeErr := os.WriteFile(reqFilePath, []byte(duplicatedContent), 0o644); writeErr != nil {
+		t.Fatalf("write fixture: %v", writeErr)
+	}
+
+	updates := buildTestingFieldUpdates(testingStatusReturned, "Alice", "needs work", time.Date(2026, 7, 17, 10, 0, 0, 0, time.UTC))
+	if upsertErr := upsertFrontmatterFields(reqFilePath, updates); upsertErr != nil {
+		t.Fatalf("upsert: %v", upsertErr)
+	}
+	updatedBytes, _ := os.ReadFile(reqFilePath)
+	updatedText := string(updatedBytes)
+	if got := strings.Count(updatedText, "testing_status:"); got != 1 {
+		t.Fatalf("testing_status occurrences after upsert = %d, want 1; content=\n%s", got, updatedText)
+	}
+	parsedTicket, parseErr := parseRequestTicket(reqFilePath, "queue")
+	if parseErr != nil {
+		t.Fatalf("parse after upsert: %v", parseErr)
+	}
+	if parsedTicket.TestingStatus != "returned" || parsedTicket.TestedBy != "Alice" {
+		t.Fatalf("reader sees %q by %q, want returned by Alice", parsedTicket.TestingStatus, parsedTicket.TestedBy)
+	}
+
+	// Clear must remove every occurrence too.
+	if upsertErr := upsertFrontmatterFields(reqFilePath, buildTestingFieldUpdates(testingClearState, "", "", time.Now())); upsertErr != nil {
+		t.Fatalf("clear upsert: %v", upsertErr)
+	}
+	clearedBytes, _ := os.ReadFile(reqFilePath)
+	if strings.Contains(string(clearedBytes), "testing_") {
+		t.Fatalf("clear left testing keys behind; content=\n%s", string(clearedBytes))
+	}
+}
+
+// TestTestingApiRejectsUnfinishedReq asserts the pipeline-status gate: a
+// non-clear transition on a pending REQ (no testing record) is a 409, while a
+// requeued REQ that already carries a testing record may restart testing, and
+// clear stays allowed everywhere.
+func TestTestingApiRejectsUnfinishedReq(t *testing.T) {
+	repoRoot := createFixtureDoWorkTree(t)
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+
+	// REQ-0001 is pending with no testing record: in-testing must be rejected.
+	statusCode, apiResponse := postTestingApiJson(t, testServerFor(t, repoRoot), "/api/testing/status",
+		map[string]string{"requestId": "REQ-0001", "testingStatus": "in-testing", "testedBy": "Alice"})
+	if statusCode != http.StatusConflict || apiResponse.Ok {
+		t.Fatalf("in-testing on a pending REQ: status=%d ok=%v, want 409", statusCode, apiResponse.Ok)
+	}
+
+	// A requeued REQ carrying a returned record may restart testing.
+	requeuedContent := "---\nid: REQ-0004\ntitle: Requeued fix\nstatus: pending\n" +
+		"testing_status: returned\ntested_by: \"Alice\"\ntesting_feedback: \"broken\"\n---\nbody\n"
+	if writeErr := os.WriteFile(filepath.Join(queueDir, "REQ-0004-requeued.md"), []byte(requeuedContent), 0o644); writeErr != nil {
+		t.Fatalf("write requeued fixture: %v", writeErr)
+	}
+	serverUrl := testServerFor(t, repoRoot)
+	statusCode, apiResponse = postTestingApiJson(t, serverUrl, "/api/testing/status",
+		map[string]string{"requestId": "REQ-0004", "testingStatus": "in-testing", "testedBy": "Alice"})
+	if statusCode != http.StatusOK || !apiResponse.Ok {
+		t.Fatalf("restart on a requeued REQ with a record: status=%d response=%+v, want 200", statusCode, apiResponse)
+	}
+
+	// Clear is always allowed — it only removes.
+	statusCode, apiResponse = postTestingApiJson(t, serverUrl, "/api/testing/status",
+		map[string]string{"requestId": "REQ-0001", "testingStatus": "clear"})
+	if statusCode != http.StatusOK || !apiResponse.Ok {
+		t.Fatalf("clear on a pending REQ: status=%d response=%+v, want 200", statusCode, apiResponse)
+	}
+}
+
+// TestTestingApiRejectsSymlinkedReqFile asserts the write path refuses to
+// follow a REQ-*.md symlink out of the do-work tree: the API errors and the
+// symlink's target stays byte-identical.
+func TestTestingApiRejectsSymlinkedReqFile(t *testing.T) {
+	repoRoot := createFixtureDoWorkTree(t)
+	outsideTargetPath := filepath.Join(repoRoot, "outside-target.md")
+	outsideContent := "---\nid: REQ-0042\ntitle: Outside file\nstatus: completed\n---\nprecious content\n"
+	if writeErr := os.WriteFile(outsideTargetPath, []byte(outsideContent), 0o644); writeErr != nil {
+		t.Fatalf("write outside target: %v", writeErr)
+	}
+	symlinkPath := filepath.Join(repoRoot, "do-work", "queue", "REQ-0042-link.md")
+	if symlinkErr := os.Symlink(outsideTargetPath, symlinkPath); symlinkErr != nil {
+		t.Skipf("cannot create symlinks on this platform: %v", symlinkErr)
+	}
+
+	statusCode, apiResponse := postTestingApiJson(t, testServerFor(t, repoRoot), "/api/testing/status",
+		map[string]string{"requestId": "REQ-0042", "testingStatus": "in-testing", "testedBy": "Alice"})
+	if statusCode != http.StatusBadRequest || apiResponse.Ok {
+		t.Fatalf("write through a symlinked REQ: status=%d ok=%v, want 400", statusCode, apiResponse.Ok)
+	}
+	targetBytes, _ := os.ReadFile(outsideTargetPath)
+	if string(targetBytes) != outsideContent {
+		t.Fatalf("symlink target was modified:\n%s", string(targetBytes))
+	}
+}
+
+// testServerFor starts a live board server over repoRoot and returns its base
+// URL, closing it with the test.
+func testServerFor(t *testing.T, repoRoot string) string {
+	t.Helper()
+	testServer := httptest.NewServer(newLiveBoardServer(repoRoot, 7*24*time.Hour))
+	t.Cleanup(testServer.Close)
+	return testServer.URL
+}
+
 // TestUpsertFrontmatterFieldsRejectsFencelessFile asserts a file without
 // frontmatter is an error, never a guessed edit.
 func TestUpsertFrontmatterFieldsRejectsFencelessFile(t *testing.T) {

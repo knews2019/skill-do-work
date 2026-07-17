@@ -187,6 +187,28 @@ func (liveServer *liveBoardServer) serveTestingStatusApi(responseWriter http.Res
 		return
 	}
 
+	// Only finished work enters testing. A non-clear transition needs the REQ
+	// to be terminally successful — or to already carry a testing record (a
+	// returned REQ that was requeued for the fix may legitimately restart
+	// testing). Without this, a stale browser tab — or a direct API call —
+	// could stamp testing state onto a pending/claimed REQ that hasn't been
+	// built yet. `clear` stays allowed regardless: it only ever removes.
+	hasExistingTestingRecord := ticket.TestingStatus != "" || ticket.TestingStatusUnrecognized
+	if requestedState != testingClearState && !isCompletedStatus(ticket.Status) && !hasExistingTestingRecord {
+		writeTestingApiError(responseWriter, http.StatusConflict, fmt.Sprintf(
+			"%s has status %q — only finished REQs (completed / completed-with-issues) can enter testing; reload the board",
+			ticket.RequestId, ticket.OriginalStatus))
+		return
+	}
+
+	// The file path came from the parsed tree, but the tree itself is
+	// untrusted checkout content — refuse symlinked targets (testing.go).
+	if targetError := validateTestingWriteTarget(liveServer.repoRoot, ticket.FilePath); targetError != nil {
+		log.Printf("queue-kanban serve: rejecting testing write for %s: %v", ticket.RequestId, targetError)
+		writeTestingApiError(responseWriter, http.StatusBadRequest, targetError.Error())
+		return
+	}
+
 	updateInstant := time.Now()
 	fieldUpdates := buildTestingFieldUpdates(requestedState, testedBy, feedbackText, updateInstant)
 	if upsertError := upsertFrontmatterFields(ticket.FilePath, fieldUpdates); upsertError != nil {
