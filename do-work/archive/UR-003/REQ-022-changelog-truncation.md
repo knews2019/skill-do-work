@@ -1,5 +1,5 @@
 ---
-id: REQ-016
+id: REQ-022
 title: "CHANGELOG: keep newest 20 entries live, archive the rest with a no-git pointer"
 status: completed
 created_at: 2026-07-15T17:33:04Z

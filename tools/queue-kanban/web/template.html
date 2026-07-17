@@ -37,6 +37,15 @@
           <select class="filter-select" id="filter-status" aria-label="Filter by status">
             <option value="">All statuses</option>
           </select>
+          <!-- Testing view only (board.js toggles visibility): windows the
+               testing columns by each card's last activity instant. -->
+          <select class="filter-select" id="filter-done-window" aria-label="Filter by completion date" hidden>
+            <option value="">Any date</option>
+            <option value="24">Last 24 hours</option>
+            <option value="168">Last 7 days</option>
+            <option value="720">Last 30 days</option>
+            <option value="old">Older than 30 days</option>
+          </select>
           <button type="button" class="control-button filter-clear" id="filter-clear" hidden>Clear</button>
         </div>
 

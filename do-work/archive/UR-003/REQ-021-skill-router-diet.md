@@ -1,5 +1,5 @@
 ---
-id: REQ-015
+id: REQ-021
 title: "SKILL.md router diet: one routing enumeration, help menu goes lazy"
 status: completed
 created_at: 2026-07-15T17:33:04Z

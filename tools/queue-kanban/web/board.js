@@ -30,10 +30,13 @@
 
   // Shared filters — applied to whichever view is active. userRequestActivity
   // only affects the by-UR lens ("active" hides URs whose REQs are all resolved).
+  // doneWindow only affects the testing view (its select is hidden elsewhere):
+  // "" | hours-as-string ("24", "168", "720") | "old" (older than 30 days).
   var filterState = {
     searchText: "",
     domain: "",
     status: "",
+    doneWindow: "",
     userRequestActivity: "active" // "active" | "all"
   };
 
@@ -108,7 +111,12 @@
   // and titles, so every view filters the same record set with the same rules.
 
   function hasActiveFilters() {
-    return filterState.searchText !== "" || filterState.domain !== "" || filterState.status !== "";
+    return (
+      filterState.searchText !== "" ||
+      filterState.domain !== "" ||
+      filterState.status !== "" ||
+      filterState.doneWindow !== ""
+    );
   }
 
   function searchMatchesRequest(request, requestId, searchNeedle) {
@@ -670,6 +678,52 @@
     return status === "completed" || status === "completed-with-issues";
   }
 
+  // The instant a testing card is sorted and date-filtered by: the last testing
+  // activity when there is one, else the REQ's resolved completion instant.
+  // 0 means neither is known.
+  function testingRecencyMs(request) {
+    var activityMs = Date.parse(request.testingUpdatedAt || "");
+    if (isNaN(activityMs)) {
+      activityMs = Date.parse(request.completionTime || "");
+    }
+    return isNaN(activityMs) ? 0 : activityMs;
+  }
+
+  function requestIdNumber(requestId) {
+    var digitsMatch = /(\d+)/.exec(requestId || "");
+    return digitsMatch ? parseInt(digitsMatch[1], 10) : 0;
+  }
+
+  // Testing columns read newest-first — with hundreds of finished REQs, the
+  // ones just done are the ones a tester is looking for. Cards with no known
+  // instant sink to the bottom; the numeric REQ id (higher = newer) breaks ties.
+  function sortMostRecentFirst(requestIds) {
+    requestIds.sort(function (leftId, rightId) {
+      var recencyDelta = testingRecencyMs(requestsById[rightId]) - testingRecencyMs(requestsById[leftId]);
+      if (recencyDelta !== 0) {
+        return recencyDelta;
+      }
+      return requestIdNumber(rightId) - requestIdNumber(leftId);
+    });
+    return requestIds;
+  }
+
+  // Testing-view-only date window (the select is hidden on other views and the
+  // filter is applied only here, so it can never blank the board's pending
+  // columns). Cards with no known instant only show under "Any date".
+  function matchesDoneWindow(requestId) {
+    if (filterState.doneWindow === "") {
+      return true;
+    }
+    var recencyMs = testingRecencyMs(requestsById[requestId]);
+    var thirtyDaysMs = 720 * 3600 * 1000;
+    if (filterState.doneWindow === "old") {
+      return recencyMs !== 0 && recencyMs <= generatedAtMs - thirtyDaysMs;
+    }
+    var windowHours = parseInt(filterState.doneWindow, 10);
+    return recencyMs > generatedAtMs - windowHours * 3600 * 1000;
+  }
+
   // A REQ belongs on the testing view when it finished successfully (testable)
   // or already carries a testing record (which must never disappear, even if
   // its pipeline status later changed — e.g. returned work re-queued for a fix).
@@ -697,6 +751,9 @@
         buckets.testingReady.push(requestId);
       }
     });
+    Object.keys(buckets).forEach(function (bucketKey) {
+      sortMostRecentFirst(buckets[bucketKey]);
+    });
     return buckets;
   }
 
@@ -704,7 +761,8 @@
     document.getElementById("testing-readonly-note").hidden = testingLiveApiAvailable;
     var buckets = computeTestingBuckets();
     Object.keys(buckets).forEach(function (bucketKey) {
-      fillTestingColumn(bucketKey, filterRequestIds(buckets[bucketKey]), buckets[bucketKey].length);
+      var shownIds = filterRequestIds(buckets[bucketKey]).filter(matchesDoneWindow);
+      fillTestingColumn(bucketKey, shownIds, buckets[bucketKey].length);
     });
   }
 
@@ -1331,8 +1389,10 @@
 
     // The grouping lens and the recently-done window only shape the board view;
     // hide their controls elsewhere so the topbar never advertises dead knobs.
+    // The date window is the testing view's knob for the same reason.
     document.getElementById("lens-group").hidden = viewState.view !== "board";
     document.getElementById("recent-window-group").hidden = viewState.view !== "board";
+    document.getElementById("filter-done-window").hidden = viewState.view !== "testing";
 
     if (viewState.view === "calendar" && !renderedOnce.calendar) {
       renderCalendar();
@@ -1416,13 +1476,21 @@
       onFiltersChanged();
     });
 
+    var doneWindowSelect = document.getElementById("filter-done-window");
+    doneWindowSelect.addEventListener("change", function () {
+      filterState.doneWindow = doneWindowSelect.value;
+      onFiltersChanged();
+    });
+
     document.getElementById("filter-clear").addEventListener("click", function () {
       filterState.searchText = "";
       filterState.domain = "";
       filterState.status = "";
+      filterState.doneWindow = "";
       searchInput.value = "";
       domainSelect.value = "";
       statusSelect.value = "";
+      doneWindowSelect.value = "";
       onFiltersChanged();
     });
 

@@ -28,7 +28,7 @@ the export-ignored `CHANGELOG-archive.md`; ~23.5k words leave every consumer tar
   action-set enumerations outright (Actions bullets, help menu*), 1 merged (Verb
   Reference → routing table Notes; every trigger verb and precedence rule preserved);
   CHANGELOG tail; intra-file guard restatements in note/scan-ideas/commit/quick-wins
-  (every deleted row maps to a surviving rule — mappings in REQ-017).
+  (every deleted row maps to a surviving rule — mappings in REQ-023).
   *help menu deleted from the always-loaded router; content lives on in `actions/help.md` (lazy).
 - **Relocated: 0 files.** Per UR-003 Message 1, RELOCATE was plan-only this pass.
   Plans for prompts library (~19.8k words), interview (~12.6k), bkb+dream (~14.9k) in
@@ -62,12 +62,14 @@ the export-ignored `CHANGELOG-archive.md`; ~23.5k words leave every consumer tar
 
 ## Traceability
 
-UR-003 (verbatim request + capture notes) and REQ-015..020 (each with Triage,
+UR-003 (verbatim request + capture notes) and its six REQs — REQ-019, REQ-020,
+and REQ-021..024 (renumbered from REQ-015..018 on 2026-07-18 to resolve id
+collisions with the earlier kanban-stream REQs) — (each with Triage,
 P-A-U state, Implementation Summary, Testing, Lessons, and its implementation
 commit hash) are archived in `do-work/archive/UR-003/`. Changelog entries:
 0.123.0, 0.123.1, 0.123.2, 0.124.0, 0.124.1, 0.124.2.
 
 Known review notes for the PR: shellcheck was unavailable in the execution
 environment — the four `tools/checks/` scripts are hand-reviewed only; and the
-`kb_status` line was dropped from REQ-015's frontmatter template during metadata
+`kb_status` line was dropped from REQ-021's frontmatter template during metadata
 editing (harmless — the field is optional and handoff-owned).

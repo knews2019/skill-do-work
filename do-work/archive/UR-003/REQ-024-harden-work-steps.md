@@ -1,5 +1,5 @@
 ---
-id: REQ-018
+id: REQ-024
 title: "Harden work.md steps 2.0 + 5.75 (full) and 5.5 + 6.3 (mechanical parts) into tools/checks/"
 status: completed
 created_at: 2026-07-15T17:33:04Z
@@ -62,7 +62,7 @@ work.md (10,371 words). Audit HARDEN bucket.
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Read work-reference.md templates (Scope, Implementation Summary) so the parsers match what the pipeline actually writes; scripts parse backtick-quoted paths + parenthesized verbs.
 - [x] **[APPLY]:** Four scripts in tools/checks/ (executable, two-word variable names per naming conventions); work.md Steps 2.0/5.75 → pointer+fallback, 5.5 comparison + 6.3 items 1/4/5 → script with judgment checks 2/3/6 retained as prose; Step 6.5 gains the baseline.json comparison sentence; contract test gains pointer-sync assertions.
-- [x] **[UNIFY]:** Smoke tests: archive-collision REQ-015→exit 1 with path, REQ-999→exit 0; scope-drift on a Route-A REQ→exit 2 SKIP; preflight→WARN on dirty tree, exit 0; qualify on archived REQ-015→OK with expected post-commit WARNs. contract-regressions.sh passes (incl. new assertions). work.md 10,371→10,207 words. shellcheck unavailable in this environment — scripts hand-reviewed; noted as PR follow-up.
+- [x] **[UNIFY]:** Smoke tests: archive-collision REQ-021→exit 1 with path, REQ-999→exit 0; scope-drift on a Route-A REQ→exit 2 SKIP; preflight→WARN on dirty tree, exit 0; qualify on archived REQ-021→OK with expected post-commit WARNs. contract-regressions.sh passes (incl. new assertions). work.md 10,371→10,207 words. shellcheck unavailable in this environment — scripts hand-reviewed; noted as PR follow-up.
 
 ## Triage
 

@@ -11,8 +11,8 @@ domain: general
 prime_files: []
 tdd: false
 suggested_spec:
-depends_on: [REQ-015]
-related: [REQ-015]
+depends_on: [REQ-021]
+related: [REQ-021]
 batch: harness-bloat-cleanup
 maintenance: false
 commit: 5570ee4
@@ -23,7 +23,7 @@ commit: 5570ee4
 ## What
 1. Add a router word-count budget assertion to `_dev/tests/contract-regressions.sh`
    (or a sibling `_dev/tests/` script it sources): fail when `wc -w SKILL.md`
-   exceeds the post-REQ-015 count + 10% headroom (hard number recorded in the
+   exceeds the post-REQ-021 count + 10% headroom (hard number recorded in the
    test with a comment explaining the ratchet).
 2. Add to CLAUDE.md (Action File Conventions): any NEW action file must state, in
    its description blockquote or an accompanying ADR, why it belongs in do-work

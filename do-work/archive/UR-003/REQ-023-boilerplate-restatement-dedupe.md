@@ -1,5 +1,5 @@
 ---
-id: REQ-017
+id: REQ-023
 title: "Dedupe intra-file guard restatements in note, scan-ideas, commit, quick-wins"
 status: completed
 created_at: 2026-07-15T17:33:04Z
