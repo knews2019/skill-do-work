@@ -116,12 +116,18 @@ completed_at: 2025-01-26T10:45:00Z  # stamped at cancellation — the terminal t
 # Set by kb-lessons handoff (work.md's Lessons-Capture Phase in pipeline mode / review-work.md's Self-Validation & Lessons Learned step standalone). Optional; absent on REQs that predate the handoff.
 kb_status: promoted | pending | declined | skipped
 kb_entry: REQ-042-lesson-slug.md   # filename only (survives bkb moves from inbox/ to capture/ to processed/); present only when kb_status: promoted
+
+# Set by the board's Testing view (do-work board serve — actions/board.md Step 6). Optional; the testing track is orthogonal to `status`: the board never writes `status`, and the work pipeline never writes these. Absent = not tested yet.
+testing_status: in-testing | tested | returned   # who-tested-what tracking for finished REQs
+tested_by: "Alice"                # tester profile from do-work/testers.md (raw user text, always YAML-quoted)
+testing_updated_at: 2026-07-17T10:00:00Z   # stamped by the board server on every transition
+testing_feedback: "…"             # present only while testing_status is returned (one-line double-quoted scalar; newlines as \n escapes)
 ---
 ```
 
 ## Schema Read Contract
 
-Eight fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `dependencies:` → `depends_on` patch surfaced that several silently swallow natural typo variants from sister conventions (snake_case vs kebab-case YAML, `done`/`finished`/`closed` as English glosses of `completed`, lowercase route letters, etc.). Pure silent-alias is risky for enum values because an unknown value should not be quietly remapped — it should leave a footprint. Every read site in this file (and in `actions/roadmap.md`) honors a uniform **normalize-and-warn contract** for these fields:
+Nine fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `dependencies:` → `depends_on` patch surfaced that several silently swallow natural typo variants from sister conventions (snake_case vs kebab-case YAML, `done`/`finished`/`closed` as English glosses of `completed`, lowercase route letters, etc.). Pure silent-alias is risky for enum values because an unknown value should not be quietly remapped — it should leave a footprint. Every read site in this file (and in `actions/roadmap.md`) honors a uniform **normalize-and-warn contract** for these fields:
 
 1. **Normalize first.** Apply the per-field alias map below. If a canonical match results, use it silently.
 2. **Warn-on-fallback.** If after normalization the value still doesn't match the canonical enum, emit:
@@ -143,6 +149,7 @@ Eight fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depen
 | `tdd` (Step 6 testing-crew load, Step 6.5 TDD-evidence gate; emission validated in `actions/capture.md`) | `true`, `false` (YAML boolean) | `test_first`/`yes`/`on`/`t` → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 testing crew not loaded; Step 6.5 gate not enforced) |
 | `error_type` (Step 8 failure classification, Step 8 upstream-failure short-circuit, forensics) | `intent`, `spec`, `code`, `environment` | (no common typo aliases identified) | `code` |
 | `kb_status` (kb-lessons handoff — work.md's Lessons-Capture Phase / review-work.md's Self-Validation & Lessons Learned step; roadmap lessons rollup) | `promoted`, `pending`, `declined`, `skipped` | `skip` → `skipped`; `rejected` → `declined` | `pending` |
+| `testing_status` (board Testing view — `tools/queue-kanban` parser + `/api/testing/status` writes; no work-pipeline read sites) | `in-testing`, `tested`, `returned` | `in_testing`/`in testing`/`testing`/`selected-for-testing` → `in-testing`; `returned-with-feedback`/`returned_with_feedback` → `returned` | treat as not-tested (Ready to test) with an invalid flag + data warning |
 
 **Write paths are unaffected.** Step 2 claim, Step 8 archive, Step 8 follow-up generation, the kb-lessons handoff, and capture emission always write the canonical key and canonical enum value — never an alias, never the typo'd input. The normalize-and-warn contract is read-only.
 

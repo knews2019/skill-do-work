@@ -23,7 +23,7 @@
   }
 
   var viewState = {
-    view: "board", // "board" | "calendar"
+    view: "board", // "board" | "calendar" | "testing"
     lens: "flat", // "flat" | "user-request"
     windowHours: 24
   };
@@ -37,7 +37,7 @@
     userRequestActivity: "active" // "active" | "all"
   };
 
-  var renderedOnce = { userRequestLens: false, calendar: false };
+  var renderedOnce = { userRequestLens: false, calendar: false, testing: false };
 
   // ---- small DOM helpers --------------------------------------------------
 
@@ -195,9 +195,13 @@
     renderColumns();
     renderedOnce.userRequestLens = false;
     renderedOnce.calendar = false;
+    renderedOnce.testing = false;
     if (viewState.view === "calendar") {
       renderCalendar();
       renderedOnce.calendar = true;
+    } else if (viewState.view === "testing") {
+      renderTestingView();
+      renderedOnce.testing = true;
     } else if (viewState.lens === "user-request") {
       renderUserRequestLens();
       renderedOnce.userRequestLens = true;
@@ -289,6 +293,19 @@
       var unblocksBadge = makeBadge("badge-unblocks", "unblocks", String(unblockedRequestIds.length));
       unblocksBadge.title = "Unblocks " + unblockedRequestIds.join(", ") + " when this lands";
       badges.appendChild(unblocksBadge);
+    }
+    if (request.testingStatus) {
+      // The testing track (see the Testing view) surfaces on the main board too,
+      // so a finished card's tested/returned state is visible without switching.
+      var testingBadge = makeBadge(
+        "badge-testing badge-testing-" + request.testingStatus,
+        "testing",
+        request.testingStatus
+      );
+      if (request.testedBy) {
+        testingBadge.title = request.testingStatus + " by " + request.testedBy;
+      }
+      badges.appendChild(testingBadge);
     }
     if (badges.childNodes.length > 0) {
       card.appendChild(badges);
@@ -636,6 +653,364 @@
     return section;
   }
 
+  // ---- testing view --------------------------------------------------------
+  // Tracks who tested which finished REQ. The REQ Markdown files are the
+  // database: actions POST to the live server's /api/testing/* endpoints, which
+  // upsert the testing_* placeholder frontmatter fields (and append tester
+  // profiles to do-work/testers.md). A static snapshot has no server, so the
+  // view renders read-only there (boardData.liveTestingApi is unset).
+
+  var testingLiveApiAvailable = Boolean(boardData.liveTestingApi);
+  var testerProfileStorageKey = "queueKanbanTesterProfile";
+  var selectedTesterProfile = "";
+  var feedbackFormRequestId = null; // REQ id whose card is showing the inline feedback form
+  var testingErrorTimer = null;
+
+  function isTerminalSuccessStatus(status) {
+    return status === "completed" || status === "completed-with-issues";
+  }
+
+  // A REQ belongs on the testing view when it finished successfully (testable)
+  // or already carries a testing record (which must never disappear, even if
+  // its pipeline status later changed — e.g. returned work re-queued for a fix).
+  function computeTestingBuckets() {
+    var buckets = { testingReady: [], testingInTesting: [], testingReturned: [], testingTested: [] };
+    (boardData.requestOrder || []).forEach(function (requestId) {
+      var request = requestsById[requestId];
+      if (!request) {
+        return;
+      }
+      if (!isTerminalSuccessStatus(request.status) && !request.testingStatus) {
+        return;
+      }
+      if (request.testingStatus === "in-testing") {
+        buckets.testingInTesting.push(requestId);
+      } else if (request.testingStatus === "returned") {
+        buckets.testingReturned.push(requestId);
+      } else if (request.testingStatus === "tested") {
+        buckets.testingTested.push(requestId);
+      } else {
+        buckets.testingReady.push(requestId);
+      }
+    });
+    return buckets;
+  }
+
+  function renderTestingView() {
+    document.getElementById("testing-readonly-note").hidden = testingLiveApiAvailable;
+    var buckets = computeTestingBuckets();
+    Object.keys(buckets).forEach(function (bucketKey) {
+      fillTestingColumn(bucketKey, filterRequestIds(buckets[bucketKey]), buckets[bucketKey].length);
+    });
+  }
+
+  function fillTestingColumn(columnKey, requestIds, totalCount) {
+    var container = document.querySelector('[data-cards="' + columnKey + '"]');
+    var countNode = document.querySelector('[data-count="' + columnKey + '"]');
+    container.textContent = "";
+    countNode.textContent = formatFilteredCount(requestIds.length, totalCount);
+    if (requestIds.length === 0) {
+      container.appendChild(createElement("p", "column-empty", columnEmptyText()));
+      return;
+    }
+    requestIds.forEach(function (requestId) {
+      container.appendChild(makeTestingCard(requestId, columnKey));
+    });
+  }
+
+  // A testing card wraps the normal REQ card (still opens the detail drawer)
+  // with a testing-meta line and an action row. The wrapper is a div — the REQ
+  // card itself is a <button>, and buttons must not nest.
+  function makeTestingCard(requestId, bucketKey) {
+    var request = requestsById[requestId];
+    var wrapper = createElement("div", "testing-card");
+    wrapper.appendChild(makeRequestCard(requestId, { showCompleted: true }));
+
+    var meta = createElement("div", "testing-card-meta");
+    if (request.testedBy) {
+      meta.appendChild(createElement("span", "testing-meta-chip", "tester: " + request.testedBy));
+    }
+    if (request.testingUpdatedAt) {
+      meta.appendChild(createElement("span", "testing-meta-chip", formatShortInstant(request.testingUpdatedAt)));
+    }
+    if (request.testingStatusUnrecognized) {
+      var invalidChip = createElement("span", "testing-meta-chip is-invalid", "invalid testing_status");
+      invalidChip.title =
+        'Unrecognized testing_status "' +
+        (request.originalTestingStatus || "") +
+        '" — expected in-testing, tested, or returned. Shown as not tested.';
+      meta.appendChild(invalidChip);
+    }
+    if (meta.childNodes.length > 0) {
+      wrapper.appendChild(meta);
+    }
+
+    if (request.testingStatus === "returned" && request.testingFeedback) {
+      wrapper.appendChild(createElement("div", "testing-feedback", request.testingFeedback));
+    }
+
+    if (testingLiveApiAvailable) {
+      wrapper.appendChild(
+        feedbackFormRequestId === requestId
+          ? makeTestingFeedbackForm(requestId)
+          : makeTestingActionsRow(requestId, bucketKey)
+      );
+    }
+    return wrapper;
+  }
+
+  function makeTestingActionsRow(requestId, bucketKey) {
+    var actionsRow = createElement("div", "testing-actions");
+
+    function addActionButton(labelText, onActivate, extraClassName) {
+      var actionButton = createElement(
+        "button",
+        "control-button testing-action" + (extraClassName ? " " + extraClassName : ""),
+        labelText
+      );
+      actionButton.type = "button";
+      if (!selectedTesterProfile) {
+        actionButton.disabled = true;
+        actionButton.title = "Select a tester profile first";
+      } else {
+        actionButton.addEventListener("click", onActivate);
+      }
+      actionsRow.appendChild(actionButton);
+    }
+
+    if (bucketKey === "testingReady") {
+      addActionButton("Start testing", function () {
+        postTestingStatus(requestId, "in-testing");
+      });
+    } else if (bucketKey === "testingInTesting") {
+      addActionButton("Mark tested", function () {
+        postTestingStatus(requestId, "tested");
+      });
+      addActionButton("Return with feedback", function () {
+        feedbackFormRequestId = requestId;
+        renderTestingView();
+      });
+      addActionButton("Clear", function () {
+        postTestingStatus(requestId, "clear");
+      }, "testing-action-clear");
+    } else if (bucketKey === "testingReturned") {
+      addActionButton("Restart testing", function () {
+        postTestingStatus(requestId, "in-testing");
+      });
+      addActionButton("Clear", function () {
+        postTestingStatus(requestId, "clear");
+      }, "testing-action-clear");
+    } else if (bucketKey === "testingTested") {
+      addActionButton("Re-test", function () {
+        postTestingStatus(requestId, "in-testing");
+      });
+      addActionButton("Clear", function () {
+        postTestingStatus(requestId, "clear");
+      }, "testing-action-clear");
+    }
+    return actionsRow;
+  }
+
+  function makeTestingFeedbackForm(requestId) {
+    var form = createElement("div", "testing-feedback-form");
+    var feedbackInput = document.createElement("textarea");
+    feedbackInput.className = "testing-feedback-input";
+    feedbackInput.rows = 3;
+    feedbackInput.placeholder = "What needs fixing?";
+    feedbackInput.setAttribute("aria-label", "Feedback for " + requestId);
+    form.appendChild(feedbackInput);
+
+    var formActions = createElement("div", "testing-actions");
+    var confirmButton = createElement("button", "control-button testing-action", "Return");
+    confirmButton.type = "button";
+    confirmButton.addEventListener("click", function () {
+      var feedbackText = feedbackInput.value.trim();
+      if (feedbackText === "") {
+        showTestingError("Feedback must not be empty — describe what to fix.");
+        return;
+      }
+      feedbackFormRequestId = null;
+      postTestingStatus(requestId, "returned", feedbackText);
+    });
+    var cancelButton = createElement("button", "control-button testing-action", "Cancel");
+    cancelButton.type = "button";
+    cancelButton.addEventListener("click", function () {
+      feedbackFormRequestId = null;
+      renderTestingView();
+    });
+    formActions.appendChild(confirmButton);
+    formActions.appendChild(cancelButton);
+    form.appendChild(formActions);
+
+    setTimeout(function () {
+      feedbackInput.focus();
+    }, 0);
+    return form;
+  }
+
+  function showTestingError(errorText) {
+    var errorNode = document.getElementById("testing-error");
+    errorNode.textContent = errorText;
+    errorNode.hidden = false;
+    if (testingErrorTimer) {
+      clearTimeout(testingErrorTimer);
+    }
+    testingErrorTimer = setTimeout(function () {
+      errorNode.hidden = true;
+    }, 8000);
+  }
+
+  function decodeTestingApiResponse(httpResponse) {
+    return httpResponse
+      .json()
+      .catch(function () {
+        return { ok: false, error: "HTTP " + httpResponse.status };
+      })
+      .then(function (payload) {
+        if (!httpResponse.ok || !payload.ok) {
+          throw new Error(payload.error || "HTTP " + httpResponse.status);
+        }
+        return payload;
+      });
+  }
+
+  // On success the server's confirmed transition is applied to the local data
+  // island and the view re-renders — no page reload, so the active view and
+  // filters survive. The next full reload re-reads the files themselves.
+  function postTestingStatus(requestId, testingState, feedbackText) {
+    fetch("/api/testing/status", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        requestId: requestId,
+        testingStatus: testingState,
+        testedBy: selectedTesterProfile,
+        feedback: feedbackText || ""
+      })
+    })
+      .then(decodeTestingApiResponse)
+      .then(function (payload) {
+        var request = requestsById[requestId];
+        if (request) {
+          request.testingStatus = payload.testingStatus || "";
+          request.testedBy = payload.testedBy || "";
+          request.testingUpdatedAt = payload.testingUpdatedAt || "";
+          request.testingFeedback = testingState === "returned" ? feedbackText || "" : "";
+          request.testingStatusUnrecognized = false;
+          request.originalTestingStatus = payload.testingStatus || "";
+        }
+        renderTestingView();
+        renderColumns(); // the main board's testing badge tracks the same record
+      })
+      .catch(function (postError) {
+        showTestingError("Update failed: " + postError.message);
+        renderTestingView();
+      });
+  }
+
+  function populateTestingProfileSelect() {
+    var profileSelect = document.getElementById("testing-profile-select");
+    while (profileSelect.options.length > 1) {
+      profileSelect.remove(1);
+    }
+    fillSelectOptions(profileSelect, boardData.testingProfiles || []);
+
+    var storedProfile = "";
+    try {
+      storedProfile = localStorage.getItem(testerProfileStorageKey) || "";
+    } catch (storageError) {
+      // Persistence is best-effort.
+    }
+    if (storedProfile && (boardData.testingProfiles || []).indexOf(storedProfile) !== -1) {
+      selectedTesterProfile = storedProfile;
+      profileSelect.value = storedProfile;
+    }
+  }
+
+  function wireTestingControls() {
+    var profileSelect = document.getElementById("testing-profile-select");
+    profileSelect.addEventListener("change", function () {
+      selectedTesterProfile = profileSelect.value;
+      try {
+        localStorage.setItem(testerProfileStorageKey, selectedTesterProfile);
+      } catch (storageError) {
+        // Persistence is best-effort.
+      }
+      renderTestingView();
+    });
+
+    var addToggleButton = document.getElementById("testing-profile-add-toggle");
+    var addForm = document.getElementById("testing-profile-add-form");
+    var addNameInput = document.getElementById("testing-profile-add-name");
+
+    if (!testingLiveApiAvailable) {
+      addToggleButton.disabled = true;
+      addToggleButton.title = "Adding testers needs the live board (do-work board)";
+    }
+
+    addToggleButton.addEventListener("click", function () {
+      addForm.hidden = false;
+      addToggleButton.hidden = true;
+      addNameInput.focus();
+    });
+
+    function closeAddForm() {
+      addForm.hidden = true;
+      addToggleButton.hidden = false;
+      addNameInput.value = "";
+    }
+
+    document.getElementById("testing-profile-add-cancel").addEventListener("click", closeAddForm);
+
+    function submitNewProfile() {
+      var profileName = addNameInput.value.trim();
+      if (profileName === "") {
+        showTestingError("Tester name must not be empty.");
+        return;
+      }
+      fetch("/api/testing/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: profileName })
+      })
+        .then(decodeTestingApiResponse)
+        .then(function (payload) {
+          boardData.testingProfiles = payload.profiles || [];
+          populateTestingProfileSelect();
+          // Select the just-added profile (the server may return the existing
+          // spelling when the name was already known, so match case-insensitively).
+          var matchedProfile = (boardData.testingProfiles || []).filter(function (knownProfile) {
+            return knownProfile.toLowerCase() === profileName.toLowerCase();
+          })[0];
+          if (matchedProfile) {
+            selectedTesterProfile = matchedProfile;
+            profileSelect.value = matchedProfile;
+            try {
+              localStorage.setItem(testerProfileStorageKey, matchedProfile);
+            } catch (storageError) {
+              // Persistence is best-effort.
+            }
+          }
+          closeAddForm();
+          renderTestingView();
+        })
+        .catch(function (postError) {
+          showTestingError("Could not add tester: " + postError.message);
+        });
+    }
+
+    document.getElementById("testing-profile-add-confirm").addEventListener("click", submitNewProfile);
+    addNameInput.addEventListener("keydown", function (keyEvent) {
+      if (keyEvent.key === "Enter") {
+        keyEvent.preventDefault();
+        submitNewProfile();
+      } else if (keyEvent.key === "Escape") {
+        keyEvent.preventDefault();
+        closeAddForm();
+      }
+    });
+  }
+
   // ---- detail panel (docked beside the board, non-modal) -------------------
 
   var detailResizer = document.getElementById("detail-resizer");
@@ -731,6 +1106,21 @@
     }
     if (request.completionTime) {
       appendMetaRow("Completed", formatShortInstant(request.completionTime) + " (" + request.completionTimeSource + ")");
+    }
+    if (request.testingStatus || request.testingStatusUnrecognized) {
+      var testingSummary = request.testingStatusUnrecognized
+        ? (request.originalTestingStatus || "?") + " (invalid — expected in-testing, tested, or returned)"
+        : request.testingStatus;
+      if (request.testedBy) {
+        testingSummary += " — " + request.testedBy;
+      }
+      appendMetaRow("Testing", testingSummary);
+      if (request.testingUpdatedAt) {
+        appendMetaRow("Testing updated", formatShortInstant(request.testingUpdatedAt) || request.testingUpdatedAt);
+      }
+      if (request.testingFeedback) {
+        appendMetaRow("Testing feedback", request.testingFeedback);
+      }
     }
     appendMetaRow("Tree", request.treeSection || "—");
 
@@ -924,20 +1314,31 @@
   }
 
   function applyView() {
-    var boardPanel = document.getElementById("view-board");
-    var calendarPanel = document.getElementById("view-calendar");
-    var showCalendar = viewState.view === "calendar";
+    var viewPanels = {
+      board: document.getElementById("view-board"),
+      calendar: document.getElementById("view-calendar"),
+      testing: document.getElementById("view-testing")
+    };
+    Object.keys(viewPanels).forEach(function (viewName) {
+      var isActiveView = viewState.view === viewName;
+      viewPanels[viewName].classList.toggle("is-active", isActiveView);
+      viewPanels[viewName].hidden = !isActiveView;
+    });
 
-    boardPanel.classList.toggle("is-active", !showCalendar);
-    calendarPanel.classList.toggle("is-active", showCalendar);
-    calendarPanel.hidden = !showCalendar;
-    boardPanel.hidden = showCalendar;
+    // The grouping lens and the recently-done window only shape the board view;
+    // hide their controls elsewhere so the topbar never advertises dead knobs.
+    document.getElementById("lens-group").hidden = viewState.view !== "board";
+    document.getElementById("recent-window-group").hidden = viewState.view !== "board";
 
-    if (showCalendar && !renderedOnce.calendar) {
+    if (viewState.view === "calendar" && !renderedOnce.calendar) {
       renderCalendar();
       renderedOnce.calendar = true;
     }
-    if (!showCalendar) {
+    if (viewState.view === "testing" && !renderedOnce.testing) {
+      renderTestingView();
+      renderedOnce.testing = true;
+    }
+    if (viewState.view === "board") {
       applyLens();
     } else {
       updateUserRequestActivityVisibility();
@@ -1180,7 +1581,9 @@
   // ---- boot ---------------------------------------------------------------
 
   wireControls();
+  wireTestingControls();
   populateFilterSelects();
+  populateTestingProfileSelect();
   renderWarningsBanner();
   renderNotesStrip();
   renderColumns();

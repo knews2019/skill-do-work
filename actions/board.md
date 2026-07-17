@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Builds and runs the shipped `queue-kanban` Go tool to render this repo's `do-work/` queue as a Kanban board + completion calendar. Invoked by `do-work board` / `do-work kanban`.
 
-**Read-only.** The board only *reads* the `do-work/` Markdown tree — it never writes to the queue, claims REQs, or changes state. The one thing it writes is the compiled binary (gitignored) and, in `static` mode, a throwaway HTML artifact under `build/` (kept out of `git status` via a one-line `.git/info/exclude` entry — see Step 5).
+**Read-only toward the work pipeline.** The board never writes the pipeline's state — it never changes `status`, claims REQs, or moves files. It writes exactly three things: the compiled binary (gitignored); in `static` mode, a throwaway HTML artifact under `build/` (kept out of `git status` via a one-line `.git/info/exclude` entry — see Step 5); and, from the **Testing view** in `serve` mode only, the testing-track placeholders — the `testing_status` / `tested_by` / `testing_updated_at` / `testing_feedback` frontmatter fields of a REQ plus the `do-work/testers.md` profile list (see "Testing view" below). Those testing writes are the point: the Markdown files are the database of who tested what, with git as the history — there is deliberately no locking or concurrency control, because every write lands in the working tree where it can be reviewed and committed.
 
 The tool is a standalone Go module that ships inside the skill at `tools/queue-kanban/` (its module, `go.mod`, and embedded `web/` frontend). It rides do-work version bumps, so `do-work update` carries the latest board into every repo. Because it's compiled, this action needs the **Go toolchain** — the one action that does. It degrades gracefully when Go is absent: it reports and stops, never blocking the rest of the skill.
 
@@ -11,6 +11,7 @@ The tool is a standalone Go module that ships inside the skill at `tools/queue-k
 **Use when:**
 - The user says "board", "kanban", "show the queue", "queue board", or "visualize the queue".
 - The user wants a live board of pending/claimed/blocked/recently-done REQs (serve mode rebuilds from disk on every browser reload — refresh the page to see new state; it does not push updates to an open tab).
+- The user wants to track **who tested which finished REQ** — the board's Testing view (serve mode; linked from the Board/Calendar view toggle) lets a tester pick their profile, select a finished REQ to test, and mark it in-testing / tested / returned-with-feedback.
 - The user wants a shareable static HTML snapshot of queue state (`static` mode).
 - The user wants quick column counts without a browser (`summary` mode).
 
@@ -88,6 +89,15 @@ From `<skill-root>/tools/queue-kanban`:
   `.git/info/exclude` is git's local-only ignore list — no tracked file changes, so this stays inside the action's read-only contract for the project. The `check-ignore` guard makes the append idempotent, and the root-anchored pattern is checked from `$REPO_ROOT` so a subdirectory invocation can't mismatch (the CLAUDE.md interior-slash trap). In a non-git project the guard skips silently.
 - **summary** — `./queue-kanban summary --repo-root "$REPO_ROOT"` and relay the printed counts.
 
+### Step 6: Testing view (serve mode, in-browser — nothing more for the agent to run)
+
+The served board's **Testing** view (a third view next to Board / Calendar) tracks who tested which finished REQ. It shows every terminal-success REQ (`completed` / `completed-with-issues` — plus any REQ that already carries a testing record, so records never vanish) in four columns: **Ready to test → In testing → Returned with feedback → Tested**. The user picks (or adds) a tester profile in the view's toolbar, then drives per-card actions; the browser POSTs to the live server's `/api/testing/*` endpoints, which write the record into the Markdown itself:
+
+- REQ frontmatter placeholders: `testing_status: in-testing | tested | returned`, `tested_by`, `testing_updated_at`, and (while returned) `testing_feedback` — see `actions/work-reference.md`'s Request File Schema.
+- Tester profiles: one `- Name` bullet per profile in `do-work/testers.md` (created on first use; hand-editable).
+
+The main Board view shows a `testing` badge on any card carrying a record, so testing state is visible without switching views. In `static` mode the Testing view renders read-only (no server, no actions). There is no locking: changes land in the working tree and git is the audit trail — when the user asks "who tested REQ-NNN?", the frontmatter (or `git log` on the REQ file) answers.
+
 **Standing shortcut:** if the user wants the board runnable without the agent, `do-work install just-kanban` (`actions/install.md`) appends `just run-kanban` / `kanban-static` / `kanban-summary` recipes to the project's justfile — same build-then-run contract as this action. Re-running it on a project whose installed recipes have drifted from the shipped block offers a diff-and-consent upgrade. One difference: `just run-kanban` auto-opens your default browser at the board URL (a user-initiated shortcut, not an agent action); this action's serve mode (Step 5) never does.
 
 ## Output Format
@@ -98,11 +108,11 @@ From `<skill-root>/tools/queue-kanban`:
 
 ## Rules
 
-- Never edit the `do-work/` queue from this action — it is strictly a viewer.
+- Never edit the `do-work/` queue from this action — the agent is strictly a launcher/viewer. The one sanctioned write path is the served Testing view's own `/api/testing/*` endpoints (user-driven, testing placeholders + `do-work/testers.md` only); never write `status` or any other pipeline field, and never hand-edit testing placeholders on the user's behalf from this action.
 - Never commit the compiled `queue-kanban` binary (the tool's nested `.gitignore` already excludes it) or the generated `build/queue-kanban-board/` artifact.
 - Pass `--repo-root` explicitly (resolved via `git rev-parse --show-toplevel 2>/dev/null || pwd`) — the tool's CWD walk-up is the non-git last resort, not the default.
 - Do not vendor or modify the Go source to "make it build" — a build failure is a toolchain/environment issue to report, not a code change.
-- If you change the tool's parser, keep it in lock-step with `actions/work-reference.md`'s Schema Read Contract — the `status` vocabulary drives column bucketing, and `depends_on` drives the Ready/Waiting split *within* the Pending column (never placement into a different column: gating is dynamic, so a waiting REQ stays `pending` on disk). A dependency counts as met only when its target reached `completed` or `completed-with-issues`; `cancelled` never satisfies gating, and a `depends_on` id that names no REQ in the tree is treated as unmet **and** raised as a data warning. `domain` is parsed for display only.
+- If you change the tool's parser, keep it in lock-step with `actions/work-reference.md`'s Schema Read Contract — the `status` vocabulary drives column bucketing, and `depends_on` drives the Ready/Waiting split *within* the Pending column (never placement into a different column: gating is dynamic, so a waiting REQ stays `pending` on disk). A dependency counts as met only when its target reached `completed` or `completed-with-issues`; `cancelled` never satisfies gating, and a `depends_on` id that names no REQ in the tree is treated as unmet **and** raised as a data warning. `domain` is parsed for display only. The testing placeholders (`testing_status` and friends) are the board's own vocabulary — also defined in the Schema Read Contract and mirrored in `tools/queue-kanban/testing.go`; an off-vocabulary `testing_status` renders as not-tested with an invalid flag plus a data warning, never silently.
 - `do-work/notes.md` renders as a collapsible Notes strip above the columns (visible in both the board and calendar views), mirroring how `actions/roadmap.md` surfaces it. Notes are plain text, never Markdown, and never tickets: they get no column, no calendar entry, and no detail drawer. The board only reads the file — `do-work note` is still the only writer, and the user still deletes lines by hand.
 
 ## Common Rationalizations

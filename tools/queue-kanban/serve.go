@@ -56,6 +56,8 @@ func newLiveBoardServer(repoRoot string, recentWindow time.Duration) *liveBoardS
 //	GET /              → board HTML shell (same template as generate's index.html)
 //	GET /board-data.js     → fresh board data as a JS global assignment
 //	GET /board-markdown.js → raw Markdown for Copy, loaded only on demand
+//	POST /api/testing/profile → add a tester profile to do-work/testers.md
+//	POST /api/testing/status  → write one REQ's testing placeholders (testing_api.go)
 //
 // Every other path returns 404. Security headers are set on all responses,
 // mirroring the goserver pattern (REQ-782).
@@ -75,6 +77,10 @@ func (liveServer *liveBoardServer) ServeHTTP(responseWriter http.ResponseWriter,
 		liveServer.serveLiveBoardDataJs(responseWriter, httpRequest)
 	case "/board-markdown.js":
 		liveServer.serveLiveBoardMarkdownJs(responseWriter, httpRequest)
+	case "/api/testing/profile":
+		liveServer.serveTestingProfileApi(responseWriter, httpRequest)
+	case "/api/testing/status":
+		liveServer.serveTestingStatusApi(responseWriter, httpRequest)
 	default:
 		http.NotFound(responseWriter, httpRequest)
 	}
@@ -124,7 +130,13 @@ func (liveServer *liveBoardServer) serveLiveBoardDataJs(responseWriter http.Resp
 		return
 	}
 
-	jsText, encodeErr := encodeBoardDataForJsAssignment(*boardData)
+	// Serve mode is the only mode whose page can reach the /api/testing/*
+	// write endpoints, so flag the payload (a copy — never the cached struct,
+	// which generate-mode snapshots must not inherit the flag from).
+	liveBoardData := *boardData
+	liveBoardData.LiveTestingApi = true
+
+	jsText, encodeErr := encodeBoardDataForJsAssignment(liveBoardData)
 	if encodeErr != nil {
 		log.Printf("queue-kanban serve: encoding board data: %v", encodeErr)
 		http.Error(responseWriter, "Internal error encoding board data", http.StatusInternalServerError)
@@ -226,8 +238,8 @@ func (liveServer *liveBoardServer) refreshBoardMarkdownData() (*generatedBoardMa
 }
 
 // buildTreeMtimeFingerprint stats every file discovered by enumerateDoWorkTree
-// — REQ files, UR input.md files, and notes.md — and returns a map of absPath →
-// mtime. Files that cannot be stat'd are omitted (consistent with the
+// — REQ files, UR input.md files, notes.md, and testers.md — and returns a map
+// of absPath → mtime. Files that cannot be stat'd are omitted (consistent with the
 // best-effort walk contract in walk.go). notes.md must be fingerprinted like
 // any other input: it feeds the rendered board, so appending a note has to
 // invalidate the cache or the live server would keep serving the old strip.
@@ -246,6 +258,13 @@ func buildTreeMtimeFingerprint(discovered discoveredTreeFiles) map[string]time.T
 	if discovered.NotesFilePath != "" {
 		if fileInfo, statErr := os.Stat(discovered.NotesFilePath); statErr == nil {
 			fingerprint[discovered.NotesFilePath] = fileInfo.ModTime()
+		}
+	}
+	// testers.md feeds the testing view's profile picker, so adding a profile
+	// must invalidate the cached board data just like a REQ edit does.
+	if discovered.TestersFilePath != "" {
+		if fileInfo, statErr := os.Stat(discovered.TestersFilePath); statErr == nil {
+			fingerprint[discovered.TestersFilePath] = fileInfo.ModTime()
 		}
 	}
 	return fingerprint
