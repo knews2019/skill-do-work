@@ -103,10 +103,17 @@ status: reserved              # holding state; REQ stays in do-work/queue/ — t
 reserved_for: "cloud-alpha"   # free-text owner label (always YAML-quoted — raw user text)
 reserved_at: 2025-01-26T10:15:00Z   # staleness anchor: older than 24h ⇒ readers flag the reservation as stale and suggest recategorizing
 
-# Set by work action when finished
-completed_at: 2025-01-26T10:45:00Z
+# Set by work action when finished. STAMPING RULE: every flip to a terminal
+# status (completed / completed-with-issues / failed / cancelled) MUST stamp
+# completed_at with a UTC ISO instant, plus commit with the implementation
+# hash in a git repo. These two fields are the ONLY sources the board resolves
+# a terminal REQ's completion instant from (no file-mtime fallback); a
+# terminal REQ missing both — or carrying an unparseable completed_at or a
+# hash git can't resolve — is flagged as a completion anomaly by do-work board
+# (all three modes: serve, static, summary).
+completed_at: 2025-01-26T10:45:00Z   # required on every terminal flip — UTC ISO instant
 status: completed | completed-with-issues | failed
-commit: abc1234               # If git repo
+commit: abc1234               # required in a git repo — implementation commit hash (see work.md's Commit Phase write-back)
 error: "Description"          # Only if failed
 
 # Set by abandon action (do-work abandon — user-directed won't-do decision)

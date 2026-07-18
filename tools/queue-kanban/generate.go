@@ -75,6 +75,10 @@ type generatedColumns struct {
 	Claimed             []string `json:"claimed"`
 	NeedsInputOrBlocked []string `json:"needsInputOrBlocked"`
 	RecentlyDone        []string `json:"recentlyDone"`
+	// Terminal REQs whose completion instant is broken (see RequestTicket
+	// .CompletionAnomaly). Rendered as an always-visible anomaly strip,
+	// independent of the client-side recently-done window.
+	CompletionAnomalies []string `json:"completionAnomalies"`
 }
 
 // generatedRequest is one REQ card's full payload, including its pre-rendered
@@ -103,7 +107,11 @@ type generatedRequest struct {
 	ReservationStale     bool     `json:"reservationStale,omitempty"`
 	CompletionTime       string   `json:"completionTime"`
 	CompletionTimeSource string   `json:"completionTimeSource"`
-	BodyHtml             string   `json:"bodyHtml"`
+
+	CompletionAnomaly       bool   `json:"completionAnomaly,omitempty"`
+	CompletionAnomalyReason string `json:"completionAnomalyReason,omitempty"`
+
+	BodyHtml string `json:"bodyHtml"`
 
 	TestingStatus             string `json:"testingStatus,omitempty"`
 	OriginalTestingStatus     string `json:"originalTestingStatus,omitempty"`
@@ -214,6 +222,7 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			Claimed:             requestIdsOf(board.Columns.Claimed),
 			NeedsInputOrBlocked: requestIdsOf(board.Columns.NeedsInputOrBlocked),
 			RecentlyDone:        requestIdsOf(board.Columns.RecentlyDone),
+			CompletionAnomalies: requestIdsOf(board.Columns.CompletionAnomalies),
 		},
 	}
 
@@ -247,7 +256,11 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			ReservationStale:     ticket.ReservationStale,
 			CompletionTime:       formatTimestamp(ticket.CompletionTime),
 			CompletionTimeSource: string(ticket.CompletionTimeSource),
-			BodyHtml:             bodyHtml,
+
+			CompletionAnomaly:       ticket.CompletionAnomaly,
+			CompletionAnomalyReason: ticket.CompletionAnomalyReason,
+
+			BodyHtml: bodyHtml,
 
 			TestingStatus:             ticket.TestingStatus,
 			OriginalTestingStatus:     ticket.OriginalTestingStatus,

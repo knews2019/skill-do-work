@@ -90,22 +90,24 @@ func TestStatusClassifiers(t *testing.T) {
 
 func TestResolveCommitHashVariants(t *testing.T) {
 	testCases := []struct {
-		name   string
-		fields map[string]any
-		want   string
+		name      string
+		fields    map[string]any
+		want      string
+		wantField string
 	}{
-		{"canonical commit", map[string]any{"commit": "abc123"}, "abc123"},
-		{"commit_hash variant", map[string]any{"commit_hash": "def456"}, "def456"},
-		{"green_commit variant", map[string]any{"green_commit": "aaa111"}, "aaa111"},
-		{"commit_green variant", map[string]any{"commit_green": "bbb222"}, "bbb222"},
-		{"impl_commit variant", map[string]any{"impl_commit": "ccc333"}, "ccc333"},
-		{"canonical wins over variant", map[string]any{"commit": "primary", "commit_hash": "secondary"}, "primary"},
-		{"none present", map[string]any{}, ""},
+		{"canonical commit", map[string]any{"commit": "abc123"}, "abc123", "commit"},
+		{"commit_hash variant", map[string]any{"commit_hash": "def456"}, "def456", "commit_hash"},
+		{"green_commit variant", map[string]any{"green_commit": "aaa111"}, "aaa111", "green_commit"},
+		{"commit_green variant", map[string]any{"commit_green": "bbb222"}, "bbb222", "commit_green"},
+		{"impl_commit variant", map[string]any{"impl_commit": "ccc333"}, "ccc333", "impl_commit"},
+		{"canonical wins over variant", map[string]any{"commit": "primary", "commit_hash": "secondary"}, "primary", "commit"},
+		{"none present", map[string]any{}, "", ""},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			if got := resolveCommitHash(testCase.fields); got != testCase.want {
-				t.Fatalf("resolveCommitHash = %q, want %q", got, testCase.want)
+			got, gotField := resolveCommitHash(testCase.fields)
+			if got != testCase.want || gotField != testCase.wantField {
+				t.Fatalf("resolveCommitHash = (%q, %q), want (%q, %q)", got, gotField, testCase.want, testCase.wantField)
 			}
 		})
 	}

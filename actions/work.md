@@ -469,7 +469,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **On success:**
 
-1. Update frontmatter: if the current status is already `completed-with-issues` (set by Step 7 after a failed remediation), preserve `completed-with-issues` and ensure `completed_at: <timestamp>` is present. Otherwise set `status: completed`, `completed_at: <timestamp>`.
+1. Update frontmatter: if the current status is already `completed-with-issues` (set by Step 7 after a failed remediation), preserve `completed-with-issues` and ensure `completed_at: <timestamp>` is present. Otherwise set `status: completed`, `completed_at: <timestamp>`. **`completed_at` (UTC ISO instant) is mandatory on every terminal flip — never skip the stamp.** It and the `commit:` hash (written back in the Commit Phase) are the only sources the board resolves a completion instant from; a terminal REQ with neither surfaces as a completion anomaly on `do-work board` (see `actions/work-reference.md`'s Full Frontmatter stamping rule).
 2. Verify `## Implementation Summary` is present (written in Step 6.25). If missing, append it now — this should not happen in normal flow, but crash recovery may skip it.
 3. **Create follow-ups for builder-decided questions:** If the REQ has any `- [~]` items in Open Questions where the builder's choice affects what the user sees or interacts with, create a follow-up REQ for each. **Create follow-ups for:** UX decisions (interaction behavior, visibility, layout), scope boundaries (what's included/excluded), data representation choices. **Skip follow-ups for:** purely technical decisions (caching strategy, algorithm choice, internal naming, DB indexes) that don't change user-facing behavior.
 
@@ -503,7 +503,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **On failure:**
 
-Classify the failure and queue the right follow-up per `actions/work-reference.md` → **Failure Classification (Step 8)**. Run the **upstream-failure short-circuit first** (if any `addendum_to`/`depends_on` ancestor is `failed`, short-circuit to `error_type: spec` with an upstream-cascade error), then fall through to the Intent/Spec/Code/Environment symptom table. Set `status: failed`, `error`, `error_type`; create the follow-up (Intent/Spec/Code) with `addendum_to` chained and the original dependency list preserved; move to `archive/` root.
+Classify the failure and queue the right follow-up per `actions/work-reference.md` → **Failure Classification (Step 8)**. Run the **upstream-failure short-circuit first** (if any `addendum_to`/`depends_on` ancestor is `failed`, short-circuit to `error_type: spec` with an upstream-cascade error), then fall through to the Intent/Spec/Code/Environment symptom table. Set `status: failed`, `completed_at: <timestamp>` (mandatory on every terminal flip, same stamping rule as success), `error`, `error_type`; create the follow-up (Intent/Spec/Code) with `addendum_to` chained and the original dependency list preserved; move to `archive/` root.
 
 ### Step 9: Commit Phase (Git repos only)
 

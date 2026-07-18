@@ -302,6 +302,17 @@
       unblocksBadge.title = "Unblocks " + unblockedRequestIds.join(", ") + " when this lands";
       badges.appendChild(unblocksBadge);
     }
+    if (request.completionAnomaly) {
+      // Broken completion bookkeeping (flagged by the Go side) — mark the card
+      // wherever it renders, not just inside the anomalies strip.
+      card.classList.add("is-completion-anomaly");
+      var anomalyBadge = makeBadge("badge-completion-anomaly", null, "anomaly");
+      anomalyBadge.title =
+        "Completion anomaly: " +
+        (request.completionAnomalyReason || "completion instant unresolved") +
+        " — fix: add completed_at: <ISO instant> and/or a valid commit hash field to the REQ frontmatter.";
+      badges.appendChild(anomalyBadge);
+    }
     if (request.testingStatus) {
       // The testing track (see the Testing view) surfaces on the main board too,
       // so a finished card's tested/returned state is visible without switching.
@@ -469,6 +480,37 @@
     banner.appendChild(list);
     var main = document.getElementById("board-main");
     main.insertBefore(banner, main.firstChild);
+  }
+
+  // ---- completion anomalies strip -----------------------------------------
+  // Terminal REQs whose completion bookkeeping is broken (columns
+  // .completionAnomalies, flagged by detectCompletionAnomaly in model.go).
+  // They carry no honest completion instant, so they are listed here as data
+  // bugs to fix — never sorted into Recently done as if completed "now",
+  // never aged out by the 24h/48h/7d window, and visible from every view.
+  // Deliberately exempt from the shared filters: an anomaly must not be
+  // hideable by a filter combination.
+
+  function renderAnomaliesStrip() {
+    var anomalyIds = (boardData.columns || {}).completionAnomalies || [];
+    var strip = document.getElementById("board-anomalies");
+    if (anomalyIds.length === 0) {
+      strip.hidden = true;
+      return;
+    }
+    strip.hidden = false;
+    document.getElementById("board-anomalies-count").textContent = String(anomalyIds.length);
+    var cardsHost = document.getElementById("board-anomalies-cards");
+    cardsHost.textContent = "";
+    anomalyIds.forEach(function (requestId) {
+      var entry = createElement("div", "board-anomaly-entry");
+      entry.appendChild(makeRequestCard(requestId));
+      var request = requestsById[requestId];
+      if (request && request.completionAnomalyReason) {
+        entry.appendChild(createElement("p", "board-anomaly-reason", request.completionAnomalyReason));
+      }
+      cardsHost.appendChild(entry);
+    });
   }
 
   // ---- notes strip (do-work/notes.md) -------------------------------------
@@ -1169,6 +1211,19 @@
     if (request.completionTime) {
       appendMetaRow("Completed", formatShortInstant(request.completionTime) + " (" + request.completionTimeSource + ")");
     }
+    if (request.completionAnomaly) {
+      var anomalyValue = createElement("span", "detail-status-invalid");
+      anomalyValue.appendChild(
+        document.createTextNode(request.completionAnomalyReason || "completion instant unresolved")
+      );
+      anomalyValue.appendChild(createElement("span", "status-invalid-flag", "anomaly"));
+      appendMetaRow("Completion anomaly", anomalyValue);
+      appendMetaRow(
+        "Fix",
+        "Add completed_at: <ISO instant> (e.g. 2026-07-18T12:00:00Z) and/or a commit: field holding the " +
+          "implementation commit hash to this REQ's frontmatter."
+      );
+    }
     if (request.testingStatus || request.testingStatusUnrecognized) {
       var testingSummary = request.testingStatusUnrecognized
         ? (request.originalTestingStatus || "?") + " (invalid — expected in-testing, tested, or returned)"
@@ -1657,6 +1712,7 @@
   populateFilterSelects();
   populateTestingProfileSelect();
   renderWarningsBanner();
+  renderAnomaliesStrip();
   renderNotesStrip();
   renderColumns();
   applyView();

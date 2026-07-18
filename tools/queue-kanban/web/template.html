@@ -103,6 +103,24 @@
         <ul class="board-notes-list" id="board-notes-list"></ul>
       </details>
 
+      <!-- Completion anomalies — terminal REQs whose completion instant cannot
+           be resolved (no/unparseable completed_at, no resolvable commit
+           hash). These are bookkeeping bugs to fix, not recent completions:
+           the strip sits outside the view panels so it stays visible in every
+           view, ignores the recently-done window and the filters, and is
+           hidden only when there are none. Filled by board.js. -->
+      <section class="board-anomalies" id="board-anomalies" aria-label="Completion anomalies" hidden>
+        <header class="board-anomalies-head">
+          <strong class="board-anomalies-title">Completion anomalies</strong>
+          <span class="board-anomalies-count" id="board-anomalies-count">0</span>
+          <span class="board-anomalies-hint">
+            terminal REQs with no resolvable completion instant — fix each by adding
+            <code>completed_at: &lt;ISO instant&gt;</code> and/or a valid commit hash field
+          </span>
+        </header>
+        <div class="board-anomalies-cards" id="board-anomalies-cards"></div>
+      </section>
+
       <!-- Flat Kanban columns -->
       <section id="view-board" class="view-panel is-active" aria-label="Kanban board">
         <div class="kanban-columns" id="kanban-columns">

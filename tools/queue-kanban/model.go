@@ -68,9 +68,10 @@ type RequestTicket struct {
 	// recategorize hint. Never read from frontmatter.
 	ReservationStale bool
 
-	CommitHash    string // resolved from commit / commit_hash / green_commit / commit_green / impl_commit
-	UserRequestId string // "UR-NNN" upward pointer (the reliable REQ→UR link), "" when absent
-	Domain        string
+	CommitHash      string // resolved from commit / commit_hash / green_commit / commit_green / impl_commit
+	CommitHashField string // the frontmatter key CommitHash came from, "" when absent
+	UserRequestId   string // "UR-NNN" upward pointer (the reliable REQ→UR link), "" when absent
+	Domain          string
 
 	// Testing-track placeholders written by the board's testing view (see
 	// testing.go). Orthogonal to Status: the work pipeline never reads them and
@@ -104,6 +105,15 @@ type RequestTicket struct {
 
 	CompletionTime       time.Time            // resolved completion instant (zero when unresolved)
 	CompletionTimeSource CompletionTimeSource // how CompletionTime was resolved
+
+	// Set by buildBoard (via detectCompletionAnomaly) for terminal-resolved
+	// tickets whose completion bookkeeping is broken: no completion instant at
+	// all, a completed_at that fails parseTimestamp, or a consulted commit-hash
+	// field git cannot resolve. Anomalous tickets surface in the dedicated
+	// CompletionAnomalies column — never sorted or counted as if completed
+	// "now" (no fabricated instant), and never silently dropped.
+	CompletionAnomaly       bool
+	CompletionAnomalyReason string // names the broken field(s); "" when no anomaly
 }
 
 // UserRequestTicket is one parsed UR input.md plus the REQ ids grouped under it.
@@ -166,6 +176,13 @@ type BoardColumns struct {
 	Claimed             []*RequestTicket // status claimed
 	NeedsInputOrBlocked []*RequestTicket // pending-answers / blocked-* / failed
 	RecentlyDone        []*RequestTicket // completed*/cancelled whose completion instant is within the window
+
+	// Terminal-resolved tickets flagged CompletionAnomaly. Surfaced in EVERY
+	// mode regardless of the recent window and no matter how old — the missing
+	// completed_at is a bookkeeping bug the user wants to see and fix. A
+	// ticket dated via git despite a broken field appears here AND (window
+	// permitting) in RecentlyDone.
+	CompletionAnomalies []*RequestTicket
 }
 
 // Board is the complete parsed model of the do-work queue: every ticket, the
@@ -244,6 +261,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 			completionTime, completionSource := resolveCompletionTime(ticket, repoRoot, gitLookup)
 			ticket.CompletionTime = completionTime
 			ticket.CompletionTimeSource = completionSource
+			ticket.CompletionAnomaly, ticket.CompletionAnomalyReason = detectCompletionAnomaly(ticket)
 		} else {
 			ticket.CompletionTimeSource = CompletionUnresolved
 		}
@@ -483,6 +501,7 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		requestId = deriveRequestIdFromFilename(filePath)
 	}
 	originalStatus := coerceScalarToString(fields["status"])
+	commitHashValue, commitHashField := resolveCommitHash(fields)
 	originalTestingStatus := coerceScalarToString(fields["testing_status"])
 	normalizedTestingStatus := normalizeTestingStatus(originalTestingStatus)
 	testingStatusUnrecognized := false
@@ -503,7 +522,8 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		CompletedAt:               coerceScalarToString(fields["completed_at"]),
 		ReservedFor:               coerceScalarToString(fields["reserved_for"]),
 		ReservedAt:                coerceScalarToString(fields["reserved_at"]),
-		CommitHash:                resolveCommitHash(fields),
+		CommitHash:                commitHashValue,
+		CommitHashField:           commitHashField,
 		UserRequestId:             coerceScalarToString(fields["user_request"]),
 		Domain:                    coerceScalarToString(fields["domain"]),
 		TestingStatus:             normalizedTestingStatus,
@@ -635,14 +655,15 @@ func isNeedsInputOrBlockedStatus(normalizedStatus string) bool {
 }
 
 // resolveCommitHash returns the first non-empty commit hash among the canonical
-// field and its accepted variants, in priority order.
-func resolveCommitHash(fields map[string]any) string {
+// field and its accepted variants, in priority order, plus the frontmatter key
+// it came from (so an anomaly report can name the exact broken field).
+func resolveCommitHash(fields map[string]any) (string, string) {
 	for _, key := range []string{"commit", "commit_hash", "green_commit", "commit_green", "impl_commit"} {
 		if value := coerceScalarToString(fields[key]); value != "" {
-			return value
+			return value, key
 		}
 	}
-	return ""
+	return "", ""
 }
 
 // resolveDependsOn returns the canonical dependency list: depends_on when
@@ -674,6 +695,47 @@ func resolveCompletionTime(ticket *RequestTicket, repoRoot string, gitLookup git
 		}
 	}
 	return time.Time{}, CompletionUnresolved
+}
+
+// detectCompletionAnomaly inspects a terminal-resolved ticket AFTER its
+// completion instant was resolved and reports whether its completion
+// bookkeeping is broken, with a reason naming the broken field(s):
+//
+//   - a completed_at value that exists but fails parseTimestamp — flagged even
+//     when a commit hash rescued the date, because the field is still wrong on
+//     disk;
+//   - a commit-hash field that was consulted (completed_at absent or
+//     unparseable) but that git could not resolve;
+//   - neither field present at all — a done-flip that forgot to stamp.
+//
+// A ticket whose completed_at parsed is never anomalous: the commit hash is not
+// consulted on that path, so it is not re-validated here — doing so would cost
+// one git subprocess per archived ticket for no board-behavior change.
+func detectCompletionAnomaly(ticket *RequestTicket) (bool, string) {
+	if !isTerminalResolvedStatus(ticket.Status) || ticket.CompletionTimeSource == CompletionFromFrontmatter {
+		return false, ""
+	}
+	var brokenFieldReasons []string
+	if ticket.CompletedAt != "" {
+		// Non-empty but the source is not frontmatter ⇒ parseTimestamp rejected it.
+		brokenFieldReasons = append(brokenFieldReasons, fmt.Sprintf(
+			"completed_at %q does not parse as a timestamp", ticket.CompletedAt))
+	}
+	if ticket.CommitHash != "" && ticket.CompletionTimeSource != CompletionFromGitLog {
+		commitFieldName := ticket.CommitHashField
+		if commitFieldName == "" {
+			commitFieldName = "commit"
+		}
+		brokenFieldReasons = append(brokenFieldReasons, fmt.Sprintf(
+			"%s %q cannot be resolved by git", commitFieldName, ticket.CommitHash))
+	}
+	if len(brokenFieldReasons) > 0 {
+		return true, strings.Join(brokenFieldReasons, "; ")
+	}
+	if ticket.CompletionTimeSource == CompletionUnresolved {
+		return true, "terminal status but no completed_at and no resolvable commit hash"
+	}
+	return false, "" // dated via git with no broken sibling field
 }
 
 // lookupGitCommitDate resolves a commit hash to its committer date via
@@ -754,7 +816,11 @@ func parseTimestamp(text string) (time.Time, bool) {
 // resolutions are left for the calendar. A status outside the known vocabulary
 // is never silently dropped (Schema Read Contract, actions/work-reference.md):
 // the ticket lands in Needs-input/Blocked so it stays visible, plus a warning
-// naming the unrecognized status.
+// naming the unrecognized status. Completion anomalies get the same
+// never-silent guarantee: a terminal ticket flagged CompletionAnomaly enters
+// the always-visible CompletionAnomalies column (window-independent — an
+// unresolved completion would otherwise vanish from the board entirely) plus a
+// warning carrying the reason and the concrete fix.
 func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Duration) (BoardColumns, []string) {
 	var columns BoardColumns
 	var statusWarnings []string
@@ -781,6 +847,12 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 		case isNeedsInputOrBlockedStatus(ticket.Status):
 			columns.NeedsInputOrBlocked = append(columns.NeedsInputOrBlocked, ticket)
 		case isTerminalResolvedStatus(ticket.Status):
+			if ticket.CompletionAnomaly {
+				columns.CompletionAnomalies = append(columns.CompletionAnomalies, ticket)
+				statusWarnings = append(statusWarnings, fmt.Sprintf(
+					"%s (status %s) has a completion anomaly: %s — shown under Completion anomalies; fix: stamp completed_at: with a UTC ISO instant and/or a commit: field with a valid implementation commit hash in its frontmatter",
+					ticket.RequestId, ticket.Status, ticket.CompletionAnomalyReason))
+			}
 			if isWithinRecentWindow(ticket.CompletionTime, now, recentWindow) {
 				columns.RecentlyDone = append(columns.RecentlyDone, ticket)
 			}

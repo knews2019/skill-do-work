@@ -104,7 +104,7 @@ The main Board view shows a `testing` badge on any card carrying a record, so te
 
 - **serve:** the live URL + how to stop it.
 - **static:** the path to `index.html` and a one-line column-count recap.
-- **summary:** the tool's column-count block (total REQs, pending — split into ready-to-work and waiting-on-deps — claimed, needs-input/blocked, recently-done, calendar entries, dependency edges).
+- **summary:** the tool's column-count block (total REQs, pending — split into ready-to-work and waiting-on-deps — claimed, needs-input/blocked, recently-done, completion anomalies — with the offending REQ ids listed when nonzero — calendar entries, dependency edges).
 
 ## Rules
 

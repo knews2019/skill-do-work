@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"time"
 )
@@ -65,22 +66,32 @@ func runSummaryCommand(args []string) {
 	_ = flagSet.Parse(args)
 
 	board := loadBoardOrExit(*repoRootOverride, *recentWindow)
+	writeBoardSummary(os.Stdout, board)
+}
 
-	fmt.Printf("queue-kanban board summary\n")
-	fmt.Printf("  total REQ tickets   : %d\n", len(board.AllRequests))
-	fmt.Printf("  user requests       : %d\n", len(board.UserRequests))
-	fmt.Printf("  pending             : %d\n", len(board.Columns.Pending))
-	fmt.Printf("    ready to work     : %d\n", len(board.Columns.PendingReady))
-	fmt.Printf("    waiting on deps   : %d\n", len(board.Columns.PendingWaiting))
-	fmt.Printf("  claimed             : %d\n", len(board.Columns.Claimed))
-	fmt.Printf("  needs-input/blocked : %d\n", len(board.Columns.NeedsInputOrBlocked))
-	fmt.Printf("  recently-done       : %d\n", len(board.Columns.RecentlyDone))
-	fmt.Printf("  calendar entries    : %d\n", len(board.Calendar))
-	fmt.Printf("  dependency edges    : %d\n", len(board.DependencyGraph.Edges))
+// writeBoardSummary renders the summary block. Split from runSummaryCommand so
+// tests can assert the headless output — the summary is the one mode with no
+// browser, so it must expose completion anomalies on its own.
+func writeBoardSummary(outputWriter io.Writer, board *Board) {
+	fmt.Fprintf(outputWriter, "queue-kanban board summary\n")
+	fmt.Fprintf(outputWriter, "  total REQ tickets   : %d\n", len(board.AllRequests))
+	fmt.Fprintf(outputWriter, "  user requests       : %d\n", len(board.UserRequests))
+	fmt.Fprintf(outputWriter, "  pending             : %d\n", len(board.Columns.Pending))
+	fmt.Fprintf(outputWriter, "    ready to work     : %d\n", len(board.Columns.PendingReady))
+	fmt.Fprintf(outputWriter, "    waiting on deps   : %d\n", len(board.Columns.PendingWaiting))
+	fmt.Fprintf(outputWriter, "  claimed             : %d\n", len(board.Columns.Claimed))
+	fmt.Fprintf(outputWriter, "  needs-input/blocked : %d\n", len(board.Columns.NeedsInputOrBlocked))
+	fmt.Fprintf(outputWriter, "  recently-done       : %d\n", len(board.Columns.RecentlyDone))
+	fmt.Fprintf(outputWriter, "  completion anomalies : %d\n", len(board.Columns.CompletionAnomalies))
+	for _, anomalousTicket := range board.Columns.CompletionAnomalies {
+		fmt.Fprintf(outputWriter, "    ! %s — %s\n", anomalousTicket.RequestId, anomalousTicket.CompletionAnomalyReason)
+	}
+	fmt.Fprintf(outputWriter, "  calendar entries    : %d\n", len(board.Calendar))
+	fmt.Fprintf(outputWriter, "  dependency edges    : %d\n", len(board.DependencyGraph.Edges))
 	if len(board.Warnings) > 0 {
-		fmt.Printf("  warnings            : %d\n", len(board.Warnings))
+		fmt.Fprintf(outputWriter, "  warnings            : %d\n", len(board.Warnings))
 		for _, warningText := range board.Warnings {
-			fmt.Printf("    ! %s\n", warningText)
+			fmt.Fprintf(outputWriter, "    ! %s\n", warningText)
 		}
 	}
 }

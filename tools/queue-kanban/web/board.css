@@ -454,6 +454,54 @@ body.is-resizing-detail {
   }
 }
 
+/* Completion anomalies strip — terminal REQs whose completion instant cannot
+   be resolved. Loud on purpose (same alarm palette as the warnings banner):
+   these are bookkeeping bugs to fix, so the strip stays visible in every view
+   and never hides behind the recent-window toggle or a filter. */
+.board-anomalies {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--accent-blocked);
+  border-radius: var(--radius-card);
+  background-color: var(--tint-blocked);
+  color: var(--ink-base);
+}
+.board-anomalies-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.board-anomalies-title {
+  color: var(--accent-blocked);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.board-anomalies-count {
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--surface-3);
+  color: var(--ink-base);
+  font-variant-numeric: tabular-nums;
+}
+.board-anomalies-hint {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+.board-anomalies-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.board-anomaly-reason {
+  margin: 6px 0 0;
+  color: var(--accent-blocked);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
 .view-panel {
   display: none;
 }
@@ -774,6 +822,19 @@ body.is-resizing-detail {
   background-color: var(--tint-done);
   border-color: rgba(102, 181, 133, 0.28);
   font-variant-numeric: tabular-nums;
+}
+/* Completion anomaly — broken completion bookkeeping (see the strip styles
+   above). Marks the card wherever it renders, not just inside the strip. */
+.badge-completion-anomaly {
+  color: var(--accent-blocked);
+  background-color: var(--tint-blocked);
+  border-color: var(--accent-blocked);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.req-card.is-completion-anomaly {
+  border-color: var(--accent-blocked);
 }
 
 .req-card-deps {
