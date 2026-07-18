@@ -142,6 +142,10 @@ The work loop processes one request at a time. If a request fails, it's marked a
 
 Yes. They're plain markdown with frontmatter. You can change priority, edit requirements, or add context before running the queue. The UR folder's `input.md` preserves your original verbatim input regardless of what you change in the REQ files.
 
+### Do I need to remind it to write lessons, keep working, commit often, or not block when I'm AFK?
+
+Mostly no — those are already built in. `do-work run` appends a `## Lessons Learned` section per REQ, logs out-of-scope finds to `## Discovered Tasks`, commits each finished REQ atomically, loads the YAGNI guardrail on every build, and never blocks on ambiguity (it records a best-judgment decision and files a `pending-answers` follow-up you review later via `do-work clarify`). The two things you *can't* get just by asking — an unbounded "loop until the queue is empty" runner and a backgrounded commit — are deliberately not the default. See the [Standing Preferences](docs/standing-preferences.md) reference for the full map of common nudges → where each already lives.
+
 ## Token efficiency
 
 The skill is designed for selective loading — you don't need everything in context at once.
