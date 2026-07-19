@@ -87,8 +87,14 @@ type RequestTicket struct {
 	TestingFeedback           string // feedback text (present while testing_status is returned)
 
 	DependsOn []string // canonical dependency REQ ids (depends_on wins over legacy dependencies)
-	BlockedBy []string // legacy blocked_by ids, kept distinct from DependsOn
-	Related   []string // soft relations (not dependency edges)
+	// blocked_by names the external condition a `status: blocked` REQ waits on
+	// (e.g. "LM Studio running locally"). Free text is the modern shape and
+	// parses as a one-element list; a legacy id-LIST value renders joined for
+	// display only — it is NOT a dependency edge (dependency gating is DependsOn).
+	BlockedBy    []string // external-condition text (or legacy ids), kept distinct from DependsOn
+	BlockedAt    string   // raw frontmatter timestamp text for the blocked flip, "" when absent
+	BlockedCheck string   // optional shell probe command (display only; the pipeline, not the board, runs it), "" when absent
+	Related      []string // soft relations (not dependency edges)
 
 	// Derived by annotateDependencyState after every ticket is parsed — never
 	// read from frontmatter.
@@ -174,7 +180,7 @@ type BoardColumns struct {
 	PendingReady        []*RequestTicket // pending with every depends_on target at terminal success — actionable now
 	PendingWaiting      []*RequestTicket // pending with at least one unmet dependency — not yet actionable
 	Claimed             []*RequestTicket // status claimed
-	NeedsInputOrBlocked []*RequestTicket // pending-answers / blocked-* / failed
+	NeedsInputOrBlocked []*RequestTicket // pending-answers / blocked / blocked-* / failed
 	RecentlyDone        []*RequestTicket // completed*/cancelled whose completion instant is within the window
 
 	// Terminal-resolved tickets flagged CompletionAnomaly. Surfaced in EVERY
@@ -534,6 +540,8 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		TestingFeedback:           coerceScalarToString(fields["testing_feedback"]),
 		DependsOn:                 resolveDependsOn(fields),
 		BlockedBy:                 coerceToStringList(fields["blocked_by"]),
+		BlockedAt:                 coerceScalarToString(fields["blocked_at"]),
+		BlockedCheck:              coerceScalarToString(fields["blocked_check"]),
 		Related:                   coerceToStringList(fields["related"]),
 		Route:                     coerceScalarToString(fields["route"]),
 		Batch:                     coerceScalarToString(fields["batch"]),
@@ -645,6 +653,7 @@ func isTerminalResolvedStatus(normalizedStatus string) bool {
 func isNeedsInputOrBlockedStatus(normalizedStatus string) bool {
 	switch normalizedStatus {
 	case "pending-answers",
+		"blocked",
 		"blocked-archive-collision",
 		"blocked-dependency-cycle",
 		"failed":

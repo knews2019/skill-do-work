@@ -338,6 +338,7 @@ Developer-facing. Read in a terminal with `cat`, grepped, or pasted into a PR de
 - [Deferred item] — capture with `do-work capture-request: ...`
 - [TODO/FIXME introduced and left for a follow-up]
 - [`pending-answers` REQs awaiting user input — run `do-work clarify`]
+- [`blocked` REQs waiting on an external condition — re-run `do-work run` (auto-probes any `blocked_check`) once it's met, or `do-work clarify` to confirm a human-checkable one]
 
 ## Deliverables
 

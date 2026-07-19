@@ -11,7 +11,7 @@ Read-only queue survey — what's done, what's in progress, what's pending, and 
 | **Notes** | Lightweight next-step hints from `do-work note` (`do-work/notes.md`), verbatim in append order — rendered only when notes exist |
 | **Ready to Pick Up** | Queue REQs with clear scope, no `pending-answers`, no unresolved blockers |
 | **Needs Clarification** | `status: pending-answers` or open questions in the body |
-| **Blocked** | Depends on a REQ still pending/in-progress, or external dependency |
+| **Blocked** | Depends on a REQ still pending/in-progress, or `status: blocked` waiting on an external condition (named in `blocked_by`) |
 | **Stale** | Created >30 days ago and never claimed — re-confirm before working |
 | **TDD Eligible** | `tdd: false` but the behavior is testable (Red-Green Proof, I/O example, backend domain) |
 | **In Progress** | REQs in `working/` — id, route, claimed-for, current phase, TDD posture |

@@ -36,7 +36,7 @@ For each REQ ID, glob `do-work/queue/REQ-NNN-*.md`, `do-work/queue/REQ-NNN.md`, 
 - **Status `failed`** → report that it's already terminal; `do-work cleanup` will archive it. Cancelling would erase the failure signal.
 - **Status `claimed`** → warn that a work loop may be mid-flight on it (one orchestrator per queue) and require an explicit extra confirmation before proceeding.
 - **Status `reserved`** → warn that it's allocated to another worktree/cloud session (`reserved_for` names it) and require an explicit extra confirmation — that session may be mid-build on it.
-- **Any other status** (`pending`, `pending-answers`, `blocked-*`, or unrecognized) → cancellable; continue.
+- **Any other status** (`pending`, `pending-answers`, `blocked`, `blocked-*`, or unrecognized) → cancellable; continue.
 
 ### Step 2: Confirm the Decision
 

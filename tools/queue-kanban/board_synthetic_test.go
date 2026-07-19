@@ -46,6 +46,8 @@ func createSyntheticDoWorkTree(t *testing.T) string {
 
 	writeFixture(filepath.Join("do-work", "queue", "REQ-9001-pending.md"), requestContent("REQ-9001", "pending", ""))
 	writeFixture(filepath.Join("do-work", "working", "REQ-9002-claimed.md"), requestContent("REQ-9002", "claimed", ""))
+	writeFixture(filepath.Join("do-work", "queue", "REQ-9006-blocked.md"),
+		requestContent("REQ-9006", "blocked", "blocked_by: \"LM Studio running locally\"\nblocked_at: 2026-06-28T10:00:00Z\nblocked_check: \"curl -sf http://localhost:1234/v1/models\"\n"))
 
 	writeFixture(filepath.Join("do-work", "archive", "UR-100", "input.md"), userRequestContent("UR-100"))
 	writeFixture(filepath.Join("do-work", "archive", "UR-100", "REQ-9003-flat.md"),
@@ -142,6 +144,16 @@ func TestSyntheticColumnBucketing(t *testing.T) {
 	if !columnContainsRequestId(board.Columns.Claimed, "REQ-9002") {
 		t.Fatalf("REQ-9002 (claimed) missing from the Claimed column")
 	}
+	if !columnContainsRequestId(board.Columns.NeedsInputOrBlocked, "REQ-9006") {
+		t.Fatalf("REQ-9006 (blocked on external condition) missing from the Needs-input/Blocked column")
+	}
+	blockedTicket := board.RequestsById["REQ-9006"]
+	if blockedTicket == nil || blockedTicket.StatusUnrecognized {
+		t.Fatalf("REQ-9006 (blocked) must be a recognized status, never flagged unrecognized — got %+v", blockedTicket)
+	}
+	if blockedTicket != nil && (len(blockedTicket.BlockedBy) != 1 || blockedTicket.BlockedCheck == "") {
+		t.Fatalf("REQ-9006 blocked fields not parsed: BlockedBy=%v BlockedCheck=%q", blockedTicket.BlockedBy, blockedTicket.BlockedCheck)
+	}
 	if !columnContainsRequestId(board.Columns.RecentlyDone, "REQ-9005") {
 		t.Fatalf("REQ-9005 (cancelled, completed_at inside the window) missing from the Recently-done column")
 	}
@@ -230,8 +242,8 @@ func TestSyntheticUnrecognizedStatusFlagged(t *testing.T) {
 
 func TestSyntheticCountsAndCalendar(t *testing.T) {
 	board := syntheticBoard(t)
-	if got := len(board.AllRequests); got != 5 {
-		t.Fatalf("AllRequests = %d, want 5", got)
+	if got := len(board.AllRequests); got != 6 {
+		t.Fatalf("AllRequests = %d, want 6", got)
 	}
 	archivedCompleted := 0
 	archivedResolved := 0

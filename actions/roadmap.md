@@ -65,7 +65,7 @@ For each REQ in `do-work/queue/`, assign a feasibility bucket using only what's 
 
 - **Ready** — has a clear `## What`, no `pending-answers` status, no unresolved `addendum_to` chain (also recognizes the `amends`/`parent`/`amendment_to` aliases when `addendum_to` is absent, per the Schema Read Contract in `actions/work-reference.md`), no unmet `depends_on` references (every ID in `depends_on` — or in the legacy `dependencies:` alias if `depends_on` is absent, same back-compat rule as actions/work.md's dependency-aware selection — resolves to a REQ with `status: completed` or `completed-with-issues`).
 - **Needs clarification** — `status: pending-answers`, OR the request body contains explicit open questions, OR scope is too vague to triage (one-line title with no `## What` body).
-- **Blocked** — references a REQ in `addendum_to` (or its `amends`/`parent`/`amendment_to` aliases) or `depends_on` (or its `dependencies:` alias) that is still pending or in-progress; OR has `status: blocked-dependency-cycle` (a cycle in its dependency graph, set by actions/work.md's dependency-aware selection); OR names an external dependency in prose (waiting on an API, a decision, a third-party).
+- **Blocked** — references a REQ in `addendum_to` (or its `amends`/`parent`/`amendment_to` aliases) or `depends_on` (or its `dependencies:` alias) that is still pending or in-progress; OR has `status: blocked` (waiting on an external condition, with the condition named in `blocked_by` — cite that text as the evidence); OR has `status: blocked-dependency-cycle` (a cycle in its dependency graph, set by actions/work.md's dependency-aware selection); OR names an external dependency in prose (waiting on an API, a decision, a third-party).
 - **Reserved** — `status: reserved` (allocated to another worktree/cloud session via `do-work reserve`; `reserved_for` names it). Not local work. Flag as **stale** when `reserved_at` is more than 24 hours old and suggest recategorizing (`do-work release REQ-NNN` / `do-work run REQ-NNN` / leave it).
 - **Stale** — `created_at` more than 30 days old AND not yet claimed. Flag for re-confirmation; the user may no longer want it.
 
@@ -159,6 +159,8 @@ Render the report per the Output Format below. Lead with the actionable section 
 
 - **REQ-NNN — <title>** (depends on REQ-MMM via `depends_on`, still pending)
   Unblock when REQ-MMM lands.
+- **REQ-RRR — <title>** (status: blocked; blocked by: "<condition>", since 5d ago[, auto-probe set])
+  Re-run `do-work run` to re-probe (if a `blocked_check` is set), or `do-work clarify` to confirm the condition is met.
 - **REQ-PPP — <title>** (status: blocked-dependency-cycle; chain: REQ-PPP → REQ-QQQ → REQ-PPP)
   Edit `depends_on` to break the cycle, then flip status back to `pending`.
 

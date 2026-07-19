@@ -756,6 +756,12 @@ body.is-resizing-detail {
 .req-card[data-status="reserved"] .status-dot {
   background-color: var(--ink-faint);
 }
+/* Blocked (waiting on an external condition) — shares the Needs-input/Blocked
+   column; the dot carries the blocked accent so it reads apart from a plain
+   pending-answers card at a glance. */
+.req-card[data-status="blocked"] .status-dot {
+  background-color: var(--accent-blocked);
+}
 .badge-reserved {
   font-family: var(--font-mono);
 }
@@ -835,6 +841,16 @@ body.is-resizing-detail {
 }
 .req-card.is-completion-anomaly {
   border-color: var(--accent-blocked);
+}
+/* "blocked by <condition>" — waiting on an external condition (status: blocked).
+   Shares the Needs-input/Blocked column and its accent; the label names the
+   condition (JS truncates the text and keeps the full string in the tooltip). */
+.badge-blocked {
+  color: var(--accent-blocked);
+  background-color: var(--tint-blocked);
+  border-color: var(--accent-blocked);
+  font-weight: 600;
+  max-width: 100%;
 }
 
 .req-card-deps {

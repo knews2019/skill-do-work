@@ -218,6 +218,14 @@
 
   // ---- card construction --------------------------------------------------
 
+  function truncateBadgeText(fullText, maxLength) {
+    var limit = maxLength || 48;
+    if (!fullText || fullText.length <= limit) {
+      return fullText || "";
+    }
+    return fullText.slice(0, limit - 1).replace(/\s+$/, "") + "…";
+  }
+
   function makeBadge(className, labelText, valueText, datasetName, datasetValue) {
     var badge = createElement("span", "badge " + className);
     if (labelText) {
@@ -295,6 +303,22 @@
           " (claim here), or leave it if that session is still active.";
         badges.appendChild(staleBadge);
       }
+    }
+    if (request.status === "blocked" && request.blockedBy && request.blockedBy.length > 0) {
+      // Waiting on an external condition (a service being up, a person answering)
+      // — distinct from pending-answers (user questions) and depends_on (another
+      // REQ). Shares the Needs-input/Blocked column but names its condition.
+      var blockedCondition = request.blockedBy.join(", ");
+      var blockedBadge = makeBadge("badge-blocked", "blocked by", truncateBadgeText(blockedCondition));
+      var blockedTitle = blockedCondition;
+      if (request.blockedAt) {
+        blockedTitle += " — since " + formatShortInstant(request.blockedAt);
+      }
+      blockedTitle += request.blockedCheck
+        ? " — auto-probe set; `do-work run` re-checks it and unblocks on exit 0"
+        : " — clear via `do-work clarify` or by editing the REQ once the condition is met";
+      blockedBadge.title = blockedTitle;
+      badges.appendChild(blockedBadge);
     }
     var unblockedRequestIds = activeDependentIds(request);
     if (unblockedRequestIds.length > 0 && !isTerminalResolvedStatus(request.status)) {
@@ -1197,6 +1221,15 @@
     }
     if (request.dependsOn && request.dependsOn.length > 0) {
       appendMetaRow("Depends on", makeDependencyDetailList(request));
+    }
+    if (request.blockedBy && request.blockedBy.length > 0) {
+      appendMetaRow("Blocked by", request.blockedBy.join(", "));
+      if (request.blockedAt) {
+        appendMetaRow("Blocked since", formatShortInstant(request.blockedAt) || request.blockedAt);
+      }
+      if (request.blockedCheck) {
+        appendMetaRow("Blocked check", request.blockedCheck);
+      }
     }
     var unblockedRequestIds = activeDependentIds(request);
     if (unblockedRequestIds.length > 0) {

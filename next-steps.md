@@ -38,7 +38,8 @@ Next steps:
 Next steps:
   do-work review-work         Review the completed work
   do-work present-work        Generate client-facing deliverables
-  do-work clarify             Answer any pending questions
+  do-work clarify             Answer any pending questions, or confirm a blocked REQ's condition is met
+  do-work run                 Re-run to auto-probe any blocked REQs (unblocks those whose blocked_check now passes)
   do-work roadmap             Survey what's left in the queue (if any REQs remain)
   do-work bkb triage          Sort promoted lessons into the KB (if any REQ has kb_status: promoted)
 ```

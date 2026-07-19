@@ -82,10 +82,11 @@ The full annotated frontmatter schema and the **Schema Read Contract** — the n
 
 **Status flow (frontmatter values):** `pending` → `claimed` → `completed` / `completed-with-issues` / `failed`
 
-The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only two status transitions are written to frontmatter on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8). Exception paths write their own statuses: the special holding statuses listed below (Step 1's `blocked-dependency-cycle`, Step 2.0's `blocked-archive-collision`) and Step 7's early `completed-with-issues` write after a failed remediation (which Step 8 must not overwrite). One terminal status is never written by this action: `cancelled` — a user-directed won't-do decision made via `do-work abandon` (`actions/abandon.md`); the scan treats it like any other terminal status (never claim it).
+The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only two status transitions are written to frontmatter on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8). Exception paths write their own statuses: the special holding statuses listed below (Step 1's `blocked-dependency-cycle`, Step 2.0's `blocked-archive-collision`), the mid-run blocked flip (`claimed` → `blocked` when a builder hits a missing external precondition — see Step 8's blocked-flip procedure), and Step 7's early `completed-with-issues` write after a failed remediation (which Step 8 must not overwrite). One terminal status is never written by this action: `cancelled` — a user-directed won't-do decision made via `do-work abandon` (`actions/abandon.md`); the scan treats it like any other terminal status (never claim it).
 
 **Special statuses — these REQs stay in the queue but Step 1 won't pick them up (they're not `pending`, so the "find next pending REQ" scan walks right past them):**
 - `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do-work clarify`.
+- `blocked` — waiting on an **external condition** named in `blocked_by` (a service being up, a person answering, credentials provisioned) — not user answers (`pending-answers`) and not another REQ (`depends_on`). Set at capture or by the mid-run blocked flip (Step 8 / `actions/work-reference.md` Failure Classification). Step 1 walks past it, but **re-probes it first** when a `blocked_check` command is present (see the Blocked-condition re-probe paragraph in Step 1); it also unblocks via `do-work clarify` (human-confirmable conditions) or a manual edit back to `pending`.
 - `blocked-archive-collision` — set by Step 2.0 when a queue file's REQ id is already archived. Non-destructive holding state; the user flips it back to `pending` (or removes/renames the duplicate) after deciding what to do.
 - `blocked-dependency-cycle` — set by Step 1 when a REQ's `depends_on` graph contains a cycle (e.g., REQ-A depends on REQ-B which depends on REQ-A). Non-destructive holding state; the user edits the `depends_on` chain to break the cycle, then flips the status back to `pending`.
 - `reserved` — allocated to a **different worktree/cloud session** via `do-work reserve` (`actions/reserve.md`); carries `reserved_for` (owner label) and `reserved_at`. The default scan never claims it; **targeted mode does** (`do-work run REQ-NNN` — explicit naming is how the owning session picks up its reservation, and the human override for everyone else). A reservation is not a claim: the file stays in `do-work/queue/` and never enters `working/`, so crash recovery cannot steal it.
@@ -117,6 +118,20 @@ When `$ARGUMENTS` is empty — no REQ IDs, no flags, no other tokens — process
 
 Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
 
+**Blocked-condition re-probe.** For each REQ whose `status` is `blocked`, check for a non-empty `blocked_check` field. If present, run it as a machine probe **before** categorizing the queue, so a condition that has since become true unblocks the REQ and it participates in *this* run's selection. The `blocked_check` value is repo-authored content (same trust level as the skill's own hook scripts) and is executed **verbatim** — but never interpolate it into a quoted command line (an apostrophe in the condition breaks the quoting and is an injection vector, per `CLAUDE.md` → "Never interpolate raw user text inside shell quoting"). Instead, write the field value byte-for-byte to a scratch file and run that file:
+
+```bash
+# Re-derive paths deterministically — do not carry a variable across blocks.
+BLOCKED_CHECK_SCRIPT="do-work/working/.blocked-check-${REQ_ID}.sh"   # REQ_ID is the sanitized REQ id token, e.g. REQ-042
+# Write the blocked_check field value to $BLOCKED_CHECK_SCRIPT exactly as read (no quoting, no echo -e), then:
+timeout 30 sh "$BLOCKED_CHECK_SCRIPT"; probe_exit=$?
+rm -f "$BLOCKED_CHECK_SCRIPT"
+```
+
+**Fail closed.** Only `probe_exit == 0` unblocks. Any non-zero exit, a `timeout` kill (124), an unreadable/absent field, or a failure to launch means the condition is still unmet — leave the REQ `blocked` and note "probe failed this run" for the exit summary. A probe never halts the work loop and never raises an error.
+
+On exit 0, unblock the REQ: set `status: pending`, **remove `blocked_by` and `blocked_at`** (a stale condition on a runnable REQ would mislead the board and every reader), keep `blocked_check` (harmless while pending, useful if the REQ re-blocks later), and append one history line to a `## Blocked` body section — `- [<date>] blocked on "<condition>" — cleared by probe`. A `blocked` REQ with **no** `blocked_check` is never probed here; it clears only via `do-work clarify` or a manual edit.
+
 **Dependency-aware selection.** For each `pending` REQ, evaluate its `depends_on` field (or its legacy alias `dependencies:` — recognized for back-compat; `depends_on` wins when both present). A REQ is **dependency-ready** when every ID in the resolved dependency list reaches a REQ with `status: completed` or `status: completed-with-issues`. Resolve each dependency ID by globbing `do-work/archive/**/REQ-NNN-*.md`, `do-work/archive/**/REQ-NNN.md`, `do-work/queue/REQ-NNN-*.md`, and `do-work/working/REQ-NNN-*.md`. Cache resolution within a single Step 1 invocation — a 20-REQ queue with 3 deps each is 60 globs; cache hits keep the cost flat. A REQ with unmet dependencies is **dependency-blocked** and is skipped by the scan; it surfaces in the composed exit summary if no other pending REQ is dependency-ready. Process dependency-ready REQs in numeric ID order.
 
 **REQs with neither `depends_on` nor `dependencies:` are roots** and are always dependency-ready. Existing REQs (captured before the field existed) behave exactly as before.
@@ -136,10 +151,10 @@ Filter the pending list to REQs whose depth equals N, then apply the dependency-
 **Queue status summary:** After reading all REQ frontmatter, categorize every REQ by status and print a summary before proceeding:
 
 ```
-Queue: N pending | N reserved | N completed/done (awaiting archive) | N pending-answers | N blocked-archive-collision
+Queue: N pending | N reserved | N completed/done (awaiting archive) | N pending-answers | N blocked | N blocked-archive-collision
 ```
 
-Count `completed`, `completed-with-issues`, `cancelled`, and `done` statuses together as "completed/done (awaiting archive)." Count `blocked-archive-collision` separately so held duplicates don't disappear into the silence between "no pending" and "no REQs at all." If any completed/done REQs exist in `do-work/queue/`, add:
+Count `completed`, `completed-with-issues`, `cancelled`, and `done` statuses together as "completed/done (awaiting archive)." Count `blocked` (external-condition holds) and `blocked-archive-collision` separately so held REQs don't disappear into the silence between "no pending" and "no REQs at all." When the Blocked-condition re-probe unblocked any REQs this run, append `(M probed, K unblocked)` to the `N blocked` figure. If any completed/done REQs exist in `do-work/queue/`, add:
 
 ```
 ⚠ N completed REQs across M URs awaiting archive. Run `do-work cleanup` after this session.
@@ -152,11 +167,11 @@ Count `completed`, `completed-with-issues`, `cancelled`, and `done` statuses tog
   to return it to the queue, `do-work run REQ-NNN` to claim it here, or leave it if that session is still active.
 ```
 
-**Targeted mode:** If `$ARGUMENTS` contains specific REQ IDs, find only those REQs in `do-work/queue/`. Verify each exists and has `status: pending` **or `status: reserved`** — explicitly naming a reserved REQ claims it (that's the designed pickup path for the session the reservation is for; Step 2 clears the reservation fields). If a targeted REQ is missing or has any other status, report the issue and skip it. Process only the targeted REQs, then stop after the last one completes (skip the loop-or-exit logic in Step 10).
+**Targeted mode:** If `$ARGUMENTS` contains specific REQ IDs, find only those REQs in `do-work/queue/`. Verify each exists and has `status: pending` **or `status: reserved`** — explicitly naming a reserved REQ claims it (that's the designed pickup path for the session the reservation is for; Step 2 clears the reservation fields). A targeted REQ with `status: blocked` is **not** claimed on naming alone (unlike `reserved`): run its `blocked_check` probe (per the Blocked-condition re-probe procedure above) — on exit 0 it unblocks to `pending` and is then claimed; on a failing or absent probe, report its `blocked_by` condition and skip it, because explicit naming does not make an unmet external condition true. If a targeted REQ is missing or has any other status, report the issue and skip it. Process only the targeted REQs, then stop after the last one completes (skip the loop-or-exit logic in Step 10).
 
 **Default mode (empty `$ARGUMENTS`):** Scan for the first REQ with `status: pending` (skip `pending-answers` — those wait for user input). Reaching default mode requires `$ARGUMENTS` to be genuinely empty — the unrecognized-argument guard in **Input** has already rejected any non-REQ, non-flag token, so a fluffed argument never silently lands here as a full-queue run.
 
-**Exit paths when no dependency-ready `pending` REQ is found:** render the *composed* exit summary — lead with the dependency-aware headline (`No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked), then append every applicable section (completed-awaiting-archive, pending-answers, blocked-archive-collision, blocked-by-dependencies, reserved) in that order — per `actions/work-reference.md` → **Composed Exit Summary (Step 1)**, then exit the work loop. Only continue past Step 1 when at least one dependency-ready `pending` REQ exists.
+**Exit paths when no dependency-ready `pending` REQ is found:** render the *composed* exit summary — lead with the dependency-aware headline (`No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked), then append every applicable section (completed-awaiting-archive, pending-answers, blocked-on-external-condition, blocked-archive-collision, blocked-by-dependencies, reserved) in that order — per `actions/work-reference.md` → **Composed Exit Summary (Step 1)**, then exit the work loop. Only continue past Step 1 when at least one dependency-ready `pending` REQ exists.
 
 **REQ validation:** When reading each REQ's frontmatter, verify it has the required fields (`id`, `status`, `title`). If a REQ file has missing or unparseable frontmatter, skip it and report: `⚠ Skipping [filename]: missing required frontmatter ([field]).` Do not let a single malformed REQ block the entire work loop — skip it and continue to the next.
 
@@ -484,7 +499,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
-| `user_request: UR-NNN` | Check if ALL REQs in the UR are finished (status: `completed`, `completed-with-issues`, `cancelled`, or `failed`). Check `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` for REQs belonging to this UR. If all finished: move completed/completed-with-issues/cancelled REQs into UR folder (failed REQs stay at archive root — they signal follow-up work; cancelled REQs are resolved-by-decision and consolidate like completed ones), move entire UR folder to `archive/`. If any REQ is still **non-terminal** — any status outside that finished set, e.g. `pending`, `pending-answers`, `reserved` (allocated to another session but not done), `claimed`, or a `blocked-*` holding status: move this REQ to `archive/` root; UR stays in `user-requests/` until last REQ finishes. |
+| `user_request: UR-NNN` | Check if ALL REQs in the UR are finished (status: `completed`, `completed-with-issues`, `cancelled`, or `failed`). Check `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` for REQs belonging to this UR. If all finished: move completed/completed-with-issues/cancelled REQs into UR folder (failed REQs stay at archive root — they signal follow-up work; cancelled REQs are resolved-by-decision and consolidate like completed ones), move entire UR folder to `archive/`. If any REQ is still **non-terminal** — any status outside that finished set, e.g. `pending`, `pending-answers`, `reserved` (allocated to another session but not done), `claimed`, `blocked` (waiting on an external condition), or a `blocked-*` holding status: move this REQ to `archive/` root; UR stays in `user-requests/` until last REQ finishes. |
 | `context_ref` (legacy) | Move REQ to `archive/`. If all related REQs are now archived, move the CONTEXT doc too. |
 | Neither (standalone legacy) | Move directly to `archive/`. |
 
@@ -505,6 +520,12 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 Classify the failure and queue the right follow-up per `actions/work-reference.md` → **Failure Classification (Step 8)**. Run the **upstream-failure short-circuit first** (if any `addendum_to`/`depends_on` ancestor is `failed`, short-circuit to `error_type: spec` with an upstream-cascade error), then fall through to the Intent/Spec/Code/Environment symptom table. Set `status: failed`, `completed_at: <timestamp>` (mandatory on every terminal flip, same stamping rule as success), `error`, `error_type`; create the follow-up (Intent/Spec/Code) with `addendum_to` chained and the original dependency list preserved; move to `archive/` root.
 
+**Mid-run blocked flip (external precondition):** Before classifying an Environment failure as terminal, apply this test — it is the non-terminal alternative to `error_type: environment` for a precondition that will simply become true later:
+
+- **Both must hold to flip:** (1) *No substantive implementation edits landed this attempt* — the orchestrator confirms via `git status --porcelain` / `git diff` that the builder made no repo changes for this REQ (triage/plan/explore or the first implementation action failed on the missing dependency with a clean tree). (2) The missing thing is an **external precondition expected to become available on its own** — a service coming up (LM Studio, a DB), a person answering (a designer's mockup), credentials getting provisioned — not a broken toolchain or a permission the user must repair, and not a transient crash (retry those in-loop first, then classify normally).
+- **If both hold**, do NOT fail. The orchestrator (never the builder — all file management is the orchestrator's) sets `status: blocked`, `blocked_by: "<condition>"`, `blocked_at: <now>`; removes `claimed_at` and `route`; appends a `## Blocked` section recording what's missing, how it was discovered, and — only if the user supplied or confirmed one — a `blocked_check:` probe command; then moves the file **back to `do-work/queue/`** (it is a hold, not an archive), reports `[REQ-NNN] blocked on: <condition> — released, continuing`, and continues to the next REQ. The REQ re-enters selection on a future run via its `blocked_check` probe, `do-work clarify`, or a manual edit.
+- **If either fails** (real edits already landed, environment the user must fix, or retries exhausted), fall through to the Environment classification above and archive as `failed` with `error_type: environment`.
+
 ### Step 9: Commit Phase (Git repos only)
 
 > **Named entry point.** Other actions reference this as **work.md's Commit Phase** (not by step number) — e.g. `actions/commit.md` and `actions/review-work.md`. The `9` is for internal navigation only; callers must use the phase name so they don't break if steps are renumbered.
@@ -518,7 +539,7 @@ Before committing a successful REQ, write a changelog entry in the target repo's
 Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
 
 - **Dependency-ready `pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
-- **No dependency-ready `pending` REQs remain** (queue may still have dependency-blocked or held REQs): Write a **Session Checkpoint** (see below), run actions/cleanup.md, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, the blocked-archive-collision section, the blocked-by-dependencies section, and the reserved section in that order, including only those that have at least one REQ. If none of the five sections applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
+- **No dependency-ready `pending` REQs remain** (queue may still have dependency-blocked or held REQs): Write a **Session Checkpoint** (see below), run actions/cleanup.md, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, the blocked-on-external-condition section, the blocked-archive-collision section, the blocked-by-dependencies section, and the reserved section in that order, including only those that have at least one REQ. If none of the six sections applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
 
 #### Context Wipe — Verified
 
@@ -578,8 +599,10 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 | Phase | Action |
 |-------|--------|
 | `pending-answers` REQs remain after queue is empty | Report them to the user: list each REQ and its unresolved questions. Suggest `do-work clarify` to batch-review. |
+| `blocked` REQs remain after queue is empty | Report each with its `blocked_by` condition and age (per the composed exit summary). Suggest re-running `do-work run` (auto-probes any `blocked_check`) once a condition is met, or `do-work clarify` to confirm a human-checkable one. |
 | Plan agent fails (Route C) | Classify failure (Intent/Spec/Code/Environment), create follow-up REQ if applicable, archive as failed |
 | Explore agent fails (B/C) | Proceed to implementation with reduced context — builder can explore on its own |
+| Builder reports a missing external precondition | Apply the blocked-flip test (Step 8 → **Mid-run blocked flip**): if no substantive implementation edits landed AND the condition is expected to self-resolve, flip to `status: blocked` (non-terminal, back to the queue) instead of failing. Otherwise classify as Environment and archive as failed. |
 | Implementation fails | Classify failure (Intent/Spec/Code/Environment), create follow-up REQ if applicable, archive as failed |
 | Tests fail repeatedly | After 3 fix attempts, classify as Code failure, create follow-up REQ with test failure details, archive as failed |
 | Review: Acceptance = Fail | Return to Step 6 for ONE remediation attempt, then re-review. If still failing: archive as `completed-with-issues` with follow-up REQs |
@@ -605,7 +628,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 ## Rules
 
 - The orchestrator handles ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents do implementation work only.
-- Only two frontmatter status transitions are written on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8); exception paths (Steps 1, 2.0, and 7's failed-remediation write) set the documented special statuses. Intermediate phases are tracked by which `##` sections exist, not by status.
+- Only two frontmatter status transitions are written on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8); exception paths (Steps 1, 2.0, the Step 8 mid-run blocked flip to `blocked`, and 7's failed-remediation write) set the documented special statuses. Intermediate phases are tracked by which `##` sections exist, not by status.
 - One commit per request; stage explicit files only (never `git add -A`/`.`); never bypass a failing pre-commit hook with `--no-verify` — fix the root cause.
 
 **Common mistakes to avoid:**
