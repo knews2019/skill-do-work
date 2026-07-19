@@ -29,6 +29,7 @@ func TestNormalizeStatus(t *testing.T) {
 		{"  Cancelled ", "cancelled"},
 		{"pending", "pending"},
 		{"pending-answers", "pending-answers"},
+		{"blocked", "blocked"},
 		{"claimed", "claimed"},
 		{"custom-status", "custom-status"},
 	}
@@ -51,7 +52,7 @@ func TestStatusClassifiers(t *testing.T) {
 			t.Fatalf("%q is outside the terminal-success enum (completed | completed-with-issues) — a completed-prefixed typo must route through the unrecognized-status warning path, not classify as done", typoStatus)
 		}
 	}
-	for _, blocked := range []string{"pending-answers", "blocked-archive-collision", "blocked-dependency-cycle", "failed"} {
+	for _, blocked := range []string{"pending-answers", "blocked", "blocked-archive-collision", "blocked-dependency-cycle", "failed"} {
 		if !isNeedsInputOrBlockedStatus(blocked) {
 			t.Fatalf("%q should be a needs-input/blocked status", blocked)
 		}
@@ -61,6 +62,15 @@ func TestStatusClassifiers(t *testing.T) {
 	}
 	if isNeedsInputOrBlockedStatus("deferred") {
 		t.Fatalf("deferred is not in the Schema Read Contract enum (actions/work-reference.md) — it must route through the unrecognized-status warning path, not the recognized list")
+	}
+	// Bare `blocked` is a recognized needs-input status, but a `blocked-<reason>`
+	// variant that is NOT one of the two canonical holding states must still fall
+	// through to the unrecognized-status warning path.
+	if isNeedsInputOrBlockedStatus("blocked-on-lm-studio") {
+		t.Fatalf("blocked-on-lm-studio is not in the Schema Read Contract enum — only bare `blocked` plus the two blocked-* holding states are recognized")
+	}
+	if isCompletedStatus("blocked") || isTerminalResolvedStatus("blocked") {
+		t.Fatalf("blocked is a non-terminal holding status — it must never classify as completed or terminally resolved")
 	}
 	if !isCancelledStatus("cancelled") {
 		t.Fatalf("cancelled should classify as the cancelled terminal status")
@@ -324,8 +334,9 @@ func TestBucketColumns(t *testing.T) {
 		freshReservation,
 		staleReservation,
 		{RequestId: "REQ-5", Status: "pending-answers"},
-		{RequestId: "REQ-6", Status: "deferred", OriginalStatus: "deferred"}, // hand-edited status outside the Schema Read Contract enum — must still land in Needs-input/Blocked, now via the unrecognized-status warning path
-		{RequestId: "REQ-7", Status: "pnding", OriginalStatus: "pnding"},     // typo'd status — must never be silently dropped
+		{RequestId: "REQ-13", Status: "blocked", BlockedBy: []string{"LM Studio running locally"}, BlockedAt: "2026-06-27T12:00:00Z"},         // recognized holding status — Needs-input/Blocked, NO warning
+		{RequestId: "REQ-6", Status: "deferred", OriginalStatus: "deferred"},                                                                  // hand-edited status outside the Schema Read Contract enum — must still land in Needs-input/Blocked, now via the unrecognized-status warning path
+		{RequestId: "REQ-7", Status: "pnding", OriginalStatus: "pnding"},                                                                      // typo'd status — must never be silently dropped
 		{RequestId: "REQ-8", Status: "completed-wth-issues", OriginalStatus: "completed-wth-issues", CompletionTime: now.Add(-1 * time.Hour)}, // completed-prefixed typo — must warn, never pass as terminal success
 		recentDone,
 		oldDone,
@@ -346,8 +357,8 @@ func TestBucketColumns(t *testing.T) {
 	if !staleReservation.ReservationStale {
 		t.Fatalf("a 48h-old reservation must be flagged stale (24h threshold)")
 	}
-	if len(columns.NeedsInputOrBlocked) != 4 {
-		t.Fatalf("NeedsInputOrBlocked should hold pending-answers + the deferred, pnding, and completed-wth-issues unrecognized statuses, got %d", len(columns.NeedsInputOrBlocked))
+	if len(columns.NeedsInputOrBlocked) != 5 {
+		t.Fatalf("NeedsInputOrBlocked should hold pending-answers + blocked + the deferred, pnding, and completed-wth-issues unrecognized statuses, got %d", len(columns.NeedsInputOrBlocked))
 	}
 	if len(columns.RecentlyDone) != 2 ||
 		columns.RecentlyDone[0].RequestId != "REQ-1" || columns.RecentlyDone[1].RequestId != "REQ-9" {
@@ -386,6 +397,11 @@ func TestBucketColumns(t *testing.T) {
 	if !foundStaleReservationWarning {
 		t.Fatalf("expected a stale-reservation warning naming REQ-12 with a recategorize suggestion, got %v", statusWarnings)
 	}
+	for _, warning := range statusWarnings {
+		if strings.Contains(warning, "REQ-13") {
+			t.Fatalf("blocked REQ-13 is a recognized status — it must NOT produce an unrecognized-status warning, got %v", statusWarnings)
+		}
+	}
 }
 
 func TestParseRequestTicketReadsReservationFields(t *testing.T) {
@@ -416,5 +432,41 @@ Body.
 	}
 	if ticket.ReservedAt == "" {
 		t.Fatalf("ReservedAt not parsed from frontmatter")
+	}
+}
+
+func TestParseRequestTicketReadsBlockedFields(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-778-blocked-on-lm-studio.md")
+	fixtureContent := `---
+id: REQ-778
+title: Waiting on LM Studio
+status: blocked
+blocked_by: "LM Studio running locally"
+blocked_at: 2026-07-18T10:00:00Z
+blocked_check: "curl -sf http://localhost:1234/v1/models"
+---
+
+Body.
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.Status != "blocked" {
+		t.Fatalf("Status = %q, want blocked (a recognized Schema Read Contract status, never unrecognized)", ticket.Status)
+	}
+	// Free-text blocked_by parses as a one-element list through coerceToStringList.
+	if len(ticket.BlockedBy) != 1 || ticket.BlockedBy[0] != "LM Studio running locally" {
+		t.Fatalf("BlockedBy = %+v, want [\"LM Studio running locally\"]", ticket.BlockedBy)
+	}
+	if ticket.BlockedAt == "" {
+		t.Fatalf("BlockedAt not parsed from frontmatter")
+	}
+	if ticket.BlockedCheck != "curl -sf http://localhost:1234/v1/models" {
+		t.Fatalf("BlockedCheck = %q, want the probe command verbatim", ticket.BlockedCheck)
 	}
 }

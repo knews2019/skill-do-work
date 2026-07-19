@@ -10,11 +10,13 @@ This is the second human-attention window in the pipeline. After actions/work.md
 - A work run just finished and left `pending-answers` REQs in the queue.
 - The user asks "what's blocked?", "show me pending questions", or similar.
 - The pipeline can't advance because builder-decided questions need sign-off.
+- `blocked` REQs are waiting on a **human-confirmable** external condition (a designer answered, a service is now up) and you want to confirm the condition is met so they re-enter the queue.
 
 **Do NOT use when:**
-- No `pending-answers` REQs exist — tell the user the queue is clear and stop.
+- No `pending-answers` **and** no `blocked` REQs exist — tell the user the queue is clear and stop.
 - The user wants to answer a *specific* open question by editing the REQ directly — that's just a file edit, not a batch review.
 - The queue has only `pending` REQs — those need `do-work run`, not clarify.
+- The `blocked` condition is **machine-checkable** (it carries a `blocked_check` probe) — `do-work run` auto-probes and unblocks those; clarify is for the human-confirmable ones.
 
 ## Input
 
@@ -24,11 +26,11 @@ Triggered by `do-work clarify` (also: `answers`, `questions`, `pending`, `what's
 
 ### Step 1: Scan the queue
 
-Find all `REQ-*.md` files in `do-work/queue/` with `status: pending-answers`.
+Find all `REQ-*.md` files in `do-work/queue/` with `status: pending-answers`. Also collect REQs with `status: blocked` (waiting on an external condition) for Step 5.5.
 
 ### Step 2: Check for pending questions
 
-If none found: report "No pending questions — queue is clear" and exit.
+If neither any `pending-answers` REQ nor any `blocked` REQ is found: report "No pending questions or blocked REQs — queue is clear" and exit. If only `blocked` REQs exist (no `pending-answers`), skip Steps 3–5 and go straight to Step 5.5.
 
 ### Step 3: Present questions
 
@@ -75,9 +77,26 @@ For each question, the user can:
 
 For each REQ that wasn't already completed or discarded: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending`. These enter the queue for the next `do-work run`.
 
+### Step 5.5: Confirm blocked conditions
+
+For each `status: blocked` REQ collected in Step 1, present its condition as one lightweight yes/no — no rewrite-contract machinery needed (the condition is a single line of `blocked_by` text, not a builder question):
+
+```
+REQ-042 — Wire up local translation
+Blocked by: LM Studio running locally (since 3d ago)
+Is this condition now satisfied?
+  1. Yes — unblock it        2. Not yet — leave it        3. Abandon this REQ
+```
+
+Note for the user which blocked REQs carry a `blocked_check` probe — those unblock automatically on the next `do-work run`, so confirming them by hand here is optional. Present only the human-confirmable ones prominently.
+
+- **Yes → unblock:** set `status: pending`, **remove `blocked_by` and `blocked_at`** (keep any `blocked_check`), and append a history line to a `## Blocked` body section — `- [<date>] blocked on "<condition>" — cleared by user via clarify`. The REQ re-enters the queue for the next `do-work run`.
+- **Not yet:** leave it `blocked`, unchanged.
+- **Abandon:** hand off to `do-work abandon REQ-NNN` (marks `cancelled`, archives) — same as discarding a question.
+
 ### Step 6: Report
 
-Summary of what was resolved and what's still pending.
+Summary of what was resolved and what's still pending — include any `blocked` REQs unblocked (now `pending`) or left waiting, alongside the answered/confirmed/discarded questions.
 
 ## Builder Was Right / Discarded
 
@@ -130,4 +149,5 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - [ ] Answered REQs with all questions resolved flipped to `status: pending` (or `completed` for builder-was-right, `cancelled` for discarded).
 - [ ] Approved discovered-task REQs flipped to `pending` and stayed in `do-work/queue/` — not archived.
 - [ ] Skipped REQs remained `pending-answers` — nothing lost.
+- [ ] `blocked` REQs the user confirmed satisfied flipped to `pending` with `blocked_by`/`blocked_at` removed and a `## Blocked` history line appended; unconfirmed ones stayed `blocked`.
 - [ ] The final report names each REQ by id and what happened to it.

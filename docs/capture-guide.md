@@ -51,6 +51,8 @@ Key sections inside a REQ:
 
 Complex requests add: Detailed Requirements, Dependencies, Builder Guidance, Batch Context.
 
+If a request can't start until an **external condition** is met ("once LM Studio is running", "after the designer replies"), capture emits `status: blocked` with a `blocked_by` line naming the condition (and, only if you supply one, an optional `blocked_check` shell probe that `do-work run` re-checks to auto-unblock). This is distinct from `depends_on` (waiting on another REQ) and from an Open Question (`pending-answers`, a question for you).
+
 ## Workflow
 
 1. **Parse** — single vs. multiple requests, simple vs. complex, domain classification, TDD assessment

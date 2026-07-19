@@ -91,6 +91,11 @@ tdd: true  # default true when a runnable RED test can be written in this projec
 suggested_spec:  # optional — spec template name if one clearly matches (e.g., "api-endpoint", "bug-fix")
 depends_on: []  # optional — list of REQ IDs that must complete before this REQ runs; honored by actions/work.md's selection scan
 maintenance: false  # set true ONLY for a deliberate removal/narrowing of the skill's OWN operating instructions — see Step 1's maintenance assessment; loads crew-members/maintenance.md in actions/work.md Step 6
+# External-condition fields — set ONLY when the task waits on something outside the queue (see Step 1's external-condition assessment). Omit all three for normal REQs.
+# status: blocked            # use INSTEAD OF `status: pending` when the REQ cannot start until an external condition is met — distinct from depends_on (another REQ) and Open Questions (a question for the user)
+# blocked_by: "..."          # free text naming the condition (always YAML-quoted), e.g. "LM Studio running locally", "designer answered on mockups"
+# blocked_at: 2026-01-26T10:00:00Z   # stamp the moment it was captured blocked
+# blocked_check: "..."       # OPTIONAL shell probe (YAML-quoted) — emit ONLY when the user supplies or explicitly confirms the command; never invent one
 ---
 
 # [Brief Title]
@@ -234,6 +239,7 @@ Read the user's input. Determine:
 - **Spec hint** — if the request clearly matches a common task type (API endpoint, UI component, refactor, bug fix), set `suggested_spec` in frontmatter to the matching template name. This is a hint for actions/work.md — not binding. If the match is ambiguous or no spec fits, leave it empty.
 - **Prime file routing** — check the project's root `CLAUDE.md` (or similar instructions) to see if there are defined prime files that match the requested utility. Note them for inclusion.
 - **Maintenance assessment** — set `maintenance: true` **only** when the request's goal is to remove or narrow the skill's **own** operating instructions (a drifting `actions/`, `crew-members/`, prime, `SKILL.md`, or `CLAUDE.md` file) — e.g. acting on a `do-work quick-wins` finding like "drop this redundant rule" or "narrow this over-broad config." It loads `crew-members/maintenance.md` (delete-before-you-add) alongside the normal crew in `actions/work.md` Step 6. This is a judgment about **intent**, made here at capture: `actions/work.md` is deliberately marker-only and never infers it from a description, so if capture doesn't set the marker the maintenance crew never loads. Default `maintenance: false`. **Do NOT set it for ordinary dead-code removal in application source** — that's plain implementation under `coding-guardrails.md`'s surgical-changes rule, not a maintenance pass on the skill's instructions.
+- **External-condition assessment** — when the request states it can't start until an **external condition** is met ("once LM Studio is running", "after the designer replies on the mockups", "when the staging creds are provisioned"), capture it as `status: blocked` with `blocked_by: "<the condition, in the user's words>"` and `blocked_at: <now>` **instead of** `status: pending`. Keep this distinct from the two look-alikes: a wait on **another REQ** is `depends_on` (not blocked), and a **question for the user** is an Open Question → `pending-answers` (not blocked). Emit `blocked_check` **only** if the user supplies or explicitly confirms a shell command that tests the condition (it will later be executed verbatim by `actions/work.md` Step 1) — never invent one. When the wait is machine-checkable and the user has a probe in mind, capture time is the ideal moment to ask for it.
 
 ### Step 2: Check for Duplicates
 

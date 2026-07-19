@@ -123,6 +123,41 @@ func TestGenerateEmbedsLivePendingCards(t *testing.T) {
 	}
 }
 
+func TestGenerateEmitsBlockedFields(t *testing.T) {
+	// The synthetic tree seeds REQ-9006 as status: blocked with a free-text
+	// blocked_by, a blocked_at, and a blocked_check. Those must survive into the
+	// generated payload so the frontend can render the "blocked by" badge/drawer.
+	board := syntheticBoard(t)
+	generatedData, buildError := buildGeneratedBoardData(board)
+	if buildError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", buildError)
+	}
+	blockedRequest, present := generatedData.Requests["REQ-9006"]
+	if !present {
+		t.Fatalf("REQ-9006 (blocked) missing from generated requests")
+	}
+	if blockedRequest.Status != "blocked" {
+		t.Fatalf("REQ-9006 status = %q, want blocked", blockedRequest.Status)
+	}
+	if len(blockedRequest.BlockedBy) != 1 || blockedRequest.BlockedBy[0] != "LM Studio running locally" {
+		t.Fatalf("REQ-9006 blockedBy = %+v, want [\"LM Studio running locally\"]", blockedRequest.BlockedBy)
+	}
+	if blockedRequest.BlockedCheck == "" || blockedRequest.BlockedAt == "" {
+		t.Fatalf("REQ-9006 blockedCheck/blockedAt not populated: check=%q at=%q", blockedRequest.BlockedCheck, blockedRequest.BlockedAt)
+	}
+	// The fields must also survive JSON marshaling under their camelCase keys.
+	marshaledBytes, marshalError := json.Marshal(blockedRequest)
+	if marshalError != nil {
+		t.Fatalf("marshal generated request: %v", marshalError)
+	}
+	marshaledJson := string(marshaledBytes)
+	for _, expectedKey := range []string{`"blockedBy"`, `"blockedAt"`, `"blockedCheck"`} {
+		if !strings.Contains(marshaledJson, expectedKey) {
+			t.Fatalf("generated JSON missing %s: %s", expectedKey, marshaledJson)
+		}
+	}
+}
+
 func TestGenerateIndexHtmlUnderSizeBudget(t *testing.T) {
 	// The JSON data island (all pre-rendered REQ bodies) must be externalized to
 	// board-data.js so index.html stays well under 1 MB. Before REQ-1213 the

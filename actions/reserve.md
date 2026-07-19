@@ -34,7 +34,7 @@ The label is free text naming the owning session ("cloud-alpha", "worktree featu
 ### Mode: reserve
 
 1. For each named REQ, glob `do-work/queue/REQ-NNN-*.md` (and `do-work/queue/REQ-NNN.md`). Missing → report and skip.
-2. Read frontmatter and normalize `status` per the Schema Read Contract (`actions/work-reference.md`). Only `pending` REQs are reservable. Anything else → report why and skip: `claimed`/in `working/` means a session already owns it; `pending-answers` needs `do-work clarify` first; `reserved` is already allocated (report the existing `reserved_for` and stop — re-labeling an existing reservation requires an explicit release first).
+2. Read frontmatter and normalize `status` per the Schema Read Contract (`actions/work-reference.md`). Only `pending` REQs are reservable. Anything else → report why and skip: `claimed`/in `working/` means a session already owns it; `pending-answers` needs `do-work clarify` first; `blocked` needs its external condition cleared first (`do-work run` re-probes it, or `do-work clarify` confirms it); `reserved` is already allocated (report the existing `reserved_for` and stop — re-labeling an existing reservation requires an explicit release first).
 3. Update frontmatter on each reservable REQ: `status: reserved`, `reserved_for: "<label>"` (always YAML-quoted — the label is raw user text; treat it as data, never interpolate it into a shell command), `reserved_at: <timestamp>`.
 4. Report per the Output Format, and remind: the reservation only protects sibling sessions **after it syncs** — commit and push the queue edit (or let the user's normal flow do it). Files are the only channel between checkouts.
 

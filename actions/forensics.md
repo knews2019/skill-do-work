@@ -83,13 +83,17 @@ For each, check:
 - Does `error_type` exist in frontmatter? If not: **Warning** — failure not classified (pre-v0.38.0 or skipped)
 - For `error_type: intent`, `spec`, or `code`: does a follow-up REQ exist with `addendum_to` pointing to this REQ? If not: **Warning** — failure has no recovery path
 
-### 7. Stale Pending-Answers
+### 7. Stale Pending-Answers & Blocked
 
 Scan `do-work/queue/` for REQs with `status: pending-answers`.
 
 For each, check `created_at`:
 - **Info** if 3-7 days old
 - **Warning** if >7 days old — these questions are going stale and may no longer be relevant
+
+Also scan `do-work/queue/` for REQs with `status: blocked` (waiting on an external condition). For each, measure age from `blocked_at` (fall back to `created_at` if absent):
+- **Info** if 7-14 days old
+- **Warning** if >14 days old — the external condition may already have been satisfied; suggest re-running `do-work run` (auto-probes any `blocked_check`) or `do-work clarify` to confirm. (The threshold is deliberately looser than pending-answers: external conditions — a person answering, a service being provisioned — legitimately take longer than a user answering a queued question.)
 
 ### 7.5. Stale Reservations
 
