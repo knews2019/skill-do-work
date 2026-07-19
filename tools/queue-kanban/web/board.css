@@ -851,6 +851,15 @@ body.is-resizing-detail {
   border-color: var(--accent-blocked);
   font-weight: 600;
   max-width: 100%;
+  min-width: 0;
+}
+/* Ellipsize the condition to the card width — the full text lives in the badge
+   title tooltip and the detail drawer. min-width:0 lets the flex item shrink. */
+.badge-blocked-value {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .req-card-deps {

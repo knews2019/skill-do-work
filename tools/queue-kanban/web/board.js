@@ -218,14 +218,6 @@
 
   // ---- card construction --------------------------------------------------
 
-  function truncateBadgeText(fullText, maxLength) {
-    var limit = maxLength || 48;
-    if (!fullText || fullText.length <= limit) {
-      return fullText || "";
-    }
-    return fullText.slice(0, limit - 1).replace(/\s+$/, "") + "…";
-  }
-
   function makeBadge(className, labelText, valueText, datasetName, datasetValue) {
     var badge = createElement("span", "badge " + className);
     if (labelText) {
@@ -309,14 +301,19 @@
       // — distinct from pending-answers (user questions) and depends_on (another
       // REQ). Shares the Needs-input/Blocked column but names its condition.
       var blockedCondition = request.blockedBy.join(", ");
-      var blockedBadge = makeBadge("badge-blocked", "blocked by", truncateBadgeText(blockedCondition));
+      // Build the badge with the condition in its own span so CSS can ellipsize
+      // it to the card width (responsive) — a bare text node can't be truncated
+      // with text-overflow. Full condition stays in the title tooltip.
+      var blockedBadge = createElement("span", "badge badge-blocked");
+      blockedBadge.appendChild(createElement("span", "badge-label", "blocked by"));
+      blockedBadge.appendChild(createElement("span", "badge-blocked-value", blockedCondition));
       var blockedTitle = blockedCondition;
       if (request.blockedAt) {
         blockedTitle += " — since " + formatShortInstant(request.blockedAt);
       }
       blockedTitle += request.blockedCheck
-        ? " — auto-probe set; `do-work run` re-checks it and unblocks on exit 0"
-        : " — clear via `do-work clarify` or by editing the REQ once the condition is met";
+        ? " — auto-probe set; do-work run re-checks it and unblocks on exit 0"
+        : " — clear via do-work clarify or by editing the REQ once the condition is met";
       blockedBadge.title = blockedTitle;
       badges.appendChild(blockedBadge);
     }

@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.129.1 — Blocked Badge No Longer Overflows Its Card (2026-07-19)
+
+A long `blocked_by` condition spilled past the right edge of its card on the board. The badge now ellipsizes the condition to the card width, with the full text kept in the tooltip and the detail drawer.
+
+- The "blocked by" badge truncates responsively via CSS (`text-overflow: ellipsis`) instead of a fixed character count, so it fits any card width.
+- Removed the now-unused JS character-truncation helper.
+
 ## 0.129.0 — Blocked-on-External-Condition Status (2026-07-19)
 
 REQs can now wait on an external condition — LM Studio being up, a designer answering, credentials getting provisioned — instead of being mislabeled as "needs clarification" or dying as a failed environment error. A new `blocked` status names the condition and gets its own badge on the board.
