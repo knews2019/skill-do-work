@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.128.1 — Built-In Preferences Reference Doc (2026-07-18)
+
+The operating nudges people paste at the start of every run — "keep writing lessons learned," "commit often," "I'm AFK, don't block on questions" — are almost all already the skill's defaults. A new reference doc maps each common nudge to where that behavior already lives, so you can stop re-typing them.
+
+- New `docs/standing-preferences.md`: a table of common nudges → the built-in behavior and its home (lessons learned, discovered tasks, YAGNI, per-REQ atomic commits, background agents, non-blocking `pending-answers` questions).
+- Calls out the two nudges that are deliberately *not* defaults — an unbounded queue drain (declined in ADR-006/014) and a backgrounded commit — so expectations match reality.
+- New README Q&A entry pointing at the reference.
+
 ## 0.128.0 — Board Surfaces Completion Anomalies (2026-07-18)
 
 A done REQ with no `completed_at` and no resolvable commit hash used to vanish from the live board — terminal, but with no instant to place it in Recently done. Those are bookkeeping bugs, and now the board shouts about them instead of hiding them.
