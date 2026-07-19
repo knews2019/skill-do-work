@@ -118,10 +118,13 @@ When `$ARGUMENTS` is empty — no REQ IDs, no flags, no other tokens — process
 
 Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
 
-**Blocked-condition re-probe.** For each REQ whose `status` is `blocked`, check for a non-empty `blocked_check` field. If present, run it as a machine probe **before** categorizing the queue, so a condition that has since become true unblocks the REQ and it participates in *this* run's selection. The `blocked_check` value is repo-authored content (same trust level as the skill's own hook scripts) and is executed **verbatim** — but never interpolate it into a quoted command line (an apostrophe in the condition breaks the quoting and is an injection vector, per `CLAUDE.md` → "Never interpolate raw user text inside shell quoting"). Instead, write the field value byte-for-byte to a scratch file and run that file:
+**Blocked-condition re-probe.** Determine the probe set by run mode: in **default mode** (empty `$ARGUMENTS`), the set is every REQ whose `status` is `blocked`. In **targeted mode** (`$ARGUMENTS` names REQ IDs), the set is **only the named blocked REQs** — do NOT probe the rest of the queue here (that's handled by the Targeted-mode paragraph below). `blocked_check` is verbatim shell that can run up to 30s or touch local services, so a scoped run must never fire probes for REQs the user didn't name. For each REQ in the probe set, check for a non-empty `blocked_check` field. If present, run it as a machine probe **before** categorizing the queue, so a condition that has since become true unblocks the REQ and it participates in *this* run's selection. The `blocked_check` value is repo-authored content (same trust level as the skill's own hook scripts) and is executed **verbatim** — but never interpolate it into a quoted command line (an apostrophe in the condition breaks the quoting and is an injection vector, per `CLAUDE.md` → "Never interpolate raw user text inside shell quoting"). Instead, write the field value byte-for-byte to a scratch file and run that file:
 
 ```bash
 # Re-derive paths deterministically — do not carry a variable across blocks.
+mkdir -p do-work/working   # may not exist yet — capture.md never pre-creates it, and a queue of only
+                           # captured blocked REQs would otherwise have no working/ dir, so the write below
+                           # would fail-to-launch and fail-closed would wrongly keep a satisfiable REQ blocked
 BLOCKED_CHECK_SCRIPT="do-work/working/.blocked-check-${REQ_ID}.sh"   # REQ_ID is the sanitized REQ id token, e.g. REQ-042
 # Write the blocked_check field value to $BLOCKED_CHECK_SCRIPT exactly as read (no quoting, no echo -e), then:
 timeout 30 sh "$BLOCKED_CHECK_SCRIPT"; probe_exit=$?
