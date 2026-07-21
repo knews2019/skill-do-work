@@ -37,6 +37,15 @@ git rev-parse --git-dir >/dev/null 2>&1 && git_available=1
 
 non_dowork_count=0
 
+# Computed once, consumed by the per-file checks below. Piping `git diff`
+# straight into `grep -q` is a pipefail trap: -q exits on the first match, the
+# upstream git dies with SIGPIPE, and the pipeline's non-zero status made a
+# file that IS in the diff read as absent (false WARN on every modified file).
+changed_file_list=""
+if [ "$git_available" -eq 1 ]; then
+  changed_file_list="$({ git diff --name-only; git diff --staged --name-only; } | sort -u)"
+fi
+
 # --- Check 1: every listed file matches its claimed state on disk / in diff ---
 while IFS= read -r summary_line; do
   # Portable extraction (no GNU-only grep -P): first backtick-quoted token, then the verb.
@@ -56,13 +65,13 @@ while IFS= read -r summary_line; do
       # builder pass on the back of the last REQ's work.
       if [ ! -f "$file_path" ]; then
         echo "FAIL: listed (modified) but not on disk: $file_path"; failure_count=$((failure_count + 1))
-      elif [ "$git_available" -eq 1 ] && ! { git diff --name-only; git diff --staged --name-only; } | grep -qxF "$file_path"; then
+      elif [ "$git_available" -eq 1 ] && ! printf '%s\n' "$changed_file_list" | grep -xF "$file_path" >/dev/null; then
         echo "WARN: listed (modified) but not in working/staged diff: $file_path"
       fi ;;
     deleted)
       if [ -f "$file_path" ]; then
         echo "FAIL: listed (deleted) but still on disk: $file_path"; failure_count=$((failure_count + 1))
-      elif [ "$git_available" -eq 1 ] && ! { git diff --name-only; git diff --staged --name-only; } | grep -qxF "$file_path"; then
+      elif [ "$git_available" -eq 1 ] && ! printf '%s\n' "$changed_file_list" | grep -xF "$file_path" >/dev/null; then
         echo "WARN: listed (deleted) and absent from disk, but no deletion in working/staged diff: $file_path — verify the path is not a typo and the file was deleted by THIS REQ"
       fi ;;
     *) echo "WARN: no (new|modified|deleted) verb on summary line: $summary_line" ;;
@@ -94,7 +103,13 @@ if [ "${unchecked_boxes:-0}" -gt 0 ]; then
   failure_count=$((failure_count + 1))
 fi
 if [ "$git_available" -eq 1 ]; then
-  debug_artifact_lines="$({ git diff; git diff --staged; } | grep -E '^\+' | grep -nE 'console\.log|debugger|(^|[^[:alnum:]_])print\(|TODO|FIXME' | grep -v 'do-work/' || true)"
+  # do-work/ is excluded at the pathspec level, NOT with a `grep -v 'do-work/'`
+  # on the piped lines: added-content lines carry no file path, so a content
+  # grep cannot scope by file — it silently matched REQ prose that merely
+  # *mentions* console.log/TODO (the REQ file is part of this diff) and FAILed
+  # clean implementations. `+++` headers are dropped so a filename containing
+  # TODO cannot trip the artifact grep either.
+  debug_artifact_lines="$({ git diff -- . ':(exclude)do-work/'; git diff --staged -- . ':(exclude)do-work/'; } | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE 'console\.log|debugger|(^|[^[:alnum:]_])print\(|TODO|FIXME' || true)"
   if [ -n "$debug_artifact_lines" ] && grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file"; then
     echo "FAIL: [UNIFY] is checked but the diff adds debug artifacts — un-check it and flag:"
     printf '%s\n' "$debug_artifact_lines" | head -10 | sed 's/^/  /'

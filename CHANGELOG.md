@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.130.1 — Check Scripts Stop Misreading Diffs and Scope Lists (2026-07-21)
+
+Two bugfix rounds for the shipped verification scripts from the work-pipeline hardening.
+
+- `tools/checks/qualify.sh`: `grep -q` on a piped `git diff` could SIGPIPE the pipeline and mark genuinely-changed files as absent (false WARNs); the diff file list is now computed once. The debug-artifact grep now excludes `do-work/` at the pathspec level, so REQ prose merely *mentioning* console.log/TODO no longer FAILs clean implementations.
+- `tools/checks/scope-drift.sh`: inline `**Files I will touch:** \`a\`, \`b\`` lists now parse (previously only bullet lists did — an inline list silently turned the whole check into a SKIP); a touch-list header with zero parseable paths is now a FAIL instead of a silent SKIP; drift path lists print one per line unsplit.
+
 ## 0.130.0 — Relative Times Next to Every Board Timestamp (2026-07-21)
 
 Every timestamp on the Kanban board now carries a live relative label — "done Jul 21, 16:24 UTC · 6min ago" — so you can tell at a glance how fresh a card is without doing UTC math.
