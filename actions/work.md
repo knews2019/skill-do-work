@@ -127,11 +127,17 @@ mkdir -p do-work/working   # may not exist yet — capture.md never pre-creates 
                            # would fail-to-launch and fail-closed would wrongly keep a satisfiable REQ blocked
 BLOCKED_CHECK_SCRIPT="do-work/working/.blocked-check-${REQ_ID}.sh"   # REQ_ID is the sanitized REQ id token, e.g. REQ-042
 # Write the blocked_check field value to $BLOCKED_CHECK_SCRIPT exactly as read (no quoting, no echo -e), then:
-timeout 30 sh "$BLOCKED_CHECK_SCRIPT"; probe_exit=$?
+# `timeout` is GNU coreutils — stock macOS ships neither `timeout` nor `gtimeout` (brew coreutils
+# adds the latter). Resolve whichever exists; with neither, run the probe unwrapped rather than
+# fail on exit 127 and wrongly report "probe failed" for a condition that was never checked.
+if command -v timeout >/dev/null 2>&1; then probe_wrapper="timeout 30"
+elif command -v gtimeout >/dev/null 2>&1; then probe_wrapper="gtimeout 30"
+else probe_wrapper=""; fi
+$probe_wrapper sh "$BLOCKED_CHECK_SCRIPT"; probe_exit=$?   # $probe_wrapper deliberately unquoted — empty must vanish
 rm -f "$BLOCKED_CHECK_SCRIPT"
 ```
 
-**Fail closed.** Only `probe_exit == 0` unblocks. Any non-zero exit, a `timeout` kill (124), an unreadable/absent field, or a failure to launch means the condition is still unmet — leave the REQ `blocked` and note "probe failed this run" for the exit summary. A probe never halts the work loop and never raises an error.
+**Fail closed.** Only `probe_exit == 0` unblocks. Any non-zero exit, a `timeout` kill (124 — only possible when a wrapper was found; an unwrapped probe runs unbounded, so keep `blocked_check` commands fast), an unreadable/absent field, or a failure to launch means the condition is still unmet — leave the REQ `blocked` and note "probe failed this run" for the exit summary. A probe never halts the work loop and never raises an error.
 
 On exit 0, unblock the REQ: set `status: pending`, **remove `blocked_by` and `blocked_at`** (a stale condition on a runnable REQ would mislead the board and every reader), keep `blocked_check` (harmless while pending, useful if the REQ re-blocks later), and append one history line to a `## Blocked` body section — `- [<date>] blocked on "<condition>" — cleared by probe`. A `blocked` REQ with **no** `blocked_check` is never probed here; it clears only via `do-work clarify` or a manual edit.
 
@@ -525,7 +531,7 @@ Classify the failure and queue the right follow-up per `actions/work-reference.m
 
 **Mid-run blocked flip (external precondition):** Before classifying an Environment failure as terminal, apply this test — it is the non-terminal alternative to `error_type: environment` for a precondition that will simply become true later:
 
-- **Both must hold to flip:** (1) *No substantive implementation edits landed this attempt* — the orchestrator confirms via `git status --porcelain` / `git diff` that the builder made no repo changes for this REQ (triage/plan/explore or the first implementation action failed on the missing dependency with a clean tree). (2) The missing thing is an **external precondition expected to become available on its own** — a service coming up (LM Studio, a DB), a person answering (a designer's mockup), credentials getting provisioned — not a broken toolchain or a permission the user must repair, and not a transient crash (retry those in-loop first, then classify normally).
+- **Both must hold to flip:** (1) *No substantive implementation edits landed this attempt* — the orchestrator confirms via `git status --porcelain -- . ':(exclude)do-work/'` / `git diff -- . ':(exclude)do-work/'` that the builder made no repo changes for this REQ **outside `do-work/`**. The exclusion is load-bearing: the REQ's own bookkeeping (the move to `working/`, appended Triage/Plan sections) is always dirty mid-run, so an unscoped porcelain check can never read clean and would silently defeat this flip (triage/plan/explore or the first implementation action failed on the missing dependency with an otherwise-clean tree). (2) The missing thing is an **external precondition expected to become available on its own** — a service coming up (LM Studio, a DB), a person answering (a designer's mockup), credentials getting provisioned — not a broken toolchain or a permission the user must repair, and not a transient crash (retry those in-loop first, then classify normally).
 - **If both hold**, do NOT fail. The orchestrator (never the builder — all file management is the orchestrator's) sets `status: blocked`, `blocked_by: "<condition>"`, `blocked_at: <now>`; removes `claimed_at` and `route`; appends a `## Blocked` section recording what's missing, how it was discovered, and — only if the user supplied or confirmed one — a `blocked_check:` probe command; then moves the file **back to `do-work/queue/`** (it is a hold, not an archive), reports `[REQ-NNN] blocked on: <condition> — released, continuing`, and continues to the next REQ. The REQ re-enters selection on a future run via its `blocked_check` probe, `do-work clarify`, or a manual edit.
 - **If either fails** (real edits already landed, environment the user must fix, or retries exhausted), fall through to the Environment classification above and archive as `failed` with `error_type: environment`.
 

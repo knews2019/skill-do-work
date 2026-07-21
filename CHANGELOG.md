@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.130.2 — Blocked-REQ Probe Works on Stock macOS (2026-07-21)
+
+Two fixes to the blocked-status machinery in `actions/work.md`.
+
+- The `blocked_check` probe no longer assumes GNU `timeout` exists: it resolves `timeout` → `gtimeout` → unwrapped, so stock macOS (which ships neither) probes the condition instead of failing on exit 127 and wrongly reporting "probe failed".
+- The mid-run blocked flip's "no edits landed" test now excludes `do-work/` from its porcelain/diff check — the REQ's own bookkeeping is always dirty mid-run, so the unscoped check could never read clean and silently defeated the flip.
+
 ## 0.130.1 — Check Scripts Stop Misreading Diffs and Scope Lists (2026-07-21)
 
 Two bugfix rounds for the shipped verification scripts from the work-pipeline hardening.
