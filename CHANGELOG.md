@@ -6,6 +6,10 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.130.3 — Board Names the Real Cause When git Is Unavailable (2026-07-21)
+
+Running the board without a `git` binary (or outside a repo) used to produce a per-ticket anomaly blaming each commit hash. Now a one-time probe logs a single clear line ("git binary not found on PATH"), skips the doomed per-ticket subprocesses, and the anomaly reason says the hash could not be dated rather than asserting it is invalid.
+
 ## 0.130.2 — Blocked-REQ Probe Works on Stock macOS (2026-07-21)
 
 Two fixes to the blocked-status machinery in `actions/work.md`.

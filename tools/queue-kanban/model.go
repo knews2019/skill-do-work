@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -735,8 +737,12 @@ func detectCompletionAnomaly(ticket *RequestTicket) (bool, string) {
 		if commitFieldName == "" {
 			commitFieldName = "commit"
 		}
+		// The lookup is best-effort and cannot distinguish its failure modes
+		// here, so the reason must not blame the hash alone: "git could not
+		// date it" covers an unknown hash AND a missing git binary / non-repo
+		// tree (lookupGitCommitDate logs the missing-binary case once).
 		brokenFieldReasons = append(brokenFieldReasons, fmt.Sprintf(
-			"%s %q cannot be resolved by git", commitFieldName, ticket.CommitHash))
+			"%s %q could not be dated — the hash is unknown to git, or git/the repository is unavailable", commitFieldName, ticket.CommitHash))
 	}
 	if len(brokenFieldReasons) > 0 {
 		return true, strings.Join(brokenFieldReasons, "; ")
@@ -759,6 +765,9 @@ func lookupGitCommitDate(repoRoot string, commitHash string) (time.Time, bool) {
 	if !isPlausibleCommitHash(trimmedHash) {
 		return time.Time{}, false
 	}
+	if !gitBinaryAvailable() {
+		return time.Time{}, false
+	}
 	command := exec.Command("git", "-C", repoRoot, "log", "-1", "--format=%cI", trimmedHash)
 	output, runError := command.Output()
 	if runError != nil {
@@ -773,6 +782,26 @@ func lookupGitCommitDate(repoRoot string, commitHash string) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	return parsed, true
+}
+
+// gitBinaryProbe caches a one-time PATH lookup for git, logging once when the
+// binary is missing — so an operator running without git gets one clear line
+// naming the real cause instead of a per-ticket anomaly that blames the hash,
+// and the board skips one doomed subprocess per archived ticket.
+var gitBinaryProbe struct {
+	probeOnce sync.Once
+	available bool
+}
+
+func gitBinaryAvailable() bool {
+	gitBinaryProbe.probeOnce.Do(func() {
+		_, lookupError := exec.LookPath("git")
+		gitBinaryProbe.available = lookupError == nil
+		if !gitBinaryProbe.available {
+			log.Printf("queue-kanban: git binary not found on PATH — commit-hash completion dating is disabled")
+		}
+	})
+	return gitBinaryProbe.available
 }
 
 // isPlausibleCommitHash reports whether text looks like an abbreviated or full

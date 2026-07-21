@@ -61,7 +61,7 @@ func TestCompletionAnomaliesFlaggedInBoardModel(t *testing.T) {
 	expectedReasonFragments := map[string]string{
 		"REQ-9301": "terminal status but no completed_at and no resolvable commit hash",
 		"REQ-9302": `completed_at "not-a-real-instant" does not parse`,
-		"REQ-9303": `commit "badc0ffee" cannot be resolved by git`,
+		"REQ-9303": `commit "badc0ffee" could not be dated — the hash is unknown to git, or git/the repository is unavailable`,
 	}
 	for requestId, reasonFragment := range expectedReasonFragments {
 		ticket := board.RequestsById[requestId]
