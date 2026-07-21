@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.129.1 — Kill-Stale Guard Matches Cross-Repo Kanban Binaries (2026-07-21)
+
+`just run-kanban` can now restart the board when the port is held by a queue-kanban instance started from *another* repo. Other projects' recipes build the same tool under different names (e.g. `build/go-bin-queue-kanban`), and the old guard only killed a process named exactly `queue-kanban` — so the recipe refused and failed instead of reclaiming the port.
+
+- The kill-stale check now substring-matches `queue-kanban` against the listener's full command line (`ps -o args=`, which unlike `comm` isn't truncated on Linux) and echoes what it stopped.
+- Unrelated listeners are still left alone and named in the error, exactly as before.
+- Applies to both the shipped `just-kanban` install template (`actions/install.md`) and this repo's own justfile; already-installed projects get the fix as a consent-gated upgrade offer on re-running `do-work install just-kanban`.
+
 ## 0.129.0 — Blocked-on-External-Condition Status (2026-07-19)
 
 REQs can now wait on an external condition — LM Studio being up, a designer answering, credentials getting provisioned — instead of being mislabeled as "needs clarification" or dying as a failed environment error. A new `blocked` status names the condition and gets its own badge on the board.
