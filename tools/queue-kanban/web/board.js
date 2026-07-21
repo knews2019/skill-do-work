@@ -521,7 +521,10 @@
   // ---- recently-done window (recomputed client-side) ----------------------
 
   function recentlyDoneIds(windowHours) {
-    var cutoffMs = generatedAtMs - windowHours * 3600 * 1000;
+    // Anchored to the wall clock at render time, not generatedAtMs: a tab left
+    // open past the snapshot would otherwise keep counting the window back
+    // from page-generation, so "last 24 hours" slowly stops meaning that.
+    var cutoffMs = Date.now() - windowHours * 3600 * 1000;
     var ids = [];
     (boardData.calendar || []).forEach(function (entry) {
       var ms = Date.parse(entry.completionTime);
@@ -812,6 +815,11 @@
   var testerProfileStorageKey = "queueKanbanTesterProfile";
   var selectedTesterProfile = "";
   var feedbackFormRequestId = null; // REQ id whose card is showing the inline feedback form
+  // In-progress feedback text, mirrored on every keystroke. The testing view is
+  // rebuilt from scratch on each render (filter changes, failed posts), which
+  // repaints the textarea — without this stash a re-render would silently
+  // discard everything the tester typed.
+  var feedbackDraftText = "";
   var testingErrorTimer = null;
 
   function isTerminalSuccessStatus(status) {
@@ -830,6 +838,12 @@
   }
 
   function requestIdNumber(requestId) {
+    // Prefer the digits of the REQ segment: a compound id like UR-002-REQ-031
+    // must sort by 31, not by the first digit run (2).
+    var reqSegmentMatch = /REQ-0*(\d+)/i.exec(requestId || "");
+    if (reqSegmentMatch) {
+      return parseInt(reqSegmentMatch[1], 10);
+    }
     var digitsMatch = /(\d+)/.exec(requestId || "");
     return digitsMatch ? parseInt(digitsMatch[1], 10) : 0;
   }
@@ -857,11 +871,13 @@
     }
     var recencyMs = testingRecencyMs(requestsById[requestId]);
     var thirtyDaysMs = 720 * 3600 * 1000;
+    // Wall clock, not generatedAtMs — see recentlyDoneIds for why.
+    var nowMs = Date.now();
     if (filterState.doneWindow === "old") {
-      return recencyMs !== 0 && recencyMs <= generatedAtMs - thirtyDaysMs;
+      return recencyMs !== 0 && recencyMs <= nowMs - thirtyDaysMs;
     }
     var windowHours = parseInt(filterState.doneWindow, 10);
-    return recencyMs > generatedAtMs - windowHours * 3600 * 1000;
+    return recencyMs > nowMs - windowHours * 3600 * 1000;
   }
 
   // A REQ belongs on the testing view when it finished successfully (testable)
@@ -969,14 +985,17 @@
   function makeTestingActionsRow(requestId, bucketKey) {
     var actionsRow = createElement("div", "testing-actions");
 
-    function addActionButton(labelText, onActivate, extraClassName) {
+    function addActionButton(labelText, onActivate, extraClassName, allowWithoutProfile) {
       var actionButton = createElement(
         "button",
         "control-button testing-action" + (extraClassName ? " " + extraClassName : ""),
         labelText
       );
       actionButton.type = "button";
-      if (!selectedTesterProfile) {
+      // Clear is deliberately exempt from the profile gate: the server accepts
+      // profile-free clears (a clear only removes fields), and requiring a
+      // tester identity to delete a stale record just blocks the cleanup.
+      if (!selectedTesterProfile && !allowWithoutProfile) {
         actionButton.disabled = true;
         actionButton.title = "Select a tester profile first";
       } else {
@@ -995,25 +1014,26 @@
       });
       addActionButton("Return with feedback", function () {
         feedbackFormRequestId = requestId;
+        feedbackDraftText = "";
         renderTestingView();
       });
       addActionButton("Clear", function () {
         postTestingStatus(requestId, "clear");
-      }, "testing-action-clear");
+      }, "testing-action-clear", true);
     } else if (bucketKey === "testingReturned") {
       addActionButton("Restart testing", function () {
         postTestingStatus(requestId, "in-testing");
       });
       addActionButton("Clear", function () {
         postTestingStatus(requestId, "clear");
-      }, "testing-action-clear");
+      }, "testing-action-clear", true);
     } else if (bucketKey === "testingTested") {
       addActionButton("Re-test", function () {
         postTestingStatus(requestId, "in-testing");
       });
       addActionButton("Clear", function () {
         postTestingStatus(requestId, "clear");
-      }, "testing-action-clear");
+      }, "testing-action-clear", true);
     }
     return actionsRow;
   }
@@ -1025,6 +1045,10 @@
     feedbackInput.rows = 3;
     feedbackInput.placeholder = "What needs fixing?";
     feedbackInput.setAttribute("aria-label", "Feedback for " + requestId);
+    feedbackInput.value = feedbackDraftText;
+    feedbackInput.addEventListener("input", function () {
+      feedbackDraftText = feedbackInput.value;
+    });
     form.appendChild(feedbackInput);
 
     var formActions = createElement("div", "testing-actions");
@@ -1036,13 +1060,17 @@
         showTestingError("Feedback must not be empty — describe what to fix.");
         return;
       }
-      feedbackFormRequestId = null;
+      // The form stays open (and the draft stays stashed) until the server
+      // confirms — postTestingStatus closes it on success. Closing it here
+      // would throw away the typed feedback whenever the POST fails.
+      feedbackDraftText = feedbackInput.value;
       postTestingStatus(requestId, "returned", feedbackText);
     });
     var cancelButton = createElement("button", "control-button testing-action", "Cancel");
     cancelButton.type = "button";
     cancelButton.addEventListener("click", function () {
       feedbackFormRequestId = null;
+      feedbackDraftText = "";
       renderTestingView();
     });
     formActions.appendChild(confirmButton);
@@ -1105,6 +1133,10 @@
           request.testingFeedback = testingState === "returned" ? feedbackText || "" : "";
           request.testingStatusUnrecognized = false;
           request.originalTestingStatus = payload.testingStatus || "";
+        }
+        if (feedbackFormRequestId === requestId) {
+          feedbackFormRequestId = null;
+          feedbackDraftText = "";
         }
         renderTestingView();
         renderColumns(); // the main board's testing badge tracks the same record

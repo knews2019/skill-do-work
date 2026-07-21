@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.130.4 — Testing View: Safer Writes, Sturdier Feedback Form (2026-07-21)
+
+Hardening for the board's one write surface and the client flows that drive it.
+
+- Server: all testing writes are serialized behind a mutex (concurrent add-tester or status posts raced their read-modify-write cycles); REQ frontmatter updates land via atomic temp-file-and-rename so a crash can never leave a zero-byte REQ; the testers file opens with O_APPEND.
+- Client: typed feedback survives testing-view re-renders and failed posts (the form now closes only on server confirmation); Clear no longer requires a tester profile (it only removes fields); compound ids like UR-002-REQ-031 sort by their REQ number; the Recently-done and testing date windows anchor to the wall clock instead of page-generation time, so a long-open tab keeps meaning "last 24 hours".
+
 ## 0.130.3 — Board Names the Real Cause When git Is Unavailable (2026-07-21)
 
 Running the board without a `git` binary (or outside a repo) used to produce a per-ticket anomaly blaming each commit hash. Now a one-time probe logs a single clear line ("git binary not found on PATH"), skips the doomed per-ticket subprocesses, and the anomaly reason says the hash could not be dated rather than asserting it is invalid.

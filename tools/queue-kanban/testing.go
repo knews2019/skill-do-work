@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -37,6 +38,12 @@ const (
 // testersFileRelativePath is where tester profiles live, relative to the
 // do-work/ tree root — a sibling of notes.md, discovered by the same walk.
 const testersFileRelativePath = "testers.md"
+
+// testingWriteMutex serializes the board's two write surfaces (REQ frontmatter
+// upserts and testers.md appends). The HTTP server runs each request in its own
+// goroutine, so without this a double-submitted UI action could interleave two
+// read-modify-write cycles on the same file.
+var testingWriteMutex sync.Mutex
 
 // testersFileHeader is written once when the profile store is first created, so
 // a hand-opened do-work/testers.md explains itself.
@@ -156,6 +163,12 @@ func appendTestingProfile(testersFilePath string, rawProfileName string) ([]stri
 		return nil, validateError
 	}
 
+	// Serialize with every other testing write: two concurrent appends (a
+	// double-clicked "add tester") would otherwise both see an empty file and
+	// both write the header, or interleave their read-check-append cycles.
+	testingWriteMutex.Lock()
+	defer testingWriteMutex.Unlock()
+
 	existingProfiles := loadTestingProfiles(testersFilePath)
 	for _, existingProfile := range existingProfiles {
 		if strings.EqualFold(existingProfile, profileName) {
@@ -170,7 +183,7 @@ func appendTestingProfile(testersFilePath string, rawProfileName string) ([]stri
 		return nil, fmt.Errorf("%s is not a regular file — refusing to write through it", testersFilePath)
 	}
 
-	fileHandle, openError := os.OpenFile(testersFilePath, os.O_CREATE|os.O_WRONLY, 0o644)
+	fileHandle, openError := os.OpenFile(testersFilePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if openError != nil {
 		return nil, fmt.Errorf("opening testers file: %w", openError)
 	}
@@ -179,9 +192,6 @@ func appendTestingProfile(testersFilePath string, rawProfileName string) ([]stri
 	fileInfo, statError := fileHandle.Stat()
 	if statError != nil {
 		return nil, fmt.Errorf("stat testers file: %w", statError)
-	}
-	if _, seekError := fileHandle.Seek(0, 2); seekError != nil {
-		return nil, fmt.Errorf("seeking testers file: %w", seekError)
 	}
 	appendText := "- " + profileName + "\n"
 	if fileInfo.Size() == 0 {
@@ -243,6 +253,12 @@ type frontmatterFieldUpdate struct {
 // continuation lines. A file without a well-formed frontmatter block is an
 // error, never a guessed edit.
 func upsertFrontmatterFields(filePath string, fieldUpdates []frontmatterFieldUpdate) error {
+	// Serialize with every other testing write — two concurrent upserts on the
+	// same REQ would race their read-modify-write cycles and one edit would
+	// silently vanish.
+	testingWriteMutex.Lock()
+	defer testingWriteMutex.Unlock()
+
 	contentBytes, readError := os.ReadFile(filePath)
 	if readError != nil {
 		return fmt.Errorf("reading %s: %w", filePath, readError)
@@ -267,8 +283,47 @@ func upsertFrontmatterFields(filePath string, fieldUpdates []frontmatterFieldUpd
 		fileLines, closingFenceIndex = applyFrontmatterFieldUpdate(fileLines, closingFenceIndex, fieldUpdate)
 	}
 
-	if writeError := os.WriteFile(filePath, []byte(strings.Join(fileLines, "\n")), 0o644); writeError != nil {
+	// Atomic replace, not a truncating WriteFile: the file IS the database, and
+	// an interrupted truncate-then-write (crash, disk full) would leave a
+	// zero-byte REQ that git cannot restore if it was never committed.
+	if writeError := writeFileAtomically(filePath, []byte(strings.Join(fileLines, "\n"))); writeError != nil {
 		return fmt.Errorf("writing %s: %w", filePath, writeError)
+	}
+	return nil
+}
+
+// writeFileAtomically writes fileContents to a temporary file in the target's
+// directory, then renames it over filePath — so a reader (or a crash) sees
+// either the complete old file or the complete new one, never a truncated
+// in-between. The dot-prefixed temp name keeps a crash leftover out of the
+// board's REQ-*.md walk.
+func writeFileAtomically(filePath string, fileContents []byte) error {
+	parentDirectory := filepath.Dir(filePath)
+	temporaryFile, createError := os.CreateTemp(parentDirectory, "."+filepath.Base(filePath)+".tmp-*")
+	if createError != nil {
+		return fmt.Errorf("creating temp file in %s: %w", parentDirectory, createError)
+	}
+	temporaryPath := temporaryFile.Name()
+	defer os.Remove(temporaryPath) // no-op once the rename has landed
+
+	if _, writeError := temporaryFile.Write(fileContents); writeError != nil {
+		temporaryFile.Close()
+		return fmt.Errorf("writing %s: %w", temporaryPath, writeError)
+	}
+	// CreateTemp opens 0600; match the 0644 the direct write used to produce.
+	if chmodError := temporaryFile.Chmod(0o644); chmodError != nil {
+		temporaryFile.Close()
+		return fmt.Errorf("setting mode on %s: %w", temporaryPath, chmodError)
+	}
+	if syncError := temporaryFile.Sync(); syncError != nil {
+		temporaryFile.Close()
+		return fmt.Errorf("syncing %s: %w", temporaryPath, syncError)
+	}
+	if closeError := temporaryFile.Close(); closeError != nil {
+		return fmt.Errorf("closing %s: %w", temporaryPath, closeError)
+	}
+	if renameError := os.Rename(temporaryPath, filePath); renameError != nil {
+		return fmt.Errorf("replacing %s: %w", filePath, renameError)
 	}
 	return nil
 }
