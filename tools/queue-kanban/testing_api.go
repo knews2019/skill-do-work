@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"path/filepath"
 	"strings"
 	"time"
 )
@@ -16,12 +15,12 @@ import (
 // frontmatter fields of a single REQ file, and the do-work/testers.md profile
 // store. The work pipeline's fields (status, claimed_at, …) are never touched.
 //
-// There is deliberately no locking and no concurrency control: every write
-// lands in the user's working tree, where git is the audit trail and the
-// rollback mechanism. Serve mode is loopback-bound by default; the two
-// browser-facing guards below (JSON content type + same-origin check) exist to
-// stop a hostile web page from firing cross-site writes at localhost, not to
-// implement authentication.
+// Writes are serialized in testing.go so concurrent requests cannot lose one
+// another's updates. Every write still lands directly in the user's working
+// tree, where git is the audit trail and rollback mechanism. Serve mode is
+// loopback-bound by default; the two browser-facing guards below (JSON content
+// type + same-origin check) stop a hostile web page from firing cross-site
+// writes at localhost, but do not implement authentication.
 
 // testingApiMaxBodyBytes bounds a testing API request body. Feedback is capped
 // separately (testingApiMaxFeedbackChars); this is the transport-level ceiling.
@@ -121,8 +120,7 @@ func (liveServer *liveBoardServer) serveTestingProfileApi(responseWriter http.Re
 		return
 	}
 
-	testersFilePath := filepath.Join(liveServer.repoRoot, "do-work", testersFileRelativePath)
-	updatedProfiles, appendError := appendTestingProfile(testersFilePath, profileRequest.ProfileName)
+	updatedProfiles, appendError := appendTestingProfile(liveServer.repoRoot, profileRequest.ProfileName)
 	if appendError != nil {
 		writeTestingApiError(responseWriter, http.StatusBadRequest, appendError.Error())
 		return

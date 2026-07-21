@@ -157,17 +157,21 @@ func validateTesterProfileName(rawProfileName string) (string, error) {
 // (with its explanatory header) on first use. Adding an already-known name
 // (case-insensitive) is a no-op, not an error — the caller re-reads the file
 // either way. Returns the updated profile list.
-func appendTestingProfile(testersFilePath string, rawProfileName string) ([]string, error) {
+func appendTestingProfile(repoRoot string, rawProfileName string) ([]string, error) {
 	profileName, validateError := validateTesterProfileName(rawProfileName)
 	if validateError != nil {
 		return nil, validateError
 	}
+	testersFilePath := filepath.Join(repoRoot, "do-work", testersFileRelativePath)
 
 	// Serialize with every other testing write: two concurrent appends (a
 	// double-clicked "add tester") would otherwise both see an empty file and
 	// both write the header, or interleave their read-check-append cycles.
 	testingWriteMutex.Lock()
 	defer testingWriteMutex.Unlock()
+	if parentError := validateTestingWriteParent(repoRoot, testersFilePath); parentError != nil {
+		return nil, parentError
+	}
 
 	existingProfiles := loadTestingProfiles(testersFilePath)
 	for _, existingProfile := range existingProfiles {
@@ -204,13 +208,11 @@ func appendTestingProfile(testersFilePath string, rawProfileName string) ([]stri
 }
 
 // validateTestingWriteTarget rejects a REQ write target that would escape the
-// do-work tree. The path itself always comes from the parsed tree (never from
-// client input), but a checked-out repo can contain a symlink named
-// REQ-*.md — or a symlinked parent directory — whose target is outside
-// do-work/; following it would let a testing write modify an arbitrary
-// frontmatter-bearing file. The file must be a regular file (no symlink), and
-// its parent directory must resolve (symlinks evaluated) to somewhere inside
-// the resolved do-work root.
+// repository's do-work tree. The path itself always comes from the parsed tree
+// (never from client input), but a checked-out repo can contain a symlink named
+// REQ-*.md — or a symlinked parent directory — whose target is outside the
+// repository. The file must be regular (no symlink), and its parent must pass
+// the same containment check used by the testers.md writer.
 func validateTestingWriteTarget(repoRoot string, requestFilePath string) error {
 	lstatInfo, lstatError := os.Lstat(requestFilePath)
 	if lstatError != nil {
@@ -219,20 +221,48 @@ func validateTestingWriteTarget(repoRoot string, requestFilePath string) error {
 	if !lstatInfo.Mode().IsRegular() {
 		return fmt.Errorf("%s is not a regular file — refusing to write testing placeholders through a symlink", requestFilePath)
 	}
+	return validateTestingWriteParent(repoRoot, requestFilePath)
+}
 
-	resolvedDoWorkRoot, rootEvalError := filepath.EvalSymlinks(filepath.Join(repoRoot, "do-work"))
+// validateTestingWriteParent permits a testing write only when the resolved
+// do-work root remains inside the resolved repository and the target's resolved
+// parent remains inside that do-work root. Checking both boundaries matters:
+// an otherwise-valid testers.md path can escape when do-work/ itself is a
+// symlink outside the repository.
+func validateTestingWriteParent(repoRoot string, testingFilePath string) error {
+	absoluteRepoRoot, absoluteRootError := filepath.Abs(repoRoot)
+	if absoluteRootError != nil {
+		return fmt.Errorf("resolving repository root: %w", absoluteRootError)
+	}
+	resolvedRepoRoot, repoEvalError := filepath.EvalSymlinks(absoluteRepoRoot)
+	if repoEvalError != nil {
+		return fmt.Errorf("resolving repository root: %w", repoEvalError)
+	}
+	resolvedDoWorkRoot, rootEvalError := filepath.EvalSymlinks(filepath.Join(absoluteRepoRoot, "do-work"))
 	if rootEvalError != nil {
 		return fmt.Errorf("resolving do-work root: %w", rootEvalError)
 	}
-	resolvedParentDirectory, parentEvalError := filepath.EvalSymlinks(filepath.Dir(requestFilePath))
-	if parentEvalError != nil {
-		return fmt.Errorf("resolving %s: %w", filepath.Dir(requestFilePath), parentEvalError)
+	if !resolvedPathIsWithinDirectory(resolvedRepoRoot, resolvedDoWorkRoot) {
+		return fmt.Errorf("do-work root resolves outside the repository — refusing to write %s", testingFilePath)
 	}
-	relativeToRoot, relativeError := filepath.Rel(resolvedDoWorkRoot, resolvedParentDirectory)
-	if relativeError != nil || relativeToRoot == ".." || strings.HasPrefix(relativeToRoot, ".."+string(filepath.Separator)) {
-		return fmt.Errorf("%s resolves outside the do-work tree — refusing to write testing placeholders", requestFilePath)
+
+	absoluteParentDirectory, absoluteParentError := filepath.Abs(filepath.Dir(testingFilePath))
+	if absoluteParentError != nil {
+		return fmt.Errorf("resolving %s: %w", filepath.Dir(testingFilePath), absoluteParentError)
+	}
+	resolvedParentDirectory, parentEvalError := filepath.EvalSymlinks(absoluteParentDirectory)
+	if parentEvalError != nil {
+		return fmt.Errorf("resolving %s: %w", filepath.Dir(testingFilePath), parentEvalError)
+	}
+	if !resolvedPathIsWithinDirectory(resolvedDoWorkRoot, resolvedParentDirectory) {
+		return fmt.Errorf("%s resolves outside the do-work tree — refusing to write testing data", testingFilePath)
 	}
 	return nil
+}
+
+func resolvedPathIsWithinDirectory(resolvedDirectory string, resolvedCandidatePath string) bool {
+	relativePath, relativeError := filepath.Rel(resolvedDirectory, resolvedCandidatePath)
+	return relativeError == nil && relativePath != ".." && !strings.HasPrefix(relativePath, ".."+string(filepath.Separator))
 }
 
 // frontmatterFieldUpdate is one placeholder mutation for

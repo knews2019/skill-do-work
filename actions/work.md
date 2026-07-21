@@ -128,16 +128,34 @@ mkdir -p do-work/working   # may not exist yet — capture.md never pre-creates 
 BLOCKED_CHECK_SCRIPT="do-work/working/.blocked-check-${REQ_ID}.sh"   # REQ_ID is the sanitized REQ id token, e.g. REQ-042
 # Write the blocked_check field value to $BLOCKED_CHECK_SCRIPT exactly as read (no quoting, no echo -e), then:
 # `timeout` is GNU coreutils — stock macOS ships neither `timeout` nor `gtimeout` (brew coreutils
-# adds the latter). Resolve whichever exists; with neither, run the probe unwrapped rather than
-# fail on exit 127 and wrongly report "probe failed" for a condition that was never checked.
-if command -v timeout >/dev/null 2>&1; then probe_wrapper="timeout 30"
-elif command -v gtimeout >/dev/null 2>&1; then probe_wrapper="gtimeout 30"
-else probe_wrapper=""; fi
-$probe_wrapper sh "$BLOCKED_CHECK_SCRIPT"; probe_exit=$?   # $probe_wrapper deliberately unquoted — empty must vanish
+# adds the latter). Use either when present; otherwise poll the background probe with stock shell
+# primitives so every platform keeps the same 30-second bound.
+if command -v timeout >/dev/null 2>&1; then
+  timeout 30 sh "$BLOCKED_CHECK_SCRIPT"; probe_exit=$?
+elif command -v gtimeout >/dev/null 2>&1; then
+  gtimeout 30 sh "$BLOCKED_CHECK_SCRIPT"; probe_exit=$?
+else
+  sh "$BLOCKED_CHECK_SCRIPT" &
+  probe_process_id=$!
+  probe_wait_ticks=0
+  while kill -0 "$probe_process_id" 2>/dev/null && [ "$probe_wait_ticks" -lt 300 ]; do
+    sleep 0.1
+    probe_wait_ticks=$((probe_wait_ticks + 1))
+  done
+  if kill -0 "$probe_process_id" 2>/dev/null; then
+    kill "$probe_process_id" 2>/dev/null || true
+    sleep 0.1
+    kill -9 "$probe_process_id" 2>/dev/null || true
+    wait "$probe_process_id" 2>/dev/null || true
+    probe_exit=124
+  else
+    wait "$probe_process_id"; probe_exit=$?
+  fi
+fi
 rm -f "$BLOCKED_CHECK_SCRIPT"
 ```
 
-**Fail closed.** Only `probe_exit == 0` unblocks. Any non-zero exit, a `timeout` kill (124 — only possible when a wrapper was found; an unwrapped probe runs unbounded, so keep `blocked_check` commands fast), an unreadable/absent field, or a failure to launch means the condition is still unmet — leave the REQ `blocked` and note "probe failed this run" for the exit summary. A probe never halts the work loop and never raises an error.
+**Fail closed.** Only `probe_exit == 0` unblocks. Any non-zero exit, a timeout (124), an unreadable/absent field, or a failure to launch means the condition is still unmet — leave the REQ `blocked` and note "probe failed this run" for the exit summary. A probe never halts the work loop and never raises an error.
 
 On exit 0, unblock the REQ: set `status: pending`, **remove `blocked_by` and `blocked_at`** (a stale condition on a runnable REQ would mislead the board and every reader), keep `blocked_check` (harmless while pending, useful if the REQ re-blocks later), and append one history line to a `## Blocked` body section — `- [<date>] blocked on "<condition>" — cleared by probe`. A `blocked` REQ with **no** `blocked_check` is never probed here; it clears only via `do-work clarify` or a manual edit.
 

@@ -126,9 +126,14 @@ func TestUnrecognizedTestingStatusFlagsAndWarns(t *testing.T) {
 // header, dedupes case-insensitively, validates names, and that
 // loadTestingProfiles reads back file order.
 func TestTestingProfilesStoreRoundTrip(t *testing.T) {
-	testersFilePath := filepath.Join(t.TempDir(), "testers.md")
+	repoRoot := t.TempDir()
+	doWorkRoot := filepath.Join(repoRoot, "do-work")
+	if mkdirErr := os.MkdirAll(doWorkRoot, 0o755); mkdirErr != nil {
+		t.Fatalf("mkdir do-work: %v", mkdirErr)
+	}
+	testersFilePath := filepath.Join(doWorkRoot, "testers.md")
 
-	profiles, appendErr := appendTestingProfile(testersFilePath, "  Alice  ")
+	profiles, appendErr := appendTestingProfile(repoRoot, "  Alice  ")
 	if appendErr != nil {
 		t.Fatalf("append Alice: %v", appendErr)
 	}
@@ -144,10 +149,10 @@ func TestTestingProfilesStoreRoundTrip(t *testing.T) {
 		t.Errorf("testers file missing explanatory header; content=%q", string(storedBytes))
 	}
 
-	if _, appendErr = appendTestingProfile(testersFilePath, "Bob"); appendErr != nil {
+	if _, appendErr = appendTestingProfile(repoRoot, "Bob"); appendErr != nil {
 		t.Fatalf("append Bob: %v", appendErr)
 	}
-	profiles, appendErr = appendTestingProfile(testersFilePath, "alice") // case-insensitive dup → no-op
+	profiles, appendErr = appendTestingProfile(repoRoot, "alice") // case-insensitive dup → no-op
 	if appendErr != nil {
 		t.Fatalf("append duplicate alice: %v", appendErr)
 	}
@@ -158,13 +163,13 @@ func TestTestingProfilesStoreRoundTrip(t *testing.T) {
 		t.Fatalf("loadTestingProfiles = %v, want [Alice Bob]", got)
 	}
 
-	if _, appendErr = appendTestingProfile(testersFilePath, "  "); appendErr == nil {
+	if _, appendErr = appendTestingProfile(repoRoot, "  "); appendErr == nil {
 		t.Errorf("empty tester name must be rejected")
 	}
-	if _, appendErr = appendTestingProfile(testersFilePath, "bad\nname"); appendErr == nil {
+	if _, appendErr = appendTestingProfile(repoRoot, "bad\nname"); appendErr == nil {
 		t.Errorf("control characters in a tester name must be rejected")
 	}
-	if _, appendErr = appendTestingProfile(testersFilePath, strings.Repeat("x", 81)); appendErr == nil {
+	if _, appendErr = appendTestingProfile(repoRoot, strings.Repeat("x", 81)); appendErr == nil {
 		t.Errorf("an over-long tester name must be rejected")
 	}
 }
@@ -354,6 +359,33 @@ func TestTestingApiRejectsSymlinkedReqFile(t *testing.T) {
 	targetBytes, _ := os.ReadFile(outsideTargetPath)
 	if string(targetBytes) != outsideContent {
 		t.Fatalf("symlink target was modified:\n%s", string(targetBytes))
+	}
+}
+
+// TestTestingProfileApiRejectsSymlinkedDoWorkRoot asserts profile creation
+// cannot follow a do-work/ symlink out of the repository. testers.md does not
+// exist yet in this case, so checking only the final path is insufficient.
+func TestTestingProfileApiRejectsSymlinkedDoWorkRoot(t *testing.T) {
+	fixtureRoot := t.TempDir()
+	repoRoot := filepath.Join(fixtureRoot, "repo")
+	outsideDoWorkRoot := filepath.Join(fixtureRoot, "outside-do-work")
+	if mkdirErr := os.MkdirAll(outsideDoWorkRoot, 0o755); mkdirErr != nil {
+		t.Fatalf("mkdir outside do-work: %v", mkdirErr)
+	}
+	if mkdirErr := os.MkdirAll(repoRoot, 0o755); mkdirErr != nil {
+		t.Fatalf("mkdir repo: %v", mkdirErr)
+	}
+	if symlinkErr := os.Symlink(outsideDoWorkRoot, filepath.Join(repoRoot, "do-work")); symlinkErr != nil {
+		t.Skipf("cannot create symlinks on this platform: %v", symlinkErr)
+	}
+
+	statusCode, apiResponse := postTestingApiJson(t, testServerFor(t, repoRoot), "/api/testing/profile",
+		map[string]string{"name": "Alice"})
+	if statusCode != http.StatusBadRequest || apiResponse.Ok {
+		t.Fatalf("profile write through a symlinked do-work root: status=%d ok=%v, want 400", statusCode, apiResponse.Ok)
+	}
+	if _, statErr := os.Stat(filepath.Join(outsideDoWorkRoot, testersFileRelativePath)); !os.IsNotExist(statErr) {
+		t.Fatalf("rejected profile write created an outside testers file: %v", statErr)
 	}
 }
 

@@ -189,6 +189,40 @@ for check_script in "${hardened_check_scripts[@]}"; do
     "actions/work.md must reference $check_script — the hardened step's pointer was removed without un-hardening."
 done
 
+# Review regressions: prescribed shell and roadmap classification are runtime
+# contracts even though they live in Markdown/just recipes rather than compiled code.
+for kanban_recipe_file in "actions/install.md" "justfile"; do
+  assert_file_not_contains \
+    "$kanban_recipe_file" \
+    'case "\$listener_command" in \*queue-kanban\*' \
+    "$kanban_recipe_file must not identify a stale board from arbitrary argv text."
+  assert_contains \
+    "$kanban_recipe_file" \
+    'lsof -a -p "\$listener_pid" -d txt -Fn' \
+    "$kanban_recipe_file must identify a stale board from its executable, preserving cross-repo binary names without matching unrelated arguments."
+done
+
+assert_file_not_contains \
+  "actions/work.md" \
+  'else probe_wrapper=""' \
+  'actions/work.md must not drop the blocked-check time limit when timeout/gtimeout is unavailable.'
+
+assert_contains \
+  "actions/work.md" \
+  'probe_exit=124' \
+  'actions/work.md must preserve a bounded portable fallback and report a timed-out blocked check as exit 124.'
+
+blocked_probe_shell_block="$(sed -n '/^# Re-derive paths deterministically/,/^rm -f "\$BLOCKED_CHECK_SCRIPT"/p' "$repo_root/actions/work.md")"
+if ! bash -n <<<"$blocked_probe_shell_block"; then
+  printf 'FAIL: actions/work.md blocked-check shell block must remain syntactically valid.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+assert_contains \
+  "actions/roadmap.md" \
+  '^-[[:space:]]+\*\*Ready\*\*[[:space:]]+— normalized `status` is `pending`' \
+  'actions/roadmap.md must require pending status before classifying a queued REQ as Ready.'
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi

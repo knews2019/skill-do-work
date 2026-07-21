@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.131.1 — Kill Boards by Executable, Bound Probes Everywhere, Guard a Symlinked do-work (2026-07-21)
+
+Four review follow-ups, each pinned by a new contract-regression check.
+
+- `just run-kanban` (and the installed recipe) now identifies a stale board by the listener's **executable path** via `lsof -d txt`, not by grepping argv — a process that merely mentions "queue-kanban" in an argument can no longer be killed by mistake. No `lsof` info still means refuse-to-kill.
+- The work pipeline's `blocked_check` probe keeps its 30-second bound even where GNU `timeout`/`gtimeout` don't exist (stock macOS): a background-and-poll fallback kills a hung probe and reports exit 124 instead of running unbounded.
+- Roadmap's **Ready** bucket now requires normalized `status: pending`, so `blocked`/`reserved`/`claimed` REQs can't classify as Ready.
+- The board's testing writes (REQ placeholders *and* `testers.md`) verify that `do-work/` itself resolves inside the repository — a symlinked `do-work/` pointing elsewhere is refused. If you deliberately symlink `do-work/` outside your repo, the board's Testing view will decline to write there (the work pipeline is unaffected).
+
 ## 0.131.0 — Claimed Cards Show Claim Time and a Ticking Duration (2026-07-21)
 
 A claimed card used to sit in its column with no time at all. It now shows when it was claimed plus a live stopwatch — "claimed Jul 21, 19:44 UTC · 4m 01s" — so you can see at a glance how long the current REQ has been in flight.
