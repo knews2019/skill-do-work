@@ -893,6 +893,17 @@ body.is-resizing-detail {
   font-family: var(--font-mono);
 }
 
+/* Ticking "6min ago" companion rendered next to every absolute instant. */
+.relative-time {
+  color: var(--ink-faint);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.relative-time::before {
+  content: "· ";
+}
+
 /* --------------------------------------------------------------------------
    By-UR lens
    -------------------------------------------------------------------------- */

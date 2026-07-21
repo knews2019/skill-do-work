@@ -82,6 +82,77 @@
     return columnDayFormatter.format(new Date(ms)) + " UTC";
   }
 
+  // ---- relative time ("6min ago") ----------------------------------------
+  // Every visible instant carries a relative companion. Visible nodes get
+  // data-instant-ms and a shared 1s ticker keeps them fresh in a tab left
+  // open; title tooltips (which cannot host a ticking node) get a
+  // render-time snapshot string instead.
+
+  function formatRelativeTime(instantMs, nowMs) {
+    var elapsedSeconds = Math.floor((nowMs - instantMs) / 1000);
+    if (elapsedSeconds < 1) {
+      // Also covers clock skew (instant slightly in the future).
+      return "just now";
+    }
+    if (elapsedSeconds < 60) {
+      return elapsedSeconds + "s ago";
+    }
+    var elapsedMinutes = Math.floor(elapsedSeconds / 60);
+    if (elapsedMinutes < 60) {
+      return elapsedMinutes + "min ago";
+    }
+    var elapsedHours = Math.floor(elapsedMinutes / 60);
+    if (elapsedHours < 24) {
+      return elapsedHours + "h ago";
+    }
+    var elapsedDays = Math.floor(elapsedHours / 24);
+    return elapsedDays + "d ago";
+  }
+
+  function makeRelativeTimeNode(isoText) {
+    var instantMs = Date.parse(isoText);
+    if (isNaN(instantMs)) {
+      return null;
+    }
+    var relativeNode = createElement("span", "relative-time", formatRelativeTime(instantMs, Date.now()));
+    relativeNode.dataset.instantMs = String(instantMs);
+    return relativeNode;
+  }
+
+  // Absolute instant plus its ticking relative label, as one inline node —
+  // for visible text (cards, chips, drawer rows). Null when unparseable so
+  // callers can fall back to the raw value.
+  function makeInstantWithRelativeNode(isoText) {
+    var absoluteText = formatShortInstant(isoText);
+    if (!absoluteText) {
+      return null;
+    }
+    var wrapperNode = createElement("span", "instant-with-relative");
+    wrapperNode.appendChild(document.createTextNode(absoluteText + " "));
+    wrapperNode.appendChild(makeRelativeTimeNode(isoText));
+    return wrapperNode;
+  }
+
+  function formatShortInstantWithRelative(isoText) {
+    var absoluteText = formatShortInstant(isoText);
+    if (!absoluteText) {
+      return "";
+    }
+    return absoluteText + " (" + formatRelativeTime(Date.parse(isoText), Date.now()) + ")";
+  }
+
+  function refreshRelativeTimeNodes() {
+    var nowMs = Date.now();
+    var relativeNodes = document.querySelectorAll("[data-instant-ms]");
+    for (var nodeIndex = 0; nodeIndex < relativeNodes.length; nodeIndex++) {
+      var relativeNode = relativeNodes[nodeIndex];
+      var nextLabel = formatRelativeTime(Number(relativeNode.dataset.instantMs), nowMs);
+      if (relativeNode.textContent !== nextLabel) {
+        relativeNode.textContent = nextLabel;
+      }
+    }
+  }
+
   // ---- dependency helpers -------------------------------------------------
   // Mirrors model.go's isTerminalResolvedStatus / isCompletedStatus. The board
   // never re-derives which dependencies are unmet — the Go side annotates that
@@ -291,7 +362,7 @@
       var reservedBadge = makeBadge("badge-reserved", "reserved for", request.reservedFor || "unknown session");
       reservedBadge.title =
         "Allocated to a different worktree/cloud session" +
-        (request.reservedAt ? " since " + formatShortInstant(request.reservedAt) : "");
+        (request.reservedAt ? " since " + formatShortInstantWithRelative(request.reservedAt) : "");
       badges.appendChild(reservedBadge);
       if (request.reservationStale) {
         var staleBadge = makeBadge("badge-reservation-stale", null, "stale >24h");
@@ -312,7 +383,7 @@
       var blockedBadge = makeBadge("badge-blocked", "blocked by", truncateBadgeText(blockedCondition));
       var blockedTitle = blockedCondition;
       if (request.blockedAt) {
-        blockedTitle += " — since " + formatShortInstant(request.blockedAt);
+        blockedTitle += " — since " + formatShortInstantWithRelative(request.blockedAt);
       }
       blockedTitle += request.blockedCheck
         ? " — auto-probe set; `do-work run` re-checks it and unblocks on exit 0"
@@ -369,9 +440,12 @@
 
     if (options && options.showCompleted && request.completionTime) {
       var completionVerb = request.status === "cancelled" ? "cancelled" : "done";
-      card.appendChild(
-        createElement("div", "req-card-completed", completionVerb + " " + formatShortInstant(request.completionTime))
-      );
+      var completionLine = createElement("div", "req-card-completed", completionVerb + " ");
+      var completionInstantNode = makeInstantWithRelativeNode(request.completionTime);
+      if (completionInstantNode) {
+        completionLine.appendChild(completionInstantNode);
+      }
+      card.appendChild(completionLine);
     }
 
     return card;
@@ -859,7 +933,12 @@
       meta.appendChild(createElement("span", "testing-meta-chip", "tester: " + request.testedBy));
     }
     if (request.testingUpdatedAt) {
-      meta.appendChild(createElement("span", "testing-meta-chip", formatShortInstant(request.testingUpdatedAt)));
+      var testingUpdatedChip = createElement("span", "testing-meta-chip");
+      testingUpdatedChip.appendChild(
+        makeInstantWithRelativeNode(request.testingUpdatedAt) ||
+          document.createTextNode(request.testingUpdatedAt)
+      );
+      meta.appendChild(testingUpdatedChip);
     }
     if (request.testingStatusUnrecognized) {
       var invalidChip = createElement("span", "testing-meta-chip is-invalid", "invalid testing_status");
@@ -1225,7 +1304,7 @@
     if (request.blockedBy && request.blockedBy.length > 0) {
       appendMetaRow("Blocked by", request.blockedBy.join(", "));
       if (request.blockedAt) {
-        appendMetaRow("Blocked since", formatShortInstant(request.blockedAt) || request.blockedAt);
+        appendMetaRow("Blocked since", makeInstantWithRelativeNode(request.blockedAt) || request.blockedAt);
       }
       if (request.blockedCheck) {
         appendMetaRow("Blocked check", request.blockedCheck);
@@ -1239,10 +1318,16 @@
       appendMetaRow("Route", request.route);
     }
     if (request.createdAt) {
-      appendMetaRow("Created", request.createdAt);
+      appendMetaRow("Created", makeInstantWithRelativeNode(request.createdAt) || request.createdAt);
     }
     if (request.completionTime) {
-      appendMetaRow("Completed", formatShortInstant(request.completionTime) + " (" + request.completionTimeSource + ")");
+      var completedRowValue = createElement("span");
+      completedRowValue.appendChild(
+        makeInstantWithRelativeNode(request.completionTime) ||
+          document.createTextNode(formatShortInstant(request.completionTime))
+      );
+      completedRowValue.appendChild(document.createTextNode(" (" + request.completionTimeSource + ")"));
+      appendMetaRow("Completed", completedRowValue);
     }
     if (request.completionAnomaly) {
       var anomalyValue = createElement("span", "detail-status-invalid");
@@ -1266,7 +1351,7 @@
       }
       appendMetaRow("Testing", testingSummary);
       if (request.testingUpdatedAt) {
-        appendMetaRow("Testing updated", formatShortInstant(request.testingUpdatedAt) || request.testingUpdatedAt);
+        appendMetaRow("Testing updated", makeInstantWithRelativeNode(request.testingUpdatedAt) || request.testingUpdatedAt);
       }
       if (request.testingFeedback) {
         appendMetaRow("Testing feedback", request.testingFeedback);
@@ -1739,6 +1824,16 @@
   });
 
   // ---- boot ---------------------------------------------------------------
+
+  var generatedHeaderNode = document.getElementById("board-generated");
+  if (generatedHeaderNode) {
+    var generatedRelativeNode = makeRelativeTimeNode(boardData.generatedAt);
+    if (generatedRelativeNode) {
+      generatedHeaderNode.appendChild(document.createTextNode(" "));
+      generatedHeaderNode.appendChild(generatedRelativeNode);
+    }
+  }
+  setInterval(refreshRelativeTimeNodes, 1000);
 
   wireControls();
   wireTestingControls();

@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.130.0 — Relative Times Next to Every Board Timestamp (2026-07-21)
+
+Every timestamp on the Kanban board now carries a live relative label — "done Jul 21, 16:24 UTC · 6min ago" — so you can tell at a glance how fresh a card is without doing UTC math.
+
+- Covers card done/cancelled lines, the testing view's tester chips, the detail drawer's Created / Blocked since / Completed / Testing updated rows, the reserved/blocked badge tooltips, and the "Generated" page header.
+- Labels tick every second client-side (s → min → h → d buckets), so a tab left open stays accurate; tooltips get a render-time snapshot.
+
 ## 0.129.1 — Kill-Stale Guard Matches Cross-Repo Kanban Binaries (2026-07-21)
 
 `just run-kanban` can now restart the board when the port is held by a queue-kanban instance started from *another* repo. Other projects' recipes build the same tool under different names (e.g. `build/go-bin-queue-kanban`), and the old guard only killed a process named exactly `queue-kanban` — so the recipe refused and failed instead of reclaiming the port.
