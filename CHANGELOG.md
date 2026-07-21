@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.131.0 — Claimed Cards Show Claim Time and a Ticking Duration (2026-07-21)
+
+A claimed card used to sit in its column with no time at all. It now shows when it was claimed plus a live stopwatch — "claimed Jul 21, 19:44 UTC · 4m 01s" — so you can see at a glance how long the current REQ has been in flight.
+
+- The duration ticks every second (s → "Xm YYs" → "Xh YYm") with tabular digits so the line doesn't jitter.
+- The detail drawer gets a matching "Claimed" row: ticking stopwatch while the claim is live, plain instant + relative label if a stale `claimed_at` lingers on any other status.
+
 ## 0.130.4 — Testing View: Safer Writes, Sturdier Feedback Form (2026-07-21)
 
 Hardening for the board's one write surface and the client flows that drive it.

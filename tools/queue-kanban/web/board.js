@@ -141,12 +141,44 @@
     return absoluteText + " (" + formatRelativeTime(Date.parse(isoText), Date.now()) + ")";
   }
 
+  // Stopwatch-style elapsed duration ("47s", "4m 07s", "1h 23m") for a ticket
+  // someone is actively working on — second-resolution below an hour because
+  // claim spans are short, coarser above so it never reads as a wall of digits.
+  function formatElapsedDuration(instantMs, nowMs) {
+    var totalSeconds = Math.max(0, Math.floor((nowMs - instantMs) / 1000));
+    var hoursPart = Math.floor(totalSeconds / 3600);
+    var minutesPart = Math.floor((totalSeconds % 3600) / 60);
+    var secondsPart = totalSeconds % 60;
+    if (hoursPart > 0) {
+      return hoursPart + "h " + (minutesPart < 10 ? "0" : "") + minutesPart + "m";
+    }
+    if (minutesPart > 0) {
+      return minutesPart + "m " + (secondsPart < 10 ? "0" : "") + secondsPart + "s";
+    }
+    return secondsPart + "s";
+  }
+
+  function makeElapsedDurationNode(isoText) {
+    var instantMs = Date.parse(isoText);
+    if (isNaN(instantMs)) {
+      return null;
+    }
+    var durationNode = createElement("span", "elapsed-duration", formatElapsedDuration(instantMs, Date.now()));
+    durationNode.dataset.instantMs = String(instantMs);
+    durationNode.dataset.tickFormat = "duration";
+    return durationNode;
+  }
+
   function refreshRelativeTimeNodes() {
     var nowMs = Date.now();
     var relativeNodes = document.querySelectorAll("[data-instant-ms]");
     for (var nodeIndex = 0; nodeIndex < relativeNodes.length; nodeIndex++) {
       var relativeNode = relativeNodes[nodeIndex];
-      var nextLabel = formatRelativeTime(Number(relativeNode.dataset.instantMs), nowMs);
+      var instantMs = Number(relativeNode.dataset.instantMs);
+      var nextLabel =
+        relativeNode.dataset.tickFormat === "duration"
+          ? formatElapsedDuration(instantMs, nowMs)
+          : formatRelativeTime(instantMs, nowMs);
       if (relativeNode.textContent !== nextLabel) {
         relativeNode.textContent = nextLabel;
       }
@@ -436,6 +468,21 @@
         deps.appendChild(chip);
       });
       card.appendChild(deps);
+    }
+
+    if (request.status === "claimed" && request.claimedAt) {
+      var claimedLine = createElement("div", "req-card-completed", "claimed ");
+      var claimedAbsoluteText = formatShortInstant(request.claimedAt);
+      if (claimedAbsoluteText) {
+        claimedLine.appendChild(document.createTextNode(claimedAbsoluteText + " "));
+      }
+      var claimedDurationNode = makeElapsedDurationNode(request.claimedAt);
+      if (claimedDurationNode) {
+        claimedLine.appendChild(claimedDurationNode);
+      }
+      if (claimedLine.childNodes.length > 1) {
+        card.appendChild(claimedLine);
+      }
     }
 
     if (options && options.showCompleted && request.completionTime) {
@@ -1351,6 +1398,19 @@
     }
     if (request.createdAt) {
       appendMetaRow("Created", makeInstantWithRelativeNode(request.createdAt) || request.createdAt);
+    }
+    if (request.claimedAt) {
+      // While the claim is live the row carries the ticking stopwatch; on any
+      // other status (stale leftover field) it degrades to the plain instant.
+      var drawerDurationNode = request.status === "claimed" ? makeElapsedDurationNode(request.claimedAt) : null;
+      if (drawerDurationNode) {
+        var claimedRowValue = createElement("span", "instant-with-relative");
+        claimedRowValue.appendChild(document.createTextNode(formatShortInstant(request.claimedAt) + " "));
+        claimedRowValue.appendChild(drawerDurationNode);
+        appendMetaRow("Claimed", claimedRowValue);
+      } else {
+        appendMetaRow("Claimed", makeInstantWithRelativeNode(request.claimedAt) || request.claimedAt);
+      }
     }
     if (request.completionTime) {
       var completedRowValue = createElement("span");

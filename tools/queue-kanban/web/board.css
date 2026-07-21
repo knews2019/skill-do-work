@@ -904,6 +904,19 @@ body.is-resizing-detail {
   content: "· ";
 }
 
+/* Ticking stopwatch ("4m 07s") on an actively claimed ticket — tabular digits
+   so the seconds tick in place instead of jittering the line width. */
+.elapsed-duration {
+  color: var(--ink-faint);
+  opacity: 0.85;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.elapsed-duration::before {
+  content: "· ";
+}
+
 /* --------------------------------------------------------------------------
    By-UR lens
    -------------------------------------------------------------------------- */
