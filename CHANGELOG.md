@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.132.0 — Every Non-Terminal Card Gets a Live State Timer (2026-07-22)
+
+The claimed-card stopwatch from 0.131.0 now covers every state: any card that isn't done shows when it entered its current state plus a ticking elapsed timer — "queued … · 3d 04h", "blocked … · 2h 15m", "reserved … · 12m 30s" — so you can see at a glance where time is going before a task lands in Done.
+
+- Pending / pending-answers / failed cards count from `created_at` (labeled "queued" — time since capture; those states write no transition instant of their own), blocked cards from `blocked_at`, reserved from `reserved_at`, claimed from `claimed_at` as before.
+- Durations past a day render as "3d 04h" instead of a wall of hours.
+- Drawer parity: "Blocked since" and a new "Reserved" row tick while that hold is live, degrading to the plain instant when the field is a stale leftover.
+
+---
+
 ## 0.131.1 — Kill Boards by Executable, Bound Probes Everywhere, Guard a Symlinked do-work (2026-07-21)
 
 Four review follow-ups, each pinned by a new contract-regression check.

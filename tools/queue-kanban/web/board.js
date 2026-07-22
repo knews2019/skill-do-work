@@ -141,11 +141,17 @@
     return absoluteText + " (" + formatRelativeTime(Date.parse(isoText), Date.now()) + ")";
   }
 
-  // Stopwatch-style elapsed duration ("47s", "4m 07s", "1h 23m") for a ticket
-  // someone is actively working on — second-resolution below an hour because
-  // claim spans are short, coarser above so it never reads as a wall of digits.
+  // Stopwatch-style elapsed duration ("47s", "4m 07s", "1h 23m", "3d 04h") for
+  // a ticket sitting in a state — second-resolution below an hour because
+  // claim spans are short, coarser above so it never reads as a wall of digits,
+  // and a day tier so week-old queue waits don't render as "170h".
   function formatElapsedDuration(instantMs, nowMs) {
     var totalSeconds = Math.max(0, Math.floor((nowMs - instantMs) / 1000));
+    var daysPart = Math.floor(totalSeconds / 86400);
+    if (daysPart > 0) {
+      var remainderHours = Math.floor((totalSeconds % 86400) / 3600);
+      return daysPart + "d " + (remainderHours < 10 ? "0" : "") + remainderHours + "h";
+    }
     var hoursPart = Math.floor(totalSeconds / 3600);
     var minutesPart = Math.floor((totalSeconds % 3600) / 60);
     var secondsPart = totalSeconds % 60;
@@ -167,6 +173,50 @@
     durationNode.dataset.instantMs = String(instantMs);
     durationNode.dataset.tickFormat = "duration";
     return durationNode;
+  }
+
+  // Absolute instant plus its ticking stopwatch, as one inline node — the
+  // live-state variant of makeInstantWithRelativeNode. Null when unparseable
+  // so callers can fall back to the plain instant+relative rendering.
+  function makeInstantWithStopwatchNode(isoText) {
+    var absoluteText = formatShortInstant(isoText);
+    var durationNode = makeElapsedDurationNode(isoText);
+    if (!absoluteText || !durationNode) {
+      return null;
+    }
+    var wrapperNode = createElement("span", "instant-with-relative");
+    wrapperNode.appendChild(document.createTextNode(absoluteText + " "));
+    wrapperNode.appendChild(durationNode);
+    return wrapperNode;
+  }
+
+  function isBlockedHoldStatus(statusText) {
+    return statusText === "blocked" || (statusText || "").indexOf("blocked-") === 0;
+  }
+
+  // Which instant a card's live state timer counts from: every non-terminal
+  // card shows how long it has been in its current state, measured from the
+  // timestamp that state transition wrote. States without their own transition
+  // instant (pending, pending-answers, failed, unrecognized) fall back to
+  // created_at, so the timer then reads as time-since-capture and the verb
+  // says so ("queued"). Terminal cards keep the static done line instead.
+  function stateTimerSpecFor(request) {
+    if (request.status === "claimed" && request.claimedAt) {
+      return { verbText: "claimed", instantIso: request.claimedAt };
+    }
+    if (request.status === "reserved" && request.reservedAt) {
+      return { verbText: "reserved", instantIso: request.reservedAt };
+    }
+    if (isBlockedHoldStatus(request.status) && request.blockedAt) {
+      return { verbText: "blocked", instantIso: request.blockedAt };
+    }
+    if (isTerminalResolvedStatus(request.status)) {
+      return null;
+    }
+    if (request.createdAt) {
+      return { verbText: "queued", instantIso: request.createdAt };
+    }
+    return null;
   }
 
   function refreshRelativeTimeNodes() {
@@ -470,18 +520,13 @@
       card.appendChild(deps);
     }
 
-    if (request.status === "claimed" && request.claimedAt) {
-      var claimedLine = createElement("div", "req-card-completed", "claimed ");
-      var claimedAbsoluteText = formatShortInstant(request.claimedAt);
-      if (claimedAbsoluteText) {
-        claimedLine.appendChild(document.createTextNode(claimedAbsoluteText + " "));
-      }
-      var claimedDurationNode = makeElapsedDurationNode(request.claimedAt);
-      if (claimedDurationNode) {
-        claimedLine.appendChild(claimedDurationNode);
-      }
-      if (claimedLine.childNodes.length > 1) {
-        card.appendChild(claimedLine);
+    var stateTimerSpec = stateTimerSpecFor(request);
+    if (stateTimerSpec) {
+      var stateTimerNode = makeInstantWithStopwatchNode(stateTimerSpec.instantIso);
+      if (stateTimerNode) {
+        var stateTimerLine = createElement("div", "req-card-completed", stateTimerSpec.verbText + " ");
+        stateTimerLine.appendChild(stateTimerNode);
+        card.appendChild(stateTimerLine);
       }
     }
 
@@ -1383,7 +1428,15 @@
     if (request.blockedBy && request.blockedBy.length > 0) {
       appendMetaRow("Blocked by", request.blockedBy.join(", "));
       if (request.blockedAt) {
-        appendMetaRow("Blocked since", makeInstantWithRelativeNode(request.blockedAt) || request.blockedAt);
+        // While the hold is live the row carries the ticking stopwatch; on any
+        // other status (stale leftover field) it degrades to the plain instant.
+        var blockedRowValue = isBlockedHoldStatus(request.status)
+          ? makeInstantWithStopwatchNode(request.blockedAt)
+          : null;
+        appendMetaRow(
+          "Blocked since",
+          blockedRowValue || makeInstantWithRelativeNode(request.blockedAt) || request.blockedAt
+        );
       }
       if (request.blockedCheck) {
         appendMetaRow("Blocked check", request.blockedCheck);
@@ -1399,18 +1452,22 @@
     if (request.createdAt) {
       appendMetaRow("Created", makeInstantWithRelativeNode(request.createdAt) || request.createdAt);
     }
+    if (request.reservedAt) {
+      // Same live-vs-stale split as the Claimed row below.
+      var reservedRowValue = request.status === "reserved" ? makeInstantWithStopwatchNode(request.reservedAt) : null;
+      appendMetaRow(
+        "Reserved",
+        reservedRowValue || makeInstantWithRelativeNode(request.reservedAt) || request.reservedAt
+      );
+    }
     if (request.claimedAt) {
       // While the claim is live the row carries the ticking stopwatch; on any
       // other status (stale leftover field) it degrades to the plain instant.
-      var drawerDurationNode = request.status === "claimed" ? makeElapsedDurationNode(request.claimedAt) : null;
-      if (drawerDurationNode) {
-        var claimedRowValue = createElement("span", "instant-with-relative");
-        claimedRowValue.appendChild(document.createTextNode(formatShortInstant(request.claimedAt) + " "));
-        claimedRowValue.appendChild(drawerDurationNode);
-        appendMetaRow("Claimed", claimedRowValue);
-      } else {
-        appendMetaRow("Claimed", makeInstantWithRelativeNode(request.claimedAt) || request.claimedAt);
-      }
+      var claimedRowValue = request.status === "claimed" ? makeInstantWithStopwatchNode(request.claimedAt) : null;
+      appendMetaRow(
+        "Claimed",
+        claimedRowValue || makeInstantWithRelativeNode(request.claimedAt) || request.claimedAt
+      );
     }
     if (request.completionTime) {
       var completedRowValue = createElement("span");
