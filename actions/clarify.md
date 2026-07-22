@@ -71,7 +71,7 @@ For each question, the user can:
   - *All other REQs* (builder-decision follow-ups): mark `status: completed` (no implementation needed — see "Builder Was Right" below)
 - **Pick a different option** → update to `- [x] [question] → [user's chosen option]`
 - **Skip for now** → leave as `- [ ]`, REQ stays `pending-answers`
-- **Discard it** → update to `- [x] [question] → Discarded`, then mark the REQ `status: cancelled`, `completed_at: <timestamp>`, and archive it directly (same fast-path as "Builder Was Right", but with the honest won't-do status — no work happened and none is wanted; see "Discarded" below)
+- **Discard it** → update to `- [x] [question] → Discarded`, then mark the REQ `status: cancelled`, `completed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), and archive it directly (same fast-path as "Builder Was Right", but with the honest won't-do status — no work happened and none is wanted; see "Discarded" below)
 
 ### Step 5: Activate answered REQs
 
@@ -103,11 +103,11 @@ Summary of what was resolved and what's still pending — include any `blocked` 
 When the user reviews a `pending-answers` follow-up and confirms that the builder's original choice was correct (i.e., no implementation change needed):
 
 1. Update the question to `- [x] [question] → Confirmed: [builder's choice]`
-2. Update frontmatter: `status: completed`, `completed_at: <timestamp>`
+2. Update frontmatter: `status: completed`, `completed_at: <timestamp>` (current UTC instant — `date -u +%Y-%m-%dT%H:%M:%SZ`; Timestamp rule, `actions/work-reference.md`)
 3. Archive the follow-up REQ directly (skip the work loop — there's nothing to build)
 4. Append a brief note: `## Implementation\n\n**No changes needed.** User confirmed builder's choice from [original REQ].\n\n*Resolved via clarify questions*`
 
-**Discarded** (questions or discovered tasks the user declines): the same fast-path applies, but the status is `cancelled`, not `completed` — nothing was built and nothing is wanted, and `cancelled` is the canonical won't-do terminal status (`actions/work-reference.md` → Terminal-resolved status set; it closes URs and shows with done work on the board). Mark `status: cancelled`, `completed_at: <timestamp>`, archive directly, and append:
+**Discarded** (questions or discovered tasks the user declines): the same fast-path applies, but the status is `cancelled`, not `completed` — nothing was built and nothing is wanted, and `cancelled` is the canonical won't-do terminal status (`actions/work-reference.md` → Terminal-resolved status set; it closes URs and shows with done work on the board). Mark `status: cancelled`, `completed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), archive directly, and append:
 
 ```markdown
 ## Cancelled

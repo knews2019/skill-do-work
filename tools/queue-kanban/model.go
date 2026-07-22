@@ -41,6 +41,14 @@ const undatedCalendarDayKey = "undated"
 // actions/work.md Step 1's stale-reservation check — keep the two in lock-step.
 const reservationStaleAfter = 24 * time.Hour
 
+// futureTimestampSkewAllowance is how far past the board's `now` a frontmatter
+// timestamp may parse before it is flagged as future-dated. Two minutes absorbs
+// ordinary clock skew between machines; anything beyond it is almost always a
+// session that stamped local wall-clock time with a `Z` suffix (the Timestamp
+// rule in actions/work-reference.md requires the current UTC instant). Mirrored
+// by futureInstantSkewAllowanceMs in web/board.js — keep the two in lock-step.
+const futureTimestampSkewAllowance = 2 * time.Minute
+
 // RequestTicket is one parsed REQ-*.md file: its frontmatter fields (with status
 // normalized and commit-hash variants collapsed), the raw Markdown body kept for
 // later HTML rendering, where it was found in the tree, and how its completion
@@ -122,6 +130,14 @@ type RequestTicket struct {
 	// "now" (no fabricated instant), and never silently dropped.
 	CompletionAnomaly       bool
 	CompletionAnomalyReason string // names the broken field(s); "" when no anomaly
+
+	// Derived by detectFutureTimestampFields against the board's `now` — never
+	// read from frontmatter. Each entry is "<field> <raw value>" for a stamp
+	// that parses to later than now + futureTimestampSkewAllowance — the
+	// signature of local wall-clock time written with a `Z` suffix. The
+	// frontend badges the card, and a board warning names the fix; nil when
+	// every stamp is sane.
+	FutureTimestampFields []string
 }
 
 // UserRequestTicket is one parsed UR input.md plus the REQ ids grouped under it.
@@ -215,7 +231,7 @@ type Board struct {
 
 	TestingProfiles []string // do-work/testers.md bullet lines in file order (nil when the file is absent or empty)
 
-	Warnings []string // data-shape warnings (duplicate ids, unrecognized statuses) — surfaced, never silently dropped
+	Warnings []string // data-shape warnings (e.g. duplicate ids, unrecognized statuses, future-dated stamps) — surfaced, never silently dropped
 }
 
 // gitCommitDateLookup resolves a commit hash to its committer date. It is an
@@ -272,6 +288,12 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 			ticket.CompletionAnomaly, ticket.CompletionAnomalyReason = detectCompletionAnomaly(ticket)
 		} else {
 			ticket.CompletionTimeSource = CompletionUnresolved
+		}
+		ticket.FutureTimestampFields = detectFutureTimestampFields(ticket, now)
+		if len(ticket.FutureTimestampFields) > 0 {
+			board.Warnings = append(board.Warnings, fmt.Sprintf(
+				"%s has future-dated timestamp(s): %s — later than the board's generation time (2min clock-skew allowance); likely local wall-clock time stamped with a Z suffix; fix: rewrite with the current UTC instant (date -u +%%Y-%%m-%%dT%%H:%%M:%%SZ)",
+				ticket.RequestId, strings.Join(ticket.FutureTimestampFields, ", ")))
 		}
 		board.RequestsById[ticket.RequestId] = ticket
 	}
@@ -821,6 +843,38 @@ func isPlausibleCommitHash(text string) bool {
 		}
 	}
 	return true
+}
+
+// detectFutureTimestampFields checks every timestamp the frontmatter can carry
+// against the board's `now` and returns a "<field> <raw value>" entry for each
+// one that parses to later than now + futureTimestampSkewAllowance. A future
+// stamp is bookkeeping damage worth surfacing wherever the ticket renders: the
+// usual cause is local wall-clock time written with a `Z` suffix, which makes
+// elapsed-time math (queue wait, claim stopwatch) silently wrong until the wall
+// clock catches up. Unparseable and absent values are not this check's concern
+// — other paths (completion anomalies, reservation staleness) own those.
+func detectFutureTimestampFields(ticket *RequestTicket, now time.Time) []string {
+	timestampFields := []struct {
+		fieldName string
+		rawValue  string
+	}{
+		{"created_at", ticket.CreatedAt},
+		{"claimed_at", ticket.ClaimedAt},
+		{"completed_at", ticket.CompletedAt},
+		{"blocked_at", ticket.BlockedAt},
+		{"reserved_at", ticket.ReservedAt},
+		{"testing_updated_at", ticket.TestingUpdatedAt},
+	}
+	skewHorizon := now.Add(futureTimestampSkewAllowance)
+	var futureFieldEntries []string
+	for _, timestampField := range timestampFields {
+		parsedInstant, parsedOk := parseTimestamp(timestampField.rawValue)
+		if parsedOk && parsedInstant.After(skewHorizon) {
+			futureFieldEntries = append(futureFieldEntries,
+				timestampField.fieldName+" "+strings.TrimSpace(timestampField.rawValue))
+		}
+	}
+	return futureFieldEntries
 }
 
 // parseTimestamp parses the timestamp shapes seen across REQ frontmatter:

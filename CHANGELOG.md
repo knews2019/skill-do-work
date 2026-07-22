@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.133.0 — UTC Stamping Rule + Board Defense Against Future-Dated Timestamps (2026-07-22)
+
+A session stamped `claimed_at` with local wall-clock time plus a `Z` suffix, and the board's stopwatch froze at "0s" until the wall clock caught up. Now the instructions say exactly how to stamp, and the board calls out bad stamps instead of rendering them silently.
+
+- New Timestamp rule in `actions/work-reference.md` (Full Frontmatter): every `*_at` field is the current UTC instant from `date -u +%Y-%m-%dT%H:%M:%SZ` — never local time with a `Z` suffix. Every write site that said just `<timestamp>` / `<now>` (work claim + terminal flips + blocked flip, capture templates, clarify, reserve, abandon) now says so or points at the rule.
+- queue-kanban flags any frontmatter timestamp parsing later than board generation time + 2min skew: a "⚠ future stamp" card badge naming the field(s) plus a data warning (banner in serve/static, listed in summary) with the fix.
+- The stopwatch renders an honest "⚠ clock skew" marker (with a tooltip explaining the likely cause) instead of a dead-looking "0s" when its instant is beyond the skew allowance, and recovers to normal ticking once the clock catches up.
+- New forensics check 12 sweeps all REQ frontmatter for future-dated timestamps.
+
 ## 0.132.0 — Every Non-Terminal Card Gets a Live State Timer (2026-07-22)
 
 The claimed-card stopwatch from 0.131.0 now covers every state: any card that isn't done shows when it entered its current state plus a ticking elapsed timer — "queued … · 3d 04h", "blocked … · 2h 15m", "reserved … · 12m 30s" — so you can see at a glance where time is going before a task lands in Done.

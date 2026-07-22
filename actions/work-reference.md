@@ -78,6 +78,8 @@ do-work/
 
 ## Request File Schema — Full Frontmatter
 
+**Timestamp rule — every `*_at` field in this schema, and any timestamp a future field adds:** write the **current UTC instant** as ISO-8601 `YYYY-MM-DDTHH:MM:SSZ`, obtained with `date -u +%Y-%m-%dT%H:%M:%SZ`. Never stamp local wall-clock time with a `Z` suffix appended — in any zone east of UTC that produces a *future* instant, which silently corrupts every elapsed-time reading (queue wait, claim stopwatch) and gets the REQ flagged by `do-work board` (a "future stamp" card badge plus a data warning, allowing 2 minutes of clock skew). Write sites that say `<timestamp>` or `<now>` mean exactly this rule.
+
 ```yaml
 ---
 # Set by capture action

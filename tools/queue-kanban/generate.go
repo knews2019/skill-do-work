@@ -54,7 +54,7 @@ type generatedBoardData struct {
 	UserRequests     map[string]generatedUserRequest `json:"userRequests"`
 	Calendar         []generatedCalendarEntry        `json:"calendar"`
 	Notes            []generatedNote                 `json:"notes,omitempty"`    // do-work/notes.md lines — rendered as a strip above the queue
-	Warnings         []string                        `json:"warnings,omitempty"` // duplicate ids / unrecognized statuses — rendered as a banner
+	Warnings         []string                        `json:"warnings,omitempty"` // data-shape warnings (e.g. duplicate ids, unrecognized statuses, future-dated stamps) — rendered as a banner
 
 	TestingProfiles []string `json:"testingProfiles,omitempty"` // do-work/testers.md profiles for the testing view's tester picker
 	// True only when served by the live server (serve.go sets it): the testing
@@ -112,6 +112,10 @@ type generatedRequest struct {
 
 	CompletionAnomaly       bool   `json:"completionAnomaly,omitempty"`
 	CompletionAnomalyReason string `json:"completionAnomalyReason,omitempty"`
+
+	// "<field> <raw value>" per frontmatter stamp parsing past the board's
+	// generation time + skew allowance (see RequestTicket.FutureTimestampFields).
+	FutureTimestampFields []string `json:"futureTimestampFields,omitempty"`
 
 	BodyHtml string `json:"bodyHtml"`
 
@@ -263,6 +267,8 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 
 			CompletionAnomaly:       ticket.CompletionAnomaly,
 			CompletionAnomalyReason: ticket.CompletionAnomalyReason,
+
+			FutureTimestampFields: ticket.FutureTimestampFields,
 
 			BodyHtml: bodyHtml,
 

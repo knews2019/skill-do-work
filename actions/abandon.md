@@ -46,7 +46,7 @@ Show the user what's about to be cancelled — ID, title, current status, owning
 
 For each confirmed REQ:
 
-1. Frontmatter: set `status: cancelled` and stamp `completed_at: <now, UTC ISO-8601>` — that timestamp is what places the card in the board's recently-done window. Leave `claimed_at`/`route` and every other field untouched; they're history.
+1. Frontmatter: set `status: cancelled` and stamp `completed_at: <now, UTC ISO-8601 — date -u +%Y-%m-%dT%H:%M:%SZ>` — that timestamp is what places the card in the board's recently-done window. Leave `claimed_at`/`route` and every other field untouched; they're history.
 2. Append to the body:
 
    ```markdown

@@ -141,11 +141,27 @@
     return absoluteText + " (" + formatRelativeTime(Date.parse(isoText), Date.now()) + ")";
   }
 
+  // A stopwatch instant more than this far ahead of the viewer's clock is a bad
+  // stamp (local wall-clock time written with a Z suffix), not a young claim —
+  // without the marker the negative clamp would render a dead-looking "0s" on
+  // every tick until the wall clock catches up. Mirrors model.go's
+  // futureTimestampSkewAllowance — keep the two in lock-step.
+  var futureInstantSkewAllowanceMs = 2 * 60 * 1000;
+  var clockSkewMarkerText = "⚠ clock skew";
+  var clockSkewExplanationText =
+    "This timestamp is ahead of your clock by more than the 2-minute skew allowance — " +
+    "likely stamped with local wall-clock time plus a Z suffix. Fix the frontmatter with " +
+    "the current UTC instant (date -u +%Y-%m-%dT%H:%M:%SZ); until then the stopwatch " +
+    "cannot measure real elapsed time.";
+
   // Stopwatch-style elapsed duration ("47s", "4m 07s", "1h 23m", "3d 04h") for
   // a ticket sitting in a state — second-resolution below an hour because
   // claim spans are short, coarser above so it never reads as a wall of digits,
   // and a day tier so week-old queue waits don't render as "170h".
   function formatElapsedDuration(instantMs, nowMs) {
+    if (instantMs - nowMs > futureInstantSkewAllowanceMs) {
+      return clockSkewMarkerText;
+    }
     var totalSeconds = Math.max(0, Math.floor((nowMs - instantMs) / 1000));
     var daysPart = Math.floor(totalSeconds / 86400);
     if (daysPart > 0) {
@@ -172,6 +188,7 @@
     var durationNode = createElement("span", "elapsed-duration", formatElapsedDuration(instantMs, Date.now()));
     durationNode.dataset.instantMs = String(instantMs);
     durationNode.dataset.tickFormat = "duration";
+    syncClockSkewTitle(durationNode, durationNode.textContent);
     return durationNode;
   }
 
@@ -219,18 +236,32 @@
     return null;
   }
 
+  // Keeps a duration node's explanatory tooltip in step with the skew marker:
+  // present while the marker shows, removed the moment the wall clock catches
+  // up and the stopwatch starts ticking for real.
+  function syncClockSkewTitle(durationNode, labelText) {
+    if (labelText === clockSkewMarkerText) {
+      durationNode.title = clockSkewExplanationText;
+    } else if (durationNode.title === clockSkewExplanationText) {
+      durationNode.removeAttribute("title");
+    }
+  }
+
   function refreshRelativeTimeNodes() {
     var nowMs = Date.now();
     var relativeNodes = document.querySelectorAll("[data-instant-ms]");
     for (var nodeIndex = 0; nodeIndex < relativeNodes.length; nodeIndex++) {
       var relativeNode = relativeNodes[nodeIndex];
       var instantMs = Number(relativeNode.dataset.instantMs);
-      var nextLabel =
-        relativeNode.dataset.tickFormat === "duration"
-          ? formatElapsedDuration(instantMs, nowMs)
-          : formatRelativeTime(instantMs, nowMs);
+      var isDurationFormat = relativeNode.dataset.tickFormat === "duration";
+      var nextLabel = isDurationFormat
+        ? formatElapsedDuration(instantMs, nowMs)
+        : formatRelativeTime(instantMs, nowMs);
       if (relativeNode.textContent !== nextLabel) {
         relativeNode.textContent = nextLabel;
+      }
+      if (isDurationFormat) {
+        syncClockSkewTitle(relativeNode, nextLabel);
       }
     }
   }
@@ -489,6 +520,19 @@
         (request.completionAnomalyReason || "completion instant unresolved") +
         " — fix: add completed_at: <ISO instant> and/or a valid commit hash field to the REQ frontmatter.";
       badges.appendChild(anomalyBadge);
+    }
+    if (request.futureTimestampFields && request.futureTimestampFields.length > 0) {
+      // A frontmatter stamp later than the board's generation time (+2min skew)
+      // — flagged instead of rendered silently, since every elapsed-time
+      // reading derived from it is wrong until the wall clock catches up.
+      var futureStampBadge = makeBadge("badge-future-timestamp", null, "⚠ future stamp");
+      futureStampBadge.title =
+        "Future-dated timestamp(s): " +
+        request.futureTimestampFields.join(", ") +
+        " — later than the board's generation time (2min skew allowance). Likely local " +
+        "wall-clock time stamped with a Z suffix; fix: rewrite with the current UTC " +
+        "instant (date -u +%Y-%m-%dT%H:%M:%SZ).";
+      badges.appendChild(futureStampBadge);
     }
     if (request.testingStatus) {
       // The testing track (see the Testing view) surfaces on the main board too,
