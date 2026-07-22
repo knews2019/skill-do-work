@@ -70,6 +70,7 @@ do-work — task queue for agentic coding tools
     do-work install bowser              Playwright CLI + Bowser for browser automation
     do-work install last30days          Engagement-ranked social-research engine (vendored, keyless)
     do-work install just-kanban         Justfile recipes for the queue-kanban board (just run-kanban)
+    do-work install adhd                Parallel divergent-ideation skill (/adhd, cognitive-frame branching)
 
   Maintenance & info:
     do-work cleanup                     Consolidate the archive
