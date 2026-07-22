@@ -1,6 +1,6 @@
 # Install Action
 
-> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports four targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless), and `just-kanban` (justfile recipes wiring `just run-kanban` to the shipped queue-kanban board).
+> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports five targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless), `just-kanban` (justfile recipes wiring `just run-kanban` to the shipped queue-kanban board), and `memory-module` (the ADR-017 memory engine: `memory/` scaffolding plus optional SessionStart/Stop hooks).
 
 Each target is idempotent — running it when the target is already present and current is a no-op. One target goes further: `just-kanban` compares an already-present recipe block against the shipped version and offers a consent-gated upgrade when they diverge (Phase 1b of its workflow). The action dispatches on the first argument; everything else (detect → install → verify → report) follows the same shape.
 
@@ -13,6 +13,7 @@ Each target is idempotent — running it when the target is already present and 
 - The user asked for headed-browser workflows, screenshots, or visual verification (`install bowser`).
 - The user asked for social research, trend scanning, or "what's the discourse on X" capabilities (`install last30days`).
 - The user wants a standing `just run-kanban` shortcut so the board runs without invoking the agent (`install just-kanban`).
+- The user wants session-persistent memory — `do-work memory` scaffolding and, on Claude Code, the auto-inject/auto-capture hooks (`install memory-module`).
 
 **Do NOT use when:**
 - The target is already installed and current (Phase 1 of the matching workflow detects this and exits; for `just-kanban`, an outdated recipe block gets a diff and a consent-gated upgrade instead of a plain exit).
@@ -28,6 +29,7 @@ Each target is idempotent — running it when the target is already present and 
 - `bowser` — Install Playwright CLI (global) plus the Bowser skill (project-scoped) for browser automation, screenshots, and visual UI verification.
 - `last30days` — Vendor the engagement-ranked social-research engine (project-scoped, git-ignored, keyless).
 - `just-kanban` — Append `just` recipes (`run-kanban`, `kanban-static`, `kanban-summary`) for the shipped queue-kanban board to the project's justfile; if the recipes are already present but diverge from the shipped block, offer a consent-gated upgrade.
+- `memory-module` — Scaffold the `memory/` store (working-memory template, logs dir, usage ledger) and merge the memory SessionStart/Stop hook entries into `.claude/settings.json` — composing with, never clobbering, existing hooks.
 
 If `$ARGUMENTS` is empty or doesn't match a known target, print the help block (target list + one-line blurb each) and stop.
 
@@ -41,6 +43,7 @@ Every target follows the same four-step shape (detect → install → verify →
 | `bowser` | `playwright-cli --help >/dev/null 2>&1 && ls "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" 2>/dev/null` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
 | `last30days` | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | (multi-step — see `last30days` workflow below) | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | Engagement-ranked social-research engine — Reddit/HN/Polymarket/GitHub/YouTube keyless out of the box; X/TikTok/Instagram unlock only via user-global API keys. |
 | `just-kanban` | (multi-step — see `just-kanban` workflow below) | (multi-step — see `just-kanban` workflow below; appends fresh, consent-gated upgrade when present-but-divergent) | (multi-step — see `just-kanban` workflow below) | Justfile recipes for the shipped queue-kanban board — `just run-kanban` serves the live board, `kanban-static`/`kanban-summary` cover the other modes; rebuilds the tool each run so `do-work update` refreshes take effect. |
+| `memory-module` | (multi-step — see `memory-module` workflow below; gates on scaffolding + hook wiring) | (multi-step — see `memory-module` workflow below; repair mode when scaffolding exists but hooks are absent) | (multi-step — see `memory-module` workflow below) | Hermes-style working-memory + dated-logs engine with SessionStart/Stop hooks and layered recall — the experimental counterpart to `actions/bkb.md` (see `decisions/records/adr-017-run-a-parallel-memory-engine-experiment-with-usage-ledgers.md`). |
 
 In every command above, resolve `PROJECT_ROOT` first:
 
@@ -57,7 +60,7 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 ### Step 2: Run the target's workflow
 
-Each workflow follows the same four-step shape. The `ui-design` workflow uses the manifest commands directly. The `bowser`, `last30days`, and `just-kanban` workflows have multi-part installs and are spelled out below.
+Each workflow follows the same four-step shape. The `ui-design` workflow uses the manifest commands directly. The `bowser`, `last30days`, `just-kanban`, and `memory-module` workflows have multi-part installs and are spelled out below.
 
 ---
 
@@ -385,6 +388,91 @@ For the Phase 1b upgrade path, the first two lines read `Upgraded: just recipes 
 
 ---
 
+## Workflow: `memory-module`
+
+The `memory-module` target sets up the ADR-017 memory engine in the consuming project: the `memory/` store that `actions/memory.md` operates on, plus (on Claude Code) the two optional hooks that make it automatic — `hooks/memory-session-start.sh` injects the frozen snapshot at session start, `hooks/memory-stop-capture.sh` appends a deduplicated capture of each session's final exchange. Every `do-work memory` sub-command works without the hooks; they are the enhancement, not the dependency.
+
+#### Phase 1: Check if already installed
+
+Check the full guarantee set — scaffolding AND hook wiring (detecting on the scaffolding alone would let a half-completed prior run masquerade as installed):
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+test -s "$PROJECT_ROOT/memory/working-memory.md" && echo "scaffolding: present" || echo "scaffolding: absent"
+SETTINGS_FILE="$PROJECT_ROOT/.claude/settings.json"
+if [ -f "$SETTINGS_FILE" ] && grep -q 'memory-session-start.sh' "$SETTINGS_FILE" && grep -q 'memory-stop-capture.sh' "$SETTINGS_FILE"; then
+  echo "hooks: wired"
+else
+  echo "hooks: absent"
+fi
+```
+
+- **Both present** → report "already installed" and stop.
+- **Scaffolding present, hooks absent** → *repair mode*: skip Phase 2, run Phase 3 only. (Hooks wired but scaffolding absent is also repair: run Phase 2 only.)
+- **Both absent** → run Phases 2–3 in full.
+
+#### Phase 2: Scaffold the memory store
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+mkdir -p "$PROJECT_ROOT/memory/logs"
+touch "$PROJECT_ROOT/memory/usage-ledger.jsonl"
+```
+
+Then create `$PROJECT_ROOT/memory/working-memory.md` from the template in `actions/memory-reference.md` (with today's date in the `updated:` frontmatter) — **only if the file is absent or empty. Never overwrite an existing `working-memory.md`**: it is the user's standing memory, the same gate as the never-overwrite-an-existing-`SKILL.md` rule.
+
+#### Phase 3: Merge the hook entries
+
+This phase only applies on Claude Code (a `.claude/` directory convention); on other platforms report `hooks: n/a (not Claude Code)` and continue to Phase 4 — the actions work hook-less.
+
+Follow the **Hook Install Internals** in `actions/memory-reference.md` exactly: back up `.claude/settings.json` to `settings.json.pre-memory-module`, then jq-**append** the two entries from `hooks/memory-hooks.json` (resolve `<skill-root>` as the directory containing `SKILL.md`) into the `hooks.SessionStart` / `hooks.Stop` arrays. The dedup gate is a grep for `memory-session-start.sh`. Compose, never clobber: append with `+`, never assign a whole new array — the consumer's existing hooks (including do-work's own `session-start.sh` / `pipeline-guard.sh`, if installed) must survive untouched.
+
+If `jq` is unavailable: do NOT attempt a sed/awk merge. Print the two entries from `hooks/memory-hooks.json` with "merge these manually into `.claude/settings.json`" and record `hooks: MANUAL STEP` — a warning, not a failure.
+
+#### Phase 4: Verify
+
+```bash
+PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+test -d "$PROJECT_ROOT/memory/logs" && echo "logs dir: OK" || echo "logs dir: FAILED"
+test -s "$PROJECT_ROOT/memory/working-memory.md" && echo "working memory: OK" || echo "working memory: FAILED"
+test -f "$PROJECT_ROOT/memory/usage-ledger.jsonl" && echo "ledger: OK" || echo "ledger: FAILED"
+SETTINGS_FILE="$PROJECT_ROOT/.claude/settings.json"
+if [ -f "$SETTINGS_FILE" ]; then
+  if command -v jq >/dev/null 2>&1; then jq . "$SETTINGS_FILE" >/dev/null 2>&1 && echo "settings parses: OK" || echo "settings parses: FAILED"; else python3 -m json.tool "$SETTINGS_FILE" >/dev/null 2>&1 && echo "settings parses: OK" || echo "settings parses: UNCHECKED (no jq/python3)"; fi
+  grep -q 'memory-session-start.sh' "$SETTINGS_FILE" && grep -q 'memory-stop-capture.sh' "$SETTINGS_FILE" && echo "memory hooks: OK" || echo "memory hooks: ABSENT (manual step pending?)"
+  grep -c 'session-start.sh\|pipeline-guard.sh' "$SETTINGS_FILE" >/dev/null 2>&1 || true
+fi
+```
+
+Two hard gates beyond the OK lines:
+
+- **`settings parses: FAILED` after a merge = broken install.** Restore from `settings.json.pre-memory-module` immediately and report the failure. On success, remove the backup.
+- **Pre-existing hooks must still be present.** Every hook entry that existed in the backup must still appear in the merged file (compare the backup's entry set against the merged file — a grep per pre-existing script filename is enough). Any entry lost → restore from backup and report.
+
+#### Phase 5: Report back
+
+```
+Installed: memory-module (ADR-017 memory engine)
+
+Destination: <project-root>/memory/
+  working-memory.md   Standing memory, 2,500-char hard cap (curate via `do-work memory remember`)
+  logs/               Dated daily logs (auto-appended by the Stop hook)
+  usage-ledger.jsonl  Usage instrumentation read by `do-work memory audit`
+
+Hooks (Claude Code only, merged into .claude/settings.json):
+  memory-session-start.sh  Injects the frozen snapshot at session start — writes surface NEXT session
+  memory-stop-capture.sh   Captures each session's final exchange into today's log (hash-deduplicated)
+
+- Every `do-work memory` sub-command works without the hooks — they are optional.
+- Consider `do-work memory bootstrap` for a one-time import of past session history.
+- This engine runs in parallel with bkb during the ADR-017 experiment;
+  `do-work memory audit` renders the head-to-head.
+```
+
+If Phase 3 ended in `MANUAL STEP`, the Hooks section instead prints the two JSON entries and the manual-merge instruction.
+
+---
+
 ## Help Block (no/unknown target)
 
 When `$ARGUMENTS` is empty or doesn't match a known target, print:
@@ -396,6 +484,7 @@ install — install companion skills/tooling into the current project
   do-work install bowser      Playwright CLI + Bowser skill for browser automation
   do-work install last30days  Engagement-ranked social-research engine (vendored, keyless)
   do-work install just-kanban  Justfile recipes for the queue-kanban board (needs Go to run)
+  do-work install memory-module  memory/ store + SessionStart/Stop hooks (ADR-017 memory engine)
 ```
 
 Then stop.
@@ -406,6 +495,7 @@ Then stop.
 - **`bowser`**: a two-line status — one for `playwright-cli`, one for the Bowser skill. Each is either "OK" (installed and verified), "already installed" (detected in Phase 1), or an error with the exact command the user can re-run.
 - **`last30days`**: a per-guarantee status (skill file, ignore rule, Python 3.12+) — "already installed" only when every guarantee holds; otherwise "installed successfully" with the destination path, or the FAILED line(s) and the exact command the user can re-run.
 - **`just-kanban`**: a per-component status (recipes appended or upgraded, justfile parses, `just`/`go` availability) — "already installed (current)" only when the installed recipes match the shipped block; a divergent block gets a diff and a consent-gated upgrade (Phase 1b), reported as "Upgraded" or "kept existing recipes". Missing toolchains are warnings, not failures.
+- **`memory-module`**: a per-guarantee status (logs dir, working memory, ledger, settings parses, memory hooks) — "already installed" only when scaffolding AND hook wiring hold; hooks may report `MANUAL STEP` (no jq) or `n/a` (not Claude Code) as warnings, not failures.
 - **Unknown / missing target**: the help block above.
 
 ## Rules
@@ -418,6 +508,7 @@ Then stop.
 - **Keyless in the project (last30days).** This install writes no config file at all. If a project-local `.claude/last30days.env` ever exists, it must never contain API keys — real keys live only in the user-global `~/.config/last30days/.env`. Never write a secret into any file inside the repo.
 - **The vendor drop must be ignored (last30days).** Phase 2 adds `**/.claude/skills/last30days/` to the enclosing repo's `.git/info/exclude` when it isn't already covered — machine-local, never the project's committable `.gitignore` — because ~15 MB of upstream Python must never become committable in the consuming repo.
 - **Touch only the three do-work recipes in the justfile (just-kanban).** Never reorder, reformat, or modify justfile content outside `run-kanban`/`kanban-static`/`kanban-summary`. A divergent installed recipe is replaced only after the user has seen the diff and accepted (Phase 1b) — never silently, and never on the assumption that different means stale. Create a `justfile` only when none of `justfile`/`Justfile`/`.justfile` exists at the project root.
+- **Compose hook entries (memory-module).** Append to the `hooks.SessionStart`/`hooks.Stop` arrays in `.claude/settings.json`; never replace, reorder, or rewrite existing entries. Back up to `settings.json.pre-memory-module` before the merge; a post-merge parse failure or any lost pre-existing entry → restore the backup and report. Never overwrite an existing `memory/working-memory.md`.
 - **One target per invocation.** If the user wants both, they run two separate commands. The action never chains targets.
 
 ## Common Rationalizations
@@ -435,6 +526,8 @@ Then stop.
 | "Their existing `run-kanban` recipe differs from the shipped one — I'll just swap it out (just-kanban)" | Run Phase 1b: show the unified diff and get explicit consent before replacing anything | The divergence may be deliberate project-specific edits, not staleness — only the user can tell, and a silent swap destroys their edits |
 | "The diff is obviously just an older shipped version — asking is pointless (just-kanban)" | Ask anyway; the consent prompt is one question and the diff makes it fast | "Obviously stale" is exactly how a deliberate one-flag customization gets flattened; there is no reliable way to distinguish old-shipped from hand-edited |
 | "The skill is installed globally — I'll hard-code its absolute path into the recipe (just-kanban)" | Stop at the Phase 2 global-install gate and report | A recipe pointing outside the project breaks on every other clone and machine, and the skill's norms reject global installs |
+| "settings.json already has hooks — I'll rewrite the whole hooks object cleanly (memory-module)" | Append via the jq recipe in `actions/memory-reference.md` | Assigning a fresh hooks object clobbers the user's other hooks — including do-work's own session-start and pipeline-guard |
+| "No jq here — a quick sed insert will do (memory-module)" | Print the manual-merge snippet and report `hooks: MANUAL STEP` | Text-patching JSON corrupts settings.json on the first nested bracket it didn't expect |
 
 ## Red Flags
 
@@ -449,6 +542,9 @@ Then stop.
 - (last30days) Verify found no Python 3.12+ interpreter — the engine can't run; treat it as a failed install, not a soft warning.
 - (just-kanban) The justfile diff shows anything beyond one appended block — existing recipes were reordered or rewritten; restore the file and re-append.
 - (just-kanban) The appended recipe contains an absolute path (especially into `$HOME`) — the skill-root resolution went wrong; recipes must use project-relative paths.
+- (memory-module) The merged `.claude/settings.json` has fewer hook entries than the `settings.json.pre-memory-module` backup — an existing hook was clobbered; restore the backup.
+- (memory-module) `memory/working-memory.md` changed content during install — the never-overwrite gate was bypassed.
+- (memory-module) A `settings.json.pre-memory-module` backup file left behind after a reported success — cleanup was skipped or the merge silently failed.
 
 ## Verification Checklist
 
@@ -458,5 +554,6 @@ Then stop.
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
 - [ ] (last30days only) a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
 - [ ] (just-kanban only) the justfile gained exactly one appended block, `run-kanban` greps present, `just --list` parses when `just` is available, and no existing recipe was modified.
+- [ ] (memory-module only) `memory/logs/`, a non-empty `working-memory.md`, and `usage-ledger.jsonl` exist; `.claude/settings.json` parses and every pre-existing hook entry survived; the backup was removed on success.
 - [ ] The report names the destination path so the user can verify location.
-- [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the machine-local `.git/info/exclude` entry; for `just-kanban`, the project justfile).
+- [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the machine-local `.git/info/exclude` entry; for `just-kanban`, the project justfile; for `memory-module`, `<project-root>/memory/` and `.claude/settings.json`).

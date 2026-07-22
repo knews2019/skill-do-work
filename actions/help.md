@@ -7,7 +7,7 @@
 ### Step 1: Mode selection
 
 - Empty `$ARGUMENTS` or `help` → print the full menu (Step 2), then wait. Do not ask "Start the work loop?" — just print and wait.
-- `<action> help` → per-command summary (Step 3). Exception: `pipeline`, `prime`, and `bkb` have built-in help — SKILL.md dispatches those to their own action files, so they never arrive here.
+- `<action> help` → per-command summary (Step 3). Exception: `pipeline`, `prime`, `bkb`, and `memory` have built-in help — SKILL.md dispatches those to their own action files, so they never arrive here.
 
 ### Step 2: Full menu (bare invocation)
 
@@ -46,9 +46,13 @@ do-work — task queue for agentic coding tools
     do-work prime create src/auth/      Generate a prime file via interactive Q&A
     do-work prime audit                 Health-check primes + refresh their Stakes (writes Stakes)
 
-  Knowledge base:
+  Knowledge base & memory:
     do-work bkb [sub]                   Sub-commands: init | triage | ingest | query | lint |
                                         resolve | close | status | defrag | garden | rollup | crew
+    do-work memory remember <text>      Curate a fact into memory/working-memory.md (2,500-char cap)
+    do-work memory recall <query>       Layered recall over working memory + daily logs (cited sources)
+    do-work memory status|bootstrap     Engine status / one-time history import
+    do-work memory audit                Head-to-head value audit: memory engine vs bkb (read-only)
     do-work dream [path]                Manual four-phase consolidation of a plain-text memory
                                         directory (orient, lint, heal, prune + reindex) — destructive
 
@@ -70,6 +74,7 @@ do-work — task queue for agentic coding tools
     do-work install bowser              Playwright CLI + Bowser for browser automation
     do-work install last30days          Engagement-ranked social-research engine (vendored, keyless)
     do-work install just-kanban         Justfile recipes for the queue-kanban board (just run-kanban)
+    do-work install memory-module       memory/ store + SessionStart/Stop hooks (ADR-017 engine)
 
   Maintenance & info:
     do-work cleanup                     Consolidate the archive

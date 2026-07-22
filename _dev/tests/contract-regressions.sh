@@ -223,6 +223,47 @@ assert_contains \
   '^-[[:space:]]+\*\*Ready\*\*[[:space:]]+— normalized `status` is `pending`' \
   'actions/roadmap.md must require pending status before classifying a queued REQ as Ready.'
 
+# ADR-017 memory engine contracts: the Stop capture must never block a session
+# end, destructive consolidation must never be hook-wired, and the engine's
+# core guardrails (cap, prompt-injection load, compose-don't-clobber install)
+# must stay stated where agents read them.
+assert_contains \
+  "hooks/memory-stop-capture.sh" \
+  'stop_hook_active' \
+  'hooks/memory-stop-capture.sh must keep the stop_hook_active loop guard.'
+
+assert_file_not_contains \
+  "hooks/memory-stop-capture.sh" \
+  '"decision":[[:space:]]*"block"' \
+  'hooks/memory-stop-capture.sh must never emit a blocking decision — capture cannot hold a session open.'
+
+for hooks_json_file in "hooks/hooks.json" "hooks/memory-hooks.json"; do
+  assert_file_not_contains \
+    "$hooks_json_file" \
+    'dream' \
+    "$hooks_json_file must never wire the destructive dream action to a hook."
+done
+
+assert_contains \
+  "actions/memory.md" \
+  '2,500' \
+  'actions/memory.md must state the 2,500-character working-memory hard cap.'
+
+assert_contains \
+  "actions/memory.md" \
+  'prompt-injection\.md' \
+  'actions/memory.md recall must load the prompt-injection guardrail before reading hook-captured log content.'
+
+assert_contains \
+  "actions/install.md" \
+  'memory-module' \
+  'actions/install.md must carry the memory-module target (ADR-017).'
+
+assert_contains \
+  "actions/install.md" \
+  'settings\.json\.pre-memory-module' \
+  'actions/install.md memory-module hook merge must back up settings.json before composing entries.'
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi
