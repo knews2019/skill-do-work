@@ -75,7 +75,7 @@ For each question, the user can:
 
 ### Step 5: Activate answered REQs
 
-For each REQ that wasn't already completed or discarded: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending`. These enter the queue for the next `do-work run`.
+For each REQ that wasn't already completed or discarded: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending` and stamp `status_changed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`; the board's state timer reads it, so the card shows time since the answers landed rather than time since capture). These enter the queue for the next `do-work run`.
 
 ### Step 5.5: Confirm blocked conditions
 
@@ -90,7 +90,7 @@ Is this condition now satisfied?
 
 Note for the user which blocked REQs carry a `blocked_check` probe — those unblock automatically on the next `do-work run`, so confirming them by hand here is optional. Present only the human-confirmable ones prominently.
 
-- **Yes → unblock:** set `status: pending`, **remove `blocked_by` and `blocked_at`** (keep any `blocked_check`), and append a history line to a `## Blocked` body section — `- [<date>] blocked on "<condition>" — cleared by user via clarify`. The REQ re-enters the queue for the next `do-work run`.
+- **Yes → unblock:** set `status: pending`, stamp `status_changed_at: <timestamp>` (blocked_at is removed on this flip, so this is the only trace of when it happened), **remove `blocked_by` and `blocked_at`** (keep any `blocked_check`), and append a history line to a `## Blocked` body section — `- [<date>] blocked on "<condition>" — cleared by user via clarify`. The REQ re-enters the queue for the next `do-work run`.
 - **Not yet:** leave it `blocked`, unchanged.
 - **Abandon:** hand off to `do-work abandon REQ-NNN` (marks `cancelled`, archives) — same as discarding a question.
 
@@ -122,7 +122,7 @@ When the user reviews a `pending-answers` follow-up and confirms that the builde
 When the user reviews a discovered-task follow-up (one whose question is "Should I process this as a new task?" with recommended "Yes, add to queue") and confirms the recommendation:
 
 1. Update the question to `- [x] [question] → Confirmed: Yes, add to queue`
-2. Update frontmatter: `status: pending` (NOT `completed` — this task needs to be built)
+2. Update frontmatter: `status: pending` (NOT `completed` — this task needs to be built), plus `status_changed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`)
 3. **Do not archive.** The REQ stays in `do-work/queue/` and enters the normal work queue for the next `do-work run`
 
 This is distinct from "Builder Was Right" because confirming a discovered task means the user wants it *executed*, not signed off. The task has no prior implementation to confirm — it's a new piece of work that needs a full work cycle.

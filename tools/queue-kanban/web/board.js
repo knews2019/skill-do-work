@@ -213,10 +213,24 @@
 
   // Which instant a card's live state timer counts from: every non-terminal
   // card shows how long it has been in its current state, measured from the
-  // timestamp that state transition wrote. States without their own transition
-  // instant (pending, pending-answers, failed, unrecognized) fall back to
-  // created_at, so the timer then reads as time-since-capture and the verb
-  // says so ("queued"). Terminal cards keep the static done line instead.
+  // timestamp that state transition wrote. Dedicated stamps (claimed_at,
+  // reserved_at, blocked_at) are authoritative for their states — file mtime
+  // must never outrank them, since the pipeline appends sections to the file
+  // all through a claim. States without their own transition instant (pending,
+  // pending-answers, failed, unrecognized) resolve, in order:
+  //   1. status_changed_at (stamped on flips with no dedicated stamp, e.g.
+  //      clarify answered → pending) — verb "updated";
+  //   2. the LATER of created_at and the file's mtime — verb "updated" when
+  //      mtime wins (the file changed after capture: answers recorded, hand
+  //      edits), "queued" when created_at wins (untouched since capture).
+  // Terminal cards keep the static done line instead.
+
+  // Capture writes the file moments AFTER stamping created_at, so mtime is
+  // always a few seconds ahead on an untouched card. Only treat mtime as "the
+  // file was edited later" when it beats created_at by more than this — a real
+  // edit (clarify answers, a hand fix) lands minutes-to-days later.
+  var mtimeMeaningfulDeltaMs = 5 * 60 * 1000;
+
   function stateTimerSpecFor(request) {
     if (request.status === "claimed" && request.claimedAt) {
       return { verbText: "claimed", instantIso: request.claimedAt };
@@ -229,6 +243,14 @@
     }
     if (isTerminalResolvedStatus(request.status)) {
       return null;
+    }
+    if (request.statusChangedAt && !isNaN(Date.parse(request.statusChangedAt))) {
+      return { verbText: "updated", instantIso: request.statusChangedAt };
+    }
+    var createdAtMs = request.createdAt ? Date.parse(request.createdAt) : NaN;
+    var fileModifiedAtMs = request.fileModifiedAt ? Date.parse(request.fileModifiedAt) : NaN;
+    if (!isNaN(fileModifiedAtMs) && (isNaN(createdAtMs) || fileModifiedAtMs - createdAtMs > mtimeMeaningfulDeltaMs)) {
+      return { verbText: "updated", instantIso: request.fileModifiedAt };
     }
     if (request.createdAt) {
       return { verbText: "queued", instantIso: request.createdAt };

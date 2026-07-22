@@ -41,7 +41,7 @@ The label is free text naming the owning session ("cloud-alpha", "worktree featu
 ### Mode: release
 
 1. Resolve targets: REQ IDs → glob as above; a label → scan `do-work/queue/REQ-*.md` frontmatter for `status: reserved` with matching `reserved_for`. No matches → report and stop.
-2. For each target with `status: reserved`: set `status: pending`, remove `reserved_for` and `reserved_at`. A target that is not `reserved` is reported and left untouched — release never rewrites other statuses.
+2. For each target with `status: reserved`: set `status: pending`, stamp `status_changed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), remove `reserved_for` and `reserved_at`. A target that is not `reserved` is reported and left untouched — release never rewrites other statuses.
 3. Report which REQs re-entered the queue.
 
 ### Mode: list

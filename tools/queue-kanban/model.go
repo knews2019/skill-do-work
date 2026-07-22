@@ -69,6 +69,13 @@ type RequestTicket struct {
 	ClaimedAt   string
 	CompletedAt string // raw frontmatter completed_at text, "" when absent
 
+	// status_changed_at — stamped by actions on any status flip that has no
+	// dedicated *_at stamp of its own (answered → pending, unblock → pending,
+	// release → pending, manual resets; see actions/work-reference.md).
+	// Display-only: the state timer prefers it over created_at/file-mtime for
+	// pending-tier cards; no column logic reads it.
+	StatusChangedAt string // raw frontmatter timestamp text, "" when absent
+
 	ReservedFor string // reserve action (do-work reserve): owning worktree/cloud-session label, "" when absent
 	ReservedAt  string // raw frontmatter reserved_at text, "" when absent
 
@@ -118,6 +125,14 @@ type RequestTicket struct {
 
 	FilePath    string // absolute path on disk
 	TreeSection string // "queue" | "working" | "archive"
+
+	// The REQ file's mtime at parse time (zero when stat fails). ONLY a
+	// last-resort fallback for the live state timer of pending-tier cards —
+	// mtime stays prohibited for completion dating (see resolveCompletionTime:
+	// clones/checkouts reset it), and it must never outrank a dedicated stamp
+	// like claimed_at (the pipeline appends sections to the file all through a
+	// claim, so mtime would reset the claim stopwatch on every write).
+	FileModifiedAt time.Time
 
 	CompletionTime       time.Time            // resolved completion instant (zero when unresolved)
 	CompletionTimeSource CompletionTimeSource // how CompletionTime was resolved
@@ -550,6 +565,7 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		CreatedAt:                 coerceScalarToString(fields["created_at"]),
 		ClaimedAt:                 coerceScalarToString(fields["claimed_at"]),
 		CompletedAt:               coerceScalarToString(fields["completed_at"]),
+		StatusChangedAt:           coerceScalarToString(fields["status_changed_at"]),
 		ReservedFor:               coerceScalarToString(fields["reserved_for"]),
 		ReservedAt:                coerceScalarToString(fields["reserved_at"]),
 		CommitHash:                commitHashValue,
@@ -572,6 +588,9 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		BodyMarkdown:              bodyText,
 		FilePath:                  filePath,
 		TreeSection:               treeSection,
+	}
+	if fileInfo, statError := os.Stat(filePath); statError == nil {
+		ticket.FileModifiedAt = fileInfo.ModTime()
 	}
 	return ticket, nil
 }
@@ -861,6 +880,7 @@ func detectFutureTimestampFields(ticket *RequestTicket, now time.Time) []string 
 		{"created_at", ticket.CreatedAt},
 		{"claimed_at", ticket.ClaimedAt},
 		{"completed_at", ticket.CompletedAt},
+		{"status_changed_at", ticket.StatusChangedAt},
 		{"blocked_at", ticket.BlockedAt},
 		{"reserved_at", ticket.ReservedAt},
 		{"testing_updated_at", ticket.TestingUpdatedAt},

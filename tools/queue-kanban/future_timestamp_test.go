@@ -15,6 +15,7 @@ import (
 //	REQ-9402  claimed, claimed_at 1min past `now`          → NOT flagged (inside the 2min skew allowance)
 //	REQ-9403  pending, created_at + blocked-shape fields sane, testing_updated_at 3h past → flagged on that one field only
 //	REQ-9404  claimed, claimed_at unparseable              → NOT flagged (unparseable is not future)
+//	REQ-9405  pending, status_changed_at 2h past `now`     → flagged (flip stamps are guarded too)
 //
 // `now` is fixed so the assertions are deterministic.
 func futureStampSyntheticBoard(t *testing.T) *Board {
@@ -44,6 +45,8 @@ func futureStampSyntheticBoard(t *testing.T) *Board {
 		requestContent("REQ-9403", "pending", "created_at: 2026-06-30T09:00:00Z\ntesting_updated_at: 2026-06-30T15:00:00Z\n"))
 	writeFixture(filepath.Join("do-work", "working", "REQ-9404-unparseable-claim.md"),
 		requestContent("REQ-9404", "claimed", "created_at: 2026-06-30T09:00:00Z\nclaimed_at: not-a-real-instant\n"))
+	writeFixture(filepath.Join("do-work", "queue", "REQ-9405-future-flip-stamp.md"),
+		requestContent("REQ-9405", "pending", "created_at: 2026-06-30T09:00:00Z\nstatus_changed_at: 2026-06-30T14:00:00Z\n"))
 
 	neverCalledGitLookup := func(string, string) (time.Time, bool) { return time.Time{}, false }
 	fixedNow := time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC)
@@ -62,6 +65,7 @@ func TestFutureTimestampFieldsFlaggedInBoardModel(t *testing.T) {
 		"REQ-9402": nil,
 		"REQ-9403": {"testing_updated_at 2026-06-30T15:00:00Z"},
 		"REQ-9404": nil,
+		"REQ-9405": {"status_changed_at 2026-06-30T14:00:00Z"},
 	}
 	for requestId, expectedEntries := range expectedFutureFields {
 		ticket := board.RequestsById[requestId]
@@ -90,8 +94,8 @@ func TestFutureTimestampWarningNamesFieldAndFix(t *testing.T) {
 			matchedWarnings = append(matchedWarnings, warningText)
 		}
 	}
-	if len(matchedWarnings) != 2 {
-		t.Fatalf("want exactly 2 future-timestamp warnings (REQ-9401, REQ-9403), got %d: %v",
+	if len(matchedWarnings) != 3 {
+		t.Fatalf("want exactly 3 future-timestamp warnings (REQ-9401, REQ-9403, REQ-9405), got %d: %v",
 			len(matchedWarnings), matchedWarnings)
 	}
 	for _, expectedFragment := range []string{

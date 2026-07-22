@@ -111,6 +111,17 @@ blocked_by: "LM Studio running locally"   # free text naming the condition (alwa
 blocked_at: 2026-07-18T10:00:00Z          # stamped on every flip to blocked — the age anchor the exit summary, board drawer, and forensics read (no enforcement threshold; external conditions legitimately take weeks)
 blocked_check: "curl -sf http://localhost:1234/v1/models"   # OPTIONAL shell probe (always YAML-quoted). User-authored content, run VERBATIM by work Step 1 (exit 0 ⇒ unblock to pending; any non-zero / timeout / unreadable ⇒ stays blocked). Absent ⇒ manual/clarify unblock only.
 
+# Set on ANY status flip that has no dedicated *_at stamp of its own — that
+# condition is the rule, the writers are illustrative: answered → pending
+# (clarify Step 5), unblock → pending (clarify Step 5.5, work Step 1 probe —
+# both REMOVE blocked_at, so this is the only trace of when the flip happened),
+# manual/stuck resets back to pending. Flips with a dedicated stamp (claim →
+# claimed_at, reserve → reserved_at, blocked → blocked_at, terminal →
+# completed_at) do NOT write it. Display-only: the board's state timer prefers
+# it over created_at/file-mtime for pending-tier cards ("updated … · 3m"); no
+# pipeline logic reads it. Timestamp rule applies (current UTC instant).
+status_changed_at: 2026-07-22T20:38:00Z
+
 # Set by work action when finished. STAMPING RULE: every flip to a terminal
 # status (completed / completed-with-issues / failed / cancelled) MUST stamp
 # completed_at with a UTC ISO instant, plus commit with the implementation

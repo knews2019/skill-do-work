@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.134.0 — Pending-Card Timer Tracks the Last Transition, Not Capture Time (2026-07-23)
+
+A REQ answered via `do-work clarify` went back to `pending` but its board card kept counting from capture time ("queued … · 28m" seconds after the flip). Pending-tier cards now time from the last state change.
+
+- New optional `status_changed_at` frontmatter field, stamped on any status flip that has no dedicated `*_at` stamp of its own — clarify's answered/unblock/discovered-task flips, work Step 1's probe unblock, reserve release, manual resets. Schema + board parser updated in lock-step.
+- The board's state timer for pending-tier cards resolves: `status_changed_at` → the later of `created_at` / file mtime (only when mtime beats capture by >5min, so untouched cards still read "queued") — verb "updated" whenever the instant isn't capture time.
+- Dedicated stamps stay authoritative: mtime never drives the claim/blocked/reserved stopwatches (the pipeline edits the file all through a claim), and mtime remains banned from completion dating.
+- `status_changed_at` is covered by the 0.133.0 future-stamp guard.
+
 ## 0.133.0 — UTC Stamping Rule + Board Defense Against Future-Dated Timestamps (2026-07-22)
 
 A session stamped `claimed_at` with local wall-clock time plus a `Z` suffix, and the board's stopwatch froze at "0s" until the wall clock caught up. Now the instructions say exactly how to stamp, and the board calls out bad stamps instead of rendering them silently.

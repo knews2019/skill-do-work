@@ -36,7 +36,7 @@ For each found:
 
 Report: file name, title, route, how long stuck, last known phase (check which `##` sections exist — Triage, Plan, Exploration, Implementation Summary, etc.)
 
-**Suggested remediation:** Run `do-work cleanup` — Pass 0 will sweep any REQ with a terminal status. For a truly stuck `claimed` REQ (still in-progress, not terminal), manually reset `status: pending`, remove `claimed_at` and `route` from frontmatter, strip incomplete sections, and move the file back to `do-work/queue/`, then run `do-work cleanup`.
+**Suggested remediation:** Run `do-work cleanup` — Pass 0 will sweep any REQ with a terminal status. For a truly stuck `claimed` REQ (still in-progress, not terminal), manually reset `status: pending`, stamp `status_changed_at` with the current UTC instant (Timestamp rule, `actions/work-reference.md` — keeps the board's state timer honest about when the reset happened), remove `claimed_at` and `route` from frontmatter, strip incomplete sections, and move the file back to `do-work/queue/`, then run `do-work cleanup`.
 
 ### 2. Hollow Completions
 
