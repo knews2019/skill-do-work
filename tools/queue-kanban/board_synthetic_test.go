@@ -240,6 +240,54 @@ func TestSyntheticUnrecognizedStatusFlagged(t *testing.T) {
 	}
 }
 
+// TestSyntheticStrayRequestFlagged reproduces the invisible-REQ bug: a work
+// agent archived a completed REQ to do-work/user-requests/UR-NNN/ instead of
+// do-work/archive/, so the board (which buckets only queue/working/archive
+// files) rendered no card. The REQ must never be silently dropped — a data
+// warning naming the id and its location must fire, and it must NOT sneak into
+// AllRequests as if it were a real card.
+func TestSyntheticStrayRequestFlagged(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeFixture := func(relativePath string, content string) {
+		absolutePath := filepath.Join(repoRoot, relativePath)
+		if mkdirError := os.MkdirAll(filepath.Dir(absolutePath), 0o755); mkdirError != nil {
+			t.Fatalf("mkdir %s: %v", relativePath, mkdirError)
+		}
+		if writeError := os.WriteFile(absolutePath, []byte(content), 0o644); writeError != nil {
+			t.Fatalf("write %s: %v", relativePath, writeError)
+		}
+	}
+	writeFixture(filepath.Join("do-work", "queue", "REQ-9201-pending.md"),
+		"---\nid: REQ-9201\ntitle: Fixture REQ-9201\nstatus: pending\n---\n\nBody.\n")
+	// The misplaced REQ — under user-requests/, which the walk visits (for
+	// input.md) but which bucketing never scans for REQ cards.
+	writeFixture(filepath.Join("do-work", "user-requests", "UR-301", "REQ-1213.md"),
+		"---\nid: REQ-1213\ntitle: Fixture REQ-1213\nstatus: completed\n---\n\nBody.\n")
+
+	stubGitLookup := func(string, string) (time.Time, bool) { return time.Time{}, false }
+	fixedNow := time.Date(2026, 6, 30, 12, 0, 0, 0, time.UTC)
+	board, buildError := buildBoard(repoRoot, fixedNow, 7*24*time.Hour, stubGitLookup)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+
+	if _, snuckIn := board.RequestsById["REQ-1213"]; snuckIn {
+		t.Fatalf("stray REQ-1213 must not be parsed into the board as a card")
+	}
+
+	sawStrayWarning := false
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "REQ-1213") &&
+			strings.Contains(warningText, "user-requests/UR-301/REQ-1213.md") &&
+			strings.Contains(warningText, "invisible") {
+			sawStrayWarning = true
+		}
+	}
+	if !sawStrayWarning {
+		t.Fatalf("expected a warning naming REQ-1213, its location, and that it is invisible; got %v", board.Warnings)
+	}
+}
+
 func TestSyntheticCountsAndCalendar(t *testing.T) {
 	board := syntheticBoard(t)
 	if got := len(board.AllRequests); got != 6 {
