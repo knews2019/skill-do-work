@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.135.0 — Board Drawer Links Every REQ/UR Mention, URL, and File Path (2026-07-23)
+
+The detail drawer's cross-references are now real, obviously-styled links instead of plain text or button-shaped chips. File paths get existence-checked at build time, so a stale reference is visible at a glance.
+
+- Every REQ/UR id in the drawer is a link: the UR drawer's "REQ ids" row, the REQ drawer's "User request" / "Depends on" / "Unblocks" / "Blocked by" rows, and any `REQ-…`/`UR-…` mention inside a rendered body (only ids actually on the board — unknown mentions stay text). Short mentions resolve compound card ids (`REQ-031` → `UR-002-REQ-031`).
+- All links are visibly links: accent color + underline (the old "User request" chip looked like a badge).
+- File paths in code spans are checked against the repo at board-build time: existing files render as blue links that open read-only via the live server's new `GET /file` endpoint (loopback-only, repo-contained, always text/plain); missing files render red with a "Not found in this repository" tooltip — in static snapshots too, where the existence verdict is baked into the data.
+- URLs in code spans become clickable, and every http(s) link in a body opens in a new tab instead of navigating the board away.
+
 ## 0.134.0 — Pending-Card Timer Tracks the Last Transition, Not Capture Time (2026-07-23)
 
 A REQ answered via `do-work clarify` went back to `pending` but its board card kept counting from capture time ("queued … · 28m" seconds after the flip). Pending-tier cards now time from the last state change.

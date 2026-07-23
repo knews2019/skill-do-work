@@ -1408,6 +1408,179 @@
     });
   }
 
+  // ---- linkification (ticket ids, urls, file paths) -------------------------
+  // Every mention that can navigate somewhere is a real, obviously-styled link:
+  // REQ/UR ids open the matching drawer, URLs open in a new tab, and repo file
+  // paths that the Go build verified to exist open through the live server's
+  // read-only /file endpoint (serve mode only — a static snapshot has no server
+  // to answer them). Paths the Go build verified to NOT exist are flagged as
+  // missing in both modes.
+
+  var liveFileApiAvailable = Boolean(boardData.liveFileApi);
+
+  // Build-time existence verdict for every file path mentioned in a body
+  // (collectRepoFileMentions in Go stats each one against the repo root):
+  // true → the file exists (link it), false → it does not (flag it as
+  // missing), absent → the Go scanner never saw it, leave it plain.
+  var repoFileMentionExists = boardData.repoFileMentions || {};
+
+  // A body mention like "REQ-031" may name a compound card id ("UR-002-REQ-031").
+  // Index each card by its REQ segment so the short form still resolves; an
+  // ambiguous segment (two cards sharing it) stays unlinked rather than guessing.
+  var requestIdByReqSegment = {};
+  Object.keys(requestsById).forEach(function (fullRequestId) {
+    var segmentMatch = /REQ-\d+[a-z]?/i.exec(fullRequestId);
+    if (!segmentMatch || segmentMatch[0] === fullRequestId) {
+      return;
+    }
+    var segmentKey = segmentMatch[0].toUpperCase();
+    requestIdByReqSegment[segmentKey] = Object.prototype.hasOwnProperty.call(requestIdByReqSegment, segmentKey)
+      ? null // ambiguous — never guess
+      : fullRequestId;
+  });
+
+  function resolveTicketMention(mentionText) {
+    if (Object.prototype.hasOwnProperty.call(requestsById, mentionText)) {
+      return { kind: "req", id: mentionText };
+    }
+    if (Object.prototype.hasOwnProperty.call(userRequestsById, mentionText)) {
+      return { kind: "ur", id: mentionText };
+    }
+    var segmentTargetId = requestIdByReqSegment[mentionText.toUpperCase()];
+    if (segmentTargetId) {
+      return { kind: "req", id: segmentTargetId };
+    }
+    return null;
+  }
+
+  // In-board link to a REQ/UR drawer. The document-level [data-detail-kind]
+  // delegation handles the click (and prevents the href="#" navigation).
+  function makeTicketLink(detailKind, detailId, linkText) {
+    var ticketLink = createElement("a", "ticket-link", linkText || detailId);
+    ticketLink.href = "#";
+    ticketLink.dataset.detailKind = detailKind;
+    ticketLink.dataset.detailId = detailId;
+    return ticketLink;
+  }
+
+  function makeExternalUrlLink(urlText) {
+    var urlLink = createElement("a", "external-url-link", urlText);
+    urlLink.href = urlText;
+    urlLink.target = "_blank";
+    urlLink.rel = "noopener";
+    return urlLink;
+  }
+
+  function makeRepoFileLink(repoRelativePath) {
+    var fileLink = createElement("a", "repo-file-link", repoRelativePath);
+    fileLink.href = "file?path=" + encodeURIComponent(repoRelativePath);
+    fileLink.target = "_blank";
+    fileLink.rel = "noopener";
+    fileLink.title = "Open " + repoRelativePath + " (read-only)";
+    return fileLink;
+  }
+
+  // Body mention scanner, alternation order = priority: (1) absolute http(s)
+  // URL, (2) repo-relative file path whose final segment carries a dot
+  // extension (so "and/or" or a bare directory never match), (3) REQ/UR ticket
+  // id — compound form first so "UR-002-REQ-031" is one mention, not two.
+  // The file-path alternative MUST stay in lock-step with
+  // repoFileMentionPattern in filementions.go — the Go scanner decides which
+  // paths exist, and a drift silently downgrades mentions to plain text.
+  var bodyMentionPattern = new RegExp(
+    "(https?://[^\\s<>\"')\\]]+)" +
+      "|((?:[A-Za-z0-9_@-]+(?:\\.[A-Za-z0-9_-]+)*/)+[A-Za-z0-9_@-][A-Za-z0-9_@.-]*\\.[A-Za-z][A-Za-z0-9]{0,7})" +
+      "|(\\b(?:UR-\\d+-REQ-\\d+[a-z]?|REQ-\\d+[a-z]?|UR-\\d+)\\b)",
+    "g"
+  );
+
+  // Turns one text run into a fragment with its linkable mentions wrapped.
+  // Returns null when nothing linked, so callers can leave the DOM untouched.
+  // File paths are only trusted inside code spans — REQ bodies conventionally
+  // backtick real paths, and prose fractions like "TLS1.2/1.3" would otherwise
+  // produce dead links.
+  function buildLinkifiedFragment(sourceText, insideCodeSpan) {
+    var fragment = document.createDocumentFragment();
+    var linkedAnything = false;
+    var cursorIndex = 0;
+    var matchResult;
+    bodyMentionPattern.lastIndex = 0;
+    while ((matchResult = bodyMentionPattern.exec(sourceText)) !== null) {
+      var mentionText = matchResult[0];
+      var linkNode = null;
+      if (matchResult[1]) {
+        // Trailing sentence punctuation belongs to the prose, not the URL.
+        var trimmedUrl = mentionText.replace(/[.,;:!?]+$/, "");
+        mentionText = trimmedUrl;
+        linkNode = makeExternalUrlLink(trimmedUrl);
+      } else if (matchResult[2]) {
+        if (insideCodeSpan) {
+          if (repoFileMentionExists[mentionText] === false) {
+            // The Go side checked: this path does not exist in the repo.
+            linkNode = createElement("span", "repo-file-missing", mentionText);
+            linkNode.title = "Not found in this repository";
+          } else if (repoFileMentionExists[mentionText] === true && liveFileApiAvailable) {
+            linkNode = makeRepoFileLink(mentionText);
+          }
+          // Exists but static snapshot (no server to open it), or unknown to
+          // the Go scanner: stays plain text.
+        }
+      } else if (matchResult[3]) {
+        var ticketTarget = resolveTicketMention(mentionText);
+        if (ticketTarget) {
+          linkNode = makeTicketLink(ticketTarget.kind, ticketTarget.id, mentionText);
+        }
+      }
+      if (!linkNode) {
+        // Skipped mention: resume just past its start so anything nested in it
+        // (a REQ id inside a skipped file path) can still match.
+        bodyMentionPattern.lastIndex = matchResult.index + 1;
+        continue;
+      }
+      if (matchResult.index > cursorIndex) {
+        fragment.appendChild(document.createTextNode(sourceText.slice(cursorIndex, matchResult.index)));
+      }
+      fragment.appendChild(linkNode);
+      cursorIndex = matchResult.index + mentionText.length;
+      bodyMentionPattern.lastIndex = cursorIndex;
+      linkedAnything = true;
+    }
+    if (!linkedAnything) {
+      return null;
+    }
+    if (cursorIndex < sourceText.length) {
+      fragment.appendChild(document.createTextNode(sourceText.slice(cursorIndex)));
+    }
+    return fragment;
+  }
+
+  // Post-processes a drawer body after its rendered-Markdown innerHTML lands:
+  // retargets the renderer's own autolinks to a new tab (a body link must not
+  // navigate the board away), then wraps every linkable mention in text nodes.
+  function linkifyDetailBody(bodyRootElement) {
+    bodyRootElement.querySelectorAll("a[href]").forEach(function (anchorElement) {
+      if (/^https?:/i.test(anchorElement.getAttribute("href"))) {
+        anchorElement.target = "_blank";
+        anchorElement.rel = "noopener";
+      }
+    });
+    var textWalker = document.createTreeWalker(bodyRootElement, NodeFilter.SHOW_TEXT, null);
+    var textNodes = [];
+    while (textWalker.nextNode()) {
+      textNodes.push(textWalker.currentNode);
+    }
+    textNodes.forEach(function (textNode) {
+      var parentElement = textNode.parentElement;
+      if (!parentElement || parentElement.closest("a")) {
+        return;
+      }
+      var replacementFragment = buildLinkifiedFragment(textNode.nodeValue, Boolean(parentElement.closest("code")));
+      if (replacementFragment) {
+        textNode.parentNode.replaceChild(replacementFragment, textNode);
+      }
+    });
+  }
+
   // ---- detail panel (docked beside the board, non-modal) -------------------
 
   var detailResizer = document.getElementById("detail-resizer");
@@ -1446,11 +1619,30 @@
     request.dependsOn.forEach(function (dependencyId) {
       var isUnmet = unmetDependencyIds.indexOf(dependencyId) !== -1;
       var row = createElement("span", isUnmet ? "detail-dep is-unmet" : "detail-dep is-met");
-      row.appendChild(createElement("span", "detail-dep-id", dependencyId));
+      var dependencyIdNode = requestsById[dependencyId]
+        ? makeTicketLink("req", dependencyId)
+        : createElement("span", null, dependencyId);
+      dependencyIdNode.classList.add("detail-dep-id");
+      row.appendChild(dependencyIdNode);
       row.appendChild(createElement("span", "detail-dep-status", describeRequestStatus(dependencyId)));
       list.appendChild(row);
     });
     return list;
+  }
+
+  // Comma-separated REQ id list for a meta row, each known id a drawer link.
+  // Ids not on the board (free-text blocked_by entries, archived REQs) stay text.
+  function makeTicketLinkList(ticketIds) {
+    var listContainer = createElement("span");
+    ticketIds.forEach(function (ticketId, ticketIndex) {
+      if (ticketIndex > 0) {
+        listContainer.appendChild(document.createTextNode(", "));
+      }
+      listContainer.appendChild(
+        requestsById[ticketId] ? makeTicketLink("req", ticketId) : document.createTextNode(ticketId)
+      );
+    });
+    return listContainer;
   }
 
   function openRequestDetail(requestId) {
@@ -1481,18 +1673,13 @@
       appendMetaRow("Domain", request.domain);
     }
     if (request.userRequestId) {
-      var urLink = createElement("button", "control-button", request.userRequestId);
-      urLink.type = "button";
-      urLink.dataset.detailKind = "ur";
-      urLink.dataset.detailId = request.userRequestId;
-      urLink.style.padding = "2px 10px";
-      appendMetaRow("User request", urLink);
+      appendMetaRow("User request", makeTicketLink("ur", request.userRequestId));
     }
     if (request.dependsOn && request.dependsOn.length > 0) {
       appendMetaRow("Depends on", makeDependencyDetailList(request));
     }
     if (request.blockedBy && request.blockedBy.length > 0) {
-      appendMetaRow("Blocked by", request.blockedBy.join(", "));
+      appendMetaRow("Blocked by", makeTicketLinkList(request.blockedBy));
       if (request.blockedAt) {
         // While the hold is live the row carries the ticking stopwatch; on any
         // other status (stale leftover field) it degrades to the plain instant.
@@ -1510,7 +1697,7 @@
     }
     var unblockedRequestIds = activeDependentIds(request);
     if (unblockedRequestIds.length > 0) {
-      appendMetaRow("Unblocks", unblockedRequestIds.join(", "));
+      appendMetaRow("Unblocks", makeTicketLinkList(unblockedRequestIds));
     }
     if (request.route) {
       appendMetaRow("Route", request.route);
@@ -1575,6 +1762,7 @@
     appendMetaRow("Tree", request.treeSection || "—");
 
     drawerBody.innerHTML = request.bodyHtml || "<p>(empty body)</p>";
+    linkifyDetailBody(drawerBody);
     currentDetailKind = "req";
     currentDetailId = requestId;
     showDrawer();
@@ -1593,11 +1781,12 @@
     var requestIds = userRequest.requestIds || [];
     appendMetaRow("Grouped REQs", String(requestIds.length));
     if (requestIds.length > 0) {
-      appendMetaRow("REQ ids", requestIds.join(", "));
+      appendMetaRow("REQ ids", makeTicketLinkList(requestIds));
     }
     appendMetaRow("input.md", userRequest.inputFilePresent ? "present" : "synthesized from REQ pointers");
 
     drawerBody.innerHTML = userRequest.bodyHtml || "<p>(no input.md body)</p>";
+    linkifyDetailBody(drawerBody);
     currentDetailKind = "ur";
     currentDetailId = userRequestId;
     showDrawer();

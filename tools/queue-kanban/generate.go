@@ -61,6 +61,15 @@ type generatedBoardData struct {
 	// view's write actions need the /api/testing/* endpoints, so a static
 	// snapshot renders the view read-only.
 	LiveTestingApi bool `json:"liveTestingApi,omitempty"`
+	// True only when served by the live server (serve.go sets it): the drawer
+	// turns existing file-path mentions into GET /file?path=… links, which need
+	// the server behind them — a static snapshot has no server, so there only
+	// the missing-file marker applies.
+	LiveFileApi bool `json:"liveFileApi,omitempty"`
+	// File-path mentions found in REQ/UR bodies → whether the file exists in
+	// the repo (checked at build time by collectRepoFileMentions). The drawer
+	// links only paths mapped true and flags paths mapped false as missing.
+	RepoFileMentions map[string]bool `json:"repoFileMentions,omitempty"`
 }
 
 // generatedColumns lists the active-board buckets as REQ id slices. RecentlyDone
@@ -218,11 +227,12 @@ func generateStaticSite(outputDirectory string, board *Board) error {
 // pre-rendering every REQ and UR body to HTML along the way.
 func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 	data := generatedBoardData{
-		GeneratedAt:     formatTimestamp(board.GeneratedAt),
-		Warnings:        board.Warnings,
-		TestingProfiles: board.TestingProfiles,
-		Requests:        map[string]generatedRequest{},
-		UserRequests:    map[string]generatedUserRequest{},
+		GeneratedAt:      formatTimestamp(board.GeneratedAt),
+		Warnings:         board.Warnings,
+		TestingProfiles:  board.TestingProfiles,
+		RepoFileMentions: collectRepoFileMentions(board),
+		Requests:         map[string]generatedRequest{},
+		UserRequests:     map[string]generatedUserRequest{},
 		Columns: generatedColumns{
 			Pending:             requestIdsOf(board.Columns.Pending),
 			PendingReady:        requestIdsOf(board.Columns.PendingReady),

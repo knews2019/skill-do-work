@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -56,6 +57,7 @@ func newLiveBoardServer(repoRoot string, recentWindow time.Duration) *liveBoardS
 //	GET /              → board HTML shell (same template as generate's index.html)
 //	GET /board-data.js     → fresh board data as a JS global assignment
 //	GET /board-markdown.js → raw Markdown for Copy, loaded only on demand
+//	GET /file?path=…       → read-only view of one repo file (loopback-only)
 //	POST /api/testing/profile → add a tester profile to do-work/testers.md
 //	POST /api/testing/status  → write one REQ's testing placeholders (testing_api.go)
 //
@@ -77,6 +79,8 @@ func (liveServer *liveBoardServer) ServeHTTP(responseWriter http.ResponseWriter,
 		liveServer.serveLiveBoardDataJs(responseWriter, httpRequest)
 	case "/board-markdown.js":
 		liveServer.serveLiveBoardMarkdownJs(responseWriter, httpRequest)
+	case "/file":
+		liveServer.serveRepoFileView(responseWriter, httpRequest)
 	case "/api/testing/profile":
 		liveServer.serveTestingProfileApi(responseWriter, httpRequest)
 	case "/api/testing/status":
@@ -135,6 +139,7 @@ func (liveServer *liveBoardServer) serveLiveBoardDataJs(responseWriter http.Resp
 	// which generate-mode snapshots must not inherit the flag from).
 	liveBoardData := *boardData
 	liveBoardData.LiveTestingApi = true
+	liveBoardData.LiveFileApi = true
 
 	jsText, encodeErr := encodeBoardDataForJsAssignment(liveBoardData)
 	if encodeErr != nil {
@@ -174,6 +179,103 @@ func (liveServer *liveBoardServer) serveLiveBoardMarkdownJs(responseWriter http.
 	responseWriter.Header().Set("Cache-Control", "no-cache")
 	responseWriter.WriteHeader(http.StatusOK)
 	_, _ = responseWriter.Write([]byte(jsText))
+}
+
+// repoFileViewMaxBytes caps what GET /file will serve. The endpoint exists so
+// the drawer's file-path links can open the referenced doc/spec/prime file —
+// those are small text files; anything larger is not what the link is for.
+const repoFileViewMaxBytes = 2 << 20
+
+// serveRepoFileView serves one repo file as read-only plain text so file-path
+// mentions in REQ/UR bodies can be real links. Guards, in order: loopback
+// callers only (a LAN-exposed board must not turn into a whole-repo file
+// reader — the exposure warning promises REQ bodies, nothing more), then repo
+// containment via resolveRepoFilePath, then a regular-file + size check.
+// Always text/plain (with the global nosniff header), never the file's own
+// content type, so a crafted HTML/SVG file cannot execute in the board origin.
+func (liveServer *liveBoardServer) serveRepoFileView(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+	if httpRequest.Method != http.MethodGet && httpRequest.Method != http.MethodHead {
+		http.Error(responseWriter, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if !isLoopbackRemoteAddr(httpRequest.RemoteAddr) {
+		http.Error(responseWriter, "The file view is loopback-only", http.StatusForbidden)
+		return
+	}
+	requestedPath := httpRequest.URL.Query().Get("path")
+	if requestedPath == "" {
+		http.Error(responseWriter, "Missing ?path=<repo-relative file>", http.StatusBadRequest)
+		return
+	}
+	resolvedFilePath, resolveErr := resolveRepoFilePath(liveServer.repoRoot, requestedPath)
+	if resolveErr != nil {
+		if os.IsNotExist(resolveErr) {
+			http.Error(responseWriter, "File not found in this repository: "+requestedPath, http.StatusNotFound)
+			return
+		}
+		http.Error(responseWriter, "Path is outside this repository", http.StatusBadRequest)
+		return
+	}
+	fileInfo, statErr := os.Stat(resolvedFilePath)
+	if statErr != nil || !fileInfo.Mode().IsRegular() {
+		http.Error(responseWriter, "File not found in this repository: "+requestedPath, http.StatusNotFound)
+		return
+	}
+	if fileInfo.Size() > repoFileViewMaxBytes {
+		http.Error(responseWriter, "File exceeds the board file-view size cap", http.StatusRequestEntityTooLarge)
+		return
+	}
+	fileBytes, readErr := os.ReadFile(resolvedFilePath)
+	if readErr != nil {
+		log.Printf("queue-kanban serve: reading %s for /file: %v", resolvedFilePath, readErr)
+		http.Error(responseWriter, "Internal error reading file", http.StatusInternalServerError)
+		return
+	}
+	responseWriter.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	responseWriter.Header().Set("Cache-Control", "no-cache")
+	responseWriter.WriteHeader(http.StatusOK)
+	_, _ = responseWriter.Write(fileBytes)
+}
+
+// resolveRepoFilePath maps a repo-relative path from a drawer file link to an
+// absolute path, refusing anything that escapes the repo root. Absolute paths
+// and ".." traversal are rejected before touching the filesystem; symlinks are
+// then resolved and the REAL location re-checked, so a symlink inside the repo
+// cannot be used as a hop to files outside it. A missing file surfaces as an
+// os.IsNotExist error so the caller can 404 instead of 400.
+func resolveRepoFilePath(repoRoot string, requestedPath string) (string, error) {
+	if filepath.IsAbs(requestedPath) {
+		return "", fmt.Errorf("absolute path rejected")
+	}
+	cleanedRelativePath := filepath.Clean(requestedPath)
+	if cleanedRelativePath == ".." || strings.HasPrefix(cleanedRelativePath, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("path escapes the repo root")
+	}
+	resolvedRepoRoot, rootResolveErr := filepath.EvalSymlinks(repoRoot)
+	if rootResolveErr != nil {
+		return "", rootResolveErr
+	}
+	resolvedFilePath, fileResolveErr := filepath.EvalSymlinks(filepath.Join(resolvedRepoRoot, cleanedRelativePath))
+	if fileResolveErr != nil {
+		return "", fileResolveErr
+	}
+	containmentPath, relErr := filepath.Rel(resolvedRepoRoot, resolvedFilePath)
+	if relErr != nil || containmentPath == ".." || strings.HasPrefix(containmentPath, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("path escapes the repo root")
+	}
+	return resolvedFilePath, nil
+}
+
+// isLoopbackRemoteAddr reports whether an http.Request.RemoteAddr is a
+// loopback peer. An unparseable address counts as non-loopback — the guard
+// fails closed.
+func isLoopbackRemoteAddr(remoteAddr string) bool {
+	remoteHost, _, splitErr := net.SplitHostPort(remoteAddr)
+	if splitErr != nil {
+		return false
+	}
+	parsedRemoteIp := net.ParseIP(remoteHost)
+	return parsedRemoteIp != nil && parsedRemoteIp.IsLoopback()
 }
 
 // refreshBoardData checks whether any file in the do-work tree has changed

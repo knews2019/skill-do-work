@@ -232,6 +232,7 @@ type Board struct {
 	GeneratedAt  time.Time     // the `now` the board was built against
 	RecentWindow time.Duration // window used to populate Columns.RecentlyDone
 	ProjectName  string        // base name of the repo root (the parent project this board belongs to)
+	RepoRoot     string        // absolute repo root the tree was walked from (existence checks for file-path mentions)
 
 	AllRequests  []*RequestTicket          // every parsed REQ, in id order
 	RequestsById map[string]*RequestTicket // RequestId → ticket (first occurrence wins)
@@ -277,6 +278,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 		GeneratedAt:      now,
 		RecentWindow:     recentWindow,
 		ProjectName:      deriveProjectName(repoRoot),
+		RepoRoot:         repoRoot,
 		RequestsById:     map[string]*RequestTicket{},
 		UserRequestsById: map[string]*UserRequestTicket{},
 	}

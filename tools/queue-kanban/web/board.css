@@ -1301,6 +1301,35 @@ body.is-resizing-detail .detail-resizer::before {
 .detail-meta dd a {
   color: var(--accent-claimed);
 }
+
+/* Cross-reference links — REQ/UR ids that open a drawer, file paths that open
+   the read-only /file view, and URLs. Always underlined so a link is
+   recognizable as one without hovering (the old UR chip read as a plain
+   badge). Ticket and file links keep the mono ticket/path look. */
+.ticket-link,
+.repo-file-link,
+.external-url-link {
+  color: var(--accent-claimed);
+  text-decoration: underline;
+  text-decoration-color: rgba(111, 156, 230, 0.45);
+  text-underline-offset: 3px;
+}
+.ticket-link,
+.repo-file-link {
+  font-family: var(--font-mono);
+}
+.ticket-link:hover,
+.repo-file-link:hover,
+.external-url-link:hover {
+  text-decoration-color: var(--accent-claimed);
+}
+
+/* File-path mention the Go build could NOT find in the repo — rendered as
+   plain (non-link) text in the blocked accent so a dead reference is visible
+   at a glance. */
+.repo-file-missing {
+  color: var(--accent-blocked);
+}
 .detail-meta .meta-chip {
   font-family: var(--font-mono);
 }
