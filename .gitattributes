@@ -16,6 +16,16 @@
 # loaded at runtime by any action — so consumers don't need it. The dev dotfiles
 # (.gitignore/.gitattributes) are repo-maintenance plumbing that's meaningless once the
 # skill is a subdirectory of someone else's repo. All are excluded for a clean install.
+#
+# CLAUDE.md/AGENTS.md are the maintainer doc for THIS repo, not runtime skill content.
+# Shipped nested inside a consumer's repo, Claude Code auto-loads CLAUDE.md into context
+# on every read of a skill file — a ~2.5k-word tax whose commit protocol (bump
+# actions/version.md, add a CHANGELOG entry) is actively wrong advice downstream. They
+# get NO tar --exclude fallback on purpose: tar --exclude matches basenames at any
+# depth (the same trap as `diff -x`), and update/install always pull a fresh
+# main-branch tarball, which honors export-ignore. Stale copies in existing installs
+# are deleted by the update flow (actions/version.md Step 5) instead. Shipped files
+# must never cite these two files — see CLAUDE.md → Action File Conventions.
 /do-work         export-ignore
 /CHANGELOG-archive.md export-ignore
 /ai-reports      export-ignore
@@ -24,3 +34,5 @@
 /decisions       export-ignore
 /.gitignore      export-ignore
 /.gitattributes  export-ignore
+/CLAUDE.md       export-ignore
+/AGENTS.md       export-ignore

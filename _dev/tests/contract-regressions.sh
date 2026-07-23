@@ -223,6 +223,30 @@ assert_contains \
   '^-[[:space:]]+\*\*Ready\*\*[[:space:]]+— normalized `status` is `pending`' \
   'actions/roadmap.md must require pending status before classifying a queued REQ as Ready.'
 
+# CLAUDE.md/AGENTS.md are the maintainer doc, export-ignored since 0.136.0 so they never
+# land in consumer installs (nested CLAUDE.md is auto-loaded into consumer agents' context).
+assert_contains \
+  ".gitattributes" \
+  '^/CLAUDE\.md[[:space:]]+export-ignore' \
+  '.gitattributes must export-ignore /CLAUDE.md — the maintainer doc must not ship to consumer installs.'
+
+assert_contains \
+  ".gitattributes" \
+  '^/AGENTS\.md[[:space:]]+export-ignore' \
+  '.gitattributes must export-ignore /AGENTS.md — the redirect stub must not ship to consumer installs.'
+
+# Shipped files must not cite the skill's own CLAUDE.md/AGENTS.md — those files are absent
+# downstream, so a citation dangles. The idiom patterns are illustrative, not exhaustive
+# (references to a *consumer project's* CLAUDE.md, like capture.md's prime routing, are fine);
+# the full rule lives in CLAUDE.md → Action File Conventions.
+shipped_citation_paths=(SKILL.md next-steps.md README.md actions crew-members prompts interviews specs docs hooks tools)
+self_citation_pattern='(see|per|→) `?CLAUDE\.md|CLAUDE\.md`? *→|(see|per) `?AGENTS\.md'
+self_citation_hits="$(cd "$repo_root" && grep -rIEn "$self_citation_pattern" "${shipped_citation_paths[@]}" 2>/dev/null || true)"
+if [ -n "$self_citation_hits" ]; then
+  printf 'FAIL: shipped files must not cite the skill'\''s own CLAUDE.md/AGENTS.md (export-ignored — absent in consumer installs). Restate the rule inline or point at a shipped home:\n%s\n' "$self_citation_hits" >&2
+  fail_count=$((fail_count + 1))
+fi
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi

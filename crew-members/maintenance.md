@@ -39,5 +39,5 @@ Active for the duration of a maintenance pass — from the moment removal or nar
 ## What this looks like in practice
 
 - **A recurring correction** (e.g. surfaced by forensics' Recurring Corrections check): the same lesson keeps reappearing across REQs. The reflex is to add a guardrail. The maintenance move is to ask *why* the harness keeps teaching the wrong thing — usually a stale source or a bad example — and remove that, so the correction stops recurring at the root.
-- **A stale enumeration** (CLAUDE.md "Closed Enumerations Go Stale"): a hand-maintained list has drifted. Don't add a "remember to update this list" note — generalize the list to a trigger condition so there's nothing to keep in sync.
+- **A stale enumeration**: a hand-maintained list of a closed set has drifted. Don't add a "remember to update this list" note — generalize the list to a trigger condition so there's nothing to keep in sync.
 - **An action that grew caveats**: an action file has accreted five edge-case clauses. Before adding a sixth, check whether narrowing the action's input, or fixing the upstream source, makes some of the existing five unnecessary.

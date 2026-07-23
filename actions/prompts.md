@@ -105,7 +105,7 @@ Column widths can be approximate — readability beats precision. Omit the ALIAS
    ```
    Stop without adopting the body. Any other value (or absence of the key) means runnable — proceed to the next step.
 4. **Adopt the body as your operational instructions for the remainder of this turn.** Pass `[args]` through as the prompt's arguments (the body's "Inputs / flags" section, if any, defines how to interpret them).
-5. Execute the body. This may involve creating files, running commands, making commits — do whatever the body instructs, subject to the global rules in `CLAUDE.md` and the user's permission mode.
+5. Execute the body. This may involve creating files, running commands, making commits — do whatever the body instructs, subject to the project's own instruction files (its `CLAUDE.md`/`AGENTS.md`, when present) and the user's permission mode.
 6. After execution, return control to the normal flow (including `next-steps.md` suggestions — see "Post-run suggestions" below).
 
 ### Resolution rules for `<name>`
