@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.137.0 — Clarify Opens Each Question With a Plain-Language Story (2026-07-24)
+
+Answering pending questions used to mean remembering what REQ-025 was about — often days after the work happened. Now every question arrives with a short story above it: what you asked for, what the builder ran into, and why the call is yours. The decision block underneath is unchanged.
+
+- Questions are presented in three layers — a 1–4 sentence story, then the existing `Decision / Value / Risk / Also` block, then the builder's original wording and file paths *only if you ask*.
+- Layer one is written to be read aloud: no file paths, no bare identifiers, no CamelCase, one idea per sentence. Any technical term used lower down gets paraphrased in the story first.
+- Blocked REQs waiting on an external condition now get a one-line "what it was for" too — those are the ones you've had the longest to forget.
+- New red flags catch the failure mode this invites: a story that just restates the question is padding, not context.
+
 ## 0.136.1 — Board Flags REQ Files Found Outside the Scanned Sections (2026-07-24)
 
 A REQ that lands somewhere other than `queue/`, `working/`, or `archive/` — say a work agent that archived to `do-work/user-requests/UR-NNN/` instead of `do-work/archive/` — used to vanish from the board with no trace. Now the walk catches it and raises a data warning instead of silently dropping it.
