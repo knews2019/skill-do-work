@@ -232,6 +232,7 @@ type Board struct {
 	GeneratedAt  time.Time     // the `now` the board was built against
 	RecentWindow time.Duration // window used to populate Columns.RecentlyDone
 	ProjectName  string        // base name of the repo root (the parent project this board belongs to)
+	RepoRoot     string        // absolute repo root the tree was walked from (existence checks for file-path mentions)
 
 	AllRequests  []*RequestTicket          // every parsed REQ, in id order
 	RequestsById map[string]*RequestTicket // RequestId → ticket (first occurrence wins)
@@ -277,6 +278,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 		GeneratedAt:      now,
 		RecentWindow:     recentWindow,
 		ProjectName:      deriveProjectName(repoRoot),
+		RepoRoot:         repoRoot,
 		RequestsById:     map[string]*RequestTicket{},
 		UserRequestsById: map[string]*UserRequestTicket{},
 	}
@@ -294,6 +296,17 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	// building any view, so the columns, calendar, UR groups, and the id-keyed
 	// JSON map all render the same copy instead of contradicting each other.
 	board.AllRequests, board.Warnings = dedupeTicketsByRequestId(parsedTickets)
+
+	// Flag any REQ file found outside queue/working/archive. Such a file has no
+	// card — bucketing only ever sees discovered.RequestFiles — so without this
+	// warning a misplaced REQ (e.g. archived to do-work/user-requests/UR-NNN/
+	// instead of do-work/archive/) goes silently invisible on the board.
+	for _, stray := range discovered.StrayRequestFiles {
+		requestIdLabel := strings.TrimSuffix(filepath.Base(stray.RelativePath), ".md")
+		board.Warnings = append(board.Warnings, fmt.Sprintf(
+			"%s file at do-work/%s is outside the scanned sections (queue/, working/, archive/) — it has no card and is invisible on the board; move it into do-work/archive/ (if resolved) or do-work/queue/ (if still pending) to surface it",
+			requestIdLabel, filepath.ToSlash(stray.RelativePath)))
+	}
 
 	for _, ticket := range board.AllRequests {
 		if isTerminalResolvedStatus(ticket.Status) {

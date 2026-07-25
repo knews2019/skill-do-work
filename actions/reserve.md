@@ -83,7 +83,7 @@ Reservations:
 | "I'll reserve it by moving it into `working/` — that's what claimed means" | Set `status: reserved` in place in `do-work/queue/` | Crash recovery re-queues everything in `working/` at the next session start — the reservation would be silently destroyed |
 | "The reservation is set locally, job done" | Remind the user to sync (commit/push) the queue edit | Worktrees and cloud sessions have separate checkouts; an unsynced reservation protects nothing |
 | "This reservation is >24h old, I'll release it automatically" | Flag it and suggest the three recategorize options | The other session may still be mid-build; auto-release invites double-claiming |
-| "The label has an apostrophe, I'll inline it into the sed/yq command" | Edit the frontmatter as a file operation with the label as quoted data | Raw text inside shell quoting is a breakage and injection vector (see CLAUDE.md's prescribed-command traps) |
+| "The label has an apostrophe, I'll inline it into the sed/yq command" | Edit the frontmatter as a file operation with the label as quoted data | Raw text inside shell quoting is a breakage and injection vector — an apostrophe in the label breaks the quoting and executes what follows |
 
 ## Red Flags
 

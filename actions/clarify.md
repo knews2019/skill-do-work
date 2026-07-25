@@ -36,11 +36,28 @@ If neither any `pending-answers` REQ nor any `blocked` REQ is found: report "No 
 
 **Load `crew-members/clear-questions.md` first** — it is the contract for every question you're about to show. Then **rewrite** each REQ's question to that contract instead of rendering the stored `## Open Questions` text verbatim: that text was authored mid-implementation by a builder with the whole spec in its head, and is presumed too dense for a cold reader. Gloss every coined label or section reference, and state why the decision was escalated to the user (Principle 7). The rewrite applies to the question and option *wording* — the Decision Brief structure below stays as-is.
 
-Always lead with the builder's decision and its default — confirming is the intended fast path — and, for builder-decided follow-ups, show the **value and risk** so the user can judge in seconds instead of spelunking. This is the **DECISIONS FOR YOU** section of the Decision Brief (`actions/work-reference.md` → **Decision Brief (hand-back format)**). For each `pending-answers` REQ, show:
+Always lead with the builder's decision and its default — confirming is the intended fast path — and, for builder-decided follow-ups, show the **value and risk** so the user can judge in seconds instead of spelunking. This is the **DECISIONS FOR YOU** section of the Decision Brief (`actions/work-reference.md` → **Decision Brief (hand-back format)**).
+
+Present each `pending-answers` REQ in three layers — story, then decisions, then detail on request. The story layer is a clarify-local addition: the decision block underneath it is the Decision Brief's format, unchanged.
+
+**Layer 1 — the story (1–4 sentences, always present).** Write for a reader who knows what a UR and a REQ *are* and has forgotten everything about *this* one — the work may be days old. In plain sentences, answer three things: what the user originally asked for, what the builder ran into while building it, and why it couldn't be settled without them. That third part carries Principle 7 of `crew-members/clear-questions.md` — the escalation reason belongs in the story, not wedged into the question.
+
+Source the facts from the REQ's `## What`, the parent UR's request text, the `## Prior Attempt` or review finding that spawned the follow-up, and the escalated decision record's rationale. For a discovered-task REQ, say what was found and what the builder was actually working on when it turned up.
+
+**Hard cap: four sentences, and never longer than the block it introduces.** If the question is self-evident from its header, write one sentence. A story that only restates the question in different words is padding — cut it to the single sentence that adds the fact the question is missing.
+
+**Every question gets a story, not every REQ.** When a REQ holds several questions that all arise from the same situation, one story above the block covers them — that's the common case. But when two questions came from *different* situations (one about how a file is encoded, one about which rows it contains), the shared story can't explain both: give each its own one-sentence lead-in directly above its numbered entry, and let the REQ-level story carry only what they genuinely share. The test is per-question, not per-REQ — a reader must be able to answer question 3 without having inferred anything from question 1.
+
+**Layer 2 — the decision block.** The question, the builder's decision, the default, and the trade-off:
 
 ```
 REQ-025 — Review fix: dark mode sidebar
-(follow-up to REQ-003, from review)
+(a fix that came out of reviewing the dark-mode work)
+
+The story: You asked for dark mode across the app. While building it the sidebar
+turned out to carry its own colour set, separate from the main page, and nothing in
+the request said which way it should go. Changing it later is cheap, but picking the
+wrong one silently would leave you with a look you never chose.
 
 1. [ ] Should the sidebar use the same dark palette as the main content?
    Decision: Yes, match main content palette   ·   Default if you say nothing: same
@@ -48,14 +65,29 @@ REQ-025 — Review fix: dark mode sidebar
    Risk:  if you wanted a distinct sidebar, this is a quick CSS revert (low, reversible)
    Also:  Separate sidebar palette, User-configurable
 
-2. [ ] Should dark mode persist across sessions?
-   Decision: Yes, save to localStorage   ·   Default if you say nothing: same
+Separately: nothing said whether the choice should survive closing the tab.
+
+2. [ ] Should dark mode be remembered the next time you open the app?
+   Decision: Yes, save it in the browser   ·   Default if you say nothing: same
    Value: returning users keep their choice
-   Risk:  a stale stored value can mask the OS-preference path (medium, reversible)
-   Also:  Reset on refresh, Follow OS preference
+   Risk:  a stale saved value can hide the follow-your-system-setting path (medium, reversible)
+   Also:  Forget on refresh, Follow the system setting
+
+Want the builder's original wording, the files touched, or the full decision record for
+either of these? Ask and I'll show it.
 ```
 
-**Fallback (mandatory).** Many `pending-answers` REQs come from templates that don't carry Value/Risk — capture, verify-requests, review-work follow-ups, and discovered tasks all emit `Recommended:`/`Also:` only. When a question has no `Value:`/`Risk:` lines, render it in that older form (`Recommended:` + `Also:`) — never block on the missing fields.
+**Fallback (mandatory).** Many `pending-answers` REQs come from templates that don't carry Value/Risk — capture, verify-requests, review-work follow-ups, and discovered tasks all emit `Recommended:`/`Also:` only. When a question has no `Value:`/`Risk:` lines, render it in that older form (`Recommended:` + `Also:`) — never block on the missing fields. The story layer still applies; it doesn't depend on those fields.
+
+**Layer 3 — detail, on request only.** Close each REQ with one line offering what was held back: the builder's original question wording, the files touched, the parent REQ or UR, and the full decision record. Never render it unprompted — the offer *is* the disclosure mechanism.
+
+**Speakable-first rendering.** Layer 1 has to survive being read aloud end to end:
+
+- Name the request in plain words after the header line; don't repeat bare ids mid-sentence.
+- Paraphrase every technical token on first use ("saved in the browser so it survives a refresh" for `localStorage`). Layer 2 may then use the token freely — the constraint is that no term the user needs *in order to choose* appears there cold.
+- No file paths, no section marks, no arrows or interpuncts or slashes standing in for words, no CamelCase or snake_case, no abbreviation the user didn't introduce.
+- One idea per sentence, and no nested parentheticals — a listener can't see brackets.
+- State options as alternatives with their consequence, builder's choice first (it is the default).
 
 Builder-marked `- [~]` decisions reflect the "Think Before Coding" guardrail (`crew-members/coding-guardrails.md`) — surface tradeoffs early, not late.
 
@@ -79,11 +111,12 @@ For each REQ that wasn't already completed or discarded: if all questions are no
 
 ### Step 5.5: Confirm blocked conditions
 
-For each `status: blocked` REQ collected in Step 1, present its condition as one lightweight yes/no — no rewrite-contract machinery needed (the condition is a single line of `blocked_by` text, not a builder question):
+For each `status: blocked` REQ collected in Step 1, present its condition as one lightweight yes/no — no rewrite-contract machinery needed (the condition is a single line of `blocked_by` text, not a builder question). It still gets one sentence of story, because a REQ that has been sitting blocked for days is exactly the one the user no longer remembers:
 
 ```
 REQ-042 — Wire up local translation
-Blocked by: LM Studio running locally (since 3d ago)
+What it was for: you wanted translation to run on your own machine instead of a paid API.
+Blocked by: LM Studio running locally (waiting 3 days)
 Is this condition now satisfied?
   1. Yes — unblock it        2. Not yet — leave it        3. Abandon this REQ
 ```
@@ -132,10 +165,16 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - This action avoids wasting a work cycle on a REQ that just needs sign-off or rejection, while correctly routing approved discovered tasks into the build queue
 - Never block the user — if they skip all questions, exit gracefully
 - Always show the builder's recommended choice prominently so confirming is the fast path
+- The story exists to make the question answerable cold — it is not a summary of the work. If it adds no fact the question itself lacks, it's padding; cut it back
 
 ## Red Flags
 
 - A question shown to the user still contains unglossed builder shorthand (a coined label, a spec §-reference, a finding number) — the stored text was rendered verbatim instead of rewritten per `crew-members/clear-questions.md`.
+- A story that restates the question in different words — it must add what was asked for, what the builder hit, or why the call is the user's.
+- A story longer than the decision block it introduces.
+- A file path, bare identifier, or unglossed technical token inside a story — unreadable aloud and unanswerable cold.
+- Layer 3 detail rendered unprompted — the layering bought nothing, and the user is back to scanning.
+- A REQ-level story that only explains the first of several questions — the later ones are being answered on inference.
 - A `pending-answers` REQ with no `## Open Questions` section — the marker and the body disagree; investigate before presenting nothing.
 - User confirms every builder choice without reading — they may be rubber-stamping; ask once if they want a summary first.
 - A discovered-task follow-up's `status` flipped to `completed` instead of `pending` after user confirmed "Yes, add to queue" — that's the wrong route (the task never gets built).
@@ -146,6 +185,11 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - [ ] `crew-members/clear-questions.md` was loaded before the first question was presented, and stored question text was rewritten to its contract (not rendered verbatim).
 - [ ] Every REQ presented had `status: pending-answers` in its frontmatter before the session started.
 - [ ] Each question shown included the builder's recommended choice (confirming is the fast path).
+- [ ] Every presented REQ carried a 1–4 sentence story naming what was asked for, what the builder hit, and why the call is the user's.
+- [ ] Every *question* was answerable from its own story — questions arising from a different situation than their REQ-mates got their own one-sentence lead-in.
+- [ ] No story contained a file path, bare identifier, or unglossed technical token.
+- [ ] Layer 3 detail was offered, not rendered, unless the user asked for it.
+- [ ] Each `blocked` REQ presented in Step 5.5 carried a one-sentence "what it was for" line.
 - [ ] Answered REQs with all questions resolved flipped to `status: pending` (or `completed` for builder-was-right, `cancelled` for discarded).
 - [ ] Approved discovered-task REQs flipped to `pending` and stayed in `do-work/queue/` — not archived.
 - [ ] Skipped REQs remained `pending-answers` — nothing lost.

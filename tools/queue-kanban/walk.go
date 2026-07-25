@@ -17,14 +17,25 @@ type requestFileReference struct {
 	TreeSection  string
 }
 
+// strayRequestFile is a REQ-*.md discovered UNDER do-work/ but OUTSIDE the
+// scanned sections (queue/, working/, archive/) — e.g. a work agent that
+// archived to do-work/user-requests/UR-NNN/ instead of do-work/archive/. Such a
+// file has no card and is invisible on the board; buildBoard turns each one into
+// a data warning so a misplaced REQ is flagged, never silently dropped.
+type strayRequestFile struct {
+	AbsolutePath string
+	RelativePath string // path relative to do-work/, for a location-pinpointing warning
+}
+
 // discoveredTreeFiles is the raw output of walking the do-work tree: every REQ
 // file reference, every UR input.md path, and the do-work/notes.md path when it
 // exists — all before any parsing.
 type discoveredTreeFiles struct {
-	RequestFiles     []requestFileReference
-	UserRequestFiles []string
-	NotesFilePath    string // absolute path to do-work/notes.md, "" when absent
-	TestersFilePath  string // absolute path to do-work/testers.md, "" when absent
+	RequestFiles      []requestFileReference
+	StrayRequestFiles []strayRequestFile // REQ-*.md found outside queue/working/archive — flagged, not shown as cards
+	UserRequestFiles  []string
+	NotesFilePath     string // absolute path to do-work/notes.md, "" when absent
+	TestersFilePath   string // absolute path to do-work/testers.md, "" when absent
 }
 
 // resolveRepoRoot walks upward from startDirectory until it finds a directory
@@ -134,6 +145,15 @@ func enumerateDoWorkTree(repoRoot string) (discoveredTreeFiles, error) {
 				discovered.RequestFiles = append(discovered.RequestFiles, requestFileReference{
 					AbsolutePath: path,
 					TreeSection:  topSection,
+				})
+			default:
+				// A REQ file that the walk reached but that lives outside the
+				// scanned sections (the pruned deliverables/ and runs/ subtrees
+				// never get here — they are SkipDir'd as directories). It would
+				// otherwise vanish; record it so buildBoard can flag it.
+				discovered.StrayRequestFiles = append(discovered.StrayRequestFiles, strayRequestFile{
+					AbsolutePath: path,
+					RelativePath: relativePath,
 				})
 			}
 		case baseName == "input.md":

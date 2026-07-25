@@ -6,13 +6,46 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.135.0 — New Install Target: adhd Divergent-Ideation Skill (2026-07-23)
+## 0.138.0 — New Install Target: adhd Divergent-Ideation Skill (2026-07-25)
 
 `do-work install adhd` vendors the [adhd skill](https://github.com/UditAkhourii/adhd) (MIT) into the project — parallel divergent ideation that branches a named problem across distinct cognitive frames, then scores, clusters, and deepens the top candidates. Complements `scan-ideas` (repo-grounded) with deliberately unconventional exploration; feed the winners to `capture-request:`.
 
 - Single self-contained `SKILL.md` installed project-scoped to `.claude/skills/adhd/` — folder name matches upstream so `/adhd` auto-discovers; no global npm install.
 - Same manifest-driven detect → install → verify → report shape as `ui-design`; idempotent, never overwrites an existing copy.
 - Routing accepts `install adhd` / `adhd mode` / `adhd-mode`.
+
+## 0.137.0 — Clarify Opens Each Question With a Plain-Language Story (2026-07-24)
+
+Answering pending questions used to mean remembering what REQ-025 was about — often days after the work happened. Now every question arrives with a short story above it: what you asked for, what the builder ran into, and why the call is yours. The decision block underneath is unchanged.
+
+- Questions are presented in three layers — a 1–4 sentence story, then the existing `Decision / Value / Risk / Also` block, then the builder's original wording and file paths *only if you ask*.
+- Layer one is written to be read aloud: no file paths, no bare identifiers, no CamelCase, one idea per sentence. Any technical term used lower down gets paraphrased in the story first.
+- Blocked REQs waiting on an external condition now get a one-line "what it was for" too — those are the ones you've had the longest to forget.
+- New red flags catch the failure mode this invites: a story that just restates the question is padding, not context.
+
+## 0.136.1 — Board Flags REQ Files Found Outside the Scanned Sections (2026-07-24)
+
+A REQ that lands somewhere other than `queue/`, `working/`, or `archive/` — say a work agent that archived to `do-work/user-requests/UR-NNN/` instead of `do-work/archive/` — used to vanish from the board with no trace. Now the walk catches it and raises a data warning instead of silently dropping it.
+
+- The board now emits a warning naming the misplaced REQ, its exact path, and how to fix it (move into `archive/` or `queue/`) — shown in the web warnings banner and the `board summary` output.
+- A stray REQ is only flagged, never rendered as a card, so its off-vocab location can't masquerade as a real column placement.
+
+## 0.136.0 — Maintainer Docs No Longer Ship to Consumer Installs (2026-07-23)
+
+The repo's own `CLAUDE.md` and `AGENTS.md` were landing in every consumer install, where Claude Code auto-loads the nested `CLAUDE.md` on every skill-file read — a ~2.5k-word context tax whose commit protocol (bump the version, add a changelog entry) is actively wrong advice inside someone else's project. They're maintainer docs, not skill content, so they no longer ship.
+
+- Both files are now `export-ignore`'d, and `do-work update` deletes the stale copies that installs ≤0.135.x left behind (tar extraction never removes files dropped upstream).
+- Every shipped file's citation of the skill's own CLAUDE.md was reworded to be self-contained or point at a shipped home (e.g. `actions/kb-lessons-handoff.md` for the KB handoff contract) — 14 sites across actions, crew-members, and hooks.
+- New contract-regression checks keep it that way: the export-ignore lines must exist, and shipped files must not cite the unshipped docs.
+
+## 0.135.0 — Board Drawer Links Every REQ/UR Mention, URL, and File Path (2026-07-23)
+
+The detail drawer's cross-references are now real, obviously-styled links instead of plain text or button-shaped chips. File paths get existence-checked at build time, so a stale reference is visible at a glance.
+
+- Every REQ/UR id in the drawer is a link: the UR drawer's "REQ ids" row, the REQ drawer's "User request" / "Depends on" / "Unblocks" / "Blocked by" rows, and any `REQ-…`/`UR-…` mention inside a rendered body (only ids actually on the board — unknown mentions stay text). Short mentions resolve compound card ids (`REQ-031` → `UR-002-REQ-031`).
+- All links are visibly links: accent color + underline (the old "User request" chip looked like a badge).
+- File paths in code spans are checked against the repo at board-build time: existing files render as blue links that open read-only via the live server's new `GET /file` endpoint (loopback-only, repo-contained, always text/plain); missing files render red with a "Not found in this repository" tooltip — in static snapshots too, where the existence verdict is baked into the data.
+- URLs in code spans become clickable, and every http(s) link in a body opens in a new tab instead of navigating the board away.
 
 ## 0.134.0 — Pending-Card Timer Tracks the Last Transition, Not Capture Time (2026-07-23)
 
