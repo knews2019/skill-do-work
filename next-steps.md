@@ -307,6 +307,22 @@ Next steps:
   do-work bkb close             Finalize the day (skip if you just ran close)
 ```
 
+**After memory (remember / recall / status / bootstrap):**
+```
+Next steps:
+  do-work memory recall [query]    Test retrieval on what's stored (writes surface next session)
+  do-work memory audit             Head-to-head value audit vs bkb (read-only)
+  do-work commit                   Commit the memory/ changes
+```
+
+**After memory audit:**
+```
+Next steps:
+  do-work memory bootstrap         (If the memory engine is Absent/Idle) import past session history
+  do-work bkb status               Cross-check the incumbent engine's state
+  do-work note [verdict summary]   Record the verdict for the ADR-017 experiment log
+```
+
 **After dream:**
 ```
 Next steps:
