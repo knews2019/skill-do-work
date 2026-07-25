@@ -6,13 +6,20 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.138.1 — Install Detect Treats a Zero-Byte Skill File as Absent (2026-07-25)
+
+An interrupted download could leave a zero-byte `SKILL.md` that the `ls`-based detect read as "already installed", making the failed install unrepairable by re-running. Review caught it on the new `adhd` target; the same copy-pasted primitive was fixed in `ui-design` and `bowser` too.
+
+- Detect commands for the single-file skill targets now use `test -s` (non-empty), so a re-run over a failed download repairs it instead of stopping at Phase 1.
+- The never-overwrite rule is scoped to non-empty files: reinstalling over a zero-byte file is repair, not overwrite.
+
 ## 0.138.0 — New Install Target: adhd Divergent-Ideation Skill (2026-07-25)
 
 `do-work install adhd` vendors the [adhd skill](https://github.com/UditAkhourii/adhd) (MIT) into the project — parallel divergent ideation that branches a named problem across distinct cognitive frames, then scores, clusters, and deepens the top candidates. Complements `scan-ideas` (repo-grounded) with deliberately unconventional exploration; feed the winners to `capture-request:`.
 
 - Single self-contained `SKILL.md` installed project-scoped to `.claude/skills/adhd/` — folder name matches upstream so `/adhd` auto-discovers; no global npm install.
 - Same manifest-driven detect → install → verify → report shape as `ui-design`; idempotent, never overwrites an existing copy.
-- Routing accepts `install adhd` / `adhd mode` / `adhd-mode`.
+- Routing accepts `install adhd` (also the `install adhd-mode` / `install adhd mode` / `setup adhd` spellings — the target normalizes after the install verb; bare `adhd` without the verb is not a route).
 
 ## 0.137.0 — Clarify Opens Each Question With a Plain-Language Story (2026-07-24)
 

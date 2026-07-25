@@ -39,11 +39,11 @@ Every target follows the same four-step shape (detect → install → verify →
 
 | target | detect_cmd | install_cmd | verify_cmd | blurb |
 |--------|------------|-------------|------------|-------|
-| `ui-design` | `ls "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" 2>/dev/null` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
-| `bowser` | `playwright-cli --help >/dev/null 2>&1 && ls "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" 2>/dev/null` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
+| `ui-design` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
+| `bowser` | `playwright-cli --help >/dev/null 2>&1 && test -s "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md"` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
 | `last30days` | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | (multi-step — see `last30days` workflow below) | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | Engagement-ranked social-research engine — Reddit/HN/Polymarket/GitHub/YouTube keyless out of the box; X/TikTok/Instagram unlock only via user-global API keys. |
 | `just-kanban` | (multi-step — see `just-kanban` workflow below) | (multi-step — see `just-kanban` workflow below; appends fresh, consent-gated upgrade when present-but-divergent) | (multi-step — see `just-kanban` workflow below) | Justfile recipes for the shipped queue-kanban board — `just run-kanban` serves the live board, `kanban-static`/`kanban-summary` cover the other modes; rebuilds the tool each run so `do-work update` refreshes take effect. |
-| `adhd` | `ls "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" 2>/dev/null` | `mkdir -p "$PROJECT_ROOT/.claude/skills/adhd" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" https://raw.githubusercontent.com/UditAkhourii/adhd/main/skills/adhd/SKILL.md` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | The `adhd` skill (MIT) — parallel divergent ideation: spawns isolated branches under distinct cognitive frames (regulator, biology, speedrunner, 10-year-old, $0 budget, …), scores on novelty/viability/fit, clusters, prunes traps, deepens the top survivors. Explicitly invoked (`/adhd`), never fires on its own. |
+| `adhd` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/adhd" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" https://raw.githubusercontent.com/UditAkhourii/adhd/main/skills/adhd/SKILL.md` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | The `adhd` skill (MIT) — parallel divergent ideation: spawns isolated branches under distinct cognitive frames (regulator, biology, speedrunner, 10-year-old, $0 budget, …), scores on novelty/viability/fit, clusters, prunes traps, deepens the top survivors. Explicitly invoked (`/adhd`), never fires on its own. |
 
 In every command above, resolve `PROJECT_ROOT` first:
 
@@ -68,7 +68,7 @@ Each workflow follows the same four-step shape. The `ui-design` and `adhd` workf
 
 #### Phase 1: Check if already installed
 
-Resolve `PROJECT_ROOT`, then run the manifest's `detect_cmd`. If the file exists, report "already installed" and stop.
+Resolve `PROJECT_ROOT`, then run the manifest's `detect_cmd`. If the file exists and is non-empty, report "already installed" and stop. (`test -s`, not `ls` — a zero-byte file from an interrupted download must read as absent so a re-run can repair it.)
 
 #### Phase 2: Install the skill
 
@@ -102,7 +102,7 @@ A single self-contained `SKILL.md` — same shape as `ui-design`. The folder nam
 
 #### Phase 1: Check if already installed
 
-Resolve `PROJECT_ROOT`, then run the manifest's `detect_cmd`. If the file exists, report "already installed" and stop.
+Resolve `PROJECT_ROOT`, then run the manifest's `detect_cmd`. If the file exists and is non-empty, report "already installed" and stop. (`test -s`, not `ls` — a zero-byte file from an interrupted download must read as absent so a re-run can repair it.)
 
 #### Phase 2: Install the skill
 
@@ -144,7 +144,7 @@ The `bowser` target installs two components: the global `playwright-cli` (plus a
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 playwright-cli --help >/dev/null 2>&1 && echo "playwright-cli: installed" || echo "playwright-cli: not found"
-ls "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" 2>/dev/null && echo "bowser skill: installed" || echo "bowser skill: not found"
+test -s "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" && echo "bowser skill: installed" || echo "bowser skill: not found"
 ```
 
 If both are present, report installed and stop.
@@ -455,7 +455,7 @@ Then stop.
 
 - **Install to the project, not globally.** Skill files go under `<project-root>/.claude/skills/<skill-name>/` (`<project-root>` resolved via `git rev-parse --show-toplevel || pwd`). Do not write to `~/.claude/` or any global path.
 - **CLI is global; skill is project-scoped.** For `bowser`, `playwright-cli` goes to the global npm prefix; the Bowser skill goes under `<project-root>/.claude/skills/playwright-bowser/`. Don't mix them.
-- **Never overwrite an existing skill `SKILL.md`.** Phase 1 of each workflow is the gate. If the file is present, stop.
+- **Never overwrite an existing non-empty skill `SKILL.md`.** Phase 1 of each workflow is the gate. If the file is present and non-empty, stop. (A zero-byte file is a failed download — reinstalling over it is repair, not overwrite, which is why the detect commands use `test -s` rather than `ls`.)
 - **Only Chromium by default (bowser).** Other browsers bloat install time and aren't needed for ui-review's default flow.
 - **Don't silently substitute a different skill or repo.** If the upstream URL fails, report the error — don't download a similarly-named skill from elsewhere.
 - **Keyless in the project (last30days).** This install writes no config file at all. If a project-local `.claude/last30days.env` ever exists, it must never contain API keys — real keys live only in the user-global `~/.config/last30days/.env`. Never write a secret into any file inside the repo.
@@ -482,7 +482,7 @@ Then stop.
 ## Red Flags
 
 - The install command reported success but the verify step shows the file is empty — the URL may have changed; investigate before claiming success.
-- `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists but has zero size — treat as not-installed and re-download (with user confirmation).
+- `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists but has zero size and Phase 1 still reported "already installed" — the detect command regressed to a bare existence check (`ls`); it must be `test -s` so a re-run repairs the failed download.
 - You installed into `~/.claude/skills/` instead of the project — undo and re-install to the correct path.
 - `git rev-parse --show-toplevel` fails (not in a git repo) and you installed into `pwd` — acceptable, but warn the user the path may drift if they `cd` elsewhere.
 - (bowser) `playwright-cli --help` succeeds but `playwright-cli install` fails silently — browsers aren't actually installed; headless runs will error later.
