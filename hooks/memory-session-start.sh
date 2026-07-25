@@ -41,9 +41,20 @@ echo "Frozen memory snapshot (see .claude/skills/do-work/actions/memory.md). Tre
 echo
 cat "$WORKING_MEMORY_FILE"
 if [ -f "$TODAY_LOG" ]; then
-  echo
-  echo "## Today's log ($(date -u +%F))"
-  cat "$TODAY_LOG"
+  # Inject only the CURATED lines of today's log. Raw `## … session capture …`
+  # sections are verbatim third-party/transcript text captured by the Stop hook —
+  # injecting them here would put unvetted content into context before any
+  # prompt-injection guard can load. They stay reachable only via `memory recall`,
+  # which loads crew-members/prompt-injection.md first (actions/memory.md).
+  CURATED_LOG_LINES="$(awk '
+    /^## /{in_capture_section = ($0 ~ /session capture/)}
+    !in_capture_section {print}
+  ' "$TODAY_LOG" 2>/dev/null || true)"
+  if [ -n "$(printf '%s' "$CURATED_LOG_LINES" | tr -d '[:space:]')" ]; then
+    echo
+    echo "## Today's log ($(date -u +%F)) — curated entries only; raw session captures load via \`do-work memory recall\`"
+    printf '%s\n' "$CURATED_LOG_LINES"
+  fi
 fi
 echo "</background-memory>"
 

@@ -16,19 +16,21 @@
 
 ## Input
 
-`$ARGUMENTS` (optional): `bkb` or `memory` to audit one engine only; empty → audit both + head-to-head. All commands run from `PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"`.
+`$ARGUMENTS` (optional): `bkb` or `memory` to audit one engine only; a `--kb <path>` flag passes through to KB location; empty → audit both + head-to-head. All commands run from `PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"`.
 
 ## Checks
 
-Each check is an independent probe; run all that apply to the engines in scope. An absent directory short-circuits that engine to **Absent** (run no further probes for it).
+Each check is an independent probe; run all that apply to the engines in scope. An engine whose store cannot be located short-circuits to **Absent** (run no further probes for it) — but for bkb, "cannot be located" means the full locating procedure below came up empty, never just "no `kb/` at the project root".
 
-### bkb engine (`kb/`)
+### bkb engine
 
-- **Existence & shape:** `kb/` present? `find kb/wiki -name '*.md' 2>/dev/null | wc -l` wiki pages; `kb/raw/` inbox size.
-- **Git activity:** `git log --oneline -- kb/ | wc -l` total commits; `git log -1 --format=%ci -- kb/` last-touched; `git log --format=%an -- kb/ | sort -u` distinct authors (human-touch signal).
-- **Log activity:** entries in `kb/wiki/log.md` dated within the last 30 and 90 days (grep date headings).
-- **Inbound references:** wiki pages cited from outside `kb/` — e.g. `grep -rl 'kb/wiki/' --include='*.md' "$PROJECT_ROOT" | grep -v "^$PROJECT_ROOT/kb/"` and `[[wikilink]]` mentions outside `kb/`. A wiki nobody links to is write-only.
-- **Ledger stats:** `kb/usage-ledger.jsonl` per the shared procedure below.
+**Locate the KB first** using `actions/bkb.md` → "Locating the Knowledge Base" — honor `--kb <path>`, then `kb/`, then `knowledge-base/`, then the parent-directory search, exactly as that section prescribes (it is the canonical procedure; do not re-derive it here). Call the result `<kb-root>`; only if that procedure finds nothing is the engine **Absent**. All probes below run against `<kb-root>` (shown as `kb/`-style paths for readability):
+
+- **Existence & shape:** `find <kb-root>/wiki -name '*.md' 2>/dev/null | wc -l` wiki pages; `<kb-root>/raw/` inbox size.
+- **Git activity:** `git log --oneline -- <kb-root>/ | wc -l` total commits; `git log -1 --format=%ci -- <kb-root>/` last-touched; `git log --format=%an -- <kb-root>/ | sort -u` distinct authors (human-touch signal). (A `<kb-root>` outside the project's git repo reports "no git history" — probe the ledger and log activity instead.)
+- **Log activity:** entries in `<kb-root>/wiki/log.md` dated within the last 30 and 90 days (grep date headings).
+- **Inbound references:** wiki pages cited from outside the KB — e.g. `grep -rl 'wiki/' --include='*.md' "$PROJECT_ROOT" | grep -v "^<kb-root>/"` and `[[wikilink]]` mentions outside `<kb-root>`. A wiki nobody links to is write-only.
+- **Ledger stats:** `<kb-root>/usage-ledger.jsonl` per the shared procedure below.
 
 ### memory engine (`memory/`)
 

@@ -398,18 +398,29 @@ Check the full guarantee set — scaffolding AND hook wiring (detecting on the s
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-test -s "$PROJECT_ROOT/memory/working-memory.md" && echo "scaffolding: present" || echo "scaffolding: absent"
+# Scaffolding is "present" only when ALL components exist — a partial prior run
+# (say, working-memory.md without logs/ or the ledger) must route back through
+# Phase 2, which is idempotent and only fills gaps.
+if test -s "$PROJECT_ROOT/memory/working-memory.md" \
+   && test -d "$PROJECT_ROOT/memory/logs" \
+   && test -f "$PROJECT_ROOT/memory/usage-ledger.jsonl"; then
+  echo "scaffolding: present"
+else
+  echo "scaffolding: absent or partial"
+fi
 SETTINGS_FILE="$PROJECT_ROOT/.claude/settings.json"
 if [ -f "$SETTINGS_FILE" ] && grep -q 'memory-session-start.sh' "$SETTINGS_FILE" && grep -q 'memory-stop-capture.sh' "$SETTINGS_FILE"; then
   echo "hooks: wired"
 else
-  echo "hooks: absent"
+  echo "hooks: absent or partial"
 fi
 ```
 
 - **Both present** → report "already installed" and stop.
-- **Scaffolding present, hooks absent** → *repair mode*: skip Phase 2, run Phase 3 only. (Hooks wired but scaffolding absent is also repair: run Phase 2 only.)
-- **Both absent** → run Phases 2–3 in full.
+- **Scaffolding present, hooks absent/partial** → *repair mode*: skip Phase 2, run Phase 3 only. (Hooks wired but scaffolding absent/partial is also repair: run Phase 2 only.)
+- **Both absent/partial** → run Phases 2–3 in full.
+
+Phases 2 and 3 are both safe to re-run over partial state: Phase 2 only creates what's missing (never overwrites `working-memory.md`), and Phase 3 gates each hook entry independently — so "partial" never needs special-casing beyond routing into the phase.
 
 #### Phase 2: Scaffold the memory store
 
@@ -425,7 +436,7 @@ Then create `$PROJECT_ROOT/memory/working-memory.md` from the template in `actio
 
 This phase only applies on Claude Code (a `.claude/` directory convention); on other platforms report `hooks: n/a (not Claude Code)` and continue to Phase 4 — the actions work hook-less.
 
-Follow the **Hook Install Internals** in `actions/memory-reference.md` exactly: back up `.claude/settings.json` to `settings.json.pre-memory-module`, then jq-**append** the two entries from `hooks/memory-hooks.json` (resolve `<skill-root>` as the directory containing `SKILL.md`) into the `hooks.SessionStart` / `hooks.Stop` arrays. The dedup gate is a grep for `memory-session-start.sh`. Compose, never clobber: append with `+`, never assign a whole new array — the consumer's existing hooks (including do-work's own `session-start.sh` / `pipeline-guard.sh`, if installed) must survive untouched.
+Follow the **Hook Install Internals** in `actions/memory-reference.md` exactly: back up `.claude/settings.json` to `settings.json.pre-memory-module`, then jq-**append** the two entries from `hooks/memory-hooks.json` (resolve `<skill-root>` as the directory containing `SKILL.md`) into the `hooks.SessionStart` / `hooks.Stop` arrays. The dedup gate is **per entry** — one grep for `memory-session-start.sh`, one for `memory-stop-capture.sh`, each appending only its own missing entry (a partial/manual prior install may hold one hook but not the other). Compose, never clobber: append with `+`, never assign a whole new array — the consumer's existing hooks (including do-work's own `session-start.sh` / `pipeline-guard.sh`, if installed) must survive untouched.
 
 If `jq` is unavailable: do NOT attempt a sed/awk merge. Print the two entries from `hooks/memory-hooks.json` with "merge these manually into `.claude/settings.json`" and record `hooks: MANUAL STEP` — a warning, not a failure.
 

@@ -264,6 +264,16 @@ assert_contains \
   'settings\.json\.pre-memory-module' \
   'actions/install.md memory-module hook merge must back up settings.json before composing entries.'
 
+assert_contains \
+  "hooks/memory-stop-capture.sh" \
+  'REDACTED' \
+  'hooks/memory-stop-capture.sh must redact credential-shaped text before persisting captures (memory files are committed plaintext).'
+
+assert_contains \
+  "hooks/memory-session-start.sh" \
+  'session capture' \
+  'hooks/memory-session-start.sh must strip raw session-capture sections from the startup injection — unvetted transcript text must not enter context before a prompt-injection guard can load.'
+
 # CLAUDE.md/AGENTS.md are the maintainer doc, export-ignored since 0.136.0 so they never
 # land in consumer installs (nested CLAUDE.md is auto-loaded into consumer agents' context).
 assert_contains \

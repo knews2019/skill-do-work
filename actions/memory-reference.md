@@ -34,7 +34,7 @@ updated: YYYY-MM-DD
 ## Pending Decisions
 ```
 
-Snapshot semantics: hooks inject this file (plus today's log) once, at session start. The injected copy is **frozen for the session** — writes made during a session land in the files and surface at the NEXT session start.
+Snapshot semantics: hooks inject this file (plus today's log's **curated entries only** — `session capture` sections are excluded, because they are verbatim transcript text that must not enter context before a prompt-injection guard can load; they stay reachable via `do-work memory recall`) once, at session start. The injected copy is **frozen for the session** — writes made during a session land in the files and surface at the NEXT session start.
 
 ## Daily-Log Entry Conventions
 
@@ -52,7 +52,7 @@ where `<kind>` is one of (illustrative, not exhaustive — new writers add new k
 
 ## Lexical Recall (Layer 1 — always runs)
 
-Design-for-the-floor: grep + arithmetic only. Sanitize the query FIRST as a text operation (CLAUDE.md rule: never interpolate raw user text inside shell quoting), then substitute the already-safe value:
+Design-for-the-floor: grep + arithmetic only. Sanitize the query FIRST as a text operation (never interpolate raw user text inside shell quoting — an apostrophe breaks the quoting and is an injection vector), then substitute the already-safe value:
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
@@ -132,10 +132,19 @@ printf '{"ts":"%s","engine":"memory","event":"recall","query":"%s","hits":%d,"so
 Used by `hooks/memory-stop-capture.sh`:
 
 1. `capture_text` = final user message + final assistant message from the session transcript, truncated to ~1,500 characters total.
-2. `hash8="$(printf '%s' "$capture_text" | sha256sum | cut -c1-8)"` (fall back to `shasum -a 256` on systems without `sha256sum`).
-3. `grep -q "session capture $hash8" "$today_log"` → already captured, exit 0 (idempotent across duplicate Stop firings).
-4. Append heading `## HH:MM UTC session capture <hash8>`, framing line `Session capture — final exchange between the user and the agent:`, then the text.
-5. The hook ALWAYS exits 0 — capture is never worth blocking a session end.
+2. Redact per the Capture Redaction Spec below — redaction runs BEFORE hashing so the dedup key is stable against the persisted text.
+3. `hash8="$(printf '%s' "$capture_text" | sha256sum | cut -c1-8)"` (fall back to `shasum -a 256` on systems without `sha256sum`).
+4. `grep -q "session capture $hash8" "$today_log"` → already captured, exit 0 (idempotent across duplicate Stop firings).
+5. Append heading `## HH:MM UTC session capture <hash8>`, framing line `Session capture — final exchange between the user and the agent:`, then the text.
+6. The hook ALWAYS exits 0 — capture is never worth blocking a session end.
+
+## Capture Redaction Spec
+
+Memory files are committed plaintext — a verbatim capture must never persist a credential into version control. `hooks/memory-stop-capture.sh` therefore:
+
+- **Drops the whole capture** (exit 0) when the text contains a `PRIVATE KEY-----` block marker — key material spans lines, so line-based redaction can't be trusted.
+- **Replaces credential-shaped substrings with `[REDACTED]`** via `sed -E` before hashing or writing. Shipped patterns (illustrative, not exhaustive — the trigger condition is "text shaped like a credential", and `memory remember` curation remains the real gate): GitHub tokens (`ghp_…`, `github_pat_…`), `sk-…` API keys, AWS `AKIA…` key ids, Slack `xox?-…` tokens, `eyJ…`-prefixed JWTs, `Bearer <token>` headers, and `password/passwd/secret/token/api_key = <value>` assignments.
+- **Skips the capture entirely if the redaction pipeline itself fails** — the unredacted text is never the fallback.
 
 ## Hook Install Internals (used by actions/install.md → memory-module)
 
@@ -144,19 +153,26 @@ Used by `hooks/memory-stop-capture.sh`:
 ```bash
 settings_file="$PROJECT_ROOT/.claude/settings.json"
 [ -f "$settings_file" ] || printf '{}\n' > "$settings_file"
-if grep -q 'memory-session-start.sh' "$settings_file"; then
+# Gate EACH entry independently — a partial/manual prior install may hold one
+# hook but not the other, and a single-filename gate would either skip the
+# missing entry forever or duplicate the present one.
+append_session_start=1; append_stop=1
+grep -q 'memory-session-start.sh' "$settings_file" && append_session_start=0
+grep -q 'memory-stop-capture.sh'  "$settings_file" && append_stop=0
+if [ "$append_session_start" -eq 0 ] && [ "$append_stop" -eq 0 ]; then
   echo "memory hooks already present — skipping merge"
 else
   cp "$settings_file" "$settings_file.pre-memory-module"   # backup BEFORE touching anything
   merged_settings="$settings_file.merge-tmp"
   jq --slurpfile frag "<skill-root>/hooks/memory-hooks.json" \
-     '.hooks.SessionStart = ((.hooks.SessionStart // []) + $frag[0].hooks.SessionStart)
-    | .hooks.Stop        = ((.hooks.Stop        // []) + $frag[0].hooks.Stop)' \
+     --argjson add_start "$append_session_start" --argjson add_stop "$append_stop" \
+     '(if $add_start == 1 then .hooks.SessionStart = ((.hooks.SessionStart // []) + $frag[0].hooks.SessionStart) else . end)
+    | (if $add_stop  == 1 then .hooks.Stop        = ((.hooks.Stop        // []) + $frag[0].hooks.Stop)        else . end)' \
      "$settings_file" > "$merged_settings" && mv "$merged_settings" "$settings_file"
 fi
 ```
 
-- Dedup gate = grep for the script filename; append via `+`, never assign a whole new array over `.hooks.SessionStart`/`.hooks.Stop`.
+- Dedup gate = one grep per script filename, each appending only its own missing entry; append via `+`, never assign a whole new array over `.hooks.SessionStart`/`.hooks.Stop`.
 - After the merge, verify: the file still parses (`jq . "$settings_file" >/dev/null`), both memory hook filenames are present, and every pre-existing hook entry is still there (compare entry counts against the backup). Parse failure → restore from `$settings_file.pre-memory-module` and report a broken install. Success → remove the backup.
 - No `jq` → do NOT attempt a sed/awk merge. Print the two entries from `hooks/memory-hooks.json` with instructions to merge manually, and report `hooks: MANUAL STEP` — a warning, not a failure. Every `do-work memory` sub-command works without hooks; hooks are the Claude Code-specific enhancement, the actions are the portable core.
 

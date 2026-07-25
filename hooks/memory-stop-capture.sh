@@ -82,6 +82,26 @@ case "$CAPTURE_TEXT" in
   "User: "*"Agent: ") exit 0 ;;   # both messages came back empty
 esac
 
+# Redact credential-shaped content BEFORE anything is persisted or hashed — memory
+# files are committed plaintext (actions/memory-reference.md, "Capture Redaction
+# Spec"). The pattern list is illustrative, not exhaustive: it catches common token
+# shapes, and `memory remember` curation remains the real gate. A private-key block
+# spans lines, so line-based redaction can't be trusted — drop the capture entirely.
+case "$CAPTURE_TEXT" in
+  *"PRIVATE KEY-----"*) exit 0 ;;
+esac
+REDACTED_TEXT="$(printf '%s' "$CAPTURE_TEXT" | sed -E \
+  -e 's/(gh[pousr]|github_pat)_[A-Za-z0-9_]{16,}/[REDACTED]/g' \
+  -e 's/sk-[A-Za-z0-9_-]{16,}/[REDACTED]/g' \
+  -e 's/AKIA[0-9A-Z]{16}/[REDACTED]/g' \
+  -e 's/xox[baprs]-[A-Za-z0-9-]{10,}/[REDACTED]/g' \
+  -e 's/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}/[REDACTED]/g' \
+  -e 's/[Bb]earer[[:space:]]+[A-Za-z0-9._~+\/=-]{16,}/Bearer [REDACTED]/g' \
+  -e 's/(([Pp]assword|[Pp]asswd|[Ss]ecret|[Tt]oken|[Aa][Pp][Ii][_-]?[Kk]ey)["'"'"']?[[:space:]]*[:=][[:space:]]*)["'"'"']?[^[:space:]"'"'"']{6,}/\1[REDACTED]/g' \
+  2>/dev/null)" || exit 0   # redaction failed → never persist the unredacted text
+CAPTURE_TEXT="$REDACTED_TEXT"
+[ -n "$(printf '%s' "$CAPTURE_TEXT" | tr -d '[:space:]')" ] || exit 0
+
 # Hash for idempotency (sha256sum, shasum fallback)
 if command -v sha256sum &>/dev/null; then
   CAPTURE_HASH="$(printf '%s' "$CAPTURE_TEXT" | sha256sum | cut -c1-8)"
