@@ -6,6 +6,34 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.138.3 — Skill Downloads Are Atomic: Temp File, Then Rename (2026-07-25)
+
+The 0.138.1 fix caught zero-byte downloads, but `curl -o` writes the final path incrementally — a connection dropped mid-transfer left a non-empty partial `SKILL.md` that `test -s` read as a complete install, unrepairable by re-running. Downloads now land in a `SKILL.md.download` temp name and only rename into place on success.
+
+- Applies to all three curl-based skill installs (`ui-design`, `ideation-adhd`, `bowser`); the temp file is removed on failure, so nothing is left behind either way.
+- Chosen over `curl --remove-on-error`, which needs curl ≥ 7.83 — the rename works on any curl.
+
+## 0.138.2 — Install Target Renamed to ideation-adhd (2026-07-25)
+
+The 0.138.0 target ships as `install ideation-adhd` — the name now says what it does (the "adhd" is the upstream skill's metaphor for its branching style, not the substance). `install adhd` and the `adhd-mode` spellings still work as aliases.
+
+- The install **folder** stays `.claude/skills/adhd/` — it must match the upstream frontmatter `name:` field so `/adhd` auto-discovers.
+
+## 0.138.1 — Install Detect Treats a Zero-Byte Skill File as Absent (2026-07-25)
+
+An interrupted download could leave a zero-byte `SKILL.md` that the `ls`-based detect read as "already installed", making the failed install unrepairable by re-running. Review caught it on the new `adhd` target; the same copy-pasted primitive was fixed in `ui-design` and `bowser` too.
+
+- Detect commands for the single-file skill targets now use `test -s` (non-empty), so a re-run over a failed download repairs it instead of stopping at Phase 1.
+- The never-overwrite rule is scoped to non-empty files: reinstalling over a zero-byte file is repair, not overwrite.
+
+## 0.138.0 — New Install Target: adhd Divergent-Ideation Skill (2026-07-25)
+
+`do-work install adhd` vendors the [adhd skill](https://github.com/UditAkhourii/adhd) (MIT) into the project — parallel divergent ideation that branches a named problem across distinct cognitive frames, then scores, clusters, and deepens the top candidates. Complements `scan-ideas` (repo-grounded) with deliberately unconventional exploration; feed the winners to `capture-request:`.
+
+- Single self-contained `SKILL.md` installed project-scoped to `.claude/skills/adhd/` — folder name matches upstream so `/adhd` auto-discovers; no global npm install.
+- Same manifest-driven detect → install → verify → report shape as `ui-design`; idempotent, never overwrites an existing copy.
+- Routing accepts `install adhd` (also the `install adhd-mode` / `install adhd mode` / `setup adhd` spellings — the target normalizes after the install verb; bare `adhd` without the verb is not a route).
+
 ## 0.137.0 — Clarify Opens Each Question With a Plain-Language Story (2026-07-24)
 
 Answering pending questions used to mean remembering what REQ-025 was about — often days after the work happened. Now every question arrives with a short story above it: what you asked for, what the builder ran into, and why the call is yours. The decision block underneath is unchanged.

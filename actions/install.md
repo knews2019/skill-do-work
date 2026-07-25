@@ -1,6 +1,6 @@
 # Install Action
 
-> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports four targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless), and `just-kanban` (justfile recipes wiring `just run-kanban` to the shipped queue-kanban board).
+> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports five targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless), `just-kanban` (justfile recipes wiring `just run-kanban` to the shipped queue-kanban board), and `ideation-adhd` (parallel divergent-ideation skill).
 
 Each target is idempotent — running it when the target is already present and current is a no-op. One target goes further: `just-kanban` compares an already-present recipe block against the shipped version and offers a consent-gated upgrade when they diverge (Phase 1b of its workflow). The action dispatches on the first argument; everything else (detect → install → verify → report) follows the same shape.
 
@@ -13,6 +13,7 @@ Each target is idempotent — running it when the target is already present and 
 - The user asked for headed-browser workflows, screenshots, or visual verification (`install bowser`).
 - The user asked for social research, trend scanning, or "what's the discourse on X" capabilities (`install last30days`).
 - The user wants a standing `just run-kanban` shortcut so the board runs without invoking the agent (`install just-kanban`).
+- The user wants structured divergent ideation — deliberately unconventional candidate ideas for a named problem, beyond what `scan-ideas` surfaces from the repo (`install ideation-adhd`).
 
 **Do NOT use when:**
 - The target is already installed and current (Phase 1 of the matching workflow detects this and exits; for `just-kanban`, an outdated recipe block gets a diff and a consent-gated upgrade instead of a plain exit).
@@ -28,6 +29,7 @@ Each target is idempotent — running it when the target is already present and 
 - `bowser` — Install Playwright CLI (global) plus the Bowser skill (project-scoped) for browser automation, screenshots, and visual UI verification.
 - `last30days` — Vendor the engagement-ranked social-research engine (project-scoped, git-ignored, keyless).
 - `just-kanban` — Append `just` recipes (`run-kanban`, `kanban-static`, `kanban-summary`) for the shipped queue-kanban board to the project's justfile; if the recipes are already present but diverge from the shipped block, offer a consent-gated upgrade.
+- `ideation-adhd` — Install the upstream `adhd` skill (project-scoped) for parallel divergent ideation: isolated branches under distinct cognitive frames, scored, clustered, and deepened. (`adhd` is an accepted alias for this target.)
 
 If `$ARGUMENTS` is empty or doesn't match a known target, print the help block (target list + one-line blurb each) and stop.
 
@@ -37,16 +39,19 @@ Every target follows the same four-step shape (detect → install → verify →
 
 | target | detect_cmd | install_cmd | verify_cmd | blurb |
 |--------|------------|-------------|------------|-------|
-| `ui-design` | `ls "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" 2>/dev/null` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
-| `bowser` | `playwright-cli --help >/dev/null 2>&1 && ls "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" 2>/dev/null` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
+| `ui-design` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md && mv "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download" "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" || { rm -f "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download"; false; }` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
+| `bowser` | `playwright-cli --help >/dev/null 2>&1 && test -s "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md"` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
 | `last30days` | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | (multi-step — see `last30days` workflow below) | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | Engagement-ranked social-research engine — Reddit/HN/Polymarket/GitHub/YouTube keyless out of the box; X/TikTok/Instagram unlock only via user-global API keys. |
 | `just-kanban` | (multi-step — see `just-kanban` workflow below) | (multi-step — see `just-kanban` workflow below; appends fresh, consent-gated upgrade when present-but-divergent) | (multi-step — see `just-kanban` workflow below) | Justfile recipes for the shipped queue-kanban board — `just run-kanban` serves the live board, `kanban-static`/`kanban-summary` cover the other modes; rebuilds the tool each run so `do-work update` refreshes take effect. |
+| `ideation-adhd` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/adhd" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download" https://raw.githubusercontent.com/UditAkhourii/adhd/main/skills/adhd/SKILL.md && mv "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download" "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" || { rm -f "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download"; false; }` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | The `adhd` skill (MIT) — parallel divergent ideation: spawns isolated branches under distinct cognitive frames (regulator, biology, speedrunner, 10-year-old, $0 budget, …), scores on novelty/viability/fit, clusters, prunes traps, deepens the top survivors. Explicitly invoked (`/adhd`), never fires on its own. |
 
 In every command above, resolve `PROJECT_ROOT` first:
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
+
+Every skill-file download lands in a `SKILL.md.download` temp name and is renamed into place only on success, with the temp removed on failure. `curl -o` writes the final path incrementally, so a mid-transfer failure would otherwise leave a non-empty partial file that `test -s` cannot distinguish from a complete install — the same trap the zero-byte detect fix closed, one failure mode further along. (`curl --remove-on-error` also covers this but only exists in curl ≥ 7.83; the rename works everywhere.)
 
 ## Steps
 
@@ -57,7 +62,7 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 ### Step 2: Run the target's workflow
 
-Each workflow follows the same four-step shape. The `ui-design` workflow uses the manifest commands directly. The `bowser`, `last30days`, and `just-kanban` workflows have multi-part installs and are spelled out below.
+Each workflow follows the same four-step shape. The `ui-design` and `ideation-adhd` workflows use the manifest commands directly. The `bowser`, `last30days`, and `just-kanban` workflows have multi-part installs and are spelled out below.
 
 ---
 
@@ -65,7 +70,7 @@ Each workflow follows the same four-step shape. The `ui-design` workflow uses th
 
 #### Phase 1: Check if already installed
 
-Resolve `PROJECT_ROOT`, then run the manifest's `detect_cmd`. If the file exists, report "already installed" and stop.
+Resolve `PROJECT_ROOT`, then run the manifest's `detect_cmd`. If the file exists and is non-empty, report "already installed" and stop. (`test -s`, not `ls` — a zero-byte file from an interrupted download must read as absent so a re-run can repair it.)
 
 #### Phase 2: Install the skill
 
@@ -93,6 +98,45 @@ Requests tagged `domain: ui-design` benefit from both automatically.
 
 ---
 
+## Workflow: `ideation-adhd`
+
+A single self-contained `SKILL.md` — same shape as `ui-design`. The target is named `ideation-adhd` (the name says what it does), but the install **folder** stays `adhd` to match the upstream skill's own frontmatter `name:` field, so it auto-discovers as the `/adhd` slash command; do not rename the folder to match the target.
+
+#### Phase 1: Check if already installed
+
+Resolve `PROJECT_ROOT`, then run the manifest's `detect_cmd`. If the file exists and is non-empty, report "already installed" and stop. (`test -s`, not `ls` — a zero-byte file from an interrupted download must read as absent so a re-run can repair it.)
+
+#### Phase 2: Install the skill
+
+Run the manifest's `install_cmd`. If `curl` is unavailable or the download fails (offline, upstream restructured), report the error and direct the user to https://github.com/UditAkhourii/adhd for manual install — the file lives at `skills/adhd/SKILL.md` in that repo. Upstream also documents a global `npm install -g adhd-agent` CLI — do not run it; this skill's norms reject global installs, and the project-scoped `SKILL.md` copy is the only supported path.
+
+#### Phase 3: Verify
+
+Run the manifest's `verify_cmd`.
+
+#### Phase 4: Report back
+
+```
+Installed: ideation-adhd — the adhd skill (parallel divergent ideation)
+
+Gives the agent a structured divergence engine:
+- Spawns isolated branches under distinct cognitive frames
+  (regulator, biology, speedrunner, 10-year-old, $0 budget, ...)
+- Scores on novelty/viability/fit, clusters by angle, prunes traps,
+  and deepens the top 3 survivors
+- Explicitly invoked via /adhd or "ADHD mode" — it never fires on its own
+
+Complements do-work's ideation actions rather than replacing them:
+`scan-ideas` finds grounded opportunities in THIS repo; adhd generates
+deliberately unconventional candidates for a problem you name. Feed the
+winners to `do-work capture-request:` to queue them.
+
+Note: the skill leans on parallel subagents for its divergence phase — on
+an agent without them, the frames run sequentially instead.
+```
+
+---
+
 ## Workflow: `bowser`
 
 The `bowser` target installs two components: the global `playwright-cli` (plus a Chromium browser), and the project-scoped `playwright-bowser` skill.
@@ -102,7 +146,7 @@ The `bowser` target installs two components: the global `playwright-cli` (plus a
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 playwright-cli --help >/dev/null 2>&1 && echo "playwright-cli: installed" || echo "playwright-cli: not found"
-ls "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" 2>/dev/null && echo "bowser skill: installed" || echo "bowser skill: not found"
+test -s "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" && echo "bowser skill: installed" || echo "bowser skill: not found"
 ```
 
 If both are present, report installed and stop.
@@ -140,8 +184,11 @@ npx playwright install chromium
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 mkdir -p "$PROJECT_ROOT/.claude/skills/playwright-bowser"
-curl -fsSL -o "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" \
-  https://raw.githubusercontent.com/disler/bowser/main/.claude/skills/playwright-bowser/SKILL.md
+curl -fsSL -o "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download" \
+  https://raw.githubusercontent.com/disler/bowser/main/.claude/skills/playwright-bowser/SKILL.md \
+  && mv "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download" \
+        "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" \
+  || rm -f "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download"
 ```
 
 If the URL 404s (the repo may have restructured), report the error and direct the user to https://github.com/disler/bowser for manual install — the file lives somewhere under `.claude/skills/` in that repo.
@@ -396,13 +443,14 @@ install — install companion skills/tooling into the current project
   do-work install bowser      Playwright CLI + Bowser skill for browser automation
   do-work install last30days  Engagement-ranked social-research engine (vendored, keyless)
   do-work install just-kanban  Justfile recipes for the queue-kanban board (needs Go to run)
+  do-work install ideation-adhd  Parallel divergent-ideation skill (/adhd — cognitive-frame branching)
 ```
 
 Then stop.
 
 ## Output Format
 
-- **`ui-design`**: a short status line — "already installed", "installed successfully", or an error describing what failed and how to finish manually.
+- **`ui-design`**, **`ideation-adhd`**: a short status line — "already installed", "installed successfully", or an error describing what failed and how to finish manually.
 - **`bowser`**: a two-line status — one for `playwright-cli`, one for the Bowser skill. Each is either "OK" (installed and verified), "already installed" (detected in Phase 1), or an error with the exact command the user can re-run.
 - **`last30days`**: a per-guarantee status (skill file, ignore rule, Python 3.12+) — "already installed" only when every guarantee holds; otherwise "installed successfully" with the destination path, or the FAILED line(s) and the exact command the user can re-run.
 - **`just-kanban`**: a per-component status (recipes appended or upgraded, justfile parses, `just`/`go` availability) — "already installed (current)" only when the installed recipes match the shipped block; a divergent block gets a diff and a consent-gated upgrade (Phase 1b), reported as "Upgraded" or "kept existing recipes". Missing toolchains are warnings, not failures.
@@ -412,7 +460,7 @@ Then stop.
 
 - **Install to the project, not globally.** Skill files go under `<project-root>/.claude/skills/<skill-name>/` (`<project-root>` resolved via `git rev-parse --show-toplevel || pwd`). Do not write to `~/.claude/` or any global path.
 - **CLI is global; skill is project-scoped.** For `bowser`, `playwright-cli` goes to the global npm prefix; the Bowser skill goes under `<project-root>/.claude/skills/playwright-bowser/`. Don't mix them.
-- **Never overwrite an existing skill `SKILL.md`.** Phase 1 of each workflow is the gate. If the file is present, stop.
+- **Never overwrite an existing non-empty skill `SKILL.md`.** Phase 1 of each workflow is the gate. If the file is present and non-empty, stop. (A zero-byte file is a failed download — reinstalling over it is repair, not overwrite, which is why the detect commands use `test -s` rather than `ls`.)
 - **Only Chromium by default (bowser).** Other browsers bloat install time and aren't needed for ui-review's default flow.
 - **Don't silently substitute a different skill or repo.** If the upstream URL fails, report the error — don't download a similarly-named skill from elsewhere.
 - **Keyless in the project (last30days).** This install writes no config file at all. If a project-local `.claude/last30days.env` ever exists, it must never contain API keys — real keys live only in the user-global `~/.config/last30days/.env`. Never write a secret into any file inside the repo.
@@ -439,7 +487,9 @@ Then stop.
 ## Red Flags
 
 - The install command reported success but the verify step shows the file is empty — the URL may have changed; investigate before claiming success.
-- `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists but has zero size — treat as not-installed and re-download (with user confirmation).
+- `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists but has zero size and Phase 1 still reported "already installed" — the detect command regressed to a bare existence check (`ls`); it must be `test -s` so a re-run repairs the failed download.
+- An install command writes `SKILL.md` directly instead of downloading to `SKILL.md.download` and renaming on success — a mid-transfer failure would leave a non-empty partial file the detect reads as installed; restore the temp-then-rename shape.
+- A stray `SKILL.md.download` file sits next to an installed skill — a prior run's failure cleanup didn't run; delete it (the rename-on-success flow never leaves one behind).
 - You installed into `~/.claude/skills/` instead of the project — undo and re-install to the correct path.
 - `git rev-parse --show-toplevel` fails (not in a git repo) and you installed into `pwd` — acceptable, but warn the user the path may drift if they `cd` elsewhere.
 - (bowser) `playwright-cli --help` succeeds but `playwright-cli install` fails silently — browsers aren't actually installed; headless runs will error later.
@@ -454,7 +504,7 @@ Then stop.
 
 - [ ] Step 1 correctly dispatched on `$ARGUMENTS` (known target → workflow; unknown/empty → help block).
 - [ ] Phase 1 detected an existing install and stopped, OR Phase 2+ ran the fetch/install commands.
-- [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty (skill-file targets: `ui-design`, `bowser`, `last30days`).
+- [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty (skill-file targets: `ui-design`, `bowser`, `last30days`, `ideation-adhd`).
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
 - [ ] (last30days only) a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
 - [ ] (just-kanban only) the justfile gained exactly one appended block, `run-kanban` greps present, `just --list` parses when `just` is available, and no existing recipe was modified.
