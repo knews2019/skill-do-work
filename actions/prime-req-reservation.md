@@ -13,7 +13,7 @@ REQ reservations — the `reserved` status that allocates pending queue items to
 - **Targeted runs bypass reservations by design** — `do-work run REQ-NNN` claims a reserved REQ and clears `reserved_for`/`reserved_at`. That's the owning session's pickup path, not a bug; only the default full-queue scan honors reservations.
 - **An unsynced reservation protects nothing** — checkouts only see it after the queue edit is committed and pushed; files are the sole channel between sessions.
 - **The 24h staleness threshold lives in two places** — `actions/work.md` Step 1 (prose) and `tools/queue-kanban/model.go` `reservationStaleAfter` (code). Change them together. Staleness only ever *suggests* recategorizing (release / claim here / leave it); nothing auto-releases.
-- **The status enum is closed** — adding a reservation-adjacent status means updating the Schema Read Contract row, work.md's special-statuses and `--wave` lists, the exit summary, cleanup/abandon/roadmap/forensics readers, and `model.go` in the same commit (see CLAUDE.md → Closed Enumerations Go Stale).
+- **The status enum is closed** — adding a reservation-adjacent status means updating the Schema Read Contract row, work.md's special-statuses and `--wave` lists, the exit summary, cleanup/abandon/roadmap/forensics readers, and `model.go` in the same commit — hand-enumerated lists of a closed set go stale silently, so every enumeration moves together.
 
 ## Stakes
 - `status: reserved` + `reserved_for`/`reserved_at` (Schema Read Contract, `actions/work-reference.md`)

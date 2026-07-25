@@ -86,7 +86,7 @@ From `<skill-root>/tools/queue-kanban`:
   fi
   ```
 
-  `.git/info/exclude` is git's local-only ignore list — no tracked file changes, so this stays inside the action's read-only contract for the project. The `check-ignore` guard makes the append idempotent, and the root-anchored pattern is checked from `$REPO_ROOT` so a subdirectory invocation can't mismatch (the CLAUDE.md interior-slash trap). In a non-git project the guard skips silently.
+  `.git/info/exclude` is git's local-only ignore list — no tracked file changes, so this stays inside the action's read-only contract for the project. The `check-ignore` guard makes the append idempotent, and the root-anchored pattern is checked from `$REPO_ROOT` so a subdirectory invocation can't mismatch (an ignore pattern with an interior slash is root-anchored, while `check-ignore` tests cwd-relative paths). In a non-git project the guard skips silently.
 - **summary** — `./queue-kanban summary --repo-root "$REPO_ROOT"` and relay the printed counts.
 
 ### Step 6: Testing view (serve mode, in-browser — nothing more for the agent to run)

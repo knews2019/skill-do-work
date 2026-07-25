@@ -6,7 +6,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.135.0 — Parallel Memory Engine: memory module, install target, and value auditor (2026-07-22)
+## 0.138.0 — Parallel Memory Engine: memory module, install target, and value auditor (2026-07-25)
 
 A second, capture-first memory engine now runs alongside bkb so real usage data — not theory — decides which one earns its keep (ADR-017). Both engines log usage, and a new auditor renders the head-to-head verdict.
 
@@ -14,6 +14,40 @@ A second, capture-first memory engine now runs alongside bkb so real usage data 
 - New `do-work install memory-module` target scaffolds `memory/` and merges optional SessionStart/Stop hooks into `.claude/settings.json` — composing with existing hook entries (backup + parse-verify), never clobbering them. The Stop hook appends a hash-deduplicated capture of each session's final exchange and never blocks a session end.
 - New `do-work memory audit` (`actions/memory-value.md`): read-only, engine-agnostic value audit of bkb and the memory engine — git/log history probes, usage-ledger stats, hit-cited rate as the verdict signal, with an explicit fairness rule for bkb's pre-instrumentation era.
 - bkb `query`/`ingest` now append best-effort usage-ledger events so the comparison sees both engines.
+- Review hardening (PR #122): the Stop hook redacts credential-shaped text before persisting captures; session start injects only curated memory (raw captures stay behind `memory recall`, which loads the prompt-injection guardrail); the hook merge checks and appends each settings entry independently; the installer repairs any missing scaffold component; and the auditor locates the KB via bkb's locating contract instead of assuming `kb/`.
+
+## 0.137.0 — Clarify Opens Each Question With a Plain-Language Story (2026-07-24)
+
+Answering pending questions used to mean remembering what REQ-025 was about — often days after the work happened. Now every question arrives with a short story above it: what you asked for, what the builder ran into, and why the call is yours. The decision block underneath is unchanged.
+
+- Questions are presented in three layers — a 1–4 sentence story, then the existing `Decision / Value / Risk / Also` block, then the builder's original wording and file paths *only if you ask*.
+- Layer one is written to be read aloud: no file paths, no bare identifiers, no CamelCase, one idea per sentence. Any technical term used lower down gets paraphrased in the story first.
+- Blocked REQs waiting on an external condition now get a one-line "what it was for" too — those are the ones you've had the longest to forget.
+- New red flags catch the failure mode this invites: a story that just restates the question is padding, not context.
+
+## 0.136.1 — Board Flags REQ Files Found Outside the Scanned Sections (2026-07-24)
+
+A REQ that lands somewhere other than `queue/`, `working/`, or `archive/` — say a work agent that archived to `do-work/user-requests/UR-NNN/` instead of `do-work/archive/` — used to vanish from the board with no trace. Now the walk catches it and raises a data warning instead of silently dropping it.
+
+- The board now emits a warning naming the misplaced REQ, its exact path, and how to fix it (move into `archive/` or `queue/`) — shown in the web warnings banner and the `board summary` output.
+- A stray REQ is only flagged, never rendered as a card, so its off-vocab location can't masquerade as a real column placement.
+
+## 0.136.0 — Maintainer Docs No Longer Ship to Consumer Installs (2026-07-23)
+
+The repo's own `CLAUDE.md` and `AGENTS.md` were landing in every consumer install, where Claude Code auto-loads the nested `CLAUDE.md` on every skill-file read — a ~2.5k-word context tax whose commit protocol (bump the version, add a changelog entry) is actively wrong advice inside someone else's project. They're maintainer docs, not skill content, so they no longer ship.
+
+- Both files are now `export-ignore`'d, and `do-work update` deletes the stale copies that installs ≤0.135.x left behind (tar extraction never removes files dropped upstream).
+- Every shipped file's citation of the skill's own CLAUDE.md was reworded to be self-contained or point at a shipped home (e.g. `actions/kb-lessons-handoff.md` for the KB handoff contract) — 14 sites across actions, crew-members, and hooks.
+- New contract-regression checks keep it that way: the export-ignore lines must exist, and shipped files must not cite the unshipped docs.
+
+## 0.135.0 — Board Drawer Links Every REQ/UR Mention, URL, and File Path (2026-07-23)
+
+The detail drawer's cross-references are now real, obviously-styled links instead of plain text or button-shaped chips. File paths get existence-checked at build time, so a stale reference is visible at a glance.
+
+- Every REQ/UR id in the drawer is a link: the UR drawer's "REQ ids" row, the REQ drawer's "User request" / "Depends on" / "Unblocks" / "Blocked by" rows, and any `REQ-…`/`UR-…` mention inside a rendered body (only ids actually on the board — unknown mentions stay text). Short mentions resolve compound card ids (`REQ-031` → `UR-002-REQ-031`).
+- All links are visibly links: accent color + underline (the old "User request" chip looked like a badge).
+- File paths in code spans are checked against the repo at board-build time: existing files render as blue links that open read-only via the live server's new `GET /file` endpoint (loopback-only, repo-contained, always text/plain); missing files render red with a "Not found in this repository" tooltip — in static snapshots too, where the existence verdict is baked into the data.
+- URLs in code spans become clickable, and every http(s) link in a body opens in a new tab instead of navigating the board away.
 
 ## 0.134.0 — Pending-Card Timer Tracks the Last Transition, Not Capture Time (2026-07-23)
 
