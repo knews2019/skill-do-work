@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.138.2 — Install Target Renamed to ideation-adhd (2026-07-25)
+
+The 0.138.0 target ships as `install ideation-adhd` — the name now says what it does (the "adhd" is the upstream skill's metaphor for its branching style, not the substance). `install adhd` and the `adhd-mode` spellings still work as aliases.
+
+- The install **folder** stays `.claude/skills/adhd/` — it must match the upstream frontmatter `name:` field so `/adhd` auto-discovers.
+
 ## 0.138.1 — Install Detect Treats a Zero-Byte Skill File as Absent (2026-07-25)
 
 An interrupted download could leave a zero-byte `SKILL.md` that the `ls`-based detect read as "already installed", making the failed install unrepairable by re-running. Review caught it on the new `adhd` target; the same copy-pasted primitive was fixed in `ui-design` and `bowser` too.
