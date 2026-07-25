@@ -92,7 +92,7 @@ Each sub-command ends with a short plain-prose report: what was read, what chang
 - Consolidation runs only at `remember` time and only on `working-memory.md`. Never wire consolidation — or `actions/dream.md` — to a hook or timer; the only hook write is the append-only stop capture.
 - Every sub-command works without hooks installed. Hooks are optional enhancement, actions are the portable core.
 - Ledger appends are best-effort (`|| true`): never let instrumentation block or fail a sub-command.
-- Never store secrets, tokens, or credentials in memory files — they are committed plaintext.
+- Never store secrets, tokens, or credentials in memory files. `working-memory.md` is committed plaintext; `memory/logs/` and `memory/usage-ledger.jsonl` are machine-local (git-excluded by `install memory-module`) but still plaintext on disk — local-only is not a licence to write a credential there.
 - Daily logs are append-only for this action; only consolidation demotions and `remember`'s mirror lines are written there. Rewriting log history is `actions/dream.md`'s job, on explicit invocation.
 - Writes surface next session (frozen-snapshot semantics) — never claim the injected context has been updated mid-session.
 
@@ -113,6 +113,7 @@ Each sub-command ends with a short plain-prose report: what was read, what chang
 - Two `session capture` headings with the same `<hash8>` in one log (dedup failed).
 - Anything under `memory/` referenced from a hook other than the two shipped memory hooks.
 - A secret or API key visible in `working-memory.md` or a log.
+- `memory/logs/` or `memory/usage-ledger.jsonl` showing up in `git status` as untracked — the local-ignore step of `install memory-module` was skipped or reverted; verbatim captures are one `git add -A` from the repo.
 
 ## Verification Checklist
 

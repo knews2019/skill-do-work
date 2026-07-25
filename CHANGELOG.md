@@ -6,7 +6,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.138.0 — Parallel Memory Engine: memory module, install target, and value auditor (2026-07-25)
+## 0.139.0 — Parallel Memory Engine: memory module, install target, and value auditor (2026-07-25)
 
 A second, capture-first memory engine now runs alongside bkb so real usage data — not theory — decides which one earns its keep (ADR-017). Both engines log usage, and a new auditor renders the head-to-head verdict.
 
@@ -15,6 +15,35 @@ A second, capture-first memory engine now runs alongside bkb so real usage data 
 - New `do-work memory audit` (`actions/memory-value.md`): read-only, engine-agnostic value audit of bkb and the memory engine — git/log history probes, usage-ledger stats, hit-cited rate as the verdict signal, with an explicit fairness rule for bkb's pre-instrumentation era.
 - bkb `query`/`ingest` now append best-effort usage-ledger events so the comparison sees both engines.
 - Review hardening (PR #122): the Stop hook redacts credential-shaped text before persisting captures; session start injects only curated memory (raw captures stay behind `memory recall`, which loads the prompt-injection guardrail); the hook merge checks and appends each settings entry independently; the installer repairs any missing scaffold component; and the auditor locates the KB via bkb's locating contract instead of assuming `kb/`.
+- Raw captures and the usage ledger are machine-local: the installer adds `memory/logs/` and `memory/usage-ledger.jsonl` to the repo's `.git/info/exclude` (never your committable `.gitignore`), so only the curated `working-memory.md` is shareable. Redaction stays as a second line of defense.
+
+## 0.138.3 — Skill Downloads Are Atomic: Temp File, Then Rename (2026-07-25)
+
+The 0.138.1 fix caught zero-byte downloads, but `curl -o` writes the final path incrementally — a connection dropped mid-transfer left a non-empty partial `SKILL.md` that `test -s` read as a complete install, unrepairable by re-running. Downloads now land in a `SKILL.md.download` temp name and only rename into place on success.
+
+- Applies to all three curl-based skill installs (`ui-design`, `ideation-adhd`, `bowser`); the temp file is removed on failure, so nothing is left behind either way.
+- Chosen over `curl --remove-on-error`, which needs curl ≥ 7.83 — the rename works on any curl.
+
+## 0.138.2 — Install Target Renamed to ideation-adhd (2026-07-25)
+
+The 0.138.0 target ships as `install ideation-adhd` — the name now says what it does (the "adhd" is the upstream skill's metaphor for its branching style, not the substance). `install adhd` and the `adhd-mode` spellings still work as aliases.
+
+- The install **folder** stays `.claude/skills/adhd/` — it must match the upstream frontmatter `name:` field so `/adhd` auto-discovers.
+
+## 0.138.1 — Install Detect Treats a Zero-Byte Skill File as Absent (2026-07-25)
+
+An interrupted download could leave a zero-byte `SKILL.md` that the `ls`-based detect read as "already installed", making the failed install unrepairable by re-running. Review caught it on the new `adhd` target; the same copy-pasted primitive was fixed in `ui-design` and `bowser` too.
+
+- Detect commands for the single-file skill targets now use `test -s` (non-empty), so a re-run over a failed download repairs it instead of stopping at Phase 1.
+- The never-overwrite rule is scoped to non-empty files: reinstalling over a zero-byte file is repair, not overwrite.
+
+## 0.138.0 — New Install Target: adhd Divergent-Ideation Skill (2026-07-25)
+
+`do-work install adhd` vendors the [adhd skill](https://github.com/UditAkhourii/adhd) (MIT) into the project — parallel divergent ideation that branches a named problem across distinct cognitive frames, then scores, clusters, and deepens the top candidates. Complements `scan-ideas` (repo-grounded) with deliberately unconventional exploration; feed the winners to `capture-request:`.
+
+- Single self-contained `SKILL.md` installed project-scoped to `.claude/skills/adhd/` — folder name matches upstream so `/adhd` auto-discovers; no global npm install.
+- Same manifest-driven detect → install → verify → report shape as `ui-design`; idempotent, never overwrites an existing copy.
+- Routing accepts `install adhd` (also the `install adhd-mode` / `install adhd mode` / `setup adhd` spellings — the target normalizes after the install verb; bare `adhd` without the verb is not a route).
 
 ## 0.137.0 — Clarify Opens Each Question With a Plain-Language Story (2026-07-24)
 

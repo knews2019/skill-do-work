@@ -51,6 +51,8 @@ From the engine's `usage-ledger.jsonl` (tolerate absence — report "no ledger")
 
 bkb predates instrumentation: **absence of ledger evidence is not absence of value.** For bkb's pre-ledger window, weight `git log -- kb/` and `kb/wiki/log.md` history as the usage record, and say explicitly in the report which window each conclusion draws on. Conversely, don't credit the memory engine's `inject`/`capture` volume as value — those are automatic; only retrieval and citation count.
 
+The two ledgers also differ in durability, and the report must say so: `kb/usage-ledger.jsonl` is committed and travels with the repo, while `memory/usage-ledger.jsonl` is machine-local (git-excluded by `install memory-module`, so verbatim captures stay out of version control). A memory-engine count is therefore **this machine's** usage, not the team's — on a fresh clone or a second workstation it reads as zero from history that exists elsewhere. State the ledger's own age (`memory/usage-ledger.jsonl` mtime and first-line date) next to any memory-side count, and never read a thin memory ledger as disuse without checking whether the ledger itself is simply new here.
+
 ## Output Format
 
 ```
@@ -83,7 +85,7 @@ Classification rubric: **Active** = ≥3 non-automatic events (excluding `inject
 - Read-only, no exceptions — this audit appends nothing, not even to the ledgers it reads.
 - The verdict weighs cited retrievals, never raw write volume — a store nobody reads from is a landfill, not memory.
 - Never recommend deletion as a done deal; the recommendation names the human decision and the maintenance path (`crew-members/maintenance.md`).
-- Apply the fairness rule in every both-engine audit, and state it in the report.
+- Apply the fairness rule in every both-engine audit, and state it in the report — including the ledger-durability asymmetry (bkb's ledger is committed, memory's is machine-local).
 
 ## Red Flags
 

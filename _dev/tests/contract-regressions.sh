@@ -267,7 +267,19 @@ assert_contains \
 assert_contains \
   "hooks/memory-stop-capture.sh" \
   'REDACTED' \
-  'hooks/memory-stop-capture.sh must redact credential-shaped text before persisting captures (memory files are committed plaintext).'
+  'hooks/memory-stop-capture.sh must redact credential-shaped text before persisting captures — defense in depth behind the machine-local store.'
+
+# Raw captures and the per-machine ledger must never become committable: the installer
+# adds them to .git/info/exclude (machine-local), never the project's .gitignore.
+assert_contains \
+  "actions/install.md" \
+  '\*\*/memory/logs/' \
+  'actions/install.md memory-module must add memory/logs/ to .git/info/exclude — verbatim captures must not be committable.'
+
+assert_contains \
+  "actions/install.md" \
+  '\*\*/memory/usage-ledger\.jsonl' \
+  'actions/install.md memory-module must add memory/usage-ledger.jsonl to .git/info/exclude.'
 
 assert_contains \
   "hooks/memory-session-start.sh" \

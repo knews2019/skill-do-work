@@ -140,7 +140,7 @@ Used by `hooks/memory-stop-capture.sh`:
 
 ## Capture Redaction Spec
 
-Memory files are committed plaintext — a verbatim capture must never persist a credential into version control. `hooks/memory-stop-capture.sh` therefore:
+The memory store is split by durability: the curated `working-memory.md` is **committed plaintext**, while `memory/logs/` and `memory/usage-ledger.jsonl` are **machine-local** — `actions/install.md`'s memory-module Phase 2 adds them to the repo's `.git/info/exclude`. That split is the first barrier, not the only one, and redaction is defense in depth behind it: the exclude entries exist only where the installer ran (a hand-scaffolded `memory/` has none), logs stay plaintext on disk where they can be read, grepped, or pasted elsewhere, and a curated fact promoted out of a log lands in the committed file. A verbatim capture must therefore never persist a credential in the first place. `hooks/memory-stop-capture.sh`:
 
 - **Drops the whole capture** (exit 0) when the text contains a `PRIVATE KEY-----` block marker — key material spans lines, so line-based redaction can't be trusted.
 - **Replaces credential-shaped substrings with `[REDACTED]`** via `sed -E` before hashing or writing. Shipped patterns (illustrative, not exhaustive — the trigger condition is "text shaped like a credential", and `memory remember` curation remains the real gate): GitHub tokens (`ghp_…`, `github_pat_…`), `sk-…` API keys, AWS `AKIA…` key ids, Slack `xox?-…` tokens, `eyJ…`-prefixed JWTs, `Bearer <token>` headers, and `password/passwd/secret/token/api_key = <value>` assignments.

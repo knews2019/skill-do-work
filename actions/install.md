@@ -1,6 +1,6 @@
 # Install Action
 
-> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports five targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless), `just-kanban` (justfile recipes wiring `just run-kanban` to the shipped queue-kanban board), and `memory-module` (the ADR-017 memory engine: `memory/` scaffolding plus optional SessionStart/Stop hooks).
+> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports six targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless), `just-kanban` (justfile recipes wiring `just run-kanban` to the shipped queue-kanban board), `ideation-adhd` (parallel divergent-ideation skill), and `memory-module` (the ADR-017 memory engine: `memory/` scaffolding plus optional SessionStart/Stop hooks).
 
 Each target is idempotent — running it when the target is already present and current is a no-op. One target goes further: `just-kanban` compares an already-present recipe block against the shipped version and offers a consent-gated upgrade when they diverge (Phase 1b of its workflow). The action dispatches on the first argument; everything else (detect → install → verify → report) follows the same shape.
 
@@ -13,6 +13,7 @@ Each target is idempotent — running it when the target is already present and 
 - The user asked for headed-browser workflows, screenshots, or visual verification (`install bowser`).
 - The user asked for social research, trend scanning, or "what's the discourse on X" capabilities (`install last30days`).
 - The user wants a standing `just run-kanban` shortcut so the board runs without invoking the agent (`install just-kanban`).
+- The user wants structured divergent ideation — deliberately unconventional candidate ideas for a named problem, beyond what `scan-ideas` surfaces from the repo (`install ideation-adhd`).
 - The user wants session-persistent memory — `do-work memory` scaffolding and, on Claude Code, the auto-inject/auto-capture hooks (`install memory-module`).
 
 **Do NOT use when:**
@@ -29,6 +30,7 @@ Each target is idempotent — running it when the target is already present and 
 - `bowser` — Install Playwright CLI (global) plus the Bowser skill (project-scoped) for browser automation, screenshots, and visual UI verification.
 - `last30days` — Vendor the engagement-ranked social-research engine (project-scoped, git-ignored, keyless).
 - `just-kanban` — Append `just` recipes (`run-kanban`, `kanban-static`, `kanban-summary`) for the shipped queue-kanban board to the project's justfile; if the recipes are already present but diverge from the shipped block, offer a consent-gated upgrade.
+- `ideation-adhd` — Install the upstream `adhd` skill (project-scoped) for parallel divergent ideation: isolated branches under distinct cognitive frames, scored, clustered, and deepened. (`adhd` is an accepted alias for this target.)
 - `memory-module` — Scaffold the `memory/` store (working-memory template, logs dir, usage ledger) and merge the memory SessionStart/Stop hook entries into `.claude/settings.json` — composing with, never clobbering, existing hooks.
 
 If `$ARGUMENTS` is empty or doesn't match a known target, print the help block (target list + one-line blurb each) and stop.
@@ -39,17 +41,20 @@ Every target follows the same four-step shape (detect → install → verify →
 
 | target | detect_cmd | install_cmd | verify_cmd | blurb |
 |--------|------------|-------------|------------|-------|
-| `ui-design` | `ls "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" 2>/dev/null` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
-| `bowser` | `playwright-cli --help >/dev/null 2>&1 && ls "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" 2>/dev/null` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
+| `ui-design` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md && mv "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download" "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" || { rm -f "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download"; false; }` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
+| `bowser` | `playwright-cli --help >/dev/null 2>&1 && test -s "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md"` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
 | `last30days` | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | (multi-step — see `last30days` workflow below) | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | Engagement-ranked social-research engine — Reddit/HN/Polymarket/GitHub/YouTube keyless out of the box; X/TikTok/Instagram unlock only via user-global API keys. |
 | `just-kanban` | (multi-step — see `just-kanban` workflow below) | (multi-step — see `just-kanban` workflow below; appends fresh, consent-gated upgrade when present-but-divergent) | (multi-step — see `just-kanban` workflow below) | Justfile recipes for the shipped queue-kanban board — `just run-kanban` serves the live board, `kanban-static`/`kanban-summary` cover the other modes; rebuilds the tool each run so `do-work update` refreshes take effect. |
 | `memory-module` | (multi-step — see `memory-module` workflow below; gates on scaffolding + hook wiring) | (multi-step — see `memory-module` workflow below; repair mode when scaffolding exists but hooks are absent) | (multi-step — see `memory-module` workflow below) | Hermes-style working-memory + dated-logs engine with SessionStart/Stop hooks and layered recall — the experimental counterpart to `actions/bkb.md` (see `decisions/records/adr-017-run-a-parallel-memory-engine-experiment-with-usage-ledgers.md`). |
+| `ideation-adhd` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/adhd" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download" https://raw.githubusercontent.com/UditAkhourii/adhd/main/skills/adhd/SKILL.md && mv "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download" "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" || { rm -f "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download"; false; }` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | The `adhd` skill (MIT) — parallel divergent ideation: spawns isolated branches under distinct cognitive frames (regulator, biology, speedrunner, 10-year-old, $0 budget, …), scores on novelty/viability/fit, clusters, prunes traps, deepens the top survivors. Explicitly invoked (`/adhd`), never fires on its own. |
 
 In every command above, resolve `PROJECT_ROOT` first:
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
+
+Every skill-file download lands in a `SKILL.md.download` temp name and is renamed into place only on success, with the temp removed on failure. `curl -o` writes the final path incrementally, so a mid-transfer failure would otherwise leave a non-empty partial file that `test -s` cannot distinguish from a complete install — the same trap the zero-byte detect fix closed, one failure mode further along. (`curl --remove-on-error` also covers this but only exists in curl ≥ 7.83; the rename works everywhere.)
 
 ## Steps
 
@@ -60,7 +65,7 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 
 ### Step 2: Run the target's workflow
 
-Each workflow follows the same four-step shape. The `ui-design` workflow uses the manifest commands directly. The `bowser`, `last30days`, `just-kanban`, and `memory-module` workflows have multi-part installs and are spelled out below.
+Each workflow follows the same four-step shape. The `ui-design` and `ideation-adhd` workflows use the manifest commands directly. The `bowser`, `last30days`, `just-kanban`, and `memory-module` workflows have multi-part installs and are spelled out below.
 
 ---
 
@@ -68,7 +73,7 @@ Each workflow follows the same four-step shape. The `ui-design` workflow uses th
 
 #### Phase 1: Check if already installed
 
-Resolve `PROJECT_ROOT`, then run the manifest's `detect_cmd`. If the file exists, report "already installed" and stop.
+Resolve `PROJECT_ROOT`, then run the manifest's `detect_cmd`. If the file exists and is non-empty, report "already installed" and stop. (`test -s`, not `ls` — a zero-byte file from an interrupted download must read as absent so a re-run can repair it.)
 
 #### Phase 2: Install the skill
 
@@ -96,6 +101,45 @@ Requests tagged `domain: ui-design` benefit from both automatically.
 
 ---
 
+## Workflow: `ideation-adhd`
+
+A single self-contained `SKILL.md` — same shape as `ui-design`. The target is named `ideation-adhd` (the name says what it does), but the install **folder** stays `adhd` to match the upstream skill's own frontmatter `name:` field, so it auto-discovers as the `/adhd` slash command; do not rename the folder to match the target.
+
+#### Phase 1: Check if already installed
+
+Resolve `PROJECT_ROOT`, then run the manifest's `detect_cmd`. If the file exists and is non-empty, report "already installed" and stop. (`test -s`, not `ls` — a zero-byte file from an interrupted download must read as absent so a re-run can repair it.)
+
+#### Phase 2: Install the skill
+
+Run the manifest's `install_cmd`. If `curl` is unavailable or the download fails (offline, upstream restructured), report the error and direct the user to https://github.com/UditAkhourii/adhd for manual install — the file lives at `skills/adhd/SKILL.md` in that repo. Upstream also documents a global `npm install -g adhd-agent` CLI — do not run it; this skill's norms reject global installs, and the project-scoped `SKILL.md` copy is the only supported path.
+
+#### Phase 3: Verify
+
+Run the manifest's `verify_cmd`.
+
+#### Phase 4: Report back
+
+```
+Installed: ideation-adhd — the adhd skill (parallel divergent ideation)
+
+Gives the agent a structured divergence engine:
+- Spawns isolated branches under distinct cognitive frames
+  (regulator, biology, speedrunner, 10-year-old, $0 budget, ...)
+- Scores on novelty/viability/fit, clusters by angle, prunes traps,
+  and deepens the top 3 survivors
+- Explicitly invoked via /adhd or "ADHD mode" — it never fires on its own
+
+Complements do-work's ideation actions rather than replacing them:
+`scan-ideas` finds grounded opportunities in THIS repo; adhd generates
+deliberately unconventional candidates for a problem you name. Feed the
+winners to `do-work capture-request:` to queue them.
+
+Note: the skill leans on parallel subagents for its divergence phase — on
+an agent without them, the frames run sequentially instead.
+```
+
+---
+
 ## Workflow: `bowser`
 
 The `bowser` target installs two components: the global `playwright-cli` (plus a Chromium browser), and the project-scoped `playwright-bowser` skill.
@@ -105,7 +149,7 @@ The `bowser` target installs two components: the global `playwright-cli` (plus a
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 playwright-cli --help >/dev/null 2>&1 && echo "playwright-cli: installed" || echo "playwright-cli: not found"
-ls "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" 2>/dev/null && echo "bowser skill: installed" || echo "bowser skill: not found"
+test -s "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" && echo "bowser skill: installed" || echo "bowser skill: not found"
 ```
 
 If both are present, report installed and stop.
@@ -143,8 +187,11 @@ npx playwright install chromium
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 mkdir -p "$PROJECT_ROOT/.claude/skills/playwright-bowser"
-curl -fsSL -o "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" \
-  https://raw.githubusercontent.com/disler/bowser/main/.claude/skills/playwright-bowser/SKILL.md
+curl -fsSL -o "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download" \
+  https://raw.githubusercontent.com/disler/bowser/main/.claude/skills/playwright-bowser/SKILL.md \
+  && mv "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download" \
+        "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" \
+  || rm -f "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download"
 ```
 
 If the URL 404s (the repo may have restructured), report the error and direct the user to https://github.com/disler/bowser for manual install — the file lives somewhere under `.claude/skills/` in that repo.
@@ -399,11 +446,18 @@ Check the full guarantee set — scaffolding AND hook wiring (detecting on the s
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 # Scaffolding is "present" only when ALL components exist — a partial prior run
-# (say, working-memory.md without logs/ or the ledger) must route back through
-# Phase 2, which is idempotent and only fills gaps.
+# (say, working-memory.md without logs/ or the ledger, or the store present but no
+# longer locally ignored) must route back through Phase 2, which is idempotent and
+# only fills gaps. Outside a git repo the ignore clause is vacuously satisfied.
+ignore_ok=1
+if git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  git check-ignore -q "$PROJECT_ROOT/memory/logs/.probe" 2>/dev/null || ignore_ok=0
+  git check-ignore -q "$PROJECT_ROOT/memory/usage-ledger.jsonl" 2>/dev/null || ignore_ok=0
+fi
 if test -s "$PROJECT_ROOT/memory/working-memory.md" \
    && test -d "$PROJECT_ROOT/memory/logs" \
-   && test -f "$PROJECT_ROOT/memory/usage-ledger.jsonl"; then
+   && test -f "$PROJECT_ROOT/memory/usage-ledger.jsonl" \
+   && [ "$ignore_ok" -eq 1 ]; then
   echo "scaffolding: present"
 else
   echo "scaffolding: absent or partial"
@@ -432,6 +486,20 @@ touch "$PROJECT_ROOT/memory/usage-ledger.jsonl"
 
 Then create `$PROJECT_ROOT/memory/working-memory.md` from the template in `actions/memory-reference.md` (with today's date in the `updated:` frontmatter) — **only if the file is absent or empty. Never overwrite an existing `working-memory.md`**: it is the user's standing memory, the same gate as the never-overwrite-an-existing-`SKILL.md` rule.
 
+Finally, make the raw store machine-local. `memory/logs/` holds verbatim hook captures and `memory/usage-ledger.jsonl` is per-machine instrumentation — neither should ever become committable. Redaction (`actions/memory-reference.md` → Capture Redaction Spec) is best-effort pattern matching, so version control must not be the place a missed credential lands. Only the curated `working-memory.md` stays committed and shareable. Add the two paths to the enclosing repo's `.git/info/exclude` (machine-local — never committed, never shipped); do **not** touch the project's committable `.gitignore`. This is the snippet from `crew-members/background-agents.md` → **Local-ignore snippet (for genuinely-transient paths)**, substituting these paths (see that file for why, including the linked-worktree caveat):
+
+```bash
+exclude=$(git rev-parse --git-path info/exclude 2>/dev/null) || exclude=""
+if [ -n "$exclude" ]; then
+  git check-ignore -q "$PROJECT_ROOT/memory/logs/.probe" 2>/dev/null \
+    || echo '**/memory/logs/' >> "$exclude"
+  git check-ignore -q "$PROJECT_ROOT/memory/usage-ledger.jsonl" 2>/dev/null \
+    || echo '**/memory/usage-ledger.jsonl' >> "$exclude"
+fi
+```
+
+Each path is gated **independently** — the same per-entry discipline Phase 3 uses for the hooks, so a partial prior state (one pattern present, one missing) repairs instead of skipping both. `git check-ignore -q` already succeeds when any ignore source covers the path, so the appends never duplicate on a re-run, and the guard is a clean no-op outside a git repo.
+
 #### Phase 3: Merge the hook entries
 
 This phase only applies on Claude Code (a `.claude/` directory convention); on other platforms report `hooks: n/a (not Claude Code)` and continue to Phase 4 — the actions work hook-less.
@@ -447,6 +515,10 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 test -d "$PROJECT_ROOT/memory/logs" && echo "logs dir: OK" || echo "logs dir: FAILED"
 test -s "$PROJECT_ROOT/memory/working-memory.md" && echo "working memory: OK" || echo "working memory: FAILED"
 test -f "$PROJECT_ROOT/memory/usage-ledger.jsonl" && echo "ledger: OK" || echo "ledger: FAILED"
+if git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
+  git check-ignore -q "$PROJECT_ROOT/memory/logs/.probe" 2>/dev/null && echo "logs ignored: OK" || echo "logs ignored: FAILED"
+  git check-ignore -q "$PROJECT_ROOT/memory/usage-ledger.jsonl" 2>/dev/null && echo "ledger ignored: OK" || echo "ledger ignored: FAILED"
+fi
 SETTINGS_FILE="$PROJECT_ROOT/.claude/settings.json"
 if [ -f "$SETTINGS_FILE" ]; then
   if command -v jq >/dev/null 2>&1; then jq . "$SETTINGS_FILE" >/dev/null 2>&1 && echo "settings parses: OK" || echo "settings parses: FAILED"; else python3 -m json.tool "$SETTINGS_FILE" >/dev/null 2>&1 && echo "settings parses: OK" || echo "settings parses: UNCHECKED (no jq/python3)"; fi
@@ -467,8 +539,12 @@ Installed: memory-module (ADR-017 memory engine)
 
 Destination: <project-root>/memory/
   working-memory.md   Standing memory, 2,500-char hard cap (curate via `do-work memory remember`)
-  logs/               Dated daily logs (auto-appended by the Stop hook)
-  usage-ledger.jsonl  Usage instrumentation read by `do-work memory audit`
+  logs/               Dated daily logs (auto-appended by the Stop hook) — machine-local
+  usage-ledger.jsonl  Usage instrumentation read by `do-work memory audit` — machine-local
+
+Only working-memory.md is committable. logs/ and usage-ledger.jsonl were added to
+.git/info/exclude (machine-local; your .gitignore is untouched) so verbatim captures
+never reach version control.
 
 Hooks (Claude Code only, merged into .claude/settings.json):
   memory-session-start.sh  Injects the frozen snapshot at session start — writes surface NEXT session
@@ -495,6 +571,7 @@ install — install companion skills/tooling into the current project
   do-work install bowser      Playwright CLI + Bowser skill for browser automation
   do-work install last30days  Engagement-ranked social-research engine (vendored, keyless)
   do-work install just-kanban  Justfile recipes for the queue-kanban board (needs Go to run)
+  do-work install ideation-adhd  Parallel divergent-ideation skill (/adhd — cognitive-frame branching)
   do-work install memory-module  memory/ store + SessionStart/Stop hooks (ADR-017 memory engine)
 ```
 
@@ -502,24 +579,25 @@ Then stop.
 
 ## Output Format
 
-- **`ui-design`**: a short status line — "already installed", "installed successfully", or an error describing what failed and how to finish manually.
+- **`ui-design`**, **`ideation-adhd`**: a short status line — "already installed", "installed successfully", or an error describing what failed and how to finish manually.
 - **`bowser`**: a two-line status — one for `playwright-cli`, one for the Bowser skill. Each is either "OK" (installed and verified), "already installed" (detected in Phase 1), or an error with the exact command the user can re-run.
 - **`last30days`**: a per-guarantee status (skill file, ignore rule, Python 3.12+) — "already installed" only when every guarantee holds; otherwise "installed successfully" with the destination path, or the FAILED line(s) and the exact command the user can re-run.
 - **`just-kanban`**: a per-component status (recipes appended or upgraded, justfile parses, `just`/`go` availability) — "already installed (current)" only when the installed recipes match the shipped block; a divergent block gets a diff and a consent-gated upgrade (Phase 1b), reported as "Upgraded" or "kept existing recipes". Missing toolchains are warnings, not failures.
-- **`memory-module`**: a per-guarantee status (logs dir, working memory, ledger, settings parses, memory hooks) — "already installed" only when scaffolding AND hook wiring hold; hooks may report `MANUAL STEP` (no jq) or `n/a` (not Claude Code) as warnings, not failures.
+- **`memory-module`**: a per-guarantee status (logs dir, working memory, ledger, local-ignore entries, settings parses, memory hooks) — "already installed" only when scaffolding AND hook wiring hold; hooks may report `MANUAL STEP` (no jq) or `n/a` (not Claude Code) as warnings, not failures.
 - **Unknown / missing target**: the help block above.
 
 ## Rules
 
 - **Install to the project, not globally.** Skill files go under `<project-root>/.claude/skills/<skill-name>/` (`<project-root>` resolved via `git rev-parse --show-toplevel || pwd`). Do not write to `~/.claude/` or any global path.
 - **CLI is global; skill is project-scoped.** For `bowser`, `playwright-cli` goes to the global npm prefix; the Bowser skill goes under `<project-root>/.claude/skills/playwright-bowser/`. Don't mix them.
-- **Never overwrite an existing skill `SKILL.md`.** Phase 1 of each workflow is the gate. If the file is present, stop.
+- **Never overwrite an existing non-empty skill `SKILL.md`.** Phase 1 of each workflow is the gate. If the file is present and non-empty, stop. (A zero-byte file is a failed download — reinstalling over it is repair, not overwrite, which is why the detect commands use `test -s` rather than `ls`.)
 - **Only Chromium by default (bowser).** Other browsers bloat install time and aren't needed for ui-review's default flow.
 - **Don't silently substitute a different skill or repo.** If the upstream URL fails, report the error — don't download a similarly-named skill from elsewhere.
 - **Keyless in the project (last30days).** This install writes no config file at all. If a project-local `.claude/last30days.env` ever exists, it must never contain API keys — real keys live only in the user-global `~/.config/last30days/.env`. Never write a secret into any file inside the repo.
 - **The vendor drop must be ignored (last30days).** Phase 2 adds `**/.claude/skills/last30days/` to the enclosing repo's `.git/info/exclude` when it isn't already covered — machine-local, never the project's committable `.gitignore` — because ~15 MB of upstream Python must never become committable in the consuming repo.
 - **Touch only the three do-work recipes in the justfile (just-kanban).** Never reorder, reformat, or modify justfile content outside `run-kanban`/`kanban-static`/`kanban-summary`. A divergent installed recipe is replaced only after the user has seen the diff and accepted (Phase 1b) — never silently, and never on the assumption that different means stale. Create a `justfile` only when none of `justfile`/`Justfile`/`.justfile` exists at the project root.
 - **Compose hook entries (memory-module).** Append to the `hooks.SessionStart`/`hooks.Stop` arrays in `.claude/settings.json`; never replace, reorder, or rewrite existing entries. Back up to `settings.json.pre-memory-module` before the merge; a post-merge parse failure or any lost pre-existing entry → restore the backup and report. Never overwrite an existing `memory/working-memory.md`.
+- **Keep the raw memory store out of version control (memory-module).** `memory/logs/` and `memory/usage-ledger.jsonl` go in the enclosing repo's `.git/info/exclude` — machine-local, never the project's committable `.gitignore`. Only the curated `working-memory.md` is committable.
 - **One target per invocation.** If the user wants both, they run two separate commands. The action never chains targets.
 
 ## Common Rationalizations
@@ -543,7 +621,9 @@ Then stop.
 ## Red Flags
 
 - The install command reported success but the verify step shows the file is empty — the URL may have changed; investigate before claiming success.
-- `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists but has zero size — treat as not-installed and re-download (with user confirmation).
+- `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists but has zero size and Phase 1 still reported "already installed" — the detect command regressed to a bare existence check (`ls`); it must be `test -s` so a re-run repairs the failed download.
+- An install command writes `SKILL.md` directly instead of downloading to `SKILL.md.download` and renaming on success — a mid-transfer failure would leave a non-empty partial file the detect reads as installed; restore the temp-then-rename shape.
+- A stray `SKILL.md.download` file sits next to an installed skill — a prior run's failure cleanup didn't run; delete it (the rename-on-success flow never leaves one behind).
 - You installed into `~/.claude/skills/` instead of the project — undo and re-install to the correct path.
 - `git rev-parse --show-toplevel` fails (not in a git repo) and you installed into `pwd` — acceptable, but warn the user the path may drift if they `cd` elsewhere.
 - (bowser) `playwright-cli --help` succeeds but `playwright-cli install` fails silently — browsers aren't actually installed; headless runs will error later.
@@ -555,16 +635,18 @@ Then stop.
 - (just-kanban) The appended recipe contains an absolute path (especially into `$HOME`) — the skill-root resolution went wrong; recipes must use project-relative paths.
 - (memory-module) The merged `.claude/settings.json` has fewer hook entries than the `settings.json.pre-memory-module` backup — an existing hook was clobbered; restore the backup.
 - (memory-module) `memory/working-memory.md` changed content during install — the never-overwrite gate was bypassed.
+- (memory-module) `git status` in the consuming repo lists `memory/logs/` or `memory/usage-ledger.jsonl` as untracked after a reported success — the local-ignore step was skipped, and verbatim captures are one `git add -A` from being committed.
+- (memory-module) The project's `.gitignore` gained a `memory/` entry — the ignore belongs in `.git/info/exclude`; a committable ignore rule was written where a machine-local one was specified.
 - (memory-module) A `settings.json.pre-memory-module` backup file left behind after a reported success — cleanup was skipped or the merge silently failed.
 
 ## Verification Checklist
 
 - [ ] Step 1 correctly dispatched on `$ARGUMENTS` (known target → workflow; unknown/empty → help block).
 - [ ] Phase 1 detected an existing install and stopped, OR Phase 2+ ran the fetch/install commands.
-- [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty (skill-file targets: `ui-design`, `bowser`, `last30days`).
+- [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty (skill-file targets: `ui-design`, `bowser`, `last30days`, `ideation-adhd`).
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
 - [ ] (last30days only) a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
 - [ ] (just-kanban only) the justfile gained exactly one appended block, `run-kanban` greps present, `just --list` parses when `just` is available, and no existing recipe was modified.
-- [ ] (memory-module only) `memory/logs/`, a non-empty `working-memory.md`, and `usage-ledger.jsonl` exist; `.claude/settings.json` parses and every pre-existing hook entry survived; the backup was removed on success.
+- [ ] (memory-module only) `memory/logs/`, a non-empty `working-memory.md`, and `usage-ledger.jsonl` exist; `git check-ignore` covers `memory/logs/` and `memory/usage-ledger.jsonl` while the project's `.gitignore` is unmodified; `.claude/settings.json` parses and every pre-existing hook entry survived; the backup was removed on success.
 - [ ] The report names the destination path so the user can verify location.
-- [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the machine-local `.git/info/exclude` entry; for `just-kanban`, the project justfile; for `memory-module`, `<project-root>/memory/` and `.claude/settings.json`).
+- [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the machine-local `.git/info/exclude` entry; for `just-kanban`, the project justfile; for `memory-module`, `<project-root>/memory/`, `.claude/settings.json`, and the machine-local `.git/info/exclude` entries).
