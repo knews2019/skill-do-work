@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.143.0 — AI Report Splits Its Asset Templates Into a Lazy-Loaded Companion (2026-07-27)
+
+`ai-report.md` was the largest action file in the skill at 7,541 words, and it loaded whole — so a report that never generates an image still paid for the entire image-generation backend. The heavy assets now live in `actions/ai-report-reference.md`, opened only at the step that needs them.
+
+- `actions/ai-report.md`: 7,541 → 5,477 words. The companion holds the Image Generation Backend, the SVG data-viz rules, the report design rules, the before/after toggle implementation, and the output-format template.
+- Steps 1–8 stay in the action file as a skeleton; each consuming step names its companion section by path.
+- Pure relocation, verified line-for-line — no rule changed, and the eight pointer sites all resolve.
+
 ## 0.142.0 — Capture Splits Its Templates Into a Lazy-Loaded Companion (2026-07-27)
 
 Every capture loaded both REQ templates, the schema-alias table, the UR template, and five worked transcripts — even a capture that stopped at the duplicate check. The templates now live in `actions/capture-reference.md`, opened at Step 5 (Write Files) and the Step 2 addendum branch, and nowhere else.
