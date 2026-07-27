@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.142.0 — Capture Splits Its Templates Into a Lazy-Loaded Companion (2026-07-27)
+
+Every capture loaded both REQ templates, the schema-alias table, the UR template, and five worked transcripts — even a capture that stopped at the duplicate check. The templates now live in `actions/capture-reference.md`, opened at Step 5 (Write Files) and the Step 2 addendum branch, and nowhere else.
+
+- `actions/capture.md`: 5,505 → 3,913 words. The companion is 1,682, read only when a file is actually being written.
+- The relocated templates are a pure move — verified byte-identical by diff. No field, enum, `depends_on`/`addendum_to` semantic, or the UTC timestamp rule changed.
+- All five worked examples deleted rather than relocated. Each was checked individually; none encoded a judgment the templates and triage rules don't already specify.
+- Steps 0–7 and the simple/complex triage stay in the action file, which still works standalone for everything up to writing files.
+
 ## 0.141.0 — Each Shipped Guard Now Stated Once (2026-07-27)
 
 The `git add -A` / hook-bypass guard was restated in seven files — five times inside `stray-check.md` alone — so changing it meant finding seven sites and hoping they stayed in sync. Prompt-injection doctrine was inlined in three actions that already load the crew file that owns it. Each guard now has one canonical home; every other site is a one-line pointer.

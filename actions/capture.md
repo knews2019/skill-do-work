@@ -4,6 +4,8 @@
 
 A fast-capture system for turning ideas into structured request files. Speed over perfection — minimal interaction when intent is clear.
 
+**Companion file:** `actions/capture-reference.md` holds the Simple/Complex REQ templates, the Schema Aliases table, the UR `input.md` template, and the addendum-REQ template — read it at Step 5 (Write Files), or at Step 2 for an addendum to an in-flight/archived request. Nothing before those points needs it. The templates are a hard contract: `actions/work.md`, `actions/roadmap.md`, and `tools/queue-kanban/model.go` all read the fields they define, so never improvise a field or enum value not shown there.
+
 ## Philosophy
 
 Every invocation produces exactly two things, always paired:
@@ -74,154 +76,6 @@ To get the next REQ number, check existing `REQ-*.md` files across `do-work/queu
 
 Legacy REQ files (pre-UR system) may lack `user_request` and reference `CONTEXT-*.md` files or `do-work/assets/` instead. This is fine — actions/work.md handles both patterns. New REQs always get `user_request`.
 
-## Request File Formats
-
-### Simple REQ
-
-```markdown
----
-id: REQ-001
-title: Brief descriptive title
-status: pending
-created_at: 2025-01-26T10:00:00Z  # current UTC instant — date -u +%Y-%m-%dT%H:%M:%SZ, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
-user_request: UR-001
-domain: frontend  # choose one: frontend, backend, ui-design, general, security, or testing
-prime_files: []  # list paths to relevant prime-*.md files, or leave empty
-tdd: true  # default true when a runnable RED test can be written in this project's harness; false otherwise (see heuristic below)
-suggested_spec:  # optional — spec template name if one clearly matches (e.g., "api-endpoint", "bug-fix")
-depends_on: []  # optional — list of REQ IDs that must complete before this REQ runs; honored by actions/work.md's selection scan
-maintenance: false  # set true ONLY for a deliberate removal/narrowing of the skill's OWN operating instructions — see Step 1's maintenance assessment; loads crew-members/maintenance.md in actions/work.md Step 6
-# External-condition fields — set ONLY when the task waits on something outside the queue (see Step 1's external-condition assessment). Omit all three for normal REQs.
-# status: blocked            # use INSTEAD OF `status: pending` when the REQ cannot start until an external condition is met — distinct from depends_on (another REQ) and Open Questions (a question for the user)
-# blocked_by: "..."          # free text naming the condition (always YAML-quoted), e.g. "LM Studio running locally", "designer answered on mockups"
-# blocked_at: 2026-01-26T10:00:00Z   # stamp the moment it was captured blocked — current UTC instant, same Timestamp rule as created_at
-# blocked_check: "..."       # OPTIONAL shell probe (YAML-quoted) — emit ONLY when the user supplies or explicitly confirms the command; never invent one
----
-
-# [Brief Title]
-
-## What
-[1-3 sentences describing what is being requested]
-
-## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
-
-## Why (if provided)
-[User's stated reasoning — omit if not provided]
-
-## Context
-[Additional context, constraints, or details mentioned]
-
-## Red-Green Proof
-**RED prompt/case:** [Minimal prompt, repro, or example that should fail or be missing today]
-**Why RED now:** [What is currently broken or absent]
-**GREEN when:** [Observable result that proves the request is done]
-**Validation:** [User confirmed / User adjusted / Inferred during capture]
-
-## Assets
-[Description of screenshots or links to saved files]
-
----
-*Source: [original verbatim request]*
-
-Think carefully before answering.
-```
-
-Include `## Red-Green Proof` when the request is behavior-changing and can be proven with a prompt, repro, or example. If `tdd: true`, this section is mandatory. The goal is proof of behavior, not implementation detail.
-
-Treat defining the RED state as essential, high-value capture work. It is one of the most helpful things you can do for the downstream builder because it turns vague intent into a concrete failing proof target. Do not treat this as paperwork. Lean into it. Be eager to find the best RED case: the smallest, clearest prompt/repro/example that proves the behavior is missing now and will clearly turn GREEN later.
-
-### Complex REQ (additional sections)
-
-Complex requests use the same base format plus these sections:
-
-```markdown
-## Detailed Requirements
-[Extract EVERY requirement from the original input that applies to THIS feature.
-DO NOT SUMMARIZE — use the user's words. Include specific values, constraints,
-conditions, edge cases, "must"/"should"/"never" statements.]
-
-## Constraints
-[Limitations, restrictions, batch-level concerns that apply to this REQ]
-
-## Dependencies
-[What this feature needs or what needs it — reference other REQ IDs]
-
-## Builder Guidance
-[Certainty level: Exploratory / Firm / Mixed. Scope cues like "keep it simple."
-Any latitude given to the builder.]
-
-## Open Questions
-- [ ] [Question about ambiguity the user needs to clarify]
-  Recommended: [best default based on context]
-  Also: [alternative A], [alternative B]
-
-Open Questions use checkbox syntax with recommended choices. Each question includes a `Recommended:` line (the best default if the user doesn't answer) and an `Also:` line with alternatives. The choices make questions answerable even when the question itself isn't fully understood — the user can just pick one.
-
-`- [ ]` = unresolved, `- [x]` = answered (answer follows `→`), `- [~]` = deferred to builder (note follows `→`).
-
-**Capture time is the optimal window for resolving these.** During capture (this action), use the ask tool if your environment provides one; otherwise use your environment's normal ask-user prompt/tool. Present Open Questions immediately. The user is here, engaged, and fleshing out the request — don't defer what you can clarify now. Only leave questions as `- [ ]` if you genuinely can't ask (e.g., batch processing, async capture).
-
-Only add questions where the user's intent is genuinely unclear — don't add questions the builder can answer by reading the codebase.
-
-## Full Context
-See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
-```
-
-**Additional frontmatter for complex requests:**
-- `related: [REQ-006, REQ-007]` — other REQs in this batch
-- `batch: auth-system` — batch name grouping related requests
-- `addendum_to: REQ-005` — if this amends an in-flight/completed request
-
-(`maintenance` is **not** complex-only — it lives in the base schema above. Step 1's *Maintenance assessment* is its authoritative home.)
-
-**Populating `depends_on`.** When the request body mentions prior REQs that must complete first (e.g., "after REQ-486 lands", "depends on the auth refactor"), populate `depends_on` in the frontmatter with the REQ IDs. Don't rely on numeric ID ordering — actions/work.md honors `depends_on`, not ID-based heuristics. The optional prose `## Dependencies` section in REQ bodies remains for human readers; the frontmatter field is the source of truth for tooling (work-action selection, roadmap classification, upstream-failure detection).
-
-**Slicing convention.** When a single user request slices into multiple REQs with internal dependencies, the slicer should populate `depends_on` per the dependency graph it produced. actions/work.md then runs roots first, gates downstream REQs on their prerequisites, and supports `--wave N` for checkpointed execution one dependency depth at a time. A clean DAG in `depends_on` makes foundation-phase batches predictable; sloppy or missing `depends_on` returns to numeric-ID order and risks cascade misclassification.
-
-`depends_on` is semantically distinct from `addendum_to`: `addendum_to: REQ-N` says "this REQ amends REQ-N" (used for follow-ups and review-generated remediation); `depends_on: [REQ-N, REQ-M]` says "this REQ requires REQ-N and REQ-M to be completed first." A REQ can carry both.
-
-### Schema Aliases
-
-Several fields above accept legacy aliases at read time so muscle-memory typos from sister tools don't silently drop information. The canonical key wins when multiple are present; capture always emits the canonical — aliases are read-only, never propagated on write.
-
-| Canonical field | Aliases recognized | Read sites |
-|---|---|---|
-| `addendum_to` | `amends`, `parent`, `amendment_to` | capture's duplicate check, `actions/work.md`'s upstream-failure walk + cycle detection, `actions/roadmap.md` Blocked classification |
-| `depends_on` | `dependencies` | capture's slicing convention, `actions/work.md`'s dependency-aware selection / cycle detection / `--wave` depth / upstream walk, `actions/roadmap.md` Ready/Blocked rubrics |
-| `batch` | `batch_name` | `actions/roadmap.md` batch grouping; verify-requests cross-REQ summarization |
-| `related` | `related_reqs` | `actions/roadmap.md` cross-REQ surfacing; verify-requests batch coverage |
-| `suggested_spec` | `spec_hint`, `suggested-spec` | `actions/work.md`'s spec pre-load hint |
-
-For enum-valued and boolean fields shared with `actions/work.md` (`status`, `domain`, `route`, `caveman`, `tdd`, `maintenance`, `error_type`, `kb_status`), capture honors the **normalize-and-warn contract** defined in the Schema Read Contract (in the companion `actions/work-reference.md`): invalid values trigger a warning and a documented default rather than silent acceptance. When writing the REQ files, if the captured value for any normalize-and-warn field doesn't match the canonical enum (after applying the contract's normalization), prompt the user to confirm the intended value before emitting the REQ — capture is the human-attention window for catching typos at the source. Never write a non-canonical value silently.
-
-### UR input.md
-
-Created for every invocation. For simple requests, it's minimal:
-
-```markdown
----
-id: UR-005
-title: Add keyboard shortcuts
-created_at: 2025-01-26T10:00:00Z  # current UTC instant — date -u +%Y-%m-%dT%H:%M:%SZ, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
-requests: [REQ-020]
-word_count: 4
----
-
-# Add keyboard shortcuts
-
-## Full Verbatim Input
-
-add keyboard shortcuts
-
----
-*Captured: 2025-01-26T10:00:00Z*
-```
-
-For complex requests, add a Summary, an Extracted Requests table, and a Batch Constraints section before the Full Verbatim Input. The verbatim section must contain the COMPLETE, UNEDITED input — never summarize or clean it up.
-
 ## Steps
 
 ### Step 0: Load the Prompt-Injection Guardrail
@@ -280,36 +134,7 @@ The goal is that every REQ, at every point in time, expresses a single coherent 
 - Create `do-work/user-requests/UR-NNN/input.md` with the addendum input verbatim (new UR, fresh number)
 - Create `do-work/queue/REQ-NNN-slug.md` linking to that new UR, with `addendum_to` pointing at the original
 
-The `addendum_to` field is what connects the addendum to its origin. The new REQ then enters the queue normally and gets picked up by the next `do-work run`.
-
-```markdown
----
-id: REQ-021
-title: "Addendum: dark mode sidebar support"
-status: pending
-created_at: 2025-01-27T09:00:00Z  # current UTC instant — date -u +%Y-%m-%dT%H:%M:%SZ (Timestamp rule)
-user_request: UR-006        ← new UR created for this addendum
-addendum_to: REQ-005        ← links back to the original request
----
-
-# Addendum: Dark Mode Sidebar Support
-
-## What
-Add sidebar support to the existing dark mode implementation (REQ-005).
-
-## Context
-Addendum to REQ-005, which is currently [in progress / completed].
-The user wants the sidebar to also support dark mode.
-
-## Prior Implementation
-[For archived/completed originals: read the original REQ from the archive and
-summarize what was built, key files modified, patterns used, and commit hash
-(if available). Skip this section for in-flight originals — the builder will
-encounter the work in progress naturally.]
-
-## Requirements
-- Sidebar must respect the dark mode theme
-```
+The `addendum_to` field is what connects the addendum to its origin. The new REQ then enters the queue normally and gets picked up by the next `do-work run`. Write it using the **Addendum REQ Template** in `actions/capture-reference.md` — the exact frontmatter and body shape, including the `## Prior Implementation` section for archived originals.
 
 **Context is critical for addenda to archived/completed REQs.** When writing the addendum REQ, read the original archived REQ and include a `## Prior Implementation` section summarizing: what was built, key files modified, patterns used, and commit hash (if available). Without this, the builder wastes time re-discovering what already exists. For in-flight REQs this matters less — the builder will encounter the work in progress naturally.
 
@@ -372,18 +197,20 @@ If the user provides a screenshot:
 
 ### Step 5: Write Files
 
+**Open `actions/capture-reference.md` before writing anything** — this step names the template for every file it creates, and none of them are restated here.
+
 Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (create if needed).
 
 **For all requests (simple and complex):**
-1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially)
-2. Create REQ-NNN-slug.md files using the appropriate format, adding user_request: UR-NNN, the inferred domain, the prime_files array populated with any discovered paths, and `maintenance: true` when the Step 1 maintenance assessment flagged this as a removal/narrowing pass on the skill's own instructions (otherwise emit `maintenance: false`).
+1. Create `do-work/user-requests/UR-NNN/input.md` with verbatim input (leave `requests` array empty initially), per the **UR input.md** template in `actions/capture-reference.md`.
+2. Create REQ-NNN-slug.md files using the **Simple REQ** or **Complex REQ (additional sections)** template in `actions/capture-reference.md`, adding user_request: UR-NNN, the inferred domain, the prime_files array populated with any discovered paths, and `maintenance: true` when the Step 1 maintenance assessment flagged this as a removal/narrowing pass on the skill's own instructions (otherwise emit `maintenance: false`). If any field's value doesn't match the canonical enum, apply the **Schema Aliases** section's normalize-and-warn contract before writing.
 3. If the request is behavior-changing and has a meaningful RED/GREEN proof target, add a `## Red-Green Proof` section. If `tdd: true`, this section is required.
 4. Update the UR's `requests` array with all created REQ IDs
 
 **Complex mode additionally:**
 - Create `assets/` subfolder in the UR folder
 - Extract EVERY requirement into the appropriate REQ — do not summarize
-- Set `related` and `batch` fields across the batch
+- Set `related` and `batch` fields across the batch; populate `depends_on` per the **Complex REQ (additional sections)** template's Populating `depends_on` / Slicing convention guidance in `actions/capture-reference.md` when the sliced REQs depend on each other
 - Add Batch Constraints to the UR (cross-cutting concerns, scope cues, sequencing)
 - Duplicate batch-level constraints into each relevant REQ's Constraints section
 - Re-read the original input to verify nothing was dropped — especially UX/interaction details and intent signals (certainty level, scope cues)
@@ -425,76 +252,6 @@ EOF
 **For addenda** (when appending to an existing pending REQ instead of creating new files), the commit message changes to: `[UR-NNN] addendum to REQ-NNN: {description}`. Stage the modified REQ file and the new UR folder.
 
 Stage only the specific files created by this capture — never `git add -A`/`.` or bypass a commit hook (see `actions/commit.md` § Rules for the full guard).
-
-## Examples
-
-### Simple Capture
-
-```
-User: do-work add keyboard shortcuts
-
-Created:
-- do-work/user-requests/UR-003/input.md
-- do-work/queue/REQ-004-keyboard-shortcuts.md
-```
-
-### Multiple Requests
-
-```
-User: do-work add dark mode, also the search feels slow, and we need an export button
-
-Created:
-- do-work/user-requests/UR-004/input.md
-- do-work/queue/REQ-005-dark-mode.md
-- do-work/queue/REQ-006-search-performance.md
-- do-work/queue/REQ-007-export-button.md
-```
-
-### Addendum to In-Flight Request
-
-```
-User: do-work dark mode should also affect the sidebar
-
-[Checks existing — REQ-005-dark-mode.md is in do-work/working/]
-
-REQ-005 is currently being worked on — creating a follow-up request instead.
-
-Created:
-- do-work/user-requests/UR-006/input.md
-- do-work/queue/REQ-021-addendum-dark-mode-sidebar.md (addendum_to: REQ-005)
-```
-
-### Addendum to Archived Request
-
-```
-User: do-work dark mode should also apply to modals
-
-[Checks existing — REQ-005-dark-mode.md is in do-work/archive/UR-003/]
-
-REQ-005 is already completed and archived — creating a new follow-up request.
-
-[Reads archived REQ-005 to extract: key files, patterns, commit hash (if available)]
-
-Created:
-- do-work/user-requests/UR-009/input.md         ← new UR (archived UR-003 is not touched)
-- do-work/queue/REQ-027-addendum-dark-mode-modals.md  ← new REQ in do-work/queue/
-  (user_request: UR-009, addendum_to: REQ-005, includes Prior Implementation summary)
-```
-
-The new REQ-027 sits in `do-work/queue/` with `status: pending` and will be picked up by the next `do-work run`. The archived `UR-003/` folder is not modified.
-
-### Complex Multi-Feature Request
-
-```
-User: do-work [detailed auth system requirements — OAuth, profiles, sessions, password reset...]
-
-Created:
-- do-work/user-requests/UR-001/input.md (full verbatim input, 1847 words)
-- do-work/queue/REQ-010-oauth-login.md (user_request: UR-001)
-- do-work/queue/REQ-011-user-profiles.md (user_request: UR-001)
-- do-work/queue/REQ-012-session-management.md (user_request: UR-001)
-- do-work/queue/REQ-013-password-reset.md (user_request: UR-001)
-```
 
 ## Edge Cases
 
