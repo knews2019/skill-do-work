@@ -43,7 +43,6 @@ When implementing or reviewing security-sensitive code, verify against these cat
 
 | Check | What to verify |
 |-------|---------------|
-| Threat modeling | Security-critical features have documented threat models — what can go wrong, what mitigates it |
 | Business logic abuse | Multi-step flows (checkout, account creation, password reset) can't be replayed, reordered, or skipped |
 | Input limits | File upload sizes, request body sizes, array lengths, and string lengths are bounded |
 
@@ -121,11 +120,12 @@ Apply the relevant block based on the project's stack. If multiple apply, check 
 - PreparedStatement for any raw SQL — no string concatenation
 - Jackson deserialization with `@JsonTypeInfo` restrictions if polymorphic types are used
 
-### React / Frontend
-- `dangerouslySetInnerHTML` only with sanitized content (DOMPurify or equivalent)
+### React / Vue / Angular
+- Unsanitized user content into `dangerouslySetInnerHTML` (React), `v-html` (Vue), or `[innerHTML]` (Angular) — sanitize with DOMPurify or equivalent first
 - User input never interpolated into `href`, `src`, or event handler attributes without validation
 - Authentication tokens stored in httpOnly cookies — not localStorage
 - API keys never bundled in client-side code
+- `rel="noopener noreferrer"` on external `target="_blank"` links — prevents tabnabbing
 
 ### Go
 - `database/sql` with `?` placeholders — no `fmt.Sprintf` for queries
@@ -147,22 +147,7 @@ When the project has static analysis tools available, use them to catch vulnerab
 | `brakeman` in Gemfile or CI | Brakeman (Ruby/Rails) | `brakeman --no-pager` |
 | `gosec` in CI or Makefile | gosec (Go) | `gosec ./...` |
 
-**Rule:** Use whatever the project already has configured. Don't introduce a new SAST tool unless the REQ specifically asks for it. If no tool is configured, `semgrep --config=auto` is the lowest-friction option for a one-off scan.
-
-### What Static Analysis Catches That Manual Review Misses
-
-- **Taint tracking**: Data flow from user input (sources) to dangerous operations (sinks) across multiple files and function calls
-- **Known vulnerability patterns**: Regex-based and AST-based matching against catalogs of thousands of known-bad code patterns
-- **Variant analysis**: Once one vulnerability is found, tools can search for structurally similar code elsewhere in the codebase
-- **Dependency-level issues**: Known CVEs in transitive dependencies that don't appear in direct `import` statements
-
-### What Static Analysis Misses That Manual Review Catches
-
-- **Business logic flaws**: Authorization bypass through valid-but-wrong sequences of operations
-- **Design-level issues**: Missing rate limits, overly broad permissions, insecure defaults
-- **Context-dependent vulnerabilities**: Code that's safe in one context but dangerous when called from a different path
-
-**Use both.** Static analysis finds the needles; manual review evaluates the haystack.
+**Rule:** Use whatever the project already has configured. Don't introduce a new SAST tool unless the REQ specifically asks for it. If no tool is configured, `semgrep --config=auto` is the lowest-friction option for a one-off scan. Static analysis catches taint-tracked injection and known-CVE patterns across files; it misses business-logic flaws and context-dependent issues (safe in one call path, dangerous from another) — use both, don't rely on either alone.
 
 ## Severity Classification
 
@@ -177,8 +162,6 @@ When reporting security findings, classify by severity:
 
 ## Anti-Patterns
 
-- **Security by obscurity:** Hiding endpoints, using non-standard ports, or obfuscating code is not a security control. It's a speed bump at best.
 - **Client-side-only validation:** All validation must be enforced server-side. Client-side validation is UX, not security.
 - **Catching and swallowing auth errors:** Authentication/authorization failures must propagate. Never `catch` an auth error and return a success response.
-- **Overly broad CORS:** `Access-Control-Allow-Origin: *` on authenticated endpoints defeats the purpose of CORS entirely.
 - **Rolling your own crypto:** Use established libraries for encryption, hashing, and token generation. Custom implementations are almost always wrong.

@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.140.0 — Domain Crew Files Trimmed to Opinions (2026-07-27)
+
+The six domain crew files were 6,737 words, much of it engineering advice a capable model already follows, with the same security guidance stated in two or three places. They're now 4,237 words of actual opinions — the calls this project makes differently, plus everything wired to do-work machinery.
+
+- `crew-members/security.md` is now the single owner of security content. `frontend.md` and `backend.md` point at it instead of restating XSS sanitization, token storage, bundled secrets, tabnabbing, and rate limiting.
+- `backend.md` −75%, `frontend.md` −61%, `testing.md` −60%, `debugging.md` −27%. Every `JIT_CONTEXT` load contract is byte-identical.
+- Kept: framework/test detection tables, the Red-Green workflow tied to `tdd: true`, prime-file test mappings, and every UNIFY quality checklist.
+- `general.md` and `coding-guardrails.md` — the always-loaded pair — are untouched.
+
 ## 0.139.0 — Action-File Boilerplate Sections Must Now Be Earned (2026-07-27)
 
 The action-file template asked for Rules, Common Rationalizations, Red Flags, and a Verification Checklist, so 20 of 42 action files carried all four — many stuffed with engineering advice any capable model already follows. Those four sections are now earned, not mandatory, and a contract check keeps the boilerplate from growing back.
