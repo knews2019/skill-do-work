@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.140.2 — Heartbeats Cover the Build Stretch; Cleanup and Suggestions Respect Live State (2026-07-28)
+
+The remaining four accepted findings from the same external triage 0.140.1 started on. The big one: a live Route C build could go 45+ minutes between lock touchpoints and get taken over — and re-queued — mid-build.
+
+- Heartbeat refreshes are no longer phase-boundaries-only: refresh before dispatching and when each long-running agent returns (explore, plan, build, review), plus at any pause once 15 minutes have passed since the last lock write (`actions/work-reference.md`, `actions/work.md` Steps 4–6). The 45-minute stale threshold's rationale now states the schedule it depends on.
+- Cleanup's Pass 0 gained a live-claim gate: any REQ freshly claimed in the orchestrator lock by another session is exempt from the queue and `working/` sweeps — a coexisting session flips its REQ terminal *before* moving it, and that window used to look like an abandoned sweep candidate (`actions/cleanup.md`).
+- Next-step suggestions are sourced from SKILL.md's routing triggers, not Action Dispatch names — `do-work capture-requests` didn't route; the capture form is `do-work capture-request: <text>` (`next-steps.md`).
+- Lock acquisition and pipeline-state setup now run the `git ls-files` tracked-path check behind their ignore appends, reporting the `git rm --cached` remedy when an earlier session committed the file — an ignore rule can't rescue an already-indexed path (`actions/work-reference.md`, `actions/pipeline.md`; the memory-module installer already had this check since 0.139.2).
+
 ## 0.140.1 — Claim-Before-Move Closes the Lock Races; Checkpoints and Temp Files Stop Lingering (2026-07-28)
 
 Four accepted findings from external feedback triage, all in the concurrent-orchestrator machinery. The claim/recovery race and the acquisition race could each let two sessions fight over one REQ; the other two were slow leaks.

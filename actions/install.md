@@ -517,7 +517,7 @@ if [ -n "$exclude" ]; then
 fi
 ```
 
-Each path is gated **independently** — the same per-entry discipline Phase 3 uses for the hooks, so a partial prior state (one pattern present, one missing) repairs instead of skipping both. `git check-ignore -q` already succeeds when any ignore source covers the path, so the appends never duplicate on a re-run, and the guard is a clean no-op outside a git repo.
+Each path is gated **independently** — the same per-entry discipline Phase 3 uses for the hooks, so a partial prior state (one pattern present, one missing) repairs instead of skipping both. `git check-ignore -q` already succeeds when any ignore source covers the path, so the appends never duplicate on a re-run, and the guard is a clean no-op outside a git repo. (Ignored ≠ untracked: the Phase 1 fast-path gate and Phase 4's verification both run the `git ls-files` tracked-store check with the `git rm --cached` remedy — this block only makes the paths ignorable.)
 
 #### Phase 3: Merge the hook entries
 

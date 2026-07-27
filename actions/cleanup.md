@@ -28,6 +28,8 @@ Five passes, in order:
 
 Scan `do-work/queue/` and the working directory for REQs with terminal statuses that should have been archived but weren't — typically from manual work, different agents, or legacy sessions that completed outside the standard work pipeline.
 
+**Live-claim gate (before sweeping anything).** Read `do-work/orchestrator-lock.json` if it exists. A REQ id that a session *other than the one running this cleanup* freshly claims — it matches the top-level holder's `claimed_req`, or any `coexisting_sessions[].claimed_req`, with that session's `heartbeat_at` ≤45 minutes old — is **exempt from every Pass 0 sweep**, terminal status or not. A coexisting session flips its REQ to a terminal status (Step 8 substep 1) *before* moving it out of `working/` (substep 6); in that window the file looks exactly like a finished-but-abandoned sweep candidate, but sweeping it archives — and stages for commit — a file its owner is about to move itself. Holding the lock through cleanup only fences off *arriving* sessions (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**, Release last); this gate is what protects already-coexisting ones. Report each exemption: `Skipped REQ-NNN — actively claimed by live session <session_id> (heartbeat <N>m ago)`. When cleanup runs inside a work-loop session (Step 10), that session's own lock entry is not "another session" — though by Step 10 its `claimed_req` is already `null`. No lock file, or only stale claims → nothing is exempt.
+
 1. **Glob `do-work/queue/REQ-*.md`**
 2. **Read each REQ's frontmatter** `status` field
 3. **If status is any terminal value** — `completed`, `completed-with-issues`, `failed`, `cancelled`, or any non-standard terminal status (`done`, `finished`, `closed`, `canceled`, `abandoned`, `wont-do`):
@@ -35,7 +37,7 @@ Scan `do-work/queue/` and the working directory for REQs with terminal statuses 
    - Move the REQ to `do-work/archive/` root (Pass 1 and Pass 2 will then consolidate it into the correct UR folder)
    - Report: `Swept REQ-NNN from do-work/queue/ (was status: {original}) → archive`
 4. **Leave `pending`, `pending-answers`, `blocked`, `reserved`, and `claimed` REQs untouched** — those are active queue items (`reserved` belongs to another worktree/cloud session; `blocked` waits on an external condition)
-5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`, `cancelled`), it was finished but never moved out. Same treatment: normalize status, move to `do-work/archive/` root, report it.
+5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`, `cancelled`), it was finished but never moved out. Same treatment: normalize status, move to `do-work/archive/` root, report it. The live-claim gate above applies with full force here — `working/` is exactly where a live coexisting session's mid-Step-8 REQ sits with a terminal status; never sweep a freshly claimed file.
 
 ### Pass 1: Close Completed User Requests
 

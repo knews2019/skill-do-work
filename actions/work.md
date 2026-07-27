@@ -359,6 +359,8 @@ It performs the three checks (git clean with `-uall`, test baseline, dependencie
 
 **Durability (multi-REQ fan-out):** When fanning work out to background or parallel sub-agents, follow the durability pattern in `crew-members/background-agents.md` (disk-durable run directory as source of truth; survives a dead orchestrator session).
 
+**Heartbeat around the dispatch:** refresh the orchestrator lock's heartbeat immediately before spawning the agent and again when it returns — and at any pause during the build loop (between attempts, test-fix iterations) once more than 15 minutes have passed since the last lock write. The Step 2 → Step 6.25 stretch is the longest dark gap between the fixed touchpoints; without these refreshes a live Route C build can cross the 45-minute stale threshold and get taken over mid-build (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**, Heartbeat refresh). The same rule applies to the Step 4 (plan) and Step 5 (exploration) dispatches.
+
 Spawn a **general-purpose agent** with the loaded rules, any files listed in the `prime_files` array, and context appropriate to the route:
 
 - **Route A**: Request content only — "triaged as simple, aim for a focused minimal change"

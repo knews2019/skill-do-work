@@ -5,7 +5,7 @@
 ## Format Constraints
 
 - Render as a fenced block starting with `Next steps:`, one command per line, command left-aligned, a short gloss on the right, columns aligned.
-- Suggest only fully-qualified verbs from `SKILL.md`'s Action Dispatch table — that table is the authoritative verb list; don't invent or abbreviate one.
+- Suggest only commands `SKILL.md`'s **Routing Decision** table actually routes — pick a trigger from the target action's routing row, never its Action Dispatch name. The dispatch name is a file-lookup key, not necessarily a trigger: `capture-requests` doesn't route (the single-word rule treats it as ambiguous), so a capture suggestion is written `do-work capture-request: <text>`. Don't invent or abbreviate a verb.
 - Cap at 2-3 suggestions, ranked by relevance to what just happened and what's outstanding.
 - Always close with: `do-work help` — full command reference.
 
