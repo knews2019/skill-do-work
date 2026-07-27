@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.144.0 — Pipeline Splits Its Output Renderings Into a Lazy-Loaded Companion (2026-07-27)
+
+`pipeline.md` was 7,471 words, most of it templates for output that only gets rendered at the end of a run — so a pipeline that aborted at step 1 had still loaded all three completion-report formats and the help menu. Those now live in `actions/pipeline-reference.md`.
+
+- `actions/pipeline.md`: 7,471 → 4,719 words. The companion holds the state-file schema, the status and completion blocks, all three completion-report renderings, the continuation notice, and the help menu.
+- Steps 1–6 and the mode-determination logic stay in the action file. The state file's lifecycle stays too; only its field-level schema moved.
+- Verified byte-identical after heading normalization; 14 pointer sites across 8 companion sections, no orphans.
+- ADR-008 and ADR-001 updated to match — ADR-008 had been asserting the templates were inline, which this change made false.
+
 ## 0.143.0 — AI Report Splits Its Asset Templates Into a Lazy-Loaded Companion (2026-07-27)
 
 `ai-report.md` was the largest action file in the skill at 7,541 words, and it loaded whole — so a report that never generates an image still paid for the entire image-generation backend. The heavy assets now live in `actions/ai-report-reference.md`, opened only at the step that needs them.

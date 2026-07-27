@@ -64,5 +64,6 @@ The trade-off is indirection. Readers sometimes need to open two files instead o
 - [CHANGELOG.md](../../CHANGELOG.md) — `0.49.0 The Architect`, `0.61.1 The Lean Cut`, `0.64.1 The Companion Split`
 - [CLAUDE.md](../../CLAUDE.md) — project structure and action-file conventions
 - [actions/work.md](../../actions/work.md) and [actions/work-reference.md](../../actions/work-reference.md) (split into a companion, re-inlined after trimming, then split again on 2026-06-01 — REQ-001)
-- [actions/pipeline.md](../../actions/pipeline.md) (originally split into a `pipeline-reference.md` companion; later re-inlined)
+- [actions/pipeline.md](../../actions/pipeline.md) and [actions/pipeline-reference.md](../../actions/pipeline-reference.md) (originally split into a companion, re-inlined in 0.76.0, then split again on 2026-07-27 — REQ-030)
+- [actions/ai-report.md](../../actions/ai-report.md) and [actions/ai-report-reference.md](../../actions/ai-report-reference.md), [actions/capture.md](../../actions/capture.md) and [actions/capture-reference.md](../../actions/capture-reference.md) (both split 2026-07-27 — REQ-029, REQ-031)
 - [actions/bkb.md](../../actions/bkb.md) and [actions/bkb-reference.md](../../actions/bkb-reference.md)
