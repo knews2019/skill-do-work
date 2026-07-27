@@ -6,6 +6,23 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.139.3 — Orchestrator Lock Updates Are Serialized; Long Prompts No Longer Eat the Agent Reply (2026-07-28)
+
+Three fixes from a second review pass. The lock guard turns out to have had a lost-update hole since coexisting sessions were added — measured at 19 of 20 concurrent writes discarded.
+
+- Every write to `do-work/orchestrator-lock.json` now runs inside a `mkdir` mutex and lands via temp-file-plus-rename. Multiple sessions write that file (a coexisting session refreshing its entry, the holder's prune, a take-over), so "each writer touches only its own fields" was never enough: a lost `claimed_req` makes Crash Recovery re-queue a REQ that's actively being built. The mutex self-heals after a minute and never blocks the pipeline.
+- The Stop hook budgets the user and assistant sides of a capture separately. Truncating the combined string meant a long prompt silently dropped the entire assistant reply — the half holding the decisions. Each side is guaranteed half the budget and a short side yields its slack; cuts are marked `[truncated]`. This was reachable only because 0.139.2 started populating the user side.
+- `do-work run` holds the orchestrator lock through `cleanup` and its commit instead of releasing first. Cleanup sweeps `do-work/queue/` and `do-work/working/`, so releasing early let a departing session sweep and commit an arriving session's just-claimed REQ.
+
+## 0.139.2 — Raw Session Captures Stay Out of Session Start; Tool-Using Sessions Capture the Human Prompt (2026-07-28)
+
+Four review fixes to the memory engine, its installer, and the router. The important one: a Markdown heading inside a captured exchange could end the capture section early, so the rest of the raw transcript was injected as curated memory at the next session start — exactly what that filter exists to prevent.
+
+- Capture bodies are now blockquoted at write time and the session-start filter only treats `## HH:MM UTC …` as a section boundary, so a captured `## Findings` can't end the section. The reader-side rule is what protects logs already on disk.
+- The Stop hook now finds the real final exchange. Claude Code records tool results as `type: "user"` entries, so any session whose last turn used a tool was storing an empty `User:` side — 7 of 8 recent transcripts on the author's machine. Text is pulled only from `text` blocks, `isMeta` entries are skipped, and blank entries are dropped; the same fix repairs assistant turns that end in a tool call.
+- `do-work remember X` and `do-work recall X` keep their verb as the sub-command instead of arriving as a bare payload, and `what do you remember` maps to `recall`.
+- The memory-module install verifies with `git ls-files`, not just `git check-ignore`. Ignore rules don't apply to tracked files, so a repair install over a committed log reported "logs ignored: OK" while the Stop hook kept appending to it. The canonical local-ignore snippet in `crew-members/background-agents.md` now carries the same caveat so the next copy-paste doesn't reintroduce it.
+
 ## 0.139.1 — Bootstrap Sentinel Stays Machine-Local; "Remember To" Routes to Capture (2026-07-27)
 
 Three review fixes to the memory engine and the installer. The big one: the bootstrap sentinel was committable, so one machine's import would have silently blocked every other clone from importing its own history.

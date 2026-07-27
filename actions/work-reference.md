@@ -208,7 +208,7 @@ Once every file this session is allowed to touch has been recovered (a live sess
 
 ## Concurrent-Orchestrator Lock Guard (Step 1)
 
-Guards the one-orchestrator-per-queue convention: a second `do-work run` starting on the same working tree must detect the first before claiming or processing anything. Not a distributed lock — plain file reads/writes are the only atomicity this needs. (Origin incident: two sessions ran `do-work run` on the same tree on 2026-07-01; the second committed and archived the first's in-flight REQ with a hollow paper trail. The collision merged by luck — nothing detected it.) **Design note (REQ-018 remediation):** the lock records exactly one HOLDER plus zero or more `coexisting_sessions` — a session that picks "proceed anyway" gets its own tracked entry instead of displacing the holder, so the holder's `session_id` never stops matching and the holder is never disrupted.
+Guards the one-orchestrator-per-queue convention: a second `do-work run` starting on the same working tree must detect the first before claiming or processing anything. Not a distributed lock — but every update to the lock file is a read-modify-write on a file with more than one writer, so it must be serialized (**Serialized lock updates**, below). Plain unguarded reads and writes are *not* sufficient. (Origin incident: two sessions ran `do-work run` on the same tree on 2026-07-01; the second committed and archived the first's in-flight REQ with a hollow paper trail. The collision merged by luck — nothing detected it.) **Design note (REQ-018 remediation):** the lock records exactly one HOLDER plus zero or more `coexisting_sessions` — a session that picks "proceed anyway" gets its own tracked entry instead of displacing the holder, so the holder's `session_id` never stops matching and the holder is never disrupted.
 
 **Lock file:** `do-work/orchestrator-lock.json`. Re-derive this path deterministically every time you touch it — do not carry a shell variable across separate command blocks. `mkdir -p do-work` first if the directory doesn't exist yet.
 
@@ -243,7 +243,42 @@ With one session coexisting — this is the shape you edit when refreshing or re
 
 `session_id` is `do-work-$(date -u +%Y%m%dT%H%M%SZ)-$$` — a UTC timestamp plus the current shell's process id, generated once at acquisition (or at joining, for a coexisting session). The orchestrating agent already knows this string from its own context for the rest of the run (it isn't a shell export that needs to survive between command blocks) — every later touch just re-types the same value into a fresh, deterministically-derived command. The top-level `session_id`/`started_at`/`heartbeat_at`/`claimed_req` describe the recorded **holder**; `claimed_req` names whatever REQ currently sits in `do-work/working/` under the holder's claim, or `null` between REQs. `coexisting_sessions` lists other sessions running alongside the holder via **proceed anyway** (below) — each entry is `{session_id, joined_at, heartbeat_at, claimed_req}`, refreshed independently of the holder's own fields; empty (`[]`) when no session has chosen to coexist. All timestamps follow the Timestamp rule above (current UTC instant).
 
-**Never committed.** At acquisition (first write), append the local-ignore snippet from `crew-members/background-agents.md` → **Local-ignore snippet (for genuinely-transient paths)**, substituting `do-work/orchestrator-lock.json` for `<path>`. Same mechanism `do-work/pipeline.json` already uses (`actions/pipeline.md` Step 2 substep 4) — a lock is transient session state, not part of the Trail of Intent, so it must stay out of git regardless of install layout.
+**Serialized lock updates (every write, no exceptions).** More than one session writes this file — a coexisting session refreshes its own entry while the holder refreshes the holder fields, and both the heartbeat prune and a take-over rewrite *other* sessions' entries. So "each writer only changes its own logical fields" describes intent, not atomicity: if the holder reads at T0, a coexisting session records its `claimed_req` at T1, and the holder writes its T0 image back at T2, that claim is silently lost. The Crash Recovery per-file gate then sees no live claim on a REQ that is actively being built and re-queues it — the exact 2026-07-01 failure this guard exists to prevent.
+
+Every path that writes the lock — acquisition, take-over, the **proceed anyway** append, each heartbeat refresh, the opportunistic prune, and release — wraps its read-modify-write in this mutex, and re-reads the file *inside* the critical section rather than reusing an earlier read:
+
+```bash
+lock_path="do-work/orchestrator-lock.json"
+mutex_path="do-work/orchestrator-lock.json.mutex"
+
+# `mkdir` is atomic on POSIX: exactly one contender wins, the rest fail.
+mutex_attempts=0
+until mkdir "$mutex_path" 2>/dev/null; do
+  # A session that died mid-update must not wedge the queue. The critical section is
+  # sub-second, so a mutex older than a minute is abandoned by definition — break it.
+  if [ -d "$mutex_path" ] && [ -z "$(find "$mutex_path" -maxdepth 0 -mmin -1 2>/dev/null)" ]; then
+    rmdir "$mutex_path" 2>/dev/null || true
+    continue
+  fi
+  mutex_attempts=$((mutex_attempts + 1))
+  if [ "$mutex_attempts" -ge 30 ]; then     # ~15s of contention on a sub-second section
+    rmdir "$mutex_path" 2>/dev/null || true # treat as abandoned and take it
+    continue
+  fi
+  sleep 0.5
+done
+
+# --- critical section: re-read, modify, write atomically ---
+# (read $lock_path fresh here, apply ONLY this session's own field changes)
+lock_tmp="$lock_path.$$.tmp"
+printf '%s\n' "$updated_lock_json" > "$lock_tmp" && mv -f "$lock_tmp" "$lock_path" || rm -f "$lock_tmp"
+
+rmdir "$mutex_path" 2>/dev/null || true
+```
+
+The temp-file-plus-`mv` is not decoration: `mv` within a directory is an atomic rename, so a reader outside the mutex can never observe a half-written lock file. Never write `$lock_path` in place. **Never block the pipeline on this** — the mutex always yields within ~15 seconds by design; a wedged queue is worse than a rare unserialized update.
+
+**Never committed.** At acquisition (first write), append the local-ignore snippet from `crew-members/background-agents.md` → **Local-ignore snippet (for genuinely-transient paths)**, substituting `do-work/orchestrator-lock.json` for `<path>`, and again for `do-work/orchestrator-lock.json.mutex` — the mutex directory and the `.tmp` files are the same kind of transient session state as the lock itself. Same mechanism `do-work/pipeline.json` already uses (`actions/pipeline.md` Step 2 substep 4) — a lock is transient session state, not part of the Trail of Intent, so it must stay out of git regardless of install layout.
 
 **Stale threshold: 45 minutes.** Generous on purpose — a Route C build can legitimately run that long between two of the heartbeat touchpoints below, and a false "stale" verdict on a genuinely live session is worse than a slightly slower self-heal on a genuinely dead one. Applies identically to the holder's `heartbeat_at` and to every `coexisting_sessions[].heartbeat_at`.
 
@@ -298,6 +333,8 @@ With one session coexisting — this is the shape you edit when refreshing or re
 - Else (this session's `session_id` appears nowhere in the lock file): it was superseded — another session's take-over overwrote the holder slot, or this session's own coexisting entry was pruned as stale. Stop and report rather than silently re-adding yourself — this is what keeps "file-based" from turning into "two sessions both believing they hold it."
 
 While performing any of the checks above, opportunistically prune `coexisting_sessions` entries (other than the one just refreshed) whose `heartbeat_at` is past the 45-minute threshold — this is what lets an abandoned coexisting session's claim self-heal via the Crash Recovery per-file gate on a later Step 1 entry, with no separate cleanup pass.
+
+**Release last — after every repo mutation this session will make, including `actions/cleanup.md` and its commit.** Releasing is what lets the next `do-work run` start claiming REQs and moving files, so anything this session does afterward races that new session over the same working tree. Cleanup is the trap: its Pass 0 sweeps `do-work/queue/` and `do-work/working/` and stages those paths (`actions/cleanup.md`), which is exactly where an arriving session has just put its freshly claimed REQ — release-then-cleanup lets a departing session sweep and commit the newcomer's in-flight work. The lock costs nothing to hold through a cleanup pass; only Step 10's exit runs cleanup, so this ordering matters there in particular.
 
 **Release (every normal exit — Step 1's composed no-pending exit, Step 1's targeted-mode stop, Step 10's exit, and an unrecoverable-error stop):** re-derive the path and read it.
 - **This session is the holder:** prune any `coexisting_sessions` entries past the 45-minute threshold first. If none remain, delete the whole lock file. **If any live entry remains, do NOT delete or modify the file** — leave it exactly as-is. This session's heartbeat simply stops refreshing and ages past 45 minutes on its own; the next session to reach Step 1 takes the stale-holder path above (warn, take over, preserving/pruning `coexisting_sessions`) without disrupting whichever coexisting session(s) are still live. Trades a bounded (≤45m) delay in freeing the holder slot for not inventing a hand-off mechanism — YAGNI, not a distributed lock.

@@ -46,8 +46,16 @@ if [ -f "$TODAY_LOG" ]; then
   # injecting them here would put unvetted content into context before any
   # prompt-injection guard can load. They stay reachable only via `memory recall`,
   # which loads crew-members/prompt-injection.md first (actions/memory.md).
+  #
+  # A section boundary is ONLY a line matching the daily log's own heading grammar,
+  # `## HH:MM UTC <kind>` (actions/memory-reference.md → Daily-Log Entry Conventions). Matching
+  # a bare `^## ` instead let any Markdown heading inside a capture body — `## Findings`
+  # is ordinary in an assistant response — end the capture section, so everything after
+  # it was injected as curated memory. Keep this anchored: the pattern IS the guard.
+  # hooks/memory-stop-capture.sh also blockquotes capture bodies at write time; this
+  # rule is what protects logs already written without that prefix.
   CURATED_LOG_LINES="$(awk '
-    /^## /{in_capture_section = ($0 ~ /session capture/)}
+    /^## [0-9][0-9]:[0-9][0-9] UTC /{in_capture_section = ($0 ~ /session capture/)}
     !in_capture_section {print}
   ' "$TODAY_LOG" 2>/dev/null || true)"
   if [ -n "$(printf '%s' "$CURATED_LOG_LINES" | tr -d '[:space:]')" ]; then

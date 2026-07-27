@@ -18,7 +18,11 @@
 
 ## Input
 
-`$ARGUMENTS` = `<sub-command> [payload]`. Bare `memory` (or `memory help`) → print the Help Menu below. Locate the store first:
+`$ARGUMENTS` = `<sub-command> [payload]`. Bare `memory` (or `memory help`) → print the Help Menu below.
+
+**The sub-command is always present, including via the direct aliases.** `do-work remember <text>` and `do-work recall <query>` route here with the alias preserved as the sub-command (`remember <text>` / `recall <query>`), and `what do you remember` arrives as `recall <query>` — SKILL.md's routing row 37 specifies that, because the router's default "strip the trigger, pass the rest" would otherwise hand this action a bare payload with nothing to dispatch on. If `$ARGUMENTS` ever arrives without a leading sub-command, treat a question-shaped payload as `recall` and a statement-shaped one as `remember` rather than falling through to the help menu — but that is a fallback for a router bug, not the contract.
+
+Locate the store first:
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"

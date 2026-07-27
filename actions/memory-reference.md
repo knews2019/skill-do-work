@@ -52,6 +52,8 @@ where `<kind>` is one of (illustrative, not exhaustive — new writers add new k
 - `session capture <hash8>` — appended by `hooks/memory-stop-capture.sh`; `<hash8>` is the first 8 hex chars of the sha256 of the captured text and is the dedup key.
 - `bootstrap import` — written once by `memory bootstrap`; body must name the source transcript.
 
+**The `## HH:MM UTC ` prefix is load-bearing, not cosmetic.** `hooks/memory-session-start.sh` decides where a `session capture` section ends by matching that grammar, so a heading inside a body — `## Findings` is ordinary in a captured assistant response — must NOT read as a section boundary. Two rules keep that true, and both are required: writers anchor their headings to this exact form, and any writer emitting verbatim third-party text blockquotes each body line (`> `) so a body line can never begin with `#`. Loosening the reader's pattern to a bare `^## ` injects the tail of a raw capture as curated memory.
+
 ## Lexical Recall (Layer 1 — always runs)
 
 Design-for-the-floor: grep + arithmetic only. Sanitize the query FIRST as a text operation (never interpolate raw user text inside shell quoting — an apostrophe breaks the quoting and is an injection vector), then substitute the already-safe value:
@@ -133,11 +135,11 @@ printf '{"ts":"%s","engine":"memory","event":"recall","query":"%s","hits":%d,"so
 
 Used by `hooks/memory-stop-capture.sh`:
 
-1. `capture_text` = final user message + final assistant message from the session transcript, truncated to ~1,500 characters total.
+1. `capture_text` = final user message + final assistant message from the session transcript, truncated to ~1,500 characters total. "Final message" means the last transcript entry that carries real text: pull only from blocks typed `text`, skip `isMeta` entries, and drop entries whose extracted text is blank. Claude Code records tool results as `type: "user"` entries holding `tool_result` blocks with no `.text`, so a naive `last` lands on a tool result and stores an empty `User:` side for any session whose final turn used a tool — the common case, not an edge case. The assistant side has the mirror problem when a turn ends in a `tool_use` block.
 2. Redact per the Capture Redaction Spec below — redaction runs BEFORE hashing so the dedup key is stable against the persisted text.
 3. `hash8="$(printf '%s' "$capture_text" | sha256sum | cut -c1-8)"` (fall back to `shasum -a 256` on systems without `sha256sum`).
 4. `grep -q "session capture $hash8" "$today_log"` → already captured, exit 0 (idempotent across duplicate Stop firings).
-5. Append heading `## HH:MM UTC session capture <hash8>`, framing line `Session capture — final exchange between the user and the agent:`, then the text.
+5. Append heading `## HH:MM UTC session capture <hash8>`, framing line `Session capture — final exchange between the user and the agent:`, then the text **with every line prefixed `> `** (see Daily-Log Entry Conventions — the blockquote is what stops a heading inside the captured text from ending the section for `hooks/memory-session-start.sh`). Blockquote at write time only; the hash is computed over the unquoted text at step 3, so the dedup key stays stable.
 6. The hook ALWAYS exits 0 — capture is never worth blocking a session end.
 
 ## Capture Redaction Spec

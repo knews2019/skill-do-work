@@ -99,6 +99,16 @@ if [ -n "$exclude" ]; then
 fi
 ```
 
+**This snippet makes a path ignorable; it does not make an already-committed path safe.**
+Ignore rules have no effect on files in the index, and plain `git check-ignore` consults the
+index and won't report a tracked path at all — so on a repair run over a store that was
+committed once, this appends the pattern, `check-ignore` reports success, and the file keeps
+getting staged by the next `git add -A`. Any caller whose reason for ignoring a path is
+"this must never be committed" (verbatim capture logs, live state, credentials-adjacent
+files) must ALSO run `git ls-files -- <path>` and treat a non-empty result as a failure with
+a `git rm --cached <path>` remedy for the user — never untrack on their behalf. Callers that
+merely want a build artifact out of `git status` can skip that second check.
+
 `git check-ignore -q` already succeeds when *any* ignore source covers the path, so the
 append only fires when genuinely needed and never duplicates. The appended pattern carries
 a `**/` prefix because a pattern with an interior slash is root-anchored, while

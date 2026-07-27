@@ -53,21 +53,70 @@ else
 fi
 [ -n "$TRANSCRIPT_PATH" ] && [ -f "$TRANSCRIPT_PATH" ] || exit 0
 
+# Capture size budget. CAPTURE_TEXT_BUDGET is what's left for the two message texts
+# once the "User: " / "\n\nAgent: " framing (15 bytes) is accounted for, so a fully
+# budgeted capture composes to exactly CAPTURE_BUDGET_BYTES. CAPTURE_SIDE_FLOOR is the
+# amount each side is guaranteed before the other can claim any slack.
+CAPTURE_BUDGET_BYTES=1500
+CAPTURE_TEXT_BUDGET=$(( CAPTURE_BUDGET_BYTES - 15 ))
+CAPTURE_SIDE_FLOOR=$(( CAPTURE_TEXT_BUDGET / 2 ))
+
 # Extract the final user and assistant message texts from the JSONL transcript.
 CAPTURE_TEXT=""
 if command -v jq &>/dev/null; then
   extract_last_message_text() {
     # $1 = entry type (user|assistant). Content may be a string or an array of blocks.
+    #
+    # Claude Code records TOOL RESULTS as `type: "user"` entries whose content is an
+    # array of `tool_result` blocks — no top-level `.text`. Taking `last` over all
+    # `user` entries therefore lands on a tool result for any session whose final turn
+    # used a tool (measured: 7 of 8 recent transcripts on the author's machine), and
+    # the capture stores an empty `User:` side. The assistant side has the mirror
+    # problem: a turn ending in a `tool_use` block yields no text either.
+    #
+    # So: pull text ONLY from blocks explicitly typed `text`, skip `isMeta` entries
+    # (caveats and slash-command wrappers are not the human's prompt), drop every
+    # entry whose extracted text is blank, and take the last one that survives.
     jq -rs --arg entry_type "$1" '
-      [.[] | select(.type == $entry_type and (.message.content != null))] | last
-      | .message.content
-      | if type == "string" then . else ([.[]? | .text? // empty] | join(" ")) end
+      [ .[]
+        | select(.type == $entry_type and (.message.content != null) and ((.isMeta // false) | not))
+        | .message.content
+        | if type == "string" then .
+          else ([.[]? | select(.type? == "text") | .text? // empty] | join(" "))
+          end
+        | select(type == "string" and test("\\S"))
+      ] | last // ""
     ' "$TRANSCRIPT_PATH" 2>/dev/null || true
   }
   LAST_USER_TEXT="$(extract_last_message_text user)"
   LAST_ASSISTANT_TEXT="$(extract_last_message_text assistant)"
   [ "$LAST_USER_TEXT" = "null" ] && LAST_USER_TEXT=""
   [ "$LAST_ASSISTANT_TEXT" = "null" ] && LAST_ASSISTANT_TEXT=""
+
+  # Trim the two sides INDEPENDENTLY, never the composed string. Truncating
+  # "User: … Agent: …" as one blob means a long prompt eats the entire assistant
+  # reply — and the reply is the half holding the decisions and outcome this
+  # capture exists to preserve. Each side is guaranteed at least half the budget;
+  # whichever side comes in under its half yields the slack to the other, so a
+  # short prompt still lets a long answer through.
+  byte_length_of() { printf '%s' "$1" | wc -c | tr -d '[:space:]'; }
+  truncate_to_bytes() {
+    # $1 = text, $2 = byte budget. Marks the cut so a reader knows text is missing.
+    if [ "$(byte_length_of "$1")" -le "$2" ]; then printf '%s' "$1"; return; fi
+    printf '%s [truncated]' "$(printf '%s' "$1" | head -c "$(( $2 - 12 ))")"
+  }
+  user_text_bytes="$(byte_length_of "$LAST_USER_TEXT")"
+  assistant_text_bytes="$(byte_length_of "$LAST_ASSISTANT_TEXT")"
+  if [ "$(( user_text_bytes + assistant_text_bytes ))" -gt "$CAPTURE_TEXT_BUDGET" ]; then
+    if [ "$user_text_bytes" -le "$CAPTURE_SIDE_FLOOR" ]; then
+      LAST_ASSISTANT_TEXT="$(truncate_to_bytes "$LAST_ASSISTANT_TEXT" "$(( CAPTURE_TEXT_BUDGET - user_text_bytes ))")"
+    elif [ "$assistant_text_bytes" -le "$CAPTURE_SIDE_FLOOR" ]; then
+      LAST_USER_TEXT="$(truncate_to_bytes "$LAST_USER_TEXT" "$(( CAPTURE_TEXT_BUDGET - assistant_text_bytes ))")"
+    else
+      LAST_USER_TEXT="$(truncate_to_bytes "$LAST_USER_TEXT" "$CAPTURE_SIDE_FLOOR")"
+      LAST_ASSISTANT_TEXT="$(truncate_to_bytes "$LAST_ASSISTANT_TEXT" "$CAPTURE_SIDE_FLOOR")"
+    fi
+  fi
   CAPTURE_TEXT="$(printf 'User: %s\n\nAgent: %s' "$LAST_USER_TEXT" "$LAST_ASSISTANT_TEXT")"
 else
   # Best-effort fallback when jq is absent: grab the raw text fields from the
@@ -75,8 +124,10 @@ else
   CAPTURE_TEXT="$(tail -c 8000 "$TRANSCRIPT_PATH" | sed -n 's/.*"text"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tail -6 || true)"
 fi
 
-# Nothing meaningful extracted → skip silently
-CAPTURE_TEXT="$(printf '%s' "$CAPTURE_TEXT" | head -c 1500)"
+# Nothing meaningful extracted → skip silently. This blanket cap is a backstop for the
+# no-jq fallback above, which has no separate user/assistant sides to budget; the jq
+# path already composes to <= CAPTURE_BUDGET_BYTES, so it is a no-op there.
+CAPTURE_TEXT="$(printf '%s' "$CAPTURE_TEXT" | head -c "$CAPTURE_BUDGET_BYTES")"
 [ -n "$(printf '%s' "$CAPTURE_TEXT" | tr -d '[:space:]')" ] || exit 0
 case "$CAPTURE_TEXT" in
   "User: "*"Agent: ") exit 0 ;;   # both messages came back empty
@@ -116,10 +167,21 @@ if [ -f "$TODAY_LOG" ] && grep -q "session capture $CAPTURE_HASH" "$TODAY_LOG" 2
   exit 0   # already captured
 fi
 
+# Blockquote every body line before it lands in the log. The capture is verbatim
+# transcript text, and assistant responses routinely contain Markdown headings — an
+# unquoted `## Findings` inside a capture reads as a new log section, which let
+# hooks/memory-session-start.sh treat the rest of the capture as curated content and
+# inject it at the next session start, bypassing the prompt-injection guard the
+# exclusion exists to enforce (actions/memory-reference.md → Daily-Log Entry Conventions).
+# `> ` cannot begin a heading in any Markdown parser and is honest about what the
+# body is: quoted transcript, not authored log prose. The reader-side awk is hardened
+# independently, because logs already on disk were written without this prefix.
+QUOTED_CAPTURE_TEXT="$(printf '%s\n' "$CAPTURE_TEXT" | sed 's/^/> /')" || exit 0
+
 {
   printf '\n## %s UTC session capture %s\n\n' "$(date -u +%H:%M)" "$CAPTURE_HASH"
   printf 'Session capture — final exchange between the user and the agent:\n\n'
-  printf '%s\n' "$CAPTURE_TEXT"
+  printf '%s\n' "$QUOTED_CAPTURE_TEXT"
 } >> "$TODAY_LOG" 2>/dev/null || exit 0
 
 # Best-effort capture ledger line
