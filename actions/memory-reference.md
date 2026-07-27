@@ -8,7 +8,7 @@
 memory/                        # at project root (git rev-parse --show-toplevel, else pwd)
 ├── working-memory.md          # standing memory — HARD CAP 2,500 characters  [committable]
 ├── logs/
-│   └── YYYY-MM-DD.md          # dated daily logs, append-only (UTC dates)    [machine-local]
+│   └── YYYY-MM-DD.md          # dated daily logs, append-only (UTC dates; sole exception: user-invoked `memory forget` redacts in place)    [machine-local]
 ├── usage-ledger.jsonl         # one JSON line per event (schema below)       [machine-local]
 └── .bootstrap-imported        # sentinel — exists after the one-time bootstrap import [machine-local]
 ```
@@ -59,6 +59,8 @@ where `<kind>` is one of (illustrative, not exhaustive — new writers add new k
 - A section without the sentinel is pre-0.139.4 legacy with an unquoted body, where no boundary is trustworthy: the reader suppresses to end-of-file. That also hides curated entries written later that day — a bounded, self-clearing cost, correct against injecting raw transcript text.
 
 Both halves are required. Dropping the sentinel makes legacy and current sections indistinguishable; dropping the quoting lets a body line impersonate the boundary.
+
+**One writer may rewrite an existing body line:** `memory forget` (`actions/memory.md`) — explicit user invocation, confirmation-gated — replaces a confirmed line's content with a `[forgotten — redacted by memory forget YYYY-MM-DD]` marker. It preserves any `> ` prefix and never modifies `##` heading lines, so both halves of the boundary contract (and the `session capture <hash8>` dedup key) survive redaction. Automatic writers only ever append.
 
 ## Lexical Recall (Layer 1 — always runs)
 
@@ -141,7 +143,7 @@ printf '{"ts":"%s","engine":"memory","event":"recall","query":"%s","hits":%d,"so
 
 Used by `hooks/memory-stop-capture.sh`:
 
-1. `capture_text` = final user message + final assistant message from the session transcript, truncated to ~1,500 characters total. "Final message" means the last transcript entry that carries real text: pull only from blocks typed `text`, skip `isMeta` entries, and drop entries whose extracted text is blank. Claude Code records tool results as `type: "user"` entries holding `tool_result` blocks with no `.text`, so a naive `last` lands on a tool result and stores an empty `User:` side for any session whose final turn used a tool — the common case, not an edge case. The assistant side has the mirror problem when a turn ends in a `tool_use` block.
+1. `capture_text` = final user message + final assistant message from the session transcript, truncated to ~1,500 characters total. Every byte-budget cut is piped through `iconv -c -f UTF-8 -t UTF-8` (plain cut when `iconv` is absent) so a mid-character cut in multi-byte text — routine for CJK at ~3 bytes/char — drops the torn trailing sequence instead of feeding invalid bytes to the redaction sed (which BSD sed fails on, silently dropping the capture) and the dedup hash. "Final message" means the last transcript entry that carries real text: pull only from blocks typed `text`, skip `isMeta` entries, and drop entries whose extracted text is blank. Claude Code records tool results as `type: "user"` entries holding `tool_result` blocks with no `.text`, so a naive `last` lands on a tool result and stores an empty `User:` side for any session whose final turn used a tool — the common case, not an edge case. The assistant side has the mirror problem when a turn ends in a `tool_use` block.
 2. Redact per the Capture Redaction Spec below — redaction runs BEFORE hashing so the dedup key is stable against the persisted text.
 3. `hash8="$(printf '%s' "$capture_text" | sha256sum | cut -c1-8)"` (fall back to `shasum -a 256` on systems without `sha256sum`).
 4. `grep -q "session capture $hash8" "$today_log"` → already captured, exit 0 (idempotent across duplicate Stop firings).

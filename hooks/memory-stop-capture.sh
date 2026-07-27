@@ -61,6 +61,17 @@ CAPTURE_BUDGET_BYTES=1500
 CAPTURE_TEXT_BUDGET=$(( CAPTURE_BUDGET_BYTES - 15 ))
 CAPTURE_SIDE_FLOOR=$(( CAPTURE_TEXT_BUDGET / 2 ))
 
+# Every byte-budget cut below MUST pipe through this. `head -c` cuts on a byte
+# boundary, which lands mid-character in multi-byte UTF-8 — CJK text runs ~3
+# bytes per character, so routinely, not rarely. A torn trailing sequence would
+# persist into the log AND feed the dedup hash, and on macOS the BSD sed in the
+# redaction pipeline errors on invalid bytes, turning one mangled character into
+# a silently dropped capture. iconv -c drops the incomplete sequence; when iconv
+# is absent, fall back to the raw cut rather than blocking (design-for-the-floor).
+strip_invalid_utf8() {
+  if command -v iconv &>/dev/null; then iconv -c -f UTF-8 -t UTF-8 2>/dev/null; else cat; fi
+}
+
 # Extract the final user and assistant message texts from the JSONL transcript.
 CAPTURE_TEXT=""
 if command -v jq &>/dev/null; then
@@ -103,7 +114,7 @@ if command -v jq &>/dev/null; then
   truncate_to_bytes() {
     # $1 = text, $2 = byte budget. Marks the cut so a reader knows text is missing.
     if [ "$(byte_length_of "$1")" -le "$2" ]; then printf '%s' "$1"; return; fi
-    printf '%s [truncated]' "$(printf '%s' "$1" | head -c "$(( $2 - 12 ))")"
+    printf '%s [truncated]' "$(printf '%s' "$1" | head -c "$(( $2 - 12 ))" | strip_invalid_utf8)"
   }
   user_text_bytes="$(byte_length_of "$LAST_USER_TEXT")"
   assistant_text_bytes="$(byte_length_of "$LAST_ASSISTANT_TEXT")"
@@ -127,7 +138,7 @@ fi
 # Nothing meaningful extracted → skip silently. This blanket cap is a backstop for the
 # no-jq fallback above, which has no separate user/assistant sides to budget; the jq
 # path already composes to <= CAPTURE_BUDGET_BYTES, so it is a no-op there.
-CAPTURE_TEXT="$(printf '%s' "$CAPTURE_TEXT" | head -c "$CAPTURE_BUDGET_BYTES")"
+CAPTURE_TEXT="$(printf '%s' "$CAPTURE_TEXT" | head -c "$CAPTURE_BUDGET_BYTES" | strip_invalid_utf8)"
 [ -n "$(printf '%s' "$CAPTURE_TEXT" | tr -d '[:space:]')" ] || exit 0
 case "$CAPTURE_TEXT" in
   "User: "*"Agent: ") exit 0 ;;   # both messages came back empty

@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.140.0 — UTF-8-Safe Capture Truncation; Forget Now Scrubs the Daily Logs Too (2026-07-28)
+
+Two accepted findings from external feedback triage. The stop-capture hook could tear a multi-byte character in half, and "forget" only forgot half the store.
+
+- The stop-capture hook's byte-budget cuts now pipe through `iconv -c -f UTF-8 -t UTF-8` (plain cut when iconv is absent). A raw `head -c` cut lands mid-character routinely on CJK text (~3 bytes/char), persisting invalid bytes into the log and the dedup hash — and on macOS the torn sequence made BSD sed fail in the redaction pipeline, silently dropping the whole capture.
+- `memory forget` is now an explicit, confirmation-gated sub-command (with a `do-work forget` alias) instead of one clause inside `remember`. It removes the working-memory bullet AND redacts matching daily-log lines in place with a `[forgotten — …]` marker, since recall searches the logs too. It is the one named exception to the logs-are-append-only rule, scoped to explicit user invocation — automatic writers still only append, capture-body lines keep their `> ` quoting, and heading lines (the dedup key) are never touched.
+
 ## 0.139.4 — Capture Boundaries Can't Be Spoofed; Tracked Logs Caught Before the Install Fast Path (2026-07-28)
 
 Four follow-up fixes, all found by reviewing the previous two rounds' fixes. Two of them were holes the earlier fixes left open rather than new bugs.

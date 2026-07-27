@@ -20,7 +20,7 @@
 
 `$ARGUMENTS` = `<sub-command> [payload]`. Bare `memory` (or `memory help`) → print the Help Menu below.
 
-**The sub-command is always present, including via the direct aliases.** `do-work remember <text>` and `do-work recall <query>` route here with the alias preserved as the sub-command (`remember <text>` / `recall <query>`), and `what do you remember` arrives as `recall <query>` — SKILL.md's routing row 37 specifies that, because the router's default "strip the trigger, pass the rest" would otherwise hand this action a bare payload with nothing to dispatch on. If `$ARGUMENTS` ever arrives without a leading sub-command, **fall back to `recall`, never to `remember`** — and say which sub-command you assumed. Do not infer from sentence shape: real recall queries are usually noun phrases, not questions (`recall deployment decision` arrives as `deployment decision`), so a statement-shaped test would classify most reads as writes and silently mutate the store on a request to read it. The two errors are not symmetric — a wrong `recall` shows the user something they didn't ask for, a wrong `remember` writes a fact nobody asserted into standing memory. When the payload genuinely reads as something to store and an interactive prompt is available, ask which was meant (`crew-members/clear-questions.md`); with no prompt available, recall and say so. This is a fallback for a router bug, not the contract.
+**The sub-command is always present, including via the direct aliases.** `do-work remember <text>`, `do-work forget <text>`, and `do-work recall <query>` route here with the alias preserved as the sub-command (`remember <text>` / `forget <text>` / `recall <query>`), and `what do you remember` arrives as `recall <query>` — SKILL.md's routing row 37 specifies that, because the router's default "strip the trigger, pass the rest" would otherwise hand this action a bare payload with nothing to dispatch on. If `$ARGUMENTS` ever arrives without a leading sub-command, **fall back to `recall`, never to `remember`** — and say which sub-command you assumed. Do not infer from sentence shape: real recall queries are usually noun phrases, not questions (`recall deployment decision` arrives as `deployment decision`), so a statement-shaped test would classify most reads as writes and silently mutate the store on a request to read it. The two errors are not symmetric — a wrong `recall` shows the user something they didn't ask for, a wrong `remember` writes a fact nobody asserted into standing memory. When the payload genuinely reads as something to store and an interactive prompt is available, ask which was meant (`crew-members/clear-questions.md`); with no prompt available, recall and say so. This is a fallback for a router bug, not the contract.
 
 Locate the store first:
 
@@ -36,6 +36,7 @@ If `$MEMORY_DIR/working-memory.md` is missing for any sub-command except `audit`
 | Sub-command | Payload | What it does |
 | --- | --- | --- |
 | `remember` | the fact to store | Curate into `working-memory.md` (dedup, supersede, cap-enforce) + mirror to today's log |
+| `forget` | the fact to remove | Confirmation-gated: remove the `working-memory.md` bullet AND redact matching daily-log lines in place |
 | `recall` | the query | Layered search (lexical always; semantic when a backend is detected) with cited sources |
 | `status` | — | Engine health: cap usage, freshness, log days, ledger tail |
 | `bootstrap` | — | One-time, consent-gated import of prior session history into dated logs |
@@ -44,11 +45,21 @@ If `$MEMORY_DIR/working-memory.md` is missing for any sub-command except `audit`
 ### remember <text>
 
 1. Read the WHOLE `working-memory.md` first — never blind-append.
-2. Place the fact in the right section (`## Active Threads` / `## Notes` / `## Pending Decisions`). If it duplicates an existing bullet, merge; if it supersedes one ("we now use X instead of Y"), replace the old bullet in place. If the user asked to *forget* something, remove that bullet.
+2. Place the fact in the right section (`## Active Threads` / `## Notes` / `## Pending Decisions`). If it duplicates an existing bullet, merge; if it supersedes one ("we now use X instead of Y"), replace the old bullet in place. An explicit ask to *forget* something is not a `remember` — route it to the `forget` sub-command below; supersede-in-place replaces a fact with its successor, `forget` erases a fact outright, and only the latter must also reach the logs.
 3. Enforce the hard cap: if the file would exceed **2,500 characters** (`wc -c`), run the consolidation algorithm in `actions/memory-reference.md` — merge, then demote droppables to today's log, then tighten. The file must end ≤ 2,500 chars.
 4. Mirror a one-liner to `memory/logs/$(date -u +%F).md` under a `## HH:MM UTC note` heading (create the file if needed).
 5. Update the `updated:` frontmatter date. Append a `write` ledger event per `actions/memory-reference.md` (best-effort, never blocking).
 6. Tell the user what was stored, and what (if anything) was merged, replaced, or demoted. Remind them once per conversation that writes surface at the NEXT session start (the injected snapshot is frozen).
+
+### forget <text>
+
+Removing the working-memory bullet alone is not forgetting: recall's Layer 1 searches the daily logs too, so a fact left there stays recallable forever. `forget` is the one named exception to the logs-are-append-only rule — explicit user invocation only, never an automatic writer, and nothing is touched before the user confirms.
+
+1. Locate the fact everywhere: matching bullet(s) in `working-memory.md` AND matching lines in `memory/logs/*.md` (tokenize the payload with the same sanitization recall uses — `actions/memory-reference.md`, Lexical Recall). No match anywhere → report that and stop.
+2. Load `crew-members/clear-questions.md`, then show the user exactly what would be removed or redacted — every matched line with its file and date — and ask for confirmation. Partial confirmation is fine (forget the bullet, keep a log line); redact only what was confirmed.
+3. Remove the confirmed bullet(s) from `working-memory.md` and update its `updated:` frontmatter date.
+4. Redact the confirmed log lines **in place**: replace each line's content with `[forgotten — redacted by memory forget YYYY-MM-DD]`. Never delete the line outright — the log must still show something stood there. Two structural constraints: a line inside a capture body keeps its `> ` prefix (the quoting contract in `actions/memory-reference.md` → Daily-Log Entry Conventions is what makes capture boundaries unspoofable), and `##` heading lines are never modified — a `session capture <hash8>` heading is the dedup key.
+5. Append a `write` ledger event with `"note":"forget"` (best-effort, never blocking). Report what was removed and where, and state the known limit: `working-memory.md` is committed, so a forgotten bullet still exists in git history — `forget` scrubs the store, not the repo's past.
 
 ### recall <query>
 
@@ -81,6 +92,7 @@ Read `actions/memory-value.md` and follow it; pass the remainder of `$ARGUMENTS`
 
 ```
 do-work memory remember <text>   Curate a fact into working memory (2,500-char cap)
+do-work memory forget <text>     Confirmation-gated: remove a fact from working memory + redact it from the logs
 do-work memory recall <query>    Layered recall over working memory + daily logs, with cited sources
 do-work memory status            Engine health: cap usage, freshness, ledger tail
 do-work memory bootstrap         One-time import of past session history (consent-gated)
@@ -99,7 +111,7 @@ Each sub-command ends with a short plain-prose report: what was read, what chang
 - Every sub-command works without hooks installed. Hooks are optional enhancement, actions are the portable core.
 - Ledger appends are best-effort (`|| true`): never let instrumentation block or fail a sub-command.
 - Never store secrets, tokens, or credentials in memory files. `working-memory.md` is committed plaintext; `memory/logs/` and `memory/usage-ledger.jsonl` are machine-local (git-excluded by `install memory-module`) but still plaintext on disk — local-only is not a licence to write a credential there.
-- Daily logs are append-only for this action; only consolidation demotions and `remember`'s mirror lines are written there. Rewriting log history is `actions/dream.md`'s job, on explicit invocation.
+- Daily logs are append-only for this action, with one named exception: `forget` — on explicit user invocation, after confirmation — redacts matching log lines in place (marker, not deletion). Automatic writers (hooks, consolidation demotions, `remember`'s mirror lines) only ever append. Rewriting log history beyond that is `actions/dream.md`'s job, on explicit invocation.
 - Writes surface next session (frozen-snapshot semantics) — never claim the injected context has been updated mid-session.
 
 ## Common Rationalizations
@@ -119,12 +131,14 @@ Each sub-command ends with a short plain-prose report: what was read, what chang
 - Two `session capture` headings with the same `<hash8>` in one log (dedup failed).
 - Anything under `memory/` referenced from a hook other than the two shipped memory hooks.
 - A secret or API key visible in `working-memory.md` or a log.
+- A log line rewritten by anything other than a user-invoked, confirmed `forget` — or a `forget` that deleted lines outright instead of leaving the redaction marker.
 - `memory/logs/` or `memory/usage-ledger.jsonl` showing up in `git status` as untracked — the local-ignore step of `install memory-module` was skipped or reverted; verbatim captures are one `git add -A` from the repo.
 
 ## Verification Checklist
 
 - [ ] After `remember`: `wc -c memory/working-memory.md` ≤ 2,500 and the fact (or its merged form) is present in exactly one bullet.
 - [ ] After `remember`: today's log gained one `## HH:MM UTC note` line; ledger gained one `write` line.
+- [ ] After `forget`: the fact appears in no `working-memory.md` bullet and no un-redacted log line; every redacted line holds the marker (capture-body lines still `> `-prefixed); no `##` heading line changed; ledger gained a `write` line noting `forget` — and the user confirmed the exact lines shown before any write.
 - [ ] After `recall`: every presented result shows path:line + date + heading; ledger gained a `recall` line (and `hit_cited` iff a result was used).
 - [ ] After `bootstrap`: sentinel exists with a UTC date; nothing outside `memory/` changed (`git status --porcelain` confirms).
 - [ ] `status` and `audit` changed no files.

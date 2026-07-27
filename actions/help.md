@@ -50,6 +50,7 @@ do-work — task queue for agentic coding tools
     do-work bkb [sub]                   Sub-commands: init | triage | ingest | query | lint |
                                         resolve | close | status | defrag | garden | rollup | crew
     do-work memory remember <text>      Curate a fact into memory/working-memory.md (2,500-char cap)
+    do-work memory forget <text>        Confirmation-gated removal from working memory + log redaction
     do-work memory recall <query>       Layered recall over working memory + daily logs (cited sources)
     do-work memory status|bootstrap     Engine status / one-time history import
     do-work memory audit                Head-to-head value audit: memory engine vs bkb (read-only)
