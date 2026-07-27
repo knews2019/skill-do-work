@@ -6,6 +6,10 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.145.1 — Corrected the Example Count in 0.138.0's Title (2026-07-27)
+
+The 0.138.0 entry said `next-steps.md` was a 40-case table. It was 47 — the same entry's own "the other 46 are gone" already implied it. Counted from the pre-change file, not from memory.
+
 ## 0.145.0 — A Second `do-work run` on the Same Tree Now Detects the First (2026-07-27)
 
 On 2026-07-01 two sessions ran the work loop on one tree at the same time. The second committed the first's in-flight build and archived it with a hollow paper trail; it merged by luck. Nothing in the skill detected the collision. Now Step 1 acquires a lock before it touches anything, and a second orchestrator has to deal with it.
@@ -76,7 +80,7 @@ The action-file template asked for Rules, Common Rationalizations, Red Flags, an
 - `_dev/tests/contract-regressions.sh` now fails any *new* action file whose Common Rationalizations rows contain no do-work-specific noun. The existing tree is grandfathered by an explicit baseline list.
 - Trimmed the Project Structure glosses and Queue Path Convention; every shell-trap gotcha and the Closed Enumerations rule stay untouched.
 
-## 0.138.0 — Next-Step Suggestions Come From Intent, Not a 40-Case Table (2026-07-27)
+## 0.138.0 — Next-Step Suggestions Come From Intent, Not a 47-Case Table (2026-07-27)
 
 `next-steps.md` is read after every single action, and it was 1,741 words of hard-coded examples — one worked block per action, most of them saying the obvious thing. It's now 383 words: the intent, the format rules, and a table of only the cases where the right suggestion genuinely isn't inferable.
 
