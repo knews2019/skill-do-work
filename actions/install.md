@@ -191,8 +191,10 @@ curl -fsSL -o "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download"
   https://raw.githubusercontent.com/disler/bowser/main/.claude/skills/playwright-bowser/SKILL.md \
   && mv "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download" \
         "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" \
-  || rm -f "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download"
+  || { rm -f "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download"; false; }
 ```
+
+The trailing `false` is load-bearing: `rm -f` on an absent path exits 0, so a plain `|| rm -f …` would hand the block a success status after a failed download and the phase would report installed. Same form as the `ui-design` and `ideation-adhd` manifest rows.
 
 If the URL 404s (the repo may have restructured), report the error and direct the user to https://github.com/disler/bowser for manual install — the file lives somewhere under `.claude/skills/` in that repo.
 
@@ -453,6 +455,7 @@ ignore_ok=1
 if git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
   git check-ignore -q "$PROJECT_ROOT/memory/logs/.probe" 2>/dev/null || ignore_ok=0
   git check-ignore -q "$PROJECT_ROOT/memory/usage-ledger.jsonl" 2>/dev/null || ignore_ok=0
+  git check-ignore -q "$PROJECT_ROOT/memory/.bootstrap-imported" 2>/dev/null || ignore_ok=0
 fi
 if test -s "$PROJECT_ROOT/memory/working-memory.md" \
    && test -d "$PROJECT_ROOT/memory/logs" \
@@ -486,7 +489,7 @@ touch "$PROJECT_ROOT/memory/usage-ledger.jsonl"
 
 Then create `$PROJECT_ROOT/memory/working-memory.md` from the template in `actions/memory-reference.md` (with today's date in the `updated:` frontmatter) — **only if the file is absent or empty. Never overwrite an existing `working-memory.md`**: it is the user's standing memory, the same gate as the never-overwrite-an-existing-`SKILL.md` rule.
 
-Finally, make the raw store machine-local. `memory/logs/` holds verbatim hook captures and `memory/usage-ledger.jsonl` is per-machine instrumentation — neither should ever become committable. Redaction (`actions/memory-reference.md` → Capture Redaction Spec) is best-effort pattern matching, so version control must not be the place a missed credential lands. Only the curated `working-memory.md` stays committed and shareable. Add the two paths to the enclosing repo's `.git/info/exclude` (machine-local — never committed, never shipped); do **not** touch the project's committable `.gitignore`. This is the snippet from `crew-members/background-agents.md` → **Local-ignore snippet (for genuinely-transient paths)**, substituting these paths (see that file for why, including the linked-worktree caveat):
+Finally, make the raw store machine-local. `memory/logs/` holds verbatim hook captures, `memory/usage-ledger.jsonl` is per-machine instrumentation, and `memory/.bootstrap-imported` records that *this machine's* session transcripts were imported — none should ever become committable. Redaction (`actions/memory-reference.md` → Capture Redaction Spec) is best-effort pattern matching, so version control must not be the place a missed credential lands. The sentinel is machine-local for a different reason: `do-work memory bootstrap` refuses to run when it exists, so a committed sentinel from one machine permanently blocks every other clone from importing its own local history — a silent failure that reads as "already imported". Only the curated `working-memory.md` stays committed and shareable. Add the three paths to the enclosing repo's `.git/info/exclude` (machine-local — never committed, never shipped); do **not** touch the project's committable `.gitignore`. This is the snippet from `crew-members/background-agents.md` → **Local-ignore snippet (for genuinely-transient paths)**, substituting these paths (see that file for why, including the linked-worktree caveat):
 
 ```bash
 exclude=$(git rev-parse --git-path info/exclude 2>/dev/null) || exclude=""
@@ -495,6 +498,8 @@ if [ -n "$exclude" ]; then
     || echo '**/memory/logs/' >> "$exclude"
   git check-ignore -q "$PROJECT_ROOT/memory/usage-ledger.jsonl" 2>/dev/null \
     || echo '**/memory/usage-ledger.jsonl' >> "$exclude"
+  git check-ignore -q "$PROJECT_ROOT/memory/.bootstrap-imported" 2>/dev/null \
+    || echo '**/memory/.bootstrap-imported' >> "$exclude"
 fi
 ```
 
@@ -518,6 +523,7 @@ test -f "$PROJECT_ROOT/memory/usage-ledger.jsonl" && echo "ledger: OK" || echo "
 if git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
   git check-ignore -q "$PROJECT_ROOT/memory/logs/.probe" 2>/dev/null && echo "logs ignored: OK" || echo "logs ignored: FAILED"
   git check-ignore -q "$PROJECT_ROOT/memory/usage-ledger.jsonl" 2>/dev/null && echo "ledger ignored: OK" || echo "ledger ignored: FAILED"
+  git check-ignore -q "$PROJECT_ROOT/memory/.bootstrap-imported" 2>/dev/null && echo "sentinel ignored: OK" || echo "sentinel ignored: FAILED"
 fi
 SETTINGS_FILE="$PROJECT_ROOT/.claude/settings.json"
 if [ -f "$SETTINGS_FILE" ]; then
@@ -541,10 +547,12 @@ Destination: <project-root>/memory/
   working-memory.md   Standing memory, 2,500-char hard cap (curate via `do-work memory remember`)
   logs/               Dated daily logs (auto-appended by the Stop hook) — machine-local
   usage-ledger.jsonl  Usage instrumentation read by `do-work memory audit` — machine-local
+  .bootstrap-imported Sentinel written by `do-work memory bootstrap` — machine-local
 
-Only working-memory.md is committable. logs/ and usage-ledger.jsonl were added to
-.git/info/exclude (machine-local; your .gitignore is untouched) so verbatim captures
-never reach version control.
+Only working-memory.md is committable. logs/, usage-ledger.jsonl, and
+.bootstrap-imported were added to .git/info/exclude (machine-local; your .gitignore
+is untouched) so verbatim captures never reach version control and each machine can
+still bootstrap its own session history.
 
 Hooks (Claude Code only, merged into .claude/settings.json):
   memory-session-start.sh  Injects the frozen snapshot at session start — writes surface NEXT session
@@ -597,7 +605,7 @@ Then stop.
 - **The vendor drop must be ignored (last30days).** Phase 2 adds `**/.claude/skills/last30days/` to the enclosing repo's `.git/info/exclude` when it isn't already covered — machine-local, never the project's committable `.gitignore` — because ~15 MB of upstream Python must never become committable in the consuming repo.
 - **Touch only the three do-work recipes in the justfile (just-kanban).** Never reorder, reformat, or modify justfile content outside `run-kanban`/`kanban-static`/`kanban-summary`. A divergent installed recipe is replaced only after the user has seen the diff and accepted (Phase 1b) — never silently, and never on the assumption that different means stale. Create a `justfile` only when none of `justfile`/`Justfile`/`.justfile` exists at the project root.
 - **Compose hook entries (memory-module).** Append to the `hooks.SessionStart`/`hooks.Stop` arrays in `.claude/settings.json`; never replace, reorder, or rewrite existing entries. Back up to `settings.json.pre-memory-module` before the merge; a post-merge parse failure or any lost pre-existing entry → restore the backup and report. Never overwrite an existing `memory/working-memory.md`.
-- **Keep the raw memory store out of version control (memory-module).** `memory/logs/` and `memory/usage-ledger.jsonl` go in the enclosing repo's `.git/info/exclude` — machine-local, never the project's committable `.gitignore`. Only the curated `working-memory.md` is committable.
+- **Keep the raw memory store out of version control (memory-module).** `memory/logs/`, `memory/usage-ledger.jsonl`, and `memory/.bootstrap-imported` go in the enclosing repo's `.git/info/exclude` — machine-local, never the project's committable `.gitignore`. Only the curated `working-memory.md` is committable. The sentinel belongs there because `memory bootstrap` refuses to run when it exists: committed, one machine's import permanently blocks every other clone from importing its own history.
 - **One target per invocation.** If the user wants both, they run two separate commands. The action never chains targets.
 
 ## Common Rationalizations
@@ -635,7 +643,8 @@ Then stop.
 - (just-kanban) The appended recipe contains an absolute path (especially into `$HOME`) — the skill-root resolution went wrong; recipes must use project-relative paths.
 - (memory-module) The merged `.claude/settings.json` has fewer hook entries than the `settings.json.pre-memory-module` backup — an existing hook was clobbered; restore the backup.
 - (memory-module) `memory/working-memory.md` changed content during install — the never-overwrite gate was bypassed.
-- (memory-module) `git status` in the consuming repo lists `memory/logs/` or `memory/usage-ledger.jsonl` as untracked after a reported success — the local-ignore step was skipped, and verbatim captures are one `git add -A` from being committed.
+- (memory-module) `git check-ignore` fails for `memory/logs/`, `memory/usage-ledger.jsonl`, or `memory/.bootstrap-imported` after a reported success — the local-ignore step was skipped, and verbatim captures are one `git add -A` from being committed. (Don't eyeball `git status` for this: a wholly-untracked `memory/` collapses to a single `?? memory/` row, and `.bootstrap-imported` is a dotfile that never shows in it at all.)
+- (memory-module) A tracked `memory/.bootstrap-imported` appears in `git ls-files` — the sentinel got committed; every other clone will now refuse to bootstrap its own session history. The exclude entry alone won't fix this (ignore rules don't apply to tracked files): tell the user to `git rm --cached memory/.bootstrap-imported` and commit the removal.
 - (memory-module) The project's `.gitignore` gained a `memory/` entry — the ignore belongs in `.git/info/exclude`; a committable ignore rule was written where a machine-local one was specified.
 - (memory-module) A `settings.json.pre-memory-module` backup file left behind after a reported success — cleanup was skipped or the merge silently failed.
 
@@ -647,6 +656,6 @@ Then stop.
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
 - [ ] (last30days only) a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
 - [ ] (just-kanban only) the justfile gained exactly one appended block, `run-kanban` greps present, `just --list` parses when `just` is available, and no existing recipe was modified.
-- [ ] (memory-module only) `memory/logs/`, a non-empty `working-memory.md`, and `usage-ledger.jsonl` exist; `git check-ignore` covers `memory/logs/` and `memory/usage-ledger.jsonl` while the project's `.gitignore` is unmodified; `.claude/settings.json` parses and every pre-existing hook entry survived; the backup was removed on success.
+- [ ] (memory-module only) `memory/logs/`, a non-empty `working-memory.md`, and `usage-ledger.jsonl` exist; `git check-ignore` covers `memory/logs/`, `memory/usage-ledger.jsonl`, and `memory/.bootstrap-imported` while the project's `.gitignore` is unmodified; `.claude/settings.json` parses and every pre-existing hook entry survived; the backup was removed on success.
 - [ ] The report names the destination path so the user can verify location.
 - [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the machine-local `.git/info/exclude` entry; for `just-kanban`, the project justfile; for `memory-module`, `<project-root>/memory/`, `.claude/settings.json`, and the machine-local `.git/info/exclude` entries).

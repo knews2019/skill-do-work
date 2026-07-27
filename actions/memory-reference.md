@@ -6,14 +6,16 @@
 
 ```
 memory/                        # at project root (git rev-parse --show-toplevel, else pwd)
-├── working-memory.md          # standing memory — HARD CAP 2,500 characters
+├── working-memory.md          # standing memory — HARD CAP 2,500 characters  [committable]
 ├── logs/
-│   └── YYYY-MM-DD.md          # dated daily logs, append-only (UTC dates)
-├── usage-ledger.jsonl         # one JSON line per event (schema below)
-└── .bootstrap-imported        # sentinel — exists after the one-time bootstrap import
+│   └── YYYY-MM-DD.md          # dated daily logs, append-only (UTC dates)    [machine-local]
+├── usage-ledger.jsonl         # one JSON line per event (schema below)       [machine-local]
+└── .bootstrap-imported        # sentinel — exists after the one-time bootstrap import [machine-local]
 ```
 
 All paths derive from `PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"`. Never write outside `PROJECT_ROOT/memory/`.
+
+`working-memory.md` is the only committable file in the store; the other three are added to `.git/info/exclude` by `actions/install.md`'s `memory-module` Phase 2. The sentinel is machine-local because `memory bootstrap` refuses to re-run when it exists — committed, it would block every other clone from importing that machine's own session history.
 
 ## working-memory.md Template
 

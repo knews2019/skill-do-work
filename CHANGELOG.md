@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.139.1 — Bootstrap Sentinel Stays Machine-Local; "Remember To" Routes to Capture (2026-07-27)
+
+Three review fixes to the memory engine and the installer. The big one: the bootstrap sentinel was committable, so one machine's import would have silently blocked every other clone from importing its own history.
+
+- `do-work install memory-module` now adds `memory/.bootstrap-imported` to `.git/info/exclude` alongside `memory/logs/` and the usage ledger, and verifies it. `memory bootstrap` refuses to re-run when the sentinel exists — committed, that refusal would have followed the repo to every other machine.
+- Routing: `remember to fix X` is queued work, not a fact. SKILL.md row 37 now sends task-shaped `remember` phrasings to capture; `actions/memory.md` already documented the boundary, but the router decides the route before the action file is ever read.
+- The `bowser` skill download's cleanup returns failure (`|| { rm -f …; false; }`) instead of reporting a failed download as a success — matching the `ui-design` and `ideation-adhd` install rows.
+
 ## 0.139.0 — Parallel Memory Engine: memory module, install target, and value auditor (2026-07-25)
 
 A second, capture-first memory engine now runs alongside bkb so real usage data — not theory — decides which one earns its keep (ADR-017). Both engines log usage, and a new auditor renders the head-to-head verdict.
