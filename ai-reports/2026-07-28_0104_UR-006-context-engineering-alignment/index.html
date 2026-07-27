@@ -1,0 +1,588 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UR-006 — Context-Engineering Alignment</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #f9f9f7;
+    --surface: #fcfcfb;
+    --text: #1a1a19;
+    --text-2: #52514e;
+    --muted: #898781;
+    --accent: #2a78d6;
+    --hairline: #e1e0d9;
+    --border: rgba(11,11,11,0.10);
+    --seg-keep: #104281;   /* still loads every invocation */
+    --seg-defer: #2a78d6;  /* moved to on-demand reference */
+    --seg-cut: #86b6ef;    /* deleted */
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d0d0d;
+      --surface: #1a1a19;
+      --text: #f4f3ee;
+      --text-2: #c3c2b7;
+      --muted: #898781;
+      --accent: #3987e5;
+      --hairline: #2c2c2a;
+      --border: rgba(255,255,255,0.10);
+      --seg-keep: #86b6ef;
+      --seg-defer: #3987e5;
+      --seg-cut: #184f95;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
+  section { padding: 44px 0; border-top: 1px solid var(--hairline); }
+  section:first-of-type { border-top: none; }
+  .kicker {
+    font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+    margin-bottom: 14px;
+  }
+  h1, h2 { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-weight: 600; }
+  h1 { font-size: clamp(30px, 3.4vw, 44px); line-height: 1.12; margin-bottom: 18px; }
+  h2 { font-size: 26px; margin-bottom: 6px; }
+  h3 { font-size: 17px; margin: 18px 0 6px; }
+  .measure { max-width: 74ch; }
+  .lede { font-size: 19px; color: var(--text); }
+  p + p { margin-top: 10px; }
+  .meta { margin-top: 16px; color: var(--muted); font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 22px 24px;
+  }
+  /* stat tiles */
+  .tiles { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 26px; }
+  .tile { flex: 1 1 200px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; }
+  .tile .label { font-size: 13.5px; color: var(--text-2); }
+  .tile .value { font-weight: 600; font-size: 40px; line-height: 1.15; margin-top: 2px; }
+  .tile .value.hero { font-size: 48px; color: var(--accent); }
+  .tile .sub { font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); margin-top: 4px; }
+  /* chart */
+  .chart-wrap { flex: 2 1 620px; min-width: 0; }
+  .chart-side { flex: 1 1 300px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 18px; margin: 10px 0 4px; font-size: 13.5px; color: var(--text-2); }
+  .legend .key { display: inline-flex; align-items: center; gap: 7px; }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  table { border-collapse: collapse; font-size: 13.5px; margin-top: 10px; }
+  th, td { text-align: left; padding: 6px 14px 6px 0; border-bottom: 1px solid var(--hairline); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  th { color: var(--muted); font-weight: 600; }
+  code, .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; }
+  pre {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px 18px; overflow-x: auto; font-size: 13px; line-height: 1.6;
+  }
+  details { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); margin-top: 12px; }
+  details > summary {
+    cursor: pointer; padding: 13px 18px; font-weight: 600; font-size: 15px;
+    list-style-position: inside;
+  }
+  details > summary .req { font: 600 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); margin-right: 8px; }
+  details > summary .gist { font-weight: 400; color: var(--text-2); }
+  details > .body { padding: 2px 20px 18px; font-size: 14.5px; color: var(--text-2); }
+  details > .body strong { color: var(--text); }
+  .mermaid-band { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; overflow-x: auto; }
+  ul.tight { margin: 8px 0 0 18px; padding: 0; }
+  ul.tight li { margin-top: 6px; }
+  .footer { border-top: 1px solid var(--hairline); padding-top: 20px; margin-top: 30px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ============ HERO ============ -->
+<section>
+  <div class="kicker">do-work · ai report · UR-006 · 27 July 2026</div>
+  <h1 class="measure">The skill went on a context diet — and made the diet structural.</h1>
+  <p class="lede measure">
+    Seven REQs realigned do-work with Anthropic's Claude&nbsp;5 context-engineering guidance in
+    58 minutes, capture to seventh commit. The always-read floor dropped 32%, six domain crew
+    files lost 37% of their words, and the three largest action files now lazy-load their heavy
+    reference material instead of loading whole. A template change plus a test-suite ratchet
+    makes the regrowth that undid the last cleanup structurally harder.
+  </p>
+  <p class="measure" style="margin-top:12px; color:var(--text-2)">
+    This was instruction-file work — no UI, so there are no screenshots by construction. The
+    evidence below is the word-count receipts and grep proofs recorded in each REQ, rendered
+    as diagrams.
+  </p>
+  <div class="meta">7 REQs · 7 commits (692a236…ed5f96b) · batch: context-engineering-alignment · source: “compare with the current skill, is there something that we need to update?”</div>
+
+  <div class="tiles">
+    <div class="tile">
+      <div class="label">Always-read floor (SKILL.md + next-steps.md)</div>
+      <div class="value hero">−32%</div>
+      <div class="sub">4,298 → 2,940 words, paid on every action</div>
+    </div>
+    <div class="tile">
+      <div class="label">Deferred behind on-demand reference files</div>
+      <div class="value">7,105</div>
+      <div class="sub">words · ai-report + pipeline + capture splits</div>
+    </div>
+    <div class="tile">
+      <div class="label">Deleted outright</div>
+      <div class="value">≈4,200</div>
+      <div class="sub">words · examples, duplicate guards, platitudes</div>
+    </div>
+    <div class="tile">
+      <div class="label">Domain crew files</div>
+      <div class="value">−37%</div>
+      <div class="sub">6,737 → 4,237 words across six files</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THE CHANGE ============ -->
+<section>
+  <div class="kicker">The change</div>
+  <h2>Where every word went</h2>
+  <div class="row" style="margin-top:14px">
+    <div class="chart-wrap">
+      <div class="legend" role="list">
+        <span class="key"><span class="swatch" style="background:var(--seg-keep)"></span>Still loads on every invocation</span>
+        <span class="key"><span class="swatch" style="background:var(--seg-defer)"></span>Moved to an on-demand reference file</span>
+        <span class="key"><span class="swatch" style="background:var(--seg-cut)"></span>Deleted</span>
+      </div>
+      <svg viewBox="0 0 1000 372" style="width:100%; height:auto" role="img"
+           aria-label="Stacked bars: for each touched file, how much of its original word count still loads, moved to a reference file, or was deleted">
+        <!-- gridlines -->
+        <g stroke="var(--hairline)" stroke-width="1">
+          <line x1="360" y1="8" x2="360" y2="344"/>
+          <line x1="540" y1="8" x2="540" y2="344"/>
+          <line x1="720" y1="8" x2="720" y2="344"/>
+          <line x1="900" y1="8" x2="900" y2="344"/>
+        </g>
+        <g fill="var(--muted)" font-size="11.5">
+          <text x="180" y="360">0</text>
+          <text x="360" y="360" text-anchor="middle">2,000</text>
+          <text x="540" y="360" text-anchor="middle">4,000</text>
+          <text x="720" y="360" text-anchor="middle">6,000</text>
+          <text x="900" y="360" text-anchor="end">8,000 words</text>
+        </g>
+        <line x1="180" y1="8" x2="180" y2="344" stroke="var(--hairline)" stroke-width="1"/>
+
+        <!-- file labels -->
+        <g fill="var(--text-2)" font-size="12.5" text-anchor="end">
+          <text x="170" y="28.5">ai-report.md</text>
+          <text x="170" y="62.5">pipeline.md</text>
+          <text x="170" y="96.5">capture.md</text>
+          <text x="170" y="130.5">next-steps.md</text>
+          <text x="170" y="164.5">security.md</text>
+          <text x="170" y="198.5">testing.md</text>
+          <text x="170" y="232.5">debugging.md</text>
+          <text x="170" y="266.5">ui-design.md</text>
+          <text x="170" y="300.5">backend.md</text>
+          <text x="170" y="334.5">frontend.md</text>
+        </g>
+
+        <!-- bars: y rows at 14,48,82,116,150,184,218,252,286,320; h=20; 0.09 px/word -->
+        <!-- ai-report: 5477 keep / 2339 defer -->
+        <g>
+          <rect x="180" y="14" width="492.9" height="20" fill="var(--seg-keep)"><title>ai-report.md — still loads: 5,477 words</title></rect>
+          <rect x="674.9" y="14" width="210.5" height="20" rx="4" fill="var(--seg-defer)"><title>ai-report.md — moved to ai-report-reference.md: 2,339 words</title></rect>
+          <text x="893" y="28.5" font-size="11.5" fill="var(--muted)">−27% per load</text>
+        </g>
+        <!-- pipeline: 4719 / 3084 -->
+        <g>
+          <rect x="180" y="48" width="424.7" height="20" fill="var(--seg-keep)"><title>pipeline.md — still loads: 4,719 words</title></rect>
+          <rect x="606.7" y="48" width="277.6" height="20" rx="4" fill="var(--seg-defer)"><title>pipeline.md — moved to pipeline-reference.md: 3,084 words</title></rect>
+          <text x="892" y="62.5" font-size="11.5" fill="var(--muted)">−37% per load</text>
+        </g>
+        <!-- capture: 3913 / 1682 / 85 -->
+        <g>
+          <rect x="180" y="82" width="352.2" height="20" fill="var(--seg-keep)"><title>capture.md — still loads: 3,913 words</title></rect>
+          <rect x="534.2" y="82" width="151.4" height="20" fill="var(--seg-defer)"><title>capture.md — moved to capture-reference.md: 1,682 words</title></rect>
+          <rect x="687.6" y="82" width="7.7" height="20" rx="3" fill="var(--seg-cut)"><title>capture.md — deleted: ≈85 words (net, incl. REQ-025 dedupe)</title></rect>
+          <text x="703" y="96.5" font-size="11.5" fill="var(--muted)">−31% per load</text>
+        </g>
+        <!-- next-steps: 383 / 1358 cut -->
+        <g>
+          <rect x="180" y="116" width="34.5" height="20" fill="var(--seg-keep)"><title>next-steps.md — still loads: 383 words</title></rect>
+          <rect x="216.5" y="116" width="122.2" height="20" rx="4" fill="var(--seg-cut)"><title>next-steps.md — deleted: 1,358 words (41 of 47 worked examples)</title></rect>
+          <text x="346" y="130.5" font-size="11.5" fill="var(--muted)">−78%</text>
+        </g>
+        <!-- security: 1534 / 140 -->
+        <g>
+          <rect x="180" y="150" width="138.1" height="20" fill="var(--seg-keep)"><title>crew-members/security.md — still loads (per domain match): 1,534 words</title></rect>
+          <rect x="320.1" y="150" width="12.6" height="20" rx="3" fill="var(--seg-cut)"><title>security.md — deleted: 140 words (net; absorbed 2 moved frontend bullets)</title></rect>
+          <text x="340" y="164.5" font-size="11.5" fill="var(--muted)">−8%</text>
+        </g>
+        <!-- testing: 587 / 886 -->
+        <g>
+          <rect x="180" y="184" width="52.8" height="20" fill="var(--seg-keep)"><title>crew-members/testing.md — still loads: 587 words</title></rect>
+          <rect x="234.8" y="184" width="79.7" height="20" rx="4" fill="var(--seg-cut)"><title>testing.md — deleted: 886 words</title></rect>
+          <text x="322" y="198.5" font-size="11.5" fill="var(--muted)">−60%</text>
+        </g>
+        <!-- debugging: 852 / 308 -->
+        <g>
+          <rect x="180" y="218" width="76.7" height="20" fill="var(--seg-keep)"><title>crew-members/debugging.md — still loads: 852 words</title></rect>
+          <rect x="258.7" y="218" width="27.7" height="20" rx="4" fill="var(--seg-cut)"><title>debugging.md — deleted: 308 words</title></rect>
+          <text x="294" y="232.5" font-size="11.5" fill="var(--muted)">−27%</text>
+        </g>
+        <!-- ui-design: 849 / 233 -->
+        <g>
+          <rect x="180" y="252" width="76.4" height="20" fill="var(--seg-keep)"><title>crew-members/ui-design.md — still loads: 849 words</title></rect>
+          <rect x="258.4" y="252" width="21" height="20" rx="4" fill="var(--seg-cut)"><title>ui-design.md — deleted: 233 words (5 sections hard-cited by ui-review.md put a floor under the cut)</title></rect>
+          <text x="287" y="266.5" font-size="11.5" fill="var(--muted)">−22%</text>
+        </g>
+        <!-- backend: 202 / 599 -->
+        <g>
+          <rect x="180" y="286" width="18.2" height="20" fill="var(--seg-keep)"><title>crew-members/backend.md — still loads: 202 words</title></rect>
+          <rect x="200.2" y="286" width="53.9" height="20" rx="4" fill="var(--seg-cut)"><title>backend.md — deleted: 599 words</title></rect>
+          <text x="262" y="300.5" font-size="11.5" fill="var(--muted)">−75%</text>
+        </g>
+        <!-- frontend: 213 / 334 -->
+        <g>
+          <rect x="180" y="320" width="19.2" height="20" fill="var(--seg-keep)"><title>crew-members/frontend.md — still loads: 213 words</title></rect>
+          <rect x="201.2" y="320" width="30.1" height="20" rx="4" fill="var(--seg-cut)"><title>frontend.md — deleted: 334 words (security bullets moved into security.md first)</title></rect>
+          <text x="239" y="334.5" font-size="11.5" fill="var(--muted)">−61%</text>
+        </g>
+      </svg>
+      <details>
+        <summary>Table view — exact word counts per file</summary>
+        <div class="body">
+          <table>
+            <tr><th>File</th><th class="num">Before</th><th class="num">Still loads</th><th class="num">On-demand ref</th><th class="num">Deleted</th><th>REQ</th></tr>
+            <tr><td>actions/ai-report.md</td><td class="num">7,541</td><td class="num">5,477</td><td class="num">2,339</td><td class="num">0</td><td>REQ-029</td></tr>
+            <tr><td>actions/pipeline.md</td><td class="num">7,471</td><td class="num">4,719</td><td class="num">3,084</td><td class="num">0</td><td>REQ-030</td></tr>
+            <tr><td>actions/capture.md</td><td class="num">5,680</td><td class="num">3,913</td><td class="num">1,682</td><td class="num">≈85</td><td>REQ-025 + 031</td></tr>
+            <tr><td>next-steps.md</td><td class="num">1,741</td><td class="num">383</td><td class="num">—</td><td class="num">1,358</td><td>REQ-026</td></tr>
+            <tr><td>crew-members/security.md</td><td class="num">1,674</td><td class="num">1,534</td><td class="num">—</td><td class="num">140</td><td>REQ-028</td></tr>
+            <tr><td>crew-members/testing.md</td><td class="num">1,473</td><td class="num">587</td><td class="num">—</td><td class="num">886</td><td>REQ-028</td></tr>
+            <tr><td>crew-members/debugging.md</td><td class="num">1,160</td><td class="num">852</td><td class="num">—</td><td class="num">308</td><td>REQ-028</td></tr>
+            <tr><td>crew-members/ui-design.md</td><td class="num">1,082</td><td class="num">849</td><td class="num">—</td><td class="num">233</td><td>REQ-028</td></tr>
+            <tr><td>crew-members/backend.md</td><td class="num">801</td><td class="num">202</td><td class="num">—</td><td class="num">599</td><td>REQ-028</td></tr>
+            <tr><td>crew-members/frontend.md</td><td class="num">547</td><td class="num">213</td><td class="num">—</td><td class="num">334</td><td>REQ-028</td></tr>
+          </table>
+          <p style="margin-top:10px">Split totals grew slightly (ai-report +275, pipeline +332, capture +90 net words)
+          because a pointer that survives relocation must name a path — the win is per-invocation load, not total bytes.
+          REQ-025 additionally trimmed a net 440 words of duplicated guard text across 12 action files (not all charted).</p>
+        </div>
+      </details>
+    </div>
+    <div class="chart-side">
+      <h3 style="margin-top:0">How to read this</h3>
+      <p style="font-size:14.5px; color:var(--text-2)">Each bar is one file's word count before the batch,
+      split by where those words live now. Dark blue is the part an agent still pays for whenever the file
+      loads. Mid blue moved into a <span class="mono">*-reference.md</span> companion that is opened only at
+      the step that consumes it. Light blue is gone — worked examples, duplicated guards, and generic
+      engineering advice a capable model already follows.</p>
+      <p style="font-size:14.5px; color:var(--text-2)">The three action files at the top deferred their bulk;
+      the always-read <span class="mono">next-steps.md</span> and the six crew files mostly deleted theirs.
+      Every number is from the REQ's own <span class="mono">wc -w</span> receipt.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section>
+  <div class="kicker">How it works</div>
+  <h2>Progressive disclosure: the skeleton loads, the detail waits</h2>
+  <div class="row" style="margin-top:14px">
+    <div style="flex: 2 1 560px; min-width:0">
+      <svg viewBox="0 0 960 300" style="width:100%; height:auto; background:var(--surface); border:1px solid var(--border); border-radius:10px" role="img"
+           aria-label="Before: one monolithic action file loads whole. After: a step skeleton always loads, and a reference companion is read only at the step that needs it.">
+        <defs>
+          <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/>
+          </marker>
+        </defs>
+        <text x="30" y="38" font-size="12" font-weight="600" letter-spacing="2" fill="var(--muted)" font-family="ui-monospace, Menlo, monospace">BEFORE</text>
+        <rect x="30" y="52" width="270" height="196" rx="8" fill="none" stroke="var(--seg-defer)" stroke-width="2"/>
+        <text x="46" y="80" font-size="13.5" font-weight="600" fill="var(--text)">actions/pipeline.md</text>
+        <text x="46" y="100" font-size="12" fill="var(--text-2)">7,471 words, loads whole</text>
+        <text x="46" y="128" font-size="12" fill="var(--text-2)">steps + mode logic</text>
+        <text x="46" y="148" font-size="12" fill="var(--text-2)">state-file JSON schema</text>
+        <text x="46" y="168" font-size="12" fill="var(--text-2)">3 completion-report templates</text>
+        <text x="46" y="188" font-size="12" fill="var(--text-2)">status blocks + help menu</text>
+        <text x="46" y="226" font-size="12" fill="var(--muted)" font-style="italic">even a Step-1 abort paid for all of it</text>
+
+        <line x1="318" y1="150" x2="392" y2="150" stroke="var(--muted)" stroke-width="2" marker-end="url(#arr)"/>
+        <text x="355" y="136" font-size="11.5" fill="var(--muted)" text-anchor="middle">split</text>
+
+        <text x="410" y="38" font-size="12" font-weight="600" letter-spacing="2" fill="var(--muted)" font-family="ui-monospace, Menlo, monospace">AFTER</text>
+        <rect x="410" y="52" width="250" height="110" rx="8" fill="none" stroke="var(--seg-keep)" stroke-width="2"/>
+        <text x="426" y="80" font-size="13.5" font-weight="600" fill="var(--text)">pipeline.md</text>
+        <text x="426" y="100" font-size="12" fill="var(--text-2)">4,719 words — always loads</text>
+        <text x="426" y="120" font-size="12" fill="var(--text-2)">Steps 1–6, mode + error logic,</text>
+        <text x="426" y="138" font-size="12" fill="var(--text-2)">named pointers at each print site</text>
+
+        <rect x="410" y="186" width="250" height="92" rx="8" fill="none" stroke="var(--seg-defer)" stroke-width="2" stroke-dasharray="6 4"/>
+        <text x="426" y="212" font-size="13.5" font-weight="600" fill="var(--text)">pipeline-reference.md</text>
+        <text x="426" y="232" font-size="12" fill="var(--text-2)">3,084 words — read on demand</text>
+        <text x="426" y="250" font-size="12" fill="var(--text-2)">schema + all output templates</text>
+
+        <line x1="535" y1="164" x2="535" y2="184" stroke="var(--muted)" stroke-width="2" stroke-dasharray="4 4" marker-end="url(#arr)"/>
+        <text x="690" y="216" font-size="12" fill="var(--text-2)">opened only at the step</text>
+        <text x="690" y="234" font-size="12" fill="var(--text-2)">that consumes the section,</text>
+        <text x="690" y="252" font-size="12" fill="var(--text-2)">pointed at by section name</text>
+      </svg>
+    </div>
+    <div style="flex: 1 1 300px">
+      <p style="font-size:14.5px; color:var(--text-2)">The pattern already existed
+      (<span class="mono">work.md ↔ work-reference.md</span>); the batch applied it to the three
+      worst offenders. Each split enforced a two-way contract checked by grep receipts: every
+      moved section is pointed at <strong>by name</strong> from the step that consumes it (no
+      dangling pointers), and every companion section has an inbound pointer (no orphans).</p>
+      <p style="font-size:14.5px; color:var(--text-2)">Fidelity was proved by diffing the moved
+      blocks against <span class="mono">git show HEAD</span> — byte-identical apart from heading
+      levels. Relocation, not redesign.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ THE STORY ============ -->
+<section>
+  <div class="kicker">The story in order</div>
+  <h2>One post, four gaps, seven REQs</h2>
+  <p class="measure" style="margin-top:10px; color:var(--text-2)">
+    The trigger was a reading assignment: Anthropic's <em>“The New Rules of Context Engineering
+    for Claude 5 Generation Models”</em>, compared against the skill. The audit mapped four of the
+    post's five shifts to concrete gaps (the fifth — manual memory → auto-memory — was deliberately
+    skipped: the REQ/UR paper trail <em>is</em> the product). The user picked full scope, accepted
+    the stated risk of trimming safety nets for weaker models, and chose to dogfood: capture the
+    plan as REQs, then run the skill's own work pipeline over them. Order mattered — REQ-027
+    changed the rules the three splits then had to obey.
+  </p>
+  <div class="mermaid-band" style="margin-top:18px">
+    <pre class="mermaid">
+flowchart LR
+    P["Anthropic post:<br/>5 shifts"] --> A["Audit:<br/>4 gaps found"]
+    A --> U["UR-006<br/>7 REQs captured"]
+    U --> R27["REQ-027<br/>template sections<br/>earned, not mandatory"]
+    U --> R25["REQ-025<br/>one guard,<br/>one home"]
+    U --> R26["REQ-026<br/>next-steps.md<br/>intent over examples"]
+    U --> R28["REQ-028<br/>crew files<br/>to opinions"]
+    R27 --> R29["REQ-029<br/>split ai-report"]
+    R27 --> R30["REQ-030<br/>split pipeline"]
+    R27 --> R31["REQ-031<br/>split capture"]
+    R25 --> R31
+    </pre>
+  </div>
+
+  <h3 style="margin-top:26px">Each REQ, one level deeper</h3>
+  <p style="color:var(--muted); font-size:13.5px">Expand what you care about — every claim below is from the REQ's own archived record.</p>
+
+  <details>
+    <summary><span class="req">REQ-027</span>Earned sections, plus a ratchet <span class="gist">— the root-cause fix, and the gate for the splits</span></summary>
+    <div class="body">
+      <p>The maintainer template treated Rules / Common Rationalizations / Red Flags / Verification
+      Checklist as near-mandatory, so 24–33 of 43 action files carried all four — mostly generic
+      filler. A previous release (0.123.2) deduped once and the boilerplate <strong>grew back</strong>,
+      because the template still asked for it.</p>
+      <p><strong>The fix is a test, not a vibe:</strong> a section is included only if you can name the
+      specific failure it prevents and where it happened; “generic engineering advice a capable model
+      already follows” is an explicit non-reason. A new check in
+      <span class="mono">_dev/tests/contract-regressions.sh</span> fails any <em>new</em> action file whose
+      Common Rationalizations table contains no do-work-specific noun (REQ, UR, queue, frontmatter…),
+      with the 42 existing files grandfathered via a baseline array.</p>
+      <p><strong>Wrinkle worth knowing:</strong> a naive case-insensitive noun pattern was useless —
+      <span class="mono">-i</span> makes “REQ” match inside “required”. The check splits into a
+      case-sensitive pattern for REQ/UR- and a case-insensitive one for the rest. Red→green was proven
+      with a throwaway generic action file that made the suite fail, then pass once rows named real machinery.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="req">REQ-025</span>State each shipped guard once <span class="gist">— 13 restatements of one commit guard become 1 + pointers</span></summary>
+    <div class="body">
+      <p>Three guards lived in many places: the <span class="mono">git add -A</span>/hook-bypass commit guard
+      (13 mentions across 7 files, 5 inside stray-check.md alone), prompt-injection doctrine (inlined in three
+      actions despite <span class="mono">crew-members/prompt-injection.md</span> existing to be JIT-loaded), and
+      “this action is read-only” (3–5 restatements per file in three actions). Each now has one canonical home;
+      every other site is a one-line pointer. Net −440 words across 12 files.</p>
+      <p><strong>Adversarial review earned its keep twice:</strong> the first pass left capture.md's Step 0
+      still paraphrasing the injection doctrine it claimed to have deduped, and the “pointers” at three sites
+      still named the literal <span class="mono">--no-verify</span> flag — re-exposing the mechanism the canonical
+      home owns. Both fixed; the post-fix grep shows the flag surviving in exactly one file
+      (<span class="mono">actions/commit.md</span>).</p>
+      <p><strong>Judgment call preserved:</strong> bkb.md keeps <em>two</em> injection load-steps because its
+      triage and ingest sub-commands are independently invokable — collapsing to one would silently unguard a
+      real ingestion path. “No behavior change” outranked the literal count.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="req">REQ-026</span>next-steps.md: intent over enumeration <span class="gist">— 1,741 → 383 words; the biggest always-read cut</span></summary>
+    <div class="body">
+      <p>The file was 47 hard-coded “After X, suggest Y” blocks, read after <em>every</em> action. It's now a
+      stated intent (infer 2–3 suggestions from actual queue state), a few format constraints, one anchor
+      example, and a 6-row table of the genuinely non-obvious cases (pipeline interrupted vs completed,
+      reserve, capture-requests, clarify with pending answers).</p>
+      <p><strong>The keeper test that emerged:</strong> a row survives only when the action's own output
+      doesn't announce which state it left the queue in — so an agent inferring from intent alone would
+      plausibly pick the wrong branch. <span class="mono">tidy-repo</span> was considered and rejected on
+      exactly that test: its output says “plan-only” or “executed”, so no table row needed.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="req">REQ-028</span>Crew files trimmed to opinions <span class="gist">— 6,737 → 4,237 words; security dedup resolved first</span></summary>
+    <div class="body">
+      <p>Per-line keep test: a line survives as (a) a deliberate project preference or (b) tied to do-work
+      machinery. “It's true” is not a reason. backend.md lost 75%, frontend 61%, testing 60%; security.md and
+      ui-design.md have structural floors — their sections are hard-cited by name from code-review.md and
+      ui-review.md, so they were trimmed, not gutted. All six <span class="mono">JIT_CONTEXT</span> load
+      contracts verified byte-identical.</p>
+      <p><strong>Nothing said once ended up said zero times:</strong> the two frontend security bullets not
+      already in security.md (Vue/Angular innerHTML naming, <span class="mono">rel=noopener</span>) moved there
+      before the frontend copies were deleted.</p>
+      <p><strong>Insight from the pass:</strong> specificity is a proxy for opinion — “bcrypt cost 12+” survives
+      where “use appropriate HTTP status codes” doesn't, even though both topics are well-known.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="req">REQ-029</span>Split ai-report <span class="gist">— 7,541 → 5,477 + 2,339 on demand; earned-sections pass found nothing to cut</span></summary>
+    <div class="body">
+      <p>Image Generation Backend, the SVG data-viz rules, the report design rules, the before/after toggle
+      implementation, and the output-format template moved to <span class="mono">ai-report-reference.md</span>
+      (this very report was produced under the split regime — the reference sections loaded only when their
+      steps ran). Two-way pointer check: 8 pointer sites, 5 companion sections, zero danglers/orphans.</p>
+      <p><strong>An honest zero:</strong> applying REQ-027's earned-sections test row-by-row deleted nothing —
+      all 63 rows/bullets across the four sections name specific failure modes (the file:// blank-screenshot
+      bug, injection→RCE via the agentic backend). A narrow, single-purpose action can already be fully earned;
+      the test's job is to confirm, not to force deletions.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="req">REQ-030</span>Split pipeline <span class="gist">— 7,471 → 4,719 + 3,084 on demand; found a real routing bug on the way</span></summary>
+    <div class="body">
+      <p>The state-file schema and every output rendering (status blocks, the three-format completion report,
+      continuation notice, help menu) moved to <span class="mono">pipeline-reference.md</span>. The action file
+      keeps decision logic plus the state file's <em>lifecycle</em> — including the discovery that the REQ's
+      phrase “when it is deleted” assumed a deletion step that doesn't exist: <span class="mono">pipeline.json</span>
+      is never deleted, it's set inactive and left as a historical record.</p>
+      <p><strong>Discovered task:</strong> tracing the help-menu routing revealed <span class="mono">do-work
+      pipeline help</span> never reaches the Help Menu at all — Step 1 buckets “help” as request text and tries
+      to <em>start a pipeline named “help”</em>. Pre-existing, out of scope for a relocation, recorded for a
+      follow-up fix.</p>
+      <p><strong>Review add-on:</strong> two ADRs (adr-001, adr-008) stated the templates lived inline — made
+      false by this split, fixed in the same commit, matching the precedent set when this companion was
+      re-inlined in 0.76.0.</p>
+    </div>
+  </details>
+
+  <details>
+    <summary><span class="req">REQ-031</span>Split capture <span class="gist">— 5,505 → 3,913 + 1,682 on demand; all five worked examples deleted</span></summary>
+    <div class="body">
+      <p>The REQ/UR templates and schema-alias table — a hard contract read by work.md, roadmap.md, and the
+      Kanban board's parser — moved verbatim (diff-proven <span class="mono">IDENTICAL</span>) to
+      <span class="mono">capture-reference.md</span>, opened at Step 5 or the Step 2 addendum branch.</p>
+      <p><strong>The examples decision:</strong> all five worked transcripts deleted, none relocated. Each was
+      read against the bar “does it encode a judgment the templates don't?” — the strongest candidate, Complex
+      Multi-Feature Request, sliced 1:1 feature→REQ with no <span class="mono">depends_on</span> at all, failing
+      to demonstrate the one thing that would have earned it a home.</p>
+      <p><strong>Acceptance test that matters:</strong> an end-to-end throwaway capture (UR-999/REQ-999) run
+      from the split files produced a correctly paired, correctly UTC-timestamped UR+REQ — then was deleted.</p>
+    </div>
+  </details>
+</section>
+
+<!-- ============ ALSO THAT DAY ============ -->
+<section>
+  <div class="kicker">Same day, separate story</div>
+  <div class="row">
+    <div class="card" style="flex: 1 1 460px">
+      <h3 style="margin-top:0">REQ-018 — Concurrent-orchestrator lock guard (UR-005)</h3>
+      <p style="font-size:14.5px; color:var(--text-2)">Completed 80 minutes after the batch: the fix for the
+      2026-07-01 incident where two sessions ran <span class="mono">do-work run</span> on one tree and the second
+      archived the first's in-flight build with a hollow paper trail. The work loop now takes a heartbeat lock
+      (<span class="mono">do-work/orchestrator-lock.json</span>); a second orchestrator gets a three-choice prompt
+      (proceed / take over / abort) or a safe refusal when non-interactive, and stale locks self-heal after
+      45 minutes. Two adversarial review rounds reshaped it — “proceed anyway” originally killed the session it
+      promised to spare. It earns its own report: <span class="mono">do-work ai-report UR-005</span>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ OPEN THREADS ============ -->
+<section>
+  <div class="kicker">Open threads &amp; lessons</div>
+  <div class="row">
+    <div style="flex:1 1 380px">
+      <h3 style="margin-top:0">Carried forward</h3>
+      <ul class="tight" style="font-size:14.5px; color:var(--text-2)">
+        <li><span class="mono">do-work pipeline help</span> starts a pipeline instead of showing help — Step 1
+        needs “help” as a reserved keyword (found by REQ-030).</li>
+        <li><span class="mono">frontend.md</span> and <span class="mono">ui-design.md</span> both state the
+        <span class="mono">prefers-reduced-motion</span> rule — same duplication shape REQ-028 just resolved
+        elsewhere (found by REQ-028).</li>
+      </ul>
+    </div>
+    <div style="flex:1 1 380px">
+      <h3 style="margin-top:0">What the batch taught</h3>
+      <ul class="tight" style="font-size:14.5px; color:var(--text-2)">
+        <li>Structural fixes beat trims: the last dedupe grew back; this one changed the template <em>and</em>
+        added a ratchet, the same move that paired the SKILL.md diet with its word budget.</li>
+        <li>Re-derive audit numbers with fresh greps before editing — the concept can be duplicated even where
+        the literal string isn't.</li>
+        <li>An earned-sections audit that deletes nothing is a valid outcome — confirm row-by-row, don't assume
+        every file needs trimming because the rule now exists.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VERIFY ============ -->
+<section>
+  <div class="kicker">Verify it yourself</div>
+  <h2>Every number above is reproducible</h2>
+  <pre>
+# The seven commits, one per REQ
+git show --stat 692a236 b29ec34 f6cd577 f95b1cf ed5f96b 2273381 168871f
+
+# The ratchet suite all seven had to pass (includes the new Common Rationalizations check)
+bash _dev/tests/contract-regressions.sh
+
+# Always-read floor: 2,552 + 383 = 2,935–2,940 words depending on later edits
+wc -w SKILL.md next-steps.md
+
+# The splits: skeleton + on-demand companion
+wc -w actions/ai-report.md actions/ai-report-reference.md \
+      actions/pipeline.md  actions/pipeline-reference.md \
+      actions/capture.md   actions/capture-reference.md
+
+# REQ-025's proof: the hook-bypass flag survives in exactly one file
+grep -rln -- '--no-verify' actions/</pre>
+</section>
+
+<div class="footer">
+  Generated by <span class="mono">do-work ai-report</span> for UR-006 (context-engineering-alignment batch,
+  completed 2026-07-27). No screenshots exist by construction — the work changed instruction files, not UI;
+  all diagrams are hand-authored SVG/Mermaid derived from the REQs' archived receipts. No AI-generated raster
+  images were used. Layout render-verified in light and dark (full-page screenshots, two judge passes).
+</div>
+
+</div>
+<script>
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      background: 'transparent',
+      primaryColor: prefersDark ? '#22303f' : '#e8f0fb',
+      primaryTextColor: prefersDark ? '#f4f3ee' : '#1a1a19',
+      primaryBorderColor: prefersDark ? '#3987e5' : '#2a78d6',
+      lineColor: '#898781',
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontSize: '13px'
+    }
+  });
+</script>
+</body>
+</html>
