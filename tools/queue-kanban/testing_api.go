@@ -17,10 +17,12 @@ import (
 //
 // Writes are serialized in testing.go so concurrent requests cannot lose one
 // another's updates. Every write still lands directly in the user's working
-// tree, where git is the audit trail and rollback mechanism. Serve mode is
-// loopback-bound by default; the two browser-facing guards below (JSON content
-// type + same-origin check) stop a hostile web page from firing cross-site
-// writes at localhost, but do not implement authentication.
+// tree, where git is the audit trail and rollback mechanism. Writes are
+// loopback-only regardless of the bind address — a LAN-exposed board is
+// read-only — and the two browser-facing guards below (JSON content type +
+// same-origin check) additionally stop a hostile web page from firing
+// cross-site writes at localhost. There is no authentication; remote testing
+// would need a session token, not a wider guard.
 
 // testingApiMaxBodyBytes bounds a testing API request body. Feedback is capped
 // separately (testingApiMaxFeedbackChars); this is the transport-level ceiling.
@@ -70,13 +72,21 @@ func writeTestingApiError(responseWriter http.ResponseWriter, httpStatus int, er
 	writeTestingApiJson(responseWriter, httpStatus, testingApiResponse{Ok: false, Error: errorText})
 }
 
-// guardTestingApiWrite enforces the browser-facing write guards shared by both
-// endpoints: POST only, a JSON content type (a cross-origin page cannot send
-// application/json without a CORS preflight, which this server never grants),
-// and — when the browser attaches an Origin header — an origin whose host
-// matches the Host the request arrived on. Returns false after writing the
-// error response when the request must be rejected.
+// guardTestingApiWrite enforces the write guards shared by both endpoints:
+// loopback callers only (the Origin/content-type checks below only stop
+// browser CSRF — a non-browser client on a LAN-exposed bind sends no Origin at
+// all, and writes must not be reachable from other machines; same rule as
+// /file's read guard in serve.go), POST only, a JSON content type (a
+// cross-origin page cannot send application/json without a CORS preflight,
+// which this server never grants), and — when the browser attaches an Origin
+// header — an origin whose host matches the Host the request arrived on.
+// Returns false after writing the error response when the request must be
+// rejected.
 func guardTestingApiWrite(responseWriter http.ResponseWriter, httpRequest *http.Request) bool {
+	if !isLoopbackRemoteAddr(httpRequest.RemoteAddr) {
+		writeTestingApiError(responseWriter, http.StatusForbidden, "testing writes are loopback-only")
+		return false
+	}
 	if httpRequest.Method != http.MethodPost {
 		writeTestingApiError(responseWriter, http.StatusMethodNotAllowed, "POST required")
 		return false

@@ -270,9 +270,13 @@ done
 
 # --- critical section: re-read, modify, write atomically ---
 # (read $lock_path fresh here, apply ONLY this session's own field changes.
-#  An ACQUIRING session whose fresh read finds a lock file that now exists lost
-#  the acquisition race: write nothing, release the mutex, and re-enter the
-#  procedure's existing-lock branch — see Procedure step 1.)
+#  A branch chosen on an unserialized read must re-validate its premise against
+#  this fresh read before writing — the fresh read exists to be re-judged, not
+#  just to avoid clobbering other sessions' fields. An ACQUIRING session whose
+#  fresh read finds a lock file that now exists lost the acquisition race, and a
+#  STALE-TAKEOVER whose fresh read shows a changed holder or a recomputed age
+#  ≤ 45m is aiming at a live session: in both cases write nothing, release the
+#  mutex, and re-enter the procedure at the branch the fresh state selects.)
 lock_tmp="$lock_path.$$.tmp"
 printf '%s\n' "$updated_lock_json" > "$lock_tmp" && mv -f "$lock_tmp" "$lock_path" || rm -f "$lock_tmp"
 
@@ -295,7 +299,7 @@ The temp-file-plus-`mv` is not decoration: `mv` within a directory is an atomic 
 
 1. **No lock file exists** → acquire: generate `session_id` and write the fresh holder object (`started_at`/`heartbeat_at` = now, `claimed_req: null`, `coexisting_sessions: []`) through the serialized mutex — **re-validating existence inside the critical section**: the branch was chosen on an unserialized existence check, so two sessions starting on an empty queue can both select it. If the fresh read inside the mutex finds a lock file that now exists, another session won the race — write nothing, release the mutex, and re-enter this procedure at step 2 with that file (its holder's heartbeat is seconds old, so the fresh-holder path applies). Only when the fresh read still finds no lock does the write proceed. Append the local-ignore snippet. Continue to the CHECKPOINT.md check and Crash Recovery normally.
 2. **Lock file exists** → read it, compute `age = now − heartbeat_at` in minutes against the holder's `heartbeat_at` (same style as Step 1's Stale-reservation check comparing `reserved_at` against now).
-   - **`age > 45` (holder stale):** warn `Lock held by <session_id> looks abandoned (heartbeat <age>m old; was building <claimed_req, or "nothing">). Treating as stale — taking over.` Rewrite only the top-level holder fields — freshly generated `session_id`, `started_at`/`heartbeat_at` = now, `claimed_req: null`. **Preserve `coexisting_sessions`**, pruning only entries whose own `heartbeat_at` is also past 45 minutes — a live coexisting session keeps running, undisturbed by a holder take-over. Continue to the CHECKPOINT.md check and Crash Recovery normally — the per-file concurrency gate (`actions/work-reference.md` → **Crash Recovery (Step 1)**) decides which `working/` file this take-over actually reclaims.
+   - **`age > 45` (holder stale):** warn `Lock held by <session_id> looks abandoned (heartbeat <age>m old; was building <claimed_req, or "nothing">). Treating as stale — taking over.` **Re-validate staleness inside the mutex before writing** — the stale verdict came from an unserialized read, and the holder may have refreshed in the gap (a session legitimately goes quiet for tens of minutes during a long dispatch, then heartbeats on return): from the fresh read inside the critical section, confirm the holder `session_id` is still the one just warned about and **recompute the holder's age from the fresh `heartbeat_at`**. If the holder changed or the recomputed age is ≤ 45 minutes, the holder is live — write nothing, release the mutex, and re-enter this procedure at step 2 with the fresh read (the fresh-holder path applies). Only when the fresh read still shows the same holder still past 45 minutes does the take-over proceed: rewrite only the top-level holder fields — freshly generated `session_id`, `started_at`/`heartbeat_at` = now, `claimed_req: null`. **Preserve `coexisting_sessions`**, pruning only entries whose own `heartbeat_at` — as read inside the mutex, not from the earlier unserialized read — is also past 45 minutes: a live coexisting session keeps running, undisturbed by a holder take-over. Continue to the CHECKPOINT.md check and Crash Recovery normally — the per-file concurrency gate (`actions/work-reference.md` → **Crash Recovery (Step 1)**) decides which `working/` file this take-over actually reclaims.
    - **`age ≤ 45` (holder fresh — another orchestrator may be live):** apply the Interactivity test above.
      - **Interactive:** load `crew-members/clear-questions.md`, then present:
 
@@ -314,7 +318,7 @@ The temp-file-plus-`mv` is not decoration: `mv` within a directory is an atomic 
        ```
 
        - **(a) Proceed anyway** — append a new entry to `coexisting_sessions`: `{session_id: <new>, joined_at: now, heartbeat_at: now, claimed_req: null}`. Do **not** touch the holder's `session_id`/`started_at`/`heartbeat_at`/`claimed_req` — the holder's own heartbeat-refresh touchpoints keep matching, so it runs to completion undisturbed. Continue to the CHECKPOINT.md check and Crash Recovery normally: the per-file concurrency gate skips only files actively claimed by another live session (the holder's, or another coexisting session's) — it is not an all-or-nothing skip.
-       - **(b) Take over** — same rewrite as the stale path above (new holder `session_id`, `claimed_req: null`; preserve/prune `coexisting_sessions`).
+       - **(b) Take over** — same rewrite as the stale path above (new holder `session_id`, `claimed_req: null`; preserve/prune `coexisting_sessions`, prune ages from the in-mutex read). The in-mutex identity check still applies: the user authorized taking over the holder they were *shown* — if the fresh read inside the mutex shows a different holder `session_id`, write nothing, release the mutex, and re-enter this procedure at step 2 to re-present. (The age recheck does not apply — the user knowingly chose to take over a fresh holder.)
        - **(c) Abort** — make no writes at all; report the holder info above and stop before the CHECKPOINT.md check, Crash Recovery, or the queue scan.
      - **Non-interactive** (Interactivity test above resolved "no," including "couldn't confirm"): refuse.
 

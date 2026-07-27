@@ -373,6 +373,51 @@ for action_file_path in "$repo_root"/actions/*.md; do
   fi
 done
 
+# Stale-lock take-over must re-judge staleness inside the serialized mutex. The
+# branch is selected on an unserialized read, and a holder that heartbeats in the
+# read-to-write gap must not be overwritten as stale — the take-over nulls the
+# holder's claim, so Crash Recovery then strips and re-queues the REQ the live
+# session was mid-way through building (validate-feedback 2026-07-28 TOCTOU).
+assert_contains \
+  "actions/work-reference.md" \
+  'Re-validate staleness inside the mutex' \
+  'actions/work-reference.md stale take-over must re-validate staleness inside the mutex, not just serialize the write.'
+
+assert_contains \
+  "actions/work-reference.md" \
+  'recompute the holder.s age from the fresh' \
+  'actions/work-reference.md stale take-over must recompute the holder age from the fresh in-mutex read before overwriting.'
+
+# Capture redaction must run on the FULL extracted text before any byte-budget
+# cut: every credential pattern needs a complete token shape, so redacting after
+# truncation lets a severed token (`ghp_1234567`) persist as an unmatched
+# fragment (validate-feedback 2026-07-28, reproduced).
+assert_contains \
+  "actions/memory-reference.md" \
+  'redaction runs BEFORE truncation' \
+  'actions/memory-reference.md Stop-Capture spec must order redaction before truncation.'
+
+if command -v jq &>/dev/null; then
+  redaction_order_workdir="$(mktemp -d)"
+  mkdir -p "$redaction_order_workdir/memory/logs"
+  # Pad so the GitHub token straddles the side-truncation cut: with a short
+  # assistant side the user side is cut at (1500-15) - 11 - 12 bytes, which
+  # lands mid-token for a token starting at byte 1451.
+  redaction_order_pad="$(printf 'A%.0s' $(seq 1 1450))"
+  printf '{"type":"user","message":{"content":"%sghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ012345 tail"}}\n{"type":"assistant","message":{"content":[{"type":"text","text":"shortreply"}]}}\n' \
+    "$redaction_order_pad" > "$redaction_order_workdir/transcript.jsonl"
+  printf '{"transcript_path":"%s/transcript.jsonl"}' "$redaction_order_workdir" \
+    | CLAUDE_PROJECT_DIR="$redaction_order_workdir" bash "$repo_root/hooks/memory-stop-capture.sh" >/dev/null 2>&1 || true
+  if ! ls "$redaction_order_workdir/memory/logs/"*.md >/dev/null 2>&1; then
+    printf 'FAIL: hooks/memory-stop-capture.sh redaction-order probe wrote no capture — the probe transcript should be captured, not dropped.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif grep -rqE 'ghp_[A-Za-z0-9_]+' "$redaction_order_workdir/memory/logs/" 2>/dev/null; then
+    printf 'FAIL: hooks/memory-stop-capture.sh persisted a truncation-severed credential fragment — redaction must run on the full extracted text before any byte-budget cut.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+  rm -rf "$redaction_order_workdir"
+fi
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi

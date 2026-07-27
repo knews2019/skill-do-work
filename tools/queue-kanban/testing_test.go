@@ -579,3 +579,85 @@ func TestGenerateStaticBoardDataOmitsLiveTestingApi(t *testing.T) {
 		t.Errorf("static board data must not set liveTestingApi")
 	}
 }
+
+// TestTestingApiWritesAreLoopbackOnly asserts the write endpoints reject any
+// non-loopback peer — with or without a matching Origin header. The Origin and
+// content-type checks only stop browser CSRF; a non-browser client on a
+// LAN-exposed bind sends no Origin at all, so the peer address is the guard
+// that keeps a network-visible board read-only.
+func TestTestingApiWritesAreLoopbackOnly(t *testing.T) {
+	repoRoot := createFixtureDoWorkTree(t)
+	liveServer := newLiveBoardServer(repoRoot, 7*24*time.Hour)
+
+	postTestingProfile := func(remoteAddr string, originHeader string) *httptest.ResponseRecorder {
+		apiRequest := httptest.NewRequest(http.MethodPost, "/api/testing/profile",
+			strings.NewReader(`{"name":"Alice"}`))
+		apiRequest.Header.Set("Content-Type", "application/json")
+		if originHeader != "" {
+			apiRequest.Header.Set("Origin", originHeader)
+		}
+		apiRequest.RemoteAddr = remoteAddr
+		responseRecorder := httptest.NewRecorder()
+		liveServer.ServeHTTP(responseRecorder, apiRequest)
+		return responseRecorder
+	}
+
+	// A LAN peer without an Origin header (curl, a script) must be rejected.
+	if response := postTestingProfile("192.0.2.7:41234", ""); response.Code != http.StatusForbidden {
+		t.Errorf("non-loopback Origin-less POST = %d, want 403", response.Code)
+	}
+	// A LAN peer with a matching Origin must still be rejected — same-origin is
+	// not authentication.
+	if response := postTestingProfile("192.0.2.7:41234", "http://example.com"); response.Code != http.StatusForbidden {
+		t.Errorf("non-loopback matching-Origin POST = %d, want 403", response.Code)
+	}
+	// Nothing may have been written by the rejected requests.
+	if _, statErr := os.Stat(filepath.Join(repoRoot, "do-work", "testers.md")); !os.IsNotExist(statErr) {
+		t.Errorf("a rejected non-loopback request created do-work/testers.md")
+	}
+
+	// A loopback peer without an Origin header (the pre-flight-free happy path)
+	// must succeed.
+	if response := postTestingProfile("127.0.0.1:41234", ""); response.Code != http.StatusOK {
+		t.Errorf("loopback Origin-less POST = %d, want 200; body=%s", response.Code, response.Body.String())
+	}
+	// A loopback peer with a same-origin browser header must succeed.
+	sameOriginRequest := httptest.NewRequest(http.MethodPost, "/api/testing/profile",
+		strings.NewReader(`{"name":"Bob"}`))
+	sameOriginRequest.Header.Set("Content-Type", "application/json")
+	sameOriginRequest.Header.Set("Origin", "http://"+sameOriginRequest.Host)
+	sameOriginRequest.RemoteAddr = "127.0.0.1:41235"
+	sameOriginRecorder := httptest.NewRecorder()
+	liveServer.ServeHTTP(sameOriginRecorder, sameOriginRequest)
+	if sameOriginRecorder.Code != http.StatusOK {
+		t.Errorf("loopback same-origin POST = %d, want 200; body=%s", sameOriginRecorder.Code, sameOriginRecorder.Body.String())
+	}
+}
+
+// TestTestingWritePreservesFileMode asserts the atomic testing rewrite keeps
+// the REQ file's existing permission bits — the rename replacement must not
+// widen a 0600 file or strip group-write from a umask-002 checkout the way an
+// unconditional 0644 chmod did.
+func TestTestingWritePreservesFileMode(t *testing.T) {
+	for _, originalFileMode := range []os.FileMode{0o600, 0o664} {
+		reqFilePath := filepath.Join(t.TempDir(), "REQ-0105-mode.md")
+		if writeErr := os.WriteFile(reqFilePath, []byte(fixtureReqFileContent("REQ-0105", "completed")), originalFileMode); writeErr != nil {
+			t.Fatalf("write fixture: %v", writeErr)
+		}
+		// WriteFile's perm is filtered through the umask; force the exact mode.
+		if chmodErr := os.Chmod(reqFilePath, originalFileMode); chmodErr != nil {
+			t.Fatalf("chmod fixture: %v", chmodErr)
+		}
+		updates := buildTestingFieldUpdates(testingStatusInTesting, "Alice", "", time.Now())
+		if upsertErr := upsertFrontmatterFields(reqFilePath, updates); upsertErr != nil {
+			t.Fatalf("upsert on %v file: %v", originalFileMode, upsertErr)
+		}
+		updatedInfo, statErr := os.Stat(reqFilePath)
+		if statErr != nil {
+			t.Fatalf("stat updated REQ: %v", statErr)
+		}
+		if updatedInfo.Mode().Perm() != originalFileMode {
+			t.Errorf("mode after testing write = %v, want %v", updatedInfo.Mode().Perm(), originalFileMode)
+		}
+	}
+}

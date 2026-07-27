@@ -372,3 +372,45 @@ func TestBindServeListenerAndAnnounceDefaultOffLeavesOpenerUntouched(t *testing.
 		t.Fatalf("browser opener called %d times with openAfterBind=false, want 0", openerCallCount)
 	}
 }
+
+// TestServeFingerprintTracksStrayRequestFiles asserts creating or removing a
+// misplaced REQ file changes the mtime fingerprint. Without strays in the
+// fingerprint, the file that is already invisible as a card would also fail to
+// invalidate the cache — so the warning meant to reveal it would never appear
+// (and a stale warning would never clear) until an unrelated file changed.
+func TestServeFingerprintTracksStrayRequestFiles(t *testing.T) {
+	repoRoot := createFixtureDoWorkTree(t)
+
+	enumerateAndFingerprint := func() map[string]time.Time {
+		discovered, enumerateErr := enumerateDoWorkTree(repoRoot)
+		if enumerateErr != nil {
+			t.Fatalf("enumerateDoWorkTree: %v", enumerateErr)
+		}
+		return buildTreeMtimeFingerprint(discovered)
+	}
+	baselineFingerprint := enumerateAndFingerprint()
+
+	strayDir := filepath.Join(repoRoot, "do-work", "user-requests", "UR-0001")
+	if mkdirErr := os.MkdirAll(strayDir, 0o755); mkdirErr != nil {
+		t.Fatalf("mkdir stray dir: %v", mkdirErr)
+	}
+	strayPath := filepath.Join(strayDir, "REQ-0031-example.md")
+	if writeErr := os.WriteFile(strayPath, []byte(fixtureReqFileContent("REQ-0031", "pending")), 0o644); writeErr != nil {
+		t.Fatalf("write stray REQ: %v", writeErr)
+	}
+
+	withStrayFingerprint := enumerateAndFingerprint()
+	if _, tracked := withStrayFingerprint[strayPath]; !tracked {
+		t.Fatalf("fingerprint does not track stray %s", strayPath)
+	}
+	if treeMtimeFingerprintsEqual(baselineFingerprint, withStrayFingerprint) {
+		t.Fatal("fingerprint unchanged after adding a stray REQ — its warning would stay hidden")
+	}
+
+	if removeErr := os.Remove(strayPath); removeErr != nil {
+		t.Fatalf("remove stray REQ: %v", removeErr)
+	}
+	if treeMtimeFingerprintsEqual(withStrayFingerprint, enumerateAndFingerprint()) {
+		t.Fatal("fingerprint unchanged after removing the stray REQ — its warning would go stale")
+	}
+}

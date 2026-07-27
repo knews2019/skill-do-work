@@ -328,6 +328,16 @@ func upsertFrontmatterFields(filePath string, fieldUpdates []frontmatterFieldUpd
 // in-between. The dot-prefixed temp name keeps a crash leftover out of the
 // board's REQ-*.md walk.
 func writeFileAtomically(filePath string, fileContents []byte) error {
+	// Preserve the target's existing permission bits across the rename — a
+	// direct write to an existing file leaves its mode alone, and the atomic
+	// replacement must not silently widen a 0600 REQ or strip group-write from
+	// a umask-002 checkout. 0644 applies only when the target does not exist
+	// yet (matching os.WriteFile's create-time perm). ACLs/xattrs are not
+	// carried over — an accepted limit of the rename-replacement design.
+	replacementFileMode := os.FileMode(0o644)
+	if originalInfo, statError := os.Stat(filePath); statError == nil {
+		replacementFileMode = originalInfo.Mode().Perm()
+	}
 	parentDirectory := filepath.Dir(filePath)
 	temporaryFile, createError := os.CreateTemp(parentDirectory, "."+filepath.Base(filePath)+".tmp-*")
 	if createError != nil {
@@ -340,8 +350,8 @@ func writeFileAtomically(filePath string, fileContents []byte) error {
 		temporaryFile.Close()
 		return fmt.Errorf("writing %s: %w", temporaryPath, writeError)
 	}
-	// CreateTemp opens 0600; match the 0644 the direct write used to produce.
-	if chmodError := temporaryFile.Chmod(0o644); chmodError != nil {
+	// CreateTemp opens 0600; restore the mode the target file had.
+	if chmodError := temporaryFile.Chmod(replacementFileMode); chmodError != nil {
 		temporaryFile.Close()
 		return fmt.Errorf("setting mode on %s: %w", temporaryPath, chmodError)
 	}

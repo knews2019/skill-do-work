@@ -340,16 +340,24 @@ func (liveServer *liveBoardServer) refreshBoardMarkdownData() (*generatedBoardMa
 }
 
 // buildTreeMtimeFingerprint stats every file discovered by enumerateDoWorkTree
-// — REQ files, UR input.md files, notes.md, and testers.md — and returns a map
-// of absPath → mtime. Files that cannot be stat'd are omitted (consistent with the
-// best-effort walk contract in walk.go). notes.md must be fingerprinted like
-// any other input: it feeds the rendered board, so appending a note has to
-// invalidate the cache or the live server would keep serving the old strip.
+// — REQ files (including strays), UR input.md files, notes.md, and testers.md —
+// and returns a map of absPath → mtime. Files that cannot be stat'd are omitted
+// (consistent with the best-effort walk contract in walk.go). notes.md must be
+// fingerprinted like any other input: it feeds the rendered board, so appending
+// a note has to invalidate the cache or the live server would keep serving the
+// old strip. Stray REQ files must be fingerprinted for the same reason: they
+// feed the misplaced-file warning, and a file the board already can't show must
+// not also fail to trigger the warning meant to reveal it.
 func buildTreeMtimeFingerprint(discovered discoveredTreeFiles) map[string]time.Time {
-	fingerprint := make(map[string]time.Time, len(discovered.RequestFiles)+len(discovered.UserRequestFiles)+1)
+	fingerprint := make(map[string]time.Time, len(discovered.RequestFiles)+len(discovered.StrayRequestFiles)+len(discovered.UserRequestFiles)+1)
 	for _, ref := range discovered.RequestFiles {
 		if fileInfo, statErr := os.Stat(ref.AbsolutePath); statErr == nil {
 			fingerprint[ref.AbsolutePath] = fileInfo.ModTime()
+		}
+	}
+	for _, stray := range discovered.StrayRequestFiles {
+		if fileInfo, statErr := os.Stat(stray.AbsolutePath); statErr == nil {
+			fingerprint[stray.AbsolutePath] = fileInfo.ModTime()
 		}
 	}
 	for _, urFilePath := range discovered.UserRequestFiles {
@@ -439,7 +447,7 @@ func resolveServeListenAddress(portFlagValue string) string {
 // parse gets no warning — net.Listen rejects it before anything is announced.
 func describeListenExposure(listenAddress string) (displayAddress string, exposureWarning string) {
 	allInterfacesWarning := fmt.Sprintf(
-		"queue-kanban: warning: %s binds ALL interfaces — the board (including REQ bodies) is reachable from the local network",
+		"queue-kanban: warning: %s binds ALL interfaces — the board (including REQ bodies) is readable from the local network; testing writes stay loopback-only",
 		listenAddress)
 	if strings.HasPrefix(listenAddress, ":") {
 		return "localhost" + listenAddress, allInterfacesWarning
@@ -455,7 +463,7 @@ func describeListenExposure(listenAddress string) (displayAddress string, exposu
 		return listenAddress, ""
 	default:
 		return listenAddress, fmt.Sprintf(
-			"queue-kanban: warning: %s binds a non-loopback address — the board (including REQ bodies) is reachable from the network",
+			"queue-kanban: warning: %s binds a non-loopback address — the board (including REQ bodies) is readable from the network; testing writes stay loopback-only",
 			listenAddress)
 	}
 }

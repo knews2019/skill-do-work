@@ -6,7 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.140.2 — Heartbeats Cover the Build Stretch; Cleanup and Suggestions Respect Live State (2026-07-28)
+## 0.140.3 — Loopback-Only Board Writes, In-Mutex Stale Revalidation, Redact-Before-Truncate (2026-07-28)
+
+Five accepted findings from an external review, all verified against the code before fixing. The two that mattered most: a LAN-exposed board's testing endpoints accepted writes from any machine (the Origin check only fires when a browser sends one), and a stale-lock takeover judged staleness on a pre-mutex read, so a holder that heartbeated in the gap could be overwritten and its in-flight REQ re-queued.
+
+- Kanban testing writes (`/api/testing/profile`, `/api/testing/status`) now require a loopback peer, same as `/file` — a network-exposed board is read-only.
+- The stale-lock takeover re-confirms the holder's identity and recomputes its heartbeat age from the fresh read inside the mutex before overwriting; the user-gated take-over keeps the identity check, and coexisting-session prune ages come from the same fresh read. Wording now ratcheted by `_dev/tests/contract-regressions.sh`.
+- The memory Stop hook redacts credentials (and judges the private-key drop) on the full extracted messages *before* truncation — a byte-budget cut can no longer sever a token into an unmatched, persisted fragment. Spec in `actions/memory-reference.md` reordered to match; regression probe reproduces the straddling-token case.
+- Stray (misplaced) REQ files now feed the live board's mtime fingerprint, so their warning appears and clears without waiting for an unrelated file change.
+- Testing updates preserve the REQ file's existing permission bits across the atomic rewrite instead of forcing 0644.
 
 The remaining four accepted findings from the same external triage 0.140.1 started on. The big one: a live Route C build could go 45+ minutes between lock touchpoints and get taken over — and re-queued — mid-build.
 

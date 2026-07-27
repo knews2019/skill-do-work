@@ -72,6 +72,27 @@ strip_invalid_utf8() {
   if command -v iconv &>/dev/null; then iconv -c -f UTF-8 -t UTF-8 2>/dev/null; else cat; fi
 }
 
+# Redact credential-shaped content — memory files are committed plaintext
+# (actions/memory-reference.md, "Capture Redaction Spec"). MUST run on the FULL
+# extracted text BEFORE any truncation: every pattern below needs a complete
+# token shape (a prefix plus a minimum run of body characters), so a byte-budget
+# cut through the middle of a token leaves a fragment like `ghp_1234567` that no
+# longer matches and would persist unredacted. Redact whole strings first, then
+# truncate the already-safe text. The pattern list is illustrative, not
+# exhaustive: it catches common token shapes, and `memory remember` curation
+# remains the real gate.
+redact_credentials() {
+  sed -E \
+    -e 's/(gh[pousr]|github_pat)_[A-Za-z0-9_]{16,}/[REDACTED]/g' \
+    -e 's/sk-[A-Za-z0-9_-]{16,}/[REDACTED]/g' \
+    -e 's/AKIA[0-9A-Z]{16}/[REDACTED]/g' \
+    -e 's/xox[baprs]-[A-Za-z0-9-]{10,}/[REDACTED]/g' \
+    -e 's/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}/[REDACTED]/g' \
+    -e 's/[Bb]earer[[:space:]]+[A-Za-z0-9._~+\/=-]{16,}/Bearer [REDACTED]/g' \
+    -e 's/(([Pp]assword|[Pp]asswd|[Ss]ecret|[Tt]oken|[Aa][Pp][Ii][_-]?[Kk]ey)["'"'"']?[[:space:]]*[:=][[:space:]]*)["'"'"']?[^[:space:]"'"'"']{6,}/\1[REDACTED]/g' \
+    2>/dev/null
+}
+
 # Extract the final user and assistant message texts from the JSONL transcript.
 CAPTURE_TEXT=""
 if command -v jq &>/dev/null; then
@@ -104,6 +125,15 @@ if command -v jq &>/dev/null; then
   [ "$LAST_USER_TEXT" = "null" ] && LAST_USER_TEXT=""
   [ "$LAST_ASSISTANT_TEXT" = "null" ] && LAST_ASSISTANT_TEXT=""
 
+  # Redact the FULL sides before any truncation (see redact_credentials above).
+  # A private-key block spans lines, so line-based redaction can't be trusted —
+  # drop the capture entirely, judged on the complete text, not a truncated view.
+  case "$LAST_USER_TEXT $LAST_ASSISTANT_TEXT" in
+    *"PRIVATE KEY-----"*) exit 0 ;;
+  esac
+  LAST_USER_TEXT="$(printf '%s' "$LAST_USER_TEXT" | redact_credentials)" || exit 0
+  LAST_ASSISTANT_TEXT="$(printf '%s' "$LAST_ASSISTANT_TEXT" | redact_credentials)" || exit 0
+
   # Trim the two sides INDEPENDENTLY, never the composed string. Truncating
   # "User: … Agent: …" as one blob means a long prompt eats the entire assistant
   # reply — and the reply is the half holding the decisions and outcome this
@@ -133,36 +163,24 @@ else
   # Best-effort fallback when jq is absent: grab the raw text fields from the
   # transcript tail. Cruder than the jq path — install jq for clean captures.
   CAPTURE_TEXT="$(tail -c 8000 "$TRANSCRIPT_PATH" | sed -n 's/.*"text"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | tail -6 || true)"
+  # Same order as the jq path: drop/redact on the extracted text BEFORE the
+  # blanket byte cap below can cut a token into an unrecognizable fragment.
+  case "$CAPTURE_TEXT" in
+    *"PRIVATE KEY-----"*) exit 0 ;;
+  esac
+  CAPTURE_TEXT="$(printf '%s' "$CAPTURE_TEXT" | redact_credentials)" || exit 0
 fi
 
 # Nothing meaningful extracted → skip silently. This blanket cap is a backstop for the
 # no-jq fallback above, which has no separate user/assistant sides to budget; the jq
-# path already composes to <= CAPTURE_BUDGET_BYTES, so it is a no-op there.
+# path already composes to <= CAPTURE_BUDGET_BYTES, so it is a no-op there. Both paths
+# arrive here ALREADY redacted, so this cut can at worst clip a `[REDACTED]` marker —
+# never expose a credential fragment.
 CAPTURE_TEXT="$(printf '%s' "$CAPTURE_TEXT" | head -c "$CAPTURE_BUDGET_BYTES" | strip_invalid_utf8)"
 [ -n "$(printf '%s' "$CAPTURE_TEXT" | tr -d '[:space:]')" ] || exit 0
 case "$CAPTURE_TEXT" in
   "User: "*"Agent: ") exit 0 ;;   # both messages came back empty
 esac
-
-# Redact credential-shaped content BEFORE anything is persisted or hashed — memory
-# files are committed plaintext (actions/memory-reference.md, "Capture Redaction
-# Spec"). The pattern list is illustrative, not exhaustive: it catches common token
-# shapes, and `memory remember` curation remains the real gate. A private-key block
-# spans lines, so line-based redaction can't be trusted — drop the capture entirely.
-case "$CAPTURE_TEXT" in
-  *"PRIVATE KEY-----"*) exit 0 ;;
-esac
-REDACTED_TEXT="$(printf '%s' "$CAPTURE_TEXT" | sed -E \
-  -e 's/(gh[pousr]|github_pat)_[A-Za-z0-9_]{16,}/[REDACTED]/g' \
-  -e 's/sk-[A-Za-z0-9_-]{16,}/[REDACTED]/g' \
-  -e 's/AKIA[0-9A-Z]{16}/[REDACTED]/g' \
-  -e 's/xox[baprs]-[A-Za-z0-9-]{10,}/[REDACTED]/g' \
-  -e 's/eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{5,}\.[A-Za-z0-9_-]{5,}/[REDACTED]/g' \
-  -e 's/[Bb]earer[[:space:]]+[A-Za-z0-9._~+\/=-]{16,}/Bearer [REDACTED]/g' \
-  -e 's/(([Pp]assword|[Pp]asswd|[Ss]ecret|[Tt]oken|[Aa][Pp][Ii][_-]?[Kk]ey)["'"'"']?[[:space:]]*[:=][[:space:]]*)["'"'"']?[^[:space:]"'"'"']{6,}/\1[REDACTED]/g' \
-  2>/dev/null)" || exit 0   # redaction failed → never persist the unredacted text
-CAPTURE_TEXT="$REDACTED_TEXT"
-[ -n "$(printf '%s' "$CAPTURE_TEXT" | tr -d '[:space:]')" ] || exit 0
 
 # Hash for idempotency (sha256sum, shasum fallback)
 if command -v sha256sum &>/dev/null; then
