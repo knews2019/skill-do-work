@@ -1,6 +1,6 @@
 # Build Knowledge Base — Reference
 
-> Companion file to `build-knowledge-base.md`. Contains seed file templates, agent crew definitions, and the KB schema file content. Extracted to keep the main action file focused on procedural steps.
+> Companion file to `bkb.md`. Contains seed file templates, agent crew definitions, and the KB schema file content. Extracted to keep the main action file focused on procedural steps.
 
 ---
 
@@ -37,7 +37,7 @@ Last updated: {today} | Total articles: 0 | Topic clusters: 0
 
 ## Topic Clusters
 
-(none yet — run `do work bkb ingest` to add your first source)
+(none yet — run `do-work bkb ingest` to add your first source)
 
 ## Recent Activity
 
@@ -61,7 +61,7 @@ Structure initialized. Ready for first source.
 
 This knowledge base was initialized on {today}. No sources have been ingested yet.
 
-Add sources to `raw/inbox/` and run `do work bkb triage` followed by `do work bkb ingest` to begin building.
+Add sources to `raw/inbox/` and run `do-work bkb triage` followed by `do-work bkb ingest` to begin building.
 ```
 
 **`wiki/agent.md`:**

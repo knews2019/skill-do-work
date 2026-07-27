@@ -7,10 +7,10 @@ Read-only design audit that validates UI quality against structured best practic
 Same as code-review — prime files, directories, or combined:
 
 ```
-do work ui-review                          # interactive scope selection
-do work ui-review src/components/          # validate a directory
-do work ui-review prime-dashboard          # validate everything a prime file touches
-do work design review src/pages/
+do-work ui-review                          # interactive scope selection
+do-work ui-review src/components/          # validate a directory
+do-work ui-review prime-dashboard          # validate everything a prime file touches
+do-work design review src/pages/
 ```
 
 ## Review dimensions
@@ -55,11 +55,11 @@ Structured markdown report organized by category with file:line references, seve
 ## Usage
 
 ```
-do work ui-review
-do work ui-review src/components/
-do work ui-review prime-dashboard
-do work review ui
-do work design review
-do work validate ui
-do work design audit
+do-work ui-review
+do-work ui-review src/components/
+do-work ui-review prime-dashboard
+do-work review ui
+do-work design review
+do-work validate ui
+do-work design audit
 ```

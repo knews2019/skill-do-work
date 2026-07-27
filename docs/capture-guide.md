@@ -35,7 +35,7 @@ title: Brief descriptive title
 status: pending
 created_at: 2025-01-26T10:00:00Z
 user_request: UR-001
-domain: frontend | backend | ui-design | general
+domain: frontend | backend | ui-design | general | security | testing
 prime_files: []
 tdd: false
 ---
@@ -50,6 +50,8 @@ Key sections inside a REQ:
 - **Context / Constraints** — additional details
 
 Complex requests add: Detailed Requirements, Dependencies, Builder Guidance, Batch Context.
+
+If a request can't start until an **external condition** is met ("once LM Studio is running", "after the designer replies"), capture emits `status: blocked` with a `blocked_by` line naming the condition (and, only if you supply one, an optional `blocked_check` shell probe that `do-work run` re-checks to auto-unblock). This is distinct from `depends_on` (waiting on another REQ) and from an Open Question (`pending-answers`, a question for you).
 
 ## Workflow
 
@@ -67,7 +69,7 @@ Need to modify an in-flight or completed request? Capture creates a new REQ with
 ## Usage
 
 ```
-do work capture request: add dark mode to settings
-do work capture request: the search is slow, add export, fix the header
-do work capture request: [paste meeting notes, specs, or a screenshot]
+do-work capture-request: add dark mode to settings
+do-work capture-request: the search is slow, add export, fix the header
+do-work capture-request: [paste meeting notes, specs, or a screenshot]
 ```

@@ -1,10 +1,10 @@
 # Commit Action
 
-> **Part of the do-work skill.** Invoked when routing determines the user wants to commit accumulated uncommitted files. Analyzes changes, associates them with existing REQs for traceability, groups the rest semantically, and commits everything in small atomic batches.
+> **Part of the do-work skill.** Invoked when routing determines the user wants to commit accumulated uncommitted files. Analyzes changes, associates them with existing REQs for traceability, groups the rest semantically, and commits everything in small atomic batches. User-facing walkthrough: [`docs/commit-guide.md`](../docs/commit-guide.md).
 
-Unlike the commit steps embedded in other actions (capture Step 7, work Step 9, review-work standalone, cleanup), this action handles files that accumulated outside the normal pipeline — manual edits, ad-hoc fixes, or work done between do-work runs.
+Unlike the commit steps embedded in other actions (capture Step 7, work.md's Commit Phase, review-work standalone, cleanup), this action handles files that accumulated outside the normal pipeline — manual edits, ad-hoc fixes, or work done between do-work runs.
 
-**Commit pathway deconfliction:** Three actions can commit archived REQs: (1) the work action's Step 9 commits the REQ + implementation after completion, (2) review-work standalone commits the REQ after appending a Review section, (3) this action commits leftover files traced to archived REQs. This action only discovers files via `git status` — if work or review-work already committed a file, it won't appear here. No double-commit risk exists as long as the prior actions committed cleanly. If a prior commit was interrupted, this action may pick up the leftovers — that's the intended behavior.
+**Commit pathway deconfliction:** Three actions can commit archived REQs: (1) actions/work.md's Commit Phase commits the REQ + implementation after completion, (2) review-work standalone commits the REQ after appending a Review section, (3) this action commits leftover files traced to archived REQs. This action only discovers files via `git status` — if work or review-work already committed a file, it won't appear here. No double-commit risk exists as long as the prior actions committed cleanly. If a prior commit was interrupted, this action may pick up the leftovers — that's the intended behavior.
 
 ## When to Use
 
@@ -14,12 +14,12 @@ Unlike the commit steps embedded in other actions (capture Step 7, work Step 9, 
 - Files have accumulated outside the normal pipeline (manual edits, ad-hoc fixes)
 
 **Do NOT use when:**
-- User just wants to *understand* uncommitted changes — route to the inspect action instead
-- Committing as part of the work action (work.md has its own commit step)
+- User just wants to *understand* uncommitted changes — route to actions/inspect.md instead
+- Committing as part of actions/work.md (work.md has its own commit step)
 
 ## When This Runs
 
-- **Manually** when the user invokes it (e.g., `do work commit`, `do work save work`)
+- **Manually** when the user invokes it (e.g., `do-work commit`, `do-work save work`)
 
 ## Steps
 
@@ -44,7 +44,7 @@ commit action
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, report and exit.
 
-Run `git status --porcelain` to get all uncommitted changes — staged, unstaged, and untracked.
+Run `git status --porcelain --untracked-files=all` to get all uncommitted changes — staged, unstaged, and untracked. The `--untracked-files=all` (`-uall`) flag matters: plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so Step 2 would never see (or would try to "read") the files inside a new untracked folder. With `-uall`, every untracked file is listed individually.
 
 If the working tree is clean, report "Nothing to commit" and exit.
 
@@ -77,7 +77,7 @@ Scan `do-work/archive/` for completed REQs that might own some of the uncommitte
 
 1. Glob for `do-work/archive/**/REQ-*.md` — find all archived REQs
 2. For each archived REQ:
-   - Read the frontmatter — check for `commit:` field and `status: completed`
+   - Read the frontmatter — check for `commit:` field and a terminal-success `status` (`completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set)
    - Read the `## Implementation Summary` section — extract the list of files created/modified
 3. Also check `do-work/working/` for in-flight REQs with file lists
 
@@ -127,7 +127,7 @@ EOF
 )"
 ```
 
-**Format:** `[{REQ id}] {REQ title} — additional changes` + `Traced-to:` line pointing to the archived REQ + file list bullets. Note: this format intentionally differs from the work action's primary commit format (`[{id}] {title} (Route {route})` + `Implements:`). The `— additional changes` suffix and `Traced-to:` prefix signal these are supplementary commits for files that missed the original work commit, not the primary implementation commit.
+**Format:** `[{REQ id}] {REQ title} — additional changes` + `Traced-to:` line pointing to the archived REQ + file list bullets. Note: this format intentionally differs from actions/work.md's primary commit format (`[{id}] {title} (Route {route})` + `Implements:`). The `— additional changes` suffix and `Traced-to:` prefix signal these are supplementary commits for files that missed the original work commit, not the primary implementation commit.
 
 **Unassociated commits** (one per semantic group):
 
@@ -146,11 +146,7 @@ EOF
 
 **Format:** `[do-work] {descriptive label}` + file list bullets.
 
-**Rules:**
-- Stage specific files per group — never `git add -A` or `git add .`
-- Do not bypass pre-commit hooks — fix issues and retry
-- One commit per group — keep them atomic
-- List each file in the commit body with its action (Modified, Added, Deleted)
+**Rules:** see `## Rules` below for the staging/hook guard. One commit per group — keep them atomic. List each file in the commit body with its action (Modified, Added, Deleted).
 
 ### Step 6: Report
 
@@ -187,7 +183,7 @@ Excluded:
 |-----------|--------|
 | Not a git repo | Report "Not a git repository" and exit |
 | Clean working tree | Report "Nothing to commit" and exit |
-| Pre-commit hook failure | Fix the underlying issue, re-stage, and retry as a **new** commit. Do NOT use `--no-verify` to skip hooks — fix the root cause. |
+| Pre-commit hook failure | Fix the underlying issue, re-stage, and retry as a **new** commit (see `## Rules` — never `--no-verify`). |
 | File matches multiple REQs | Associate with the most recently completed REQ (`completed_at` timestamp) |
 | Ambiguous semantic grouping | Prefer smaller groups (1-2 files) over larger uncertain groups |
 | Binary files in untracked | Skip reading contents, group by directory proximity and filename |
@@ -203,32 +199,12 @@ Excluded:
 - Replace the commit steps in other actions — those remain for their specific pipelines
 - Stage `.env`, credentials, keys, or other secret files — these are always excluded
 
-## Checklist
+## Rules
 
-```
-□ Step 1: Check for git repo
-□ Step 1: Run git status, categorize files (M/A/D)
-□ Step 1: Exclude dangerous files (.env, credentials, keys)
-□ Step 2: Read diffs for modified files
-□ Step 2: Read contents for new files (skip binaries)
-□ Step 2: Note deleted file paths
-□ Step 3: Scan archive for completed REQs with Implementation Summaries
-□ Step 3: Match uncommitted files to REQ file lists
-□ Step 4: Semantically group unassociated files (1-5 per group)
-□ Step 4: Assign descriptive labels to each group
-□ Step 5: Commit REQ-associated groups (specific staging, no -A)
-□ Step 5: Commit unassociated groups (specific staging, no -A)
-□ Step 6: Print summary table of all commits
-□ Step 6: Report any excluded files
-```
+**Canonical statement of the commit-staging/hook guard** — every other action in this skill that stages or commits files points here rather than restating it:
 
-**Common mistakes to avoid:**
-- Using `git add -A` or `git add .` instead of staging specific files
-- Using `--no-verify` to bypass a failing pre-commit hook instead of fixing the issue
-- Committing `.env` or credential files
-- Making one giant commit instead of atomic groups
-- Grouping unrelated files just because they're in the same directory
-- Skipping the exclusion check for dangerous files
+- **Never `git add -A` or `git add .`.** Stage only the specific files that belong to the commit you're making. A blanket add risks sweeping in secrets, `.env` files, or unrelated in-progress changes from other work — the whole point of grouping files by REQ/semantic purpose (Steps 3-4) is defeated if staging ignores those groups.
+- **Never bypass a failing pre-commit hook** with `--no-verify` (or signing with `--no-gpg-sign`). Fix the underlying issue, re-stage, and retry as a **new** commit — never amend past a hook failure.
 
 ## Common Rationalizations
 
@@ -236,10 +212,7 @@ Guard against these when committing:
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "One big commit is fine for all these changes" | Group by REQ association, then by semantic relationship | Atomic commits enable targeted reverts and clear history |
-| "These files are related enough to commit together" | Check if they trace to the same REQ or serve the same semantic purpose | False grouping makes git history unreliable for debugging |
 | "No REQ matches — just commit everything together" | Group unassociated files by semantic purpose (feature, fix, config, etc.) | Even outside the pipeline, commits should be atomic and meaningful |
-| "This .env file is fine to commit" | Never commit files containing secrets, credentials, or environment-specific config | Credential leaks are irreversible — err on the side of excluding |
 | "The commit message doesn't need a REQ reference" | Include REQ reference when REQs exist — it's the traceability link | Without REQ references, the trail of intent is broken |
 
 ## Red Flags
@@ -248,6 +221,7 @@ Guard against these when committing:
 - Single commit with >20 files (likely needs splitting)
 - Commit message has no REQ reference when matching REQs exist in the system
 - Files from multiple unrelated REQs grouped in a single commit
+- Uncommitted files belonging to a `completed-with-issues` REQ aren't associated to it — Step 3 is filtering on the literal `completed` instead of the terminal-success set (`completed` or `completed-with-issues`; see `actions/work-reference.md`)
 
 ## Verification Checklist
 

@@ -6,7 +6,7 @@ Aliases: `bkb`, `kb`, `build knowledge base`, `knowledge base`.
 
 ## Folder structure
 
-After `do work bkb init`, the KB looks like this:
+After `do-work bkb init`, the KB looks like this:
 
 ```
 kb/
@@ -69,7 +69,7 @@ Drop files into `raw/inbox/`. PDFs, articles, notes, images, audio, video — an
 
 ### Stage 2: Triage
 
-Run `do work bkb triage`.
+Run `do-work bkb triage`.
 
 - Scans `raw/inbox/` for files
 - Classifies each by extension (`.pdf` → `papers/`, `.png` → `images/`, etc.)
@@ -81,7 +81,7 @@ After triage, inbox is empty and capture holds sorted files waiting to be ingest
 
 ### Stage 3: Ingest
 
-Run `do work bkb ingest` (all ready items) or `do work bkb ingest <filename>` (one file).
+Run `do-work bkb ingest` (all ready items) or `do-work bkb ingest <filename>` (one file).
 
 For each file:
 
@@ -239,15 +239,15 @@ When ingesting audio/video with companion transcripts, the Compiler applies extr
 ## Typical workflow
 
 ```
-do work bkb init                  # one-time setup
+do-work bkb init                  # one-time setup
 # drop files into kb/raw/inbox/
-do work bkb triage                # sort them
-do work bkb ingest                # compile into wiki
-do work bkb query [question]      # ask the wiki anything
-do work bkb lint                  # check for issues
-do work bkb close                 # wrap up the day
+do-work bkb triage                # sort them
+do-work bkb ingest                # compile into wiki
+do-work bkb query [question]      # ask the wiki anything
+do-work bkb lint                  # check for issues
+do-work bkb close                 # wrap up the day
 
 # weekly
-do work bkb defrag                # optimize structure
-do work bkb garden                # audit relationships
+do-work bkb defrag                # optimize structure
+do-work bkb garden                # audit relationships
 ```

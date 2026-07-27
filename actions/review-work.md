@@ -1,6 +1,6 @@
 # Review Work Action
 
-> **Part of the do-work skill.** Invoked automatically after work completes or manually when the user requests a review. Evaluates whether the work actually delivers what was requested — through requirements checking, code review, acceptance testing, and additional testing recommendations.
+> **Part of the do-work skill.** Invoked automatically after work completes or manually when the user requests a review. Evaluates whether the work actually delivers what was requested — through requirements checking, code review, acceptance testing, and additional testing recommendations. User-facing walkthrough: [`docs/review-work-guide.md`](../docs/review-work-guide.md).
 
 A post-work quality gate with three jobs: (1) confirm the implementation matches the requirements, (2) verify the code is solid, and (3) actually test that the thing works. Creates follow-up REQs for anything that needs fixing.
 
@@ -17,20 +17,18 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 
 **Use when:**
 - Reviewing completed work against its REQ requirements (post-build quality gate)
-- User says "review", "review work", "review code", or "audit code"
-- Automatically after the work action completes each REQ
+- User says "review", "review-work", "review code", or "audit code"
+- Automatically after actions/work.md completes each REQ
 
 **Do NOT use when:**
-- User wants to verify *capture quality* (not code) — route to the verify-requests action instead
-- User wants a standalone *codebase* review unrelated to REQs — route to the code-review action instead
-- User wants to *inspect* uncommitted changes without judgment — route to the inspect action instead
+- See `SKILL.md` routing table for sibling action selection.
 
 ## Two Modes
 
 | Mode | Trigger | REQ location | How to get the diff |
 |------|---------|-------------|---------------------|
-| **Pipeline** | Auto-triggered by the work action after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary |
-| **Standalone** | User invokes manually: `do work review`, `do work review work`, `do work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field |
+| **Pipeline** | Auto-triggered by actions/work.md after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary |
+| **Standalone** | User invokes manually: `do-work review`, `do-work review-work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field |
 
 Both modes follow the same workflow. The only difference is where the REQ lives and how you obtain the diff.
 
@@ -38,12 +36,12 @@ Both modes follow the same workflow. The only difference is where the REQ lives 
 
 ### Step 1: Find the Target
 
-**Pipeline mode:** The work action hands you the REQ file path (in `do-work/working/`). Skip to Step 2.
+**Pipeline mode:** the work action hands you the REQ file path (in `do-work/working/`). Skip to Step 2.
 
 **Standalone mode:**
 1. **If user specifies a REQ** (e.g., "review REQ-005"): Find it in `do-work/archive/` or `do-work/archive/UR-NNN/`
-2. **If user specifies a UR** (e.g., "review UR-003"): Find all completed REQs under that UR and review each
-3. **If no target specified**: Find the most recently completed REQ — check both `do-work/archive/` (root) and all `do-work/archive/UR-NNN/` subdirectories for the highest REQ number with `status: completed`
+2. **If user specifies a UR** (e.g., "review UR-003"): Find all terminally-successful REQs (`completed` or `completed-with-issues`) under that UR and review each
+3. **If no target specified**: Find the most recently completed REQ — check both `do-work/archive/` (root) and all `do-work/archive/UR-NNN/` subdirectories for the highest REQ number with a terminal-success status (`status: completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set)
 
 If the target REQ has no `commit` field (standalone mode) or no implementation changes (pipeline mode), report that there's nothing to review and exit.
 
@@ -133,16 +131,23 @@ If the REQ's Implementation Summary notes an assigned approach directive (e.g., 
 
 The directive check is informational — it does not affect the overall score. Its purpose is to track whether approach diversity produces better outcomes over time.
 
-**Karpathy Principle Check (informational)**
+**Coding-Guardrails Principle Check (informational)**
 
-`crew-members/karpathy.md` was always-loaded during implementation. Spot-check the diff against its four principles — these overlap with existing dimensions but frame them as observable behaviors:
+`crew-members/coding-guardrails.md` was always-loaded during implementation. Spot-check the diff against its four principles — these overlap with existing dimensions but frame them as observable behaviors:
 
 1. **Think Before Coding** — did Open Questions / Decisions get surfaced (`- [~]` marks, `## Decisions`), or were ambiguities silently resolved?
-2. **Simplicity First** — does the code match the senior-engineer test? Flag speculative abstractions, unrequested configurability, and defensive handling for impossible inputs. (Remember: simplify ≠ strip — if removing it would need restoring next week, it's foundation.)
+2. **Simplicity First (YAGNI)** — does the code match the senior-engineer test? Flag speculative abstractions, unrequested configurability, and defensive handling for impossible inputs. (Remember: simplify ≠ strip — if removing it would need restoring next week, it's foundation.) See `crew-members/coding-guardrails.md` § Simplicity First for the canonical statement.
 3. **Surgical Changes** — every changed line should trace to the REQ. Adjacent-code "improvements", style-only edits, and unrelated refactors are drift.
 4. **Goal-Driven Execution** — does the Testing section show verification (red-green, targeted regression, or equivalent proof), or just "it compiles"?
 
-Most Karpathy issues are already caught by Scope Discipline, Code Quality, and Test Adequacy. This check is a mnemonic pass — note anything the rubric missed under a **Minor** finding. Do not double-penalize the same issue across dimensions.
+Most guardrail issues are already caught by Scope Discipline, Code Quality, and Test Adequacy. This check is a mnemonic pass — note anything the rubric missed under a **Minor** finding. Do not double-penalize the same issue across dimensions.
+
+| Principle | Caught by | Tell |
+|---|---|---|
+| Think Before Coding | Scope / Decisions | Clarifying questions logged before code |
+| Simplicity First | Code Quality | Fewest lines; no speculative abstractions |
+| Surgical Changes | Scope Discipline | Only declared files touched |
+| Goal-Driven Execution | Test Adequacy | RED→GREEN proof honored |
 
 **Domain-Specific Review (if domain rules provided)**
 
@@ -212,7 +217,9 @@ Nit findings carry zero weight on the overall score — they're stylistic sugges
 
 ### Step 9: Report
 
-**Pipeline mode:** Report to the work action orchestrator (which reports to the user).
+Load `crew-members/anti-slop.md` before composing the report — the review output is a human-facing artifact and falls under those principles, especially **§ 8: lead with the decision/verdict in words, demote the self-grade**. Shape the report as the **Decision Brief** (`actions/work-reference.md` → **Decision Brief (hand-back format)**): the worded verdict and what's-built first; the score table on the record, below. **This restructures only the human-facing report** — the persisted `## Review` block (see **Append to REQ File**) keeps `Overall: [X]%` first, because `actions/present-work.md` parses it for the score.
+
+**Pipeline mode:** Report to actions/work.md orchestrator (which reports to the user).
 **Standalone mode:** Report directly to the user.
 
 Format:
@@ -220,25 +227,14 @@ Format:
 ```
 ## Review: REQ-NNN
 
-**Overall: [X]%** | Route [A/B/C] | [commit hash or "uncommitted"]
+**[Approve | Approve with follow-ups | Request changes]** — [one-line verdict in words]
+Route [A/B/C] | [commit hash or "uncommitted"]
 
-### Scores
+### What's built
+- [1-3 lines at feature altitude — what now works, what's still missing]
 
-| Dimension | Score | Notes |
-|-----------|-------|-------|
-| Requirements | 95% | All requirements implemented |
-| Code Quality | 85% | Clean, follows patterns |
-| Test Adequacy | 70% | Missing edge case coverage |
-| Scope | 100% | Focused, no drift |
-| Risk | None | — |
-| Acceptance | Pass | Feature works end-to-end |
-
-### Requirements Checklist
-
-- [x] Dark mode toggle in settings — delivered
-- [x] Persists preference in localStorage — delivered
-- [ ] Applies to sidebar — not delivered (only main content area)
-- [x] Respects OS preference on first visit — delivered
+### Decisions / risks for you
+- [Anything the user must weigh, each with its value + risk; "None" if clean]
 
 ### Findings
 
@@ -250,6 +246,13 @@ Format:
 
 **Nit:**
 - [Optional stylistic suggestion — no score impact]
+
+### Requirements Checklist
+
+- [x] Dark mode toggle in settings — delivered
+- [x] Persists preference in localStorage — delivered
+- [ ] Applies to sidebar — not delivered (only main content area)
+- [x] Respects OS preference on first visit — delivered
 
 ### Acceptance Testing
 
@@ -263,9 +266,24 @@ Format:
 - [Browser testing: verify localStorage persistence in Safari private mode]
 - [Edge case: toggle rapidly between modes to check for flicker/race conditions]
 
+### Scores (on the record — not the headline)
+
+**Overall: [X]%**
+
+| Dimension | Score | Notes |
+|-----------|-------|-------|
+| Requirements | 95% | All requirements implemented |
+| Code Quality | 85% | Clean, follows patterns |
+| Test Adequacy | 70% | Missing edge case coverage |
+| Scope | 100% | Focused, no drift |
+| Risk | None | — |
+| Acceptance | Pass | Feature works end-to-end |
+
 ### Follow-up REQs Created
 - REQ-025: "Add edge case tests for dark mode toggle" (addendum_to: REQ-003)
 ```
+
+**Verdict mapping** (keep consistent with the score bands above and the work.md Step 7 gate): **Approve** = Acceptance Pass *and* Overall ≥ 75%. **Approve with follow-ups** = Acceptance Partial *or* Overall 50–74% (Important findings become follow-up REQs). **Request changes** = Acceptance Fail *or* Overall < 50%. The percentage still appears (under **Scores**) so the Step 7 gate and commit-message format read it unchanged — it just stops leading.
 
 ### Step 9.5: Self-Validation & Lessons Learned
 
@@ -278,7 +296,7 @@ After presenting the review report, perform a self-validation pass — no human 
    - **What didn't:** Dead ends, false assumptions, things the review missed initially
    - **Worth knowing:** Gotchas, edge cases, or non-obvious dependencies discovered during review
 
-   In **Pipeline mode**, skip lesson capture — the work action's Step 7.5 handles it after the review returns.
+   In **Pipeline mode**, skip lesson capture — actions/work.md's Lessons-Capture Phase handles it after the review returns.
 
 4. **Update prime files (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant, append a link under a `## Lessons` section (create it if it doesn't exist):
 
@@ -290,9 +308,11 @@ After presenting the review report, perform a self-validation pass — no human 
 
    **Path must be relative to the prime file's location**, not the repo root. Compute the correct relative path from the prime file's directory to the archived REQ file. For example, if the prime file is at `src/utils/prime-auth.md` and the REQ is at `do-work/archive/UR-005/REQ-042-auth-fix.md`, the link should use `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`.
 
-   Only link lessons relevant to that prime file's scope. In **Pipeline mode**, the work action's Step 7.5 handles prime file updates.
+   Only link lessons relevant to that prime file's scope. In **Pipeline mode**, actions/work.md's Lessons-Capture Phase handles prime file updates.
 
-Self-validation runs in **both modes**. Lesson capture and prime file updates are **standalone-only** to avoid duplication with the work action.
+5. **Offer knowledge-base handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. Update the REQ's `kb_status` and (if promoted) `kb_entry` frontmatter based on the outcome. The handoff asks before writing, degrades to `pending` if no `kb/` exists, and never blocks archival. In **Pipeline mode**, actions/work.md's Lessons-Capture Phase runs the handoff instead.
+
+Self-validation runs in **both modes**. Lesson capture, prime file updates, and the knowledge-base handoff are **standalone-only** to avoid duplication with actions/work.md.
 
 ### Step 10: Create Follow-up REQs
 
@@ -337,7 +357,9 @@ status: pending-answers
 
 The `pending-answers` status means the work loop won't pick this up until the user reviews it, answers the questions, and flips the status to `pending`. The recommended choices let the user quickly pick an option without deep context-switching. Only add Open Questions when the ambiguity caused the issue — if the fix is clear (e.g., "missed a null check"), use `status: pending` and skip the Open Questions.
 
-Follow-up REQs go in `do-work/queue/`. In pipeline mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do work run`.
+**Author the question text for a cold reader** — load `crew-members/clear-questions.md` first, as with any Open Questions destined for `do-work clarify`: gloss every coined label, finding number, or spec §-reference, and state why the decision is the user's rather than the reviewer's (Principle 7). You have the review findings in your head right now; the user answering in a later clarify session has none of it.
+
+Follow-up REQs go in `do-work/queue/`. In pipeline mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do-work run`.
 
 **Don't create follow-ups for minor issues.** Minor findings go in the report only. The threshold: would a senior engineer request changes on this in a PR review, or just leave a comment?
 
@@ -364,14 +386,14 @@ After generating the report, append a Review section to the REQ file:
 **Suggested testing:** [count] items
 **Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"
 
-*Reviewed by review work action*
+*Reviewed by review-work action*
 ```
 
 In standalone mode, this is an exception to the archive immutability rule — review annotations are post-work metadata, not content changes.
 
 ### Commit (Standalone mode, git repos only)
 
-In **standalone mode**, after appending the Review section and creating any follow-up REQs, commit the changes. In **pipeline mode**, skip this — the work action's Step 9 handles the commit.
+In **standalone mode**, after appending the Review section and creating any follow-up REQs, commit the changes. In **pipeline mode**, skip this — actions/work.md's Commit Phase handles the commit.
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
@@ -394,7 +416,7 @@ EOF
 
 **Format:** `[REQ-NNN] review: {score}% (Route {route})` — where `{score}` is the overall review percentage and `{route}` is the original triage route. List the reviewed file path and any follow-up REQs created.
 
-Do not use `git add -A` or `git add .` — stage only the modified archived REQ and any new follow-up REQs. Don't bypass pre-commit hooks.
+Stage only the modified archived REQ and any new follow-up REQs — never `git add -A`/`.` or bypass a hook (see `actions/commit.md` § Rules for the full guard).
 
 ## Calibrating Review Depth
 
@@ -439,6 +461,7 @@ If any of these are true, escalate review depth regardless of route:
 - Tests pass but test file has trivial assertions (`expect(true).toBe(true)` style)
 - Scope section declares 3 files but Implementation Summary lists 8
 - No red-green evidence on a behavioral change with `tdd: true`
+- "Most recent work" silently skips a `completed-with-issues` REQ — Step 1 is filtering on the literal `completed` instead of the terminal-success set (`completed` or `completed-with-issues`; see `actions/work-reference.md`)
 
 ## Verification Checklist
 

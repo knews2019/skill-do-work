@@ -12,7 +12,7 @@ sources:
 related:
   - page: adr-004-canonicalize-pending-reqs-under-do-work-queue
     rel: depends-on
-  - page: adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles
+  - page: adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles
     rel: complements
   - page: adr-007-close-the-pipeline-with-present-and-a-technical-debrief
     rel: complements
@@ -24,7 +24,7 @@ confidence: high
 # ADR-005: Pipeline Is Stateful and Resumable
 
 Topic cluster: [[_index_workflow-orchestration]] ([topic index](../topics/_index_workflow-orchestration.md))
-See also: [[adr-004-canonicalize-pending-reqs-under-do-work-queue]] (depends-on), [[adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles]] (complements), [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] (complements)
+See also: [[adr-004-canonicalize-pending-reqs-under-do-work-queue]] (depends-on), [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]] (complements), [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] (complements)
 
 ## Context
 

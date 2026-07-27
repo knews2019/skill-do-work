@@ -1,60 +1,30 @@
 # Work Action
 
-> **Part of the do-work skill.** Invoked when routing determines the user wants to process the queue. Processes pending requests from the `do-work/queue/` folder in your project.
+> **Part of the do-work skill.** Invoked when routing determines the user wants to process the queue. Processes pending requests from the `do-work/queue/` folder in your project. User-facing walkthrough: [`docs/work-guide.md`](../docs/work-guide.md).
 
-An orchestrated build system that processes request files created by the capture requests action. Uses complexity triage to route simple requests straight to implementation and complex ones through planning and exploration first.
+An orchestrated build system that processes request files created by actions/capture.md. Uses complexity triage to route simple requests straight to implementation and complex ones through planning and exploration first.
+
+## When to Use
+
+**Use when:**
+- The queue has `pending` REQs and the user wants them built (`do-work run`, `start`, `go`, etc.).
+- The pipeline dispatches actions/work.md as its build step.
+- A specific REQ id was named (`do-work run REQ-042`) — the action scopes to it.
+
+**Do NOT use when:**
+- The queue is empty — tell the user and stop; suggest `do-work capture-request: [describe]` instead.
+- The only REQs left are `pending-answers` — route to `do-work clarify` so the user can resolve them first.
+- See `SKILL.md` routing table for sibling action selection (inspect, verify-requests, review-work, etc.).
 
 ## Request Files as Living Logs
 
 Each request file becomes a historical record. As you process a request, append sections documenting each phase: Triage, Plan, Exploration, Implementation Summary (mandatory file manifest), Testing, Review. This ensures full traceability — what was planned vs done, what files were touched, and whether triage was accurate.
 
-This living log is also the **trail of intent**. The REQ starts as a validated statement of what the user wants (written by capture). As the work action processes it, each appended section documents how intent was interpreted and realized: builder decisions (## Decisions) record where the builder exercised judgment beyond stated intent, scope declarations (## Scope) record what the builder committed to, and implementation summaries record what was actually built. The gap between captured intent and realized implementation is visible in a single file.
+This living log is also the **trail of intent**. The REQ starts as a validated statement of what the user wants (written by capture). As actions/work.md processes it, each appended section documents how intent was interpreted and realized: builder decisions (## Decisions) record where the builder exercised judgment beyond stated intent, scope declarations (## Scope) record what the builder committed to, and implementation summaries record what was actually built. The gap between captured intent and realized implementation is visible in a single file.
 
 ## Architecture
 
-```
-work action (orchestrator - lightweight, stays in loop)
-  │
-  ├── Read CHECKPOINT.md if exists (resume context from previous session)
-  │
-  ├── For each pending request (skip pending-answers):
-  │     │
-  │     ├── TRIAGE: Assess complexity (no agent, just read & categorize)
-  │     │
-  │     ├── OPEN QUESTIONS? ── - [ ] items exist ──► Mark - [~], builder decides
-  │     │                      (none / all resolved) ──► continue
-  │     │     │
-  │     │     ├── Route A (Simple) ──────────────────┐
-  │     │     │   Skip plan/explore, direct to build │
-  │     │     │                                      │
-  │     │     ├── Route B (Medium) ───────┐          │
-  │     │     │   Explore, scope declare  │          │
-  │     │     │                           ▼          │
-  │     │     └── Route C (Complex) ──► Plan ──► Explore ──► Scope declare
-  │     │                                            │
-  │     │                                            ▼
-  │     │                                     Implementation agent
-  │     │                                            │
-  │     │                                            ▼
-  │     │                                  Implementation Summary
-  │     │                                            │
-  │     │                                            ▼
-  │     │                              Qualify (orchestrator verifies)
-  │     │                                            │
-  │     │                                            ▼
-  │     │                                        Testing
-  │     │                                            │
-  │     │                                            ▼
-  │     │                                  Review ◄─── Fail? ──► Remediate ──► Re-review
-  │     │                                            │
-  │     │                                            ▼
-  │     ├── Archive ──► classify discovered tasks ──► queue follow-ups
-  │     │                                            │
-  │     │                                            ▼
-  │     └── Commit (git repos only)
-  │
-  └── Context wipe → Loop | Write CHECKPOINT.md → cleanup → report
-```
+The per-REQ orchestration pipeline (triage → plan/explore → implement → qualify → test → review → archive → commit, with the orchestrator handling all file management) is diagrammed in `actions/work-reference.md` → **Architecture**.
 
 > **Remember:** Every completed request gets a git commit (Step 9) before looping to the next request.
 
@@ -104,143 +74,161 @@ Read the request
 
 ## Folder Structure
 
-```
-do-work/
-├── queue/                         # Pending REQ files (the work queue)
-│   └── REQ-018-pending-task.md
-├── user-requests/                 # UR folders (verbatim input + assets)
-│   └── UR-003/
-│       ├── input.md
-│       └── assets/
-├── working/                       # Currently being processed
-│   └── REQ-020-in-progress.md
-└── archive/                       # Completed work
-    ├── UR-001/                    # Archived as self-contained unit
-    │   ├── input.md
-    │   ├── REQ-013-feature.md
-    │   └── assets/
-    ├── REQ-010-legacy-task.md     # Legacy REQs (no UR) archive directly
-    └── legacy/                    # Consolidated legacy items
-```
-
-- **`queue/`**: The queue — only pending `REQ-*.md` files
-- **`working/`**: Claimed requests. Immutable to all actions except the work pipeline.
-- **`archive/`**: Completed UR folders (self-contained) and legacy REQs/CONTEXT docs
-- **`user-requests/`**: Active UR folders. Moved to `archive/` when all REQs complete.
+The `do-work/` folder layout is described in `actions/work-reference.md` → **Folder Structure**. Briefly: `queue/` holds pending REQs, `working/` holds the claimed REQ, `archive/` holds completed work (UR folders + legacy REQs), and `user-requests/` holds active UR folders until all their REQs finish.
 
 ## Request File Schema
 
-Request files use YAML frontmatter added progressively:
-
-```yaml
----
-# Set by capture action
-id: REQ-001
-title: Short descriptive title
-status: pending
-domain: frontend  # choose one: frontend, backend, ui-design, or general
-prime_files: []  # list paths to relevant prime-*.md files, or leave empty
-created_at: 2025-01-26T10:00:00Z
-user_request: UR-001          # May be absent on legacy REQs
-
-# Set by work action when claimed
-claimed_at: 2025-01-26T10:30:00Z
-route: A | B | C
-
-# Set by work action when finished
-completed_at: 2025-01-26T10:45:00Z
-status: completed | completed-with-issues | failed
-commit: abc1234               # If git repo
-error: "Description"          # Only if failed
----
-```
+The full annotated frontmatter schema and the **Schema Read Contract** — the normalize-and-warn rules every read site honors for the enum/boolean fields `domain`, `status`, `route`, `caveman`, `tdd`, `error_type`, `kb_status` — live in `actions/work-reference.md` → **Request File Schema — Full Frontmatter** and **Schema Read Contract**. Every reference below to "the Schema Read Contract" points there.
 
 **Status flow (frontmatter values):** `pending` → `claimed` → `completed` / `completed-with-issues` / `failed`
 
-The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only three status transitions are written to frontmatter: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8).
+The intermediate phases (planning, exploring, implementing, testing, reviewing) are tracked by which `##` sections exist in the REQ file, not by frontmatter status changes. Only two status transitions are written to frontmatter on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8). Exception paths write their own statuses: the special holding statuses listed below (Step 1's `blocked-dependency-cycle`, Step 2.0's `blocked-archive-collision`), the mid-run blocked flip (`claimed` → `blocked` when a builder hits a missing external precondition — see Step 8's blocked-flip procedure), and Step 7's early `completed-with-issues` write after a failed remediation (which Step 8 must not overwrite). One terminal status is never written by this action: `cancelled` — a user-directed won't-do decision made via `do-work abandon` (`actions/abandon.md`); the scan treats it like any other terminal status (never claim it).
 
-**Special status:** `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do work clarify`.
+**Special statuses — these REQs stay in the queue but Step 1 won't pick them up (they're not `pending`, so the "find next pending REQ" scan walks right past them):**
+- `pending-answers` — a follow-up REQ whose Open Questions need user input before it can be worked. These accumulate in the queue and get batch-reviewed when the user runs `do-work clarify`.
+- `blocked` — waiting on an **external condition** named in `blocked_by` (a service being up, a person answering, credentials provisioned) — not user answers (`pending-answers`) and not another REQ (`depends_on`). Set at capture or by the mid-run blocked flip (Step 8 / `actions/work-reference.md` Failure Classification). Step 1 walks past it, but **re-probes it first** when a `blocked_check` command is present (see the Blocked-condition re-probe paragraph in Step 1); it also unblocks via `do-work clarify` (human-confirmable conditions) or a manual edit back to `pending`.
+- `blocked-archive-collision` — set by Step 2.0 when a queue file's REQ id is already archived. Non-destructive holding state; the user flips it back to `pending` (or removes/renames the duplicate) after deciding what to do.
+- `blocked-dependency-cycle` — set by Step 1 when a REQ's `depends_on` graph contains a cycle (e.g., REQ-A depends on REQ-B which depends on REQ-A). Non-destructive holding state; the user edits the `depends_on` chain to break the cycle, then flips the status back to `pending`.
+- `reserved` — allocated to a **different worktree/cloud session** via `do-work reserve` (`actions/reserve.md`); carries `reserved_for` (owner label) and `reserved_at`. The default scan never claims it; **targeted mode does** (`do-work run REQ-NNN` — explicit naming is how the owning session picks up its reservation, and the human override for everyone else). A reservation is not a claim: the file stays in `do-work/queue/` and never enters `working/`, so crash recovery cannot steal it.
 
 ## Input
 
-`$ARGUMENTS` may contain specific REQ IDs (e.g., `REQ-042`, `REQ-042 REQ-043`). When REQ IDs are provided, process **only** those REQs and stop — do not drain the full queue. This is how the pipeline action scopes work to a specific batch. When no REQ IDs are provided, process all pending REQs in queue order (default behavior).
+`$ARGUMENTS` may contain:
+
+- **Specific REQ IDs** (e.g., `REQ-042`, `REQ-042 REQ-043`) — process only those REQs and stop (do not process the full queue). This is how actions/pipeline.md scopes work to a specific batch. Targeted mode bypasses `depends_on` gating — the user explicitly named the REQs.
+- **`--wave N`** (integer flag, default mode only) — run only REQs at dependency depth N. Roots (no `depends_on`, or all `depends_on` resolve to archived REQs) are depth 0; depth grows by one per dependency layer. Mutually exclusive with targeted REQ IDs — reject the combination with an error.
+
+**Unrecognized arguments are rejected, not ignored.** After stripping `--wave N` and extracting REQ-ID tokens (shape: `REQ-` followed by digits, case-insensitive), any non-empty token still left in `$ARGUMENTS` is an error. Stop and report:
+
+```
+Unrecognized argument(s): <tokens>. Usage: do-work run [REQ-NNN ...] | do-work run --wave N | do-work run
+```
+
+Do **not** fall through to full-queue processing. A leftover token almost always means the user meant to *scope* the run — a typo'd REQ ID (`REG-042` instead of `REQ-042`), or dead muscle memory (a retired mode word) — so silently building the entire queue is the wrong, hard-to-undo default. This generalizes the existing `--wave`-plus-REQ-IDs rejection to all unrecognized residue; both are parse-time guards.
+
+When `$ARGUMENTS` is empty — no REQ IDs, no flags, no other tokens — process all pending REQs in dependency-aware order (default behavior).
 
 ## Steps
 
-**The work action is an orchestrator.** You handle ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents handle implementation work only.
+**actions/work.md is an orchestrator.** You handle ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents handle implementation work only.
 
 ### Step 1: Find Next Request
 
-**Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run was interrupted. For each recovered REQ:
-1. Reset frontmatter: set `status` to `pending`, **unless** the REQ file contains a `## Open Questions` section with at least one unresolved `- [ ]` item — in that case, restore `status` to `pending-answers`. (If the `## Open Questions` section exists but all items are already `[x]` or `[~]`, or if no `## Open Questions` section exists at all, set `status` to `pending`.) Remove `claimed_at` and `route`.
-2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, `## Scope`, `## Pre-Flight`, `## Implementation Summary`, `## Qualification`, `## Testing`, `## Review`, `## Lessons Learned`, `## Decisions`, and `## Discovered Tasks` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact.
-3. Move the REQ back to `do-work/queue/`
+**Concurrent-Orchestrator Lock Guard.** Run this once — the first time this session reaches Step 1 (session start, or resuming via CHECKPOINT.md); skip it on a later Step 10 → Step 1 loop iteration once this session's own `session_id` already appears in `do-work/orchestrator-lock.json` (a file-backed fact, not something to track in memory). Runs before the `do-work/CHECKPOINT.md` check and before Crash Recovery below. No lock, or a stale one, is acquired/taken over automatically. A fresh lock (another orchestrator may be live) branches on a concrete interactivity test, not self-assessment: an interactive session gets three choices — **proceed anyway**, **take over**, **abort** — each with a distinct, durable effect on the lock file; a non-interactive session refuses and reports the holder without touching any file. Full lock shape, the interactivity test, each choice's mechanics, and the heartbeat-refresh/release procedures: `actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**.
 
-Once `working/` is empty, proceed with finding the next request.
+**Crash Recovery:** if `do-work/working/` contains any `REQ-*.md`, a prior run may have been interrupted — but a per-file concurrency gate runs first and skips any file another live session still actively claims (re-checked fresh every time this runs, including on a loop iteration — never dependent on this session's memory of an earlier lock-guard choice). Reset and re-queue everything else per `actions/work-reference.md` → **Crash Recovery (Step 1)** before scanning the queue. Once every file this session is allowed to touch is recovered, proceed with finding the next request.
 
 Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
+
+**Blocked-condition re-probe.** Determine the probe set by run mode: in **default mode** (empty `$ARGUMENTS`), the set is every REQ whose `status` is `blocked`. In **targeted mode** (`$ARGUMENTS` names REQ IDs), the set is **only the named blocked REQs** — do NOT probe the rest of the queue here (that's handled by the Targeted-mode paragraph below). `blocked_check` is verbatim shell that can run up to 30s or touch local services, so a scoped run must never fire probes for REQs the user didn't name. For each REQ in the probe set, check for a non-empty `blocked_check` field. If present, run it as a machine probe **before** categorizing the queue, so a condition that has since become true unblocks the REQ and it participates in *this* run's selection. The `blocked_check` value is repo-authored content (same trust level as the skill's own hook scripts) and is executed **verbatim** — but never interpolate it into a quoted command line (an apostrophe in the condition breaks the quoting and is an injection vector). Instead, write the field value byte-for-byte to a scratch file and run that file:
+
+```bash
+# Re-derive paths deterministically — do not carry a variable across blocks.
+mkdir -p do-work/working   # may not exist yet — capture.md never pre-creates it, and a queue of only
+                           # captured blocked REQs would otherwise have no working/ dir, so the write below
+                           # would fail-to-launch and fail-closed would wrongly keep a satisfiable REQ blocked
+BLOCKED_CHECK_SCRIPT="do-work/working/.blocked-check-${REQ_ID}.sh"   # REQ_ID is the sanitized REQ id token, e.g. REQ-042
+# Write the blocked_check field value to $BLOCKED_CHECK_SCRIPT exactly as read (no quoting, no echo -e), then:
+# `timeout` is GNU coreutils — stock macOS ships neither `timeout` nor `gtimeout` (brew coreutils
+# adds the latter). Use either when present; otherwise poll the background probe with stock shell
+# primitives so every platform keeps the same 30-second bound.
+if command -v timeout >/dev/null 2>&1; then
+  timeout 30 sh "$BLOCKED_CHECK_SCRIPT"; probe_exit=$?
+elif command -v gtimeout >/dev/null 2>&1; then
+  gtimeout 30 sh "$BLOCKED_CHECK_SCRIPT"; probe_exit=$?
+else
+  sh "$BLOCKED_CHECK_SCRIPT" &
+  probe_process_id=$!
+  probe_wait_ticks=0
+  while kill -0 "$probe_process_id" 2>/dev/null && [ "$probe_wait_ticks" -lt 300 ]; do
+    sleep 0.1
+    probe_wait_ticks=$((probe_wait_ticks + 1))
+  done
+  if kill -0 "$probe_process_id" 2>/dev/null; then
+    kill "$probe_process_id" 2>/dev/null || true
+    sleep 0.1
+    kill -9 "$probe_process_id" 2>/dev/null || true
+    wait "$probe_process_id" 2>/dev/null || true
+    probe_exit=124
+  else
+    wait "$probe_process_id"; probe_exit=$?
+  fi
+fi
+rm -f "$BLOCKED_CHECK_SCRIPT"
+```
+
+**Fail closed.** Only `probe_exit == 0` unblocks. Any non-zero exit, a timeout (124), an unreadable/absent field, or a failure to launch means the condition is still unmet — leave the REQ `blocked` and note "probe failed this run" for the exit summary. A probe never halts the work loop and never raises an error.
+
+On exit 0, unblock the REQ: set `status: pending`, stamp `status_changed_at: <now>` (Timestamp rule, `actions/work-reference.md` — the only trace of the flip instant once blocked_at is gone; the board's state timer reads it), **remove `blocked_by` and `blocked_at`** (a stale condition on a runnable REQ would mislead the board and every reader), keep `blocked_check` (harmless while pending, useful if the REQ re-blocks later), and append one history line to a `## Blocked` body section — `- [<date>] blocked on "<condition>" — cleared by probe`. A `blocked` REQ with **no** `blocked_check` is never probed here; it clears only via `do-work clarify` or a manual edit.
+
+**Dependency-aware selection.** For each `pending` REQ, evaluate its `depends_on` field (or its legacy alias `dependencies:` — recognized for back-compat; `depends_on` wins when both present). A REQ is **dependency-ready** when every ID in the resolved dependency list reaches a REQ with `status: completed` or `status: completed-with-issues`. Resolve each dependency ID by globbing `do-work/archive/**/REQ-NNN-*.md`, `do-work/archive/**/REQ-NNN.md`, `do-work/queue/REQ-NNN-*.md`, and `do-work/working/REQ-NNN-*.md`. Cache resolution within a single Step 1 invocation — a 20-REQ queue with 3 deps each is 60 globs; cache hits keep the cost flat. A REQ with unmet dependencies is **dependency-blocked** and is skipped by the scan; it surfaces in the composed exit summary if no other pending REQ is dependency-ready. Process dependency-ready REQs in numeric ID order.
+
+**REQs with neither `depends_on` nor `dependencies:` are roots** and are always dependency-ready. Existing REQs (captured before the field existed) behave exactly as before.
+
+**Cycle detection for `depends_on`.** Before evaluating a REQ's dependencies, walk its `depends_on` graph (or `dependencies:` if `depends_on` is absent — same alias rule) collecting visited IDs into a seen set. If you encounter the current REQ's ID during the walk, the graph contains a cycle — set the REQ's `status` to `blocked-dependency-cycle`, report it, and skip. Mirrors the `addendum_to` cycle-detection approach already used in Step 8 substep 5. Non-destructive — the user breaks the cycle by editing the dependency list and flips status back to `pending`.
+
+**Wave execution (`--wave N`).** If the `--wave N` flag is set, compute each pending REQ's dependency depth before the dependency-ready filter:
+
+- Depth 0: REQs with no dependency list (neither `depends_on` nor the legacy `dependencies:` alias), or whose dependency members are all already archived (completed/completed-with-issues).
+- Depth K (K > 0): `max(depth of each dependency member in the current pending set) + 1`.
+- A dependency member that is neither archived (completed/completed-with-issues) nor in the current pending set — i.e. it sits in `pending-answers`, `blocked-archive-collision`, `blocked-dependency-cycle`, `claimed`, `reserved`, `failed`, or `cancelled` — contributes depth 0 to this computation. Depth is only about ordering waves; the member's own gating is handled separately by the dependency-ready filter below, which holds the dependent REQ until every member reaches `completed`/`completed-with-issues`.
+
+Filter the pending list to REQs whose depth equals N, then apply the dependency-ready filter normally. If no REQ at depth N is dependency-ready (or none exists at that depth), render the composed exit summary with a leading `No REQs at wave N (depth-N set is empty or fully gated).` line and exit. `--wave` and targeted REQ IDs are mutually exclusive — reject the combination at parse time with a clear error.
+
+**Targeted mode bypasses dependency gating.** When `$ARGUMENTS` contains explicit REQ IDs, process them in the given order regardless of `depends_on` (or its `dependencies:` alias). The user named them explicitly.
 
 **Queue status summary:** After reading all REQ frontmatter, categorize every REQ by status and print a summary before proceeding:
 
 ```
-Queue: N pending | N completed/done (awaiting archive) | N pending-answers
+Queue: N pending | N reserved | N completed/done (awaiting archive) | N pending-answers | N blocked | N blocked-archive-collision
 ```
 
-Count `completed`, `completed-with-issues`, and `done` statuses together as "completed/done (awaiting archive)." If any completed/done REQs exist in `do-work/queue/`, add:
+Count `completed`, `completed-with-issues`, `cancelled`, and `done` statuses together as "completed/done (awaiting archive)." Count `blocked` (external-condition holds) and `blocked-archive-collision` separately so held REQs don't disappear into the silence between "no pending" and "no REQs at all." When the Blocked-condition re-probe unblocked any REQs this run, append `(M probed, K unblocked)` to the `N blocked` figure. If any completed/done REQs exist in `do-work/queue/`, add:
 
 ```
-⚠ N completed REQs across M URs awaiting archive. Run `do work cleanup` after this session.
+⚠ N completed REQs across M URs awaiting archive. Run `do-work cleanup` after this session.
 ```
 
-**Targeted mode:** If `$ARGUMENTS` contains specific REQ IDs, find only those REQs in `do-work/queue/`. Verify each exists and has `status: pending`. If a targeted REQ is missing or not pending, report the issue and skip it. Process only the targeted REQs, then stop after the last one completes (skip the loop-or-exit logic in Step 10).
+**Stale-reservation check:** for each `reserved` REQ, compare `reserved_at` against now. Any reservation older than **24 hours** gets a suggestion line — the owning session may be dead, so the user should recategorize (never auto-release):
 
-**Default mode (no REQ IDs in arguments):** Scan for the first REQ with `status: pending` (skip `pending-answers` — those wait for user input).
+```
+⚠ N stale reservations (>24h): REQ-NNN (reserved for: <label>, <age> ago). Recategorize: `do-work release REQ-NNN`
+  to return it to the queue, `do-work run REQ-NNN` to claim it here, or leave it if that session is still active.
+```
 
-**Exit paths when no `pending` REQs found:**
+**Targeted mode:** If `$ARGUMENTS` contains specific REQ IDs, find only those REQs in `do-work/queue/`. Verify each exists and has `status: pending` **or `status: reserved`** — explicitly naming a reserved REQ claims it (that's the designed pickup path for the session the reservation is for; Step 2 clears the reservation fields). A targeted REQ with `status: blocked` is **not** claimed on naming alone (unlike `reserved`): run its `blocked_check` probe (per the Blocked-condition re-probe procedure above) — on exit 0 it unblocks to `pending` and is then claimed; on a failing or absent probe, report its `blocked_by` condition and skip it, because explicit naming does not make an unmet external condition true. If a targeted REQ is missing or has any other status, report the issue and skip it. Process only the targeted REQs, then stop after the last one completes (skip the loop-or-exit logic in Step 10). Release the orchestrator lock before stopping (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
-- **Completed/done REQs exist in `do-work/queue/`:** Do NOT silently say "no pending REQs." Instead, list them grouped by UR:
+**Default mode (empty `$ARGUMENTS`):** Scan for the first REQ with `status: pending` (skip `pending-answers` — those wait for user input). Reaching default mode requires `$ARGUMENTS` to be genuinely empty — the unrecognized-argument guard in **Input** has already rejected any non-REQ, non-flag token, so a fluffed argument never silently lands here as a full-queue run.
 
-  ```
-  No pending REQs in queue.
-
-  ⚠ N completed REQs awaiting archive (UR-137: 3 REQs, UR-138: 1 REQ, ...):
-    REQ-351 — [title] (done)
-    REQ-352 — [title] (completed)
-    ...
-
-  Run `do work cleanup` to archive completed work, then `do work recap` to see full history.
-  ```
-
-  Read the `user_request` frontmatter field from each completed/done REQ to determine UR grouping. List actual REQ ids, titles, and statuses so the user sees exactly what's sitting there. Then exit.
-
-- **Only `pending-answers` REQs remain (no completed/done):** Report them to the user so they can batch-review the questions via `do work clarify`.
-
-- **No REQs at all:** Report completion and exit.
+**Exit paths when no dependency-ready `pending` REQ is found:** render the *composed* exit summary — lead with the dependency-aware headline (`No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked), then append every applicable section (completed-awaiting-archive, pending-answers, blocked-on-external-condition, blocked-archive-collision, blocked-by-dependencies, reserved) in that order — per `actions/work-reference.md` → **Composed Exit Summary (Step 1)**, then exit the work loop. Only continue past Step 1 when at least one dependency-ready `pending` REQ exists. Release the orchestrator lock before exiting (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
 **REQ validation:** When reading each REQ's frontmatter, verify it has the required fields (`id`, `status`, `title`). If a REQ file has missing or unparseable frontmatter, skip it and report: `⚠ Skipping [filename]: missing required frontmatter ([field]).` Do not let a single malformed REQ block the entire work loop — skip it and continue to the next.
 
 **Exact glob pattern:** `do-work/queue/REQ-*.md` — if this returns no results, do NOT conclude the queue is empty. Verify by listing `do-work/queue/` contents to rule out a bad pattern.
 
+### Step 2.0: Pre-Claim Archive Collision Check
+
+Before claiming the queue file, verify it isn't a duplicate of an already-archived REQ — rerunning against a file whose twin was archived in a prior run silently re-processes and re-commits it. Run the shipped check:
+
+```bash
+<skill-root>/tools/checks/archive-collision.sh REQ-NNN
+```
+
+Exit 0 → no collision, proceed to Step 2. Exit 1 (matching archive paths printed) → **bail without moving or claiming**: set the queue file's frontmatter to `status: blocked-archive-collision` (non-destructive — the user flips it back to `pending` after deciding; it also prevents Step 10 → Step 1 livelock), report `REQ-NNN already archived at <path>; remove the duplicate from do-work/queue/ or rename if this is a re-do.`, and continue to the next pending REQ. Never delete the queue file — stale-duplicate vs intentional re-do is the user's call. If the script is missing, glob `do-work/archive/**/REQ-NNN-*.md` and `do-work/archive/**/REQ-NNN.md` (both forms) yourself — same decision rule.
+
+**Scope (minimal):** archive-only; no post-move or pre-commit collision guards (parallel-orchestrator concerns, out of scope).
+
 ### Step 2: Claim the Request
 
-1. `mkdir -p do-work/working` and move the REQ file there
-2. Update frontmatter: `status: claimed`, `claimed_at: <timestamp>`
+1. `mkdir -p do-work/working`, move the REQ file there, and — **in the same breath as the move** — refresh the orchestrator lock: rewrite `heartbeat_at` to now and `claimed_req` to this REQ's id (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**). Lock bookkeeping goes where the file moves: a file that is in `working/` while the lock still says `claimed_req: null` reads as an abandoned crash artifact to any other live session's Crash Recovery, which would recover it moments after you claimed it.
+2. Update frontmatter: `status: claimed`, `claimed_at: <timestamp>` — the current **UTC** instant `YYYY-MM-DDTHH:MM:SSZ` from `date -u +%Y-%m-%dT%H:%M:%SZ`, exactly like `completed_at` (Timestamp rule, `actions/work-reference.md`). Never local wall-clock time with a `Z` suffix — a future-dated stamp freezes the board's claim stopwatch and flags the card with a clock-skew warning.
+3. If the REQ was `reserved` (targeted mode only): remove `reserved_for` and `reserved_at` — the claim consumes the reservation.
 
 ### Step 3: Triage
 
 Read the request, apply the decision flow, update frontmatter with `route`. If a `## Triage` section does not already exist, append to the request file:
 
-```markdown
----
-
-## Triage
-
-**Route: [A/B/C]** - [Simple/Medium/Complex]
-
-**Reasoning:** [1-2 sentences]
-
-**Planning:** [Required/Not required]
-```
+(append per the **Triage Section Template (Step 3)** in `actions/work-reference.md`)
 
 Report the triage decision briefly to the user.
 
@@ -258,7 +246,7 @@ Open Questions use checkbox syntax:
 **If unresolved `- [ ]` items exist:**
 
 1. Note them. Read the `Recommended:` default and `Also:` alternatives for each.
-2. Mark each as `- [~]` with a numbered decision and the builder's reasoning: `- [~] [question] → **D-01**: Builder chose: [choice]. Reasoning: [why]`
+2. Mark each as `- [~]` with a numbered decision and the builder's reasoning: `- [~] [question] → **D-01**: Builder chose: [choice]. Reasoning: [why]`. An Open-Questions item is a deferred ambiguity, so it is almost always an **ESCALATE** decision under the decide-vs-escalate gate (`crew-members/coding-guardrails.md` § Think Before Coding) — append its **value** and **risk** so they carry into the follow-up the user reviews: `... Reasoning: [why]. Value: [what this choice buys]. Risk: [what breaks if it's wrong, and how reversible]`. When the REQ's `prime_files` cover this area, source the value/risk from the prime's `## Stakes` section rather than re-deriving it.
 3. Number decisions sequentially per REQ (D-01, D-02, D-03...). Open Questions decisions and Implementation Decisions (Step 6) share the same D-XX ID space — if Open Questions uses D-01 through D-03, the first implementation decision is D-04. After resolving all `- [ ]` items, append a counter comment immediately after the `## Open Questions` section so Step 6 knows the next available ID: `<!-- D-XX counter: last used D-03. Next decision: D-04. -->` If no decisions were made in this step, write `<!-- D-XX counter: none used. Next decision: D-01. -->` These IDs can be referenced by future REQs.
 4. Proceed with implementation using those decisions.
 
@@ -266,7 +254,7 @@ The follow-up REQs for builder-decided questions are created during **Step 8 (Ar
 
 **Why not block?** Human time is the bottleneck. The optimal windows for user interaction are: (1) capture time, when the user is actively fleshing out requests, and (2) batch-review time, when the user returns to answer accumulated questions. Blocking mid-build wastes builder capacity on idle waiting.
 
-**`pending-answers` REQs:** These accumulate in the queue. When the user returns, they run `do work clarify` to review all `pending-answers` REQs at once, answer the questions, and flip the status to `pending` so the next work run picks them up. The work loop skips `pending-answers` REQs — it only processes `pending` ones.
+**`pending-answers` REQs:** These accumulate in the queue. When the user returns, they run `do-work clarify` to review all `pending-answers` REQs at once, answer the questions, and flip the status to `pending` so the next work run picks them up. The work loop skips `pending-answers` REQs — it only processes `pending` ones.
 
 If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section exists, skip this step entirely.
 
@@ -285,15 +273,9 @@ After triage, check if a specification template matches this REQ's domain or tas
 
 ### Step 4: Planning (Route C only)
 
-**Route C:** Spawn a **Plan agent** with the request content, project context, the `crew-members/[domain].md` file (if domain is missing or the file doesn't exist, skip loading it), and any files listed in the `prime_files` array. Instruct it to use the prime files as the strict index for discovering the source of truth. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
+**Route C:** Spawn a **Plan agent** with the request content, project context, the `crew-members/[domain].md` file (normalize `domain` per the Schema Read Contract first; if the resolved domain is missing, falls back to `general` for an unknown value, or the file doesn't exist, skip loading it), and any files listed in the `prime_files` array. Instruct it to use the prime files as the strict index for discovering the source of truth. Do not load global architecture. Ask it to produce a specific implementation plan (files to modify, order of changes, architectural decisions, testing approach). If a `## Plan` section does not already exist, append the output:
 
-```markdown
-## Plan
-
-[Plan agent output]
-
-*Generated by Plan agent*
-```
+(append the plan per the **Plan Template — Route C (Step 4)** in `actions/work-reference.md`)
 
 **Plan validation (Route C only):** After the Plan agent returns, run a quick quality check before proceeding:
 
@@ -306,13 +288,7 @@ Append validation findings to the `## Plan` section (if any issues found). These
 
 **Routes A and B:** Append a skip note (if not already present):
 
-```markdown
-## Plan
-
-**Planning not required** - [Route A: Direct implementation / Route B: Exploration-guided implementation]
-
-*Skipped by work action*
-```
+(append the skip note per the **Plan Skip Note — Routes A/B (Step 4)** in `actions/work-reference.md`)
 
 ### Step 5: Exploration (Routes B and C)
 
@@ -340,27 +316,15 @@ Before the builder starts coding, declare intent. This prevents scope drift from
 
 **Routes B and C:** Based on the plan (Route C) or exploration output (Route B), write a `## Scope` section into the REQ file:
 
-```markdown
-## Scope
-
-**Files I will touch:**
-- `src/stores/theme-store.ts` (new) — theme state management
-- `src/components/settings/SettingsPanel.tsx` (modify) — add toggle
-- `tests/theme-store.test.js` (new) — unit tests
-
-**Files I will NOT touch:** [any files that seem related but are out of scope]
-
-**Acceptance criteria (restated from REQ):**
-- [ ] Dark mode toggle visible in settings
-- [ ] Theme persists across page reload
-- [ ] OS preference respected on first visit
-```
+(write the `## Scope` section per the **Scope Declaration Template (Step 5.5)** in `actions/work-reference.md` — declared file list + restated acceptance criteria. The review step compares the Implementation Summary's file list against this declaration; any undeclared touch or unused declaration is scope drift.)
 
 The Scope section serves two purposes:
 1. The builder commits to a file list before writing code — drift becomes measurable.
 2. The acceptance criteria, restated from the REQ, become the word-by-word comparison target for review.
 
-The review step (Step 7) **MUST** compare the Implementation Summary's file list against the Scope declaration (Routes B and C only). Any file touched that was not declared, or any declared file not touched, is flagged as scope drift (Important finding if significant, Minor if trivial like a forgotten import update). **Route A** has no Scope declaration — skip the scope-drift comparison for Route A REQs.
+Scope-drift protection enforces **YAGNI**: only declared files get touched, and undeclared exploratory work becomes a discovered task (Step 8) rather than speculative scope creep. See `crew-members/coding-guardrails.md` § Simplicity First.
+
+The review step (Step 7) **MUST** run the scope-drift comparison (Routes B and C only): `<skill-root>/tools/checks/scope-drift.sh <req-file>` computes both set-differences (touched-but-undeclared, declared-but-untouched); severity stays your judgment — Important if significant, Minor if trivial like a forgotten import update. Exit 2 means a section is missing (Route A REQs have no Scope declaration — skip the comparison, exactly as the script reports). If the script is missing, compare the two file lists by hand.
 
 ### Step 5.75: Pre-Flight Check (Routes B and C)
 
@@ -368,34 +332,32 @@ Quick environment sanity check before the builder starts coding. All checks are 
 
 **Route A:** Skip pre-flight — too lightweight to justify the overhead.
 
-**Routes B and C:**
+**Routes B and C:** resolve the project's test command first (the prime file's testing section is primary; else `package.json` test scripts, `pytest.ini`, etc. — that resolution is your judgment), then run the shipped check:
 
-1. **Git clean:** Run `git status --porcelain`. If there are uncommitted changes unrelated to `do-work/`, warn: "Uncommitted changes detected — the commit step may stage unrelated files." List the files.
-2. **Tests baseline:** If the project has a test command (check the prime file's testing section, or look for `package.json` test scripts, `pytest.ini`, etc.), run it. If tests already fail on HEAD before any changes, note this: "Baseline tests failing — builder should not be blamed for pre-existing failures." Record which tests fail.
-3. **Dependencies:** If `package.json` exists but `node_modules/` doesn't, or `requirements.txt` exists without an active venv, warn: "Dependencies may not be installed."
-
-```markdown
-## Pre-Flight
-
-**Git:** ⚠ 3 uncommitted files (src/temp.ts, .env.local, notes.md)
-**Tests baseline:** ✓ All passing (47 tests)
-**Dependencies:** ✓ Installed
-
-*Checked by work action*
+```bash
+<skill-root>/tools/checks/preflight.sh [test-command ...]
 ```
+
+It performs the three checks (git clean with `-uall`, test baseline, dependencies present), prints WARN/OK lines, always exits 0, and — when a test command was given — records `do-work/working/baseline.json` + `baseline-failures.txt` so Step 6.5 can separate pre-existing failures from new regressions. If the script is missing, run the same three checks by hand (`git status --porcelain --untracked-files=all`; run the test command; check `node_modules`/venv presence).
+
+(append findings per the **Pre-Flight Template (Step 5.75)** in `actions/work-reference.md`, only if issues are found — all checks are warnings, not blockers)
 
 ### Step 6: Implementation
 
 **Agent rules loading:** Before spawning the implementation agent, load domain-specific rules:
 
 1. **Always load** `crew-members/general.md` — cross-domain rules and PRIME Files Philosophy
-2. **Always load** `crew-members/karpathy.md` — behavioral guardrails (think before coding, simplicity, surgical changes, goal-driven execution)
-3. **Conditionally load** `crew-members/[domain].md` — only if the REQ's `domain` frontmatter is set AND the file exists (e.g., `domain: ui-design` → `ui-design.md`)
-4. **Conditionally load** `crew-members/testing.md` — if the REQ has `tdd: true` in frontmatter, or `domain: testing`
-5. **Conditionally load** `crew-members/caveman.md` — if the REQ has `caveman` in frontmatter (any truthy value: `true`, `lite`, `full`, `ultra`). Compresses agent prose ~65-75% while keeping code and technical terms exact.
+2. **Always load** `crew-members/coding-guardrails.md` — behavioral guardrails (think before coding, simplicity, surgical changes, goal-driven execution)
+3. **Conditionally load** `crew-members/[domain].md` — normalize the REQ's `domain` frontmatter per the Schema Read Contract first (e.g., `back-end` → `backend`, `ui_design` → `ui-design`), then load if the resolved domain is set AND the file exists (e.g., `domain: ui-design` → `ui-design.md`). An unknown value after normalization emits the contract's warning and falls back to `general` — no additional domain-specific crew loads (the always-loaded `general.md` from step 1 is the base).
+4. **Conditionally load** `crew-members/testing.md` — if the REQ's `tdd` frontmatter normalizes to `true` per the Schema Read Contract (accepts `test_first`/`yes`/`on`/`t` as truthy aliases), or `domain: testing`
+4a. **Conditionally load** `crew-members/security.md` — if the REQ's normalized `domain` is `security`, OR if the REQ description references authentication, authorization, session handling, cryptography, secrets handling, input validation/sanitization, or any OWASP-category surface. The "OR" clause is heuristic — when in doubt, load it; the cost of loading a checklist when not needed is low, the cost of skipping it on real security work is high.
+5. **Conditionally load** `crew-members/caveman.md` — if the REQ's `caveman` frontmatter normalizes to a non-`false` value per the Schema Read Contract (any of `true`, `lite`, `full`, `ultra`, plus `yes`/`on` → `true`, `light` → `lite`). Compresses agent prose ~65-75% while keeping code and technical terms exact.
+5a. **Conditionally load** `crew-members/maintenance.md` — if the REQ's `maintenance` frontmatter normalizes to `true` per the Schema Read Contract. This marks the REQ as a deliberate maintenance pass on the skill's *own* operating instructions (a drifting agent/action/crew/prime file) where removing or narrowing is a candidate fix; it loads the delete-before-you-add discipline **alongside** `coding-guardrails.md`, not instead of it. **Marker-only — do not infer it from the description.** A plain dead-code removal in application source is not a maintenance pass and stays under `coding-guardrails.md`'s implementation-time surgical-changes rule; only the explicit `maintenance: true` marker (set by capture for a removal/narrowing finding on the skill's own instructions) triggers the load. Unlike the security heuristic above, there is deliberately **no** description-based fallback here — a heuristic trigger would misfire on ordinary implementation REQs (which routinely touch adjacent dead code) and load the opposite posture from the one coding-guardrails wants.
 6. **If a rules file is missing**, proceed without it — never block on a missing rules file
 
 **Approach directive assignment (multi-REQ only):** If multiple REQs are being processed in parallel, read `crew-members/approach-directives.md` and assign each sub-agent a distinct directive from the pool. Include the directive in the sub-agent's context block. Record the assigned directive in the REQ's Implementation Summary section. For single-REQ processing, no directive is needed — skip this.
+
+**Durability (multi-REQ fan-out):** When fanning work out to background or parallel sub-agents, follow the durability pattern in `crew-members/background-agents.md` (disk-durable run directory as source of truth; survives a dead orchestrator session).
 
 Spawn a **general-purpose agent** with the loaded rules, any files listed in the `prime_files` array, and context appropriate to the route:
 
@@ -403,42 +365,17 @@ Spawn a **general-purpose agent** with the loaded rules, any files listed in the
 - **Route B**: Request + exploration output — "follow existing patterns identified above"
 - **Route C**: Request + plan + exploration output — "implement according to the plan"
 
-All routes include these instructions to the agent:
+All routes include these instructions to the agent (pointers — the underlying rules live in the loaded crew-members files and in the REQ frontmatter the orchestrator already wrote):
 
-```
-- **Prime Files:** If `prime_files` are attached to this REQ, READ THEM FIRST. They are your map to the codebase. If NO prime file exists for the primary utility you are modifying, you MUST investigate the utility and create one (`prime-[name].md`). Prime files must be low-noise, high-value, point to code as the source of truth, and avoid volatile metrics (like test counts). If you create one, update the REQ's frontmatter to include it.
-- **Lessons:** If any prime file you loaded has a `## Lessons` section, read the linked REQ lessons before implementing. These are previous mistakes and discoveries from this exact area of the codebase. Pay particular attention to "What didn't work" entries — these prevent repeating failed approaches. If a lesson directly contradicts your planned approach, note the conflict in your PLAN phase and explain why you're proceeding differently (or adjust your plan).
-- You have full access to edit files and run shell commands
-- If you find the request is more complex than expected, you can explore or plan as needed
-- Document any blockers clearly
-- Identify existing tests related to your changes
-- **Check the prime file for a testing section** — if the prime maps code areas to specific test commands (e.g., "changes to lib/inpainting.js → run `npm run test:api`"), follow that mapping. This takes precedence over generic test detection.
-- **Honor captured proof first:** If the REQ contains a `## Red-Green Proof` section, use its RED prompt/case and GREEN outcome as the primary behavior your tests must prove. Treat that captured RED state as a valuable artifact, not a suggestion. Only adapt it if the codebase requires a nearby equivalent; if you do, document why.
-- **Write pragmatic tests:** For bug fixes and new features, prefer red-green validation. Use RED/GREEN TDD when the change is behavioral and can be proven with a test written first — write or identify tests that validate the request's requirements, run them before implementing (they should fail), then verify they pass after. For refactors, config changes, documentation, and cleanup, red-green may not apply — targeted regression tests, lint/build validation, or non-regression evidence is sufficient. The goal is proof that the change works, not ceremony.
-- Write new tests for new functionality / regression tests for bug fixes
-- Update existing tests if behavior intentionally changed
-- **If existing tests break:** When your changes cause tests from a prior request to fail, determine if the behavior change is intentional. If yes: update the failing tests to match the new behavior and document which REQ's tests changed and why in the Testing section — this creates traceability for which request altered which other request's behavior. If no: fix your implementation to preserve the existing behavior.
-- When complete, report back: list every source file you created, modified, or deleted (with the action — new/modified/deleted), and summarize what tests exist and what new tests were written. The orchestrator uses this to write the formal `## Implementation Summary`.
-- **State Machine Updates:** As you progress, you MUST physically edit this REQ file to change the `[ ]` checkboxes in the "AI Execution State (P-A-U Loop)" section to `[x]`.
-- **TDD Mode:** If the REQ has `tdd: true` in frontmatter, use RED/GREEN TDD and follow the red-green-refactor cycle:
-  1. **RED:** Start from the REQ's `## Red-Green Proof` section if present. Write a failing test that validates that captured behavior. Run it — confirm it fails.
-  2. **GREEN:** Write the minimum code to make the test pass. No more.
-  3. **REFACTOR:** Clean up while tests stay green.
-  Report the red-green evidence in your output: test name, failure message before, pass after. The Testing section (Step 6.5) will verify this evidence is present.
-- **[PLAN] Phase:** Before writing any code, write your brief technical approach next to the `[PLAN]` checkbox in the REQ file.
-- **[APPLY] Phase:** Stay strictly focused on the planned scope. Resist the urge to refactor unrelated code or fix adjacent issues. (Note: You are required to edit this REQ file to update your state checkboxes).
-- **[UNIFY] Phase:** Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked — the orchestrator will audit this in Step 6.3.
-- **Decisions:** When you make a significant implementation decision not covered by the plan or requirements (e.g., choosing between two valid approaches, deciding on an API shape, selecting a library), log it as a numbered decision. Append a `## Decisions` section to the REQ file:
-  ```
-  ## Decisions
-  - **D-01**: [from Open Questions] Sidebar supports dark mode — consistent UX
-  - **D-02**: Used zustand over jotai for state — matches existing project pattern
-  - **D-03**: API returns paginated results (20/page) — no explicit requirement, follows existing endpoints
-  ```
-  Before numbering, check for a `<!-- D-XX counter: ... Next decision: D-NN. -->` comment in the REQ file (written by Step 3.5) and start from that value. If no counter exists and no `- [~]` items are present, start at D-01. Future REQs can reference these: "per D-02 in REQ-003, we use zustand."
-  These decisions are part of the intent trail — they document where implementation diverged from or extended the captured intent, and why. A decision without reasoning is not traceable.
-- **Out-of-Scope Discoveries:** If you discover unrelated bugs, technical debt, or missing prerequisites, do not fix them inline. Instead, append a `## Discovered Tasks` section to your summary and list them as bullet points so the orchestrator can queue them for later.
-```
+- **Crew rules govern behavior:** `crew-members/general.md` (always loaded) carries the Prime Files philosophy, Lessons-discipline, test-writing posture, cross-REQ test-break rules, and Discovered-Tasks contract. `crew-members/coding-guardrails.md` (always loaded) enforces think-before-code, surgical scope, and goal-driven execution. Domain/testing/caveman crews layer on top per Step 6's loading order. The builder reads these — do not re-state their contents inline.
+- **Prime files come first:** Read every path in `prime_files` before touching code. If the primary utility you are modifying has no prime, investigate and create one (`prime-[name].md`), then update REQ frontmatter. Lessons sections in those primes encode prior mistakes — heed them.
+- **P-A-U phasing is mandatory:** Edit the REQ's "AI Execution State (P-A-U Loop)" checkboxes in real time. [PLAN] writes a brief technical approach. [APPLY] stays in declared scope. [UNIFY] runs `git diff --stat`, runs native linters, verifies no debug artifacts, and lists each file checked (the orchestrator audits this in Step 6.3).
+- **TDD mode when `tdd: true`:** Follow RED → GREEN → REFACTOR. Anchor RED on the REQ's `## Red-Green Proof` section if present. Report the red-green evidence (test name, failure-before, pass-after) — Step 6.5 verifies it.
+- **Captured proof first:** If `## Red-Green Proof` is present, its RED prompt/case and GREEN outcome are the primary behavior tests must prove. Only adapt with documented reason.
+- **Log Decisions as D-XX:** Significant implementation choices not dictated by plan/requirements become numbered entries in a `## Decisions` section. Continue numbering from the `<!-- D-XX counter: ... -->` comment Step 3.5 left behind; if none, start at D-01. Each decision needs reasoning — without it, the intent trail breaks. Sort each by the decide-vs-escalate gate (`crew-members/coding-guardrails.md` § Think Before Coding): a reversible, low-reach choice is **DECIDE & STATE** (reasoning only — it surfaces later as a *handled* item); a choice that's irreversible/expensive, taste-dependent, or genuinely contestable is **ESCALATE** — add `Value:` and `Risk:` lines so the hand-back can surface them.
+- **Out-of-scope finds go to `## Discovered Tasks`** (a separate section, not nested inside Implementation Summary) — do not fix inline. Step 8 classifies and queues them.
+- **Report back the file manifest:** list every source file created/modified/deleted with the action verb, plus tests touched. The orchestrator writes the formal `## Implementation Summary` from your report.
+- **Standard freedoms and obligations:** Full file/shell access. Escalate to explore or plan if the work proves harder than triaged. Document blockers explicitly. Identify and run related existing tests; honor any test-command map in the prime file (takes precedence over generic detection).
 
 ### Step 6.25: Implementation Summary
 
@@ -448,16 +385,7 @@ After implementation completes, write a manifest of what changed to the request 
 
 Append (or replace) in the request file:
 
-```markdown
-## Implementation Summary
-
-**Files changed:**
-- `src/stores/theme-store.ts` (new)
-- `src/components/settings/SettingsPanel.tsx` (modified)
-- `tests/theme-store.test.js` (new)
-
-**What was done:** [1-2 sentences — what the implementation actually did]
-```
+(write the manifest per the **Implementation Summary Template (Step 6.25)** in `actions/work-reference.md`)
 
 **Rules:**
 - **Mandatory for all routes.** Route A gets a short list. Route C gets a detailed list.
@@ -466,51 +394,29 @@ Append (or replace) in the request file:
 - The "What was done" summary should be factual, not aspirational — describe what you built, not what the REQ asked for.
 - This section is the primary auditability artifact. If `Files changed` only lists `do-work/` paths or is empty, the REQ was not implemented.
 - **Design-artifact exception:** For `domain: ui-design` requests that produce design deliverables rather than code (wireframes, IA specs, visual specs, interaction specs), the artifact files themselves count as project files. Place them in the project's design docs directory (e.g., `docs/design/`) — not inside `do-work/`. The Implementation Summary lists these files normally.
+- Refresh the orchestrator lock's heartbeat here too (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
 ### Step 6.3: Qualify Implementation
 
 After the builder returns and the Implementation Summary is written, the **orchestrator** (not the builder) independently verifies the builder's claims before proceeding. This is not self-reporting — the orchestrator reads actual output, not the builder's description of it.
 
-**Qualification checklist:**
+**Mechanical checks (run the shipped script):**
 
-1. **Files exist:** For every file listed in the Implementation Summary, verify on disk. `(new)` files must exist. `(modified)` files must show in `git diff` or `git diff --staged`. `(deleted)` files must be gone. Run the commands — don't trust the summary.
+```bash
+<skill-root>/tools/checks/qualify.sh <req-file>
+```
+
+It verifies checklist items **1 (files exist / show in diff)**, **4 (P-A-U box audit + debug artifacts in the diff)**, and the grep half of **5 (wiring)** — plus Step 6.25's "only `do-work/` paths ⇒ not implemented" rule. FAIL lines are qualification failures; WARN lines are evidence handed to your judgment — in particular, an unreferenced `(new)` file is only dead code if it isn't an **exception**: entry points, config files, test files, standalone scripts, framework-convention files discovered by file-system routing (Next.js `pages/`/`app/`, SvelteKit/Remix `routes/`, Nuxt/Astro `pages/`), barrel re-exports, side-effect-only imports (CSS modules, polyfills), and dynamic-import-only files that static grep can't see. If the script is missing, run items 1/4/5 by hand per its header comment.
+
+**Judgment checks (yours, not the script's):**
+
 2. **Changes are substantive:** For each `(new)` file, verify it is not a placeholder (more than boilerplate/empty exports/TODO comments — minimum 10 meaningful lines for source files, 3 for config). For `(modified)` files, verify the diff contains changes related to the REQ's requirements, not just whitespace or import shuffling.
 3. **Requirements traced:** Re-read the REQ's What/Detailed Requirements section. For each stated requirement, confirm at least one file in the Implementation Summary plausibly addresses it (by filename and diff content). Flag any requirement with no corresponding file change.
-4. **P-A-U box audit:** Read the REQ's AI Execution State section. If any box is still `[ ]`, the builder did not complete that phase — flag it. If `[UNIFY]` is checked but the diff contains debug artifacts (`console.log`, `print()`, `debugger`, TODO/FIXME added by this change), un-check it and flag.
-5. **Wired:** For each `(new)` source file, verify it is imported or referenced by at least one other file in the project (grep for the filename or an exported symbol). A new component/module that nothing imports is dead code — flag it. **Exceptions** (do not flag): Entry points (e.g., `main.ts`, `index.html`), config files, test files, standalone scripts, framework-convention files discovered by file-system routing (e.g., Next.js `pages/`/`app/` routes, SvelteKit `routes/`, Remix `routes/`, Nuxt `pages/`, Astro `pages/`), files re-exported through a barrel index (`index.ts`/`index.js` that re-exports them), files that are side-effect-only imports (CSS modules, polyfills, global stylesheets imported for their side effects), and files used exclusively via dynamic import (`import()` or `require()` with a variable path) where static grep won't find a reference.
 6. **Flowing:** For files that handle data (API endpoints, data stores, handlers, services), verify the data path isn't hardcoded or stubbed. Check for: hardcoded empty arrays `return []`, placeholder strings like `"TODO"` or `"placeholder"`, `return null` in data-fetching functions, commented-out database calls. If found, flag as hollow implementation — the file exists and is wired but doesn't actually do anything.
 
 **Anti-rationalization rules** (apply when evaluating the above):
 
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "The summary says files changed" | Check the file system | The summary is a claim, not evidence |
-| "Tests pass so requirements are met" | Compare requirements to diff, word by word | Tests can be incomplete |
-| "The builder checked the UNIFY box" | Read the actual diff for debug artifacts | A checked box is a claim, not a fact |
-| "This is probably fine" | Verify it specifically | Probably ≠ verified |
-| "I'll come back and fix this later" | Fix it now or create a follow-up REQ | Later never comes in agentic workflows |
-| "The user probably doesn't care about this edge case" | Check the requirements word by word | You don't know what the user cares about |
-| "This works on my test case" | Test at least 2 additional cases including an edge case | One test case proves nothing about generality |
-| "The existing code was already like this" | Flag it in Discovered Tasks | Pre-existing problems are still problems |
-| "It's just a small deviation from the plan" | Log it as a Decision (D-XX) | Unlogged deviations break traceability |
-
-## Red Flags
-
-- REQ in `do-work/working/` for >1 hour with no new git commits (builder may be stuck)
-- Implementation Summary lists files but `git diff` shows no changes in those files (hollow implementation)
-- All P-A-U checkboxes marked complete but diff contains `console.log`, `debugger`, or `TODO` (debug artifacts)
-- No Triage section appended to the REQ after processing begins
-- Scope section declares 3 files but Implementation Summary lists 12 (scope creep)
-- Builder created files only inside `do-work/` and no source files changed (no real work done)
-
-## Verification Checklist
-
-- [ ] All pending REQs processed or explicitly skipped with documented reason
-- [ ] Every completed REQ has an Implementation Summary section with file manifest
-- [ ] No REQ files remain in `do-work/working/` after the work loop ends
-- [ ] CHECKPOINT.md written if ending mid-session (for resume)
-- [ ] Git commit created for each completed REQ
-- [ ] Cleanup pass triggered at end of work loop
+Apply the qualification anti-rationalization table in `actions/work-reference.md` → **Qualification Anti-Rationalization Table (Step 6.3)** (e.g., "the summary says files changed" → check the file system; "the builder checked UNIFY" → read the diff for debug artifacts).
 
 **If qualification fails on any check:**
 1. Append a `## Qualification` section to the REQ noting what failed and why.
@@ -528,29 +434,12 @@ Before marking complete, verify tests pass:
 1. **Check the prime file for test guidance** — if the REQ's `prime_files` reference a prime with a testing section (test commands, code-area-to-test mappings), use that as the primary source for what to run. **Before running, verify each listed command still exists**: for npm scripts check it's present in `package.json`; for other tools verify the config file exists (`jest.config.*`, `pytest.ini`, `Cargo.toml`, etc.). If a prime test command is no longer valid, fall back to generic detection for that command and note: `Prime test command '[cmd]' not found — falling back to generic detection.` Prime test maps are project-specific knowledge that generic detection can't replicate (e.g., "changes to `lib/inpainting.js` require `npm run test:api`" or "`npm test` is always safe but `npm run test:e2e` costs money").
 2. **Fall back to generic detection for unmapped files** — if the prime has no testing section, or if you changed files the prime's test map doesn't cover, fall back to generic detection for those files: look for `package.json` test scripts, `jest.config.*`, `pytest.ini`, `Cargo.toml`, `*_test.go`, etc. A partial prime map is not an excuse to skip tests — matched files use the prime's commands, unmatched files use generic detection. If neither source yields test commands for a file, skip testing for it and note it.
 3. **Run relevant tests** — target tests related to changed code, not the full suite (unless it's fast). If the prime specifies different commands for different code areas, run only the commands relevant to the files you changed. For unmapped files, run whatever generic detection found.
-4. **If tests fail** — check whether the failures were already recorded as baseline failures in Step 5.75 (Pre-Flight). If a failing test matches a pre-existing baseline failure (same test name/file, same failure mode), exclude it from the pass/fail gate — the builder should not be blamed for pre-existing failures. Only **new regressions** (tests that passed at baseline but fail after implementation) require fixing. Return to implementation to fix new regressions. On attempt 2+, load `crew-members/debugging.md` and `crew-members/testing.md` for the builder to follow the structured debugging methodology and review test quality. Loop until passing or mark as failed after 3 attempts.
+4. **If tests fail** — check whether the failures were already recorded as baseline failures in Step 5.75 (Pre-Flight); if `do-work/working/baseline.json` / `baseline-failures.txt` exist (written by `tools/checks/preflight.sh`), compare against those records mechanically. If a failing test matches a pre-existing baseline failure (same test name/file, same failure mode), exclude it from the pass/fail gate — the builder should not be blamed for pre-existing failures. Only **new regressions** (tests that passed at baseline but fail after implementation) require fixing. Return to implementation to fix new regressions. On attempt 2+, load `crew-members/debugging.md` and `crew-members/testing.md` for the builder to follow the structured debugging methodology and review test quality. Loop until passing or mark as failed after 3 attempts.
 5. **If new tests are needed** — spawn a general-purpose agent to write them following existing patterns, then run them.
 
 Append to the request file:
 
-```markdown
-## Testing
-
-**Tests run:** [command]
-**Result:** ✓ All passing (X tests)
-
-**Red-green validation:** *(for bug fixes and new features)*
-- [test name/file]: ✗ before implementation → ✓ after
-- [test name/file]: ✗ before implementation → ✓ after
-
-**New tests added:**
-- [list]
-
-**Existing tests updated (cross-REQ impact):**
-- [test file] (from REQ-NNN): [what changed and why — intentional behavior change]
-
-*Verified by work action*
-```
+(append per the **Testing Section Template (Step 6.5)** in `actions/work-reference.md`; omit Red-green validation for non-behavioral changes, and trace it back to `## Red-Green Proof` when present)
 
 Omit `Red-green validation` if no request-specific tests were written or identified, or if the change is non-behavioral (refactor, config, docs, cleanup) — use regression evidence instead. Omit `Existing tests updated` if no prior tests were modified.
 
@@ -560,11 +449,11 @@ When the REQ includes `## Red-Green Proof`, the `Red-green validation` entries s
 
 ### Step 7: Review
 
-Run the review work action in **pipeline mode** against this REQ.
+Run actions/review-work.md in **pipeline mode** against this REQ.
 
 The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation: requirements check (did we build what was asked?), code review (is it solid?), and acceptance testing (does it actually work?).
 
-**How to run it:** Spawn an agent with the review work action file, the REQ path, and the `crew-members/[domain].md` file (if the domain has one and the file exists). Or read the review work action file and follow its pipeline mode instructions in the current session.
+**How to run it:** Spawn an agent with actions/review-work.md file, the REQ path, and the `crew-members/[domain].md` file (normalize `domain` per the Schema Read Contract first; if the resolved domain has a matching file, load it; otherwise skip). Or read actions/review-work.md file and follow its pipeline mode instructions in the current session.
 
 **What happens next depends on the review result:**
 
@@ -575,7 +464,7 @@ The review reads the REQ (in `do-work/working/`), the original UR, and the curre
   2. Return to Step 6 (Implementation) with the review findings as context for the builder. Load `crew-members/debugging.md` for the remediation attempt — the builder needs structured debugging methodology, not just "try again."
   3. The builder gets **ONE remediation attempt**.
   4. Re-run Steps 6.25 through 7 (Summary → Qualification → Testing → Review) on the remediated code.
-  5. If still failing after remediation: update frontmatter to `status: completed-with-issues`, `completed_at: <timestamp>`, append a `## Remediation` section documenting both attempts, and create follow-up REQs for all remaining Important findings. Then proceed to archive (Step 8) — the frontmatter is already set, so Step 8 should not overwrite it.
+  5. If still failing after remediation: update frontmatter to `status: completed-with-issues`, `completed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), append a `## Remediation` section documenting both attempts, and create follow-up REQs for all remaining Important findings. Then proceed to archive (Step 8) — the frontmatter is already set, so Step 8 should not overwrite it.
 
 The status `completed-with-issues` means the REQ was archived but has known unresolved problems. It counts toward UR completion for archiving purposes, but the follow-up REQs must be processed before the work is considered ship-ready. This status is visible in the recap and present-work actions.
 
@@ -585,29 +474,11 @@ The status `completed-with-issues` means the REQ was archived but has known unre
 
 Append to the request file:
 
-```markdown
-## Review
+(append per the **Append to REQ File** template in `actions/review-work.md` — the file dispatched above, so it is already in context; review-work.md owns the Review section format)
 
-**Overall: [X]%** | [timestamp]
+### Step 7.5: Lessons-Capture Phase
 
-| Dimension | Score |
-|-----------|-------|
-| Requirements | X% |
-| Code Quality | X% |
-| Test Adequacy | X% |
-| Scope | X% |
-| Risk | [level] |
-| Acceptance | [result] |
-
-**Findings:** [count] important, [count] minor
-**Acceptance:** [Pass/Partial/Fail/Untested] — [1-line summary]
-**Suggested testing:** [count] items
-**Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"
-
-*Reviewed by review work action*
-```
-
-### Step 7.5: Lessons Learned
+> **Named entry point.** Other actions reference this as **work.md's Lessons-Capture Phase** (not by step number) — e.g. `actions/kb-lessons-handoff.md` and `actions/review-work.md`. The `7.5` is for internal navigation only; callers must use the phase name so they don't break if steps are renumbered.
 
 Before archiving, capture what's worth remembering. This section is the institutional memory — when someone revisits this code in six months, the REQ file tells them what happened, what was tried, and why things ended up the way they did.
 
@@ -627,164 +498,78 @@ Append to the request file:
 - "What didn't work" is the most valuable part — it prevents repeating mistakes.
 - File lists are no longer needed here — they're covered by the mandatory Implementation Summary (Step 6.25).
 
-**Update prime files:** After writing the Lessons Learned section, check the REQ's `prime_files` frontmatter. For each listed prime file, append a link to the lesson under a `## Lessons` section in that prime file (create the section if it doesn't exist):
+**Write the `## Orientation` block (the hand-back's "what's being built"):** After the Lessons Learned section, append a short `## Orientation` section reporting the change at feature/subsystem altitude — "Now you can X; lives in Y subsystem" — not a file list. Use the REQ's `prime_files` to name the subsystem; flag `[MAP CHANGED]` only when the change alters the system's shape (new module, data flow, contract, or a renamed concept). Run a narrowed staleness spot-check on each touched prime per `actions/prime.md` Step 2 / Step 6 (do its referenced paths still exist?) and flag any prime the change made stale. **Scale to reach:** a leaf REQ is one line; a map-changing REQ gets a short paragraph and a why-it-matters. When `prime_files` is empty, derive a one-line feature-altitude summary from the What / Implementation Summary instead — never a file list. This block feeds the **WHAT'S BEING BUILT** section of the Decision Brief (`actions/work-reference.md` → **Decision Brief (hand-back format)**). Crash recovery strips `## Orientation` on re-queue (it's orchestrator-generated).
 
-```markdown
-## Lessons
+**Update prime files (deferred to Step 8):** After writing the Lessons Learned section, check the REQ's `prime_files` frontmatter. For each listed prime file relevant to this lesson, **collect a pending prime-link write** — do NOT execute the write here. The REQ is still in `do-work/working/`, so any link pointing to its eventual archive location would either be broken or tempt a link to the transient working path.
 
-- [REQ-NNN: 1-line summary of the lesson](<relative-path-to-req>#lessons-learned)
-```
+Record each pending write as a tuple: `{ primeFilePath, relativeLinkText, lessonSummary }`. Hold them in memory (or a small scratch file under `do-work/working/`) until Step 8.
 
-**Path must be relative to the prime file's location**, not the repo root. To compute the correct relative path: count how many directories deep the prime file sits (i.e., the number of path components before the filename). Prepend that many `../` steps to the REQ's repo-root-relative path. Examples:
-- Prime at `prime-auth.md` (0 dirs deep) → `do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
-- Prime at `src/utils/prime-auth.md` (2 dirs deep: `src/` and `utils/`) → `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
-- Prime at `web/src/auth/prime-auth.md` (3 dirs deep) → `../../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`
+Compute each deferred prime-link path relative to the prime file's location (not the repo root) per `actions/work-reference.md` → **Deferred Prime-Link Path Computation (Step 7.5)**; the existence-verify on the resolved path runs in Step 8 (post-move), which is why the write is deferred.
 
-After writing the link, verify the resolved path points to an existing file. If it doesn't, report the broken link rather than silently writing it.
+Only add a link when the lesson is relevant to that prime file's scope — don't spray every lesson into every prime file. If the REQ has no `prime_files` or the lessons aren't relevant to any prime file, skip this and clear the pending list.
 
-Only add a link when the lesson is relevant to that prime file's scope — don't spray every lesson into every prime file. If the REQ has no `prime_files` or the lessons aren't relevant to any prime file, skip this.
+**Knowledge-base handoff.** After the Lessons Learned section is written and prime-file links are in place, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. The handoff asks the user before writing and records `kb_status` (plus `kb_entry` on success) back onto the REQ. In unattended pipeline runs with no human in the loop, the handoff defaults to `kb_status: pending` — it never writes to the KB without consent. If the project has no `kb/` directory, the handoff points the user at `do-work bkb init` and defers; it never blocks archival.
 
 ### Step 8: Archive
 
 **On success:**
 
-1. Update frontmatter: `status: completed`, `completed_at: <timestamp>`
+1. Update frontmatter: if the current status is already `completed-with-issues` (set by Step 7 after a failed remediation), preserve `completed-with-issues` and ensure `completed_at: <timestamp>` is present. Otherwise set `status: completed`, `completed_at: <timestamp>`. **`completed_at` (current UTC instant — `date -u +%Y-%m-%dT%H:%M:%SZ`, per the Timestamp rule in `actions/work-reference.md`) is mandatory on every terminal flip — never skip the stamp.** It and the `commit:` hash (written back in the Commit Phase) are the only sources the board resolves a completion instant from; a terminal REQ with neither surfaces as a completion anomaly on `do-work board` (see `actions/work-reference.md`'s Full Frontmatter stamping rule). Also refresh the orchestrator lock's heartbeat here — but **do not** clear `claimed_req` yet; the file is still in `working/` until substep 6 (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 2. Verify `## Implementation Summary` is present (written in Step 6.25). If missing, append it now — this should not happen in normal flow, but crash recovery may skip it.
-3. **Create follow-ups for builder-decided questions:** If the REQ has any `- [~]` items in Open Questions where the builder's choice affects what the user sees or interacts with, create a follow-up REQ for each. **Create follow-ups for:** UX decisions (interaction behavior, visibility, layout), scope boundaries (what's included/excluded), data representation choices. **Skip follow-ups for:** purely technical decisions (caching strategy, algorithm choice, internal naming, DB indexes) that don't change user-facing behavior. Template:
-   ```markdown
-   ---
-   id: REQ-NNN
-   title: "Confirm: [brief description of the choice]"
-   status: pending-answers
-   created_at: [timestamp]
-   user_request: [same UR as the original REQ]
-   addendum_to: [original REQ id]
-   builder_decided: true
-   ---
+3. **Create follow-ups for builder-decided questions:** If the REQ has any `- [~]` items in Open Questions where the builder's choice affects what the user sees or interacts with, create a follow-up REQ for each. **Create follow-ups for:** UX decisions (interaction behavior, visibility, layout), scope boundaries (what's included/excluded), data representation choices. **Skip follow-ups for:** purely technical decisions (caching strategy, algorithm choice, internal naming, DB indexes) that don't change user-facing behavior.
 
-   # Confirm: [Brief Description]
+   Create each follow-up per the **Builder-Decided Follow-up Template (Step 8)** in `actions/work-reference.md`; these go in `do-work/queue/` with `status: pending-answers`, and the user reviews them via `do-work clarify`.
 
-   ## What
-   During [REQ-id], the builder chose [choice] for [question]. This follow-up
-   confirms whether that choice matches your intent or if you'd prefer a different approach.
-
-   ## What the Builder Chose
-   [Description of the choice and its impact on the implementation]
-
-   ## What Would Change
-   [If the user picks a different option, what would need to change]
-
-   ## Open Questions
-   - [ ] [Original question]
-     Recommended: [builder's choice — already implemented]
-     Also: [other alternatives]
-   ```
-   These go in `do-work/queue/` with `status: pending-answers`. The user reviews them via `do work clarify`.
+   **Whenever authoring Open Questions text a user will answer via clarify** — here, the intent-failure follow-ups in the Failure Classification table, or any other `pending-answers` REQ — load `crew-members/clear-questions.md` and write for a cold reader: gloss every coined label or spec §-reference, and state why the decision is the user's rather than yours (Principle 7). You have the whole spec in your head right now; the reader answering in a later clarify session has none of it. Don't rely on clarify to repair density at presentation time.
 4. **Queue Discovered Tasks:** Check the REQ file for a `## Discovered Tasks` section (appended by the implementation agent as a separate section — not inside `## Implementation Summary`). For every item listed, classify by severity and create follow-up REQs accordingly.
 
-   The builder should classify each discovered task when appending them:
-   ```
-   ## Discovered Tasks
-   - **[critical]** SQL injection vulnerability in user search endpoint
-   - **[normal]** Dead code in utils/legacy-parser.ts can be removed
-   - **[low]** Variable naming inconsistency in auth module
-   ```
-
-   If the builder did not classify them, the orchestrator classifies based on:
-   - **critical**: Security vulnerability, data loss risk, broken functionality in production paths
-   - **normal**: Technical debt, missing tests, minor bugs in non-critical paths
-   - **low**: Style issues, naming, dead code, documentation gaps
-
-   **For `[critical]` discoveries:** Create follow-up REQ with `status: pending` (not `pending-answers`) — these skip user confirmation and go straight into the work queue. Add a note in Open Questions: `- [x] Auto-approved: critical severity (security/data/production risk). → Added to queue immediately.` Report prominently: `⚠ CRITICAL discovered: [description] — auto-queued as REQ-NNN`
-
-   **For `[normal]` and `[low]` discoveries:** Use the existing `pending-answers` flow:
-   - Set frontmatter: `status: pending-answers`, `user_request: [same UR]`, `addendum_to: [current REQ id]`, `domain: [same domain as current REQ]`.
-   - Add an `## Open Questions` section with this checkbox format:
-     `- [ ] I discovered this out-of-scope task while working on [current REQ]: [Task Description]. Should I process this as a new task?`
-     `  Recommended: Yes, add to queue (will flip to 'pending').`
-     `  Also: No, discard it.`
-   This ensures non-critical discoveries require the user's explicit permission via `do work clarify` before execution.
-5. **Cycle detection:** Before creating any follow-up REQ, verify the current REQ's own `addendum_to` chain is not already circular. Algorithm: walk `addendum_to` links starting from the current REQ, collecting each visited ID into a seen set. If you encounter the current REQ's ID again during the walk, the chain is already circular — do not create any follow-ups. Report: `⚠ Cycle detected in addendum_to chain: REQ-NNN → REQ-MMM → ... → REQ-NNN. Skipping follow-up — manual resolution needed.` This handles chains of any length.
-6. Archive based on REQ type:
+   Classify each by severity and queue follow-ups per `actions/work-reference.md` → **Discovered Tasks Classification (Step 8)**: `[critical]` → `status: pending`, auto-queued + prominent report; `[normal]`/`[low]` → `status: pending-answers` via the Open-Questions consent flow — except test-only mechanical-hygiene discoveries meeting that section's carve-out (all three bullets), which auto-queue as `status: pending` with an auto-approved note and a `↺` report line.
+5. **Cycle detection:** Before creating any follow-up REQ, verify the current REQ's own `addendum_to` chain is not already circular. Algorithm: walk `addendum_to` links (honoring the `amends`/`parent`/`amendment_to` alias per the Schema Read Contract when the canonical key is absent) starting from the current REQ, collecting each visited ID into a seen set. If you encounter the current REQ's ID again during the walk, the chain is already circular — do not create any follow-ups. Report: `⚠ Cycle detected in addendum_to chain: REQ-NNN → REQ-MMM → ... → REQ-NNN. Skipping follow-up — manual resolution needed.` This handles chains of any length.
+6. Archive based on REQ type. **Clear the orchestrator lock's `claimed_req` to `null` in the same breath as the physical move** — not earlier. Between substeps 1 and 5 the file is still sitting in `working/`, so a lock that already says `claimed_req: null` tells every other live session's Crash Recovery that this REQ is an abandoned crash artifact; it would strip the Implementation Summary you just wrote and re-queue the file out from under you. Lock bookkeeping goes where the file moves (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
-| `user_request: UR-NNN` | Check if ALL REQs in the UR are finished (status: `completed`, `completed-with-issues`, or `failed`). Check `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` for REQs belonging to this UR. If all finished: move completed/completed-with-issues REQs into UR folder (failed REQs stay at archive root), move entire UR folder to `archive/`. If any REQ is still `pending`, `pending-answers`, or `claimed`: move this REQ to `archive/` root; UR stays in `user-requests/` until last REQ finishes. |
+| `user_request: UR-NNN` | Check if ALL REQs in the UR are finished (status: `completed`, `completed-with-issues`, `cancelled`, or `failed`). Check `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` for REQs belonging to this UR. If all finished: move completed/completed-with-issues/cancelled REQs into UR folder (failed REQs stay at archive root — they signal follow-up work; cancelled REQs are resolved-by-decision and consolidate like completed ones), move entire UR folder to `archive/`. If any REQ is still **non-terminal** — any status outside that finished set, e.g. `pending`, `pending-answers`, `reserved` (allocated to another session but not done), `claimed`, `blocked` (waiting on an external condition), or a `blocked-*` holding status: move this REQ to `archive/` root; UR stays in `user-requests/` until last REQ finishes. |
 | `context_ref` (legacy) | Move REQ to `archive/`. If all related REQs are now archived, move the CONTEXT doc too. |
 | Neither (standalone legacy) | Move directly to `archive/`. |
 
+7. **Execute deferred prime-link writes (from Step 7.5):** Now that the REQ is at its final archive path, walk the `pendingPrimeLinkWrites` collected during Step 7.5. For each pending entry:
+   - Compute the relative path from the prime file to the REQ's actual archived location (UR folder if the UR was just consolidated, or `archive/` root if the UR is incomplete).
+   - Verify the resolved path points to an existing file. If it doesn't, report the broken link and skip — do NOT silently write a broken link.
+   - Append the link to a `## Lessons` section in the prime file (create the section if it doesn't exist):
+     ```markdown
+     ## Lessons
+
+     - [REQ-NNN: 1-line summary of the lesson](<relative-path-to-archived-req>#lessons-learned)
+     ```
+   - Stage the prime file along with the implementation files in Step 9.
+
+   This is the post-move execution that makes the existence-verify meaningful — Step 7.5 only collected; the writes happen here.
+
 **On failure:**
 
-Before archiving, classify the failure to determine the correct recovery path. Read the error description and any test/build output, then classify:
+Classify the failure and queue the right follow-up per `actions/work-reference.md` → **Failure Classification (Step 8)**. Run the **upstream-failure short-circuit first** (if any `addendum_to`/`depends_on` ancestor is `failed`, short-circuit to `error_type: spec` with an upstream-cascade error), then fall through to the Intent/Spec/Code/Environment symptom table. Set `status: failed`, `completed_at: <timestamp>` (mandatory on every terminal flip, same stamping rule as success), `error`, `error_type`; create the follow-up (Intent/Spec/Code) with `addendum_to` chained and the original dependency list preserved; move to `archive/` root. Also refresh the orchestrator lock's heartbeat and clear `claimed_req` to `null` here too — the REQ is leaving `working/` on this path exactly as on the success path (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
-| Type | Symptoms | Recovery |
-|------|----------|----------|
-| **Intent** | Requirements are ambiguous or contradictory; builder couldn't determine what to build | Create a follow-up REQ with `status: pending-answers` containing the specific ambiguities as Open Questions. Archive original as `failed` with `error_type: intent`. |
-| **Spec** | Requirements are clear but the technical approach was wrong (wrong files, wrong pattern, wrong architecture) | Create a follow-up REQ with a `## Prior Attempt` section summarizing what was tried and why it failed. Set `status: pending`. Archive original with `error_type: spec`. |
-| **Code** | Approach was right but implementation has bugs (tests fail, runtime errors, logic errors) | Create a follow-up REQ targeting the specific code issue. Set `status: pending`. Archive original with `error_type: code`. |
-| **Environment** | External dependency unavailable, permissions issue, tooling broken | No follow-up REQ — user must fix the environment. Archive with `error_type: environment` and a clear description of what's needed. |
+**Mid-run blocked flip (external precondition):** Before classifying an Environment failure as terminal, apply this test — it is the non-terminal alternative to `error_type: environment` for a precondition that will simply become true later:
 
-**Procedure:**
-1. Classify using the table above.
-2. Update frontmatter: `status: failed`, `error: "description"`, `error_type: [intent|spec|code|environment]`
-3. For Intent/Spec/Code failures: create the appropriate follow-up REQ (details above). Set `addendum_to` to the failed REQ's ID so context chains.
-4. Move to `archive/` (failed REQs always go to archive root, not into UR folders).
-5. Report to user: `[REQ-NNN] failed ([type]): [description]. Follow-up: [REQ-NNN] / None.`
+- **Both must hold to flip:** (1) *No substantive implementation edits landed this attempt* — the orchestrator confirms via `git status --porcelain -- . ':(exclude)do-work/'` / `git diff -- . ':(exclude)do-work/'` that the builder made no repo changes for this REQ **outside `do-work/`**. The exclusion is load-bearing: the REQ's own bookkeeping (the move to `working/`, appended Triage/Plan sections) is always dirty mid-run, so an unscoped porcelain check can never read clean and would silently defeat this flip (triage/plan/explore or the first implementation action failed on the missing dependency with an otherwise-clean tree). (2) The missing thing is an **external precondition expected to become available on its own** — a service coming up (LM Studio, a DB), a person answering (a designer's mockup), credentials getting provisioned — not a broken toolchain or a permission the user must repair, and not a transient crash (retry those in-loop first, then classify normally).
+- **If both hold**, do NOT fail. The orchestrator (never the builder — all file management is the orchestrator's) sets `status: blocked`, `blocked_by: "<condition>"`, `blocked_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`); removes `claimed_at` and `route`; appends a `## Blocked` section recording what's missing, how it was discovered, and — only if the user supplied or confirmed one — a `blocked_check:` probe command; then moves the file **back to `do-work/queue/`** (it is a hold, not an archive), refreshes the orchestrator lock's heartbeat and clears `claimed_req` to `null` — the REQ is leaving `working/` here too (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**) — reports `[REQ-NNN] blocked on: <condition> — released, continuing`, and continues to the next REQ. The REQ re-enters selection on a future run via its `blocked_check` probe, `do-work clarify`, or a manual edit.
+- **If either fails** (real edits already landed, environment the user must fix, or retries exhausted), fall through to the Environment classification above and archive as `failed` with `error_type: environment`.
 
-### Step 9: Commit (Git repos only)
+### Step 9: Commit Phase (Git repos only)
+
+> **Named entry point.** Other actions reference this as **work.md's Commit Phase** (not by step number) — e.g. `actions/commit.md` and `actions/review-work.md`. The `9` is for internal navigation only; callers must use the phase name so they don't break if steps are renumbered.
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
-```bash
-# Stage implementation files + archived REQ
-git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx \
-  do-work/archive/UR-002/REQ-003-dark-mode.md
-
-# Stage follow-up REQs created in Step 8 (if any)
-git add do-work/queue/REQ-025-confirm-sidebar-palette.md
-
-# Stage UR-folder move (if this was the last REQ and the UR moved to archive/)
-# Both the old path (deletion) and new path (addition) must be staged.
-git add do-work/user-requests/UR-002/ do-work/archive/UR-002/
-
-git commit -m "$(cat <<'EOF'
-[REQ-003] Dark Mode (Route C)
-
-Implements: do-work/archive/UR-002/REQ-003-dark-mode.md
-
-- Created src/stores/theme-store.ts
-- Modified src/components/settings/SettingsPanel.tsx
-
-EOF
-)"
-```
-
-**Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
-
-One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), and any UR-folder moves to `archive/`. Do not use `git add -A` or `git add .` — these risk staging secrets, `.env` files, or unrelated changes. Don't bypass pre-commit hooks — fix issues and retry. Failed requests get committed too.
-
-**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected.
-
-**Write commit hash back to the archived REQ.** After the commit succeeds, retrieve the hash with `git rev-parse --short HEAD` and update the archived REQ's frontmatter `commit:` field with the actual value. Then create a **separate metadata commit** (do not amend — amending changes the hash and invalidates what you just wrote):
-
-```bash
-# After the initial commit succeeds:
-HASH=$(git rev-parse --short HEAD)
-# Update the commit: field in the archived REQ frontmatter
-# (replace "commit:" line or add it if missing)
-git add do-work/archive/UR-NNN/REQ-NNN-slug.md
-git commit -m "[REQ-NNN] record commit hash ${HASH}"
-```
-
-This ensures the `commit:` field in the archived REQ contains the real implementation commit hash, which the review-work and present-work actions depend on for traceability. The metadata commit is a lightweight bookkeeping entry — it does not contain implementation changes.
+Before committing a successful REQ, write a changelog entry in the target repo's root `CHANGELOG.md` per `actions/work-reference.md` → **Changelog Entry Procedure (Step 9)** — create the file if it's missing, match the repo's existing format if it has one. House-format entries are keyed `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)`; the version is bumped by change type from the repo's own version file (which gets bumped and staged too), its release tags, or — for an unversioned repo — the changelog's own counter. Then: one commit per request, format `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Stage only the explicit files (implementation files from the Implementation Summary, the archived REQ, the `CHANGELOG.md` entry, the version file it bumped, any follow-up REQs, UR-folder moves, and any prime files touched in Step 8 substep 7) — see `## Rules` below for the staging/hook guard. Validate the staged file list against the Implementation Summary (successful REQs only). After the commit, write the real short hash back into the archived REQ's `commit:` field and record it in a **separate metadata commit** (do not amend). Full bash + metadata-commit procedure: `actions/work-reference.md` → **Commit & Metadata-Commit Procedure (Step 9)**. Refresh the orchestrator lock's heartbeat here too (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
 ### Step 10: Loop or Exit
 
 Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
 
-- **`pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
-- **Only `pending-answers` REQs remain**: Write a **Session Checkpoint** (see below), run the cleanup action, then report final summary including a list of the `pending-answers` REQs and their unresolved questions so the user can run `do work clarify` when ready. If completed/done REQs also exist in `do-work/queue/`, include them in the summary: `⚠ N completed REQs awaiting archive. Run do work cleanup to archive them.` List the REQ ids, titles, and UR groupings.
-- **No REQs at all**: Write a Session Checkpoint, run cleanup, report final summary and exit. If completed/done REQs exist in `do-work/queue/` (they may have been created during this session but not yet archived due to incomplete URs), include them in the summary with the same `⚠` warning and REQ listing as above.
+- **Dependency-ready `pending` REQs found**: refresh the orchestrator lock's heartbeat (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**), then **CONTEXT WIPE** (see below). Then loop to Step 1.
+- **No dependency-ready `pending` REQs remain** (queue may still have dependency-blocked or held REQs): Write a **Session Checkpoint** (see below), release the orchestrator lock (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**), run actions/cleanup.md, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, the blocked-on-external-condition section, the blocked-archive-collision section, the blocked-by-dependencies section, and the reserved section in that order, including only those that have at least one REQ. If none of the six sections applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
 
 #### Context Wipe — Verified
 
@@ -798,46 +583,14 @@ Before looping to Step 1 for the next REQ:
 
 At the end of every work session (whether all REQs completed, user stops, or session is ending), write `do-work/CHECKPOINT.md`. Scale the checkpoint to how much happened:
 
-```markdown
----
-session_ended: [timestamp]
-last_completed: REQ-NNN
-queue_state: [N pending, N pending-answers, N in-progress]
-reqs_processed_this_session: N
-session_depth: light | moderate | heavy
----
-
-# Session Checkpoint
-
-## Completed This Session
-- REQ-NNN: [title] (Route [X], [score]%)
-- REQ-NNN: [title] (Route [X], [score]%)
-
-## In Progress (interrupted)
-- REQ-NNN: [title] — stopped at [phase: triage/planning/exploring/implementing/testing/reviewing]
-  Last known state: [1-2 sentences]
-  Key files being modified: [list]
-  Known issues: [any blockers or concerns]
-
-## Still Queued
-- REQ-NNN: [title] (pending)
-- REQ-NNN: [title] (pending-answers — [N] questions)
-
-## Session Notes
-[Environment issues, user preferences expressed, patterns discovered, decisions made outside REQ files]
-
-## Context Summary (heavy sessions only)
-[Recap of key decisions (D-XX references), architectural patterns encountered, and prime files
-that the next session should re-read before starting. Include this section when 6+ REQs were
-processed — at that volume, carried-over assumptions are unreliable.]
-```
+(write `do-work/CHECKPOINT.md` per the **Session Checkpoint Template (Step 10)** in `actions/work-reference.md`, scaled to session depth: light / moderate / heavy)
 
 **Session depth guide:**
 - **light** (1-2 REQs): Minimal checkpoint — Completed + Still Queued sections are sufficient
 - **moderate** (3-5 REQs): Add Session Notes with patterns observed and environment quirks
 - **heavy** (6+ REQs): Add Context Summary recapping key decisions and recommending the next session re-read prime files fresh rather than trusting carried-over assumptions
 
-**On session start (Step 1 addition):** Before crash recovery, check for `do-work/CHECKPOINT.md`. If it exists:
+**On session start (Step 1 addition, after the Concurrent-Orchestrator Lock Guard has resolved):** Before crash recovery, check for `do-work/CHECKPOINT.md`. If it exists:
 1. Read it and report a brief summary: `Resuming from previous session. Last completed: REQ-NNN. [N] REQs still queued.`
 2. Use the "In Progress" section to inform crash recovery context.
 3. **Do not delete yet.** Keep the checkpoint until crash recovery completes successfully (all files moved out of `working/`). Then delete it. This prevents losing resume context if the session crashes again during crash recovery.
@@ -846,14 +599,117 @@ This is NOT a blocking gate. If no checkpoint exists, the session starts normall
 
 ## Clarify Questions
 
-The clarify workflow has its own action. Run `do work clarify` — it handles batch-review of `pending-answers` REQs, where the user confirms, overrides, or discards builder decisions. Resolved REQs flip back to `pending` and re-enter the work queue.
+The clarify workflow has its own action. Run `do-work clarify` — it handles batch-review of `pending-answers` REQs, where the user confirms, overrides, or discards builder decisions. Resolved REQs flip back to `pending` and re-enter the work queue.
 
-## Reference
+## Orchestrator Checklist (per request)
 
-Orchestrator checklist, error handling table, progress reporting template, common mistakes, and constraints are in [`work-reference.md`](./work-reference.md).
+```
+□ Step 1: Concurrent-orchestrator lock guard (first entry only), read CHECKPOINT.md if exists, crash recovery (per-file concurrency gate), validate frontmatter, pick first pending
+□ Step 2: Claim request (mkdir -p working/, move REQ, update status & claimed_at)
+□ Step 3: Triage (decide route, append ## Triage, read original if addendum)
+□ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions)
+□ Step 4: Plan (Route C: spawn Plan agent + validate plan / Routes A & B: note skipped)
+□ Step 5: Explore (Routes B & C: spawn Explore agent, include prime file lessons)
+□ Step 5.5: Scope Declaration (Routes B & C: declare files + acceptance criteria in REQ)
+□ Step 5.75: Pre-Flight Check (Routes B & C: git clean, test baseline, dependencies)
+□ Step 6: Implement (spawn agent with lessons + TDD mode if set, log decisions as D-XX)
+□ Step 6.25: Implementation Summary (append file manifest — mandatory for all routes)
+□ Step 6.3: Qualify (orchestrator verifies: files exist, substantive, wired, flowing, requirements traced, P-A-U audit)
+□ Step 6.5: Test (run relevant tests, load debug rules on attempt 2+, verify TDD evidence if tdd:true)
+□ Step 7: Review (spawn actions/review-work.md — gate on acceptance: Pass→archive, Fail→remediate with debug rules)
+□ Step 7.5: Lessons Learned + Orientation (append sections at subsystem altitude, update prime files, skip lessons for Route A if no surprises)
+□ Step 8: Archive (update status, classify failures, triage discovered tasks, cycle-check follow-ups, queue follow-ups, move to archive/)
+□ Step 9: Commit (stage explicit files, commit if git repo, write hash to REQ in separate metadata commit)
+□ Step 10: Loop or Exit (context wipe + contamination check if looping, else write CHECKPOINT.md with depth + cleanup)
+```
+
+
+## Error Handling
+
+| Phase | Action |
+|-------|--------|
+| `pending-answers` REQs remain after queue is empty | Report them to the user: list each REQ and its unresolved questions. Suggest `do-work clarify` to batch-review. |
+| `blocked` REQs remain after queue is empty | Report each with its `blocked_by` condition and age (per the composed exit summary). Suggest re-running `do-work run` (auto-probes any `blocked_check`) once a condition is met, or `do-work clarify` to confirm a human-checkable one. |
+| Plan agent fails (Route C) | Classify failure (Intent/Spec/Code/Environment), create follow-up REQ if applicable, archive as failed |
+| Explore agent fails (B/C) | Proceed to implementation with reduced context — builder can explore on its own |
+| Builder reports a missing external precondition | Apply the blocked-flip test (Step 8 → **Mid-run blocked flip**): if no substantive implementation edits landed AND the condition is expected to self-resolve, flip to `status: blocked` (non-terminal, back to the queue) instead of failing. Otherwise classify as Environment and archive as failed. |
+| Implementation fails | Classify failure (Intent/Spec/Code/Environment), create follow-up REQ if applicable, archive as failed |
+| Tests fail repeatedly | After 3 fix attempts, classify as Code failure, create follow-up REQ with test failure details, archive as failed |
+| Review: Acceptance = Fail | Return to Step 6 for ONE remediation attempt, then re-review. If still failing: archive as `completed-with-issues` with follow-up REQs |
+| Review work agent fails | Skip review, note it in the REQ file, continue to archive — review failure is not a gate |
+| Commit fails | Investigate the error (usually a pre-commit hook failure). Fix the underlying issue, re-stage, and retry as a **new** commit (never bypass — see `## Rules`). If unfixable, report the error to the user and continue to next request — changes remain uncommitted but archived. |
+| Unrecoverable error | Stop loop, release the orchestrator lock, report clearly, leave queue intact for manual recovery |
+
+## Progress Reporting
+
+Keep the user informed with this format:
+
+(keep the user informed in the running per-REQ progress format shown in `actions/work-reference.md` → **Progress Reporting Example**)
+
+When the run finishes or pauses, hand back with the **Decision Brief** (`actions/work-reference.md` → **Decision Brief (hand-back format)**): lead with WHAT'S BEING BUILT (each REQ's `## Orientation`, at subsystem altitude), then DECISIONS FOR YOU (any escalated `pending-answers` follow-ups, each with value + risk), then a collapsed HANDLED list. Never lead with review scores — they stay in the per-REQ progress lines, not in front of the hand-back.
+
 
 ## Archived Request File Example
 
 See [sample-archived-req.md](./sample-archived-req.md) for a complete example of what an archived REQ looks like after processing through the full pipeline (Route B). Every section shown there is generated by the steps above.
 
 **Timestamps tell the story:** `created_at` → `claimed_at` = queue wait time. `claimed_at` → `completed_at` = implementation time. Route + timestamps let you calibrate triage accuracy over time.
+
+## Rules
+
+- The orchestrator handles ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents do implementation work only.
+- Only two frontmatter status transitions are written on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8); exception paths (Steps 1, 2.0, the Step 8 mid-run blocked flip to `blocked`, and 7's failed-remediation write) set the documented special statuses. Intermediate phases are tracked by which `##` sections exist, not by status.
+- One commit per request; stage explicit files only — never `git add -A`/`.` or bypass a commit hook (see `actions/commit.md` § Rules for the full staging/hook guard).
+
+**Common mistakes to avoid:**
+
+- Spawning implementation agent without first moving file to `working/`
+- Letting spawned agents handle file management (only the orchestrator moves/archives files)
+- Forgetting to update status in frontmatter (normal path has only two transitions: `claimed` at Step 2, final status at Step 8)
+- Archiving a UR folder before all its REQs are complete
+- Forgetting Planning status note for Routes A/B ("Planning not required")
+- Committing without validating Implementation Summary file list against staged files
+- Implementation Summary that only lists `do-work/` paths (means the REQ wasn't actually implemented — exception: `domain: ui-design` design artifacts placed in project directories like `docs/design/`)
+- Creating follow-ups for every `- [~]` item instead of only UX-affecting decisions
+
+**This action does NOT:**
+
+- Create new request files (use actions/capture.md)
+- Make architectural decisions beyond what's in the request
+- Run without user present (this is supervised automation)
+- Modify already-completed requests
+- Allow external modification of files in `working/` or `archive/`
+
+## Common Rationalizations
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "I'll skip Pre-Flight — the baseline is probably stable" | Run `git status` and the test baseline anyway (Step 5.75) | Pre-existing failures get misattributed to the builder, and unrelated dirty files get swept into the commit |
+| "I wrote the test after the code but it fails without it, so this counts as TDD" | For `tdd: true`, write the failing test first and show it RED before the code | Post-hoc tests encode the implementation's quirks; the RED-before-GREEN ordering is the evidence Step 6.5 gates on |
+| "P-A-U is bookkeeping — I'll just tick the boxes" | Do each phase; Step 6.3 audits the diff against the checked boxes | A checked `[UNIFY]` over a diff containing `console.log` is a false claim the qualifier will catch |
+| "This file change is small — it doesn't need to go in the Scope section" | Declare every file before coding (Step 5.5) | Undeclared touches are exactly what the scope-drift check flags at review; "small" is judged after the fact, not before |
+| "Tests still fail on attempt 2, but I'll just try the same fix again" | Load `crew-members/debugging.md` and `testing.md` before retrying | Unstructured retries repeat the same dead end; the debugging methodology exists for the 2nd+ attempt |
+| "The Implementation Summary is too detailed — I'll just write 'updated logic'" | List every changed file with its action verb + a factual one-liner | The Summary is the primary auditability artifact; "updated logic" is unverifiable and reads as a hollow completion |
+| "I'll fix this out-of-scope thing inline while I'm here" | Record it in `## Discovered Tasks`; Step 8 classifies and queues it | Inline scope creep escapes triage, review, and the per-REQ commit boundary |
+| "The queue file's twin is already archived, but re-running is harmless" | Stop — Step 2.0 sets `blocked-archive-collision` for exactly this | Re-processing a duplicate silently re-commits it and corrupts the archive lineage |
+| "No one else looks like they're running right now, I'll just start" | Check `do-work/orchestrator-lock.json` first (Step 1) | A live session mid-triage or mid-explore has no visible file changes yet — the 2026-07-01 incident looked exactly like an idle tree |
+
+## Red Flags
+
+- REQ in `do-work/working/` for >1 hour with no new git commits (builder may be stuck)
+- Implementation Summary lists files but `git diff` shows no changes in those files (hollow implementation)
+- All P-A-U checkboxes marked complete but diff contains `console.log`, `debugger`, or `TODO` (debug artifacts)
+- No Triage section appended to the REQ after processing begins
+- Scope section declares 3 files but Implementation Summary lists 12 (scope creep)
+- Builder created files only inside `do-work/` and no source files changed (no real work done)
+- Orchestrator lock file (`do-work/orchestrator-lock.json`) still present long after the work loop reported completion **with no live `coexisting_sessions` entry and a holder heartbeat past the 45-minute threshold** — a lock legitimately persists while any coexisting session is still live (Release procedure, `actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**)
+
+## Verification Checklist
+
+- [ ] All pending REQs processed or explicitly skipped with documented reason
+- [ ] Every completed REQ has an Implementation Summary section with file manifest
+- [ ] No REQ files remain in `do-work/working/` after the work loop ends
+- [ ] CHECKPOINT.md written if ending mid-session (for resume)
+- [ ] Git commit created for each completed REQ
+- [ ] Cleanup pass triggered at end of work loop
+- [ ] `do-work/orchestrator-lock.json` removed after the work loop ends, or left in place holding only still-live coexisting session(s) this session correctly declined to disturb (unless a later session's take-over legitimately superseded this one's release)

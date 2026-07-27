@@ -12,7 +12,7 @@ related:
   - page: log
     rel: complements
 created: 2026-04-15
-updated: 2026-04-16
+updated: 2026-06-29
 confidence: high
 ---
 
@@ -20,9 +20,9 @@ confidence: high
 
 ## Status
 
-- State: complete for the bootstrap pass plus ADR-011 (interview framework).
-- Last updated: 2026-04-16.
-- Next ADR number: `ADR-012`.
+- State: complete for the bootstrap pass plus ADR-011/012 (interview framework), ADR-013 (distribution hardening), ADR-014 (declined: autonomous loop-until-done / ultracode-fable workflow), ADR-015 (maintenance-crew load marker), and ADR-016 (queue-kanban vendored into the skill).
+- Last updated: 2026-07-01.
+- Next ADR number: `ADR-017`.
 
 ## Completed Scope
 
@@ -37,12 +37,17 @@ confidence: high
 - [x] ADR-003 — [[adr-003-always-load-karpathy-guardrails]]
 - [x] ADR-004 — [[adr-004-canonicalize-pending-reqs-under-do-work-queue]]
 - [x] ADR-005 — [[adr-005-pipeline-is-stateful-and-resumable]]
-- [x] ADR-006 — [[adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles]]
+- [x] ADR-006 — [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]]
 - [x] ADR-007 — [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]]
 - [x] ADR-008 — [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]]
 - [x] ADR-009 — [[adr-009-build-knowledge-base-as-a-compiled-interlinked-wiki]]
 - [x] ADR-010 — [[adr-010-use-typed-relationships-retrieval-memory-and-agent-crew-in-bkb]]
 - [x] ADR-011 — [[adr-011-interview-framework-with-prescriptive-templates]]
+- [x] ADR-012 — [[adr-012-interview-v2-gap-closure]]
+- [x] ADR-013 — [[adr-013-harden-the-vendored-skill-distribution-model]]
+- [x] ADR-014 — [[adr-014-considered-declined-autonomous-loop-until-done]] (declined)
+- [x] ADR-015 — [[adr-015-load-maintenance-crew-via-req-marker]]
+- [x] ADR-016 — [[adr-016-vendor-queue-kanban-into-the-skill]]
 
 ## Resume Notes
 

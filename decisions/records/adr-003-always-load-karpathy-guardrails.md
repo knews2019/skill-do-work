@@ -26,6 +26,8 @@ confidence: high
 Topic cluster: [[_index_skill-architecture]] ([topic index](../topics/_index_skill-architecture.md))
 See also: [[adr-002-load-reusable-spec-templates-during-work]] (complements), [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] (complements)
 
+> **Note (2026-07-16):** `crew-members/karpathy.md` was renamed to `crew-members/coding-guardrails.md` (0.125.2). This ADR's reasoning is unchanged; historical file references below are left as written.
+
 ## Context
 
 The do-work skill already had workflow machinery for capture, build, and review, but it wanted an always-on behavior layer that shaped how code gets written. The changelog introduced Karpathy-derived principles as a crew member loaded for every implementation pass, then immediately tightened the model by making review-work audit those principles as an informational check.

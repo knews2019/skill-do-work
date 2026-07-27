@@ -1,0 +1,537 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>What shipped — do-work 0.137.0 → 0.145.0</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+:root {
+  --bg: #fbfbfd;
+  --surface: #ffffff;
+  --surface-2: #f4f5f8;
+  --border: #dfe2ea;
+  --text: #14161c;
+  --muted: #5b6274;
+  --accent: #1d4ed8;
+  --accent-soft: #dbe6ff;
+  --bar-before: #bfd4fb;
+  --bar-after: #1d4ed8;
+  --good: #17795e;
+  --warn: #9a5b06;
+  --warn-soft: #fdf3e3;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0e1016;
+    --surface: #161922;
+    --surface-2: #1d212c;
+    --border: #2c3140;
+    --text: #eef0f6;
+    --muted: #9aa2b6;
+    --accent: #7ea2ff;
+    --accent-soft: #1c2540;
+    --bar-before: #33405c;
+    --bar-after: #7ea2ff;
+    --good: #4cc79f;
+    --warn: #e2a34a;
+    --warn-soft: #2a2113;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.page { width: 100%; padding: 40px clamp(20px, 4vw, 64px) 96px; }
+.measure { max-width: 74ch; }
+h1, h2, h3, h4 { line-height: 1.2; margin: 0; font-weight: 640; letter-spacing: -0.015em; }
+h1 { font-size: clamp(30px, 4.2vw, 50px); }
+h2 { font-size: clamp(21px, 2.2vw, 27px); margin-bottom: 6px; }
+h3 { font-size: 18px; }
+p { margin: 0 0 14px; }
+code, .mono { font-family: var(--mono); font-size: 0.9em; }
+a { color: var(--accent); }
+
+.eyebrow {
+  font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 14px;
+}
+.verdict { font-size: clamp(17px, 1.7vw, 21px); color: var(--text); margin: 20px 0 8px; font-weight: 500; }
+.sub { color: var(--muted); }
+
+section { margin-top: 56px; }
+.section-head { border-top: 1px solid var(--border); padding-top: 18px; margin-bottom: 22px; }
+
+/* ---- stat tiles ---- */
+.tiles { display: flex; flex-wrap: wrap; gap: 14px; margin: 28px 0 8px; }
+.tile {
+  flex: 1 1 210px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 18px 20px;
+}
+.tile .label { font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+.tile .value { font-size: 40px; font-weight: 620; letter-spacing: -0.02em; line-height: 1; }
+.tile .sub-line { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 8px; }
+.tile.is-warn { border-color: var(--warn); background: var(--warn-soft); }
+.tile.is-warn .value { color: var(--warn); }
+.tile.is-good .value { color: var(--good); }
+
+/* ---- tier cards ---- */
+.bands { display: flex; flex-wrap: wrap; gap: 16px; }
+.card {
+  flex: 1 1 320px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 22px 24px;
+}
+.card h3 { margin-bottom: 8px; }
+.card .card-sub { color: var(--muted); font-size: 14px; margin-bottom: 12px; }
+.card.is-outlier { border-color: var(--warn); background: var(--warn-soft); }
+
+/* ---- progressive disclosure ---- */
+details {
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface);
+  margin-top: 12px; overflow: hidden;
+}
+details > summary {
+  cursor: pointer; padding: 13px 18px; font-weight: 560; list-style: none;
+  display: flex; align-items: baseline; gap: 10px; background: var(--surface-2);
+}
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before {
+  content: "▸"; color: var(--accent); font-size: 12px; transition: transform .15s ease;
+  display: inline-block; flex: none;
+}
+details[open] > summary::before { transform: rotate(90deg); }
+details > summary .tier-tag {
+  font-family: var(--mono); font-size: 11px; color: var(--muted);
+  margin-left: auto; flex: none; letter-spacing: .06em;
+}
+.details-body { padding: 18px 22px 20px; border-top: 1px solid var(--border); }
+details details { margin-top: 14px; }
+details details > summary { background: transparent; font-size: 14px; font-weight: 500; }
+
+/* ---- tables ---- */
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; margin: 6px 0 4px; }
+th, td { text-align: left; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; padding-right: 18px; }
+td .sha { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.delta-down { color: var(--good); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.delta-up { color: var(--warn); font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+/* ---- callout ---- */
+.callout {
+  border-left: 3px solid var(--warn); background: var(--warn-soft);
+  padding: 18px 22px; border-radius: 0 10px 10px 0; margin: 24px 0;
+}
+.callout h3 { color: var(--warn); margin-bottom: 8px; }
+
+pre.cmd {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 18px; overflow-x: auto; font-family: var(--mono); font-size: 13px;
+  line-height: 1.7; margin: 12px 0;
+}
+figure { margin: 0; }
+figcaption { font-size: 13px; color: var(--muted); margin-top: 10px; }
+.chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px 20px; overflow-x: auto; }
+.chart-wrap svg { display: block; min-width: 620px; width: 100%; height: auto; }
+.legend { display: flex; gap: 20px; font-size: 13px; color: var(--muted); margin-top: 14px; flex-wrap: wrap; }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; flex: none; }
+.mermaid { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 22px; overflow-x: auto; }
+footer { margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 13px; color: var(--muted); }
+ul.tight { margin: 8px 0 14px; padding-left: 20px; }
+ul.tight li { margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ============ TIER 0 — THE VERDICT ============ -->
+<header>
+  <div class="eyebrow">do-work · UR-006 + UR-005 · 0.137.0 → 0.145.0 · 2026-07-27</div>
+  <h1>The skill now says things once,<br>and loads them late.</h1>
+  <p class="verdict measure">Nine commits cut the context every <code>do-work</code> invocation pays for by 32%, split the three largest action files into lazy-loaded companions, and added a lock guard so two sessions can no longer trample the same queue. One of those nine gave words back — deliberately.</p>
+  <p class="sub measure">Everything below is arranged in four tiers. Tier&nbsp;0 is this paragraph. Open a tier only when you want the next level of detail — which is the same thing that was done to the skill itself.</p>
+</header>
+
+<div class="tiles">
+  <div class="tile is-good">
+    <div class="label">Read on every single invocation</div>
+    <div class="value">−32%</div>
+    <div class="sub-line">4,298 → 2,935 words</div>
+  </div>
+  <div class="tile is-good">
+    <div class="label">Three monoliths, per-load cost</div>
+    <div class="value">−32%</div>
+    <div class="sub-line">20,692 → 14,141 words</div>
+  </div>
+  <div class="tile is-good">
+    <div class="label">Domain crew files</div>
+    <div class="value">−37%</div>
+    <div class="sub-line">6,737 → 4,237 words</div>
+  </div>
+  <div class="tile is-warn">
+    <div class="label">Full <code>do-work run</code> load</div>
+    <div class="value">+4.5%</div>
+    <div class="sub-line">25,231 → 26,376 words</div>
+  </div>
+</div>
+
+<!-- ============ THE ONE THING THAT CHANGES YOUR READ ============ -->
+<div class="callout measure">
+  <h3>The number that went the wrong way</h3>
+  <p>The full orchestrator load — what a <code>do-work run</code> actually pulls in — ended <strong>higher</strong> than it started. The slimming work drove it down to 23,834 words. Then the lock guard (REQ-018) added 2,542 back.</p>
+  <p style="margin-bottom:0">That is a real trade, not an accounting artifact. The guard prevents a class of silent data loss that has already happened once on this repo. Most of its bulk is the failure-mode statements that stopped it being wrong across two failed review rounds. Trimming it is possible; doing so without reintroducing those bugs is the hard part.</p>
+</div>
+
+<!-- ============ TIER 1 — THE MOVES ============ -->
+<section>
+  <div class="section-head">
+    <h2>Tier 1 · What was deployed, in four moves</h2>
+    <p class="sub measure" style="margin-bottom:0">Seven REQs under UR-006 did the slimming. One REQ under UR-005 added the guard. One loose commit fixed a bug the work surfaced.</p>
+  </div>
+
+  <div class="bands">
+    <div class="card">
+      <h3>Say it once</h3>
+      <div class="card-sub">REQ-025 · REQ-026 · REQ-028</div>
+      <p style="margin-bottom:0">The same guard was restated in seven files, prompt-injection doctrine was inlined in three actions that already load the crew file owning it, and <code>next-steps.md</code> was 47 worked examples where a stated intent would do. Each rule now has one home; everything else points at it.</p>
+    </div>
+    <div class="card">
+      <h3>Load it late</h3>
+      <div class="card-sub">REQ-029 · REQ-030 · REQ-031</div>
+      <p style="margin-bottom:0">The three largest action files loaded whole — including the parts used at one step, or no step. Each is now a step skeleton plus a <code>*-reference.md</code> companion opened by name, only when a step needs it.</p>
+    </div>
+    <div class="card">
+      <h3>Keep it that way</h3>
+      <div class="card-sub">REQ-027</div>
+      <p style="margin-bottom:0">The template asked for four boilerplate sections, so 20 of 42 action files carried all four. They're now earned, not mandatory — with a contract test that fails any new action file whose rationalizations table is generic filler.</p>
+    </div>
+    <div class="card is-outlier">
+      <h3>Guard the queue</h3>
+      <div class="card-sub">REQ-018 — the outlier</div>
+      <p style="margin-bottom:0">Not a trim. A second <code>do-work run</code> on the same tree now detects the first instead of silently processing the same queue alongside it. This is the commit that spent words rather than saving them.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section>
+  <div class="section-head">
+    <h2>How the load path changed</h2>
+    <p class="sub measure" style="margin-bottom:0">Before, reaching a step meant having already loaded everything around it. Now the router and the skeleton load; the heavy material is fetched by name at the step that consumes it.</p>
+  </div>
+  <figure>
+    <pre class="mermaid">
+flowchart LR
+    U([do-work &lt;verb&gt;]) --> R["SKILL.md router<br/>2,552 w"]
+    R --> N["next-steps.md<br/>383 w — was 1,741"]
+    R --> A["action file<br/>step skeleton"]
+    A -. "opened by name" .-> C["*-reference.md<br/>templates, schemas,<br/>output formats"]
+    A --> W["crew-members/*.md<br/>JIT by domain"]
+    </pre>
+    <figcaption>Solid edges always load. The dashed edge is the change — a companion is opened by name, <em>only</em> at the step that consumes it, and not at all on paths that never reach that step. Seven <code>*-reference.md</code> companions now exist, up from four. Derived from the routing table in <code>SKILL.md</code> and the pointer sites added by REQ-029/030/031.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ THE CHART ============ -->
+<section>
+  <div class="section-head">
+    <h2>What a single invocation stopped loading</h2>
+    <p class="sub measure" style="margin-bottom:0">Word counts verified against commit <code class="mono">6930417</code> (the state before this session) versus the working tree now.</p>
+  </div>
+  <div class="chart-wrap">
+    <svg viewBox="0 0 900 320" role="img" aria-label="Bar chart comparing word counts before and after for five loaded files">
+      <!-- axis: x0=237, scale = 0.0775 px per word (8,000 words = 620px) -->
+      <g stroke="var(--border)" stroke-width="1">
+        <line x1="392" y1="26" x2="392" y2="298"/>
+        <line x1="547" y1="26" x2="547" y2="298"/>
+        <line x1="702" y1="26" x2="702" y2="298"/>
+        <line x1="857" y1="26" x2="857" y2="298"/>
+      </g>
+      <g font-family="ui-monospace, monospace" font-size="11" fill="var(--muted)" text-anchor="middle">
+        <text x="392" y="18">2k</text>
+        <text x="547" y="18">4k</text>
+        <text x="702" y="18">6k</text>
+        <text x="857" y="18">8k</text>
+      </g>
+
+      <!-- next-steps.md 1,741 -> 383 -->
+      <g>
+        <text x="227" y="56" text-anchor="end" font-size="13.5" fill="var(--text)">next-steps.md</text>
+        <rect x="237" y="34" width="135" height="16" rx="3" fill="var(--bar-before)"/>
+        <rect x="237" y="54" width="30" height="16" rx="3" fill="var(--bar-after)"/>
+        <text x="380" y="47" font-size="11.5" font-family="ui-monospace, monospace" fill="var(--muted)">1,741</text>
+        <text x="275" y="67" font-size="11.5" font-family="ui-monospace, monospace" fill="var(--muted)">383</text>
+      </g>
+      <!-- crew files (six) 6,737 -> 4,237 -->
+      <g>
+        <text x="227" y="114" text-anchor="end" font-size="13.5" fill="var(--text)">crew files (six)</text>
+        <rect x="237" y="92" width="522" height="16" rx="3" fill="var(--bar-before)"/>
+        <rect x="237" y="112" width="328" height="16" rx="3" fill="var(--bar-after)"/>
+        <text x="767" y="105" font-size="11.5" font-family="ui-monospace, monospace" fill="var(--muted)">6,737</text>
+        <text x="573" y="125" font-size="11.5" font-family="ui-monospace, monospace" fill="var(--muted)">4,237</text>
+      </g>
+      <!-- capture.md 5,680 -> 3,945 -->
+      <g>
+        <text x="227" y="172" text-anchor="end" font-size="13.5" fill="var(--text)">capture.md</text>
+        <rect x="237" y="150" width="440" height="16" rx="3" fill="var(--bar-before)"/>
+        <rect x="237" y="170" width="306" height="16" rx="3" fill="var(--bar-after)"/>
+        <text x="685" y="163" font-size="11.5" font-family="ui-monospace, monospace" fill="var(--muted)">5,680</text>
+        <text x="551" y="183" font-size="11.5" font-family="ui-monospace, monospace" fill="var(--muted)">3,945</text>
+      </g>
+      <!-- pipeline.md 7,471 -> 4,719 -->
+      <g>
+        <text x="227" y="230" text-anchor="end" font-size="13.5" fill="var(--text)">pipeline.md</text>
+        <rect x="237" y="208" width="579" height="16" rx="3" fill="var(--bar-before)"/>
+        <rect x="237" y="228" width="366" height="16" rx="3" fill="var(--bar-after)"/>
+        <text x="824" y="221" font-size="11.5" font-family="ui-monospace, monospace" fill="var(--muted)">7,471</text>
+        <text x="611" y="241" font-size="11.5" font-family="ui-monospace, monospace" fill="var(--muted)">4,719</text>
+      </g>
+      <!-- ai-report.md 7,541 -> 5,477 -->
+      <g>
+        <text x="227" y="288" text-anchor="end" font-size="13.5" fill="var(--text)">ai-report.md</text>
+        <rect x="237" y="266" width="584" height="16" rx="3" fill="var(--bar-before)"/>
+        <rect x="237" y="286" width="424" height="16" rx="3" fill="var(--bar-after)"/>
+        <text x="829" y="279" font-size="11.5" font-family="ui-monospace, monospace" fill="var(--muted)">7,541</text>
+        <text x="669" y="299" font-size="11.5" font-family="ui-monospace, monospace" fill="var(--muted)">5,477</text>
+      </g>
+    </svg>
+  </div>
+  <div class="legend">
+    <span><i class="swatch" style="background:var(--bar-before)"></i> Before (commit 6930417)</span>
+    <span><i class="swatch" style="background:var(--bar-after)"></i> Now</span>
+    <span><code>work.md</code> is excluded — it went up, and it has its own row in the callout above.</span>
+  </div>
+  <p class="sub measure" style="margin-top:16px">The split files did not vanish — <code>ai-report.md</code>, <code>pipeline.md</code>, and <code>capture.md</code> shed 6,551 words into companions totalling 7,105. The point is not a smaller repo. It is that a capture aborting at the duplicate check no longer loads two REQ templates and five worked transcripts to get there.</p>
+</section>
+
+<!-- ============ TIER 2 — PER REQ ============ -->
+<section>
+  <div class="section-head">
+    <h2>Tier 2 · Every commit, one row each</h2>
+    <p class="sub measure" style="margin-bottom:0">Open any row for its receipts.</p>
+  </div>
+
+  <details>
+    <summary>REQ-025 — State each shipped guard once <span class="tier-tag">692a236</span></summary>
+    <div class="details-body">
+      <p class="measure">The <code>git add -A</code> / hook-bypass guard was restated across seven files — five times inside <code>stray-check.md</code> alone. <code>actions/commit.md</code> § Rules is now its only full statement; every other site is a one-line pointer. Prompt-injection doctrine was deleted from three actions that already load <code>crew-members/prompt-injection.md</code>. "This action is read-only" collapsed from 3–4 restatements per file to the description plus one enforcement point.</p>
+      <details>
+        <summary>Receipts — including what review caught <span class="tier-tag">tier 3</span></summary>
+        <div class="details-body">
+          <p><strong>Review verdict: PARTIAL → remediated.</strong> The first pass missed two of its own Detailed Requirements:</p>
+          <ul class="tight measure">
+            <li><code>capture.md</code> Step 0 still carried inline prompt-injection doctrine that the REQ's own Context section named as a delete target. The builder's summary claimed it was "already correct per REQ Context" — the opposite of what the REQ said.</li>
+            <li>The literal string <code>--no-verify</code> <strong>spread</strong> from 2 files to 4. Pointers that re-name the flag are restatements, which the REQ explicitly disqualified. It now appears in exactly one file.</li>
+          </ul>
+          <p>12 files touched: 53,419 → 52,979 words. Both findings fixed and independently re-verified by grep before commit.</p>
+        </div>
+      </details>
+    </div>
+  </details>
+
+  <details>
+    <summary>REQ-026 — next-steps.md: intent over enumeration <span class="tier-tag">b29ec34</span></summary>
+    <div class="details-body">
+      <p class="measure">This file is read after <em>every</em> action, and it was 47 hard-coded worked examples — one per action, most saying the obvious thing. Replaced with a stated intent, the format constraints, and a six-row table of the cases where the right suggestion genuinely isn't inferable.</p>
+      <details>
+        <summary>Receipts <span class="tier-tag">tier 3</span></summary>
+        <div class="details-body">
+          <p><strong>Review verdict: PASS.</strong> All 47 original blocks were enumerated and classified before deletion; 46 fence-pairs removed, one example block kept to anchor the output format.</p>
+          <p>1,741 → 383 words — the single largest cut to the always-read floor. One Minor finding: <code>SKILL.md</code>'s pointer still described the file as "the full per-action reference," which the rewrite made false. Fixed in the same commit.</p>
+          <p class="sub" style="margin-bottom:0">Kept cases: <code>pipeline</code> interrupted vs. completed, <code>reserve</code>, <code>capture-requests</code>, and <code>clarify</code> with vs. without pending answers.</p>
+        </div>
+      </details>
+    </div>
+  </details>
+
+  <details>
+    <summary>REQ-027 — Action-template sections must be earned <span class="tier-tag">f6cd577</span></summary>
+    <div class="details-body">
+      <p class="measure">The root cause of the boilerplate the rest of the batch was clearing. The template prescribed Rules / Common Rationalizations / Red Flags / Verification Checklist, so 20 of 42 action files carried all four regardless of content. Release 0.123.2 had already deduped once and it grew back — so this fix is structural, not another trim.</p>
+      <details>
+        <summary>Receipts <span class="tier-tag">tier 3</span></summary>
+        <div class="details-body">
+          <p><strong>Review verdict: PASS.</strong> Two Minor findings, both miscounts in the REQ's own prose rather than the code; corrected.</p>
+          <p>The concrete test now in the template: <em>can I name the specific failure this row prevents, and where it happened?</em> If no row passes, omit the whole table — a generic one teaches readers the section is decorative, so they stop reading the ones that aren't.</p>
+          <p style="margin-bottom:0">The ratchet in <code>_dev/tests/contract-regressions.sh</code> fails any <em>new</em> action file whose rationalizations rows carry no do-work-specific noun. The existing tree is grandfathered by an explicit baseline list, so the check landed green without a mass rewrite.</p>
+        </div>
+      </details>
+    </div>
+  </details>
+
+  <details>
+    <summary>REQ-028 — Domain crew files trimmed to opinions <span class="tier-tag">f95b1cf</span></summary>
+    <div class="details-body">
+      <p class="measure">Six domain crew files were largely advice a capable model already follows, with the same security guidance stated in two or three places. A line survived only if it was a deliberate preference of this project or wired to do-work machinery.</p>
+      <details>
+        <summary>Receipts <span class="tier-tag">tier 3</span></summary>
+        <div class="details-body">
+          <table>
+            <thead><tr><th>File</th><th class="num">Before</th><th class="num">Now</th><th class="num">Δ</th></tr></thead>
+            <tbody>
+              <tr><td>backend.md</td><td class="num">801</td><td class="num">202</td><td class="num delta-down">−75%</td></tr>
+              <tr><td>frontend.md</td><td class="num">547</td><td class="num">213</td><td class="num delta-down">−61%</td></tr>
+              <tr><td>testing.md</td><td class="num">1,473</td><td class="num">587</td><td class="num delta-down">−60%</td></tr>
+              <tr><td>debugging.md</td><td class="num">1,160</td><td class="num">852</td><td class="num delta-down">−27%</td></tr>
+              <tr><td>ui-design.md</td><td class="num">1,082</td><td class="num">849</td><td class="num delta-down">−22%</td></tr>
+              <tr><td>security.md</td><td class="num">1,674</td><td class="num">1,534</td><td class="num delta-down">−8%</td></tr>
+            </tbody>
+          </table>
+          <p style="margin-top:14px"><strong>Review verdict: PASS.</strong> <code>security.md</code> is now the single owner of security content; the two bullets unique to <code>frontend.md</code> were <em>moved</em> there before deletion, not dropped. Every <code>JIT_CONTEXT</code> load contract verified byte-identical. <code>general.md</code> and <code>coding-guardrails.md</code> — the always-loaded pair — untouched.</p>
+        </div>
+      </details>
+    </div>
+  </details>
+
+  <details>
+    <summary>REQ-029 / 030 / 031 — The three monolith splits <span class="tier-tag">2273381 · 168871f · ed5f96b</span></summary>
+    <div class="details-body">
+      <p class="measure">Each of the three largest action files became a step skeleton plus a companion, following the <code>work.md</code> ↔ <code>work-reference.md</code> pattern already proven in this repo. Every companion section is pointed at by name from the step that consumes it.</p>
+      <table>
+        <thead><tr><th>Split</th><th class="num">Action, before</th><th class="num">Action, now</th><th class="num">Companion</th><th>What moved</th></tr></thead>
+        <tbody>
+          <tr><td>ai-report</td><td class="num">7,541</td><td class="num">5,477</td><td class="num">2,339</td><td>Image backend, CSS specs, toggle implementation, output template</td></tr>
+          <tr><td>pipeline</td><td class="num">7,471</td><td class="num">4,719</td><td class="num">3,084</td><td>State-file schema, all three completion renderings, help menu</td></tr>
+          <tr><td>capture</td><td class="num">5,680</td><td class="num">3,945</td><td class="num">1,682</td><td>REQ + UR templates, schema aliases, addendum template</td></tr>
+        </tbody>
+      </table>
+      <details>
+        <summary>Receipts — and the one finding that wasn't in either file <span class="tier-tag">tier 3</span></summary>
+        <div class="details-body">
+          <p><strong>Verdicts: PASS, PARTIAL, PASS.</strong> Every moved block was verified byte-identical by <code>diff</code>, not by re-reading and judging it equivalent. Pointer integrity was checked in both directions — no dangling pointers, no orphan sections.</p>
+          <p><strong>capture's templates are a contract</strong>, read by <code>work.md</code>, <code>roadmap.md</code>, and <code>tools/queue-kanban/model.go</code>. No field, enum, <code>depends_on</code>/<code>addendum_to</code> semantic, or the UTC timestamp rule changed. All five worked examples were deleted rather than relocated, each assessed individually — including the one closest call, which turned out not to demonstrate the slicing convention it sat beside.</p>
+          <p style="margin-bottom:0"><strong>REQ-030's PARTIAL was ADR drift.</strong> <code>adr-008</code> stated as fact that the pipeline templates "live inline in <code>pipeline.md</code>" — true until this commit made it false. The repo had already hit this exact drift in 0.76.0 when the companion was re-inlined the other direction, and updated the same two ADRs then. Both updated here, in the same commit.</p>
+        </div>
+      </details>
+    </div>
+  </details>
+
+  <details>
+    <summary>REQ-018 — Concurrent-orchestrator lock guard <span class="tier-tag">d4cd322</span></summary>
+    <div class="details-body">
+      <p class="measure">On 2026-07-01 two sessions ran the work loop on one tree simultaneously. The second committed the first's in-flight build and archived it with a hollow paper trail; it merged by luck. Nothing detected the collision. Step 1 now acquires <code>do-work/orchestrator-lock.json</code> before the checkpoint read, before crash recovery, and before the queue scan.</p>
+      <ul class="tight measure">
+        <li><strong>Fresh lock, interactive:</strong> three choices — proceed anyway, take over, abort.</li>
+        <li><strong>Fresh lock, non-interactive:</strong> refuses and reports the holder. When it cannot confirm a human is reachable, it assumes there isn't one.</li>
+        <li><strong>Heartbeat &gt; 45 min:</strong> holder presumed dead — warn, take over, let existing crash recovery self-heal. No manual file deletion, ever.</li>
+      </ul>
+      <details>
+        <summary>Receipts — two failed review rounds <span class="tier-tag">tier 3</span></summary>
+        <div class="details-body">
+          <p><strong>Round one: FAIL.</strong> Two defects, both in the option sold as the safe one.</p>
+          <ul class="tight measure">
+            <li>"Proceed anyway" rewrote the lock to the arriving session, so the <em>original</em> session hit a session-id mismatch at its next checkpoint and was told to stop — mid-build, with its REQ left claimed and abandoned. The choice advertised as leaving the other session alone was the one that killed it.</li>
+            <li>Its skip-crash-recovery decision lived only in conversational memory. On the second loop iteration — after the skill's own mandatory context wipe — crash recovery would fire on the other session's live file.</li>
+          </ul>
+          <p>Root cause was in the REQ's own requirements: "proceed anyway must rewrite the lock" collided with the mismatch-means-stop rule the same REQ implied. The builder followed the contract faithfully and produced a bug. Fixed with a <code>coexisting_sessions</code> array: one holder, coexisting sessions recorded alongside — which is also the durable, file-backed marker the second defect needed.</p>
+          <p><strong>Round two: FAIL.</strong> Step 8 cleared <code>claimed_req</code> at substep 1, but the file doesn't leave <code>working/</code> until substep 6. For those four substeps the file sat there looking unclaimed — and another live session's ordinary crash recovery would strip its Implementation Summary and re-queue it. That is the 2026-07-01 incident, reintroduced by its own fix.</p>
+          <p style="margin-bottom:0">Fixed by putting lock bookkeeping adjacent to the physical move at all four sites, each carrying a one-line statement of the failure it prevents. Orchestrator load: 23,834 → 26,376 words.</p>
+        </div>
+      </details>
+    </div>
+  </details>
+
+  <details>
+    <summary>Loose fix — capture's <code>domain</code> stated as the closed set it is <span class="tier-tag">4b11ea0</span></summary>
+    <div class="details-body">
+      <p class="measure">Found by a cold-start smoke test of the freshly split <code>capture.md</code>. The field was described with an "e.g." list, reading as a free-text hint. It isn't: anything outside the six values normalizes to <code>general</code> with a warning, so an invented domain silently costs you the crew rules the REQ meant to load.</p>
+      <details>
+        <summary>What the smoke test actually proved <span class="tier-tag">tier 3</span></summary>
+        <div class="details-body">
+          <p>An agent starting cold from <code>actions/capture.md</code> alone opened the companion for the first time at Step 5 — exactly where the pointer says to — went straight to the named sections without hunting, and produced a UR + REQ pair matching the templates field-for-field with no invented fields. Every step before Step 5 was self-contained.</p>
+          <p style="margin-bottom:0">That is the split working. The <code>domain</code> wording was the only real defect it surfaced.</p>
+        </div>
+      </details>
+    </div>
+  </details>
+</section>
+
+<!-- ============ WHAT CHANGED ============ -->
+<section>
+  <div class="section-head">
+    <h2>Files that moved</h2>
+  </div>
+  <table>
+    <thead><tr><th>Path</th><th>What happened</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">next-steps.md</td><td>47 worked examples → stated intent + format rules + 6-row table</td></tr>
+      <tr><td class="mono">actions/ai-report-reference.md</td><td><em>new</em> — image backend, CSS specs, toggle implementation, output template</td></tr>
+      <tr><td class="mono">actions/pipeline-reference.md</td><td><em>new</em> — state-file schema, all output renderings, help menu</td></tr>
+      <tr><td class="mono">actions/capture-reference.md</td><td><em>new</em> — REQ/UR templates, schema aliases, addendum template</td></tr>
+      <tr><td class="mono">actions/commit.md</td><td>gained the canonical <code>## Rules</code> section owning the staging/hook guard</td></tr>
+      <tr><td class="mono">actions/work.md</td><td>lock guard hooks at Step 1/2/8/9/10; guard restatements reduced to pointers</td></tr>
+      <tr><td class="mono">actions/work-reference.md</td><td>new Concurrent-Orchestrator Lock Guard section (mechanics, prompts, release)</td></tr>
+      <tr><td class="mono">crew-members/{backend,frontend,security,testing,ui-design,debugging}.md</td><td>trimmed to opinions; security content consolidated into <code>security.md</code></td></tr>
+      <tr><td class="mono">CLAUDE.md</td><td>four template sections became earned, not mandatory</td></tr>
+      <tr><td class="mono">_dev/tests/contract-regressions.sh</td><td>new Common Rationalizations regrowth ratchet</td></tr>
+      <tr><td class="mono">decisions/records/adr-001, adr-008</td><td>updated — adr-008 asserted the pipeline templates were inline</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============ VERIFY ============ -->
+<section>
+  <div class="section-head">
+    <h2>Verify it yourself</h2>
+  </div>
+  <pre class="cmd"># the nine commits this report covers
+git log --oneline 6930417..d4cd322
+
+# the gate every one of them had to pass
+bash _dev/tests/contract-regressions.sh
+
+# the always-read floor, before and after
+git show 6930417:SKILL.md | wc -w ; git show 6930417:next-steps.md | wc -w
+wc -w SKILL.md next-steps.md
+
+# the guard that used to be in seven files
+grep -rln -- '--no-verify' actions/
+
+# every companion pointer resolves
+grep -rhoE 'actions/[a-z0-9-]+-reference\.md' actions/ | sort -u | while read p; do
+  [ -f "$p" ] || echo "MISSING: $p"
+done</pre>
+</section>
+
+<!-- ============ TIER 3 — WHAT THIS COST TO GET RIGHT ============ -->
+<section>
+  <div class="section-head">
+    <h2>Tier 3 · What the review gates caught</h2>
+    <p class="sub measure" style="margin-bottom:0">Three of eight REQs failed their first review. None of the failures were visible in the builder's own summary.</p>
+  </div>
+  <table>
+    <thead><tr><th>REQ</th><th>Verdict</th><th>What was wrong</th></tr></thead>
+    <tbody>
+      <tr><td class="mono">REQ-025</td><td class="delta-up">PARTIAL</td><td>Two of its own Detailed Requirements didn't land; <code>--no-verify</code> spread from 2 files to 4 — the opposite of the REQ's purpose</td></tr>
+      <tr><td class="mono">REQ-030</td><td class="delta-up">PARTIAL</td><td>Left <code>adr-008</code> asserting something the change made false, with documented precedent for updating it</td></tr>
+      <tr><td class="mono">REQ-018</td><td class="delta-up">FAIL ×2</td><td>"Proceed anyway" silently killed the live session; then <code>claimed_req</code> cleared five substeps before the file moved</td></tr>
+      <tr><td class="mono">REQ-026/027/028/029/031</td><td class="delta-down">PASS</td><td>Findings confined to the paper trail — an overclaimed "untouched", a curated grep receipt, a miscounted gloss</td></tr>
+    </tbody>
+  </table>
+  <p class="measure" style="margin-top:20px">Two patterns worth carrying forward. <strong>The splits were safe; their claims weren't.</strong> Every moved block verified byte-identical — every defect found in them was in what the REQ file <em>said</em> about the move. <strong>And a verifier caught a spec-level contradiction, not just a build error:</strong> REQ-018's requirements were internally inconsistent, so a faithful builder produced a bug. No amount of care at the implementation layer would have found that.</p>
+</section>
+
+<footer>
+  <p>Generated by <code>do-work ai-report</code> · target UR-006 (7 REQs) + UR-005 (REQ-018) · versions 0.137.0 → 0.145.0 · commit range <code>6930417..d4cd322</code>. A later commit (<code>86d0437</code>) corrects an example count in the 0.138.0 release note and is outside this report's scope.</p>
+  <p>No screenshots: this release changed instruction files only, so there are no pixels to show. Diagrams are hand-authored SVG and Mermaid — no AI-generated images were used, since a synthetic illustration of a text refactor would decorate without informing. All word counts verified against git rather than recalled.</p>
+</footer>
+
+</div>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'base',
+    themeVariables: { fontFamily: '-apple-system, BlinkMacSystemFont, Segoe UI, Inter, sans-serif' }
+  });
+</script>
+</body>
+</html>

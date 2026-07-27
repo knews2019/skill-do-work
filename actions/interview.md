@@ -1,8 +1,8 @@
 # Interview Action
 
-> **Part of the do-work skill.** Generalized interview framework. Runs prescriptive templates that elicit tacit knowledge through structured multi-layer conversations and produce agent-ready operating artifacts.
+> **Part of the do-work skill.** Generalized interview framework. Runs prescriptive templates that elicit tacit knowledge through structured multi-layer conversations and produce agent-ready operating artifacts. User-facing walkthrough: [`docs/interview-guide.md`](../docs/interview-guide.md).
 
-The action loads templates from `<skill-root>/interviews/<name>.md`, runs a checkpoint-gated interview layer by layer, and produces artifacts the user can hand to an agent or feed into `bkb` as queryable knowledge. Session state persists at `./do-work/interview/<template>/session.json` and resumes across sessions per ADR-005. Heavy content — template format, canonical entry contract, session schema, export schemas, re-run mode specs — lives in the companion `actions/interview-reference.md` per ADR-001. The `ingest` sub-command produces files that land in `kb/raw/inbox/` in the format `bkb triage && bkb ingest` expects, per ADR-002.
+The action loads templates from `<skill-root>/interviews/<name>.md`, runs a checkpoint-gated interview layer by layer, and produces artifacts the user can hand to an agent or feed into `bkb` as queryable knowledge. Session state persists at `./do-work/interview/<template>/session.json` and resumes across sessions per ADR-005. Heavy content — template format, canonical entry contract, session schema, **Session-Load Protocol**, export schemas, re-run mode specs — lives in the companion `actions/interview-reference.md` per ADR-001. The `ingest` sub-command produces files that land in `kb/raw/inbox/` in the format `bkb triage && bkb ingest` expects, per ADR-002.
 
 ## When to Use
 
@@ -13,9 +13,7 @@ The action loads templates from `<skill-root>/interviews/<name>.md`, runs a chec
 - A new template has been authored in `<skill-root>/interviews/` and the user wants to run that interview.
 
 **Do NOT use when:**
-- The user wants the agent to act on their behalf right now — that's the `work` or `pipeline` action. Interview produces the instructions; it does not execute them.
-- The user wants a list of ideas or a brainstorm — use `scan-ideas` or `deep-explore`. Interview elicits structure, not possibilities.
-- The user wants to review tacit knowledge that already exists as code or documentation — use `code-review`, `prime`, or `bkb query`. Interview is for knowledge that only lives in the user's head.
+- See `SKILL.md` routing table for sibling action selection. Interview elicits tacit knowledge that only lives in the user's head — it does not execute (`work`/`pipeline`), brainstorm (`scan-ideas`/`deep-explore`), or extract from existing artifacts (`code-review`/`prime`/`bkb query`).
 
 ## Input
 
@@ -23,15 +21,15 @@ The action loads templates from `<skill-root>/interviews/<name>.md`, runs a chec
 
 | Invocation | Behavior |
 |---|---|
-| `do work interview` (no args) | Show help menu |
-| `do work interview list` | List available templates |
-| `do work interview <template>` | Start or resume interview for `<template>` |
-| `do work interview <template> status` | Show session progress |
-| `do work interview <template> review` | Run contradiction pass |
-| `do work interview <template> export` | Write export artifacts |
-| `do work interview <template> ingest` | Copy exports into BKB inbox |
-| `do work interview <template> reset` | Archive as a version and start fresh (requires confirmation) |
-| `do work interview <template> versions` | List archived runs |
+| `do-work interview` (no args) | Show help menu |
+| `do-work interview list` | List available templates |
+| `do-work interview <template>` | Start or resume interview for `<template>` |
+| `do-work interview <template> status` | Show session progress |
+| `do-work interview <template> review` | Run contradiction pass |
+| `do-work interview <template> export` | Write export artifacts |
+| `do-work interview <template> ingest` | Copy exports into BKB inbox |
+| `do-work interview <template> reset` | Archive as a version and start fresh (requires confirmation) |
+| `do-work interview <template> versions` | List archived runs |
 
 ## Sub-Commands
 
@@ -55,7 +53,7 @@ The action loads templates from `<skill-root>/interviews/<name>.md`, runs a chec
 
 Templates live at `<skill-root>/interviews/<template>.md`. `<skill-root>` is the directory containing `SKILL.md` (same convention used by `actions/version.md` and `actions/prompts.md`). There is no project-root fallback — adding or modifying a template means editing the file inside the skill install.
 
-If `<skill-root>/interviews/<template>.md` does not exist, list available templates (per the `list` sub-command) and stop with: `Template '<template>' not found. Run 'do work interview list' to see available templates.`
+If `<skill-root>/interviews/<template>.md` does not exist, list available templates (per the `list` sub-command) and stop with: `Template '<template>' not found. Run 'do-work interview list' to see available templates.`
 
 The template's frontmatter is the contract: layers, per-layer prompts, and export declarations come from this file. The action enforces the contract; it does not improvise around missing fields.
 
@@ -64,7 +62,9 @@ The template's frontmatter is the contract: layers, per-layer prompts, and expor
 Session state lives at `./do-work/interview/<template>/session.json` in the current working directory. `do-work/` is the canonical per-repo workspace already used by other actions (`queue/`, `user-requests/`, `archive/`, `working/`); interview output joins that layout and is tracked in git alongside the rest of the project's trail of intent.
 
 - If `./do-work/interview/<template>/session.json` does not exist and the sub-command is bare `<template>`: create the directory structure and start a fresh session (see Step 1 below).
-- If it does not exist and the sub-command is anything else (`status`, `review`, `export`, `ingest`, `reset`, `versions`): stop with `No session found for '<template>'. Run 'do work interview <template>' to start one.`
+- If it does not exist and the sub-command is anything else (`status`, `review`, `export`, `ingest`, `reset`, `versions`): stop with `No session found for '<template>'. Run 'do-work interview <template>' to start one.`
+
+After locating an existing `session.json`, every sub-command that reads it (`<template>` resume, `status`, `review`, `export`, `ingest`) **must** run the **Session-Load Protocol** before any other read — `list` and `reset` skip it, and `versions` only enumerates archived sessions so it skips too. The protocol has two modes: **persist** (used by mutating subcommands — applies migration in-memory and writes the result back atomically) and **dry-run** (used by `status` — applies migration in-memory only and renders a staleness notice without touching disk). Full spec — mode-selection rationale, all four steps with substeps, version placeholder conventions, multi-major migration chains, atomic write semantics, and the concrete dry-run rendering — in `actions/interview-reference.md` (Session-Load Protocol). The per-subcommand sections below tell you which mode to invoke.
 
 ---
 
@@ -88,7 +88,7 @@ Available templates:
     Elicits the operating model of a person at work. Produces agent-ready
     artifacts (USER.md, SOUL.md, HEARTBEAT.md) plus machine-readable exports.
 
-Start an interview:  do work interview <template>
+Start an interview:  do-work interview <template>
 ```
 
 ---
@@ -115,6 +115,7 @@ Initial `session.json`:
 ```json
 {
   "template": "<template>",
+  "template_version": "<current template version>",
   "session_id": "<uuid>",
   "started_at": "<iso>",
   "last_activity_at": "<iso>",
@@ -128,13 +129,15 @@ Initial `session.json`:
 }
 ```
 
+Read `template_version` from the template file's frontmatter `version` field (e.g., `2.0.0` for `interviews/work-operating-model.md`). If the template has no `version` field, write `"template_version": null` and continue — older templates predate the field.
+
 Write a header line to `CHANGELOG.md`: `# Interview CHANGELOG — <template>` followed by a blank line.
 
 Proceed to Step 3 (layer interview workflow) starting at the first layer.
 
 ### Step 2: Existing session
 
-Read `session.json`. Branch on `status`:
+Run the **Session-Load Protocol** in **persist** mode to apply any pending migration. Then read `session.json` and branch on `status`:
 
 - **`status: "in_progress"`** — resume. Read `pending_layer` and proceed to Step 3 for that layer. Announce resumption briefly: "Resuming `<template>` at layer <pending_layer>. <N> of <total> layers approved so far." Do not re-show approved layers unless the user asks.
 
@@ -153,25 +156,27 @@ For each layer in the template's declared order (starting from `pending_layer`):
 
 2. **Converse and draft.** Convert the user's responses into canonical entries matching the template's entry contract (see `actions/interview-reference.md` — Canonical Entry Contract). One question at a time. Capture the user's specific language. If a canonical field was not mentioned (e.g., `constraints`), ask — do not invent.
 
-3. **Write the checkpoint.** When the layer has 2–5 canonical entries drafted, write `./do-work/interview/<template>/checkpoints/<layer-id>.md` using the Checkpoint File Format from `actions/interview-reference.md`. Include a 1–2 paragraph layer summary, the canonical entries, any unresolved items, and the explicit approval ask.
+3. **Write a draft checkpoint.** Before seeking approval, write the candidate entries to `./do-work/interview/<template>/checkpoints/.draft-<layer-id>.md` as a resume aid. The draft is overwritten as candidate entries evolve. It is deleted when the layer is approved (normal case) or explicitly discarded during mid-layer recovery (see `actions/interview-reference.md` — Mid-layer recovery).
 
-4. **Present and wait for approval.** Show the checkpoint contents to the user in-chat. Accepted confirmations: "save," "looks right," "confirmed," "approve," or semantic equivalents. Corrections: the user edits specific entries — regenerate the checkpoint and ask again. Never persist unconfirmed content.
+4. **Write the checkpoint.** When the layer has 2–5 canonical entries drafted, write `./do-work/interview/<template>/checkpoints/<layer-id>.md` using the Checkpoint File Format from `actions/interview-reference.md`. Include a 1–2 paragraph layer summary, the canonical entries, any unresolved items, and the explicit approval ask.
 
-5. **Persist on approval.** Write approved entries to `session.json` under `layers.<layer-id>.entries[]`. Set `layers.<layer-id>.approved = true`, `layers.<layer-id>.approved_at = <now>`, `last_activity_at = <now>`. Update each entry's `last_validated_at`. Advance `pending_layer` to the next layer id (or `null` if this was the last layer — and flip `status` to `complete`).
+5. **Present and wait for approval.** Show the checkpoint contents to the user in-chat. Accepted confirmations: "save," "looks right," "confirmed," "approve," or semantic equivalents. Corrections: the user edits specific entries — regenerate the checkpoint and ask again. Never persist unconfirmed content.
 
-6. **Append to CHANGELOG.** Add one line:
+6. **Persist on approval.** Write approved entries to `session.json` under `layers.<layer-id>.entries[]`. Set `layers.<layer-id>.approved = true`, `layers.<layer-id>.approved_at = <now>`, `last_activity_at = <now>`. Update each entry's `last_validated_at`. Delete `./do-work/interview/<template>/checkpoints/.draft-<layer-id>.md` if present. Advance `pending_layer` to the next layer id (or `null` if this was the last layer — and flip `status` to `complete`).
+
+7. **Append to CHANGELOG.** Add one line:
    ```
    ## <YYYY-MM-DD HH:MM> — layer approved: <layer-id>
    <one-sentence summary of the real pattern surfaced>
    ```
 
-7. **Advance.** Move to the next layer. When the final layer is approved, suggest: "All layers approved. Run `do work interview <template> review` to surface cross-layer contradictions, then `export` to write deliverables."
+8. **Advance.** Move to the next layer. When the final layer is approved, suggest: "All layers approved. Run `do-work interview <template> review` to surface cross-layer contradictions, then `export` to write deliverables."
 
 ---
 
 ## Sub-Command: `<template> status`
 
-Read `session.json` and report.
+Run the **Session-Load Protocol** in **dry-run** mode — `status` is a pure read and must not mutate session.json or CHANGELOG.md. The protocol's dry-run branch handles staleness reporting and hands back an in-memory session object (migrated if a pending migration was detected). Render the status output directly from that in-memory object — do **not** re-read `session.json` from disk, since in dry-run mode the migrated shape is never written back and re-reading would discard it, producing output from stale pre-migration data.
 
 ### Output
 
@@ -204,7 +209,8 @@ Runs the cross-layer contradiction pass. Requires all layers approved.
 
 ### Preconditions
 
-- `session.json` exists and every declared layer has `approved: true`. If any layer is unapproved, list the pending layers and stop with: "Review requires all layers approved. Missing: <list>. Run `do work interview <template>` to finish the interview."
+- Run the **Session-Load Protocol** in **persist** mode before checking preconditions, so a v1.x session is migrated before its layer-approval state is inspected.
+- `session.json` exists and every declared layer has `approved: true`. If any layer is unapproved, list the pending layers and stop with: "Review requires all layers approved. Missing: <list>. Run `do-work interview <template>` to finish the interview."
 
 ### Steps
 
@@ -240,27 +246,30 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
 
 ### Preconditions
 
+- Run the **Session-Load Protocol** in **persist** mode before checking preconditions or rendering — exports must always run against the current template shape, never an unmigrated v1.x layout.
 - Every declared layer has `approved: true`. If not, list missing layers and stop.
-- `review_completed_at != null` **AND** `review_runs >= 1`. If not, stop with: "Export requires the review pass to have run at least once. Run `do work interview <template> review` first."
+- `review_completed_at != null` **AND** `review_runs >= 1`. If not, stop with: "Export requires the review pass to have run at least once. Run `do-work interview <template> review` first."
 
 ### Steps
 
 1. **Freshness preflight.** Read `session.json.last_exported_at`. If non-null and `last_activity_at > last_exported_at`, announce: "Exports last written <last_exported_at>; session modified since at <last_activity_at>. Regenerating." If `last_exported_at` is `null`, this is the first export — proceed without announcement. Never block — this step only surfaces staleness. The stamp lives on `session.json`, not in `exports/`, so nothing ever lands in the exports directory that `ingest` could accidentally copy.
 
-2. Read the template's `exports:` frontmatter. For each declared export:
-   - Look up the export's schema in `actions/interview-reference.md` (Export Schemas section — one per export kind and template).
-   - Compose the artifact from the approved session entries. Pull content from `session.json`; do not invent.
+2. **Stamp the export timestamp in-memory before rendering.** Set `session.last_exported_at = <now>` (ISO 8601) as an in-memory value that the render step below will substitute into templates (e.g. `{{session.last_exported_at}}` in the USER/SOUL/HEARTBEAT/JSON export headers and in the ingest frontmatter `created:`). Do not write `session.json` yet — the file write happens in step 4 after the artifacts are on disk, so a crash mid-render does not leave a stamp pointing at a partial export.
+
+3. Read the template's `exports:` frontmatter. For each declared export:
+   - Look up the render template in the template file's `## Export Templates` section — one block per export `path`. Per `actions/interview-reference.md` (Export Schemas), all per-export schemas live in the template file itself, not the reference.
+   - Compose the artifact from the approved session entries by mechanically rendering that template block. Pull content from `session.json`; do not invent. Substitute the in-memory `last_exported_at` from step 2 wherever the template references it.
    - Write the file to `./do-work/interview/<template>/exports/<path>`. Overwrite any prior export.
 
-3. Update `session.json`: set `last_exported_at = <now>` (ISO 8601). This stamp is what the next export's freshness preflight reads.
+4. **Persist the stamp.** Write `session.json` with the `last_exported_at` value set in step 2. This is what the next export's freshness preflight reads.
 
-4. Append one synthesis line to CHANGELOG:
+5. Append one synthesis line to CHANGELOG:
    ```
    ## <YYYY-MM-DD HH:MM> — exports written
    <list of filenames>
    ```
 
-5. Report to the user:
+6. Report to the user:
    ```
    Exports written to ./do-work/interview/<template>/exports/:
      USER.md                        narrative profile
@@ -269,7 +278,7 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
      operating-model.json           full session dump
      schedule-recommendations.json  derived schedule
 
-   Next: do work interview <template> ingest   to feed the operating model into BKB.
+   Next: do-work interview <template> ingest   to feed the operating model into BKB.
    ```
 
 ---
@@ -280,38 +289,33 @@ Copies exports into `<repo-root>/kb/raw/inbox/` with BKB-compatible frontmatter.
 
 ### Preconditions
 
-- `./do-work/interview/<template>/exports/` exists and is non-empty. If not, stop with: "No exports found. Run `do work interview <template> export` first."
-- `<repo-root>/kb/` exists. If not, stop with: "No knowledge base found. Run `do work bkb init` first."
+- Run the **Session-Load Protocol** in **persist** mode before reading the session for layer-summary generation — even though ingest reads `exports/` directly for export files, the layer summaries are built from `session.json` and must use the current shape.
+- `./do-work/interview/<template>/exports/` exists and is non-empty. If not, stop with: "No exports found. Run `do-work interview <template> export` first."
+- `<repo-root>/kb/` exists. If not, stop with: "No knowledge base found. Run `do-work bkb init` first."
 
 ### Steps
 
-1. For each file in `./do-work/interview/<template>/exports/`, write a companion file to `<repo-root>/kb/raw/inbox/` named `interview-<template>-<export-basename>.md` (e.g., `interview-work-operating-model-USER.md`).
+Follow the Ingest File Mapping section in `actions/interview-reference.md`. Two file classes are written per run — one per export plus one per layer — plus a manifest row in the inbox queue.
 
-2. Prepend YAML frontmatter per the Ingest Frontmatter section in `actions/interview-reference.md`:
-   ```yaml
-   ---
-   title: <template-display-name> — <export-title>
-   source: ./do-work/interview/<template>/exports/<export-filename>
-   type: source-summary
-   topic_cluster: <from template frontmatter>
-   confidence: high
-   created: <YYYY-MM-DD>
-   ---
-   ```
-   `topic_cluster` is copied verbatim from the template's frontmatter.
+1. **Export files.** For each file in `./do-work/interview/<template>/exports/`, write a companion file to `<repo-root>/kb/raw/inbox/<template>-<export-name>.md`. Body is the full export content. For `.json` exports, include the JSON as a fenced code block inside the markdown body. Frontmatter follows the reference's export file shape (`type: source-summary`, `sources:` list, `confidence: high`).
 
-3. For markdown exports, the body is the export content. For JSON exports, the body is a short pointer describing the shape and pointing at the source path — BKB ingests the descriptive summary, not raw JSON.
+2. **Layer summary files.** For every layer in the session, write a summary file to `kb/raw/inbox/<template>-<layer-id>.md`. Body lists each entry's `title` and `summary` under the layer heading. Frontmatter follows the reference's layer summary shape (`type: concept`, `sources:` points to `session.json`, `related:` points to the template's USER wiki page, `confidence` derived from majority `source_confidence` in the layer).
 
-4. Append a per-layer markdown summary at `kb/raw/inbox/interview-<template>-layer-<layer-id>.md` for every layer in the session. Each file's body lists that layer's canonical entries in human-readable form. Same frontmatter shape as above.
+3. **Inbox manifest.** Append one row to `<repo-root>/kb/raw/_inbox_queue.md` for each file added, marked `ready`, with `topic_hint: <template.topic_cluster>` and `priority: normal`.
+
+4. **Collisions.** If any target filename already exists in `kb/raw/inbox/` or `kb/raw/capture/`, prefix the new file with the current time (`HHMMSS-<filename>`) per BKB's collision rule.
 
 5. Report:
    ```
-   Ingested <N> files into kb/raw/inbox/:
-     interview-<template>-USER.md
-     interview-<template>-SOUL.md
+   Ingested <N> files into kb/raw/inbox/ (<E> exports + <L> layer summaries):
+     <template>-USER.md
+     <template>-SOUL.md
+     ...
+     <template>-<layer-id>.md
      ...
 
-   Next: do work bkb triage && do work bkb ingest
+   Queued in kb/raw/_inbox_queue.md: <N> rows.
+   Next: do-work bkb triage && do-work bkb ingest
    ```
 
 ---
@@ -334,7 +338,7 @@ Archives the current run as a version and starts fresh. Destructive — requires
    Fresh session started; v<N> retained for reference.
    ```
 
-5. Report: "Reset complete. Archived as v<N>. Run `do work interview <template>` to start the new session."
+5. Report: "Reset complete. Archived as v<N>. Run `do-work interview <template>` to start the new session."
 
 ---
 
@@ -382,7 +386,7 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 - **Versions are immutable.** Once written to `versions/`, a directory is never edited by the action. The user's `previous_version` reference is the only back-link.
 - **Exports gate on review.** `export` refuses to run unless all layers are approved and at least one review pass has completed. The gate exists to catch cross-layer tensions before they propagate into agent instructions. An `update` re-run that edits approved entries clears the review state (`review_completed_at = null`, `review_runs = 0`) — the user must re-run `review` before the next `export`.
 - **Local files only.** No MCP dependencies. No external services. Session state, templates, and exports are plain files the user can diff, grep, and commit.
-- **Session state is tracked, not ignored.** `./do-work/interview/<template>/` holds durable per-repo knowledge (checkpoints, exports, versioned archives). Commit it alongside the project's other trail-of-intent artifacts (URs, REQs). The only gitignored file under `do-work/` is `pipeline.json`, which is transient orchestration state — interview output is not.
+- **Session state is tracked, not ignored.** `./do-work/interview/<template>/` holds durable per-repo knowledge (checkpoints, exports, versioned archives). Commit it alongside the project's other trail-of-intent artifacts (URs, REQs). Only `do-work/pipeline.json` is git-excluded (transient live state); `do-work/runs/` is committable while a run is live, then deleted once consumed — interview output is part of the committable Trail of Intent.
 
 ---
 
@@ -428,12 +432,12 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 
 ## Error Handling
 
-- **Template file missing** → list available templates from `<skill-root>/interviews/`, suggest `do work interview list`.
-- **Session corrupt (invalid JSON)** → do not attempt repair. Tell the user the file path and stop: "`./do-work/interview/<template>/session.json` has invalid JSON. Inspect and fix manually, or archive and start fresh with `do work interview <template> reset`."
+- **Template file missing** → list available templates from `<skill-root>/interviews/`, suggest `do-work interview list`.
+- **Session corrupt (invalid JSON)** → do not attempt repair. Tell the user the file path and stop: "`./do-work/interview/<template>/session.json` has invalid JSON. Inspect and fix manually, or archive and start fresh with `do-work interview <template> reset`."
 - **`export` invoked with unapproved layers** → list which layers are missing approval.
 - **`export` invoked before review** → tell the user to run `review` first.
 - **`ingest` invoked without completed exports** → tell the user to run `export` first.
-- **`ingest` invoked without `kb/`** → tell the user to run `do work bkb init` first.
+- **`ingest` invoked without `kb/`** → tell the user to run `do-work bkb init` first.
 - **`reset` without confirmation** → require explicit `--confirm` flag or an interactive "yes" before archiving.
 - **Checkpoint revision cycle exceeds 5 rounds on one layer** → pause and ask the user directly: "We've gone five rounds on this layer. Do you want to skip ahead, take a break, or keep refining?" Do not loop indefinitely.
 
@@ -444,29 +448,29 @@ Every sub-command returns terminal output (never writes silently). In-chat, the 
 When invoked with no sub-command or with `help`:
 
 ```
-do work interview — Run a structured elicitation interview
+do-work interview — Run a structured elicitation interview
 
   Discover:
-    do work interview list                    List available templates
+    do-work interview list                    List available templates
 
   Run an interview:
-    do work interview <template>              Start or resume an interview
-    do work interview <template> status       Show session progress
-    do work interview <template> review       Run the cross-layer contradiction pass
-    do work interview <template> export       Write export artifacts
-    do work interview <template> ingest       Feed exports into the knowledge base
+    do-work interview <template>              Start or resume an interview
+    do-work interview <template> status       Show session progress
+    do-work interview <template> review       Run the cross-layer contradiction pass
+    do-work interview <template> export       Write export artifacts
+    do-work interview <template> ingest       Feed exports into the knowledge base
 
   Session lifecycle:
-    do work interview <template> versions     List archived runs
-    do work interview <template> reset        Archive current run, start fresh (requires --confirm)
+    do-work interview <template> versions     List archived runs
+    do-work interview <template> reset        Archive current run, start fresh (requires --confirm)
 
   Typical flow:
-    1. do work interview list                            See what templates are available
-    2. do work interview work-operating-model            Walk the five layers, ~45 minutes
-    3. do work interview work-operating-model review     Resolve cross-layer tensions
-    4. do work interview work-operating-model export     Produce USER.md, SOUL.md, HEARTBEAT.md + JSON
-    5. do work interview work-operating-model ingest     Feed into BKB for querying
-    6. do work bkb triage && do work bkb ingest          Compile into the knowledge wiki
+    1. do-work interview list                            See what templates are available
+    2. do-work interview work-operating-model            Walk the five layers, ~45 minutes
+    3. do-work interview work-operating-model review     Resolve cross-layer tensions
+    4. do-work interview work-operating-model export     Produce USER.md, SOUL.md, HEARTBEAT.md + JSON
+    5. do-work interview work-operating-model ingest     Feed into BKB for querying
+    6. do-work bkb triage && do-work bkb ingest          Compile into the knowledge wiki
 
   Re-run cadence:
     Quarterly, or after a major role/responsibility change. Pick:

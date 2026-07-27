@@ -14,7 +14,7 @@ Create and audit prime files — AI context documents that help an AI coder navi
 
 1. **Scan** — globs the target directory for entry points, build system, and files to skip
 2. **Report** — shows a 3-line summary of what was found
-3. **Ask 3 questions** — which files to read first, what not to edit, what traps exist
+3. **Confirm the scan with focused questions** — the agent proposes Read-first and Do-not-edit lists with use/change/omit choices. For traps, it documents what the scan found, asks separately whether any drafted line is wrong, then asks whether you know a hidden production quirk or past incident. Each prompt is one decision, and **"Nothing to add" is a perfectly good answer**
 4. **Generate** — combines auto-detected facts with your answers
 5. **Write** — saves to `{path}/prime-{short-name}.md`
 6. **Post-creation checks** — shows the result, checks CLAUDE.md registration, cross-links siblings
@@ -48,7 +48,7 @@ Target: 15-30 lines. Empty sections are omitted. Every line must save the AI mor
 
 ## Audit checks
 
-The audit is read-only — it reports findings but never modifies files.
+The audit is read-only for the **routing index** — it reports index findings (staleness, broken links, coverage gaps) and lets you decide what to fix. It **does write one thing**: each prime's `## Stakes` section (Req / Value / Risk) is spelunked and refreshed as part of every audit, so run it on a clean tree if you have in-progress edits to your prime files.
 
 | Check | What it detects |
 |-------|----------------|
@@ -70,14 +70,14 @@ Markdown report with summary counts and a checklist of issues organized by categ
 
 - Follows the PRIME Files Philosophy from `crew-members/general.md`: low noise, high value, pointers not copies, no volatile metrics
 - Multiple primes per directory are valid for different concerns
-- `create` is interactive (asks 3 questions); `audit` is fully automated and read-only
+- `create` is interactive (asks 3 questions); `audit` is fully automated — read-only on the routing index, but it writes/refreshes each prime's `## Stakes` section
 
 ## Usage
 
 ```
-do work prime                     # show sub-command help
-do work prime create src/auth/    # generate a prime file via Q&A
-do work prime audit               # audit all prime files
-do work create prime src/utils/   # reversed order also works
-do work audit primes              # same as prime audit
+do-work prime                     # show sub-command help
+do-work prime create src/auth/    # generate a prime file via Q&A
+do-work prime audit               # audit all prime files
+do-work create prime src/utils/   # reversed order also works
+do-work audit primes              # same as prime audit
 ```

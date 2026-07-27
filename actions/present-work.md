@@ -1,6 +1,6 @@
 # Present Work Action
 
-> **Part of the do-work skill.** Generates client-facing deliverables from completed work — briefs, architecture diagrams, value propositions, and video scripts. Turns the technical archive into something that educates and sells.
+> **Part of the do-work skill.** Generates client-facing deliverables from completed work — briefs, architecture diagrams, value propositions, and video scripts. Turns the technical archive into something that educates and sells. User-facing walkthrough: [`docs/present-work-guide.md`](../docs/present-work-guide.md).
 
 The code is done. Now communicate its value. This action reads the full history of completed work — what was requested, what was built, how it works, and what the Lessons Learned say — and produces artifacts that explain it to someone who doesn't read diffs.
 
@@ -12,24 +12,36 @@ The code is done. Now communicate its value. This action reads the full history 
 - **Pointers over prose.** Reference key files and code — the implementation is the source of truth. Don't rewrite it in paragraphs.
 - **Proportional effort.** A config change gets a 2-paragraph brief. A multi-feature system gets architecture diagrams and a video script.
 
+## When to Use
+
+**Use when:**
+- Work is **completed and archived**, and the user wants a client-facing or stakeholder-facing summary.
+- A pipeline just finished and the user wants briefs/videos/diagrams as the closing step.
+- The user asks for a portfolio summary across everything shipped to date (`do-work present all`).
+
+**Do NOT use when:**
+- Work is still in progress — the archive isn't populated, and briefs would be speculative.
+- The user wants *technical review*, not a brief — use `do-work review-work` or `do-work code-review`.
+- The REQ has no user-visible output (infra-only, tooling) — a brief adds no value; skip.
+
 ## Two Modes
 
 | Mode | Trigger | What it does |
 |------|---------|-------------|
-| **Detail** | `do work present UR-003`, `do work present REQ-005`, or `do work present` (most recent) | Deep dive on specific completed work |
-| **Portfolio** | `do work present all` or `do work present portfolio` | Summary of all completed work across the archive |
+| **Detail** | `do-work present UR-003`, `do-work present REQ-005`, or `do-work present` (most recent) | Deep dive on specific completed work |
+| **Portfolio** | `do-work present all` or `do-work present portfolio` | Summary of all completed work across the archive |
 
 ## Detail Mode Workflow
 
 ### Step 1: Find the Target
 
-Same pattern as review work standalone mode:
+Same pattern as review-work standalone mode:
 
 1. **If user specifies a REQ** (e.g., "present REQ-005"): Find it in `do-work/archive/` or `do-work/archive/UR-NNN/`
-2. **If user specifies a UR** (e.g., "present UR-003"): Find all completed REQs under that UR — present them as one deliverable
-3. **If no target specified**: Find the most recently completed UR (or REQ if no UR). Check `do-work/archive/` for the highest UR/REQ number with `status: completed`
+2. **If user specifies a UR** (e.g., "present UR-003"): Find all terminally-successful REQs (`completed` or `completed-with-issues`) under that UR — present them as one deliverable
+3. **If no target specified**: Find the most recently completed UR (or REQ if no UR). Check `do-work/archive/` for the highest UR/REQ number with a terminal-success status (`status: completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set)
 
-If the target has no completed REQs, report that there's nothing to present and exit.
+If the target has no terminally-successful REQs, report that there's nothing to present and exit.
 
 ### Step 2: Read the Full History
 
@@ -57,6 +69,8 @@ Use `git show <commit>` (from the REQ's `commit` frontmatter) to get the diff. T
 Don't just summarize the diff — understand the system that was built.
 
 ### Step 4: Generate Artifacts
+
+Load `crew-members/anti-slop.md` before drafting any artifact below — every output in this step is human-facing and falls under those principles (lead with the conclusion, compress, verify, disclose unchecked AI content, match medium to stakes).
 
 Based on the work scope, generate the appropriate deliverables:
 
@@ -374,9 +388,10 @@ Always generate a self-contained HTML file at `do-work/deliverables/UR-NNN-inter
 
 - **Zero build steps:** It MUST be a single `.html` file. Use standard HTML5, Tailwind CSS via CDN (`<script src="https://cdn.tailwindcss.com"></script>`), and Vanilla JavaScript. No React, Vite, or npm installs required.
 - **Goal:** Visually explain the problem (Before) and the solution (After) to a non-technical stakeholder.
-- **Interactivity:** You MUST include interactive elements. Examples: A 'Before / After' visual toggle slider, or a clickable 'Step-by-Step' data flow diagram where clicking 'Next' highlights different parts of the architecture.
+- **Interactivity:** You MUST include at least one genuinely interactive element — e.g., a clickable 'Step-by-Step' data-flow diagram where clicking 'Next' highlights different parts of the architecture. For a Before/After, prefer a static **side-by-side** (both states visible at once — see Layout) over a toggle/slider that hides one state; reserve the toggle for when the two frames genuinely can't fit side by side even after wrapping.
 - **Theme:** Light theme by default. Use `prefers-color-scheme: dark` media query to support OS-level dark mode. Define CSS custom properties (e.g., `--bg`, `--surface`, `--text`) at `:root` for light values and override them inside `@media (prefers-color-scheme: dark)`. Light palette: white/slate-50 backgrounds, slate-800/900 text, blue-600 accents. Dark palette: slate-900 backgrounds, slate-100 text, blue-400 accents.
 - **Design:** Make it look modern and highly polished — large typography, soft shadows, generous whitespace. Include tooltips or sidebars that explain technical decisions in plain English.
+- **Layout — full-bleed, not a narrow scrolling column.** Let the page fill the browser width (side padding only), not a fixed `max-w-*` centered column that leaves empty gutters on a wide monitor and forces needless scrolling. Cap width only on *running prose*; arrange the sections as horizontal, wrapping bands (`flex-wrap` / responsive grid) so related content — an explanation beside its diagram, a side-by-side Before/After — stays visible together on a wide screen and stacks cleanly on a narrow one. Minimize scrolling by using the horizontal space, not by hiding content behind clicks.
 - **Content:** Pull real context from the REQ files. Include a 'The Problem', 'The Interactive Demo', and a 'Value Delivered' section. Also include a collapsible (or small-print, bottom-of-page) 'For the developer' section listing the commit SHAs from each REQ's frontmatter, a copy-pasteable `git show <sha>` block, and the project's test command. A dev who landed on the explainer shouldn't have to leave to verify it's real — the explainer serves both the "no clue" reader and the "show me the receipts" reader in one file.
 - **Navigation footer:** End the page with a "Keep exploring" section — a responsive card grid of `<a>` links to sibling deliverables that exist in the same folder. Always link the client brief (`./{UR-NNN}-client-brief.md`) with a note that GitHub/VS Code renders markdown natively. When the pipeline ran, also link `./{UR-NNN}-pipeline-summary.single.html` (developer debrief), `./{UR-NNN}-pipeline-summary.marp.html` (stakeholder deck), and `./{UR-NNN}-video/` (walkthrough). Check the `do-work/deliverables/` folder before rendering — only include tiles for files that actually exist. This is the reader's escape hatch from the explainer's breadth-first view into deeper, audience-specific context.
 
@@ -499,3 +514,24 @@ Same as detail mode — save to `do-work/deliverables/` and summarize.
 - Don't generate a video script for non-visual changes
 - Don't write walls of text when pointers to code would be more accurate and durable
 - Don't regenerate deliverables that already exist without the user asking — check `do-work/deliverables/` first and offer to update
+
+## Red Flags
+
+- The target UR/REQ isn't in `do-work/archive/` yet — don't present-work that isn't done; stop and tell the user.
+- The brief quotes metrics that don't appear anywhere in the REQ, implementation summary, or commits — fabricated value prop; remove or replace with qualitative framing.
+- The brief copies code snippets instead of pointing at files — client-facing docs shouldn't show diffs.
+- You're about to overwrite an existing deliverable at `do-work/deliverables/` — pause and confirm with the user whether to update in-place or version it.
+- Portfolio mode produced a brief for every archive entry including internal-only cleanup REQs — filter those out; portfolios are about shipped user value.
+- "Most recent" target or a UR sweep skips a `completed-with-issues` REQ — Step 1 is filtering on the literal `completed` instead of the terminal-success set (`completed` or `completed-with-issues`; see `actions/work-reference.md`).
+- The interactive explainer sits in a fixed centered column (`max-w-*` on the whole page) or hides the Before/After behind a toggle that would have fit side by side — a narrow, scroll-heavy page that adds friction without aiding comprehension. Go full-bleed with wrapping bands and show both states at once.
+
+## Verification Checklist
+
+- [ ] Target UR/REQ was found in `do-work/archive/` (not `working/`, not `queue/`).
+- [ ] Deliverables saved under `do-work/deliverables/{UR-NNN}/` (or portfolio path for all-mode).
+- [ ] No code snippets in the brief — only file path references.
+- [ ] Value prop is qualitative unless a specific metric exists in the archive record.
+- [ ] Architecture diagram was generated only when the work was non-trivial (Route B or C).
+- [ ] Depth matched the work scope per the "Calibrating Depth" table.
+- [ ] If a prior deliverable existed, it was updated in place or versioned — not silently duplicated.
+- [ ] The interactive explainer is full-bleed (no fixed centered `max-w-*` page column; only running prose capped) with sections as wrapping horizontal bands, and any Before/After is side-by-side unless the frames genuinely can't fit.

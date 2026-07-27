@@ -2,7 +2,7 @@
 
 > **Companion to `actions/interview.md`.** Heavy content the action file references at runtime: template authoring format, canonical entry contract, `session.json` schema, checkpoint file format, export schemas for the `work-operating-model` template, re-run mode specifications, and versioning scheme. Applies per ADR-001.
 
-Read this file when authoring a new template, implementing the interview action, or debugging session state. The action file stays short; this file holds the specifications.
+Read this file when authoring a new template, implementing actions/interview.md, or debugging session state. The action file stays short; this file holds the specifications.
 
 ---
 
@@ -128,6 +128,7 @@ Session state lives at `./do-work/interview/<template>/session.json`. Full shape
 ```json
 {
   "template": "work-operating-model",
+  "template_version": "2.0.0",
   "session_id": "<uuid>",
   "started_at": "<iso>",
   "last_activity_at": "<iso>",
@@ -149,6 +150,8 @@ Session state lives at `./do-work/interview/<template>/session.json`. Full shape
 
 **Field semantics:**
 
+- `template` — the template slug (e.g., `work-operating-model`). Identifies which template authored the session; used by load-time routing.
+- `template_version` — semver string of the template the session was authored against. Read at load time to decide whether migration is needed (see the template's own "Migration from vX.x" section). Written on session creation by reading the template file's frontmatter `version` field. Sessions written before this field was introduced are absent — treat absence as `1.x` and apply the template's migration steps before continuing. Re-run modes (`fresh`, `version`, `reset`) write the current template version into the new empty session.
 - `status` — `in_progress` until every declared layer is `approved: true`; flips to `complete` on the final layer's approval write.
 - `pending_layer` — the id of the next layer to interview. `null` when `status: complete`.
 - `previous_version` — set when the session was started via `version` re-run mode; carries `v<N>` as a back-reference for comparison queries. Otherwise `null`.
@@ -158,6 +161,72 @@ Session state lives at `./do-work/interview/<template>/session.json`. Full shape
 - `layers.<layer-id>.entries[]` — each entry matches the canonical entry contract. Every entry is persisted only after the layer's checkpoint was explicitly approved by the user.
 
 **Gate summary:** the `export` sub-command refuses to run unless every layer in the template is `approved: true` AND `review_completed_at != null` AND `review_runs >= 1`.
+
+---
+
+## Session-Load Protocol
+
+**Every sub-command that reads `session.json` (`<template>` resume, `status`, `review`, `export`, `ingest`) must run this protocol immediately after locating the file and before any other read.** `list` and `reset` skip the protocol; `versions` enumerates archived sessions only and never inspects the current `session.json`, so it also skips. The protocol has two modes — pick the one that matches the calling subcommand's contract.
+
+### Mode selection
+
+| Subcommand | Mode | Why |
+|---|---|---|
+| `<template>` (resume) | **persist** | Lifecycle subcommand; mutating session.json is in scope. |
+| `review` | **persist** | Already mutates `review_completed_at` / `review_runs`; migration on entry is in scope. |
+| `export` | **persist** | Already writes `last_exported_at`; migration on entry is in scope. |
+| `ingest` | **persist** | Reads layer state to write summaries; persisting the migrated shape avoids re-migrating on every subsequent run. |
+| `status` | **dry-run** | Documented contract is "read and report" with zero side effects. Migration in-memory only; no disk writes, no CHANGELOG entry. |
+
+### Steps (both modes)
+
+1. Read `template_version` from `session.json`. If absent, treat as `1.x` (sessions written before this field existed).
+2. Read the current template file's frontmatter `version` field.
+3. **If the session's `template_version` matches the current template version, OR shares the same major version with it (e.g., session `2.3.0`, current `2.5.0`):** no migration is needed — semver minor/patch bumps are non-breaking by contract, so the session's shape is already current. Branch on direction:
+   - **Versions exactly equal:** continue without changes (the protocol is a no-op read).
+   - **Same major, session older on minor/patch** (e.g., session `2.3.0`, template `2.5.0`): **stamp the in-memory `template_version` to the current template's full version string** and treat the result as up-to-date. In **persist mode**, write the stamped session back to disk atomically (write to `session.json.tmp`, fsync, then rename over `session.json`; abort the calling subcommand on write failure per 4c's persist rules). **Do not append to the interview's `CHANGELOG.md`** — no migration ran, only a stamp refresh; the CHANGELOG is reserved for real cross-major migrations in 4c. In **dry-run mode**, skip both the disk write and the staleness notice — there is nothing for a future mutating subcommand to migrate, only a stale stamp.
+   - **Same major, session newer on minor/patch** (e.g., session `2.5.0`, template `2.3.0` — the user rolled the skill back, intentionally or via `git checkout`): treat as a no-op read in both modes. **Do not downgrade the stamp.** The session's shape is forward-compatible with the older template by semver contract; rewriting the stamp backward would lose the record of which template version actually generated the session, and the next forward run would silently re-stamp it again. Skip the staleness notice in dry-run mode — there is nothing pending.
+4. **If the session's `template_version` is older AND the major version differs from the current template's major** (or absent and the current template has a `version`): the template's own "Migration from v<major>.x" sections govern. Run substeps 4a → 4b → 4c in order.
+
+   **Placeholder conventions used in 4a–4c:**
+   - `<old>` — the session's full version string (e.g., `1.5.2`). Used in user-facing messages.
+   - `<old-major>` — the major-version component of `<old>` (e.g., `1` for `1.5.2`). Used to look up migration sections, since one section per major covers the entire major-version range.
+   - `<new>` — the current template's full version string (e.g., `2.0.0`). Used in user-facing messages.
+   - `<new-major>` — the major-version component of `<new>`.
+
+   - **4a. Verify a migration path exists.** Look for a `## Migration from v<old-major>.x` section in the template file (e.g., `## Migration from v1.x` for any session at `1.0.0`, `1.4.7`, etc., when migrating to a `2.x.x` template). **If no matching section is documented**, stop in either mode with `Session was authored against template '<old>'; current template is '<new>'; no migration path documented. Run 'do-work interview <template> reset' to start fresh.` Do not bump `template_version`. Do not write `session.json`. The migration write in 4c is gated on this check passing.
+
+     **Multi-major gaps:** if `<old-major>` and `<new-major>` are more than one apart (e.g., session at `1.x` against a `3.x` template), 4a must verify that **every** intermediate `## Migration from v<i>.x` section exists for `<i>` in `<old-major>`, `<old-major>+1`, …, `<new-major>-1`. Each step migrates the session one major version forward, so the chain is `v1.x → v2.x → v3.x` not `v1.x → v3.x` directly. If any link in the chain is missing, treat the path as undocumented and bail with the same error message above. Template authors who want to skip an intermediate major must still write a passthrough `Migration from v<i>.x` section that documents "no schema change in this jump" rather than omitting it.
+
+   - **4b. Apply migration steps.** Walk each documented migration step in the matching section and apply it to the in-memory session, then bump the in-memory `template_version` to `<old-major+1>.0.0` — **bare semver, no leading `v`**. The `v` prefix is a Markdown convention for section headers (`## Migration from v1.x`); it does not appear in the field value, which the schema above declares as a bare semver string (`"template_version": "2.0.0"`). For multi-major gaps, repeat 4a's section lookup and 4b's apply for each link in the chain — the session's effective `<old-major>` advances by one each pass, until it reaches `<new-major>`. After the last chain pass, replace the in-memory `template_version` with the current template's full version string (so `2.0.0` becomes `2.5.2` if that's the template's current minor/patch).
+   - **4c. Persist or report.** Mode-dependent:
+     - **persist mode:** write the migrated session back to disk **atomically** — write to `session.json.tmp` in the same directory, fsync, then rename over `session.json`. If the temp write or rename fails, leave the on-disk file untouched, abort the calling subcommand with `Migration write failed: <error>. Session left at v<old>; rerun once the underlying issue (disk space / permissions / locked file) is resolved.`, and do **not** proceed with the subcommand's logic. On success, append one line to the interview's `CHANGELOG.md`: `## <YYYY-MM-DD HH:MM> — auto-migrated session: <old> → <new>`. If the CHANGELOG append fails, the migration itself stays — just report the changelog failure as a warning and continue.
+     - **dry-run mode:** keep the migrated session in-memory only. Do not write `session.json`. Do not append to `CHANGELOG.md`. The caller (e.g., `status`) renders its normal output against the in-memory migrated shape, then appends the staleness notice as a separate stanza: one blank line, then the `⚠` line, then no trailing blank. Concrete rendering for a v1.0.0 session viewed by `status` against a v2.0.0 template:
+
+       ```
+       Interview status — work-operating-model
+
+         Started:       2026-04-01T10:00:00Z
+         Last activity: 2026-05-01T15:30:00Z
+         Status:        in_progress
+         Progress:      3 of 5 layers approved
+
+         Layers:
+           [x] operating_rhythms       approved 2026-04-02T11:00:00Z  (4 entries)
+           [x] recurring_decisions     approved 2026-04-09T14:20:00Z  (3 entries)
+           [x] dependencies            approved 2026-04-16T09:45:00Z  (5 entries)
+           [ ] institutional_knowledge pending
+           [ ] friction                pending
+
+         Review: 0 pass(es), last completed never
+         Previous version: none
+
+       ⚠ Session is at template_version 1.0.0; current template is 2.0.0. Migration will run on the next mutating subcommand (review, export, ingest, or resume).
+       ```
+
+       The `⚠` line replaces `<old>` with the session's full version and `<new>` with the current template's full version. This keeps `status` a pure read while still surfacing the staleness so the user knows what's coming.
+
+The protocol is idempotent — a session already at the current version becomes a no-op read. Subcommands invoke it once per execution, before any logic that depends on session shape (status display, review checks, export rendering, ingest copying). The persist/dry-run split keeps every entry point honest about its surface contract: read-only stays read-only, mutating subcommands handle migration on entry.
 
 ---
 
@@ -192,92 +261,29 @@ After the Interviewer finishes asking a layer's questions and drafts canonical e
 This is the <layer-id> model I'd save right now. Correct anything that's off. If this looks right, I'll save it and move to <next-layer-id>.
 ```
 
-On the final layer of a template, replace the last sentence with: "If this looks right, I'll save it and wrap up the session — you can then run `do work interview <template> review` to surface cross-layer contradictions."
+On the final layer of a template, replace the last sentence with: "If this looks right, I'll save it and wrap up the session — you can then run `do-work interview <template> review` to surface cross-layer contradictions."
 
 ---
 
-## Export Schemas — `work-operating-model`
+## Export Schemas
 
-The `export` sub-command writes these five files to `./do-work/interview/<template>/exports/`. Schemas are referenced from the template's `exports:` declaration; do not duplicate inside the template body.
+The `export` sub-command writes files to `./do-work/interview/<template>/exports/` using render templates defined in the template file itself. For `work-operating-model`, the five mechanical render templates live in `interviews/work-operating-model.md` under `## Export Templates` and use handlebars-style `{{field}}` plus `{{#each …}}` syntax against the canonical entry contract and layer-specific `details`. An implementation should render those templates mechanically against the approved session state.
 
-### `USER.md` — narrative profile
+This section documents the framework-level guarantees every rendered export must satisfy, regardless of template:
 
-Narrative profile of the person at work. Written in third person, present tense. Required sections, in order:
+- **Narrative exports** (`USER.md` and equivalents) are written in third person, present tense. Quote the user's specific language where possible. Do not add generalizations the interview did not produce. If a field was not captured, omit it — do not invent.
+- **Decision-framework exports** (`SOUL.md` and equivalents) derive from entries with `source_confidence` in (`confirmed`, `synthesized`). They must distinguish autonomous-action decisions from escalation decisions, and must list data sources by trust hierarchy.
+- **Checklist exports** (`HEARTBEAT.md` and equivalents) must declare a review cadence. Each check item must name its source signal and the layer entry it derives from.
+- **Machine-readable exports** (`.json`) serialize canonical entries verbatim with all 11 required fields from the entry contract. Shape is template-specific; traceability is not optional.
+- **Derived scheduling exports** (`schedule-recommendations.json` and equivalents) must trace every emitted block, window, or slot to a specific layer entry via `source_entries` — the agent does not invent data unsupported by the approved session.
 
-1. **Name and role** — if known, stated directly. If not captured during interview, omit (do not invent).
-2. **Operating rhythm summary** — one paragraph synthesizing Layer 1 entries: when the user works, where the calendar lies, energy patterns.
-3. **Key recurring decisions** — 3–5 bullets drawn from Layer 2 entries. Each bullet names the decision and the core judgment heuristic.
-4. **Top dependencies** — 3–5 bullets drawn from Layer 3 entries, ordered by frequency or failure impact.
-5. **Institutional knowledge** — 2–4 bullets drawn from Layer 4 entries: what the user carries that isn't written down, why it matters.
-6. **Active friction points** — 3–5 bullets drawn from Layer 5 entries, ordered by priority.
-
-Quote the user's specific language where possible. Do not add generalizations the interview did not produce.
-
-### `SOUL.md` — decision framework
-
-The decision framework an agent would follow when acting on behalf of this person. Derived primarily from Layer 2 entries, cross-referenced with Layer 1 (rhythm) and Layer 3 (dependencies). Required sections:
-
-1. **When to escalate** — conditions under which the agent must pause and ask the user, not decide autonomously. Sourced from each Layer 2 entry's `escalation_rule`.
-2. **When to decide autonomously** — decisions the user has marked `reversible: true` and whose `decision_inputs` the agent can fully observe.
-3. **Tone rules for different audiences** — derived from Layer 3 stakeholders plus explicit tone notes the user provided; organized by audience (team, leadership, external, customers, etc.).
-4. **Data sources to trust** — union of `decision_inputs` across Layer 2 entries, de-duplicated, labeled with the decision each source feeds.
-5. **"Good enough" thresholds** — derived from Layer 2 `thresholds`. For each decision type, the numeric cutoff or qualitative bar the user actually uses.
-
-### `HEARTBEAT.md` — checklist
-
-A checklist an agent reviews on a cadence (default 30 minutes) to decide whether there's work to do for this person. Required sections:
-
-1. **Cadence** — default `every 30 minutes`; override if the user specified a different rhythm.
-2. **What to check** — bullet list drawn from Layer 3 `dependency_owner` + `deliverable` pairs, plus Layer 1 `interruptions`. Each bullet names the source/signal and the polling frequency.
-3. **Signals to act on** — concrete conditions that should trigger agent action (e.g., "approval from X not received by Y time"); derived from Layer 3 `failure_impact` + `needed_by`.
-4. **What to ignore** — noise sources the user explicitly does not want the agent to surface. Derived from Layer 1 `interruptions` the user marked as low-priority.
-
-### `operating-model.json` — machine-readable dump
-
-Full machine-readable dump of the approved session's canonical entries, grouped by layer. Shape:
-
-```json
-{
-  "template": "work-operating-model",
-  "template_version": "<from interviews/work-operating-model.md frontmatter>",
-  "exported_at": "<iso>",
-  "session_id": "<uuid>",
-  "layers": {
-    "operating_rhythms": { "entries": [ /* canonical entries */ ] },
-    "recurring_decisions": { "entries": [ /* canonical entries */ ] },
-    "dependencies": { "entries": [ /* canonical entries */ ] },
-    "institutional_knowledge": { "entries": [ /* canonical entries */ ] },
-    "friction": { "entries": [ /* canonical entries */ ] }
-  }
-}
-```
-
-### `schedule-recommendations.json` — derived schedule
-
-Derived from Layer 1 `operating_rhythms.time_windows` + `energy_pattern` and Layer 3 `dependencies.needed_by`. Shape:
-
-```json
-{
-  "generated_at": "<iso>",
-  "suggested_time_blocks": [
-    { "label": "Deep work", "start": "HH:MM", "end": "HH:MM", "days": ["Mon","Tue"], "rationale": "..." }
-  ],
-  "standing_slots": [
-    { "label": "Dependency handoff — X", "start": "HH:MM", "end": "HH:MM", "days": [...], "source_dependency": "<entry title>" }
-  ],
-  "avoid_windows": [
-    { "label": "Reactive inbox peak", "start": "HH:MM", "end": "HH:MM", "days": [...], "reason": "..." }
-  ]
-}
-```
-
-Every `suggested_time_blocks` entry must trace its rationale to a specific Layer 1 or Layer 3 entry — the agent does not invent blocks that aren't supported by the approved session.
+To add a new template, define its render templates in the template file's `## Export Templates` section using the same handlebars syntax. Do not duplicate per-template rendering here.
 
 ---
 
 ## Re-Run Mode Specifications
 
-When the user invokes `do work interview <template>` and the existing `session.json` has `status: complete`, the action prompts the user to choose a re-run mode. The three modes differ in what gets archived, what gets written, and what the CHANGELOG entry looks like.
+When the user invokes `do-work interview <template>` and the existing `session.json` has `status: complete`, the action prompts the user to choose a re-run mode. The three modes differ in what gets archived, what gets written, and what the CHANGELOG entry looks like.
 
 ### `fresh`
 
@@ -288,7 +294,7 @@ When the user invokes `do work interview <template>` and the existing `session.j
 2. Create `./do-work/interview/<template>/versions/v<N>-<YYYY-MM-DD>/`.
 3. Copy the current `session.json`, the `checkpoints/` directory, and the `exports/` directory into that version folder.
 4. Delete the working `checkpoints/` and `exports/` contents (the versioned copy is now the only archive).
-5. Write a new empty `session.json` — fresh `session_id`, `started_at: <now>`, `last_activity_at: <now>`, `status: in_progress`, `pending_layer: <first-layer-id>`, `previous_version: null`, `review_completed_at: null`, `review_runs: 0`, `last_exported_at: null`, `layers: {}`.
+5. Write a new empty `session.json` — fresh `session_id`, `template: <slug>`, `template_version: <current template version>` (read from the template file's frontmatter `version` field), `started_at: <now>`, `last_activity_at: <now>`, `status: in_progress`, `pending_layer: <first-layer-id>`, `previous_version: null`, `review_completed_at: null`, `review_runs: 0`, `last_exported_at: null`, `layers: {}`.
 6. Append to `CHANGELOG.md`:
    ```
    ## <YYYY-MM-DD HH:MM> — fresh start: archived as v<N>
@@ -298,26 +304,30 @@ When the user invokes `do work interview <template>` and the existing `session.j
 
 ### `update`
 
-**Intent:** walk through the prior run and revalidate in place, keep the same session.
+**Intent:** walk through the prior run and revalidate in place at entry-level granularity, keep the same session.
 
 **Steps:**
 1. Leave `session.json`, `checkpoints/`, `exports/`, and `versions/` untouched. Initialize an in-memory `any_edits = false` flag for this run.
 2. Flip `status` back to `in_progress` and set `pending_layer` to the first layer id.
-3. For each layer in declared order:
-   - Show the stored canonical entries in a compact form (title + cadence + one-line summary).
-   - Ask: "Is this still accurate? Confirm / edit / add / remove entries."
-   - Apply the user's changes: edits update entries in place; additions append; removals splice. Update each touched entry's `last_validated_at`.
-   - **Empty a layer.** If the user says "remove all," "none of these apply anymore," or similar, the Interviewer may propose an empty layer. It writes a checkpoint with `## Entries` section empty and a layer summary explaining why the layer is empty now (e.g., "no standing dependencies this quarter"). The user must still explicitly approve the empty checkpoint — the gate does not bend. On approval, `layers.<layer-id>.entries` is set to `[]` and `approved_at` is refreshed. An empty layer still counts as approved and does not block `review` or `export`.
-   - Write a fresh checkpoint and require explicit approval before committing the edits (same approval gate as a new interview). **Per-entry edit friction is intentional:** fixing one typo regenerates the whole layer's checkpoint. The cost is real; the approval gate is why this recipe is trustworthy. Do not invent a per-entry patch path.
-   - **If the approval committed a non-zero diff** (added, removed, or edited entries — not a pure re-confirm), set `any_edits = true`.
-4. When the final layer is confirmed, set `status: complete`, `pending_layer: null`. **If `any_edits` is true**, also reset `review_completed_at = null` and `review_runs = 0` — the prior review covered a superseded version of the model, and the export gate must force the user back through the cross-layer contradiction pass before the next `export`. If every layer was re-confirmed without edits (`any_edits` stayed `false`), leave `review_completed_at` and `review_runs` untouched.
-5. Append to `CHANGELOG.md`:
+3. For each layer in declared order, walk each entry individually. For each entry in the prior session's `layers.<layer-id>.entries`:
+   1. Display the entry verbatim (all fields).
+   2. Prompt: `Still accurate? [confirm / edit / mark-stale / delete / skip]`
+   3. On `confirm`: set `source_confidence: confirmed`, update `last_validated_at: <now>`, leave all other fields unchanged.
+   4. On `edit`: enter an interactive edit — show current values, let the user override any field, produce a new checkpoint for this entry only, save after approval. Set `last_validated_at: <now>`. Sets `any_edits = true`.
+   5. On `mark-stale`: set `status: stale`, update `last_validated_at: <now>`. The entry remains but is flagged in exports. Sets `any_edits = true`.
+   6. On `delete`: remove the entry from `layers.<layer-id>.entries`. Log the deletion with full prior content in the CHANGELOG. Sets `any_edits = true`.
+   7. On `skip`: leave `last_validated_at` unchanged; the entry carries forward without revalidation.
+4. After walking all existing entries in a layer, offer to add new entries by running the layer's original prompts. New entries follow the normal interview flow (canonical entry contract, per-entry approval). Each addition sets `any_edits = true`.
+5. **Empty a layer.** If the user deletes every entry in a layer, the Interviewer proposes an empty layer with a short summary explaining why (e.g., "no standing dependencies this quarter"). The user explicitly approves the empty state. On approval, `layers.<layer-id>.entries` is set to `[]` and `approved_at` is refreshed. An empty layer still counts as approved and does not block `review` or `export`.
+6. Once all entries are processed in a layer, re-approve the layer as a whole — the layer-level approval gate still applies, now recording that the entry-level walk completed. Set `layers.<layer-id>.approved_at = <now>`.
+7. When the final layer is confirmed, set `status: complete`, `pending_layer: null`. **If `any_edits` is true**, also reset `review_completed_at = null` and `review_runs = 0` — the prior review covered a superseded version of the model, and the export gate must force the user back through the cross-layer contradiction pass before the next `export`. If every layer was re-confirmed without edits (`any_edits` stayed `false`), leave `review_completed_at` and `review_runs` untouched.
+8. Append to `CHANGELOG.md`, one entry per touched layer:
    ```
    ## <YYYY-MM-DD HH:MM> — layer updated: <layer-id>
-   <added N, removed M, edited K> entries. <one-sentence summary of what shifted>
+   <N confirmed, N edited, N marked stale, N deleted, N added>. <one-sentence summary of what shifted>
    ```
-   One entry per touched layer. Layers with no changes emit no entry.
-6. No new version folder is created; this is an in-place update.
+   Layers with no changes (all `confirm` or `skip`) emit no entry.
+9. No new version folder is created; this is an in-place update.
 
 ### `version`
 
@@ -326,15 +336,26 @@ When the user invokes `do work interview <template>` and the existing `session.j
 **Steps:**
 1. Determine next version number `<N>` and archive as in `fresh` (copy session + checkpoints + exports into `versions/v<N>-<YYYY-MM-DD>/`).
 2. Clear the working `checkpoints/` and `exports/`.
-3. Write a new empty `session.json` — same shape as `fresh` (including `last_activity_at: <now>`), except `previous_version: "v<N>"`.
+3. Write a new empty `session.json` — same shape as `fresh` (including `template_version: <current template version>` and `last_activity_at: <now>`), except `previous_version: "v<N>"`.
 4. Append to `CHANGELOG.md`:
    ```
    ## <YYYY-MM-DD HH:MM> — versioned: archived as v<N>, new session seeded
-   New session references v<N> as previous_version. Use `do work interview <template> versions` to compare.
+   New session references v<N> as previous_version. Use `do-work interview <template> versions` to compare.
    ```
 5. Begin Layer 1 interview.
 
 The three modes are mutually exclusive per invocation. The user picks one; the action does not combine them.
+
+### Mid-layer recovery
+
+Session state is only written after a layer's checkpoint is approved. If the user quits in the middle of a layer interview — before that layer's checkpoint was approved — on resume:
+
+1. Detect that `pending_layer` has no approved entries in `layers.<layer-id>.entries`.
+2. Check for a draft checkpoint file at `./do-work/interview/<template>/checkpoints/.draft-<layer-id>.md`. (Draft checkpoints are written opportunistically during the interview — before user approval — as a recovery aid.)
+3. If a draft exists: show it to the user and ask "pick up from this draft or start the layer over?" On `pick up`, load the draft entries as working state and continue from the approval step. On `start over`, delete the draft and begin the layer fresh.
+4. If no draft exists: begin the layer fresh.
+
+The action writes draft checkpoints after the interview has produced candidate entries but before user approval. Drafts are deleted when the layer is approved (normal case) or explicitly discarded (start-over case).
 
 ---
 
@@ -348,21 +369,57 @@ The three modes are mutually exclusive per invocation. The user picks one; the a
 
 ---
 
-## Ingest Frontmatter
+## Ingest File Mapping
 
-The `ingest` sub-command copies exports into `<repo-root>/kb/raw/inbox/` with filenames of the shape `interview-<template>-<export-basename>.md`. Each ingested file gets YAML frontmatter with these fields:
+When `do-work interview <template> ingest` runs, it produces files in `<repo-root>/kb/raw/inbox/` (sibling writes — do not overwrite). Two file classes are written per run: one file per export and one summary file per layer.
+
+### 1. One file per export
+
+Filename: `<template>-<export-name>.md`. Body is the full export content. Frontmatter:
 
 ```yaml
 ---
-title: <template-display-name> — <export-title>
-source: ./do-work/interview/<template>/exports/<export-filename>
+title: "{{template.name}} — {{export_filename_without_ext}}"
 type: source-summary
-topic_cluster: <value from template frontmatter>
+topic_cluster: "{{template.topic_cluster}}"
+sources:
+  - "interview/{{template}}/exports/{{export_filename}}"
 confidence: high
-created: <YYYY-MM-DD>
+created: "{{session.last_exported_at}}"
 ---
 ```
 
-`topic_cluster` is copied verbatim from the template's frontmatter. `confidence: high` reflects that the source is the user's own approved operating model, not a third-party claim. The file body is the export content (for `.md` exports) or a short pointer describing the export shape + location (for `.json` exports — BKB does not ingest raw JSON).
+For `.json` exports, include the JSON as a fenced code block inside the markdown body (BKB does not ingest raw JSON).
 
-If `kb/` does not exist when `ingest` is invoked, the action tells the user to run `do work bkb init` first and stops without writing.
+### 2. One summary file per layer
+
+Filename: `<template>-<layer-id>.md`. Body is a markdown summary of that layer's entries (list each entry's `title` and `summary` under the layer heading). Frontmatter:
+
+```yaml
+---
+title: "{{template.name}} — {{layer.title}}"
+type: concept
+topic_cluster: "{{template.topic_cluster}}"
+sources:
+  - "interview/{{template}}/session.json"
+related:
+  - page: "{{template}}-user-md"
+    rel: evidence-for
+confidence: "{{majority source_confidence in layer — confirmed => high, synthesized => medium}}"
+created: "{{session.last_exported_at}}"
+---
+```
+
+This gives BKB one wiki page per layer alongside the full exports.
+
+### 3. Inbox manifest
+
+Append one row to `kb/raw/_inbox_queue.md` for each file added. Each row is marked `ready`, with `topic_hint: {{template.topic_cluster}}` and `priority: normal`.
+
+### Totals and collisions
+
+For the `work-operating-model` template: 5 exports + 5 layer summaries = **10 files** per `ingest` run. If any target filename already exists in `kb/raw/inbox/` or `kb/raw/capture/` (previous ingest of the same template), prefix the new file with the current time (`HHMMSS-<filename>`) per BKB's collision rule.
+
+### Preconditions
+
+If `kb/` does not exist when `ingest` is invoked, the action tells the user to run `do-work bkb init` first and stops without writing. `confidence: high` on export files reflects that the source is the user's own approved operating model, not a third-party claim.

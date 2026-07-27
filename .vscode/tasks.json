@@ -8,6 +8,21 @@
       "args": [
         "${file}"
       ],
+      "windows": {
+        "command": "cmd",
+        "args": [
+          "/c",
+          "start",
+          "",
+          "${file}"
+        ]
+      },
+      "linux": {
+        "command": "xdg-open",
+        "args": [
+          "${file}"
+        ]
+      },
       "presentation": {
         "reveal": "never",
         "panel": "shared"

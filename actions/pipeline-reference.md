@@ -1,10 +1,88 @@
-# Pipeline Reference
+# Pipeline Action — Reference
 
-> **Companion to the pipeline action.** Contains the three Pipeline Completion Report rendering templates — Plain Markdown, Marp Slide Deck, and Standalone HTML Debrief — plus the composition rules that apply to all three authored renderings. A fourth file, `{UR-NNN}-pipeline-summary.marp.html`, is produced mechanically by running `marp-cli` on the Marp source — no template, no composition rules. Extracted from `pipeline.md` to keep the main action file readable; load this file at Step 5 Completion when rendering the report.
+> Companion file to `pipeline.md`. Holds the state-file schema and every rendered output — the status blocks, the three-format Pipeline Completion Report, the continuation notice, and the help menu — extracted to keep `actions/pipeline.md` focused on its six-step skeleton and mode-determination logic. Each section below is pointed to from the matching step in `actions/pipeline.md`. Loading this file is only necessary when you reach the step that references it — and read only the named section. If this file is already in context from an earlier step this session, reuse it; don't re-read it at every reference site.
 
-## Pipeline Completion Report — three renderings of one dataset (plus one mechanical export)
+---
 
-The same facts — Final summary, Test state, Coherence, Carry-forward, Deliverables, How to verify — are rendered three ways by the LLM (`.md`, `.marp.md`, `.single.html`). One authoring pass over the data, three files on disk. A fourth file — `.marp.html` — is produced by running `npx @marp-team/marp-cli {UR-NNN}-pipeline-summary.marp.md --html` after the Marp source is written; it inherits its content mechanically and needs no template. Never author any of the three LLM renderings from scratch if another already exists; re-render from the source data so they stay consistent.
+## State File Schema
+
+```json
+{
+  "session_id": "2026-04-08-001",
+  "request": "add dark mode to settings panel",
+  "started_at": "2026-04-08T11:00:00Z",
+  "active": true,
+  "steps": [
+    { "name": "investigate", "status": "done",    "completed_at": "2026-04-08T11:01:00Z" },
+    { "name": "capture",     "status": "done",    "completed_at": "2026-04-08T11:02:00Z", "artifacts": ["REQ-042", "UR-018"] },
+    { "name": "verify",      "status": "pending", "completed_at": null },
+    { "name": "run",         "status": "pending", "completed_at": null },
+    { "name": "review",      "status": "pending", "completed_at": null },
+    { "name": "present",     "status": "pending", "completed_at": null }
+  ]
+}
+```
+
+**Field definitions:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `session_id` | string | `YYYY-MM-DD-NNN` — date + incrementing counter |
+| `request` | string | The user's original request text |
+| `started_at` | string | ISO 8601 timestamp when the pipeline was initialized |
+| `active` | boolean | `true` while pipeline is running, `false` when completed or abandoned |
+| `steps` | array | Ordered list of pipeline steps with status tracking |
+| `steps[].name` | string | Step identifier: `investigate`, `capture`, `verify`, `run`, `review`, `present` |
+| `steps[].status` | string | `pending`, `in-progress`, `done`, or `failed` |
+| `steps[].completed_at` | string\|null | ISO 8601 timestamp when step finished, or null |
+| `steps[].artifacts` | array\|undefined | REQ/UR IDs produced (capture step only) |
+| `steps[].error` | string\|undefined | Error description (failed steps only) |
+
+**Pretty-print invariant.** Every write to `do-work/pipeline.json` must use multi-line pretty-printed JSON (one key per line, as in the example above). The `hooks/pipeline-guard.sh` non-`jq` fallback uses line-oriented `grep -c` to count pending steps — a compact single-line write would silently miscount and let the agent stop mid-pipeline. Use `jq .` (or an equivalent formatter) when writing the file.
+
+## Status Block (printed after every step transition)
+
+```
+── Pipeline ─────────────────────────
+  ✓ investigate   done
+  ✓ capture       done  → REQ-042, UR-018
+  ✓ verify        done
+  ◎ run           in progress...
+  ○ review        pending
+  ○ present       pending
+─────────────────────────────────────
+  Session: 2026-04-08-001
+  Request: add dark mode to settings panel
+```
+
+**Symbols:**
+- `✓` — done
+- `◎` — in progress
+- `✗` — failed
+- `○` — pending
+
+For the `capture` step, append ` → {artifact IDs}` after "done" if artifacts were recorded.
+
+## Completion Status Block (printed when all 6 steps are done)
+
+```
+── Pipeline {session_id} — COMPLETE ──
+  ✓ investigate   done
+  ✓ capture       done  → UR-018, 12 REQs
+  ✓ verify        done  (or "skipped ({reason})" if inputs were pre-verified)
+  ✓ run           done  → {N} commits
+  ✓ review        done  ({verdict: PASS / PASS with caveats / FAIL})
+  ✓ present       done  → {N} deliverables
+─────────────────────────────────────
+  Session:   {session_id}
+  Duration:  {elapsed time from started_at to now, e.g. "~10.5h end-to-end"}
+  Branch:    {current git branch} ({pushed | local only})
+  Verdict:   {PASS | PASS with caveats | FAIL}
+```
+
+## Pipeline Completion Report — three renderings of one dataset
+
+The same facts — Final summary, Test state, Coherence, Carry-forward, Deliverables, How to verify — are rendered three ways by the LLM (`.md`, `.marp.md`, `.single.html`) so a developer, a stakeholder, and a non-technical reader each land on a surface that fits. A fourth file — `.marp.html` — is produced mechanically by `marp-cli` from the `.marp.md` source so stakeholders without the Marp tooling can still view the deck. One authoring pass over the data, four files on disk — never author any of the three LLM renderings from scratch if another already exists.
 
 ### Composition rules (apply to all three formats)
 
@@ -16,7 +94,7 @@ The same facts — Final summary, Test state, Coherence, Carry-forward, Delivera
 - **Carry-forward ≠ auto-capture.** List candidates clearly with the command the user would run to capture each one, but never capture them automatically.
 - **No format-specific editorializing.** The Marp deck must not add facts the markdown lacks; the HTML must not soften or strengthen claims for a broader audience. Format dictates rendering; rendering does not dictate facts.
 
-## 1. Plain Markdown Report — `{UR-NNN}-pipeline-summary.md`
+### 1. Plain Markdown Report — `{UR-NNN}-pipeline-summary.md`
 
 Developer-facing. Read in a terminal with `cat`, grepped, or pasted into a PR description. No YAML header, no CSS, no slide breaks — just markdown.
 
@@ -59,9 +137,10 @@ Developer-facing. Read in a terminal with `cat`, grepped, or pasted into a PR de
 
 ## Carry-forward work (implied, not captured yet)
 
-- [Deferred item] — capture with `do work capture request: ...`
+- [Deferred item] — capture with `do-work capture-request: ...`
 - [TODO/FIXME introduced and left for a follow-up]
-- [`pending-answers` REQs awaiting user input — run `do work clarify`]
+- [`pending-answers` REQs awaiting user input — run `do-work clarify`]
+- [`blocked` REQs waiting on an external condition — re-run `do-work run` (auto-probes any `blocked_check`) once it's met, or `do-work clarify` to confirm a human-checkable one]
 
 ## Deliverables
 
@@ -72,6 +151,7 @@ Render each bullet as a relative markdown link to the file (e.g. `[...]({UR-NNN}
 - [`{UR-NNN}-client-brief.md`](./{UR-NNN}-client-brief.md) — plain-language brief with architecture diagram + value prop *(if present ran)*
 - [`{UR-NNN}-interactive-explainer.single.html`](./{UR-NNN}-interactive-explainer.single.html) — interactive Before/After explainer, open in any browser *(if present ran)*
 - [`{UR-NNN}-video/`](./{UR-NNN}-video/) — Remotion video walkthrough (`cd` in, `npm install`, `npm run preview`) *(if present ran)*
+- [`../../ai-reports/<newest-match>/index.html`](../../ai-reports/<newest-match>/index.html) — pixel-anchored visual report (screenshots + SVG callouts + before/after) *(only if a visual report exists — glob BOTH shapes: folder reports `ai-reports/*{UR-NNN}*/index.html` and legacy pre-0.100.0 single-file reports `ai-reports/*{UR-NNN}*.html`; pick the newest match by mtime and link to it — the folder's `index.html`, or the legacy `.html` file directly; omit the bullet entirely otherwise)*
 
 **For the developer / reviewer (audit the run):**
 
@@ -108,7 +188,7 @@ Render each bullet as a relative markdown link to the file (e.g. `[...]({UR-NNN}
    ```
 ```
 
-## 2. Marp Slide Deck — `{UR-NNN}-pipeline-summary.marp.md`
+### 2. Marp Slide Deck — `{UR-NNN}-pipeline-summary.marp.md`
 
 Stakeholder-facing. Viewed with `marp --preview`, and also exported to `{UR-NNN}-pipeline-summary.marp.html` via `npx @marp-team/marp-cli {UR-NNN}-pipeline-summary.marp.md --html` so stakeholders without marp-cli can view the deck by opening a file. Must start with Marp YAML frontmatter (`marp: true`). Each slide separated by `---`. Keep slides scannable — no slide should fit more than ~8 rows of content; split long Final-summary tables across domain-grouped slides. Use a Mermaid `graph LR` on the coherence slide when there are 2+ cross-REQ links.
 
@@ -147,7 +227,7 @@ style: |
 ---
 ```
 
-## 3. Standalone HTML Debrief — `{UR-NNN}-pipeline-summary.single.html`
+### 3. Standalone HTML Debrief — `{UR-NNN}-pipeline-summary.single.html`
 
 Non-technical-reader-facing. Single `.html` file, zero build steps. Same content as the markdown, rendered for a browser. The `.single.` infix marks this as an LLM-authored standalone page (Tailwind + Mermaid via CDN, cross-links to siblings) — distinct from the `.marp.html` mechanical export of the Marp deck.
 
@@ -168,16 +248,16 @@ Non-technical-reader-facing. Single `.html` file, zero build steps. Same content
 8. **Coherence assertions** — responsive card grid, one card per assertion, with the REQ pair in mono accent and the claim below (skip the whole section for single-REQ pipelines)
 9. **Carry-forward work** — cards with a bold title, muted explanation, and the capture command in a `<pre>` block (skip if none)
 10. **How to verify** — numbered headings, each followed by a copy-pasteable `<pre><code>` block
-11. **Related deliverables** — a navigation card grid **before** the final follow-ups list, splitting cross-links by audience. Left card group "Understand what was built" with real `<a href="./{UR-NNN}-client-brief.md">` / `<a href="./{UR-NNN}-interactive-explainer.single.html">` / `<a href="./{UR-NNN}-video/">` anchors (only include tiles for artifacts that actually exist on disk — if present ran and produced them). Right card group "Audit the run" linking the markdown (`<a href="./{UR-NNN}-pipeline-summary.md">`), Marp source (`<a href="./{UR-NNN}-pipeline-summary.marp.md">`), and Marp HTML export (`<a href="./{UR-NNN}-pipeline-summary.marp.html">`) siblings. The `.single.html` is the most discoverable surface for a non-technical reader — it must point them to the deeper, more educational artifacts.
-12. **Footer / next steps** — ordered list with `do work present {UR-NNN}` and other follow-ups
+11. **Related deliverables** — a navigation card grid **before** the final follow-ups list, splitting cross-links by audience. Left card group "Understand what was built" with real `<a href="./{UR-NNN}-client-brief.md">` / `<a href="./{UR-NNN}-interactive-explainer.single.html">` / `<a href="./{UR-NNN}-video/">` anchors (only include tiles for artifacts that actually exist on disk — if present ran and produced them). If a visual report exists at the project root (glob BOTH shapes: `ai-reports/*{UR-NNN}*/index.html` folder reports and legacy pre-0.100.0 single-file `ai-reports/*{UR-NNN}*.html`), add a fourth tile in this group linking to the newest match by mtime (`<a href="../../ai-reports/<newest-match>/index.html">Visual report</a>`, or the legacy `.html` file directly — pixel-anchored screenshots + SVG callouts). Right card group "Audit the run" linking the markdown (`<a href="./{UR-NNN}-pipeline-summary.md">`), Marp source (`<a href="./{UR-NNN}-pipeline-summary.marp.md">`), and Marp HTML export (`<a href="./{UR-NNN}-pipeline-summary.marp.html">`) siblings. The `.single.html` is the most discoverable surface for a non-technical reader — it must point them to the deeper, more educational artifacts.
+12. **Footer / next steps** — ordered list with `do-work present {UR-NNN}` and other follow-ups
 
 **Design requirements:**
 
 - Light theme default; dark theme via `@media (prefers-color-scheme: dark)` overriding CSS custom properties on `:root`
 - Palette: CSS variables for `--bg`, `--surface`, `--text`, `--muted`, `--accent`, `--accent-soft`, `--border`. Light: white/slate-50 / slate-900 / blue-600. Dark: slate-900 / slate-100 / blue-400.
 - Font: `system-ui, -apple-system, sans-serif`
-- Max content width: `max-w-6xl` centred
-- Generous spacing (`py-10` / `py-16` on sections) — readable like a long-form article, not cramped like a dashboard
+- **Full-bleed — no fixed centered column.** The page fills the viewport width with side padding only (`px-6` and up), not a `max-w-6xl mx-auto` reading column that leaves empty gutters on a wide monitor and forces needless scrolling. Cap width only on *running prose* (the "What got built" block → `max-w-prose`, ≈74ch); let the stat-card grid, the shipped/test tables, and the coherence/deliverable card grids use the full width and wrap responsively (`flex-wrap` / `grid` with `auto-fit minmax(...)`) so more is visible per screen — side-by-side on a wide monitor, stacked when narrow.
+- Generous spacing (`py-10` / `py-16` on sections) — breathing room between the bands, not crammed
 - Mermaid init: `mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' })`
 
 **What NOT to do:**
@@ -186,3 +266,55 @@ Non-technical-reader-facing. Single `.html` file, zero build steps. Same content
 - Don't embed images unless the REQs reference them
 - Don't pull in additional CDN scripts beyond Tailwind + Mermaid — the file must work offline once cached
 - Don't add interactivity that hides data (collapsible sections are fine; JS-gated sections that require a click to reveal facts are not)
+
+## Continuation Notice (printed when pending REQs remain after pipeline completion)
+
+```
+── Queue Continuation ───────────────
+  {count} pending REQ(s) remaining:
+    {REQ-ID} — {title}
+    {REQ-ID} — {title}
+    ...
+
+  Processing remaining queue...
+─────────────────────────────────────
+```
+
+When the continuation loop finishes and the queue is empty:
+
+```
+Queue fully processed. All pending requests complete.
+```
+
+When the continuation loop hits the max iteration cap (3 cycles):
+
+```
+Continuation limit reached (3 cycles). {count} REQ(s) still pending:
+  {REQ-ID} — {title}
+  ...
+
+Run "do-work run" to continue processing manually.
+```
+
+## Help Menu (no active pipeline, no arguments)
+
+```
+pipeline — full end-to-end orchestration
+
+  Start a new pipeline:
+    do-work pipeline add dark mode to settings
+    do-work full add dark mode to settings
+
+  Resume / manage:
+    do-work pipeline            Resume an active pipeline
+    do-work pipeline status     Show pipeline progress
+    do-work pipeline abandon    Deactivate without completing
+
+  Steps (executed in order):
+    1. investigate   Inspect uncommitted changes
+    2. capture       Capture the request as REQ + UR files
+    3. verify        Verify capture quality
+    4. run           Process the queue (build, test, review)
+    5. review        Post-work code review + acceptance testing
+    6. present       Generate client-facing deliverables (brief, diagrams, video, HTML)
+```

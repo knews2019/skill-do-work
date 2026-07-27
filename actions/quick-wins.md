@@ -1,6 +1,6 @@
 # Quick-Wins Action
 
-> **Part of the do-work skill.** Scans a target directory for obvious refactoring opportunities and low-hanging tests to add.
+> **Part of the do-work skill.** Scans a target directory for obvious refactoring opportunities and low-hanging tests to add. User-facing walkthrough: [`docs/quick-wins-guide.md`](../docs/quick-wins-guide.md).
 
 **Read-only** — this action does NOT modify any files. It produces a structured report only.
 
@@ -12,8 +12,7 @@
 - Looking for specific, file-level improvements with effort/impact ratings
 
 **Do NOT use when:**
-- User wants *product-level ideas* for what to build next — route to the scan-ideas action instead
-- User wants to *deeply explore* a concept — route to the deep-explore action instead
+- See `SKILL.md` routing table for sibling action selection. Quick-wins surfaces concrete file-level refactors and low-hanging tests; scan-ideas is product-level breadth, deep-explore is concept exploration.
 
 ## Input
 
@@ -60,7 +59,7 @@ For each candidate, record:
 
 ### Step 3.5: Security Smell Scan
 
-Scan for obvious security anti-patterns. This is not a full audit (use the code-review action for that) — it catches low-hanging risks:
+Scan for obvious security anti-patterns. This is not a full audit (use actions/code-review.md for that) — it catches low-hanging risks:
 
 | Smell | What to look for |
 |-------|-----------------|
@@ -167,8 +166,8 @@ Produce a markdown report with this structure:
 3. {Third priority}
 
 > To act on these findings:
->   do work [describe the fix]     Capture as a request
->   do work run                    Process the queue
+>   do-work [describe the fix]     Capture as a request
+>   do-work run                    Process the queue
 ```
 
 ## Rules
@@ -179,6 +178,7 @@ Produce a markdown report with this structure:
 - **Skip vendored and generated files.** Don't report issues in `node_modules/`, `vendor/`, `.next/`, compiled output, or generated code.
 - **Check before suggesting tests.** If a function already has test coverage, don't suggest testing it again. Note it in "Already Covered" instead.
 - **Respect project conventions.** If `prime-*.md` files describe deliberate patterns (e.g., "we use god files for route handlers"), don't flag those as problems.
+- **Removal findings on the skill's own instructions invoke the maintenance discipline.** Quick-wins only *surfaces* removable code and config; it never edits files itself. Two kinds of removal land differently when acted on (via capture → `do-work run`). Removing or narrowing **redundant rules or over-broad config in the skill's own operating instructions** (a drifting agent/action/crew/prime file) is a deliberate maintenance pass: capture sets `maintenance: true` on the REQ so `actions/work.md` Step 6 loads `crew-members/maintenance.md` (delete-before-you-add — prefer removing/narrowing before adding; prove any addition against a replay case). Removing **ordinary dead code in application source** is *not* a maintenance pass — it runs under `coding-guardrails.md`'s implementation-time surgical-changes rule, with no `maintenance` marker. This is the maintenance-time complement to that rule.
 
 ## Common Rationalizations
 
@@ -186,10 +186,8 @@ Guard against these when producing the report:
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "This file is long so it must be a refactoring candidate" | Check if the length serves a purpose (state machine, migration, parser) | Length alone is not a smell |
 | "No quick wins found" after scanning 3 files | Verify you scanned all source files in scope | Small scan = invisible problems |
 | "This looks like dead code" | Grep for dynamic references, re-exports, and framework conventions | Static analysis misses dynamic usage |
-| "I'll pad the report with low-impact findings" | Only report findings above the effort/impact threshold | Padding erodes trust in the report |
 
 ## Red Flags
 
@@ -204,4 +202,3 @@ Guard against these when producing the report:
 - [ ] Every finding includes file path and line number reference
 - [ ] Effort and impact ratings assigned to each finding
 - [ ] Security smells checked regardless of codebase size
-- [ ] Report is read-only — no files modified

@@ -15,7 +15,7 @@ sources:
 related:
   - page: adr-005-pipeline-is-stateful-and-resumable
     rel: complements
-  - page: adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles
+  - page: adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles
     rel: complements
 created: 2026-04-15
 updated: 2026-04-15
@@ -25,7 +25,7 @@ confidence: high
 # ADR-004: Canonicalize Pending REQs Under do-work/queue
 
 Topic cluster: [[_index_workflow-orchestration]] ([topic index](../topics/_index_workflow-orchestration.md))
-See also: [[adr-005-pipeline-is-stateful-and-resumable]] (complements), [[adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles]] (complements)
+See also: [[adr-005-pipeline-is-stateful-and-resumable]] (complements), [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]] (complements)
 
 ## Context
 

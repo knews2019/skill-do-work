@@ -10,7 +10,7 @@ Generates a full set of artifacts for one UR or REQ:
 
 1. **Client Brief** — plain-language writeup: What We Built, How It Works, Architecture, Data Flow, Key Decisions, Value Delivered, What's Next
 2. **Remotion Video** — 4-scene interactive video (Problem → Solution → Architecture → Value), generated as source code previewed via `npx remotion studio`
-3. **Interactive Explainer** — single-file HTML with Tailwind CSS, zero build steps, Before/After toggle or step-by-step walkthrough, dark mode support
+3. **Interactive Explainer** — single-file HTML with Tailwind CSS, zero build steps, full-bleed layout, side-by-side Before/After (toggle only when the frames can't fit) or step-by-step walkthrough, dark mode support
 
 ### Portfolio mode (all completed work)
 
@@ -38,10 +38,10 @@ Effort scales with the work:
 ## Usage
 
 ```
-do work present work             # most recent completed UR
-do work present UR-003           # specific UR
-do work present REQ-005          # specific REQ
-do work present all              # portfolio summary
-do work present portfolio        # same as all
-do work showcase
+do-work present-work             # most recent completed UR
+do-work present UR-003           # specific UR
+do-work present REQ-005          # specific REQ
+do-work present all              # portfolio summary
+do-work present portfolio        # same as all
+do-work showcase
 ```

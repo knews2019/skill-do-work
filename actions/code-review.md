@@ -1,8 +1,8 @@
 # Code Review Action
 
-> **Part of the do-work skill.** Standalone codebase review — not tied to the REQ/UR queue. Evaluates consistency, patterns, security, and architectural health across a scoped section of the codebase.
+> **Part of the do-work skill.** Standalone codebase review — not tied to the REQ/UR queue. Evaluates consistency, patterns, security, and architectural health across a scoped section of the codebase. User-facing walkthrough: [`docs/code-review-guide.md`](../docs/code-review-guide.md).
 
-**Source-code read-only** — this action does NOT modify any project source files. It produces a structured report only. May write queue metadata (`do-work/queue/REQ-*` files) with explicit user confirmation — see Step 10.
+**Source-code read-only** — this action does NOT modify any project source files. It produces a structured report only. It does write its own run state under `do-work/runs/code-review-<ts>/` (findings files + manifest — a committable path, then deleted once consumed; see Steps 1 and 10). May also write queue metadata (`do-work/queue/REQ-*` files) with explicit user confirmation — see Step 10.
 
 ## When to Use
 
@@ -12,9 +12,7 @@
 - Reviewing architectural health, consistency, security, or patterns across a directory or prime file scope
 
 **Do NOT use when:**
-- User wants to review *completed work* against its requirements — route to the review-work action instead
-- User says just "review" without "code" or "codebase" qualifier — that's the review-work action
-- User wants to verify *capture quality* — route to the verify-requests action instead
+- See `SKILL.md` routing table for sibling action selection.
 
 ## Input
 
@@ -23,10 +21,10 @@
 ### Mode 1: Prime File Target
 
 ```
-do work code-review prime-auth
-do work code-review prime-auth.md
-do work code-review src/prime-auth.md
-do work code-review prime-auth prime-checkout
+do-work code-review prime-auth
+do-work code-review prime-auth.md
+do-work code-review src/prime-auth.md
+do-work code-review prime-auth prime-checkout
 ```
 
 When `$ARGUMENTS` contains one or more prime file references:
@@ -38,9 +36,9 @@ When `$ARGUMENTS` contains one or more prime file references:
 ### Mode 2: Directory Target
 
 ```
-do work code-review src/
-do work code-review src/api/ src/utils/
-do work code-review .
+do-work code-review src/
+do-work code-review src/api/ src/utils/
+do-work code-review .
 ```
 
 When `$ARGUMENTS` contains one or more directory paths:
@@ -51,8 +49,8 @@ When `$ARGUMENTS` contains one or more directory paths:
 ### Combined Mode
 
 ```
-do work code-review prime-auth src/utils/
-do work code-review prime-checkout src/shared/
+do-work code-review prime-auth src/utils/
+do-work code-review prime-checkout src/shared/
 ```
 
 When `$ARGUMENTS` contains both prime file references and directory paths:
@@ -63,7 +61,7 @@ When `$ARGUMENTS` contains both prime file references and directory paths:
 ### Default (no arguments)
 
 ```
-do work code-review
+do-work code-review
 ```
 
 If no arguments provided:
@@ -71,9 +69,24 @@ If no arguments provided:
 2. If prime files exist, list them and ask the user which scope to review — don't review everything by default
 3. If no prime files exist, default to the current working directory (like quick-wins)
 
+## Parallel & Background Execution
+
+This action fans its six review dimensions out to sub-agents rather than running them in one long in-context pass. It follows the durability pattern in `crew-members/background-agents.md` — read that file for the full contract. In short:
+
+- After scope is resolved and context is loaded (Steps 1–2), create the run directory `do-work/runs/code-review-<YYYY-MM-DD-HHMMSS>/` **before any spawn**. This directory is the source of truth for the run, not the chat transcript. It is a committable path under `do-work/` (not gitignored) so the run is inspectable and survives across sessions; it is deleted once its findings are consumed (Step 10). See `crew-members/background-agents.md` steps 1 and 5 for the full lifecycle.
+- Dispatch the six dimensions (Consistency, Architecture, Security, Performance, Test Coverage, Automated Checks) as sub-agents in **bounded waves** sized to the harness concurrency limit. Each sub-agent receives the resolved scope, the loaded prime/crew context, and its dimension's checklist (Steps 3–8 below) as its brief.
+- Each sub-agent writes its **full findings** to its own file — `do-work/runs/code-review-<ts>/<dimension>.md` (e.g. `consistency.md`, `security.md`) — and returns only a **one-line status** to the orchestrator. Never return full findings inline. Maintain a `manifest.md` in the run directory and update it as each wave's files land.
+- Step 9 synthesizes from the findings files on disk, not from what the sub-agents returned into the conversation.
+
+**Graceful degradation:** If the harness has no parallel/background support, run the six dimensions **sequentially in-context** — but still create the run directory, still write each dimension's findings to its file as you complete it, and still update the manifest. A sequential run that crashes halfway is still recoverable from the completed files.
+
 ## Steps
 
 ### Step 1: Resolve Scope
+
+> This action fans its review dimensions out to sub-agents. Read `crew-members/background-agents.md` first — it defines the disk-durable run-directory pattern this action follows so an interrupted, compacted, or corrupted orchestrator session is recoverable.
+
+**Resume check (before anything else):** Look for the most recent `do-work/runs/code-review-*/` directory (if several match, take the newest by timestamp), read its `manifest.md`, and branch on `Status:`. For `in-progress`, offer to resume: re-spawn only dimensions whose findings file is absent on disk (verify the filesystem, not the per-row label), then synthesize from disk. For `synthesized`, or the legacy `complete` value, do not re-spawn — read the saved `report.md`, deliver it, and continue at Step 10. A legacy `complete` without `report.md` is not safe to delete; reconstruct the report from the dimension files first. For a missing/unrecognized root status, rebuild the manifest as `synthesized` only if `report.md` exists, otherwise as `in-progress`, then follow that branch. For `consumed`, never resume; cleanup may remove the leftover directory. Start fresh if the user declines an unfinished run, no run exists, or the newest run is `consumed`.
 
 1. Parse `$ARGUMENTS` into prime file references and directory paths
 2. Resolve prime files: search for matching `prime-*.md` files, read them, extract referenced files and directories
@@ -92,6 +105,8 @@ If no arguments provided:
 - Read any `crew-members/*.md` files if present — these contain domain-specific standards
 - Check for linter configs (`.eslintrc*`, `.prettierrc*`, `biome.json`, `rustfmt.toml`, `.rubocop.yml`, `ruff.toml`, etc.) — note what the project already enforces automatically
 - Check for CI config (`.github/workflows/`, `.gitlab-ci.yml`, `Makefile`, etc.) — understand what's already validated in the pipeline
+
+**Then create the run directory and dispatch.** Make `do-work/runs/code-review-<YYYY-MM-DD-HHMMSS>/` (timestamp from the shell, e.g. `date +%Y-%m-%d-%H%M%S`) and write an initial `manifest.md` with a `Status: in-progress` line and the six dimensions listed as `pending`. Steps 3–8 below each define one review dimension; by default, dispatch each as its own sub-agent (see **Parallel & Background Execution**) carrying the resolved scope, the loaded prime/crew context, and that step's checklist as its brief. Each sub-agent writes its findings to `do-work/runs/code-review-<ts>/<dimension>.md` and returns a one-line status; update the manifest as files land. In sequential graceful-degradation mode, work the dimensions in order but still write each findings file.
 
 ### Step 3: Consistency Review
 
@@ -122,9 +137,11 @@ Look at the bigger picture within the scoped files:
 |-----------|--------------|
 | **Separation of concerns** | Are responsibilities clearly divided? Business logic mixed with I/O? Presentation mixed with data access? |
 | **Dependency direction** | Do dependencies flow in a sensible direction? Higher-level modules importing lower-level, or spaghetti? |
-| **Abstraction health** | Are abstractions earning their keep? Over-abstracted code (interfaces with one implementation, factories for one type)? Under-abstracted code (duplicated logic that should be shared)? |
+| **Abstraction health** | Are abstractions earning their keep? Over-abstracted code (interfaces with one implementation, factories for one type)? Under-abstracted code (duplicated logic that should be shared)? Treat speculative flexibility as architectural debt (YAGNI; see `crew-members/coding-guardrails.md` § Simplicity First). |
 | **State management** | Is state handled consistently? Global mutable state? Unclear ownership? Race condition opportunities? |
 | **Interface contracts** | Are module boundaries clear? Could you swap an implementation without touching callers? Are internal details leaking? |
+| **Folder cohesion / orphan files** | Do files belong in the folder they live in? Imports that don't match the folder's apparent domain (an auth helper in `utils/`)? Naming inconsistent with siblings (one outlier file shape among many uniform ones)? Folders accumulating unrelated files (junk-drawer `lib/`, `misc/`, or `helpers/`)? Distinct from Step 3's structural consistency — this asks "does this file fit here?", not "is the folder layout uniform across the project?" |
+| **Cyclomatic complexity** | Functions with high branch counts — deeply nested conditionals, sprawling switch statements, long chains of early returns, predicates `&&`-ed and `\|\|`-ed past the point of readability. Distinct from Step 3's "Circular dependencies?" check, which is about import cycles between modules; cyclomatic complexity is about decision paths within a single function. |
 
 ### Step 5: Security & Risk Scan
 
@@ -187,6 +204,8 @@ If checks pass cleanly, note it — a clean bill of health is useful information
 If you can't run checks (missing dependencies, env issues), note what you couldn't run and why.
 
 ### Step 9: Synthesize & Report
+
+**Read the findings files from the run directory** (`do-work/runs/code-review-<ts>/*.md`) and assemble the report from them — not from what the sub-agents returned into the conversation. This is what makes a run recoverable: synthesis behaves identically in the original session and in a fresh recovery session that never saw the spawns. If a dimension's findings file is absent on disk (its sub-agent never completed), note that dimension as **not run** in the report rather than fabricating findings — and prefer re-spawning that dimension first (see the Step 1 resume check). Write the full assembled report to `do-work/runs/code-review-<ts>/report.md`, verify it exists, then set the manifest's `Status:` line to `synthesized`. Only after that durable write should the report be delivered to the user. A crash before delivery can now resume from `report.md` without re-running any dimension.
 
 Produce a structured report:
 
@@ -267,10 +286,10 @@ For **Critical** and **Important** findings that warrant action, offer to create
 
 ```
 Found 3 Critical and 5 Important findings.
-Create REQ files for these? (The user can run `do work run` to process them later.)
+Create REQ files for these? (The user can run `do-work run` to process them later.)
 ```
 
-Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward. The code-review action is read-only by default in all modes.
+Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward.
 
 When the user confirms, create REQ files using the standard format:
 
@@ -299,6 +318,8 @@ Found during code review of [scope]. [1 sentence on the specific finding.]
 
 Do NOT auto-create REQs without confirmation. The report itself is the primary output.
 
+**Then mark consumed and delete the run directory.** Once the report has been delivered and the REQ-capture decision is made (created, declined, or skipped as non-interactive), the run's findings are fully consumed — the report and any REQs are the permanent record. If the user asked to keep the raw findings, copy them into `do-work/deliverables/` first. Set the manifest's `Status:` line to `consumed`, then delete `do-work/runs/code-review-<ts>/` as the final step (`crew-members/background-agents.md` step 5); the deletion rides the user's normal commit flow.
+
 ## Health Rating Guidelines
 
 **Excellent** — Consistent patterns, clean architecture, good test coverage, no security concerns. Minor nits only.
@@ -311,6 +332,7 @@ Do NOT auto-create REQs without confirmation. The report itself is the primary o
 
 ## Rules
 
+- **Source-code read-only in every mode.** Writes are limited to this action's own run state (`do-work/runs/code-review-<ts>/`) and, with explicit user confirmation, queue metadata (Step 10) — never project source files.
 - **Be specific.** Every finding must include file paths and line references. "Error handling is inconsistent" is useless — "`src/api/users.ts:45` uses try/catch with custom AppError, but `src/api/orders.ts:72` uses bare throw with string messages" is useful.
 - **Show both sides.** For consistency findings, always show the two (or more) patterns you found. The user needs to see the contrast.
 - **Respect conventions from prime files.** If a prime file says "we use god files for route handlers," don't flag the god file as a problem. Prime files are the project's own voice.

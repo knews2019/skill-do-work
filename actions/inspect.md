@@ -1,8 +1,8 @@
 # Inspect Action
 
-> **Part of the do-work skill.** Invoked when routing determines the user wants to understand uncommitted changes. Read-only — examines the working tree, explains what changed, traces changes to REQs, and assesses commit readiness. When scoped to a REQ or UR, also inspects committed files from the Implementation Summary for a complete picture.
+> **Part of the do-work skill.** Invoked when routing determines the user wants to understand uncommitted changes. Read-only — examines the working tree, explains what changed, traces changes to REQs, and assesses commit readiness. When scoped to a REQ or UR, also inspects committed files from the Implementation Summary for a complete picture. User-facing walkthrough: [`docs/inspect-guide.md`](../docs/inspect-guide.md).
 
-Unlike the commit action (which stages and commits), this action only reads and reports. Use it to understand what's in your working tree before deciding whether to commit, fix, or discard.
+Unlike actions/commit.md (which stages and commits), this action only reads and reports. Use it to understand what's in your working tree before deciding whether to commit, fix, or discard.
 
 ## When to Use
 
@@ -12,12 +12,11 @@ Unlike the commit action (which stages and commits), this action only reads and 
 - Read-only examination of uncommitted changes with REQ tracing
 
 **Do NOT use when:**
-- User wants to actually *commit* the changes — route to the commit action instead
-- User wants to *review completed work* against requirements — route to the review-work action instead
+- See `SKILL.md` routing table for sibling action selection.
 
 ## When This Runs
 
-- **Manually** when the user invokes it (e.g., `do work inspect`, `do work explain changes`)
+- **Manually** when the user invokes it (e.g., `do-work inspect`, `do-work explain changes`)
 
 ## Input
 
@@ -25,15 +24,15 @@ Unlike the commit action (which stages and commits), this action only reads and 
 
 ### Mode 1: All Changes (default)
 
-`do work inspect` — no arguments. Inspects ALL uncommitted changes in the working tree.
+`do-work inspect` — no arguments. Inspects ALL uncommitted changes in the working tree.
 
 ### Mode 2: REQ Scope
 
-`do work inspect REQ-005` — inspects ALL files from REQ-005's Implementation Summary, both uncommitted and already committed. Uncommitted files are assessed for commit readiness; committed files are shown for informational completeness. Unassociated uncommitted files are listed as paths at the bottom of the report without full analysis.
+`do-work inspect REQ-005` — inspects ALL files from REQ-005's Implementation Summary, both uncommitted and already committed. Uncommitted files are assessed for commit readiness; committed files are shown for informational completeness. Unassociated uncommitted files are listed as paths at the bottom of the report without full analysis.
 
 ### Mode 3: UR Scope
 
-`do work inspect UR-003` — inspects files associated with ANY REQ under UR-003 (both uncommitted and committed). Equivalent to Mode 2 across all REQs in the UR, with a unified report.
+`do-work inspect UR-003` — inspects files associated with ANY REQ under UR-003 (both uncommitted and committed). Equivalent to Mode 2 across all REQs in the UR, with a unified report.
 
 ## Steps
 
@@ -61,7 +60,7 @@ inspect action
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, report and exit.
 
-Run `git status --porcelain` to get all uncommitted changes — staged, unstaged, and untracked.
+Run `git status --porcelain --untracked-files=all` to get all uncommitted changes — staged, unstaged, and untracked. The `--untracked-files=all` (`-uall`) flag matters: plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so Step 2 would never see (or would try to "read") the files inside a new untracked folder. With `-uall`, every untracked file is listed individually.
 
 If the working tree is clean:
 - **No REQ/UR scope:** Report "No uncommitted changes" and exit.
@@ -352,8 +351,8 @@ No uncommitted changes.
 
 ## What This Action Does NOT Do
 
-- Create commits — use `do work commit` for that
-- Modify files — use your editor or `do work run` to fix issues
+- Create commits — use `do-work commit` for that
+- Modify files — use your editor or `do-work run` to fix issues
 - Create REQ files — it only reads existing REQs for traceability
 - Replace code review — this is a readiness check, not a thorough review
 - Run tests — it checks for test file existence, not test results

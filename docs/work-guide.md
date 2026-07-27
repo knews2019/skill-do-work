@@ -42,7 +42,7 @@ As the request moves through the pipeline, sections are appended:
 - `## Testing` — test results, red-green validation
 - `## Review` — scores, findings, acceptance result
 - `## Decisions` — numbered implementation choices (D-01, D-02...)
-- `## Discovered Tasks` — out-of-scope issues found during work
+- `## Discovered Tasks` — out-of-scope issues found during work; critical items and small test-only hygiene fixes auto-queue, the rest await your OK via `do-work clarify`
 - `## Lessons Learned` — what worked, what didn't
 
 ## Review gate
@@ -57,7 +57,7 @@ After testing, a multi-dimensional review runs:
 
 ## Open Questions
 
-Builders never block on ambiguities. They mark questions as `- [~]` with best-judgment reasoning and create `pending-answers` follow-ups. Run `do work clarify` later to review these decisions as a batch.
+Builders never block on ambiguities. They mark questions as `- [~]` with best-judgment reasoning and create `pending-answers` follow-ups. Run `do-work clarify` later to review these decisions as a batch.
 
 ## Checkpoints
 
@@ -65,7 +65,7 @@ At session end, a `do-work/CHECKPOINT.md` is written with the last completed REQ
 
 ## What happens when you run it
 
-A typical `do work run` session:
+A typical `do-work run` session:
 
 1. **Queue scan** — finds the next `pending` REQ file in `do-work/queue/`
 2. **Claim** — moves it to `working/` and sets `status: claimed` so no other agent grabs it
@@ -79,20 +79,29 @@ A typical `do work run` session:
 
 Each REQ is fully processed before the next one starts. If context limits are hit mid-REQ, a checkpoint is written so the next session can resume.
 
+## What `run` does (and does not) do
+
+A bulk `do-work run` has three properties worth knowing before firing 20 REQs at once.
+
+- **Dependency-aware ordering (opt-in via frontmatter).** If REQs declare `depends_on: [REQ-IDs]` in their frontmatter, the work loop honors it — a REQ is only picked up once every member of its `depends_on` has reached `completed` or `completed-with-issues`. REQs without `depends_on` fall back to numeric ID order. Cycles in `depends_on` are detected and the affected REQs are held under `status: blocked-dependency-cycle` for the user to resolve. Run `do-work roadmap` before a bulk run to see what's classified as Ready vs Blocked. To force a scoped run that ignores dependency gating for a specific REQ, use `do-work run REQ-NNN`. For wave-by-wave execution one dependency depth at a time, use `do-work run --wave N` (roots are depth 0). REQs that use `dependencies:` instead of `depends_on:` are honored as a legacy alias so muscle-memory typos don't silently bypass gating; `depends_on:` is canonical and wins when both are present.
+- **No mid-run pause for clarification.** Open Questions are answered by the builder with logged reasoning and a `pending-answers` follow-up REQ is queued for batch review. You'll see the questions when you next run `do-work clarify` — the loop itself never blocks on a prompt.
+- **Waiting on an external condition uses `status: blocked`.** When a REQ can't start until something outside the queue is true — LM Studio running, a designer answering, credentials provisioned — it carries `status: blocked` and a free-text `blocked_by` naming the condition (set at capture or when the builder hits the missing precondition mid-run before any edits land). This is distinct from `pending-answers` (a question for you) and `depends_on` (a wait on another REQ). Blocked REQs sit out of the run. If the REQ has an optional `blocked_check` shell probe, the next `do-work run` re-runs it and auto-unblocks on exit 0; otherwise confirm the condition via `do-work clarify` or edit the status back to `pending`. They surface on the board's *Needs input · Blocked* column with a "blocked by" badge.
+- **Failures classify, archive, and queue follow-ups; the loop always continues.** A failed REQ is classified, archived as `failed`, and a follow-up REQ is queued when appropriate; the loop then proceeds to the next pending REQ. Failures that trace back to a failed upstream REQ (via `addendum_to` or `depends_on`) are auto-classified as `spec` with an upstream pointer in the error message — so cascading failures aren't misdiagnosed as fresh code bugs. To triage what landed (including any `pending-answers` follow-ups for completed-with-issues outcomes), run `do-work clarify` after the queue drains.
+
 ## Trigger aliases
 
 All of these do the same thing — process the queue:
 
 ```
-do work run
-do work go
-do work start
-do work begin
-do work process
-do work execute
-do work build
-do work continue
-do work resume
+do-work run
+do-work go
+do-work start
+do-work begin
+do-work process
+do-work execute
+do-work build
+do-work continue
+do-work resume
 ```
 
 Use whichever feels natural. `continue` and `resume` read well after a break; `run` and `go` are good for fresh starts.
@@ -101,15 +110,15 @@ Use whichever feels natural. `continue` and `resume` read well after a break; `r
 
 - **`continue` vs fresh `run`** — No functional difference. Both scan the queue and pick the next pending REQ. Use `continue` when you're resuming a session; use `run` when you're starting fresh. The checkpoint system handles the actual resume logic.
 - **Failed items** — If a REQ fails review, the system tries one remediation pass. If it still fails, it archives with issues noted and optionally creates a follow-up REQ. You don't need to intervene manually.
-- **Context limits** — Long-running queues may hit context limits. The system writes `do-work/CHECKPOINT.md` before stopping. Just run `do work run` again in a new session — it picks up where it left off.
+- **Context limits** — Long-running queues may hit context limits. The system writes `do-work/CHECKPOINT.md` before stopping. Just run `do-work run` again in a new session — it picks up where it left off.
 - **One at a time** — The work action processes one REQ per loop iteration. This keeps commits atomic and reviews focused. Don't try to batch multiple REQs into one pass.
 
 ## Clarify mode
 
 ```
-do work clarify
-do work questions
-do work pending
+do-work clarify
+do-work questions
+do-work pending
 ```
 
 Reviews all `pending-answers` REQs. You can confirm the builder's choice, override it, skip, or discard. Answered REQs flip back to `pending` and re-enter the queue.

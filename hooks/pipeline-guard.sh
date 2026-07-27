@@ -10,13 +10,19 @@
 #           "hooks": [
 #             {
 #               "type": "command",
-#               "command": "bash hooks/pipeline-guard.sh"
+#               "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""
 #             }
 #           ]
 #         }
 #       ]
 #     }
 #   }
+#
+# The command is anchored to $CLAUDE_PROJECT_DIR — Claude Code runs hooks from the project
+# root, not from this skill directory, so a bare "hooks/pipeline-guard.sh" would resolve to
+# <project-root>/hooks/... and fail. The path also assumes the canonical install location
+# .claude/skills/do-work/; if you installed do-work elsewhere, adjust it to match. Do NOT
+# "simplify" this back to a relative path — it has regressed before.
 #
 # Exit codes:
 #   0 — Allow stop (no active pipeline or no pending steps)

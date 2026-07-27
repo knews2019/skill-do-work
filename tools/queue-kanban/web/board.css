@@ -1,0 +1,1707 @@
+/* ===========================================================================
+   queue-kanban — static board stylesheet
+   A calm, editorial dark theme for an engineering operations tool. No
+   framework, no gradients-for-decoration, no emoji glyphs. Column identity is
+   carried by a single restrained accent per column; everything else is
+   neutral ink on a deep, slightly cool ground.
+   =========================================================================== */
+
+/* The board toggles visibility through the `hidden` attribute (detail panel,
+   its resizer, calendar/board panels, the By-UR lens). Component rules set
+   `display: flex` etc., which would otherwise override the user-agent
+   `[hidden] { display: none }` and leave those elements visible on load. This
+   guard keeps `hidden` authoritative for every toggled element. */
+[hidden] {
+  display: none !important;
+}
+
+:root {
+  /* This is the default (dark) palette. A light counterpart is defined under
+     `@media (prefers-color-scheme: light)` immediately after this block, so the
+     board follows the OS light/dark setting with no toggle. `color-scheme` lets
+     native UI (the task-list checkboxes in card detail, scrollbars, form focus
+     rings) adapt to the active scheme as well. */
+  color-scheme: light dark;
+
+  /* Ground + surfaces (deep, faintly cool charcoal — not pure black). */
+  --bg-base: #0c0e12;
+  --bg-rail: #0a0c0f;
+  --surface-1: #131720;
+  --surface-2: #171c26;
+  --surface-3: #1e2530;
+  --surface-hover: #232b38;
+
+  /* Hairlines. */
+  --line-soft: rgba(255, 255, 255, 0.07);
+  --line-firm: rgba(255, 255, 255, 0.13);
+  --line-bright: rgba(255, 255, 255, 0.22);
+
+  /* Ink (all AA-or-better on the surfaces above). */
+  --ink-strong: #eef1f5;
+  --ink-base: #c7cdd6;
+  --ink-soft: #99a1ad;
+  --ink-faint: #6b7480;
+
+  /* Column accents — desaturated, equal-weight, distinguishable without shouting. */
+  --accent-pending: #d8a24a;
+  --accent-claimed: #6f9ce6;
+  --accent-blocked: #d97a59;
+  --accent-done: #66b585;
+  --accent-ur: #a98bd8;
+
+  /* Tinted accent backgrounds for badges/dots (very low alpha). */
+  --tint-pending: rgba(216, 162, 74, 0.14);
+  --tint-claimed: rgba(111, 156, 230, 0.14);
+  --tint-blocked: rgba(217, 122, 89, 0.14);
+  --tint-done: rgba(102, 181, 133, 0.14);
+  --tint-ur: rgba(169, 139, 216, 0.16);
+
+  --radius-card: 10px;
+  --radius-chip: 6px;
+  --radius-pill: 999px;
+
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03), 0 8px 24px rgba(0, 0, 0, 0.28);
+
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Menlo", "Consolas",
+    monospace;
+
+  --topbar-height: 68px;
+
+  /* Width of the docked detail panel. board.js updates this custom property as
+     the user drags the resizer (and restores a persisted value on load); the
+     clamp() in .detail-drawer keeps any value sane for the current viewport. */
+  --detail-panel-width: 620px;
+}
+
+/* ---------------------------------------------------------------------------
+   Light theme — selected automatically by the system setting
+   (prefers-color-scheme: light). Only the palette tokens are redefined; every
+   component rule reads them, so the whole board, calendar, drawer, and rendered
+   Markdown re-tone in one place. Column accents are darkened a step to hold
+   AA contrast on white. The top bar's background is the one element needing an
+   explicit override (it has a hardcoded translucent dark fill, and its controls
+   are token-driven so they re-tone automatically once the bar is light); that
+   rule lives at the END of this file so it wins on source order over the base
+   `.board-topbar`.
+   --------------------------------------------------------------------------- */
+@media (prefers-color-scheme: light) {
+  :root {
+    /* Ground + surfaces — calm cool-neutral off-white; cards lift to white. */
+    --bg-base: #f5f7fa;
+    --bg-rail: #e9edf2;
+    --surface-1: #ffffff;
+    --surface-2: #f1f4f8;
+    --surface-3: #e8ecf2;
+    --surface-hover: #dfe5ed;
+
+    /* Hairlines — cool slate ink at low alpha. */
+    --line-soft: rgba(17, 24, 39, 0.08);
+    --line-firm: rgba(17, 24, 39, 0.15);
+    --line-bright: rgba(17, 24, 39, 0.26);
+
+    /* Ink — slate, AA-or-better on the light surfaces above. */
+    --ink-strong: #161b24;
+    --ink-base: #39414f;
+    --ink-soft: #59636f;
+    --ink-faint: #6c7480;
+
+    /* Column accents — one step deeper so dots, bars, and accent text keep
+       contrast on white while holding the same hue identity as dark mode. */
+    --accent-pending: #8f5e10;
+    --accent-claimed: #3a6bc4;
+    --accent-blocked: #bd5138;
+    --accent-done: #3c875e;
+    --accent-ur: #7a59bd;
+
+    /* Tints behind badges/dots — accent hues, low alpha, visible on white. */
+    --tint-pending: rgba(143, 94, 16, 0.12);
+    --tint-claimed: rgba(58, 107, 196, 0.12);
+    --tint-blocked: rgba(189, 81, 56, 0.12);
+    --tint-done: rgba(60, 135, 94, 0.12);
+    --tint-ur: rgba(122, 89, 189, 0.14);
+
+    /* Shadows — soft and slate-tinted; faint top highlight instead of dark. */
+    --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.7), 0 6px 18px rgba(17, 24, 39, 0.09);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+/* The page is a fixed grid: top bar across the top, then board | resizer |
+   detail panel side by side (Jira-style split). The board — not the page — is
+   the scroll container, so opening or resizing the panel never hides content
+   behind an overlay; the board simply gets narrower. When the panel is hidden
+   its two columns collapse to zero and the board spans the full width. */
+body {
+  background-color: var(--bg-base);
+  color: var(--ink-base);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  overflow: hidden;
+}
+
+/* While the divider is being dragged: keep the col-resize cursor everywhere and
+   stop the drag from selecting board text. board.js toggles this class. */
+body.is-resizing-detail {
+  cursor: col-resize;
+  user-select: none;
+}
+
+.skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  background: var(--surface-3);
+  color: var(--ink-strong);
+  padding: 10px 16px;
+  border-radius: 0 0 8px 0;
+  z-index: 50;
+}
+.skip-link:focus {
+  left: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Top bar
+   -------------------------------------------------------------------------- */
+
+.board-topbar {
+  grid-column: 1 / -1;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: var(--topbar-height);
+  padding: 12px 28px;
+  background-color: rgba(12, 14, 18, 0.88);
+  backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.board-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.board-wordmark {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+}
+
+.board-wordmark-mark {
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+.board-project {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+  letter-spacing: 0.01em;
+}
+
+.board-generated {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+  letter-spacing: 0.01em;
+}
+
+.board-controls {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.control-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background-color: var(--surface-1);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-pill);
+}
+
+.control-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+  padding: 0 8px 0 6px;
+}
+
+.control-button {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.control-button:hover {
+  color: var(--ink-strong);
+  background-color: var(--surface-2);
+}
+.control-button.is-active {
+  background-color: var(--surface-3);
+  color: var(--ink-strong);
+  box-shadow: inset 0 0 0 1px var(--line-firm);
+}
+.control-button:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: 2px;
+}
+
+/* Shared filter bar — search box + domain/status selects, styled like the
+   surrounding pill groups. */
+.control-group-filters {
+  gap: 6px;
+  padding: 4px 6px;
+}
+.filter-search {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-strong);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  width: 170px;
+  border-radius: var(--radius-pill);
+}
+.filter-search::placeholder {
+  color: var(--ink-faint);
+}
+.filter-search:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: -1px;
+}
+.filter-select {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  padding: 6px 10px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  max-width: 150px;
+}
+.filter-select:hover {
+  color: var(--ink-strong);
+  background-color: var(--surface-2);
+}
+.filter-select:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: -1px;
+}
+.filter-select option {
+  color: initial;
+  background-color: initial;
+}
+
+/* --------------------------------------------------------------------------
+   View panels
+   -------------------------------------------------------------------------- */
+
+.board-main {
+  grid-row: 2;
+  grid-column: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px 28px 56px;
+  outline: none;
+  /* The board is a size container so the kanban columns can respond to the
+     width the detail panel leaves them, not to the viewport — see the
+     @container rules in the responsive section. */
+  container-type: inline-size;
+}
+
+/* Data warnings banner (duplicate REQ ids, unrecognized statuses) — rendered
+   by board.js only when the data island carries warnings. */
+.board-warnings {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--accent-blocked);
+  border-radius: var(--radius-card);
+  background-color: var(--tint-blocked);
+  color: var(--ink-base);
+}
+.board-warnings-title {
+  color: var(--accent-blocked);
+}
+.board-warnings-list {
+  margin: 6px 0 0;
+  padding-left: 20px;
+}
+
+/* Notes strip (do-work/notes.md) — hand-written next-step hints, not tickets.
+   Deliberately quieter than a card: a flat surface with a hairline, no shadow
+   and no accent bar, so it reads as marginalia above the queue rather than as a
+   fifth column. Collapsible, open by default. */
+.board-notes {
+  margin: 0 0 20px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-card);
+  background-color: var(--surface-1);
+}
+.board-notes-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+}
+.board-notes-summary::-webkit-details-marker {
+  display: none;
+}
+.board-notes-summary:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: -2px;
+  border-radius: var(--radius-card);
+}
+.board-notes-title {
+  color: var(--ink-strong);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.board-notes-count {
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--surface-3);
+  color: var(--ink-base);
+  font-variant-numeric: tabular-nums;
+}
+/* The source path is orientation, not content — it yields first when narrow. */
+.board-notes-source {
+  margin-left: auto;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+.board-notes-list {
+  margin: 0;
+  padding: 2px 16px 14px;
+  list-style: none;
+}
+.board-note {
+  display: flex;
+  gap: 12px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-top: 1px solid var(--line-soft);
+  color: var(--ink-base);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+.board-note-date {
+  flex: none;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-variant-numeric: tabular-nums;
+}
+.board-note-text {
+  min-width: 0;
+}
+
+@container (max-width: 640px) {
+  .board-notes-source {
+    display: none;
+  }
+  .board-note {
+    flex-direction: column;
+    gap: 2px;
+  }
+}
+
+/* Completion anomalies strip — terminal REQs whose completion instant cannot
+   be resolved. Loud on purpose (same alarm palette as the warnings banner):
+   these are bookkeeping bugs to fix, so the strip stays visible in every view
+   and never hides behind the recent-window toggle or a filter. */
+.board-anomalies {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--accent-blocked);
+  border-radius: var(--radius-card);
+  background-color: var(--tint-blocked);
+  color: var(--ink-base);
+}
+.board-anomalies-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.board-anomalies-title {
+  color: var(--accent-blocked);
+  font-size: 0.82rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.board-anomalies-count {
+  padding: 1px 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--surface-3);
+  color: var(--ink-base);
+  font-variant-numeric: tabular-nums;
+}
+.board-anomalies-hint {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+.board-anomalies-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.board-anomaly-reason {
+  margin: 6px 0 0;
+  color: var(--accent-blocked);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.view-panel {
+  display: none;
+}
+.view-panel.is-active {
+  display: block;
+}
+
+/* --------------------------------------------------------------------------
+   Kanban columns
+   -------------------------------------------------------------------------- */
+
+.kanban-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(248px, 1fr));
+  gap: 18px;
+  align-items: start;
+}
+
+.kanban-column {
+  --column-accent: var(--ink-faint);
+  --column-tint: var(--surface-3);
+  background-color: var(--surface-1);
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  padding: 0;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+}
+.kanban-column[data-column="pending"] {
+  --column-accent: var(--accent-pending);
+  --column-tint: var(--tint-pending);
+}
+.kanban-column[data-column="claimed"] {
+  --column-accent: var(--accent-claimed);
+  --column-tint: var(--tint-claimed);
+}
+.kanban-column[data-column="needs-input"] {
+  --column-accent: var(--accent-blocked);
+  --column-tint: var(--tint-blocked);
+}
+.kanban-column[data-column="recently-done"] {
+  --column-accent: var(--accent-done);
+  --column-tint: var(--tint-done);
+}
+
+.column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--line-soft);
+  position: relative;
+}
+.column-header::before {
+  content: "";
+  position: absolute;
+  left: 16px;
+  top: 0;
+  width: 26px;
+  height: 2px;
+  background-color: var(--column-accent);
+  border-radius: 0 0 2px 2px;
+}
+
+.column-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--ink-soft);
+}
+
+.column-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--column-accent);
+  background-color: var(--column-tint);
+  border-radius: var(--radius-pill);
+  padding: 2px 9px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.column-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  flex: 1;
+}
+
+.column-empty {
+  color: var(--ink-faint);
+  font-size: 13px;
+  font-style: italic;
+  padding: 18px 4px;
+  text-align: center;
+}
+
+/* Pending sub-groups (Ready / Waiting on dependencies). Rendered only when at
+   least one pending REQ is waiting — otherwise the column stays a flat list. */
+.pending-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pending-group + .pending-group {
+  margin-top: 6px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+}
+.pending-group-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  color: var(--ink-faint);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.pending-group-count {
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------------------------
+   Cards
+   -------------------------------------------------------------------------- */
+
+.req-card {
+  --card-accent: var(--column-accent, var(--ink-faint));
+  position: relative;
+  text-align: left;
+  width: 100%;
+  appearance: none;
+  background-color: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-left: 2px solid var(--card-accent);
+  border-radius: var(--radius-card);
+  padding: 13px 15px 14px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  transition: border-color 120ms ease, background-color 120ms ease,
+    transform 120ms ease;
+}
+.req-card:hover {
+  background-color: var(--surface-hover);
+  border-color: var(--line-firm);
+  border-left-color: var(--card-accent);
+  transform: translateY(-1px);
+}
+.req-card:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: 2px;
+}
+
+.req-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.req-card-id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink-base);
+}
+
+.req-card-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background-color: var(--card-accent);
+  flex: none;
+}
+
+/* Unrecognized status — outside the Schema Read Contract vocabulary, parked in
+   Needs input / Blocked by bucketColumns. Highlighted so it reads as a data
+   defect to fix, not a normal blocked ticket; the drawer carries the fix prompt. */
+.req-card-status.is-status-unrecognized {
+  color: var(--accent-blocked);
+  font-weight: 600;
+}
+.req-card-status.is-status-unrecognized .status-dot {
+  background-color: var(--accent-blocked);
+}
+.status-invalid-flag {
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px solid var(--accent-blocked);
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-blocked);
+  background-color: var(--tint-blocked);
+}
+.detail-status-invalid {
+  display: inline-flex;
+  align-items: center;
+  color: var(--accent-blocked);
+  font-weight: 600;
+}
+
+/* Cancelled (won't-do) — terminally resolved, so it shares the done column,
+   but visibly NOT a success: struck-through muted title, grey dot. */
+.req-card[data-status="cancelled"] .req-card-title {
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  color: var(--ink-soft);
+}
+.req-card[data-status="cancelled"] .status-dot {
+  background-color: var(--ink-faint);
+}
+
+/* Reserved — allocated to a DIFFERENT worktree/cloud session (do-work reserve).
+   Shares the Claimed column (someone owns it) but renders grayed out: it is not
+   this session's work. Hover/focus restores legibility so the owner badge and
+   the stale (>24h) recategorize hint stay readable. */
+.req-card[data-status="reserved"] {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+.req-card[data-status="reserved"]:hover,
+.req-card[data-status="reserved"]:focus-visible {
+  opacity: 0.9;
+  filter: grayscale(0.2);
+}
+.req-card[data-status="reserved"] .status-dot {
+  background-color: var(--ink-faint);
+}
+/* Blocked (waiting on an external condition) — shares the Needs-input/Blocked
+   column; the dot carries the blocked accent so it reads apart from a plain
+   pending-answers card at a glance. */
+.req-card[data-status="blocked"] .status-dot {
+  background-color: var(--accent-blocked);
+}
+.badge-reserved {
+  font-family: var(--font-mono);
+}
+.badge-reservation-stale {
+  color: var(--accent-blocked);
+  border-color: rgba(217, 122, 89, 0.4);
+  font-weight: 600;
+}
+
+.req-card-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 520;
+  line-height: 1.38;
+  color: var(--ink-strong);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.req-card-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--line-soft);
+  background-color: var(--surface-3);
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.badge-label {
+  color: var(--ink-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.badge-domain {
+  color: var(--ink-base);
+}
+.badge-ur {
+  color: var(--accent-ur);
+  background-color: var(--tint-ur);
+  border-color: rgba(169, 139, 216, 0.28);
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.badge-route {
+  font-family: var(--font-mono);
+}
+/* "unblocks N" — this REQ is what N unresolved REQs are waiting on. Carries the
+   done accent: landing it is what turns other cards green. */
+.badge-unblocks {
+  color: var(--accent-done);
+  background-color: var(--tint-done);
+  border-color: rgba(102, 181, 133, 0.28);
+  font-variant-numeric: tabular-nums;
+}
+/* Completion anomaly — broken completion bookkeeping (see the strip styles
+   above). Marks the card wherever it renders, not just inside the strip. */
+.badge-completion-anomaly {
+  color: var(--accent-blocked);
+  background-color: var(--tint-blocked);
+  border-color: var(--accent-blocked);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.req-card.is-completion-anomaly {
+  border-color: var(--accent-blocked);
+}
+/* Future-dated frontmatter stamp — a *_at field parsed later than the board's
+   generation time (+2min skew), the signature of local wall-clock time written
+   with a Z suffix. Pairs with the stopwatch's "⚠ clock skew" marker so a bad
+   stamp never renders as a silently frozen timer. */
+.badge-future-timestamp {
+  color: var(--accent-blocked);
+  border-color: rgba(217, 122, 89, 0.4);
+  font-weight: 600;
+}
+/* "blocked by <condition>" — waiting on an external condition (status: blocked).
+   Shares the Needs-input/Blocked column and its accent; the label names the
+   condition (JS truncates the text and keeps the full string in the tooltip). */
+.badge-blocked {
+  color: var(--accent-blocked);
+  background-color: var(--tint-blocked);
+  border-color: var(--accent-blocked);
+  font-weight: 600;
+  max-width: 100%;
+}
+
+.req-card-deps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.dep-chip {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+  background-color: var(--surface-1);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-chip);
+  padding: 3px 7px;
+}
+/* A dependency that has landed recedes; one that has not is what holds the card
+   back, so it carries the blocked accent. */
+.dep-chip.is-met {
+  color: var(--ink-faint);
+  text-decoration: line-through;
+  text-decoration-color: var(--line-bright);
+}
+.dep-chip.is-unmet {
+  color: var(--accent-blocked);
+  background-color: var(--tint-blocked);
+  border-color: rgba(217, 122, 89, 0.28);
+}
+.dep-chip-lead {
+  color: var(--ink-faint);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.req-card-completed {
+  font-size: 11px;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+}
+
+/* Ticking "6min ago" companion rendered next to every absolute instant. */
+.relative-time {
+  color: var(--ink-faint);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.relative-time::before {
+  content: "· ";
+}
+
+/* Ticking stopwatch ("4m 07s") on an actively claimed ticket — tabular digits
+   so the seconds tick in place instead of jittering the line width. */
+.elapsed-duration {
+  color: var(--ink-faint);
+  opacity: 0.85;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.elapsed-duration::before {
+  content: "· ";
+}
+
+/* --------------------------------------------------------------------------
+   By-UR lens
+   -------------------------------------------------------------------------- */
+
+.user-request-lens {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.ur-group {
+  background-color: var(--surface-1);
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.ur-group-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  appearance: none;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  color: inherit;
+  font: inherit;
+  padding: 14px 18px;
+  cursor: pointer;
+}
+.ur-group-head:hover {
+  background-color: var(--surface-2);
+}
+.ur-group-head:focus-visible {
+  outline: 2px solid var(--accent-ur);
+  outline-offset: -2px;
+}
+
+.ur-id {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--accent-ur);
+  background-color: var(--tint-ur);
+  border-radius: var(--radius-chip);
+  padding: 3px 9px;
+  flex: none;
+}
+.ur-title {
+  color: var(--ink-strong);
+  font-weight: 520;
+  font-size: 14px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ur-count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  flex: none;
+}
+.ur-synthetic {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent-pending);
+  border: 1px solid rgba(216, 162, 74, 0.32);
+  border-radius: var(--radius-chip);
+  padding: 2px 6px;
+}
+
+.ur-group-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 16px 18px 18px;
+}
+.ur-group-cards .req-card {
+  --column-accent: var(--ink-faint);
+}
+
+/* Empty state and the "n resolved URs hidden" footer for the by-UR lens. */
+.ur-lens-empty {
+  color: var(--ink-faint);
+  font-size: 14px;
+  padding: 32px 4px;
+  text-align: center;
+}
+.ur-lens-hidden-note {
+  color: var(--ink-faint);
+  font-size: 12px;
+  padding: 12px 4px 0;
+  text-align: center;
+}
+
+/* --------------------------------------------------------------------------
+   Calendar
+   -------------------------------------------------------------------------- */
+
+.calendar-intro {
+  margin-bottom: 18px;
+}
+.calendar-heading {
+  margin: 0 0 4px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+.calendar-subhead {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-faint);
+}
+
+.calendar-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.calendar-day {
+  display: grid;
+  grid-template-columns: 168px 1fr;
+  gap: 22px;
+  padding: 18px 0;
+  border-top: 1px solid var(--line-soft);
+}
+.calendar-day:last-child {
+  border-bottom: 1px solid var(--line-soft);
+}
+
+.calendar-day-label {
+  /* Sticks within .board-main (the scroll container), which starts below the
+     top bar — so no top-bar offset is needed here. */
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.calendar-day-weekday {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+.calendar-day-date {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-strong);
+  font-family: var(--font-mono);
+}
+.calendar-day-count {
+  font-size: 12px;
+  color: var(--accent-done);
+}
+
+.calendar-day-entries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-content: flex-start;
+}
+
+.calendar-chip {
+  appearance: none;
+  font: inherit;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 320px;
+  background-color: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-chip);
+  padding: 6px 10px;
+  color: var(--ink-base);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+.calendar-chip:hover {
+  background-color: var(--surface-hover);
+  border-color: var(--line-firm);
+}
+.calendar-chip:focus-visible {
+  outline: 2px solid var(--accent-done);
+  outline-offset: 2px;
+}
+.calendar-chip-id {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent-done);
+  flex: none;
+}
+.calendar-chip-title {
+  font-size: 12px;
+  color: var(--ink-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Detail panel — docked beside the board with a draggable divider (like Jira's
+   issue split view), not a modal overlay. The board keeps working while it is
+   open; the divider adjusts how the width is shared.
+   -------------------------------------------------------------------------- */
+
+.detail-resizer {
+  grid-row: 2;
+  grid-column: 2;
+  width: 10px;
+  cursor: col-resize;
+  /* Let pointer events own touch drags instead of scrolling the page. */
+  touch-action: none;
+  position: relative;
+  background: transparent;
+  transition: background-color 120ms ease;
+}
+.detail-resizer:hover,
+.detail-resizer:focus-visible,
+body.is-resizing-detail .detail-resizer {
+  background-color: var(--tint-claimed);
+}
+.detail-resizer:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: -2px;
+}
+/* Centered grab pill — the always-visible affordance that this edge drags. */
+.detail-resizer::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px;
+  height: 36px;
+  border-radius: 3px;
+  background-color: var(--line-bright);
+}
+.detail-resizer:hover::before,
+.detail-resizer:focus-visible::before,
+body.is-resizing-detail .detail-resizer::before {
+  background-color: var(--accent-claimed);
+}
+
+.detail-drawer {
+  grid-row: 2;
+  grid-column: 3;
+  min-height: 0;
+  /* The custom property is set by the resizer drag; the clamp keeps any stored
+     or dragged value inside [minimum panel, viewport minus visible board]. The
+     360px/340px bounds mirror the constants in board.js. */
+  width: clamp(360px, var(--detail-panel-width), calc(100vw - 340px));
+  background-color: var(--surface-1);
+  border-left: 1px solid var(--line-firm);
+  display: flex;
+  flex-direction: column;
+  padding: 22px 26px 32px;
+  overflow-y: auto;
+  animation: drawer-in 180ms cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+@keyframes drawer-in {
+  from {
+    transform: translateX(24px);
+    opacity: 0.4;
+  }
+}
+
+.detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.detail-head-ids {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.detail-kind {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+  border: 1px solid var(--line-firm);
+  border-radius: var(--radius-chip);
+  padding: 3px 7px;
+}
+.detail-id {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--ink-strong);
+}
+
+.detail-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detail-close,
+.detail-copy {
+  appearance: none;
+  border: 1px solid var(--line-firm);
+  background-color: var(--surface-2);
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 14px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+.detail-close:hover,
+.detail-copy:hover {
+  color: var(--ink-strong);
+  background-color: var(--surface-3);
+}
+.detail-close:focus-visible,
+.detail-copy:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: 2px;
+}
+/* Transient feedback states set by board.js after a copy attempt. */
+.detail-copy.is-copied {
+  color: var(--accent-done);
+  border-color: currentColor;
+}
+.detail-copy.is-copy-failed {
+  color: var(--accent-blocked);
+  border-color: currentColor;
+}
+
+.detail-title {
+  margin: 0 0 16px;
+  font-size: 20px;
+  font-weight: 620;
+  line-height: 1.3;
+  color: var(--ink-strong);
+  letter-spacing: -0.01em;
+}
+
+.detail-meta {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 16px;
+  margin: 0 0 22px;
+  padding: 16px 18px;
+  background-color: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+}
+.detail-meta dt {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-faint);
+  align-self: center;
+}
+.detail-meta dd {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-base);
+}
+.detail-meta dd a {
+  color: var(--accent-claimed);
+}
+
+/* Cross-reference links — REQ/UR ids that open a drawer, file paths that open
+   the read-only /file view, and URLs. Always underlined so a link is
+   recognizable as one without hovering (the old UR chip read as a plain
+   badge). Ticket and file links keep the mono ticket/path look. */
+.ticket-link,
+.repo-file-link,
+.external-url-link {
+  color: var(--accent-claimed);
+  text-decoration: underline;
+  text-decoration-color: rgba(111, 156, 230, 0.45);
+  text-underline-offset: 3px;
+}
+.ticket-link,
+.repo-file-link {
+  font-family: var(--font-mono);
+}
+.ticket-link:hover,
+.repo-file-link:hover,
+.external-url-link:hover {
+  text-decoration-color: var(--accent-claimed);
+}
+
+/* File-path mention the Go build could NOT find in the repo — rendered as
+   plain (non-link) text in the blocked accent so a dead reference is visible
+   at a glance. */
+.repo-file-missing {
+  color: var(--accent-blocked);
+}
+.detail-meta .meta-chip {
+  font-family: var(--font-mono);
+}
+
+/* "Depends on" in the drawer: each dependency with the status that decides
+   whether it is met, so the reason a REQ is waiting is readable in place. */
+.detail-dep-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.detail-dep {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+}
+.detail-dep-id {
+  font-family: var(--font-mono);
+}
+.detail-dep-status {
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.detail-dep.is-unmet .detail-dep-status {
+  color: var(--accent-blocked);
+}
+.detail-dep.is-met .detail-dep-id {
+  color: var(--ink-faint);
+}
+
+/* Rendered Markdown body */
+.markdown-body {
+  color: var(--ink-base);
+  font-size: 14px;
+  line-height: 1.62;
+  word-wrap: break-word;
+  /* Cap the measure: on a wide drawer, uncapped prose runs 200+ characters
+     per line and becomes unreadable. ~90ch keeps paragraphs scannable while
+     tables and code blocks still get their own overflow-x scrolling. */
+  max-width: 90ch;
+}
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  color: var(--ink-strong);
+  line-height: 1.3;
+  margin: 26px 0 10px;
+  font-weight: 620;
+}
+.markdown-body h1 {
+  font-size: 19px;
+}
+.markdown-body h2 {
+  font-size: 16px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.markdown-body h3 {
+  font-size: 14px;
+}
+.markdown-body p {
+  margin: 0 0 12px;
+}
+.markdown-body a {
+  color: var(--accent-claimed);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(111, 156, 230, 0.35);
+}
+.markdown-body a:hover {
+  border-bottom-color: var(--accent-claimed);
+}
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0 0 12px;
+  padding-left: 22px;
+}
+.markdown-body li {
+  margin: 4px 0;
+}
+.markdown-body li input[type="checkbox"] {
+  margin-right: 8px;
+  accent-color: var(--accent-done);
+}
+.markdown-body ul:has(> li > input[type="checkbox"]) {
+  list-style: none;
+  padding-left: 4px;
+}
+.markdown-body code {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  background-color: var(--surface-3);
+  border: 1px solid var(--line-soft);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.markdown-body pre {
+  background-color: var(--bg-rail);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  margin: 0 0 14px;
+}
+.markdown-body pre code {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font-size: 12.5px;
+  color: var(--ink-base);
+}
+.markdown-body blockquote {
+  margin: 0 0 14px;
+  padding: 4px 16px;
+  border-left: 3px solid var(--line-firm);
+  color: var(--ink-soft);
+}
+.markdown-body hr {
+  border: 0;
+  border-top: 1px solid var(--line-soft);
+  margin: 22px 0;
+}
+.markdown-body table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0 0 14px;
+  font-size: 13px;
+}
+.markdown-body th,
+.markdown-body td {
+  border: 1px solid var(--line-soft);
+  padding: 7px 11px;
+  text-align: left;
+}
+.markdown-body th {
+  background-color: var(--surface-2);
+  color: var(--ink-strong);
+}
+.markdown-body strong {
+  color: var(--ink-strong);
+  font-weight: 620;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive — hold up down to a laptop width, then degrade gracefully.
+
+   The kanban columns respond to the BOARD's width (container queries against
+   .board-main), not the viewport — opening or widening the detail panel
+   narrows the board, and the columns re-wrap exactly as if the window itself
+   had shrunk.
+   -------------------------------------------------------------------------- */
+
+@container (max-width: 1120px) {
+  .kanban-columns {
+    grid-template-columns: repeat(2, minmax(240px, 1fr));
+  }
+}
+
+@container (max-width: 560px) {
+  .kanban-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .board-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .board-controls {
+    justify-content: flex-start;
+  }
+  .calendar-day {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .calendar-day-label {
+    position: static;
+    flex-direction: row;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .board-main {
+    padding: 18px 16px 48px;
+  }
+  /* Too narrow for a split view: the panel takes the whole screen and the
+     divider disappears (the Close button and Escape still dismiss it). */
+  .detail-resizer {
+    display: none !important;
+  }
+  .detail-drawer {
+    position: fixed;
+    inset: 0;
+    width: auto;
+    z-index: 40;
+    border-left: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Light-theme top bar. Kept here, after the base `.board-topbar` rule, so the
+   equal-specificity override wins on source order. The bar's contents are all
+   token-driven, so a light background is all that's needed for the wordmark,
+   labels, and control pills to land on a readable light surface. */
+@media (prefers-color-scheme: light) {
+  .board-topbar {
+    background-color: rgba(245, 247, 250, 0.85);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Testing view — who tested which finished REQ. Reuses the kanban column
+   shell; each testing column gets its own restrained accent, and cards gain a
+   meta line, an optional feedback note, and an action row.
+   -------------------------------------------------------------------------- */
+
+.kanban-column[data-column="testing-ready"] {
+  --column-accent: var(--accent-pending);
+  --column-tint: var(--tint-pending);
+}
+.kanban-column[data-column="testing-in-testing"] {
+  --column-accent: var(--accent-claimed);
+  --column-tint: var(--tint-claimed);
+}
+.kanban-column[data-column="testing-returned"] {
+  --column-accent: var(--accent-blocked);
+  --column-tint: var(--tint-blocked);
+}
+.kanban-column[data-column="testing-tested"] {
+  --column-accent: var(--accent-done);
+  --column-tint: var(--tint-done);
+}
+
+.testing-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 8px 12px;
+  background-color: var(--surface-1);
+  border: 1px solid var(--line-soft);
+  border-radius: 14px;
+}
+.testing-toolbar .filter-select,
+.testing-toolbar .filter-search {
+  background-color: var(--surface-2);
+  border-radius: var(--radius-chip);
+}
+.testing-profile-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.testing-toolbar-note {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.testing-toolbar-note code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+.testing-toolbar-error {
+  font-size: 12px;
+  color: var(--accent-blocked);
+}
+
+.testing-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.testing-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 2px;
+}
+.testing-meta-chip {
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 8px;
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--line-soft);
+  background-color: var(--surface-1);
+  color: var(--ink-soft);
+}
+.testing-meta-chip.is-invalid {
+  color: var(--accent-blocked);
+  border-color: rgba(217, 122, 89, 0.4);
+  font-weight: 600;
+}
+
+.testing-feedback {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-base);
+  background-color: var(--tint-blocked);
+  border: 1px solid rgba(217, 122, 89, 0.28);
+  border-radius: var(--radius-chip);
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 130px;
+  overflow-y: auto;
+}
+
+.testing-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.testing-action {
+  font-size: 12px;
+  padding: 5px 12px;
+  background-color: var(--surface-2);
+  box-shadow: inset 0 0 0 1px var(--line-soft);
+}
+.testing-action:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.testing-action-clear {
+  color: var(--ink-faint);
+  background-color: transparent;
+  box-shadow: none;
+}
+
+.testing-feedback-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.testing-feedback-input {
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink-strong);
+  background-color: var(--surface-1);
+  border: 1px solid var(--line-firm);
+  border-radius: var(--radius-chip);
+  padding: 8px 10px;
+  resize: vertical;
+  min-height: 64px;
+}
+.testing-feedback-input:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: 1px;
+}
+
+/* Testing badge on the main board/calendar cards — the same record, visible
+   without switching views. */
+.badge-testing-tested {
+  color: var(--accent-done);
+  background-color: var(--tint-done);
+  border-color: rgba(102, 181, 133, 0.28);
+}
+.badge-testing-in-testing {
+  color: var(--accent-claimed);
+  background-color: var(--tint-claimed);
+  border-color: rgba(111, 156, 230, 0.28);
+}
+.badge-testing-returned {
+  color: var(--accent-blocked);
+  background-color: var(--tint-blocked);
+  border-color: rgba(217, 122, 89, 0.28);
+}

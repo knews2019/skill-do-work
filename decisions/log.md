@@ -16,7 +16,7 @@ related:
     rel: evidence-for
   - page: adr-005-pipeline-is-stateful-and-resumable
     rel: evidence-for
-  - page: adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles
+  - page: adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles
     rel: evidence-for
   - page: adr-007-close-the-pipeline-with-present-and-a-technical-debrief
     rel: evidence-for
@@ -28,8 +28,12 @@ related:
     rel: evidence-for
   - page: adr-011-interview-framework-with-prescriptive-templates
     rel: evidence-for
+  - page: adr-013-harden-the-vendored-skill-distribution-model
+    rel: evidence-for
+  - page: adr-014-considered-declined-autonomous-loop-until-done
+    rel: evidence-for
 created: 2026-04-15
-updated: 2026-04-16
+updated: 2026-06-29
 confidence: high
 ---
 
@@ -56,7 +60,7 @@ Append-only timeline. Historical entries use the original decision dates from `C
 ## [2026-04-10] Queue and workflow coordination harden
 
 - Accepted [[adr-004-canonicalize-pending-reqs-under-do-work-queue]] from `0.60.3`: pending REQs live in `do-work/queue/`.
-- Accepted [[adr-006-pipeline-drains-follow-up-work-in-bounded-reviewed-cycles]] from `0.56.0` through `0.56.2`: post-pipeline queue continuation happens in bounded run-review loops.
+- Accepted [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]] from `0.56.0` through `0.56.2`: post-pipeline queue continuation happens in bounded run-review loops.
 - Accepted [[adr-002-load-reusable-spec-templates-during-work]] from `0.59.0`: `specs/` templates are a reusable scaffold for recurring task types.
 
 ## [2026-04-12] Always-on quality guardrails
@@ -76,3 +80,23 @@ Append-only timeline. Historical entries use the original decision dates from `C
 ## [2026-04-16] Interview framework lands
 
 - Accepted [[adr-011-interview-framework-with-prescriptive-templates]] from `0.67.0`: added `interview` action with prescriptive templates under `interviews/`, first template `work-operating-model`, stateful/resumable sessions, and BKB integration via `ingest`.
+
+## [2026-06-01] work.md re-split into orchestrator + companion
+
+- Reaffirmed [[adr-001-modular-action-prompts-and-companion-references]] from `0.84.0` (REQ-001): `work.md` regrew past the token budget and was split again into a ten-step orchestrator plus a new `actions/work-reference.md` companion (schema, Schema Read Contract, step/exit templates, failure classification, commit procedures). Supersedes the earlier note that `work-reference.md` had been permanently re-inlined — the split/inline decision remains fluid.
+
+## [2026-06-15] Vendored-skill distribution hardened
+
+- Accepted [[adr-013-harden-the-vendored-skill-distribution-model]] from `0.91.0`: anchored the bundled hook sample paths to `$CLAUDE_PROJECT_DIR/.claude/skills/do-work/`, made `version update` non-clobbering (committed-customization detection, non-git snapshot, post-update audit), and `export-ignore`d maintainer-internal files (`decisions/`, dev dotfiles, `_dev/`) from the install tarball. Closes a hook-path regression that downstream consumers had been re-patching by hand across multiple releases.
+
+## [2026-06-29] Autonomous loop-until-done re-add considered and declined
+
+- Declined [[adr-014-considered-declined-autonomous-loop-until-done]]: re-adding the `ultracode-fable` / loop-until-done workflow (deleted in `ecbe59f`, guarded by `_dev/tests/contract-regressions.sh`) was re-proposed and re-verified read-only. Every model-agnostic capability already survives as canon (`crew-members/background-agents.md`, `crew-members/karpathy.md`, `actions/work.md` Step 10, `SKILL.md` dispatch, the explicit-staging guards, `crew-members/testing.md`, `actions/review-work.md`); only the model-specific Fable/Opus/Sonnet/Haiku tier table was lost, intentionally, as out of scope for a model-agnostic skill. No gap cleared `crew-members/maintenance.md`'s replay bar. Recorded to stop the recurring re-investigation; aligns with 0.98.0 "The Delete Key".
+
+## [2026-06-30] Maintenance crew gets a real load path
+
+- Accepted [[adr-015-load-maintenance-crew-via-req-marker]]: closed REQ-014's deferred D-01 loader gap (and an external P2 review finding) by adding a `maintenance: true` REQ marker that loads `crew-members/maintenance.md` in `actions/work.md` Step 6. Capture sets the marker for removal/narrowing findings on the skill's own instructions (e.g. `do-work quick-wins` removals of redundant rules / over-broad config); it loads *alongside* karpathy, never instead of it. Marker-only by design — no description heuristic, which would misfire on ordinary implementation REQs and load the opposite posture from karpathy's surgical-changes rule. Also tightened `actions/quick-wins.md` so app-source dead-code removal stays karpathy-scoped rather than being mislabeled a maintenance pass.
+
+## [2026-07-01] queue-kanban board vendored into the skill
+
+- Accepted [[adr-016-vendor-queue-kanban-into-the-skill]]: moved the standalone `queue-kanban` Go tool (imported from `g1w-game-find-the-difference` @ 1.1.0) into `tools/queue-kanban/` as shipped source, so `do-work update` carries the board into every consumer from one upstream instead of the per-repo `INSTALL.md` copy dance that had already spawned divergent copies. Added a `do-work board` action (serve / static / summary; read-only viewer; the one action needing the Go toolchain, precondition-checked and graceful when absent). Folded the tool's independent semver changelog into the skill's version (its history preserved in the ADR appendix). Hardened `actions/version.md`'s update path to treat `tools/` as a shipped path and to exclude the gitignored binary from the fresh-upstream diff. Co-location also puts the board's parser in the same repo as the `actions/work-reference.md` Schema Read Contract it must track. Extends ADR-013's whole-tree tarball distribution.
