@@ -195,12 +195,114 @@ The trigger is the *condition above*, not the caller list: **any reader that fil
 
 ## Crash Recovery (Step 1)
 
-**Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run was interrupted. For each recovered REQ:
+**Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run may have been interrupted — but a live coexisting session's claimed file looks identical to a crashed one, so a concurrency gate runs first.
+
+**Concurrency gate (apply every time this runs, including on a Step 10 → Step 1 loop iteration within the same session — it re-reads the lock file fresh each time, so it never depends on this session's own memory of an earlier lock-guard choice).** Read `do-work/orchestrator-lock.json`. For each `REQ-*.md` found in `working/`, extract its id and check whether a session *other than this one* currently and freshly claims it: the id matches the top-level holder's `claimed_req` (holder `session_id` ≠ this session's) with `heartbeat_at` ≤45 minutes old, or it matches any `coexisting_sessions[].claimed_req` (entry `session_id` ≠ this session's) with that entry's `heartbeat_at` ≤45 minutes old. **Skip that file** if so — it belongs to a live session, not an interrupted one. Recover every other file below, including files whose claiming session has itself gone stale past 45 minutes — that's the self-heal path. Full lock file shape: `actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**.
+
+For each REQ file that passes the gate (not actively claimed by another live session):
 1. Reset frontmatter: set `status` to `pending`, **unless** the REQ file contains a `## Open Questions` section with at least one unresolved `- [ ]` item — in that case, restore `status` to `pending-answers`. (If the `## Open Questions` section exists but all items are already `[x]` or `[~]`, or if no `## Open Questions` section exists at all, set `status` to `pending`.) **Exception — a recovered REQ that already carries `status: blocked` with a `blocked_by` condition stays `blocked`** (the mid-run blocked flip completed its frontmatter write before the crash; its condition is unchanged and it must not be silently promoted to runnable). Remove `claimed_at` and `route`; leave `blocked_by`/`blocked_at`/`blocked_check` intact.
 2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, `## Scope`, `## Pre-Flight`, `## Implementation Summary`, `## Qualification`, `## Testing`, `## Review`, `## Lessons Learned`, `## Orientation`, `## Decisions`, and `## Discovered Tasks` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact.
 3. Move the REQ back to `do-work/queue/`
 
-Once `working/` is empty, proceed with finding the next request.
+Once every file this session is allowed to touch has been recovered (a live session's file may remain in `working/` — that's expected, not an error), proceed with finding the next request.
+
+## Concurrent-Orchestrator Lock Guard (Step 1)
+
+Guards the one-orchestrator-per-queue convention: a second `do-work run` starting on the same working tree must detect the first before claiming or processing anything. Not a distributed lock — plain file reads/writes are the only atomicity this needs. (Origin incident: two sessions ran `do-work run` on the same tree on 2026-07-01; the second committed and archived the first's in-flight REQ with a hollow paper trail. The collision merged by luck — nothing detected it.) **Design note (REQ-018 remediation):** the lock records exactly one HOLDER plus zero or more `coexisting_sessions` — a session that picks "proceed anyway" gets its own tracked entry instead of displacing the holder, so the holder's `session_id` never stops matching and the holder is never disrupted.
+
+**Lock file:** `do-work/orchestrator-lock.json`. Re-derive this path deterministically every time you touch it — do not carry a shell variable across separate command blocks. `mkdir -p do-work` first if the directory doesn't exist yet.
+
+```json
+{
+  "session_id": "do-work-20260727T083332Z-51234",
+  "started_at": "2026-07-27T08:33:32Z",
+  "heartbeat_at": "2026-07-27T08:41:10Z",
+  "claimed_req": "REQ-018",
+  "coexisting_sessions": []
+}
+```
+
+With one session coexisting — this is the shape you edit when refreshing or removing **your own** entry, so match by `session_id` and change only that element, never the holder's fields and never a sibling entry:
+
+```json
+{
+  "session_id": "do-work-20260727T083332Z-51234",
+  "started_at": "2026-07-27T08:33:32Z",
+  "heartbeat_at": "2026-07-27T08:41:10Z",
+  "claimed_req": "REQ-018",
+  "coexisting_sessions": [
+    {
+      "session_id": "do-work-20260727T085501Z-52890",
+      "joined_at": "2026-07-27T08:55:01Z",
+      "heartbeat_at": "2026-07-27T09:02:44Z",
+      "claimed_req": "REQ-042"
+    }
+  ]
+}
+```
+
+`session_id` is `do-work-$(date -u +%Y%m%dT%H%M%SZ)-$$` — a UTC timestamp plus the current shell's process id, generated once at acquisition (or at joining, for a coexisting session). The orchestrating agent already knows this string from its own context for the rest of the run (it isn't a shell export that needs to survive between command blocks) — every later touch just re-types the same value into a fresh, deterministically-derived command. The top-level `session_id`/`started_at`/`heartbeat_at`/`claimed_req` describe the recorded **holder**; `claimed_req` names whatever REQ currently sits in `do-work/working/` under the holder's claim, or `null` between REQs. `coexisting_sessions` lists other sessions running alongside the holder via **proceed anyway** (below) — each entry is `{session_id, joined_at, heartbeat_at, claimed_req}`, refreshed independently of the holder's own fields; empty (`[]`) when no session has chosen to coexist. All timestamps follow the Timestamp rule above (current UTC instant).
+
+**Never committed.** At acquisition (first write), append the local-ignore snippet from `crew-members/background-agents.md` → **Local-ignore snippet (for genuinely-transient paths)**, substituting `do-work/orchestrator-lock.json` for `<path>`. Same mechanism `do-work/pipeline.json` already uses (`actions/pipeline.md` Step 2 substep 4) — a lock is transient session state, not part of the Trail of Intent, so it must stay out of git regardless of install layout.
+
+**Stale threshold: 45 minutes.** Generous on purpose — a Route C build can legitimately run that long between two of the heartbeat touchpoints below, and a false "stale" verdict on a genuinely live session is worse than a slightly slower self-heal on a genuinely dead one. Applies identically to the holder's `heartbeat_at` and to every `coexisting_sessions[].heartbeat_at`.
+
+**Interactivity test (concrete, not self-assessed).** A session is interactive only if BOTH hold — if either can't be confirmed, it is non-interactive:
+1. **This is the top-level session the user is directly conversing with, not a subagent spawned via Task/Agent dispatch.** A subagent has no user turn to pause on — it returns its final message to whatever dispatched it, never to a human. This is the same distinction `actions/code-review.md` already draws for its own consent gate ("running non-interactively (e.g., via subagent)") and the harness-availability check in `actions/kb-lessons-handoff.md`, applied here to the identical failure mode: `actions/pipeline.md`'s foreground dispatch of the `run` step explicitly may run as a subagent ("subagent if available, inline otherwise" — `actions/pipeline.md` Step 4 substep 2), and a subagent that wrongly assumes it can prompt hangs waiting for an answer nobody can give.
+2. **An ask-user / blocking-prompt mechanism is actually available and usable in this environment right now** — not merely documented or importable.
+
+**Failure-safe default:** if either check is unconfirmed or ambiguous, treat this session as non-interactive and take the refusal branch below. A refusal is a clean, resumable no-op — re-run `do-work run` directly (not via subagent dispatch) to get the interactive prompt. A hung ask-user call blocks the entire pipeline with no way to resume, which is strictly worse than a refusal.
+
+**Procedure — run once, the first time this session reaches Step 1** (session start, or resuming via CHECKPOINT.md); skip it on a Step 10 → Step 1 loop iteration once this session's own `session_id` already appears in the lock file (as holder or in `coexisting_sessions`) — a durable, file-backed fact, not something this session needs to remember on its own.
+
+1. **No lock file exists** → acquire: generate `session_id`, write `started_at`/`heartbeat_at` = now, `claimed_req: null`, `coexisting_sessions: []`. Append the local-ignore snippet. Continue to the CHECKPOINT.md check and Crash Recovery normally.
+2. **Lock file exists** → read it, compute `age = now − heartbeat_at` in minutes against the holder's `heartbeat_at` (same style as Step 1's Stale-reservation check comparing `reserved_at` against now).
+   - **`age > 45` (holder stale):** warn `Lock held by <session_id> looks abandoned (heartbeat <age>m old; was building <claimed_req, or "nothing">). Treating as stale — taking over.` Rewrite only the top-level holder fields — freshly generated `session_id`, `started_at`/`heartbeat_at` = now, `claimed_req: null`. **Preserve `coexisting_sessions`**, pruning only entries whose own `heartbeat_at` is also past 45 minutes — a live coexisting session keeps running, undisturbed by a holder take-over. Continue to the CHECKPOINT.md check and Crash Recovery normally — the per-file concurrency gate (`actions/work-reference.md` → **Crash Recovery (Step 1)**) decides which `working/` file this take-over actually reclaims.
+   - **`age ≤ 45` (holder fresh — another orchestrator may be live):** apply the Interactivity test above.
+     - **Interactive:** load `crew-members/clear-questions.md`, then present:
+
+       ```
+       Another do-work session appears active on this queue.
+         Holder: <session_id>
+         Started: <started_at>
+         Heartbeat: <age>m ago (fresher than the 45m stale threshold)
+         Currently building: <claimed_req, or "nothing claimed yet">
+         Also coexisting: <N other session(s)> (omit this line if coexisting_sessions is empty)
+
+       A second orchestrator on the same queue can double-claim or double-commit a REQ (this happened on 2026-07-01) — pick one:
+         (a) Proceed anyway — run alongside it as a tracked coexisting session. I will scan for other pending REQs but will NOT touch whatever the holder (or another coexisting session) has actively claimed in do-work/working/. The holder is untouched — it keeps running exactly as if I weren't here.
+         (b) Take over — assume the holder is gone even though its heartbeat looks fresh. I become the new holder and run normal crash recovery on its claimed do-work/working/ file (reset and re-queued); any other live coexisting session is left alone.
+         (c) Abort — stop now. I will not write anything; the existing lock is left exactly as it was.
+       ```
+
+       - **(a) Proceed anyway** — append a new entry to `coexisting_sessions`: `{session_id: <new>, joined_at: now, heartbeat_at: now, claimed_req: null}`. Do **not** touch the holder's `session_id`/`started_at`/`heartbeat_at`/`claimed_req` — the holder's own heartbeat-refresh touchpoints keep matching, so it runs to completion undisturbed. Continue to the CHECKPOINT.md check and Crash Recovery normally: the per-file concurrency gate skips only files actively claimed by another live session (the holder's, or another coexisting session's) — it is not an all-or-nothing skip.
+       - **(b) Take over** — same rewrite as the stale path above (new holder `session_id`, `claimed_req: null`; preserve/prune `coexisting_sessions`).
+       - **(c) Abort** — make no writes at all; report the holder info above and stop before the CHECKPOINT.md check, Crash Recovery, or the queue scan.
+     - **Non-interactive** (Interactivity test above resolved "no," including "couldn't confirm"): refuse.
+
+       ```
+       Refusing — another do-work session appears active on this queue and no interactive prompt is available.
+         Holder: <session_id>
+         Started: <started_at>
+         Heartbeat: <age>m ago
+         Currently building: <claimed_req, or "nothing claimed yet">
+         Also coexisting: <N other session(s)> (omit this line if coexisting_sessions is empty)
+       Re-run interactively to choose proceed/take-over/abort, or wait for the heartbeat to pass the 45-minute stale threshold.
+       ```
+
+       Then stop without creating, modifying, or deleting any file — lock, queue, or `working/`.
+
+**Heartbeat refresh (every subsequent touch — not the guard above).** At Step 2 (claim), Step 6.25 (Implementation Summary), Step 8 (Archive), Step 9 (Commit Phase), and Step 10 (loop point): re-derive the lock path and read it.
+- If this session's `session_id` matches the top-level holder: rewrite the holder's `heartbeat_at` = now and `claimed_req` = whatever's currently in `do-work/working/` under this session's claim (or `null`).
+- Else if this session's `session_id` matches an entry in `coexisting_sessions`: rewrite *that entry's* `heartbeat_at` and `claimed_req` in place. Leave the holder and every other entry untouched.
+- Else (this session's `session_id` appears nowhere in the lock file): it was superseded — another session's take-over overwrote the holder slot, or this session's own coexisting entry was pruned as stale. Stop and report rather than silently re-adding yourself — this is what keeps "file-based" from turning into "two sessions both believing they hold it."
+
+While performing any of the checks above, opportunistically prune `coexisting_sessions` entries (other than the one just refreshed) whose `heartbeat_at` is past the 45-minute threshold — this is what lets an abandoned coexisting session's claim self-heal via the Crash Recovery per-file gate on a later Step 1 entry, with no separate cleanup pass.
+
+**Release (every normal exit — Step 1's composed no-pending exit, Step 1's targeted-mode stop, Step 10's exit, and an unrecoverable-error stop):** re-derive the path and read it.
+- **This session is the holder:** prune any `coexisting_sessions` entries past the 45-minute threshold first. If none remain, delete the whole lock file. **If any live entry remains, do NOT delete or modify the file** — leave it exactly as-is. This session's heartbeat simply stops refreshing and ages past 45 minutes on its own; the next session to reach Step 1 takes the stale-holder path above (warn, take over, preserving/pruning `coexisting_sessions`) without disrupting whichever coexisting session(s) are still live. Trades a bounded (≤45m) delay in freeing the holder slot for not inventing a hand-off mechanism — YAGNI, not a distributed lock.
+- **This session is a coexisting session** (its `session_id` matches an entry, not the holder): remove only that entry from `coexisting_sessions`. Never delete the whole file or touch the holder's fields — the holder or other coexisting sessions may still be active.
+- **This session's `session_id` matches neither:** already superseded — leave the file completely alone, it's no longer yours to release.
 
 ## Composed Exit Summary (Step 1)
 

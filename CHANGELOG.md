@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.145.0 — A Second `do-work run` on the Same Tree Now Detects the First (2026-07-27)
+
+On 2026-07-01 two sessions ran the work loop on one tree at the same time. The second committed the first's in-flight build and archived it with a hollow paper trail; it merged by luck. Nothing in the skill detected the collision. Now Step 1 acquires a lock before it touches anything, and a second orchestrator has to deal with it.
+
+- Fresh lock, interactive session: you get three choices — proceed anyway, take over, or abort. Proceed-anyway records you *alongside* the holder, so the first session runs to completion undisturbed.
+- Fresh lock, non-interactive (a pipeline-dispatched subagent, say): refuses and reports the holder rather than hanging on a prompt nobody can answer. When it can't confirm a human is reachable, it assumes there isn't one.
+- Heartbeat older than 45 minutes means the holder is presumed dead: warn, take over, and let existing crash recovery handle its leftovers. No manual file deletion, ever.
+- Crash recovery is now gated per-file against the lock, re-read from disk every pass — so it never re-queues a REQ another live session is still building.
+- The lock lives at `do-work/orchestrator-lock.json` and is kept out of git the same way `pipeline.json` is.
+
 ## 0.144.1 — Capture States the Domain Field as the Closed Set It Actually Is (2026-07-27)
 
 Capture described `domain` with an "e.g." list, which reads as a free-text hint. It isn't — the work loop normalizes anything outside the six values to `general` with a warning, so an invented domain quietly costs you the crew rules you meant to load. Now it says so, and names where the normalization rule lives.

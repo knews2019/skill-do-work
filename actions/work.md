@@ -114,7 +114,9 @@ When `$ARGUMENTS` is empty — no REQ IDs, no flags, no other tokens — process
 
 ### Step 1: Find Next Request
 
-**Crash Recovery:** if `do-work/working/` contains any `REQ-*.md` at session start, a prior run was interrupted — reset and re-queue each per `actions/work-reference.md` → **Crash Recovery (Step 1)** before scanning the queue. Once `working/` is empty, proceed with finding the next request.
+**Concurrent-Orchestrator Lock Guard.** Run this once — the first time this session reaches Step 1 (session start, or resuming via CHECKPOINT.md); skip it on a later Step 10 → Step 1 loop iteration once this session's own `session_id` already appears in `do-work/orchestrator-lock.json` (a file-backed fact, not something to track in memory). Runs before the `do-work/CHECKPOINT.md` check and before Crash Recovery below. No lock, or a stale one, is acquired/taken over automatically. A fresh lock (another orchestrator may be live) branches on a concrete interactivity test, not self-assessment: an interactive session gets three choices — **proceed anyway**, **take over**, **abort** — each with a distinct, durable effect on the lock file; a non-interactive session refuses and reports the holder without touching any file. Full lock shape, the interactivity test, each choice's mechanics, and the heartbeat-refresh/release procedures: `actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**.
+
+**Crash Recovery:** if `do-work/working/` contains any `REQ-*.md`, a prior run may have been interrupted — but a per-file concurrency gate runs first and skips any file another live session still actively claims (re-checked fresh every time this runs, including on a loop iteration — never dependent on this session's memory of an earlier lock-guard choice). Reset and re-queue everything else per `actions/work-reference.md` → **Crash Recovery (Step 1)** before scanning the queue. Once every file this session is allowed to touch is recovered, proceed with finding the next request.
 
 Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
 
@@ -194,11 +196,11 @@ Count `completed`, `completed-with-issues`, `cancelled`, and `done` statuses tog
   to return it to the queue, `do-work run REQ-NNN` to claim it here, or leave it if that session is still active.
 ```
 
-**Targeted mode:** If `$ARGUMENTS` contains specific REQ IDs, find only those REQs in `do-work/queue/`. Verify each exists and has `status: pending` **or `status: reserved`** — explicitly naming a reserved REQ claims it (that's the designed pickup path for the session the reservation is for; Step 2 clears the reservation fields). A targeted REQ with `status: blocked` is **not** claimed on naming alone (unlike `reserved`): run its `blocked_check` probe (per the Blocked-condition re-probe procedure above) — on exit 0 it unblocks to `pending` and is then claimed; on a failing or absent probe, report its `blocked_by` condition and skip it, because explicit naming does not make an unmet external condition true. If a targeted REQ is missing or has any other status, report the issue and skip it. Process only the targeted REQs, then stop after the last one completes (skip the loop-or-exit logic in Step 10).
+**Targeted mode:** If `$ARGUMENTS` contains specific REQ IDs, find only those REQs in `do-work/queue/`. Verify each exists and has `status: pending` **or `status: reserved`** — explicitly naming a reserved REQ claims it (that's the designed pickup path for the session the reservation is for; Step 2 clears the reservation fields). A targeted REQ with `status: blocked` is **not** claimed on naming alone (unlike `reserved`): run its `blocked_check` probe (per the Blocked-condition re-probe procedure above) — on exit 0 it unblocks to `pending` and is then claimed; on a failing or absent probe, report its `blocked_by` condition and skip it, because explicit naming does not make an unmet external condition true. If a targeted REQ is missing or has any other status, report the issue and skip it. Process only the targeted REQs, then stop after the last one completes (skip the loop-or-exit logic in Step 10). Release the orchestrator lock before stopping (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
 **Default mode (empty `$ARGUMENTS`):** Scan for the first REQ with `status: pending` (skip `pending-answers` — those wait for user input). Reaching default mode requires `$ARGUMENTS` to be genuinely empty — the unrecognized-argument guard in **Input** has already rejected any non-REQ, non-flag token, so a fluffed argument never silently lands here as a full-queue run.
 
-**Exit paths when no dependency-ready `pending` REQ is found:** render the *composed* exit summary — lead with the dependency-aware headline (`No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked), then append every applicable section (completed-awaiting-archive, pending-answers, blocked-on-external-condition, blocked-archive-collision, blocked-by-dependencies, reserved) in that order — per `actions/work-reference.md` → **Composed Exit Summary (Step 1)**, then exit the work loop. Only continue past Step 1 when at least one dependency-ready `pending` REQ exists.
+**Exit paths when no dependency-ready `pending` REQ is found:** render the *composed* exit summary — lead with the dependency-aware headline (`No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked), then append every applicable section (completed-awaiting-archive, pending-answers, blocked-on-external-condition, blocked-archive-collision, blocked-by-dependencies, reserved) in that order — per `actions/work-reference.md` → **Composed Exit Summary (Step 1)**, then exit the work loop. Only continue past Step 1 when at least one dependency-ready `pending` REQ exists. Release the orchestrator lock before exiting (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
 **REQ validation:** When reading each REQ's frontmatter, verify it has the required fields (`id`, `status`, `title`). If a REQ file has missing or unparseable frontmatter, skip it and report: `⚠ Skipping [filename]: missing required frontmatter ([field]).` Do not let a single malformed REQ block the entire work loop — skip it and continue to the next.
 
@@ -218,7 +220,7 @@ Exit 0 → no collision, proceed to Step 2. Exit 1 (matching archive paths print
 
 ### Step 2: Claim the Request
 
-1. `mkdir -p do-work/working` and move the REQ file there
+1. `mkdir -p do-work/working`, move the REQ file there, and — **in the same breath as the move** — refresh the orchestrator lock: rewrite `heartbeat_at` to now and `claimed_req` to this REQ's id (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**). Lock bookkeeping goes where the file moves: a file that is in `working/` while the lock still says `claimed_req: null` reads as an abandoned crash artifact to any other live session's Crash Recovery, which would recover it moments after you claimed it.
 2. Update frontmatter: `status: claimed`, `claimed_at: <timestamp>` — the current **UTC** instant `YYYY-MM-DDTHH:MM:SSZ` from `date -u +%Y-%m-%dT%H:%M:%SZ`, exactly like `completed_at` (Timestamp rule, `actions/work-reference.md`). Never local wall-clock time with a `Z` suffix — a future-dated stamp freezes the board's claim stopwatch and flags the card with a clock-skew warning.
 3. If the REQ was `reserved` (targeted mode only): remove `reserved_for` and `reserved_at` — the claim consumes the reservation.
 
@@ -392,6 +394,7 @@ Append (or replace) in the request file:
 - The "What was done" summary should be factual, not aspirational — describe what you built, not what the REQ asked for.
 - This section is the primary auditability artifact. If `Files changed` only lists `do-work/` paths or is empty, the REQ was not implemented.
 - **Design-artifact exception:** For `domain: ui-design` requests that produce design deliverables rather than code (wireframes, IA specs, visual specs, interaction specs), the artifact files themselves count as project files. Place them in the project's design docs directory (e.g., `docs/design/`) — not inside `do-work/`. The Implementation Summary lists these files normally.
+- Refresh the orchestrator lock's heartbeat here too (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
 ### Step 6.3: Qualify Implementation
 
@@ -511,7 +514,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **On success:**
 
-1. Update frontmatter: if the current status is already `completed-with-issues` (set by Step 7 after a failed remediation), preserve `completed-with-issues` and ensure `completed_at: <timestamp>` is present. Otherwise set `status: completed`, `completed_at: <timestamp>`. **`completed_at` (current UTC instant — `date -u +%Y-%m-%dT%H:%M:%SZ`, per the Timestamp rule in `actions/work-reference.md`) is mandatory on every terminal flip — never skip the stamp.** It and the `commit:` hash (written back in the Commit Phase) are the only sources the board resolves a completion instant from; a terminal REQ with neither surfaces as a completion anomaly on `do-work board` (see `actions/work-reference.md`'s Full Frontmatter stamping rule).
+1. Update frontmatter: if the current status is already `completed-with-issues` (set by Step 7 after a failed remediation), preserve `completed-with-issues` and ensure `completed_at: <timestamp>` is present. Otherwise set `status: completed`, `completed_at: <timestamp>`. **`completed_at` (current UTC instant — `date -u +%Y-%m-%dT%H:%M:%SZ`, per the Timestamp rule in `actions/work-reference.md`) is mandatory on every terminal flip — never skip the stamp.** It and the `commit:` hash (written back in the Commit Phase) are the only sources the board resolves a completion instant from; a terminal REQ with neither surfaces as a completion anomaly on `do-work board` (see `actions/work-reference.md`'s Full Frontmatter stamping rule). Also refresh the orchestrator lock's heartbeat here — but **do not** clear `claimed_req` yet; the file is still in `working/` until substep 6 (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 2. Verify `## Implementation Summary` is present (written in Step 6.25). If missing, append it now — this should not happen in normal flow, but crash recovery may skip it.
 3. **Create follow-ups for builder-decided questions:** If the REQ has any `- [~]` items in Open Questions where the builder's choice affects what the user sees or interacts with, create a follow-up REQ for each. **Create follow-ups for:** UX decisions (interaction behavior, visibility, layout), scope boundaries (what's included/excluded), data representation choices. **Skip follow-ups for:** purely technical decisions (caching strategy, algorithm choice, internal naming, DB indexes) that don't change user-facing behavior.
 
@@ -522,7 +525,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
    Classify each by severity and queue follow-ups per `actions/work-reference.md` → **Discovered Tasks Classification (Step 8)**: `[critical]` → `status: pending`, auto-queued + prominent report; `[normal]`/`[low]` → `status: pending-answers` via the Open-Questions consent flow — except test-only mechanical-hygiene discoveries meeting that section's carve-out (all three bullets), which auto-queue as `status: pending` with an auto-approved note and a `↺` report line.
 5. **Cycle detection:** Before creating any follow-up REQ, verify the current REQ's own `addendum_to` chain is not already circular. Algorithm: walk `addendum_to` links (honoring the `amends`/`parent`/`amendment_to` alias per the Schema Read Contract when the canonical key is absent) starting from the current REQ, collecting each visited ID into a seen set. If you encounter the current REQ's ID again during the walk, the chain is already circular — do not create any follow-ups. Report: `⚠ Cycle detected in addendum_to chain: REQ-NNN → REQ-MMM → ... → REQ-NNN. Skipping follow-up — manual resolution needed.` This handles chains of any length.
-6. Archive based on REQ type:
+6. Archive based on REQ type. **Clear the orchestrator lock's `claimed_req` to `null` in the same breath as the physical move** — not earlier. Between substeps 1 and 5 the file is still sitting in `working/`, so a lock that already says `claimed_req: null` tells every other live session's Crash Recovery that this REQ is an abandoned crash artifact; it would strip the Implementation Summary you just wrote and re-queue the file out from under you. Lock bookkeeping goes where the file moves (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
@@ -545,12 +548,12 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **On failure:**
 
-Classify the failure and queue the right follow-up per `actions/work-reference.md` → **Failure Classification (Step 8)**. Run the **upstream-failure short-circuit first** (if any `addendum_to`/`depends_on` ancestor is `failed`, short-circuit to `error_type: spec` with an upstream-cascade error), then fall through to the Intent/Spec/Code/Environment symptom table. Set `status: failed`, `completed_at: <timestamp>` (mandatory on every terminal flip, same stamping rule as success), `error`, `error_type`; create the follow-up (Intent/Spec/Code) with `addendum_to` chained and the original dependency list preserved; move to `archive/` root.
+Classify the failure and queue the right follow-up per `actions/work-reference.md` → **Failure Classification (Step 8)**. Run the **upstream-failure short-circuit first** (if any `addendum_to`/`depends_on` ancestor is `failed`, short-circuit to `error_type: spec` with an upstream-cascade error), then fall through to the Intent/Spec/Code/Environment symptom table. Set `status: failed`, `completed_at: <timestamp>` (mandatory on every terminal flip, same stamping rule as success), `error`, `error_type`; create the follow-up (Intent/Spec/Code) with `addendum_to` chained and the original dependency list preserved; move to `archive/` root. Also refresh the orchestrator lock's heartbeat and clear `claimed_req` to `null` here too — the REQ is leaving `working/` on this path exactly as on the success path (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
 **Mid-run blocked flip (external precondition):** Before classifying an Environment failure as terminal, apply this test — it is the non-terminal alternative to `error_type: environment` for a precondition that will simply become true later:
 
 - **Both must hold to flip:** (1) *No substantive implementation edits landed this attempt* — the orchestrator confirms via `git status --porcelain -- . ':(exclude)do-work/'` / `git diff -- . ':(exclude)do-work/'` that the builder made no repo changes for this REQ **outside `do-work/`**. The exclusion is load-bearing: the REQ's own bookkeeping (the move to `working/`, appended Triage/Plan sections) is always dirty mid-run, so an unscoped porcelain check can never read clean and would silently defeat this flip (triage/plan/explore or the first implementation action failed on the missing dependency with an otherwise-clean tree). (2) The missing thing is an **external precondition expected to become available on its own** — a service coming up (LM Studio, a DB), a person answering (a designer's mockup), credentials getting provisioned — not a broken toolchain or a permission the user must repair, and not a transient crash (retry those in-loop first, then classify normally).
-- **If both hold**, do NOT fail. The orchestrator (never the builder — all file management is the orchestrator's) sets `status: blocked`, `blocked_by: "<condition>"`, `blocked_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`); removes `claimed_at` and `route`; appends a `## Blocked` section recording what's missing, how it was discovered, and — only if the user supplied or confirmed one — a `blocked_check:` probe command; then moves the file **back to `do-work/queue/`** (it is a hold, not an archive), reports `[REQ-NNN] blocked on: <condition> — released, continuing`, and continues to the next REQ. The REQ re-enters selection on a future run via its `blocked_check` probe, `do-work clarify`, or a manual edit.
+- **If both hold**, do NOT fail. The orchestrator (never the builder — all file management is the orchestrator's) sets `status: blocked`, `blocked_by: "<condition>"`, `blocked_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`); removes `claimed_at` and `route`; appends a `## Blocked` section recording what's missing, how it was discovered, and — only if the user supplied or confirmed one — a `blocked_check:` probe command; then moves the file **back to `do-work/queue/`** (it is a hold, not an archive), refreshes the orchestrator lock's heartbeat and clears `claimed_req` to `null` — the REQ is leaving `working/` here too (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**) — reports `[REQ-NNN] blocked on: <condition> — released, continuing`, and continues to the next REQ. The REQ re-enters selection on a future run via its `blocked_check` probe, `do-work clarify`, or a manual edit.
 - **If either fails** (real edits already landed, environment the user must fix, or retries exhausted), fall through to the Environment classification above and archive as `failed` with `error_type: environment`.
 
 ### Step 9: Commit Phase (Git repos only)
@@ -559,14 +562,14 @@ Classify the failure and queue the right follow-up per `actions/work-reference.m
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
-Before committing a successful REQ, write a changelog entry in the target repo's root `CHANGELOG.md` per `actions/work-reference.md` → **Changelog Entry Procedure (Step 9)** — create the file if it's missing, match the repo's existing format if it has one. House-format entries are keyed `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)`; the version is bumped by change type from the repo's own version file (which gets bumped and staged too), its release tags, or — for an unversioned repo — the changelog's own counter. Then: one commit per request, format `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Stage only the explicit files (implementation files from the Implementation Summary, the archived REQ, the `CHANGELOG.md` entry, the version file it bumped, any follow-up REQs, UR-folder moves, and any prime files touched in Step 8 substep 7) — see `## Rules` below for the staging/hook guard. Validate the staged file list against the Implementation Summary (successful REQs only). After the commit, write the real short hash back into the archived REQ's `commit:` field and record it in a **separate metadata commit** (do not amend). Full bash + metadata-commit procedure: `actions/work-reference.md` → **Commit & Metadata-Commit Procedure (Step 9)**.
+Before committing a successful REQ, write a changelog entry in the target repo's root `CHANGELOG.md` per `actions/work-reference.md` → **Changelog Entry Procedure (Step 9)** — create the file if it's missing, match the repo's existing format if it has one. House-format entries are keyed `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)`; the version is bumped by change type from the repo's own version file (which gets bumped and staged too), its release tags, or — for an unversioned repo — the changelog's own counter. Then: one commit per request, format `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Stage only the explicit files (implementation files from the Implementation Summary, the archived REQ, the `CHANGELOG.md` entry, the version file it bumped, any follow-up REQs, UR-folder moves, and any prime files touched in Step 8 substep 7) — see `## Rules` below for the staging/hook guard. Validate the staged file list against the Implementation Summary (successful REQs only). After the commit, write the real short hash back into the archived REQ's `commit:` field and record it in a **separate metadata commit** (do not amend). Full bash + metadata-commit procedure: `actions/work-reference.md` → **Commit & Metadata-Commit Procedure (Step 9)**. Refresh the orchestrator lock's heartbeat here too (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
 ### Step 10: Loop or Exit
 
 Re-check `do-work/queue/` for `REQ-*.md` files (fresh check, not cached).
 
-- **Dependency-ready `pending` REQs found**: **CONTEXT WIPE** (see below). Then loop to Step 1.
-- **No dependency-ready `pending` REQs remain** (queue may still have dependency-blocked or held REQs): Write a **Session Checkpoint** (see below), run actions/cleanup.md, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, the blocked-on-external-condition section, the blocked-archive-collision section, the blocked-by-dependencies section, and the reserved section in that order, including only those that have at least one REQ. If none of the six sections applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
+- **Dependency-ready `pending` REQs found**: refresh the orchestrator lock's heartbeat (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**), then **CONTEXT WIPE** (see below). Then loop to Step 1.
+- **No dependency-ready `pending` REQs remain** (queue may still have dependency-blocked or held REQs): Write a **Session Checkpoint** (see below), release the orchestrator lock (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**), run actions/cleanup.md, then report the final summary using the **same composed structure** as Step 1's "Exit paths when no `pending` REQs found" — render the completed/done section, the pending-answers section, the blocked-on-external-condition section, the blocked-archive-collision section, the blocked-by-dependencies section, and the reserved section in that order, including only those that have at least one REQ. If none of the six sections applies (queue is fully empty), report completion and exit. Mixed cases render all applicable sections in one summary.
 
 #### Context Wipe — Verified
 
@@ -587,7 +590,7 @@ At the end of every work session (whether all REQs completed, user stops, or ses
 - **moderate** (3-5 REQs): Add Session Notes with patterns observed and environment quirks
 - **heavy** (6+ REQs): Add Context Summary recapping key decisions and recommending the next session re-read prime files fresh rather than trusting carried-over assumptions
 
-**On session start (Step 1 addition):** Before crash recovery, check for `do-work/CHECKPOINT.md`. If it exists:
+**On session start (Step 1 addition, after the Concurrent-Orchestrator Lock Guard has resolved):** Before crash recovery, check for `do-work/CHECKPOINT.md`. If it exists:
 1. Read it and report a brief summary: `Resuming from previous session. Last completed: REQ-NNN. [N] REQs still queued.`
 2. Use the "In Progress" section to inform crash recovery context.
 3. **Do not delete yet.** Keep the checkpoint until crash recovery completes successfully (all files moved out of `working/`). Then delete it. This prevents losing resume context if the session crashes again during crash recovery.
@@ -601,7 +604,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 ## Orchestrator Checklist (per request)
 
 ```
-□ Step 1: Find next request (read CHECKPOINT.md if exists, crash recovery, validate frontmatter, pick first pending)
+□ Step 1: Concurrent-orchestrator lock guard (first entry only), read CHECKPOINT.md if exists, crash recovery (per-file concurrency gate), validate frontmatter, pick first pending
 □ Step 2: Claim request (mkdir -p working/, move REQ, update status & claimed_at)
 □ Step 3: Triage (decide route, append ## Triage, read original if addendum)
 □ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions)
@@ -635,7 +638,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 | Review: Acceptance = Fail | Return to Step 6 for ONE remediation attempt, then re-review. If still failing: archive as `completed-with-issues` with follow-up REQs |
 | Review work agent fails | Skip review, note it in the REQ file, continue to archive — review failure is not a gate |
 | Commit fails | Investigate the error (usually a pre-commit hook failure). Fix the underlying issue, re-stage, and retry as a **new** commit (never bypass — see `## Rules`). If unfixable, report the error to the user and continue to next request — changes remain uncommitted but archived. |
-| Unrecoverable error | Stop loop, report clearly, leave queue intact for manual recovery |
+| Unrecoverable error | Stop loop, release the orchestrator lock, report clearly, leave queue intact for manual recovery |
 
 ## Progress Reporting
 
@@ -689,6 +692,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 | "The Implementation Summary is too detailed — I'll just write 'updated logic'" | List every changed file with its action verb + a factual one-liner | The Summary is the primary auditability artifact; "updated logic" is unverifiable and reads as a hollow completion |
 | "I'll fix this out-of-scope thing inline while I'm here" | Record it in `## Discovered Tasks`; Step 8 classifies and queues it | Inline scope creep escapes triage, review, and the per-REQ commit boundary |
 | "The queue file's twin is already archived, but re-running is harmless" | Stop — Step 2.0 sets `blocked-archive-collision` for exactly this | Re-processing a duplicate silently re-commits it and corrupts the archive lineage |
+| "No one else looks like they're running right now, I'll just start" | Check `do-work/orchestrator-lock.json` first (Step 1) | A live session mid-triage or mid-explore has no visible file changes yet — the 2026-07-01 incident looked exactly like an idle tree |
 
 ## Red Flags
 
@@ -698,6 +702,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 - No Triage section appended to the REQ after processing begins
 - Scope section declares 3 files but Implementation Summary lists 12 (scope creep)
 - Builder created files only inside `do-work/` and no source files changed (no real work done)
+- Orchestrator lock file (`do-work/orchestrator-lock.json`) still present long after the work loop reported completion **with no live `coexisting_sessions` entry and a holder heartbeat past the 45-minute threshold** — a lock legitimately persists while any coexisting session is still live (Release procedure, `actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**)
 
 ## Verification Checklist
 
@@ -707,3 +712,4 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 - [ ] CHECKPOINT.md written if ending mid-session (for resume)
 - [ ] Git commit created for each completed REQ
 - [ ] Cleanup pass triggered at end of work loop
+- [ ] `do-work/orchestrator-lock.json` removed after the work loop ends, or left in place holding only still-live coexisting session(s) this session correctly declined to disturb (unless a later session's take-over legitimately superseded this one's release)
