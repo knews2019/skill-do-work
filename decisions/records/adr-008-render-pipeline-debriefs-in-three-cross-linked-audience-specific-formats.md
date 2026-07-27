@@ -38,7 +38,7 @@ Pipeline completion data is rendered three ways from a single source dataset:
 - Marp slides for walkthroughs and stakeholder reviews,
 - standalone HTML for non-technical readers.
 
-All three formats must carry the same facts, start with a plain-language "What got built" entry point, and link readers to sibling artifacts that deepen either understanding or auditability. The rendering templates and cross-format rules live inline in `pipeline.md`'s Output Format section.
+All three formats must carry the same facts, start with a plain-language "What got built" entry point, and link readers to sibling artifacts that deepen either understanding or auditability. The rendering templates and cross-format rules live in `actions/pipeline-reference.md`, pointed at by name from `pipeline.md`'s Output Format section. (They were inline in `pipeline.md` from 0.76.0 until REQ-030 re-split them out on 2026-07-27 — see adr-001 for the split/re-inline history of this pair. The decision recorded here is about the three formats and their cross-links, not about which file the templates sit in.)
 
 ## Alternatives
 

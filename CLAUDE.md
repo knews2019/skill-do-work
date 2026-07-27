@@ -6,19 +6,19 @@ A task queue skill for agentic coding tools. Platform-agnostic — works with an
 
 ```
 SKILL.md              # Entry point — routing logic, action dispatch; authoritative action-name → file-path index
-next-steps.md         # Per-action next-step suggestions (referenced by SKILL.md)
-README.md             # Installation + quick usage guide
-actions/              # Action files — each is a standalone prompt; heavy actions ship a *-reference.md companion
-specs/                # Reusable specification templates for common task types (see specs/README.md)
-prompts/              # Reusable prompt library (see prompts/README.md for the authoritative index)
+next-steps.md         # Per-action next-step suggestions
+README.md             # Installation + quick usage
+actions/              # Action files — each a standalone prompt; heavy actions ship a *-reference.md companion
+specs/                # Specification templates (see specs/README.md)
+prompts/              # Prompt library (see prompts/README.md for the index)
 interviews/           # Prescriptive templates loaded by the interview action
 crew-members/         # Agent rules loaded just-in-time — each file's JIT_CONTEXT comment states when it loads
-hooks/                # Optional hook scripts (platform-specific, installable; hooks.json + shell scripts)
-tools/                # Shipped compiled tooling — queue-kanban/ (standalone Go module) renders the do-work queue as a Kanban board; built on demand via `do-work board`
-docs/                 # User guides for the most commonly used actions — not every action has one
-decisions/            # Architecture decisions — ADRs (records/), imported specs, topic indexes, decision log
+hooks/                # Optional hook scripts (platform-specific; hooks.json + shell scripts)
+tools/                # Shipped compiled tooling — queue-kanban/ renders the do-work queue as a Kanban board; built via `do-work board`
+docs/                 # User guides — not every action has one
+decisions/            # ADRs (records/), imported specs, topic indexes, decision log
 AGENTS.md             # Stub — redirects to CLAUDE.md
-CHANGELOG.md          # Release notes (newest on top)
+CHANGELOG.md          # Release notes
 ```
 
 For the per-action file list with descriptions, read `SKILL.md` — it is the canonical name→path mapping. This tree deliberately stops at directories so it cannot drift from the repo.
@@ -75,9 +75,11 @@ Action files follow a consistent structure. When adding or modifying actions, us
 
 ## Rules
 
-[Constraints, common mistakes, what NOT to do]
+[Include only if earned — see below. Constraints specific to this action, not restated engineering hygiene.]
 
 ## Common Rationalizations
+
+[Include only if earned — see below.]
 
 | If you're thinking...              | STOP. Instead...     | Because...               |
 | ---------------------------------- | -------------------- | ------------------------ |
@@ -85,14 +87,28 @@ Action files follow a consistent structure. When adding or modifying actions, us
 
 ## Red Flags
 
+[Include only if earned — see below.]
+
 - [Observable symptom that something went wrong — helps reviewers detect problems after the fact]
 
 ## Verification Checklist
 
+[Include only if earned — see below.]
+
 - [ ] [Concrete exit criterion with evidence requirement]
 ```
 
-**Required elements:** Description blockquote, Steps (numbered). **Common elements:** Input, Output Format, Rules, When to Use. **Encouraged elements:** Common Rationalizations, Red Flags, Verification Checklist. **Section order matters:** always Philosophy → When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist.
+**Required:** Description blockquote, Steps (numbered). **Common:** Input, Output Format, When to Use.
+
+**Earned, not mandatory: Rules, Common Rationalizations, Red Flags, Verification Checklist.** Add one only when the file has something a capable model would otherwise get wrong — do-work machinery (a queue/pipeline mechanic, a frontmatter or schema contract) or a hard-won failure mode with a traceable origin (a real REQ or incident this stops from recurring). "This is generic engineering advice a capable model already follows" is an explicit *non*-reason — true or not, it doesn't earn a section.
+
+**The test, not a vibe:** before adding a Common Rationalizations row, ask *can I name the specific failure this row prevents, and where it happened?* No → don't add the row. If every row in a table fails that test, omit the whole section — a generic table is worse than no table: it teaches the reader the section is decorative, so they stop reading the ones that aren't. Apply the same test to Rules and Red Flags — specific to this action, not restated hygiene ("write tests," "don't skip validation"). When a file has nothing that passes, omit the section entirely; don't ship it empty or generic to satisfy the template.
+
+**State intent, not a directive rule, when a capable model can infer the rest.** "Report drift, don't fix it inline" gives the model this action's boundary in one line — a five-line Rules section re-deriving why inline fixes are bad adds nothing a capable model didn't already know.
+
+`_dev/tests/contract-regressions.sh` ratchets the Common Rationalizations rule: a new action file's table must contain at least one do-work-specific noun (illustrative, not exhaustive, per Closed Enumerations Go Stale below — e.g. REQ, UR, queue, frontmatter, pipeline, archive) or the suite fails, naming the file and the fix.
+
+**Section order when present:** Philosophy → When to Use → Input → Steps → Output → Rules → Common Rationalizations → Red Flags → Verification Checklist.
 
 **Accepted variants:**
 
@@ -132,7 +148,7 @@ Just-in-time rules live in `crew-members/[name].md`. Each file's `JIT_CONTEXT` c
 
 ## Queue Path Convention
 
-Pending REQ files live in `do-work/queue/`. When referencing the queue in action files, always use `do-work/queue/` — not `do-work/` root.
+Pending REQ files live in `do-work/queue/` — not `do-work/` root.
 
 ## Shipped Tooling (`tools/`)
 

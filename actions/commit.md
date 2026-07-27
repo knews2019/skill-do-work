@@ -146,11 +146,7 @@ EOF
 
 **Format:** `[do-work] {descriptive label}` + file list bullets.
 
-**Rules:**
-- Stage specific files per group — never `git add -A` or `git add .`
-- Do not bypass pre-commit hooks — fix issues and retry
-- One commit per group — keep them atomic
-- List each file in the commit body with its action (Modified, Added, Deleted)
+**Rules:** see `## Rules` below for the staging/hook guard. One commit per group — keep them atomic. List each file in the commit body with its action (Modified, Added, Deleted).
 
 ### Step 6: Report
 
@@ -187,7 +183,7 @@ Excluded:
 |-----------|--------|
 | Not a git repo | Report "Not a git repository" and exit |
 | Clean working tree | Report "Nothing to commit" and exit |
-| Pre-commit hook failure | Fix the underlying issue, re-stage, and retry as a **new** commit. Do NOT use `--no-verify` to skip hooks — fix the root cause. |
+| Pre-commit hook failure | Fix the underlying issue, re-stage, and retry as a **new** commit (see `## Rules` — never `--no-verify`). |
 | File matches multiple REQs | Associate with the most recently completed REQ (`completed_at` timestamp) |
 | Ambiguous semantic grouping | Prefer smaller groups (1-2 files) over larger uncertain groups |
 | Binary files in untracked | Skip reading contents, group by directory proximity and filename |
@@ -202,6 +198,13 @@ Excluded:
 - Handle interactive staging (`git add -p`) — it commits complete files
 - Replace the commit steps in other actions — those remain for their specific pipelines
 - Stage `.env`, credentials, keys, or other secret files — these are always excluded
+
+## Rules
+
+**Canonical statement of the commit-staging/hook guard** — every other action in this skill that stages or commits files points here rather than restating it:
+
+- **Never `git add -A` or `git add .`.** Stage only the specific files that belong to the commit you're making. A blanket add risks sweeping in secrets, `.env` files, or unrelated in-progress changes from other work — the whole point of grouping files by REQ/semantic purpose (Steps 3-4) is defeated if staging ignores those groups.
+- **Never bypass a failing pre-commit hook** with `--no-verify` (or signing with `--no-gpg-sign`). Fix the underlying issue, re-stage, and retry as a **new** commit — never amend past a hook failure.
 
 ## Common Rationalizations
 

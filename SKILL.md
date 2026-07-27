@@ -137,4 +137,4 @@ Report the error to the user. Do not retry automatically.
 
 ## Suggest Next Steps
 
-After every action completes, suggest the next logical prompts the user might want to run. See [`next-steps.md`](./next-steps.md) for the full per-action reference (what to suggest after each action, formatting rules, and constraints).
+After every action completes, suggest the next logical prompts the user might want to run. See [`next-steps.md`](./next-steps.md) for the intent, the format constraints, and the non-obvious cases.
