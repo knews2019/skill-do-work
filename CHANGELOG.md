@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.141.0 — Each Shipped Guard Now Stated Once (2026-07-27)
+
+The `git add -A` / hook-bypass guard was restated in seven files — five times inside `stray-check.md` alone — so changing it meant finding seven sites and hoping they stayed in sync. Prompt-injection doctrine was inlined in three actions that already load the crew file that owns it. Each guard now has one canonical home; every other site is a one-line pointer.
+
+- `actions/commit.md` § Rules is the sole full statement of the staging/hook guard. The literal `--no-verify` flag now appears in exactly one file.
+- `capture.md`, `bkb.md`, and `validate-feedback.md` keep only their load step for `crew-members/prompt-injection.md` — the inlined copies are gone.
+- "This action is read-only" collapses to the description plus one enforcement point in `forensics.md`, `quick-wins.md`, and `code-review.md`.
+- No guard became unenforceable: every site still names its constraint and says where the full rule lives.
+
 ## 0.140.0 — Domain Crew Files Trimmed to Opinions (2026-07-27)
 
 The six domain crew files were 6,737 words, much of it engineering advice a capable model already follows, with the same security guidance stated in two or three places. They're now 4,237 words of actual opinions — the calls this project makes differently, plus everything wired to do-work machinery.

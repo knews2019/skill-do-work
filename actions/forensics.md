@@ -141,8 +141,6 @@ Group the lessons by **theme** — a short, normalized phrase capturing the corr
 
 Report each recurring theme with its label, the contributing REQ IDs, and the pointer: "this correction has recurred — consider a harness fix, not another per-run patch." A theme seen in only one REQ is not a finding.
 
-Read-only: this check reads Lessons sections and reports; it never edits, moves, or annotates any REQ or archive file.
-
 ### 11. Unrecognized Status Vocabulary
 
 Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, and `find do-work/archive -name 'REQ-*.md'` — and read each frontmatter `status:` value.
@@ -227,12 +225,10 @@ All clear — no issues detected.
 - A REQ was flagged as `stuck` but its mtime is < 10 minutes old — likely still processing; don't disturb.
 - Hollow-completion check flagged every completed REQ as hollow — rubric is too strict; review before acting.
 - Recurring-corrections check collapsed every distinct lesson into one theme (or split obvious duplicates into separate themes) — the grouping heuristic is degenerate; re-read the lessons before reporting.
-- Forensics fixed something on its own — this action is **read-only**; it must only report.
 - Output mixes severities (critical/warning/info) without clear grouping — readability regression; use the documented sections.
 
 ## Verification Checklist
 
-- [ ] Action made **zero** changes to `do-work/` — read-only contract held.
 - [ ] Report grouped findings under `## Critical Findings`, `## Warnings`, `## Info`, `## Summary`.
 - [ ] Each finding names a specific file path or REQ/UR id.
 - [ ] Stuck-work detection used a reasonable threshold (not flagging actively-processing work).

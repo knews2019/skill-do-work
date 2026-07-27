@@ -416,7 +416,7 @@ EOF
 
 **Format:** `[REQ-NNN] review: {score}% (Route {route})` — where `{score}` is the overall review percentage and `{route}` is the original triage route. List the reviewed file path and any follow-up REQs created.
 
-Do not use `git add -A` or `git add .` — stage only the modified archived REQ and any new follow-up REQs. Don't bypass pre-commit hooks.
+Stage only the modified archived REQ and any new follow-up REQs — never `git add -A`/`.` or bypass a hook (see `actions/commit.md` § Rules for the full guard).
 
 ## Calibrating Review Depth
 

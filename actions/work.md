@@ -559,7 +559,7 @@ Classify the failure and queue the right follow-up per `actions/work-reference.m
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
-Before committing a successful REQ, write a changelog entry in the target repo's root `CHANGELOG.md` per `actions/work-reference.md` → **Changelog Entry Procedure (Step 9)** — create the file if it's missing, match the repo's existing format if it has one. House-format entries are keyed `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)`; the version is bumped by change type from the repo's own version file (which gets bumped and staged too), its release tags, or — for an unversioned repo — the changelog's own counter. Then: one commit per request, format `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Stage only the explicit files (implementation files from the Implementation Summary, the archived REQ, the `CHANGELOG.md` entry, the version file it bumped, any follow-up REQs, UR-folder moves, and any prime files touched in Step 8 substep 7) — never `git add -A`/`.`. Validate the staged file list against the Implementation Summary (successful REQs only). After the commit, write the real short hash back into the archived REQ's `commit:` field and record it in a **separate metadata commit** (do not amend). Full bash + metadata-commit procedure: `actions/work-reference.md` → **Commit & Metadata-Commit Procedure (Step 9)**.
+Before committing a successful REQ, write a changelog entry in the target repo's root `CHANGELOG.md` per `actions/work-reference.md` → **Changelog Entry Procedure (Step 9)** — create the file if it's missing, match the repo's existing format if it has one. House-format entries are keyed `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)`; the version is bumped by change type from the repo's own version file (which gets bumped and staged too), its release tags, or — for an unversioned repo — the changelog's own counter. Then: one commit per request, format `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Stage only the explicit files (implementation files from the Implementation Summary, the archived REQ, the `CHANGELOG.md` entry, the version file it bumped, any follow-up REQs, UR-folder moves, and any prime files touched in Step 8 substep 7) — see `## Rules` below for the staging/hook guard. Validate the staged file list against the Implementation Summary (successful REQs only). After the commit, write the real short hash back into the archived REQ's `commit:` field and record it in a **separate metadata commit** (do not amend). Full bash + metadata-commit procedure: `actions/work-reference.md` → **Commit & Metadata-Commit Procedure (Step 9)**.
 
 ### Step 10: Loop or Exit
 
@@ -634,7 +634,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 | Tests fail repeatedly | After 3 fix attempts, classify as Code failure, create follow-up REQ with test failure details, archive as failed |
 | Review: Acceptance = Fail | Return to Step 6 for ONE remediation attempt, then re-review. If still failing: archive as `completed-with-issues` with follow-up REQs |
 | Review work agent fails | Skip review, note it in the REQ file, continue to archive — review failure is not a gate |
-| Commit fails | Investigate the error (usually a pre-commit hook failure). Fix the underlying issue, re-stage, and retry as a **new** commit. Do NOT use `--no-verify` to skip hooks or `--no-gpg-sign` to bypass signing — fix the root cause. If unfixable, report the error to the user and continue to next request — changes remain uncommitted but archived. |
+| Commit fails | Investigate the error (usually a pre-commit hook failure). Fix the underlying issue, re-stage, and retry as a **new** commit (never bypass — see `## Rules`). If unfixable, report the error to the user and continue to next request — changes remain uncommitted but archived. |
 | Unrecoverable error | Stop loop, report clearly, leave queue intact for manual recovery |
 
 ## Progress Reporting
@@ -656,7 +656,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 
 - The orchestrator handles ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents do implementation work only.
 - Only two frontmatter status transitions are written on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8); exception paths (Steps 1, 2.0, the Step 8 mid-run blocked flip to `blocked`, and 7's failed-remediation write) set the documented special statuses. Intermediate phases are tracked by which `##` sections exist, not by status.
-- One commit per request; stage explicit files only (never `git add -A`/`.`); never bypass a failing pre-commit hook with `--no-verify` — fix the root cause.
+- One commit per request; stage explicit files only — never `git add -A`/`.` or bypass a commit hook (see `actions/commit.md` § Rules for the full staging/hook guard).
 
 **Common mistakes to avoid:**
 
@@ -665,8 +665,6 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 - Forgetting to update status in frontmatter (normal path has only two transitions: `claimed` at Step 2, final status at Step 8)
 - Archiving a UR folder before all its REQs are complete
 - Forgetting Planning status note for Routes A/B ("Planning not required")
-- Using `git add -A` instead of staging specific files
-- Using `--no-verify` to bypass a failing pre-commit hook instead of fixing the issue
 - Committing without validating Implementation Summary file list against staged files
 - Implementation Summary that only lists `do-work/` paths (means the REQ wasn't actually implemented — exception: `domain: ui-design` design artifacts placed in project directories like `docs/design/`)
 - Creating follow-ups for every `- [~]` item instead of only UX-affecting decisions

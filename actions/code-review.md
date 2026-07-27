@@ -289,7 +289,7 @@ Found 3 Critical and 5 Important findings.
 Create REQ files for these? (The user can run `do-work run` to process them later.)
 ```
 
-Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward. actions/code-review.md is source-code read-only in all modes — the only writes are run state under `do-work/runs/` and, with explicit consent here in Step 10, queue metadata.
+Only create REQ files if the user explicitly confirms. If running non-interactively (e.g., via subagent), **skip REQ creation entirely** — include the findings in the report and let the user decide whether to capture them as requests afterward.
 
 When the user confirms, create REQ files using the standard format:
 
@@ -318,7 +318,7 @@ Found during code review of [scope]. [1 sentence on the specific finding.]
 
 Do NOT auto-create REQs without confirmation. The report itself is the primary output.
 
-**Then mark consumed and delete the run directory.** Once the report has been delivered and the REQ-capture decision is made (created, declined, or skipped as non-interactive), the run's findings are fully consumed — the report and any REQs are the permanent record. If the user asked to keep the raw findings, copy them into `do-work/deliverables/` first. Set the manifest's `Status:` line to `consumed`, then delete `do-work/runs/code-review-<ts>/` as the final step (`crew-members/background-agents.md` step 5). Deleting its own scratch is not a project source-file write, so this stays inside the source-code-read-only contract; the deletion rides the user's normal commit flow.
+**Then mark consumed and delete the run directory.** Once the report has been delivered and the REQ-capture decision is made (created, declined, or skipped as non-interactive), the run's findings are fully consumed — the report and any REQs are the permanent record. If the user asked to keep the raw findings, copy them into `do-work/deliverables/` first. Set the manifest's `Status:` line to `consumed`, then delete `do-work/runs/code-review-<ts>/` as the final step (`crew-members/background-agents.md` step 5); the deletion rides the user's normal commit flow.
 
 ## Health Rating Guidelines
 
@@ -332,6 +332,7 @@ Do NOT auto-create REQs without confirmation. The report itself is the primary o
 
 ## Rules
 
+- **Source-code read-only in every mode.** Writes are limited to this action's own run state (`do-work/runs/code-review-<ts>/`) and, with explicit user confirmation, queue metadata (Step 10) — never project source files.
 - **Be specific.** Every finding must include file paths and line references. "Error handling is inconsistent" is useless — "`src/api/users.ts:45` uses try/catch with custom AppError, but `src/api/orders.ts:72` uses bare throw with string messages" is useful.
 - **Show both sides.** For consistency findings, always show the two (or more) patterns you found. The user needs to see the contrast.
 - **Respect conventions from prime files.** If a prime file says "we use god files for route handlers," don't flag the god file as a problem. Prime files are the project's own voice.

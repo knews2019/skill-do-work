@@ -215,7 +215,7 @@ EOF
 
 If nothing was moved, rewritten, or swept (archive and run scratch were already clean), skip the commit entirely.
 
-Do not use `git add -A` or `git add .` — stage only paths within `do-work/archive/`, `do-work/user-requests/`, any `do-work/queue/` or working/ REQs swept by Pass 0, any misplaced `do-work/` directories relocated by Pass 3a, the specific doc files rewritten by the repoint step, and exact consumed-run deletion prefixes from Pass 4 via `git add -u -- <deleted-run-path>`. Don't bypass pre-commit hooks.
+Stage only paths within `do-work/archive/`, `do-work/user-requests/`, any `do-work/queue/` or working/ REQs swept by Pass 0, any misplaced `do-work/` directories relocated by Pass 3a, the specific doc files rewritten by the repoint step, and exact consumed-run deletion prefixes from Pass 4 via `git add -u -- <deleted-run-path>` — never a blanket `git add -A`/`.` (see `actions/commit.md` § Rules for the full staging/hook guard).
 
 ## What This Action Does NOT Do
 
