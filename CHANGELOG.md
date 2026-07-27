@@ -6,6 +6,97 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.147.2 — Reconciled the Refactor Branch With Main's Memory Engine (2026-07-27)
+
+This branch and `main` both forked from 0.137.0 and independently spent 0.138.0–0.139.0 on different releases. Merging the two lines of work de-collides those version numbers and folds both sets of changes into one history.
+
+- The refactor branch's ten entries (the `next-steps.md` redesign through the concurrent-orchestrator lock) were renumbered to 0.140.0–0.147.1, stacked above `main`'s memory-engine and adhd-install releases (0.138.0–0.139.0). No version number is used twice.
+- `next-steps.md` kept its intent-based redesign: `main`'s per-action "After memory" blocks were dropped because that redesign replaced the whole enumeration with intent-based inference — the memory action's next steps are now inferred like every other action's.
+- The Common Rationalizations noun check (REQ-027) now recognizes the memory subsystem's vocabulary (working memory, daily log, usage ledger, bootstrap, Stop hook), so `main`'s new `actions/memory.md` passes the check on its own merits instead of being grandfathered.
+
+## 0.147.1 — Corrected the Example Count in 0.140.0's Title (2026-07-27)
+
+The 0.140.0 entry said `next-steps.md` was a 40-case table. It was 47 — the same entry's own "the other 46 are gone" already implied it. Counted from the pre-change file, not from memory.
+
+## 0.147.0 — A Second `do-work run` on the Same Tree Now Detects the First (2026-07-27)
+
+On 2026-07-01 two sessions ran the work loop on one tree at the same time. The second committed the first's in-flight build and archived it with a hollow paper trail; it merged by luck. Nothing in the skill detected the collision. Now Step 1 acquires a lock before it touches anything, and a second orchestrator has to deal with it.
+
+- Fresh lock, interactive session: you get three choices — proceed anyway, take over, or abort. Proceed-anyway records you *alongside* the holder, so the first session runs to completion undisturbed.
+- Fresh lock, non-interactive (a pipeline-dispatched subagent, say): refuses and reports the holder rather than hanging on a prompt nobody can answer. When it can't confirm a human is reachable, it assumes there isn't one.
+- Heartbeat older than 45 minutes means the holder is presumed dead: warn, take over, and let existing crash recovery handle its leftovers. No manual file deletion, ever.
+- Crash recovery is now gated per-file against the lock, re-read from disk every pass — so it never re-queues a REQ another live session is still building.
+- The lock lives at `do-work/orchestrator-lock.json` and is kept out of git the same way `pipeline.json` is.
+
+## 0.146.1 — Capture States the Domain Field as the Closed Set It Actually Is (2026-07-27)
+
+Capture described `domain` with an "e.g." list, which reads as a free-text hint. It isn't — the work loop normalizes anything outside the six values to `general` with a warning, so an invented domain quietly costs you the crew rules you meant to load. Now it says so, and names where the normalization rule lives.
+
+- Found by a cold-start smoke test of the newly split capture action, which flagged the same list being stated two ways in two files.
+
+## 0.146.0 — Pipeline Splits Its Output Renderings Into a Lazy-Loaded Companion (2026-07-27)
+
+`pipeline.md` was 7,471 words, most of it templates for output that only gets rendered at the end of a run — so a pipeline that aborted at step 1 had still loaded all three completion-report formats and the help menu. Those now live in `actions/pipeline-reference.md`.
+
+- `actions/pipeline.md`: 7,471 → 4,719 words. The companion holds the state-file schema, the status and completion blocks, all three completion-report renderings, the continuation notice, and the help menu.
+- Steps 1–6 and the mode-determination logic stay in the action file. The state file's lifecycle stays too; only its field-level schema moved.
+- Verified byte-identical after heading normalization; 14 pointer sites across 8 companion sections, no orphans.
+- ADR-008 and ADR-001 updated to match — ADR-008 had been asserting the templates were inline, which this change made false.
+
+## 0.145.0 — AI Report Splits Its Asset Templates Into a Lazy-Loaded Companion (2026-07-27)
+
+`ai-report.md` was the largest action file in the skill at 7,541 words, and it loaded whole — so a report that never generates an image still paid for the entire image-generation backend. The heavy assets now live in `actions/ai-report-reference.md`, opened only at the step that needs them.
+
+- `actions/ai-report.md`: 7,541 → 5,477 words. The companion holds the Image Generation Backend, the SVG data-viz rules, the report design rules, the before/after toggle implementation, and the output-format template.
+- Steps 1–8 stay in the action file as a skeleton; each consuming step names its companion section by path.
+- Pure relocation, verified line-for-line — no rule changed, and the eight pointer sites all resolve.
+
+## 0.144.0 — Capture Splits Its Templates Into a Lazy-Loaded Companion (2026-07-27)
+
+Every capture loaded both REQ templates, the schema-alias table, the UR template, and five worked transcripts — even a capture that stopped at the duplicate check. The templates now live in `actions/capture-reference.md`, opened at Step 5 (Write Files) and the Step 2 addendum branch, and nowhere else.
+
+- `actions/capture.md`: 5,505 → 3,913 words. The companion is 1,682, read only when a file is actually being written.
+- The relocated templates are a pure move — verified byte-identical by diff. No field, enum, `depends_on`/`addendum_to` semantic, or the UTC timestamp rule changed.
+- All five worked examples deleted rather than relocated. Each was checked individually; none encoded a judgment the templates and triage rules don't already specify.
+- Steps 0–7 and the simple/complex triage stay in the action file, which still works standalone for everything up to writing files.
+
+## 0.143.0 — Each Shipped Guard Now Stated Once (2026-07-27)
+
+The `git add -A` / hook-bypass guard was restated in seven files — five times inside `stray-check.md` alone — so changing it meant finding seven sites and hoping they stayed in sync. Prompt-injection doctrine was inlined in three actions that already load the crew file that owns it. Each guard now has one canonical home; every other site is a one-line pointer.
+
+- `actions/commit.md` § Rules is the sole full statement of the staging/hook guard. The literal `--no-verify` flag now appears in exactly one file.
+- `capture.md`, `bkb.md`, and `validate-feedback.md` keep only their load step for `crew-members/prompt-injection.md` — the inlined copies are gone.
+- "This action is read-only" collapses to the description plus one enforcement point in `forensics.md`, `quick-wins.md`, and `code-review.md`.
+- No guard became unenforceable: every site still names its constraint and says where the full rule lives.
+
+## 0.142.0 — Domain Crew Files Trimmed to Opinions (2026-07-27)
+
+The six domain crew files were 6,737 words, much of it engineering advice a capable model already follows, with the same security guidance stated in two or three places. They're now 4,237 words of actual opinions — the calls this project makes differently, plus everything wired to do-work machinery.
+
+- `crew-members/security.md` is now the single owner of security content. `frontend.md` and `backend.md` point at it instead of restating XSS sanitization, token storage, bundled secrets, tabnabbing, and rate limiting.
+- `backend.md` −75%, `frontend.md` −61%, `testing.md` −60%, `debugging.md` −27%. Every `JIT_CONTEXT` load contract is byte-identical.
+- Kept: framework/test detection tables, the Red-Green workflow tied to `tdd: true`, prime-file test mappings, and every UNIFY quality checklist.
+- `general.md` and `coding-guardrails.md` — the always-loaded pair — are untouched.
+
+## 0.141.0 — Action-File Boilerplate Sections Must Now Be Earned (2026-07-27)
+
+The action-file template asked for Rules, Common Rationalizations, Red Flags, and a Verification Checklist, so 20 of 42 action files carried all four — many stuffed with engineering advice any capable model already follows. Those four sections are now earned, not mandatory, and a contract check keeps the boilerplate from growing back.
+
+- A section is earned only when the file has do-work machinery or a hard-won failure mode with a traceable origin. "It's generic advice" is an explicit non-reason.
+- Concrete test for a Common Rationalizations row: can you name the specific failure it prevents, and where it happened? If no row passes, omit the whole table — a generic one teaches readers the section is decorative.
+- New rule: state intent rather than a directive when a capable model can infer the rest.
+- `_dev/tests/contract-regressions.sh` now fails any *new* action file whose Common Rationalizations rows contain no do-work-specific noun. The existing tree is grandfathered by an explicit baseline list.
+- Trimmed the Project Structure glosses and Queue Path Convention; every shell-trap gotcha and the Closed Enumerations rule stay untouched.
+
+## 0.140.0 — Next-Step Suggestions Come From Intent, Not a 47-Case Table (2026-07-27)
+
+`next-steps.md` is read after every single action, and it was 1,741 words of hard-coded examples — one worked block per action, most of them saying the obvious thing. It's now 383 words: the intent, the format rules, and a table of only the cases where the right suggestion genuinely isn't inferable.
+
+- Suggestions are now judged from the real outcome (empty queue, clean tree, REQ domain) instead of matched against a fixed action-to-suggestion list.
+- The six genuinely ambiguous cases survive as a table — `pipeline` interrupted vs. completed, `reserve`, `capture-requests`, and `clarify` with vs. without pending answers.
+- One example block remains to anchor the output format; the other 46 are gone.
+- Cuts 1,358 words from the always-read floor — the context every do-work invocation pays for.
+
 ## 0.139.0 — Parallel Memory Engine: memory module, install target, and value auditor (2026-07-25)
 
 A second, capture-first memory engine now runs alongside bkb so real usage data — not theory — decides which one earns its keep (ADR-017). Both engines log usage, and a new auditor renders the head-to-head verdict.

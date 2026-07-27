@@ -38,41 +38,9 @@ A stateful multi-action orchestration that chains six actions in sequence. Each 
 
 ## State File
 
-Pipeline state lives at `do-work/pipeline.json`. Created on initialize, read on every subsequent invocation.
+Pipeline state lives at `do-work/pipeline.json` — its full lifecycle in this action: created at Step 2 (Initialize), read at the top of every subsequent invocation, and rewritten at every step transition (Steps 4, 5, 5a, 6). Nothing in this workflow ever deletes it: Step 5 (Completion) and the Abandon mode (Step 1) both set `active: false` and leave the file on disk as a historical record — it's excluded from git (Step 2 substep 4), not removed from disk.
 
-```json
-{
-  "session_id": "2026-04-08-001",
-  "request": "add dark mode to settings panel",
-  "started_at": "2026-04-08T11:00:00Z",
-  "active": true,
-  "steps": [
-    { "name": "investigate", "status": "done",    "completed_at": "2026-04-08T11:01:00Z" },
-    { "name": "capture",     "status": "done",    "completed_at": "2026-04-08T11:02:00Z", "artifacts": ["REQ-042", "UR-018"] },
-    { "name": "verify",      "status": "pending", "completed_at": null },
-    { "name": "run",         "status": "pending", "completed_at": null },
-    { "name": "review",      "status": "pending", "completed_at": null },
-    { "name": "present",     "status": "pending", "completed_at": null }
-  ]
-}
-```
-
-**Field definitions:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `session_id` | string | `YYYY-MM-DD-NNN` — date + incrementing counter |
-| `request` | string | The user's original request text |
-| `started_at` | string | ISO 8601 timestamp when the pipeline was initialized |
-| `active` | boolean | `true` while pipeline is running, `false` when completed or abandoned |
-| `steps` | array | Ordered list of pipeline steps with status tracking |
-| `steps[].name` | string | Step identifier: `investigate`, `capture`, `verify`, `run`, `review`, `present` |
-| `steps[].status` | string | `pending`, `in-progress`, `done`, or `failed` |
-| `steps[].completed_at` | string\|null | ISO 8601 timestamp when step finished, or null |
-| `steps[].artifacts` | array\|undefined | REQ/UR IDs produced (capture step only) |
-| `steps[].error` | string\|undefined | Error description (failed steps only) |
-
-**Pretty-print invariant.** Every write to `do-work/pipeline.json` must use multi-line pretty-printed JSON (one key per line, as in the example above). The `hooks/pipeline-guard.sh` non-`jq` fallback uses line-oriented `grep -c` to count pending steps — a compact single-line write would silently miscount and let the agent stop mid-pipeline. Use `jq .` (or an equivalent formatter) when writing the file.
+The full JSON shape, the field-by-field definitions, and the pretty-print invariant that every write to this file must honor live in `actions/pipeline-reference.md` → **State File Schema** — read it before the first write or read of `pipeline.json` this session.
 
 ## Steps
 
@@ -98,7 +66,7 @@ Pipeline state lives at `do-work/pipeline.json`. Created on initialize, read on 
 | Active pipeline? | `$ARGUMENTS` bucket | Mode |
 |-----------------|---------------------|------|
 | No | Request text | **Initialize** (Step 2) |
-| No | Empty, `status` keyword, or `abandon` keyword | **Help** (show help menu and stop — there's nothing to inspect or abandon without an active pipeline; both reserved keywords are no-ops here) |
+| No | Empty, `status` keyword, or `abandon` keyword | **Help** (show the help menu — `actions/pipeline-reference.md` → **Help Menu** — and stop; there's nothing to inspect or abandon without an active pipeline; both reserved keywords are no-ops here) |
 | Yes | Request text | **Conflict** — warn the user. Ask: "A pipeline is already active. Resume it, or abandon it and start fresh?" |
 | Yes | Empty | **Resume** (Step 3) |
 | Yes | `status` keyword | **Status** (print status block and stop) |
@@ -114,7 +82,7 @@ Pipeline state lives at `do-work/pipeline.json`. Created on initialize, read on 
    - `active: true`
    - `started_at` set to current ISO 8601 timestamp
 4. **Exclude state file from git**: Ensure `do-work/pipeline.json` is ignored regardless of install layout by appending it to the enclosing repo's `.git/info/exclude` (local-only — never committed, never shipped) when it isn't already ignored. Do **not** touch the project's committable `.gitignore`: a root-extract install's shipped `.gitignore` can't reach `do-work/pipeline.json` from a nested `.claude/skills/do-work/` install, and the host project shouldn't carry a committed ignore rule for transient state. Use the exact snippet from `crew-members/background-agents.md` → **Local-ignore snippet (for genuinely-transient paths)**, substituting `do-work/pipeline.json` for `<path>` (appended pattern: `**/do-work/pipeline.json`).
-5. Print the initial status block
+5. Print the initial status block (`actions/pipeline-reference.md` → **Status Block**)
 6. Proceed to Step 4 (execute first step: `investigate`)
 
 ### Step 3: Resume (existing pipeline)
@@ -123,7 +91,7 @@ Pipeline state lives at `do-work/pipeline.json`. Created on initialize, read on 
 2. Find the first step where `status` is `"pending"` or `"in-progress"` or `"failed"`
    - `in-progress` means the previous session ended mid-step — retry it
    - `failed` means a previous attempt failed — retry it
-3. Print the status block showing current progress
+3. Print the status block showing current progress (`actions/pipeline-reference.md` → **Status Block**)
 4. Proceed to Step 4 with that step as the current step
 
 ### Step 4: Execute Current Step
@@ -154,7 +122,7 @@ Dispatch each action the same way the main router dispatches actions: subagent i
    - Update the step's `status` to `"done"` and set `completed_at` to current timestamp
    - **Capture step only**: Parse the action's output for created REQ and UR IDs (e.g., `REQ-042`, `UR-018`). Store them in the step's `artifacts` array. If IDs cannot be parsed, leave `artifacts` as an empty array — do not block the pipeline.
    - Write the updated `pipeline.json` immediately
-   - Print the updated status block
+   - Print the updated status block (`actions/pipeline-reference.md` → **Status Block**)
 
 4. **Advance**: If more steps have `status: "pending"`, proceed to the next one (loop back to the top of Step 4). If all steps are `"done"`, proceed to Step 5.
 
@@ -164,8 +132,8 @@ When all 6 steps are done:
 
 1. Set `active: false` in `pipeline.json`
 2. Write the final `pipeline.json`
-3. Print the completion status block (all checkmarks) — use the **Completion Status Block** format from the Output Format section (includes Duration, Branch, Verdict metadata)
-4. **Assemble the Pipeline Completion Report data**. This is the primary user-education artifact. Pull data from:
+3. Print the completion status block (all checkmarks) — use the **Completion Status Block** template in `actions/pipeline-reference.md` (includes Duration, Branch, Verdict metadata)
+4. **Assemble the Pipeline Completion Report data** (`actions/pipeline-reference.md` → **Pipeline Completion Report — three renderings of one dataset**, which also holds the **Composition rules** every rendering must follow). This is the primary user-education artifact. Pull data from:
    - **Final summary table**: Each completed REQ's frontmatter (`id`, `title`, `commit`, `domain`) and the REQ's `## Implementation Summary` → one-line synthesis. Group rows by domain so related work sits together.
    - **Test state (before → after)**: Each REQ's `## Testing` section records what tests were added/run. Aggregate test-suite counts if actions/work.md logged them (e.g., "Go: 81 → 98"). If no before-baseline was captured, show only the post-state and note "baseline not recorded" rather than inventing numbers.
    - **Cross-REQ coherence highlights**: Pull from the review step's output — the reviewer validates that interacting REQs (shared files, shared symbols, shared subsystems) remained consistent. Include each coherence assertion with the REQ pair. If the review didn't produce coherence notes (single-REQ pipelines, Route A REQs), omit this section.
@@ -177,10 +145,10 @@ When all 6 steps are done:
 
    | File | Format | Audience | Template / Producer |
    |------|--------|----------|---------------------|
-   | `do-work/deliverables/{UR-NNN}-pipeline-summary.md`          | Plain markdown             | Developer reading in a terminal or editor — cat / grep / paste into a PR | Output Format → **Plain Markdown Report** (LLM-authored) |
-   | `do-work/deliverables/{UR-NNN}-pipeline-summary.marp.md`     | Marp slide source          | Stakeholder walkthrough via `marp --preview`; also the source for the `.marp.html` export | Output Format → **Marp Slide Deck** (LLM-authored) |
+   | `do-work/deliverables/{UR-NNN}-pipeline-summary.md`          | Plain markdown             | Developer reading in a terminal or editor — cat / grep / paste into a PR | `actions/pipeline-reference.md` → **Plain Markdown Report** (LLM-authored) |
+   | `do-work/deliverables/{UR-NNN}-pipeline-summary.marp.md`     | Marp slide source          | Stakeholder walkthrough via `marp --preview`; also the source for the `.marp.html` export | `actions/pipeline-reference.md` → **Marp Slide Deck** (LLM-authored) |
    | `do-work/deliverables/{UR-NNN}-pipeline-summary.marp.html`   | Marp deck exported to HTML | Stakeholder who can't install `marp-cli` — share via URL or email | Produced mechanically by `npx @marp-team/marp-cli {UR-NNN}-pipeline-summary.marp.md --html` |
-   | `do-work/deliverables/{UR-NNN}-pipeline-summary.single.html` | Standalone authored HTML   | Non-technical reader browsing independently — Mermaid + Tailwind via CDN, zero build, cross-links siblings | Output Format → **Standalone HTML Debrief** (LLM-authored) |
+   | `do-work/deliverables/{UR-NNN}-pipeline-summary.single.html` | Standalone authored HTML   | Non-technical reader browsing independently — Mermaid + Tailwind via CDN, zero build, cross-links siblings | `actions/pipeline-reference.md` → **Standalone HTML Debrief** (LLM-authored) |
 
    The three authored files carry the same facts — no format-specific editorializing. The `.marp.html` export inherits its content mechanically from the `.marp.md` source; run the marp-cli command after writing the Marp source. Use `{REQ-id}-pipeline-summary.*` as the filename prefix if no UR was captured.
 
@@ -193,21 +161,13 @@ When all 6 steps are done:
 
 When the pipeline completes and additional pending REQs remain in the queue (from prior captures, follow-ups created during review, or other sources):
 
-1. Print the continuation notice (see Output Format) listing each pending REQ ID and its title
+1. Print the continuation notice (`actions/pipeline-reference.md` → **Continuation Notice**) listing each pending REQ ID and its title
 2. Record the list of pending REQ IDs about to be processed (e.g., `["REQ-043", "REQ-044"]`) — this is needed for review targeting in step 3
 3. Dispatch actions/work.md (`do-work run`) in **standard queue-processing mode** — do NOT scope to pipeline artifacts. Pass the pending REQ IDs (e.g., `do-work run REQ-043 REQ-044`) so actions/work.md processes them.
 4. After actions/work.md completes, dispatch actions/review-work.md for each REQ from step 2 individually (e.g., `do-work review REQ-043`, then `do-work review REQ-044`). Always use REQ IDs — never pass a UR ID, since UR-scoped review would re-review all completed REQs under that UR, not just this cycle's batch.
 5. **Loop**: Scan `do-work/queue/REQ-*.md` for `status: pending` again. If more pending REQs remain (e.g., follow-ups created during the review step), repeat from step 1. If the queue is empty, print "Queue fully processed." and suggest next steps.
 
-**Max iterations:** The continuation loop runs at most **3 cycles**. If pending REQs still remain after 3 run → review cycles, stop the loop and print:
-
-```
-Continuation limit reached (3 cycles). {count} REQ(s) still pending:
-  {REQ-ID} — {title}
-  ...
-
-Run "do-work run" to continue processing manually.
-```
+**Max iterations:** The continuation loop runs at most **3 cycles**. If pending REQs still remain after 3 run → review cycles, stop the loop and print the limit-reached message (`actions/pipeline-reference.md` → **Continuation Notice** — the limit-reached variant).
 
 This prevents runaway loops when review steps keep generating follow-up REQs.
 
@@ -230,7 +190,7 @@ If any step's dispatched action fails (error, exception, or the action reports f
 
 1. Set the step's `status` to `"failed"` and add an `error` field with a brief description
 2. Write the updated `pipeline.json`
-3. Print the status block showing the failure point
+3. Print the status block showing the failure point (`actions/pipeline-reference.md` → **Status Block**)
 4. Report the error to the user with context about what failed and why
 5. Leave `active: true` — the user can fix the issue and resume with `do-work pipeline`
 
@@ -238,284 +198,13 @@ On resume, the pipeline retries the failed step from scratch.
 
 ## Output Format
 
-### Status Block (printed after every step transition)
+Every rendering this action prints or writes lives in `actions/pipeline-reference.md`, each already pointed to by name from the step that emits it:
 
-```
-── Pipeline ─────────────────────────
-  ✓ investigate   done
-  ✓ capture       done  → REQ-042, UR-018
-  ✓ verify        done
-  ◎ run           in progress...
-  ○ review        pending
-  ○ present       pending
-─────────────────────────────────────
-  Session: 2026-04-08-001
-  Request: add dark mode to settings panel
-```
-
-**Symbols:**
-- `✓` — done
-- `◎` — in progress
-- `✗` — failed
-- `○` — pending
-
-For the `capture` step, append ` → {artifact IDs}` after "done" if artifacts were recorded.
-
-### Completion Status Block (printed when all 6 steps are done)
-
-```
-── Pipeline {session_id} — COMPLETE ──
-  ✓ investigate   done
-  ✓ capture       done  → UR-018, 12 REQs
-  ✓ verify        done  (or "skipped ({reason})" if inputs were pre-verified)
-  ✓ run           done  → {N} commits
-  ✓ review        done  ({verdict: PASS / PASS with caveats / FAIL})
-  ✓ present       done  → {N} deliverables
-─────────────────────────────────────
-  Session:   {session_id}
-  Duration:  {elapsed time from started_at to now, e.g. "~10.5h end-to-end"}
-  Branch:    {current git branch} ({pushed | local only})
-  Verdict:   {PASS | PASS with caveats | FAIL}
-```
-
-### Pipeline Completion Report — three renderings of one dataset
-
-The same facts — Final summary, Test state, Coherence, Carry-forward, Deliverables, How to verify — are rendered three ways by the LLM (`.md`, `.marp.md`, `.single.html`) so a developer, a stakeholder, and a non-technical reader each land on a surface that fits. A fourth file — `.marp.html` — is produced mechanically by `marp-cli` from the `.marp.md` source so stakeholders without the Marp tooling can still view the deck. One authoring pass over the data, four files on disk — never author any of the three LLM renderings from scratch if another already exists.
-
-#### Composition rules (apply to all three formats)
-
-- **Serve both audiences in every file.** Each summary opens with a "What got built" narrative for the reader who has no clue, then transitions into the audit data for the reader who wants receipts. A stakeholder landing on the `.html` should understand the feature without opening any other file; a developer scanning the `.md` should reach the commits and test deltas within seconds. Never ship a summary that only audits or only educates.
-- **Reuse client-brief content verbatim.** When the `present` step ran, the "What got built" narrative and architecture diagram come from `{UR-NNN}-client-brief.md` — copy the same sentences and the same diagram. Paraphrasing across files introduces drift. If the brief doesn't exist (present skipped or produced nothing), synthesize from the REQ Implementation Summaries.
-- **Cite commits, not prose.** Every audit claim should trace to a commit SHA, a REQ ID, or a file path. Tables and bullet lists with pointers beat paragraphs of explanation. (The opening narrative is the exception — it's plain language for the no-clue reader.)
-- **Pull from primary sources.** Final summary rows come from REQ frontmatter; coherence notes come from the review step's actual output; test deltas come from what `run` and `review` logged. Do not invent metrics.
-- **Be honest about gaps.** If the baseline test count wasn't captured before the pipeline started, write "baseline not recorded" — don't guess. If no cross-REQ coherence was analyzed (single-REQ pipeline), omit that section.
-- **Carry-forward ≠ auto-capture.** List candidates clearly with the command the user would run to capture each one, but never capture them automatically.
-- **No format-specific editorializing.** The Marp deck must not add facts the markdown lacks; the HTML must not soften or strengthen claims for a broader audience. Format dictates rendering; rendering does not dictate facts.
-
-#### 1. Plain Markdown Report — `{UR-NNN}-pipeline-summary.md`
-
-Developer-facing. Read in a terminal with `cat`, grepped, or pasted into a PR description. No YAML header, no CSS, no slide breaks — just markdown.
-
-```markdown
-# Pipeline Completion Report — {UR-NNN}
-
-**Session**: {session_id} · **Duration**: {duration} · **Branch**: {branch} ({pushed|local})
-**Verdict**: {PASS | PASS with caveats | FAIL}
-
-## What got built (for the reader who has no clue)
-
-[2-3 plain-language sentences synthesizing the UR title, the REQs' What sections, and the client brief's "What We Built" paragraph — no jargon, no commit SHAs, no REQ IDs. The reader learns what the feature *does* before they see the audit trail. If the `present` step ran, pull this straight from `{UR-NNN}-client-brief.md` so the two files stay in sync; if it didn't run, synthesize from the REQ Implementation Summaries.]
-
-[Optional: reuse the ASCII architecture diagram from the client brief, verbatim. Skip if the work is non-architectural (config tweak, bug fix, docs).]
-
-**Go deeper:** [`{UR-NNN}-client-brief.md`](./{UR-NNN}-client-brief.md) · [`{UR-NNN}-interactive-explainer.single.html`](./{UR-NNN}-interactive-explainer.single.html) *(only include links that actually exist on disk)*
-
-## Final summary
-
-| REQ | Commit | Scope | One-line |
-|-----|--------|-------|----------|
-| REQ-402 | 5ab214d | docs     | 4 lessons-learned files + prime links |
-| REQ-410 | 9371a68 | refactor | shared `initializeDatabaseAtPath` — prod/test converged |
-| REQ-413 | 9e20bde | backend  | SHA-256 index + O(log N) lookup rewrite |
-| ...     | ...     | ...      | ... |
-
-## Test state (before → after the {N}-REQ pipeline)
-
-| Suite         | Before    | After     | Delta |
-|---------------|-----------|-----------|-------|
-| Go (sa1-server) | 81 tests  | 98 tests  | +17 |
-| Frontend      | 1053 tests / 62 suites | 1067 tests / 65 suites | +14 tests / +3 suites |
-| `go vet`      | clean     | clean     | — |
-
-## Cross-REQ coherence highlights (verified by the review)
-
-- **REQ-413 ↔ REQ-406**: early-exit preserved at cache-hit + fresh-match. `effectiveLimit` threaded.
-- **REQ-413 ↔ REQ-407**: metric_version filter preserved in `loadCachedEdgesForSource`.
-- **REQ-411 ↔ REQ-412**: orthogonal, zero file overlap, no shared state.
-
-## Carry-forward work (implied, not captured yet)
-
-- [Deferred item] — capture with `do-work capture-request: ...`
-- [TODO/FIXME introduced and left for a follow-up]
-- [`pending-answers` REQs awaiting user input — run `do-work clarify`]
-- [`blocked` REQs waiting on an external condition — re-run `do-work run` (auto-probes any `blocked_check`) once it's met, or `do-work clarify` to confirm a human-checkable one]
-
-## Deliverables
-
-Render each bullet as a relative markdown link to the file (e.g. `[...]({UR-NNN}-client-brief.md)`) so a reader opening the `.md` in GitHub, a PR, or an editor can click through to any sibling artifact. Group by audience so the reader lands on the right surface first.
-
-**For the clueless-reader (start here if you don't know what was built):**
-
-- [`{UR-NNN}-client-brief.md`](./{UR-NNN}-client-brief.md) — plain-language brief with architecture diagram + value prop *(if present ran)*
-- [`{UR-NNN}-interactive-explainer.single.html`](./{UR-NNN}-interactive-explainer.single.html) — interactive Before/After explainer, open in any browser *(if present ran)*
-- [`{UR-NNN}-video/`](./{UR-NNN}-video/) — Remotion video walkthrough (`cd` in, `npm install`, `npm run preview`) *(if present ran)*
-- [`../../ai-reports/<newest-match>/index.html`](../../ai-reports/<newest-match>/index.html) — pixel-anchored visual report (screenshots + SVG callouts + before/after) *(only if a visual report exists — glob BOTH shapes: folder reports `ai-reports/*{UR-NNN}*/index.html` and legacy pre-0.100.0 single-file reports `ai-reports/*{UR-NNN}*.html`; pick the newest match by mtime and link to it — the folder's `index.html`, or the legacy `.html` file directly; omit the bullet entirely otherwise)*
-
-**For the developer / reviewer (audit the run):**
-
-- [`{UR-NNN}-pipeline-summary.md`](./{UR-NNN}-pipeline-summary.md) — this report (markdown)
-- [`{UR-NNN}-pipeline-summary.marp.md`](./{UR-NNN}-pipeline-summary.marp.md) — Marp slide source (`marp --preview`)
-- [`{UR-NNN}-pipeline-summary.marp.html`](./{UR-NNN}-pipeline-summary.marp.html) — Marp deck exported to HTML (for stakeholders without marp-cli)
-- [`{UR-NNN}-pipeline-summary.single.html`](./{UR-NNN}-pipeline-summary.single.html) — standalone authored HTML debrief
-
-## How to verify
-
-1. **Check out the branch and pull latest:**
-   ```
-   git checkout {branch} && git pull
-   ```
-2. **Inspect each commit** (ordered to show the build-up):
-   ```
-   git show 5ab214d   # REQ-402 — lessons-learned docs
-   git show 9371a68   # REQ-410 — shared init routine
-   git show 9e20bde   # REQ-413 — SHA-256 index rewrite
-   ```
-3. **Run the tests** (matches what the pipeline ran):
-   ```
-   {project test command — e.g., `go test ./...` and `npm test`}
-   ```
-4. **Preview the other renderings:**
-   ```
-   npx @marp-team/marp-cli {UR-NNN}-pipeline-summary.marp.md --preview
-   open do-work/deliverables/{UR-NNN}-pipeline-summary.marp.html
-   open do-work/deliverables/{UR-NNN}-pipeline-summary.single.html
-   ```
-5. **Read the per-REQ archive** for the full trail of intent:
-   ```
-   do-work/archive/{UR-NNN}/REQ-*.md
-   ```
-```
-
-#### 2. Marp Slide Deck — `{UR-NNN}-pipeline-summary.marp.md`
-
-Stakeholder-facing. Viewed with `marp --preview`, and also exported to `{UR-NNN}-pipeline-summary.marp.html` via `npx @marp-team/marp-cli {UR-NNN}-pipeline-summary.marp.md --html` so stakeholders without marp-cli can view the deck by opening a file. Must start with Marp YAML frontmatter (`marp: true`). Each slide separated by `---`. Keep slides scannable — no slide should fit more than ~8 rows of content; split long Final-summary tables across domain-grouped slides. Use a Mermaid `graph LR` on the coherence slide when there are 2+ cross-REQ links.
-
-Required slide sequence (omit a slide entirely if its section has no data — don't leave empty slides):
-
-1. **Title slide** — UR-NNN, session ID, branch, verdict badge
-2. **What got built** — 2-3 plain-language bullets pulled from the client brief's "What We Built" section. No commit SHAs, no REQ IDs. This is the slide a stakeholder who wandered in late needs to orient. Skip only if no `present` step produced a brief AND the UR itself is trivially self-explanatory from its title.
-3. **How it works** (when a client brief exists with an architecture diagram) — reuse the ASCII or Mermaid diagram from the brief. Skip for non-architectural changes.
-4. **At-a-glance stats** — REQ count, commit count, test delta, duration (big numbers in a 2×2 or 4-column grid)
-5. **What shipped — {domain}** — one slide per domain bucket (docs / backend / refactor / frontend / tests). Each is a table of REQ / commit / one-line for that domain only.
-6. **Test state (before → after)** — the table, full-width
-7. **Cross-REQ coherence** — Mermaid `graph LR` diagram of interacting REQs (skip for single-REQ pipelines)
-8. **Coherence assertions** — verbatim review quotes, one bullet per assertion
-9. **Carry-forward work** — bullets with capture commands (skip if none)
-10. **How to verify** — fenced `bash` block with checkout + git-show + test commands
-11. **Deliverables + next steps** — two-column layout: left column "Start here if you want to understand what was built" lists the client brief, interactive explainer, and video (when present ran); right column "Audit the run" lists the markdown and HTML summary siblings. Render each as the bare filename — stakeholders open the deck from `do-work/deliverables/`, so relative filenames are all they need to find the sibling files in the same folder.
-
-Use this Marp frontmatter skeleton and extend the `style:` block as needed — don't invent new themes:
-
-```yaml
----
-marp: true
-theme: default
-paginate: true
-size: 16:9
-header: '{UR-NNN} — Pipeline Debrief'
-footer: 'Session {session_id} · branch {branch}'
-style: |
-  section { font-family: system-ui, -apple-system, sans-serif; }
-  h2 { color: #1e40af; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.25em; }
-  code { background: #f1f5f9; padding: 0.1em 0.3em; border-radius: 3px; }
-  table { font-size: 0.75em; }
-  th { background: #1e40af; color: white; }
-  .big { font-size: 3em; font-weight: 700; color: #1e40af; }
-  .label { color: #64748b; font-size: 0.9em; }
----
-```
-
-#### 3. Standalone HTML Debrief — `{UR-NNN}-pipeline-summary.single.html`
-
-Non-technical-reader-facing. Single `.html` file, zero build steps. Same content as the markdown, rendered for a browser. The `.single.` infix marks this as an LLM-authored standalone page (Tailwind + Mermaid via CDN, cross-links to siblings) — distinct from the `.marp.html` mechanical export of the Marp deck.
-
-**Stack (CDN only — no npm, no build):**
-- Tailwind CSS via `<script src="https://cdn.tailwindcss.com"></script>`
-- Mermaid via `<script type="module">` import of `mermaid@10` from jsDelivr
-- Vanilla JS only (no React, no framework)
-
-**Required sections (in order):**
-
-1. **Hero** — UR-NNN as H1, one-paragraph description, metadata badges (branch, duration, verdict)
-2. **What got built** — a prose block that educates a reader who has no clue: 2-3 sentences explaining what the feature does in plain language, pulled from the client brief's "What We Built" section. No REQ IDs, no commit SHAs. When a client brief exists, this section is the primary educational entry point for a non-technical reader arriving at the HTML. Skip only if no `present` step ran and the UR is self-explanatory from its title.
-3. **How it works** (when an architecture diagram exists in the client brief) — a `<div class="mermaid">` with a `graph TD` or `graph LR` rendering of the same components/data flow from the brief's architecture section. Caption each node in plain language. Skip entirely for non-architectural changes (config tweaks, bug fixes).
-4. **At-a-glance stat cards** — 4-column grid of big-number stats (REQ count, commits, tests added, suites added)
-5. **What shipped** — grouped sections by domain, each with a styled table of REQ / commit / one-line
-6. **Test state** — the table, styled with the accent colour for the After column and green for the Delta
-7. **How the work holds together** — a `<div class="mermaid">` containing the same `graph LR` from the Marp deck (Mermaid renders on load)
-8. **Coherence assertions** — responsive card grid, one card per assertion, with the REQ pair in mono accent and the claim below (skip the whole section for single-REQ pipelines)
-9. **Carry-forward work** — cards with a bold title, muted explanation, and the capture command in a `<pre>` block (skip if none)
-10. **How to verify** — numbered headings, each followed by a copy-pasteable `<pre><code>` block
-11. **Related deliverables** — a navigation card grid **before** the final follow-ups list, splitting cross-links by audience. Left card group "Understand what was built" with real `<a href="./{UR-NNN}-client-brief.md">` / `<a href="./{UR-NNN}-interactive-explainer.single.html">` / `<a href="./{UR-NNN}-video/">` anchors (only include tiles for artifacts that actually exist on disk — if present ran and produced them). If a visual report exists at the project root (glob BOTH shapes: `ai-reports/*{UR-NNN}*/index.html` folder reports and legacy pre-0.100.0 single-file `ai-reports/*{UR-NNN}*.html`), add a fourth tile in this group linking to the newest match by mtime (`<a href="../../ai-reports/<newest-match>/index.html">Visual report</a>`, or the legacy `.html` file directly — pixel-anchored screenshots + SVG callouts). Right card group "Audit the run" linking the markdown (`<a href="./{UR-NNN}-pipeline-summary.md">`), Marp source (`<a href="./{UR-NNN}-pipeline-summary.marp.md">`), and Marp HTML export (`<a href="./{UR-NNN}-pipeline-summary.marp.html">`) siblings. The `.single.html` is the most discoverable surface for a non-technical reader — it must point them to the deeper, more educational artifacts.
-12. **Footer / next steps** — ordered list with `do-work present {UR-NNN}` and other follow-ups
-
-**Design requirements:**
-
-- Light theme default; dark theme via `@media (prefers-color-scheme: dark)` overriding CSS custom properties on `:root`
-- Palette: CSS variables for `--bg`, `--surface`, `--text`, `--muted`, `--accent`, `--accent-soft`, `--border`. Light: white/slate-50 / slate-900 / blue-600. Dark: slate-900 / slate-100 / blue-400.
-- Font: `system-ui, -apple-system, sans-serif`
-- **Full-bleed — no fixed centered column.** The page fills the viewport width with side padding only (`px-6` and up), not a `max-w-6xl mx-auto` reading column that leaves empty gutters on a wide monitor and forces needless scrolling. Cap width only on *running prose* (the "What got built" block → `max-w-prose`, ≈74ch); let the stat-card grid, the shipped/test tables, and the coherence/deliverable card grids use the full width and wrap responsively (`flex-wrap` / `grid` with `auto-fit minmax(...)`) so more is visible per screen — side-by-side on a wide monitor, stacked when narrow.
-- Generous spacing (`py-10` / `py-16` on sections) — breathing room between the bands, not crammed
-- Mermaid init: `mermaid.initialize({ startOnLoad: true, theme: 'default', securityLevel: 'loose' })`
-
-**What NOT to do:**
-
-- Don't add charts the source data doesn't support (no fabricated time-series, no fake percentages)
-- Don't embed images unless the REQs reference them
-- Don't pull in additional CDN scripts beyond Tailwind + Mermaid — the file must work offline once cached
-- Don't add interactivity that hides data (collapsible sections are fine; JS-gated sections that require a click to reveal facts are not)
-
-### Continuation Notice (printed when pending REQs remain after pipeline completion)
-
-```
-── Queue Continuation ───────────────
-  {count} pending REQ(s) remaining:
-    {REQ-ID} — {title}
-    {REQ-ID} — {title}
-    ...
-
-  Processing remaining queue...
-─────────────────────────────────────
-```
-
-When the continuation loop finishes and the queue is empty:
-
-```
-Queue fully processed. All pending requests complete.
-```
-
-When the continuation loop hits the max iteration cap (3 cycles):
-
-```
-Continuation limit reached (3 cycles). {count} REQ(s) still pending:
-  {REQ-ID} — {title}
-  ...
-
-Run "do-work run" to continue processing manually.
-```
-
-### Help Menu (no active pipeline, no arguments)
-
-```
-pipeline — full end-to-end orchestration
-
-  Start a new pipeline:
-    do-work pipeline add dark mode to settings
-    do-work full add dark mode to settings
-
-  Resume / manage:
-    do-work pipeline            Resume an active pipeline
-    do-work pipeline status     Show pipeline progress
-    do-work pipeline abandon    Deactivate without completing
-
-  Steps (executed in order):
-    1. investigate   Inspect uncommitted changes
-    2. capture       Capture the request as REQ + UR files
-    3. verify        Verify capture quality
-    4. run           Process the queue (build, test, review)
-    5. review        Post-work code review + acceptance testing
-    6. present       Generate client-facing deliverables (brief, diagrams, video, HTML)
-```
+- **Status Block** — printed after every step transition (Steps 2, 3, 4, 6).
+- **Completion Status Block** — printed once, when all 6 steps are done (Step 5).
+- **Pipeline Completion Report** — the three authored renderings (`.md`, `.marp.md`, `.single.html`) plus the mechanical `.marp.html` export, assembled from the dataset Step 5.4 gathers (Step 5).
+- **Continuation Notice** — the initial listing, the "queue fully processed" message, and the limit-reached message (Step 5a).
+- **Help Menu** — shown when Step 1 resolves to Help mode.
 
 ## Rules
 
@@ -524,7 +213,7 @@ pipeline — full end-to-end orchestration
 - **Orchestrator only.** The pipeline dispatches to existing actions. It never re-implements capture, work, verify, review, present, or inspect logic. Each action runs exactly as it would if the user invoked it directly.
 - **Write state before dispatch.** Always update `pipeline.json` to `"in-progress"` before dispatching an action, and to `"done"` after it completes. This ensures the state file reflects reality even if the session ends unexpectedly.
 - **The `run` step may be long.** actions/work.md processes only this pipeline's captured REQs but may still take significant time for complex requests. When starting this step, note: "Starting queue processing — this may take a while if multiple REQs are pending."
-- **Platform-agnostic.** No tool-specific APIs. Dispatch actions the same way the main router does. If your environment supports stop hooks, you can optionally install `hooks/pipeline-guard.sh` to prevent accidental stops mid-pipeline — but the pipeline works without it.
+- **Optional stop-hook guard.** If your environment supports stop hooks, install `hooks/pipeline-guard.sh` to prevent accidental stops mid-pipeline — the pipeline works without it.
 - **Do not commit the state file.** `do-work/pipeline.json` is transient session state. It tracks a single pipeline run and has no value after completion. It's excluded from git at initialize via the enclosing repo's `.git/info/exclude` (Step 4 of the New Pipeline flow), not the committable `.gitignore`.
 - **Pass context to sub-agents explicitly.** Sub-agents have no conversation history. When dispatching a step via sub-agent, always include the pipeline request text and all artifact IDs from completed steps in the sub-agent prompt. Without this, sub-agents cannot target the correct UR/REQs.
 - **Scope the `run` step to captured REQs only.** actions/work.md is queue-processing by default. When dispatched from the pipeline, it must only process the REQs created by this pipeline's capture step (listed in `artifacts`). Never process unrelated backlog items during a pipeline run.

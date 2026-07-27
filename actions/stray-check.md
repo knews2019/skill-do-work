@@ -80,7 +80,6 @@ Otherwise:
 3. Apply **only** the items the user confirms. Support selective application ("all", a number list like `1,3,5`, or "none").
 4. Constraints:
    - **Never delete a tracked file with raw `rm`** — use `git rm` (recoverable from history). Prefer `git rm --cached` when the goal is "stop tracking", not "destroy".
-   - **Never `git add -A` / `git add .`** — stage only the paths you touched.
    - **Never auto-commit.** After applying, print exactly what changed and suggest `do-work commit`.
    - **Never touch** misplaced-file moves (cat 5), large blobs (cat 8), or dead-code candidates (cat 10) — those are report-only by design.
    - **Secrets (cat 4):** if confirmed, do `git rm --cached` + gitignore, and **repeat the warning** that the secret remains in history and must be rotated.
@@ -136,7 +135,7 @@ All clear — no stray, misplaced, or orphan files detected.
 - **The scan phase makes zero writes.** Findings are reported; fixes happen only after explicit confirmation (Step 5), and never in `report` mode.
 - **Skip the entire `do-work/` tree** and defer misplaced `do-work/` directories to actions/cleanup.md. This action owns repo-wide hygiene, not do-work's bookkeeping.
 - **Tracked files are removed with `git rm`, never raw `rm`** — prefer `git rm --cached` when the intent is to stop tracking rather than destroy.
-- **Never `git add -A`**, never auto-commit, never touch paths outside the scan root.
+- **Never `git add -A` / `git add .`** — stage only the paths this action touched (see `actions/commit.md` § Rules for the full staging/hook guard); never auto-commit; never touch paths outside the scan root.
 - **Secrets are flagged loudly** with a history-retention + rotation warning; `git rm --cached` does not remove them from history — say so.
 - **Dead-code findings are Info-only and never auto-fixed.** Always attach the false-positive caveat.
 - **Respect `.gitignore`**: an untracked file already covered by an ignore rule is correct, not pollution — don't report it.
@@ -150,7 +149,7 @@ All clear — no stray, misplaced, or orphan files detected.
 | "I'll just `git rm --cached` the secret and we're done" | Remove it, but warn the secret is still in history and must be rotated | History retains the blob; untracking ≠ scrubbing |
 | "A big binary in git is fine, skip it" | Flag it as a Warning and suggest Git LFS | Large blobs bloat every clone forever; the user should decide consciously |
 | "There's a `do-work/` dir in a subfolder — I'll relocate it" | Note it and defer to `do-work cleanup` (Pass 3a) | cleanup owns do-work's own files; double-handling risks conflicts |
-| "Let me just stage everything and commit the cleanup" | Stage only touched paths; never auto-commit | `git add -A` sweeps unrelated changes; the user commits when ready |
+| "Let me just stage everything and commit the cleanup" | Stage only touched paths; never auto-commit | Scoped staging keeps changes reviewable; the user commits when ready |
 
 ## Red Flags
 
@@ -160,7 +159,7 @@ All clear — no stray, misplaced, or orphan files detected.
 - Untracked junk inside a brand-new directory (e.g. `tmp/debug.log`) was missed — the untracked inventory used plain `git status --porcelain` (which collapses the dir to `?? tmp/`) instead of `git ls-files --others --exclude-standard` / `-uall`.
 - A dead-code candidate was reported as Critical or auto-removed — category 10 is Info-only, never auto-fixed.
 - A tracked file was removed with raw `rm` instead of `git rm` — unrecoverable.
-- `git add -A` or an auto-commit appeared — staging/commit must be scoped and user-driven.
+- Broad staging or an auto-commit appeared — staging/commit must be scoped and user-driven.
 - A committed secret was reported without a rotation warning — the most important part of the finding is missing.
 - The report lists "some files" or generic descriptions instead of concrete paths — findings must name paths.
 
@@ -175,4 +174,4 @@ All clear — no stray, misplaced, or orphan files detected.
 - [ ] Tracked files inside skip-listed dirs (e.g. a committed `__pycache__/*.pyc`) still reached the tracked-artifact checks (categories 2/3/4); the skip-list did not filter tracked paths.
 - [ ] Dead-code candidates are Info-only with the false-positive caveat; never auto-fixed.
 - [ ] Any committed secret carries a history-retention + rotation warning.
-- [ ] No `git add -A`, no auto-commit; tracked removals used `git rm`.
+- [ ] No broad staging, no auto-commit; tracked removals used `git rm`.
