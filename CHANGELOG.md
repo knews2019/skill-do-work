@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.138.0 — Next-Step Suggestions Come From Intent, Not a 40-Case Table (2026-07-27)
+
+`next-steps.md` is read after every single action, and it was 1,741 words of hard-coded examples — one worked block per action, most of them saying the obvious thing. It's now 383 words: the intent, the format rules, and a table of only the cases where the right suggestion genuinely isn't inferable.
+
+- Suggestions are now judged from the real outcome (empty queue, clean tree, REQ domain) instead of matched against a fixed action-to-suggestion list.
+- The six genuinely ambiguous cases survive as a table — `pipeline` interrupted vs. completed, `reserve`, `capture-requests`, and `clarify` with vs. without pending answers.
+- One example block remains to anchor the output format; the other 46 are gone.
+- Cuts 1,358 words from the always-read floor — the context every do-work invocation pays for.
+
 ## 0.137.0 — Clarify Opens Each Question With a Plain-Language Story (2026-07-24)
 
 Answering pending questions used to mean remembering what REQ-025 was about — often days after the work happened. Now every question arrives with a short story above it: what you asked for, what the builder ran into, and why the call is yours. The decision block underneath is unchanged.
