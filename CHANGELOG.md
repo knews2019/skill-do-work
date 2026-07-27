@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.144.1 — Capture States the Domain Field as the Closed Set It Actually Is (2026-07-27)
+
+Capture described `domain` with an "e.g." list, which reads as a free-text hint. It isn't — the work loop normalizes anything outside the six values to `general` with a warning, so an invented domain quietly costs you the crew rules you meant to load. Now it says so, and names where the normalization rule lives.
+
+- Found by a cold-start smoke test of the newly split capture action, which flagged the same list being stated two ways in two files.
+
 ## 0.144.0 — Pipeline Splits Its Output Renderings Into a Lazy-Loaded Companion (2026-07-27)
 
 `pipeline.md` was 7,471 words, most of it templates for output that only gets rendered at the end of a run — so a pipeline that aborted at step 1 had still loaded all three completion-report formats and the help menu. Those now live in `actions/pipeline-reference.md`.
