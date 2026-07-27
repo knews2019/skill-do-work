@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.139.4 — Capture Boundaries Can't Be Spoofed; Tracked Logs Caught Before the Install Fast Path (2026-07-28)
+
+Four follow-up fixes, all found by reviewing the previous two rounds' fixes. Two of them were holes the earlier fixes left open rather than new bugs.
+
+- Capture sections now open with a sentinel and quote every body line, and the session-start filter ends a section only at an unquoted heading. Heading grammar alone was still spoofable: raw capture text can contain `## 12:34 UTC note`, which ended the section and injected the rest. Legacy sections written before this release have unquoted bodies where no boundary is trustworthy, so they're suppressed to end-of-file — that hides curated entries written after them that day, and self-clears with the next capture.
+- The memory-module install detects a tracked raw store in Phase 1 instead of Phase 4. A fully-wired install with a committed log plus an ignore rule took the "already installed" early return, so the check added in 0.139.2 never ran in the one scenario it was written for.
+- A `memory` payload that arrives with no sub-command now falls back to `recall`, never `remember`. Real recall queries are usually noun phrases, so the previous sentence-shape test would have classified most reads as writes and mutated the store on a request to read it.
+- `do-work recall` with an empty query — including the `what do you remember` phrasing — is now defined: it presents working memory plus recent curated log entries instead of searching for nothing.
+
 ## 0.139.3 — Orchestrator Lock Updates Are Serialized; Long Prompts No Longer Eat the Agent Reply (2026-07-28)
 
 Three fixes from a second review pass. The lock guard turns out to have had a lost-update hole since coexisting sessions were added — measured at 19 of 20 concurrent writes discarded.

@@ -178,9 +178,18 @@ fi
 # independently, because logs already on disk were written without this prefix.
 QUOTED_CAPTURE_TEXT="$(printf '%s\n' "$CAPTURE_TEXT" | sed 's/^/> /')" || exit 0
 
+# The sentinel is the FIRST non-blank line of the section, so the reader identifies the
+# format before any body line is seen — and every body line below is `> `-prefixed, so a
+# body line can never equal the bare sentinel or impersonate an unquoted heading. That
+# combination is what makes the boundary unspoofable. Sections without the sentinel are
+# pre-0.139.4 legacy, and hooks/memory-session-start.sh suppresses those to end-of-file.
+# Keep this string byte-identical to CAPTURE_BODY_SENTINEL in that hook.
+CAPTURE_BODY_SENTINEL='<!-- do-work:capture-body quoted -->'
+
 {
   printf '\n## %s UTC session capture %s\n\n' "$(date -u +%H:%M)" "$CAPTURE_HASH"
-  printf 'Session capture — final exchange between the user and the agent:\n\n'
+  printf '%s\n' "$CAPTURE_BODY_SENTINEL"
+  printf '> Session capture — final exchange between the user and the agent:\n>\n'
   printf '%s\n' "$QUOTED_CAPTURE_TEXT"
 } >> "$TODAY_LOG" 2>/dev/null || exit 0
 

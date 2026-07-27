@@ -452,10 +452,23 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 # longer locally ignored) must route back through Phase 2, which is idempotent and
 # only fills gaps. Outside a git repo the ignore clause is vacuously satisfied.
 ignore_ok=1
+tracked_raw_store=""
 if git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
   git check-ignore -q "$PROJECT_ROOT/memory/logs/.probe" 2>/dev/null || ignore_ok=0
   git check-ignore -q "$PROJECT_ROOT/memory/usage-ledger.jsonl" 2>/dev/null || ignore_ok=0
   git check-ignore -q "$PROJECT_ROOT/memory/.bootstrap-imported" 2>/dev/null || ignore_ok=0
+  # A tracked raw store is the ONE state that a fully-wired install can be in while
+  # still leaking verbatim captures, and an ignore rule cannot repair it. It must be
+  # detected HERE, not at Phase 4 verify: with the rule present, `ignore_ok` stays 1
+  # and every other probe passes, so the "already installed" early return below would
+  # exit before any later check ever runs — the exact repair case this is meant to catch.
+  tracked_raw_store="$(git -C "$PROJECT_ROOT" ls-files -- memory/logs memory/usage-ledger.jsonl memory/.bootstrap-imported)"
+fi
+if [ -n "$tracked_raw_store" ]; then
+  echo "raw store: TRACKED — repair required, not installable as-is:"
+  printf '%s\n' "$tracked_raw_store" | sed 's/^/    /'
+else
+  echo "raw store: untracked"
 fi
 if test -s "$PROJECT_ROOT/memory/working-memory.md" \
    && test -d "$PROJECT_ROOT/memory/logs" \
@@ -473,6 +486,7 @@ else
 fi
 ```
 
+- **`raw store: TRACKED` (checked FIRST, whatever the other two lines say)** → stop before Phase 2. Report the named paths, tell the user to `git rm --cached <path>` and commit the removal, and say plainly that until then the Stop hook keeps appending verbatim captures to a file that gets committed. Never untrack on their behalf — removing a path from the index is the user's call. This outranks "already installed" precisely because a fully-wired install is the state it hides in.
 - **Both present** → report "already installed" and stop.
 - **Scaffolding present, hooks absent/partial** → *repair mode*: skip Phase 2, run Phase 3 only. (Hooks wired but scaffolding absent/partial is also repair: run Phase 2 only.)
 - **Both absent/partial** → run Phases 2–3 in full.

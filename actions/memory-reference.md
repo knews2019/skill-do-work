@@ -52,7 +52,13 @@ where `<kind>` is one of (illustrative, not exhaustive — new writers add new k
 - `session capture <hash8>` — appended by `hooks/memory-stop-capture.sh`; `<hash8>` is the first 8 hex chars of the sha256 of the captured text and is the dedup key.
 - `bootstrap import` — written once by `memory bootstrap`; body must name the source transcript.
 
-**The `## HH:MM UTC ` prefix is load-bearing, not cosmetic.** `hooks/memory-session-start.sh` decides where a `session capture` section ends by matching that grammar, so a heading inside a body — `## Findings` is ordinary in a captured assistant response — must NOT read as a section boundary. Two rules keep that true, and both are required: writers anchor their headings to this exact form, and any writer emitting verbatim third-party text blockquotes each body line (`> `) so a body line can never begin with `#`. Loosening the reader's pattern to a bare `^## ` injects the tail of a raw capture as curated memory.
+**A `session capture` section's end is decided by format, not by heading grammar.** Raw capture text can contain any line at all, including `## 12:34 UTC note` — heading grammar is trivially spoofable by anything that reaches a transcript, so it cannot on its own end a section that `hooks/memory-session-start.sh` is suppressing. The contract that makes the boundary unspoofable:
+
+- A writer emitting verbatim third-party text MUST open the section with the sentinel `<!-- do-work:capture-body quoted -->` as its first non-blank line, and MUST `> `-prefix every body line after it (including the framing line).
+- The reader then ends the section at the first heading-grammar line that is **not** `> `-prefixed. Because every body line is quoted, no body line can be that.
+- A section without the sentinel is pre-0.139.4 legacy with an unquoted body, where no boundary is trustworthy: the reader suppresses to end-of-file. That also hides curated entries written later that day — a bounded, self-clearing cost, correct against injecting raw transcript text.
+
+Both halves are required. Dropping the sentinel makes legacy and current sections indistinguishable; dropping the quoting lets a body line impersonate the boundary.
 
 ## Lexical Recall (Layer 1 — always runs)
 
@@ -139,7 +145,7 @@ Used by `hooks/memory-stop-capture.sh`:
 2. Redact per the Capture Redaction Spec below — redaction runs BEFORE hashing so the dedup key is stable against the persisted text.
 3. `hash8="$(printf '%s' "$capture_text" | sha256sum | cut -c1-8)"` (fall back to `shasum -a 256` on systems without `sha256sum`).
 4. `grep -q "session capture $hash8" "$today_log"` → already captured, exit 0 (idempotent across duplicate Stop firings).
-5. Append heading `## HH:MM UTC session capture <hash8>`, framing line `Session capture — final exchange between the user and the agent:`, then the text **with every line prefixed `> `** (see Daily-Log Entry Conventions — the blockquote is what stops a heading inside the captured text from ending the section for `hooks/memory-session-start.sh`). Blockquote at write time only; the hash is computed over the unquoted text at step 3, so the dedup key stays stable.
+5. Append, in this order: heading `## HH:MM UTC session capture <hash8>`, the sentinel `<!-- do-work:capture-body quoted -->`, the framing line `> Session capture — final exchange between the user and the agent:`, then the text **with every line prefixed `> `**. Sentinel first, everything after it quoted — see Daily-Log Entry Conventions for why both are required to make the section boundary unspoofable. Quoting happens at write time only; the hash is computed over the unquoted text at step 3, so the dedup key stays stable.
 6. The hook ALWAYS exits 0 — capture is never worth blocking a session end.
 
 ## Capture Redaction Spec

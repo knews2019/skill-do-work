@@ -47,16 +47,40 @@ if [ -f "$TODAY_LOG" ]; then
   # prompt-injection guard can load. They stay reachable only via `memory recall`,
   # which loads crew-members/prompt-injection.md first (actions/memory.md).
   #
-  # A section boundary is ONLY a line matching the daily log's own heading grammar,
-  # `## HH:MM UTC <kind>` (actions/memory-reference.md → Daily-Log Entry Conventions). Matching
-  # a bare `^## ` instead let any Markdown heading inside a capture body — `## Findings`
-  # is ordinary in an assistant response — end the capture section, so everything after
-  # it was injected as curated memory. Keep this anchored: the pattern IS the guard.
-  # hooks/memory-stop-capture.sh also blockquotes capture bodies at write time; this
-  # rule is what protects logs already written without that prefix.
-  CURATED_LOG_LINES="$(awk '
-    /^## [0-9][0-9]:[0-9][0-9] UTC /{in_capture_section = ($0 ~ /session capture/)}
-    !in_capture_section {print}
+  # Heading grammar alone cannot end a capture section, because raw capture text can
+  # contain a line that looks exactly like one — `## 12:34 UTC note` is trivially
+  # spoofable by anything that reaches the transcript. The boundary must be something
+  # body text provably cannot produce, so the format decides:
+  #
+  #   quoted (current) — the section's first non-blank line is CAPTURE_BODY_SENTINEL and
+  #     every body line is `> `-prefixed. A boundary is then a heading-grammar line that
+  #     is NOT quoted, which no body line can be. Curated notes after a capture still
+  #     inject normally.
+  #   legacy (pre-0.139.4, already on disk) — bodies are unquoted, so NO boundary can be
+  #     trusted. Suppress to end-of-file. This deliberately also hides curated entries
+  #     written after a legacy capture that day; a bounded, one-day loss of convenience
+  #     is the right trade against injecting raw transcript text, and it self-clears as
+  #     soon as the next capture is written in the new format.
+  #
+  # Keep this string byte-identical to CAPTURE_BODY_SENTINEL in hooks/memory-stop-capture.sh.
+  CAPTURE_BODY_SENTINEL='<!-- do-work:capture-body quoted -->'
+  CURATED_LOG_LINES="$(awk -v sentinel="$CAPTURE_BODY_SENTINEL" '
+    {
+      is_heading = ($0 ~ /^## [0-9][0-9]:[0-9][0-9] UTC /)
+      is_quoted  = ($0 ~ /^>/)
+      is_boundary = 0
+      if (is_heading) {
+        if (!in_capture_section) is_boundary = 1
+        else if (capture_format == "quoted" && !is_quoted) is_boundary = 1
+      }
+      if (is_boundary) {
+        in_capture_section = ($0 ~ /session capture/)
+        capture_format = ""
+      } else if (in_capture_section && capture_format == "" && $0 ~ /[^[:space:]]/) {
+        if ($0 == sentinel) capture_format = "quoted"; else capture_format = "legacy"
+      }
+      if (!in_capture_section) print
+    }
   ' "$TODAY_LOG" 2>/dev/null || true)"
   if [ -n "$(printf '%s' "$CURATED_LOG_LINES" | tr -d '[:space:]')" ]; then
     echo
