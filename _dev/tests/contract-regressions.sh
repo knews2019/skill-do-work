@@ -247,6 +247,67 @@ if [ -n "$self_citation_hits" ]; then
   fail_count=$((fail_count + 1))
 fi
 
+# Common Rationalizations regrowth ratchet (REQ-027). The four "earned" template
+# sections (Rules / Common Rationalizations / Red Flags / Verification Checklist)
+# drifted from "included when they'd help" to "included because the template listed
+# them" — 20 of 42 action files carried all four (24 carry a Common Rationalizations
+# table at all), most filled with generic engineering
+# advice a capable model already follows. This check catches regrowth in Common
+# Rationalizations specifically: a table whose rows carry no do-work-specific noun is
+# exactly that generic filler (see CLAUDE.md → Action File Conventions for the full
+# omission test). Scoped to files added after REQ-027 — the baseline below grandfathers
+# the existing tree (as of REQ-027) so this check lands green without a mass rewrite in
+# the same commit; REQ-025/028/029/030/031 clean up the backlog under the new rule.
+common_rationalizations_baseline_action_files=(
+  abandon.md ai-report.md bkb-reference.md bkb.md board.md capture.md clarify.md
+  cleanup.md code-review.md commit.md deep-explore-reference.md deep-explore.md
+  dream.md forensics.md help.md inspect.md install.md interview-reference.md
+  interview.md kb-lessons-handoff.md note.md pipeline.md present-work.md
+  prime-req-reservation.md prime.md prompts.md quick-wins.md reserve.md
+  review-work.md roadmap.md sample-archived-req.md scan-ideas.md slop-check.md
+  stray-check.md tidy-repo.md tutorial.md ui-review.md validate-feedback.md
+  verify-requests.md version.md work-reference.md work.md
+)
+
+is_grandfathered_rationalizations_file() {
+  local candidate_file_name="$1"
+  local baseline_entry
+  for baseline_entry in "${common_rationalizations_baseline_action_files[@]}"; do
+    if [ "$baseline_entry" = "$candidate_file_name" ]; then
+      return 0
+    fi
+  done
+  return 1
+}
+
+# Illustrative, not exhaustive (Closed Enumerations Go Stale) — grep for do-work
+# machinery vocabulary, not general software-engineering nouns. Split in two so "REQ"
+# stays case-sensitive (case-insensitive it collides with "required"/"requires", which
+# show up in ordinary generic advice and would silently defeat the check).
+rationalization_noun_pattern_case_sensitive='\bREQ-?[0-9]*\b|\bUR-[0-9]+\b'
+rationalization_noun_pattern_case_insensitive='queue|frontmatter|pipeline|\barchive|do-work|\bdomain\b|\bblocked\b|\bkb/|\bprime\b|\bclarify|working/|crew-member|\bschema\b|status:'
+
+for action_file_path in "$repo_root"/actions/*.md; do
+  action_file_name="$(basename "$action_file_path")"
+  if is_grandfathered_rationalizations_file "$action_file_name"; then
+    continue
+  fi
+  if ! grep -q '^## Common Rationalizations' "$action_file_path"; then
+    continue
+  fi
+  rationalization_block="$(awk '/^## Common Rationalizations/{flag=1;next}/^## /{flag=0}flag' "$action_file_path" || true)"
+  rationalization_rows="$(grep '^|' <<<"$rationalization_block" | grep -viE "if you're thinking" | grep -vE '^\|[-: |]+\|$' || true)"
+  if [ -z "$rationalization_rows" ]; then
+    continue
+  fi
+  if ! grep -qE "$rationalization_noun_pattern_case_sensitive" <<<"$rationalization_rows" \
+     && ! grep -qiE "$rationalization_noun_pattern_case_insensitive" <<<"$rationalization_rows"; then
+    printf 'FAIL: %s Common Rationalizations table has no do-work-specific noun (REQ, UR, queue, frontmatter, pipeline, archive, domain, blocked, kb/, prime, clarify, working/, crew-member, schema, status — illustrative list) in any row — every row reads as generic engineering advice a capable model already follows. Add rows naming a specific do-work failure mode, or omit the section entirely (see CLAUDE.md -> Action File Conventions for the omission test).\n' \
+      "$action_file_name" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi

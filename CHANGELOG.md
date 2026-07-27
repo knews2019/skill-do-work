@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.139.0 — Action-File Boilerplate Sections Must Now Be Earned (2026-07-27)
+
+The action-file template asked for Rules, Common Rationalizations, Red Flags, and a Verification Checklist, so 20 of 42 action files carried all four — many stuffed with engineering advice any capable model already follows. Those four sections are now earned, not mandatory, and a contract check keeps the boilerplate from growing back.
+
+- A section is earned only when the file has do-work machinery or a hard-won failure mode with a traceable origin. "It's generic advice" is an explicit non-reason.
+- Concrete test for a Common Rationalizations row: can you name the specific failure it prevents, and where it happened? If no row passes, omit the whole table — a generic one teaches readers the section is decorative.
+- New rule: state intent rather than a directive when a capable model can infer the rest.
+- `_dev/tests/contract-regressions.sh` now fails any *new* action file whose Common Rationalizations rows contain no do-work-specific noun. The existing tree is grandfathered by an explicit baseline list.
+- Trimmed the Project Structure glosses and Queue Path Convention; every shell-trap gotcha and the Closed Enumerations rule stay untouched.
+
 ## 0.138.0 — Next-Step Suggestions Come From Intent, Not a 40-Case Table (2026-07-27)
 
 `next-steps.md` is read after every single action, and it was 1,741 words of hard-coded examples — one worked block per action, most of them saying the obvious thing. It's now 383 words: the intent, the format rules, and a table of only the cases where the right suggestion genuinely isn't inferable.
