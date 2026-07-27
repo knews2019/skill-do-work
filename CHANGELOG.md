@@ -6,11 +6,19 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.145.1 — Corrected the Example Count in 0.138.0's Title (2026-07-27)
+## 0.147.2 — Reconciled the Refactor Branch With Main's Memory Engine (2026-07-27)
 
-The 0.138.0 entry said `next-steps.md` was a 40-case table. It was 47 — the same entry's own "the other 46 are gone" already implied it. Counted from the pre-change file, not from memory.
+This branch and `main` both forked from 0.137.0 and independently spent 0.138.0–0.139.0 on different releases. Merging the two lines of work de-collides those version numbers and folds both sets of changes into one history.
 
-## 0.145.0 — A Second `do-work run` on the Same Tree Now Detects the First (2026-07-27)
+- The refactor branch's ten entries (the `next-steps.md` redesign through the concurrent-orchestrator lock) were renumbered to 0.140.0–0.147.1, stacked above `main`'s memory-engine and adhd-install releases (0.138.0–0.139.0). No version number is used twice.
+- `next-steps.md` kept its intent-based redesign: `main`'s per-action "After memory" blocks were dropped because that redesign replaced the whole enumeration with intent-based inference — the memory action's next steps are now inferred like every other action's.
+- The Common Rationalizations noun check (REQ-027) now recognizes the memory subsystem's vocabulary (working memory, daily log, usage ledger, bootstrap, Stop hook), so `main`'s new `actions/memory.md` passes the check on its own merits instead of being grandfathered.
+
+## 0.147.1 — Corrected the Example Count in 0.140.0's Title (2026-07-27)
+
+The 0.140.0 entry said `next-steps.md` was a 40-case table. It was 47 — the same entry's own "the other 46 are gone" already implied it. Counted from the pre-change file, not from memory.
+
+## 0.147.0 — A Second `do-work run` on the Same Tree Now Detects the First (2026-07-27)
 
 On 2026-07-01 two sessions ran the work loop on one tree at the same time. The second committed the first's in-flight build and archived it with a hollow paper trail; it merged by luck. Nothing in the skill detected the collision. Now Step 1 acquires a lock before it touches anything, and a second orchestrator has to deal with it.
 
@@ -20,13 +28,13 @@ On 2026-07-01 two sessions ran the work loop on one tree at the same time. The s
 - Crash recovery is now gated per-file against the lock, re-read from disk every pass — so it never re-queues a REQ another live session is still building.
 - The lock lives at `do-work/orchestrator-lock.json` and is kept out of git the same way `pipeline.json` is.
 
-## 0.144.1 — Capture States the Domain Field as the Closed Set It Actually Is (2026-07-27)
+## 0.146.1 — Capture States the Domain Field as the Closed Set It Actually Is (2026-07-27)
 
 Capture described `domain` with an "e.g." list, which reads as a free-text hint. It isn't — the work loop normalizes anything outside the six values to `general` with a warning, so an invented domain quietly costs you the crew rules you meant to load. Now it says so, and names where the normalization rule lives.
 
 - Found by a cold-start smoke test of the newly split capture action, which flagged the same list being stated two ways in two files.
 
-## 0.144.0 — Pipeline Splits Its Output Renderings Into a Lazy-Loaded Companion (2026-07-27)
+## 0.146.0 — Pipeline Splits Its Output Renderings Into a Lazy-Loaded Companion (2026-07-27)
 
 `pipeline.md` was 7,471 words, most of it templates for output that only gets rendered at the end of a run — so a pipeline that aborted at step 1 had still loaded all three completion-report formats and the help menu. Those now live in `actions/pipeline-reference.md`.
 
@@ -35,7 +43,7 @@ Capture described `domain` with an "e.g." list, which reads as a free-text hint.
 - Verified byte-identical after heading normalization; 14 pointer sites across 8 companion sections, no orphans.
 - ADR-008 and ADR-001 updated to match — ADR-008 had been asserting the templates were inline, which this change made false.
 
-## 0.143.0 — AI Report Splits Its Asset Templates Into a Lazy-Loaded Companion (2026-07-27)
+## 0.145.0 — AI Report Splits Its Asset Templates Into a Lazy-Loaded Companion (2026-07-27)
 
 `ai-report.md` was the largest action file in the skill at 7,541 words, and it loaded whole — so a report that never generates an image still paid for the entire image-generation backend. The heavy assets now live in `actions/ai-report-reference.md`, opened only at the step that needs them.
 
@@ -43,7 +51,7 @@ Capture described `domain` with an "e.g." list, which reads as a free-text hint.
 - Steps 1–8 stay in the action file as a skeleton; each consuming step names its companion section by path.
 - Pure relocation, verified line-for-line — no rule changed, and the eight pointer sites all resolve.
 
-## 0.142.0 — Capture Splits Its Templates Into a Lazy-Loaded Companion (2026-07-27)
+## 0.144.0 — Capture Splits Its Templates Into a Lazy-Loaded Companion (2026-07-27)
 
 Every capture loaded both REQ templates, the schema-alias table, the UR template, and five worked transcripts — even a capture that stopped at the duplicate check. The templates now live in `actions/capture-reference.md`, opened at Step 5 (Write Files) and the Step 2 addendum branch, and nowhere else.
 
@@ -52,7 +60,7 @@ Every capture loaded both REQ templates, the schema-alias table, the UR template
 - All five worked examples deleted rather than relocated. Each was checked individually; none encoded a judgment the templates and triage rules don't already specify.
 - Steps 0–7 and the simple/complex triage stay in the action file, which still works standalone for everything up to writing files.
 
-## 0.141.0 — Each Shipped Guard Now Stated Once (2026-07-27)
+## 0.143.0 — Each Shipped Guard Now Stated Once (2026-07-27)
 
 The `git add -A` / hook-bypass guard was restated in seven files — five times inside `stray-check.md` alone — so changing it meant finding seven sites and hoping they stayed in sync. Prompt-injection doctrine was inlined in three actions that already load the crew file that owns it. Each guard now has one canonical home; every other site is a one-line pointer.
 
@@ -61,7 +69,7 @@ The `git add -A` / hook-bypass guard was restated in seven files — five times 
 - "This action is read-only" collapses to the description plus one enforcement point in `forensics.md`, `quick-wins.md`, and `code-review.md`.
 - No guard became unenforceable: every site still names its constraint and says where the full rule lives.
 
-## 0.140.0 — Domain Crew Files Trimmed to Opinions (2026-07-27)
+## 0.142.0 — Domain Crew Files Trimmed to Opinions (2026-07-27)
 
 The six domain crew files were 6,737 words, much of it engineering advice a capable model already follows, with the same security guidance stated in two or three places. They're now 4,237 words of actual opinions — the calls this project makes differently, plus everything wired to do-work machinery.
 
@@ -70,7 +78,7 @@ The six domain crew files were 6,737 words, much of it engineering advice a capa
 - Kept: framework/test detection tables, the Red-Green workflow tied to `tdd: true`, prime-file test mappings, and every UNIFY quality checklist.
 - `general.md` and `coding-guardrails.md` — the always-loaded pair — are untouched.
 
-## 0.139.0 — Action-File Boilerplate Sections Must Now Be Earned (2026-07-27)
+## 0.141.0 — Action-File Boilerplate Sections Must Now Be Earned (2026-07-27)
 
 The action-file template asked for Rules, Common Rationalizations, Red Flags, and a Verification Checklist, so 20 of 42 action files carried all four — many stuffed with engineering advice any capable model already follows. Those four sections are now earned, not mandatory, and a contract check keeps the boilerplate from growing back.
 
@@ -80,7 +88,7 @@ The action-file template asked for Rules, Common Rationalizations, Red Flags, an
 - `_dev/tests/contract-regressions.sh` now fails any *new* action file whose Common Rationalizations rows contain no do-work-specific noun. The existing tree is grandfathered by an explicit baseline list.
 - Trimmed the Project Structure glosses and Queue Path Convention; every shell-trap gotcha and the Closed Enumerations rule stay untouched.
 
-## 0.138.0 — Next-Step Suggestions Come From Intent, Not a 47-Case Table (2026-07-27)
+## 0.140.0 — Next-Step Suggestions Come From Intent, Not a 47-Case Table (2026-07-27)
 
 `next-steps.md` is read after every single action, and it was 1,741 words of hard-coded examples — one worked block per action, most of them saying the obvious thing. It's now 383 words: the intent, the format rules, and a table of only the cases where the right suggestion genuinely isn't inferable.
 
@@ -88,6 +96,45 @@ The action-file template asked for Rules, Common Rationalizations, Red Flags, an
 - The six genuinely ambiguous cases survive as a table — `pipeline` interrupted vs. completed, `reserve`, `capture-requests`, and `clarify` with vs. without pending answers.
 - One example block remains to anchor the output format; the other 46 are gone.
 - Cuts 1,358 words from the always-read floor — the context every do-work invocation pays for.
+
+## 0.139.0 — Parallel Memory Engine: memory module, install target, and value auditor (2026-07-25)
+
+A second, capture-first memory engine now runs alongside bkb so real usage data — not theory — decides which one earns its keep (ADR-017). Both engines log usage, and a new auditor renders the head-to-head verdict.
+
+- New `do-work memory` action (`remember` / `recall` / `status` / `bootstrap` / `audit`): a 2,500-char capped `memory/working-memory.md`, dated daily logs, and layered recall (lexical always; semantic only when an embedding backend is detected) with cited sources. Companion schemas in `actions/memory-reference.md`.
+- New `do-work install memory-module` target scaffolds `memory/` and merges optional SessionStart/Stop hooks into `.claude/settings.json` — composing with existing hook entries (backup + parse-verify), never clobbering them. The Stop hook appends a hash-deduplicated capture of each session's final exchange and never blocks a session end.
+- New `do-work memory audit` (`actions/memory-value.md`): read-only, engine-agnostic value audit of bkb and the memory engine — git/log history probes, usage-ledger stats, hit-cited rate as the verdict signal, with an explicit fairness rule for bkb's pre-instrumentation era.
+- bkb `query`/`ingest` now append best-effort usage-ledger events so the comparison sees both engines.
+- Review hardening (PR #122): the Stop hook redacts credential-shaped text before persisting captures; session start injects only curated memory (raw captures stay behind `memory recall`, which loads the prompt-injection guardrail); the hook merge checks and appends each settings entry independently; the installer repairs any missing scaffold component; and the auditor locates the KB via bkb's locating contract instead of assuming `kb/`.
+- Raw captures and the usage ledger are machine-local: the installer adds `memory/logs/` and `memory/usage-ledger.jsonl` to the repo's `.git/info/exclude` (never your committable `.gitignore`), so only the curated `working-memory.md` is shareable. Redaction stays as a second line of defense.
+
+## 0.138.3 — Skill Downloads Are Atomic: Temp File, Then Rename (2026-07-25)
+
+The 0.138.1 fix caught zero-byte downloads, but `curl -o` writes the final path incrementally — a connection dropped mid-transfer left a non-empty partial `SKILL.md` that `test -s` read as a complete install, unrepairable by re-running. Downloads now land in a `SKILL.md.download` temp name and only rename into place on success.
+
+- Applies to all three curl-based skill installs (`ui-design`, `ideation-adhd`, `bowser`); the temp file is removed on failure, so nothing is left behind either way.
+- Chosen over `curl --remove-on-error`, which needs curl ≥ 7.83 — the rename works on any curl.
+
+## 0.138.2 — Install Target Renamed to ideation-adhd (2026-07-25)
+
+The 0.138.0 target ships as `install ideation-adhd` — the name now says what it does (the "adhd" is the upstream skill's metaphor for its branching style, not the substance). `install adhd` and the `adhd-mode` spellings still work as aliases.
+
+- The install **folder** stays `.claude/skills/adhd/` — it must match the upstream frontmatter `name:` field so `/adhd` auto-discovers.
+
+## 0.138.1 — Install Detect Treats a Zero-Byte Skill File as Absent (2026-07-25)
+
+An interrupted download could leave a zero-byte `SKILL.md` that the `ls`-based detect read as "already installed", making the failed install unrepairable by re-running. Review caught it on the new `adhd` target; the same copy-pasted primitive was fixed in `ui-design` and `bowser` too.
+
+- Detect commands for the single-file skill targets now use `test -s` (non-empty), so a re-run over a failed download repairs it instead of stopping at Phase 1.
+- The never-overwrite rule is scoped to non-empty files: reinstalling over a zero-byte file is repair, not overwrite.
+
+## 0.138.0 — New Install Target: adhd Divergent-Ideation Skill (2026-07-25)
+
+`do-work install adhd` vendors the [adhd skill](https://github.com/UditAkhourii/adhd) (MIT) into the project — parallel divergent ideation that branches a named problem across distinct cognitive frames, then scores, clusters, and deepens the top candidates. Complements `scan-ideas` (repo-grounded) with deliberately unconventional exploration; feed the winners to `capture-request:`.
+
+- Single self-contained `SKILL.md` installed project-scoped to `.claude/skills/adhd/` — folder name matches upstream so `/adhd` auto-discovers; no global npm install.
+- Same manifest-driven detect → install → verify → report shape as `ui-design`; idempotent, never overwrites an existing copy.
+- Routing accepts `install adhd` (also the `install adhd-mode` / `install adhd mode` / `setup adhd` spellings — the target normalizes after the install verb; bare `adhd` without the verb is not a route).
 
 ## 0.137.0 — Clarify Opens Each Question With a Plain-Language Story (2026-07-24)
 

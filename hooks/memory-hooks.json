@@ -1,0 +1,25 @@
+{
+  "_comment": "Fragment merged into the consumer's .claude/settings.json by `do-work install memory-module` — APPEND these entries to any existing SessionStart/Stop arrays; compose with, never replace, existing entries (see actions/memory-reference.md, Hook Install Internals).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/memory-session-start.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/memory-stop-capture.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -57,6 +57,8 @@ Before executing any sub-command (except `init`), find the KB root:
 4. Search parent directories (up to 3 levels) for a directory containing both `raw/` and `wiki/` subdirectories.
 5. If not found, tell the user: "No knowledge base found. Run `do-work bkb init` to create one."
 
+A usage ledger (`usage-ledger.jsonl`) rides at the KB root next to `raw/` and `wiki/`; it is written by the query/ingest steps below and read by `actions/memory-value.md` for the ADR-017 engine comparison.
+
 ---
 
 ## Sub-Command: `init [path]`
@@ -226,6 +228,7 @@ Compile source documents into wiki pages. This is the core operation.
 5. **Write daily log**: Create or append to `wiki/daily/{today}.md` listing everything ingested, created, updated, and any contradictions flagged.
 6. **Move to processed and mark done** (per-file): After each file completes steps 3–5 successfully, immediately move it to `raw/processed/{today}/` (create the date directory if needed) from wherever it currently lives (`raw/capture/`, `raw/inbox/`, or an external path). If the file was in the queue, mark its row as "done" in `raw/_inbox_queue.md`; if it was ingested directly by path (bypassing triage), add a "done" entry to the queue for traceability. If a file with the same name already exists in the target directory, prefix with the current time: `HHMMSS-filename.ext`. Update `raw/processed/_manifest.md` with the original path, processed path, and wiki articles produced. **This is per-file, not per-batch** — if file 4 of 5 fails, files 1–3 are already safely processed and marked done.
 7. **Append to activity log**: Add entry to `wiki/log.md`.
+7b. **Append a ledger event**: one `ingest` line to the KB root's `usage-ledger.jsonl` with `hits` = pages created/updated (schema: `actions/memory-reference.md`, engine `bkb`). Best-effort (`|| true`) — never let a ledger failure block or fail the ingest.
 8. **Report**: Sources processed, pages created/updated, contradictions found, skipped files (with reasons), index changes.
 
 ### Page Conventions
@@ -378,6 +381,7 @@ Search the wiki to answer a question. Uses the retrieval agent for prioritizatio
    - **Record** — the answer is substantive but doesn't produce new cross-source connections. Return the answer to the user but do NOT create a wiki page. Append a brief entry to `wiki/log.md` noting the query and result.
    - **Skip** — the answer is a simple lookup or factual retrieval from a single page. Return the answer only. No log entry needed.
 8. **Update `wiki/agent.md`**: Append a row to the Query Log table with today's date, the question asked, which topic clusters were checked, which articles were actually used in the answer, and whether the result was useful (yes/partial/no). After every 5th query, regenerate the Hot Topics section: scan the Query Log for topic clusters and articles that appear most frequently with "yes" usefulness, and list the top 5–10 as prioritized entries.
+8b. **Append ledger events**: one `query` line to the KB root's `usage-ledger.jsonl` with the sanitized question and `hits` = articles actually used in the answer; if any wiki page was cited in the answer, also append one `hit_cited` line (schema: `actions/memory-reference.md`, engine `bkb`). Best-effort (`|| true`) — never let a ledger failure block or fail the query.
 
 If the wiki has no content on the topic, say so and suggest sources to ingest.
 

@@ -223,6 +223,69 @@ assert_contains \
   '^-[[:space:]]+\*\*Ready\*\*[[:space:]]+— normalized `status` is `pending`' \
   'actions/roadmap.md must require pending status before classifying a queued REQ as Ready.'
 
+# ADR-017 memory engine contracts: the Stop capture must never block a session
+# end, destructive consolidation must never be hook-wired, and the engine's
+# core guardrails (cap, prompt-injection load, compose-don't-clobber install)
+# must stay stated where agents read them.
+assert_contains \
+  "hooks/memory-stop-capture.sh" \
+  'stop_hook_active' \
+  'hooks/memory-stop-capture.sh must keep the stop_hook_active loop guard.'
+
+assert_file_not_contains \
+  "hooks/memory-stop-capture.sh" \
+  '"decision":[[:space:]]*"block"' \
+  'hooks/memory-stop-capture.sh must never emit a blocking decision — capture cannot hold a session open.'
+
+for hooks_json_file in "hooks/hooks.json" "hooks/memory-hooks.json"; do
+  assert_file_not_contains \
+    "$hooks_json_file" \
+    'dream' \
+    "$hooks_json_file must never wire the destructive dream action to a hook."
+done
+
+assert_contains \
+  "actions/memory.md" \
+  '2,500' \
+  'actions/memory.md must state the 2,500-character working-memory hard cap.'
+
+assert_contains \
+  "actions/memory.md" \
+  'prompt-injection\.md' \
+  'actions/memory.md recall must load the prompt-injection guardrail before reading hook-captured log content.'
+
+assert_contains \
+  "actions/install.md" \
+  'memory-module' \
+  'actions/install.md must carry the memory-module target (ADR-017).'
+
+assert_contains \
+  "actions/install.md" \
+  'settings\.json\.pre-memory-module' \
+  'actions/install.md memory-module hook merge must back up settings.json before composing entries.'
+
+assert_contains \
+  "hooks/memory-stop-capture.sh" \
+  'REDACTED' \
+  'hooks/memory-stop-capture.sh must redact credential-shaped text before persisting captures — defense in depth behind the machine-local store.'
+
+# Raw captures and the per-machine ledger must never become committable: the installer
+# adds them to .git/info/exclude (machine-local), never the project's .gitignore.
+assert_contains \
+  "actions/install.md" \
+  '\*\*/memory/logs/' \
+  'actions/install.md memory-module must add memory/logs/ to .git/info/exclude — verbatim captures must not be committable.'
+
+assert_contains \
+  "actions/install.md" \
+  '\*\*/memory/usage-ledger\.jsonl' \
+  'actions/install.md memory-module must add memory/usage-ledger.jsonl to .git/info/exclude.'
+
+assert_contains \
+  "hooks/memory-session-start.sh" \
+  'session capture' \
+  'hooks/memory-session-start.sh must strip raw session-capture sections from the startup injection — unvetted transcript text must not enter context before a prompt-injection guard can load.'
+
 # CLAUDE.md/AGENTS.md are the maintainer doc, export-ignored since 0.136.0 so they never
 # land in consumer installs (nested CLAUDE.md is auto-loaded into consumer agents' context).
 assert_contains \
@@ -283,9 +346,11 @@ is_grandfathered_rationalizations_file() {
 # Illustrative, not exhaustive (Closed Enumerations Go Stale) — grep for do-work
 # machinery vocabulary, not general software-engineering nouns. Split in two so "REQ"
 # stays case-sensitive (case-insensitive it collides with "required"/"requires", which
-# show up in ordinary generic advice and would silently defeat the check).
+# show up in ordinary generic advice and would silently defeat the check). The memory
+# subsystem (working memory / daily log / usage ledger / bootstrap / Stop hook) is
+# first-class do-work machinery too, so its nouns are recognized alongside the rest.
 rationalization_noun_pattern_case_sensitive='\bREQ-?[0-9]*\b|\bUR-[0-9]+\b'
-rationalization_noun_pattern_case_insensitive='queue|frontmatter|pipeline|\barchive|do-work|\bdomain\b|\bblocked\b|\bkb/|\bprime\b|\bclarify|working/|crew-member|\bschema\b|status:'
+rationalization_noun_pattern_case_insensitive='queue|frontmatter|pipeline|\barchive|do-work|\bdomain\b|\bblocked\b|\bkb/|\bprime\b|\bclarify|working/|crew-member|\bschema\b|status:|working memory|daily log|\bledger\b|\bbootstrap\b|stop hook'
 
 for action_file_path in "$repo_root"/actions/*.md; do
   action_file_name="$(basename "$action_file_path")"
@@ -302,7 +367,7 @@ for action_file_path in "$repo_root"/actions/*.md; do
   fi
   if ! grep -qE "$rationalization_noun_pattern_case_sensitive" <<<"$rationalization_rows" \
      && ! grep -qiE "$rationalization_noun_pattern_case_insensitive" <<<"$rationalization_rows"; then
-    printf 'FAIL: %s Common Rationalizations table has no do-work-specific noun (REQ, UR, queue, frontmatter, pipeline, archive, domain, blocked, kb/, prime, clarify, working/, crew-member, schema, status — illustrative list) in any row — every row reads as generic engineering advice a capable model already follows. Add rows naming a specific do-work failure mode, or omit the section entirely (see CLAUDE.md -> Action File Conventions for the omission test).\n' \
+    printf 'FAIL: %s Common Rationalizations table has no do-work-specific noun (REQ, UR, queue, frontmatter, pipeline, archive, domain, blocked, kb/, prime, clarify, working/, crew-member, schema, status, working memory, daily log, ledger, bootstrap, stop hook — illustrative list) in any row — every row reads as generic engineering advice a capable model already follows. Add rows naming a specific do-work failure mode, or omit the section entirely (see CLAUDE.md -> Action File Conventions for the omission test).\n' \
       "$action_file_name" >&2
     fail_count=$((fail_count + 1))
   fi
