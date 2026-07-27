@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.140.1 — Claim-Before-Move Closes the Lock Races; Checkpoints and Temp Files Stop Lingering (2026-07-28)
+
+Four accepted findings from external feedback triage, all in the concurrent-orchestrator machinery. The claim/recovery race and the acquisition race could each let two sessions fight over one REQ; the other two were slow leaks.
+
+- Step 2 now claims the REQ in the orchestrator lock *before* moving it into `working/`, and the Crash Recovery gate lists `working/` *before* reading the lock — the paired ordering means a file can never be observed unclaimed by a live scan (`actions/work.md`, `actions/work-reference.md`). Archive-time gets the explicit mirror order: move out first, then clear `claimed_req`.
+- Lock acquisition re-validates existence inside the serialized mutex — a session that loses the empty-queue race now falls into the existing-lock decision tree instead of silently overwriting the winner's holder slot (`actions/work-reference.md`).
+- The local-ignore prescription for the lock now uses the glob `do-work/orchestrator-lock.json.*`, covering orphaned PID-suffixed `.tmp` files as well as the mutex directory.
+- Checkpoint deletion is scoped to the files a session is allowed to recover, so a coexisting session's live claim in `working/` no longer keeps a stale `CHECKPOINT.md` alive forever (`actions/work.md`).
+
 ## 0.140.0 — UTF-8-Safe Capture Truncation; Forget Now Scrubs the Daily Logs Too (2026-07-28)
 
 Two accepted findings from external feedback triage. The stop-capture hook could tear a multi-byte character in half, and "forget" only forgot half the store.

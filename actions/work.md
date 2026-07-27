@@ -220,7 +220,7 @@ Exit 0 → no collision, proceed to Step 2. Exit 1 (matching archive paths print
 
 ### Step 2: Claim the Request
 
-1. `mkdir -p do-work/working`, move the REQ file there, and — **in the same breath as the move** — refresh the orchestrator lock: rewrite `heartbeat_at` to now and `claimed_req` to this REQ's id (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**). Lock bookkeeping goes where the file moves: a file that is in `working/` while the lock still says `claimed_req: null` reads as an abandoned crash artifact to any other live session's Crash Recovery, which would recover it moments after you claimed it.
+1. Claim in the lock **before** the move: refresh the orchestrator lock — rewrite `heartbeat_at` to now and `claimed_req` to this REQ's id, through the serialized mutex (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**) — and only then `mkdir -p do-work/working` and move the REQ file there. The two writes are separate filesystem operations that no prose can fuse, so the *order* is the claim protocol: a file must never be observable in `working/` before the lock claims it, because an unclaimed `working/` file reads as an abandoned crash artifact to any other live session's Crash Recovery, which would strip and re-queue it moments after you claimed it. This ordering pairs with the recovery gate's list-`working/`-first-then-read-lock order (`actions/work-reference.md` → **Crash Recovery (Step 1)**) to close the race from both sides. If this session dies between the lock write and the move, the orphaned claim simply ages past the 45-minute stale threshold and self-heals — no file is at risk.
 2. Update frontmatter: `status: claimed`, `claimed_at: <timestamp>` — the current **UTC** instant `YYYY-MM-DDTHH:MM:SSZ` from `date -u +%Y-%m-%dT%H:%M:%SZ`, exactly like `completed_at` (Timestamp rule, `actions/work-reference.md`). Never local wall-clock time with a `Z` suffix — a future-dated stamp freezes the board's claim stopwatch and flags the card with a clock-skew warning.
 3. If the REQ was `reserved` (targeted mode only): remove `reserved_for` and `reserved_at` — the claim consumes the reservation.
 
@@ -525,7 +525,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
    Classify each by severity and queue follow-ups per `actions/work-reference.md` → **Discovered Tasks Classification (Step 8)**: `[critical]` → `status: pending`, auto-queued + prominent report; `[normal]`/`[low]` → `status: pending-answers` via the Open-Questions consent flow — except test-only mechanical-hygiene discoveries meeting that section's carve-out (all three bullets), which auto-queue as `status: pending` with an auto-approved note and a `↺` report line.
 5. **Cycle detection:** Before creating any follow-up REQ, verify the current REQ's own `addendum_to` chain is not already circular. Algorithm: walk `addendum_to` links (honoring the `amends`/`parent`/`amendment_to` alias per the Schema Read Contract when the canonical key is absent) starting from the current REQ, collecting each visited ID into a seen set. If you encounter the current REQ's ID again during the walk, the chain is already circular — do not create any follow-ups. Report: `⚠ Cycle detected in addendum_to chain: REQ-NNN → REQ-MMM → ... → REQ-NNN. Skipping follow-up — manual resolution needed.` This handles chains of any length.
-6. Archive based on REQ type. **Clear the orchestrator lock's `claimed_req` to `null` in the same breath as the physical move** — not earlier. Between substeps 1 and 5 the file is still sitting in `working/`, so a lock that already says `claimed_req: null` tells every other live session's Crash Recovery that this REQ is an abandoned crash artifact; it would strip the Implementation Summary you just wrote and re-queue the file out from under you. Lock bookkeeping goes where the file moves (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
+6. Archive based on REQ type. **Clear the orchestrator lock's `claimed_req` to `null` immediately *after* the physical move — never before it.** The mirror of Step 2's claim-before-move ordering: between substeps 1 and 5 the file is still sitting in `working/`, so a lock that already says `claimed_req: null` tells every other live session's Crash Recovery that this REQ is an abandoned crash artifact; it would strip the Implementation Summary you just wrote and re-queue the file out from under you. Move first, then clear — the brief interval where the lock claims a REQ no longer in `working/` is harmless, because the recovery gate only examines files it actually finds there (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
@@ -593,7 +593,7 @@ At the end of every work session (whether all REQs completed, user stops, or ses
 **On session start (Step 1 addition, after the Concurrent-Orchestrator Lock Guard has resolved):** Before crash recovery, check for `do-work/CHECKPOINT.md`. If it exists:
 1. Read it and report a brief summary: `Resuming from previous session. Last completed: REQ-NNN. [N] REQs still queued.`
 2. Use the "In Progress" section to inform crash recovery context.
-3. **Do not delete yet.** Keep the checkpoint until crash recovery completes successfully (all files moved out of `working/`). Then delete it. This prevents losing resume context if the session crashes again during crash recovery.
+3. **Do not delete yet.** Keep the checkpoint until crash recovery has handled every file *this session is allowed to touch* — then delete it. "`working/` is empty" is the wrong test: under the per-file concurrency gate (`actions/work-reference.md` → **Crash Recovery (Step 1)**) a live coexisting session's claimed file legitimately stays in `working/`, so an emptiness condition can never be met in a proceed-anyway run and would re-present the stale checkpoint forever. Deleting only after this session's own recovery work is done still prevents losing resume context if the session crashes again mid-recovery.
 
 This is NOT a blocking gate. If no checkpoint exists, the session starts normally with existing crash-recovery logic.
 
@@ -605,7 +605,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 
 ```
 □ Step 1: Concurrent-orchestrator lock guard (first entry only), read CHECKPOINT.md if exists, crash recovery (per-file concurrency gate), validate frontmatter, pick first pending
-□ Step 2: Claim request (mkdir -p working/, move REQ, update status & claimed_at)
+□ Step 2: Claim request (lock claim first, then mkdir -p working/ + move, update status & claimed_at)
 □ Step 3: Triage (decide route, append ## Triage, read original if addendum)
 □ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions)
 □ Step 4: Plan (Route C: spawn Plan agent + validate plan / Routes A & B: note skipped)
