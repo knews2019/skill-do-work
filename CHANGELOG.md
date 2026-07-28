@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.140.4 — Owner-Checked Lock Mutex, Atomic Capture Appends (2026-07-28)
+
+Two accepted findings from an external concurrency review. The lock mutex could be forcibly broken after 15 seconds even when its owner was live mid-write — dangerous now that the critical section legitimately spans a model round-trip — and concurrent Stop-hook captures could interleave their writes in the shared daily log.
+
+- `actions/work-reference.md`: removed the 15-second attempt-count mutex break — the one-minute mtime check (a verified stale-owner bound) is now the only reclaim path. The winner records an owner token in the mutex so release can't delete a successor's mutex, and an `mkdir` failure with no contender present reports and stops instead of spinning forever.
+- `hooks/memory-stop-capture.sh` (+ spec in `actions/memory-reference.md`): each capture section is composed first and appended in a single `printf` — one atomic `O_APPEND` write — so near-simultaneous stops from sessions sharing the daily log can no longer garble section structure. No lock: `flock` doesn't exist on macOS and the hook must never block session end.
+
 ## 0.140.3 — Loopback-Only Board Writes, In-Mutex Stale Revalidation, Redact-Before-Truncate (2026-07-28)
 
 Five accepted findings from an external review, all verified against the code before fixing. The two that mattered most: a LAN-exposed board's testing endpoints accepted writes from any machine (the Origin check only fires when a browser sends one), and a stale-lock takeover judged staleness on a pre-mutex read, so a holder that heartbeated in the gap could be overwritten and its in-flight REQ re-queued.

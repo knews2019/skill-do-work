@@ -215,12 +215,17 @@ QUOTED_CAPTURE_TEXT="$(printf '%s\n' "$CAPTURE_TEXT" | sed 's/^/> /')" || exit 0
 # Keep this string byte-identical to CAPTURE_BODY_SENTINEL in that hook.
 CAPTURE_BODY_SENTINEL='<!-- do-work:capture-body quoted -->'
 
-{
-  printf '\n## %s UTC session capture %s\n\n' "$(date -u +%H:%M)" "$CAPTURE_HASH"
-  printf '%s\n' "$CAPTURE_BODY_SENTINEL"
-  printf '> Session capture — final exchange between the user and the agent:\n>\n'
-  printf '%s\n' "$QUOTED_CAPTURE_TEXT"
-} >> "$TODAY_LOG" 2>/dev/null || exit 0
+# ONE printf, ONE write() — not a compound block of several. Every session in the
+# project appends to the same daily log, and each printf is a separate O_APPEND write,
+# so two near-simultaneous Stop captures could interleave at write boundaries and
+# garble section structure (worst case: the reader's legacy-mode suppression eats the
+# rest of the day's injection). A single sub-2KB O_APPEND write is atomic against
+# other appenders on Linux and macOS, so composing the whole section first closes the
+# race with no lock — a lock would fight the never-block contract above, and flock
+# doesn't exist on macOS anyway.
+printf '\n## %s UTC session capture %s\n\n%s\n> Session capture — final exchange between the user and the agent:\n>\n%s\n' \
+  "$(date -u +%H:%M)" "$CAPTURE_HASH" "$CAPTURE_BODY_SENTINEL" "$QUOTED_CAPTURE_TEXT" \
+  >> "$TODAY_LOG" 2>/dev/null || exit 0
 
 # Best-effort capture ledger line
 printf '{"ts":"%s","engine":"memory","event":"capture","query":"","hits":0,"source":"hooks/memory-stop-capture.sh","note":"%s"}\n' \
