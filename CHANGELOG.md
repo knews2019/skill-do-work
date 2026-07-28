@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.142.0 — Worktree Dispatch Mode with Defined Cleanup Ownership (2026-07-28)
+
+The work pipeline now documents running builders in orchestrator-created git worktrees: each builder commits on its own `worktree-agent-REQ-NNN-*` branch, the orchestrator stays the sole writer of the main tree and merges in dependency order, and nothing archives until the merged state re-passes the REQ's checks. Every leftover now has an owner.
+
+- Happy path: the archive step removes the worktree and deletes the branch with `git branch -d` from the integration branch — a refusal is the signal a merge was skipped or lost, so never `-D`/`--force`.
+- Crash path: Crash Recovery sweeps `worktree-agent-*` leftovers — merged ones removed mechanically, unmerged ones only reported; discarding unmerged work belongs to cleanup's new consent-gated Pass 5 (its first interactive pass — six passes now, mirrored in the cleanup guide).
+- `do-work/` state stays in the main tree only; builders get their brief in the dispatch prompt (and treat any committed `do-work/` snapshot in a worktree as absent).
+- Ships honestly single-builder: co-dispatching several worktree builders waits on the lock's multi-claim work (queued follow-up), and four contract-regression ratchets pin the naming, the `-d` assertion, the post-merge gate, and the consent-gated pass.
+
 ## 0.141.0 — Write-Set Declarations and a Parallel-Dispatch Gate (2026-07-28)
 
 The queue schema gains an optional `write_set` field (repo-relative paths/globs a REQ expects to write; absent means it overlaps everything), and the work pipeline gains an opt-in dispatch gate: advanced harnesses may co-dispatch dependency-ready REQs whose write-sets are pairwise disjoint. The serial default is untouched.

@@ -436,6 +436,32 @@ if command -v jq &>/dev/null; then
   rm -rf "$redaction_order_workdir"
 fi
 
+# Worktree dispatch mode (REQ-033). The mode is only safe because three pieces
+# hold together: a name that correlates a leftover with its REQ, a merged-ness
+# assertion that is never forced, and a verification of the *merged* state before
+# archive. Each can be quietly dropped without breaking anything visible, so pin
+# them individually — plus cleanup's ownership of the unmerged leftovers, without
+# which a crashed parallel run leaves branches nothing in the skill ever removes.
+assert_contains \
+  "actions/work-reference.md" \
+  'worktree-agent-REQ-' \
+  'actions/work-reference.md must keep the worktree/branch naming convention that correlates a leftover with its REQ id.'
+
+assert_contains \
+  "actions/work-reference.md" \
+  'git branch -d' \
+  'actions/work-reference.md must keep git branch -d (never -D) as the free merged-ness assertion on worktree cleanup.'
+
+assert_contains \
+  "actions/work.md" \
+  '[Pp]ost-merge verification' \
+  'actions/work.md Step 8 must gate archival on re-running the REQ acceptance checks against the merged tree.'
+
+assert_contains \
+  "actions/cleanup.md" \
+  'worktree-agent-' \
+  'actions/cleanup.md must keep the consent-gated orphaned-worktree pass that owns unmerged builder branches.'
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi

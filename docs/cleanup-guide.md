@@ -4,7 +4,7 @@ Consolidates the archive — moves loose files into the right places, closes com
 
 ## What it does
 
-Five passes, in order (matching `actions/cleanup.md`):
+Six passes, in order (matching `actions/cleanup.md`):
 
 ### Pass 0: Sweep finished queue items
 Moves terminal-status REQs (`completed`, `completed-with-issues`, `failed`, `cancelled`, plus normalized aliases like `done`/`finished`/`closed`/`abandoned`/`wont-do`) from `do-work/queue/` and `working/` into `archive/`.
@@ -20,6 +20,9 @@ Detects `do-work/` directories accidentally created in subdirectories and reloca
 
 ### Pass 4: Sweep consumed run scratch
 Deletes only `do-work/runs/*/` directories whose root `manifest.md` says `Status: consumed`. In-progress runs remain resumable, while `synthesized` and legacy `complete` runs are preserved because their assembled output may not have reached the user yet. Tracked deletions are staged by their exact run path.
+
+### Pass 5: Remove orphaned worktrees
+Clears the `worktree-agent-*` git worktrees and branches left behind when the work loop's worktree dispatch mode is interrupted. Already-merged leftovers are removed automatically. An unmerged one can be the only copy of a builder's work, so cleanup lists it and asks before deleting — and when it's running unattended (the automatic end-of-loop cleanup), it only reports. Your own worktrees are never touched; only the `worktree-agent-` naming convention is in scope.
 
 ### After all passes: repoint doc links
 Every move above changes a file's path. Cleanup tracks each old → new path and rewrites links in the repo's tracked markdown outside `do-work/` that pointed at the moved file (e.g. a prime doc's Lessons link to an archived REQ), so consolidation doesn't leave broken links behind. The summary reports `Repointed: N doc links in M files` (or `Repointed: none`).
@@ -43,7 +46,7 @@ do-work/
 
 ## Key rules
 
-- Deletes no work items — only run scratch explicitly marked `Status: consumed`
+- Deletes no work items — only run scratch explicitly marked `Status: consumed`, plus `worktree-agent-*` worktrees that are already merged (unmerged ones need your say-so)
 - No content modification except normalizing non-standard statuses (`done` → `completed`) and repointing doc links to moved files
 - Skips active queue items (`pending`, `claimed`)
 
