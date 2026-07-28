@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.143.0 — Capture Slicing Nudge and Board Write-Set Overlap Badges (2026-07-29)
+
+Two upstream levers for parallel-friendly queues: capture's slicing convention now prefers boundaries that give each REQ its own files (declaring unavoidable overlap in `write_set`), and the Kanban board shows an `overlaps` badge on pending/claimed cards whose declared write-sets could touch the same files.
+
+- The overlap annotation computes in Go after column bucketing — structurally display-only (badge + drawer rows, never column logic; co-dispatch decisions stay with the work pipeline's gate) — and is glob-aware in both directions.
+- Drawer gains "Write set" and linked "Overlapping write sets" rows; no badge on a REQ without a declared `write_set` (unknown, not safe — the gate's serialize reading is documented alongside).
+- The three stale "no overlap computation on the board" claims (board action, maintainer doc, board prime) updated in lock-step.
+
 ## 0.142.0 — Worktree Dispatch Mode with Defined Cleanup Ownership (2026-07-29)
 
 The work pipeline now documents running builders in orchestrator-created git worktrees: each builder commits on its own `worktree-agent-REQ-NNN-*` branch, the orchestrator stays the sole writer of the main tree and merges in dependency order, and nothing archives until the merged state re-passes the REQ's checks. Every leftover now has an owner.

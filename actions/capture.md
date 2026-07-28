@@ -210,7 +210,7 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 **Complex mode additionally:**
 - Create `assets/` subfolder in the UR folder
 - Extract EVERY requirement into the appropriate REQ — do not summarize
-- Set `related` and `batch` fields across the batch; populate `depends_on` per the **Complex REQ (additional sections)** template's Populating `depends_on` / Slicing convention guidance in `actions/capture-reference.md` when the sliced REQs depend on each other
+- Set `related` and `batch` fields across the batch; populate `depends_on` when the sliced REQs depend on each other, and `write_set` when a slice already names the files it writes — both per the **Complex REQ (additional sections)** template's Populating `depends_on` / Populating `write_set` / Slicing convention guidance in `actions/capture-reference.md`
 - Add Batch Constraints to the UR (cross-cutting concerns, scope cues, sequencing)
 - Duplicate batch-level constraints into each relevant REQ's Constraints section
 - Re-read the original input to verify nothing was dropped — especially UX/interaction details and intent signals (certainty level, scope cues)

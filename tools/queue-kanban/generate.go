@@ -93,21 +93,25 @@ type generatedColumns struct {
 // generatedRequest is one REQ card's full payload, including its pre-rendered
 // Markdown body so the detail drawer opens with zero network.
 type generatedRequest struct {
-	RequestId            string   `json:"id"`
-	Title                string   `json:"title"`
-	Status               string   `json:"status"`
-	OriginalStatus       string   `json:"originalStatus"`
-	StatusUnrecognized   bool     `json:"statusUnrecognized,omitempty"`
-	Domain               string   `json:"domain"`
-	UserRequestId        string   `json:"userRequestId"`
-	DependsOn            []string `json:"dependsOn"`
-	UnmetDependencies    []string `json:"unmetDependencies"`
-	Dependents           []string `json:"dependents"`
-	BlockedBy            []string `json:"blockedBy"`
-	BlockedAt            string   `json:"blockedAt,omitempty"`
-	BlockedCheck         string   `json:"blockedCheck,omitempty"`
-	Related              []string `json:"related"`
-	WriteSet             []string `json:"writeSet"`
+	RequestId          string   `json:"id"`
+	Title              string   `json:"title"`
+	Status             string   `json:"status"`
+	OriginalStatus     string   `json:"originalStatus"`
+	StatusUnrecognized bool     `json:"statusUnrecognized,omitempty"`
+	Domain             string   `json:"domain"`
+	UserRequestId      string   `json:"userRequestId"`
+	DependsOn          []string `json:"dependsOn"`
+	UnmetDependencies  []string `json:"unmetDependencies"`
+	Dependents         []string `json:"dependents"`
+	BlockedBy          []string `json:"blockedBy"`
+	BlockedAt          string   `json:"blockedAt,omitempty"`
+	BlockedCheck       string   `json:"blockedCheck,omitempty"`
+	Related            []string `json:"related"`
+	WriteSet           []string `json:"writeSet"`
+	// Other pending/claimed REQ ids whose write_set could touch the same files
+	// (see RequestTicket.WriteSetOverlaps). Display only — the card badge and a
+	// drawer row; no column or dispatch meaning.
+	WriteSetOverlaps     []string `json:"writeSetOverlaps,omitempty"`
 	Route                string   `json:"route"`
 	Batch                string   `json:"batch"`
 	TreeSection          string   `json:"treeSection"`
@@ -267,6 +271,7 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			BlockedCheck:         ticket.BlockedCheck,
 			Related:              ticket.Related,
 			WriteSet:             ticket.WriteSet,
+			WriteSetOverlaps:     ticket.WriteSetOverlaps,
 			Route:                ticket.Route,
 			Batch:                ticket.Batch,
 			TreeSection:          ticket.TreeSection,

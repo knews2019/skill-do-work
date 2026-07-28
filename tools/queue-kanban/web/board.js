@@ -532,6 +532,25 @@
       unblocksBadge.title = "Unblocks " + unblockedRequestIds.join(", ") + " when this lands";
       badges.appendChild(unblocksBadge);
     }
+    var writeSetOverlapIds = request.writeSetOverlaps || [];
+    if (writeSetOverlapIds.length > 0) {
+      // Another pending/claimed REQ declares a write_set that could touch the
+      // same files. The Go side (annotateWriteSetOverlap) does the pairwise
+      // comparison and gates it to the pending/claimed tier — this only renders
+      // the derived list. Display only: nothing here blocks, sorts, or moves a
+      // card, and the co-dispatch call stays with the work pipeline's gate.
+      var overlapBadge = makeBadge(
+        "badge-write-overlap",
+        "overlaps",
+        truncateBadgeText(writeSetOverlapIds.join(", "), 24)
+      );
+      overlapBadge.title =
+        "Declared write_set could touch the same files as " +
+        writeSetOverlapIds.join(", ") +
+        " — running them concurrently means contending on those paths. Display only: " +
+        "the board never blocks or reorders on this; do-work run's dispatch gate decides.";
+      badges.appendChild(overlapBadge);
+    }
     if (request.completionAnomaly) {
       // Broken completion bookkeeping (flagged by the Go side) — mark the card
       // wherever it renders, not just inside the anomalies strip.
@@ -1698,6 +1717,15 @@
     var unblockedRequestIds = activeDependentIds(request);
     if (unblockedRequestIds.length > 0) {
       appendMetaRow("Unblocks", makeTicketLinkList(unblockedRequestIds));
+    }
+    if (request.writeSet && request.writeSet.length > 0) {
+      appendMetaRow("Write set", request.writeSet.join(", "));
+    }
+    // The card badge names the contending REQs; the drawer makes them clickable
+    // so "what else writes these files?" is one hop away.
+    var overlappingRequestIds = request.writeSetOverlaps || [];
+    if (overlappingRequestIds.length > 0) {
+      appendMetaRow("Overlapping write sets", makeTicketLinkList(overlappingRequestIds));
     }
     if (request.route) {
       appendMetaRow("Route", request.route);

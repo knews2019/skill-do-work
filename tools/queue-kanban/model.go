@@ -113,9 +113,15 @@ type RequestTicket struct {
 	BlockedCheck string   // optional shell probe command (display only; the pipeline, not the board, runs it), "" when absent
 	Related      []string // soft relations (not dependency edges)
 	// write_set names the repo-relative paths/globs the REQ expects to write.
-	// Display only — read verbatim, never normalized, and never used for column
-	// logic or overlap computation; the work pipeline's dispatch gate owns that.
+	// Read verbatim, never normalized, and never used for column logic; the
+	// work pipeline's dispatch gate — not the board — decides what co-dispatches.
 	WriteSet []string
+
+	// Derived by annotateWriteSetOverlap after bucketing — never read from
+	// frontmatter. Other pending/claimed REQ ids whose write_set intersects this
+	// one's, in id order. Display only (badge + drawer row): it makes contention
+	// visible before a run, and nothing on the board branches on it.
+	WriteSetOverlaps []string
 
 	// Derived by annotateDependencyState after every ticket is parsed — never
 	// read from frontmatter.
@@ -359,6 +365,11 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	columns, columnWarnings := bucketColumns(board.AllRequests, now, recentWindow)
 	board.Columns = columns
 	board.Warnings = append(board.Warnings, columnWarnings...)
+
+	// Deliberately AFTER bucketing: the write-set overlap annotation is display
+	// only, so nothing that places a card in a column may read it.
+	annotateWriteSetOverlap(board.AllRequests)
+
 	board.Warnings = append(board.Warnings, collectTestingWarnings(board.AllRequests)...)
 	board.Calendar = buildCalendar(board.AllRequests)
 	board.Notes = loadQueueNotes(discovered.NotesFilePath)
@@ -1103,6 +1114,99 @@ func annotateDependencyState(board *Board) []string {
 		sortRequestIdList(ticket.Dependents)
 	}
 	return danglingDependencyWarnings
+}
+
+// isWriteSetOverlapCandidateStatus reports whether a normalized status belongs to
+// the tier the overlap annotation compares. Only `pending` and `claimed` qualify:
+// those are the REQs a dispatcher could still put in flight together, so a
+// contention badge on them is actionable. `reserved` is excluded even though it
+// shares the Claimed column — it is allocated to another worktree/session, and
+// the board cannot see that session's real write surface. Terminal and
+// needs-input tiers are excluded because they are not dispatch candidates at all.
+func isWriteSetOverlapCandidateStatus(normalizedStatus string) bool {
+	return normalizedStatus == "pending" || normalizedStatus == "claimed"
+}
+
+// writeSetPatternsIntersect reports whether two write_set entries could name the
+// same file. Three cases count as an intersection: identical text, and either
+// entry matching the other as a glob (filepath.Match, so `src/auth/*.ts` catches
+// `src/auth/session.ts` in whichever order the pair is compared).
+//
+// Caveat, deliberately simple: TWO globs are compared as literals only. Deciding
+// whether `src/**/a*.ts` and `src/auth/*.ts` can name a common file needs pattern
+// intersection, which the stdlib has no primitive for — and the board's job here
+// is to make likely contention visible, not to be the dispatch gate. A
+// glob-vs-glob pair that shares files therefore renders no badge; the work
+// pipeline's gate (which treats an unexpandable glob as overlapping) is the
+// safety-relevant reader, not this annotation.
+func writeSetPatternsIntersect(leftPattern string, rightPattern string) bool {
+	if leftPattern == rightPattern {
+		return true
+	}
+	if matched, matchError := filepath.Match(leftPattern, rightPattern); matchError == nil && matched {
+		return true
+	}
+	if matched, matchError := filepath.Match(rightPattern, leftPattern); matchError == nil && matched {
+		return true
+	}
+	return false
+}
+
+// writeSetsIntersect reports whether any entry of one write_set could name the
+// same file as any entry of the other. An empty set never intersects: on the
+// board, an absent write_set means UNKNOWN, and unknown must not render as
+// conflict. (The work pipeline's dispatch gate makes the opposite, safety-first
+// reading — absent ⇒ overlaps everything ⇒ serialize — because there a false
+// "disjoint" corrupts files, while here a false badge would cry wolf on every
+// card that never declared a set.)
+func writeSetsIntersect(leftWriteSet []string, rightWriteSet []string) bool {
+	for _, leftPattern := range leftWriteSet {
+		for _, rightPattern := range rightWriteSet {
+			if writeSetPatternsIntersect(leftPattern, rightPattern) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// annotateWriteSetOverlap fills in each pending/claimed ticket's WriteSetOverlaps
+// — the other pending/claimed REQ ids whose declared write_set could touch the
+// same files. It follows annotateDependencyState's shape (compute the cross-card
+// relationship once in Go, ship a derived id list, let the frontend render it) so
+// the pairwise logic is covered by `go test` instead of living untested in
+// board.js.
+//
+// This is a DISPLAY annotation, not the dispatch gate. It shows contention that
+// would otherwise only surface mid-run; it never places a card in a column, never
+// blocks anything, and is not what a co-dispatch decision consults —
+// actions/work.md Step 1 owns that call, on write-sets the pipeline firmed up.
+func annotateWriteSetOverlap(tickets []*RequestTicket) {
+	var candidateTickets []*RequestTicket
+	for _, ticket := range tickets {
+		if isWriteSetOverlapCandidateStatus(ticket.Status) && len(ticket.WriteSet) > 0 {
+			candidateTickets = append(candidateTickets, ticket)
+		}
+	}
+
+	for leftIndex := 0; leftIndex < len(candidateTickets); leftIndex++ {
+		for rightIndex := leftIndex + 1; rightIndex < len(candidateTickets); rightIndex++ {
+			leftTicket := candidateTickets[leftIndex]
+			rightTicket := candidateTickets[rightIndex]
+			if leftTicket.RequestId == rightTicket.RequestId {
+				continue // duplicate id across trees — a REQ never overlaps itself
+			}
+			if !writeSetsIntersect(leftTicket.WriteSet, rightTicket.WriteSet) {
+				continue
+			}
+			leftTicket.WriteSetOverlaps = append(leftTicket.WriteSetOverlaps, rightTicket.RequestId)
+			rightTicket.WriteSetOverlaps = append(rightTicket.WriteSetOverlaps, leftTicket.RequestId)
+		}
+	}
+
+	for _, ticket := range candidateTickets {
+		sortRequestIdList(ticket.WriteSetOverlaps)
+	}
 }
 
 // buildCalendar produces a completion-time-keyed index over every terminally

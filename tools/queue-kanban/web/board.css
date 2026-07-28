@@ -829,6 +829,18 @@ body.is-resizing-detail {
   border-color: rgba(102, 181, 133, 0.28);
   font-variant-numeric: tabular-nums;
 }
+/* "overlaps REQ-N, REQ-M" — another pending/claimed REQ's declared write_set
+   could touch the same files. Carries the pending accent, not the blocked one:
+   contention is something to schedule around, not a failure. Display only —
+   the ids come from the Go annotation and nothing on the board branches on
+   them. Truncated in JS with the full list in the tooltip. */
+.badge-write-overlap {
+  color: var(--accent-pending);
+  background-color: var(--tint-pending);
+  border-color: rgba(216, 162, 74, 0.3);
+  font-family: var(--font-mono);
+  max-width: 100%;
+}
 /* Completion anomaly — broken completion bookkeeping (see the strip styles
    above). Marks the card wherever it renders, not just inside the strip. */
 .badge-completion-anomaly {

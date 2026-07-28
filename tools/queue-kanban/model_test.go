@@ -474,3 +474,131 @@ Body.
 		t.Fatalf("BlockedCheck = %q, want the probe command verbatim", ticket.BlockedCheck)
 	}
 }
+
+// writeSetOverlapFixture is one REQ to seed for the overlap annotation: an id, a
+// normalized status, and its declared write_set.
+type writeSetOverlapFixture struct {
+	RequestId   string
+	Status      string
+	WriteSetted []string
+}
+
+// annotateWriteSetOverlapFixtures runs the annotation over the fixtures and
+// returns id → annotated overlaps, so assertions read as "who does REQ-N contend
+// with?" rather than as index arithmetic.
+func annotateWriteSetOverlapFixtures(fixtures []writeSetOverlapFixture) map[string][]string {
+	tickets := make([]*RequestTicket, 0, len(fixtures))
+	for _, fixture := range fixtures {
+		tickets = append(tickets, &RequestTicket{
+			RequestId: fixture.RequestId,
+			Status:    fixture.Status,
+			WriteSet:  fixture.WriteSetted,
+		})
+	}
+	annotateWriteSetOverlap(tickets)
+
+	overlapsById := map[string][]string{}
+	for _, ticket := range tickets {
+		overlapsById[ticket.RequestId] = ticket.WriteSetOverlaps
+	}
+	return overlapsById
+}
+
+func TestAnnotateWriteSetOverlapPairsContendingRequests(t *testing.T) {
+	overlapsById := annotateWriteSetOverlapFixtures([]writeSetOverlapFixture{
+		{RequestId: "REQ-1", Status: "pending", WriteSetted: []string{"web/board.css", "web/board.js"}},
+		{RequestId: "REQ-2", Status: "claimed", WriteSetted: []string{"web/board.css"}},         // literal overlap with REQ-1
+		{RequestId: "REQ-3", Status: "pending", WriteSetted: []string{"docs/board-guide.md"}},   // disjoint from everything
+		{RequestId: "REQ-4", Status: "pending", WriteSetted: []string{"web/*.js"}},              // glob catching REQ-1's literal
+		{RequestId: "REQ-5", Status: "pending", WriteSetted: []string{}},                        // declared nothing — unknown, never a badge
+		{RequestId: "REQ-6", Status: "completed", WriteSetted: []string{"web/board.css"}},       // terminal — not a dispatch candidate
+		{RequestId: "REQ-7", Status: "reserved", WriteSetted: []string{"web/board.css"}},        // another session's allocation — excluded
+		{RequestId: "REQ-8", Status: "pending-answers", WriteSetted: []string{"web/board.css"}}, // needs-input tier — excluded
+	})
+
+	expectedOverlapsById := map[string][]string{
+		"REQ-1": {"REQ-2", "REQ-4"},
+		"REQ-2": {"REQ-1"},
+		"REQ-3": nil,
+		"REQ-4": {"REQ-1"},
+		"REQ-5": nil,
+		"REQ-6": nil,
+		"REQ-7": nil,
+		"REQ-8": nil,
+	}
+	for requestId, expectedOverlaps := range expectedOverlapsById {
+		if !reflect.DeepEqual(overlapsById[requestId], expectedOverlaps) {
+			t.Errorf("%s overlaps = %v, want %v", requestId, overlapsById[requestId], expectedOverlaps)
+		}
+	}
+	for requestId, actualOverlaps := range overlapsById {
+		for _, overlappingId := range actualOverlaps {
+			if overlappingId == requestId {
+				t.Errorf("%s lists itself as an overlap: %v", requestId, actualOverlaps)
+			}
+		}
+	}
+}
+
+// A glob must catch a literal no matter which side declared it — the pair is
+// compared in both directions, so badge presence can't depend on REQ ordering.
+func TestAnnotateWriteSetOverlapMatchesGlobsInBothDirections(t *testing.T) {
+	globFirst := annotateWriteSetOverlapFixtures([]writeSetOverlapFixture{
+		{RequestId: "REQ-1", Status: "pending", WriteSetted: []string{"src/auth/*.ts"}},
+		{RequestId: "REQ-2", Status: "pending", WriteSetted: []string{"src/auth/session.ts"}},
+	})
+	literalFirst := annotateWriteSetOverlapFixtures([]writeSetOverlapFixture{
+		{RequestId: "REQ-1", Status: "pending", WriteSetted: []string{"src/auth/session.ts"}},
+		{RequestId: "REQ-2", Status: "pending", WriteSetted: []string{"src/auth/*.ts"}},
+	})
+	for _, overlapsById := range []map[string][]string{globFirst, literalFirst} {
+		if !reflect.DeepEqual(overlapsById["REQ-1"], []string{"REQ-2"}) ||
+			!reflect.DeepEqual(overlapsById["REQ-2"], []string{"REQ-1"}) {
+			t.Fatalf("glob-vs-literal must pair both ways, got %v", overlapsById)
+		}
+	}
+
+	// A glob that does NOT cover the literal stays disjoint (the match is real
+	// pattern matching, not a substring or prefix guess).
+	nonMatching := annotateWriteSetOverlapFixtures([]writeSetOverlapFixture{
+		{RequestId: "REQ-1", Status: "pending", WriteSetted: []string{"src/auth/*.ts"}},
+		{RequestId: "REQ-2", Status: "pending", WriteSetted: []string{"src/billing/invoice.ts"}},
+	})
+	if nonMatching["REQ-1"] != nil || nonMatching["REQ-2"] != nil {
+		t.Fatalf("a glob matching nothing in the other set must not annotate, got %v", nonMatching)
+	}
+}
+
+// The annotation is display-only and must stay out of column placement: two
+// pending REQs contending on the same file are both still Ready to work.
+func TestWriteSetOverlapNeverAffectsColumnPlacement(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDirectory := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDirectory, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	for _, fixture := range []struct{ requestId, writeSet string }{
+		{"REQ-1", "[web/board.css, web/board.js]"},
+		{"REQ-2", "[web/board.css]"},
+	} {
+		fixtureContent := "---\nid: " + fixture.requestId + "\ntitle: Fixture " + fixture.requestId +
+			"\nstatus: pending\nwrite_set: " + fixture.writeSet + "\n---\n\nBody.\n"
+		fixturePath := filepath.Join(queueDirectory, fixture.requestId+"-fixture.md")
+		if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+			t.Fatalf("write %s: %v", fixturePath, writeError)
+		}
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Date(2026, 7, 29, 0, 0, 0, 0, time.UTC), defaultRecentWindow, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	if len(board.Columns.PendingReady) != 2 {
+		t.Fatalf("both contending REQs must stay Ready (display-only annotation), got %+v", board.Columns.PendingReady)
+	}
+	if !reflect.DeepEqual(board.RequestsById["REQ-1"].WriteSetOverlaps, []string{"REQ-2"}) ||
+		!reflect.DeepEqual(board.RequestsById["REQ-2"].WriteSetOverlaps, []string{"REQ-1"}) {
+		t.Fatalf("buildBoard must annotate both cards with each other, got %v / %v",
+			board.RequestsById["REQ-1"].WriteSetOverlaps, board.RequestsById["REQ-2"].WriteSetOverlaps)
+	}
+}
