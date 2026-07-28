@@ -95,6 +95,7 @@ created_at: 2025-01-26T10:00:00Z
 user_request: UR-001          # May be absent on legacy REQs
 addendum_to: REQ-NNN          # optional — present only when this REQ amends an in-flight or completed REQ; set by capture, or by review when creating follow-ups. **Legacy alias:** every read site (Step 8 upstream walk, Step 8 cycle detection, Step 8 follow-up generation, and roadmap Blocked classification) also recognizes `amends:`, `parent:`, and `amendment_to:` as synonyms when `addendum_to` is absent so natural-English glosses don't silently drop the parent linkage; `addendum_to` wins when multiple are present. Capture and follow-up REQs always emit `addendum_to:` — never propagate the alias.
 depends_on: []                # optional list of REQ IDs that must reach `completed` or `completed-with-issues` before this REQ runs. Semantically distinct from `addendum_to` ("amends that REQ"): depends_on is "requires that REQ to be done first." A REQ can have both. Honored by Step 1's selection scan and by Step 8's upstream-failure classification. **Legacy alias:** every read site (Step 1 selection, Step 1 cycle detection, Step 1 `--wave` depth, Step 8 upstream walk, roadmap classification) also recognizes a `dependencies:` key as a synonym so muscle-memory typos from Python/Node/Cargo conventions don't silently bypass gating; `depends_on` wins when both are present. Capture and follow-up REQs always emit `depends_on:` — never propagate the alias.
+write_set: []                 # optional list of repo-relative paths/globs this REQ expects to write. **Absent or empty ⇒ unknown ⇒ treat as overlapping every other REQ** — the safe default that keeps every existing REQ on today's serial behavior. Seeded by capture when the request names files (`actions/capture-reference.md` → Populating `write_set`), then firmed by Step 5.5: the `## Scope` section's "Files I will touch" list is the source and this field is its mirror, never the reverse. Read by Step 1's optional parallel-dispatch gate (`actions/work.md`) and parsed for display by `tools/queue-kanban/model.go`. A **scheduling input, not a safety guarantee** — nothing enforces it at the filesystem, so an overlap means serialize, not "write carefully."
 
 # Set by work action when claimed
 claimed_at: 2025-01-26T10:30:00Z
@@ -178,6 +179,8 @@ Nine fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depend
 | `testing_status` (board Testing view — `tools/queue-kanban` parser + `/api/testing/status` writes; no work-pipeline read sites) | `in-testing`, `tested`, `returned` | `in_testing`/`in testing`/`testing`/`selected-for-testing` → `in-testing`; `returned-with-feedback`/`returned_with_feedback` → `returned` | treat as not-tested (Ready to test) with an invalid flag + data warning |
 
 **Write paths are unaffected.** Step 2 claim, Step 8 archive, Step 8 follow-up generation, the kb-lessons handoff, and capture emission always write the canonical key and canonical enum value — never an alias, never the typo'd input. The normalize-and-warn contract is read-only.
+
+**List-valued path fields are outside this contract and are read verbatim.** `prime_files`, `write_set`, and any future path list have no canonical vocabulary to normalize against — no alias map, no case folding, no path canonicalization, no warning. A reader takes the strings as written. (`depends_on`, `related`, and `blocked_by` are likewise row-less here; `depends_on`/`related` carry alias keys, documented on their schema lines above, but their *values* are also read verbatim.)
 
 ### Terminal-success status set
 
@@ -494,6 +497,8 @@ If **no section applies** (no REQs at all in `do-work/queue/`), report completio
 - [ ] Theme persists across page reload
 - [ ] OS preference respected on first visit
 ```
+
+**"Files I will touch" is the source of the `write_set` frontmatter field.** After writing this section, the orchestrator mirrors the list into `write_set:` — one direction only, so the prose and the field cannot drift. Never edit `write_set` and expect the Scope list to follow.
 
 ## Pre-Flight Template (Step 5.75)
 

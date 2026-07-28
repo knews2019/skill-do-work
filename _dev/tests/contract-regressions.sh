@@ -118,6 +118,24 @@ assert_contains \
   'Maintenance assessment' \
   'actions/capture.md Step 1 must assess skill-instruction removal/narrowing and set the maintenance marker (work.md is marker-only and never infers it).'
 
+# write_set parser lock-step (REQ-032). The dispatch gate and the board parser
+# are one contract: work.md may only permit concurrent dispatch on a field the
+# shipped parser actually reads, so neither half may be removed alone.
+assert_contains \
+  "actions/work.md" \
+  'pairwise disjoint' \
+  'actions/work.md Step 1 must keep the parallel-dispatch gate permitting concurrent REQs only when their write_sets are pairwise disjoint.'
+
+assert_contains \
+  "actions/work.md" \
+  'serial-only' \
+  'actions/work.md Step 1 must keep the serial-only resource-class rule that overrides write_set disjointness for ordered/generated resources.'
+
+assert_contains \
+  "tools/queue-kanban/model.go" \
+  'fields\["write_set"\]' \
+  'tools/queue-kanban/model.go must parse write_set in lock-step with the schema field work.md dispatches on.'
+
 assert_contains \
   "docs/ai-report-guide.md" \
   'completed-with-issues' \

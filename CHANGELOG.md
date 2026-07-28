@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.141.0 — Write-Set Declarations and a Parallel-Dispatch Gate (2026-07-28)
+
+The queue schema gains an optional `write_set` field (repo-relative paths/globs a REQ expects to write; absent means it overlaps everything), and the work pipeline gains an opt-in dispatch gate: advanced harnesses may co-dispatch dependency-ready REQs whose write-sets are pairwise disjoint. The serial default is untouched.
+
+- Serial-only resource classes: REQs writing ordered/generated resources (migrations, lockfiles, generated bundles — illustrative list) never co-dispatch, disjoint or not.
+- Builders get a write boundary: out-of-set needs are a stop-and-report to the orchestrator, never a silent write; the Scope declaration one-directionally mirrors into `write_set` so the two can't drift.
+- Chosen over timed per-file locks — a TTL expires over a live slow agent and hands the file to a second writer (the 0.140.4 mutex-break defect class).
+- `tools/queue-kanban` parses `write_set` into the board payload (display only), and three new contract-regression ratchets pin the gate text and the parser lock-step.
+
 ## 0.140.4 — Owner-Checked Lock Mutex, Atomic Capture Appends (2026-07-28)
 
 Two accepted findings from an external concurrency review. The lock mutex could be forcibly broken after 15 seconds even when its owner was live mid-write — dangerous now that the critical section legitimately spans a model round-trip — and concurrent Stop-hook captures could interleave their writes in the shared daily log.

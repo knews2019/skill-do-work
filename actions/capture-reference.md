@@ -104,10 +104,13 @@ See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
 - `related: [REQ-006, REQ-007]` — other REQs in this batch
 - `batch: auth-system` — batch name grouping related requests
 - `addendum_to: REQ-005` — if this amends an in-flight/completed request
+- `write_set: [src/auth/session.ts, src/auth/*.test.ts]` — repo-relative paths/globs this REQ expects to write
 
 (`maintenance` is **not** complex-only — it lives in the base schema above. Step 1's *Maintenance assessment* is its authoritative home.)
 
 **Populating `depends_on`.** When the request body mentions prior REQs that must complete first (e.g., "after REQ-486 lands", "depends on the auth refactor"), populate `depends_on` in the frontmatter with the REQ IDs. Don't rely on numeric ID ordering — actions/work.md honors `depends_on`, not ID-based heuristics. The optional prose `## Dependencies` section in REQ bodies remains for human readers; the frontmatter field is the source of truth for tooling (work-action selection, roadmap classification, upstream-failure detection).
+
+**Populating `write_set`.** Seed it only when the request already names the files, or when the slice is inherently per-file ("rewrite each adapter in `src/adapters/`"). Otherwise **omit it** — an invented set is strictly worse than absence, because absence already means "overlaps everything" and produces today's safe serial behavior, while a wrong set can let two REQs be dispatched concurrently onto the same file. Capture's value is a hint, never a commitment: the work pipeline's Scope step (`actions/work-reference.md` → Scope Declaration Template) firms it up and overwrites it. The field is optional on every REQ.
 
 **Slicing convention.** When a single user request slices into multiple REQs with internal dependencies, the slicer should populate `depends_on` per the dependency graph it produced. actions/work.md then runs roots first, gates downstream REQs on their prerequisites, and supports `--wave N` for checkpointed execution one dependency depth at a time. A clean DAG in `depends_on` makes foundation-phase batches predictable; sloppy or missing `depends_on` returns to numeric-ID order and risks cascade misclassification.
 

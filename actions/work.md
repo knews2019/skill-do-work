@@ -177,6 +177,21 @@ Filter the pending list to REQs whose depth equals N, then apply the dependency-
 
 **Targeted mode bypasses dependency gating.** When `$ARGUMENTS` contains explicit REQ IDs, process them in the given order regardless of `depends_on` (or its `dependencies:` alias). The user named them explicitly.
 
+**Parallel dispatch (optional — advanced harnesses).** The default is unchanged and remains correct: claim one REQ per loop and run it to completion. Floor agents ignore this subsection entirely. Where the harness can run concurrent builders, the orchestrator MAY claim and dispatch several dependency-ready REQs at once **iff** their `write_set`s are **pairwise disjoint**.
+
+- A REQ with an absent or empty `write_set` is unknown, which means it overlaps everything — **serialize it**. Same for a glob you cannot confidently expand.
+- Overlapping pairs either serialize, or get an **explicit partition directive** at dispatch: tell each builder which subset of the shared files it owns, and hand each builder only its own subset as its declared set.
+- Every concurrently dispatched REQ still runs Steps 2–9 in full, including the orchestrator lock's `claimed_req` bookkeeping (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**). Concurrency is in the dispatch, not in the bookkeeping — one orchestrator, several builders.
+- **Write-sets schedule work; they do not protect files.** Nothing checks a write at the filesystem, so a disjointness result is a scheduling decision you can be wrong about, not a guarantee. When in doubt, serialize.
+- **Why declared sets and not timed per-file locks:** a lock with a TTL expires over a live slow agent and hands the file to a second writer while the first is still mid-edit — the same defect class as the 15s orchestrator-mutex break removed in 0.140.4. A declared set has no clock.
+
+**Serial-only resource classes.** A REQ is **serial-only** when it writes an *ordered or generated resource whose correctness depends on global sequence* — the condition, not the list, is the rule. Two such REQs are never co-dispatched even when their write-sets are disjoint, because the collision is semantic and passes straight through textual disjointness and a clean `git merge`: two migrations that each take the next sequence number merge without a conflict and are both wrong. A serial-only REQ may still run beside an unrelated non-serial one. Classes that meet the condition today, **illustrative and not exhaustive** — when you add one, state why it meets the condition:
+
+- migration and schema surfaces
+- dependency lockfiles
+- generated bundles and codegen output
+- ordered seed or fixture data
+
 **Queue status summary:** After reading all REQ frontmatter, categorize every REQ by status and print a summary before proceeding:
 
 ```
@@ -318,6 +333,8 @@ Before the builder starts coding, declare intent. This prevents scope drift from
 
 (write the `## Scope` section per the **Scope Declaration Template (Step 5.5)** in `actions/work-reference.md` — declared file list + restated acceptance criteria. The review step compares the Implementation Summary's file list against this declaration; any undeclared touch or unused declaration is scope drift.)
 
+**Mirror the file list into `write_set`.** Immediately after writing `## Scope`, copy its "Files I will touch" paths into the REQ's `write_set:` frontmatter field, replacing whatever capture seeded. The sync runs in **one direction only** — Scope is the source, `write_set` is the mirror — which is what makes drift between the two impossible. Route A skips Step 5.5, so a Route A REQ's `write_set` stays as captured (or absent, meaning it overlaps everything and never gets co-dispatched).
+
 The Scope section serves two purposes:
 1. The builder commits to a file list before writing code — drift becomes measurable.
 2. The acceptance criteria, restated from the REQ, become the word-by-word comparison target for review.
@@ -375,6 +392,7 @@ All routes include these instructions to the agent (pointers — the underlying 
 - **TDD mode when `tdd: true`:** Follow RED → GREEN → REFACTOR. Anchor RED on the REQ's `## Red-Green Proof` section if present. Report the red-green evidence (test name, failure-before, pass-after) — Step 6.5 verifies it.
 - **Captured proof first:** If `## Red-Green Proof` is present, its RED prompt/case and GREEN outcome are the primary behavior tests must prove. Only adapt with documented reason.
 - **Log Decisions as D-XX:** Significant implementation choices not dictated by plan/requirements become numbered entries in a `## Decisions` section. Continue numbering from the `<!-- D-XX counter: ... -->` comment Step 3.5 left behind; if none, start at D-01. Each decision needs reasoning — without it, the intent trail breaks. Sort each by the decide-vs-escalate gate (`crew-members/coding-guardrails.md` § Think Before Coding): a reversible, low-reach choice is **DECIDE & STATE** (reasoning only — it surfaces later as a *handled* item); a choice that's irreversible/expensive, taste-dependent, or genuinely contestable is **ESCALATE** — add `Value:` and `Risk:` lines so the hand-back can surface them.
+- **Write only inside the declared `write_set`:** the REQ's `write_set` frontmatter (mirrored from `## Scope` at Step 5.5) is the builder's write boundary. Discovering mid-build that you need a file outside it is a **stop-and-report to the orchestrator, never a silent write.** The orchestrator records the request and its resolution in the REQ trail as a `## Decisions` D-XX entry (it is a scope judgment), and extends both the Scope list and `write_set` only after confirming no concurrently dispatched REQ claims that file — see the Step 1 parallel-dispatch gate.
 - **Out-of-scope finds go to `## Discovered Tasks`** (a separate section, not nested inside Implementation Summary) — do not fix inline. Step 8 classifies and queues them.
 - **Report back the file manifest:** list every source file created/modified/deleted with the action verb, plus tests touched. The orchestrator writes the formal `## Implementation Summary` from your report.
 - **Standard freedoms and obligations:** Full file/shell access. Escalate to explore or plan if the work proves harder than triaged. Document blockers explicitly. Identify and run related existing tests; honor any test-command map in the prime file (takes precedence over generic detection).
@@ -662,6 +680,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 - The orchestrator handles ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents do implementation work only.
 - Only two frontmatter status transitions are written on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8); exception paths (Steps 1, 2.0, the Step 8 mid-run blocked flip to `blocked`, and 7's failed-remediation write) set the documented special statuses. Intermediate phases are tracked by which `##` sections exist, not by status.
 - One commit per request; stage explicit files only — never `git add -A`/`.` or bypass a commit hook (see `actions/commit.md` § Rules for the full staging/hook guard).
+- `write_set` schedules work; it does not protect files. Nothing enforces it at the filesystem, so disjointness is a dispatch decision you can get wrong — an unknown or overlapping set means serialize, not "write carefully."
 
 **Common mistakes to avoid:**
 
@@ -695,6 +714,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 | "I'll fix this out-of-scope thing inline while I'm here" | Record it in `## Discovered Tasks`; Step 8 classifies and queues it | Inline scope creep escapes triage, review, and the per-REQ commit boundary |
 | "The queue file's twin is already archived, but re-running is harmless" | Stop — Step 2.0 sets `blocked-archive-collision` for exactly this | Re-processing a duplicate silently re-commits it and corrupts the archive lineage |
 | "No one else looks like they're running right now, I'll just start" | Check `do-work/orchestrator-lock.json` first (Step 1) | A live session mid-triage or mid-explore has no visible file changes yet — the 2026-07-01 incident looked exactly like an idle tree |
+| "Their write-sets don't overlap, so I can dispatch both migration REQs together" | Serial-only classes never co-dispatch, disjoint or not (Step 1) | Two migrations claiming the same sequence number are textually disjoint and merge cleanly — the collision is semantic, so disjointness never sees it |
 
 ## Red Flags
 

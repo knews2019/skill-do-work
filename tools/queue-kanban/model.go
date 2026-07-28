@@ -112,6 +112,10 @@ type RequestTicket struct {
 	BlockedAt    string   // raw frontmatter timestamp text for the blocked flip, "" when absent
 	BlockedCheck string   // optional shell probe command (display only; the pipeline, not the board, runs it), "" when absent
 	Related      []string // soft relations (not dependency edges)
+	// write_set names the repo-relative paths/globs the REQ expects to write.
+	// Display only — read verbatim, never normalized, and never used for column
+	// logic or overlap computation; the work pipeline's dispatch gate owns that.
+	WriteSet []string
 
 	// Derived by annotateDependencyState after every ticket is parsed — never
 	// read from frontmatter.
@@ -596,6 +600,7 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		BlockedAt:                 coerceScalarToString(fields["blocked_at"]),
 		BlockedCheck:              coerceScalarToString(fields["blocked_check"]),
 		Related:                   coerceToStringList(fields["related"]),
+		WriteSet:                  coerceToStringList(fields["write_set"]),
 		Route:                     coerceScalarToString(fields["route"]),
 		Batch:                     coerceScalarToString(fields["batch"]),
 		BodyMarkdown:              bodyText,

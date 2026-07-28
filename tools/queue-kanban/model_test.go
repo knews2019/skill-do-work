@@ -282,6 +282,7 @@ domain: frontend
 depends_on: [REQ-500]
 dependencies: [REQ-499]
 related: [REQ-501]
+write_set: [src/a.ts, src/b.ts]
 ---
 
 # Body heading
@@ -310,6 +311,9 @@ Some body text.
 	}
 	if !reflect.DeepEqual(ticket.DependsOn, []string{"REQ-500"}) {
 		t.Fatalf("DependsOn = %v, want [REQ-500] (depends_on wins)", ticket.DependsOn)
+	}
+	if !reflect.DeepEqual(ticket.WriteSet, []string{"src/a.ts", "src/b.ts"}) {
+		t.Fatalf("WriteSet = %v, want [src/a.ts src/b.ts] (read verbatim, no normalization)", ticket.WriteSet)
 	}
 	if ticket.TreeSection != "archive" {
 		t.Fatalf("TreeSection = %q", ticket.TreeSection)
