@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.4 — Board User Guide (2026-07-29)
+
+The board's features were only documented in the agent-facing action file — no linkable human tour existed. New `docs/board-guide.md` covers what a user actually sees: modes, columns, badges, and the Testing view.
+
+- Covers serve/static/summary modes, the four board columns, the Notes and Completion-anomalies strips, the toolbar, the card drawer, and the Testing view's columns and per-card actions.
+- The `overlaps` badge gets its own subsection on the four ways it can under-report (no `write_set` declared, `*`/`**` glob quirks, identical malformed patterns, directory entries never badging files inside them) so it isn't misread as a safety guarantee.
+- Keeps the human-tour/agent-contract boundary: feature facts sourced from `actions/board.md`, but none of its build/dispatch internals are duplicated here.
+
 ## 0.150.3 — Display-Only Overlap-Annotation Invariant Ratchet (2026-07-29)
 
 The board's write-set overlap badge is display-only by design — it must never affect column placement — but that invariant was only protected by one Go test plus prose. `contract-regressions.sh` now pins it on both sides.
