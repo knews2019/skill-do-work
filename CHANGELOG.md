@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.146.1 — Worktree Name-Collision Handling on Re-Dispatch (2026-07-29)
+
+Worktree dispatch mode names each builder's worktree and branch deterministically from the REQ id, and the crash sweep reports (never deletes) an unmerged leftover — so a crash-recovered REQ would re-dispatch straight into the name its own leftover still holds and fail to start. Re-dispatch now sidesteps the occupied name instead of deadlocking on it.
+
+- On a name collision at creation, dispatch under a fresh unique variant (an incrementing `-2`/`-3` or short timestamp token), keeping the `worktree-agent-REQ-NNN-` prefix so sweeps still correlate both names to the REQ.
+- The crash sweep now states that a reported unmerged leftover doesn't block re-dispatch — the collision variant covers it, and the two coexist until cleanup Pass 5 resolves the leftover.
+
 ## 0.146.0 — Worktree Merge Placement and Evidence Re-Pointing (2026-07-29)
 
 Worktree dispatch mode said who merges and how, but never *when* in the pipeline — and after a merge the main tree is clean, so the qualify check, the review step, and the commit step all read an empty diff and quietly passed nothing. The merge now has a fixed place in the sequence and a defined range, and every evidence step reads that range instead of the post-merge-clean tree.
