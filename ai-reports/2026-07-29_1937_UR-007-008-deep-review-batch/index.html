@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>do-work delivery report — parallel execution + deep-review batch (UR-007 / UR-008)</title>
+<style>
+  :root {
+    --bg: #faf9f6; --surface: #ffffff; --text: #1c1b18; --muted: #55524b;
+    --accent: #2a78d6; --line: #e5e2da; --code-bg: #f1efe9;
+    --good: #008300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171614; --surface: #201f1c; --text: #e9e7e0; --muted: #b3b0a6;
+      --accent: #3987e5; --line: #35332e; --code-bg: #262521;
+      --good: #35a435;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font: 16px/1.55 "Iowan Old Style", Palatino, Georgia, serif; }
+  .page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
+  section { padding: 44px 0 8px; border-top: 1px solid var(--line); }
+  section.first { border-top: none; }
+  .kicker { font: 600 12px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin: 0 0 10px; }
+  h1 { font-size: clamp(30px, 3.4vw, 44px); line-height: 1.12; margin: 0 0 18px; font-weight: 600; }
+  h2 { font-size: 26px; margin: 0 0 6px; font-weight: 600; }
+  h3 { font-size: 18px; margin: 0 0 8px; font-weight: 600; }
+  p { margin: 0 0 14px; }
+  .measure { max-width: 74ch; }
+  .lede { font-size: 19px; }
+  .muted { color: var(--muted); }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .92em; }
+  .row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; }
+  /* stat tiles */
+  .tiles { display: flex; flex-wrap: wrap; gap: 18px; margin: 26px 0 10px; }
+  .tile { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 22px 14px; flex: 1 1 170px; min-width: 170px; }
+  .tile .label { font-size: 13.5px; color: var(--muted); margin: 0 0 4px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .tile .value { font: 600 38px/1.1 ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif; margin: 0; }
+  .tile .sub { font: 400 13px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); margin: 4px 0 0; }
+  /* story */
+  .story { border-left: 3px solid var(--accent); padding: 6px 0 6px 26px; }
+  .story p { margin-bottom: 16px; }
+  /* theme cards */
+  .theme { flex: 1 1 340px; }
+  .theme ul { margin: 10px 0 0; padding-left: 19px; }
+  .theme li { margin-bottom: 8px; }
+  .theme .count { color: var(--muted); font-size: 14px; }
+  /* full table */
+  details { margin: 26px 0 8px; }
+  summary { cursor: pointer; font-weight: 600; font-size: 17px; padding: 10px 0; }
+  .tablewrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; font-size: 14.5px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-top: 1px solid var(--line); }
+  thead th { border-top: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  td.id { white-space: nowrap; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  tbody tr:nth-child(even) { background: color-mix(in srgb, var(--code-bg) 45%, var(--surface)); }
+  /* pipeline strip */
+  .strip { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
+  .strip .stage { background: var(--code-bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 12px; }
+  .strip .arr { color: var(--muted); }
+  /* commands */
+  pre { background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; overflow-x: auto; font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 0 0 12px; }
+  .cmdcard { flex: 1 1 380px; }
+  .cmdcard p { font-size: 14.5px; }
+  /* svg */
+  .figure { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 18px 8px; flex: 2 1 560px; }
+  .figure figcaption { font-size: 13.5px; color: var(--muted); padding: 8px 4px 10px; }
+  svg text { font-family: ui-sans-serif, system-ui, "Helvetica Neue", Arial, sans-serif; }
+  svg .nodelabel { font-size: 13px; font-weight: 600; fill: var(--text); }
+  svg .nodesub { font-size: 11.5px; fill: var(--muted); }
+  svg .edgelabel { font-size: 10.5px; fill: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  svg .cnt { font-size: 19px; font-weight: 700; fill: #ffffff; }
+  svg .w1 { fill: #5593dc; } svg .w2 { fill: #3f83d4; } svg .w3 { fill: #2a78d6; }
+  svg .w4 { fill: #1e63b8; } svg .w5 { fill: #17539c; } svg .w6 { fill: #114076; } svg .w7 { fill: #0d3560; }
+  @media (prefers-color-scheme: dark) {
+    svg .cnt { fill: #171614; }
+    svg .w1 { fill: #9dbfef; } svg .w2 { fill: #88b1eb; } svg .w3 { fill: #73a3e7; }
+    svg .w4 { fill: #5e95e2; } svg .w5 { fill: #4987de; } svg .w6 { fill: #3479d9; } svg .w7 { fill: #2a6fc9; }
+  }
+  svg .flowline { stroke: var(--line); stroke-width: 2; }
+  footer { border-top: 1px solid var(--line); margin-top: 60px; padding: 22px 0 0; font-size: 13.5px; color: var(--muted); }
+  .open-item { border-left: 3px solid var(--good); }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ============ HERO ============ -->
+<section class="first" style="padding-top:56px">
+  <p class="kicker">do-work · delivery report · 2026-07-29 · requests UR-007 + UR-008</p>
+  <h1 class="measure">Two requests, twenty-eight fixes, one pipeline that can finally work in parallel — and prove it.</h1>
+  <p class="lede measure"><strong>Both requests are delivered and closed.</strong> The task queue can now run independent work at the same time instead of one item at a time, and every checker that decides <em>is it done, did it pass, what changed</em> now looks at the right evidence. 28 work items, 26 commits, skill version 0.140.4 → 0.150.10. The one follow-up question the work surfaced has already been answered and its fix is approved and queued.</p>
+  <p class="muted measure" style="font-size:14px">No screenshots in this report: what shipped is written rules and automated checks, not pixels. Every diagram below is hand-drawn from the archived task records — nothing is illustrative stock.</p>
+
+  <div class="tiles">
+    <div class="tile"><p class="label">work items shipped</p><p class="value">28</p><p class="sub">26 commits + 2 decision tickets</p></div>
+    <div class="tile"><p class="label">releases</p><p class="value">26</p><p class="sub">0.140.4 → 0.150.10</p></div>
+    <div class="tile"><p class="label">capture → close</p><p class="value">≈19 h</p><p class="sub">Jul 28, 20:52 → Jul 29, 15:26 UTC</p></div>
+    <div class="tile"><p class="label">started from</p><p class="value">3 + 8</p><p class="sub">tasks in the two original asks</p></div>
+    <div class="tile"><p class="label">left open</p><p class="value">1</p><p class="sub">answered · queued for next run</p></div>
+  </div>
+</section>
+
+<!-- ============ 60-SECOND VERSION ============ -->
+<section>
+  <p class="kicker">level 1 · the sixty-second version</p>
+  <div class="row">
+    <div class="card" style="flex:1 1 300px">
+      <h3>What was delivered</h3>
+      <p class="measure" style="margin-bottom:0">Tasks that touch different files can now run at the same time, each worker in its own isolated copy of the project, with one coordinator merging results. And the system's bookkeeping — which task is claimed, what a review actually inspected, when a request counts as finished — was made to tell one consistent story everywhere it is written down.</p>
+    </div>
+    <div class="card" style="flex:1 1 300px">
+      <h3>Why it took ~19 hours, not one</h3>
+      <p class="measure" style="margin-bottom:0">The two asks started as 11 tasks and grew to 28. Every change was attacked by independent reviewers before it could ship, and those reviews kept finding real, quiet flaws — each became a new task, was fixed, and the fix was reviewed the same way. A few decisions were escalated to you, and the work waited for your answers.</p>
+    </div>
+    <div class="card" style="flex:1 1 300px">
+      <h3>What it is worth</h3>
+      <p class="measure" style="margin-bottom:0">The failures this closes were the silent kind: a review that passes while inspecting nothing, a half-built task reset because its claim was forgotten, a request filed as done while follow-ups still sat in the queue. Each of these existed in the rulebook until this batch; none survives it.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TTS STORY ============ -->
+<section>
+  <p class="kicker">level 2 · the story, for listening</p>
+  <h2>Plain language, written to be read aloud</h2>
+  <p class="muted" style="font-size:14px">No prior knowledge assumed. About four minutes.</p>
+  <div class="story measure">
+    <p>This is the story of one day of work on a piece of software called do-work. First, what do-work is. When a person asks an A. I. assistant to do programming work, big jobs go better if they are broken into small tasks, written down as cards, and finished one by one, with every card checked before it counts as done. Do-work is the rulebook and the filing system for that. It keeps a to-do list called the queue. Every task is a card in that queue. And it holds the written instructions for how a card gets picked up, built, checked, and filed away.</p>
+    <p>Until this week, that rulebook had one big limitation. Only one card could be worked on at a time, even when two cards had nothing to do with each other. You asked for that to change. That was the first request.</p>
+    <p>The obvious danger in working on two things at once is two workers changing the same file at the same moment — like two people editing the same page of a shared document and saving over each other. So the change came in two layers. First, every card must now declare, up front, exactly which files it plans to change, and the system only lets two cards run together when their lists do not overlap. Second, each worker can be given its own private copy of the entire project to work in, and a single coordinator is the only one allowed to bring finished work back into the real copy, one merge at a time. The task board — the visual view of the queue — also got a warning badge that lights up when two waiting cards want the same files.</p>
+    <p>That first request began as three tasks. It ended as seventeen. Here is why, and this is the heart of the story. Every change in this system is examined by independent reviewers whose entire job is to prove the change wrong. Those reviewers kept finding real problems — not typos, but the quiet kind that lose work without anyone noticing. One example: the note that records which card a session is working on could only remember one card at a time, so starting a second card made the system believe the first had been abandoned — and it would have reset that card in the middle of being built. Another: after a worker's private copy was merged back, the quality checks looked in the wrong place, saw nothing, and would have said all clear about work they never actually inspected. A passing check that inspected nothing is worse than no check at all.</p>
+    <p>Each finding became a new card, was fixed, and the fix itself was reviewed the same way. Then you asked for something harder: a second, deeper review of everything that had already shipped. That was the second request. It started as eight repair tasks and grew to eleven, and it kept finding one pattern over and over: the same rule written down in two places, where one copy had been updated and the other still carried the old meaning.</p>
+    <p>The biggest case was the definition of done. Three different parts of the system decide whether one of your requests is completely finished. They disagreed. One of them would have filed a request away as complete while another could still see unfinished work sitting underneath it. All three now point at one single definition instead of keeping their own copies. And the review instructions themselves were changed, so that from now on, whenever a rule changes, the reviewer is required to hunt down every other place that states that rule and flag the stale ones.</p>
+    <p>So why did this take most of a day rather than an hour? Because all twenty-eight changes were reviewed by independent checkers — the riskiest ones by panels of ten or twelve, half of whom existed only to shoot the findings down. Because the checkers kept being right, and every fix they forced was itself re-checked. And because a handful of decisions were genuinely yours, so the work paused and waited for your answers.</p>
+    <p>The payoff: many tasks can now run at the same time without stepping on each other, and the bookkeeping that decides what is done, what failed, and what still needs attention finally tells one consistent story. The very last review found one more loose end — a task that fails permanently had no way to ever be laid to rest, so the request above it could never close. You have since answered how it should work, and that final fix is approved and waiting in the queue for the next run.</p>
+  </div>
+</section>
+
+<!-- ============ WHAT SHIPPED ============ -->
+<section>
+  <p class="kicker">level 3 · what shipped, by theme</p>
+  <h2>Three themes, twenty-eight items</h2>
+  <p class="measure muted">Every item below is a written rule, check, or document in the skill — versioned and committed like code. The full list with commits is under the table toggle.</p>
+  <div class="row" style="margin-top:18px">
+    <div class="card theme">
+      <h3>Run work in parallel, safely</h3>
+      <p class="count">8 items · the original ask</p>
+      <ul>
+        <li>Every task declares its files up front; only non-overlapping tasks co-run — with a re-check once real file lists firm up, on every task route.</li>
+        <li>Each worker gets an isolated project copy on its own branch; one coordinator merges, in dependency order.</li>
+        <li>The board warns about overlapping queued tasks — with a matcher that behaves the same on every operating system.</li>
+        <li>Crashed tasks restart under a fresh name instead of jamming on their own leftovers, and cleanup targets the name that was actually used.</li>
+      </ul>
+    </div>
+    <div class="card theme">
+      <h3>Checks that see what was actually built</h3>
+      <p class="count">8 items · found by reviews</p>
+      <ul>
+        <li>After a merge from a worker copy, quality checks, review, and reporting all read the merged range — not the clean main copy — and fail loudly if the range is unreadable.</li>
+        <li>Re-reviewing parallel-built work now shows the real change instead of an empty page (merge-aware diff reads, six sites).</li>
+        <li>A worker that did real work before hitting an outside blocker is recorded as failed-with-follow-up, not "never started".</li>
+        <li>Reviews must now sweep for every restatement of a changed rule — the batch's most common defect, made a required hunt.</li>
+      </ul>
+    </div>
+    <div class="card theme">
+      <h3>One definition of done, honest records</h3>
+      <p class="count">10 items + 2 decision tickets</p>
+      <ul>
+        <li>All three places that decide "is this request finished?" now share one canonical definition — a failed task holds its request open.</li>
+        <li>The session lock records every claimed task, survives its own crash recovery, and cannot be clobbered by a slow predecessor.</li>
+        <li>Documentation corrected wherever it described behavior the software does not have; a human guide to the board was written.</li>
+      </ul>
+    </div>
+  </div>
+
+  <details>
+    <summary>All 28 work items, with commits</summary>
+    <div class="tablewrap">
+    <table>
+      <thead><tr><th>Item</th><th>What it did</th><th>Why it matters</th><th>Commit</th></tr></thead>
+      <tbody>
+        <tr><td class="id">REQ-032</td><td>Added a field on every task listing the files it will write, and a rule to co-run only non-overlapping tasks; carved out never-parallel work classes.</td><td>Independent tasks stop queueing behind each other; two workers can never edit the same file at once.</td><td class="id">97f65b9</td></tr>
+        <tr><td class="id">REQ-033</td><td>Full specification for isolated worker copies: naming, single-integrator merging, post-merge verification, crash cleanup ownership.</td><td>Parallel workers physically cannot overwrite each other; leftovers have a named owner.</td><td class="id">849b2a5</td></tr>
+        <tr><td class="id">REQ-034</td><td>Capture now nudges tasks toward disjoint files; the board shows an overlap badge naming contending tasks.</td><td>Contention is visible before a run starts.</td><td class="id">9c7e3be</td></tr>
+        <tr><td class="id">REQ-035</td><td>The session lock now holds a list of claims instead of one, and crash recovery respects every live claim including the session's own.</td><td>Starting a second task no longer resets the first mid-build.</td><td class="id">fd56267</td></tr>
+        <tr><td class="id">REQ-036</td><td>Re-checks file-list overlap when rough capture-time guesses are replaced by real lists.</td><td>Co-approved tasks can't quietly converge on the same shared file.</td><td class="id">4296e11</td></tr>
+        <tr><td class="id">REQ-037</td><td>Pinned when the coordinator merges a worker branch, and re-pointed every downstream check that was reading the (clean) main copy.</td><td>Merged work actually gets checked and reviewed instead of "nothing to review".</td><td class="id">1348d11</td></tr>
+        <tr><td class="id">REQ-038</td><td>A crash-recovered task re-dispatches under a fresh name variant instead of colliding with its own leftover.</td><td>One crash can't permanently wedge a task.</td><td class="id">efb6300</td></tr>
+        <tr><td class="id">REQ-039</td><td>Documented worker isolation as its own capability in the agent-capability notes.</td><td>The mode is discoverable, not tribal knowledge.</td><td class="id">9c8ef45</td></tr>
+        <tr><td class="id">REQ-040</td><td>Board pattern-matching switched to an OS-independent matcher; the wildcard dialect documented in four places.</td><td>The overlap warning stops silently missing collisions.</td><td class="id">acc4722</td></tr>
+        <tr><td class="id">REQ-041</td><td>Decision ticket: four optional hardening ideas presented with recommendations.</td><td>You chose the polish worth doing (all four) instead of an agent guessing.</td><td class="id">—</td></tr>
+        <tr><td class="id">REQ-042</td><td>Decision ticket: three worktree edge cases from REQ-037's review.</td><td>Two approved, one explicitly declined — no future re-litigating.</td><td class="id">—</td></tr>
+        <tr><td class="id">REQ-043</td><td>Six fixes to how the merged-work comparison range is picked and validated; checker now fails loudly when the range is unreadable.</td><td>No more clean passes that inspected nothing.</td><td class="id">1ac4fa8</td></tr>
+        <tr><td class="id">REQ-044</td><td>Four claim-bookkeeping inconsistencies fixed against one named source of truth.</td><td>A session can't strand a dead helper's task or step on its own claims.</td><td class="id">bb7f8c4</td></tr>
+        <tr><td class="id">REQ-045</td><td>Closed the route where the lightest task type skipped the overlap re-check; named which clashing task waits; added an automated guard.</td><td>No route lets two tasks run unchecked in parallel.</td><td class="id">14146c2</td></tr>
+        <tr><td class="id">REQ-046</td><td>The worker-copy name that actually succeeded is held and reused by every later step.</td><td>Cleanup and merging stop targeting an abandoned copy by rebuilt name.</td><td class="id">6b4dcc1</td></tr>
+        <tr><td class="id">REQ-047</td><td>The lock procedure re-verifies ownership in the instant before writing; timeout comment corrected to claim age, not death.</td><td>A slow-but-alive session can't clobber its successor's state.</td><td class="id">5b2c02f</td></tr>
+        <tr><td class="id">REQ-048</td><td>Request-completion decided by scanning every task's parent tag, not a capture-time list nothing updates.</td><td>A request can't be filed done with follow-ups still queued.</td><td class="id">da8ec3c</td></tr>
+        <tr><td class="id">REQ-049</td><td>Reviews must sweep the whole project for every other statement of a changed rule.</td><td>The batch's most common defect became a required hunt.</td><td class="id">6164a10</td></tr>
+        <tr><td class="id">REQ-050</td><td>Three places where documentation didn't match code behavior, corrected — prose only, executables proven unchanged.</td><td>Docs stop teaching behavior the software doesn't have.</td><td class="id">548e487</td></tr>
+        <tr><td class="id">REQ-051</td><td>Automated test asserting the overlap badge actually renders in the generated board page.</td><td>A refactor deleting the badge fails a test instead of shipping.</td><td class="id">e7a1941</td></tr>
+        <tr><td class="id">REQ-052</td><td>Automated guard pinning the overlap annotation as display-only, computed after column sorting.</td><td>A visual hint can't quietly become scheduling logic in the display tool.</td><td class="id">7861204</td></tr>
+        <tr><td class="id">REQ-053</td><td>Lessons-recording honors a reference file's "write it out in full" marker instead of always linking.</td><td>Consumers stop accumulating links to files they never received.</td><td class="id">8b4dd30</td></tr>
+        <tr><td class="id">REQ-054</td><td>Human-readable guide to the Kanban board: modes, columns, badges, testing view.</td><td>People can learn the board without reading machine instructions.</td><td class="id">50caea3</td></tr>
+        <tr><td class="id">REQ-055</td><td>Every reader of a task's recorded commit detects the merge case and asks for the change the right way (six sites).</td><td>Re-reviewing parallel-built work shows the change, not a blank page.</td><td class="id">93424eb</td></tr>
+        <tr><td class="id">REQ-056</td><td>The blocked-vs-failed call reads the worker's own branch in isolation mode, not the always-clean main copy.</td><td>Real work before an outside blocker is not misfiled as "never started".</td><td class="id">1b7d824</td></tr>
+        <tr><td class="id">REQ-057</td><td>Capture docs corrected: the lightest route keeps its up-front file list for the whole run.</td><td>Docs stop promising a replacement that never happens.</td><td class="id">a68d8b5</td></tr>
+        <tr><td class="id">REQ-058</td><td>The diagnostics command derives request membership the same canonical way as cleanup.</td><td>Removed a live false warning telling you to file away an open request.</td><td class="id">1c3b662</td></tr>
+        <tr><td class="id">REQ-059</td><td>The last finish-checker stops counting a failed task as finished; cites the one canonical definition; two guides corrected.</td><td>All three deciders agree; a request with unresolved failures can't quietly close.</td><td class="id">d414590</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </details>
+</section>
+
+<!-- ============ WHY SO LONG ============ -->
+<section>
+  <p class="kicker">level 4 · why it took the time</p>
+  <h2>Eleven tasks in, twenty-eight out</h2>
+  <div class="row" style="margin-top:16px">
+    <figure class="figure" style="margin:0">
+      <svg viewBox="0 0 1200 250" role="img" aria-label="How 11 captured tasks grew to 28 shipped items plus one queued follow-up">
+        <defs>
+          <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--muted)"/></marker>
+        </defs>
+        <!-- flow arrows -->
+        <line class="flowline" x1="122" y1="125" x2="238" y2="125" marker-end="url(#arrow)"/>
+        <line class="flowline" x1="302" y1="125" x2="418" y2="125" marker-end="url(#arrow)"/>
+        <line class="flowline" x1="482" y1="125" x2="598" y2="125" marker-end="url(#arrow)"/>
+        <line class="flowline" x1="662" y1="125" x2="778" y2="125" marker-end="url(#arrow)"/>
+        <line class="flowline" x1="842" y1="125" x2="958" y2="125" marker-end="url(#arrow)"/>
+        <line class="flowline" x1="1022" y1="125" x2="1108" y2="125" marker-end="url(#arrow)"/>
+        <!-- edge labels -->
+        <text class="edgelabel" x="180" y="143" text-anchor="middle">reviews found</text>
+        <text class="edgelabel" x="360" y="143" text-anchor="middle">escalated</text>
+        <text class="edgelabel" x="540" y="143" text-anchor="middle">you approved</text>
+        <text class="edgelabel" x="720" y="143" text-anchor="middle">you asked again</text>
+        <text class="edgelabel" x="900" y="143" text-anchor="middle">sweeps found</text>
+        <text class="edgelabel" x="1065" y="143" text-anchor="middle">last review</text>
+        <!-- nodes: count circles, single-hue ramp light->dark -->
+        <circle cx="92" cy="125" r="27" class="w1"/><text class="cnt" x="92" y="132" text-anchor="middle">3</text>
+        <circle cx="270" cy="125" r="27" class="w2"/><text class="cnt" x="270" y="132" text-anchor="middle">+6</text>
+        <circle cx="450" cy="125" r="27" class="w3"/><text class="cnt" x="450" y="132" text-anchor="middle">2</text>
+        <circle cx="630" cy="125" r="27" class="w4"/><text class="cnt" x="630" y="132" text-anchor="middle">+6</text>
+        <circle cx="810" cy="125" r="27" class="w5"/><text class="cnt" x="810" y="132" text-anchor="middle">8</text>
+        <circle cx="990" cy="125" r="27" class="w6"/><text class="cnt" x="990" y="132" text-anchor="middle">+3</text>
+        <circle cx="1140" cy="125" r="27" class="w7"/><text class="cnt" x="1140" y="132" text-anchor="middle">+1</text>
+        <!-- node labels: staggered above/below -->
+        <text class="nodelabel" x="65" y="62" text-anchor="start">Ask 1 — parallel work</text>
+        <text class="nodesub"  x="65" y="80" text-anchor="start">captured as 3 tasks</text>
+        <text class="nodelabel" x="270" y="196" text-anchor="middle">review follow-ups</text>
+        <text class="nodesub"  x="270" y="214" text-anchor="middle">lock, re-check, merge point…</text>
+        <text class="nodelabel" x="450" y="62" text-anchor="middle">decision tickets</text>
+        <text class="nodesub"  x="450" y="80" text-anchor="middle">options laid out for you</text>
+        <text class="nodelabel" x="630" y="196" text-anchor="middle">approved follow-ups</text>
+        <text class="nodesub"  x="630" y="214" text-anchor="middle">tests, guide, merge-aware reads</text>
+        <text class="nodelabel" x="810" y="62" text-anchor="middle">Ask 2 — deep review</text>
+        <text class="nodesub"  x="810" y="80" text-anchor="middle">captured as 8 repair tasks</text>
+        <text class="nodelabel" x="990" y="196" text-anchor="middle">sweep discoveries</text>
+        <text class="nodesub"  x="990" y="214" text-anchor="middle">same bug elsewhere, docs</text>
+        <text class="nodelabel" x="1165" y="62" text-anchor="end">queued follow-up</text>
+        <text class="nodesub"  x="1165" y="80" text-anchor="end">answered, ready to build</text>
+      </svg>
+      <figcaption>How 11 captured tasks became 28 shipped items plus one queued follow-up. Counts are task cards; color deepens left to right in time. Hand-drawn from the archived records.</figcaption>
+    </figure>
+    <div style="flex:1 1 320px">
+      <h3 style="margin-top:4px">Where the hours actually went</h3>
+      <p class="measure">Each shipped item ran the full per-card pipeline:</p>
+      <div class="strip"><span class="stage">claim</span><span class="arr">→</span><span class="stage">build</span><span class="arr">→</span><span class="stage">automated gates</span><span class="arr">→</span><span class="stage">adversarial review</span><span class="arr">→</span><span class="stage">commit</span><span class="arr">→</span><span class="stage">archive</span></div>
+      <ul class="measure" style="padding-left:19px; margin-top:12px">
+        <li style="margin-bottom:9px"><strong>Reviews were adversarial and they kept winning.</strong> The riskiest changes got panels of 10–12 reviewers — half assigned to refute the other half's findings. Three of this batch's final changes came back "fix, then pass"; every forced fix was re-verified.</li>
+        <li style="margin-bottom:9px"><strong>Findings became tasks, recursively.</strong> Ask 1's three tasks spawned six follow-ups; the deep review's sweeps found the same bug in two more places and three documentation mismatches.</li>
+        <li style="margin-bottom:9px"><strong>Some work had to wait in line.</strong> Five of the deep-review repairs all edited the same two instruction files, so they ran one after another — the overlap rule this very batch built, applied to itself.</li>
+        <li style="margin-bottom:9px"><strong>Some decisions were yours.</strong> Two decision tickets and four clarify rounds paused for your answers — including one where you overrode the builder's own recommendation.</li>
+        <li><strong>Two incidents, both absorbed.</strong> One builder died mid-task on a transient error and a successor finished from the recorded trail; one review round hit a usage limit and the coordinator ran the review itself.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VALUE ============ -->
+<section>
+  <p class="kicker">level 5 · the value, concretely</p>
+  <h2>Seven silent failures that no longer exist</h2>
+  <p class="measure muted">Every one of these was possible in the rulebook before this batch. None is exotic — each was found by an actual review of actual instructions, and several were caught live.</p>
+  <div class="row" style="margin-top:14px">
+    <div class="card" style="flex:1 1 420px">
+      <ol style="margin:0; padding-left:20px">
+        <li style="margin-bottom:10px">Two tasks running at once edit the same file and silently overwrite each other.</li>
+        <li style="margin-bottom:10px">Starting a second task erases the record of the first, which gets reset mid-build as "abandoned".</li>
+        <li style="margin-bottom:10px">Quality checks and review pass on merged work they never saw — an empty inspection reported as clean.</li>
+        <li style="margin-bottom:0">Re-reviewing finished parallel-built work shows an empty change list, so there is nothing to catch mistakes against.</li>
+      </ol>
+    </div>
+    <div class="card" style="flex:1 1 420px">
+      <ol start="5" style="margin:0; padding-left:20px">
+        <li style="margin-bottom:10px">A request is filed away as complete while unfinished follow-up work still sits underneath it — three deciders, three definitions of done.</li>
+        <li style="margin-bottom:10px">A worker that did real work before hitting an outside blocker is misfiled as "never started", losing the failure signal and the follow-up.</li>
+        <li style="margin-bottom:0">A rule is updated in one place while a stale copy elsewhere keeps the old meaning — the root shape behind most findings, now a mandatory review hunt.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+
+<!-- ============ VERIFY ============ -->
+<section>
+  <p class="kicker">level 6 · verify it yourself</p>
+  <h2>Copy-paste checks</h2>
+  <div class="row">
+    <div class="card cmdcard">
+      <h3>See the batch in history</h3>
+      <p class="muted">All commits since the batch began — 26 carry a <span class="mono">[REQ-0NN]</span> tag; titles state what shipped.</p>
+      <pre>cd /Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+git log --oneline 97f65b9^..HEAD</pre>
+      <p class="muted">Inspect any single change, e.g. the final one:</p>
+      <pre>git show --stat d414590</pre>
+    </div>
+    <div class="card cmdcard">
+      <h3>Run the same gates the batch ran</h3>
+      <p class="muted">The contract-regression suite pins this batch's rules (including two guards this batch added); the board tool's tests cover the badge render path.</p>
+      <pre>bash _dev/tests/contract-regressions.sh</pre>
+      <pre>cd tools/queue-kanban &amp;&amp; go test ./... &amp;&amp; go vet ./...</pre>
+    </div>
+    <div class="card cmdcard open-item">
+      <h3>The one queued item</h3>
+      <p class="muted">The follow-up the last review surfaced — how a permanently-failed task gets laid to rest. You chose the mechanism (let <span class="mono">do-work abandon</span> cancel a failed task); it is approved and pending.</p>
+      <pre>cat do-work/queue/REQ-060-failed-req-resolution-path.md</pre>
+      <p class="muted" style="margin-bottom:0">A future <span class="mono">do-work run</span> will pick it up.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p class="measure">Compiled by the do-work <span class="mono">ai-report</span> action on 2026-07-29, covering requests UR-007 and UR-008 (28 work items, commits <span class="mono">97f65b9…d414590</span>, versions 0.140.4 → 0.150.10). Facts were extracted from the archived task records and git history by independent readers and cross-checked; the report text is AI-drafted from those verified records. Diagrams are hand-authored, not AI-generated images. No screenshots: the delivered work is rules and checks, not UI. This page uses no external resources and works offline; layout render-verified in light and dark.</p>
+</footer>
+
+</div>
+</body>
+</html>
