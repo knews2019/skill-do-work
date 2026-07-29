@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.2 — Board Badge Render-Path Test Assertion (2026-07-29)
+
+The overlap badge's frontend render path had zero test coverage — only the Go-side annotation logic was tested. `generate_test.go` now asserts the badge's render tokens actually make it into the generated board HTML, so a regression in that path fails loudly instead of shipping silent.
+
+- New test anchors on the inlined `web/board.js`/`web/board.css` tokens (`badge-write-overlap`, `writeSetOverlaps`, the drawer row, the CSS rule) rather than rendered DOM, so it holds regardless of live queue contents.
+- Red-green verified: mutating the anchor token fails the test; restoring it passes.
+
 ## 0.150.1 — Doc-Accuracy Fixes: Legacy-Suppression Comment and Board Glob Miss-Classes (2026-07-29)
 
 Three documentation inaccuracies from the deep review, all comment/prose with no behavior change.

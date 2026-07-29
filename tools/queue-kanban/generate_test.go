@@ -420,3 +420,31 @@ func TestRecentlyDoneWindowDefaultsTo24h(t *testing.T) {
 		t.Fatalf("board.js still initialises windowHours to 168: %q must not appear in the inlined script", jsDefaultWindow168)
 	}
 }
+
+// TestGenerateInlinesWriteSetOverlapBadgeRenderPath guards the frontend half of
+// the write_set overlap annotation. The Go tests cover annotateWriteSetOverlap
+// (model_test.go), but nothing proved the derived list still gets *rendered*:
+// a refactor that dropped the badge renderer from web/board.js would ship a
+// silent regression, since the badge only appears when the live tree happens to
+// have overlapping REQs. These are code tokens from the inlined board.js/board.css,
+// so the assertion holds regardless of what the queue currently contains.
+func TestGenerateInlinesWriteSetOverlapBadgeRenderPath(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	for _, renderToken := range []string{
+		// The makeBadge() call that emits the card badge. The quoted form only
+		// occurs in board.js — the bare class name would also match the CSS rule.
+		`"badge-write-overlap"`,
+		// The generated payload field (generate.go's writeSetOverlaps key) that
+		// the badge gates on.
+		"request.writeSetOverlaps",
+		// The drawer row that makes the contending REQ ids clickable.
+		"Overlapping write sets",
+		// Without the stylesheet rule the badge renders unstyled and invisible.
+		".badge-write-overlap",
+	} {
+		if !strings.Contains(indexHtml, renderToken) {
+			t.Fatalf("write_set overlap badge render path is missing from the generated page: %q not found in the inlined board.js/board.css", renderToken)
+		}
+	}
+}
