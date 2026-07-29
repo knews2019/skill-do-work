@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.146.0 — Worktree Merge Placement and Evidence Re-Pointing (2026-07-29)
+
+Worktree dispatch mode said who merges and how, but never *when* in the pipeline — and after a merge the main tree is clean, so the qualify check, the review step, and the commit step all read an empty diff and quietly passed nothing. The merge now has a fixed place in the sequence and a defined range, and every evidence step reads that range instead of the post-merge-clean tree.
+
+- The orchestrator merges each builder branch at hand-back (end of Step 6, before the Implementation Summary), and captures the range `<pre>..<merge_hash>` around it — stated once in Worktree Dispatch Mode and consumed by qualify (Step 6.3), review (Step 7), post-merge verification (Step 8), and Step 9's validation.
+- `tools/checks/qualify.sh` gained an optional `DO_WORK_DIFF_RANGE` env var; unset, it reads the working+staged diff exactly as before, so serial runs are byte-for-byte unchanged.
+- Step 9 is reconciled for merged work: it stages only the changelog/version/metadata (the implementation is already in the merge commit) and records the merge commit's hash.
+- Fixed a latent gap where `work.md` and `work-reference.md` disagreed on the post-merge verification default (now both say per-merge whenever more than one REQ is in flight).
+
 ## 0.145.0 — Re-Validate Write-Set Disjointness When Scope Firms It (2026-07-29)
 
 The parallel-dispatch gate decided co-dispatch on capture's write-set guess, but Step 5.5 then rewrote that field from each REQ's real scope with no second look — so two REQs seeded as disjoint could both quietly claim the same file once their scopes firmed. Step 5.5 now re-checks disjointness before it commits the field, and a dispatch-time partition directive survives the mirror instead of being erased.

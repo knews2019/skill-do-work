@@ -6,7 +6,12 @@
 # are judgment — this script feeds them evidence, it does not decide them.
 #
 # Usage: tools/checks/qualify.sh <req-file>
+# Env: DO_WORK_DIFF_RANGE — when set (worktree dispatch mode, e.g. "<pre>..<merge_hash>"),
+#   the file-change and debug-artifact checks read `git diff <range>` instead of
+#   the working+staged diff. Unset/empty (the serial default) reads working+staged,
+#   byte-for-byte as before. Setting it only changes WHICH diff is read.
 # Exit 0: all mechanical checks pass. Exit 1: at least one FAIL line.
+# Exit 2: usage error (missing/unreadable <req-file>).
 # WARN lines (wiring not found, etc.) do not fail the run — they are handed to
 # the orchestrator's judgment, which owns the exception list (entry points,
 # framework-convention routes, barrel re-exports, dynamic imports, ...).
@@ -17,6 +22,10 @@ if [ ! -f "$request_file" ]; then
   echo "usage: $0 <req-file>" >&2
   exit 2
 fi
+
+# Worktree dispatch mode passes this REQ's merge range (<pre>..<merge_hash>). Empty/unset
+# is the serial default: read the working+staged diff, unchanged.
+diff_range="${DO_WORK_DIFF_RANGE:-}"
 
 failure_count=0
 
@@ -41,9 +50,17 @@ non_dowork_count=0
 # straight into `grep -q` is a pipefail trap: -q exits on the first match, the
 # upstream git dies with SIGPIPE, and the pipeline's non-zero status made a
 # file that IS in the diff read as absent (false WARN on every modified file).
+# In worktree dispatch mode $diff_range holds this REQ's merge range
+# (<pre>..<merge_hash>, <pre> captured just before the --no-ff merge); reading it keeps
+# the same "this-REQ-only" guarantee the working+staged default gives serially,
+# because <pre> is the integration tip immediately before this REQ's merge.
 changed_file_list=""
 if [ "$git_available" -eq 1 ]; then
-  changed_file_list="$({ git diff --name-only; git diff --staged --name-only; } | sort -u)"
+  if [ -n "$diff_range" ]; then
+    changed_file_list="$(git diff --name-only "$diff_range" | sort -u)"
+  else
+    changed_file_list="$({ git diff --name-only; git diff --staged --name-only; } | sort -u)"
+  fi
 fi
 
 # --- Check 1: every listed file matches its claimed state on disk / in diff ---
@@ -62,17 +79,20 @@ while IFS= read -r summary_line; do
     modified|modify)
       # Deliberately only working+staged diffs: Step 6.3 runs BEFORE this REQ's
       # commit, and including the previous commit (HEAD~1) would let a no-op
-      # builder pass on the back of the last REQ's work.
+      # builder pass on the back of the last REQ's work. In worktree dispatch
+      # mode the same guarantee comes from $diff_range's lower bound <pre> (the
+      # tip just before this REQ's merge), not from working+staged — HEAD~1
+      # would still be wrong there.
       if [ ! -f "$file_path" ]; then
         echo "FAIL: listed (modified) but not on disk: $file_path"; failure_count=$((failure_count + 1))
       elif [ "$git_available" -eq 1 ] && ! printf '%s\n' "$changed_file_list" | grep -xF "$file_path" >/dev/null; then
-        echo "WARN: listed (modified) but not in working/staged diff: $file_path"
+        echo "WARN: listed (modified) but not in working/staged diff (or the merge range, in worktree mode): $file_path"
       fi ;;
     deleted)
       if [ -f "$file_path" ]; then
         echo "FAIL: listed (deleted) but still on disk: $file_path"; failure_count=$((failure_count + 1))
       elif [ "$git_available" -eq 1 ] && ! printf '%s\n' "$changed_file_list" | grep -xF "$file_path" >/dev/null; then
-        echo "WARN: listed (deleted) and absent from disk, but no deletion in working/staged diff: $file_path — verify the path is not a typo and the file was deleted by THIS REQ"
+        echo "WARN: listed (deleted) and absent from disk, but no deletion in working/staged diff (or the merge range, in worktree mode): $file_path — verify the path is not a typo and the file was deleted by THIS REQ"
       fi ;;
     *) echo "WARN: no (new|modified|deleted) verb on summary line: $summary_line" ;;
   esac
@@ -109,7 +129,11 @@ if [ "$git_available" -eq 1 ]; then
   # *mentions* console.log/TODO (the REQ file is part of this diff) and FAILed
   # clean implementations. `+++` headers are dropped so a filename containing
   # TODO cannot trip the artifact grep either.
-  debug_artifact_lines="$({ git diff -- . ':(exclude)do-work/'; git diff --staged -- . ':(exclude)do-work/'; } | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE 'console\.log|debugger|(^|[^[:alnum:]_])print\(|TODO|FIXME' || true)"
+  if [ -n "$diff_range" ]; then
+    debug_artifact_lines="$(git diff "$diff_range" -- . ':(exclude)do-work/' | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE 'console\.log|debugger|(^|[^[:alnum:]_])print\(|TODO|FIXME' || true)"
+  else
+    debug_artifact_lines="$({ git diff -- . ':(exclude)do-work/'; git diff --staged -- . ':(exclude)do-work/'; } | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE 'console\.log|debugger|(^|[^[:alnum:]_])print\(|TODO|FIXME' || true)"
+  fi
   if [ -n "$debug_artifact_lines" ] && grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file"; then
     echo "FAIL: [UNIFY] is checked but the diff adds debug artifacts — un-check it and flag:"
     printf '%s\n' "$debug_artifact_lines" | head -10 | sed 's/^/  /'

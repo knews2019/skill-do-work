@@ -431,6 +431,14 @@ After the builder returns and the Implementation Summary is written, the **orche
 <skill-root>/tools/checks/qualify.sh <req-file>
 ```
 
+**In worktree dispatch mode** the builder's work is already committed and merged (end of Step 6), so the working tree is clean — pass this REQ's merge range so the mechanical checks read the merged diff instead of an empty working diff:
+
+```bash
+DO_WORK_DIFF_RANGE="<pre>..<merge_hash>" <skill-root>/tools/checks/qualify.sh <req-file>
+```
+
+where `<pre>` is this REQ's pre-merge integration tip (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**). Serial mode omits the variable and reads the working/staged diff.
+
 It verifies checklist items **1 (files exist / show in diff)**, **4 (P-A-U box audit + debug artifacts in the diff)**, and the grep half of **5 (wiring)** — plus Step 6.25's "only `do-work/` paths ⇒ not implemented" rule. FAIL lines are qualification failures; WARN lines are evidence handed to your judgment — in particular, an unreferenced `(new)` file is only dead code if it isn't an **exception**: entry points, config files, test files, standalone scripts, framework-convention files discovered by file-system routing (Next.js `pages/`/`app/`, SvelteKit/Remix `routes/`, Nuxt/Astro `pages/`), barrel re-exports, side-effect-only imports (CSS modules, polyfills), and dynamic-import-only files that static grep can't see. If the script is missing, run items 1/4/5 by hand per its header comment.
 
 **Judgment checks (yours, not the script's):**
@@ -476,9 +484,9 @@ When the REQ includes `## Red-Green Proof`, the `Red-green validation` entries s
 
 Run actions/review-work.md in **pipeline mode** against this REQ.
 
-The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation: requirements check (did we build what was asked?), code review (is it solid?), and acceptance testing (does it actually work?).
+The review reads the REQ (in `do-work/working/`), the original UR, and the current diff (`git diff` or `git diff --staged`) to evaluate the implementation: requirements check (did we build what was asked?), code review (is it solid?), and acceptance testing (does it actually work?). **In worktree dispatch mode** the working tree is clean after the merge, so the review reads this REQ's merge range `<pre>..<merge_hash>` instead (`actions/review-work.md` Step 4, Get the Diff).
 
-**How to run it:** Spawn an agent with actions/review-work.md file, the REQ path, and the `crew-members/[domain].md` file (normalize `domain` per the Schema Read Contract first; if the resolved domain has a matching file, load it; otherwise skip). Or read actions/review-work.md file and follow its pipeline mode instructions in the current session.
+**How to run it:** Spawn an agent with actions/review-work.md file, the REQ path, and the `crew-members/[domain].md` file (normalize `domain` per the Schema Read Contract first; if the resolved domain has a matching file, load it; otherwise skip) — in worktree dispatch mode, also pass this REQ's merge range `<pre>..<merge_hash>` so the review reads the merged diff rather than the clean working tree. Or read actions/review-work.md file and follow its pipeline mode instructions in the current session.
 
 **What happens next depends on the review result:**
 
@@ -539,7 +547,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **On success:**
 
-**Post-merge verification (worktree dispatch mode only).** If this REQ's work arrived by merging a builder branch, nobody has verified the merged state — every builder's checks ran on its own branch. Re-run the REQ's acceptance checks against the merged tree **before** the substeps below archive anything; the unit you verify is the unit you roll back. **Per-merge is the default whenever more than one REQ is in flight** — Step 8 archives and commits each REQ as it verifies, so once a co-dispatched batch's earlier REQs are archived the batch has no revertible unit left; per-batch is permitted only if every REQ's Step 8 is held until the batch's last merge verifies. A red merged state stops the archive: revert to the last verified state and re-dispatch, never archive-and-follow-up. Procedure: `actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**.
+**Post-merge verification (worktree dispatch mode only).** This REQ's work was merged at hand-back — end of Step 6, before Step 6.25 (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**) — so nobody has verified the merged state; every builder's checks ran on its own branch. Re-run the REQ's acceptance checks against the merged tree **before** the substeps below archive anything; the unit you verify is the unit you roll back. **Per-merge is the default whenever more than one REQ is in flight** — Step 8 archives and commits each REQ as it verifies, so once a co-dispatched batch's earlier REQs are archived the batch has no revertible unit left; per-batch is permitted only if every REQ's Step 8 is held until the batch's last merge verifies. A red merged state stops the archive: revert to the last verified state and re-dispatch, never archive-and-follow-up. Procedure: `actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**.
 
 1. Update frontmatter: if the current status is already `completed-with-issues` (set by Step 7 after a failed remediation), preserve `completed-with-issues` and ensure `completed_at: <timestamp>` is present. Otherwise set `status: completed`, `completed_at: <timestamp>`. **`completed_at` (current UTC instant — `date -u +%Y-%m-%dT%H:%M:%SZ`, per the Timestamp rule in `actions/work-reference.md`) is mandatory on every terminal flip — never skip the stamp.** It and the `commit:` hash (written back in the Commit Phase) are the only sources the board resolves a completion instant from; a terminal REQ with neither surfaces as a completion anomaly on `do-work board` (see `actions/work-reference.md`'s Full Frontmatter stamping rule). Also refresh the orchestrator lock's heartbeat here — but **do not** remove this REQ from `claimed_reqs` yet; the file is still in `working/` until substep 6 (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
 2. Verify `## Implementation Summary` is present (written in Step 6.25). If missing, append it now — this should not happen in normal flow, but crash recovery may skip it.
@@ -592,6 +600,8 @@ Classify the failure and queue the right follow-up per `actions/work-reference.m
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 
 Before committing a successful REQ, write a changelog entry in the target repo's root `CHANGELOG.md` per `actions/work-reference.md` → **Changelog Entry Procedure (Step 9)** — create the file if it's missing, match the repo's existing format if it has one. House-format entries are keyed `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)`; the version is bumped by change type from the repo's own version file (which gets bumped and staged too), its release tags, or — for an unversioned repo — the changelog's own counter. Then: one commit per request, format `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Stage only the explicit files (implementation files from the Implementation Summary, the archived REQ, the `CHANGELOG.md` entry, the version file it bumped, any follow-up REQs, UR-folder moves, and any prime files touched in Step 8 substep 7) — see `## Rules` below for the staging/hook guard. Validate the staged file list against the Implementation Summary (successful REQs only). After the commit, write the real short hash back into the archived REQ's `commit:` field and record it in a **separate metadata commit** (do not amend). Full bash + metadata-commit procedure: `actions/work-reference.md` → **Commit & Metadata-Commit Procedure (Step 9)**. Refresh the orchestrator lock's heartbeat here too (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**).
+
+**In worktree dispatch mode the implementation commit already exists** — the builder committed on its branch and Step 6's `--no-ff` merge integrated it — so Step 9 does **not** stage implementation files. Stage only the changelog entry, the version file it bumped, the archived REQ, any follow-up REQs, UR-folder moves, and any prime files touched in Step 8 substep 7, then commit those. Write **`<merge_hash>`** — the `--no-ff` merge commit captured in Step 6, not this changelog commit's hash — into the archived REQ's `commit:` field (the merge commit is the implementation's provenance record). Validate the Implementation Summary file list against `git diff --name-only <pre>..<merge_hash>` (the merge range), not the stage — the implementation files are in the merge, not in this commit's staged set.
 
 ### Step 10: Loop or Exit
 
@@ -688,7 +698,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 
 - The orchestrator handles ALL file management (moving files, updating frontmatter, appending sections, archiving). Spawned agents do implementation work only.
 - Only two frontmatter status transitions are written on the normal path: `pending` → `claimed` (Step 2), then `claimed` → final status (Step 8); exception paths (Steps 1, 2.0, the Step 8 mid-run blocked flip to `blocked`, and 7's failed-remediation write) set the documented special statuses. Intermediate phases are tracked by which `##` sections exist, not by status.
-- One commit per request; stage explicit files only — never `git add -A`/`.` or bypass a commit hook (see `actions/commit.md` § Rules for the full staging/hook guard).
+- One commit per request; stage explicit files only — never `git add -A`/`.` or bypass a commit hook (see `actions/commit.md` § Rules for the full staging/hook guard). This governs serial mode; in worktree dispatch mode the implementation's commit boundary is the merge (builder commits + the `--no-ff` merge commit), and Step 9's commit carries only the changelog/version/metadata (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**).
 - `write_set` schedules work; it does not protect files. Nothing enforces it at the filesystem, so disjointness is a dispatch decision you can get wrong — an unknown or overlapping set means serialize, not "write carefully."
 - In worktree dispatch mode the orchestrator is the sole integrator: builders never write the main tree, and a merged state is not a verified state until the REQ's checks re-run there.
 

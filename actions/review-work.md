@@ -27,7 +27,7 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 
 | Mode | Trigger | REQ location | How to get the diff |
 |------|---------|-------------|---------------------|
-| **Pipeline** | Auto-triggered by actions/work.md after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary |
+| **Pipeline** | Auto-triggered by actions/work.md after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary — in worktree dispatch mode the tree is clean post-merge, so read the merge range `<pre>..<merge_hash>` the orchestrator passes (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**) |
 | **Standalone** | User invokes manually: `do-work review`, `do-work review-work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field |
 
 Both modes follow the same workflow. The only difference is where the REQ lives and how you obtain the diff.
@@ -43,7 +43,7 @@ Both modes follow the same workflow. The only difference is where the REQ lives 
 2. **If user specifies a UR** (e.g., "review UR-003"): Find all terminally-successful REQs (`completed` or `completed-with-issues`) under that UR and review each
 3. **If no target specified**: Find the most recently completed REQ — check both `do-work/archive/` (root) and all `do-work/archive/UR-NNN/` subdirectories for the highest REQ number with a terminal-success status (`status: completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set)
 
-If the target REQ has no `commit` field (standalone mode) or no implementation changes (pipeline mode), report that there's nothing to review and exit.
+If the target REQ has no `commit` field (standalone mode) or no implementation changes (pipeline mode), report that there's nothing to review and exit. In worktree dispatch mode the working tree is clean after the merge, so judge "no changes" from the merge range `<pre>..<merge_hash>` (`git diff --stat <pre>..<merge_hash>`), not the working diff — an empty working diff there is the normal post-merge state, not an empty REQ.
 
 ### Step 2: Read the REQ
 
@@ -63,7 +63,7 @@ If the REQ is a legacy file without `user_request`, use whatever context is avai
 
 ### Step 4: Get the Diff
 
-**Pipeline mode:** Run `git diff` to see uncommitted changes, or read the files the Implementation Summary lists as created/modified. If the working tree is clean (implementation agent already staged), use `git diff --staged`.
+**Pipeline mode:** Run `git diff` to see uncommitted changes, or read the files the Implementation Summary lists as created/modified. If the working tree is clean (implementation agent already staged), use `git diff --staged`. **In worktree dispatch mode** the builder's work is already committed and merged, so the working tree is clean by design — read the diff from the merge range the orchestrator passes: `git diff <pre>..<merge_hash>` (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**).
 
 **Standalone mode:** Run `git show <commit>` using the hash from the REQ's `commit` frontmatter. This gives you the full diff of what was committed.
 
