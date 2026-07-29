@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.7 — Lessons-Capture Honors a Prime's Inline-Only Marker (2026-07-29)
+
+The pipeline's Lessons-capture step now inlines a lesson into a prime file that declares itself inline-only, instead of appending an archive link that would be dead in every consumer install.
+
+- Both write sites (`actions/work.md` Step 8, `actions/review-work.md` standalone twin) branch on the prime's `## Lessons` marker comment ("inlined, not linked").
+- Keyed off the marker condition in the prime's header, never a hand-list of primes (Closed Enumerations rule).
+- The normal (non-marked) link path is unchanged.
+
 ## 0.150.6 — Forensics Check 4 Keys UR Closure on user_request Scan (2026-07-29)
 
 `forensics` Check 4 (Orphaned URs) was keying UR closure on the capture-time `requests:` array — the same stale-list bug REQ-048 already fixed in `cleanup` Pass 1. That let it false-positive on UR-007 today, warning to archive a UR that still has six pending follow-up REQs.

@@ -587,14 +587,16 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 | Neither (standalone legacy) | Move directly to `archive/`. |
 
 7. **Execute deferred prime-link writes (from Step 7.5):** Now that the REQ is at its final archive path, walk the `pendingPrimeLinkWrites` collected during Step 7.5. For each pending entry:
-   - Compute the relative path from the prime file to the REQ's actual archived location (UR folder if the UR was just consolidated, or `archive/` root if the UR is incomplete).
-   - Verify the resolved path points to an existing file. If it doesn't, report the broken link and skip — do NOT silently write a broken link.
-   - Append the link to a `## Lessons` section in the prime file (create the section if it doesn't exist):
-     ```markdown
-     ## Lessons
+   - **Check for the inline-only marker first.** Look at the prime file's `## Lessons` section (if it already exists). If it opens with an HTML comment containing the phrase "inlined, not linked" (the pattern is `<!-- Lessons are inlined, not linked: ... -->` — see `tools/queue-kanban/prime-do-kanban.md`'s `## Lessons` header for the exact wording), the prime has declared itself inline-only: skip the link steps below and instead append a plain bullet with the lesson summary — `- REQ-NNN: 1-line summary of the lesson` (no link, matching the prime's existing inlined entries) — then continue to the next pending entry.
+   - Otherwise (no marker present), proceed as before:
+     - Compute the relative path from the prime file to the REQ's actual archived location (UR folder if the UR was just consolidated, or `archive/` root if the UR is incomplete).
+     - Verify the resolved path points to an existing file. If it doesn't, report the broken link and skip — do NOT silently write a broken link.
+     - Append the link to a `## Lessons` section in the prime file (create the section if it doesn't exist):
+       ```markdown
+       ## Lessons
 
-     - [REQ-NNN: 1-line summary of the lesson](<relative-path-to-archived-req>#lessons-learned)
-     ```
+       - [REQ-NNN: 1-line summary of the lesson](<relative-path-to-archived-req>#lessons-learned)
+       ```
    - Stage the prime file along with the implementation files in Step 9.
 
    This is the post-move execution that makes the existence-verify meaningful — Step 7.5 only collected; the writes happen here.
