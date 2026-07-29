@@ -43,20 +43,25 @@ Scan `do-work/queue/` and the working directory for REQs with terminal statuses 
 
 Check `do-work/user-requests/` for UR folders that are ready to archive.
 
+**The closure condition, stated — not a stored list.** A UR is ready to archive only when **every REQ carrying `user_request: UR-NNN` in its frontmatter, wherever it currently sits, is terminally resolved.** Membership is derived by scanning that field; it is never read off the UR's `requests:` array. That array is the capture-time record of the REQs capture itself created (`actions/capture.md` Step 5) and nothing maintains it afterward — review-spawned follow-ups, addendum REQs, and clarify-derived REQs all carry `user_request:` without ever being appended to it. Keying on the array archives a UR whose follow-ups are still queued and strands their UR reference. This is the same predicate `actions/work.md` Step 8 evaluates on its archive path; the two readers must not drift apart.
+
 For each UR folder in `do-work/user-requests/`:
 
-1. Read `input.md` and parse the `requests` array from frontmatter (e.g., `[REQ-044, REQ-045, REQ-046]`)
-2. For each REQ ID in the array, check if it exists with a **terminal-resolved status** (`completed`, `completed-with-issues`, or `cancelled` — see `actions/work-reference.md`'s Schema Read Contract → Terminal-resolved status set) in ANY of these locations:
-   - `do-work/archive/UR-NNN/` (already consolidated)
-   - `do-work/archive/` root (loose in archive)
-   If the same REQ-ID is found in **both** locations simultaneously, flag it and leave the UR in `user-requests/` untouched: `⚠ Duplicate: REQ-NNN found in both archive/ root and archive/UR-NNN/. Resolve manually, then re-run cleanup.`
-3. If **ALL** REQs are terminally resolved — `completed`, `completed-with-issues`, or `cancelled` (and no duplicates flagged):
+1. **Collect the UR's REQs** by reading the `user_request` field of every `REQ-*.md` in all four locations and keeping those whose value is this UR's id:
+   - `do-work/queue/REQ-*.md` (pending, pending-answers, blocked, reserved, claimed)
+   - `do-work/working/REQ-*.md` (in flight)
+   - `do-work/archive/REQ-*.md` (loose in archive root — non-recursive; `archive/legacy/` REQs have no `user_request` by definition)
+   - `do-work/archive/UR-NNN/REQ-*.md` (already consolidated)
+2. **Check each collected REQ's status against the terminal-resolved set** (`completed`, `completed-with-issues`, or `cancelled` — see `actions/work-reference.md`'s Schema Read Contract → Terminal-resolved status set; don't restate or fork that set here). Any status outside it holds the UR open, **`failed` included** — a failed REQ signals follow-up work that must happen before the UR is done, and `cancelled` is the explicit way to say no follow-up is wanted.
+   If the same REQ-ID is found in **both** `do-work/archive/` root and `do-work/archive/UR-NNN/`, flag it and leave the UR in `user-requests/` untouched: `⚠ Duplicate: REQ-NNN found in both archive/ root and archive/UR-NNN/. Resolve manually, then re-run cleanup.`
+3. If **ALL** collected REQs are terminally resolved (and no duplicates flagged):
    - Gather any loose completed/cancelled REQ files from `do-work/archive/` root into the UR folder
    - Move the entire UR folder to `do-work/archive/UR-NNN/`
    - Report: `Archived UR-NNN (all N REQs resolved)` — when any were cancelled, say so: `(N-K complete, K cancelled)`
-4. If **NOT all** REQs are terminally resolved:
+4. If **NOT all** collected REQs are terminally resolved:
    - Leave the UR folder in `user-requests/` — it's not ready yet
    - Report: `UR-NNN still open (X/Y REQs complete)`
+5. **Report-only cross-check against the array.** Any REQ id listed in the UR's `requests:` array that the scan in step 1 found in none of the four locations is a missing file, not an open REQ: report `⚠ REQ-NNN listed in UR-NNN's requests: array but found nowhere`. It must never hold the UR open — a stale array entry that wedges closure is the failure this pass was rewritten to avoid.
 
 ### Pass 2: Consolidate Loose REQ Files in Archive
 
@@ -262,7 +267,7 @@ Guard against these during cleanup:
 ## Red Flags
 
 - REQ with terminal status (completed/failed/cancelled) still in `do-work/queue/` or `do-work/working/`
-- UR archived but some of its REQs still pending in the queue
+- UR archived but some of its REQs still pending in the queue — Pass 1 keyed on the UR's `requests:` array (a capture-time record) instead of scanning `user_request:` frontmatter, so review-spawned and addendum follow-ups were invisible to it
 - Duplicate REQs found in multiple locations (queue + archive, or working + archive)
 - UR folder in archive with no REQ files inside
 - A UR whose REQs are all `completed-with-issues` never closes (stays in `user-requests/`) — Pass 1 is filtering on the literal `completed` instead of the terminal-resolved set (`completed`, `completed-with-issues`, or `cancelled`; see `actions/work-reference.md`)
@@ -276,6 +281,7 @@ Guard against these during cleanup:
 - [ ] No terminal-status REQs remain in `do-work/queue/` or `do-work/working/`
 - [ ] Every archived REQ with `user_request` field is inside its UR folder
 - [ ] No empty UR folders remain in archive (unless REQs are still pending elsewhere)
+- [ ] Every UR Pass 1 closed had its membership derived from the `user_request:` frontmatter scan across `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` — never from `input.md`'s `requests:` array
 - [ ] Every moved file's old path greps to zero hits in tracked markdown outside `do-work/`
 - [ ] Every `do-work/runs/` directory deleted by Pass 4 had `Status: consumed`; `in-progress`, `synthesized`, legacy `complete`, and missing-manifest runs remain
 - [ ] Every tracked consumed-run deletion is staged by its exact path

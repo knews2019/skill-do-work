@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.149.3 — Cleanup Keys UR Closure on user_request, Not the Stale requests Array (2026-07-29)
+
+`cleanup` Pass 1 decided a UR was done by reading its capture-time `requests:` array — but review-spawned and addendum follow-ups carry `user_request:` without ever being added to that array, so a UR with pending follow-ups could be archived out from under them. Pass 1 now uses the same predicate `work` Step 8 does.
+
+- `cleanup` Pass 1 derives UR membership by scanning `user_request:` across `queue/`, `working/`, `archive/` root, and `archive/UR-NNN/`, gating on the terminal-resolved set (with `failed` holding the UR open); the `requests:` array is now a report-only cross-check.
+- `capture` documents `requests:` as the capture-time record only — never the closure predicate. Two more readers of the old predicate were found and queued as follow-ups (forensics Check 4; a `failed`-status contradiction in work Step 8).
+
 ## 0.149.2 — Lock Mutex Re-Verifies Ownership Before Publishing (2026-07-29)
 
 The serialized-lock mutex could evict a slow-but-live owner on the one-minute age check, and that owner's already-staged lock write would still land — clobbering its successor and losing a claim, the exact failure the mutex exists to prevent.

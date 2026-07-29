@@ -207,6 +207,8 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 3. If the request is behavior-changing and has a meaningful RED/GREEN proof target, add a `## Red-Green Proof` section. If `tdd: true`, this section is required.
 4. Update the UR's `requests` array with all created REQ IDs
 
+**The `requests:` array is the capture-time record only — never the UR's closure predicate.** It names the REQs *this capture* created, and nothing appends to it afterward: review-spawned follow-ups (`actions/work.md` Step 8), addendum REQs, and clarify-derived REQs all carry `user_request: UR-NNN` without ever landing in the array. So "is this UR finished?" is always answered by scanning `user_request:` frontmatter across `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` — the condition `actions/work.md` Step 8 and `actions/cleanup.md` Pass 1 both evaluate. The array's legitimate readers are the ones asking *what the user originally asked for* (e.g. `actions/verify-requests.md`, which grades capture coverage against the original input); any reader deciding whether a UR may close must use the scan instead.
+
 **Complex mode additionally:**
 - Create `assets/` subfolder in the UR folder
 - Extract EVERY requirement into the appropriate REQ — do not summarize
