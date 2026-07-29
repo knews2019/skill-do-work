@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.5 — Route A Keeps Its Capture-Seeded write_set (2026-07-29)
+
+Small doc-accuracy fix found during REQ-045: `capture-reference.md` said the pipeline's Scope step "firms up and overwrites" a REQ's `write_set` — true only for Routes B and C, since a Route A REQ never runs that step.
+
+- Notes that a Route A REQ keeps its capture-seeded `write_set` for the whole run, and that value is what `work.md` Step 3 re-validates for disjointness when co-dispatched (per REQ-045).
+
 ## 0.150.4 — Board User Guide (2026-07-29)
 
 The board's features were only documented in the agent-facing action file — no linkable human tour existed. New `docs/board-guide.md` covers what a user actually sees: modes, columns, badges, and the Testing view.
