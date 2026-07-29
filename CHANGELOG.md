@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.146.2 — Note Worktree Isolation in the Harness-Tier Guide (2026-07-29)
+
+Someone sizing a harness against `background-agents.md`'s three fan-out rungs had no way to learn that per-builder git-worktree isolation exists or where it's documented. A short cross-reference now closes that gap.
+
+- Added a "worktree isolation is a separate axis" note after the harness rungs, pointing at `actions/work-reference.md` → Worktree Dispatch Mode; the rungs and the file's load contract are unchanged.
+
 ## 0.146.1 — Worktree Name-Collision Handling on Re-Dispatch (2026-07-29)
 
 Worktree dispatch mode names each builder's worktree and branch deterministically from the REQ id, and the crash sweep reports (never deletes) an unmerged leftover — so a crash-recovered REQ would re-dispatch straight into the name its own leftover still holds and fail to start. Re-dispatch now sidesteps the occupied name instead of deadlocking on it.

@@ -195,6 +195,14 @@ invariant above carries down all three.
    sequential run that crashes halfway is recoverable because the completed slices
    are already on disk.
 
+**Worktree isolation is a separate axis.** The three rungs above measure one thing —
+how much orchestration the harness hands you. Whether each builder runs in its own
+**git worktree** (an isolated working directory + branch, so parallel builders can't
+interleave writes to the same file) is an orthogonal capability, available at any
+rung. The do-work pipeline's optional worktree dispatch mode is documented in
+`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**; reach for it when
+you fan builders out across overlapping files, not just to size concurrency.
+
 ## Manifest Format
 
 Keep it small and append-friendly. A minimal `manifest.md` (this example uses the
