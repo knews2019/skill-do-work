@@ -10,7 +10,7 @@ Six passes, in order (matching `actions/cleanup.md`):
 Moves terminal-status REQs (`completed`, `completed-with-issues`, `failed`, `cancelled`, plus normalized aliases like `done`/`finished`/`closed`/`abandoned`/`wont-do`) from `do-work/queue/` and `working/` into `archive/`.
 
 ### Pass 1: Close completed User Requests
-When all REQs for a UR are archived, moves the entire UR folder from `user-requests/` into `archive/UR-NNN/`.
+When every REQ for a UR is resolved (`completed`, `completed-with-issues`, or `cancelled`), moves the entire UR folder from `user-requests/` into `archive/UR-NNN/`. Being archived isn't enough — a `failed` REQ holds its UR open until a follow-up resolves it.
 
 ### Pass 2: Consolidate loose REQ files
 Moves REQ files sitting in `archive/` root into their UR folders (`archive/UR-NNN/`). REQs without a UR reference go to `archive/legacy/`.

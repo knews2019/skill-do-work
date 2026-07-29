@@ -11,7 +11,7 @@ Pipeline diagnostics — detects stuck work, hollow completions, orphaned URs, s
 | **Stuck work** | REQs in `working/` claimed >1hr (warning) or >24hr (critical) |
 | **Hollow completions** | Completed REQs with no Implementation Summary or file changes |
 | **Missing qualifications** | REQs lacking `## Qualification` section (post-v0.38.0) |
-| **Orphaned URs** | UR folders in `user-requests/` where all REQs are archived but UR wasn't moved |
+| **Orphaned URs** | UR folders in `user-requests/` where every REQ is resolved (completed, completed-with-issues, or cancelled) but the UR wasn't moved — a `failed` REQ holds its UR open, so it isn't flagged |
 | **Scope contamination** | Files modified by 3+ unrelated REQs, or overlapping files within same UR |
 | **Failed without follow-up** | Failed REQs missing error classification or follow-up REQ |
 | **Stale pending-answers** | REQs waiting for user input for >7 days |

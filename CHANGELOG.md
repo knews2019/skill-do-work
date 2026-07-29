@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.10 — UR Closure Keys on the Terminal-Resolved Set Everywhere (2026-07-29)
+
+work.md Step 8's archive table was the last reader still counting `failed` as closing a User Request — cleanup Pass 1 and forensics Check 4 already keyed on work-reference.md's terminal-resolved set, so the two halves of the pipeline disagreed on whether a failed REQ holds its UR open. Now all three readers cite the one canonical set: a `failed` REQ keeps its UR open until a follow-up resolves it.
+
+- Step 8's row cites the set instead of restating it; the canonical paragraph's caller list is now marked illustrative and includes forensics Check 4.
+- docs/cleanup-guide.md and docs/forensics-guide.md stop describing closure as "all REQs archived" (a failed REQ is archived but not resolved).
+- Discovered en route: nothing in the skill can resolve a `failed` REQ at all — queued as a follow-up decision (REQ-060, pending-answers).
+
 ## 0.150.9 — Blocked-Flip Guard Judges Worktree Builders by Their Branch (2026-07-29)
 
 Step 8's blocked-vs-failed call used `git diff` on the main tree to ask "did edits land this attempt?" — but a worktree builder commits on its own branch, so the main tree always reads clean and real work got wrongly parked as `blocked`. The guard now reads the builder's branch in worktree mode.

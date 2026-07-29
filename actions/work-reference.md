@@ -192,7 +192,7 @@ The trigger is the *condition above*, not the caller list: **any reader that fil
 
 ### Terminal-resolved status set
 
-**A REQ counts as *terminally resolved* when its `status` is `completed`, `completed-with-issues`, or `cancelled`.** This is the set archive-sweep and UR-closure readers honor (`actions/cleanup.md` Pass 0 + Pass 1, `actions/work.md` Step 8's UR-final check, this file's Composed Exit Summary): `cancelled` records a deliberate won't-do decision — made via `do-work abandon` — so it archives like finished work and must never hold a UR open the way `failed` does. Three boundaries keep the sets honest:
+**A REQ counts as *terminally resolved* when its `status` is `completed`, `completed-with-issues`, or `cancelled`.** This is the set archive-sweep and UR-closure readers honor — any reader deciding whether a REQ still needs work inherits it, so the list that follows is illustrative, not exhaustive: `actions/cleanup.md` Pass 0 + Pass 1, `actions/work.md` Step 8's UR-final check, `actions/forensics.md` Check 4, and this file's Composed Exit Summary. `cancelled` records a deliberate won't-do decision — made via `do-work abandon` — so it archives like finished work and must never hold a UR open the way `failed` does. Three boundaries keep the sets honest:
 
 - `cancelled` is **not** successful. Success-readers (the Terminal-success set above) exclude it — a cancelled REQ is never a review-work target, an ai-report subject, or a commit association.
 - `cancelled` does **not** satisfy `depends_on` gating. A dependent presumably needed the cancelled REQ's output; the abandon action surfaces dependents at cancellation time so the user can cascade the cancellation or re-point `depends_on`.
