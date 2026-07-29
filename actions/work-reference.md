@@ -536,6 +536,8 @@ If **no section applies** (no REQs at all in `do-work/queue/`), report completio
 
 **"Files I will touch" is the source of the `write_set` frontmatter field.** After writing this section, the orchestrator mirrors the list into `write_set:` — one direction only, so the prose and the field cannot drift. Never edit `write_set` and expect the Scope list to follow.
 
+**A dispatch-time partition directive survives the mirror (parallel dispatch only).** If a builder was handed a narrowed partition — a subset of a shared file set — at dispatch (`actions/work.md` Step 1 parallel-dispatch gate), that narrowed subset *is* its "Files I will touch," so mirroring it writes the partition, not the full shared list. The mirror never widens a partitioned set back to the un-partitioned one. A serial run has no partition and no other in-flight REQ, so this never applies — the plain one-directional mirror above is the whole story.
+
 ## Pre-Flight Template (Step 5.75)
 
 ```markdown

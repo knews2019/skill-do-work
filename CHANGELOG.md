@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.145.0 — Re-Validate Write-Set Disjointness When Scope Firms It (2026-07-29)
+
+The parallel-dispatch gate decided co-dispatch on capture's write-set guess, but Step 5.5 then rewrote that field from each REQ's real scope with no second look — so two REQs seeded as disjoint could both quietly claim the same file once their scopes firmed. Step 5.5 now re-checks disjointness before it commits the field, and a dispatch-time partition directive survives the mirror instead of being erased.
+
+- New Step 5.5 re-validation runs only under co-dispatch: it re-checks the firmed scope against every other in-flight REQ's current `write_set` and serializes or partitions the loser before its builder starts — the same check Step 6 already runs before a mid-build write-set extension.
+- The Step 1 gate and Step 5.5 now agree that both steps enforce, at different times (the gate on capture's hint, Step 5.5 after firming); Step 4's plan-validation flag is documented as a warning, not the enforcement point.
+- The Step 6 write-boundary bullet clarifies that an absent `write_set` handed to a builder means "dispatched serially, full-scope freedom," never "write nothing."
+- Serial (floor) runs are completely unaffected — every new clause is gated to the parallel-dispatch path.
+
 ## 0.144.0 — Concurrent Claim Tracking in the Orchestrator Lock (2026-07-29)
 
 The orchestrator lock could only name one in-flight REQ per session, so the moment a single orchestrator dispatched more than one builder at once, Crash Recovery and cleanup mistook the siblings for abandoned crash artifacts and re-queued them mid-build. The lock now tracks every concurrent claim, and the recovery and cleanup gates honor the whole set — the session's own claims included — so parallel dispatch is finally safe inside the skill's own protocol.
