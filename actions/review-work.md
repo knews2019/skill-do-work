@@ -121,6 +121,17 @@ Evaluate the implementation quality by reading the diff:
 - Data integrity risks (race conditions, missing validation at boundaries)
 - Regression risk — identify callers/dependents of changed code, flag interfaces whose contract changed, note shared utilities that other features rely on
 
+**Restatement Sweep (when the diff redefines something other text restates)**
+
+Risk Assessment above covers the *code* consumers of a changed interface. This is its documented-consumer twin, and it is the check that catches the most common way a high-scoring REQ still ships broken: the meaning of something changes in its canonical home while a restatement or consumer elsewhere keeps the old meaning.
+
+1. **Trigger — ask the question, don't consult a list.** For each element the diff touches: *does this change the meaning of something that is stated in more than one place?* A contract token, a schema field's semantics, a gate's wording, what a stored value actually holds, the shape a prescribed command's output is consumed as — anything whose definition lives in one home while other files restate, gloss, parse, or act on it. Those are illustrative examples, not the set to check against; a hand-maintained token list goes stale the moment the contract grows, so ask the question of whatever *this* diff redefines.
+2. **Sweep each redefined element.** Grep the repo for every other statement or consumer of it — the token itself, the phrasings that gloss it, and the tests, tooling, and templates that parse or restate it — and verify each still agrees with the new meaning. This generalizes the rule already required for prescribed shell commands (when a fix changes a command primitive, grep that primitive across every action before calling it fixed — these get copy-pasted, so the fix is rarely local) from commands to contracts.
+3. **Every stale restatement is a finding.** Severity is your judgment: **Important** when the stale text would lead a reader or an agent to act on the old contract, **Minor** when it's cosmetic. **A stale restatement in a file the REQ never declared is still a finding** — drift between a canonical home and its restatements is exactly what this check exists to surface. Route the fix to a follow-up REQ (Step 10); do not score it as the builder's scope drift.
+4. **Skip it when nothing was redefined.** A typo fix, a new case inside one function, or text nothing else restates gets no sweep. The trigger is redefinition, not diff size — this is not a blanket "grep everything" pass on every change.
+
+Origin: the REQ-035–040 batch reviewed at 86–98%, yet every top defect a later independent pass found was this one class — a token changed in its canonical home with a restatement elsewhere left on the old semantics, and no review step forcing the sweep.
+
 **Directive Alignment Check (if an approach directive was assigned)**
 
 If the REQ's Implementation Summary notes an assigned approach directive (e.g., "Directive: Simplicity-First"):
@@ -449,6 +460,7 @@ Guard against these when conducting the review:
 | "The score is borderline, I'll round up" | Apply the scoring guidelines mechanically | Rounding up defeats the quality gate |
 | "This finding is minor, not worth a follow-up REQ" | Ask: would a senior engineer request changes on this in a PR? | The threshold is documented; use it |
 | "I can't run the code so I'll skip acceptance" | Score Untested and note exactly what you couldn't test | Skipping silently hides risk |
+| "That stale restatement is in a file this REQ never declared — out of scope" | Report it as a finding and route the fix to a follow-up REQ | The diff changed the meaning; leaving other statements of it on the old contract is the defect, and the REQ's Scope declaration bounds the *builder*, not the sweep |
 | "All requirements checked and tests pass, so it's good" | Apply the Klarna Test — did we optimize for measurable things (checkboxes, passing tests) at the expense of unmeasured intent? | Checkbox compliance + passing tests can still miss what the user actually wanted |
 
 ## Red Flags
@@ -468,6 +480,7 @@ If any of these are true, escalate review depth regardless of route:
 Before presenting the review report:
 
 - [ ] Every requirement from the REQ walked against the diff (not skimmed)
+- [ ] Restatement Sweep applied — for anything the diff redefines, every other statement or consumer of it was grepped and verified (or recorded as "nothing redefined, sweep N/A")
 - [ ] All applicable scoring dimensions have a numeric score (no blanks)
 - [ ] Overall score computed using the documented formula
 - [ ] P-A-U checkboxes checked — if the REQ has an "AI Execution State (P-A-U Loop)" section, verify all three boxes (`[PLAN]`, `[APPLY]`, `[UNIFY]`) are marked `[x]`. Unchecked boxes suggest the builder skipped a phase — flag as a Minor finding.

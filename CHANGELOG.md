@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.0 — Review Restatement Sweep (2026-07-29)
+
+Six concurrency-spec REQs passed adversarial review at 86 to 98 percent, yet a later pass found every top defect was the same class: a contract changed in its canonical home while a restatement elsewhere kept the old meaning. The review step now forces a sweep for exactly that.
+
+- `review-work.md` Step 6 gains a required **Restatement Sweep**: when a diff redefines something other text restates (a token, a field's semantics, what a hash holds, a command's output shape), grep every other statement/consumer and flag stale ones as findings — including in files outside the REQ's Scope (routed to follow-ups, not scored as builder scope drift). `work.md` Step 7 cross-references it.
+- Trigger is condition-based, not a token list (Closed Enumerations Go Stale); a proportionality guard skips diffs that redefine nothing. Inherited by both pipeline and standalone `do-work review`.
+
 ## 0.149.3 — Cleanup Keys UR Closure on user_request, Not the Stale requests Array (2026-07-29)
 
 `cleanup` Pass 1 decided a UR was done by reading its capture-time `requests:` array — but review-spawned and addendum follow-ups carry `user_request:` without ever being added to that array, so a UR with pending follow-ups could be archived out from under them. Pass 1 now uses the same predicate `work` Step 8 does.
