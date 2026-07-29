@@ -316,12 +316,16 @@ until mkdir "$mutex_path" 2>/dev/null; do
   fi
   # A session that died mid-update must not wedge the queue. The mutex directory's
   # mtime is fixed at acquisition (the owner file below is its only content, written
-  # once), so a mutex older than a minute has a verifiably dead owner — reclaim it.
-  # This is the ONLY break path. There is deliberately no attempt-count override on a
-  # younger mutex: the critical section can legitimately span a model round-trip (the
-  # fresh read below is re-judged, not just re-written), so a slow-but-live owner is
-  # indistinguishable from a dead one until the minute is up, and breaking early
-  # re-opens the exact lost-update this mutex exists to prevent.
+  # once), so a mutex older than a minute proves the mutex's AGE — not that its owner
+  # is dead. The critical section can legitimately span a model round-trip, so a
+  # slow-but-live owner is indistinguishable from a dead one. Reclaiming on age alone
+  # is safe because of the pre-write ownership re-check below: an evicted owner that
+  # wakes up finds the owner token changed and discards its stale image instead of
+  # publishing it. This is the ONLY break path. There is deliberately no attempt-count
+  # override on a younger mutex — that re-check narrows the lost-update window to the
+  # instant before the rename, it does not close it, so every early eviction of a live
+  # owner both discards a completed read-modify-write cycle and takes another draw at
+  # the window.
   if [ -z "$(find "$mutex_path" -maxdepth 0 -mmin -1 2>/dev/null)" ]; then
     rm -rf "$mutex_path"
     continue
@@ -342,7 +346,27 @@ printf '%s\n' "$session_id" > "$mutex_path/owner"
 #  ≤ 45m is aiming at a live session: in both cases write nothing, release the
 #  mutex, and re-enter the procedure at the branch the fresh state selects.)
 lock_tmp="$lock_path.$$.tmp"
-printf '%s\n' "$updated_lock_json" > "$lock_tmp" && mv -f "$lock_tmp" "$lock_path" || rm -f "$lock_tmp"
+if ! printf '%s\n' "$updated_lock_json" > "$lock_tmp"; then
+  rm -f "$lock_tmp"
+  echo "orchestrator-lock mutex: could not stage $lock_tmp — lock NOT updated" >&2
+  exit 1
+fi
+
+# Pre-write ownership re-check — the last thing before the rename that publishes the
+# file. The age-based reclaim above can evict a slow-but-live owner, so confirm the
+# mutex is STILL ours in the instant before publishing. A mismatch means this session
+# was evicted mid-critical-section and its staged image is stale: discard the temp
+# file, write NOTHING to $lock_path, leave the mutex alone (it is the successor's now,
+# so exiting here deliberately skips the release below), and re-run this whole block
+# from the top — re-deriving $updated_lock_json from a fresh in-mutex read, which
+# re-judges the branch rather than just re-writing it. Never retry by re-`mv`ing the
+# image staged before the eviction: that publishes the very lost update this catches.
+if [ "$(cat "$mutex_path/owner" 2>/dev/null)" != "$session_id" ]; then
+  rm -f "$lock_tmp"
+  echo "orchestrator-lock mutex: evicted mid-critical-section — write discarded, re-acquire and redo the read-modify-write" >&2
+  exit 3
+fi
+mv -f "$lock_tmp" "$lock_path" || rm -f "$lock_tmp"
 
 # Release only what this session still owns. If the critical section overran the
 # one-minute reclaim bound and another session took the mutex, an unconditional
@@ -353,7 +377,7 @@ if [ "$(cat "$mutex_path/owner" 2>/dev/null)" = "$session_id" ]; then
 fi
 ```
 
-The temp-file-plus-`mv` is not decoration: `mv` within a directory is an atomic rename, so a reader outside the mutex can never observe a half-written lock file. Never write `$lock_path` in place. **Bounded wait, never an override.** Worst-case wait is ~one minute — the verified stale-owner bound (the mtime check; nothing ever refreshes the mutex directory's mtime, so an abandoned mutex is guaranteed reclaimable). There is deliberately no shorter attempt-count break: a mutex younger than a minute can only be removed out from under a live owner mid-write, which re-opens the lost-claim → Crash Recovery re-queue failure this whole guard exists to prevent. If the loop exits with the `mkdir`-failure report instead, the environment is broken (permissions, read-only checkout) — surface that to the user and stop; an unserialized lock write is never the fallback.
+The temp-file-plus-`mv` is not decoration: `mv` within a directory is an atomic rename, so a reader outside the mutex can never observe a half-written lock file. Never write `$lock_path` in place. **Bounded wait, never an override.** Worst-case wait is ~one minute — the verified stale-owner **age** bound (the mtime check; nothing ever refreshes the mutex directory's mtime, so an abandoned mutex is guaranteed reclaimable). Age is not death: the reclaim can evict an owner that is merely slow, and the **pre-write ownership re-check** is what makes that safe — the evicted session discards its temp file and exits 3 rather than publishing a lock image it assembled before it lost the mutex. **An exit 3 is a retry instruction, not a failure:** re-run the block from the top and re-derive `$updated_lock_json` from the fresh read inside the *new* critical section; re-`mv`ing the discarded image would land the lost update the check just prevented. That narrows the window to the instant between the re-check and the rename; it does not close it, which is why there is still deliberately no shorter attempt-count break — every early eviction of a live owner discards a completed read-modify-write cycle and takes another draw at that window. If the loop exits with the `mkdir`-failure report instead, the environment is broken (permissions, read-only checkout) — surface that to the user and stop; an unserialized lock write is never the fallback.
 
 **Never committed.** At acquisition (first write), append the local-ignore snippet from `crew-members/background-agents.md` → **Local-ignore snippet (for genuinely-transient paths)**, substituting `do-work/orchestrator-lock.json` for `<path>`, and again for `do-work/orchestrator-lock.json.*` — the glob (not an exact path) is required because it must cover both the mutex directory and the PID-suffixed temp files: a `do-work/orchestrator-lock.json.<pid>.tmp` orphaned by a session killed between its write and its rename carries a PID no later session repeats, so only a pattern keeps it out of `git status` and off the committable surface. The mutex directory and the `.tmp` files are the same kind of transient session state as the lock itself. Same mechanism `do-work/pipeline.json` already uses (`actions/pipeline.md` Step 2 substep 4) — a lock is transient session state, not part of the Trail of Intent, so it must stay out of git regardless of install layout. **The snippet cannot rescue an already-tracked lock** — ignore rules have no effect on indexed files, and `git check-ignore` passes on them, so the append silently changes nothing (`crew-members/background-agents.md` → the snippet's tracked-path caveat). The lock is a must-never-commit path, so acquisition ALSO runs `git ls-files -- do-work/orchestrator-lock.json` (cwd-relative from wherever the lock path resolves): a non-empty result means some earlier session committed the lock before this guard existed, every heartbeat is now dirtying a tracked file, and a committed lock propagates stale session state to every other clone. Report the remedy to the user — `git rm --cached do-work/orchestrator-lock.json` — never untrack on their behalf, and continue the run: a tracked lock is a hygiene failure, not a correctness one, and the Commit Phase's explicit-file staging keeps it out of this session's own commits.
 

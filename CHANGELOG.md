@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.149.2 — Lock Mutex Re-Verifies Ownership Before Publishing (2026-07-29)
+
+The serialized-lock mutex could evict a slow-but-live owner on the one-minute age check, and that owner's already-staged lock write would still land — clobbering its successor and losing a claim, the exact failure the mutex exists to prevent.
+
+- The prescribed block now re-checks the mutex owner token immediately before the publishing `mv`; on a mismatch it discards the staged temp file, writes nothing, and re-acquires (exit 3) — narrowing the lost-update window from model-round-trip scale to the instant before the rename.
+- The mtime-reclaim comment now says the age check proves age, not death, and points at the re-check as what makes eviction safe. The one-minute bound and the fixed-mtime property are unchanged; serial and single-session runs behave identically.
+
 ## 0.149.1 — Worktree Cleanup Uses the Recorded Operative Name (2026-07-29)
 
 REQ-038 taught a crash-recovered worktree REQ to re-dispatch under a fresh name variant, but every later step still re-derived the original slug-based name — so after a collision the merge and cleanup targeted the *leftover*, not the builder's actual worktree.
