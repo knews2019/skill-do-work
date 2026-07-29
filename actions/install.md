@@ -1,6 +1,6 @@
 # Install Action
 
-> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports six targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless), `just-kanban` (justfile recipes wiring `just run-kanban` to the shipped queue-kanban board), `ideation-adhd` (parallel divergent-ideation skill), and `memory-module` (the ADR-017 memory engine: `memory/` scaffolding plus optional SessionStart/Stop hooks).
+> **Part of the do-work skill.** Installs companion skills/tooling into the current project. Currently supports six targets: `ui-design` (frontend-design skill), `bowser` (Playwright CLI + Bowser skill for browser automation), `last30days` (engagement-ranked social-research engine, vendored project-scoped and keyless), `just-kanban` (justfile recipes wiring `just run-kanban` to the shipped queue-kanban board and `just run-do-work-update` to the project-local skill updater), `ideation-adhd` (parallel divergent-ideation skill), and `memory-module` (the ADR-017 memory engine: `memory/` scaffolding plus optional SessionStart/Stop hooks).
 
 Each target is idempotent — running it when the target is already present and current is a no-op. One target goes further: `just-kanban` compares an already-present recipe block against the shipped version and offers a consent-gated upgrade when they diverge (Phase 1b of its workflow). The action dispatches on the first argument; everything else (detect → install → verify → report) follows the same shape.
 
@@ -29,7 +29,7 @@ Each target is idempotent — running it when the target is already present and 
 - `ui-design` — Install Anthropic's `frontend-design` skill for production-grade UI design capabilities.
 - `bowser` — Install Playwright CLI (global) plus the Bowser skill (project-scoped) for browser automation, screenshots, and visual UI verification.
 - `last30days` — Vendor the engagement-ranked social-research engine (project-scoped, git-ignored, keyless).
-- `just-kanban` — Append `just` recipes (`run-kanban`, `kanban-static`, `kanban-summary`) for the shipped queue-kanban board to the project's justfile; if the recipes are already present but diverge from the shipped block, offer a consent-gated upgrade.
+- `just-kanban` — Append `just` recipes (`run-kanban`, `kanban-static`, `kanban-summary`, `run-do-work-update`) for the shipped queue-kanban board and project-local do-work updates to the project's justfile; if the recipes are already present but diverge from the shipped block, offer a consent-gated upgrade. (`run-do-work-update` is an accepted alias for this target.)
 - `ideation-adhd` — Install the upstream `adhd` skill (project-scoped) for parallel divergent ideation: isolated branches under distinct cognitive frames, scored, clustered, and deepened. (`adhd` is an accepted alias for this target.)
 - `memory-module` — Scaffold the `memory/` store (working-memory template, logs dir, usage ledger) and merge the memory SessionStart/Stop hook entries into `.claude/settings.json` — composing with, never clobbering, existing hooks.
 
@@ -44,7 +44,7 @@ Every target follows the same four-step shape (detect → install → verify →
 | `ui-design` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md && mv "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download" "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" || { rm -f "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download"; false; }` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
 | `bowser` | `playwright-cli --help >/dev/null 2>&1 && test -s "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md"` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
 | `last30days` | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | (multi-step — see `last30days` workflow below) | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | Engagement-ranked social-research engine — Reddit/HN/Polymarket/GitHub/YouTube keyless out of the box; X/TikTok/Instagram unlock only via user-global API keys. |
-| `just-kanban` | (multi-step — see `just-kanban` workflow below) | (multi-step — see `just-kanban` workflow below; appends fresh, consent-gated upgrade when present-but-divergent) | (multi-step — see `just-kanban` workflow below) | Justfile recipes for the shipped queue-kanban board — `just run-kanban` serves the live board, `kanban-static`/`kanban-summary` cover the other modes; rebuilds the tool each run so `do-work update` refreshes take effect. |
+| `just-kanban` | (multi-step — see `just-kanban` workflow below) | (multi-step — see `just-kanban` workflow below; appends fresh, consent-gated upgrade when present-but-divergent) | (multi-step — see `just-kanban` workflow below) | Justfile recipes for the shipped queue-kanban board and project-local updater — `just run-kanban` serves the live board, `kanban-static`/`kanban-summary` cover the other modes, and `run-do-work-update` runs the guarded updater without an agent. |
 | `memory-module` | (multi-step — see `memory-module` workflow below; gates on scaffolding + hook wiring) | (multi-step — see `memory-module` workflow below; repair mode when scaffolding exists but hooks are absent) | (multi-step — see `memory-module` workflow below) | Hermes-style working-memory + dated-logs engine with SessionStart/Stop hooks and layered recall — the experimental counterpart to `actions/bkb.md` (see `decisions/records/adr-017-run-a-parallel-memory-engine-experiment-with-usage-ledgers.md`). |
 | `ideation-adhd` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/adhd" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download" https://raw.githubusercontent.com/UditAkhourii/adhd/main/skills/adhd/SKILL.md && mv "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download" "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" || { rm -f "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download"; false; }` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | The `adhd` skill (MIT) — parallel divergent ideation: spawns isolated branches under distinct cognitive frames (regulator, biology, speedrunner, 10-year-old, $0 budget, …), scores on novelty/viability/fit, clusters, prunes traps, deepens the top survivors. Explicitly invoked (`/adhd`), never fires on its own. |
 
@@ -323,7 +323,7 @@ project keeps its action-usage docs.
 
 ## Workflow: `just-kanban`
 
-The `just-kanban` target appends [`just`](https://github.com/casey/just) recipes for the shipped queue-kanban board (`tools/queue-kanban/`, normally run via `actions/board.md`) to the consuming project's justfile, so `just run-kanban` serves the live board — replacing a stale queue-kanban instance still holding the port, then opening your default browser at it — without going through the agent. The justfile is a **project-owned** file — `do-work update` never touches it — while the tool source the recipes point at is refreshed by every update; the recipes rebuild the binary on each run so those refreshes take effect automatically. Changes to the recipe *text* itself don't propagate that way, which is why re-running this install on an already-installed project compares and offers an upgrade (Phase 1b) instead of stopping at "already installed".
+The `just-kanban` target appends [`just`](https://github.com/casey/just) recipes for the shipped queue-kanban board (`tools/queue-kanban/`, normally run via `actions/board.md`) and a project-local do-work updater to the consuming project's justfile. `just run-kanban` serves the live board — replacing a stale queue-kanban instance still holding the port, then opening your default browser at it — while `just run-do-work-update` runs the shipped updater without consuming an agent turn. The updater still reviews the installed-versus-upstream diff, asks before overwriting, makes a rollback copy, and excludes the runtime `do-work/` directory. The justfile is a **project-owned** file — `do-work update` never touches it — while the tool source the recipes point at is refreshed by every update; the recipes rebuild the binary on each run so those refreshes take effect automatically. Changes to the recipe *text* itself don't propagate that way, which is why re-running this install on an already-installed project compares and offers an upgrade (Phase 1b) instead of stopping at "already installed".
 
 #### Phase 1: Check if already installed
 
@@ -344,14 +344,14 @@ If no `run-kanban` recipe is present, skip to Phase 2 (fresh append). If one is 
 A project that installed before a recipe change (auto-open, stale-instance replacement, port validation, or any future one) still carries the old text — the justfile is project-owned, so nothing else ever refreshes it. Compare before deciding:
 
 1. Render the current shipped block: resolve `<kanban-dir>` per Phase 2's path-resolution steps and substitute it into Phase 2's recipe block.
-2. Extract the installed do-work recipes from the justfile: for each of `run-kanban`, `kanban-static`, `kanban-summary`, the span from the comment line(s) immediately above its `name …:` header line through its last indented line. A recipe that is missing entirely counts as divergent.
+2. Extract the installed do-work recipes from the justfile: for each of `run-kanban`, `kanban-static`, `kanban-summary`, `run-do-work-update`, the span from the comment line(s) immediately above its `name …:` header line through its last indented line. A recipe that is missing entirely counts as divergent.
 3. Compare each extracted recipe against its rendered shipped version, ignoring trailing whitespace.
 
 Then branch on the result:
 
-- **All three identical** → report "already installed (current)" and stop.
+- **All four identical** → report "already installed (current)" and stop.
 - **Any divergence** → show the user a unified diff (installed vs. shipped) and ask with your environment's ask-user prompt whether to upgrade. This consent gate is the load-bearing safety step, not a formality: the divergence may be an older shipped version, but it may equally be deliberate project-specific edits — only the user can tell those apart, and the diff is what lets them.
-  - **User accepts** → replace each divergent recipe span in place with its shipped version, and append any of the three that were missing (inside the `# --- do-work board recipes … ---` block when that header comment exists, else at the end of the file). Touch nothing else in the justfile — no reordering, no reformatting of the user's own recipes or variables. Then continue to Phase 3 (verify).
+  - **User accepts** → replace each divergent recipe span in place with its shipped version, and append any of the four that were missing (inside the `# --- do-work board recipes … ---` block when that header comment exists, else at the end of the file). Touch nothing else in the justfile — no reordering, no reformatting of the user's own recipes or variables. Then continue to Phase 3 (verify).
   - **User declines** → stop and report "kept existing recipes", naming the shipped behaviors their version lacks so the choice is informed, not final by accident.
 
 #### Phase 2: Append the recipes
@@ -381,15 +381,20 @@ kanban-static:
 # Column counts in the terminal, no browser
 kanban-summary:
     cd <kanban-dir> && go build -o queue-kanban . && ./queue-kanban summary --repo-root "{{justfile_directory()}}"
+
+# Safely update the project-local do-work skill without an agent (reviews differences and creates a rollback copy)
+run-do-work-update:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root"; bash "$skill_root/tools/do-work-update.sh" --project-root "$project_root"
 ```
 
-Five deliberate choices in these recipes:
+Six deliberate choices in these recipes:
 
 - **`$port` is an exported parameter, validated before anything else runs**: `just` interpolates `{{…}}` tokens textually into each recipe line's shell source, so a raw `{{port}}` would let `just run-kanban '8090; echo PWNED'` inject arbitrary commands (never interpolate raw user text into shell source — the rule applies to justfiles too). The `$` prefix hands the parameter to every recipe line as an environment variable instead — the shell reads `"$port"` as data, never code — and the first line rejects anything but digits before the kill-stale or build+serve lines can see it.
 - **`go build` on every run** (`actions/board.md` Step 4's rule): `do-work update` overwrites the tool's source but leaves the previously compiled binary in place — a cached binary silently renders old logic. The incremental rebuild is near-instant when nothing changed, and the binary stays uncommittable via the tool's shipped `.gitignore`.
 - **Each `cd … && …` chain stays on one logical line**: `just` runs every recipe line in a fresh shell, so a bare `cd` on its own line would not carry into the next — the same trap as prescribed action steps, where shell state never survives between command blocks.
 - **The kill-stale check is its own recipe line and needs no `cd`**: it only touches `lsof`/`ps`/`kill` against `"$port"`, so it doesn't need the `<kanban-dir>` context the build+serve line does. `just` aborts a recipe on the first line that exits non-zero, so a squatting non-`queue-kanban` process's `exit 1` here stops the recipe *before* the build+serve line ever runs — no build is attempted and nothing gets killed. It kills only a listener whose full command line (verified via `ps -p PID -o args=` — `args`, unlike `comm`, is never truncated on Linux) contains `queue-kanban`, which covers the same binary built under another name or path by a different repo's recipes (e.g. `build/go-bin-queue-kanban`) — that's what lets the recipe reclaim the port from a board started in another folder; anything else is left running and named in the error. A missing `lsof` degrades gracefully — the check is skipped and the recipe proceeds straight to build+serve — rather than blocking the recipe on a tool that isn't guaranteed to exist.
 - **`kanban-static` excludes its own output locally instead of dirtying the project**: the snapshot lands at `build/queue-kanban-board/`, which would otherwise sit in `git status` as untracked noise forever. The second recipe line appends a root-anchored pattern to `.git/info/exclude` — git's local-only ignore list — so no tracked file (like the project's `.gitignore`) is modified by a viewer command. The `check-ignore` test makes the append idempotent, it runs from `{{justfile_directory()}}` so the root-anchored pattern and the cwd-relative check can't mismatch (an interior-slash ignore pattern is root-anchored while `check-ignore` tests cwd-relative paths), and the exclude path comes from `git rev-parse --git-path` (never assembled from `--show-toplevel`), keeping it worktree-safe. In a non-git project the guard skips silently.
+- **`run-do-work-update` resolves the installed skill relative to the justfile**: it prefers `.claude/skills/do-work/` for consumers and falls back to the project root for this repository's own recipe. The updater derives and verifies the skill root again, so a copied recipe cannot point an update outside the project. It is intentionally interactive at the overwrite gate: the direct command does not spend an agent turn, but it still shows the installed-versus-upstream diff and requires `y` before replacing skill files.
 
 #### Phase 3: Verify
 
@@ -399,7 +404,7 @@ JUSTFILE_PATH=""
 for justfile_candidate in justfile Justfile .justfile; do
   [ -f "$PROJECT_ROOT/$justfile_candidate" ] && { JUSTFILE_PATH="$PROJECT_ROOT/$justfile_candidate"; break; }
 done
-[ -n "$JUSTFILE_PATH" ] && grep -qE '^run-kanban[ :]' "$JUSTFILE_PATH" && echo "recipes: OK" || echo "recipes: FAILED"
+[ -n "$JUSTFILE_PATH" ] && grep -qE '^run-kanban[ :]' "$JUSTFILE_PATH" && grep -qE '^run-do-work-update[ :]' "$JUSTFILE_PATH" && echo "recipes: OK" || echo "recipes: FAILED"
 if command -v just >/dev/null; then
   just --justfile "$JUSTFILE_PATH" --list >/dev/null 2>&1 && echo "justfile parses: OK" || echo "justfile parses: FAILED"
 else
@@ -421,6 +426,7 @@ Appended to: <project-root>/justfile
   just run-kanban 9000     Same, custom port
   just kanban-static       Snapshot → build/queue-kanban-board/index.html
   just kanban-summary      Column counts in the terminal
+  just run-do-work-update  Update the project-local skill (shows diff, asks before overwrite)
 
 - `just run-kanban` replaces a stale queue-kanban instance already holding
   the port and opens your default browser at the board URL automatically —
@@ -604,7 +610,7 @@ install — install companion skills/tooling into the current project
   do-work install ui-design   Anthropic's frontend-design skill for production-grade UI
   do-work install bowser      Playwright CLI + Bowser skill for browser automation
   do-work install last30days  Engagement-ranked social-research engine (vendored, keyless)
-  do-work install just-kanban  Justfile recipes for the queue-kanban board (needs Go to run)
+  do-work install just-kanban  Justfile recipes for the board + updater (board needs Go)
   do-work install ideation-adhd  Parallel divergent-ideation skill (/adhd — cognitive-frame branching)
   do-work install memory-module  memory/ store + SessionStart/Stop hooks (ADR-017 memory engine)
 ```
@@ -629,7 +635,7 @@ Then stop.
 - **Don't silently substitute a different skill or repo.** If the upstream URL fails, report the error — don't download a similarly-named skill from elsewhere.
 - **Keyless in the project (last30days).** This install writes no config file at all. If a project-local `.claude/last30days.env` ever exists, it must never contain API keys — real keys live only in the user-global `~/.config/last30days/.env`. Never write a secret into any file inside the repo.
 - **The vendor drop must be ignored (last30days).** Phase 2 adds `**/.claude/skills/last30days/` to the enclosing repo's `.git/info/exclude` when it isn't already covered — machine-local, never the project's committable `.gitignore` — because ~15 MB of upstream Python must never become committable in the consuming repo.
-- **Touch only the three do-work recipes in the justfile (just-kanban).** Never reorder, reformat, or modify justfile content outside `run-kanban`/`kanban-static`/`kanban-summary`. A divergent installed recipe is replaced only after the user has seen the diff and accepted (Phase 1b) — never silently, and never on the assumption that different means stale. Create a `justfile` only when none of `justfile`/`Justfile`/`.justfile` exists at the project root.
+- **Touch only the four do-work recipes in the justfile (just-kanban).** Never reorder, reformat, or modify justfile content outside `run-kanban`/`kanban-static`/`kanban-summary`/`run-do-work-update`. A divergent installed recipe is replaced only after the user has seen the diff and accepted (Phase 1b) — never silently, and never on the assumption that different means stale. Create a `justfile` only when none of `justfile`/`Justfile`/`.justfile` exists at the project root.
 - **Compose hook entries (memory-module).** Append to the `hooks.SessionStart`/`hooks.Stop` arrays in `.claude/settings.json`; never replace, reorder, or rewrite existing entries. Back up to `settings.json.pre-memory-module` before the merge; a post-merge parse failure or any lost pre-existing entry → restore the backup and report. Never overwrite an existing `memory/working-memory.md`.
 - **Keep the raw memory store out of version control (memory-module).** `memory/logs/`, `memory/usage-ledger.jsonl`, and `memory/.bootstrap-imported` go in the enclosing repo's `.git/info/exclude` — machine-local, never the project's committable `.gitignore`. Only the curated `working-memory.md` is committable. The sentinel belongs there because `memory bootstrap` refuses to run when it exists: committed, one machine's import permanently blocks every other clone from importing its own history. **An ignore rule is not proof — verify with `git ls-files` too.** Ignore rules have no effect on tracked files, so on a repair install `check-ignore` reports OK over a raw log that is already in the index and still being appended to. Report tracked paths and hand the user the `git rm --cached` remedy; never untrack a file on their behalf.
 - **One target per invocation.** If the user wants both, they run two separate commands. The action never chains targets.
@@ -681,7 +687,7 @@ Then stop.
 - [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty (skill-file targets: `ui-design`, `bowser`, `last30days`, `ideation-adhd`).
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
 - [ ] (last30days only) a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
-- [ ] (just-kanban only) the justfile gained exactly one appended block, `run-kanban` greps present, `just --list` parses when `just` is available, and no existing recipe was modified.
+- [ ] (just-kanban only) the justfile gained exactly one appended block, `run-kanban` and `run-do-work-update` greps present, `just --list` parses when `just` is available, and no existing recipe was modified.
 - [ ] (memory-module only) `memory/logs/`, a non-empty `working-memory.md`, and `usage-ledger.jsonl` exist; `git check-ignore` covers `memory/logs/`, `memory/usage-ledger.jsonl`, and `memory/.bootstrap-imported`, **and `git ls-files` returns nothing for those three paths** (ignored ≠ untracked), while the project's `.gitignore` is unmodified; `.claude/settings.json` parses and every pre-existing hook entry survived; the backup was removed on success.
 - [ ] The report names the destination path so the user can verify location.
 - [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the machine-local `.git/info/exclude` entry; for `just-kanban`, the project justfile; for `memory-module`, `<project-root>/memory/`, `.claude/settings.json`, and the machine-local `.git/info/exclude` entries).

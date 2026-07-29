@@ -100,7 +100,7 @@ The served board's **Testing** view (a third view next to Board / Calendar) trac
 
 The main Board view shows a `testing` badge on any card carrying a record, so testing state is visible without switching views. In `static` mode the Testing view renders read-only (no server, no actions). There is no locking: changes land in the working tree and git is the audit trail — when the user asks "who tested REQ-NNN?", the frontmatter (or `git log` on the REQ file) answers.
 
-**Standing shortcut:** if the user wants the board runnable without the agent, `do-work install just-kanban` (`actions/install.md`) appends `just run-kanban` / `kanban-static` / `kanban-summary` recipes to the project's justfile — same build-then-run contract as this action. Re-running it on a project whose installed recipes have drifted from the shipped block offers a diff-and-consent upgrade. One difference: `just run-kanban` auto-opens your default browser at the board URL (a user-initiated shortcut, not an agent action); this action's serve mode (Step 5) never does.
+**Standing shortcut:** if the user wants the board runnable without the agent, `do-work install just-kanban` (`actions/install.md`) appends `just run-kanban` / `kanban-static` / `kanban-summary` recipes to the project's justfile — same build-then-run contract as this action — plus `just run-do-work-update` for the guarded project-local skill updater. Re-running it on a project whose installed recipes have drifted from the shipped block offers a diff-and-consent upgrade. One difference: `just run-kanban` auto-opens your default browser at the board URL (a user-initiated shortcut, not an agent action); this action's serve mode (Step 5) never does.
 
 ## Output Format
 

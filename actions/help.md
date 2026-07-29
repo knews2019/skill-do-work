@@ -74,7 +74,7 @@ do-work — task queue for agentic coding tools
     do-work install ui-design           Frontend-design skill for production-grade UI
     do-work install bowser              Playwright CLI + Bowser for browser automation
     do-work install last30days          Engagement-ranked social-research engine (vendored, keyless)
-    do-work install just-kanban         Justfile recipes for the queue-kanban board (just run-kanban)
+    do-work install just-kanban         Justfile recipes for the queue-kanban board + project-local updater
     do-work install ideation-adhd       Parallel divergent-ideation skill (/adhd, cognitive-frame branching)
     do-work install memory-module       memory/ store + SessionStart/Stop hooks (ADR-017 engine)
 

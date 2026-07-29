@@ -14,3 +14,7 @@ kanban-static:
 # Column counts in the terminal, no browser
 kanban-summary:
     cd tools/queue-kanban && go build -o queue-kanban . && ./queue-kanban summary --repo-root "{{justfile_directory()}}"
+
+# Safely update the project-local do-work skill without an agent (reviews differences and creates a rollback copy)
+run-do-work-update:
+    project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root"; bash "$skill_root/tools/do-work-update.sh" --project-root "$project_root"

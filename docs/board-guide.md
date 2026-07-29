@@ -65,4 +65,4 @@ do-work board summary
 do-work kanban
 ```
 
-`do-work install just-kanban` adds `just run-kanban` / `kanban-static` / `kanban-summary` recipes if you'd rather run the board without the agent.
+`do-work install just-kanban` adds `just run-kanban` / `kanban-static` / `kanban-summary` recipes if you'd rather run the board without the agent, plus `just run-do-work-update` for the guarded project-local skill updater.

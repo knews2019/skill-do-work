@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.13 — Project-Local Just Update Shortcut (2026-07-29)
+
+Projects that install the do-work just recipes can now update their local skill without spending an agent turn.
+
+- `do-work install just-kanban` now adds `just run-do-work-update`, which checks the upstream version, shows the installed-versus-upstream diff, asks before overwriting, creates a rollback copy, and preserves the runtime `do-work/` directory.
+- Existing justfile recipes detect the new command as drift and offer the same consent-gated upgrade as other shipped recipe changes.
+
 ## 0.150.12 — Board No Longer Flags assets/ Deliverable Copies as Duplicate REQs (2026-07-29)
 
 The Kanban board (`do-work board`) walked every `REQ-*.md` file, including deliverable copies parked under a UR's `assets/` folder. Those attachments have no frontmatter `id`, so their id fell back to the filename and collided with the real ticket — producing a spurious "duplicate REQ id" data warning (or a phantom card, for a uniquely-named asset).

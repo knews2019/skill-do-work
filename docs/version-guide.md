@@ -34,6 +34,7 @@ do-work recap
 ```
 do-work version              # current version + last 5 releases
 do-work update               # check for and apply upstream updates
+just run-do-work-update      # installed just shortcut; reviews diff and asks before overwriting
 do-work what's new           # same as version
 do-work release notes        # same as version
 do-work history              # same as version

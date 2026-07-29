@@ -10,7 +10,7 @@ assert_contains() {
   local pattern_text="$2"
   local message_text="$3"
 
-  if ! grep -Eq "$pattern_text" "$repo_root/$file_path"; then
+  if ! grep -Eq -- "$pattern_text" "$repo_root/$file_path"; then
     printf 'FAIL: %s\n' "$message_text" >&2
     fail_count=$((fail_count + 1))
   fi
@@ -218,7 +218,28 @@ for kanban_recipe_file in "actions/install.md" "justfile"; do
     "$kanban_recipe_file" \
     'lsof -a -p "\$listener_pid" -d txt -Fn' \
     "$kanban_recipe_file must identify a stale board from its executable, preserving cross-repo binary names without matching unrelated arguments."
+  assert_contains \
+    "$kanban_recipe_file" \
+    '^run-do-work-update:' \
+    "$kanban_recipe_file must ship the project-local do-work update shortcut."
 done
+
+if [ ! -x "$repo_root/tools/do-work-update.sh" ]; then
+  printf 'FAIL: tools/do-work-update.sh must be executable for the just shortcut.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+assert_contains \
+  "tools/do-work-update.sh" \
+  "--project-root" \
+  'tools/do-work-update.sh must derive and validate the consuming project root before updating.'
+assert_contains \
+  "tools/do-work-update.sh" \
+  "--exclude='do-work'" \
+  'tools/do-work-update.sh must exclude runtime do-work data from both upstream extractions.'
+assert_contains \
+  "tools/do-work-update.sh" \
+  'Continue with the update' \
+  'tools/do-work-update.sh must require an interactive overwrite confirmation after showing the reviewed diff.'
 
 assert_file_not_contains \
   "actions/work.md" \
