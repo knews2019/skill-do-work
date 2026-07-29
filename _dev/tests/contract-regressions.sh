@@ -553,6 +553,39 @@ assert_block_contains \
   '[Ww]rite that subset into the REQ.s `write_set` frontmatter' \
   'actions/work.md Step 1 must persist a partition directive into the REQ write_set frontmatter at dispatch — a partition living only in the dispatch prompt is invisible to the later re-checks, which then serialize the partition the gate itself issued.'
 
+# Board overlap annotation stays display-only (REQ-052, follow-up to REQ-034). The
+# invariant is structural: `annotateWriteSetOverlap` runs AFTER `bucketColumns` in
+# buildBoard, so no column-placement code can read the annotation. That ordering is one
+# movable line — a future edit that hoists the call above bucketing (to "reuse" the
+# overlap set while placing cards) turns a display badge into scheduling logic, and the
+# co-dispatch decision belongs to actions/work.md Step 1's gate, not the viewer. Assert
+# the real call-site order inside buildBoard rather than a comment: a comment survives
+# the move. Paired with the instruction-side claim in actions/board.md, whose rewording
+# is the other way the invariant quietly stops being a promise.
+build_board_block="$(sed -n '/^func buildBoard(/,/^}/p' "$repo_root/tools/queue-kanban/model.go")"
+bucket_columns_call_line="$(grep -nF 'bucketColumns(board.AllRequests' <<<"$build_board_block" | head -1 | cut -d: -f1 || true)"
+overlap_annotation_call_line="$(grep -nF 'annotateWriteSetOverlap(board.AllRequests)' <<<"$build_board_block" | head -1 | cut -d: -f1 || true)"
+
+if [ -z "$bucket_columns_call_line" ] || [ -z "$overlap_annotation_call_line" ]; then
+  printf 'FAIL: tools/queue-kanban/model.go buildBoard must call both bucketColumns(board.AllRequests ...) and annotateWriteSetOverlap(board.AllRequests) — one call site was renamed or removed, so the display-only ordering of the write-set overlap annotation can no longer be verified. Fix: restore the call sites (annotation last) or update this anchor in the same commit.\n' >&2
+  fail_count=$((fail_count + 1))
+elif [ "$overlap_annotation_call_line" -lt "$bucket_columns_call_line" ]; then
+  printf 'FAIL: tools/queue-kanban/model.go calls annotateWriteSetOverlap BEFORE bucketColumns in buildBoard — the write-set overlap annotation is display only and must stay structurally unable to affect column placement. Fix: move the annotateWriteSetOverlap call back below bucketColumns; if the board really must schedule on write sets, that decision belongs to actions/work.md Step 1 dispatch gate.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+board_rules_block="$(sed -n '/^## Rules/,/^## Common Rationalizations/p' "$repo_root/actions/board.md")"
+
+assert_block_contains \
+  "$board_rules_block" \
+  '`annotateWriteSetOverlap` in `tools/queue-kanban/model\.go` runs \*after\* column bucketing' \
+  'actions/board.md Rules must keep the claim that annotateWriteSetOverlap runs after column bucketing — the ordering ratchet above pins the code, this pins the promise a parser-editing agent reads. Fix: restate it in the parser lock-step rule.'
+
+assert_block_contains \
+  "$board_rules_block" \
+  'never column logic' \
+  'actions/board.md Rules must keep the overlap annotation display-only claim (drives the overlaps badge and drawer row, never column logic, never blocking) — without it nothing tells a parser-editing agent that which REQs may co-dispatch stays with actions/work.md Step 1 gate.'
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi

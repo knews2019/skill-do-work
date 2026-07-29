@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.3 — Display-Only Overlap-Annotation Invariant Ratchet (2026-07-29)
+
+The board's write-set overlap badge is display-only by design — it must never affect column placement — but that invariant was only protected by one Go test plus prose. `contract-regressions.sh` now pins it on both sides.
+
+- Ratchet asserts `annotateWriteSetOverlap` runs after `bucketColumns` in `model.go`'s `buildBoard`, and that `board.md`'s Rules block keeps its "display-only, never column logic" wording.
+- Anchors are call-site and heading-scoped (not file-wide greps), so a hoisted call or a relocated doc claim fails loud with a message naming the file and the fix.
+- Red-green verified across five mutation scenarios in a sandboxed clone; live tree stays green.
+
 ## 0.150.2 — Board Badge Render-Path Test Assertion (2026-07-29)
 
 The overlap badge's frontend render path had zero test coverage — only the Go-side annotation logic was tested. `generate_test.go` now asserts the badge's render tokens actually make it into the generated board HTML, so a regression in that path fails loudly instead of shipping silent.
