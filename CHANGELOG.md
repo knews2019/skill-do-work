@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.1 — Doc-Accuracy Fixes: Legacy-Suppression Comment and Board Glob Miss-Classes (2026-07-29)
+
+Three documentation inaccuracies from the deep review, all comment/prose with no behavior change.
+
+- The memory hook's legacy-suppression comment claimed it "self-clears as soon as the next capture is written" — it actually suppresses to end-of-file and clears at the next UTC day's fresh log; the comment now matches the awk.
+- The board's "a malformed glob pattern matches nothing" overstated: `writeSetPatternsIntersect` short-circuits on literal equality first, so two REQs declaring the identical malformed pattern still badge. Aligned across `model.go` (source), `board.md`, `work-reference.md`, and the board prime.
+- Added the directory-entry case (`actions/` never badges `actions/board.md`) to the board's illustrative miss-class list, kept explicitly illustrative.
+
 ## 0.150.0 — Review Restatement Sweep (2026-07-29)
 
 Six concurrency-spec REQs passed adversarial review at 86 to 98 percent, yet a later pass found every top defect was the same class: a contract changed in its canonical home while a restatement elsewhere kept the old meaning. The review step now forces a sweep for exactly that.

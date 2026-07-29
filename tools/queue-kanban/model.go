@@ -1139,16 +1139,21 @@ func isWriteSetOverlapCandidateStatus(normalizedStatus string) bool {
 // Glob dialect (path.Match): `*` matches within a single path segment and never
 // crosses `/`; `**` is NOT recursive (path.Match has no superglob, so
 // `src/**/x.ts` does not match `src/a/b/x.ts`); a malformed pattern returns
-// ErrBadPattern and is treated here as no-match for that direction.
+// ErrBadPattern and is treated here as no-match for that direction — but the
+// literal-equality check above short-circuits before either path.Match call, so
+// two entries carrying the SAME malformed text still intersect.
 //
 // Caveat, deliberately simple: TWO globs are compared as literals only. Deciding
 // whether `src/**/a*.ts` and `src/auth/*.ts` can name a common file needs pattern
 // intersection, which the stdlib has no primitive for — and the board's job here
 // is to make likely contention visible, not to be the dispatch gate. This is
-// display-only: a glob-vs-glob pair (or a `**`/malformed pattern) that shares
-// files renders no badge, but the work pipeline's dispatch gate still treats an
-// unexpandable/overlapping glob as overlapping (serialize), so a board
-// false-negative never loosens the gate.
+// display-only: a pair that shares files but renders no badge falls in one of
+// several miss-classes — ILLUSTRATIVE, not a closed list: glob-vs-glob, a `**`
+// pattern, a malformed pattern against anything but its own twin, and an entry
+// naming a directory (`actions/` never matches `actions/board.md`, because
+// path.Match is false both for `actions/` and for `actions` against it). The work
+// pipeline's dispatch gate still treats an unexpandable/overlapping glob as
+// overlapping (serialize), so a board false-negative never loosens the gate.
 func writeSetPatternsIntersect(leftPattern string, rightPattern string) bool {
 	if leftPattern == rightPattern {
 		return true

@@ -57,10 +57,11 @@ if [ -f "$TODAY_LOG" ]; then
   #     is NOT quoted, which no body line can be. Curated notes after a capture still
   #     inject normally.
   #   legacy (pre-0.139.4, already on disk) — bodies are unquoted, so NO boundary can be
-  #     trusted. Suppress to end-of-file. This deliberately also hides curated entries
-  #     written after a legacy capture that day; a bounded, one-day loss of convenience
-  #     is the right trade against injecting raw transcript text, and it self-clears as
-  #     soon as the next capture is written in the new format.
+  #     trusted. Suppress to end-of-file: once capture_format is `legacy`, no later heading
+  #     can be a boundary — not even a new quoted capture's — so suppression runs to the end
+  #     of that day's log. It deliberately also hides curated entries written after a legacy
+  #     capture that day; a bounded, one-day loss of convenience is the right trade against
+  #     injecting raw transcript text, and it self-clears at the next UTC day's fresh log.
   #
   # Keep this string byte-identical to CAPTURE_BODY_SENTINEL in hooks/memory-stop-capture.sh.
   CAPTURE_BODY_SENTINEL='<!-- do-work:capture-body quoted -->'
