@@ -6,6 +6,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.12 — Board No Longer Flags assets/ Deliverable Copies as Duplicate REQs (2026-07-29)
+
+The Kanban board (`do-work board`) walked every `REQ-*.md` file, including deliverable copies parked under a UR's `assets/` folder. Those attachments have no frontmatter `id`, so their id fell back to the filename and collided with the real ticket — producing a spurious "duplicate REQ id" data warning (or a phantom card, for a uniquely-named asset).
+
+- The walk now prunes any `assets/` folder at any depth, alongside the existing `deliverables/` and `runs/` exclusions.
+
 ## 0.150.11 — Abandon Resolves a Failed REQ So Its UR Can Close (2026-07-29)
 
 A `failed` REQ had no way out — nothing in the skill could move it off `failed`, so any User Request holding one stayed open forever (the gap 0.150.10 uncovered). Now `do-work abandon` cancels an already-archived failed REQ in place, flipping it to `cancelled` so its UR can close, while keeping the failure record intact.

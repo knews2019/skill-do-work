@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -64,5 +65,53 @@ func TestResolveRepoRootErrorsWhenOnlySkillInstallExists(t *testing.T) {
 	resolvedRoot, resolveError := resolveRepoRoot(toolDirectory)
 	if resolveError == nil {
 		t.Fatalf("resolveRepoRoot = %s, want an error when no queue-holding ancestor exists", resolvedRoot)
+	}
+}
+
+// TestEnumerateSkipsAssetsRequestFiles guards the REQ-075 duplicate-id warning:
+// a deliverable copy named REQ-NNN-*.md under a UR's assets/ folder is an
+// attachment, not a queue ticket. Its filename-derived id would otherwise collide
+// with the real REQ-NNN. The assets/ subtree must be pruned from REQ discovery —
+// neither a RequestFile nor a flagged stray — while the real ticket is still found.
+func TestEnumerateSkipsAssetsRequestFiles(t *testing.T) {
+	repoRoot := t.TempDir()
+	writeFixture := func(relativePath, content string) {
+		absolutePath := filepath.Join(repoRoot, relativePath)
+		if err := os.MkdirAll(filepath.Dir(absolutePath), 0o755); err != nil {
+			t.Fatalf("mkdir %s: %v", relativePath, err)
+		}
+		if err := os.WriteFile(absolutePath, []byte(content), 0o644); err != nil {
+			t.Fatalf("write %s: %v", relativePath, err)
+		}
+	}
+	realTicketRelativePath := filepath.Join("do-work", "archive", "UR-043", "REQ-075-fix.md")
+	writeFixture(realTicketRelativePath,
+		"---\nid: REQ-075\ntitle: Real ticket\nstatus: completed\nuser_request: UR-043\n---\n\n## What\n\nBody.\n")
+	writeFixture(filepath.Join("do-work", "archive", "UR-043", "assets", "REQ-075-agent-prompt.md"),
+		"# Agent prompt\n\nNot a queue ticket.\n")
+
+	discovered, walkError := enumerateDoWorkTree(repoRoot)
+	if walkError != nil {
+		t.Fatalf("enumerateDoWorkTree: %v", walkError)
+	}
+	assetsMarker := string(filepath.Separator) + "assets" + string(filepath.Separator)
+	for _, rf := range discovered.RequestFiles {
+		if strings.Contains(rf.AbsolutePath, assetsMarker) {
+			t.Fatalf("assets/ file discovered as a REQ: %s", rf.AbsolutePath)
+		}
+	}
+	for _, stray := range discovered.StrayRequestFiles {
+		if strings.Contains(stray.AbsolutePath, assetsMarker) {
+			t.Fatalf("assets/ file flagged as a stray REQ: %s", stray.AbsolutePath)
+		}
+	}
+	foundReal := false
+	for _, rf := range discovered.RequestFiles {
+		if strings.HasSuffix(rf.AbsolutePath, realTicketRelativePath) {
+			foundReal = true
+		}
+	}
+	if !foundReal {
+		t.Fatalf("real REQ-075 ticket not discovered among %d RequestFiles", len(discovered.RequestFiles))
 	}
 }

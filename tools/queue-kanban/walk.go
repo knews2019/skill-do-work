@@ -106,9 +106,10 @@ func resolveRepoRootOrDefault(repoRootOverride string) (string, error) {
 // nested UR-NNN/ subfolders) plus every UR input.md (from user-requests/** and
 // archive/**) and the top-level notes.md written by `do-work note`.
 //
-// The do-work/deliverables/ and do-work/runs/ subtrees are skipped entirely.
-// The kb/wiki/sources/ mirror lives OUTSIDE do-work and so is never reached —
-// walking only under do-work is what keeps the REQ count from roughly doubling.
+// The do-work/deliverables/ and do-work/runs/ subtrees are skipped entirely, as
+// is any assets/ folder (at any depth). The kb/wiki/sources/ mirror lives OUTSIDE
+// do-work and so is never reached — walking only under do-work is what keeps the
+// REQ count from roughly doubling.
 func enumerateDoWorkTree(repoRoot string) (discoveredTreeFiles, error) {
 	var discovered discoveredTreeFiles
 
@@ -179,10 +180,19 @@ func enumerateDoWorkTree(repoRoot string) (discoveredTreeFiles, error) {
 
 // isSkippedSection reports whether a directory should be pruned from the walk.
 // The deliverables (reports, not REQs) and runs (run logs) sections are excluded
-// per the data model, and any hidden directory (a leading dot, e.g. .git) is
-// skipped defensively.
+// per the data model; any `assets/` folder (at any depth — UR-NNN/assets/,
+// archive/UR-NNN/assets/) is excluded because it holds screenshots and
+// deliverable copies, never queue REQs; and any hidden directory (a leading dot,
+// e.g. .git) is skipped defensively.
+//
+// The assets/ prune fixes a duplicate-id warning: a deliverable copy named
+// REQ-NNN-*.md under assets/ has no frontmatter, so its id falls back to the
+// filename and collides with the real REQ-NNN ticket (see model.go's dedup).
 func isSkippedSection(topSection string, directoryName string) bool {
 	if topSection == "deliverables" || topSection == "runs" {
+		return true
+	}
+	if directoryName == "assets" {
 		return true
 	}
 	return strings.HasPrefix(directoryName, ".")
