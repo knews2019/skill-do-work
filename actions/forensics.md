@@ -60,10 +60,17 @@ Heuristic: if the REQ has `## Scope` or `## Pre-Flight` sections, it's post-v0.3
 
 ### 4. Orphaned URs
 
-List all UR folders in `do-work/user-requests/`. For each:
-- Read the `requests` array from `input.md` frontmatter
-- Check if ALL referenced REQs exist in `do-work/archive/` (either at root or inside `archive/UR-NNN/`)
-- If all REQs are archived but the UR is still in `user-requests/`: **Warning** — this UR should have been moved to `archive/`
+List all UR folders in `do-work/user-requests/`. A UR belongs in the archive once **every REQ carrying `user_request: UR-NNN` in its frontmatter, wherever it currently sits, is terminally resolved** — membership is derived by scanning that field, never read off the UR's `requests:` array in `input.md`. That array is the capture-time record of the REQs capture itself created (`actions/capture.md` Step 5) and nothing maintains it afterward: review-spawned follow-ups, addendum REQs, and clarify-derived REQs all carry `user_request:` without ever being appended to it. Keying on the array flags a UR whose follow-ups are still queued. This is the predicate `actions/cleanup.md` Pass 1 evaluates when it actually closes a UR; the readers must not drift apart.
+
+For each UR folder in `do-work/user-requests/`:
+
+1. **Collect the UR's REQs** by reading the `user_request` field of every `REQ-*.md` in all four locations and keeping those whose value is this UR's id:
+   - `do-work/queue/REQ-*.md` (pending, pending-answers, blocked, reserved, claimed)
+   - `do-work/working/REQ-*.md` (in flight)
+   - `do-work/archive/REQ-*.md` (loose in archive root — non-recursive)
+   - `do-work/archive/UR-NNN/REQ-*.md` (already consolidated)
+2. **Check each collected REQ's status against the terminal-resolved set** — see `actions/work-reference.md`'s Schema Read Contract → Terminal-resolved status set; that set is canonical, don't restate or fork it here. Any status outside it holds the UR open, **`failed` included** (a failed REQ signals follow-up work that must happen before the UR is done).
+3. If ALL collected REQs are terminally resolved but the UR is still in `user-requests/`: **Warning** — this UR should have been moved to `archive/`
 
 ### 5. Scope Contamination
 

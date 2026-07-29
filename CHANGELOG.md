@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.6 — Forensics Check 4 Keys UR Closure on user_request Scan (2026-07-29)
+
+`forensics` Check 4 (Orphaned URs) was keying UR closure on the capture-time `requests:` array — the same stale-list bug REQ-048 already fixed in `cleanup` Pass 1. That let it false-positive on UR-007 today, warning to archive a UR that still has six pending follow-up REQs.
+
+- Check 4 now derives UR membership by scanning `user_request` across `queue/`, `working/`, `archive/` root, and `archive/UR-NNN/`, gating on `work-reference.md`'s Terminal-resolved status set by pointer (mirroring the REQ-048 fix), instead of testing whether the `requests:` array's ids all live under `archive/`.
+- The `requests:` array is no longer read as the closure predicate; the live UR-007 false positive is gone.
+
 ## 0.150.5 — Route A Keeps Its Capture-Seeded write_set (2026-07-29)
 
 Small doc-accuracy fix found during REQ-045: `capture-reference.md` said the pipeline's Scope step "firms up and overwrites" a REQ's `write_set` — true only for Routes B and C, since a Route A REQ never runs that step.
