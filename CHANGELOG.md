@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.149.1 — Worktree Cleanup Uses the Recorded Operative Name (2026-07-29)
+
+REQ-038 taught a crash-recovered worktree REQ to re-dispatch under a fresh name variant, but every later step still re-derived the original slug-based name — so after a collision the merge and cleanup targeted the *leftover*, not the builder's actual worktree.
+
+- The name `git worktree add` actually succeeded with is now the REQ's held **operative name**, used by the hand-back merge, Step 8 cleanup, and the own-session crash-sweep exemption — never re-derived from the slug. (The merge site was the sharper bug: it would have integrated the wrong branch.)
+- One variant scheme (incrementing numeric token) replaces the free counter-or-timestamp choice; the `worktree-agent-REQ-NNN-` prefix invariant is preserved. No-collision and serial behavior are unchanged.
+
 ## 0.149.0 — Dispatch Re-Validation: Full Route Coverage and the Serialization Loser (2026-07-29)
 
 REQ-036's write-set re-validation was written against the Route B/C pipeline only, leaving a co-dispatched Route A REQ building under an unvalidated hint. This states one covering invariant and fixes three coherence gaps around it.

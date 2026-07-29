@@ -413,10 +413,10 @@ All routes include these instructions to the agent (pointers — the underlying 
 **Hand-back merge (worktree dispatch mode only — the orchestrator's job, not the builder's).** When the builder returns its manifest, integrate here, at the end of Step 6, **before** Step 6.25: every evidence step from 6.25 onward reads the merged tree, so a merge deferred past that point leaves qualify and review with nothing to check. On the integration branch:
 
 1. Run `git rev-parse --short HEAD` and hold the printed hash as **`<pre>`** — this REQ's pre-merge integration tip and the lower bound of its merge range. Capture it once per REQ; a remediation re-merge keeps the first one.
-2. `git merge --no-ff --no-commit worktree-agent-REQ-NNN-<suffix>`, resolve any conflict, apply the builder's handed-back integration-seam lines, then `git commit` — folding the seam into the merge commit is what puts it inside the merge range.
+2. `git merge --no-ff --no-commit <operative_name>` — the branch the builder was actually dispatched on, which is the collision variant where there was one and the derived `worktree-agent-REQ-NNN-<suffix>` otherwise; never re-derive it here. Resolve any conflict, apply the builder's handed-back integration-seam lines, then `git commit` — folding the seam into the merge commit is what puts it inside the merge range.
 3. Run `git rev-parse --short HEAD` again and hold that hash as **`<merge_hash>`** — the upper bound of the range, and the hash Step 9 writes into `commit:`.
 
-Hold both hashes as literals you re-type into each later command (shell variables do not survive between command blocks), and pass the range `<pre>..<merge_hash>` to Steps 6.3, 7, 8, and 9. Full sequence, the `Already up to date.` guard, and the cumulative range across remediation re-merges: `actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**. Serial mode has no merge and no range — skip this entirely.
+Hold both hashes — and `<operative_name>` — as literals you re-type into each later command (shell variables do not survive between command blocks), and pass the range `<pre>..<merge_hash>` to Steps 6.3, 7, 8, and 9. Full sequence, the `Already up to date.` guard, and the cumulative range across remediation re-merges: `actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**. Serial mode has no merge and no range — skip this entirely.
 
 ### Step 6.25: Implementation Summary
 
@@ -597,7 +597,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
    This is the post-move execution that makes the existence-verify meaningful — Step 7.5 only collected; the writes happen here.
 
-8. **Worktree cleanup (worktree dispatch mode only):** now that the REQ file has reached its final path, remove the builder's leftovers — `git worktree remove <path>` (no `--force`), then `git branch -d worktree-agent-REQ-NNN-<suffix>` **run from the integration branch you merged into** (`-d` tests merged-ness against the current HEAD, so from anywhere else the refusal means the wrong branch, not an unmerged one), then `git worktree prune`. Never `-D` or `--force`: a refusal means a dirty worktree or a merge that was skipped or lost — stop and report, don't force away the evidence (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**).
+8. **Worktree cleanup (worktree dispatch mode only):** now that the REQ file has reached its final path, remove the builder's leftovers **by this REQ's operative name** — the name the worktree was actually created with (the collision variant where there was one), held since dispatch and never re-derived from the slug: `git worktree remove <path>` (no `--force`, `<path>` being the worktree whose basename is `<operative_name>`), then `git branch -d <operative_name>` **run from the integration branch you merged into** (`-d` tests merged-ness against the current HEAD, so from anywhere else the refusal means the wrong branch, not an unmerged one), then `git worktree prune`. Never `-D` or `--force`: a refusal means a dirty worktree or a merge that was skipped or lost — stop and report, don't force away the evidence (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**).
 
 **On failure:**
 
@@ -752,6 +752,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 | "No one else looks like they're running right now, I'll just start" | Check `do-work/orchestrator-lock.json` first (Step 1) | A live session mid-triage or mid-explore has no visible file changes yet — the 2026-07-01 incident looked exactly like an idle tree |
 | "Their write-sets don't overlap, so I can dispatch both migration REQs together" | Serial-only classes never co-dispatch, disjoint or not (Step 1) | Two migrations claiming the same sequence number are textually disjoint and merge cleanly — the collision is semantic, so disjointness never sees it |
 | "The merge went fine, so I'll just `-D` the leftover `worktree-agent-*` branch" | Run `git branch -d` from the integration branch and stop on refusal (Step 8 substep 8) | `-d`'s refusal is the only assertion the integration actually happened; `-D` deletes the evidence that a merge was skipped or lost, along with the work |
+| "Cleanup just needs the branch name — I'll rebuild it from the REQ slug" | Merge and clean up by the operative name held since dispatch (Step 6 hand-back, Step 8 substep 8) | After a collision variant, the slug-derived name is the *leftover*: the merge would integrate the wrong branch, `-d` refuses on unmerged work, and the run halts on a false lost-merge alarm while the variant is never cleaned |
 
 ## Red Flags
 
