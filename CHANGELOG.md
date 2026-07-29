@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.146.3 — Board Overlap Badge Uses OS-Independent Glob Matching (2026-07-29)
+
+The Kanban board's write-set overlap badge matched globs with `filepath.Match`, whose separator is `\` on Windows — so `*` could wrongly cross `/` and the badge would misjudge contention off-platform. It now uses `path.Match` (correct for slash-separated repo-relative paths), and the glob dialect is finally written down where readers meet the field.
+
+- `writeSetPatternsIntersect` uses `path.Match`; the doc comment, `actions/board.md`, the board prime, and the `write_set` schema line all state the dialect: `*` never crosses `/`, `**` is not recursive, malformed patterns match nothing on the board — the dispatch gate still treats an unexpandable/overlapping glob as overlapping, so a board false-negative never loosens it.
+- New tests pin the slash boundary (with a same-segment positive control) and malformed-pattern behavior; the badge stays display-only (no schema or column-placement change).
+
 ## 0.146.2 — Note Worktree Isolation in the Harness-Tier Guide (2026-07-29)
 
 Someone sizing a harness against `background-agents.md`'s three fan-out rungs had no way to learn that per-builder git-worktree isolation exists or where it's documented. A short cross-reference now closes that gap.

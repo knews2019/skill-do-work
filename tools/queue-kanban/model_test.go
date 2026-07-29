@@ -569,6 +569,43 @@ func TestAnnotateWriteSetOverlapMatchesGlobsInBothDirections(t *testing.T) {
 	}
 }
 
+// path.Match's `*` matches within a single path segment and never crosses `/`,
+// so a segment glob must not badge a file nested a directory deeper. The
+// positive control (`web/*` DOES catch `web/app.css` in the same segment) proves
+// the boundary is the slash, not the glob failing outright — this pins the
+// OS-independent slash semantics that filepath.Match would break on Windows.
+func TestAnnotateWriteSetOverlapGlobStarNeverCrossesSlash(t *testing.T) {
+	nested := annotateWriteSetOverlapFixtures([]writeSetOverlapFixture{
+		{RequestId: "REQ-1", Status: "pending", WriteSetted: []string{"web/*"}},
+		{RequestId: "REQ-2", Status: "pending", WriteSetted: []string{"web/a/b.css"}},
+	})
+	if nested["REQ-1"] != nil || nested["REQ-2"] != nil {
+		t.Fatalf("`web/*` must not cross `/` to match `web/a/b.css`, got %v", nested)
+	}
+
+	sameSegment := annotateWriteSetOverlapFixtures([]writeSetOverlapFixture{
+		{RequestId: "REQ-1", Status: "pending", WriteSetted: []string{"web/*"}},
+		{RequestId: "REQ-2", Status: "pending", WriteSetted: []string{"web/app.css"}},
+	})
+	if !reflect.DeepEqual(sameSegment["REQ-1"], []string{"REQ-2"}) ||
+		!reflect.DeepEqual(sameSegment["REQ-2"], []string{"REQ-1"}) {
+		t.Fatalf("`web/*` must match `web/app.css` in the same segment, got %v", sameSegment)
+	}
+}
+
+// A malformed glob (unterminated character class) makes path.Match return
+// ErrBadPattern; writeSetPatternsIntersect treats that as no-match for that
+// direction rather than propagating the error, so the pair simply does not badge.
+func TestAnnotateWriteSetOverlapMalformedPatternMatchesNothing(t *testing.T) {
+	overlapsById := annotateWriteSetOverlapFixtures([]writeSetOverlapFixture{
+		{RequestId: "REQ-1", Status: "pending", WriteSetted: []string{"web/["}},
+		{RequestId: "REQ-2", Status: "pending", WriteSetted: []string{"web/app.css"}},
+	})
+	if overlapsById["REQ-1"] != nil || overlapsById["REQ-2"] != nil {
+		t.Fatalf("a malformed pattern must match nothing (ErrBadPattern ⇒ no-match), got %v", overlapsById)
+	}
+}
+
 // The annotation is display-only and must stay out of column placement: two
 // pending REQs contending on the same file are both still Ready to work.
 func TestWriteSetOverlapNeverAffectsColumnPlacement(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -1129,24 +1130,33 @@ func isWriteSetOverlapCandidateStatus(normalizedStatus string) bool {
 
 // writeSetPatternsIntersect reports whether two write_set entries could name the
 // same file. Three cases count as an intersection: identical text, and either
-// entry matching the other as a glob (filepath.Match, so `src/auth/*.ts` catches
-// `src/auth/session.ts` in whichever order the pair is compared).
+// entry matching the other as a glob (path.Match, so `src/auth/*.ts` catches
+// `src/auth/session.ts` in whichever order the pair is compared). path.Match is
+// used rather than filepath.Match because write_set entries are slash-separated
+// repo-relative paths: path.Match is OS-independent, whereas filepath.Match's
+// separator is `\` on Windows, where `*` would wrongly cross `/`.
+//
+// Glob dialect (path.Match): `*` matches within a single path segment and never
+// crosses `/`; `**` is NOT recursive (path.Match has no superglob, so
+// `src/**/x.ts` does not match `src/a/b/x.ts`); a malformed pattern returns
+// ErrBadPattern and is treated here as no-match for that direction.
 //
 // Caveat, deliberately simple: TWO globs are compared as literals only. Deciding
 // whether `src/**/a*.ts` and `src/auth/*.ts` can name a common file needs pattern
 // intersection, which the stdlib has no primitive for — and the board's job here
-// is to make likely contention visible, not to be the dispatch gate. A
-// glob-vs-glob pair that shares files therefore renders no badge; the work
-// pipeline's gate (which treats an unexpandable glob as overlapping) is the
-// safety-relevant reader, not this annotation.
+// is to make likely contention visible, not to be the dispatch gate. This is
+// display-only: a glob-vs-glob pair (or a `**`/malformed pattern) that shares
+// files renders no badge, but the work pipeline's dispatch gate still treats an
+// unexpandable/overlapping glob as overlapping (serialize), so a board
+// false-negative never loosens the gate.
 func writeSetPatternsIntersect(leftPattern string, rightPattern string) bool {
 	if leftPattern == rightPattern {
 		return true
 	}
-	if matched, matchError := filepath.Match(leftPattern, rightPattern); matchError == nil && matched {
+	if matched, matchError := path.Match(leftPattern, rightPattern); matchError == nil && matched {
 		return true
 	}
-	if matched, matchError := filepath.Match(rightPattern, leftPattern); matchError == nil && matched {
+	if matched, matchError := path.Match(rightPattern, leftPattern); matchError == nil && matched {
 		return true
 	}
 	return false
