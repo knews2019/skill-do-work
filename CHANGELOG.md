@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.11 — Abandon Resolves a Failed REQ So Its UR Can Close (2026-07-29)
+
+A `failed` REQ had no way out — nothing in the skill could move it off `failed`, so any User Request holding one stayed open forever (the gap 0.150.10 uncovered). Now `do-work abandon` cancels an already-archived failed REQ in place, flipping it to `cancelled` so its UR can close, while keeping the failure record intact.
+
+- `do-work abandon` accepts a `failed` REQ (at `do-work/archive/` root or `legacy/`) and cancels it in place — no move, and the failure signal (`error`/`error_type` plus a `## Cancelled` "Previously: failed" note) is preserved.
+- **The one thing to know:** a completed follow-up REQ recovers the work but never flips the original out of `failed` — cancelling is the only transition, needed whether or not a follow-up ran. This corrects the 0.150.10 note that framed a follow-up as resolving it.
+- `cleanup` Pass 1 and `forensics` Check 6 now point you at `do-work abandon` when a failure is holding a UR open; the failure-resolution rule lives canonically in work-reference.md's Terminal-resolved statement, with the three closure readers deferring to it (no restated copies to drift).
+- No board or schema change — `cancelled` was already terminally-resolved; the change is purely which inputs abandon accepts and how the resolution is documented.
+
 ## 0.150.10 — UR Closure Keys on the Terminal-Resolved Set Everywhere (2026-07-29)
 
 work.md Step 8's archive table was the last reader still counting `failed` as closing a User Request — cleanup Pass 1 and forensics Check 4 already keyed on work-reference.md's terminal-resolved set, so the two halves of the pipeline disagreed on whether a failed REQ holds its UR open. Now all three readers cite the one canonical set: a `failed` REQ keeps its UR open until a follow-up resolves it.

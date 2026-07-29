@@ -52,7 +52,7 @@ For each UR folder in `do-work/user-requests/`:
    - `do-work/working/REQ-*.md` (in flight)
    - `do-work/archive/REQ-*.md` (loose in archive root — non-recursive; `archive/legacy/` REQs have no `user_request` by definition)
    - `do-work/archive/UR-NNN/REQ-*.md` (already consolidated)
-2. **Check each collected REQ's status against the terminal-resolved set** (`completed`, `completed-with-issues`, or `cancelled` — see `actions/work-reference.md`'s Schema Read Contract → Terminal-resolved status set; don't restate or fork that set here). Any status outside it holds the UR open, **`failed` included** — a failed REQ signals follow-up work that must happen before the UR is done, and `cancelled` is the explicit way to say no follow-up is wanted.
+2. **Check each collected REQ's status against the terminal-resolved set** (`completed`, `completed-with-issues`, or `cancelled` — see `actions/work-reference.md`'s Schema Read Contract → Terminal-resolved status set; don't restate or fork that set here). Any status outside it holds the UR open, **`failed` included** (how a `failed` REQ is resolved so it leaves this held-open state is defined at that canonical statement — do not re-derive it here).
    If the same REQ-ID is found in **both** `do-work/archive/` root and `do-work/archive/UR-NNN/`, flag it and leave the UR in `user-requests/` untouched: `⚠ Duplicate: REQ-NNN found in both archive/ root and archive/UR-NNN/. Resolve manually, then re-run cleanup.`
 3. If **ALL** collected REQs are terminally resolved (and no duplicates flagged):
    - Gather any loose completed/cancelled REQ files from `do-work/archive/` root into the UR folder
@@ -60,7 +60,7 @@ For each UR folder in `do-work/user-requests/`:
    - Report: `Archived UR-NNN (all N REQs resolved)` — when any were cancelled, say so: `(N-K complete, K cancelled)`
 4. If **NOT all** collected REQs are terminally resolved:
    - Leave the UR folder in `user-requests/` — it's not ready yet
-   - Report: `UR-NNN still open (X/Y REQs complete)`
+   - Report: `UR-NNN still open (X/Y REQs complete)`. When the only unresolved members are `failed` REQs, also name them and the exit: cancel each with `do-work abandon REQ-NNN` (`actions/abandon.md`), which flips it to `cancelled` in place so the UR closes on the next cleanup. This is the one transition out of `failed` — a completed follow-up REQ does the recovery work but never resolves the original, so the failed REQ must be cancelled either way. Without this line a UR held open by a failure looks stuck with no stated way out.
 5. **Report-only cross-check against the array.** Any REQ id listed in the UR's `requests:` array that the scan in step 1 found in none of the four locations is a missing file, not an open REQ: report `⚠ REQ-NNN listed in UR-NNN's requests: array but found nowhere`. It must never hold the UR open — a stale array entry that wedges closure is the failure this pass was rewritten to avoid.
 
 ### Pass 2: Consolidate Loose REQ Files in Archive

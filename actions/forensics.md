@@ -69,7 +69,7 @@ For each UR folder in `do-work/user-requests/`:
    - `do-work/working/REQ-*.md` (in flight)
    - `do-work/archive/REQ-*.md` (loose in archive root — non-recursive)
    - `do-work/archive/UR-NNN/REQ-*.md` (already consolidated)
-2. **Check each collected REQ's status against the terminal-resolved set** — see `actions/work-reference.md`'s Schema Read Contract → Terminal-resolved status set; that set is canonical, don't restate or fork it here. Any status outside it holds the UR open, **`failed` included** (a failed REQ signals follow-up work that must happen before the UR is done).
+2. **Check each collected REQ's status against the terminal-resolved set** — see `actions/work-reference.md`'s Schema Read Contract → Terminal-resolved status set; that set is canonical, don't restate or fork it here. Any status outside it holds the UR open, **`failed` included** (how a `failed` REQ is resolved so it leaves this held-open state is defined at that canonical statement — do not re-derive it here).
 3. If ALL collected REQs are terminally resolved but the UR is still in `user-requests/`: **Warning** — this UR should have been moved to `archive/`
 
 ### 5. Scope Contamination
@@ -88,7 +88,7 @@ Scan archived REQs with `status: failed`.
 
 For each, check:
 - Does `error_type` exist in frontmatter? If not: **Warning** — failure not classified (pre-v0.38.0 or skipped)
-- For `error_type: intent`, `spec`, or `code`: does a follow-up REQ exist with `addendum_to` pointing to this REQ? If not: **Warning** — failure has no recovery path
+- For `error_type: intent`, `spec`, or `code`: does a follow-up REQ exist with `addendum_to` pointing to this REQ? If not: **Warning** — no recovery path queued. If the work is worth recovering, create the follow-up REQ. Separately, to *resolve* this failed REQ (a follow-up never does — it only recovers the work; the failed REQ itself stays `failed`), cancel it with `do-work abandon REQ-NNN` (`actions/abandon.md`) — so a failure at `do-work/archive/` root that was holding a UR open still needs cancelling for that UR to close, whether or not you queue a follow-up. (A failure already inside an `archive/UR-NNN/` folder holds no UR open — that folder is already closed — and abandon leaves it untouched, so no action is needed there.)
 
 ### 7. Stale Pending-Answers & Blocked
 
@@ -189,7 +189,7 @@ This check is the mechanical sweep behind the board's future-stamp badge and dat
 ## Warnings
 
 - **[Failed Without Follow-Up]** REQ-031 failed with no `error_type` and no follow-up REQ. Failure reason: "Tests fail repeatedly."
-  **Suggested fix:** Classify the failure and create a follow-up REQ with context from the original.
+  **Suggested fix:** If the work is worth recovering, classify the failure and create a follow-up REQ with context from the original. Either way, resolve REQ-031 itself with `do-work abandon REQ-031` — a follow-up recovers the work but never flips REQ-031 out of `failed`, so cancelling it is what lets its UR close (when REQ-031 sits at `do-work/archive/` root and was holding one open).
 
 - **[Stale Pending-Answers]** REQ-025 has been pending-answers for 12 days. Questions may no longer be relevant.
   **Suggested fix:** Run `do-work clarify` to review, or discard if the questions are stale.

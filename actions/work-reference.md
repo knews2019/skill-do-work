@@ -136,11 +136,15 @@ status_changed_at: 2026-07-22T20:38:00Z
 completed_at: 2025-01-26T10:45:00Z   # required on every terminal flip — UTC ISO instant
 status: completed | completed-with-issues | failed
 commit: abc1234               # required in a git repo — implementation commit hash (see work.md's Commit Phase write-back)
-error: "Description"          # Only if failed
+error: "Description"          # Set when a REQ failed; RETAINED verbatim if that failed REQ is later cancelled via do-work abandon — the surviving failure signal on a status: cancelled REQ, NOT drift to strip
+error_type: intent|spec|code|environment   # Set with `error` on failure; likewise retained on a failed→cancelled flip
 
-# Set by abandon action (do-work abandon — user-directed won't-do decision)
+# Set by abandon action (do-work abandon — user-directed won't-do decision).
+# Two entry paths: a not-yet-finished REQ (pending / pending-answers / blocked / ...), and an
+# already-archived `failed` REQ resolved after the fact — the latter keeps its `error`/`error_type`
+# (above) alongside status: cancelled, so error-on-cancelled is valid data, not corruption.
 status: cancelled             # terminal, NOT successful; the reason lives in the REQ body's `## Cancelled` section
-completed_at: 2025-01-26T10:45:00Z  # stamped at cancellation — the terminal timestamp the board's recently-done window reads
+completed_at: 2025-01-26T10:45:00Z  # stamped (or, on the failed→cancelled path, re-stamped to the cancellation instant) — the terminal timestamp the board's recently-done window reads
 
 # Set by kb-lessons handoff (work.md's Lessons-Capture Phase in pipeline mode / review-work.md's Self-Validation & Lessons Learned step standalone). Optional; absent on REQs that predate the handoff.
 kb_status: promoted | pending | declined | skipped
@@ -196,7 +200,7 @@ The trigger is the *condition above*, not the caller list: **any reader that fil
 
 - `cancelled` is **not** successful. Success-readers (the Terminal-success set above) exclude it — a cancelled REQ is never a review-work target, an ai-report subject, or a commit association.
 - `cancelled` does **not** satisfy `depends_on` gating. A dependent presumably needed the cancelled REQ's output; the abandon action surfaces dependents at cancellation time so the user can cascade the cancellation or re-point `depends_on`.
-- `failed` stays outside this set: it is terminal and unsuccessful, but it signals work that *should* have happened — Step 8's failure classification spawns follow-ups, and a UR with a `failed` REQ needs those follow-ups before it can close. Cancelling is the explicit way to say "no follow-up wanted."
+- `failed` stays outside this set: it is terminal and unsuccessful, but it signals work that *should* have happened — Step 8's failure classification may spawn a follow-up REQ. A follow-up does the recovery work but **never flips the original out of `failed`** (nothing does so automatically), so a UR holding a `failed` REQ stays open even after that follow-up completes. The one transition out of `failed` is `do-work abandon REQ-NNN` (`actions/abandon.md`), which flips it to `cancelled` — and therefore into this set — while preserving the failure record (`error`/`error_type` and a `## Cancelled` note). So a UR held open by a `failed` REQ closes only once that REQ is cancelled: after its follow-up has done the needed work, or when no follow-up is wanted at all. `failed` itself never counts as resolved. This is the canonical statement of that resolution **rule**: any reader that decides whether a `failed` REQ still holds its UR open cites this set by reference and must not restate or fork the set, or re-derive the rule, as a competing definition. The condition is the trigger, not a caller list — the known such readers are illustrative, not exhaustive (`actions/cleanup.md` Pass 0 + Pass 1, `actions/forensics.md` Check 4, `actions/work.md` Step 8's UR-final check, and this file's Composed Exit Summary), and `actions/abandon.md` is the rule's sole *writer*. (A user-facing report or finding line that *points* the user at `do-work abandon` as the remedy — and may state the one-line reason why, e.g. that a completed follow-up never resolves the original — is a pointer, not a competing definition, and is expected; `actions/cleanup.md` Pass 1's open-UR report and `actions/forensics.md` Check 6 do exactly this. That is not what this prohibition forbids; what it forbids is a reader re-deriving *when a REQ counts as resolved* as its own competing definition.)
 
 ## Crash Recovery (Step 1)
 
