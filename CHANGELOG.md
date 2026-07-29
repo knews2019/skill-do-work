@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.147.0 — Worktree Merge Range: Fail-Loud Validation and Seam-in-Range Merge (2026-07-29)
+
+The worktree-dispatch merge range `<pre>..<merge_hash>` had six confirmed defects in how it was produced, validated, and restated — most dangerously, `qualify.sh` printed OK on a broken range instead of failing. All six are fixed as one coherence contract.
+
+- `qualify.sh` now hard-FAILs (exit 1, naming the range) on an unresolvable `DO_WORK_DIFF_RANGE` instead of reading an empty diff and passing vacuously; serial mode is byte-unchanged.
+- The integration seam is folded into the merge commit (`git merge --no-ff --no-commit` → apply seam → commit), so it provably lands inside the range and `commit:` still records the merge.
+- Remediation re-merges get a defined cumulative range (`<pre1>..<merge_hash2>`); Step 6 gains an imperative orchestrator-side hand-back merge instruction; the hash-writeback block gains a worktree carve-out so it can't record the changelog commit's hash.
+
 ## 0.146.3 — Board Overlap Badge Uses OS-Independent Glob Matching (2026-07-29)
 
 The Kanban board's write-set overlap badge matched globs with `filepath.Match`, whose separator is `\` on Windows — so `*` could wrongly cross `/` and the badge would misjudge contention off-platform. It now uses `path.Match` (correct for slash-separated repo-relative paths), and the glob dialect is finally written down where readers meet the field.

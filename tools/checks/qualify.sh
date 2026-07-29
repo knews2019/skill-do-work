@@ -9,7 +9,8 @@
 # Env: DO_WORK_DIFF_RANGE — when set (worktree dispatch mode, e.g. "<pre>..<merge_hash>"),
 #   the file-change and debug-artifact checks read `git diff <range>` instead of
 #   the working+staged diff. Unset/empty (the serial default) reads working+staged,
-#   byte-for-byte as before. Setting it only changes WHICH diff is read.
+#   byte-for-byte as before. Setting it only changes WHICH diff is read. A set-but-
+#   unresolvable range is a hard FAIL (exit 1) naming the range — never a silent OK.
 # Exit 0: all mechanical checks pass. Exit 1: at least one FAIL line.
 # Exit 2: usage error (missing/unreadable <req-file>).
 # WARN lines (wiring not found, etc.) do not fail the run — they are handed to
@@ -44,6 +45,49 @@ git_available=0
 git rev-parse --git-dir >/dev/null 2>&1 && git_available=1
 [ "$git_available" -eq 0 ] && echo "WARN: not a git repository — diff-based checks degraded to existence checks"
 
+# --- Range validation: an unresolvable range FAILs, it never reads as clean ---
+# `git diff <unresolvable-range>` exits 128 with EMPTY stdout, and this script runs
+# without `set -e`. So before this gate, a bogus range emptied both $changed_file_list
+# and the debug-artifact grep and every check passed vacuously — the script printed
+# `OK: mechanical qualification passed` with git's fatal scrolled off above it, and the
+# debug-artifact check was silently disabled. The classic bogus value is an endpoint the
+# orchestrator lost between command blocks (shell state does not survive them), which
+# yields ".." or "..<hash>"; hence the per-endpoint diagnostic below. Validate HERE,
+# before any check consumes the range. Serial mode never enters this block.
+if [ -n "$diff_range" ]; then
+  if [ "$git_available" -eq 0 ]; then
+    echo "FAIL: DO_WORK_DIFF_RANGE is set ('$diff_range') but this is not a git repository — the merge range cannot be read"
+    exit 1
+  fi
+  range_lower_bound="${diff_range%%..*}"
+  range_upper_bound="${diff_range##*..}"
+  range_failure_detail=""
+  case "$diff_range" in
+    *..*) ;;
+    *) range_failure_detail="not a two-dot commit range (expected <pre>..<merge_hash>)" ;;
+  esac
+  if [ -z "$range_failure_detail" ] && [ -z "$range_lower_bound" ]; then
+    range_failure_detail="the lower bound (<pre>) is empty — that hash was lost between command blocks; re-type it as a literal, never carry it in a shell variable"
+  fi
+  if [ -z "$range_failure_detail" ] && [ -z "$range_upper_bound" ]; then
+    range_failure_detail="the upper bound (<merge_hash>) is empty — that hash was lost between command blocks; re-type it as a literal, never carry it in a shell variable"
+  fi
+  if [ -z "$range_failure_detail" ] && ! git rev-parse --verify --quiet "${range_lower_bound}^{commit}" >/dev/null 2>&1; then
+    range_failure_detail="the lower bound '$range_lower_bound' is not a commit in this repository"
+  fi
+  if [ -z "$range_failure_detail" ] && ! git rev-parse --verify --quiet "${range_upper_bound}^{commit}" >/dev/null 2>&1; then
+    range_failure_detail="the upper bound '$range_upper_bound' is not a commit in this repository"
+  fi
+  if [ -z "$range_failure_detail" ] && ! git diff --name-only "$diff_range" >/dev/null 2>&1; then
+    range_failure_detail="git refused to read it as a diff range"
+  fi
+  if [ -n "$range_failure_detail" ]; then
+    echo "FAIL: DO_WORK_DIFF_RANGE does not resolve: '$diff_range' — $range_failure_detail."
+    echo "  Every diff-based check below would read an EMPTY diff and pass vacuously, so this is a hard failure, not a warning."
+    exit 1
+  fi
+fi
+
 non_dowork_count=0
 
 # Computed once, consumed by the per-file checks below. Piping `git diff`
@@ -51,9 +95,12 @@ non_dowork_count=0
 # upstream git dies with SIGPIPE, and the pipeline's non-zero status made a
 # file that IS in the diff read as absent (false WARN on every modified file).
 # In worktree dispatch mode $diff_range holds this REQ's merge range
-# (<pre>..<merge_hash>, <pre> captured just before the --no-ff merge); reading it keeps
-# the same "this-REQ-only" guarantee the working+staged default gives serially,
-# because <pre> is the integration tip immediately before this REQ's merge.
+# (<pre>..<merge_hash>, <pre> being the integration tip captured just before this REQ's
+# FIRST --no-ff merge and <merge_hash> the latest such merge commit — which carries any
+# integration seam, folded in before the merge was committed); reading it keeps the same
+# "this-REQ-only" guarantee the working+staged default gives serially, because <pre> sits
+# immediately before this REQ's first merge. Range definition and re-merge semantics:
+# actions/work-reference.md -> Worktree Dispatch Mode (Step 1).
 changed_file_list=""
 if [ "$git_available" -eq 1 ]; then
   if [ -n "$diff_range" ]; then
@@ -81,7 +128,7 @@ while IFS= read -r summary_line; do
       # commit, and including the previous commit (HEAD~1) would let a no-op
       # builder pass on the back of the last REQ's work. In worktree dispatch
       # mode the same guarantee comes from $diff_range's lower bound <pre> (the
-      # tip just before this REQ's merge), not from working+staged — HEAD~1
+      # tip just before this REQ's FIRST merge), not from working+staged — HEAD~1
       # would still be wrong there.
       if [ ! -f "$file_path" ]; then
         echo "FAIL: listed (modified) but not on disk: $file_path"; failure_count=$((failure_count + 1))
