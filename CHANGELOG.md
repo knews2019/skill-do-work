@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.144.0 — Concurrent Claim Tracking in the Orchestrator Lock (2026-07-29)
+
+The orchestrator lock could only name one in-flight REQ per session, so the moment a single orchestrator dispatched more than one builder at once, Crash Recovery and cleanup mistook the siblings for abandoned crash artifacts and re-queued them mid-build. The lock now tracks every concurrent claim, and the recovery and cleanup gates honor the whole set — the session's own claims included — so parallel dispatch is finally safe inside the skill's own protocol.
+
+- New canonical `claimed_reqs` list on the holder and each coexisting-session entry; the old `claimed_req` stays as a derived legacy mirror (`claimed_reqs[0]`), so older readers and the serial default are completely untouched.
+- Crash Recovery now gates on freshness alone and skips any file in a live claim set — the session's own included — so a Step 10 → Step 1 loop no longer strips and re-queues a still-building sibling.
+- Per-merge post-merge verification becomes the default whenever more than one REQ is in flight, and `cleanup.md`'s Pass 0 live-claim gate reads the whole claim list.
+- Contract-regression ratchets pin both the field's presence and the same-story gate phrasing across `work.md`, `work-reference.md`, and `cleanup.md`.
+
 ## 0.143.0 — Capture Slicing Nudge and Board Write-Set Overlap Badges (2026-07-29)
 
 Two upstream levers for parallel-friendly queues: capture's slicing convention now prefers boundaries that give each REQ its own files (declaring unavoidable overlap in `write_set`), and the Kanban board shows an `overlaps` badge on pending/claimed cards whose declared write-sets could touch the same files.

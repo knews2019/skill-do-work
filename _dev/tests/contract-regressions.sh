@@ -462,6 +462,45 @@ assert_contains \
   'worktree-agent-' \
   'actions/cleanup.md must keep the consent-gated orphaned-worktree pass that owns unmerged builder branches.'
 
+# Multi-claim lock representation (REQ-035). The orchestrator lock's claim became a
+# `claimed_reqs` LIST so one orchestrator can hold N concurrent claims, with
+# `claimed_req` retained as a derived legacy mirror (claimed_reqs[0]). The gate text,
+# lock schema, heartbeat rule, Crash Recovery gate, and cleanup's live-claim gate must
+# all tell one story, so pin the canonical field's presence in each of the three files
+# that read or write it — drop it from any one and the "one story" breaks silently.
+# Also pin that the Crash Recovery gate skips files claimed by ANY fresh claim set,
+# this session's own INCLUDED (freshness alone gates): the correctness fix that stops a
+# Step 10 -> Step 1 loop from re-queuing a co-dispatched sibling mid-build.
+assert_contains \
+  "actions/work.md" \
+  'claimed_reqs' \
+  'actions/work.md must carry the canonical claimed_reqs list (the multi-claim field the parallel-dispatch gate and Step 2/8 bookkeeping depend on).'
+
+assert_contains \
+  "actions/work-reference.md" \
+  'claimed_reqs' \
+  'actions/work-reference.md must carry the canonical claimed_reqs list across the lock schema, heartbeat rule, and Crash Recovery gate.'
+
+assert_contains \
+  "actions/cleanup.md" \
+  'claimed_reqs' \
+  'actions/cleanup.md Pass 0 live-claim gate must exempt every id in a live session claimed_reqs, not just the legacy single claimed_req.'
+
+assert_contains \
+  "actions/work-reference.md" \
+  'including this session'\''s own' \
+  'actions/work-reference.md Crash Recovery gate must skip files claimed by ANY fresh claim set including this session own, so a Step 10 to Step 1 loop does not re-queue a co-dispatched sibling mid-build.'
+
+# The primary action file's compact Crash Recovery summary is a separate restatement of
+# the gate above and is NOT covered by the work-reference.md assertion — REQ-035 first
+# shipped with work.md's summary still telling the old "another live session" story while
+# work-reference.md:205 told the new one (caught in adversarial review). Pin the same-story
+# phrasing in work.md too so the two files cannot silently diverge again.
+assert_contains \
+  "actions/work.md" \
+  'this session'\''s own co-dispatched claims' \
+  'actions/work.md Step 1 Crash Recovery summary must tell the same story as the work-reference.md gate — it also skips this session own co-dispatched claims on a Step 10 to Step 1 loop, not just another session claims.'
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi
