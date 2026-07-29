@@ -501,6 +501,24 @@ assert_contains \
   'this session'\''s own co-dispatched claims' \
   'actions/work.md Step 1 Crash Recovery summary must tell the same story as the work-reference.md gate — it also skips this session own co-dispatched claims on a Step 10 to Step 1 loop, not just another session claims.'
 
+# The proceed-anyway option restates the same gate a THIRD time, and the file-wide
+# assertion above cannot see it — a match anywhere in work-reference.md satisfies that
+# one, so the Crash Recovery gate's own wording masked this restatement keeping the
+# pre-REQ-035 "another live session" story right through REQ-035 (REQ-044). An agent
+# reading only its local instruction on that path strips its own co-dispatched
+# siblings, so pin the block itself: the current story in, the stale story out.
+proceed_anyway_block="$(sed -n '/\*\*(a) Proceed anyway\*\*/,/\*\*(b) Take over\*\*/p' "$repo_root/actions/work-reference.md")"
+
+assert_block_contains \
+  "$proceed_anyway_block" \
+  'including this session'\''s own' \
+  'actions/work-reference.md proceed-anyway option must restate the gate as skipping every fresh claim including this session own, not just another live session claims.'
+
+assert_block_not_contains \
+  "$proceed_anyway_block" \
+  'skips only files actively claimed by another live session' \
+  'actions/work-reference.md proceed-anyway option must not reintroduce the pre-REQ-035 another-live-session-only gate wording, which tells a coexisting session to strip its own co-dispatched siblings.'
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi

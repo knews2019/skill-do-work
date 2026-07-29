@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.148.0 — Lock Claim Coherence: Dispatch Record as the Recompute Source (2026-07-29)
+
+Four coherence defects survived REQ-035's move to a canonical `claimed_reqs` list. The fix names a single source of truth for the recompute — the orchestrator's in-memory dispatch record — instead of a `working/` listing.
+
+- The heartbeat recompute reads the session's dispatch record, never a directory listing and never the lock's own previous `claimed_reqs`. Step 2's claim-before-move append enters the id into that record before the file moves, so the refresh carrying the claim no longer erases it.
+- A known-dead builder's id leaves the record (so its REQ is reclaimable that session), explicitly distinguished from an ordinary failed build that keeps its claim through remediation and Step 8.
+- Crash Recovery clears `write_set` only for Scope-mirrored sets and preserves capture-seeded / Route-A sets; a stale proceed-anyway gate restatement is aligned and pinned by a new block-scoped contract-regression ratchet.
+
 ## 0.147.0 — Worktree Merge Range: Fail-Loud Validation and Seam-in-Range Merge (2026-07-29)
 
 The worktree-dispatch merge range `<pre>..<merge_hash>` had six confirmed defects in how it was produced, validated, and restated — most dangerously, `qualify.sh` printed OK on a broken range instead of failing. All six are fixed as one coherence contract.
