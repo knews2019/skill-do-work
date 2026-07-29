@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.9 — Blocked-Flip Guard Judges Worktree Builders by Their Branch (2026-07-29)
+
+Step 8's blocked-vs-failed call used `git diff` on the main tree to ask "did edits land this attempt?" — but a worktree builder commits on its own branch, so the main tree always reads clean and real work got wrongly parked as `blocked`. The guard now reads the builder's branch in worktree mode.
+
+- Case order: a completed hand-back merge (`<merge_hash>` held) proves edits landed; otherwise a quoted `git rev-parse --verify -q '<operative_name>'` existence probe (a missing branch = genuine before-any-work, and `rev-list` on it would exit fatal instead of printing a count); only then `git rev-list --count HEAD..<operative_name>` decides.
+- Judged from git state, never the builder's handed-back manifest; serial-mode behavior untouched.
+
 ## 0.150.8 — Merge-Aware Diff Reads for Worktree-Merged REQs (2026-07-29)
 
 Every consumer that reads a REQ's `commit:` hash as a diff source now detects the worktree `--no-ff` merge case and diffs against the first parent — plain `git show` on a merge prints a near-empty combined diff, so standalone reviews and receipts of worktree-merged work silently saw nothing.
