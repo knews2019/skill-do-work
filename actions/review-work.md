@@ -28,7 +28,7 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 | Mode | Trigger | REQ location | How to get the diff |
 |------|---------|-------------|---------------------|
 | **Pipeline** | Auto-triggered by actions/work.md after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary — in worktree dispatch mode the tree is clean post-merge, so read the merge range `<pre>..<merge_hash>` the orchestrator passes (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**) |
-| **Standalone** | User invokes manually: `do-work review`, `do-work review-work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field |
+| **Standalone** | User invokes manually: `do-work review`, `do-work review-work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field — for a worktree-merged REQ the `commit:` hash is a merge commit, so use the first-parent form (Step 4) |
 
 Both modes follow the same workflow. The only difference is where the REQ lives and how you obtain the diff.
 
@@ -65,7 +65,7 @@ If the REQ is a legacy file without `user_request`, use whatever context is avai
 
 **Pipeline mode:** Run `git diff` to see uncommitted changes, or read the files the Implementation Summary lists as created/modified. If the working tree is clean (implementation agent already staged), use `git diff --staged`. **In worktree dispatch mode** the builder's work is already committed and merged, so the working tree is clean by design — read the diff from the merge range the orchestrator passes: `git diff <pre>..<merge_hash>` (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**).
 
-**Standalone mode:** Run `git show <commit>` using the hash from the REQ's `commit` frontmatter. This gives you the full diff of what was committed.
+**Standalone mode:** Run `git show <commit>` using the hash from the REQ's `commit` frontmatter. This gives you the full diff of what was committed. **If that hash is a merge commit** — `git rev-parse --verify -q '<commit>^2'` succeeds (quoted — `^` is special in some shells), the normal case for work integrated by worktree dispatch mode's `--no-ff` merge (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**) — plain `git show` prints a combined diff that is usually empty, so diff against the first parent instead: `git show --first-parent -m <commit>`.
 
 Read the diff carefully. For large diffs, focus on:
 - New files created (read them fully)

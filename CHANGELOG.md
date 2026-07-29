@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.8 — Merge-Aware Diff Reads for Worktree-Merged REQs (2026-07-29)
+
+Every consumer that reads a REQ's `commit:` hash as a diff source now detects the worktree `--no-ff` merge case and diffs against the first parent — plain `git show` on a merge prints a near-empty combined diff, so standalone reviews and receipts of worktree-merged work silently saw nothing.
+
+- Shared idiom at all sites: detect via `git rev-parse --verify -q '<sha>^2'` (quoted — `^` is special in zsh/cmd.exe), then `git show --first-parent -m <sha>`; ordinary serial commits unchanged.
+- Covered: review-work.md Get-the-Diff + Two-Modes table, present-work.md (three sites incl. the interactive explainer's receipt), pipeline.md's Completion-Report bullet + pipeline-reference.md's rendering template, ai-report.md's Verify-It-Yourself spec.
+- The maintainer shell-trap catalog gains the merge-commit/empty-combined-diff trap.
+
 ## 0.150.7 — Lessons-Capture Honors a Prime's Inline-Only Marker (2026-07-29)
 
 The pipeline's Lessons-capture step now inlines a lesson into a prime file that declares itself inline-only, instead of appending an archive link that would be dead in every consumer install.

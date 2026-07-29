@@ -167,6 +167,9 @@ Render each bullet as a relative markdown link to the file (e.g. `[...]({UR-NNN}
    git checkout {branch} && git pull
    ```
 2. **Inspect each commit** (ordered to show the build-up):
+   [For a merge-commit SHA (`git rev-parse --verify -q '{sha}^2'` succeeds), emit
+   `git show --first-parent -m {sha}` instead — plain `git show` on a merge prints
+   a combined diff that is usually empty.]
    ```
    git show 5ab214d   # REQ-402 — lessons-learned docs
    git show 9371a68   # REQ-410 — shared init routine

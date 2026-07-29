@@ -59,7 +59,7 @@ For each completed REQ, read the full file and extract:
 
 ### Step 3: Read the Code
 
-Use `git show <commit>` (from the REQ's `commit` frontmatter) to get the diff. Then read the actual created/modified files to understand:
+Use `git show <commit>` (from the REQ's `commit` frontmatter) to get the diff. If that hash is a merge commit — `git rev-parse --verify -q '<commit>^2'` succeeds (quoted — `^` is special in some shells), the normal case for work integrated by worktree dispatch mode's `--no-ff` merge — plain `git show` prints a combined diff that is usually empty, so use `git show --first-parent -m <commit>` instead. Then read the actual created/modified files to understand:
 
 - **Architecture** — what components exist, their roles, how they connect
 - **Data flow** — how information enters, moves through, and exits the system
@@ -151,7 +151,9 @@ the REQ's ## Implementation Summary. These are the source of truth.]
 
 [Concrete steps someone can follow to check that the work is real and correct.
 Use copy-pasteable commands — no abstractions. Pull commits from each REQ's
-frontmatter.]
+frontmatter. For a merge-commit SHA (`git rev-parse --verify -q '{commit-sha}^2'`
+succeeds), emit `git show --first-parent -m {commit-sha}` instead — plain
+`git show` on a merge prints a combined diff that is usually empty.]
 
 1. **See the change in the codebase:**
    ```
@@ -392,7 +394,7 @@ Always generate a self-contained HTML file at `do-work/deliverables/UR-NNN-inter
 - **Theme:** Light theme by default. Use `prefers-color-scheme: dark` media query to support OS-level dark mode. Define CSS custom properties (e.g., `--bg`, `--surface`, `--text`) at `:root` for light values and override them inside `@media (prefers-color-scheme: dark)`. Light palette: white/slate-50 backgrounds, slate-800/900 text, blue-600 accents. Dark palette: slate-900 backgrounds, slate-100 text, blue-400 accents.
 - **Design:** Make it look modern and highly polished — large typography, soft shadows, generous whitespace. Include tooltips or sidebars that explain technical decisions in plain English.
 - **Layout — full-bleed, not a narrow scrolling column.** Let the page fill the browser width (side padding only), not a fixed `max-w-*` centered column that leaves empty gutters on a wide monitor and forces needless scrolling. Cap width only on *running prose*; arrange the sections as horizontal, wrapping bands (`flex-wrap` / responsive grid) so related content — an explanation beside its diagram, a side-by-side Before/After — stays visible together on a wide screen and stacks cleanly on a narrow one. Minimize scrolling by using the horizontal space, not by hiding content behind clicks.
-- **Content:** Pull real context from the REQ files. Include a 'The Problem', 'The Interactive Demo', and a 'Value Delivered' section. Also include a collapsible (or small-print, bottom-of-page) 'For the developer' section listing the commit SHAs from each REQ's frontmatter, a copy-pasteable `git show <sha>` block, and the project's test command. A dev who landed on the explainer shouldn't have to leave to verify it's real — the explainer serves both the "no clue" reader and the "show me the receipts" reader in one file.
+- **Content:** Pull real context from the REQ files. Include a 'The Problem', 'The Interactive Demo', and a 'Value Delivered' section. Also include a collapsible (or small-print, bottom-of-page) 'For the developer' section listing the commit SHAs from each REQ's frontmatter, a copy-pasteable `git show <sha>` block (for a merge-commit SHA — `git rev-parse --verify -q '<sha>^2'` succeeds — emit `git show --first-parent -m <sha>` instead, or the block shows an empty diff), and the project's test command. A dev who landed on the explainer shouldn't have to leave to verify it's real — the explainer serves both the "no clue" reader and the "show me the receipts" reader in one file.
 - **Navigation footer:** End the page with a "Keep exploring" section — a responsive card grid of `<a>` links to sibling deliverables that exist in the same folder. Always link the client brief (`./{UR-NNN}-client-brief.md`) with a note that GitHub/VS Code renders markdown natively. When the pipeline ran, also link `./{UR-NNN}-pipeline-summary.single.html` (developer debrief), `./{UR-NNN}-pipeline-summary.marp.html` (stakeholder deck), and `./{UR-NNN}-video/` (walkthrough). Check the `do-work/deliverables/` folder before rendering — only include tiles for files that actually exist. This is the reader's escape hatch from the explainer's breadth-first view into deeper, audience-specific context.
 
 #### 4d: Portfolio artifacts (portfolio mode only — see below)

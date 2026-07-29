@@ -209,7 +209,7 @@ Ensure the report folder and its screenshots folder exist (`mkdir -p ai-reports/
 
 **What Changed** — Compact table of files modified, what each does. No code snippets. Pointers only (`src/components/AlignPanel.jsx — added Align checkbox + batch flag`).
 
-**Verify It Yourself** — Copy-pasteable shell commands from the REQ's Testing section. One `git show <sha>` block. One test-run command.
+**Verify It Yourself** — Copy-pasteable shell commands from the REQ's Testing section. One `git show <sha>` block — for a merge-commit SHA (`git rev-parse --verify -q '<sha>^2'` succeeds) emit `git show --first-parent -m <sha>` instead, since plain `git show` on a merge prints a combined diff that is usually empty. One test-run command.
 
 **Open Questions / Lessons** — Only if the REQ has a non-empty Lessons Learned or unresolved Open Questions. If empty, omit this section entirely.
 
