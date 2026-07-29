@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.149.0 — Dispatch Re-Validation: Full Route Coverage and the Serialization Loser (2026-07-29)
+
+REQ-036's write-set re-validation was written against the Route B/C pipeline only, leaving a co-dispatched Route A REQ building under an unvalidated hint. This states one covering invariant and fixes three coherence gaps around it.
+
+- Every co-dispatched REQ now gets exactly one post-dispatch re-validation, and its route picks which: Routes B/C at Step 5.5, Route A at Step 3 (serialize-only — it has no `## Scope` to hold a partition). The three previously-contradicting sentences now agree.
+- The serialization "loser" is defined (the REQ at the re-check is held, never a dispatched sibling mid-build), with a deadlock guard for the two-discoverer case; dispatch-time partitions are persisted into `write_set` so a sibling's re-check compares against the real subset.
+- The absent-`write_set` gloss is reworded condition-first and reconciled with REQ-044's conditional recovery clear; a new contract-regression ratchet pins the whole contract.
+
 ## 0.148.0 — Lock Claim Coherence: Dispatch Record as the Recompute Source (2026-07-29)
 
 Four coherence defects survived REQ-035's move to a canonical `claimed_reqs` list. The fix names a single source of truth for the recompute — the orchestrator's in-memory dispatch record — instead of a `working/` listing.

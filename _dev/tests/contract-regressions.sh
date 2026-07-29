@@ -519,6 +519,40 @@ assert_block_not_contains \
   'skips only files actively claimed by another live session' \
   'actions/work-reference.md proceed-anyway option must not reintroduce the pre-REQ-035 another-live-session-only gate wording, which tells a coexisting session to strip its own co-dispatched siblings.'
 
+# Dispatch re-validation completeness (REQ-045). REQ-036 added the Step 5.5
+# disjointness re-check and shipped no guard for it, and its coverage claim had a
+# route-shaped hole: `route` is not assigned until Step 3, and Route A never reaches
+# Step 5.5, so a co-dispatched Route A builder wrote under an unvalidated capture hint.
+# Every co-dispatched REQ now has exactly one post-dispatch validation point — Step 5.5
+# for Routes B/C, Step 3 for Route A — plus a named loser and a partition written to
+# frontmatter so the re-check compares against the subset the gate actually issued.
+# Each piece deletes cleanly without breaking anything visible, and the file-wide
+# `pairwise disjoint`/`write_set` assertions above cannot see them (a match anywhere in
+# actions/work.md satisfies those — the masking REQ-044 hit), so scope each to its step.
+step_5_5_scope_block="$(sed -n '/^### Step 5.5: Scope Declaration/,/^### Step 5.75:/p' "$repo_root/actions/work.md")"
+triage_step_block="$(sed -n '/^### Step 3: Triage/,/^### Step 3.5:/p' "$repo_root/actions/work.md")"
+parallel_dispatch_block="$(sed -n '/^\*\*Parallel dispatch (optional/,/^\*\*Serial-only resource classes/p' "$repo_root/actions/work.md")"
+
+assert_block_contains \
+  "$step_5_5_scope_block" \
+  'pairwise disjointness against every other in-flight REQ' \
+  'actions/work.md Step 5.5 must keep the REQ-036 re-validation clause — the firmed Scope list is re-checked for pairwise disjointness against every other in-flight REQ before the mirror replaces the field.'
+
+assert_block_contains \
+  "$step_5_5_scope_block" \
+  'The REQ at this re-check is the loser' \
+  'actions/work.md Step 5.5 must name which REQ of an overlapping pair is serialized — with the loser undefined an orchestrator can hold a sibling that has already written under the boundary it was handed.'
+
+assert_block_contains \
+  "$triage_step_block" \
+  'only post-dispatch validation point' \
+  'actions/work.md Step 3 must re-validate a co-dispatched Route A REQ write-set here — Route A skips Step 5.5, so without this the Step 1 gate coverage claim has a route-shaped hole and a Route A builder writes under an unvalidated capture hint.'
+
+assert_block_contains \
+  "$parallel_dispatch_block" \
+  '[Ww]rite that subset into the REQ.s `write_set` frontmatter' \
+  'actions/work.md Step 1 must persist a partition directive into the REQ write_set frontmatter at dispatch — a partition living only in the dispatch prompt is invisible to the later re-checks, which then serialize the partition the gate itself issued.'
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi
