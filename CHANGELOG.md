@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.15 — Update Script: Guard Project Docs, Clean Non-Interactive Cancel, Rollback Pointer on Failure (2026-07-30)
+
+Four fixes to `do-work update`'s helper script after a code review of the new just shortcut. The headline: running it where the skill *is* the project root (a dev repo or direct clone) no longer risks deleting your project's own `CLAUDE.md`/`AGENTS.md`, and a piped or CI invocation now cancels cleanly instead of dying mid-prompt.
+
+- Non-interactive stdin (piped, CI, `</dev/null`) now defaults to No and exits 0 — previously the bare `read` returned non-zero at EOF and `set -e` aborted before the cancel branch could run.
+- The stale-vendored-doc cleanup (`rm` of `CLAUDE.md`/`AGENTS.md`) runs only for a nested install; when `skill_root == project_root` those are the project's own instruction files and are left untouched.
+- `justfile` joined `shipped_paths`, so its overwrite now shows in the pre-confirmation diff and the uncommitted-changes warning instead of happening silently off-list.
+- A failure mid-update (e.g. ENOSPC during extraction — the `cp -R` backup just doubled the on-disk size) now always prints the rollback-copy path, closing the one path that left a half-updated install with no pointer to the backup.
+
 ## 0.150.14 — Update Check No Longer False-Fails on Stray Local Files (2026-07-30)
 
 `do-work update` could report a clean, successful update as broken — and steer you toward a needless rollback — whenever a Finder `.DS_Store`, an editor swapfile, or any other local-only file sat under a shipped path. The post-update integrity check now ignores install-only extras while still catching genuine extraction failures.

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 upstream_url='https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz'
-shipped_paths=(SKILL.md actions crew-members prompts interviews specs docs hooks tools CHANGELOG.md README.md next-steps.md)
+shipped_paths=(SKILL.md actions crew-members prompts interviews specs docs hooks tools CHANGELOG.md README.md next-steps.md justfile)
 
 fail() {
   printf 'do-work update: %s\n' "$*" >&2
@@ -72,7 +72,21 @@ local_version="$(sed -n 's/^\*\*Current version\*\*: *\([0-9][0-9.]*\).*/\1/p' "
 [ -n "$local_version" ] || fail 'could not read the local version'
 
 update_tmp="$(mktemp -d "${TMPDIR:-/tmp}/do-work-update.XXXXXX")"
-trap 'rm -rf "$update_tmp"' EXIT
+backup_path=''
+backup_ready=''
+files_in_place=''
+cleanup() {
+  rm -rf "$update_tmp"
+  # If the run aborts inside the destructive region — after the rollback copy is made
+  # but before the new files are all in place — `set -e` exits before reaching the
+  # explicit rollback prints below. Surface the backup here so a mid-extract failure
+  # (e.g. ENOSPC: the cp -R backup just doubled the install's on-disk size) never leaves
+  # a half-updated install with no pointer to the rollback copy.
+  if [ -n "$backup_ready" ] && [ -z "$files_in_place" ]; then
+    printf 'Update did not complete; the install may be partially modified.\nRollback copy: %s\n' "$backup_path" >&2
+  fi
+}
+trap cleanup EXIT
 upstream_tarball="$update_tmp/upstream.tar.gz"
 fresh_upstream="$update_tmp/fresh"
 mkdir -p "$fresh_upstream"
@@ -111,7 +125,10 @@ if [ -s "$diff_file" ]; then
 fi
 
 printf 'Continue with the update? This creates a rollback copy first. [y/N] '
-read -r confirmation
+# EOF / non-interactive stdin (piped, CI, </dev/null) makes `read` return non-zero; under
+# `set -e` a bare `read` would abort here before the case below can default to No. Treat
+# EOF as an explicit No so the cancel path runs and the script exits 0.
+read -r confirmation || confirmation=''
 case "$confirmation" in
   y|Y|yes|YES) ;;
   *) printf 'Update cancelled; no files were changed.\n'; exit 0 ;;
@@ -119,12 +136,21 @@ esac
 
 backup_path="$skill_root.preupdate-$(date -u +%Y%m%dT%H%M%SZ).bak"
 cp -R "$skill_root" "$backup_path"
+backup_ready=1  # rollback copy exists; the destructive writes below are now recoverable
 
 find "$skill_root/prompts" -maxdepth 1 -name '*.md' ! -name 'README.md' -delete 2>/dev/null || true
 find "$skill_root/interviews" -maxdepth 1 -name '*.md' -delete 2>/dev/null || true
 tar xzf "$upstream_tarball" -C "$skill_root" --strip-components=1 \
   --exclude='_dev' --exclude='do-work' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
-rm -f "$skill_root/CLAUDE.md" "$skill_root/AGENTS.md"
+# Remove stale vendored maintainer docs (older installs shipped CLAUDE.md/AGENTS.md into
+# the skill dir before they were export-ignored from the tarball). ONLY in a nested
+# install: when skill_root IS the project root (the justfile recipe's root fallback),
+# these are the project's own instruction files, not the skill's — deleting them would
+# destroy project instructions, so leave them in place.
+if [ "$skill_root" != "$project_root" ]; then
+  rm -f "$skill_root/CLAUDE.md" "$skill_root/AGENTS.md"
+fi
+files_in_place=1  # new files are in place; failures past here have their own rollback prints
 
 installed_version="$(sed -n 's/^\*\*Current version\*\*: *\([0-9][0-9.]*\).*/\1/p' "$skill_root/actions/version.md" | head -n 1)"
 [ "$installed_version" = "$remote_version" ] \
