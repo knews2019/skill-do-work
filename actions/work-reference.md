@@ -857,20 +857,36 @@ One commit per request. Stage all files created, modified, moved, or deleted dur
 
 **Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, `CHANGELOG.md`, and/or the version file it bumped (the changelog entry and the version bump describe the implementation, they aren't the implementation), flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected. **In worktree dispatch mode** the implementation files live in the merge commit, not this commit's stage, so validate the `## Implementation Summary` file list against `git diff --name-only <pre>..<merge_hash>` (the merge range, excluding `do-work/` paths) instead of the staged set — a stage of only the changelog/version/`do-work/` metadata is correct here, not a mismatch.
 
-**Write commit hash back to the archived REQ.** After the commit succeeds, resolve the implementation hash — **serially** it is the commit you just made, so read it with `git rev-parse --short HEAD`; **in worktree dispatch mode do NOT rev-parse `HEAD` here**, because HEAD is the changelog commit and the implementation lives in Step 6's `--no-ff` merge — use the `<merge_hash>` literal held since Step 6 (the latest merge, if remediation re-merged). Write that hash into the archived REQ's frontmatter `commit:` field, then create a **separate metadata commit** (do not amend — amending changes the hash and invalidates what you just wrote):
+**Write commit hash back to the archived REQ.** After the commit succeeds, resolve the implementation hash — **serially** it is the commit you just made, so read it with `git rev-parse --short HEAD`; **in worktree dispatch mode do NOT rev-parse `HEAD` here**, because HEAD is the changelog commit and the implementation lives in Step 6's `--no-ff` merge — use the `<merge_hash>` literal held since Step 6 (the latest merge, if remediation re-merged). Hand that hash to the shipped guard script, which makes the one-line edit and verifies it, then create a **separate metadata commit** (never amend — amending changes the hash and invalidates what was just written):
 
 ```bash
-# Resolve the implementation hash — SERIAL MODE ONLY. In worktree dispatch mode skip
-# this line entirely and use the held <merge_hash> literal from Step 6 instead.
-git rev-parse --short HEAD
+# Serial mode — the hash is resolved and consumed inside the SAME command block, so nothing
+# has to survive between blocks and nothing is re-typed.
+<skill-root>/tools/checks/record-commit-hash.sh do-work/archive/UR-NNN/REQ-NNN-slug.md "$(git rev-parse --short HEAD)"
 
-# Write that hash into the archived REQ's `commit:` field (replace the "commit:" line,
-# or add it if missing), then commit the edit. Re-type the hash as a literal below: the
-# file edit sits between these two commands, so a shell variable set above would not
-# survive to here.
-git add do-work/archive/UR-NNN/REQ-NNN-slug.md
-git commit -m "[REQ-NNN] record commit hash <hash>"
+# Worktree dispatch mode — pass the <merge_hash> literal held since Step 6, NOT
+# `git rev-parse --short HEAD`, which here names the changelog commit you just made.
+<skill-root>/tools/checks/record-commit-hash.sh do-work/archive/UR-NNN/REQ-NNN-slug.md <merge_hash>
+
+# Then stage and commit ONLY that file — the script prints these two lines back to you.
+git add -- do-work/archive/UR-NNN/REQ-NNN-slug.md
+git commit -m "[REQ-NNN] record commit hash <hash>" -- do-work/archive/UR-NNN/REQ-NNN-slug.md
+
+# Finally, confirm the commit landed what was verified. This is the only check that catches a
+# content-mutating pre-commit hook rewriting the file after every pre-commit guard passed.
+<skill-root>/tools/checks/record-commit-hash.sh --verify do-work/archive/UR-NNN/REQ-NNN-slug.md <hash>
 ```
+
+The script edits only the `commit:` line **inside the frontmatter block** (adding it after `completed_at:` when absent), and refuses to write at all unless the rewrite changed exactly that one line. **Read its output before staging anything:**
+
+- `OK: …` — the field records the hash; stage and commit as printed.
+- `NOOP: …` — the field already records this hash **and** that is already committed. Make **no** metadata commit.
+- `FAIL: …` (exit 1) — **stop.** The REQ file is left as it was found. Do not retry the command, do not hand-edit around it, and do not commit anyway; the message names the specific defect and the recovery command.
+- Exit 2 is a usage error — a bad hash shape (including passing the literal `<hash>`), a missing file, or a file that is not a usable REQ.
+
+**Why a script and not prose:** this write-back was free-form until a consumer repo's metadata commits truncated six archived REQ files to 0 bytes — 9 KB to 26 KB of decision trail each — with commit messages that claimed success. The guards run **before** `git add`, so a mass-deletion diff can never become a commit. A hand edit here has already destroyed archived REQ content; the script is the sanctioned path.
+
+**If the script is missing** (a consumer on an older tarball), do the edit by hand and run its two cheapest guards before committing, in this order: `git diff --numstat HEAD -- <req-file>` must read `1	1` (or `1	0` when the field was added) — a deletion count above that means content was destroyed, so **stop and recover instead of committing** — and `test -s <req-file>` must pass. Then stage and commit as above, re-typing the hash as a literal: shell state does not survive between command blocks.
 
 This ensures the `commit:` field in the archived REQ contains the real implementation commit hash — the commit just made serially, the `--no-ff` merge commit in worktree dispatch mode — which the review-work and present-work actions depend on for traceability. The metadata commit is a lightweight bookkeeping entry — it does not contain implementation changes.
 

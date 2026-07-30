@@ -6,6 +6,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.151.0 — Guarded Commit-Hash Write-Back (2026-07-30)
+
+The Step 9 "record commit hash" step used to be prose — write the hash into the archived REQ's `commit:` field, then commit. In a repo using do-work, that free-form edit truncated six archived REQ files to 0 bytes, destroying 9 KB to 26 KB of decision trail each, with commit messages that claimed success. It's a script now, and the guards run before anything is staged.
+
+- New `tools/checks/record-commit-hash.sh`: edits only the `commit:` line inside the frontmatter block, and refuses to write unless the rewrite changed exactly that one line. A `commit:` quoted in body prose is structurally unreachable.
+- Guards for the real failure shapes — an already-blanked or truncated REQ (checked against its size in `HEAD`), an unterminated frontmatter block, duplicate `commit:` keys, CRLF, a hash the repo can't resolve, and the literal `<hash>` placeholder pasted straight out of the docs.
+- Running it twice is a no-op, but an edit that never got committed (a pre-commit hook rejected it) is detected and reported for committing rather than silently skipped.
+- A `--verify` mode reads the committed blob back, which is the only way to catch a content-mutating pre-commit hook rewriting the file after every other guard passed.
+- Works the same on the worktree-dispatch path, where the hash is the `--no-ff` merge commit; degrades cleanly outside git or where `do-work/` is git-excluded.
+- First behavioral test fixture in the repo: `_dev/tests/record-commit-hash-guards.sh` builds a throwaway git repo and asserts each guard actually fires.
+
 ## 0.150.15 — Update Script: Guard Project Docs, Clean Non-Interactive Cancel, Rollback Pointer on Failure (2026-07-30)
 
 Four fixes to `do-work update`'s helper script after a code review of the new just shortcut. The headline: running it where the skill *is* the project root (a dev repo or direct clone) no longer risks deleting your project's own `CLAUDE.md`/`AGENTS.md`, and a piped or CI invocation now cancels cleanly instead of dying mid-prompt.

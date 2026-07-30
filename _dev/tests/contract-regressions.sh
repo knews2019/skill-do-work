@@ -194,6 +194,7 @@ hardened_check_scripts=(
   "tools/checks/preflight.sh"
   "tools/checks/scope-drift.sh"
   "tools/checks/qualify.sh"
+  "tools/checks/record-commit-hash.sh"
 )
 
 for check_script in "${hardened_check_scripts[@]}"; do
@@ -606,6 +607,19 @@ assert_block_contains \
   "$board_rules_block" \
   'never column logic' \
   'actions/board.md Rules must keep the overlap annotation display-only claim (drives the overlaps badge and drawer row, never column logic, never blocking) — without it nothing tells a parser-editing agent that which REQs may co-dispatch stays with actions/work.md Step 1 gate.'
+
+# Behavioral probes for tools/checks/record-commit-hash.sh. Kept in their own file because
+# they build a throwaway git repo and run the real script rather than grepping prose — but
+# invoked from here, since nothing auto-discovers _dev/tests/*.sh and an uninvoked probe file
+# is dead weight that reads as coverage.
+record_commit_hash_probe="$repo_root/_dev/tests/record-commit-hash-guards.sh"
+if [ ! -f "$record_commit_hash_probe" ]; then
+  printf 'FAIL: _dev/tests/record-commit-hash-guards.sh is missing — the write-back guards have no behavioral coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$record_commit_hash_probe"; then
+  printf 'FAIL: record-commit-hash guard probes failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
 
 if [ "$fail_count" -gt 0 ]; then
   exit 1
