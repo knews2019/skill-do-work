@@ -33,9 +33,17 @@ append_install_diff() {
   local shipped_path
 
   for shipped_path in "${shipped_paths[@]}"; do
-    if [ -e "$fresh_root/$shipped_path" ] || [ -e "$installed_root/$shipped_path" ]; then
-      diff -ru --new-file "$fresh_root/$shipped_path" "$installed_root/$shipped_path" \
-        | grep -v 'tools/queue-kanban/queue-kanban' >> "$destination" || true
+    if [ -e "$fresh_root/$shipped_path" ] && [ ! -e "$installed_root/$shipped_path" ]; then
+      # Upstream ships this but it's wholly absent from the install: `diff` on a
+      # missing argument only errors to stderr (swallowed below), so flag it here.
+      printf 'Missing from install (shipped upstream): %s\n' "$shipped_path" >> "$destination"
+    elif [ -e "$fresh_root/$shipped_path" ] || [ -e "$installed_root/$shipped_path" ]; then
+      # No --new-file, so local-only files (compiled binary, Finder .DS_Store,
+      # editor swapfile) show as "Only in <install>" extras and are dropped by the
+      # fixed-string filter — grep -vF, not -v, so a regex metachar in the install
+      # path can't defeat it. Real failures ("Only in <fresh>", content diffs) stay.
+      diff -ru "$fresh_root/$shipped_path" "$installed_root/$shipped_path" \
+        | grep -vF "Only in $installed_root" >> "$destination" || true
     fi
   done
 }

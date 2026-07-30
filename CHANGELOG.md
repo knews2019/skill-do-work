@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.150.14 — Update Check No Longer False-Fails on Stray Local Files (2026-07-30)
+
+`do-work update` could report a clean, successful update as broken — and steer you toward a needless rollback — whenever a Finder `.DS_Store`, an editor swapfile, or any other local-only file sat under a shipped path. The post-update integrity check now ignores install-only extras while still catching genuine extraction failures.
+
+- Post-update check drops `--new-file` and filters install-only "extras" with a fixed-string match, so a stray `.DS_Store` or `*.swp` no longer trips the false `exit 1`.
+- The filter is metacharacter-proof (`grep -vF`), so a `[`, `+`, or `.bak` in the install path can't defeat it.
+- Added an explicit missing-file check so a wholly-absent shipped file or directory is still caught as a real failure — a gap that dropping `--new-file` would otherwise have opened.
+
 ## 0.150.13 — Project-Local Just Update Shortcut (2026-07-29)
 
 Projects that install the do-work just recipes can now update their local skill without spending an agent turn.
