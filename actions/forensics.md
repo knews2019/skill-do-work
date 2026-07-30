@@ -152,7 +152,9 @@ Report each recurring theme with its label, the contributing REQ IDs, and the po
 
 Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, and `find do-work/archive -name 'REQ-*.md'` — and read each frontmatter `status:` value.
 
-Judge each value against the `status` row of the Schema Read Contract in `actions/work-reference.md` — that table is the canonical vocabulary and alias list; do not re-enumerate it here. A value is a finding when it is neither a recognized status nor a documented alias (aliases like `done` → `completed` are normalization inputs, not defects — check 9 already covers *terminal* statuses stranded in queue/working).
+**Skip any file with no parseable frontmatter — check 13 owns those.** A 0-byte or header-destroyed file has no `status:` at all, so it reads here as an empty value and would be reported as an unrecognized status. That framing is actively harmful: its suggested fix is "edit the `status:` field," which writes over a file whose body needs recovering first. One finding, from check 13, with the remedy that fits.
+
+Judge each remaining value against the `status` row of the Schema Read Contract in `actions/work-reference.md` — that table is the canonical vocabulary and alias list; do not re-enumerate it here. A value is a finding when it is neither a recognized status nor a documented alias (aliases like `done` → `completed` are normalization inputs, not defects — check 9 already covers *terminal* statuses stranded in queue/working).
 
 - **Warning** for each REQ whose status is outside the vocabulary and alias set (e.g., a hand-edited `in-progress`, a typo like `pnding`, or a foreign tool's status): "REQ-NNN has unrecognized status '{status}' — the work scan skips it and the Kanban board parks it under Needs input / Blocked with an invalid-status highlight."
   **Suggested fix:** Edit the REQ's `status:` field to the recognized value that matches its actual state (see the Schema Read Contract). A REQ mid-work is `claimed`; one waiting in the queue is `pending`.
@@ -167,6 +169,22 @@ Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, an
   **Suggested fix:** Rewrite the field with the instant the event actually happened if recoverable (e.g., from the REQ file's git history), otherwise with the current UTC instant.
 
 This check is the mechanical sweep behind the board's future-stamp badge and data warning (`tools/queue-kanban/model.go` `detectFutureTimestampFields`).
+
+### 13. Blanked or Unparseable REQ Files
+
+Run the shipped scanner, which walks `do-work/archive/`, `do-work/queue/`, and `do-work/working/` for `REQ-*.md` and `UR-*.md` files that are 0 bytes or have no parseable frontmatter, and resolves each one's recovery point from git history:
+
+```bash
+<skill-root>/tools/checks/blanked-req-scan.sh
+```
+
+Exit 0 means nothing is damaged. Exit 1 means findings were printed — **a finding, not a script error**; report it, don't treat it as a failed check. Never pass `--restore` here: this action is read-only, and the repair belongs to `actions/cleanup.md` Pass 6.
+
+- **Critical** for each file reported: "REQ-NNN's archived file is {size} — the body is gone. Recoverable: {bytes} at commit {sha}; the commit that emptied it recorded implementation hash {hash}." A blanked REQ is not a mislabeled REQ — the content no longer exists on disk, and the git objects holding it are unreferenced, so a `git gc` can make the loss permanent.
+  **Suggested fix:** `do-work cleanup` — Pass 6 restores the content from the resolved commit and re-applies the `commit:` field, after asking. Do this before anything else in the report.
+- **Critical** when the scanner reports no recoverable content in history: the body was never committed intact. Say so plainly and point at backups or re-capture; there is nothing for Pass 6 to restore.
+
+This check exists because six archived REQ files in a consumer repo were truncated to 0 bytes by an unguarded Step 9 commit-hash write-back, and the only symptom for weeks was the board parking them as *untitled* with an invalid-status warning. `tools/checks/record-commit-hash.sh` is the guard that prevents it; this is the detector for damage already done.
 
 ## Output Format
 
@@ -185,6 +203,9 @@ This check is the mechanical sweep behind the board's future-stamp badge and dat
 
 - **[Hollow Completion]** REQ-015 is `status: completed` but has no Implementation Summary. No files were changed.
   **Suggested fix:** Review the archived REQ — was this a legitimate no-op, or was it incorrectly marked complete?
+
+- **[Blanked File]** `do-work/archive/UR-002/REQ-042-dark-mode.md` is 0 bytes — the body is gone. Recoverable: 9078 bytes at commit `9617040`; the commit that emptied it recorded implementation hash `9617040`.
+  **Suggested fix:** `do-work cleanup` (Pass 6) restores it and re-applies the `commit:` field, after asking. Do this first — the git objects holding the content are unreferenced and a `git gc` makes the loss permanent.
 
 ## Warnings
 

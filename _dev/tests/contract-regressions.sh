@@ -189,23 +189,31 @@ fi
 
 # Hardened checks (REQ-018): the work.md prose pointers and the shipped scripts
 # must not drift apart — a pointer at a missing script silently un-hardens the step.
+# Each entry is "<script>|<action file that must reference it>". The referencing file is
+# per-script because not every hardened check belongs to the work pipeline —
+# blanked-req-scan.sh is called from forensics (and, for its restore mode, cleanup). Pinning
+# the right caller keeps the assertion strong; hardcoding actions/work.md for all of them
+# would have forced either a bogus reference or dropping the check entirely.
 hardened_check_scripts=(
-  "tools/checks/archive-collision.sh"
-  "tools/checks/preflight.sh"
-  "tools/checks/scope-drift.sh"
-  "tools/checks/qualify.sh"
-  "tools/checks/record-commit-hash.sh"
+  "tools/checks/archive-collision.sh|actions/work.md"
+  "tools/checks/preflight.sh|actions/work.md"
+  "tools/checks/scope-drift.sh|actions/work.md"
+  "tools/checks/qualify.sh|actions/work.md"
+  "tools/checks/record-commit-hash.sh|actions/work.md"
+  "tools/checks/blanked-req-scan.sh|actions/forensics.md"
 )
 
-for check_script in "${hardened_check_scripts[@]}"; do
+for check_script_entry in "${hardened_check_scripts[@]}"; do
+  check_script="${check_script_entry%%|*}"
+  referencing_action_file="${check_script_entry##*|}"
   if [ ! -x "$repo_root/$check_script" ]; then
-    printf 'FAIL: %s must exist and be executable (work.md points at it).\n' "$check_script" >&2
+    printf 'FAIL: %s must exist and be executable (%s points at it).\n' "$check_script" "$referencing_action_file" >&2
     fail_count=$((fail_count + 1))
   fi
   assert_contains \
-    "actions/work.md" \
+    "$referencing_action_file" \
     "$(basename "$check_script")" \
-    "actions/work.md must reference $check_script — the hardened step's pointer was removed without un-hardening."
+    "$referencing_action_file must reference $check_script — the hardened step's pointer was removed without un-hardening."
 done
 
 # Review regressions: prescribed shell and roadmap classification are runtime

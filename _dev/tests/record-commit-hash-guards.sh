@@ -274,9 +274,94 @@ assert_equals "commit: 1234567" \
 fixture_root="$fixture_root_backup"
 rm -rf "$non_git_root"
 
-if [ "$fail_count" -gt 0 ]; then
-  printf '%s record-commit-hash guard probe(s) failed.\n' "$fail_count" >&2
+# =========================================================================================
+# tools/checks/blanked-req-scan.sh — detection of REQ/UR files whose content was destroyed.
+# Shares this fixture harness deliberately: the scanner's whole job is finding the aftermath
+# of the write-back failure the probes above prevent, so the two are tested against the same
+# repo shapes.
+# =========================================================================================
+scan_script="$repo_root/tools/checks/blanked-req-scan.sh"
+if [ ! -x "$scan_script" ]; then
+  printf 'FAIL: tools/checks/blanked-req-scan.sh must exist and be executable.\n' >&2
   exit 1
 fi
 
-printf 'record-commit-hash guard probes passed.\n'
+scan_root="$(mktemp -d)"
+cleanup_scan() { rm -rf "$scan_root"; }
+trap 'cleanup_fixture; cleanup_scan' EXIT
+
+run_scan_script() {
+  probe_output="$(cd "$scan_root" && "$scan_script" "$@" 2>&1)"
+  probe_status=$?
+}
+
+git -c init.defaultBranch=main init -q "$scan_root"
+git -C "$scan_root" config user.name "Fixture Runner"
+git -C "$scan_root" config user.email "fixture@example.invalid"
+
+# Reproduce the incident end to end: a complete archived REQ, then a metadata commit whose
+# message claims success while replacing the whole file with nothing.
+mkdir -p "$scan_root/do-work/archive/UR-900"
+scan_target="$scan_root/do-work/archive/UR-900/REQ-1282-incident.md"
+{
+  printf -- '---\nid: REQ-1282\ntitle: Incident fixture\nstatus: completed\ncompleted_at: 2026-07-30T10:00:00Z\ncommit: 0000000\n---\n\n# Incident fixture\n\n'
+  padding_index=0
+  while [ "$padding_index" -lt 150 ]; do
+    printf -- '- decision trail line %s that must be recoverable from git history.\n' "$padding_index"
+    padding_index=$((padding_index + 1))
+  done
+} > "$scan_target"
+# A healthy neighbour: the scan must not report it.
+printf -- '---\nid: REQ-1283\ntitle: Healthy\nstatus: completed\ncompleted_at: 2026-07-30T10:00:00Z\ncommit: 0000000\n---\n\n# Healthy\n\nIntact body.\n' \
+  > "$scan_root/do-work/archive/UR-900/REQ-1283-healthy.md"
+git -C "$scan_root" add -A
+git -C "$scan_root" commit -q -m "[REQ-1282] Incident fixture (Route C)"
+recovery_source_sha="$(git -C "$scan_root" rev-parse HEAD)"
+recorded_hash="$(git -C "$scan_root" rev-parse --short HEAD)"
+intact_bytes="$(wc -c < "$scan_target" | tr -d '[:space:]')"
+
+: > "$scan_target"
+git -C "$scan_root" add -A
+git -C "$scan_root" commit -q -m "[REQ-1282] record commit hash $recorded_hash"
+
+run_scan_script
+assert_status 1 "scan: exits 1 when a blanked file is found"
+assert_output_matches 'REQ-1282-incident\.md' "scan: names the blanked file"
+assert_output_matches '0 bytes' "scan: reports the file as empty"
+assert_output_matches "$recorded_hash" "scan: recovers the hash from the blanking commit's message"
+if printf '%s' "$probe_output" | grep -q 'REQ-1283-healthy'; then
+  printf 'FAIL: scan: reported the intact neighbour REQ-1283 as blanked.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# The machine-readable line is what REQ-064's --restore consumes; assert its exact shape so
+# the two sides cannot drift.
+scan_record="$(printf '%s\n' "$probe_output" | grep '^BLANKED' | head -1)"
+assert_equals "BLANKED	do-work/archive/UR-900/REQ-1282-incident.md	$recovery_source_sha	$recorded_hash" \
+  "$scan_record" "scan: emits a machine-readable BLANKED record with path, recovery source and hash"
+
+# A REQ blanked with no non-empty ancestor cannot be recovered from history — that must be
+# reported as such, never skipped into silence.
+printf '' > "$scan_root/do-work/archive/UR-900/REQ-1284-neverhad.md"
+git -C "$scan_root" add -A
+git -C "$scan_root" commit -q -m "add an always-empty REQ"
+run_scan_script
+assert_output_matches 'REQ-1284-neverhad\.md' "scan: names a file with no recovery source"
+assert_output_matches 'No recoverable content in git history' "scan: says the file has no recoverable content in history"
+
+# A clean tree must exit 0 and say so, so forensics can report "no findings" confidently.
+clean_root="$(mktemp -d)"
+mkdir -p "$clean_root/do-work/archive/UR-900"
+printf -- '---\nid: REQ-1290\nstatus: completed\n---\n\nIntact.\n' \
+  > "$clean_root/do-work/archive/UR-900/REQ-1290-fine.md"
+probe_output="$(cd "$clean_root" && "$scan_script" 2>&1)"; probe_status=$?
+assert_status 0 "scan clean: exits 0 when nothing is blanked"
+assert_output_matches 'No blanked' "scan clean: says nothing was found"
+rm -rf "$clean_root"
+
+if [ "$fail_count" -gt 0 ]; then
+  printf '%s guard probe(s) failed.\n' "$fail_count" >&2
+  exit 1
+fi
+
+printf 'record-commit-hash and blanked-req-scan guard probes passed.\n'

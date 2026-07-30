@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.152.0 — Forensics Detects Blanked REQ Files (2026-07-30)
+
+`do-work forensics` can now tell "this REQ's content was destroyed" apart from "this REQ has a typo in its status." Previously a 0-byte archived REQ showed up as an `unrecognized status ''` warning whose suggested fix — edit the status field — would have written over a file that needed recovering first.
+
+- New check 13 flags any REQ/UR file that is 0 bytes or has lost its frontmatter, as **Critical**, with the recovery commit and the recorded implementation hash already resolved from git history.
+- New `tools/checks/blanked-req-scan.sh` does the scanning and the history walk. Read-only, so forensics keeps its never-modifies-anything contract; `--porcelain` emits machine-readable records.
+- Check 11 now skips files with no parseable frontmatter, so a destroyed file is reported once, with the remedy that fits.
+- A file with no non-empty version anywhere in history is reported as unrecoverable rather than silently passed over.
+
 ## 0.151.0 — Guarded Commit-Hash Write-Back (2026-07-30)
 
 The Step 9 "record commit hash" step used to be prose — write the hash into the archived REQ's `commit:` field, then commit. In a repo using do-work, that free-form edit truncated six archived REQ files to 0 bytes, destroying 9 KB to 26 KB of decision trail each, with commit messages that claimed success. It's a script now, and the guards run before anything is staged.

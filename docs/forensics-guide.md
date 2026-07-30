@@ -19,6 +19,7 @@ Pipeline diagnostics — detects stuck work, hollow completions, orphaned URs, s
 | **Git divergence** | Files from completed REQs later modified or deleted without tracking |
 | **Stranded finished REQs** | Terminal-status REQs left in `do-work/queue/` or `working/` instead of archived |
 | **Recurring corrections** | The same lesson/correction theme surfacing across 2+ archived REQs (2 = watch, 3+ = strong signal) — a sign to fix the harness, not the next run |
+| **Blanked or unparseable files** | REQ/UR files that are 0 bytes or have lost their frontmatter — the content is gone, not mislabeled. Reports where each one can be recovered from in git history, and points at `do-work cleanup` (Pass 6) to restore it |
 
 ## Output
 
