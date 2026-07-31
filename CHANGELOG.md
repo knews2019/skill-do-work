@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.157.1 — Board Pills and Drawer Fields Wrap Instead of Overflowing (2026-07-31)
+
+Long badge values on the Kanban board — most visibly a card's "blocked by \<condition\>" pill — used to run off the card edge because badges were locked to a single line. Pills now wrap onto extra lines, and the drawer's metadata values break long unbroken tokens (write_set paths, blocked_check commands) instead of widening past the drawer.
+
+- `.badge` drops `white-space: nowrap`: wraps within the card, keeps the small-caps label ("BLOCKED BY", "NEEDS") on one piece.
+- Drawer `detail-meta` values get `min-width: 0` + `overflow-wrap: anywhere` so a single long path can't stretch the grid.
+- Testing-view meta chips wrap the same way.
+
 ## 0.157.0 — Source Repo Now Tracks Its Own Queue and Knowledge Base (2026-07-31)
 
 This repo had been keeping its own `do-work/` and `kb/` untracked via a local `.git/info/exclude` entry, on the theory that committing them would leak the maintainer's queue into consumer installs. That theory was already false — `.gitattributes` `export-ignore` plus the tar `--exclude` flags do that job, and the tarball has never contained either directory. Meanwhile the blanket ignore was costing real safety: several of the skill's own guards only work on tracked files, so the repo that dogfoods do-work was running with them silently disabled.
