@@ -245,13 +245,51 @@ run_record_script "do-work/archive/UR-900/REQ-1285-nonewline.md" "$implementatio
 assert_status 0 "no trailing newline: exits 0"
 assert_output_matches 'trailing newline' "no trailing newline: the added byte is reported"
 
-# --- Probe 12: --verify catches content that changed after the guards passed --------------
+# --- Probe 12: --verify against a genuine one-line metadata commit -------------------------
 # A content-mutating pre-commit hook (formatter, lint --fix) is a sufficient cause of the
-# original incident and is invisible to every pre-commit guard. Only a read-back sees it.
-commit_fixture "record the replace fixture"
-run_record_script --verify "do-work/archive/UR-900/REQ-1282-replace.md" "$implementation_hash"
-assert_status 0 "verify clean: exits 0"
+# original incident and is invisible to every pre-commit guard. Only reading back what landed
+# sees it. This probe establishes the clean baseline: write the hash, commit exactly that one
+# path (what the script's own printed instructions do), then verify.
+verify_path="do-work/archive/UR-900/REQ-1287-verify.md"
+write_request_fixture "$verify_path" "0000000"
+commit_fixture "seed verify fixture"
+run_record_script "$verify_path" "$implementation_hash"
+assert_status 0 "verify setup: the write-back exits 0"
+git -C "$fixture_root" commit -q -m "[REQ-1287] record commit hash $implementation_hash" -- "$verify_path"
+run_record_script --verify "$verify_path" "$implementation_hash"
+assert_status 0 "verify clean: exits 0 on a genuine one-line metadata commit"
+assert_output_matches 'exactly the one line' \
+  "verify clean: reports that HEAD's patch was the single commit: line"
 
+# --- Probe 13: --verify catches a re-staging hook that rewrote the body ---------------------
+# THE case a blob read-back cannot see. `lint-staged` and friends rewrite the worktree file and
+# re-stage it, so the committed blob and the worktree agree — same bytes, same single
+# `commit:` line — while body content is silently gone. Only inspecting the committed PATCH
+# fails this, which is why --verify asserts on the patch and not just on sizes.
+sed 's/^- Requirement line 42:.*/- Requirement line 42: REWRITTEN BY A PRE-COMMIT HOOK./' \
+  "$fixture_root/$verify_path" > "$fixture_root/hooked.tmp"
+mv "$fixture_root/hooked.tmp" "$fixture_root/$verify_path"
+git -C "$fixture_root" commit -q -m "simulate a hook that rewrote the body and re-staged it" -- "$verify_path"
+# Precondition: the read-back layer genuinely cannot tell — worktree and HEAD are identical.
+assert_equals "$(git -C "$fixture_root" cat-file -s "HEAD:$verify_path")" \
+  "$(wc -c < "$fixture_root/$verify_path" | tr -d '[:space:]')" \
+  "verify hook-rewrite: the committed blob and the worktree agree, so only the patch check can fire"
+run_record_script --verify "$verify_path" "$implementation_hash"
+assert_status 1 "verify hook-rewrite: exits 1"
+assert_output_matches "changed more than the 'commit:' line" \
+  "verify hook-rewrite: the message names what the metadata commit actually changed"
+
+# --- Probe 14: --verify run later than the procedure calls for ------------------------------
+# HEAD no longer touches the file, so there is no metadata-commit patch to inspect. That is
+# neither evidence of damage nor evidence of correctness: it must degrade with a stated reason
+# rather than false-fail or pass silently.
+git -C "$fixture_root" commit -q --allow-empty -m "an unrelated later commit"
+run_record_script --verify "do-work/archive/UR-900/REQ-1282-insert.md" "$implementation_hash"
+assert_status 0 "verify late: exits 0"
+assert_output_matches 'committed-patch check was skipped' "verify late: says the patch check did not run"
+assert_output_matches 'read-back only' "verify late: labels the weaker guarantee it did make"
+
+# --- Probe 15: --verify catches an outright truncation --------------------------------------
 : > "$fixture_root/do-work/archive/UR-900/REQ-1282-replace.md"
 git -C "$fixture_root" add -A
 git -C "$fixture_root" commit -q -m "simulate a hook that truncated the file"
@@ -427,6 +465,44 @@ assert_equals "$healthy_before" "$(cat "$restore_root/do-work/archive/UR-900/REQ
 run_restore_script --restore
 assert_status 0 "restore rerun: exits 0"
 assert_output_matches 'No blanked' "restore rerun: nothing left to restore"
+
+# --- --restore: a PARTIAL repair is a finding, not a success -------------------------------
+# Content back but the recorded commit: hash rejected leaves a file that looks healthy and is
+# committable with provenance pointing at nothing. Reporting that as repaired would put a
+# fresh falsehood into the very trail this pass exists to save, so it must exit non-zero.
+# The blanking commit here names a hash this repo cannot resolve — the shape the guarded
+# write-back refuses — which is how a real recorded hash goes bad (history rewritten,
+# recovered from a different clone).
+partial_root="$(mktemp -d)"
+cleanup_partial() { rm -rf "$partial_root"; }
+trap 'cleanup_fixture; cleanup_scan; cleanup_restore; cleanup_partial' EXIT
+
+git -c init.defaultBranch=main init -q "$partial_root"
+git -C "$partial_root" config user.name "Fixture Runner"
+git -C "$partial_root" config user.email "fixture@example.invalid"
+mkdir -p "$partial_root/do-work/archive/UR-900"
+partial_target="$partial_root/do-work/archive/UR-900/REQ-1289-partial.md"
+printf -- '---\nid: REQ-1289\ntitle: Partial fixture\nstatus: completed\ncompleted_at: 2026-07-30T10:00:00Z\ncommit: 0000000\n---\n\n# Partial fixture\n\nDecision trail that must come back even when the hash cannot.\n' \
+  > "$partial_target"
+git -C "$partial_root" add -A
+git -C "$partial_root" commit -q -m "[REQ-1289] Partial fixture (Route C)"
+partial_intact_bytes="$(wc -c < "$partial_target" | tr -d '[:space:]')"
+
+: > "$partial_target"
+git -C "$partial_root" add -A
+git -C "$partial_root" commit -q -m "[REQ-1289] record commit hash abcdef1234567"
+
+probe_output="$(cd "$partial_root" && "$scan_script" --restore 2>&1)"; probe_status=$?
+assert_status 1 "restore partial: exits 1 when the recorded hash cannot be re-applied"
+assert_output_matches 'content restored, but re-applying' \
+  "restore partial: names the file as content-restored-but-hash-failed"
+assert_output_matches 'does not resolve' \
+  "restore partial: passes the write-back's own diagnosis through instead of swallowing it"
+assert_output_matches 'Fully repaired 0 of 1' \
+  "restore partial: does not count a partial repair as a full one"
+# The content half must still have landed — a partial repair is reported, never rolled back.
+assert_equals "$partial_intact_bytes" "$(wc -c < "$partial_target" | tr -d '[:space:]')" \
+  "restore partial: the recovered content is written even though the hash failed"
 
 if [ "$fail_count" -gt 0 ]; then
   printf '%s guard probe(s) failed.\n' "$fail_count" >&2

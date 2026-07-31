@@ -6,6 +6,23 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.155.0 — Commit-Hash Verify Inspects the Committed Patch, Partial Restores Fail Loudly, Updater Flags Stale Files (2026-07-31)
+
+Three fixes from an external review of the data-loss guards shipped in 0.151–0.153. The headline: `--verify` was making a promise it couldn't keep against the commonest kind of pre-commit hook.
+
+- `record-commit-hash.sh --verify` now asserts the **committed patch** — HEAD introduced exactly one new line for the REQ, and that line is the `commit:` field. It used to compare the committed blob against the worktree, which proves nothing when a hook rewrites the file and re-stages it: both sides move together, so a body could be silently gutted while the sizes agreed. Where the patch can't be isolated (root commit, merge HEAD, file added by that same commit, or `--verify` run too late) it now says so and labels the weaker guarantee instead of reporting a clean pass.
+- `blanked-req-scan.sh --restore` no longer reports a partial repair as a repair. Content restored but its recorded hash rejected is its own outcome now: exit 1, a `FAIL:` line, and the write-back's own diagnosis passed through rather than swallowed. Previously that file counted as restored and `do-work cleanup` Pass 6 was told everything was fixed — then committed it with provenance pointing at nothing.
+- `do-work update` lists files sitting in your install that upstream no longer ships. The extraction only overwrites, so a deleted action or check used to survive downstream forever while the post-update audit reported clean — the old filter dropped "upstream removed this" and "that's your `.DS_Store`" on the same line. Reported, never auto-deleted: your own file in a shipped directory looks identical from there. (The `prompts/`/`interviews/` pre-clean already covered those two directories; this covers the rest.)
+- Four new probes in the guard fixture, including a re-staging hook that rewrites the body without changing what a blob read-back can see.
+
+## 0.154.0 — Project Justfile Left Alone, Failed Updates Roll Back, Lock Race Closed (2026-07-31)
+
+Three follow-ups from a review of the update script and the orchestrator lock. The headline: a failed `do-work update` now restores itself instead of leaving you a partial install and a path to fix by hand.
+
+- `do-work update` no longer overwrites a project-owned justfile when the skill lives at the project root. It records which of `justfile`/`Justfile`/`.justfile` the project actually uses — by real directory entry, since a case-insensitive filesystem makes `[ -f justfile ]` match a `Justfile` — and restores that exact name and content across the extraction. A nested install's justfile is the skill's own and still gets refreshed.
+- Any failure inside the destructive region now rolls the install back automatically: shipped paths are restored from the rollback copy, files the update added are cleared, and the copy is kept as the audit trail. Previously it printed the backup path and left the partial install in place.
+- The lock mutex's remaining lost-update window is closed, not just narrowed. The staged lock image now lives *inside* the mutex directory, so an evicting `rm -rf` destroys it and the evicted owner's publishing rename can only fail — and that rename now fails closed (exit 3, re-acquire) instead of swallowing the error.
+
 ## 0.153.1 — Guard Fixture Lints Clean (2026-07-31)
 
 Housekeeping in the commit-hash test fixture, plus one assertion that was written but never wired up.

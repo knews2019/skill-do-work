@@ -24,11 +24,16 @@
 #               (HEAD there names the changelog commit, not the implementation).
 #   Run from the project root — the directory containing do-work/.
 #
-#   --verify re-reads the COMMITTED blob after the metadata commit and confirms it matches
-#   what was verified before it. Run it after `git commit`. This is the only check that can
-#   catch a content-mutating pre-commit hook (a formatter, a lint --fix, a whitespace
-#   stripper) rewriting the file after every pre-commit guard has already passed — which is
-#   itself a sufficient mechanism for the incident above.
+#   --verify inspects what the metadata commit ACTUALLY committed. Run it after `git commit`.
+#   It is the only check that can catch a content-mutating pre-commit hook (a formatter, a
+#   lint --fix, a whitespace stripper) rewriting the file after every pre-commit guard has
+#   already passed — which is itself a sufficient mechanism for the incident above. What it
+#   proves is the committed PATCH: that HEAD introduced exactly one new line for this file and
+#   that the line is the expected `commit:` field. It does NOT merely compare the committed
+#   blob against the worktree — that comparison alone proves nothing against the commonest
+#   hook shape, which rewrites the worktree file and re-stages it so both sides move together.
+#   Where the patch cannot be isolated (root commit, merge HEAD, or the file added by this
+#   very commit) the mode says so explicitly rather than reporting a guarantee it did not make.
 #
 # This script does NOT stage or commit. `git add` and `git commit` stay with the caller, so
 # that a tripped guard is a stop signal on an unmodified file rather than a rollback.
@@ -113,7 +118,107 @@ if [ "$verify_mode" -eq 1 ]; then
     echo "  Do NOT re-run the write-back until the hook is fixed, and never reach for --no-verify."
     exit 1
   fi
-  echo "OK: $request_file reads back at $committed_bytes bytes with commit: $commit_hash recorded once."
+
+  # The read-back above is necessary but NOT sufficient, and treating it as sufficient is how
+  # this mode came to over-promise. It compares the committed blob against the WORKTREE, and
+  # the commonest content-mutating hook (lint-staged and friends) rewrites the worktree file
+  # and re-stages it — both sides move together, so ANY amount of body corruption compares
+  # equal for as long as one `commit: <hash>` line survives. What actually proves the claim is
+  # the committed patch: a metadata commit may introduce exactly one new line for this path,
+  # and that line must be the commit: field.
+  #
+  # Each skip below is a shape where no single-line change can be isolated, so the check is
+  # declared skipped rather than silently passed. `^` is quoted throughout: it is a glob
+  # operator in zsh and an escape character in cmd.exe, and this idiom gets copy-pasted.
+  patch_check_skip_reason=""
+  if ! git rev-parse --verify -q 'HEAD^{commit}' >/dev/null 2>&1; then
+    patch_check_skip_reason="HEAD does not resolve to a commit"
+  elif ! git rev-parse --verify -q 'HEAD^' >/dev/null 2>&1; then
+    patch_check_skip_reason="HEAD is a root commit, so there is no parent to diff it against"
+  elif git rev-parse --verify -q 'HEAD^2' >/dev/null 2>&1; then
+    patch_check_skip_reason="HEAD is a merge commit, which a metadata commit never is — this is not the commit the procedure describes"
+  elif ! git cat-file -e "HEAD^:$committed_full_name" 2>/dev/null; then
+    patch_check_skip_reason="$committed_full_name does not exist in HEAD^, so this commit ADDED it (an archive move committed together with the hash) and there is no one-line change to isolate"
+  fi
+
+  # --unified=0 drops context lines; --no-ext-diff / --no-textconv keep a configured diff
+  # driver from deciding what this guard gets to see; --no-renames keeps a single-path diff
+  # deterministic.
+  committed_patch_text=""
+  if [ -z "$patch_check_skip_reason" ]; then
+    committed_patch_text="$(git --no-pager diff --unified=0 --no-color --no-ext-diff --no-textconv --no-renames 'HEAD^' HEAD -- "$committed_full_name" 2>/dev/null)"
+    # Nothing to inspect means HEAD is not the metadata commit — --verify was run later than
+    # the procedure calls for. Say that plainly instead of failing (there is no evidence of
+    # damage) and instead of passing quietly (there is no evidence of correctness either).
+    if [ -z "$committed_patch_text" ]; then
+      patch_check_skip_reason="HEAD does not touch $committed_full_name, so HEAD is not this file's metadata commit — run --verify immediately after that commit"
+    fi
+  fi
+
+  if [ -n "$patch_check_skip_reason" ]; then
+    echo "INFO: the committed-patch check was skipped — $patch_check_skip_reason."
+    echo "  Only the read-back ran, and it cannot see a same-size body rewrite (a hook that re-stages its own edit moves the worktree too)."
+    echo "  If a content-mutating hook is suspected here, read the diff yourself: git show --stat HEAD -- $request_file"
+    echo "OK (read-back only): $request_file reads back at $committed_bytes bytes with commit: $commit_hash recorded once."
+    exit 0
+  fi
+
+  # Net added / net removed: an added line cancelled by an identical removed line is a
+  # relocation, not a content change. That cancellation is what lets the legitimate
+  # missing-trailing-newline rewrite (the last body line reappears verbatim) through without
+  # loosening the count to "one or two". Hunk bodies only — `@@` gates out the ---/+++ headers
+  # without a prefix match that a body line beginning `++` could impersonate.
+  # shellcheck disable=SC2016  # an awk program: $0 must reach awk unexpanded
+  net_line_filter='
+    /^@@/ { in_hunk = 1; next }
+    !in_hunk { next }
+    substr($0, 1, 1) == "+" { text = substr($0, 2); added_order[++added_total] = text; added_count[text]++; next }
+    substr($0, 1, 1) == "-" { text = substr($0, 2); removed_order[++removed_total] = text; removed_count[text]++; next }
+    END {
+      if (wanted_side == "added") {
+        for (i = 1; i <= added_total; i++) {
+          text = added_order[i]
+          if (removed_count[text] > 0) { removed_count[text]--; continue }
+          print text
+        }
+      } else {
+        for (i = 1; i <= removed_total; i++) {
+          text = removed_order[i]
+          if (added_count[text] > 0) { added_count[text]--; continue }
+          print text
+        }
+      }
+    }'
+  net_added_lines="$(printf '%s\n' "$committed_patch_text" | awk -v wanted_side=added "$net_line_filter")"
+  net_removed_lines="$(printf '%s\n' "$committed_patch_text" | awk -v wanted_side=removed "$net_line_filter")"
+  net_added_count="$(printf '%s' "$net_added_lines" | awk 'END { print NR + 0 }')"
+  net_removed_count="$(printf '%s' "$net_removed_lines" | awk 'END { print NR + 0 }')"
+
+  committed_patch_ok=1
+  [ "$net_added_count" -eq 1 ] || committed_patch_ok=0
+  [ "$net_added_lines" = "commit: $commit_hash" ] || committed_patch_ok=0
+  # Zero on an insert, one on a replace — and on a replace it can only be the old commit line.
+  [ "$net_removed_count" -le 1 ] || committed_patch_ok=0
+  if [ "$net_removed_count" -eq 1 ]; then
+    case "$net_removed_lines" in
+      commit:*) ;;
+      *) committed_patch_ok=0 ;;
+    esac
+  fi
+
+  if [ "$committed_patch_ok" -ne 1 ]; then
+    echo "FAIL: the metadata commit changed more than the 'commit:' line of $request_file."
+    echo "  net added: $net_added_count line(s) (expected exactly 1: 'commit: $commit_hash')"
+    echo "  net removed: $net_removed_count line(s) (expected 0, or 1 'commit:' line on a replace)"
+    printf '%s\n' "$committed_patch_text" | head -n 40 | sed 's/^/    /'
+    echo "  A read-back of the blob alone would have PASSED this: a pre-commit hook that rewrites"
+    echo "  the file and re-stages it moves the worktree too, so the sizes agree while the body is gone."
+    echo "  Recover:  git checkout 'HEAD^' -- $request_file   (the pre-metadata-commit content), then fix that hook."
+    echo "  Do NOT re-run the write-back until the hook is fixed, and never reach for --no-verify."
+    exit 1
+  fi
+
+  echo "OK: $request_file reads back at $committed_bytes bytes, and HEAD's patch for it is exactly the one line 'commit: $commit_hash'."
   exit 0
 fi
 

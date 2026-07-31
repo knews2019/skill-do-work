@@ -32,9 +32,13 @@
 # `<recorded-hash>` is `-` when no blanking commit message carried one. Callers consuming
 # these records must handle both.
 #
-# Exit 0: nothing damaged (or no do-work/ directory to scan).
+# Exit 0: nothing damaged (or no do-work/ directory to scan). Under --restore, every damaged
+#         file was FULLY repaired — content back AND the recorded commit: hash re-applied.
 # Exit 1: at least one damaged file was found. This is a finding, not an error — callers that
-#         treat non-zero as a crash will misreport a successful scan.
+#         treat non-zero as a crash will misreport a successful scan. Under --restore it also
+#         covers a PARTIAL repair: content restored but its recorded hash could not be
+#         re-applied. That file is committable with wrong provenance, so it must not be
+#         reported as repaired (actions/cleanup.md Pass 6 keys its report on this exit code).
 # Exit 2: usage error.
 #
 # Read-only. This script never writes, moves, or commits anything, which is what lets
@@ -133,70 +137,86 @@ resolve_recorded_hash() {
 }
 
 # Restore one damaged file from its recovery commit, then re-apply the recorded hash through
-# the guarded write-back. Prints "1" on stdout when a file was actually restored and "0"
-# otherwise, so the caller can count; everything human-readable goes to stderr, keeping the
-# count clean. Content is written to a temp file in the target's own directory and moved into
+# the guarded write-back. Prints ONE outcome token on stdout — `restored`, `partial`, or
+# `skipped` — so the caller can tally; everything human-readable goes to stderr, keeping the
+# token clean. It has to be a token rather than a 1/0 count because "content is back but its
+# commit: hash is not" is neither a success nor a no-op: the file is committable, and
+# committing it records wrong provenance under a report that claims full repair. This runs in
+# a command substitution, so a variable set here cannot reach the caller — the token is the
+# only channel. Content is written to a temp file in the target's own directory and moved into
 # place only after it is confirmed non-empty — the recovery must never itself blank the file.
 restore_one_file() {
   local target_path="$1" recovery_sha="$2" recorded_hash="$3"
-  local tracked_name recovered_bytes restore_temp
+  local tracked_name recovered_bytes restore_temp write_back_output
 
   if [ "$recovery_sha" = "-" ]; then
     echo "SKIP: $target_path — no recoverable content in git history; nothing to restore." >&2
-    printf '0'
+    printf 'skipped'
     return 0
   fi
   tracked_name="$(git ls-files --full-name -- "$target_path" 2>/dev/null)"
   if [ -z "$tracked_name" ]; then
     echo "SKIP: $target_path — not tracked by git, so its history cannot be read." >&2
-    printf '0'
+    printf 'skipped'
     return 0
   fi
   recovered_bytes="$(git cat-file -s "$recovery_sha:$tracked_name" 2>/dev/null || echo 0)"
 
   if [ "$dry_run_mode" -eq 1 ]; then
     echo "WOULD RESTORE: $target_path — $recovered_bytes bytes from commit $recovery_sha, then set commit: ${recorded_hash}." >&2
-    printf '0'
+    printf 'skipped'
     return 0
   fi
 
   restore_temp="$(mktemp "$(dirname "$target_path")/.blanked-restore.XXXXXX")" || {
     echo "FAIL: cannot create a temp file next to $target_path; nothing was written." >&2
-    printf '0'
+    printf 'skipped'
     return 0
   }
   if ! git cat-file -p "$recovery_sha:$tracked_name" > "$restore_temp" 2>/dev/null; then
     rm -f "$restore_temp"
     echo "FAIL: could not read $recovery_sha:$tracked_name out of git; $target_path is unchanged." >&2
-    printf '0'
+    printf 'skipped'
     return 0
   fi
   if [ ! -s "$restore_temp" ]; then
     rm -f "$restore_temp"
     echo "FAIL: the recovered content for $target_path is empty; refusing to write it. $target_path is unchanged." >&2
-    printf '0'
+    printf 'skipped'
     return 0
   fi
   if ! mv "$restore_temp" "$target_path"; then
     rm -f "$restore_temp"
     echo "FAIL: could not move the recovered content into $target_path; it is unchanged." >&2
-    printf '0'
+    printf 'skipped'
     return 0
   fi
   echo "RESTORED: $target_path — $recovered_bytes bytes from commit $recovery_sha." >&2
 
   if [ "$recorded_hash" = "-" ]; then
+    # Not a failure: no hash was ever recoverable, so there is nothing this run could have
+    # applied. The content — the irreplaceable part — is fully back, so it counts as restored;
+    # the missing provenance is reported for the operator instead of failing the whole repair.
     echo "  NOTE: the commit that emptied it carried no 'record commit hash' message, so commit: was left as recovered. Identify the implementation hash by hand and apply it with tools/checks/record-commit-hash.sh." >&2
-  elif "$record_commit_hash_script" "$target_path" "$recorded_hash" >/dev/null 2>&1; then
-    echo "  commit: set to $recorded_hash (via the guarded write-back)." >&2
-  else
-    echo "  WARN: the content is restored, but re-applying commit: $recorded_hash failed. Run tools/checks/record-commit-hash.sh on it and read its output — do not hand-edit." >&2
+    printf 'restored'
+    return 0
   fi
-  printf '1'
+  # The write-back's own output is the diagnosis (which guard tripped, and what to do). Passing
+  # it through indented, rather than swallowing it, is what makes "run it yourself" unnecessary.
+  if write_back_output="$("$record_commit_hash_script" "$target_path" "$recorded_hash" 2>&1)"; then
+    echo "  commit: set to $recorded_hash (via the guarded write-back)." >&2
+    printf 'restored'
+    return 0
+  fi
+  echo "FAIL: $target_path — content restored, but re-applying commit: $recorded_hash did NOT succeed." >&2
+  printf '%s\n' "$write_back_output" | sed 's/^/    /' >&2
+  echo "  This file now holds the right content with the WRONG commit: provenance. Fix it with tools/checks/record-commit-hash.sh before committing — do not hand-edit the frontmatter." >&2
+  printf 'partial'
 }
 
 damaged_count=0
 restored_count=0
+partial_count=0
 
 # `find` recurses, so this surfaces loose archive REQs and UR-nested ones in one pass; a
 # top-level glob would silently miss every UR folder. UR-*.md files are included because the
@@ -241,7 +261,13 @@ while IFS= read -r candidate_file; do
     fi
   fi
   if [ "$restore_mode" -eq 1 ]; then
-    restored_count=$((restored_count + $(restore_one_file "$candidate_file" "$recovery_sha" "$recorded_hash")))
+    case "$(restore_one_file "$candidate_file" "$recovery_sha" "$recorded_hash")" in
+      restored) restored_count=$((restored_count + 1)) ;;
+      # Content is back, so it is no longer damaged — but it is not repaired either, and the
+      # summary below turns any partial into a non-zero exit.
+      partial)  partial_count=$((partial_count + 1)) ;;
+      *) ;;
+    esac
     continue
   fi
 
@@ -260,13 +286,20 @@ fi
 
 # A completed repair is a success, not a finding — exit 0 so cleanup's Pass 6 can tell "I
 # fixed it" from "there is damage here". A dry run reports damage without fixing it, so it
-# keeps the finding exit code.
+# keeps the finding exit code. A PARTIAL repair is a finding too: its content is back but its
+# commit: field is not what the blanking commit recorded, and exiting 0 there would hand
+# cleanup a "fully repaired" report over a file that is about to be committed with wrong
+# provenance — the one outcome that puts a fresh lie into the trail this script exists to save.
 if [ "$restore_mode" -eq 1 ] && [ "$dry_run_mode" -eq 0 ]; then
-  echo "Restored $restored_count of $damaged_count damaged file(s). Re-run the scan to confirm, then commit the restored paths."
-  if [ "$restored_count" -lt "$damaged_count" ]; then
-    echo "$((damaged_count - restored_count)) could not be restored — see the SKIP/FAIL lines above."
-    exit 1
+  echo "Fully repaired $restored_count of $damaged_count damaged file(s). Re-run the scan to confirm, then commit the repaired paths."
+  if [ "$partial_count" -gt 0 ]; then
+    echo "$partial_count more had their content restored but NOT their recorded commit: hash — see the FAIL lines above. Apply the hash before committing those paths."
   fi
+  unresolved_count=$((damaged_count - restored_count - partial_count))
+  if [ "$unresolved_count" -gt 0 ]; then
+    echo "$unresolved_count could not be restored at all — see the SKIP/FAIL lines above."
+  fi
+  [ "$restored_count" -eq "$damaged_count" ] || exit 1
   exit 0
 fi
 
