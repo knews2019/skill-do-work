@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.156.1
+**Current version**: 0.157.0
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -69,7 +69,7 @@ When user asks "check for updates", "update", or "is there a newer version":
      Do NOT proceed. Do NOT suggest the curl command.
    - Only continue once `<skill-root>` is confirmed to live inside `<project-root>` (the git root, or the invocation directory when the project isn't a git repo) and not under any global skills location.
 3. **Check for local changes** to shipped skill files at `<skill-root>`:
-   - **Scope the check to skill-owned files only.** Ignore `do-work/` (queue data, archives, deliverables) — those are generated at runtime and should never block an update.
+   - **Scope the check to skill-owned files only.** Ignore `do-work/` (queue data, archives, deliverables) and `kb/` (the project's knowledge base) — those are project-owned runtime content, never overwritten by the update, and should never block it.
    - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ prompts/ interviews/ specs/ docs/ hooks/ tools/ CHANGELOG.md README.md next-steps.md` (listing every shipped editable path) and check for uncommitted changes. Any dirty file in these paths will be clobbered by the tar extraction in step 5 if you proceed. (Archived release notes are not shipped paths: entries older than the newest 20 live in `CHANGELOG-archive.md`, which is export-ignored — git clones have it on disk, tarball installs browse it at <https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-archive.md>. Pre-0.65 archives `CHANGELOG-2026-spring.md` and `CHANGELOG-pre-0.50.md` were removed in 0.76.0 and remain readable at commit `bf15fe2` on GitHub; git-cloned copies can `git show bf15fe2:CHANGELOG-2026-spring.md` locally.)
    - **Also catch _committed_ customizations before extraction** (git-repo installs) and local edits in non-git installs with a fresh upstream tarball diff. `git status --porcelain` only reports _uncommitted_ edits; a customization committed locally (including an edit to `actions/version.md` itself) otherwise looks clean. Before any destructive write (no pre-clean, no delete, no extraction yet), download the upstream tarball once, extract it to a temporary fresh upstream tree, and diff the current install against that tree:
      ```bash
@@ -85,7 +85,7 @@ When user asks "check for updates", "update", or "is there a newer version":
      curl -fsSL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz -o "$UPSTREAM_TARBALL" \
        || { echo "Upstream tarball download failed; aborting before any destructive write."; rm -rf "$UPDATE_TMP"; exit 1; }
      tar xzf "$UPSTREAM_TARBALL" -C "$FRESH_UPSTREAM" --strip-components=1 \
-       --exclude='_dev' --exclude='do-work' --exclude='ai-reports' \
+       --exclude='_dev' --exclude='do-work' --exclude='kb' --exclude='ai-reports' \
        --exclude='.vscode' --exclude='decisions'
      SHIPPED_PATHS=(SKILL.md actions crew-members prompts interviews specs docs hooks tools CHANGELOG.md README.md next-steps.md)
      for shipped_path in "${SHIPPED_PATHS[@]}"; do
@@ -106,14 +106,14 @@ When user asks "check for updates", "update", or "is there a newer version":
    UPDATE_TMP="${TMPDIR:-/tmp}/do-work-update"
    UPSTREAM_TARBALL="$UPDATE_TMP/upstream.tar.gz"
    test -s "$UPSTREAM_TARBALL" || { echo "Reviewed tarball missing at $UPSTREAM_TARBALL — go back to Step 3 and re-run the download + diff. Do NOT re-download here."; exit 1; }
-   cd <skill-root> && tar xzf "$UPSTREAM_TARBALL" --strip-components=1 --exclude='_dev' --exclude='do-work' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
+   cd <skill-root> && tar xzf "$UPSTREAM_TARBALL" --strip-components=1 --exclude='_dev' --exclude='do-work' --exclude='kb' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
    ```
    Never substitute a fresh `curl | tar` if the tarball is missing — extracting bytes that were never diffed defeats the entire Step 3 customization review.
    Then remove the two stale maintainer-doc files that installs ≤0.135.x shipped (no longer in the tarball as of 0.136.0, and extraction never deletes what upstream removed — without this they'd sit in every old install forever, auto-loaded into context by agents reading skill files):
    ```bash
    rm -f <skill-root>/CLAUDE.md <skill-root>/AGENTS.md
    ```
-   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. The `--exclude` flags (`_dev`, `do-work`, `ai-reports`, `.vscode`, `decisions`) keep the upstream repo's own dev tooling, queue/archive, sample reports, editor settings, and design-decision ADRs from landing in this install — belt-and-suspenders with the repo's `.gitattributes export-ignore`, which already strips all of them (plus the dev dotfiles `.gitignore`/`.gitattributes`) from the tarball (the flags also cover older tarballs built before that file existed). For non-discoverable directories (`actions/`, `crew-members/`, `specs/`, `docs/`) leftovers are harmless — the skill only loads files it references by name. For `prompts/` and `interviews/`, the pre-clean step above is what prevents ghost entries; if you skipped it, run `do-work prompts list` and `do-work interview list` after updating and delete anything that looks obsolete. Never delete `do-work/` (runtime state).
+   **Note:** tar extraction adds and overwrites files but does not delete files removed upstream. The `--exclude` flags (`_dev`, `do-work`, `kb`, `ai-reports`, `.vscode`, `decisions`) keep the upstream repo's own dev tooling, queue/archive, knowledge base, sample reports, editor settings, and design-decision ADRs from landing in this install — belt-and-suspenders with the repo's `.gitattributes export-ignore`, which already strips all of them (plus the dev dotfiles `.gitignore`/`.gitattributes`) from the tarball (the flags also cover older tarballs built before that file existed). For non-discoverable directories (`actions/`, `crew-members/`, `specs/`, `docs/`) leftovers are harmless — the skill only loads files it references by name. For `prompts/` and `interviews/`, the pre-clean step above is what prevents ghost entries; if you skipped it, run `do-work prompts list` and `do-work interview list` after updating and delete anything that looks obsolete. Never delete `do-work/` or `kb/` (project-owned runtime state).
 6. **Verify, then audit the overwrite**: Read `<skill-root>/actions/version.md` again and confirm the local version now matches the remote version. Then compare the post-update install to the same fresh upstream tree from Step 3 by re-running the `SHIPPED_PATHS` diff loop — re-derive `UPDATE_TMP`/`FRESH_UPSTREAM` exactly as the Step 3 block does (this is another fresh shell; the variables are gone). It should now be empty except for user-approved customizations that were deliberately re-applied. For a git install, `git -C <skill-root> diff -- <the shipped paths from Step 3>` or `git -C <skill-root> status` is still useful for the commit, but it is no longer the customization detector. For a non-git install, keep the `<skill-root>.preupdate-bak` snapshot until this audit passes, then delete the snapshot and `$UPDATE_TMP`.
 7. **Report result**: `Updated to v{remote} at <skill-root>.`
 
@@ -137,7 +137,7 @@ Attempt the update anyway using the curl command above (still respecting the pre
 To manually update, cd into the **project-local** skill root (where SKILL.md lives inside *this* project — NOT ~/.claude/skills/, ~/.gemini/skills/, or any other global skills directory) and run:
 
 cd <project-root>/path/to/skill-do-work
-curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev' --exclude='do-work' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
+curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz | tar xz --strip-components=1 --exclude='_dev' --exclude='do-work' --exclude='kb' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
 rm -f CLAUDE.md AGENTS.md  # stale maintainer docs from installs ≤0.135.x; not shipped since 0.136.0
 
 Or visit: https://github.com/knews2019/skill-do-work

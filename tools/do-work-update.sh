@@ -229,7 +229,7 @@ curl -fsSL -o "$upstream_tarball.download" "$upstream_url" \
   || fail 'upstream tarball download failed; no files were changed'
 mv "$upstream_tarball.download" "$upstream_tarball"
 tar xzf "$upstream_tarball" -C "$fresh_upstream" --strip-components=1 \
-  --exclude='_dev' --exclude='do-work' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
+  --exclude='_dev' --exclude='do-work' --exclude='kb' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
 
 remote_version="$(sed -n 's/^\*\*Current version\*\*: *\([0-9][0-9.]*\).*/\1/p' "$fresh_upstream/actions/version.md" | head -n 1)"
 [ -n "$remote_version" ] || fail 'could not read the upstream version'
@@ -307,7 +307,7 @@ install_modified=1
 find "$skill_root/prompts" -maxdepth 1 -name '*.md' ! -name 'README.md' -delete 2>/dev/null || true
 find "$skill_root/interviews" -maxdepth 1 -name '*.md' -delete 2>/dev/null || true
 tar xzf "$upstream_tarball" -C "$skill_root" --strip-components=1 \
-  --exclude='_dev' --exclude='do-work' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
+  --exclude='_dev' --exclude='do-work' --exclude='kb' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
 
 # Root fallback only: undo the extraction's write to the project-owned justfile. Always
 # delete the extracted lowercase `justfile` FIRST, then put the project's own file back under

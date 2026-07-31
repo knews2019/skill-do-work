@@ -355,6 +355,26 @@ assert_contains \
   '^/AGENTS\.md[[:space:]]+export-ignore' \
   '.gitattributes must export-ignore /AGENTS.md — the redirect stub must not ship to consumer installs.'
 
+# do-work/ and kb/ are TRACKED in this repo (they are the same Trail of Intent the skill tells
+# consumers to commit, and the tracked-path-only data-loss guards in tools/checks/record-commit-hash.sh
+# plus cleanup Pass 6 blanked-REQ recovery only work on tracked REQs). That makes these two
+# export-ignore lines the only barrier between the maintainer's queue/KB and every consumer
+# install — the pre-0.157.0 blanket .git/info/exclude entry no longer backstops them.
+assert_contains \
+  ".gitattributes" \
+  '^/do-work[[:space:]]+export-ignore' \
+  '.gitattributes must export-ignore /do-work — this repo tracks its own queue, so without this line the maintainer archive ships to every consumer install.'
+
+assert_contains \
+  ".gitattributes" \
+  '^/kb[[:space:]]+export-ignore' \
+  '.gitattributes must export-ignore /kb — this repo tracks its own knowledge base, so without this line it ships to every consumer install.'
+
+assert_contains \
+  "tools/do-work-update.sh" \
+  "--exclude='kb'" \
+  'tools/do-work-update.sh must exclude the upstream knowledge base from both extractions (belt-and-suspenders with /kb export-ignore).'
+
 # Shipped files must not cite the skill's own CLAUDE.md/AGENTS.md — those files are absent
 # downstream, so a citation dangles. The idiom patterns are illustrative, not exhaustive
 # (references to a *consumer project's* CLAUDE.md, like capture.md's prime routing, are fine);

@@ -6,6 +6,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.157.0 — Source Repo Now Tracks Its Own Queue and Knowledge Base (2026-07-31)
+
+This repo had been keeping its own `do-work/` and `kb/` untracked via a local `.git/info/exclude` entry, on the theory that committing them would leak the maintainer's queue into consumer installs. That theory was already false — `.gitattributes` `export-ignore` plus the tar `--exclude` flags do that job, and the tarball has never contained either directory. Meanwhile the blanket ignore was costing real safety: several of the skill's own guards only work on tracked files, so the repo that dogfoods do-work was running with them silently disabled.
+
+- `do-work/` and `kb/` are now tracked here, matching the Trail of Intent the skill tells consumers to commit. That re-arms `record-commit-hash.sh`'s HEAD size-floor and numstat data-loss guards, and makes `do-work cleanup` Pass 6 blanked-REQ recovery functional instead of a permanent no-op. It also ends a hybrid state where 25 archived REQs were tracked and 54 weren't.
+- `/kb export-ignore` added to `.gitattributes`, and `--exclude='kb'` added to all six install/update tar invocations (README, `actions/version.md` ×3, `tools/do-work-update.sh` ×2). Consumers' own `kb/` was already safe — extraction never deleted it — this keeps *upstream's* KB from landing in their skill directory.
+- New contract regressions assert `/do-work export-ignore`, `/kb export-ignore`, and the `kb` tar exclude. Those lines are now the only barrier to shipping the maintainer's archive, so they get a ratchet rather than a comment.
+- Only genuinely-transient runtime state stays locally excluded: the orchestrator lock and its mutex files, plus preflight's `do-work/working/baseline.json` and `baseline-failures.txt`.
+- Caught on the way in: archived `REQ-034` had 833 KB of raw Explore-agent session JSONL pasted into its `## Exploration` section where the agent's summary belonged. Verbatim session capture — UUIDs, prompt text, local paths — has no business in permanent history, so the block is replaced by a note explaining the removal; the REQ's Scope/Verification/Decisions sections are untouched (844 KB → 32 KB).
+- Fixed a stale claim in `actions/note.md` that `do-work/pipeline.json` is kept out of git "via the shipped `.gitignore`" — `.gitignore` is itself export-ignored, so no `.gitignore` ever ships. `actions/pipeline.md` Step 4's `.git/info/exclude` entry is the real mechanism.
+
 ## 0.156.1 — Verify Pins Removed Lines to the Parent's Frontmatter, Updater Warns About Uncommitted Edits (2026-07-31)
 
 Two follow-ups from an external review of 0.155–0.156. Both were narrow, and both had a way of losing content quietly.
