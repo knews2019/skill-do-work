@@ -359,6 +359,69 @@ assert_status 0 "scan clean: exits 0 when nothing is blanked"
 assert_output_matches 'No blanked' "scan clean: says nothing was found"
 rm -rf "$clean_root"
 
+# --- --restore: the repair path (actions/cleanup.md Pass 6) -------------------------------
+# This is the recovery that had to be performed by hand for six files in the incident. The
+# assertion that matters is byte-identity with the pre-blanking blob apart from the one
+# commit: line — a restore that "mostly" recovers the content is not a recovery.
+restore_root="$(mktemp -d)"
+cleanup_restore() { rm -rf "$restore_root"; }
+trap 'cleanup_fixture; cleanup_scan; cleanup_restore' EXIT
+
+git -c init.defaultBranch=main init -q "$restore_root"
+git -C "$restore_root" config user.name "Fixture Runner"
+git -C "$restore_root" config user.email "fixture@example.invalid"
+mkdir -p "$restore_root/do-work/archive/UR-900"
+restore_target="$restore_root/do-work/archive/UR-900/REQ-1282-restore.md"
+{
+  printf -- '---\nid: REQ-1282\ntitle: Restore fixture\nstatus: completed\ncompleted_at: 2026-07-30T10:00:00Z\ncommit: 0000000\n---\n\n# Restore fixture\n\n'
+  padding_index=0
+  while [ "$padding_index" -lt 150 ]; do
+    printf -- '- irreplaceable decision trail line %s.\n' "$padding_index"
+    padding_index=$((padding_index + 1))
+  done
+} > "$restore_target"
+# A healthy file the restore must not touch.
+printf -- '---\nid: REQ-1288\nstatus: completed\n---\n\nHealthy body.\n' \
+  > "$restore_root/do-work/archive/UR-900/REQ-1288-healthy.md"
+git -C "$restore_root" add -A
+git -C "$restore_root" commit -q -m "[REQ-1282] Restore fixture (Route C)"
+expected_restored_content="$(cat "$restore_target")"
+healthy_before="$(cat "$restore_root/do-work/archive/UR-900/REQ-1288-healthy.md")"
+# The recorded hash must be a REAL commit, as it is in the field: it is the implementation
+# commit Step 9 just made. record-commit-hash.sh refuses a hash the repo cannot resolve, so a
+# fictional one would (correctly) be rejected and the restore would leave commit: untouched.
+restore_recorded_hash="$(git -C "$restore_root" rev-parse --short HEAD)"
+
+: > "$restore_target"
+git -C "$restore_root" add -A
+git -C "$restore_root" commit -q -m "[REQ-1282] record commit hash $restore_recorded_hash"
+
+run_restore_script() {
+  probe_output="$(cd "$restore_root" && "$scan_script" "$@" 2>&1)"
+  probe_status=$?
+}
+
+# --dry-run must report the plan and write nothing.
+run_restore_script --restore --dry-run
+assert_output_matches 'REQ-1282-restore\.md' "restore dry-run: names the file it would restore"
+assert_equals "0" "$(wc -c < "$restore_target" | tr -d '[:space:]')" \
+  "restore dry-run: writes nothing"
+
+run_restore_script --restore
+assert_status 0 "restore: exits 0 after a successful repair"
+# Byte-identical to the pre-blanking content except the one commit: line, which must now
+# carry the hash recorded in the blanking commit's own message.
+expected_after_restore="$(printf '%s' "$expected_restored_content" | sed "s/^commit: 0000000$/commit: $restore_recorded_hash/")"
+assert_equals "$expected_after_restore" "$(cat "$restore_target")" \
+  "restore: content matches the pre-blanking blob byte for byte, with the recorded hash applied"
+assert_equals "$healthy_before" "$(cat "$restore_root/do-work/archive/UR-900/REQ-1288-healthy.md")" \
+  "restore: the healthy neighbour is untouched"
+
+# Re-running finds nothing left to repair.
+run_restore_script --restore
+assert_status 0 "restore rerun: exits 0"
+assert_output_matches 'No blanked' "restore rerun: nothing left to restore"
+
 if [ "$fail_count" -gt 0 ]; then
   printf '%s guard probe(s) failed.\n' "$fail_count" >&2
   exit 1

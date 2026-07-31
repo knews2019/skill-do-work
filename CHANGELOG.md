@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.153.0 — Cleanup Restores Blanked Archived REQs (2026-07-31)
+
+Forensics could tell you an archived REQ's content had been destroyed; now cleanup can put it back. The recovery used to be hand-rolled git archaeology, one file at a time, against a deadline — the lost content only survives until `git gc` collects it.
+
+- New `### Pass 6` in `do-work cleanup`: shows a dry run first (which file, which commit, how many bytes, which hash goes back), asks before writing, and restores only what you approve. Unattended runs report and stop.
+- `tools/checks/blanked-req-scan.sh --restore` does the work — temp file plus atomic rename, refuses to write recovered content that's itself empty, and re-applies `commit:` by calling `record-commit-hash.sh` rather than hand-editing frontmatter, so the guards come along.
+- `--dry-run` writes nothing and keeps the finding exit code; a completed repair exits 0, because a fixed thing is not a finding.
+- A file git has no non-empty version of is reported as a permanent loss, never silently skipped.
+- Seven restore probes added to the git fixture suite, including the full six-file incident reproduction and a byte-identity assertion against the pre-blanking blob.
+
 ## 0.152.0 — Forensics Detects Blanked REQ Files (2026-07-30)
 
 `do-work forensics` can now tell "this REQ's content was destroyed" apart from "this REQ has a typo in its status." Previously a 0-byte archived REQ showed up as an `unrecognized status ''` warning whose suggested fix — edit the status field — would have written over a file that needed recovering first.

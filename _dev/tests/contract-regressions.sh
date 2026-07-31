@@ -201,6 +201,7 @@ hardened_check_scripts=(
   "tools/checks/qualify.sh|actions/work.md"
   "tools/checks/record-commit-hash.sh|actions/work.md"
   "tools/checks/blanked-req-scan.sh|actions/forensics.md"
+  "tools/checks/blanked-req-scan.sh|actions/cleanup.md"
 )
 
 for check_script_entry in "${hardened_check_scripts[@]}"; do

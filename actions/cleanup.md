@@ -13,7 +13,7 @@ The archive should be a collection of self-contained UR folders, each containing
 
 **Do NOT use when:**
 - User wants *diagnostics* on pipeline health — route to actions/forensics.md instead
-- User wants to *delete* or discard work — cleanup only reorganizes work items (URs, REQs), never deletes them. Two narrow exceptions: Pass 4 sweeps *consumed* run scratch (a `Status: consumed` directory under `do-work/runs/`) after its findings have been promoted — spent scratch, not work; and Pass 5 removes orphaned `worktree-agent-*` git worktrees and branches, mechanically only when they are already merged, and otherwise only with the user's explicit consent.
+- User wants to *delete* or discard work — cleanup only reorganizes work items (URs, REQs), never deletes them. Three narrow exceptions: Pass 4 sweeps *consumed* run scratch (a `Status: consumed` directory under `do-work/runs/`) after its findings have been promoted — spent scratch, not work; Pass 5 removes orphaned `worktree-agent-*` git worktrees and branches, mechanically only when they are already merged, and otherwise only with the user's explicit consent; and Pass 6 *restores* content to archived REQs that were blanked by an unguarded write-back — it writes work back in rather than reorganizing it, which is why it asks first.
 
 ## When This Runs
 
@@ -22,7 +22,7 @@ The archive should be a collection of self-contained UR folders, each containing
 
 ## Steps
 
-Six passes, in order:
+Seven passes, in order:
 
 ### Pass 0: Sweep Finished Queue Items
 
@@ -134,6 +134,34 @@ Removes the git worktrees and branches left behind when `actions/work.md`'s work
 
 Unlike Pass 4, nothing here is spent scratch by construction: an unmerged `worktree-agent-*` branch can hold the only copy of a builder's work. That is why this is the one pass that asks before deleting.
 
+### Pass 6: Restore Blanked Archived REQs (consent-gated)
+
+Recovers archived REQ and UR files whose content was destroyed by an unguarded `commit:` write-back — the file survives as 0 bytes or with its frontmatter gone, so the decision trail it held is only in git history. (Origin incident: six archived REQs, 8 KB to 26 KB each, were truncated to nothing in a consumer repo; each blanking commit reported `1 file changed, N deletions(-)` and nothing read that number.) `tools/checks/record-commit-hash.sh` is the guard that prevents new damage; this pass repairs damage that already happened.
+
+**Runs last, after the passes above have moved files.** A blanked REQ that Pass 1 or Pass 2 just consolidated into a UR folder is scanned at its final path, so the restore writes where the file now lives and the Commit section stages one path per file rather than a move plus an edit.
+
+**The window is finite.** The lost content lives only in unreferenced git objects until a `git gc` collects them, so a detected-but-deferred restore can become unrecoverable. Report that alongside any finding the user declines.
+
+**Non-interactive runs report only, never write.** Same interactivity test as Pass 5 (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**, *Interactivity test*); an ambiguous result counts as non-interactive. The automatic end-of-work-loop invocation (`actions/work.md` Step 10) is that case.
+
+1. **Detect.** Run the shipped scanner — read-only, and a no-op exit when `do-work/` holds nothing damaged:
+
+   ```bash
+   <skill-root>/tools/checks/blanked-req-scan.sh
+   ```
+
+   Nothing found → the pass is done, report nothing. If the script is missing, skip the pass and report that it is missing; do not hand-roll the git archaeology.
+
+2. **Show the plan.** Run the same scanner with `--restore --dry-run`. It names each file, the commit its content would be recovered from, the byte count, and the `commit:` hash it would re-apply — and writes nothing.
+
+3. **Ask.** Load `crew-members/clear-questions.md` and ask with your environment's ask-user prompt whether to restore the listed files. State what a *yes* does: each file's content is overwritten with the recovered blob, so any edit made to the file since it was blanked is discarded. Restore only what the user approves.
+
+4. **Restore.** On approval, run `<skill-root>/tools/checks/blanked-req-scan.sh --restore`. It writes each file via a temp file in the file's own directory plus an atomic rename, refuses to write recovered content that is itself empty, and re-applies `commit:` by calling `tools/checks/record-commit-hash.sh` — never by editing frontmatter itself. Exit 0 means every damaged file was repaired; exit 1 means at least one could not be, with a `SKIP:`/`FAIL:` line naming which and why. Record each restored path for the Commit section and report: `Restored <path> (<N> bytes from <sha>, commit: <hash>)`.
+
+5. **A file with no recovery source is reported, not restored.** The scanner emits `-` for a file git has no prior content for (never committed non-empty, or history rewritten past it). Say so plainly — it is a permanent loss and the user should check backups.
+
+Unlike every pass above, this one writes *into* work items rather than moving them, which is why it asks: the recovered blob is the pre-blanking commit's version, so it silently discards anything written to the file afterward.
+
 ### Repoint Documentation Links
 
 Durable docs outside `do-work/` may link to files the passes above just moved (e.g. a prime doc's `## Lessons` section linking `[REQ-987](../do-work/archive/REQ-987-slug.md)`). The move is the only moment both the old and new path are known, so repointing is part of cleanup — not a separate "find broken links" sweep afterward.
@@ -167,6 +195,7 @@ Archive cleanup complete:
   - Fixed: 1 misplaced UR folder in archive
   - Swept runs: 2 consumed run directories
   - Worktrees: removed 2 merged worktree-agent-* leftovers; 1 unmerged reported (awaiting consent)
+  - Restored: 2 blanked archived REQs (REQ-1282, REQ-1287); 1 unrecoverable reported
   - Repointed: 39 doc links in 5 files
   - Still open: UR-015 (2/4 REQs complete)
 ```
@@ -178,7 +207,7 @@ If nothing needed fixing:
 Archive is clean. No loose files or pending closures found.
 ```
 
-Print that line only when Pass 5 also came back empty. A clean archive says nothing about worktrees — when Pass 5 found leftovers it reports them (removed, or awaiting consent) even if every other pass was a no-op.
+Print that line only when Passes 5 and 6 also came back empty. A clean archive says nothing about worktrees or blanked content — a well-organized archive full of 0-byte REQs satisfies every other pass. When Pass 5 found leftovers, or Pass 6 found damage, each reports it even if every other pass was a no-op.
 
 ## Archive Structure After Cleanup
 
@@ -199,7 +228,7 @@ do-work/archive/
 └── hold/                      # Items on hold (paused by user — cleanup skips these)
 ```
 
-**No loose REQ or CONTEXT files should exist directly in `do-work/archive/` after cleanup.**
+**No loose REQ or CONTEXT files should exist directly in `do-work/archive/` after cleanup.** Structure is not the only property worth checking: a correctly-placed REQ can still be a 0-byte file, which is what Pass 6 looks for.
 
 ## Commit (Git repos only)
 
@@ -221,6 +250,8 @@ git add do-work/archive/ do-work/user-requests/
 # git add -u -- do-work/runs/code-review-2026-07-13-143012/
 # Repeat for each swept run. `-u` stages tracked modifications/deletions only,
 # so neighboring live or untracked runs cannot be pulled into the commit.
+# If Pass 6 restored any blanked REQs, stage each restored file by its exact path:
+# git add do-work/archive/UR-010/REQ-1282-slug.md  (one path per restored file)
 
 git commit -m "$(cat <<'EOF'
 do-work: cleanup — consolidated {N} REQs, closed {M} URs
@@ -231,6 +262,7 @@ do-work: cleanup — consolidated {N} REQs, closed {M} URs
 - Fixed: {Z} misplaced folders
 - Repointed: {W} doc links
 - Swept runs: {R} consumed run directories
+- Restored: {S} blanked archived REQs
 
 EOF
 )"
@@ -238,16 +270,16 @@ EOF
 
 **Format:** `do-work: cleanup — consolidated {N} REQs, closed {M} URs` — adjust the counts and bullet list to reflect what actually changed. Omit bullet categories where the count is zero.
 
-If nothing was moved, rewritten, or swept (archive and run scratch were already clean), skip the commit entirely.
+If nothing was moved, rewritten, restored, or swept (archive and run scratch were already clean), skip the commit entirely.
 
-Stage only paths within `do-work/archive/`, `do-work/user-requests/`, any `do-work/queue/` or working/ REQs swept by Pass 0, any misplaced `do-work/` directories relocated by Pass 3a, the specific doc files rewritten by the repoint step, and exact consumed-run deletion prefixes from Pass 4 via `git add -u -- <deleted-run-path>` — never a blanket `git add -A`/`.` (see `actions/commit.md` § Rules for the full staging/hook guard).
+Stage only paths within `do-work/archive/`, `do-work/user-requests/`, any `do-work/queue/` or working/ REQs swept by Pass 0, any misplaced `do-work/` directories relocated by Pass 3a, the specific doc files rewritten by the repoint step, exact consumed-run deletion prefixes from Pass 4 via `git add -u -- <deleted-run-path>`, and the exact path of each file Pass 6 restored — never a blanket `git add -A`/`.` (see `actions/commit.md` § Rules for the full staging/hook guard).
 
 **Pass 5 stages nothing.** Its objects are git worktrees and branches — refs and directories outside the index — so removing them produces no staged change and never, on its own, makes a commit necessary.
 
 ## What This Action Does NOT Do
 
 - Delete work items — only consumed run scratch (`Status: consumed`) is deleted outright; URs, REQs, and other durable artifacts are moved. Pass 5 removes orphaned `worktree-agent-*` worktrees and branches, but mechanically only when they are already merged; unmerged ones need the user's explicit consent
-- Modify file contents or frontmatter — files are relocated as-is. Exceptions: Pass 0 normalizes non-standard terminal statuses (`done` → `completed`, etc.) in frontmatter before moving, and the Repoint Documentation Links step rewrites link targets in docs that reference moved files.
+- Modify file contents or frontmatter — files are relocated as-is. Exceptions: Pass 0 normalizes non-standard terminal statuses (`done` → `completed`, etc.) in frontmatter before moving; the Repoint Documentation Links step rewrites link targets in docs that reference moved files; and Pass 6, with the user's consent, rewrites a blanked file's whole content from git history and re-applies its `commit:` field through `tools/checks/record-commit-hash.sh`.
 - Touch **active** files in `do-work/queue/` (the queue) or `do-work/working/` — `pending`, `pending-answers`, `blocked`, `reserved`, and `claimed` REQs are actions/work.md's (and `actions/reserve.md`'s) responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from `do-work/queue/` and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery. Pass 5 is not an exception at all: it operates on git worktrees and branches only and never reads or writes a REQ file.
 - Archive UR folders that still have pending/in-progress REQs
 - Process any REQ files (use actions/work.md for that)
@@ -261,7 +293,8 @@ Guard against these during cleanup:
 | "This REQ is probably done" | Check the actual status in frontmatter and verify against git history | Premature archival loses in-progress work |
 | "Close enough to completed — archive it" | Only archive REQs with terminal status (completed, failed, cancelled) | Non-terminal REQs belong in the queue, not the archive |
 | "This UR folder looks empty, delete it" | Check if REQs reference it via `user_request` field | Empty UR folders may have REQs still in the queue or working/ |
-| "The archive structure is fine, skip reorganization" | Run all 6 passes even if the archive looks clean | Loose files, consumed run scratch, and orphaned worktrees accumulate independently — any of them can need cleanup |
+| "The archive structure is fine, skip reorganization" | Run all 7 passes even if the archive looks clean | Loose files, consumed run scratch, orphaned worktrees, and blanked REQ content accumulate independently — any of them can need cleanup, and a tidy archive of 0-byte files looks clean to every pass but Pass 6 |
+| "That archived REQ is empty, so it must have been an empty REQ" | Run Pass 6's scanner before believing it | A 0-byte archived REQ is the signature of an unguarded `commit:` write-back, not of an empty request — six real REQs of 8–26 KB were lost that way, and their content is recoverable only until `git gc` runs |
 | "This `worktree-agent-*` branch is ancient, it's obviously abandoned — just `-D` it" | Try `git worktree remove` + `git branch -d` from the integration branch; on refusal, ask (Pass 5) | Age is not merged-ness. `-d`'s refusal is the signal that the branch still holds unmerged builder work, and `-D` discards it with no record that a merge was ever missed |
 
 ## Red Flags
@@ -274,10 +307,12 @@ Guard against these during cleanup:
 - A UR held open forever by a `cancelled` REQ — same bug class: `cancelled` is terminally resolved and must count toward UR closure
 - A moved file still referenced by its old path in tracked markdown after cleanup — the repoint step was skipped or missed a referrer
 - `worktree-agent-*` branches or worktrees still present after cleanup ran with no accompanying report line — Pass 5 was skipped entirely (leftovers accumulate silently; the observed case was orphan branches sitting for over half an hour after their run died)
+- A 0-byte or frontmatter-less REQ in `do-work/archive/` after cleanup reported a clean archive — Pass 6 was skipped, or it ran non-interactively and its report was not read
+- A restored REQ whose `commit:` field was hand-edited rather than written by `tools/checks/record-commit-hash.sh` — the repair bypassed the very guard that exists because free-form edits at this step caused the damage
 
 ## Verification Checklist
 
-- [ ] All 6 cleanup passes attempted (Passes 0–5; Pass 3 includes 3a and 3b)
+- [ ] All 7 cleanup passes attempted (Passes 0–6; Pass 3 includes 3a and 3b)
 - [ ] No terminal-status REQs remain in `do-work/queue/` or `do-work/working/`
 - [ ] Every archived REQ with `user_request` field is inside its UR folder
 - [ ] No empty UR folders remain in archive (unless REQs are still pending elsewhere)
@@ -286,3 +321,4 @@ Guard against these during cleanup:
 - [ ] Every `do-work/runs/` directory deleted by Pass 4 had `Status: consumed`; `in-progress`, `synthesized`, legacy `complete`, and missing-manifest runs remain
 - [ ] Every tracked consumed-run deletion is staged by its exact path
 - [ ] Every `worktree-agent-*` leftover Pass 5 removed came off a successful `git worktree remove` + `git branch -d` (never `-D`/`--force`); every refusal was either left in place and reported, or discarded only after the user named it
+- [ ] Pass 6's scanner was run, and every file it restored was approved by the user first, written by `--restore` (not by hand), and staged by its exact path; every unrecoverable file was reported as a permanent loss

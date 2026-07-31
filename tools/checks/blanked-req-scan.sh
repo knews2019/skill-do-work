@@ -14,9 +14,15 @@
 # `tools/checks/record-commit-hash.sh` is the guard that stops this happening; this is the
 # detector for damage that already happened.
 #
-# Usage: tools/checks/blanked-req-scan.sh [--porcelain]
+# Usage: tools/checks/blanked-req-scan.sh [--porcelain | --restore [--dry-run]]
 #   Run from the project root (the directory containing do-work/).
 #   --porcelain  emit only the machine-readable BLANKED records, no human report.
+#   --restore    repair each damaged file: write back the content from its recovery commit,
+#                then re-apply the recorded implementation hash by calling
+#                tools/checks/record-commit-hash.sh (never by editing frontmatter here —
+#                one implementation of that edit, carrying its guards, is the whole point).
+#                actions/cleanup.md Pass 6 is the consent gate; this script does not prompt.
+#   --dry-run    with --restore: print exactly what would be restored and write nothing.
 #
 # Output. For each damaged file, a human-readable block, plus one tab-separated record:
 #
@@ -37,11 +43,32 @@ set -uo pipefail
 export LC_ALL=C
 
 porcelain_mode=0
-case "${1:-}" in
-  --porcelain) porcelain_mode=1 ;;
-  "") ;;
-  *) echo "usage: $0 [--porcelain]" >&2; exit 2 ;;
-esac
+restore_mode=0
+dry_run_mode=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --porcelain) porcelain_mode=1 ;;
+    --restore) restore_mode=1 ;;
+    --dry-run) dry_run_mode=1 ;;
+    *) echo "usage: $0 [--porcelain | --restore [--dry-run]]" >&2; exit 2 ;;
+  esac
+  shift
+done
+if [ "$restore_mode" -eq 1 ] && [ "$porcelain_mode" -eq 1 ]; then
+  echo "usage: $0 — --porcelain and --restore are mutually exclusive" >&2; exit 2
+fi
+if [ "$dry_run_mode" -eq 1 ] && [ "$restore_mode" -eq 0 ]; then
+  echo "usage: $0 — --dry-run only applies with --restore (the scan alone never writes)" >&2; exit 2
+fi
+
+# The restore re-applies the hash through the guarded write-back rather than editing
+# frontmatter itself, so resolve it up front and refuse early if it is missing — a partial
+# restore that leaves the commit: field wrong is worse than not starting.
+record_commit_hash_script="$(dirname "$0")/record-commit-hash.sh"
+if [ "$restore_mode" -eq 1 ] && [ ! -x "$record_commit_hash_script" ]; then
+  echo "FAIL: $record_commit_hash_script is missing or not executable — the restore re-applies the commit: field through it and will not hand-edit frontmatter instead." >&2
+  exit 2
+fi
 
 if [ ! -d "do-work" ]; then
   [ "$porcelain_mode" -eq 0 ] && echo "No do-work/ directory here — nothing to scan. Run from the project root."
@@ -105,7 +132,71 @@ resolve_recorded_hash() {
   return 1
 }
 
+# Restore one damaged file from its recovery commit, then re-apply the recorded hash through
+# the guarded write-back. Prints "1" on stdout when a file was actually restored and "0"
+# otherwise, so the caller can count; everything human-readable goes to stderr, keeping the
+# count clean. Content is written to a temp file in the target's own directory and moved into
+# place only after it is confirmed non-empty — the recovery must never itself blank the file.
+restore_one_file() {
+  local target_path="$1" recovery_sha="$2" recorded_hash="$3"
+  local tracked_name recovered_bytes restore_temp
+
+  if [ "$recovery_sha" = "-" ]; then
+    echo "SKIP: $target_path — no recoverable content in git history; nothing to restore." >&2
+    printf '0'
+    return 0
+  fi
+  tracked_name="$(git ls-files --full-name -- "$target_path" 2>/dev/null)"
+  if [ -z "$tracked_name" ]; then
+    echo "SKIP: $target_path — not tracked by git, so its history cannot be read." >&2
+    printf '0'
+    return 0
+  fi
+  recovered_bytes="$(git cat-file -s "$recovery_sha:$tracked_name" 2>/dev/null || echo 0)"
+
+  if [ "$dry_run_mode" -eq 1 ]; then
+    echo "WOULD RESTORE: $target_path — $recovered_bytes bytes from commit $recovery_sha, then set commit: ${recorded_hash}." >&2
+    printf '0'
+    return 0
+  fi
+
+  restore_temp="$(mktemp "$(dirname "$target_path")/.blanked-restore.XXXXXX")" || {
+    echo "FAIL: cannot create a temp file next to $target_path; nothing was written." >&2
+    printf '0'
+    return 0
+  }
+  if ! git cat-file -p "$recovery_sha:$tracked_name" > "$restore_temp" 2>/dev/null; then
+    rm -f "$restore_temp"
+    echo "FAIL: could not read $recovery_sha:$tracked_name out of git; $target_path is unchanged." >&2
+    printf '0'
+    return 0
+  fi
+  if [ ! -s "$restore_temp" ]; then
+    rm -f "$restore_temp"
+    echo "FAIL: the recovered content for $target_path is empty; refusing to write it. $target_path is unchanged." >&2
+    printf '0'
+    return 0
+  fi
+  if ! mv "$restore_temp" "$target_path"; then
+    rm -f "$restore_temp"
+    echo "FAIL: could not move the recovered content into $target_path; it is unchanged." >&2
+    printf '0'
+    return 0
+  fi
+  echo "RESTORED: $target_path — $recovered_bytes bytes from commit $recovery_sha." >&2
+
+  if [ "$recorded_hash" = "-" ]; then
+    echo "  NOTE: the commit that emptied it carried no 'record commit hash' message, so commit: was left as recovered. Identify the implementation hash by hand and apply it with tools/checks/record-commit-hash.sh." >&2
+  elif "$record_commit_hash_script" "$target_path" "$recorded_hash" >/dev/null 2>&1; then
+    echo "  commit: set to $recorded_hash (via the guarded write-back)." >&2
+  else
+    echo "  WARN: the content is restored, but re-applying commit: $recorded_hash failed. Run tools/checks/record-commit-hash.sh on it and read its output — do not hand-edit." >&2
+  fi
+  printf '1'
+}
+
 damaged_count=0
+restored_count=0
 
 # `find` recurses, so this surfaces loose archive REQs and UR-nested ones in one pass; a
 # top-level glob would silently miss every UR folder. UR-*.md files are included because the
@@ -149,6 +240,11 @@ while IFS= read -r candidate_file; do
       echo "  Not a git repository — no history to recover from. Check backups."
     fi
   fi
+  if [ "$restore_mode" -eq 1 ]; then
+    restored_count=$((restored_count + $(restore_one_file "$candidate_file" "$recovery_sha" "$recorded_hash")))
+    continue
+  fi
+
   printf 'BLANKED\t%s\t%s\t%s\n' "$candidate_file" "$recovery_sha" "$recorded_hash"
 done < <(
   {
@@ -159,6 +255,18 @@ done < <(
 
 if [ "$damaged_count" -eq 0 ]; then
   [ "$porcelain_mode" -eq 0 ] && echo "No blanked or unparseable REQ/UR files found."
+  exit 0
+fi
+
+# A completed repair is a success, not a finding — exit 0 so cleanup's Pass 6 can tell "I
+# fixed it" from "there is damage here". A dry run reports damage without fixing it, so it
+# keeps the finding exit code.
+if [ "$restore_mode" -eq 1 ] && [ "$dry_run_mode" -eq 0 ]; then
+  echo "Restored $restored_count of $damaged_count damaged file(s). Re-run the scan to confirm, then commit the restored paths."
+  if [ "$restored_count" -lt "$damaged_count" ]; then
+    echo "$((damaged_count - restored_count)) could not be restored — see the SKIP/FAIL lines above."
+    exit 1
+  fi
   exit 0
 fi
 

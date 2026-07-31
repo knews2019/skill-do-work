@@ -4,7 +4,7 @@ Consolidates the archive — moves loose files into the right places, closes com
 
 ## What it does
 
-Six passes, in order (matching `actions/cleanup.md`):
+Seven passes, in order (matching `actions/cleanup.md`):
 
 ### Pass 0: Sweep finished queue items
 Moves terminal-status REQs (`completed`, `completed-with-issues`, `failed`, `cancelled`, plus normalized aliases like `done`/`finished`/`closed`/`abandoned`/`wont-do`) from `do-work/queue/` and `working/` into `archive/`.
@@ -23,6 +23,9 @@ Deletes only `do-work/runs/*/` directories whose root `manifest.md` says `Status
 
 ### Pass 5: Remove orphaned worktrees
 Clears the `worktree-agent-*` git worktrees and branches left behind when the work loop's worktree dispatch mode is interrupted. Already-merged leftovers are removed automatically. An unmerged one can be the only copy of a builder's work, so cleanup lists it and asks before deleting — and when it's running unattended (the automatic end-of-loop cleanup), it only reports. Your own worktrees are never touched; only the `worktree-agent-` naming convention is in scope.
+
+### Pass 6: Restore blanked archived REQs
+Finds archived REQ and UR files that have lost their content — 0 bytes, or no frontmatter left — and offers to write it back from git history. That damage is the signature of an unguarded `commit:` write-back: the file was complete at its implementation commit and the metadata commit right after it replaced the whole thing with nothing. Cleanup shows you a dry run first (which file, which commit the content comes from, how many bytes, which hash goes back into `commit:`), then asks before writing anything; running unattended, it only reports. Recovery has a deadline — the lost content survives in git only until a `git gc` collects it — so a file reported here is worth acting on. Restoring overwrites the file, so anything written to it since it was blanked is discarded.
 
 ### After all passes: repoint doc links
 Every move above changes a file's path. Cleanup tracks each old → new path and rewrites links in the repo's tracked markdown outside `do-work/` that pointed at the moved file (e.g. a prime doc's Lessons link to an archived REQ), so consolidation doesn't leave broken links behind. The summary reports `Repointed: N doc links in M files` (or `Repointed: none`).
@@ -47,7 +50,7 @@ do-work/
 ## Key rules
 
 - Deletes no work items — only run scratch explicitly marked `Status: consumed`, plus `worktree-agent-*` worktrees that are already merged (unmerged ones need your say-so)
-- No content modification except normalizing non-standard statuses (`done` → `completed`) and repointing doc links to moved files
+- No content modification except normalizing non-standard statuses (`done` → `completed`), repointing doc links to moved files, and — only with your say-so — restoring a blanked archived REQ from git history
 - Skips active queue items (`pending`, `claimed`)
 
 ## Usage
