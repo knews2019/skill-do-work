@@ -151,6 +151,9 @@ update_tmp="$(mktemp -d "${TMPDIR:-/tmp}/do-work-update.XXXXXX")"
 install_modified=''
 update_verified=''
 shipped_files_tracked=''
+# Declared here, before the EXIT trap is installed, because print_recovery_instructions reads
+# it: under `set -u` a trap firing before the git probe below would abort on an unset variable.
+dirty_files=''
 
 # This updater keeps no rollback copy: version control is the undo, and duplicating a tracked
 # tree on every run buys nothing git does not already hold. The cost is that recovery from a
@@ -190,8 +193,19 @@ print_recovery_instructions() {
   done
   printf 'Restore the tracked skill files from git:\n  git -C %s checkout -- %s\n' \
     "$skill_root" "${tracked_paths[*]}" >&2
+  # What "git is the undo" does NOT cover. git restores COMMITTED content, so any edit that was
+  # uncommitted when this run started is already gone — the extraction overwrote it and there is
+  # no copy. Say so here rather than let the checkout above read as a full undo: the operator is
+  # about to run it, and would otherwise expect their customizations back.
+  if [ -n "$dirty_files" ]; then
+    printf 'NOTE: these shipped files had uncommitted edits when the update started:\n%s\n' "$dirty_files" >&2
+    printf 'The extraction has already overwritten them and no copy was kept, so the checkout above restores the COMMITTED content — not those edits. Recover them from your editor history or re-apply by hand.\n' >&2
+  fi
   printf 'Then review what the extraction added and delete what you do not want (-nd lists, -fd deletes):\n  git -C %s clean -nd -- %s\n' \
     "$skill_root" "${tracked_paths[*]}" >&2
+  if [ -n "$root_fallback_install" ]; then
+    printf 'This is a root install (the skill IS the project root), so those paths also hold files your project owns — read the -nd list before running -fd.\n' >&2
+  fi
 }
 
 cleanup() {
@@ -244,6 +258,13 @@ append_install_diff "$fresh_upstream" "$skill_root" "$diff_file" "$extras_file"
 
 if [ -n "$dirty_files" ]; then
   printf 'Shipped skill files have uncommitted changes:\n%s\n' "$dirty_files" >&2
+  # The warning that has to land BEFORE the prompt, because this is the point of no return for
+  # this content. The extraction overwrites these paths and no rollback copy is kept, so an
+  # uncommitted edit here is unrecoverable afterwards — git can only give back what was
+  # committed. This is the one guarantee the removed `cp -R` snapshot used to provide.
+  printf 'Continuing OVERWRITES those edits with the upstream files, and no rollback copy is kept — git can only restore what is committed, so uncommitted work here is gone for good.\n' >&2
+  printf 'Keep them by committing first, or stash them:\n  git -C %s stash push -- %s\n' \
+    "$skill_root" "${shipped_paths[*]}" >&2
 fi
 if [ -s "$diff_file" ]; then
   printf 'Reviewing installed-versus-upstream skill changes before overwrite:\n'

@@ -296,6 +296,33 @@ git -C "$fixture_root" commit -q -m "simulate a hook that truncated the file"
 run_record_script --verify "do-work/archive/UR-900/REQ-1282-replace.md" "$implementation_hash"
 assert_status 1 "verify tampered: exits 1"
 
+# --- Probe 16: --verify catches a hook that deleted a BODY commit: line ---------------------
+# The narrow gap left by matching the removed line on SHAPE (`commit:*`) instead of against the
+# parent's real frontmatter. The fixture body quotes the schema — as real archived REQs do — so
+# a hook that drops that quoted line while the write-back INSERTS the frontmatter one nets
+# +1/-1: one added, one removed, both starting `commit:`. That read as a legitimate replace and
+# passed with a message claiming the patch was a single line, while a body line was gone.
+verify_body_path="do-work/archive/UR-900/REQ-1288-body-commit.md"
+write_request_fixture "$verify_body_path" ""
+commit_fixture "seed body-commit fixture"
+run_record_script "$verify_body_path" "$implementation_hash"
+assert_status 0 "verify body-commit setup: the write-back exits 0"
+grep -v '^commit: deadbee' "$fixture_root/$verify_body_path" > "$fixture_root/body-hooked.tmp"
+mv "$fixture_root/body-hooked.tmp" "$fixture_root/$verify_body_path"
+git -C "$fixture_root" commit -q -m "[REQ-1282] record commit hash $implementation_hash" -- "$verify_body_path"
+assert_equals "0" "$(body_commit_line_count "$verify_body_path")" \
+  "verify body-commit: the simulated hook really did remove the body's commit: line"
+# Precondition: as in Probe 13, the read-back layer cannot tell — the hook's edit was committed.
+assert_equals "$(git -C "$fixture_root" cat-file -s "HEAD:$verify_body_path")" \
+  "$(wc -c < "$fixture_root/$verify_body_path" | tr -d '[:space:]')" \
+  "verify body-commit: the committed blob and the worktree agree, so only the patch check can fire"
+run_record_script --verify "$verify_body_path" "$implementation_hash"
+assert_status 1 "verify body-commit: exits 1"
+assert_output_matches 'HEAD\^ has no frontmatter commit: field' \
+  "verify body-commit: the message states what the removal side was measured against"
+assert_output_matches 'came from the BODY' \
+  "verify body-commit: the message names the content actually lost"
+
 # --- Probe 13: outside a git repository ---------------------------------------------------
 # Content guards must still run; only the git-dependent ones degrade, and with a stated reason.
 non_git_root="$(mktemp -d)"

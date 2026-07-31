@@ -239,6 +239,34 @@ if ! grep -q '0\.0\.1' "$plain_project/.claude/skills/do-work/actions/version.md
   fail_count=$((fail_count + 1))
 fi
 
+# --- Probe 4: uncommitted customizations are called out as unrecoverable -------------------
+# The gap the removed rollback copy used to cover. `cp -R` snapshotted the WORKTREE, so a
+# failed update handed local edits back; git only ever restores what was committed. So an
+# uncommitted edit to a shipped file dies at the extraction, and the operator has to hear that
+# before the prompt — not infer it from a `git checkout` command that looks like a full undo.
+dirty_project="$fixture_root/dirty-project"
+build_install "$dirty_project"
+git -c init.defaultBranch=main init -q "$dirty_project"
+git -C "$dirty_project" config user.name "Fixture Runner"
+git -C "$dirty_project" config user.email "fixture@example.invalid"
+git -C "$dirty_project" add -A
+git -C "$dirty_project" commit -qm 'install do-work v0.0.1'
+dirty_install="$dirty_project/.claude/skills/do-work"
+printf '# do-work\n\nLOCAL CUSTOMIZATION the operator has not committed.\n' > "$dirty_install/SKILL.md"
+# Fail inside the destructive region as well, so one run exercises both messages.
+chmod 500 "$dirty_install/docs"
+
+run_updater "$dirty_project" y
+chmod 700 "$dirty_install/docs"
+assert_status_nonzero 'dirty install: updater exits non-zero'
+assert_output_matches 'uncommitted changes' 'dirty install: lists the uncommitted shipped files'
+assert_output_matches 'gone for good' \
+  'dirty install: warns BEFORE the prompt that the extraction destroys uncommitted edits'
+assert_output_matches 'stash' 'dirty install: names the action that would preserve them'
+assert_output_matches 'restores the COMMITTED content' \
+  'dirty install: the recovery note says the checkout will not bring those edits back'
+assert_no_backup_copy "$dirty_project" 'dirty install'
+
 if [ "$fail_count" -gt 0 ]; then
   printf 'update-script behavior probes: %s failure(s).\n' "$fail_count" >&2
   exit 1

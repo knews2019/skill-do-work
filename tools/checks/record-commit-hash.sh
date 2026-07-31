@@ -28,8 +28,11 @@
 #   It is the only check that can catch a content-mutating pre-commit hook (a formatter, a
 #   lint --fix, a whitespace stripper) rewriting the file after every pre-commit guard has
 #   already passed — which is itself a sufficient mechanism for the incident above. What it
-#   proves is the committed PATCH: that HEAD introduced exactly one new line for this file and
-#   that the line is the expected `commit:` field. It does NOT merely compare the committed
+#   proves is the committed PATCH: that HEAD introduced exactly one new line for this file, that
+#   the line is the expected `commit:` field, and that the only line it removed is the one HEAD^'s
+#   own frontmatter held there (none at all, on an insert). Matching a removed `commit:` line by
+#   SHAPE instead would let a hook delete a BODY `commit:` line unnoticed — archived REQs really
+#   do have those, where they quote the schema. It does NOT merely compare the committed
 #   blob against the worktree — that comparison alone proves nothing against the commonest
 #   hook shape, which rewrites the worktree file and re-stages it so both sides move together.
 #   Where the patch cannot be isolated (root commit, merge HEAD, or the file added by this
@@ -90,6 +93,45 @@ fi
 
 git_available=0
 git rev-parse --git-dir >/dev/null 2>&1 && git_available=1
+
+# ---------------------------------------------------------------------------
+# Frontmatter readers. Scope is line 1 `---` up to the next `---`, so a `commit:` in body
+# prose or inside a fenced YAML sample is unreachable — several archived REQs quote the
+# schema, which is exactly how a file-wide sed corrupts one. Keys are anchored at column 0:
+# an indented `  commit:` is a nested key under some other mapping, not the schema field.
+#
+# Defined ahead of --verify (not just ahead of the write path) so BOTH halves decide what
+# counts as the frontmatter `commit:` line with the same parser. --verify reads the PARENT
+# blob through these; a second, hand-rolled reader there would be free to drift from the
+# writer's idea of frontmatter, which is precisely the confusion a body `commit:` exploits.
+# ---------------------------------------------------------------------------
+frontmatter_line_for() {
+  awk -v field_name="$2" '
+    NR == 1 && $0 == "---" { inside_frontmatter = 1; next }
+    inside_frontmatter && $0 == "---" { exit }
+    inside_frontmatter && index($0, field_name ":") == 1 { print; exit }
+  ' "$1"
+}
+frontmatter_count_for() {
+  awk -v field_name="$2" '
+    NR == 1 && $0 == "---" { inside_frontmatter = 1; next }
+    inside_frontmatter && $0 == "---" { exit }
+    inside_frontmatter && index($0, field_name ":") == 1 { hit_count++ }
+    END { print hit_count + 0 }
+  ' "$1"
+}
+frontmatter_value_for() {
+  local field_line field_value
+  field_line="$(frontmatter_line_for "$1" "$2")"
+  [ -z "$field_line" ] && return 0
+  field_value="${field_line#*:}"
+  field_value="${field_value%%#*}"                                # trailing YAML comment
+  field_value="${field_value#"${field_value%%[![:space:]]*}"}"    # ltrim
+  field_value="${field_value%"${field_value##*[![:space:]]}"}"    # rtrim
+  field_value="${field_value%\"}"; field_value="${field_value#\"}"
+  field_value="${field_value%\'}"; field_value="${field_value#\'}"
+  printf '%s' "$field_value"
+}
 
 # ---------------------------------------------------------------------------
 # --verify: read back what actually got committed.
@@ -194,22 +236,50 @@ if [ "$verify_mode" -eq 1 ]; then
   net_added_count="$(printf '%s' "$net_added_lines" | awk 'END { print NR + 0 }')"
   net_removed_count="$(printf '%s' "$net_removed_lines" | awk 'END { print NR + 0 }')"
 
+  # What the removal side is allowed to be, read off the PARENT's frontmatter rather than
+  # matched by shape. `commit:*` was too loose: an archived REQ may quote the schema in its
+  # BODY (several do — see the reader comment above), so a hook that drops a body `commit:`
+  # line while the write-back inserts the frontmatter one nets +1/-1 and read as a legitimate
+  # replace, passing with a message that claimed the patch was one line. Process substitution
+  # feeds the parent blob to the same reader the write path uses; `git cat-file -e` on
+  # `HEAD^:` already succeeded above (an absent parent file is a declared skip), so an empty
+  # result here means the parent genuinely had no frontmatter `commit:` field.
+  parent_frontmatter_commit_line="$(frontmatter_line_for \
+    <(git cat-file blob "HEAD^:$committed_full_name" 2>/dev/null) commit)"
+  if [ -n "$parent_frontmatter_commit_line" ]; then
+    expected_removed_count=1                                        # a replace
+    expected_removed_lines="$parent_frontmatter_commit_line"
+  else
+    expected_removed_count=0                                        # an insert
+    expected_removed_lines=""
+  fi
+
+  # Tracked separately from the added side so the diagnosis names the half that actually failed:
+  # a body rewrite fails on additions, and pointing at body `commit:` lines there would mislead.
+  removal_side_ok=1
+  [ "$net_removed_count" -eq "$expected_removed_count" ] || removal_side_ok=0
+  [ "$net_removed_lines" = "$expected_removed_lines" ] || removal_side_ok=0
+
   committed_patch_ok=1
   [ "$net_added_count" -eq 1 ] || committed_patch_ok=0
   [ "$net_added_lines" = "commit: $commit_hash" ] || committed_patch_ok=0
-  # Zero on an insert, one on a replace — and on a replace it can only be the old commit line.
-  [ "$net_removed_count" -le 1 ] || committed_patch_ok=0
-  if [ "$net_removed_count" -eq 1 ]; then
-    case "$net_removed_lines" in
-      commit:*) ;;
-      *) committed_patch_ok=0 ;;
-    esac
-  fi
+  [ "$removal_side_ok" -eq 1 ] || committed_patch_ok=0
 
   if [ "$committed_patch_ok" -ne 1 ]; then
+    expected_removal_description="0 lines (HEAD^ has no frontmatter commit: field, so this is an insert)"
+    if [ "$expected_removed_count" -eq 1 ]; then
+      expected_removal_description="exactly 1: HEAD^'s own frontmatter line '$parent_frontmatter_commit_line'"
+    fi
     echo "FAIL: the metadata commit changed more than the 'commit:' line of $request_file."
     echo "  net added: $net_added_count line(s) (expected exactly 1: 'commit: $commit_hash')"
-    echo "  net removed: $net_removed_count line(s) (expected 0, or 1 'commit:' line on a replace)"
+    echo "  net removed: $net_removed_count line(s) (expected $expected_removal_description)"
+    # Only when the removed text really is a `commit:` line — on a plain body rewrite it is not,
+    # and naming the schema-quoting hazard there would send the reader after the wrong cause.
+    if [ "$removal_side_ok" -ne 1 ]; then
+      case "$net_removed_lines" in
+        commit:*) echo "  That removed 'commit:' line is NOT the one HEAD^ had in its frontmatter, so it came from the BODY — several archived REQs quote the schema there, and losing one is silent content loss." ;;
+      esac
+    fi
     printf '%s\n' "$committed_patch_text" | head -n 40 | sed 's/^/    /'
     echo "  A read-back of the blob alone would have PASSED this: a pre-commit hook that rewrites"
     echo "  the file and re-stages it moves the worktree too, so the sizes agree while the body is gone."
@@ -218,7 +288,11 @@ if [ "$verify_mode" -eq 1 ]; then
     exit 1
   fi
 
-  echo "OK: $request_file reads back at $committed_bytes bytes, and HEAD's patch for it is exactly the one line 'commit: $commit_hash'."
+  verified_patch_note=""
+  if [ "$expected_removed_count" -eq 1 ]; then
+    verified_patch_note=" replacing HEAD^'s '$parent_frontmatter_commit_line'"
+  fi
+  echo "OK: $request_file reads back at $committed_bytes bytes, and HEAD's patch for it is exactly the one line 'commit: $commit_hash'$verified_patch_note."
   exit 0
 fi
 
@@ -240,40 +314,6 @@ if grep -q $'\r' "$request_file"; then
 fi
 
 request_directory="$(dirname "$request_file")"
-
-# ---------------------------------------------------------------------------
-# Frontmatter readers. Scope is line 1 `---` up to the next `---`, so a `commit:` in body
-# prose or inside a fenced YAML sample is unreachable — several archived REQs quote the
-# schema, which is exactly how a file-wide sed corrupts one. Keys are anchored at column 0:
-# an indented `  commit:` is a nested key under some other mapping, not the schema field.
-# ---------------------------------------------------------------------------
-frontmatter_line_for() {
-  awk -v field_name="$2" '
-    NR == 1 && $0 == "---" { inside_frontmatter = 1; next }
-    inside_frontmatter && $0 == "---" { exit }
-    inside_frontmatter && index($0, field_name ":") == 1 { print; exit }
-  ' "$1"
-}
-frontmatter_count_for() {
-  awk -v field_name="$2" '
-    NR == 1 && $0 == "---" { inside_frontmatter = 1; next }
-    inside_frontmatter && $0 == "---" { exit }
-    inside_frontmatter && index($0, field_name ":") == 1 { hit_count++ }
-    END { print hit_count + 0 }
-  ' "$1"
-}
-frontmatter_value_for() {
-  local field_line field_value
-  field_line="$(frontmatter_line_for "$1" "$2")"
-  [ -z "$field_line" ] && return 0
-  field_value="${field_line#*:}"
-  field_value="${field_value%%#*}"                                # trailing YAML comment
-  field_value="${field_value#"${field_value%%[![:space:]]*}"}"    # ltrim
-  field_value="${field_value%"${field_value##*[![:space:]]}"}"    # rtrim
-  field_value="${field_value%\"}"; field_value="${field_value#\"}"
-  field_value="${field_value%\'}"; field_value="${field_value#\'}"
-  printf '%s' "$field_value"
-}
 
 if [ "$(frontmatter_count_for "$request_file" id)" -eq 0 ]; then
   echo "usage: $0 [--verify] <req-file> <hash> — '$request_file' has no frontmatter block with an 'id:' field; this is not a REQ file." >&2

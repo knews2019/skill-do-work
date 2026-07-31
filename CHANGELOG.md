@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.156.1 — Verify Pins Removed Lines to the Parent's Frontmatter, Updater Warns About Uncommitted Edits (2026-07-31)
+
+Two follow-ups from an external review of 0.155–0.156. Both were narrow, and both had a way of losing content quietly.
+
+- `record-commit-hash.sh --verify` used to accept *any* removed line starting with `commit:` as "the old field being replaced". Archived REQs that quote the schema have `commit:` lines in their **body**, so a hook that deleted one while the write-back inserted the frontmatter line netted +1/−1 and passed — with a message claiming the patch was a single line. The removal side is now measured against the parent commit's actual frontmatter: zero removals on an insert, exactly that line on a replace.
+- The updater's recovery instructions read like a full undo. They aren't: git restores what was **committed**, so an uncommitted edit to a shipped file dies at the extraction now that no rollback copy is kept. It now says that before the confirmation prompt — with the files named and `git stash` suggested — and repeats in the recovery output that the printed `git checkout` won't bring those edits back. The `git clean` line also flags that a root install's shipped paths hold project-owned files.
+
 ## 0.156.0 — Update Script Keeps No Rollback Copy (2026-07-31)
 
 `just run-do-work-update` no longer duplicates your whole install before extracting. Version control is the undo, and copying a tracked tree on every run buys nothing git does not already hold — it just left a `do-work.preupdate-<timestamp>.bak` sitting in the project as untracked noise.
