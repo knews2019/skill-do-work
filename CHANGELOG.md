@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.153.1 — Guard Fixture Lints Clean (2026-07-31)
+
+Housekeeping in the commit-hash test fixture, plus one assertion that was written but never wired up.
+
+- The scan probes now assert the *recoverable* byte count reported from the pre-blanking commit, not just that a file was found — the number an operator actually decides on. It was computed and then dropped on the floor.
+- `_dev/tests/record-commit-hash-guards.sh` is shellcheck-clean at default severity.
+
 ## 0.153.0 — Cleanup Restores Blanked Archived REQs (2026-07-31)
 
 Forensics could tell you an archived REQ's content had been destroyed; now cleanup can put it back. The recovery used to be hand-rolled git archaeology, one file at a time, against a deadline — the lost content only survives until `git gc` collects it.

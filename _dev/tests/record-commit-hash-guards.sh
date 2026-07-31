@@ -290,8 +290,10 @@ scan_root="$(mktemp -d)"
 cleanup_scan() { rm -rf "$scan_root"; }
 trap 'cleanup_fixture; cleanup_scan' EXIT
 
+# Takes no arguments on purpose: every scan probe exercises the bare detector. The restore
+# probes below use run_restore_script, which does forward its arguments.
 run_scan_script() {
-  probe_output="$(cd "$scan_root" && "$scan_script" "$@" 2>&1)"
+  probe_output="$(cd "$scan_root" && "$scan_script" 2>&1)"
   probe_status=$?
 }
 
@@ -329,6 +331,10 @@ assert_status 1 "scan: exits 1 when a blanked file is found"
 assert_output_matches 'REQ-1282-incident\.md' "scan: names the blanked file"
 assert_output_matches '0 bytes' "scan: reports the file as empty"
 assert_output_matches "$recorded_hash" "scan: recovers the hash from the blanking commit's message"
+# The recoverable size is what tells an operator whether the loss is worth acting on, and it
+# must be the PRE-blanking size read out of the recovery commit — not the 0 bytes on disk.
+assert_output_matches "Recoverable: $intact_bytes bytes" \
+  "scan: reports the recoverable byte count from the pre-blanking commit"
 if printf '%s' "$probe_output" | grep -q 'REQ-1283-healthy'; then
   printf 'FAIL: scan: reported the intact neighbour REQ-1283 as blanked.\n' >&2
   fail_count=$((fail_count + 1))
