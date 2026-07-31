@@ -250,6 +250,14 @@ assert_contains \
   "tools/do-work-update.sh" \
   'Continue with the update' \
   'tools/do-work-update.sh must require an interactive overwrite confirmation after showing the reviewed diff.'
+assert_file_not_contains \
+  "tools/do-work-update.sh" \
+  'cp -R "\$skill_root"' \
+  'tools/do-work-update.sh must not reintroduce the pre-update rollback copy — git is the undo, and a duplicated tree on every run buys nothing git does not already hold. A mid-update failure reports the partial install instead; see _dev/tests/update-script-behavior.sh.'
+assert_contains \
+  "tools/do-work-update.sh" \
+  'print_recovery_instructions' \
+  'tools/do-work-update.sh keeps no rollback copy, so a failure inside the destructive region must hand the operator runnable recovery commands rather than exit quietly.'
 
 assert_file_not_contains \
   "actions/work.md" \
@@ -627,6 +635,19 @@ if [ ! -f "$record_commit_hash_probe" ]; then
   fail_count=$((fail_count + 1))
 elif ! bash "$record_commit_hash_probe"; then
   printf 'FAIL: record-commit-hash guard probes failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# Behavioral probes for tools/do-work-update.sh — same reasoning as above, and the same
+# no-auto-discovery caveat. These build a synthetic install plus a stubbed upstream fetch
+# because the no-rollback-copy contract is a runtime property (no `.bak` left behind, a
+# mid-update failure that reports instead of restoring) that no grep can assert.
+update_script_probe="$repo_root/_dev/tests/update-script-behavior.sh"
+if [ ! -f "$update_script_probe" ]; then
+  printf 'FAIL: _dev/tests/update-script-behavior.sh is missing — the updater has no behavioral coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$update_script_probe"; then
+  printf 'FAIL: update-script behavior probes failed (see the FAIL lines above).\n' >&2
   fail_count=$((fail_count + 1))
 fi
 

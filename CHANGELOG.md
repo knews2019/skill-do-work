@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.156.0 — Update Script Keeps No Rollback Copy (2026-07-31)
+
+`just run-do-work-update` no longer duplicates your whole install before extracting. Version control is the undo, and copying a tracked tree on every run buys nothing git does not already hold — it just left a `do-work.preupdate-<timestamp>.bak` sitting in the project as untracked noise.
+
+- The `cp -R` snapshot and the automatic restore are gone. The prompt now reads "Files are overwritten in place and no rollback copy is kept."
+- A failure inside the destructive region reports the partial install and prints recovery commands you can paste — `git checkout --` scoped to the shipped paths git actually tracks, then `git clean -nd --` to review what the extraction added before deleting it.
+- If the install is **not** tracked in git (a project that gitignores `.claude/`, or no repo at all), you get told that before the confirmation prompt, because there nothing can be restored.
+- New `_dev/tests/update-script-behavior.sh` runs the real updater against a synthetic install with a stubbed upstream fetch: the happy path leaves no `.bak`, a mid-extraction failure reports instead of restoring, and a declined update changes nothing. A contract check fails the build if a `cp -R` snapshot is ever reintroduced.
+
 ## 0.155.0 — Commit-Hash Verify Inspects the Committed Patch, Partial Restores Fail Loudly, Updater Flags Stale Files (2026-07-31)
 
 Three fixes from an external review of the data-loss guards shipped in 0.151–0.153. The headline: `--verify` was making a promise it couldn't keep against the commonest kind of pre-commit hook.

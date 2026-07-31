@@ -4,7 +4,7 @@
 
 ## Read first
 
-- `tools/do-work-update.sh` — project-root gate, upstream fetch, confirmation, backup, extraction, and audit.
+- `tools/do-work-update.sh` — project-root gate, upstream fetch, confirmation, extraction, and audit.
 - `actions/install.md` — shipped recipe block, drift upgrade, and installer verification.
 - `actions/version.md` — canonical safeguards the script must keep aligned with.
 
@@ -16,9 +16,9 @@
 ## Stakes
 
 - `do-work-update.sh` — project-local overwrite boundary
-  Req: reject skill roots outside the invoking project, show the reviewed diff, require confirmation, create a rollback copy, and verify the installed version afterward.
+  Req: reject skill roots outside the invoking project, show the reviewed diff, require confirmation, and verify the installed version afterward.
   Value: users can update without an agent turn while retaining the protection against clobbering a shared install or local customization.
-  Risk: weakening any guard can overwrite user work or runtime queue data; the rollback copy is recoverable, but runtime state must never need recovery because it is never touched.
+  Risk: weakening any guard can overwrite user work or runtime queue data. The script keeps **no** rollback copy — version control is the undo — so a failure inside the destructive region must report the partial install with runnable recovery commands (`print_recovery_instructions`), and runtime state must never need recovery because it is never touched. Do not reintroduce a `cp -R` snapshot; `_dev/tests/contract-regressions.sh` fails the build if you do.
 
 ## Lessons
 

@@ -141,22 +141,6 @@ else
   shipped_paths+=(justfile)
 fi
 
-# What the automatic rollback restores. Beyond the shipped set: the project justfile that a
-# failure *between* the extraction and its restore could have left clobbered (root fallback),
-# and the stale vendored maintainer docs the update deletes on purpose (nested install).
-restore_paths=("${shipped_paths[@]}")
-if [ -n "$root_fallback_install" ]; then
-  # Order is load-bearing on a case-insensitive filesystem: clearing the extracted lowercase
-  # `justfile` must come BEFORE restoring a `Justfile`, or the clear would delete the file
-  # just restored. Appending the project's own name is skipped when it IS `justfile`.
-  restore_paths+=(justfile)
-  if [ -n "$project_justfile_name" ] && [ "$project_justfile_name" != 'justfile' ]; then
-    restore_paths+=("$project_justfile_name")
-  fi
-else
-  restore_paths+=(CLAUDE.md AGENTS.md)
-fi
-
 [ -s "$skill_root/SKILL.md" ] || fail "SKILL.md is missing at $skill_root"
 [ -f "$skill_root/actions/version.md" ] || fail "actions/version.md is missing at $skill_root"
 
@@ -164,44 +148,61 @@ local_version="$(sed -n 's/^\*\*Current version\*\*: *\([0-9][0-9.]*\).*/\1/p' "
 [ -n "$local_version" ] || fail 'could not read the local version'
 
 update_tmp="$(mktemp -d "${TMPDIR:-/tmp}/do-work-update.XXXXXX")"
-backup_path=''
-backup_ready=''
+install_modified=''
 update_verified=''
+shipped_files_tracked=''
 
-restore_from_backup() {
-  # Put every restore path back exactly as the rollback copy has it: remove, then copy
-  # back. Removing first is what makes this an undo rather than a merge — a path the
-  # update ADDED (absent from the backup) is cleared instead of surviving the rollback.
-  # Only the enumerated paths are touched; never `rm -rf "$skill_root"`, which in the
-  # root-fallback install is the entire project — git history, the do-work/ queue, and all.
-  local restore_path
-  local restore_failed=''
-  for restore_path in "${restore_paths[@]}"; do
-    [ -e "$backup_path/$restore_path" ] || [ -e "$skill_root/$restore_path" ] || continue
-    # `:?` on both halves so a would-be-empty expansion aborts instead of resolving to `/`.
-    rm -rf "${skill_root:?}/${restore_path:?}" || { restore_failed=1; continue; }
-    [ -e "$backup_path/$restore_path" ] || continue
-    cp -R "$backup_path/$restore_path" "$skill_root/$restore_path" || restore_failed=1
+# This updater keeps no rollback copy: version control is the undo, and duplicating a tracked
+# tree on every run buys nothing git does not already hold. The cost is that recovery from a
+# mid-update failure is the operator's call, so a partial install has to say exactly what to
+# run rather than exit quietly and let a half-old, half-new tree pass for a clean cancel.
+print_recovery_instructions() {
+  local candidate_path
+  local candidate_paths=("${shipped_paths[@]}")
+  local tracked_paths=()
+  printf 'The install at %s may be partially updated (some files v%s, some v%s).\n' \
+    "$skill_root" "$local_version" "$remote_version" >&2
+  if [ -z "$shipped_files_tracked" ]; then
+    printf 'These files are not tracked in git here, so there is nothing to restore from.\n' >&2
+    printf 'Re-run the update once the cause is fixed — the extraction overwrites in place, so repeating it is safe.\n' >&2
+    return
+  fi
+  # Beyond the shipped set: the two paths a failure can damage that the shipped set does not
+  # name. Root fallback — the project's own justfile, deliberately excluded from the reviewed
+  # set, which a failure between the extraction and its restore leaves holding the skill's
+  # recipes. Nested — the stale vendored maintainer docs the update deletes on purpose, worth
+  # offering back on a failed run since a re-run deletes them again.
+  if [ -n "$root_fallback_install" ]; then
+    candidate_paths+=(justfile)
+    if [ -n "$project_justfile_name" ] && [ "$project_justfile_name" != 'justfile' ]; then
+      candidate_paths+=("$project_justfile_name")
+    fi
+  else
+    candidate_paths+=(CLAUDE.md AGENTS.md)
+  fi
+  # Only the paths git actually has, so the printed command runs instead of dying on an
+  # unmatched pathspec (an install may legitimately be missing a shipped directory, and the
+  # extra candidates above are often untracked or absent).
+  for candidate_path in "${candidate_paths[@]}"; do
+    if [ -n "$(git -C "$skill_root" ls-files -- "$candidate_path")" ]; then
+      tracked_paths+=("$candidate_path")
+    fi
   done
-  [ -z "$restore_failed" ]
+  printf 'Restore the tracked skill files from git:\n  git -C %s checkout -- %s\n' \
+    "$skill_root" "${tracked_paths[*]}" >&2
+  printf 'Then review what the extraction added and delete what you do not want (-nd lists, -fd deletes):\n  git -C %s clean -nd -- %s\n' \
+    "$skill_root" "${tracked_paths[*]}" >&2
 }
 
 cleanup() {
   rm -rf "$update_tmp"
-  # Transactional outcome: either the update completes and verifies, or the install goes
-  # back to its pre-update state. `update_verified` is set on the fully-verified path only,
-  # so EVERY earlier exit inside the destructive region lands here and undoes the writes —
-  # a mid-extract ENOSPC (the cp -R backup just doubled the install's on-disk size), a
-  # failed post-update version check, or `set -e` firing anywhere in between. The rollback
-  # copy is still kept and reported: it is the audit trail and the manual fallback for the
-  # one case this cannot handle, a restore that itself fails partway.
-  if [ -n "$backup_ready" ] && [ -z "$update_verified" ]; then
-    printf 'Update did not complete — restoring the install from the rollback copy…\n' >&2
-    if restore_from_backup; then
-      printf 'Restored to v%s; nothing was updated. Rollback copy kept at: %s\n' "$local_version" "$backup_path" >&2
-    else
-      printf 'AUTOMATIC RESTORE FAILED — the install is partially modified.\nRestore it by hand from the rollback copy: %s\n' "$backup_path" >&2
-    fi
+  # `update_verified` is set on the fully-verified path only, so EVERY earlier exit inside the
+  # destructive region lands here — a mid-extract ENOSPC, a failed post-update version check,
+  # `set -e` firing anywhere in between. Nothing is undone automatically; the contract is to
+  # report the partial state loudly and hand the operator the exact recovery commands.
+  if [ -n "$install_modified" ] && [ -z "$update_verified" ]; then
+    printf 'Update did not complete.\n' >&2
+    print_recovery_instructions
   fi
 }
 trap cleanup EXIT
@@ -229,6 +230,12 @@ printf 'Update available: v%s (you have v%s).\n' "$remote_version" "$local_versi
 dirty_files=''
 if git -C "$skill_root" rev-parse --git-dir >/dev/null 2>&1; then
   dirty_files="$(git -C "$skill_root" status --porcelain -- "${shipped_paths[@]}")"
+  # Whether git can actually serve as the undo. A repo whose ignore rules cover the skill —
+  # a project that gitignores `.claude/`, say — reports a git dir while tracking none of
+  # these files, so the presence of a repo is not the question; tracked content is.
+  if [ -n "$(git -C "$skill_root" ls-files -- "${shipped_paths[@]}")" ]; then
+    shipped_files_tracked=1
+  fi
 fi
 
 diff_file="$update_tmp/install.diff"
@@ -252,7 +259,11 @@ if [ -s "$extras_file" ]; then
   fi
 fi
 
-printf 'Continue with the update? This creates a rollback copy first. [y/N] '
+if [ -z "$shipped_files_tracked" ]; then
+  printf 'These skill files are not tracked in git here, and this updater keeps no rollback copy: if the update fails partway there is nothing to restore from. Commit or copy the install yourself first if that matters.\n' >&2
+fi
+
+printf 'Continue with the update? Files are overwritten in place and no rollback copy is kept. [y/N] '
 # EOF / non-interactive stdin (piped, CI, </dev/null) makes `read` return non-zero; under
 # `set -e` a bare `read` would abort here before the case below can default to No. Treat
 # EOF as an explicit No so the cancel path runs and the script exits 0.
@@ -262,10 +273,6 @@ case "$confirmation" in
   *) printf 'Update cancelled; no files were changed.\n'; exit 0 ;;
 esac
 
-backup_path="$skill_root.preupdate-$(date -u +%Y%m%dT%H%M%SZ).bak"
-cp -R "$skill_root" "$backup_path"
-backup_ready=1  # rollback copy exists; every exit below rolls back unless the update verifies
-
 preserved_justfile=''
 if [ -n "$project_justfile_name" ]; then
   preserved_justfile="$update_tmp/project-justfile"
@@ -273,6 +280,9 @@ if [ -n "$project_justfile_name" ]; then
     || fail "could not preserve the project justfile at $project_root/$project_justfile_name"
 fi
 
+# First write into the install: from here to the verification below, a failure leaves a
+# partial install and the EXIT trap prints the recovery commands.
+install_modified=1
 find "$skill_root/prompts" -maxdepth 1 -name '*.md' ! -name 'README.md' -delete 2>/dev/null || true
 find "$skill_root/interviews" -maxdepth 1 -name '*.md' -delete 2>/dev/null || true
 tar xzf "$upstream_tarball" -C "$skill_root" --strip-components=1 \
@@ -319,6 +329,5 @@ if [ -s "$post_diff" ]; then
   exit 1
 fi
 
-update_verified=1  # install matches the reviewed upstream tree; cleanup's rollback stands down
+update_verified=1  # install matches the reviewed upstream tree; cleanup's failure report stands down
 printf 'Updated to v%s at %s\n' "$remote_version" "$skill_root"
-printf 'Rollback copy: %s\n' "$backup_path"
