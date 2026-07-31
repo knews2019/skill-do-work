@@ -6,6 +6,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.158.0 — An Answer You Give Mid-Run Is Written Into the REQ (2026-08-01)
+
+The question rulebook governed how to ask you something and said nothing about where your answer had to land — so a long run could stop, ask two decisions that were genuinely yours, get detailed answers, and write none of it down. The next builder started fresh, found one question still unanswered, and re-decided it off the stored recommendation whose reasoning you had just rejected. Same outcome, wrong reason, no record.
+
+- New `crew-members/clear-questions.md` Principle 8: an answer obtained interactively outlives the transcript or it may as well not exist — write it into the durable record before acting on it, and capture any new work it implies as its own REQ. Scoped to decisions the work is later read from; a plain proceed/abort gate needs nothing extra.
+- `actions/work.md` Step 3.5 gained the missing third branch. It had two — the builder decides (`- [~]` plus a D-XX), or the question waits for `do-work clarify`. Now: a decision escalated mid-run and answered is written in by the orchestrator before dispatch as `- [x]`, never `- [~]` and never with a D-XX, because it is your decision and not the builder's guess.
+- `actions/clarify.md` Step 4's `- [x] question → answer` form is now a named entry point, canonical for any caller that obtains an answer — cited by name so a renumbered step can't dangle. Step 5's status flip stays clarify-only; a REQ already in flight has no `pending-answers` to leave.
+- Three assertions in `_dev/tests/contract-regressions.sh` pin the principle, the branch, and the named format so a later cleanup pass can't drop one half and leave the others pointing at nothing.
+
+Mid-run questions are deliberately still allowed — asking was the right call. The bug was losing the answer.
+
 ## 0.157.1 — Board Pills and Drawer Fields Wrap Instead of Overflowing (2026-07-31)
 
 Long badge values on the Kanban board — most visibly a card's "blocked by \<condition\>" pill — used to run off the card edge because badges were locked to a single line. Pills now wrap onto extra lines, and the drawer's metadata values break long unbroken tokens (write_set paths, blocked_check commands) instead of widening past the drawer.

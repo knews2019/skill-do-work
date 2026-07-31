@@ -271,6 +271,8 @@ Open Questions use checkbox syntax:
 3. Number decisions sequentially per REQ (D-01, D-02, D-03...). Open Questions decisions and Implementation Decisions (Step 6) share the same D-XX ID space — if Open Questions uses D-01 through D-03, the first implementation decision is D-04. After resolving all `- [ ]` items, append a counter comment immediately after the `## Open Questions` section so Step 6 knows the next available ID: `<!-- D-XX counter: last used D-03. Next decision: D-04. -->` If no decisions were made in this step, write `<!-- D-XX counter: none used. Next decision: D-01. -->` These IDs can be referenced by future REQs.
 4. Proceed with implementation using those decisions.
 
+**If a question was escalated to the user mid-run and answered:** a long-running orchestration does legitimately surface a decision between units of work, and that answer lives only in the asking session's context until something writes it down (`crew-members/clear-questions.md` Principle 8). The **orchestrator** (never the builder — all file management is the orchestrator's) writes it into the REQ *before dispatch*, in the **Canonical answered-question format** (`actions/clarify.md`): the item becomes `- [x] [question] → [the user's answer]`, **not** `- [~]`, and carries no D-XX — those record *builder* choices, and recording a user answer as one would leave the stored `Recommended:` rationale standing as the reason and send the settled decision back through `do-work clarify` for confirmation. Append the reasoning too, including anything the answer put out of scope, so a fresh builder reads the decision instead of re-deriving it from `Recommended:`/`Also:`. Any *new* work the answer implies is captured as its own REQ, not left as a sentence in the hand-back. Do not flip `status` here: this REQ is already in flight, so the `pending-answers` → `pending` transition (`actions/clarify.md` Step 5) does not apply.
+
 The follow-up REQs for builder-decided questions are created during **Step 8 (Archive)** — not here. Step 3.5 just records the decisions; the archive step handles the paperwork after the REQ is fully complete.
 
 **Why not block?** Human time is the bottleneck. The optimal windows for user interaction are: (1) capture time, when the user is actively fleshing out requests, and (2) batch-review time, when the user returns to answer accumulated questions. Blocking mid-build wastes builder capacity on idle waiting.
@@ -671,7 +673,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 1: Concurrent-orchestrator lock guard (first entry only), read CHECKPOINT.md if exists, crash recovery (per-file concurrency gate), validate frontmatter, pick first pending
 □ Step 2: Claim request (lock claim first, then mkdir -p working/ + move, update status & claimed_at)
 □ Step 3: Triage (decide route, append ## Triage, read original if addendum, re-validate write-set disjointness if this co-dispatched REQ triaged to Route A)
-□ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions)
+□ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions; a user answer obtained mid-run is written in as - [x] before dispatch — never - [~], no D-XX)
 □ Step 4: Plan (Route C: spawn Plan agent + validate plan / Routes A & B: note skipped)
 □ Step 5: Explore (Routes B & C: spawn Explore agent, include prime file lessons)
 □ Step 5.5: Scope Declaration (Routes B & C: declare files + acceptance criteria in REQ)

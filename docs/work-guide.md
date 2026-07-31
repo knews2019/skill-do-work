@@ -59,6 +59,8 @@ After testing, a multi-dimensional review runs:
 
 Builders never block on ambiguities. They mark questions as `- [~]` with best-judgment reasoning and create `pending-answers` follow-ups. Run `do-work clarify` later to review these decisions as a batch.
 
+If you answer a question yourself mid-run — a long run stopping to ask you something between REQs — that answer is written into the REQ as `- [x]` before any building starts. It survives the session that heard it, so no builder re-decides it in a fresh context.
+
 ## Checkpoints
 
 At session end, a `do-work/CHECKPOINT.md` is written with the last completed REQ, queue state, and where any in-progress work stopped — so the next session can resume cleanly.

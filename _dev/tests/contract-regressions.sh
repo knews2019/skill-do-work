@@ -645,6 +645,35 @@ assert_block_contains \
   'never column logic' \
   'actions/board.md Rules must keep the overlap annotation display-only claim (drives the overlaps badge and drawer row, never column logic, never blocking) — without it nothing tells a parser-editing agent that which REQs may co-dispatch stays with actions/work.md Step 1 gate.'
 
+# Mid-run answer durability. A question asked interactively can satisfy every wording rule
+# and still produce an answer that dies with the session: a consumer's long-running
+# orchestrator asked two user-owned decisions, got detailed answers, wrote nothing to disk,
+# and the next builder re-decided one of them in a fresh context off the stored
+# `Recommended:` rationale the user had just rejected (validate-feedback 2026-08-01). Three
+# halves hold the fix together — the principle, the pipeline branch that obeys it, and the
+# one named format both cite — and each reads as removable prose on its own.
+assert_contains \
+  "crew-members/clear-questions.md" \
+  'outlive the transcript' \
+  'crew-members/clear-questions.md must keep the principle that an interactively obtained answer is written into the durable record before it is acted on — wording rules alone let a compliant question produce an answer that dies with the session.'
+
+work_open_questions_block="$(sed -n '/^### Step 3\.5: Open Questions/,/^### Step 3\.7/p' "$repo_root/actions/work.md")"
+
+assert_block_contains \
+  "$work_open_questions_block" \
+  'escalated to the user mid-run and answered' \
+  'actions/work.md Step 3.5 must keep the third branch for a decision escalated mid-run and answered (orchestrator writes it in before dispatch) — with only builder-decides and defer-to-clarify, a mid-run answer has nowhere to land.'
+
+assert_block_contains \
+  "$work_open_questions_block" \
+  '\*\*not\*\* `- \[~\]`' \
+  'actions/work.md Step 3.5 must keep a mid-run user answer recorded as - [x] and never - [~] — filing it as a builder decision sends a settled question back through clarify and leaves the rejected Recommended: rationale standing as its reason.'
+
+assert_contains \
+  "actions/clarify.md" \
+  'Canonical answered-question format' \
+  'actions/clarify.md Step 4 must keep the named entry point declaring its - [x] form canonical for any caller that obtains a user answer — cited by name (not step number) from clear-questions.md Principle 8 and work.md Step 3.5.'
+
 # Behavioral probes for tools/checks/record-commit-hash.sh. Kept in their own file because
 # they build a throwaway git repo and run the real script rather than grepping prose — but
 # invoked from here, since nothing auto-discovers _dev/tests/*.sh and an uninvoked probe file

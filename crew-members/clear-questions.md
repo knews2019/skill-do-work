@@ -36,6 +36,10 @@ Before sending, reread the question cold. If *you* would need a second pass to b
 
 If a question was escalated, name the rule or authority that forced the escalation — a frozen contract, a spec contradiction, a user-owned trade-off — and what silently deciding would have cost. Without this, a well-reasoned recommendation reads as "why are you even asking me?" The user needs to know what's actually at stake in their answer, not just which option the builder prefers.
 
+### 8. The answer has to outlive the transcript
+
+An answer obtained interactively exists only in the asking session's context — dispatched agents start fresh, and the archive is the permanent intent trail. So before acting on an answer that changes what gets built, write it into the durable record the work will be read from. For a question stored in a REQ that means the **Canonical answered-question format** (`actions/clarify.md`): flip `- [ ]` to `- [x] [question] → [the answer]`, plus a dated note carrying the reasoning, including anything the answer put out of scope. Any *new* work the answer implies gets captured as its own REQ instead of living as a sentence in a reply. A plain consent gate — proceed/abort, a condition confirmed — is already recorded by whatever it gates and needs nothing extra; this principle is about decisions the work is later read from. Same stance `crew-members/background-agents.md` takes for fan-out findings: the transcript is the worst available place to keep a result.
+
 ## Example
 
 ```
@@ -57,3 +61,4 @@ The dense version compresses four coined labels and an unstated trade-off into o
 - An option list where two options differ only in wording the user can't distinguish.
 - A question the user answers incorrectly because they misread it — the cost of density, paid late.
 - An escalated question that never says why the builder couldn't decide it alone.
+- An answer that changed what gets built, with no file touched afterwards — the only record is the transcript, which the next agent never sees.

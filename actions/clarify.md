@@ -93,6 +93,8 @@ Builder-marked `- [~]` decisions reflect the "Think Before Coding" guardrail (`c
 
 ### Step 4: Collect answers
 
+> **Named entry point — Canonical answered-question format.** The `- [x] [question] → [answer]` form below is the durable record for **any** caller that obtains a user answer to a REQ question, not just clarify (`crew-members/clear-questions.md` Principle 8) — an orchestrator that asked and got an answer mid-run writes the same form before dispatch (`actions/work.md` Step 3.5). Callers cite it by this name, not by step number. What is clarify-local is Step 5's `pending-answers` → `pending` flip: a REQ already in flight has no such status to leave.
+
 If your environment has a structured question prompt (multi-question UI), batch questions in groups of **at most 4 per prompt** — chunk by question count, not by REQ. A REQ with 6 questions needs 2 prompts.
 
 For each question, the user can:
@@ -190,6 +192,7 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - [ ] No story contained a file path, bare identifier, or unglossed technical token.
 - [ ] Layer 3 detail was offered, not rendered, unless the user asked for it.
 - [ ] Each `blocked` REQ presented in Step 5.5 carried a one-sentence "what it was for" line.
+- [ ] Every answer written into a REQ used the **Canonical answered-question format** (`- [x] [question] → [answer]`) — the same form any mid-run caller must use, so the answer survives the session that heard it.
 - [ ] Answered REQs with all questions resolved flipped to `status: pending` (or `completed` for builder-was-right, `cancelled` for discarded).
 - [ ] Approved discovered-task REQs flipped to `pending` and stayed in `do-work/queue/` — not archived.
 - [ ] Skipped REQs remained `pending-answers` — nothing lost.
