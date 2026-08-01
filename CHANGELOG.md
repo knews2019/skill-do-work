@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.158.1 — Pre-Flight Tells a Failed Test Run From a Test Command That Never Ran (2026-08-01)
+
+The pre-flight check records a test baseline so the reviewer can tell a pre-existing failure from a regression the builder just introduced. It was recording one even when the test command never launched — a typo'd command exits 127, which looked exactly like a red suite, so a session could start with a baseline that described no test run at all and later excuse a real regression as "already failing before we started". The whole point of the check is attribution, and that was the one way it could get attribution wrong.
+
+- A command that can't be launched (exit 126/127) now reports `WARN: could not run the test command — no baseline recorded`, writes no failures file, clears any stale one, and records `"launched": false`. The review step reads that field and refuses to compare rather than comparing against a fiction.
+- `preflight.sh "npx jest --silent"` works now. Passing the test command as one quoted string used to die with an opaque `command not found` — which is how the bug above got triggered in the first place. The quoted form runs via `sh -c`, so `"cd app && npm test"` works too.
+- The baseline path is written once instead of spelled two different ways, and the script's header documents that it runs from the project root like its siblings.
+
 ## 0.158.0 — An Answer You Give Mid-Run Is Written Into the REQ (2026-08-01)
 
 The question rulebook governed how to ask you something and said nothing about where your answer had to land — so a long run could stop, ask two decisions that were genuinely yours, get detailed answers, and write none of it down. The next builder started fresh, found one question still unanswered, and re-decided it off the stored recommendation whose reasoning you had just rejected. Same outcome, wrong reason, no record.
