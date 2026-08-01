@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.162.0 — REQ IDs Accepted by `do-work roadmap` (2026-08-01)
+
+Closes the inverse of the asymmetry this batch fixed: `roadmap` took `UR-NNN` as a scope token but not `REQ-NNN`, so `do-work roadmap REQ-067` silently returned a whole-queue survey. Now every id-taking action in the skill accepts both prefixes.
+
+- `do-work roadmap REQ-NNN` scopes to a single REQ — its status, dependency position, feasibility read, and its UR siblings for context. Deliberately thin (per-REQ detail stays with `do-work inspect`).
+- Multiple id tokens resolve to their union; the soft unrecognized-argument fallback stays, so a genuinely unknown token still yields the full survey with a note.
+- Cites the shared Target ID Resolution contract for token shapes rather than restating them.
+
 ## 0.161.1 — UR Token Precedence and Reserve Mode-Table Fixes (2026-08-01)
 
 Two corrections from PR review of the UR-id work.

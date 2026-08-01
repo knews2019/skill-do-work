@@ -353,6 +353,22 @@ assert_contains \
   '^-[[:space:]]+\*\*Ready\*\*[[:space:]]+— normalized `status` is `pending`' \
   'actions/roadmap.md must require pending status before classifying a queued REQ as Ready.'
 
+# REQ scoping in roadmap (REQ-070). roadmap accepted UR-NNN as a scope token but not REQ-NNN, so
+# `do-work roadmap REQ-067` silently fell through to a whole-queue survey — the inverse of the
+# UR-run asymmetry the batch fixed. Its Input must now name a REQ-NNN scope token and cite the
+# shared Target ID Resolution contract for the token shape (rather than restating it).
+roadmap_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$repo_root/actions/roadmap.md")"
+
+assert_block_contains \
+  "$roadmap_input_block" \
+  'REQ-NNN' \
+  'actions/roadmap.md Input must accept a REQ-NNN scope token (single-REQ survey), not only UR-NNN — a recognized REQ id must no longer fall through to the full-survey default.'
+
+assert_block_contains \
+  "$roadmap_input_block" \
+  'Target ID Resolution' \
+  'actions/roadmap.md Input must cite the shared Target ID Resolution contract for the REQ-/UR- token shapes rather than restating them.'
+
 # ADR-017 memory engine contracts: the Stop capture must never block a session
 # end, destructive consolidation must never be hook-wired, and the engine's
 # core guardrails (cap, prompt-injection load, compose-don't-clobber install)
