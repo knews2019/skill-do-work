@@ -1120,11 +1120,12 @@ func annotateDependencyState(board *Board) []string {
 
 // isWriteSetOverlapCandidateStatus reports whether a normalized status belongs to
 // the tier the overlap annotation compares. Only `pending` and `claimed` qualify:
-// those are the REQs a dispatcher could still put in flight together, so a
-// contention badge on them is actionable. `reserved` is excluded even though it
-// shares the Claimed column — it is allocated to another worktree/session, and
-// the board cannot see that session's real write surface. Terminal and
-// needs-input tiers are excluded because they are not dispatch candidates at all.
+// those are the REQs still to be worked, so a declared-file-contention badge on
+// them is a useful heads-up for a human reading the board. `reserved` is excluded
+// even though it shares the Claimed column — it is allocated to another
+// worktree/session, and the board cannot see that session's real write surface.
+// Terminal and needs-input tiers are excluded because their work is settled, so a
+// contention badge on them would carry no signal.
 func isWriteSetOverlapCandidateStatus(normalizedStatus string) bool {
 	return normalizedStatus == "pending" || normalizedStatus == "claimed"
 }

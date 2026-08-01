@@ -6,6 +6,10 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.162.2 — Finish the Board Comment Sweep (2026-08-01)
+
+Re-verification caught one `tools/queue-kanban/model.go` comment (`isWriteSetOverlapCandidateStatus`) still using the removed "a dispatcher could put these in flight together" framing while its four siblings had been refreshed. Reworded it to the exclusive-session, contention-heads-up wording so the file tells one story. Comment-only; the Go tests still pass.
+
 ## 0.162.1 — Correct the Board Overlap Semantics After the Exclusive-Session Cut (2026-08-01)
 
 An adversarial verification pass over the batch caught a factual error introduced by the concurrency-machinery removal, plus stale comments. Fixes:
