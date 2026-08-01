@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.162.1 — Correct the Board Overlap Semantics After the Exclusive-Session Cut (2026-08-01)
+
+An adversarial verification pass over the batch caught a factual error introduced by the concurrency-machinery removal, plus stale comments. Fixes:
+
+- `actions/work-reference.md` said an absent/empty `write_set` makes the board's overlaps badge "read as overlaps everything." The board does the opposite — it shows **no** badge for an empty set (absence = unknown, not conflict). Corrected the schema note and the crash-recovery rationale to match `actions/board.md`, `tools/queue-kanban/prime-do-kanban.md`, and the board code.
+- `actions/work.md` `--wave` restatement now says "any targeting token (`REQ-`/`UR-`)" instead of "targeted REQ IDs", matching the authoritative Input guard.
+- Refreshed `tools/queue-kanban/model.go` and `web/board.js` **comments/tooltip** that still described a "dispatch gate" / "co-dispatch" decision the exclusive-session model removed (comment-only; the board's overlap display is unchanged and its Go tests still pass).
+
 ## 0.162.0 — REQ IDs Accepted by `do-work roadmap` (2026-08-01)
 
 Closes the inverse of the asymmetry this batch fixed: `roadmap` took `UR-NNN` as a scope token but not `REQ-NNN`, so `do-work roadmap REQ-067` silently returned a whole-queue survey. Now every id-taking action in the skill accepts both prefixes.

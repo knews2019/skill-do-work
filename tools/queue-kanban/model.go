@@ -114,8 +114,9 @@ type RequestTicket struct {
 	BlockedCheck string   // optional shell probe command (display only; the pipeline, not the board, runs it), "" when absent
 	Related      []string // soft relations (not dependency edges)
 	// write_set names the repo-relative paths/globs the REQ expects to write.
-	// Read verbatim, never normalized, and never used for column logic; the
-	// work pipeline's dispatch gate — not the board — decides what co-dispatches.
+	// Read verbatim, never normalized, and never used for column logic; it is a
+	// display-only field (the exclusive-session pipeline runs one REQ at a time,
+	// so nothing schedules on it) that feeds only the overlaps badge below.
 	WriteSet []string
 
 	// Derived by annotateWriteSetOverlap after bucketing — never read from
@@ -1146,14 +1147,14 @@ func isWriteSetOverlapCandidateStatus(normalizedStatus string) bool {
 // Caveat, deliberately simple: TWO globs are compared as literals only. Deciding
 // whether `src/**/a*.ts` and `src/auth/*.ts` can name a common file needs pattern
 // intersection, which the stdlib has no primitive for — and the board's job here
-// is to make likely contention visible, not to be the dispatch gate. This is
-// display-only: a pair that shares files but renders no badge falls in one of
-// several miss-classes — ILLUSTRATIVE, not a closed list: glob-vs-glob, a `**`
-// pattern, a malformed pattern against anything but its own twin, and an entry
-// naming a directory (`actions/` never matches `actions/board.md`, because
-// path.Match is false both for `actions/` and for `actions` against it). The work
-// pipeline's dispatch gate still treats an unexpandable/overlapping glob as
-// overlapping (serialize), so a board false-negative never loosens the gate.
+// is to make likely contention visible for a human, not to schedule anything.
+// This is display-only: a pair that shares files but renders no badge falls in
+// one of several miss-classes — ILLUSTRATIVE, not a closed list: glob-vs-glob, a
+// `**` pattern, a malformed pattern against anything but its own twin, and an
+// entry naming a directory (`actions/` never matches `actions/board.md`, because
+// path.Match is false both for `actions/` and for `actions` against it). Because
+// nothing schedules on write_set under the exclusive-session model, a board
+// false-negative loosens nothing — it is only a missed heads-up for a reader.
 func writeSetPatternsIntersect(leftPattern string, rightPattern string) bool {
 	if leftPattern == rightPattern {
 		return true
@@ -1170,10 +1171,10 @@ func writeSetPatternsIntersect(leftPattern string, rightPattern string) bool {
 // writeSetsIntersect reports whether any entry of one write_set could name the
 // same file as any entry of the other. An empty set never intersects: on the
 // board, an absent write_set means UNKNOWN, and unknown must not render as
-// conflict. (The work pipeline's dispatch gate makes the opposite, safety-first
-// reading — absent ⇒ overlaps everything ⇒ serialize — because there a false
-// "disjoint" corrupts files, while here a false badge would cry wolf on every
-// card that never declared a set.)
+// conflict — a false badge would cry wolf on every card that never declared a
+// set. (Under the exclusive-session model nothing schedules on write_set, so
+// there is no scheduler that would need the opposite, "absent ⇒ overlaps
+// everything ⇒ serialize" reading.)
 func writeSetsIntersect(leftWriteSet []string, rightWriteSet []string) bool {
 	for _, leftPattern := range leftWriteSet {
 		for _, rightPattern := range rightWriteSet {
@@ -1192,10 +1193,10 @@ func writeSetsIntersect(leftWriteSet []string, rightWriteSet []string) bool {
 // the pairwise logic is covered by `go test` instead of living untested in
 // board.js.
 //
-// This is a DISPLAY annotation, not the dispatch gate. It shows contention that
-// would otherwise only surface mid-run; it never places a card in a column, never
-// blocks anything, and is not what a co-dispatch decision consults —
-// actions/work.md Step 1 owns that call, on write-sets the pipeline firmed up.
+// This is a DISPLAY annotation. It shows declared file contention for a human
+// reading the board; it never places a card in a column, never blocks anything,
+// and nothing schedules on it — under the exclusive-session model the pipeline
+// runs one REQ at a time (actions/work-reference.md → Execution Model).
 func annotateWriteSetOverlap(tickets []*RequestTicket) {
 	var candidateTickets []*RequestTicket
 	for _, ticket := range tickets {
