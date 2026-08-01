@@ -10,7 +10,7 @@ tdd: true
 suggested_spec:
 depends_on: [REQ-067]
 maintenance: true
-related: [REQ-067, REQ-069]
+related: [REQ-067, REQ-070]
 batch: ur-ids-accepted-everywhere
 write_set: [actions/abandon.md, actions/reserve.md, SKILL.md, actions/help.md, docs/cleanup-guide.md, CHANGELOG.md, actions/version.md]
 ---
@@ -120,7 +120,7 @@ This is a `maintenance: true` REQ: prefer narrowing and citing over adding prose
   UR acceptance go — `run` only, or every ID-taking action?
   → **run + abandon + reserve/release.** All three ID-taking actions that reject URs today. A
   middle option (reject, but list the UR's REQ ids in the error) was offered and not taken. At
-  verify the user extended the principle symmetrically — REQ-069 covers the inverse gap in
+  verify the user extended the principle symmetrically — REQ-070 covers the inverse gap in
   `actions/roadmap.md`.
 
 ## Red-Green Proof

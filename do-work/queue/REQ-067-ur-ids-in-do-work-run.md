@@ -10,7 +10,7 @@ tdd: true
 suggested_spec:
 depends_on: []
 maintenance: true
-related: [REQ-068, REQ-069]
+related: [REQ-068, REQ-070]
 batch: ur-ids-accepted-everywhere
 write_set: [actions/work-reference.md, actions/work.md, SKILL.md, actions/help.md, docs/work-guide.md, CHANGELOG.md, actions/version.md]
 ---
