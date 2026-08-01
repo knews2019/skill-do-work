@@ -10,7 +10,7 @@ tdd: true
 suggested_spec:
 depends_on: []
 maintenance: true
-related: [REQ-068]
+related: [REQ-068, REQ-069]
 batch: ur-ids-accepted-everywhere
 write_set: [actions/work-reference.md, actions/work.md, SKILL.md, actions/help.md, docs/work-guide.md, CHANGELOG.md, actions/version.md]
 ---
@@ -30,10 +30,17 @@ queue, and those REQs run in dependency order.
 
 ## Why
 
-The user ran `do-work run UR-059` and got `Unrecognized argument(s)`. A UR and a REQ are two halves
-of the same capture — `SKILL.md:11` makes the pairing mandatory — and seven actions already accept
-either prefix. Rejecting a UR at `run` is an inconsistency in the argument grammar, not a safety
-property.
+The user ran `do-work run UR-059` and was warned that it "isn't a valid argument — the action takes
+REQ IDs." A UR and a REQ are two halves of the same capture — `SKILL.md:11` makes the pairing
+mandatory — and seven actions already accept either prefix. Rejecting a UR at `run` is an
+inconsistency in the argument grammar, not a safety property.
+
+**The undefined grammar is already being improvised around, differently each time.** The agent that
+produced the user's warning did not stop: it reported the token as invalid and then *resolved it
+anyway* ("I resolved it rather than erroring") — while `actions/work.md:101` prescribes a hard stop.
+Two readers of the same prose, two behaviors, and the more helpful one is the one that violates the
+spec. That divergence is the real cost here, and it is why the fix is a defined shape rather than a
+better error message.
 
 ## Context
 
@@ -97,6 +104,11 @@ Add a **Target ID Resolution** block sited with the Terminal-success / Terminal-
 - **Line 218:** default mode still requires genuinely empty `$ARGUMENTS`. A UR that expands to zero
   runnable REQs reports and exits — e.g. `UR-011: no runnable REQs (2 completed, 0 pending).` — and
   must not become a full-queue run.
+- **Announce the expansion on the success path too.** A UR argument is the one case where the user
+  cannot see what the run claimed from what they typed, so the targeted-mode run names the UR and
+  lists its resolved REQs in execution order before the first claim — e.g.
+  `UR-011 → REQ-067, REQ-068 (dependency-ordered).` Without it, a silently-skipped `reserved` member
+  is indistinguishable from a member that was never in the UR.
 
 ### 4. Surface updates
 
@@ -143,17 +155,21 @@ than leaving both.
 
 ## Red-Green Proof
 
-**RED prompt/case:** `do-work run UR-011` against a queue holding this batch. Today the Input guard
-at `actions/work.md:101` emits
-`Unrecognized argument(s): UR-011. Usage: do-work run [REQ-NNN ...] | ...` and nothing runs. In the
-harness: a `_dev/tests/contract-regressions.sh` probe asserting `actions/work.md`'s Input section
-names a `UR-` token shape and that its usage string offers `UR-NNN` fails today.
+**RED prompt/case:** `do-work run UR-011` against a queue holding this batch. Today the outcome is
+*undefined and reader-dependent* — the observed instance warned `UR-059 isn't a valid argument — the
+action takes REQ IDs` and then resolved it anyway, while `actions/work.md:101` prescribes
+`Unrecognized argument(s): UR-011. Usage: do-work run [REQ-NNN ...] | ...` and a hard stop. **Do not
+treat an agent that happens to resolve the UR as GREEN** — an improvised resolution is the symptom,
+not the fix. The mechanical RED is the harness probe: a `_dev/tests/contract-regressions.sh`
+assertion that `actions/work.md`'s Input names a `UR-` token shape and that its usage string offers
+`UR-NNN` fails today.
 **Why RED now:** the tokenizer recognizes exactly one shape, `REQ-` + digits; every other token is
-residue by construction.
-**GREEN when:** the probe passes, and a walkthrough of `do-work run UR-011` selects REQ-067 then
-REQ-068 in that order (dependency-gated, not id-order coincidence), while `do-work run REG-042` still
+residue by construction, so a UR is handled by whatever the reading agent improvises.
+**GREEN when:** the probe passes; `do-work run UR-011` announces `UR-011 → REQ-067, REQ-068` and
+selects them in dependency order (gated, not id-order coincidence); and `do-work run REG-042` still
 errors unchanged.
-**Validation:** Inferred during capture from the user's reported warning.
+**Validation:** RED derived from the user's verbatim report of the warning; scope and gating
+confirmed with the user at capture, the RED framing corrected at verify.
 
 ## Full Context
 

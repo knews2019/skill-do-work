@@ -10,7 +10,7 @@ tdd: true
 suggested_spec:
 depends_on: [REQ-067]
 maintenance: true
-related: [REQ-067]
+related: [REQ-067, REQ-069]
 batch: ur-ids-accepted-everywhere
 write_set: [actions/abandon.md, actions/reserve.md, SKILL.md, actions/help.md, docs/cleanup-guide.md, CHANGELOG.md, actions/version.md]
 ---
@@ -116,16 +116,20 @@ This is a `maintenance: true` REQ: prefer narrowing and citing over adding prose
 
 ## Open Questions
 
-- [x] How wide should UR acceptance go — `run` only, or every ID-taking action?
+- [x] *(batch-level, recorded here and in `do-work/user-requests/UR-011/input.md`)* How wide should
+  UR acceptance go — `run` only, or every ID-taking action?
   → **run + abandon + reserve/release.** All three ID-taking actions that reject URs today. A
-  middle option (reject, but list the UR's REQ ids in the error) was offered and not taken.
+  middle option (reject, but list the UR's REQ ids in the error) was offered and not taken. At
+  verify the user extended the principle symmetrically — REQ-069 covers the inverse gap in
+  `actions/roadmap.md`.
 
 ## Red-Green Proof
 
 **RED prompt/case:** `do-work abandon UR-011 superseded` and `do-work reserve UR-011 for cloud-alpha`.
-Today `actions/abandon.md:32` globs `do-work/**/REQ-UR-011-*.md`-shaped paths, finds nothing, and
-reports `UR-011: not found`; `actions/reserve.md`'s mode table matches no row for a `UR-` token, so
-`release UR-011` falls into the free-text-label arm and matches zero reservations. In the harness: a
+Today `actions/abandon.md:32` has no defined handling for a non-`REQ-` token at all — its globs
+substitute a REQ *number* into `REQ-NNN-*.md`, so the best case is `UR-011: not found` and the real
+case is reader-dependent. `actions/reserve.md`'s mode table matches no row for a `UR-` token either,
+so `release UR-011` falls into the free-text-label arm and matches zero reservations. In the harness: a
 `_dev/tests/contract-regressions.sh` probe asserting both files' Input sections name a `UR-` token
 shape and cite the Target ID Resolution contract fails today.
 **Why RED now:** neither action has any notion of a UR; both key entirely on `REQ-NNN` tokens.

@@ -1,6 +1,6 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Concurrency Machinery — Simplification Analysis</title>
+<title>Exclusive-Session Pipeline — Simplification Analysis</title>
 <style>
   :root {
     --bg: #f7f4ee;
@@ -111,28 +111,29 @@
 <div class="page">
 
 <header class="hero">
-  <p class="kicker">do-work · concurrency machinery · simplification analysis</p>
-  <h1>Delete the lock. Verify the commit instead.</h1>
+  <p class="kicker">do-work · exclusive-session pipeline · simplification analysis</p>
+  <h1>Assume one session. Work the REQ in front of you.</h1>
   <p class="verdict measure">
-    <strong>About 6,500 words of concurrency machinery — a sixth of the core pipeline — can be removed</strong>
-    and replaced by roughly 600. The lock's real job was never owning REQs; it was owning the git index,
-    and it only needs to be held across the stage-and-commit window rather than the whole REQ lifecycle.
+    <strong>At least 6,511 words of concurrency machinery — a sixth of the core pipeline — can be removed</strong>
+    and replaced by one operating rule: a do-work session assumes it is alone. Unexpected repository state
+    matters only when it prevents the active REQ from being implemented, tested, archived, or committed;
+    otherwise preserve it and continue.
   </p>
   <p class="sub measure">
-    Analysis only — nothing is implemented. Every word count below was measured from this repo with the
-    commands in <em>Verify It Yourself</em>; the design argument is the author's, not a benchmark.
+    Analysis only — nothing is implemented. Existing-state counts were measured from this repo with the
+    commands in <em>Verify It Yourself</em>; the replacement cap and design argument are the author's.
   </p>
 </header>
 
 <section>
   <h2>The measurement</h2>
-  <p class="measure">Concurrency guarding, counted block by block across the three files that carry it.</p>
+  <p class="measure">Concurrency guarding, counted block by block across the three core files that carry it.</p>
 
   <div class="tiles">
-    <div class="tile cut"><div class="n">6,511</div><div class="l">words of concurrency machinery removable</div></div>
-    <div class="tile add"><div class="n">~600</div><div class="l">words of replacement (verify · counter · retry)</div></div>
-    <div class="tile cut"><div class="n">16.6%</div><div class="l">of the core pipeline is this machinery</div></div>
-    <div class="tile keep"><div class="n">6 → 3</div><div class="l">invariants to hold, replaced by escalation rungs</div></div>
+    <div class="tile cut"><div class="n">≥6,511</div><div class="l">measured words of concurrency machinery removable</div></div>
+    <div class="tile add"><div class="n">≤200</div><div class="l">planned replacement words (one rule + local stop condition)</div></div>
+    <div class="tile cut"><div class="n">≥16.1%</div><div class="l">net reduction in the measured core pipeline</div></div>
+    <div class="tile keep"><div class="n">0</div><div class="l">new schema fields, lock files, or retry artifacts</div></div>
     <div class="tile cut"><div class="n">4</div><div class="l">REQs needed to stabilize the lock alone</div></div>
   </div>
 
@@ -146,16 +147,16 @@
         <text x="418" y="59" text-anchor="middle" font-family="ui-monospace, monospace" font-size="14" fill="currentColor" opacity=".72">pipeline logic · 32,741</text>
         <text x="918" y="59" text-anchor="middle" font-family="ui-monospace, monospace" font-size="14" fill="#fff" font-weight="600">6,511</text>
 
-        <text x="0" y="126" font-family="ui-monospace, monospace" font-size="13" fill="currentColor" opacity=".62">AFTER — 33,341 words</text>
+        <text x="0" y="126" font-family="ui-monospace, monospace" font-size="13" fill="currentColor" opacity=".62">AFTER — no more than 32,941 words</text>
         <rect x="0" y="138" width="836" height="42" rx="4" fill="var(--ramp-1)"/>
-        <rect x="836" y="138" width="15" height="42" rx="3" fill="var(--add)"/>
+        <rect x="836" y="138" width="5" height="42" rx="2" fill="var(--add)"/>
         <text x="418" y="165" text-anchor="middle" font-family="ui-monospace, monospace" font-size="14" fill="currentColor" opacity=".72">pipeline logic · 32,741</text>
-        <text x="866" y="165" font-family="ui-monospace, monospace" font-size="13" fill="var(--add)" font-weight="600">~600</text>
+        <text x="856" y="165" font-family="ui-monospace, monospace" font-size="13" fill="var(--add)" font-weight="600">≤200</text>
 
         <line x1="836" y1="84" x2="836" y2="130" stroke="currentColor" stroke-opacity=".28" stroke-width="1" stroke-dasharray="3 3"/>
-        <text x="0" y="222" font-family="ui-monospace, monospace" font-size="15" fill="var(--cut)" font-weight="600">net −5,911 words · −15.1% of the core pipeline</text>
+        <text x="0" y="222" font-family="ui-monospace, monospace" font-size="15" fill="var(--cut)" font-weight="600">net at least −6,311 words · ≥16.1% of the core pipeline</text>
       </svg>
-      <figcaption>Hand-authored SVG. Bar widths are proportional to the measured counts.</figcaption>
+      <figcaption>Hand-authored SVG. Bar widths use the measured current counts and the planned replacement cap.</figcaption>
     </figure>
 
     <div class="card" style="flex: 2 1 340px">
@@ -174,160 +175,157 @@
       <p style="margin:16px 0 0; font-size:14px; color:var(--muted)">
         The Lock Guard section alone is larger than every action file in the repo
         except <code>work.md</code>, <code>work-reference.md</code> and <code>install.md</code> —
-        about 1.8× the median action file (2,590 words).
+        about 1.8× the median action file (2,591.5 words).
       </p>
     </div>
   </div>
 </section>
 
 <section>
-  <h2>The defect this exposes</h2>
+  <h2>The boundary that makes deletion safe</h2>
   <p class="measure">
-    Two resources can be owned: the <em>ticket</em> (a REQ file) and the <em>repo files</em> that ticket writes.
-    The lock tracks the first across every session. The <code>write_set</code> gate tracks the second within one
-    session only — every disjointness check in the pipeline compares against "every other in-flight REQ <em>this
-    batch</em>," which means this session's own batch. A coexisting session's requests are never read.
+    The pipeline supports one active do-work session, one active REQ, and one coder context. Parallel sessions,
+    co-dispatched builders, and cross-session ownership are outside the product contract. The pipeline does not
+    detect, coordinate, or recover an unsupported concurrent run.
   </p>
 
   <figure style="margin-top:26px">
-    <svg class="diagram" viewBox="0 0 1000 320" role="img"
-         aria-label="Diagram showing the ticket layer guarded globally and the file layer guarded only within each session">
-      <text x="0" y="16" font-family="ui-monospace, monospace" font-size="12" fill="currentColor" opacity=".62" letter-spacing="1.4">LAYER 1 — TICKET OWNERSHIP</text>
-      <rect x="0" y="28" width="1000" height="52" rx="6" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
-      <text x="500" y="59" text-anchor="middle" font-family="ui-monospace, monospace" font-size="14" fill="var(--keep)" font-weight="600">orchestrator-lock.json · claimed_reqs — every session visible to every other</text>
+    <svg class="diagram" viewBox="0 0 1000 310" role="img"
+         aria-label="Exclusive-session model and the relevance test for unexpected repository state">
+      <defs>
+        <marker id="model-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+        </marker>
+      </defs>
+      <text x="0" y="16" font-family="ui-monospace, monospace" font-size="12" fill="currentColor" opacity=".62" letter-spacing="1.4">SUPPORTED EXECUTION MODEL</text>
+      <g font-family="ui-monospace, monospace" font-size="14">
+        <rect x="0" y="34" width="270" height="56" rx="7" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+        <rect x="365" y="34" width="270" height="56" rx="7" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+        <rect x="730" y="34" width="270" height="56" rx="7" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
+        <text x="135" y="68" text-anchor="middle" fill="currentColor">one do-work session</text>
+        <text x="500" y="68" text-anchor="middle" fill="currentColor">one active REQ</text>
+        <text x="865" y="68" text-anchor="middle" fill="var(--keep)" font-weight="600">one coder context</text>
+        <g stroke="var(--accent)" stroke-width="1.8" marker-end="url(#model-arrow)">
+          <line x1="270" y1="62" x2="357" y2="62"/>
+          <line x1="635" y1="62" x2="722" y2="62"/>
+        </g>
 
-      <text x="0" y="114" font-family="ui-monospace, monospace" font-size="12" fill="currentColor" opacity=".62" letter-spacing="1.4">LAYER 2 — FILE OWNERSHIP</text>
-      <rect x="0" y="126" width="300" height="112" rx="8" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
-      <rect x="350" y="126" width="300" height="112" rx="8" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
-      <rect x="700" y="126" width="300" height="112" rx="8" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
-      <text x="150" y="150" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12.5" fill="currentColor" opacity=".62">SESSION A</text>
-      <text x="500" y="150" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12.5" fill="currentColor" opacity=".62">SESSION B</text>
-      <text x="850" y="150" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12.5" fill="currentColor" opacity=".62">SESSION C</text>
-      <rect x="20" y="166" width="260" height="50" rx="5" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
-      <rect x="370" y="166" width="260" height="50" rx="5" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
-      <rect x="720" y="166" width="260" height="50" rx="5" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
-      <text x="150" y="196" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="var(--keep)">write_set gate</text>
-      <text x="500" y="196" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="var(--keep)">write_set gate</text>
-      <text x="850" y="196" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="var(--keep)">write_set gate</text>
-
-      <line x1="300" y1="191" x2="350" y2="191" stroke="var(--cut)" stroke-width="2.5" stroke-dasharray="6 5"/>
-      <line x1="650" y1="191" x2="700" y2="191" stroke="var(--cut)" stroke-width="2.5" stroke-dasharray="6 5"/>
-      <text x="0" y="278" font-family="ui-monospace, monospace" font-size="14.5" fill="var(--cut)" font-weight="600">No gate spans the gaps — two sessions holding different tickets can write the same file.</text>
-      <text x="0" y="303" font-family="ui-monospace, monospace" font-size="13.5" fill="currentColor" opacity=".66">Prevention needs to know the future. write_set is documented as "a hint, never a commitment."</text>
+        <text x="0" y="142" font-size="12" fill="currentColor" opacity=".62" letter-spacing="1.4">RELEVANCE TEST</text>
+        <rect x="0" y="158" width="270" height="62" rx="7" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+        <rect x="365" y="158" width="270" height="62" rx="7" fill="var(--surface)" stroke="var(--accent-soft)" stroke-width="1.5"/>
+        <rect x="730" y="130" width="270" height="62" rx="7" fill="var(--cut)" fill-opacity=".14" stroke="var(--cut)" stroke-width="1.5"/>
+        <rect x="730" y="218" width="270" height="62" rx="7" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
+        <text x="135" y="183" text-anchor="middle" fill="currentColor">unexpected repository</text>
+        <text x="135" y="202" text-anchor="middle" fill="currentColor">state appears</text>
+        <text x="500" y="183" text-anchor="middle" fill="currentColor">does it prevent this</text>
+        <text x="500" y="202" text-anchor="middle" fill="currentColor">REQ from finishing?</text>
+        <text x="865" y="157" text-anchor="middle" fill="var(--cut)" font-weight="600">yes — investigate</text>
+        <text x="865" y="176" text-anchor="middle" fill="var(--cut)" font-weight="600">the blocker now</text>
+        <text x="865" y="245" text-anchor="middle" fill="var(--keep)" font-weight="600">no — preserve it</text>
+        <text x="865" y="264" text-anchor="middle" fill="var(--keep)" font-weight="600">and continue</text>
+        <g stroke="var(--accent)" stroke-width="1.8" fill="none" marker-end="url(#model-arrow)">
+          <line x1="270" y1="189" x2="357" y2="189"/>
+          <path d="M 635 178 L 690 178 L 690 161 L 722 161"/>
+          <path d="M 635 200 L 690 200 L 690 249 L 722 249"/>
+        </g>
+        <text x="670" y="166" font-size="12" fill="var(--muted)">yes</text>
+        <text x="670" y="236" font-size="12" fill="var(--muted)">no</text>
+      </g>
     </svg>
-    <figcaption>Hand-authored SVG. Layer 1 is guarded globally; layer 2 is guarded only inside each session.</figcaption>
+    <figcaption>Hand-authored SVG. Concurrency is outside the supported model; relevance is judged against the active REQ.</figcaption>
   </figure>
 
   <div class="note measure">
     <p>
-      The two mechanisms were built for different problems and never joined. The lock exists because of the
-      2026-07-01 incident, which was a ticket-level collision. The <code>write_set</code> gate exists so one
-      orchestrator could run several builders at once. Neither is defective; the gap is in the space between them.
+      The 2026-07-01 collision explains why the lock was built; it no longer defines the product boundary.
+      If two do-work sessions are run against one checkout anyway, behavior is unspecified. The pipeline spends
+      no instructions or state trying to make that unsupported situation safe.
     </p>
   </div>
 </section>
 
 <section>
-  <h2>The replacement</h2>
+  <h2>The replacement rule</h2>
   <p class="measure">
-    Prevention asks an unanswerable question — <em>which files will I touch?</em> Escalation asks an observable
-    one — <em>did something break, and did fixing it break again?</em> Each rung has a defined next action, which
-    is what the current machinery lacks: it detects, then has nothing to do about it.
+    Stop modeling unsupported actors. Keep the ordinary checks that establish whether the active REQ can finish,
+    and investigate only an observed condition that prevents it from doing so.
   </p>
 
   <div class="row" style="margin-top:26px">
     <div class="card" style="flex: 2 1 400px">
-      <p class="kicker">escalation ladder</p>
+      <p class="kicker">local decision ladder</p>
       <ol class="ladder">
-        <li><strong>A commit carried someone else's work — leave it.</strong>
-          Attribution impurity is a property of the log, not the tree. Git history can't be rewritten on a shared
-          branch anyway, so a check whose only outputs are "fine" and "too bad" is decoration.</li>
-        <li><strong>It broke the feature — fix it.</strong>
-          Ordinary work. No new concept, no new state.</li>
-        <li><strong>Fixes keep breaking it — escalate to <code>pending-answers</code>.</strong>
-          Repeated failure means two REQs with genuinely conflicting intent. The REQ stays in
-          <code>do-work/queue/</code>, the default scan walks past it, a human arbitrates. The status already
-          exists with exactly these semantics.</li>
+        <li><strong>The active REQ can proceed — continue.</strong>
+          Preserve unrelated repository state, exclude it from this REQ's staging, and spend no time explaining
+          or repairing it.</li>
+        <li><strong>The active REQ is blocked — investigate.</strong>
+          A failing acceptance check, test, archive move, or commit is ordinary work on the current request.</li>
+        <li><strong>Three coder attempts fail — stop the local loop.</strong>
+          Count attempts in the coder session only. Report the unresolved blocker; use <code>pending-answers</code>
+          only when progress genuinely requires a user decision.</li>
       </ol>
     </div>
     <figure style="flex: 4 1 520px">
-      <svg class="diagram" viewBox="0 0 1000 400" role="img"
-           aria-label="Flow: a REQ commits, the tree is read back to confirm the change landed, tests run, and repeated failures escalate to pending-answers">
+      <svg class="diagram" viewBox="0 0 1000 350" role="img"
+           aria-label="Flow: work the active REQ, continue when it can finish, and investigate blockers with at most three attempts counted in coder context">
         <defs>
-          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <marker id="flow-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
             <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
           </marker>
         </defs>
         <g font-family="ui-monospace, monospace" font-size="13.5">
-          <rect x="110" y="40" width="150" height="52" rx="6" fill="var(--surface-2)" stroke="var(--accent-soft)" stroke-width="1.5"/>
-          <text x="185" y="71" text-anchor="middle" fill="currentColor">REQ commits</text>
+          <rect x="20" y="40" width="170" height="56" rx="6" fill="var(--surface-2)" stroke="var(--accent-soft)" stroke-width="1.5"/>
+          <text x="105" y="64" text-anchor="middle" fill="currentColor">Work the</text>
+          <text x="105" y="82" text-anchor="middle" fill="currentColor">active REQ</text>
 
-          <rect x="310" y="40" width="200" height="52" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
-          <text x="410" y="64" text-anchor="middle" fill="currentColor">Change present</text>
-          <text x="410" y="81" text-anchor="middle" fill="currentColor">in the tree?</text>
+          <rect x="260" y="40" width="190" height="56" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+          <text x="355" y="64" text-anchor="middle" fill="currentColor">Qualify · test</text>
+          <text x="355" y="82" text-anchor="middle" fill="currentColor">archive · commit</text>
 
-          <rect x="570" y="40" width="170" height="52" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
-          <text x="655" y="64" text-anchor="middle" fill="currentColor">Committed</text>
-          <text x="655" y="81" text-anchor="middle" fill="currentColor">tests pass?</text>
+          <rect x="520" y="40" width="190" height="56" rx="6" fill="var(--surface)" stroke="var(--accent-soft)" stroke-width="1.5"/>
+          <text x="615" y="64" text-anchor="middle" fill="currentColor">Can this REQ</text>
+          <text x="615" y="82" text-anchor="middle" fill="currentColor">finish?</text>
 
-          <rect x="800" y="40" width="160" height="52" rx="6" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
-          <text x="880" y="64" text-anchor="middle" fill="var(--keep)" font-weight="600">Done — foreign</text>
-          <text x="880" y="81" text-anchor="middle" fill="var(--keep)" font-weight="600">files are evidence</text>
+          <rect x="790" y="40" width="180" height="56" rx="6" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
+          <text x="880" y="73" text-anchor="middle" fill="var(--keep)" font-weight="600">Done</text>
 
-          <rect x="310" y="200" width="200" height="52" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
-          <text x="410" y="224" text-anchor="middle" fill="currentColor">Redo from</text>
-          <text x="410" y="241" text-anchor="middle" fill="currentColor">session context</text>
+          <rect x="520" y="180" width="190" height="56" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+          <text x="615" y="204" text-anchor="middle" fill="currentColor">Investigate and</text>
+          <text x="615" y="222" text-anchor="middle" fill="currentColor">attempt a fix</text>
 
-          <rect x="570" y="200" width="170" height="52" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
-          <text x="655" y="231" text-anchor="middle" fill="currentColor">Fix the breakage</text>
+          <rect x="260" y="180" width="190" height="56" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+          <text x="355" y="204" text-anchor="middle" fill="currentColor">Coder-session</text>
+          <text x="355" y="222" text-anchor="middle" fill="currentColor">attempts &lt; 3?</text>
 
-          <rect x="800" y="200" width="160" height="52" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
-          <text x="880" y="224" text-anchor="middle" fill="currentColor">Attempts over</text>
-          <text x="880" y="241" text-anchor="middle" fill="currentColor">threshold?</text>
+          <rect x="260" y="288" width="450" height="48" rx="6" fill="var(--cut)" fill-opacity=".14" stroke="var(--cut)" stroke-width="1.5"/>
+          <text x="485" y="317" text-anchor="middle" fill="var(--cut)" font-weight="600">Stop local loop · report blocker · ask only if a decision is needed</text>
 
-          <rect x="740" y="330" width="220" height="52" rx="6" fill="var(--cut)" fill-opacity=".14" stroke="var(--cut)" stroke-width="1.5"/>
-          <text x="850" y="354" text-anchor="middle" fill="var(--cut)" font-weight="600">Conflicting intent —</text>
-          <text x="850" y="371" text-anchor="middle" fill="var(--cut)" font-weight="600">pending-answers</text>
-
-          <g stroke="var(--accent)" stroke-width="1.8" fill="none" marker-end="url(#ah)">
-            <line x1="260" y1="66" x2="302" y2="66"/>
-            <line x1="510" y1="66" x2="562" y2="66"/>
-            <line x1="740" y1="66" x2="792" y2="66"/>
-            <line x1="410" y1="92" x2="410" y2="192"/>
-            <line x1="655" y1="92" x2="655" y2="192"/>
-            <line x1="740" y1="226" x2="792" y2="226"/>
-            <line x1="880" y1="252" x2="880" y2="322"/>
-            <!-- Both retry paths feed one rail so a single arrowhead lands on "REQ commits";
-                 an arrowhead per path would dead-end at the left margin. -->
-            <path d="M 60 292 L 60 66 L 102 66"/>
+          <g stroke="var(--accent)" stroke-width="1.8" fill="none" marker-end="url(#flow-arrow)">
+            <line x1="190" y1="68" x2="252" y2="68"/>
+            <line x1="450" y1="68" x2="512" y2="68"/>
+            <line x1="710" y1="68" x2="782" y2="68"/>
+            <line x1="615" y1="96" x2="615" y2="172"/>
+            <line x1="520" y1="208" x2="458" y2="208"/>
+            <path d="M 355 180 L 355 138 L 355 104"/>
+            <line x1="355" y1="236" x2="355" y2="280"/>
           </g>
-          <g stroke="var(--accent)" stroke-width="1.8" fill="none">
-            <path d="M 310 226 L 60 226"/>
-            <path d="M 830 252 L 830 292 L 60 292"/>
-          </g>
-
           <g font-size="12" fill="var(--muted)">
-            <text x="536" y="58" text-anchor="middle">yes</text>
-            <text x="766" y="58" text-anchor="middle">yes</text>
-            <text x="422" y="148">no</text>
-            <text x="667" y="148">no</text>
-            <text x="892" y="292">yes</text>
-            <text x="72" y="150">retry</text>
-            <text x="72" y="285">retry</text>
+            <text x="746" y="58">yes</text>
+            <text x="628" y="142">no</text>
+            <text x="368" y="150">yes — retry</text>
+            <text x="368" y="266">no</text>
           </g>
         </g>
       </svg>
-      <figcaption>Hand-authored SVG. Derived from the proposed control flow, not a generic template.</figcaption>
+      <figcaption>Hand-authored SVG. The attempt count exists only in the current coder context and resets with that session.</figcaption>
     </figure>
   </div>
 
   <div class="note measure">
     <p>
-      <strong>One gap, and it closes with the same check.</strong> The ladder is driven by breakage, but this repo's
-      deliverable is markdown instructions, which have no runtime behavior. A clobbered paragraph passes all 1,521
-      lines of grep-based contract assertions and never reaches rung 2. The fix is the presence check in the diagram:
-      not <em>"did my commit contain only my change"</em> (unanswerable, no remedy) but <em>"is my change present in
-      the tree after commit"</em> — answerable from git, and its failure is actionable.
+      <strong>No persistence is added.</strong> The coder counts consecutive fix attempts in its current context.
+      The existing three-attempt limit stops an in-session loop; a restarted coder session starts fresh. Normal
+      qualification, tests, explicit staging, and commit success remain the evidence that this REQ landed.
     </p>
   </div>
 </section>
@@ -345,11 +343,11 @@
         <tr><td><span class="tag cut">CUT</span></td><td>Step 5.5 re-validation before mirroring</td><td class="num">323</td></tr>
         <tr><td><span class="tag cut">CUT</span></td><td>Step 3 Route-A re-validation</td><td class="num">251</td></tr>
         <tr><td><span class="tag cut">CUT</span></td><td>Checkpoint-delete concurrency condition</td><td class="num">93</td></tr>
-        <tr><td><span class="tag add">ADD</span></td><td>Post-commit presence verification (read the tree back from git)</td><td class="num">~200</td></tr>
-        <tr><td><span class="tag add">ADD</span></td><td>Attempt counter + escalation rung to <code>pending-answers</code></td><td class="num">~250</td></tr>
-        <tr><td><span class="tag add">ADD</span></td><td><code>.git/index.lock</code> retry on contention</td><td class="num">~150</td></tr>
+        <tr><td><span class="tag add">ADD</span></td><td>Exclusive-session invariant + current-REQ relevance rule</td><td class="num">≤125</td></tr>
+        <tr><td><span class="tag add">ADD</span></td><td>Coder-context attempt count + three-attempt stop condition</td><td class="num">≤75</td></tr>
         <tr><td><span class="tag keep">KEEP</span></td><td>Crash recovery proper — a crashed session still leaves files in <code>working/</code></td><td class="num">920</td></tr>
-        <tr class="total"><td></td><td>Net</td><td class="num">−5,911</td></tr>
+        <tr><td><span class="tag keep">KEEP</span></td><td>Qualification, tests, explicit staging, archive, and commit checks</td><td class="num">existing</td></tr>
+        <tr class="total"><td></td><td>Net words removed</td><td class="num">≥6,311</td></tr>
       </table>
     </div>
     <div class="card" style="flex: 2 1 330px">
@@ -360,7 +358,7 @@
         fixed a correctness hole in it after the fact.
       </p>
       <p style="font-size:15px; margin-bottom:0">
-        Three post-hoc corrections on one mechanism is the signature of accidental complexity. The
+        Three post-hoc corrections show the cost of supporting a mode the new boundary excludes. The
         <code>write_set</code> gate shows the same pattern: <code>REQ-032</code> built it,
         <code>REQ-036</code> and <code>REQ-045</code> patched it.
       </p>
@@ -370,7 +368,7 @@
 
 <section>
   <h2>Verify it yourself</h2>
-  <p class="measure">Every number above comes from these commands, run from the repo root.</p>
+  <p class="measure">Existing-state counts come from these commands, run from the repo root. The ≤200-word replacement is a design cap to verify after implementation.</p>
   <div class="row">
     <div style="flex:1 1 480px">
       <p class="kicker">measure the machinery</p>
@@ -397,9 +395,12 @@ sed -n '662p'     actions/work.md | wc -w         #  93</pre>
 cat actions/work.md actions/work-reference.md \
     actions/cleanup.md | wc -w
 
-# median action file — 2,590
+# median action file — 2,591.5
 for f in actions/*.md; do wc -w < "$f"; done \
-  | sort -n | awk '{a[NR]=$1} END{print a[int(NR/2)]}'
+  | sort -n | awk '{a[NR]=$1} END {
+      if (NR % 2) print a[(NR+1)/2]
+      else print (a[NR/2] + a[NR/2+1]) / 2
+    }'
 
 # the REQs that built and patched the lock
 ls do-work/archive/UR-005 do-work/archive/UR-007 \
@@ -412,24 +413,23 @@ wc -l _dev/tests/*.sh</pre>
 </section>
 
 <section style="border-bottom:none">
-  <h2>Open questions</h2>
-  <p class="measure">Two residuals, both small, both undecided.</p>
+  <h2>Resolved decisions</h2>
+  <p class="measure">The simplified design introduces no new durable state or concurrency policy.</p>
   <div class="row">
     <div class="card" style="flex:1 1 400px">
-      <h3>Where does the attempt counter live?</h3>
+      <h3>Attempt count: coder session only</h3>
       <p style="margin-bottom:0; font-size:15px">
-        Rung 3 needs a count that survives the REQ's lifecycle. There is no such field in the frontmatter schema
-        today — the only attempt-related prose in the repo sits inside the mutex block this proposal deletes.
-        It needs a named field and a defined threshold, or the agent either loops forever or escalates on the
-        first failure.
+        Count consecutive fix attempts in the current coder context. After three failures, stop the local retry
+        loop and report the blocker. Do not add frontmatter or create a file; a restarted coder session starts
+        with a fresh count.
       </p>
     </div>
     <div class="card" style="flex:1 1 400px">
-      <h3>How aggressive should the index retry be?</h3>
+      <h3>Git/index failures: investigate only when blocking</h3>
       <p style="margin-bottom:0; font-size:15px">
-        Concurrent <code>git commit</code> in one folder doesn't queue — it fails on <code>.git/index.lock</code>.
-        A bounded retry is the entire residual of the deleted machinery, but the backoff and give-up behavior
-        aren't specified, and giving up mid-REQ needs its own disposition.
+        There is no proactive <code>.git/index.lock</code> retry or concurrency branch. If Git cannot commit the
+        active REQ, that is an observed blocker: investigate it through the ordinary failure path. If repository
+        state does not prevent this REQ from finishing, preserve it and continue.
       </p>
     </div>
   </div>
@@ -437,10 +437,11 @@ wc -l _dev/tests/*.sh</pre>
 
 <footer>
   Analysis artifact — no REQ implemented. Word counts measured 2026-08-01 from this working tree;
-  the simplification argument is a proposal, not a validated result.
-  No screenshots: the subject has no user-visible surface, so hand-authored SVG carries the visuals.
+  the ≤200-word replacement is a planning cap, not a measured result. Exclusive repository use is a deliberate
+  product assumption; concurrent do-work sessions against one checkout are unsupported.
+  No product screenshots: the subject has no user-visible surface, so hand-authored SVG carries the visuals.
+  Layout render-verified at 390px in light mode and 1440px in light and dark modes.
   No CDN or network dependency — the page renders offline.
 </footer>
 
 </div>
-
