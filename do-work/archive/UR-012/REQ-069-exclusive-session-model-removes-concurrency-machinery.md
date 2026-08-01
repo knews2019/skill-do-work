@@ -4,6 +4,7 @@ title: Adopt the exclusive-session model and remove the concurrency machinery
 status: completed
 created_at: 2026-08-01T12:36:44Z
 completed_at: 2026-08-01T13:53:12Z
+commit: 76cdf39
 claimed_at: 2026-08-01T13:53:12Z
 route: C
 user_request: UR-012
