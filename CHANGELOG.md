@@ -6,6 +6,10 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.163.2 — Audit Sweep: Last Stale Release-Flow Comment (2026-08-01)
+
+A post-removal audit found one straggler: a `model.go` comment still listed the removed release action among `status_changed_at`'s writers. Comment corrected; the audit found nothing else — numbering, routing, board fields, and docs are all consistent with the reservation removal.
+
 ## 0.163.1 — Drop the Last Parallel-Actions Sentence and Fix Roadmap Numbering (2026-08-01)
 
 Re-validation caught two leftovers. The Execution Model no longer reasons about parallel execution at all — the boundary now ends at "behavior is unspecified" instead of enumerating which actions may run alongside a build (the session assumes it is alone; that's the whole rule). Also renumbered roadmap's Suggested Next Steps template, which skipped from 7 to 9 after the reservation line was deleted.

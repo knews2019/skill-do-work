@@ -66,7 +66,7 @@ type RequestTicket struct {
 
 	// status_changed_at — stamped by actions on any status flip that has no
 	// dedicated *_at stamp of its own (answered → pending, unblock → pending,
-	// release → pending, manual resets; see actions/work-reference.md).
+	// manual resets; see actions/work-reference.md).
 	// Display-only: the state timer prefers it over created_at/file-mtime for
 	// pending-tier cards; no column logic reads it.
 	StatusChangedAt string // raw frontmatter timestamp text, "" when absent
