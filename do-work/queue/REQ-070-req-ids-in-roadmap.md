@@ -1,5 +1,5 @@
 ---
-id: REQ-069
+id: REQ-070
 title: REQ ids in do-work roadmap — the inverse asymmetry
 status: pending
 created_at: 2026-08-01T12:31:45Z
