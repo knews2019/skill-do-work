@@ -1,0 +1,446 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Concurrency Machinery — Simplification Analysis</title>
+<style>
+  :root {
+    --bg: #f7f4ee;
+    --surface: #fffdf8;
+    --surface-2: #f1ece2;
+    --text: #23201b;
+    --muted: #6d675d;
+    --rule: #ddd5c7;
+    --accent: #9a3412;
+    --accent-soft: #c2694a;
+    --cut: #a13d2d;
+    --keep: #3f6152;
+    --add: #2f5d7c;
+    --ramp-1: #f0dfd4;
+    --ramp-2: #dcb69f;
+    --ramp-3: #c2846a;
+    --ramp-4: #a2543a;
+    --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17150f;
+      --surface: #201d16;
+      --surface-2: #2a261d;
+      --text: #ece7dc;
+      --muted: #a49b8b;
+      --rule: #3a352a;
+      --accent: #e2825c;
+      --accent-soft: #c2694a;
+      --cut: #e08a72;
+      --keep: #86b39c;
+      --add: #7fb0d4;
+      --ramp-1: #3a2d25;
+      --ramp-2: #5c4232;
+      --ramp-3: #8a5c43;
+      --ramp-4: #c2795a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--display); font-size: 17px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
+  .measure { max-width: 74ch; }
+  .kicker {
+    font-family: var(--mono); font-size: 12px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 10px;
+  }
+  header.hero { padding: 64px 0 40px; border-bottom: 2px solid var(--rule); }
+  h1 { font-size: clamp(34px, 4.4vw, 56px); line-height: 1.08; margin: 0 0 22px; font-weight: 600; letter-spacing: -.015em; }
+  .verdict { font-size: clamp(19px, 1.7vw, 23px); line-height: 1.5; margin: 0 0 8px; }
+  .verdict strong { color: var(--accent); font-weight: 600; }
+  .sub { color: var(--muted); font-size: 16px; margin-top: 18px; }
+  section { padding: 48px 0; border-bottom: 1px solid var(--rule); }
+  h2 { font-size: clamp(24px, 2.3vw, 32px); margin: 0 0 6px; font-weight: 600; letter-spacing: -.01em; }
+  h3 { font-size: 19px; margin: 0 0 10px; font-weight: 600; }
+  p { margin: 0 0 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .card {
+    background: var(--surface); border: 1px solid var(--rule); border-radius: 10px;
+    padding: 24px 26px;
+  }
+  .tiles { display: flex; flex-wrap: wrap; gap: 16px; margin: 28px 0 8px; }
+  .tile {
+    flex: 1 1 190px; background: var(--surface); border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent-soft); border-radius: 8px; padding: 18px 20px;
+  }
+  .tile .n { font-family: var(--mono); font-size: 30px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; }
+  .tile .l { font-size: 13.5px; color: var(--muted); margin-top: 7px; line-height: 1.4; }
+  .tile.cut { border-left-color: var(--cut); } .tile.cut .n { color: var(--cut); }
+  .tile.add { border-left-color: var(--add); } .tile.add .n { color: var(--add); }
+  .tile.keep { border-left-color: var(--keep); } .tile.keep .n { color: var(--keep); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; font-family: var(--mono); }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-size: 11.5px; letter-spacing: .11em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  td.num { text-align: right; white-space: nowrap; }
+  tr.total td { border-top: 2px solid var(--rule); border-bottom: none; font-weight: 600; }
+  .tag { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 3px; white-space: nowrap; }
+  .tag.cut { background: var(--cut); color: #fff; }
+  .tag.keep { background: var(--keep); color: #fff; }
+  .tag.add { background: var(--add); color: #fff; }
+  pre {
+    background: var(--surface-2); border: 1px solid var(--rule); border-radius: 8px;
+    padding: 16px 18px; overflow-x: auto; font-family: var(--mono); font-size: 13.5px; line-height: 1.65;
+  }
+  code { font-family: var(--mono); font-size: .92em; }
+  figure { margin: 0; }
+  figcaption { font-size: 13.5px; color: var(--muted); margin-top: 12px; font-family: var(--mono); }
+  svg.diagram { width: 100%; height: auto; display: block; }
+  .note { border-left: 3px solid var(--accent); padding: 4px 0 4px 20px; margin: 22px 0; }
+  .note p:last-child { margin-bottom: 0; }
+  footer { padding: 40px 0 0; color: var(--muted); font-size: 13.5px; font-family: var(--mono); }
+  ol.ladder { counter-reset: r; list-style: none; padding: 0; margin: 0; }
+  ol.ladder li {
+    position: relative; padding: 0 0 20px 46px; margin: 0;
+  }
+  ol.ladder li::before {
+    counter-increment: r; content: counter(r);
+    position: absolute; left: 0; top: 1px; width: 28px; height: 28px; border-radius: 50%;
+    background: var(--accent); color: #fff; font-family: var(--mono); font-size: 14px;
+    display: flex; align-items: center; justify-content: center; font-weight: 600;
+  }
+</style>
+
+<div class="page">
+
+<header class="hero">
+  <p class="kicker">do-work · concurrency machinery · simplification analysis</p>
+  <h1>Delete the lock. Verify the commit instead.</h1>
+  <p class="verdict measure">
+    <strong>About 6,500 words of concurrency machinery — a sixth of the core pipeline — can be removed</strong>
+    and replaced by roughly 600. The lock's real job was never owning REQs; it was owning the git index,
+    and it only needs to be held across the stage-and-commit window rather than the whole REQ lifecycle.
+  </p>
+  <p class="sub measure">
+    Analysis only — nothing is implemented. Every word count below was measured from this repo with the
+    commands in <em>Verify It Yourself</em>; the design argument is the author's, not a benchmark.
+  </p>
+</header>
+
+<section>
+  <h2>The measurement</h2>
+  <p class="measure">Concurrency guarding, counted block by block across the three files that carry it.</p>
+
+  <div class="tiles">
+    <div class="tile cut"><div class="n">6,511</div><div class="l">words of concurrency machinery removable</div></div>
+    <div class="tile add"><div class="n">~600</div><div class="l">words of replacement (verify · counter · retry)</div></div>
+    <div class="tile cut"><div class="n">16.6%</div><div class="l">of the core pipeline is this machinery</div></div>
+    <div class="tile keep"><div class="n">6 → 3</div><div class="l">invariants to hold, replaced by escalation rungs</div></div>
+    <div class="tile cut"><div class="n">4</div><div class="l">REQs needed to stabilize the lock alone</div></div>
+  </div>
+
+  <div class="row" style="margin-top:34px">
+    <figure style="flex: 3 1 560px">
+      <svg class="diagram" viewBox="0 0 1000 250" role="img"
+           aria-label="Bar chart comparing the core pipeline before and after simplification">
+        <text x="0" y="20" font-family="ui-monospace, monospace" font-size="13" fill="currentColor" opacity=".62">TODAY — 39,252 words across work.md, work-reference.md, cleanup.md</text>
+        <rect x="0" y="32" width="836" height="42" rx="4" fill="var(--ramp-1)"/>
+        <rect x="836" y="32" width="164" height="42" rx="4" fill="var(--ramp-4)"/>
+        <text x="418" y="59" text-anchor="middle" font-family="ui-monospace, monospace" font-size="14" fill="currentColor" opacity=".72">pipeline logic · 32,741</text>
+        <text x="918" y="59" text-anchor="middle" font-family="ui-monospace, monospace" font-size="14" fill="#fff" font-weight="600">6,511</text>
+
+        <text x="0" y="126" font-family="ui-monospace, monospace" font-size="13" fill="currentColor" opacity=".62">AFTER — 33,341 words</text>
+        <rect x="0" y="138" width="836" height="42" rx="4" fill="var(--ramp-1)"/>
+        <rect x="836" y="138" width="15" height="42" rx="3" fill="var(--add)"/>
+        <text x="418" y="165" text-anchor="middle" font-family="ui-monospace, monospace" font-size="14" fill="currentColor" opacity=".72">pipeline logic · 32,741</text>
+        <text x="866" y="165" font-family="ui-monospace, monospace" font-size="13" fill="var(--add)" font-weight="600">~600</text>
+
+        <line x1="836" y1="84" x2="836" y2="130" stroke="currentColor" stroke-opacity=".28" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="0" y="222" font-family="ui-monospace, monospace" font-size="15" fill="var(--cut)" font-weight="600">net −5,911 words · −15.1% of the core pipeline</text>
+      </svg>
+      <figcaption>Hand-authored SVG. Bar widths are proportional to the measured counts.</figcaption>
+    </figure>
+
+    <div class="card" style="flex: 2 1 340px">
+      <h3>Where it sits</h3>
+      <table>
+        <tr><th>Block</th><th class="num">Words</th></tr>
+        <tr><td>Lock Guard section</td><td class="num">4,642</td></tr>
+        <tr><td>write_set dispatch gate</td><td class="num">483</td></tr>
+        <tr><td>Crash-recovery concurrency gate</td><td class="num">378</td></tr>
+        <tr><td>cleanup live-claim gate</td><td class="num">341</td></tr>
+        <tr><td>Step 5.5 re-validation</td><td class="num">323</td></tr>
+        <tr><td>Step 3 Route-A re-validation</td><td class="num">251</td></tr>
+        <tr><td>Checkpoint-delete gate</td><td class="num">93</td></tr>
+        <tr class="total"><td>Total</td><td class="num">6,511</td></tr>
+      </table>
+      <p style="margin:16px 0 0; font-size:14px; color:var(--muted)">
+        The Lock Guard section alone is larger than every action file in the repo
+        except <code>work.md</code>, <code>work-reference.md</code> and <code>install.md</code> —
+        about 1.8× the median action file (2,590 words).
+      </p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>The defect this exposes</h2>
+  <p class="measure">
+    Two resources can be owned: the <em>ticket</em> (a REQ file) and the <em>repo files</em> that ticket writes.
+    The lock tracks the first across every session. The <code>write_set</code> gate tracks the second within one
+    session only — every disjointness check in the pipeline compares against "every other in-flight REQ <em>this
+    batch</em>," which means this session's own batch. A coexisting session's requests are never read.
+  </p>
+
+  <figure style="margin-top:26px">
+    <svg class="diagram" viewBox="0 0 1000 320" role="img"
+         aria-label="Diagram showing the ticket layer guarded globally and the file layer guarded only within each session">
+      <text x="0" y="16" font-family="ui-monospace, monospace" font-size="12" fill="currentColor" opacity=".62" letter-spacing="1.4">LAYER 1 — TICKET OWNERSHIP</text>
+      <rect x="0" y="28" width="1000" height="52" rx="6" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
+      <text x="500" y="59" text-anchor="middle" font-family="ui-monospace, monospace" font-size="14" fill="var(--keep)" font-weight="600">orchestrator-lock.json · claimed_reqs — every session visible to every other</text>
+
+      <text x="0" y="114" font-family="ui-monospace, monospace" font-size="12" fill="currentColor" opacity=".62" letter-spacing="1.4">LAYER 2 — FILE OWNERSHIP</text>
+      <rect x="0" y="126" width="300" height="112" rx="8" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+      <rect x="350" y="126" width="300" height="112" rx="8" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+      <rect x="700" y="126" width="300" height="112" rx="8" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+      <text x="150" y="150" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12.5" fill="currentColor" opacity=".62">SESSION A</text>
+      <text x="500" y="150" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12.5" fill="currentColor" opacity=".62">SESSION B</text>
+      <text x="850" y="150" text-anchor="middle" font-family="ui-monospace, monospace" font-size="12.5" fill="currentColor" opacity=".62">SESSION C</text>
+      <rect x="20" y="166" width="260" height="50" rx="5" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
+      <rect x="370" y="166" width="260" height="50" rx="5" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
+      <rect x="720" y="166" width="260" height="50" rx="5" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
+      <text x="150" y="196" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="var(--keep)">write_set gate</text>
+      <text x="500" y="196" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="var(--keep)">write_set gate</text>
+      <text x="850" y="196" text-anchor="middle" font-family="ui-monospace, monospace" font-size="13" fill="var(--keep)">write_set gate</text>
+
+      <line x1="300" y1="191" x2="350" y2="191" stroke="var(--cut)" stroke-width="2.5" stroke-dasharray="6 5"/>
+      <line x1="650" y1="191" x2="700" y2="191" stroke="var(--cut)" stroke-width="2.5" stroke-dasharray="6 5"/>
+      <text x="0" y="278" font-family="ui-monospace, monospace" font-size="14.5" fill="var(--cut)" font-weight="600">No gate spans the gaps — two sessions holding different tickets can write the same file.</text>
+      <text x="0" y="303" font-family="ui-monospace, monospace" font-size="13.5" fill="currentColor" opacity=".66">Prevention needs to know the future. write_set is documented as "a hint, never a commitment."</text>
+    </svg>
+    <figcaption>Hand-authored SVG. Layer 1 is guarded globally; layer 2 is guarded only inside each session.</figcaption>
+  </figure>
+
+  <div class="note measure">
+    <p>
+      The two mechanisms were built for different problems and never joined. The lock exists because of the
+      2026-07-01 incident, which was a ticket-level collision. The <code>write_set</code> gate exists so one
+      orchestrator could run several builders at once. Neither is defective; the gap is in the space between them.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>The replacement</h2>
+  <p class="measure">
+    Prevention asks an unanswerable question — <em>which files will I touch?</em> Escalation asks an observable
+    one — <em>did something break, and did fixing it break again?</em> Each rung has a defined next action, which
+    is what the current machinery lacks: it detects, then has nothing to do about it.
+  </p>
+
+  <div class="row" style="margin-top:26px">
+    <div class="card" style="flex: 2 1 400px">
+      <p class="kicker">escalation ladder</p>
+      <ol class="ladder">
+        <li><strong>A commit carried someone else's work — leave it.</strong>
+          Attribution impurity is a property of the log, not the tree. Git history can't be rewritten on a shared
+          branch anyway, so a check whose only outputs are "fine" and "too bad" is decoration.</li>
+        <li><strong>It broke the feature — fix it.</strong>
+          Ordinary work. No new concept, no new state.</li>
+        <li><strong>Fixes keep breaking it — escalate to <code>pending-answers</code>.</strong>
+          Repeated failure means two REQs with genuinely conflicting intent. The REQ stays in
+          <code>do-work/queue/</code>, the default scan walks past it, a human arbitrates. The status already
+          exists with exactly these semantics.</li>
+      </ol>
+    </div>
+    <figure style="flex: 4 1 520px">
+      <svg class="diagram" viewBox="0 0 1000 400" role="img"
+           aria-label="Flow: a REQ commits, the tree is read back to confirm the change landed, tests run, and repeated failures escalate to pending-answers">
+        <defs>
+          <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--accent)"/>
+          </marker>
+        </defs>
+        <g font-family="ui-monospace, monospace" font-size="13.5">
+          <rect x="110" y="40" width="150" height="52" rx="6" fill="var(--surface-2)" stroke="var(--accent-soft)" stroke-width="1.5"/>
+          <text x="185" y="71" text-anchor="middle" fill="currentColor">REQ commits</text>
+
+          <rect x="310" y="40" width="200" height="52" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+          <text x="410" y="64" text-anchor="middle" fill="currentColor">Change present</text>
+          <text x="410" y="81" text-anchor="middle" fill="currentColor">in the tree?</text>
+
+          <rect x="570" y="40" width="170" height="52" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+          <text x="655" y="64" text-anchor="middle" fill="currentColor">Committed</text>
+          <text x="655" y="81" text-anchor="middle" fill="currentColor">tests pass?</text>
+
+          <rect x="800" y="40" width="160" height="52" rx="6" fill="var(--keep)" fill-opacity=".16" stroke="var(--keep)" stroke-width="1.5"/>
+          <text x="880" y="64" text-anchor="middle" fill="var(--keep)" font-weight="600">Done — foreign</text>
+          <text x="880" y="81" text-anchor="middle" fill="var(--keep)" font-weight="600">files are evidence</text>
+
+          <rect x="310" y="200" width="200" height="52" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+          <text x="410" y="224" text-anchor="middle" fill="currentColor">Redo from</text>
+          <text x="410" y="241" text-anchor="middle" fill="currentColor">session context</text>
+
+          <rect x="570" y="200" width="170" height="52" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+          <text x="655" y="231" text-anchor="middle" fill="currentColor">Fix the breakage</text>
+
+          <rect x="800" y="200" width="160" height="52" rx="6" fill="var(--surface)" stroke="var(--rule)" stroke-width="1.5"/>
+          <text x="880" y="224" text-anchor="middle" fill="currentColor">Attempts over</text>
+          <text x="880" y="241" text-anchor="middle" fill="currentColor">threshold?</text>
+
+          <rect x="740" y="330" width="220" height="52" rx="6" fill="var(--cut)" fill-opacity=".14" stroke="var(--cut)" stroke-width="1.5"/>
+          <text x="850" y="354" text-anchor="middle" fill="var(--cut)" font-weight="600">Conflicting intent —</text>
+          <text x="850" y="371" text-anchor="middle" fill="var(--cut)" font-weight="600">pending-answers</text>
+
+          <g stroke="var(--accent)" stroke-width="1.8" fill="none" marker-end="url(#ah)">
+            <line x1="260" y1="66" x2="302" y2="66"/>
+            <line x1="510" y1="66" x2="562" y2="66"/>
+            <line x1="740" y1="66" x2="792" y2="66"/>
+            <line x1="410" y1="92" x2="410" y2="192"/>
+            <line x1="655" y1="92" x2="655" y2="192"/>
+            <line x1="740" y1="226" x2="792" y2="226"/>
+            <line x1="880" y1="252" x2="880" y2="322"/>
+            <!-- Both retry paths feed one rail so a single arrowhead lands on "REQ commits";
+                 an arrowhead per path would dead-end at the left margin. -->
+            <path d="M 60 292 L 60 66 L 102 66"/>
+          </g>
+          <g stroke="var(--accent)" stroke-width="1.8" fill="none">
+            <path d="M 310 226 L 60 226"/>
+            <path d="M 830 252 L 830 292 L 60 292"/>
+          </g>
+
+          <g font-size="12" fill="var(--muted)">
+            <text x="536" y="58" text-anchor="middle">yes</text>
+            <text x="766" y="58" text-anchor="middle">yes</text>
+            <text x="422" y="148">no</text>
+            <text x="667" y="148">no</text>
+            <text x="892" y="292">yes</text>
+            <text x="72" y="150">retry</text>
+            <text x="72" y="285">retry</text>
+          </g>
+        </g>
+      </svg>
+      <figcaption>Hand-authored SVG. Derived from the proposed control flow, not a generic template.</figcaption>
+    </figure>
+  </div>
+
+  <div class="note measure">
+    <p>
+      <strong>One gap, and it closes with the same check.</strong> The ladder is driven by breakage, but this repo's
+      deliverable is markdown instructions, which have no runtime behavior. A clobbered paragraph passes all 1,521
+      lines of grep-based contract assertions and never reaches rung 2. The fix is the presence check in the diagram:
+      not <em>"did my commit contain only my change"</em> (unanswerable, no remedy) but <em>"is my change present in
+      the tree after commit"</em> — answerable from git, and its failure is actionable.
+    </p>
+  </div>
+</section>
+
+<section>
+  <h2>What changes</h2>
+  <div class="row">
+    <div style="flex: 3 1 560px">
+      <table>
+        <tr><th>Disposition</th><th>Item</th><th class="num">Words</th></tr>
+        <tr><td><span class="tag cut">CUT</span></td><td>Lock Guard — mutex, heartbeats, coexisting_sessions, take-over, release</td><td class="num">4,642</td></tr>
+        <tr><td><span class="tag cut">CUT</span></td><td>write_set disjointness gate (Step 1)</td><td class="num">483</td></tr>
+        <tr><td><span class="tag cut">CUT</span></td><td>Crash-recovery concurrency gate (line 209)</td><td class="num">378</td></tr>
+        <tr><td><span class="tag cut">CUT</span></td><td>cleanup Pass 0 live-claim gate</td><td class="num">341</td></tr>
+        <tr><td><span class="tag cut">CUT</span></td><td>Step 5.5 re-validation before mirroring</td><td class="num">323</td></tr>
+        <tr><td><span class="tag cut">CUT</span></td><td>Step 3 Route-A re-validation</td><td class="num">251</td></tr>
+        <tr><td><span class="tag cut">CUT</span></td><td>Checkpoint-delete concurrency condition</td><td class="num">93</td></tr>
+        <tr><td><span class="tag add">ADD</span></td><td>Post-commit presence verification (read the tree back from git)</td><td class="num">~200</td></tr>
+        <tr><td><span class="tag add">ADD</span></td><td>Attempt counter + escalation rung to <code>pending-answers</code></td><td class="num">~250</td></tr>
+        <tr><td><span class="tag add">ADD</span></td><td><code>.git/index.lock</code> retry on contention</td><td class="num">~150</td></tr>
+        <tr><td><span class="tag keep">KEEP</span></td><td>Crash recovery proper — a crashed session still leaves files in <code>working/</code></td><td class="num">920</td></tr>
+        <tr class="total"><td></td><td>Net</td><td class="num">−5,911</td></tr>
+      </table>
+    </div>
+    <div class="card" style="flex: 2 1 330px">
+      <h3>Why four REQs is the tell</h3>
+      <p style="font-size:15px">
+        <code>REQ-018</code> built the lock guard. Then <code>REQ-035</code> (multi-claim representation),
+        <code>REQ-044</code> (claim coherence), and <code>REQ-047</code> (mutex pre-write ownership check) each
+        fixed a correctness hole in it after the fact.
+      </p>
+      <p style="font-size:15px; margin-bottom:0">
+        Three post-hoc corrections on one mechanism is the signature of accidental complexity. The
+        <code>write_set</code> gate shows the same pattern: <code>REQ-032</code> built it,
+        <code>REQ-036</code> and <code>REQ-045</code> patched it.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Verify it yourself</h2>
+  <p class="measure">Every number above comes from these commands, run from the repo root.</p>
+  <div class="row">
+    <div style="flex:1 1 480px">
+      <p class="kicker">measure the machinery</p>
+      <pre># Lock Guard section
+awk '/^## Concurrent-Orchestrator Lock Guard/{f=1}
+     f&&/^## /&&!/Concurrent-Orchestrator/{f=0} f' \
+  actions/work-reference.md | wc -w        # 4642
+
+# crash-recovery concurrency gate
+sed -n '209p' actions/work-reference.md | wc -w   # 378
+
+# cleanup live-claim gate
+sed -n '31p;40p' actions/cleanup.md | wc -w       # 341
+
+# work.md dispatch gates
+sed -n '180,185p' actions/work.md | wc -w         # 483
+sed -n '252,254p' actions/work.md | wc -w         # 251
+sed -n '346,348p' actions/work.md | wc -w         # 323
+sed -n '662p'     actions/work.md | wc -w         #  93</pre>
+    </div>
+    <div style="flex:1 1 380px">
+      <p class="kicker">baselines and history</p>
+      <pre># core pipeline baseline — 39,252
+cat actions/work.md actions/work-reference.md \
+    actions/cleanup.md | wc -w
+
+# median action file — 2,590
+for f in actions/*.md; do wc -w < "$f"; done \
+  | sort -n | awk '{a[NR]=$1} END{print a[int(NR/2)]}'
+
+# the REQs that built and patched the lock
+ls do-work/archive/UR-005 do-work/archive/UR-007 \
+   do-work/archive/UR-008 | grep -iE 'lock|mutex|write-set'
+
+# the grep-based test suite — 1,521 lines
+wc -l _dev/tests/*.sh</pre>
+    </div>
+  </div>
+</section>
+
+<section style="border-bottom:none">
+  <h2>Open questions</h2>
+  <p class="measure">Two residuals, both small, both undecided.</p>
+  <div class="row">
+    <div class="card" style="flex:1 1 400px">
+      <h3>Where does the attempt counter live?</h3>
+      <p style="margin-bottom:0; font-size:15px">
+        Rung 3 needs a count that survives the REQ's lifecycle. There is no such field in the frontmatter schema
+        today — the only attempt-related prose in the repo sits inside the mutex block this proposal deletes.
+        It needs a named field and a defined threshold, or the agent either loops forever or escalates on the
+        first failure.
+      </p>
+    </div>
+    <div class="card" style="flex:1 1 400px">
+      <h3>How aggressive should the index retry be?</h3>
+      <p style="margin-bottom:0; font-size:15px">
+        Concurrent <code>git commit</code> in one folder doesn't queue — it fails on <code>.git/index.lock</code>.
+        A bounded retry is the entire residual of the deleted machinery, but the backoff and give-up behavior
+        aren't specified, and giving up mid-REQ needs its own disposition.
+      </p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Analysis artifact — no REQ implemented. Word counts measured 2026-08-01 from this working tree;
+  the simplification argument is a proposal, not a validated result.
+  No screenshots: the subject has no user-visible surface, so hand-authored SVG carries the visuals.
+  No CDN or network dependency — the page renders offline.
+</footer>
+
+</div>
+
