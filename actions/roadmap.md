@@ -231,7 +231,7 @@ REQs whose Lessons Learned were captured but never staged — either the user ch
 5. Run `do-work bkb triage` then `do-work bkb ingest` for the N lessons in Awaiting Triage.
 6. Run `do-work bkb ingest` for the N lessons in Awaiting Ingest.
 7. Investigate the N File Not Found lessons — restage from the REQ or clear `kb_status` if the file was intentionally removed.
-9. Re-run the handoff via `do-work review REQ-NNN` for the N pending-handoff lessons (run `do-work bkb init` first if no `kb/` directory exists).
+8. Re-run the handoff via `do-work review REQ-NNN` for the N pending-handoff lessons (run `do-work bkb init` first if no `kb/` directory exists).
 ```
 
 The Suggested Next Steps list is **filtered** — emit only the items whose corresponding section had at least one entry. The numbering in the rendered report stays compact (1, 2, 3 … without gaps); the template above shows the canonical line per category.

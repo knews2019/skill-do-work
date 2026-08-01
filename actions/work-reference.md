@@ -52,7 +52,7 @@ work action (orchestrator - lightweight, stays in loop)
 
 ## Execution Model — Exclusive Session
 
-The pipeline supports **one active `do-work` session, one active REQ, one coder context.** Parallel sessions, co-dispatched builders, and cross-session ownership are outside the product contract — the pipeline does not detect, coordinate, or recover an unsupported concurrent run, and spends no instructions or durable state trying to make one safe. If two sessions run against one checkout anyway, behavior is unspecified. An action that claims nothing and writes no queue or REQ state (`roadmap`, `inspect`, `recap`) may run alongside a build; anything writing REQ frontmatter or queue files (the board's Testing view, the reviews) is inside the boundary.
+The pipeline supports **one active `do-work` session, one active REQ, one coder context.** Parallel sessions, co-dispatched builders, and cross-session ownership are outside the product contract — the pipeline does not detect, coordinate, or recover an unsupported concurrent run, and spends no instructions or durable state trying to make one safe. If two sessions run against one checkout anyway, behavior is unspecified.
 
 **Current-REQ relevance.** Unexpected repository state matters **only** when it prevents the active REQ from being implemented, tested, archived, or committed. Otherwise: preserve it, exclude it from this REQ's staging, and continue — spend no time explaining or repairing it.
 

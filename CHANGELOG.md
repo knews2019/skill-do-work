@@ -6,6 +6,10 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.163.1 — Drop the Last Parallel-Actions Sentence and Fix Roadmap Numbering (2026-08-01)
+
+Re-validation caught two leftovers. The Execution Model no longer reasons about parallel execution at all — the boundary now ends at "behavior is unspecified" instead of enumerating which actions may run alongside a build (the session assumes it is alone; that's the whole rule). Also renumbered roadmap's Suggested Next Steps template, which skipped from 7 to 9 after the reservation line was deleted.
+
 ## 0.163.0 — Remove the Reserve Action and the Read-Only Parallel Carveout (2026-08-01)
 
 Validation of the exclusive-session work flagged two contradictions it had left standing, plus a router-budget overrun. All three are fixed.
