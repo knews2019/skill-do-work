@@ -56,8 +56,8 @@ Examine what follows "do-work". Check the patterns below **in order** — first 
 | 32 | `note <text>`, `note add <text>`, `add note <text>` | note | Rest → `$ARGUMENTS` (strips a leading `add `); appends `- [YYYY-MM-DD] text` to `do-work/notes.md`. Not a capture — no UR/REQ, no work loop, no commit |
 | 33 | `board` (± mode), `kanban`, `kanban board`, `queue board`, `visualize queue`, `show the board` | board | Mode: empty/`serve`/`live` → live board at `:8090`; `static`/`generate`/`html` → static HTML; `summary`/`status` → column counts. Needs the Go toolchain |
 | 34 | `tidy-repo`, `tidy repo`, `file-reorg` (legacy), `reorg`, `reorganize`, `restructure`, `declutter`, `tidy layout`, `fix the layout`, `clean up the root` (± path ± `plan`) | tidy-repo | Junk deletion → stray-check (30); do-work bookkeeping → cleanup (12); code architecture changes → the work pipeline |
-| 35 | `abandon`, `cancel`, `wont-do`, `won't do` — only with empty args or a `REQ-NNN` ID | abandon | Rest → `$ARGUMENTS` (REQ IDs + optional reason). `abandon`/`cancel` + ID-less prose is descriptive content → capture (38). `pipeline abandon` already matched (3). Bare verb → list cancellable REQs and ask |
-| 36 | `reserve` (± REQ IDs ± `for <label>`), `release`, `unreserve` (± REQ IDs or label) | reserve | Rest → `$ARGUMENTS` — but for the `release`/`unreserve` triggers pass `release <rest>` so the action enters release mode. Allocates pending REQs to another worktree/cloud session; bare `reserve` lists reservations with staleness flags |
+| 35 | `abandon`, `cancel`, `wont-do`, `won't do` — only with empty args or a `REQ-NNN`/`UR-NNN` ID | abandon | Rest → `$ARGUMENTS` (REQ/UR IDs + optional reason; a UR cancels its cancellable members). `abandon`/`cancel` + ID-less prose is descriptive content → capture (38). `pipeline abandon` already matched (3). Bare verb → list cancellable REQs and ask |
+| 36 | `reserve` (± REQ/UR IDs ± `for <label>`), `release`, `unreserve` (± REQ/UR IDs or label) | reserve | Rest → `$ARGUMENTS` — but for the `release`/`unreserve` triggers pass `release <rest>` so the action enters release mode. Allocates pending REQs to another worktree/cloud session; bare `reserve` lists reservations with staleness flags |
 | 37 | `remember <text>`, `forget <text>`, `recall <query>`, `memory` (± `remember`/`forget`/`recall`/`status`/`bootstrap`/`audit`/`value`), `what do you remember` | memory | Rest → `$ARGUMENTS`, but bare aliases keep their verb: pass `remember <rest>` / `forget <rest>` / `recall <rest>`; `what do you remember` → `recall <rest>`. Stores facts, not tasks: `remember to <verb> …` is queued work → capture (38). `consolidate memory`/`memory cleanup` already matched dream (29). Bare `memory` → its help menu |
 | 38 | `capture-request:` / `capture request:` prefix, or descriptive multi-word content (feature requests, bug reports, "add …", "I need …") | capture-requests | The default for multi-word descriptive content that matches no keyword |
 
@@ -82,8 +82,8 @@ Each action has an action file with full instructions. How you execute it depend
 | capture-requests   | `./actions/capture.md`          | Full user input text           |
 | work               | `./actions/work.md`             | `$ARGUMENTS` (REQ/UR IDs, `--wave`, or empty) |
 | clarify questions  | `./actions/clarify.md`          | (none needed)                  |
-| abandon            | `./actions/abandon.md`          | `$ARGUMENTS` (REQ IDs + optional reason) |
-| reserve            | `./actions/reserve.md`          | `$ARGUMENTS` (REQ IDs + `for <label>`, `release …`, or empty to list) |
+| abandon            | `./actions/abandon.md`          | `$ARGUMENTS` (REQ/UR IDs + optional reason) |
+| reserve            | `./actions/reserve.md`          | `$ARGUMENTS` (REQ/UR IDs + `for <label>`, `release …`, or empty to list) |
 | verify-requests    | `./actions/verify-requests.md`  | Target UR/REQ or "most recent" |
 | review-work        | `./actions/review-work.md`      | Target REQ/UR or "most recent" |
 | validate-feedback  | `./actions/validate-feedback.md`| `$ARGUMENTS` (the pasted feedback / findings) |

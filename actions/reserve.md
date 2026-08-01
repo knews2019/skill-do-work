@@ -22,10 +22,14 @@
 
 | Arguments | Mode |
 |---|---|
-| `REQ-NNN [REQ-NNN ...] for <label>` | **reserve** — mark each REQ reserved for `<label>` |
-| `release REQ-NNN [REQ-NNN ...]` | **release** — return the named REQs to `pending` |
+| `REQ-NNN [REQ-NNN or UR-NNN ...] for <label>` | **reserve** — mark each resolved pending REQ reserved for `<label>` |
+| `release REQ-NNN [REQ-NNN or UR-NNN ...]` | **release** — return the named/expanded REQs to `pending` |
 | `release <label>` | **release** — return every REQ reserved under `<label>` to `pending` |
 | (empty) | **list** — show current reservations with age + staleness |
+
+**Token shapes and UR→REQ expansion follow the Target ID Resolution contract** (`actions/work-reference.md`): `REQ-`/`UR-` + digits, case-insensitive. A `UR-NNN` token expands to its member REQs by scanning `user_request:` frontmatter (never the UR's `requests:` array), and mixing `REQ-` and `UR-` tokens in one invocation resolves to their union. Expansion feeds the existing per-status loops **unchanged** — reserve still only captures `pending` members, release still only touches `reserved` ones.
+
+**Token-vs-label precedence in `release <token>`:** a `UR-` + digits token resolves as an **id** (expanded to its members), so a reservation *label* literally named `UR-011` is unreachable by `release UR-011` — release that reservation by naming its REQ ids, or relabel the session. Only text that is **not** a `REQ-`/`UR-` id token is treated as a free-text label.
 
 The label is free text naming the owning session ("cloud-alpha", "worktree feature-auth"). If REQ IDs were given without a label, load `crew-members/clear-questions.md` and ask for one with your environment's ask-user prompt — offer a suggested default derived from context (branch name, session name) as the recommended option. Never invent a label silently; the label is how a human later tells whose reservation this is.
 
@@ -33,14 +37,14 @@ The label is free text naming the owning session ("cloud-alpha", "worktree featu
 
 ### Mode: reserve
 
-1. For each named REQ, glob `do-work/queue/REQ-NNN-*.md` (and `do-work/queue/REQ-NNN.md`). Missing → report and skip.
+1. Resolve targeting tokens first (Target ID Resolution contract): expand each `UR-NNN` to its member REQs in `do-work/queue/` by scanning `user_request:` frontmatter, and dedupe with any named `REQ-NNN`. For each resolved REQ, glob `do-work/queue/REQ-NNN-*.md` (and `do-work/queue/REQ-NNN.md`). Missing → report and skip.
 2. Read frontmatter and normalize `status` per the Schema Read Contract (`actions/work-reference.md`). Only `pending` REQs are reservable. Anything else → report why and skip: `claimed`/in `working/` means a session already owns it; `pending-answers` needs `do-work clarify` first; `blocked` needs its external condition cleared first (`do-work run` re-probes it, or `do-work clarify` confirms it); `reserved` is already allocated (report the existing `reserved_for` and stop — re-labeling an existing reservation requires an explicit release first).
 3. Update frontmatter on each reservable REQ: `status: reserved`, `reserved_for: "<label>"` (always YAML-quoted — the label is raw user text; treat it as data, never interpolate it into a shell command), `reserved_at: <timestamp>` (current UTC instant — `date -u +%Y-%m-%dT%H:%M:%SZ`; Timestamp rule, `actions/work-reference.md` — a future-dated stamp breaks the board's staleness math).
 4. Report per the Output Format, and remind: the reservation only protects sibling sessions **after it syncs** — commit and push the queue edit (or let the user's normal flow do it). Files are the only channel between checkouts.
 
 ### Mode: release
 
-1. Resolve targets: REQ IDs → glob as above; a label → scan `do-work/queue/REQ-*.md` frontmatter for `status: reserved` with matching `reserved_for`. No matches → report and stop.
+1. Resolve targets: `REQ-`/`UR-` id tokens → resolve per the Target ID Resolution contract (a `UR-NNN` expands to its member REQs via `user_request:` scan, deduped with any named `REQ-NNN`), then glob as above; anything that is **not** an id token → treat as a label and scan `do-work/queue/REQ-*.md` frontmatter for `status: reserved` with matching `reserved_for`. No matches → report and stop.
 2. For each target with `status: reserved`: set `status: pending`, stamp `status_changed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), remove `reserved_for` and `reserved_at`. A target that is not `reserved` is reported and left untouched — release never rewrites other statuses.
 3. Report which REQs re-entered the queue.
 

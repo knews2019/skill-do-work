@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.160.0 — UR IDs Accepted by `do-work abandon` and `do-work reserve` (2026-08-01)
+
+The last two REQ-only actions now take a UR. `do-work abandon UR-011` cancels the UR's cancellable members (including any `failed` one still holding it open) behind a single itemized confirmation; `do-work reserve UR-011 for cloud-alpha` reserves its pending members; `do-work release UR-011` returns them. Both cite REQ-067's Target ID Resolution contract instead of re-deriving the rule.
+
+- Each action resolves tokens in front of its existing per-target loop, so every per-REQ gate (status refusals, the `claimed`/`reserved` extra confirmations, reserve's pending-only capture, release's reserved-only touch) applies unchanged to expanded members.
+- Bulk cancel is protected by one prompt that itemizes every resolved target with a total count — no `--yes` or per-member bypass.
+- `release <token>` precedence is stated explicitly: a `UR-` token resolves as an id, so a reservation *label* literally named `UR-011` is released by naming its REQ ids, not by `release UR-011`.
+
 ## 0.159.0 — UR IDs Accepted by `do-work run` (2026-08-01)
 
 `do-work run UR-011` now works: a UR argument expands to its member REQs and runs them in dependency order, instead of being rejected as an unrecognized token. A new shared Target ID Resolution contract defines the token grammar once so the other id-taking actions can cite it rather than each restating it.

@@ -292,6 +292,32 @@ assert_block_contains \
   'UR-NNN' \
   'actions/work.md Input must accept UR-NNN targeting tokens (usage string offers UR-NNN and the tokenizer recognizes the UR- shape) per the Target ID Resolution contract — a UR argument must no longer fall through to the unrecognized-argument guard.'
 
+# UR ids accepted by abandon and reserve/release (REQ-068). Both actions keyed entirely on
+# REQ-NNN tokens; a UR argument had no defined handling (abandon's globs substitute a REQ number,
+# reserve's mode table matched no row). Their Input sections must now name the UR- shape and cite
+# the shared Target ID Resolution contract rather than each restating the resolution rule. Scope the
+# UR- check to the Input section — abandon.md already names archive/UR-NNN/ folders elsewhere, so a
+# file-wide grep would pass vacuously without the action actually accepting a UR argument.
+abandon_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$repo_root/actions/abandon.md")"
+reserve_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$repo_root/actions/reserve.md")"
+
+# Both Input sections must cite the shared contract (naming the UR- shape by reference, not by
+# restating the resolution rule — a fourth/fifth copy is exactly what the contract exists to avoid).
+# Scope to the Input section: abandon.md already writes archive/UR-NNN/ folder paths elsewhere, so
+# only an Input-scoped citation check proves the *argument grammar* gained the UR shape.
+assert_block_contains \
+  "$abandon_input_block" \
+  'Target ID Resolution' \
+  'actions/abandon.md Input must cite the Target ID Resolution contract so it accepts UR-NNN targeting tokens (a UR cancels its cancellable members) rather than only REQ-NNN.'
+assert_block_contains \
+  "$reserve_input_block" \
+  'Target ID Resolution' \
+  'actions/reserve.md Input must cite the Target ID Resolution contract so reserve/release accept UR-NNN targeting tokens (a UR resolves to its members) rather than only REQ-NNN.'
+assert_block_contains \
+  "$reserve_input_block" \
+  'UR-NNN' \
+  'actions/reserve.md Input mode table must name the UR-NNN token shape in its reserve and release rows.'
+
 assert_contains \
   "actions/roadmap.md" \
   '^-[[:space:]]+\*\*Ready\*\*[[:space:]]+— normalized `status` is `pending`' \

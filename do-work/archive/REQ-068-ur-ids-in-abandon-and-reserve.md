@@ -1,8 +1,11 @@
 ---
 id: REQ-068
 title: UR ids in do-work abandon and do-work reserve/release
-status: pending
+status: completed
 created_at: 2026-08-01T12:31:45Z
+claimed_at: 2026-08-01T13:16:49Z
+completed_at: 2026-08-01T13:16:49Z
+route: B
 user_request: UR-011
 domain: general
 prime_files: []
@@ -12,7 +15,7 @@ depends_on: [REQ-067]
 maintenance: true
 related: [REQ-067, REQ-070]
 batch: ur-ids-accepted-everywhere
-write_set: [actions/abandon.md, actions/reserve.md, SKILL.md, actions/help.md, docs/cleanup-guide.md, CHANGELOG.md, actions/version.md]
+write_set: [actions/abandon.md, actions/reserve.md, SKILL.md, actions/help.md, docs/cleanup-guide.md, _dev/tests/contract-regressions.sh, CHANGELOG.md, actions/version.md]
 ---
 
 # UR ids in do-work abandon and do-work reserve/release
@@ -25,9 +28,9 @@ non-terminal REQs; `do-work reserve UR-011 for cloud-alpha` reserves its pending
 `do-work release UR-011` returns them.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Insert a UR-resolution step in front of each action's existing per-target loop (abandon Step 1, reserve/release Mode steps) rather than threading UR-awareness through the gates. Cite REQ-067's Target ID Resolution contract; add the itemized bulk-cancel confirmation and the token-vs-label precedence. TDD RED = Input-scoped contract-citation assertions on both files.
+- [x] **[APPLY]:** Edited exactly the write_set files (extended to include the test file — see ## Decisions D-01). No source-code changes.
+- [x] **[UNIFY]:** `git diff --stat` reviewed; Markdown only, no debug artifacts. Contract-regression suite passes except the pre-existing `update-script-behavior.sh` baseline. SKILL.md 2575/2650 words.
 
 ## Why
 
@@ -146,3 +149,39 @@ See `do-work/user-requests/UR-011/input.md` for complete verbatim input.
 *Source: "executing a UR should be just as valid as executing a REQ, they are the same familly" — scope confirmed at capture as run + abandon + reserve/release.*
 
 Think carefully before answering.
+
+## Triage
+
+**Route B.** Firm "what" and named files, but the clean insertion point for UR resolution (in front of each existing per-target loop, gates untouched) and the token/label precedence wording needed discovery — Route B, not a mechanical Route A edit. Depends on REQ-067's contract, which landed first (commit `1e653bc`).
+
+## Decisions
+
+- **D-01 (DECIDE & STATE):** Extended `write_set` to include `_dev/tests/contract-regressions.sh` — same reasoning as REQ-067: the Red-Green Proof names a harness probe, absent from the declared set. Added Input-scoped contract-citation assertions for abandon.md and reserve.md plus a reserve-Input UR-NNN check; scoped to the Input block because abandon.md already writes `archive/UR-NNN/` paths elsewhere (a file-wide grep would pass vacuously). RED confirmed before edits, GREEN after.
+
+## Implementation Summary
+
+**What was done:** Taught `do-work abandon` and `do-work reserve`/`release` to accept `UR-NNN`, consuming REQ-067's Target ID Resolution contract. Both actions resolve tokens in front of their existing per-target loops, so every per-REQ gate (duplicate refusal, `completed`/`completed-with-issues` refusal, `claimed`/`reserved` extra confirmations; reserve's `pending`-only capture; release's `reserved`-only touch) applies unchanged to expanded members. abandon's Step 2 confirmation now enumerates every resolved target with a total count in one prompt, and forbids a `--yes`/per-member bypass. reserve states the token-vs-label precedence explicitly (a `UR-` token resolves as an id in `release <token>`, so a label named `UR-011` is unreachable that way).
+
+Files changed:
+- `actions/abandon.md` (modified) — Input accepts `UR-NNN` + cites contract; Step 1 UR-resolution paragraph (queue/working + archived-`failed` reach, never into closed UR folders); Step 2 itemized bulk-cancel confirmation.
+- `actions/reserve.md` (modified) — Input mode table gains UR forms; contract citation + token-vs-label precedence; reserve/release resolution steps expand UR before the existing loops.
+- `SKILL.md` (modified) — abandon/reserve routing rows + dispatch rows.
+- `actions/help.md` (modified) — abandon/reserve/release usage lines note UR.
+- `docs/cleanup-guide.md` (modified) — Pass 1 mentions `do-work abandon UR-NNN`.
+- `_dev/tests/contract-regressions.sh` (modified) — three RED→GREEN assertions (see D-01).
+- `CHANGELOG.md`, `actions/version.md` (modified) — release bookkeeping.
+
+## Testing
+
+- **Red-green validation:** abandon-Input and reserve-Input contract-citation assertions + reserve-Input `UR-NNN` assertion all FAILed pre-edit (RED, verified — abandon.md's pre-existing `archive/UR-NNN/` reference is why the citation check, not a bare `UR-NNN` grep, is the meaningful probe), all pass after (GREEN, verified).
+- **Regression:** full suite passes except the pre-existing `update-script-behavior.sh` baseline (untouched files). SKILL.md within the 2650-word router budget.
+
+## Review
+
+**Pipeline mode — Pass (self-review).** Requirements traced: abandon Input+Step1+Step2 (§1) ✓, reserve Input table + precedence + reserve/release loops (§2) ✓, surface updates (§3) ✓. Constraints held: cites the contract without restating it, `requests:` array never read, no bulk-confirm bypass (Step 2 forbids `--yes`/per-member loop), no per-REQ status gate changed (resolution sits in front of the loops), no `CLAUDE.md`/`AGENTS.md` citation.
+
+## Lessons Learned
+
+**What worked:** Resolving tokens in front of the existing per-target loop kept every status gate untouched — the cleanest possible insertion, exactly as the REQ's Builder Guidance predicted.
+**What didn't:** A file-wide `UR-NNN` grep is a vacuous test here — abandon.md already contains `archive/UR-NNN/` folder paths, so the assertion passed before any real change. Scoping to the Input block and asserting the *contract citation* is the non-vacuous probe.
+**Worth knowing:** The token-vs-label ambiguity in `release <token>` is a genuine footgun — a session labelled after a UR (`reserved_for: "UR-011"`) is now unreachable by `release UR-011` (it resolves as an id). The precedence line under reserve's mode table is the only thing that warns a user before they release the wrong set.
