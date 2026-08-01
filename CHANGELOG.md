@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.162.4 — Reconcile Reservation, Maintainer-Contract, and Token-Canonicalization Docs (2026-08-01)
+
+Codex re-review of the final tree caught three consistency gaps the UR/exclusive-session work left behind:
+
+- **Reservation override.** `actions/reserve.md` and `actions/prime-req-reservation.md` still said "only the default full-queue scan honors reservations" — but a `do-work run UR-NNN` scoped run now honors them too. Corrected to "only explicit per-REQ naming overrides a reservation".
+- **Maintainer contract.** `CLAUDE.md`'s board lock-step rule still told maintainers "which REQs may co-dispatch stays with the dispatch gate" — machinery REQ-069 deleted. Reworded to the exclusive-session, display-only framing.
+- **Token canonicalization.** The Target ID Resolution contract advertised case-insensitive `req-42` but callers glob/compare against zero-padded upper-case stored ids. Added a canonicalize-before-lookup step (uppercase prefix, numeric-value digit match) so `req-42` actually resolves to `REQ-042`.
+
 ## 0.162.3 — Sweep the Last "Overlaps Everything" Mis-Framings (2026-08-01)
 
 Verification found two more spots that inherited the deleted dispatch gate's "absent write_set ⇒ overlaps everything" wording — `actions/capture-reference.md` and a malformed-glob parenthetical in `actions/work-reference.md`. Both corrected so all five board-story files agree: an absent/empty `write_set` gets **no** overlaps badge (unknown, not conflict), and the docs make no false universal claim about malformed globs.

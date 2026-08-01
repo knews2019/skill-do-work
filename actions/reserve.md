@@ -76,7 +76,7 @@ Reservations:
 
 - **Only `pending` REQs are reservable.** Release always restores exactly `pending` — reserve never captures, and release never invents, any other status.
 - **Never move the file.** Reservations live in `do-work/queue/`; `do-work/working/` belongs exclusively to the work pipeline's claim.
-- **Targeted runs override.** `do-work run REQ-NNN` claims a reserved REQ (clearing the reservation) — that is the designed pickup path for the owning session and the human override for everyone else. Only the *default* full-queue scan honors reservations. Don't add extra guards to targeted mode.
+- **Only explicit per-REQ naming overrides a reservation.** `do-work run REQ-NNN` claims a reserved REQ (clearing the reservation) — that is the designed pickup path for the owning session and the human override for everyone else. **Everything else honors the reservation:** the default full-queue scan skips it, and a `do-work run UR-NNN` scoped run skips-and-reports any reserved member rather than claiming it (`actions/work.md` Step 1 — UR expansion is a weaker signal than naming a REQ outright). Don't add extra guards to the explicit-per-REQ path.
 - **Quote the label.** `reserved_for` is raw user text — write it as a quoted YAML scalar and never substitute it into shell commands unquoted.
 - **24-hour staleness is advisory.** Flag and suggest; never auto-release.
 
