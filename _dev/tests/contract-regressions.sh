@@ -118,23 +118,53 @@ assert_contains \
   'Maintenance assessment' \
   'actions/capture.md Step 1 must assess skill-instruction removal/narrowing and set the maintenance marker (work.md is marker-only and never infers it).'
 
-# write_set parser lock-step (REQ-032). The dispatch gate and the board parser
-# are one contract: work.md may only permit concurrent dispatch on a field the
-# shipped parser actually reads, so neither half may be removed alone.
-assert_contains \
-  "actions/work.md" \
-  'pairwise disjoint' \
-  'actions/work.md Step 1 must keep the parallel-dispatch gate permitting concurrent REQs only when their write_sets are pairwise disjoint.'
-
-assert_contains \
-  "actions/work.md" \
-  'serial-only' \
-  'actions/work.md Step 1 must keep the serial-only resource-class rule that overrides write_set disjointness for ordered/generated resources.'
-
+# write_set parser lock-step (REQ-032, updated by REQ-069). Under the exclusive-session
+# model write_set no longer gates dispatch (one REQ runs at a time — the parallel-dispatch
+# gate and the serial-only rule are gone); write_set survives as a display-only field the
+# board parser reads for the overlaps badge, so the parser must still read it.
 assert_contains \
   "tools/queue-kanban/model.go" \
   'fields\["write_set"\]' \
-  'tools/queue-kanban/model.go must parse write_set in lock-step with the schema field work.md dispatches on.'
+  'tools/queue-kanban/model.go must keep parsing write_set — the display-only field the board overlaps badge reads.'
+
+# Exclusive-session model (REQ-069). The concurrency machinery — the orchestrator lock, the
+# parallel-dispatch gate, the co-dispatch re-validations — was removed for a one-session /
+# one-active-REQ / one-coder-context operating rule. None of the lock/claim vocabulary may
+# survive in any shipped action file, and the two replacement rules must each be stated exactly
+# once: a second copy is drift waiting to diverge, the very failure the removed machinery kept
+# re-learning across four REQs.
+for removed_concurrency_token in \
+  'Concurrent-Orchestrator Lock Guard' \
+  'coexisting_sessions' \
+  'claimed_reqs' \
+  'heartbeat_at' \
+  'orchestrator-lock\.json'; do
+  concurrency_token_hits="$(grep -rIlE -- "$removed_concurrency_token" "$repo_root/actions" 2>/dev/null || true)"
+  if [ -n "$concurrency_token_hits" ]; then
+    printf 'FAIL: removed concurrency-machinery token "%s" still present in a shipped action file (exclusive-session model, REQ-069):\n%s\n' \
+      "$removed_concurrency_token" "$concurrency_token_hits" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+
+assert_contains \
+  "actions/work-reference.md" \
+  '^## Execution Model — Exclusive Session' \
+  'actions/work-reference.md must define the exclusive-session Execution Model (one session, one active REQ, one coder context) that replaced the orchestrator-lock/parallel-dispatch machinery.'
+
+exclusive_invariant_count="$(grep -roh 'one active REQ, one coder context' "$repo_root/actions" | wc -l | tr -d ' ')"
+if [ "$exclusive_invariant_count" != "1" ]; then
+  printf 'FAIL: the exclusive-session invariant ("one active REQ, one coder context") must be stated exactly once across actions/ (found %s) — every other mention is a pointer, not a restatement.\n' \
+    "$exclusive_invariant_count" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+three_attempt_count="$(grep -roh 'consecutive fix attempts' "$repo_root/actions" | wc -l | tr -d ' ')"
+if [ "$three_attempt_count" != "1" ]; then
+  printf 'FAIL: the three-attempt stop condition ("consecutive fix attempts ... in its current context only") must be stated exactly once across actions/ (found %s).\n' \
+    "$three_attempt_count" >&2
+  fail_count=$((fail_count + 1))
+fi
 
 assert_contains \
   "docs/ai-report-guide.md" \
@@ -493,21 +523,6 @@ for action_file_path in "$repo_root"/actions/*.md; do
   fi
 done
 
-# Stale-lock take-over must re-judge staleness inside the serialized mutex. The
-# branch is selected on an unserialized read, and a holder that heartbeats in the
-# read-to-write gap must not be overwritten as stale — the take-over nulls the
-# holder's claim, so Crash Recovery then strips and re-queues the REQ the live
-# session was mid-way through building (validate-feedback 2026-07-28 TOCTOU).
-assert_contains \
-  "actions/work-reference.md" \
-  'Re-validate staleness inside the mutex' \
-  'actions/work-reference.md stale take-over must re-validate staleness inside the mutex, not just serialize the write.'
-
-assert_contains \
-  "actions/work-reference.md" \
-  'recompute the holder.s age from the fresh' \
-  'actions/work-reference.md stale take-over must recompute the holder age from the fresh in-mutex read before overwriting.'
-
 # Capture redaction must run on the FULL extracted text before any byte-budget
 # cut: every credential pattern needs a complete token shape, so redacting after
 # truncation lets a severed token (`ghp_1234567`) persist as an unmatched
@@ -563,97 +578,6 @@ assert_contains \
   "actions/cleanup.md" \
   'worktree-agent-' \
   'actions/cleanup.md must keep the consent-gated orphaned-worktree pass that owns unmerged builder branches.'
-
-# Multi-claim lock representation (REQ-035). The orchestrator lock's claim became a
-# `claimed_reqs` LIST so one orchestrator can hold N concurrent claims, with
-# `claimed_req` retained as a derived legacy mirror (claimed_reqs[0]). The gate text,
-# lock schema, heartbeat rule, Crash Recovery gate, and cleanup's live-claim gate must
-# all tell one story, so pin the canonical field's presence in each of the three files
-# that read or write it — drop it from any one and the "one story" breaks silently.
-# Also pin that the Crash Recovery gate skips files claimed by ANY fresh claim set,
-# this session's own INCLUDED (freshness alone gates): the correctness fix that stops a
-# Step 10 -> Step 1 loop from re-queuing a co-dispatched sibling mid-build.
-assert_contains \
-  "actions/work.md" \
-  'claimed_reqs' \
-  'actions/work.md must carry the canonical claimed_reqs list (the multi-claim field the parallel-dispatch gate and Step 2/8 bookkeeping depend on).'
-
-assert_contains \
-  "actions/work-reference.md" \
-  'claimed_reqs' \
-  'actions/work-reference.md must carry the canonical claimed_reqs list across the lock schema, heartbeat rule, and Crash Recovery gate.'
-
-assert_contains \
-  "actions/cleanup.md" \
-  'claimed_reqs' \
-  'actions/cleanup.md Pass 0 live-claim gate must exempt every id in a live session claimed_reqs, not just the legacy single claimed_req.'
-
-assert_contains \
-  "actions/work-reference.md" \
-  'including this session'\''s own' \
-  'actions/work-reference.md Crash Recovery gate must skip files claimed by ANY fresh claim set including this session own, so a Step 10 to Step 1 loop does not re-queue a co-dispatched sibling mid-build.'
-
-# The primary action file's compact Crash Recovery summary is a separate restatement of
-# the gate above and is NOT covered by the work-reference.md assertion — REQ-035 first
-# shipped with work.md's summary still telling the old "another live session" story while
-# work-reference.md:205 told the new one (caught in adversarial review). Pin the same-story
-# phrasing in work.md too so the two files cannot silently diverge again.
-assert_contains \
-  "actions/work.md" \
-  'this session'\''s own co-dispatched claims' \
-  'actions/work.md Step 1 Crash Recovery summary must tell the same story as the work-reference.md gate — it also skips this session own co-dispatched claims on a Step 10 to Step 1 loop, not just another session claims.'
-
-# The proceed-anyway option restates the same gate a THIRD time, and the file-wide
-# assertion above cannot see it — a match anywhere in work-reference.md satisfies that
-# one, so the Crash Recovery gate's own wording masked this restatement keeping the
-# pre-REQ-035 "another live session" story right through REQ-035 (REQ-044). An agent
-# reading only its local instruction on that path strips its own co-dispatched
-# siblings, so pin the block itself: the current story in, the stale story out.
-proceed_anyway_block="$(sed -n '/\*\*(a) Proceed anyway\*\*/,/\*\*(b) Take over\*\*/p' "$repo_root/actions/work-reference.md")"
-
-assert_block_contains \
-  "$proceed_anyway_block" \
-  'including this session'\''s own' \
-  'actions/work-reference.md proceed-anyway option must restate the gate as skipping every fresh claim including this session own, not just another live session claims.'
-
-assert_block_not_contains \
-  "$proceed_anyway_block" \
-  'skips only files actively claimed by another live session' \
-  'actions/work-reference.md proceed-anyway option must not reintroduce the pre-REQ-035 another-live-session-only gate wording, which tells a coexisting session to strip its own co-dispatched siblings.'
-
-# Dispatch re-validation completeness (REQ-045). REQ-036 added the Step 5.5
-# disjointness re-check and shipped no guard for it, and its coverage claim had a
-# route-shaped hole: `route` is not assigned until Step 3, and Route A never reaches
-# Step 5.5, so a co-dispatched Route A builder wrote under an unvalidated capture hint.
-# Every co-dispatched REQ now has exactly one post-dispatch validation point — Step 5.5
-# for Routes B/C, Step 3 for Route A — plus a named loser and a partition written to
-# frontmatter so the re-check compares against the subset the gate actually issued.
-# Each piece deletes cleanly without breaking anything visible, and the file-wide
-# `pairwise disjoint`/`write_set` assertions above cannot see them (a match anywhere in
-# actions/work.md satisfies those — the masking REQ-044 hit), so scope each to its step.
-step_5_5_scope_block="$(sed -n '/^### Step 5.5: Scope Declaration/,/^### Step 5.75:/p' "$repo_root/actions/work.md")"
-triage_step_block="$(sed -n '/^### Step 3: Triage/,/^### Step 3.5:/p' "$repo_root/actions/work.md")"
-parallel_dispatch_block="$(sed -n '/^\*\*Parallel dispatch (optional/,/^\*\*Serial-only resource classes/p' "$repo_root/actions/work.md")"
-
-assert_block_contains \
-  "$step_5_5_scope_block" \
-  'pairwise disjointness against every other in-flight REQ' \
-  'actions/work.md Step 5.5 must keep the REQ-036 re-validation clause — the firmed Scope list is re-checked for pairwise disjointness against every other in-flight REQ before the mirror replaces the field.'
-
-assert_block_contains \
-  "$step_5_5_scope_block" \
-  'The REQ at this re-check is the loser' \
-  'actions/work.md Step 5.5 must name which REQ of an overlapping pair is serialized — with the loser undefined an orchestrator can hold a sibling that has already written under the boundary it was handed.'
-
-assert_block_contains \
-  "$triage_step_block" \
-  'only post-dispatch validation point' \
-  'actions/work.md Step 3 must re-validate a co-dispatched Route A REQ write-set here — Route A skips Step 5.5, so without this the Step 1 gate coverage claim has a route-shaped hole and a Route A builder writes under an unvalidated capture hint.'
-
-assert_block_contains \
-  "$parallel_dispatch_block" \
-  '[Ww]rite that subset into the REQ.s `write_set` frontmatter' \
-  'actions/work.md Step 1 must persist a partition directive into the REQ write_set frontmatter at dispatch — a partition living only in the dispatch prompt is invisible to the later re-checks, which then serialize the partition the gate itself issued.'
 
 # Board overlap annotation stays display-only (REQ-052, follow-up to REQ-034). The
 # invariant is structural: `annotateWriteSetOverlap` runs AFTER `bucketColumns` in

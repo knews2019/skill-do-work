@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.161.0 — Exclusive-Session Model Replaces the Concurrency Machinery (2026-08-01)
+
+The work pipeline now states plainly what it always assumed: one `do-work` session, one active REQ, one coder context. The ~6,500 words of orchestrator-lock, parallel-dispatch, and co-dispatch-re-validation machinery that existed to detect and recover unsupported concurrent runs are gone, replaced by a short operating rule. Behavior for the normal single-session run is unchanged; the pipeline is just far smaller and easier to follow.
+
+- Removed: the `Concurrent-Orchestrator Lock Guard` section, the Step 1 parallel-dispatch gate and serial-only rule, the Step 3 / Step 5.5 co-dispatch re-validations, the crash-recovery concurrency gate, cleanup's Pass 0 live-claim gate, and every orchestrator-lock heartbeat/claim touchpoint.
+- Added a `## Execution Model — Exclusive Session` rule: unexpected repo state matters only when it blocks the active REQ; the coder stops after three consecutive fix attempts; and **read-only actions (roadmap, board, inspect, forensics, recap, reviews) may run in parallel** — the boundary governs writers only.
+- Kept: crash recovery of an interrupted single session, single-builder worktree isolation, and the `write_set` field (now display-only, feeding the board's overlaps badge; the board tool is untouched).
+
 ## 0.160.0 — UR IDs Accepted by `do-work abandon` and `do-work reserve` (2026-08-01)
 
 The last two REQ-only actions now take a UR. `do-work abandon UR-011` cancels the UR's cancellable members (including any `failed` one still holding it open) behind a single itemized confirmation; `do-work reserve UR-011 for cloud-alpha` reserves its pending members; `do-work release UR-011` returns them. Both cite REQ-067's Target ID Resolution contract instead of re-deriving the rule.
