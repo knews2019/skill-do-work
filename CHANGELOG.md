@@ -6,6 +6,10 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.162.3 — Sweep the Last "Overlaps Everything" Mis-Framings (2026-08-01)
+
+Verification found two more spots that inherited the deleted dispatch gate's "absent write_set ⇒ overlaps everything" wording — `actions/capture-reference.md` and a malformed-glob parenthetical in `actions/work-reference.md`. Both corrected so all five board-story files agree: an absent/empty `write_set` gets **no** overlaps badge (unknown, not conflict), and the docs make no false universal claim about malformed globs.
+
 ## 0.162.2 — Finish the Board Comment Sweep (2026-08-01)
 
 Re-verification caught one `tools/queue-kanban/model.go` comment (`isWriteSetOverlapCandidateStatus`) still using the removed "a dispatcher could put these in flight together" framing while its four siblings had been refreshed. Reworded it to the exclusive-session, contention-heads-up wording so the file tells one story. Comment-only; the Go tests still pass.
