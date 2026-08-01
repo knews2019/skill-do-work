@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.161.1 — UR Token Precedence and Reserve Mode-Table Fixes (2026-08-01)
+
+Two corrections from PR review of the UR-id work.
+
+- `do-work reserve`/`release` mode table now lets either `REQ-NNN` or `UR-NNN` lead — a UR-only `do-work reserve UR-011 for cloud-alpha` or `do-work release UR-011` no longer misses every row (or gets read as a free-text label).
+- `do-work run` now defines precedence for a REQ reached both by explicit name and by UR expansion (`do-work run UR-011 REQ-068`): explicit naming wins, so the deduped target takes the named branch (bypasses `depends_on`, claims a reservation).
+
 ## 0.161.0 — Exclusive-Session Model Replaces the Concurrency Machinery (2026-08-01)
 
 The work pipeline now states plainly what it always assumed: one `do-work` session, one active REQ, one coder context. The ~6,500 words of orchestrator-lock, parallel-dispatch, and co-dispatch-re-validation machinery that existed to detect and recover unsupported concurrent runs are gone, replaced by a short operating rule. Behavior for the normal single-session run is unchanged; the pipeline is just far smaller and easier to follow.

@@ -22,9 +22,9 @@
 
 | Arguments | Mode |
 |---|---|
-| `REQ-NNN [REQ-NNN or UR-NNN ...] for <label>` | **reserve** — mark each resolved pending REQ reserved for `<label>` |
-| `release REQ-NNN [REQ-NNN or UR-NNN ...]` | **release** — return the named/expanded REQs to `pending` |
-| `release <label>` | **release** — return every REQ reserved under `<label>` to `pending` |
+| `REQ-NNN or UR-NNN [id ...] for <label>` | **reserve** — mark each resolved pending REQ reserved for `<label>` (either id shape may lead; a UR-only `reserve UR-011 for <label>` is valid) |
+| `release REQ-NNN or UR-NNN [id ...]` | **release** — return the named/expanded REQs to `pending` (either id shape may lead) |
+| `release <label>` | **release** — return every REQ reserved under `<label>` to `pending` (label = anything that is not a `REQ-`/`UR-` id token) |
 | (empty) | **list** — show current reservations with age + staleness |
 
 **Token shapes and UR→REQ expansion follow the Target ID Resolution contract** (`actions/work-reference.md`): `REQ-`/`UR-` + digits, case-insensitive. A `UR-NNN` token expands to its member REQs by scanning `user_request:` frontmatter (never the UR's `requests:` array), and mixing `REQ-` and `UR-` tokens in one invocation resolves to their union. Expansion feeds the existing per-status loops **unchanged** — reserve still only captures `pending` members, release still only touches `reserved` ones.
