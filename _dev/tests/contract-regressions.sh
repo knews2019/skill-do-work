@@ -275,6 +275,23 @@ if ! bash -n <<<"$blocked_probe_shell_block"; then
   fail_count=$((fail_count + 1))
 fi
 
+# Target ID Resolution contract (REQ-067). The run tokenizer recognized exactly one token
+# shape (REQ- + digits); every other token was residue by construction, so a UR argument was
+# handled by whatever the reading agent improvised. The shared contract in work-reference.md is
+# the single definition of both token shapes and UR->REQ expansion that run/abandon/reserve/
+# roadmap cite instead of restating; work.md's Input and usage string must offer the UR- shape.
+assert_contains \
+  "actions/work-reference.md" \
+  '### Target ID Resolution' \
+  'actions/work-reference.md must define the shared Target ID Resolution contract (REQ-/UR- token shapes + UR->REQ expansion by user_request: scan) that the id-taking actions cite instead of restating.'
+
+work_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$repo_root/actions/work.md")"
+
+assert_block_contains \
+  "$work_input_block" \
+  'UR-NNN' \
+  'actions/work.md Input must accept UR-NNN targeting tokens (usage string offers UR-NNN and the tokenizer recognizes the UR- shape) per the Target ID Resolution contract — a UR argument must no longer fall through to the unrecognized-argument guard.'
+
 assert_contains \
   "actions/roadmap.md" \
   '^-[[:space:]]+\*\*Ready\*\*[[:space:]]+— normalized `status` is `pending`' \

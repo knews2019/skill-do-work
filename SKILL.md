@@ -1,7 +1,7 @@
 ---
 name: do-work
 description: Task queue - add requests or process pending work
-argument-hint: "pipeline [request] | capture-request: (describe a task) | run | verify-requests | review-work | code-review | ui-review | validate-feedback [paste findings] | present-work | ai-report [target] | slop-check [target] | dream [path] | clarify | abandon [REQ-NNN] | reserve [REQ-NNN for label] | release [REQ-NNN|label] | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | board [mode] | note [text] | stray-check [path] | tidy-repo [path] | bkb [subcommand] | memory [remember|forget|recall|status|bootstrap|audit] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
+argument-hint: "pipeline [request] | capture-request: (describe a task) | run [REQ|UR] | verify-requests | review-work | code-review | ui-review | validate-feedback [paste findings] | present-work | ai-report [target] | slop-check [target] | dream [path] | clarify | abandon [REQ-NNN] | reserve [REQ-NNN for label] | release [REQ-NNN|label] | cleanup | commit | inspect | quick-wins | scan-ideas [focus] | deep-explore [concept] | prime [create|audit] | forensics | roadmap [scope] | board [mode] | note [text] | stray-check [path] | tidy-repo [path] | bkb [subcommand] | memory [remember|forget|recall|status|bootstrap|audit] | interview [template] | prompts [subcommand] | install [target] | version | recap | tutorial [mode] | help"
 ---
 
 # Do-Work Skill
@@ -25,7 +25,7 @@ Examine what follows "do-work". Check the patterns below **in order** — first 
 | 1 | empty, bare, `help` | help | Print the menu per `actions/help.md` and wait — never ask "start the work loop?" |
 | 2 | `check for updates`, `check for update` (exact) | version | Wins before "check" hits verify (priority 5) |
 | 3 | `pipeline`, `full` (± request text) | pipeline | Rest → `$ARGUMENTS`. `pipeline status` → status mode; `pipeline abandon` → abandon mode; no args + active pipeline → resume |
-| 4 | `run`, `go`, `start`, `begin`, `work`, `process`, `execute`, `build`, `continue`, `resume` (± REQ IDs ± `--wave N`) | work | REQ IDs scope the run; `--wave` and IDs are mutually exclusive → reject; any other leftover token → usage error, never a silent full-queue run (`actions/work.md` Input) |
+| 4 | `run`, `go`, `start`, `begin`, `work`, `process`, `execute`, `build`, `continue`, `resume` (± REQ/UR IDs ± `--wave N`) | work | REQ/UR IDs scope the run (a UR expands to its member REQs — `actions/work-reference.md` Target ID Resolution); `--wave` and IDs are mutually exclusive → reject; any other leftover token → usage error, never a silent full-queue run (`actions/work.md` Input) |
 | 5 | `verify`, `verify-requests`, `verify requests`, `check`, `evaluate`, `audit`, `review requests`, `review reqs` | verify-requests | Bare `check`/`audit` land here; `audit codebase` → code-review (7); `audit primes` → prime (19) |
 | 6 | `clarify`, `questions`, `answers`, `pending`, `pending answers`, `blocked`, `what's blocked`, `what needs answers` | clarify | |
 | 7 | `code-review`, `code review`, `review codebase`, `audit codebase`, `codebase review` (± scope) | code-review | Scope args: prime file refs and/or directory paths |
@@ -80,7 +80,7 @@ Each action has an action file with full instructions. How you execute it depend
 | help               | `./actions/help.md`             | `$ARGUMENTS` (empty, or `<action> help`) |
 | pipeline           | `./actions/pipeline.md`         | `$ARGUMENTS` (request text, "status", or "abandon") |
 | capture-requests   | `./actions/capture.md`          | Full user input text           |
-| work               | `./actions/work.md`             | `$ARGUMENTS` (REQ IDs, `--wave`, or empty) |
+| work               | `./actions/work.md`             | `$ARGUMENTS` (REQ/UR IDs, `--wave`, or empty) |
 | clarify questions  | `./actions/clarify.md`          | (none needed)                  |
 | abandon            | `./actions/abandon.md`          | `$ARGUMENTS` (REQ IDs + optional reason) |
 | reserve            | `./actions/reserve.md`          | `$ARGUMENTS` (REQ IDs + `for <label>`, `release …`, or empty to list) |

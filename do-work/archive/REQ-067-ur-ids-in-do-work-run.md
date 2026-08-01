@@ -1,8 +1,11 @@
 ---
 id: REQ-067
 title: Target ID Resolution contract and UR ids in do-work run
-status: pending
+status: completed
 created_at: 2026-08-01T12:31:45Z
+claimed_at: 2026-08-01T13:05:57Z
+completed_at: 2026-08-01T13:05:57Z
+route: B
 user_request: UR-011
 domain: general
 prime_files: []
@@ -12,7 +15,7 @@ depends_on: []
 maintenance: true
 related: [REQ-068, REQ-070]
 batch: ur-ids-accepted-everywhere
-write_set: [actions/work-reference.md, actions/work.md, SKILL.md, actions/help.md, docs/work-guide.md, CHANGELOG.md, actions/version.md]
+write_set: [actions/work-reference.md, actions/work.md, SKILL.md, actions/help.md, docs/work-guide.md, _dev/tests/contract-regressions.sh, CHANGELOG.md, actions/version.md]
 ---
 
 # Target ID Resolution contract and UR ids in do-work run
@@ -24,9 +27,9 @@ Add one shared **Target ID Resolution** contract to `actions/work-reference.md`,
 queue, and those REQs run in dependency order.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Sited the Target ID Resolution contract in `actions/work-reference.md` right after the Terminal-resolved status set (so REQ-068/070 citations read naturally). Taught `do-work run` Input + Step 1 to accept `UR-NNN` via provenance-tagged expansion; surfaced the change in SKILL.md, help.md, work-guide.md. TDD RED = a contract-regression assertion on work.md Input naming the UR- shape.
+- [x] **[APPLY]:** Edited exactly the files in `write_set` (write_set extended to include the test file — see ## Decisions D-01). No source-code changes; this is a skill-instruction maintenance pass.
+- [x] **[UNIFY]:** `git diff --stat` reviewed; no debug artifacts (Markdown/bash only). Contract-regression suite passes except the pre-existing `update-script-behavior.sh` baseline failures (unrelated — `tools/do-work-update.sh` untouched). Ran `bash -n` implicitly via the suite's blocked-check syntax probe.
 
 ## Why
 
@@ -179,3 +182,40 @@ See `do-work/user-requests/UR-011/input.md` for complete verbatim input.
 *Source: "executing a UR should be just as valid as executing a REQ, they are the same familly, at the moment I get a warning — do-work run UR-059 isn't a valid argument."*
 
 Think carefully before answering.
+
+## Triage
+
+**Route B.** The "what" is firm and the target files are named, but the contract's placement and wording had to make REQ-068/070's citations read naturally — that discovery/placement judgment is Route B, not a mechanical Route A edit.
+
+## Decisions
+
+- **D-01 (DECIDE & STATE):** Extended `write_set` to include `_dev/tests/contract-regressions.sh`. The REQ's Red-Green Proof names a contract-regression harness probe as the mechanical RED, but the file was absent from the declared set. Reversible, low-reach, and no co-dispatch conflict (serial run; REQ-069 also edits the suite but runs later, separately). Added a `### Target ID Resolution` presence assertion plus a `UR-NNN`-in-Input assertion; confirmed both RED before editing, GREEN after.
+
+## Implementation Summary
+
+**What was done:** Added a single shared **Target ID Resolution** contract to `actions/work-reference.md` (token shapes `REQ-`/`UR-` + digits case-insensitive; `UR-NNN` expands by scanning `user_request:` frontmatter, never the `requests:` array; empty resolution stops the action; expansion widens reach without relaxing per-REQ gates). Taught `do-work run` to accept `UR-NNN` alongside `REQ-NNN`: Input cites the contract and updates the usage string; `--wave` is now mutually exclusive with any targeting token; the bypass claim is split by provenance (named REQ bypasses `depends_on`, UR-expanded REQ does not). Step 1's targeted-mode paragraph resolves+announces the expansion, gates UR-expanded members by dependency-readiness, skips reserved UR members, and exits (never full-queue) on a zero-resolution list. Surfaced in SKILL.md (routing row 4, dispatch row, argument-hint), help.md, and docs/work-guide.md.
+
+Files changed:
+- `actions/work-reference.md` (modified) — new `### Target ID Resolution` contract block.
+- `actions/work.md` (modified) — Input (usage string, provenance split, tokenizer), Step 1 reserved paragraph, blocked-probe set, "bypass" heading, targeted-mode expansion, default-mode note.
+- `SKILL.md` (modified) — routing row 4, work dispatch row, `argument-hint`.
+- `actions/help.md` (modified) — `do-work run` usage line.
+- `docs/work-guide.md` (modified) — scoped-run guidance gains the `UR-NNN` form.
+- `_dev/tests/contract-regressions.sh` (modified) — two RED→GREEN assertions (see D-01).
+- `CHANGELOG.md`, `actions/version.md` (modified) — release bookkeeping.
+
+## Testing
+
+- **Red-green validation:** `### Target ID Resolution` assertion and the `work.md` Input `UR-NNN` assertion both FAILed on the pre-edit tree (RED, verified), both pass after (GREEN, verified).
+- **Regression:** full `_dev/tests/contract-regressions.sh` passes except the pre-existing `update-script-behavior.sh` probe failures, which reproduce on the untouched tree (`tools/do-work-update.sh` not in scope) — a baseline, not a regression.
+- **Grammar sweep:** grepped every `do-work run [REQ…` / `Usage: do-work run` restatement; all now carry `UR-NNN`, none left REQ-only.
+
+## Review
+
+**Pipeline mode — Pass (self-review).** Requirements traced: shared contract (§1) ✓, work.md Input (§2) ✓, Step 1 provenance/reserved/blocked-probe/default (§3) ✓, surface updates (§4) ✓. Constraints held: unrecognized-argument guard unchanged (REG-042 still errors — the tokenizer recognizes only `REQ-`/`UR-`+digits), `actions/pipeline.md` untouched, `requests:` array never read, no `CLAUDE.md`/`AGENTS.md` citation, SKILL.md 2569/2650 words. One deferred item: `docs/work-guide.md`'s parallel-dispatch bullet is out of this REQ's scope but describes machinery REQ-069 removes — noted for REQ-069's dangling-reference sweep.
+
+## Lessons Learned
+
+**What worked:** Siting the contract adjacent to the Terminal-status sets gave REQ-068/070 a natural citation anchor and matched the existing "condition, not the list" framing. A contract-regression assertion is the right RED/GREEN mechanism for an instruction-only change.
+**What didn't:** n/a — no dead ends.
+**Worth knowing:** The reserved-vs-UR-expansion distinction is the subtle safety property — a UR run must never claim a reservation. It lives in three places now (Step 1 reserved paragraph, targeted-mode bullet, and the contract's "never relaxes per-REQ gates" clause); a future edit that loosens any one re-opens the hole.

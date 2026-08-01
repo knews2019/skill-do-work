@@ -20,7 +20,7 @@ do-work — task queue for agentic coding tools
     do-work pipeline status             Show progress / resume active pipeline
 
   Process the queue:
-    do-work run                         Triage, build, test, review — one REQ at a time
+    do-work run [REQ|UR ...]            Triage, build, test, review — one REQ at a time
     do-work clarify                     Review pending questions from completed work
     do-work abandon REQ-042 [why]       Mark a REQ won't-do — cancelled + archived, shows with done work
     do-work reserve REQ-042 for cloud-a Allocate pending REQs to another worktree/cloud session
