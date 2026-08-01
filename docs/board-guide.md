@@ -37,7 +37,7 @@ The toolbar carries a text filter (id or title), domain and status selects, a **
 
 ### Reading the `overlaps` badge
 
-It names the other pending/claimed REQs whose declared `write_set` could touch the same files — a scheduling heads-up, never a block. `do-work run`'s dispatch gate makes the actual co-dispatch call.
+It names the other pending/claimed REQs whose declared `write_set` could touch the same files — an informational heads-up, never a block. Under the exclusive-session model `do-work run` builds one REQ at a time, so the badge schedules nothing; it just surfaces declared file contention.
 
 It under-reports, so read it as a floor, not a guarantee:
 

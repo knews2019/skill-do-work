@@ -23,16 +23,17 @@ A planning aid, not a diagnostic. Where `forensics` looks for *broken* state (st
 
 ## Input
 
-Optional argument may scope the report:
+Optional argument may scope the report (id tokens — `REQ-NNN` and `UR-NNN` — follow the **Target ID Resolution** contract in `actions/work-reference.md`):
 
 - *(no argument)* — full survey across queue, working, and archive
 - `pending` — only `do-work/queue/` REQs (what's actionable now)
 - `in-progress` — only `do-work/working/` REQs
 - `done` — only archived REQs
 - `UR-NNN` — scope to a single user request and its REQs
+- `REQ-NNN` — scope to a single REQ: its status, dependency position (what it waits on and what waits on it), a feasibility read, and its sibling REQs under the same UR for context. The output is thin by nature — one card's worth of status plus its dependency neighbourhood, **not** a mini-report; per-REQ detail is `do-work inspect`'s job (`actions/inspect.md`), and duplicating it here would be the failure to avoid.
 - `since <date>` — filter archive entries to those completed on/after the date
 
-If the argument is unrecognized, default to the full survey and note the unrecognized argument in the report.
+**Multiple id tokens resolve to their union** (e.g. `do-work roadmap REQ-067 REQ-070`), each surveyed as above. If the argument is unrecognized, default to the full survey and note the unrecognized argument in the report — only a recognized `REQ-`/`UR-` id token is scoped; a genuinely unrecognized token (e.g. `banana`) still falls through to the full survey with its note.
 
 ## Steps
 
@@ -133,7 +134,7 @@ Render the report per the Output Format below. Lead with the actionable section 
 # Roadmap
 
 **Scan date:** [timestamp]
-**Scope:** [full | pending | in-progress | done | UR-NNN | since <date>]
+**Scope:** [full | pending | in-progress | done | REQ-NNN | UR-NNN | since <date>]
 **Totals:** [N ready] · [N needs clarification] · [N blocked] · [N reserved] · [N in-progress] · [N completed] · [N failed] · [N cancelled]
 **TDD posture (pending):** [N on] · [N eligible] · [N not applicable]
 **Lessons:** [N awaiting triage] · [N awaiting ingest] · [N processed] · [N pending handoff] · [N file not found]

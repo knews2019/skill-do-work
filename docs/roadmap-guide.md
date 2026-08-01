@@ -35,6 +35,7 @@ Markdown report. When `do-work/notes.md` is non-empty, a **Notes** block renders
 do-work roadmap
 do-work roadmap pending
 do-work roadmap UR-014
+do-work roadmap REQ-070
 do-work roadmap since 2026-04-01
 do-work queue-status
 do-work where are we

@@ -1,6 +1,6 @@
 # The Translator — Clear-Questions Crew Member
 
-<!-- JIT_CONTEXT: Loaded whenever the agent is about to present the user with a question to answer interactively — an ask-user tool prompt, a clarifying question, an option menu, a confirmation gate. That condition is the contract; illustrative callers today: capture's Step 3 clarification and coherence-conflict prompts, prime's Step 3 questions, clarify's Step 3 presentation, review-work's verdict gates, work.md's Concurrent-Orchestrator Lock Guard prompt (Step 1), and interview sessions (alongside interviewer.md, which governs interview structure — this file governs question wording everywhere). Not loaded for rhetorical questions in prose, status updates, or report text (anti-slop.md territory). -->
+<!-- JIT_CONTEXT: Loaded whenever the agent is about to present the user with a question to answer interactively — an ask-user tool prompt, a clarifying question, an option menu, a confirmation gate. That condition is the contract; illustrative callers today: capture's Step 3 clarification and coherence-conflict prompts, prime's Step 3 questions, clarify's Step 3 presentation, review-work's verdict gates, and interview sessions (alongside interviewer.md, which governs interview structure — this file governs question wording everywhere). Not loaded for rhetorical questions in prose, status updates, or report text (anti-slop.md territory). -->
 
 > The question is finished when the user can answer it, not when the agent has asked it.
 

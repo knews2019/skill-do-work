@@ -1,54 +1,42 @@
 ---
-session_ended: 2026-07-31T09:36:36Z
-last_completed: REQ-066
-queue_state: 1 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 in-progress
-reqs_processed_this_session: 2
-session_depth: light
+session_ended: 2026-08-01T14:00:00Z
+last_completed: REQ-070
+queue_state: 0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 in-progress
+reqs_processed_this_session: 4
+session_depth: moderate
 ---
 
 # Session Checkpoint
 
 ## Completed This Session
 
-- REQ-064: Restore blanked archived REQs from git history in cleanup (Route B, 92%) — commit `069c943`, v0.153.0
-- REQ-066: Clear two shellcheck warnings in the commit-hash guard fixture (Route A, 95%) — commit `b0bd8c8`, v0.153.1
+- REQ-067: Target ID Resolution contract + UR ids in `do-work run` (Route B, v0.159.0) — commit `1e653bc`
+- REQ-068: UR ids in `do-work abandon` / `reserve` / `release` (Route B, v0.160.0) — commit `180e523`
+- REQ-069: Adopt exclusive-session model, remove concurrency machinery (Route C, v0.161.0) — commit `76cdf39`
+- REQ-070: REQ ids in `do-work roadmap` (Route B, v0.162.0) — commit `03349a8`
 
-Resumed REQ-064 mid-flight rather than letting crash recovery re-queue it: the prior session ended
-after implementing `--restore` but before writing any pipeline sections, and the lock had been
-released. Its `## Triage`, `## Exploration`, and `## Scope` were re-derived and are marked as such
-in the archived REQ.
+Plus a PR-review fix commit (v0.161.1, `24950ff`): reserve mode-table UR-token
+routing + `do-work run` dual-provenance precedence (Codex findings on REQ-067/068).
 
 ## Still Queued
 
 - **Queue empty.** No pending, pending-answers, blocked, reserved, or in-progress REQs.
-- **UR-010 is closed** — all five REQs (062, 063, 064, 065, 066) terminal, consolidated into
-  `do-work/archive/UR-010/`.
-
-REQ-065 was **not** processed by this session. It flipped `pending-answers` → `pending` at
-`2026-07-31T09:31:57Z`, mid-run and unclaimed by this orchestrator; this session deliberately
-declined to claim it (see Session Notes). It was then completed and archived by that other actor at
-~09:36Z. Its work — pointing `do-work/HANDOFF.md` at `tools/checks/record-commit-hash.sh` — is in
-place. No commit for it here.
+- **UR-011 closed** — REQ-067/068/070 consolidated into `do-work/archive/UR-011/`.
+- **UR-012 closed** — REQ-069 consolidated into `do-work/archive/UR-012/`.
 
 ## Session Notes
 
-- **Concurrent writer on this queue.** REQ-065's status flip and the `do-work/HANDOFF.md` edit both
-  landed between this session's REQ-064 archive (09:30:55Z) and its REQ-066 claim (09:32:00Z).
-  Nothing in `do-work/orchestrator-lock.json` claimed either. Per one-orchestrator-per-queue, the
-  loop stopped instead of claiming REQ-065 — archiving a REQ whose target file another actor is
-  editing is the 2026-07-01 collision class.
-- **REQ-065 looks substantively done.** `do-work/HANDOFF.md:35` no longer carries the
-  "write hashes directly" advice; it names `tools/checks/record-commit-hash.sh`, keeps the
-  no-metadata-commit consequence, and adds the `--verify` caveat. That matches the confirmed answer
-  in the REQ's Open Questions. What remains is bookkeeping: flip it to `completed` and archive.
-- **`--verify` fails by design here.** `do-work/` is git-excluded in this repo, so
-  `record-commit-hash.sh --verify` reports `FAIL: … not tracked by git`. Both hash write-backs this
-  session went through the guarded script and passed every content guard; there is no metadata
-  commit to verify against.
-- **Cleanup: Pass 1 closed UR-010; every other pass a no-op.** Pass 1 ran twice — the first time
-  UR-010 was still held open by REQ-065; after that REQ landed terminal, the five loose REQs were
-  gathered into the UR folder and it moved to `archive/UR-010/`. Repoint found no referrers
-  (`Repointed: none`). Nothing to sweep, no misplaced trees, no run scratch, no worktrees, and
-  Pass 6's scanner found no blanked files — including a re-run after the moves.
-- **Nothing was committed for the cleanup.** `do-work/` is git-excluded here, so the consolidation
-  stages nothing; the working tree is clean.
+- **All four REQs are skill-instruction maintenance passes** (`maintenance: true`), landed on
+  branch `claude/do-work-run-u77g5u` (PR #126). Each is `tdd: true`, proven RED→GREEN by a
+  `_dev/tests/contract-regressions.sh` assertion; the suite is the mechanical gate for every one.
+- **Pre-existing test baseline:** `_dev/tests/update-script-behavior.sh` fails on the untouched
+  tree in this sandbox (mid-update / dirty-install recovery probes) — an environment quirk,
+  reproduced before any change, excluded from every REQ's pass/fail gate. `tools/do-work-update.sh`
+  was never touched.
+- **REQ-069 was the large one:** removed ~8,200 words across `work.md` / `work-reference.md` /
+  `cleanup.md` (three-file total 38,837 → 30,637). The dangling-reference sweep reached six files
+  beyond the declared `write_set` (board, capture-reference, work-guide, board-guide, kanban prime,
+  clear-questions) — recorded as decision D-02 on the REQ. `tools/queue-kanban/model.go` was left
+  untouched per constraint; `write_set` survives as a display-only field for the board's badge.
+- **User steer mid-session:** "read-only actions can run in parallel" — folded into REQ-069's
+  Execution Model rule (the exclusive-session boundary governs writers only).

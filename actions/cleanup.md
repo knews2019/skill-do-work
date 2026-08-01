@@ -28,7 +28,7 @@ Seven passes, in order:
 
 Scan `do-work/queue/` and the working directory for REQs with terminal statuses that should have been archived but weren't — typically from manual work, different agents, or legacy sessions that completed outside the standard work pipeline.
 
-**Live-claim gate (before sweeping anything).** Read `do-work/orchestrator-lock.json` if it exists. A REQ id that a session *other than the one running this cleanup* freshly claims — it appears in the top-level holder's `claimed_reqs` (or, for an older single-claim lock, its legacy `claimed_req`), or in any `coexisting_sessions[].claimed_reqs`, with that session's `heartbeat_at` ≤45 minutes old — is **exempt from every Pass 0 sweep**, terminal status or not. Read the whole `claimed_reqs` list — a co-dispatching session holds several concurrent claims, and every one of them must be exempted, not just the first. A coexisting session flips its REQ to a terminal status (Step 8 substep 1) *before* moving it out of `working/` (substep 6); in that window the file looks exactly like a finished-but-abandoned sweep candidate, but sweeping it archives — and stages for commit — a file its owner is about to move itself. Holding the lock through cleanup only fences off *arriving* sessions (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**, Release last); this gate is what protects already-coexisting ones. Report each exemption: `Skipped REQ-NNN — actively claimed by live session <session_id> (heartbeat <N>m ago)`. When cleanup runs inside a work-loop session (Step 10), that session's own lock entry is not "another session" (under co-dispatch its `claimed_reqs` may still list sibling REQs in flight, so do not assume that entry is empty). Pass 0 is nonetheless safe against the running session's *own* in-flight siblings: it sweeps only *terminal-status* files, and Step 8 moves each REQ out of `working/` (substep 6) before Step 10 runs this cleanup, so no own sibling sits terminal-in-`working/` at cleanup time. No lock file, or only stale claims → nothing is exempt.
+**Safe under the exclusive-session model.** This pipeline assumes no other `do-work` session is running against this checkout (`actions/work-reference.md` → **Execution Model — Exclusive Session**), so there is no live coexisting claim to protect — Pass 0 needs no lock and consults none. When cleanup runs at the end of a work loop (`actions/work.md` Step 10), that session's own REQ has already been moved out of `working/` by Step 8 before this pass runs, so no in-flight REQ sits terminal-in-`working/` for Pass 0 to sweep out from under the builder.
 
 1. **Glob `do-work/queue/REQ-*.md`**
 2. **Read each REQ's frontmatter** `status` field
@@ -37,7 +37,7 @@ Scan `do-work/queue/` and the working directory for REQs with terminal statuses 
    - Move the REQ to `do-work/archive/` root (Pass 1 and Pass 2 will then consolidate it into the correct UR folder)
    - Report: `Swept REQ-NNN from do-work/queue/ (was status: {original}) → archive`
 4. **Leave `pending`, `pending-answers`, `blocked`, `reserved`, and `claimed` REQs untouched** — those are active queue items (`reserved` belongs to another worktree/cloud session; `blocked` waits on an external condition)
-5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`, `cancelled`), it was finished but never moved out. Same treatment: normalize status, move to `do-work/archive/` root, report it. The live-claim gate above applies with full force here — `working/` is exactly where a live coexisting session's mid-Step-8 REQ sits with a terminal status; never sweep a freshly claimed file.
+5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`, `cancelled`), it was finished but never moved out (a crashed prior run, under the exclusive-session model). Same treatment: normalize status, move to `do-work/archive/` root, report it.
 
 ### Pass 1: Close Completed User Requests
 
@@ -123,9 +123,7 @@ This is the only pass that deletes anything **under `do-work/`** rather than reo
 
 Removes the git worktrees and branches left behind when `actions/work.md`'s worktree dispatch mode is interrupted (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**). Only `worktree-agent-REQ-NNN-*` names are in scope — that naming convention is what makes a leftover attributable to a REQ; every other worktree is the user's own and is never touched.
 
-**Non-interactive runs report only, never delete.** Apply the concrete interactivity test the orchestrator lock guard already defines (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**, *Interactivity test*): both of its conditions must hold, and an unconfirmed or ambiguous result counts as non-interactive. The automatic end-of-work-loop invocation (`actions/work.md` Step 10) is exactly that case — unattended, often dispatched as a subagent — so there it reports the orphans and stops.
-
-**Live-claim gate.** A leftover whose REQ id is exempt under Pass 0's live-claim gate above belongs to a builder that is still running, not to an interrupted one. Skip it and report the exemption in the same words that gate uses.
+**Non-interactive runs report only, never delete.** <a id="interactivity-test"></a>A run is *interactive* only when both hold: your environment can put a prompt in front of a human (an ask-user mechanism exists), **and** the run was not launched unattended (subagent, cron, CI, `--yes`-style automation). An unconfirmed or ambiguous result counts as non-interactive. The automatic end-of-work-loop invocation (`actions/work.md` Step 10) is exactly that case — unattended, often dispatched as a subagent — so there it reports the orphans and stops.
 
 1. **`git worktree prune` first** — it drops administrative entries whose directories are already gone, so the enumeration below doesn't report ghosts. Not a git repo, or no `worktree` subcommand → skip the whole pass.
 2. **Enumerate** `git worktree list --porcelain` and `git branch --list 'worktree-agent-*'`. A branch with no worktree and a worktree with no branch each count as a leftover.
@@ -142,7 +140,7 @@ Recovers archived REQ and UR files whose content was destroyed by an unguarded `
 
 **The window is finite.** The lost content lives only in unreferenced git objects until a `git gc` collects them, so a detected-but-deferred restore can become unrecoverable. Report that alongside any finding the user declines.
 
-**Non-interactive runs report only, never write.** Same interactivity test as Pass 5 (`actions/work-reference.md` → **Concurrent-Orchestrator Lock Guard**, *Interactivity test*); an ambiguous result counts as non-interactive. The automatic end-of-work-loop invocation (`actions/work.md` Step 10) is that case.
+**Non-interactive runs report only, never write.** Same interactivity test as Pass 5 above (*Non-interactive runs report only*); an ambiguous result counts as non-interactive. The automatic end-of-work-loop invocation (`actions/work.md` Step 10) is that case.
 
 1. **Detect.** Run the shipped scanner — read-only, and a no-op exit when `do-work/` holds nothing damaged:
 

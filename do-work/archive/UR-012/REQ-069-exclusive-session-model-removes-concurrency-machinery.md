@@ -1,8 +1,12 @@
 ---
 id: REQ-069
 title: Adopt the exclusive-session model and remove the concurrency machinery
-status: pending
+status: completed
 created_at: 2026-08-01T12:36:44Z
+completed_at: 2026-08-01T13:53:12Z
+commit: 76cdf39
+claimed_at: 2026-08-01T13:53:12Z
+route: C
 user_request: UR-012
 domain: general
 prime_files: []
@@ -15,6 +19,12 @@ write_set:
   - actions/work.md
   - actions/cleanup.md
   - _dev/tests/contract-regressions.sh
+  - actions/board.md
+  - actions/capture-reference.md
+  - docs/work-guide.md
+  - docs/board-guide.md
+  - tools/queue-kanban/prime-do-kanban.md
+  - crew-members/clear-questions.md
   - CHANGELOG.md
   - actions/version.md
 ---
@@ -31,9 +41,9 @@ the active REQ from finishing.
 
 ## AI Execution State (P-A-U Loop)
 
-- [ ] **[PLAN]:** (Agent: Read the agent rules including `crew-members/maintenance.md`. Locate every cut block listed under Detailed Requirements and confirm its current word count before removing anything. Write the approach here. Do not edit yet.)
-- [ ] **[APPLY]:** (Agent: Remove and replace exactly as planned. Scope strictly limited to the files in `write_set`.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat`, re-run the word-count commands to prove the reduction, run `_dev/tests/contract-regressions.sh`, and list each file verified.)
+- [x] **[PLAN]:** Located each cut block by heading/opening phrase (not line number). Canonical home for the ≤200-word replacement = a new `## Execution Model — Exclusive Session` section in `actions/work-reference.md`, cross-referenced from `actions/work.md` Step 1. Worktree Dispatch Mode is **not** in the cut list, so kept as single-builder isolation with its co-dispatch/lock framing stripped. RED = the removed-token grep assertions + word-count target.
+- [x] **[APPLY]:** Deleted the Lock Guard section (4,531 words), the Step 1 parallel-dispatch + serial-only subsections, the Step 3 Route-A and Step 5.5 co-dispatch re-validations, the checkpoint-delete concurrency condition, cleanup's Pass 0 live-claim gate, and every scattered heartbeat/claimed_reqs/lock-release touchpoint. De-concurrencied Crash Recovery and Worktree Dispatch Mode. Added the ≤200-word replacement (189 words, incl. the user-requested read-only-parallel note). Rewrote the contract-regression suite. Cleaned dangling cross-references beyond `write_set` (see ## Decisions D-02).
+- [x] **[UNIFY]:** `cat work.md work-reference.md cleanup.md | wc -w` = **30,637** (from 38,837 baseline; 8,200 removed, target ≤32,941). Invariant + three-attempt each grep to exactly 1. Suite passes except the pre-existing `update-script-behavior.sh` baseline. No debug artifacts (Markdown/bash).
 
 ## Why
 
@@ -208,3 +218,38 @@ See `do-work/user-requests/UR-012/input.md` for the complete verbatim input.
 *Source: "plan changed a bit, read it again and capture it as a REQ file:///Users/t2/Desktop/e1-experimental-repos/skill-do-work2/ai-reports/2026-08-01_1231_lock-simplification-analysis/index.html"*
 
 Think carefully before answering.
+
+## Triage
+
+**Route C.** A coordinated removal across three interdependent files plus the contract-regression suite, with cross-references that fan out to six more shipped files — the cut blocks reference each other (cleanup's live-claim gate reads the lock the Lock Guard defines), so no intermediate state may leave the pipeline citing a removed section. Planned before editing.
+
+## Decisions
+
+- **D-01 (DECIDE & STATE):** Kept **Worktree Dispatch Mode** rather than removing it — it is **not** in the cut list, and the section itself supports single-builder use ("a single builder in a worktree is the same one-claim loop"). De-concurrencied it (removed co-dispatch/lock/`claimed_reqs` framing, collapsed per-batch/per-merge to single-builder verify-before-archive) instead of deleting, which keeps the worktree contract-regression assertions valid. Reversible, low-reach.
+- **D-02 (ESCALATE → decided, reported):** Extended edits beyond the declared `write_set` to clean **dangling cross-references** the removals created — `actions/board.md`, `actions/capture-reference.md`, `docs/work-guide.md`, `docs/board-guide.md`, `tools/queue-kanban/prime-do-kanban.md`, `crew-members/clear-questions.md`. The Builder Guidance explicitly anticipated this ("Expect the actual diff to exceed 6,511 words removed once dangling cross-references are cleaned up… report it rather than silently widening"). **Value:** the skill's own convention is that a fix to a copy-pasted primitive is rarely local; leaving these would ship stale references to a gate that no longer exists. **Risk:** low — every edit is a reference-softening (write_set is now display-only; the badge schedules nothing), none changes behavior, and `tools/queue-kanban/model.go` was **not** touched (constraint honored). Also extended `write_set` to include `_dev/tests/contract-regressions.sh` (the RED harness, same as REQ-067/068).
+
+## Implementation Summary
+
+**What was done:** Removed the concurrency machinery and replaced it with a ≤200-word exclusive-session operating rule. Cuts: the whole `## Concurrent-Orchestrator Lock Guard` section (work-reference.md, 4,531 words); the Step 1 parallel-dispatch gate + serial-only subsections, the Step 3 Route-A re-validation, the Step 5.5 co-dispatch re-validation, and the checkpoint-delete concurrency condition (work.md); the crash-recovery concurrency gate (work-reference.md); cleanup's Pass 0 live-claim gate (cleanup.md); and every scattered orchestrator-lock heartbeat/`claimed_reqs`/release touchpoint across Steps 1–10. Crash Recovery and Worktree Dispatch Mode were de-concurrencied and kept (single-session recovery; single-builder isolation). Added `## Execution Model — Exclusive Session` to work-reference.md (one session / one active REQ / one coder context; current-REQ relevance rule; three-attempt stop; **read-only actions may run in parallel** per the user's steer), cited from work.md Step 1. Rewrote the contract-regression suite: deleted every assertion testing removed machinery (stale take-over, multi-claim `claimed_reqs`, proceed-anyway, dispatch re-validation, `pairwise disjoint`/`serial-only`), added a forbidden-token sweep plus exactly-once checks for the invariant and three-attempt rule. `write_set` survives as a display-only field feeding the board's overlaps badge (`model.go` untouched).
+
+Files changed:
+- `actions/work-reference.md`, `actions/work.md`, `actions/cleanup.md` (modified) — the removals + replacement.
+- `_dev/tests/contract-regressions.sh` (modified) — machinery assertions removed, RED assertions added.
+- `actions/board.md`, `actions/capture-reference.md`, `docs/work-guide.md`, `docs/board-guide.md`, `tools/queue-kanban/prime-do-kanban.md`, `crew-members/clear-questions.md` (modified) — dangling-reference cleanup (D-02).
+- `CHANGELOG.md`, `actions/version.md` (modified) — release bookkeeping.
+
+## Testing
+
+- **Red-green validation:** `grep "Concurrent-Orchestrator Lock Guard"` / `grep -r "coexisting_sessions"` succeeded on the pre-edit tree (RED, per the REQ's own proof) and fail after; the exclusive-session invariant was absent before and is present now. Mechanically enforced by the new suite assertions (forbidden-token sweep across `actions/`; invariant and three-attempt each stated exactly once).
+- **Word-count proof:** `cat actions/work.md actions/work-reference.md actions/cleanup.md | wc -w` = **30,637** ≤ 32,941 (≥ 6,311 net removed — actual 8,200).
+- **Regression:** full suite passes except the pre-existing `update-script-behavior.sh` baseline (untouched files). The blocked-check shell-block `bash -n` probe still passes.
+
+## Review
+
+**Pipeline mode — Pass (self-review).** Requirements traced: exclusive-session boundary (§1) ✓, current-REQ relevance (§2) ✓, three-attempt stop (§3) ✓, all seven cut blocks removed (§4) ✓, suite updated (§5) ✓, keeps preserved (§6: crash recovery proper, qualify/test/commit checks, `write_set` field) ✓. Constraints held: replacement 189 ≤ 200 words; no new durable state (no lock/marker/counter files); `write_set` field kept, only its co-dispatch gating removed; `tools/queue-kanban/model.go` untouched; one coherent removal (no intermediate dangling state); dangling references grepped and cleaned (D-02); pre-commit ritual (version + changelog) followed.
+
+## Lessons Learned
+
+**What worked:** Deleting the 4,531-word Lock Guard as a whole section first, then sweeping the scattered touchpoints, then the contract suite, then the fan-out of dangling cross-references — largest-clean-cut-first kept each pass verifiable. The word-count and grep-count targets made "done" mechanically checkable.
+**What didn't:** A file-wide "no forbidden string" grep is not enough — the invariant/three-attempt "stated exactly once" needed a *count* assertion, because a parenthetical reminder in the Worktree section duplicated the invariant phrase until it was changed to a pointer. Copy-paste of the exact phrase is exactly the drift the removed machinery kept re-learning.
+**Worth knowing:** The dangling references reached six files beyond the declared `write_set` (board, capture-reference, two docs, the kanban prime, and clear-questions' JIT caller list). The skill's "a fix to a copy-pasted primitive is rarely local" convention is literally true here — a grep sweep across *all* shipped dirs, not just the edited three, is mandatory before calling a removal done.

@@ -19,17 +19,20 @@ Cancelling is a first-class outcome, not a deletion. The REQ file survives with 
 
 ## Input
 
-`$ARGUMENTS`: one or more REQ IDs (`REQ-NNN`), optionally followed by free-text — the cancellation reason.
+`$ARGUMENTS`: one or more `REQ-NNN` or `UR-NNN` ids (token shapes and UR→REQ expansion per the **Target ID Resolution** contract in `actions/work-reference.md`), optionally followed by free-text — the cancellation reason.
 
 - `do-work abandon REQ-042` — cancel one REQ; the action asks for a one-line reason
-- `do-work abandon REQ-042 superseded by REQ-051` — cancel with the reason inline (everything after the last REQ ID is the reason, applied to every listed REQ)
+- `do-work abandon UR-011` — cancel every cancellable REQ under UR-011 (its non-terminal members, plus any `failed` members still holding it open — see Step 1); the reason applies to all of them
+- `do-work abandon REQ-042 superseded by REQ-051` — cancel with the reason inline (everything after the last id token is the reason, applied to every resolved REQ)
 - `do-work abandon` (no ID) — list cancellable REQs and ask which; never guess a target. Two groups: non-terminal REQs in `do-work/queue/` and `do-work/working/`, plus already-archived `failed` REQs at `do-work/archive/` root **and `do-work/archive/legacy/`** (both non-recursive — never descend into `archive/UR-NNN/` folders, whose contents are already-closed URs). Show the failed group distinctly ("resolve a failure"): cancelling one closes out a failed attempt so its UR can reach closure, which is a different act from dropping unstarted work
 
 ## Steps
 
 ### Step 1: Locate and Gate
 
-For each REQ ID, glob `do-work/queue/REQ-NNN-*.md`, `do-work/queue/REQ-NNN.md`, `do-work/working/REQ-NNN-*.md`, and `do-work/archive/**/REQ-NNN*.md`. Then gate on what you find:
+**Resolve targeting tokens first (Target ID Resolution contract, `actions/work-reference.md`).** Expand each `UR-NNN` to its member REQs by scanning `user_request:` frontmatter across the locations this action already searches for cancellable work: `do-work/queue/`, `do-work/working/`, and — because a `failed` REQ is cancelled *in place* to close its UR (see the `failed` bullet under "Use when") — `failed` REQs at `do-work/archive/` root and `do-work/archive/legacy/`. That archived-`failed` reach is deliberate: it is exactly the case a UR argument should serve. **Never descend into a closed `do-work/archive/UR-NNN/` folder** (this Input's no-ID bullet already forbids it, and that holds for expansion). Dedupe the union with any explicitly-named `REQ-NNN`; a token that resolves to nothing is reported and skipped, and an argument list that resolves to an empty set stops the action. The per-REQ gates below then apply **unchanged** to every resolved member, whether named directly or reached through a UR.
+
+For each resolved REQ id, glob `do-work/queue/REQ-NNN-*.md`, `do-work/queue/REQ-NNN.md`, `do-work/working/REQ-NNN-*.md`, and `do-work/archive/**/REQ-NNN*.md`. Then gate on what you find:
 
 - **Not found anywhere** → report `REQ-NNN: not found` and skip it.
 - **Same REQ id found at more than one path** (any two of `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, `archive/legacy/`, or an `archive/UR-NNN/` folder) → refuse and point at `actions/cleanup.md`'s duplicate handling; do not cancel any copy. This mirrors the duplicate that `actions/cleanup.md` Pass 1 already flags (`⚠ Duplicate: REQ-NNN found in both ...`), and it forestalls the split verdict the location/status arms below would otherwise give the same id.
@@ -45,7 +48,7 @@ For each REQ ID, glob `do-work/queue/REQ-NNN-*.md`, `do-work/queue/REQ-NNN.md`, 
 
 ### Step 2: Confirm the Decision
 
-Show the user what's about to be cancelled — ID, title, current status, owning UR — for every target in one prompt (use your environment's ask-user prompt). If no reason was given in `$ARGUMENTS`, ask for a one-line reason in the same prompt; accept "no reason" but never invent one. Do not write anything until the user confirms.
+Show the user what's about to be cancelled — ID, title, current status, and owning UR for **every** resolved target, with a total count (e.g. `Cancel 6 REQs?`), in one prompt (use your environment's ask-user prompt). A `UR-NNN` argument can resolve to many REQs, so this itemized enumeration is the safety property — bulk cancel is the most destructive thing a UR argument enables, and `crew-members/clear-questions.md` (loaded before any interactive question) already requires the prompt state its consequence. **Never a bare count without the per-REQ breakdown, and never a per-member confirmation loop or a `--yes`-style bypass** — one prompt that lists every member is the whole safety mechanism. If no reason was given in `$ARGUMENTS`, ask for a one-line reason in the same prompt; accept "no reason" but never invent one. Do not write anything until the user confirms.
 
 **For a `failed` target the prompt must state the consequence** (per `crew-members/clear-questions.md`, loaded before any interactive question — options state what they buy and cost): cancelling flips it to `cancelled` so its UR can reach closure, the failure record is *preserved* (`error`/`error_type` stay in frontmatter, and the body's failure sections plus a new `## Cancelled` note remain), and any auto-created follow-up REQ is left untouched — cancel that separately if it too is unwanted.
 

@@ -1,8 +1,12 @@
 ---
 id: REQ-070
 title: REQ ids in do-work roadmap — the inverse asymmetry
-status: pending
+status: completed
 created_at: 2026-08-01T12:31:45Z
+claimed_at: 2026-08-01T13:57:09Z
+completed_at: 2026-08-01T13:57:09Z
+commit: 03349a8
+route: B
 user_request: UR-011
 domain: general
 prime_files: []
@@ -12,7 +16,7 @@ depends_on: [REQ-067]
 maintenance: true
 related: [REQ-067, REQ-068]
 batch: ur-ids-accepted-everywhere
-write_set: [actions/roadmap.md, docs/roadmap-guide.md]
+write_set: [actions/roadmap.md, docs/roadmap-guide.md, _dev/tests/contract-regressions.sh]
 ---
 
 # REQ ids in do-work roadmap — the inverse asymmetry
@@ -24,9 +28,9 @@ token but not `REQ-NNN`. Add REQ scoping so every id-taking action in the skill 
 prefixes with no exceptions.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Generalize roadmap.md's Input list rather than append — add a `REQ-NNN` scope row citing REQ-067's Target ID Resolution contract, state the thin single-REQ output (and the `inspect` boundary), union for multiple tokens, keep the soft fallback. Update the report template's Scope line and the guide's example. Do NOT touch SKILL.md. RED = an Input-scoped REQ-NNN + contract-citation assertion.
+- [x] **[APPLY]:** Edited `actions/roadmap.md` (Input + Output Scope line) and `docs/roadmap-guide.md`; `write_set` extended to the test file (D-01). Read-only posture untouched — only what is surveyed changed, never what is written.
+- [x] **[UNIFY]:** `git diff --stat` reviewed; Markdown only. Suite passes except the pre-existing `update-script-behavior.sh` baseline. Confirmed SKILL.md unchanged and roadmap's read-only rules intact.
 
 ## Why
 
@@ -118,3 +122,36 @@ See `do-work/user-requests/UR-011/input.md` for complete verbatim input.
 *Source: "they are the same familly" — the inverse asymmetry, surfaced by `do-work verify-request` on UR-011 and confirmed by the user.*
 
 Think carefully before answering.
+
+## Triage
+
+**Route B.** Named file and firm scope, but rendering the single-REQ survey required a judgment call — keeping it thin and not duplicating `inspect` — so Route B, not a mechanical Route A edit. Depends on REQ-067's contract (landed, commit `1e653bc`).
+
+## Decisions
+
+- **D-01 (DECIDE & STATE):** Extended `write_set` to include `_dev/tests/contract-regressions.sh` for the TDD proof (same as REQ-067/068). Added Input-scoped `REQ-NNN` + contract-citation assertions; RED confirmed before edits, GREEN after.
+
+## Implementation Summary
+
+**What was done:** Added a `REQ-NNN` scope token to `do-work roadmap`, the inverse of the asymmetry this batch fixed (roadmap took `UR-NNN` but not `REQ-NNN`, so `do-work roadmap REQ-067` silently returned a whole-queue survey). The Input list now cites REQ-067's Target ID Resolution contract for token shapes, adds the `REQ-NNN` row (single-REQ survey: status, dependency position, feasibility read, UR siblings — explicitly thin, with the `inspect` boundary called out), states that multiple id tokens resolve to their union, and keeps the soft unrecognized-argument fallback (only a recognized `REQ-`/`UR-` id is scoped; `banana` still falls through). The Output Format's Scope line gained `REQ-NNN`.
+
+Files changed:
+- `actions/roadmap.md` (modified) — Input list (contract citation + `REQ-NNN` row + union + fallback clarification) and the Output `**Scope:**` enumeration.
+- `docs/roadmap-guide.md` (modified) — added the `do-work roadmap REQ-070` example.
+- `_dev/tests/contract-regressions.sh` (modified) — two RED→GREEN Input-scoped assertions (see D-01).
+- `CHANGELOG.md`, `actions/version.md` (modified) — release bookkeeping.
+
+## Testing
+
+- **Red-green validation:** the roadmap-Input `REQ-NNN` assertion and the contract-citation assertion both FAILed pre-edit (RED, verified), both pass after (GREEN, verified).
+- **Regression:** full suite passes except the pre-existing `update-script-behavior.sh` baseline. Confirmed `SKILL.md` unchanged (constraint) and roadmap's read-only rules intact.
+
+## Review
+
+**Pipeline mode — Pass (self-review).** Requirements traced: `REQ-NNN` Input row ✓, contract citation (not restated) ✓, union of multiple tokens ✓, soft fallback kept ✓, single-REQ contents stated with the `inspect` boundary ✓, guide example ✓. Constraints held: `SKILL.md` untouched, roadmap stays read-only (only *what is surveyed* changed), no `CLAUDE.md`/`AGENTS.md` citation.
+
+## Lessons Learned
+
+**What worked:** Generalizing the Input list (one intro line citing the contract, one new row) kept the change small and symmetric with the UR row — exactly the maintenance posture the REQ asked for.
+**What didn't:** n/a.
+**Worth knowing:** The single-REQ roadmap deliberately overlaps `do-work inspect` in spirit; the guard against turning it into a second `inspect` is the explicit "thin by nature… not a mini-report" wording in the Input row. A future edit that fattens it would re-introduce exactly the duplication this REQ warned against.

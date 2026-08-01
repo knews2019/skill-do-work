@@ -538,7 +538,7 @@
       // same files. The Go side (annotateWriteSetOverlap) does the pairwise
       // comparison and gates it to the pending/claimed tier — this only renders
       // the derived list. Display only: nothing here blocks, sorts, or moves a
-      // card, and the co-dispatch call stays with the work pipeline's gate.
+      // card — under the exclusive-session model nothing schedules on write_set.
       var overlapBadge = makeBadge(
         "badge-write-overlap",
         "overlaps",
@@ -547,8 +547,8 @@
       overlapBadge.title =
         "Declared write_set could touch the same files as " +
         writeSetOverlapIds.join(", ") +
-        " — running them concurrently means contending on those paths. Display only: " +
-        "the board never blocks or reorders on this; do-work run's dispatch gate decides.";
+        " — an informational heads-up about declared file contention. Display only: " +
+        "the board never blocks or reorders on this, and nothing schedules on write_set (do-work runs one REQ at a time).";
       badges.appendChild(overlapBadge);
     }
     if (request.completionAnomaly) {
