@@ -26,7 +26,6 @@ Most actions have a next step inferable from what just ran (after `code-review`,
 | --- | --- | --- |
 | `pipeline` | Interrupted — active pipeline still exists | `do-work pipeline` to resume, or `do-work pipeline status` to check progress |
 | `pipeline` | Completed — queue fully processed | `do-work present all`, `do-work commit` |
-| `reserve` | Reservation created, released, or listed | `do-work commit` first — other sessions won't see the reservation until the queue edit is synced |
 | `capture-requests` | New REQs captured | `do-work verify-requests` before `do-work run` — check capture quality before building |
 | `clarify` | Questions still pending | `do-work clarify` again, not `do-work run` — unanswered REQs won't be picked up |
 | `clarify` | All answered | `do-work run` to process them |

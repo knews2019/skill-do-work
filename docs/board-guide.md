@@ -28,7 +28,6 @@ The toolbar carries a text filter (id or title), domain and status selects, a **
 | Badge | Meaning |
 |-------|---------|
 | domain, UR id, `route` | frontmatter, as declared |
-| `reserved for …`, `stale >24h` | allocated to another worktree or session by `do-work reserve`; stale means >24h, so that session may be dead |
 | `blocked by …` | the external condition named in `blocked_by` |
 | `unblocks N` | how many other REQs this one releases when it lands |
 | `overlaps …` | declared write sets could collide — see below |
@@ -48,7 +47,7 @@ It under-reports, so read it as a floor, not a guarantee:
 
 ## Card drawer
 
-Clicking a card opens a docked panel: the REQ's frontmatter as labelled rows — status, dependencies, write set and its overlaps, route, timestamps, testing record, file location — above the rendered REQ body. Claim, reservation, and block rows tick as live timers while the hold is open. REQ and UR ids are links, **Copy** grabs the source Markdown, and the divider drags to resize (double-click resets).
+Clicking a card opens a docked panel: the REQ's frontmatter as labelled rows — status, dependencies, write set and its overlaps, route, timestamps, testing record, file location — above the rendered REQ body. Claim and block rows tick as live timers while the hold is open. REQ and UR ids are links, **Copy** grabs the source Markdown, and the divider drags to resize (double-click resets).
 
 ## Testing view
 

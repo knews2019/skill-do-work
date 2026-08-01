@@ -65,7 +65,7 @@ List all UR folders in `do-work/user-requests/`. A UR belongs in the archive onc
 For each UR folder in `do-work/user-requests/`:
 
 1. **Collect the UR's REQs** by reading the `user_request` field of every `REQ-*.md` in all four locations and keeping those whose value is this UR's id:
-   - `do-work/queue/REQ-*.md` (pending, pending-answers, blocked, reserved, claimed)
+   - `do-work/queue/REQ-*.md` (pending, pending-answers, blocked, claimed)
    - `do-work/working/REQ-*.md` (in flight)
    - `do-work/archive/REQ-*.md` (loose in archive root — non-recursive)
    - `do-work/archive/UR-NNN/REQ-*.md` (already consolidated)
@@ -101,14 +101,6 @@ For each, check `created_at`:
 Also scan `do-work/queue/` for REQs with `status: blocked` (waiting on an external condition). For each, measure age from `blocked_at` (fall back to `created_at` if absent):
 - **Info** if 7-14 days old
 - **Warning** if >14 days old — the external condition may already have been satisfied; suggest re-running `do-work run` (auto-probes any `blocked_check`) or `do-work clarify` to confirm. (The threshold is deliberately looser than pending-answers: external conditions — a person answering, a service being provisioned — legitimately take longer than a user answering a queued question.)
-
-### 7.5. Stale Reservations
-
-Scan `do-work/queue/` for REQs with `status: reserved` (allocated to another worktree/cloud session via `do-work reserve`, `actions/reserve.md`).
-
-For each, check `reserved_at`:
-- **Warning** if >24 hours old — the owning session may be dead. Suggest recategorizing: `do-work release REQ-NNN` (back to the queue), `do-work run REQ-NNN` (claim here), or leave it if the session named in `reserved_for` is still active. Never auto-release.
-- **Warning** if `reserved_for` is missing/empty — the owner is unknowable; ask the user.
 
 ### 8. Git Divergence (git repos only)
 
@@ -163,7 +155,7 @@ This check is the mechanical sweep behind the board's invalid-status warning (`t
 
 ### 12. Future-Dated Timestamps
 
-Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, and `find do-work/archive -name 'REQ-*.md'` — and parse every frontmatter timestamp (`created_at`, `claimed_at`, `completed_at`, `blocked_at`, `reserved_at`, `testing_updated_at`, and any other `*_at` field present). Compare each against the current UTC time (`date -u +%Y-%m-%dT%H:%M:%SZ`), allowing ~2 minutes of clock skew.
+Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, and `find do-work/archive -name 'REQ-*.md'` — and parse every frontmatter timestamp (`created_at`, `claimed_at`, `completed_at`, `blocked_at`, `testing_updated_at`, and any other `*_at` field present). Compare each against the current UTC time (`date -u +%Y-%m-%dT%H:%M:%SZ`), allowing ~2 minutes of clock skew.
 
 - **Warning** for each field that parses to later than now + skew: "REQ-NNN's `{field}` is `{value}` — {N} in the future. Likely local wall-clock time stamped with a `Z` suffix (the Timestamp rule in `actions/work-reference.md` requires the current UTC instant). Until the wall clock catches up, elapsed-time math built on it is wrong: the board's stopwatch shows a clock-skew marker, and queue-wait / implementation-time spans go negative."
   **Suggested fix:** Rewrite the field with the instant the event actually happened if recoverable (e.g., from the REQ file's git history), otherwise with the current UTC instant.

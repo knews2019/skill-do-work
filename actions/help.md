@@ -23,8 +23,6 @@ do-work — task queue for agentic coding tools
     do-work run [REQ|UR ...]            Triage, build, test, review — one REQ at a time
     do-work clarify                     Review pending questions from completed work
     do-work abandon REQ-042 [why]       Won't-do a REQ (or UR-011 for its whole batch) — cancelled + archived
-    do-work reserve REQ-042 for cloud-a Allocate pending REQs (or a whole UR) to another worktree/cloud session
-    do-work release REQ-042             Return a reserved REQ or UR to the queue (bare `reserve` lists them)
 
   Verify & review:
     do-work verify-requests             Check capture quality against original input

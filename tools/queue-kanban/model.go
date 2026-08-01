@@ -36,12 +36,6 @@ const (
 // but carry no fabricated date.
 const undatedCalendarDayKey = "undated"
 
-// reservationStaleAfter is how old a reservation (status: reserved, written by
-// do-work reserve — actions/reserve.md) may grow before the board flags it as
-// stale and suggests recategorizing. Mirrors the 24h threshold in
-// actions/work.md Step 1's stale-reservation check — keep the two in lock-step.
-const reservationStaleAfter = 24 * time.Hour
-
 // futureTimestampSkewAllowance is how far past the board's `now` a frontmatter
 // timestamp may parse before it is flagged as future-dated. Two minutes absorbs
 // ordinary clock skew between machines; anything beyond it is almost always a
@@ -76,15 +70,6 @@ type RequestTicket struct {
 	// Display-only: the state timer prefers it over created_at/file-mtime for
 	// pending-tier cards; no column logic reads it.
 	StatusChangedAt string // raw frontmatter timestamp text, "" when absent
-
-	ReservedFor string // reserve action (do-work reserve): owning worktree/cloud-session label, "" when absent
-	ReservedAt  string // raw frontmatter reserved_at text, "" when absent
-
-	// Derived by bucketColumns for status "reserved": true when reserved_at is
-	// missing, unparseable, or more than reservationStaleAfter before the
-	// board's `now` — the owning session may be dead, so the frontend shows a
-	// recategorize hint. Never read from frontmatter.
-	ReservationStale bool
 
 	CommitHash      string // resolved from commit / commit_hash / green_commit / commit_green / impl_commit
 	CommitHashField string // the frontmatter key CommitHash came from, "" when absent
@@ -596,8 +581,6 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		ClaimedAt:                 coerceScalarToString(fields["claimed_at"]),
 		CompletedAt:               coerceScalarToString(fields["completed_at"]),
 		StatusChangedAt:           coerceScalarToString(fields["status_changed_at"]),
-		ReservedFor:               coerceScalarToString(fields["reserved_for"]),
-		ReservedAt:                coerceScalarToString(fields["reserved_at"]),
 		CommitHash:                commitHashValue,
 		CommitHashField:           commitHashField,
 		UserRequestId:             coerceScalarToString(fields["user_request"]),
@@ -902,7 +885,7 @@ func isPlausibleCommitHash(text string) bool {
 // usual cause is local wall-clock time written with a `Z` suffix, which makes
 // elapsed-time math (queue wait, claim stopwatch) silently wrong until the wall
 // clock catches up. Unparseable and absent values are not this check's concern
-// — other paths (completion anomalies, reservation staleness) own those.
+// — other paths (completion anomalies) own those.
 func detectFutureTimestampFields(ticket *RequestTicket, now time.Time) []string {
 	timestampFields := []struct {
 		fieldName string
@@ -913,7 +896,6 @@ func detectFutureTimestampFields(ticket *RequestTicket, now time.Time) []string 
 		{"completed_at", ticket.CompletedAt},
 		{"status_changed_at", ticket.StatusChangedAt},
 		{"blocked_at", ticket.BlockedAt},
-		{"reserved_at", ticket.ReservedAt},
 		{"testing_updated_at", ticket.TestingUpdatedAt},
 	}
 	skewHorizon := now.Add(futureTimestampSkewAllowance)
@@ -978,15 +960,6 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 			}
 		case ticket.Status == "claimed":
 			columns.Claimed = append(columns.Claimed, ticket)
-		case ticket.Status == "reserved":
-			// Allocated to a DIFFERENT worktree/cloud session (do-work reserve,
-			// actions/reserve.md). Someone owns it, so it shares the Claimed
-			// column — but the frontend grays it out because that someone is not
-			// this board's session.
-			columns.Claimed = append(columns.Claimed, ticket)
-			if staleWarning := annotateReservationStaleness(ticket, now); staleWarning != "" {
-				statusWarnings = append(statusWarnings, staleWarning)
-			}
 		case isNeedsInputOrBlockedStatus(ticket.Status):
 			columns.NeedsInputOrBlocked = append(columns.NeedsInputOrBlocked, ticket)
 		case isTerminalResolvedStatus(ticket.Status):
@@ -1011,29 +984,6 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 		return columns.RecentlyDone[i].CompletionTime.After(columns.RecentlyDone[j].CompletionTime)
 	})
 	return columns, statusWarnings
-}
-
-// annotateReservationStaleness marks a reserved ticket stale when its
-// reserved_at is missing, unparseable, or more than reservationStaleAfter
-// before now, and returns a recategorize-suggestion warning ("" when the
-// reservation is fresh). The suggestion mirrors actions/work.md Step 1's
-// stale-reservation check: the owning session may be dead, but the decision
-// stays with the user — the board never auto-releases.
-func annotateReservationStaleness(ticket *RequestTicket, now time.Time) string {
-	reservedInstant, parsedOk := parseTimestamp(ticket.ReservedAt)
-	if !parsedOk {
-		ticket.ReservationStale = true
-		return fmt.Sprintf(
-			"%s is reserved (for %q) but has no parseable reserved_at — treated as stale; recategorize: do-work release %s, do-work run %s, or leave it if that session is still active",
-			ticket.RequestId, ticket.ReservedFor, ticket.RequestId, ticket.RequestId)
-	}
-	if now.Sub(reservedInstant) <= reservationStaleAfter {
-		return ""
-	}
-	ticket.ReservationStale = true
-	return fmt.Sprintf(
-		"%s has been reserved for %q for more than 24h — recategorize: do-work release %s (back to queue), do-work run %s (claim here), or leave it if that session is still active",
-		ticket.RequestId, ticket.ReservedFor, ticket.RequestId, ticket.RequestId)
 }
 
 // isWithinRecentWindow reports whether a completion instant is non-zero and falls
@@ -1121,9 +1071,7 @@ func annotateDependencyState(board *Board) []string {
 // isWriteSetOverlapCandidateStatus reports whether a normalized status belongs to
 // the tier the overlap annotation compares. Only `pending` and `claimed` qualify:
 // those are the REQs still to be worked, so a declared-file-contention badge on
-// them is a useful heads-up for a human reading the board. `reserved` is excluded
-// even though it shares the Claimed column — it is allocated to another
-// worktree/session, and the board cannot see that session's real write surface.
+// them is a useful heads-up for a human reading the board.
 // Terminal and needs-input tiers are excluded because their work is settled, so a
 // contention badge on them would carry no signal.
 func isWriteSetOverlapCandidateStatus(normalizedStatus string) bool {

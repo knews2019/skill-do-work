@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.163.0 — Remove the Reserve Action and the Read-Only Parallel Carveout (2026-08-01)
+
+Validation of the exclusive-session work flagged two contradictions it had left standing, plus a router-budget overrun. All three are fixed.
+
+- **The reserve action is gone.** `do-work reserve`/`release`, the `reserved` status, and the `reserved_for`/`reserved_at` fields existed solely to allocate REQs to *another* worktree/cloud session — cross-session ownership, which the exclusive-session contract declares unsupported. Removed from the router, work pipeline, roadmap, forensics, cleanup, abandon, help, the board tool (parser, column logic, badges, drawer row, CSS), and the docs. A leftover `status: reserved` REQ is caught by the existing unrecognized-status guards — the pipeline skips it with a warning and the board shows it under Needs input / Blocked with a fix hint; edit its status back to `pending`.
+- **The parallel carveout no longer blesses queue writers.** The Execution Model note had listed `board` and the reviews as read-only — but board's Testing view writes REQ frontmatter and `testers.md`, and the reviews append REQ metadata. The rule now permits only actions that claim nothing and write no queue or REQ state, still within the ≤200-word replacement cap.
+- **SKILL.md is back under its 2,650-word budget** (2,588) via the removed reserve routing/dispatch rows. The contract suite now ratchets the removal: reservation vocabulary is a forbidden token across shipped files, and `actions/reserve.md` must stay deleted.
+
 ## 0.162.4 — Reconcile Reservation, Maintainer-Contract, and Token-Canonicalization Docs (2026-08-01)
 
 Codex re-review of the final tree caught three consistency gaps the UR/exclusive-session work left behind:

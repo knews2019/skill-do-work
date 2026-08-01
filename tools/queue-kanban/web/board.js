@@ -214,7 +214,7 @@
   // Which instant a card's live state timer counts from: every non-terminal
   // card shows how long it has been in its current state, measured from the
   // timestamp that state transition wrote. Dedicated stamps (claimed_at,
-  // reserved_at, blocked_at) are authoritative for their states — file mtime
+  // blocked_at) are authoritative for their states — file mtime
   // must never outrank them, since the pipeline appends sections to the file
   // all through a claim. States without their own transition instant (pending,
   // pending-answers, failed, unrecognized) resolve, in order:
@@ -234,9 +234,6 @@
   function stateTimerSpecFor(request) {
     if (request.status === "claimed" && request.claimedAt) {
       return { verbText: "claimed", instantIso: request.claimedAt };
-    }
-    if (request.status === "reserved" && request.reservedAt) {
-      return { verbText: "reserved", instantIso: request.reservedAt };
     }
     if (isBlockedHoldStatus(request.status) && request.blockedAt) {
       return { verbText: "blocked", instantIso: request.blockedAt };
@@ -489,26 +486,6 @@
     }
     if (request.route) {
       badges.appendChild(makeBadge("badge-route", "route", request.route));
-    }
-    if (request.status === "reserved") {
-      // Allocated to a DIFFERENT worktree/cloud session (do-work reserve) — the
-      // card is grayed out via [data-status="reserved"] CSS; the badge names the
-      // owner and the stale flag (>24h) carries the recategorize suggestion.
-      var reservedBadge = makeBadge("badge-reserved", "reserved for", request.reservedFor || "unknown session");
-      reservedBadge.title =
-        "Allocated to a different worktree/cloud session" +
-        (request.reservedAt ? " since " + formatShortInstantWithRelative(request.reservedAt) : "");
-      badges.appendChild(reservedBadge);
-      if (request.reservationStale) {
-        var staleBadge = makeBadge("badge-reservation-stale", null, "stale >24h");
-        staleBadge.title =
-          "Reserved for more than 24h — the owning session may be dead. Recategorize: do-work release " +
-          requestId +
-          " (back to queue), do-work run " +
-          requestId +
-          " (claim here), or leave it if that session is still active.";
-        badges.appendChild(staleBadge);
-      }
     }
     if (request.status === "blocked" && request.blockedBy && request.blockedBy.length > 0) {
       // Waiting on an external condition (a service being up, a person answering)
@@ -1732,14 +1709,6 @@
     }
     if (request.createdAt) {
       appendMetaRow("Created", makeInstantWithRelativeNode(request.createdAt) || request.createdAt);
-    }
-    if (request.reservedAt) {
-      // Same live-vs-stale split as the Claimed row below.
-      var reservedRowValue = request.status === "reserved" ? makeInstantWithStopwatchNode(request.reservedAt) : null;
-      appendMetaRow(
-        "Reserved",
-        reservedRowValue || makeInstantWithRelativeNode(request.reservedAt) || request.reservedAt
-      );
     }
     if (request.claimedAt) {
       // While the claim is live the row carries the ticking stopwatch; on any

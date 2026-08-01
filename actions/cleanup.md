@@ -36,7 +36,7 @@ Scan `do-work/queue/` and the working directory for REQs with terminal statuses 
    - **Normalize non-standard statuses** before moving: change `done` → `completed`, `finished` → `completed`, `closed` → `completed`, `canceled`/`abandoned`/`wont-do` → `cancelled` in frontmatter
    - Move the REQ to `do-work/archive/` root (Pass 1 and Pass 2 will then consolidate it into the correct UR folder)
    - Report: `Swept REQ-NNN from do-work/queue/ (was status: {original}) → archive`
-4. **Leave `pending`, `pending-answers`, `blocked`, `reserved`, and `claimed` REQs untouched** — those are active queue items (`reserved` belongs to another worktree/cloud session; `blocked` waits on an external condition)
+4. **Leave `pending`, `pending-answers`, `blocked`, and `claimed` REQs untouched** — those are active queue items (`blocked` waits on an external condition)
 5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`, `cancelled`), it was finished but never moved out (a crashed prior run, under the exclusive-session model). Same treatment: normalize status, move to `do-work/archive/` root, report it.
 
 ### Pass 1: Close Completed User Requests
@@ -48,7 +48,7 @@ Check `do-work/user-requests/` for UR folders that are ready to archive.
 For each UR folder in `do-work/user-requests/`:
 
 1. **Collect the UR's REQs** by reading the `user_request` field of every `REQ-*.md` in all four locations and keeping those whose value is this UR's id:
-   - `do-work/queue/REQ-*.md` (pending, pending-answers, blocked, reserved, claimed)
+   - `do-work/queue/REQ-*.md` (pending, pending-answers, blocked, claimed)
    - `do-work/working/REQ-*.md` (in flight)
    - `do-work/archive/REQ-*.md` (loose in archive root — non-recursive; `archive/legacy/` REQs have no `user_request` by definition)
    - `do-work/archive/UR-NNN/REQ-*.md` (already consolidated)
@@ -280,7 +280,7 @@ Stage only paths within `do-work/archive/`, `do-work/user-requests/`, any `do-wo
 
 - Delete work items — only consumed run scratch (`Status: consumed`) is deleted outright; URs, REQs, and other durable artifacts are moved. Pass 5 removes orphaned `worktree-agent-*` worktrees and branches, but mechanically only when they are already merged; unmerged ones need the user's explicit consent
 - Modify file contents or frontmatter — files are relocated as-is. Exceptions: Pass 0 normalizes non-standard terminal statuses (`done` → `completed`, etc.) in frontmatter before moving; the Repoint Documentation Links step rewrites link targets in docs that reference moved files; and Pass 6, with the user's consent, rewrites a blanked file's whole content from git history and re-applies its `commit:` field through `tools/checks/record-commit-hash.sh`.
-- Touch **active** files in `do-work/queue/` (the queue) or `do-work/working/` — `pending`, `pending-answers`, `blocked`, `reserved`, and `claimed` REQs are actions/work.md's (and `actions/reserve.md`'s) responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from `do-work/queue/` and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery. Pass 5 is not an exception at all: it operates on git worktrees and branches only and never reads or writes a REQ file.
+- Touch **active** files in `do-work/queue/` (the queue) or `do-work/working/` — `pending`, `pending-answers`, `blocked`, and `claimed` REQs are actions/work.md's responsibility. Exceptions: Pass 0 sweeps REQs with terminal statuses (`completed`, `done`, `failed`, etc.) from `do-work/queue/` and working/ to archive — that's recovering stranded finished work, not queue processing. Pass 3a relocates queue and working items from **misplaced** `do-work/` trees (created in the wrong directory) back to the canonical root — that's error recovery. Pass 5 is not an exception at all: it operates on git worktrees and branches only and never reads or writes a REQ file.
 - Archive UR folders that still have pending/in-progress REQs
 - Process any REQ files (use actions/work.md for that)
 

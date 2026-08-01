@@ -147,6 +147,35 @@ for removed_concurrency_token in \
   fi
 done
 
+# Reservation removal (exclusive-session follow-through). The reserve action allocated REQs to a
+# DIFFERENT worktree/cloud session — cross-session ownership, which the exclusive-session model
+# declares outside the product contract. The action, the `reserved` status, and its frontmatter
+# fields are gone; none of the vocabulary may survive in shipped prose or the board tool. Tokens
+# are underscore/path-shaped on purpose so ordinary English "reserved for" never false-positives.
+for removed_reservation_token in \
+  'status: reserved' \
+  'reserved_for' \
+  'reserved_at' \
+  'do-work reserve' \
+  'actions/reserve\.md'; do
+  reservation_token_hits="$(grep -rIlE -- "$removed_reservation_token" \
+    "$repo_root/actions" "$repo_root/docs" "$repo_root/tools/queue-kanban" \
+    "$repo_root/SKILL.md" "$repo_root/next-steps.md" 2>/dev/null || true)"
+  if [ -n "$reservation_token_hits" ]; then
+    printf 'FAIL: removed reservation-workflow token "%s" still present in a shipped file (exclusive-session model — cross-session ownership is unsupported):\n%s\n' \
+      "$removed_reservation_token" "$reservation_token_hits" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+
+assert_file_missing \
+  "actions/reserve.md" \
+  'the reserve action must stay removed — cross-session REQ allocation is outside the exclusive-session product contract.'
+
+assert_file_missing \
+  "actions/prime-req-reservation.md" \
+  'the reservation prime doc must stay removed along with the reserve action.'
+
 assert_contains \
   "actions/work-reference.md" \
   '^## Execution Model — Exclusive Session' \
@@ -308,7 +337,7 @@ fi
 # Target ID Resolution contract (REQ-067). The run tokenizer recognized exactly one token
 # shape (REQ- + digits); every other token was residue by construction, so a UR argument was
 # handled by whatever the reading agent improvised. The shared contract in work-reference.md is
-# the single definition of both token shapes and UR->REQ expansion that run/abandon/reserve/
+# the single definition of both token shapes and UR->REQ expansion that run/abandon/
 # roadmap cite instead of restating; work.md's Input and usage string must offer the UR- shape.
 assert_contains \
   "actions/work-reference.md" \
@@ -322,31 +351,18 @@ assert_block_contains \
   'UR-NNN' \
   'actions/work.md Input must accept UR-NNN targeting tokens (usage string offers UR-NNN and the tokenizer recognizes the UR- shape) per the Target ID Resolution contract — a UR argument must no longer fall through to the unrecognized-argument guard.'
 
-# UR ids accepted by abandon and reserve/release (REQ-068). Both actions keyed entirely on
-# REQ-NNN tokens; a UR argument had no defined handling (abandon's globs substitute a REQ number,
-# reserve's mode table matched no row). Their Input sections must now name the UR- shape and cite
-# the shared Target ID Resolution contract rather than each restating the resolution rule. Scope the
-# UR- check to the Input section — abandon.md already names archive/UR-NNN/ folders elsewhere, so a
-# file-wide grep would pass vacuously without the action actually accepting a UR argument.
+# UR ids accepted by abandon (REQ-068). The action keyed entirely on REQ-NNN tokens; a UR
+# argument had no defined handling (abandon's globs substitute a REQ number). Its Input section
+# must name the UR- shape and cite the shared Target ID Resolution contract rather than restating
+# the resolution rule. Scope the UR- check to the Input section — abandon.md already names
+# archive/UR-NNN/ folders elsewhere, so a file-wide grep would pass vacuously without the action
+# actually accepting a UR argument.
 abandon_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$repo_root/actions/abandon.md")"
-reserve_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$repo_root/actions/reserve.md")"
 
-# Both Input sections must cite the shared contract (naming the UR- shape by reference, not by
-# restating the resolution rule — a fourth/fifth copy is exactly what the contract exists to avoid).
-# Scope to the Input section: abandon.md already writes archive/UR-NNN/ folder paths elsewhere, so
-# only an Input-scoped citation check proves the *argument grammar* gained the UR shape.
 assert_block_contains \
   "$abandon_input_block" \
   'Target ID Resolution' \
   'actions/abandon.md Input must cite the Target ID Resolution contract so it accepts UR-NNN targeting tokens (a UR cancels its cancellable members) rather than only REQ-NNN.'
-assert_block_contains \
-  "$reserve_input_block" \
-  'Target ID Resolution' \
-  'actions/reserve.md Input must cite the Target ID Resolution contract so reserve/release accept UR-NNN targeting tokens (a UR resolves to its members) rather than only REQ-NNN.'
-assert_block_contains \
-  "$reserve_input_block" \
-  'UR-NNN' \
-  'actions/reserve.md Input mode table must name the UR-NNN token shape in its reserve and release rows.'
 
 assert_contains \
   "actions/roadmap.md" \
@@ -492,7 +508,7 @@ common_rationalizations_baseline_action_files=(
   cleanup.md code-review.md commit.md deep-explore-reference.md deep-explore.md
   dream.md forensics.md help.md inspect.md install.md interview-reference.md
   interview.md kb-lessons-handoff.md note.md pipeline.md present-work.md
-  prime-req-reservation.md prime.md prompts.md quick-wins.md reserve.md
+  prime.md prompts.md quick-wins.md
   review-work.md roadmap.md sample-archived-req.md scan-ideas.md slop-check.md
   stray-check.md tidy-repo.md tutorial.md ui-review.md validate-feedback.md
   verify-requests.md version.md work-reference.md work.md

@@ -52,7 +52,7 @@ work action (orchestrator - lightweight, stays in loop)
 
 ## Execution Model — Exclusive Session
 
-The pipeline supports **one active `do-work` session, one active REQ, one coder context.** Parallel sessions, co-dispatched builders, and cross-session ownership are outside the product contract — the pipeline does not detect, coordinate, or recover an unsupported concurrent run, and spends no instructions or durable state trying to make one safe. If two sessions run against one checkout anyway, behavior is unspecified. Read-only actions (`roadmap`, `board`, `inspect`, `forensics`, `recap`, the reviews) never claim or write queue state, so any number may run in parallel — with a build session or each other; the boundary governs writers only.
+The pipeline supports **one active `do-work` session, one active REQ, one coder context.** Parallel sessions, co-dispatched builders, and cross-session ownership are outside the product contract — the pipeline does not detect, coordinate, or recover an unsupported concurrent run, and spends no instructions or durable state trying to make one safe. If two sessions run against one checkout anyway, behavior is unspecified. An action that claims nothing and writes no queue or REQ state (`roadmap`, `inspect`, `recap`) may run alongside a build; anything writing REQ frontmatter or queue files (the board's Testing view, the reviews) is inside the boundary.
 
 **Current-REQ relevance.** Unexpected repository state matters **only** when it prevents the active REQ from being implemented, tested, archived, or committed. Otherwise: preserve it, exclude it from this REQ's staging, and continue — spend no time explaining or repairing it.
 
@@ -111,12 +111,7 @@ write_set: []                 # optional list of repo-relative paths/globs this 
 claimed_at: 2025-01-26T10:30:00Z
 route: A | B | C
 
-# Set by reserve action (do-work reserve — allocation to a DIFFERENT worktree/cloud session; see actions/reserve.md)
-status: reserved              # holding state; REQ stays in do-work/queue/ — the default scan skips it, only targeted `do-work run REQ-NNN` claims it (clearing these fields)
-reserved_for: "cloud-alpha"   # free-text owner label (always YAML-quoted — raw user text)
-reserved_at: 2025-01-26T10:15:00Z   # staleness anchor: older than 24h ⇒ readers flag the reservation as stale and suggest recategorizing
-
-# Set by capture (external-condition task) or by the work pipeline's mid-run blocked flip (Step 8's blocked-flip procedure). Holding state — the REQ stays in do-work/queue/ and the default scan walks past it, exactly like pending-answers/reserved.
+# Set by capture (external-condition task) or by the work pipeline's mid-run blocked flip (Step 8's blocked-flip procedure). Holding state — the REQ stays in do-work/queue/ and the default scan walks past it, exactly like pending-answers.
 status: blocked               # waiting on an EXTERNAL condition — not user answers (that's pending-answers), not another REQ (that's depends_on). Cleared to `pending` by a passing blocked_check probe (work Step 1), a `do-work clarify` confirmation, or a manual edit.
 blocked_by: "LM Studio running locally"   # free text naming the condition (always YAML-quoted — raw user text). Legacy note for the board: an old id-LIST value renders joined for display and is NOT a dependency edge — dependency gating is `depends_on` only.
 blocked_at: 2026-07-18T10:00:00Z          # stamped on every flip to blocked — the age anchor the exit summary, board drawer, and forensics read (no enforcement threshold; external conditions legitimately take weeks)
@@ -127,7 +122,7 @@ blocked_check: "curl -sf http://localhost:1234/v1/models"   # OPTIONAL shell pro
 # (clarify Step 5), unblock → pending (clarify Step 5.5, work Step 1 probe —
 # both REMOVE blocked_at, so this is the only trace of when the flip happened),
 # manual/stuck resets back to pending. Flips with a dedicated stamp (claim →
-# claimed_at, reserve → reserved_at, blocked → blocked_at, terminal →
+# claimed_at, blocked → blocked_at, terminal →
 # completed_at) do NOT write it. Display-only: the board's state timer prefers
 # it over created_at/file-mtime for pending-tier cards ("updated … · 3m"); no
 # pipeline logic reads it. Timestamp rule applies (current UTC instant).
@@ -183,7 +178,7 @@ Nine fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depend
 | Field (read sites) | Canonical enum | Normalization | Default on unknown |
 |---|---|---|---|
 | `domain` (Step 4 Route C plan-agent spawn, Step 6 crew load, Step 7 review-work spawn) | `frontend`, `backend`, `ui-design`, `general`, `security`, `testing` | `back-end`/`back_end` → `backend`; `front-end`/`front_end` → `frontend`; `ui_design` → `ui-design`; `sec` → `security`; `test` → `testing` | `general` |
-| `status` (Step 1 scan + categorization, Step 8 archive trigger, abandon action, reserve action) | `pending`, `claimed`, `reserved`, `completed`, `completed-with-issues`, `failed`, `cancelled`, `pending-answers`, `blocked`, `blocked-archive-collision`, `blocked-dependency-cycle` | `done`/`finished`/`closed` → `completed`; `canceled`/`abandoned`/`wont-do`/`wontfix` → `cancelled` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
+| `status` (Step 1 scan + categorization, Step 8 archive trigger, abandon action) | `pending`, `claimed`, `completed`, `completed-with-issues`, `failed`, `cancelled`, `pending-answers`, `blocked`, `blocked-archive-collision`, `blocked-dependency-cycle` | `done`/`finished`/`closed` → `completed`; `canceled`/`abandoned`/`wont-do`/`wontfix` → `cancelled` | skip REQ at Step 1 with the warning text — never claim or archive an unrecognized status silently |
 | `route` (Step 3 dispatch, Step 5.5 scope declaration, Step 7 scope-drift comparison) | `A`, `B`, `C` | lowercase `a`/`b`/`c` → uppercase | treat as needing re-triage in Step 3 |
 | `caveman` (Step 6 crew load) | `false`, `true`, `lite`, `full`, `ultra` | truthy strings (`yes`/`on`) → `true`; `light` → `lite` | `false` |
 | `maintenance` (Step 6 crew load) | `true`, `false` (YAML boolean) | truthy strings (`yes`/`on`/`t`) → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 maintenance crew not loaded) |
@@ -212,13 +207,13 @@ The trigger is the *condition above*, not the caller list: **any reader that fil
 
 ### Target ID Resolution
 
-**The shared token grammar for every action that takes id arguments** — `do-work run`, `do-work abandon`, `do-work reserve`/`release`, and `do-work roadmap`. A caller cites this contract for token shapes and UR expansion instead of restating them; the condition, not a caller list, is the trigger, so any future id-taking action inherits it.
+**The shared token grammar for every action that takes id arguments** — `do-work run`, `do-work abandon`, and `do-work roadmap`. A caller cites this contract for token shapes and UR expansion instead of restating them; the condition, not a caller list, is the trigger, so any future id-taking action inherits it.
 
 - **Token shapes.** `REQ-` + digits and `UR-` + digits, **case-insensitive**. **Canonicalize the token to the stored form before any lookup** — uppercase the prefix, and match the digits by **numeric value** against the stored (zero-padded) id, so `req-42`, `REQ-42`, and `REQ-042` all resolve to `REQ-042`, and `Ur-11`/`UR-011` both resolve to `UR-011`. Stored ids are zero-padded and upper-case (`REQ-067`, `UR-011`); callers glob and compare `user_request:` against that canonical form, so a resolver must normalize first and never pass raw user text into a case-sensitive glob or string compare.
 - **A `UR-NNN` token expands to its member REQs** by scanning `user_request:` frontmatter across the live locations *the calling action already searches* — which locations those are is the caller's business; the scan key never is. It is **never** the UR's own `requests:` array, which is a capture-time record and explicitly not a membership predicate (`actions/capture.md` → "The `requests:` array is the capture-time record only"). Every prior bug here — REQ-048, REQ-058, REQ-059 — came from reading that array.
 - **An id that resolves to nothing** is reported by id and skipped, never silently dropped.
 - **An argument list that resolves to an empty set stops the action.** It never falls through to a whole-queue default (a full run, a full survey). Expansion adds a recognized shape; it never makes an unrecognized or empty argument permissive.
-- **Expansion widens *which* REQs an action reaches; it never relaxes how any one is treated.** Each caller applies its own per-REQ gates — dependency-readiness, status refusals, reservation skips, confirmations — to every expanded member exactly as if that REQ had been named directly.
+- **Expansion widens *which* REQs an action reaches; it never relaxes how any one is treated.** Each caller applies its own per-REQ gates — dependency-readiness, status refusals, confirmations — to every expanded member exactly as if that REQ had been named directly.
 
 ## Crash Recovery (Step 1)
 
@@ -327,31 +322,18 @@ The exit report is **composed**, not picked from disjoint branches. Whenever the
 
    ```
    ⚠ N REQs blocked by unmet dependencies:
-     REQ-NNN — [title] (pending; depends on REQ-MMM, status: <pending|claimed|reserved|pending-answers|failed|cancelled>)
+     REQ-NNN — [title] (pending; depends on REQ-MMM, status: <pending|claimed|pending-answers|failed|cancelled>)
      REQ-PPP — [title] (blocked-dependency-cycle; chain: REQ-PPP → REQ-QQQ → REQ-PPP)
      ...
 
    Resolve the blocking REQs first, then re-run. To force a scoped run that ignores dependency gating for a specific REQ, use `do-work run REQ-NNN`. To break a dependency cycle, edit the REQ's `depends_on` and flip its status back to `pending`. A dependency on a `cancelled` (or `failed`) REQ never self-resolves — re-point the dependent's `depends_on`, or abandon it too (`do-work abandon REQ-NNN`).
    ```
 
-6. **Reserved section** — applies if any REQ has status `reserved` (allocated to another worktree/cloud session via `do-work reserve`, `actions/reserve.md`). Render each with its `reserved_for` label and age (now − `reserved_at`); a reservation older than **24 hours** is stale and gets the recategorize suggestion:
-
-   ```
-   N REQs reserved for other sessions:
-     REQ-NNN — [title] (reserved for: <label>, <age> ago)
-     REQ-MMM — [title] (reserved for: <label>, <age> ago) ⚠ STALE
-     ...
-
-   ⚠ Reservations older than 24h may belong to dead sessions. Recategorize each: `do-work release REQ-MMM`
-   to return it to the queue, `do-work run REQ-MMM` to claim it in this session, or leave it if the owning
-   session is still active.
-   ```
-
 **After rendering all applicable sections, exit the work loop** — do not proceed to Step 2.0 or beyond. There is no `pending` REQ to claim. Step 1's contract on the no-pending path is "render the composed summary, then stop"; the only path that continues is the one where Step 1 finds at least one dependency-ready `pending` REQ.
 
-If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any of the six sections applies — every non-pending or non-ready REQ in the queue is something the user needs to see.
+If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any of the five sections applies — every non-pending or non-ready REQ in the queue is something the user needs to see.
 
-**Composition is deliberate.** A queue with both `pending-answers` and `blocked-archive-collision` REQs (and no completed/done) renders both sections back-to-back. A queue with all six categories renders all six. The user sees the full picture in one report instead of a single branch's slice.
+**Composition is deliberate.** A queue with both `pending-answers` and `blocked-archive-collision` REQs (and no completed/done) renders both sections back-to-back. A queue with all five categories renders all five. The user sees the full picture in one report instead of a single branch's slice.
 
 ## Triage Section Template (Step 3)
 

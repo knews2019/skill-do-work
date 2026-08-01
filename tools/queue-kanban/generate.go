@@ -120,9 +120,6 @@ type generatedRequest struct {
 	CompletedAt          string   `json:"completedAt"`
 	StatusChangedAt      string   `json:"statusChangedAt,omitempty"` // last no-dedicated-stamp status flip (see RequestTicket.StatusChangedAt)
 	FileModifiedAt       string   `json:"fileModifiedAt,omitempty"`  // file mtime at generation, RFC3339 — state-timer fallback only, never completion dating
-	ReservedFor          string   `json:"reservedFor,omitempty"`
-	ReservedAt           string   `json:"reservedAt,omitempty"`
-	ReservationStale     bool     `json:"reservationStale,omitempty"`
 	CompletionTime       string   `json:"completionTime"`
 	CompletionTimeSource string   `json:"completionTimeSource"`
 
@@ -280,9 +277,6 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			CompletedAt:          ticket.CompletedAt,
 			StatusChangedAt:      ticket.StatusChangedAt,
 			FileModifiedAt:       formatTimestamp(ticket.FileModifiedAt),
-			ReservedFor:          ticket.ReservedFor,
-			ReservedAt:           ticket.ReservedAt,
-			ReservationStale:     ticket.ReservationStale,
 			CompletionTime:       formatTimestamp(ticket.CompletionTime),
 			CompletionTimeSource: string(ticket.CompletionTimeSource),
 
