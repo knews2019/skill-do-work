@@ -256,6 +256,11 @@ func TestGenerateSeparatesRawMarkdownForLazyCopy(t *testing.T) {
 	if !strings.Contains(string(indexBytes), `markdownScript.src = "board-markdown.js"`) {
 		t.Fatalf("inlined board.js has no lazy board-markdown.js loader")
 	}
+	// The lazy payload holds bodies only — the id and title live in frontmatter,
+	// so the Copy path must prepend its own identifying heading before writing.
+	if !strings.Contains(string(indexBytes), "copyTextWithHeading(requestedKind, requestedId, bodyText)") {
+		t.Fatalf("inlined board.js does not prepend the id/title heading to copied Markdown")
+	}
 }
 
 func TestBuildGeneratedBoardMarkdownDataKeepsExactSources(t *testing.T) {

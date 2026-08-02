@@ -2141,6 +2141,46 @@
     return null;
   }
 
+  // The stored Markdown is the file body only — id and title live in frontmatter,
+  // which the payload drops. Pasted somewhere else that body is anonymous prose,
+  // so every copy leads with an identifying heading.
+  function copyHeadingForDetail(detailKind, detailId) {
+    var record = detailKind === "ur" ? userRequestsById[detailId] : requestsById[detailId];
+    var recordTitle = record && record.title ? String(record.title).trim() : "";
+    return recordTitle ? "# " + detailId + ": " + recordTitle : "# " + detailId;
+  }
+
+  // REQ/UR bodies conventionally open with an H1 restating the frontmatter title.
+  // Where they do, the heading built above supersedes it (same words, plus the id)
+  // and the duplicate line is dropped; otherwise the body is left untouched.
+  function copyTextWithHeading(detailKind, detailId, bodyText) {
+    var headingLine = copyHeadingForDetail(detailKind, detailId);
+    var record = detailKind === "ur" ? userRequestsById[detailId] : requestsById[detailId];
+    var recordTitle = record && record.title ? String(record.title) : "";
+    var bodyLines = String(bodyText || "").split("\n");
+
+    var firstContentIndex = 0;
+    while (firstContentIndex < bodyLines.length && bodyLines[firstContentIndex].trim() === "") {
+      firstContentIndex += 1;
+    }
+    var firstContentLine = firstContentIndex < bodyLines.length ? bodyLines[firstContentIndex].trim() : "";
+    // Strip an H1 marker when present; the rendered-text fallback path carries the
+    // same restated title with no "#", so both shapes are compared bare.
+    var firstHeadingText = firstContentLine.replace(/^#\s+/, "");
+    if (recordTitle && normalizeHeadingText(firstHeadingText) === normalizeHeadingText(recordTitle)) {
+      bodyLines = bodyLines.slice(firstContentIndex + 1);
+    } else {
+      bodyLines = bodyLines.slice(firstContentIndex);
+    }
+
+    var remainingBody = bodyLines.join("\n").replace(/^\n+/, "");
+    return remainingBody ? headingLine + "\n\n" + remainingBody : headingLine + "\n";
+  }
+
+  function normalizeHeadingText(headingText) {
+    return String(headingText).replace(/\s+/g, " ").trim().toLowerCase();
+  }
+
   function writeTextToClipboard(clipboardText) {
     if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
       return navigator.clipboard.writeText(clipboardText).catch(function () {
@@ -2209,6 +2249,9 @@
           return renderedTextFallback;
         }
       )
+      .then(function (bodyText) {
+        return copyTextWithHeading(requestedKind, requestedId, bodyText);
+      })
       .then(writeTextToClipboard)
       .then(
         function () {

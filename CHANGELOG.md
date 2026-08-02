@@ -6,6 +6,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.163.3 — Board Copy Includes the REQ Id and Title (2026-08-02)
+
+The drawer's Copy button used to hand you the body text alone — frontmatter holds the id and title, so a paste landed somewhere else as anonymous prose. Every copy now leads with a `# REQ-236: <title>` heading.
+
+- Applies to URs too, and to the rendered-text fallback path used when a generated bundle is missing `board-markdown.js`.
+- When the body already opens with an H1 restating the title (the usual REQ shape), that duplicate line is dropped rather than repeated under the new heading.
+
 ## 0.163.2 — Audit Sweep: Last Stale Release-Flow Comment (2026-08-01)
 
 A post-removal audit found one straggler: a `model.go` comment still listed the removed release action among `status_changed_at`'s writers. Comment corrected; the audit found nothing else — numbering, routing, board fields, and docs are all consistent with the reservation removal.

@@ -47,7 +47,7 @@ It under-reports, so read it as a floor, not a guarantee:
 
 ## Card drawer
 
-Clicking a card opens a docked panel: the REQ's frontmatter as labelled rows — status, dependencies, write set and its overlaps, route, timestamps, testing record, file location — above the rendered REQ body. Claim and block rows tick as live timers while the hold is open. REQ and UR ids are links, **Copy** grabs the source Markdown, and the divider drags to resize (double-click resets).
+Clicking a card opens a docked panel: the REQ's frontmatter as labelled rows — status, dependencies, write set and its overlaps, route, timestamps, testing record, file location — above the rendered REQ body. Claim and block rows tick as live timers while the hold is open. REQ and UR ids are links, **Copy** grabs the source Markdown under a `# REQ-042: <title>` heading so a paste carries its own identity, and the divider drags to resize (double-click resets).
 
 ## Testing view
 
