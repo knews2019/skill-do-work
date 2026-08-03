@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.168.1 — The Fan-Out Hand-Back File Has Somewhere Legal To Go (2026-08-03)
+
+Fan-out dispatch made a per-builder `REQ-NNN-handback.md` mandatory, and the worktree rules forbade builders from writing the main tree — where `do-work/` lives. There was no location satisfying both, so an agent that got there had three moves and two of them corrupted the run quietly: write the main tree anyway, or write the worktree's copy where the file lands in the builder's branch and the orchestrator reads nothing.
+
+- Sole-integrator now names exactly one path a builder may write — its own hand-back file, by absolute main-tree path, never staged or committed. Everything else stays forbidden, by name: a sibling's hand-back, `manifest.md`, anything else under `do-work/runs/`
+- The "what lives under `do-work/`" rule is a condition now instead of a three-item list written before `do-work/runs/` existed — which is what let a reader argue the run directory was out of scope
+- The path-resolution trap already documented for the inbound brief now says it applies in the return direction too, where it's worse: the write succeeds, into the wrong tree, silently
+- Four contract checks pin the carve-out, so a maintenance pass can't delete it as redundant and restore the contradiction
+
 ## 0.168.0 — next-version Writes The Repo You Point It At (2026-08-03)
 
 `queue-kanban next-version` takes the bump size as a positional and `--repo-root` as a flag, and Go's flag parser stops at the first non-flag argument — so every flag placed after the bump size was thrown away. The invocation the skill itself prescribed put `--repo-root` last, which meant it bumped whatever repo you happened to be standing in, exited 0, and printed a plausible version number. This is the tool's only write outside `do-work/`, and it was writing the wrong file.

@@ -464,6 +464,39 @@ assert_block_contains \
   'stamp `status_changed_at' \
   'actions/work-reference.md Crash Recovery substep 1 must stamp status_changed_at on the reset — the field is written on any status flip with no dedicated *_at of its own, and this substep also removes claimed_at, so it is the only surviving trace of when recovery happened (REQ-074).'
 
+# The hand-back file's one legal write location (REQ-082). Fan-Out Dispatch makes a per-builder
+# REQ-NNN-handback.md mandatory and background-agents.md has the sub-agent write it itself, while
+# Sole integrator says a builder never writes the main tree and do-work/ is main-tree-only — so the
+# mandatory file had no legal home, and an agent hitting that had three moves, two of which corrupt
+# the run (write the main tree anyway, or write the worktree's copy where it lands in the branch and
+# the orchestrator reads nothing). The failure this guards is a later maintenance pass reading "the
+# builder never writes the main tree" as absolute and deleting the carve-out as redundant, silently
+# restoring the contradiction.
+worktree_dispatch_block="$(sed -n '/^## Worktree Dispatch Mode (Step 1)/,/^## Composed Exit Summary/p' "$repo_root/actions/work-reference.md")"
+
+assert_block_contains \
+  "$worktree_dispatch_block" \
+  'exactly one exception' \
+  'actions/work-reference.md Sole integrator must carry the bounded hand-back exception — Fan-Out Dispatch mandates REQ-NNN-handback.md, and without a named legal write location the builder must either violate sole-integrator or drop the file the durability pattern exists for (REQ-082).'
+
+assert_block_contains \
+  "$worktree_dispatch_block" \
+  'never staged, committed, or merged' \
+  'actions/work-reference.md Sole integrator must say the hand-back file is never staged/committed/merged — "you may write it" naturally reads as including committing it, which would turn run scratch into branch content and trip the builder-wrote-do-work probe (REQ-082).'
+
+# Scope, not a list: the exception is one path derived from the builder's own REQ id, and do-work/'s
+# main-tree-only rule must be stated as a condition. Both were closed enumerations away from silently
+# growing — "the run directory" instead of one file, and a three-item list that predated do-work/runs/.
+assert_block_contains \
+  "$worktree_dispatch_block" \
+  'Every path under `do-work/` exists in the main tree only' \
+  'actions/work-reference.md State stays home must state the condition rather than enumerate the queue/working//CHECKPOINT.md trio — do-work/runs/ postdated that list and a reader could argue it was out of scope (REQ-082).'
+
+assert_block_not_contains \
+  "$worktree_dispatch_block" \
+  'the queue, `working/`, `CHECKPOINT.md` — exists in the main tree only' \
+  'actions/work-reference.md must not restore State stays home three-item enumeration — a hand-maintained list of what lives under do-work/ goes stale the moment a directory is added (REQ-082).'
+
 # The claim-time write (REQ-077) is the other half of REQ-071's gate. REQ-071 made recovery consume
 # the checkpoint's In Progress record, but Step 10 (session end) was its only write site — so a hard
 # crash left no record at all, every crashed REQ classified as a foreign claim, and the own-crash
