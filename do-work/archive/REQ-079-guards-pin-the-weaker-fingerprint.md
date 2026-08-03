@@ -4,6 +4,7 @@ title: Two guards pin the weaker fingerprint of the premise they exist to retire
 status: completed
 claimed_at: 2026-08-03T21:58:03Z
 completed_at: 2026-08-03T22:04:14Z
+commit: 8fdce3c
 kb_status: pending
 route: B
 created_at: 2026-08-03T16:53:42Z
