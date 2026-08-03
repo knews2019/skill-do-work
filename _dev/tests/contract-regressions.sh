@@ -307,13 +307,31 @@ fi
 # Claim-respecting crash recovery (REQ-071). Recovery resets frontmatter and strips thirteen
 # generated sections, and the pipeline does not commit until Step 9 — so an unconditional recovery
 # destroys a finished Plan/Exploration/Scope that exists nowhere else. The premise that licensed
-# running it on every working/ file ("no other live session whose in-flight claim a recovery could
-# disturb") is gone and must stay gone; what replaced it is a classification, a human-authorized
-# takeover, and an ask-on-ambiguity default. Each assertion below pins one of those.
-assert_file_not_contains \
-  "actions/work-reference.md" \
-  'no other live session whose in-flight claim a recovery could disturb' \
-  'actions/work-reference.md must not restate the removed premise that no live in-flight claim can be disturbed — Crash Recovery classifies each working/ file before it strips anything (REQ-071).'
+# running it on every working/ file is gone and must stay gone; what replaced it is a classification,
+# a human-authorized takeover, and an ask-on-ambiguity default. Each assertion below pins one of those.
+#
+# The premise sweep (widened by REQ-077). Trigger condition, not a wording list: any sentence in
+# either pipeline file telling the reader that every file in do-work/working/ belongs to the current
+# session, or that the pipeline keeps no claim record at all, restates that premise — and since
+# REQ-077 the pipeline does keep a claim record (CHECKPOINT.md's In Progress list, written at claim
+# time by Step 2). The fingerprints below are the ones seen in the tree so far; they are illustrative,
+# not exhaustive, so a newly discovered wording earns a generalized pattern rather than a fourth
+# literal. Whole-file scope over both files is also deliberate: the two predecessor assertions were
+# each narrower than the premise — one read only actions/work.md's Step 1 block while the live
+# restatement sat in Step 2, the other was scoped to actions/work-reference.md by argument — so
+# broadening the pattern alone would have left both of them green.
+for premise_file in actions/work.md actions/work-reference.md; do
+  for premise_fingerprint in \
+    'no other live session whose in-flight claim a recovery could disturb' \
+    "every .working/. file is this session's" \
+    'no lock or claim record'
+  do
+    assert_file_not_contains \
+      "$premise_file" \
+      "$premise_fingerprint" \
+      "$premise_file must not restate the retired premise that every do-work/working/ file is this session's to recover, nor claim the pipeline keeps no claim record at all: Crash Recovery classifies each working/ file against CHECKPOINT.md's In Progress list, which Step 2 writes at claim time (REQ-071, REQ-077). Matched fingerprint: $premise_fingerprint"
+  done
+done
 
 crash_recovery_block="$(sed -n '/^## Crash Recovery (Step 1)/,/^## Worktree Dispatch Mode/p' "$repo_root/actions/work-reference.md")"
 
@@ -357,12 +375,37 @@ assert_block_contains \
   'stamp `status_changed_at' \
   'actions/work-reference.md Crash Recovery substep 1 must stamp status_changed_at on the reset — the field is written on any status flip with no dedicated *_at of its own, and this substep also removes claimed_at, so it is the only surviving trace of when recovery happened (REQ-074).'
 
-work_step_one_block="$(sed -n '/^### Step 1: Find Next Request/,/^### Step 2\.0/p' "$repo_root/actions/work.md")"
+# The claim-time write (REQ-077) is the other half of REQ-071's gate. REQ-071 made recovery consume
+# the checkpoint's In Progress record, but Step 10 (session end) was its only write site — so a hard
+# crash left no record at all, every crashed REQ classified as a foreign claim, and the own-crash
+# branch became unreachable by the exact event it exists to handle. Each assertion below pins one
+# numbered requirement of the fix: write it at claim time, keep it a list, keep it from becoming a
+# lock, and remove it when the REQ leaves working/.
+work_step_two_block="$(sed -n '/^### Step 2: Claim the Request/,/^### Step 3: Triage/p' "$repo_root/actions/work.md")"
 
-assert_block_not_contains \
-  "$work_step_one_block" \
-  "Every .working/. file is this session's own leftover" \
-  'actions/work.md Step 1 must not claim every working/ file is this sessions own leftover to recover — that is the premise REQ-071 removes.'
+assert_block_contains \
+  "$work_step_two_block" \
+  'In Progress \(interrupted\)' \
+  'actions/work.md Step 2 must record the claim in CHECKPOINT.md In Progress (interrupted) at claim time — with Step 10 (session end) as the only write site, a hard crash leaves recovery no classification input and the REQ strands in working/ forever (REQ-077).'
+
+in_progress_record_block="$(sed -n '/^## In-Progress Record (Step 2)/,/^## Triage Section Template/p' "$repo_root/actions/work-reference.md")"
+
+assert_block_contains \
+  "$in_progress_record_block" \
+  'record is a list' \
+  'actions/work-reference.md In-Progress Record must specify the record as a list, one entry per claimed REQ — fan-out claims several REQs under one owner, so a singular record classifies every claim but the newest as a foreign claim after a crash (REQ-077).'
+
+assert_block_contains \
+  "$in_progress_record_block" \
+  'never grow into one' \
+  'actions/work-reference.md In-Progress Record must state that the record is a classification input and must never grow into a lock, heartbeat, or liveness check — that is the machinery REQ-069 deleted and REQ-073 declined to revive (REQ-077).'
+
+assert_block_contains \
+  "$work_archive_success_block" \
+  'In Progress \(interrupted\)' \
+  'actions/work.md Step 8 must remove the REQ In Progress entry as part of the archive move — a REQ still listed there after it leaves working/ is the contradiction the next run is told to report, and a report that fires on every normal completion trains readers to ignore it (REQ-077).'
+
+work_step_one_block="$(sed -n '/^### Step 1: Find Next Request/,/^### Step 2\.0/p' "$repo_root/actions/work.md")"
 
 assert_block_contains \
   "$work_step_one_block" \

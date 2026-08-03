@@ -9,7 +9,7 @@
 ```
 work action (orchestrator - lightweight, stays in loop)
   │
-  ├── Read CHECKPOINT.md if exists (resume context from previous session)
+  ├── Read CHECKPOINT.md if exists (crash recovery's classification input, then resume context)
   │
   ├── For each pending request (skip pending-answers):
   │     │
@@ -222,9 +222,9 @@ The trigger is the *condition above*, not the caller list: **any reader that fil
 **Recovery is destructive, so it is not the default.** Substeps 1–3 below reset the frontmatter, strip thirteen generated sections (`## Plan`, `## Exploration`, `## Scope` and the rest), and move the file back to `do-work/queue/`. Nothing is committed before Step 9, so those sections usually exist nowhere but that file — which makes substeps 1–3 the right treatment for a crash's half-written leftovers and the wrong treatment for anything else. **Classify each `working/` file before touching it:**
 
 - **Named in the checkpoint's `## In Progress (interrupted)` record** → **own crash.** Recover it via substeps 1–3, exactly as before. Only that record counts: `last_completed`, `## Completed This Session`, and `## Still Queued` describe REQs that should not be in `working/` at all, so finding one there is a contradiction to report, not a licence to strip.
-- **Not named there, or there is no checkpoint at all** → **foreign claim.** Leave the file byte-identical — no frontmatter reset, no section stripping, no move — and report it per *Reporting and takeover* below. An **absent checkpoint is ambiguous, not permission**: a session that died before writing one and a claim made by something else are indistinguishable from here, and only one of the two readings is recoverable when it is wrong. Step 10 writes the checkpoint at session end, so a hard crash usually leaves none — this is the ordinary path, not a corner case.
+- **Not named there, or there is no checkpoint at all** → **foreign claim.** Leave the file byte-identical — no frontmatter reset, no section stripping, no move — and report it per *Reporting and takeover* below. An **absent checkpoint is ambiguous, not permission**: a session that died before writing one and a claim made by something else are indistinguishable from here, and only one of the two readings is recoverable when it is wrong. The record is written at **claim time** (**In-Progress Record (Step 2)**, below), so an ordinary crash mid-REQ leaves one and the claims it names classify as this session's own; a checkpoint missing entirely means the crash preceded this run's first claim, or the claim was never this pipeline's — neither of which is permission.
 
-Recovery consults no lock, because the skill keeps none (**Execution Model — Exclusive Session**, above). Its two inputs — `do-work/CHECKPOINT.md` and each REQ's `claimed_at` — already exist for other reasons, so the classification adds no durable state.
+Recovery consults no lock, because the skill keeps none (**Execution Model — Exclusive Session**, above). Its two inputs are `do-work/CHECKPOINT.md`'s in-progress record — written at claim time for exactly this purpose (**In-Progress Record (Step 2)**, below) — and each REQ's `claimed_at`, which exists for other reasons. That record is **classification state, not coordination state**: nothing acquires it, nothing waits on it, and no second owner reads it.
 
 **Reporting and takeover.** For each foreign claim, compute its age from `claimed_at` (a UTC ISO-8601 instant — Timestamp rule, **Request File Schema — Full Frontmatter** above). **Read `claimed_at` while classifying, not afterwards: substep 1 removes it** — the same ordering trap the `## Scope` / `write_set` decision carries inside that substep.
 
@@ -385,6 +385,20 @@ The exit report is **composed**, not picked from disjoint branches. Whenever the
 If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any of the five sections applies — every non-pending or non-ready REQ in the queue is something the user needs to see.
 
 **Composition is deliberate.** A queue with both `pending-answers` and `blocked-archive-collision` REQs (and no completed/done) renders both sections back-to-back. A queue with all five categories renders all five. The user sees the full picture in one report instead of a single branch's slice.
+
+## In-Progress Record (Step 2)
+
+`do-work/CHECKPOINT.md`'s `## In Progress (interrupted)` section is **Crash Recovery's classification input** (**Crash Recovery (Step 1)**, above): a `working/` REQ named there is this session's own interrupted work and recovers; one that is not is a foreign claim and is left byte-identical. So the record has to exist at the moment a crash happens. Step 10 writes the checkpoint at *session end*, which a hard crash never reaches — leaving that as the only write site made the own-crash branch unreachable by the very event it handles, and every crashed REQ stranded in `working/` (the 0.164.0 regression this procedure closes). **The record is therefore written at claim time**, by `actions/work.md` Step 2, as part of the claim.
+
+**It is a classification input, and nothing else.** It grants no exclusivity, coordinates nothing, and no second owner reads it — the skill keeps no lock, heartbeat, or liveness check (**Execution Model — Exclusive Session**, above), and this record must never grow into one. Its whole job is to let the *next* run tell this session's leftovers from someone else's. One small file write per claim, one removal per departure; if it ever acquires a refresh interval, a holder id, or a staleness check, it has become the machinery the exclusive-session model exists without.
+
+**Writing it** — immediately after Step 2's frontmatter flip to `status: claimed`, so the record and the claim land together:
+
+- **The record is a list.** Append one entry per claimed REQ — `- REQ-NNN: [title] — claimed <claimed_at>` — and never collapse the section to a single id. Fan-out dispatch claims several REQs concurrently under one owner (**Worktree Dispatch Mode (Step 1)** → *Fan-Out Dispatch*, above), so a singular record would classify every claim but the newest as a foreign claim after a crash — the same silent stranding this record exists to prevent, just narrower.
+- **Append; never rewrite what is already there.** A sibling claim's entry is not this claim's to restate or reorder. **One entry per REQ id**: if this REQ already has one — a re-claim in the same session, after a blocked flip released it or a mover skipped its removal — refresh that entry in place with the new `claimed_at` instead of appending a second. Two entries for one id would survive the first removal and leave a permanent phantom claim.
+- **No `do-work/CHECKPOINT.md` yet** — the ordinary case on a fresh run, since Step 10's session-start note deletes it once recovery has finished with every `working/` file (`actions/work.md` Step 10). Create the file containing **only** the `# Session Checkpoint` heading and this one section. Step 2 writes no frontmatter and no other section: Step 10 still owns the full checkpoint and rewrites the file wholesale at session end.
+- **Remove the entry whenever the REQ leaves `do-work/working/` — that condition is the rule, and the movers below are illustrative, not the set.** Anything that relocates a `working/` REQ drops its entry as part of the same move: today that is Step 8's archive move on success and on failure, and the mid-run blocked flip's move back to `do-work/queue/` (`actions/work.md` Step 8), plus the out-of-pipeline movers a human can run — `actions/cleanup.md` Pass 0's terminal-in-`working/` sweep and `actions/forensics.md` Check 1's manual reset. A new mover inherits the rule from the condition; do not extend this list and expect it to stay complete. The removal is part of the move, not a later sweep: a REQ listed as in-progress while sitting somewhere other than `working/` is exactly the contradiction the own-crash bullet tells the next run to report (**Crash Recovery (Step 1)**, above), and a report that fires on normal completion is noise that trains readers to ignore it. Removing the last entry leaves the section present and empty — correct, and distinguishable from a session that never wrote one.
+- **Reach the file by its literal path**, `do-work/CHECKPOINT.md` from the project root. Shell state does not survive between prescribed command blocks, so never carry it (or a `mktemp` path) in a variable inherited from an earlier block.
 
 ## Triage Section Template (Step 3)
 
@@ -764,6 +778,8 @@ session_depth: light | moderate | heavy
   Last known state: [1-2 sentences]
   Key files being modified: [list]
   Known issues: [any blockers or concerns]
+- REQ-NNN: [title] — stopped at [phase: ...]
+  [one entry per REQ still in do-work/working/ — this section is a list, never a single id]
 
 ## Still Queued
 - REQ-NNN: [title] (pending)
@@ -777,6 +793,8 @@ session_depth: light | moderate | heavy
 that the next session should re-read before starting. Include this section when 6+ REQs were
 processed — at that volume, carried-over assumptions are unreliable.]
 ```
+
+**`## In Progress (interrupted)` is not written from scratch here.** Step 2 has been appending an entry to it at every claim (**In-Progress Record (Step 2)**, above) and Step 8 removing each one on departure, so at session end the section already holds exactly the REQs still in `do-work/working/`. Step 10 enriches those entries with the phase/state detail above and keeps the list — it never collapses it to a single id, because recovery classifies each `working/` file by name and fan-out can leave several.
 
 ## Progress Reporting Example
 

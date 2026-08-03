@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.167.1 — Crash Recovery Can Actually Recover A Crash (2026-08-03)
+
+**0.164.0 quietly broke automatic crash recovery, and this fixes it.** That release made recovery check the checkpoint's in-progress record before touching a claimed REQ — a good gate, protecting work that exists nowhere but that file. But the record was only ever written at *session end*, which a hard crash never reaches. So the common case had no record, every crashed REQ was classified as someone else's claim, and it sat in `do-work/working/` untouched for good, one warning line per run, until someone ran `do-work forensics` and reset it by hand. The 0.164.0 notes described the gate; they didn't say the automatic path had stopped working. It had.
+
+- The in-progress record is now written **at claim time** (Step 2), so a run that dies mid-REQ leaves the record its successor needs
+- It's a list, one entry per claimed REQ — a crash during fan-out recovers every claim, not just the newest
+- The entry is dropped whenever the REQ leaves `working/`, so a normal completion stops generating a phantom stranded-claim warning
+- Explicitly **not** a lock: no exclusivity, no coordination, no second reader — the exclusive-session model is unchanged, and 0.164.0's protections (three-hour threshold gates the *offer* only, a human authorizes every takeover, an absent checkpoint stays ambiguous) are all intact
+- A retired premise had left a third copy of itself in `actions/work.md` that the guard couldn't see; the two narrow guards are now one sweep over both pipeline files
+
 ## 0.167.0 — The Go Utility Can Now Produce Timestamps (2026-08-03)
 
 `queue-kanban now` prints the exact UTC stamp every `*_at` field wants, and the Timestamp rule prefers it whenever the binary is already built. It joins `next-req` and `next-version` — the other two things the pipeline has to get right and can't eyeball. `date -u` stays the documented fallback, so no action ever needs a compiler.

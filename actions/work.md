@@ -221,8 +221,9 @@ Exit 0 → no collision, proceed to Step 2. Exit 1 (matching archive paths print
 
 ### Step 2: Claim the Request
 
-1. `mkdir -p do-work/working` and move the REQ file there. If this session is interrupted after the move, the file stays in `working/` and Crash Recovery (Step 1) reclaims it on the next run — every `working/` file is this session's to recover under the exclusive-session model, so no lock or claim record is needed.
+1. `mkdir -p do-work/working` and move the REQ file there. If this session is interrupted after the move, the file stays in `working/` and Crash Recovery (Step 1) classifies it on the next run.
 2. Update frontmatter: `status: claimed`, `claimed_at: <timestamp>` — the current **UTC** instant `YYYY-MM-DDTHH:MM:SSZ` from `date -u +%Y-%m-%dT%H:%M:%SZ`, exactly like `completed_at` (Timestamp rule, `actions/work-reference.md`). Never local wall-clock time with a `Z` suffix — a future-dated stamp freezes the board's claim stopwatch and flags the card with a clock-skew warning.
+3. Record the claim in `do-work/CHECKPOINT.md`'s `## In Progress (interrupted)` list, per `actions/work-reference.md` → **In-Progress Record (Step 2)** (append one entry per claimed REQ; create the file with just that section when it doesn't exist yet). **This is what makes crash recovery reachable:** the record is recovery's classification input, and Step 10's session-end write is too late for a run that dies mid-REQ. It is not a lock — it grants nothing, coordinates nothing, and no second owner reads it; recovery is its only consumer. Step 8 removes the entry when the REQ leaves `working/`.
 ### Step 3: Triage
 
 Read the request, apply the decision flow, update frontmatter with `route`. If a `## Triage` section does not already exist, append to the request file:
@@ -546,7 +547,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
    Classify each by severity and queue follow-ups per `actions/work-reference.md` → **Discovered Tasks Classification (Step 8)**: `[critical]` → `status: pending`, auto-queued + prominent report; `[normal]`/`[low]` → `status: pending-answers` via the Open-Questions consent flow — except test-only mechanical-hygiene discoveries meeting that section's carve-out (all three bullets), which auto-queue as `status: pending` with an auto-approved note and a `↺` report line.
 5. **Cycle detection:** Before creating any follow-up REQ, verify the current REQ's own `addendum_to` chain is not already circular. Algorithm: walk `addendum_to` links (honoring the `amends`/`parent`/`amendment_to` alias per the Schema Read Contract when the canonical key is absent) starting from the current REQ, collecting each visited ID into a seen set. If you encounter the current REQ's ID again during the walk, the chain is already circular — do not create any follow-ups. Report: `⚠ Cycle detected in addendum_to chain: REQ-NNN → REQ-MMM → ... → REQ-NNN. Skipping follow-up — manual resolution needed.` This handles chains of any length.
-6. Archive based on REQ type. The physical move out of `working/` is the archive; no lock or claim record is updated (the exclusive-session model keeps none).
+6. Archive based on REQ type. The physical move out of `working/` is the archive. **As part of that move, remove this REQ's entry from `do-work/CHECKPOINT.md`'s `## In Progress (interrupted)` list** (`actions/work-reference.md` → **In-Progress Record (Step 2)**) — a REQ still listed there after it leaves `working/` is the contradiction the next run's recovery is told to report. Nothing else is released: the record is recovery's classification input, not a lock, and the exclusive-session model keeps none.
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
@@ -573,7 +574,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
 **On failure:**
 
-Classify the failure and queue the right follow-up per `actions/work-reference.md` → **Failure Classification (Step 8)**. Run the **upstream-failure short-circuit first** (if any `addendum_to`/`depends_on` ancestor is `failed`, short-circuit to `error_type: spec` with an upstream-cascade error), then fall through to the Intent/Spec/Code/Environment symptom table. Set `status: failed`, `completed_at: <timestamp>` (mandatory on every terminal flip, same stamping rule as success), `error`, `error_type`; create the follow-up (Intent/Spec/Code) with `addendum_to` chained and the original dependency list preserved; move to `archive/` root.
+Classify the failure and queue the right follow-up per `actions/work-reference.md` → **Failure Classification (Step 8)**. Run the **upstream-failure short-circuit first** (if any `addendum_to`/`depends_on` ancestor is `failed`, short-circuit to `error_type: spec` with an upstream-cascade error), then fall through to the Intent/Spec/Code/Environment symptom table. Set `status: failed`, `completed_at: <timestamp>` (mandatory on every terminal flip, same stamping rule as success), `error`, `error_type`; create the follow-up (Intent/Spec/Code) with `addendum_to` chained and the original dependency list preserved; move to `archive/` root and remove the REQ's in-progress entry with that move, exactly as substep 6 does on success.
 
 **Mid-run blocked flip (external precondition):** Before classifying an Environment failure as terminal, apply this test — it is the non-terminal alternative to `error_type: environment` for a precondition that will simply become true later:
 
@@ -583,7 +584,7 @@ Classify the failure and queue the right follow-up per `actions/work-reference.m
   - **No merge completed** (the failure preceded hand-back, or the hand-back was empty) — probe for the branch before counting anything: if `git rev-parse --verify -q '<operative_name>'` fails, the branch was never created (dispatch did not get that far) and nothing landed, so flip to `blocked`. Do not reach for the count here — `rev-list` on a missing branch exits fatal and prints no number at all, so it cannot decide the very case the flip exists for. Only once the branch resolves: edits landed if and only if `git rev-list --count HEAD..<operative_name>` is greater than zero — `HEAD` because the orchestrator runs this from the integration branch it dispatched from — meaning the builder's branch carries commits the integration branch does not contain (integration is by merge and never rebase, so they stay recognizable as the builder's). A count of `0` is the other genuine nothing-happened-this-attempt case and still flips to `blocked`.
 
   Judge from the branch, not from the handed-back manifest: the manifest is the builder's claim about its own work, and the orchestrator reads actual git state rather than the builder's description of it (same stance as Step 6.3). Uncommitted edits sitting in the builder's worktree do not count as landed — the main tree is pristine, so a re-dispatch after the block starts clean, and the stray worktree is swept by `actions/work-reference.md` → **Crash Recovery (Step 1)** or `actions/cleanup.md` → **Pass 5: Orphaned Worktrees (consent-gated)**. Serial mode ignores this bullet entirely and uses the working-tree check above.
-- **If both hold**, do NOT fail. The orchestrator (never the builder — all file management is the orchestrator's) sets `status: blocked`, `blocked_by: "<condition>"`, `blocked_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`); removes `claimed_at` and `route`; appends a `## Blocked` section recording what's missing, how it was discovered, and — only if the user supplied or confirmed one — a `blocked_check:` probe command; then moves the file **back to `do-work/queue/`** (it is a hold, not an archive), reports `[REQ-NNN] blocked on: <condition> — released, continuing`, and continues to the next REQ. The REQ re-enters selection on a future run via its `blocked_check` probe, `do-work clarify`, or a manual edit.
+- **If both hold**, do NOT fail. The orchestrator (never the builder — all file management is the orchestrator's) sets `status: blocked`, `blocked_by: "<condition>"`, `blocked_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`); removes `claimed_at` and `route`; appends a `## Blocked` section recording what's missing, how it was discovered, and — only if the user supplied or confirmed one — a `blocked_check:` probe command; then moves the file **back to `do-work/queue/`** (it is a hold, not an archive), removing the REQ's in-progress entry with that move like any other departure from `working/` (`actions/work-reference.md` → **In-Progress Record (Step 2)**), reports `[REQ-NNN] blocked on: <condition> — released, continuing`, and continues to the next REQ. The REQ re-enters selection on a future run via its `blocked_check` probe, `do-work clarify`, or a manual edit.
 - **If either fails** (real edits already landed, environment the user must fix, or retries exhausted), fall through to the Environment classification above and archive as `failed` with `error_type: environment`.
 
 ### Step 9: Commit Phase (Git repos only)
@@ -635,7 +636,7 @@ At the end of every work session (whether all REQs completed, user stops, or ses
 
 **On session start (Step 1 addition):** Before crash recovery, check for `do-work/CHECKPOINT.md`. If it exists:
 1. Read it and report a brief summary: `Resuming from previous session. Last completed: REQ-NNN. [N] REQs still queued.`
-2. Its `## In Progress (interrupted)` section is what crash recovery classifies against — a `working/` REQ named there is this session's own to recover, and one that isn't is a foreign claim recovery must not strip.
+2. Its `## In Progress (interrupted)` section is what crash recovery classifies against — a `working/` REQ named there is this session's own to recover, and one that isn't is a foreign claim recovery must not strip. Step 2 wrote those entries at claim time, one per claim (`actions/work-reference.md` → **In-Progress Record (Step 2)**), which is why the section survives a crash that never reached this step.
 3. **Do not delete yet.** Keep the checkpoint until crash recovery has finished with every `working/` file, then delete it. Deleting only after recovery is done still prevents losing resume context if the session crashes again mid-recovery.
 
 This is NOT a blocking gate. With no checkpoint, the session starts normally — crash recovery still runs, it just has nothing to match against, so every claimed `working/` REQ is treated as a foreign claim and left intact.
@@ -648,7 +649,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 
 ```
 □ Step 1: Read CHECKPOINT.md FIRST (it is recovery's input), crash recovery (recover own-crash files; report foreign claims, ask before takeover), validate frontmatter, pick first pending
-□ Step 2: Claim request (mkdir -p working/ + move, update status & claimed_at)
+□ Step 2: Claim request (mkdir -p working/ + move, update status & claimed_at, append the claim to CHECKPOINT.md's In Progress list)
 □ Step 3: Triage (decide route, append ## Triage, read original if addendum)
 □ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions; a user answer obtained mid-run is written in as - [x] before dispatch — never - [~], no D-XX)
 □ Step 4: Plan (Route C: spawn Plan agent + validate plan / Routes A & B: note skipped)
@@ -661,7 +662,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 6.5: Test (run relevant tests, load debug rules on attempt 2+, verify TDD evidence if tdd:true)
 □ Step 7: Review (spawn actions/review-work.md — gate on acceptance: Pass→archive, Fail→remediate with debug rules)
 □ Step 7.5: Lessons Learned + Orientation (append sections at subsystem altitude, update prime files, skip lessons for Route A if no surprises)
-□ Step 8: Archive (update status, classify failures, triage discovered tasks, cycle-check follow-ups, queue follow-ups, move to archive/)
+□ Step 8: Archive (update status, classify failures, triage discovered tasks, cycle-check follow-ups, queue follow-ups, move to archive/ and drop the REQ's In Progress entry)
 □ Step 9: Commit (stage explicit files, commit if git repo, write hash to REQ via tools/checks/record-commit-hash.sh, then a separate metadata commit)
 □ Step 10: Loop or Exit (context wipe + contamination check if looping, else write CHECKPOINT.md with depth + cleanup)
 ```
