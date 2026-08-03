@@ -55,8 +55,6 @@ maintenance: false  # set true ONLY for a deliberate removal/narrowing of the sk
 
 ---
 *Source: [original verbatim request]*
-
-Think carefully before answering.
 ```
 
 Include `## Red-Green Proof` when the request is behavior-changing and can be proven with a prompt, repro, or example. If `tdd: true`, this section is mandatory. The goal is proof of behavior, not implementation detail.

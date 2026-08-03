@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.167.4 — Capture Stops Stamping A Stray Instruction Into Every REQ (2026-08-03)
+
+The Simple REQ template ended with a bare `Think carefully before answering.` *inside* the fence, so every request `do-work capture` wrote inherited it — 25 archived REQs carry the line. A builder spotted it once, correctly treated it as data rather than a directive, and logged the sighting in its own REQ. Nobody looked at the template, so it kept emitting for another 25 captures.
+
+- The line is gone from the template; new captures end at `*Source: …*`
+- A contract check pins it and two sibling phrasings, so it can't come back quietly
+- The 25 archived REQs keep it on purpose — the archive is immutable, and the artifact is inert once it's history
+- Swept `specs/`, `prompts/` and `interviews/` for the same shape and found nothing: their instructional prose sits outside the fenced bodies, which is the distinction that matters
+
 ## 0.167.3 — The write_set Guards Now Catch The Premise, Not One Phrasing (2026-08-03)
 
 A guard that only matches the wording you already deleted is worse than no guard, because the green suite reads as coverage. The two checks protecting `write_set`'s display-only rule were in exactly that state — they pinned "one REQ at a time" and nothing else, so the retired premise could walk back in under half a dozen other phrasings, including the one the project's own lesson file calls the more dangerous of the two.

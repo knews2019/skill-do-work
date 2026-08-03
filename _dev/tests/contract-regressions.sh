@@ -108,6 +108,25 @@ assert_file_not_contains \
   'log -1 --format=%H -- actions/version\.md' \
   'actions/version.md must not use the last version.md-touching commit as the committed-customization baseline.'
 
+# No template may emit an instruction addressed to its reader (REQ-080). The Simple REQ template ended
+# with a bare "Think carefully before answering." *inside* the fence, so every REQ capture produced
+# inherited it — 25 archived REQs carry it, and one builder correctly flagged it as an instruction-like
+# artifact and treated it as data (REQ-012 D-02) without anyone looking at the source that kept
+# emitting it. A generated work item must contain the request and nothing that reads as a directive to
+# whoever processes it; that shape is precisely what crew-members/prompt-injection.md exists to catch,
+# and the skill must not manufacture it. Literal negatives on the known phrasings, deliberately not an
+# English-grammar detector — the wordings are illustrative, the condition above is the rule.
+for capture_artifact_phrase in \
+  'Think carefully before answering' \
+  'Reason step by step' \
+  'Take your time'
+do
+  assert_file_not_contains \
+    "actions/capture-reference.md" \
+    "$capture_artifact_phrase" \
+    "actions/capture-reference.md templates must not contain an instruction addressed to the reader — it lands inside the fence and is copied into every generated REQ, where it reads as a directive to the builder rather than as the user's request (REQ-080). Matched: $capture_artifact_phrase"
+done
+
 assert_contains \
   "actions/capture.md" \
   'maintenance: false' \
