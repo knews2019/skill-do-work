@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-03T16:09:06Z
 completed_at: 2026-08-03T16:14:26Z
 commit: 3fb5938
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-076-go-utility-emits-the-canonical-utc-tim.md
 route: C
 created_at: 2026-08-03T15:45:29Z
 status_changed_at: 2026-08-03T15:45:29Z

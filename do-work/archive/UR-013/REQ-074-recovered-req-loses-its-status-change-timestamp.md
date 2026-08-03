@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-03T15:52:32Z
 completed_at: 2026-08-03T15:56:18Z
 commit: 80e7b88
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-074-recovered-req-loses-its-status-change-ti.md
 route: A
 created_at: 2026-08-03T14:48:01Z
 status_changed_at: 2026-08-03T15:45:29Z
