@@ -4,6 +4,7 @@ title: The fan-out hand-back file has no legal write location
 status: completed
 claimed_at: 2026-08-03T22:14:08Z
 completed_at: 2026-08-03T22:17:23Z
+commit: 1cff0a7
 kb_status: pending
 route: B
 created_at: 2026-08-03T17:09:21Z
