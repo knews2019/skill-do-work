@@ -4,6 +4,7 @@ title: Go utility allocates REQ ids and version numbers and verifies release con
 status: completed
 claimed_at: 2026-08-03T14:50:03Z
 completed_at: 2026-08-03T15:08:08Z
+commit: 5db22ea
 route: C
 kb_status: pending
 created_at: 2026-08-03T11:41:15Z
