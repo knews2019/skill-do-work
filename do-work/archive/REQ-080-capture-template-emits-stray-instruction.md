@@ -4,6 +4,7 @@ title: The capture template emits a stray instruction line into every REQ it pro
 status: completed
 claimed_at: 2026-08-03T22:04:55Z
 completed_at: 2026-08-03T22:06:47Z
+commit: 8ee717b
 kb_status: pending
 route: A
 created_at: 2026-08-03T16:53:42Z
