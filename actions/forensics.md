@@ -16,7 +16,7 @@ A diagnostic tool for when the work pipeline feels broken, stuck, or produces co
 
 ## Core Rules
 
-- **Read-only.** This action never modifies files, moves REQs, updates frontmatter, or creates commits. It only reads and reports.
+- **Read-only.** This action never modifies files, moves REQs, updates frontmatter, or creates commits. It only reads and reports. One narrow exception, scoped on purpose: Check 14 compiles the shipped board tool, which writes that tool's gitignored binary inside the skill install. Nothing in the project — and nothing in `do-work/` — is touched, and the subcommand it then runs (`verify`) is itself read-only.
 - **Safe to run anytime.** No side effects. Can be run mid-session, between sessions, or when troubleshooting.
 - **Report, don't fix.** Findings include what's wrong and a suggested fix, but the user decides what to act on.
 
@@ -177,6 +177,32 @@ Exit 0 means nothing is damaged. Exit 1 means findings were printed — **a find
 - **Critical** when the scanner reports no recoverable content in history: the body was never committed intact. Say so plainly and point at backups or re-capture; there is nothing for Pass 6 to restore.
 
 This check exists because six archived REQ files in a consumer repo were truncated to 0 bytes by an unguarded Step 9 commit-hash write-back, and the only symptom for weeks was the board parking them as *untitled* with an invalid-status warning. `tools/checks/record-commit-hash.sh` is the guard that prevents it; this is the detector for damage already done.
+
+### 14. Release and Queue Invariants (Go toolchain only)
+
+Run the shipped board tool's `verify` subcommand. It is read-only, like this action, and it mechanically checks a set of cross-file invariants that are otherwise verified by eye:
+
+```bash
+(cd <skill-root>/tools/queue-kanban && go build -o queue-kanban .) 2>/dev/null \
+  && <skill-root>/tools/queue-kanban/queue-kanban verify --repo-root <project-root>
+```
+
+**If `go` is absent or the build fails, skip this check and say so** — it is the only check here that needs a compiler, and its absence must never fail the diagnostic. Everything it covers is also reachable by hand through the checks above.
+
+Exit 0 means no findings. Exit 1 means findings were printed — **a finding, not a script error**. Report its output as-is: each line names the probe, and the ones `do-work cleanup` can mechanically resolve are marked `[fixable]` with a trailing `N fixable: run do-work cleanup`. Its probes and where each one's definition lives:
+
+| Probe | Definition it reuses |
+| --- | --- |
+| version file vs. newest `CHANGELOG.md` entry (they must agree; the direction of a mismatch names the cause) | the release ritual's version/changelog lock-step |
+| newest entry's version not strictly greater than an earlier entry's | same — this is the duplicate-version-number failure |
+| newest entry's title already used by an earlier entry | same |
+| duplicate REQ numbers across queue / working / archive | `tools/queue-kanban/model.go`'s duplicate-id resolution |
+| `do-work/CHECKPOINT.md` naming a REQ that no longer exists | — (nothing else checks it; it matters because the checkpoint is crash recovery's input, `actions/work-reference.md` → Crash Recovery (Step 1)) |
+| stale, unparseable, future-dated, or absent `claimed_at` on a claimed REQ | Check 1 and Check 12 above |
+| finished REQs stranded in `queue/` or `working/` | Check 9 above |
+| `worktree-agent-*` leftovers, and any such worktree with uncommitted `do-work/` changes | `actions/cleanup.md` Pass 5; the dirty-`do-work/` case is the "state stays home" rule broken |
+
+A probe it could not run (no git, no version line, a changelog in a different convention) is reported as `- skipped …` rather than passing silently. Report those too — a skipped probe is an unverified invariant, not a clean one.
 
 ## Output Format
 

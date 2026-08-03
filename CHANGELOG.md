@@ -6,6 +6,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.165.0 — REQ and Version Numbers Get Allocated, Release Rules Get Checked (2026-08-03)
+
+Two of the rules you're asked to hand-check on every single commit — the version must beat the newest changelog entry, and the entry title must not already be in use — are documented as having already been gotten wrong. They're now machine-checked, and the board tool can hand you the next REQ number and version instead of you eyeballing a file listing for it.
+
+- New `queue-kanban next-req` prints the next free REQ number, running capture's own scan (gaps tolerated, `archive/UR-*/` included)
+- New `queue-kanban next-version <patch|minor|major>` bumps the version line, reads it back to confirm the write landed, and prints the number — the bump size is always yours to name, never inferred
+- New `queue-kanban verify` reports eight invariants read-only: version/changelog agreement, duplicate or reused entry versions and titles, duplicate REQ numbers, a checkpoint naming a REQ that no longer exists, untrustworthy `claimed_at` stamps, finished REQs stranded outside the archive, and `worktree-agent-*` leftovers
+- `verify` marks the findings `do-work cleanup` can actually fix and points you there; it never repairs anything itself, and it never writes `CHANGELOG.md` — that stays a human write
+- Wired in as optional accelerators: capture (REQ numbers), the Step 9 commit ritual (version bump), and forensics as Check 14. Each falls back to the existing manual procedure when the Go toolchain is absent
+- A probe that can't run (no git, no version line, a changelog in another convention) is reported as skipped rather than passing quietly
+
 ## 0.164.0 — Crash Recovery Asks Before Discarding a Claimed REQ (2026-08-03)
 
 Crash and restart thirty seconds later, and recovery used to throw away the plan, exploration, and scope the interrupted run had just finished writing — nothing is committed before Step 9, so those sections were gone for good. Recovery is now conditional: it only resets what the checkpoint records as this session's own interrupted work, and everything else is left exactly as it is.

@@ -261,6 +261,55 @@ if [ -z "$checkpoint_read_line" ] || [ -z "$crash_recovery_line" ] || [ "$checkp
   fail_count=$((fail_count + 1))
 fi
 
+# Allocator / verifier subcommands (REQ-072). The tool grew a second write surface
+# (one version line, outside do-work/) and three release-ritual subcommands. Two
+# things must not drift: the never-write-CHANGELOG boundary, and the three prose
+# call sites — a subcommand nothing calls is dead weight, and a call site with no
+# stated fallback turns the Go toolchain into a hard dependency of the pipeline.
+assert_file_not_contains \
+  "tools/queue-kanban/release.go" \
+  'os\.(WriteFile|Create|OpenFile)\(.*CHANGELOG' \
+  'tools/queue-kanban/release.go must never write CHANGELOG.md — unique version numbers do not make a shared prepend safe, so the changelog stays an owner-only human write.'
+
+assert_file_not_contains \
+  "tools/queue-kanban/verify.go" \
+  'os\.(WriteFile|Create|OpenFile|Remove|Rename)\(' \
+  'tools/queue-kanban/verify.go must stay read-only — verify reports and routes, and repairs belong to actions/cleanup.md, which asks first.'
+
+assert_contains \
+  "tools/queue-kanban/main.go" \
+  'want summary \| generate \| serve \| next-req \| next-version \| verify' \
+  'tools/queue-kanban/main.go unknown-subcommand message must list every subcommand it dispatches, or the error text lies about what exists.'
+
+for release_subcommand_call_site in \
+  'actions/capture.md:queue-kanban next-req' \
+  'actions/work.md:queue-kanban next-version' \
+  'actions/forensics.md:queue-kanban verify'; do
+  call_site_file="${release_subcommand_call_site%%:*}"
+  call_site_pattern="${release_subcommand_call_site#*:}"
+  assert_contains \
+    "$call_site_file" \
+    "$call_site_pattern" \
+    "$call_site_file must call \`$call_site_pattern\` — REQ-072 wired the allocator/verifier into the three existing actions instead of adding a new action or a SKILL.md routing row."
+  # Every call site must name what to do when the toolchain is missing. The board
+  # action reports and stops because there the compiler IS the capability; these
+  # three must fall back to the procedure they accelerate.
+  assert_contains \
+    "$call_site_file" \
+    'If .go. is absent|when .go. is absent|absent or the build fails' \
+    "$call_site_file must state the fallback for a missing Go toolchain next to its queue-kanban call — the compiler is an accelerator here, never a dependency of the pipeline."
+done
+
+assert_contains \
+  "CLAUDE.md" \
+  'two write surfaces' \
+  'CLAUDE.md must state the tool has exactly two write surfaces once next-version exists — the ONE-write-surface claim was true only while the testing view was alone, and nothing but this sentence records it.'
+
+assert_contains \
+  "docs/forensics-guide.md" \
+  'Release and queue invariants' \
+  'docs/forensics-guide.md must list the release/queue invariants check — a forensics check absent from the user-facing guide is invisible to the person who would run it.'
+
 assert_contains \
   "docs/ai-report-guide.md" \
   'completed-with-issues' \

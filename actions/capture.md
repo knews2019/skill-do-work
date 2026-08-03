@@ -72,6 +72,16 @@ Files in `working/` and `archive/` are **immutable**. If someone wants to add to
 
 To get the next REQ number, check existing `REQ-*.md` files across `do-work/queue/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`), then increment from the highest. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences. If no existing files are found anywhere, start at 1.
 
+**Shortcut for the REQ number** — the shipped board tool runs that exact scan, so you can read the answer instead of eyeballing a file listing:
+
+```bash
+# Optional accelerator. Needs the Go toolchain; the build is cached after the first run.
+(cd <skill-root>/tools/queue-kanban && go build -o queue-kanban .) 2>/dev/null \
+  && <skill-root>/tools/queue-kanban/queue-kanban next-req --repo-root <project-root>
+```
+
+It prints one number. **If `go` is absent or the build fails, do the scan above by hand** — this is an accelerator, never a dependency (`actions/board.md` Step 2 is the same toolchain exception, except there the tool *is* the capability, so it stops; here you fall back). It covers REQ numbers only; UR numbering stays a manual scan. The number is **not reserved** — two captures running at the same instant can compute the same one — which is accepted: the title is in the filename, so a rare duplicate is cheap to spot and renumber (`queue-kanban verify` reports duplicates).
+
 ### Backward Compatibility
 
 Legacy REQ files (pre-UR system) may lack `user_request` and reference `CONTEXT-*.md` files or `do-work/assets/` instead. This is fine — actions/work.md handles both patterns. New REQs always get `user_request`.
