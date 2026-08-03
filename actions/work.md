@@ -601,7 +601,7 @@ House-format entries are keyed `## X.Y.Z — [Short Descriptive Title] (YYYY-MM-
 
 ```bash
 (cd <skill-root>/tools/queue-kanban && go build -o queue-kanban .) 2>/dev/null \
-  && <skill-root>/tools/queue-kanban/queue-kanban next-version <patch|minor|major> --repo-root <project-root>
+  && <skill-root>/tools/queue-kanban/queue-kanban next-version --repo-root <project-root> <patch|minor|major>
 ```
 
 It bumps the repo's `**Current version**: X.Y.Z` line, reads it back to confirm the write landed, and prints the new number — and it **never writes `CHANGELOG.md`**, which stays a human-authored write. It exits non-zero without writing when `go` is absent or the repo keeps no such line (the common case outside this skill's own checkout): **fall back to the Changelog Entry Procedure's own version-source resolution**, which handles `package.json`, tags, and unversioned repos. After writing the entry, `queue-kanban verify --repo-root <project-root>` checks the version-vs-changelog agreement and the title-reuse rule mechanically — the two checks the procedure otherwise asks you to perform by eye.

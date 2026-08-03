@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.168.0 — next-version Writes The Repo You Point It At (2026-08-03)
+
+`queue-kanban next-version` takes the bump size as a positional and `--repo-root` as a flag, and Go's flag parser stops at the first non-flag argument — so every flag placed after the bump size was thrown away. The invocation the skill itself prescribed put `--repo-root` last, which meant it bumped whatever repo you happened to be standing in, exited 0, and printed a plausible version number. This is the tool's only write outside `do-work/`, and it was writing the wrong file.
+
+- Flags now work on either side of the bump size, in any order
+- Leftover tokens are an error on **every** subcommand instead of being ignored — that silence is what hid this, and the same shape was live on the flags-only subcommands too (`verify stray --repo-root X` was quietly reading the calling repo)
+- The argument handling moved into a function without an `os.Exit` in it, so it can finally be tested — 11 table cases now cover every order, and they were watched failing against the old code first
+- The prescribed invocation in `actions/work.md` puts the flags first, and a contract check pins that order rather than just the subcommand's name
+
 ## 0.167.4 — Capture Stops Stamping A Stray Instruction Into Every REQ (2026-08-03)
 
 The Simple REQ template ended with a bare `Think carefully before answering.` *inside* the fence, so every request `do-work capture` wrote inherited it — 25 archived REQs carry the line. A builder spotted it once, correctly treated it as data rather than a directive, and logged the sighting in its own REQ. Nobody looked at the template, so it kept emitting for another 25 captures.

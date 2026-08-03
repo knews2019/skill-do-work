@@ -532,6 +532,22 @@ assert_contains \
   'want summary \| generate \| serve \| next-req \| next-version \| verify' \
   'tools/queue-kanban/main.go unknown-subcommand message must list every subcommand it dispatches, or the error text lies about what exists.'
 
+# The prescribed invocation's ARGUMENT ORDER, not just the subcommand name (REQ-081). next-version
+# takes the bump size as a positional and --repo-root/--version-file as flags. The parser now accepts
+# either order, but the documented form is the one every agent copies — and when the flags trailed the
+# positional, a single flag.FlagSet.Parse discarded them, so the command bumped whatever repo it was
+# launched from and exited 0. Asserting only that the subcommand name appears (below) is what let the
+# documented form stay broken through a release. Flags first is the form pinned here.
+assert_contains \
+  "actions/work.md" \
+  'queue-kanban next-version --repo-root <project-root> <patch\|minor\|major>' \
+  'actions/work.md must prescribe next-version with the flags BEFORE the positional bump size — a trailing --repo-root was silently discarded before REQ-081, and the documented form is what every agent copies even now that the parser tolerates both.'
+
+assert_contains \
+  "tools/queue-kanban/main.go" \
+  'func rejectLeftoverArguments' \
+  'tools/queue-kanban/main.go must keep the shared leftover-argument rejection — an unconsumed token is an error for ANY subcommand, not silence, which is how next-version writing the wrong tree stayed invisible (REQ-081).'
+
 for release_subcommand_call_site in \
   'actions/capture.md:queue-kanban next-req' \
   'actions/work.md:queue-kanban next-version' \

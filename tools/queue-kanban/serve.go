@@ -523,6 +523,7 @@ func runServeCommand(args []string) {
 	openFlag := flagSet.Bool("open", false,
 		"open the default browser at the board URL after a successful bind")
 	_ = flagSet.Parse(args)
+	exitOnLeftoverArguments("serve", flagSet.Args())
 
 	repoRoot, resolveErr := resolveRepoRootOrDefault(*repoRootFlag)
 	if resolveErr != nil {

@@ -216,3 +216,146 @@ func TestCompareSemanticVersions(t *testing.T) {
 		}
 	}
 }
+
+// TestParseNextVersionArgumentsAcceptsFlagsOnEitherSideOfTheBumpSize pins the
+// defect that shipped in 0.166.0: flag.FlagSet.Parse halts at the first non-flag
+// argument, so every flag placed AFTER the positional bump size was silently
+// discarded — and the command then bumped whatever repo it was launched from and
+// exited 0. The skill's own prescribed invocation put --repo-root last, so the
+// documented form was the broken one. The first case below is that exact shape.
+func TestParseNextVersionArgumentsAcceptsFlagsOnEitherSideOfTheBumpSize(t *testing.T) {
+	testCases := []struct {
+		caseName            string
+		arguments           []string
+		expectedBumpSize    string
+		expectedRepoRoot    string
+		expectedVersionFile string
+	}{
+		{
+			caseName:            "flags after the positional (the invocation actions/work.md prescribes)",
+			arguments:           []string{"patch", "--repo-root", "/tmp/x", "--version-file", "/tmp/x/actions/version.md"},
+			expectedBumpSize:    "patch",
+			expectedRepoRoot:    "/tmp/x",
+			expectedVersionFile: "/tmp/x/actions/version.md",
+		},
+		{
+			caseName:            "flags before the positional",
+			arguments:           []string{"--repo-root", "/tmp/x", "--version-file", "/tmp/x/actions/version.md", "minor"},
+			expectedBumpSize:    "minor",
+			expectedRepoRoot:    "/tmp/x",
+			expectedVersionFile: "/tmp/x/actions/version.md",
+		},
+		{
+			caseName:            "interleaved around the positional",
+			arguments:           []string{"--repo-root", "/tmp/x", "major", "--version-file", "/tmp/x/VERSION"},
+			expectedBumpSize:    "major",
+			expectedRepoRoot:    "/tmp/x",
+			expectedVersionFile: "/tmp/x/VERSION",
+		},
+		{
+			caseName:            "equals form on either side",
+			arguments:           []string{"--repo-root=/tmp/x", "patch", "--version-file=/tmp/x/VERSION"},
+			expectedBumpSize:    "patch",
+			expectedRepoRoot:    "/tmp/x",
+			expectedVersionFile: "/tmp/x/VERSION",
+		},
+		{
+			caseName:         "bare bump size, no flags",
+			arguments:        []string{"patch"},
+			expectedBumpSize: "patch",
+		},
+	}
+
+	for _, testCase := range testCases {
+		parsed, parseError := parseNextVersionArguments(testCase.arguments)
+		if parseError != nil {
+			t.Errorf("%s: parseNextVersionArguments(%q) returned error %v, want success",
+				testCase.caseName, testCase.arguments, parseError)
+			continue
+		}
+		if parsed.BumpSize != testCase.expectedBumpSize {
+			t.Errorf("%s: BumpSize = %q, want %q", testCase.caseName, parsed.BumpSize, testCase.expectedBumpSize)
+		}
+		if parsed.RepoRootOverride != testCase.expectedRepoRoot {
+			t.Errorf("%s: RepoRootOverride = %q, want %q", testCase.caseName, parsed.RepoRootOverride, testCase.expectedRepoRoot)
+		}
+		if parsed.VersionFileOverride != testCase.expectedVersionFile {
+			t.Errorf("%s: VersionFileOverride = %q, want %q", testCase.caseName, parsed.VersionFileOverride, testCase.expectedVersionFile)
+		}
+	}
+}
+
+// TestParseNextVersionArgumentsRejectsRatherThanIgnores covers the other half of
+// the same defect: unconsumed tokens were left sitting in Arg(1)/Arg(2), neither
+// rejected nor warned about, which is how a discarded --repo-root produced a
+// successful-looking bump of the wrong tree.
+func TestParseNextVersionArgumentsRejectsRatherThanIgnores(t *testing.T) {
+	testCases := []struct {
+		caseName            string
+		arguments           []string
+		expectedErrorSubstr string
+	}{
+		{
+			caseName:            "missing bump size",
+			arguments:           []string{},
+			expectedErrorSubstr: "name the bump size",
+		},
+		{
+			caseName:            "only flags, no bump size",
+			arguments:           []string{"--repo-root", "/tmp/x"},
+			expectedErrorSubstr: "name the bump size",
+		},
+		{
+			caseName:            "stray second positional",
+			arguments:           []string{"patch", "minor"},
+			expectedErrorSubstr: "unrecognized argument(s)",
+		},
+		{
+			caseName:            "stray positional after a flag",
+			arguments:           []string{"patch", "--repo-root", "/tmp/x", "stray"},
+			expectedErrorSubstr: "unrecognized argument(s)",
+		},
+		{
+			caseName:            "unknown flag before the positional",
+			arguments:           []string{"--nope", "patch"},
+			expectedErrorSubstr: "not defined",
+		},
+		{
+			caseName:            "unknown flag after the positional",
+			arguments:           []string{"patch", "--nope"},
+			expectedErrorSubstr: "not defined",
+		},
+	}
+
+	for _, testCase := range testCases {
+		_, parseError := parseNextVersionArguments(testCase.arguments)
+		if parseError == nil {
+			t.Errorf("%s: parseNextVersionArguments(%q) succeeded, want an error", testCase.caseName, testCase.arguments)
+			continue
+		}
+		if !strings.Contains(parseError.Error(), testCase.expectedErrorSubstr) {
+			t.Errorf("%s: error = %q, want it to contain %q",
+				testCase.caseName, parseError.Error(), testCase.expectedErrorSubstr)
+		}
+	}
+}
+
+// TestRejectLeftoverArgumentsIsTheSharedRule pins the condition rather than
+// today's subcommand list: any subcommand finishing its parse with tokens left
+// over must fail. Flags-only subcommands are reachable by the same shape — a
+// stray token placed first halts Parse and every flag after it is discarded.
+func TestRejectLeftoverArgumentsIsTheSharedRule(t *testing.T) {
+	if rejectLeftoverArguments("verify", nil) != nil {
+		t.Error("no leftover arguments must not be an error")
+	}
+	if rejectLeftoverArguments("verify", []string{}) != nil {
+		t.Error("an empty leftover slice must not be an error")
+	}
+	leftoverError := rejectLeftoverArguments("verify", []string{"stray"})
+	if leftoverError == nil {
+		t.Fatal("a leftover argument must be an error")
+	}
+	if !strings.Contains(leftoverError.Error(), "verify") || !strings.Contains(leftoverError.Error(), "stray") {
+		t.Errorf("error must name the subcommand and the offending token, got %q", leftoverError.Error())
+	}
+}
