@@ -4,6 +4,7 @@ title: A recovered REQ loses the timestamp that says when it was reset
 status: completed
 claimed_at: 2026-08-03T15:52:32Z
 completed_at: 2026-08-03T15:56:18Z
+commit: 80e7b88
 kb_status: pending
 route: A
 created_at: 2026-08-03T14:48:01Z
