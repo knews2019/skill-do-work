@@ -4,6 +4,7 @@ title: Go utility emits the canonical UTC timestamp, preferred over date -u when
 status: completed
 claimed_at: 2026-08-03T16:09:06Z
 completed_at: 2026-08-03T16:14:26Z
+commit: 3fb5938
 kb_status: pending
 route: C
 created_at: 2026-08-03T15:45:29Z
