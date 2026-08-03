@@ -4,6 +4,7 @@ title: Crash recovery's own-crash branch is unreachable, and its retired premise
 status: completed
 claimed_at: 2026-08-03T21:29:26Z
 completed_at: 2026-08-03T21:44:08Z
+commit: 598ef35
 kb_status: pending
 created_at: 2026-08-03T16:53:42Z
 user_request: UR-015
