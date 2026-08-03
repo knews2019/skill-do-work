@@ -74,18 +74,22 @@ half that is actually failing.
      impersonation — a builder that wrote queue state)
 4. **Never write `CHANGELOG.md`.** Unique version numbers do not make a shared prepend safe, so the
    changelog stays an owner-only, human-authored write.
-5. **Allocate, then read back to confirm ownership.** After writing a version, re-read the file and
+5. **`verify` exits non-zero on findings and routes the fixable ones.** Its report must name which
+   findings are mechanically fixable and point at `do-work cleanup` for them — e.g.
+   `3 fixable: run do-work cleanup`. This is how the user's "any fix that needs to be done, can be
+   performed" is honored without this tool doing the fixing (see `## Open Questions`).
+6. **Allocate, then read back to confirm ownership.** After writing a version, re-read the file and
    confirm the value landed before reporting success.
-6. **Gaps are acceptable and require no special handling.** The max+1 rule already tolerates them and
+7. **Gaps are acceptable and require no special handling.** The max+1 rule already tolerates them and
    nothing in the skill walks a contiguous sequence. Do not add gap-filling, gap-detection, or
    compaction.
-7. **Wire the three call sites** — `next-req` into `actions/capture.md:73`, `next-version` into the
+8. **Wire the three call sites** — `next-req` into `actions/capture.md:73`, `next-version` into the
    Step 9 commit ritual in `actions/work.md`, and `verify` into `actions/forensics.md`'s `## Checks`.
    **No new action file and no new SKILL.md routing row.**
-8. **Degrade gracefully when `go` is absent**, exactly as `actions/board.md` does — the call sites must
+9. **Degrade gracefully when `go` is absent**, exactly as `actions/board.md` does — the call sites must
    fall back to the existing manual procedure rather than failing. The Go toolchain is a documented
    exception for this one tool, never a hard dependency of the pipeline.
-9. **Update `CLAUDE.md:159` in the same commit.** It currently states the board's Testing view is the
+10. **Update `CLAUDE.md:159` in the same commit.** It currently states the board's Testing view is the
    tool's "**ONE** write surface… it never touches `status` or any other pipeline field." An allocator
    makes it two. This is the co-location rule applied to itself; it is prose-only with no assertion
    behind it, which is exactly why it gets forgotten.
@@ -100,8 +104,12 @@ half that is actually failing.
   True atomicity needs a number-keyed marker file, i.e. new durable state, which this batch forbids.
   Allocation is human-initiated at capture time and runs in milliseconds — do not build a locking
   scheme, and do not claim in prose that duplicates are impossible.
-- **Detect and report only.** Never mutate a REQ field, never touch `status`, never widen the tool's
-  write surface beyond `actions/version.md`.
+- **Never mutates queue or REQ state.** `next-version` writes `actions/version.md` and nothing else —
+  no REQ field, no `status`, no file in `do-work/`. The tool's write surface widens by exactly one
+  file. Repairs are `actions/cleanup.md`'s job, which asks before it acts.
+- **Justify this REQ on its own merits, independent of parallel builds.** Its value is that two
+  pre-commit consistency checks are performed by hand today and have already been gotten wrong
+  (`CLAUDE.md` § Before Every Commit, items 1 and 2). Do not frame it as concurrency support.
 - Never commit the compiled binary (`tools/queue-kanban/.gitignore` already covers it).
 
 ## Dependencies
@@ -121,6 +129,18 @@ writing a second, subtly different one.
 Latitude on: subcommand naming, output format (human-readable is fine; no machine-readable format is
 required), and the staleness threshold's plumbing. Keep it small — this is a few hundred lines of Go
 in an existing module.
+
+## Open Questions
+
+- [x] The original request said "any fix that needs to be done, can be performed" — should this tool
+  perform repairs, or only detect and route them? → **Report only; fixes stay in
+  `actions/cleanup.md`.** Resolved by the user at verify time (`do-work verify-requests`, 2026-08-03),
+  choosing "Report only, fixes via cleanup" over a fix mode and over a queue-excluded partial fix mode.
+  Rationale accepted: `actions/forensics.md:3` is read-only by contract and the board tool has one
+  narrow write surface, so a repairing binary would change two contracts, while `actions/cleanup.md`
+  already asks before it acts. **The intent is honored, not dropped** — requirement 5 makes `verify`
+  name its fixable findings and point at `do-work cleanup`, so a single cheap invocation still tells
+  you what to run.
 
 ## Red-Green Proof
 

@@ -120,6 +120,17 @@ deleted machinery returns.
   fan-out failures **survivable, not prevented**. Do not describe it as a fix.
 - Worktrees live outside the repo working tree (`actions/work-reference.md:235`) — a nested second
   checkout is a documented corruption path.
+- **A worktree per builder is mandatory, not optional.** The original request offered "with our
+  without a new workspace, is a valid variation"; the shared-tree variation was **ruled out** during
+  capture and the user did not contest it. Reason: sharing one working tree means every test run,
+  qualification check, and review diff in both sessions reads a tree containing the other builder's
+  unfinished edits, so the evidence steps stop meaning anything and nothing downstream can tell. The
+  staging race is the lesser problem. Keep this rationale in the shipped prose — without it, a future
+  reader will re-offer the shared tree as a simplification.
+- **"Without letting the other session know that it is running in parallel"** — the user's phrasing,
+  and it is satisfied structurally rather than by suppressing information: a builder owns no queue
+  state, so there is nothing for it to know. Never implement this as hiding state from a builder that
+  could otherwise read it.
 
 ## Dependencies
 
@@ -137,7 +148,17 @@ description. Expect to iterate on that sentence.
 
 This is an instruction-editing REQ on the skill's own files. Prefer **rewording and deleting** over
 adding: if the fan-out section grows past what the existing Worktree Dispatch Mode already says, most
-of it is redundant and should be cut rather than written.
+of it is redundant and should be cut rather than written. That guidance governs the **shipped prose**,
+not this REQ's requirement count — see `## Open Questions`.
+
+## Open Questions
+
+- [x] Eleven detailed requirements against a one-sentence ask carrying a lightness cue ("without the
+  anxiety and checking overhead") — keep them all, or trim to the load-bearing ones? → **Keep all
+  eleven.** Resolved by the user at verify time (`do-work verify-requests`, 2026-08-03). Each
+  requirement traces to a specific failure surfaced during the conversation, and the builder should
+  inherit that reasoning rather than rediscover it. The lightness cue was about **runtime** overhead —
+  no locks, no heartbeats, no coordination checks — not about how thoroughly the request is specified.
 
 ## Red-Green Proof
 

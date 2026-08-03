@@ -107,8 +107,11 @@ radius of REQ-073.
 
 ## Builder Guidance
 
-**Certainty level: Firm** on the discriminator, the ordering flip, the three-hour semantics, the
-timestamp guard, and the non-blocking unattended path — all six were settled with the user.
+**Certainty level: Firm** on all six, but the provenance differs and that matters if one has to be
+traded off. **User-stated, verbatim:** leave a claimed ticket claimed, the three-hour threshold, and
+asking before takeover. **Analysis-derived and approved via the plan:** the checkpoint discriminator,
+the timestamp guard, and the non-blocking unattended path. If any requirement has to give, it comes
+from the second group — never the first.
 
 Latitude on: where the threshold constant is stated and how it is worded; the exact prompt text; and
 how the report line is formatted. Keep it simple — this is prose in two action files plus assertions,
