@@ -6,6 +6,22 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.168.2 — Verify Marks Only Merged Worktrees As Fixable (2026-08-03)
+
+`do-work forensics` was reporting every leftover builder worktree as something `do-work cleanup` would
+mechanically resolve — including builders still mid-run and branches holding work that exists nowhere
+else. Sent to cleanup, those cases stop and ask instead, so the count was pointing you at a command
+that could not help. Verify now checks whether the branch is actually merged and says which case it
+found.
+
+- Merged residue reports as `merged-worktree-leftover [fixable]` and is the only kind counted toward
+  `N fixable: run do-work cleanup` — matching what cleanup Pass 5 will actually do
+- Unmerged work reports as `unmerged-worktree-leftover`, not fixable, and its remedy says out loud that
+  verify cannot tell a live builder from a dead one
+- A worktree whose branch is gone gets its own `worktree-merge-state-undetermined` state, so an
+  unanswerable question is never reported as an answer
+- `verify_test.go` gained a real git-repo fixture; every worktree probe used to skip silently in tests
+
 ## 0.168.1 — The Fan-Out Hand-Back File Has Somewhere Legal To Go (2026-08-03)
 
 Fan-out dispatch made a per-builder `REQ-NNN-handback.md` mandatory, and the worktree rules forbade builders from writing the main tree — where `do-work/` lives. There was no location satisfying both, so an agent that got there had three moves and two of them corrupted the run quietly: write the main tree anyway, or write the worktree's copy where the file lands in the builder's branch and the orchestrator reads nothing.
