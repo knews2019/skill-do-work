@@ -6,6 +6,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.166.1 — Crash Recovery Records When It Reset a REQ (2026-08-03)
+
+A REQ the pipeline re-queues after a crash now carries the instant it was recovered, so the board's waiting-time figure counts from the reset rather than from the day the request was written. The by-hand reset in forensics already did this; the automatic one had never done it.
+
+- Crash Recovery substep 1 stamps `status_changed_at` on the reset, on both flip targets (`pending` and `pending-answers`), with the preserved-`blocked` case explicitly excluded — its `blocked_at` is intact
+- The same substep removes `claimed_at`, which is why the stamp matters: without it a recovered REQ has no trace of the reset at all
+- New contract-suite assertion pins the prescription, so a later edit can't quietly drop it
+
 ## 0.166.0 — Several Builders at Once, Under One Queue Owner (2026-08-03)
 
 You can now hand several REQs to several builders at the same time — each in its own git worktree — without any of the locks, heartbeats, or liveness checks that got deleted at 0.161.0. The trick is that none of that was ever needed: worktree dispatch was already written per REQ, so only two sentences were capping the builder count. The boundary that matters is *who owns the queue*, not how many builds run.

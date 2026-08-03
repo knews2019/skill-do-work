@@ -307,6 +307,16 @@ assert_block_contains \
   'substep 1 removes it' \
   'actions/work-reference.md Crash Recovery must say claimed_at is read while classifying, before substep 1 discards it — the same ordering trap as the Scope/write_set decision (REQ-071).'
 
+# Recovery stamps the flip instant (REQ-074). The automatic reset had been silently out of compliance
+# with status_changed_at's own trigger condition since the field was introduced, and nothing caught it
+# for that entire span — the manual reset in actions/forensics.md stamped, this one did not. Since the
+# same substep removes claimed_at, an unstamped recovery leaves no trace of the reset at all and the
+# board dates a just-recovered REQ from created_at.
+assert_block_contains \
+  "$crash_recovery_block" \
+  'stamp `status_changed_at' \
+  'actions/work-reference.md Crash Recovery substep 1 must stamp status_changed_at on the reset — the field is written on any status flip with no dedicated *_at of its own, and this substep also removes claimed_at, so it is the only surviving trace of when recovery happened (REQ-074).'
+
 work_step_one_block="$(sed -n '/^### Step 1: Find Next Request/,/^### Step 2\.0/p' "$repo_root/actions/work.md")"
 
 assert_block_not_contains \
