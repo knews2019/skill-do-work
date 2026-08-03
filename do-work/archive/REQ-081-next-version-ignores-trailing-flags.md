@@ -4,6 +4,7 @@ title: next-version ignores flags placed after the bump size and silently bumps 
 status: completed
 claimed_at: 2026-08-03T22:07:20Z
 completed_at: 2026-08-03T22:13:28Z
+commit: 84d79c1
 kb_status: pending
 route: B
 created_at: 2026-08-03T17:09:21Z
