@@ -4,6 +4,7 @@ title: The Windows timestamp fallback cannot run on stock Windows in either shel
 status: completed
 claimed_at: 2026-08-03T21:45:43Z
 completed_at: 2026-08-03T21:54:55Z
+commit: 7998740
 kb_status: pending
 route: C
 created_at: 2026-08-03T16:53:42Z
