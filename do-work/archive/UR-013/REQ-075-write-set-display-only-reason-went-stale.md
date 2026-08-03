@@ -4,6 +4,7 @@ title: Five files still explain write_set's display-only status with a reason fa
 status: completed
 claimed_at: 2026-08-03T15:58:05Z
 completed_at: 2026-08-03T16:07:20Z
+commit: 738e9fe
 kb_status: pending
 route: B
 created_at: 2026-08-03T15:20:00Z
