@@ -159,3 +159,30 @@ user before capture.
 ## Full Context
 
 See `do-work/user-requests/UR-015/input.md` for the audit's provenance and the findings it cleared.
+
+---
+
+## Addendum (2026-08-03)
+
+An **external audit**, triaged separately via `do-work validate-feedback` and captured as UR-016,
+reached the same conclusion independently: "Ten shipped sites still directly prescribe `date -u`,
+bypassing the new preferred command. When the binary is absent, the Windows fallback uses `Get-Date
+-AsUTC`, which the project's own review acknowledges requires PowerShell 7 and fails on Windows
+PowerShell 5.1." Same two defects, same ten-site count, same 5.1 replacement form. The user's
+instruction was to fold that audit's evidence into this REQ rather than duplicate it.
+
+**It found nothing this REQ did not already have** — and less: it missed defect (b) (a cmdlet
+prescribed for `cmd`), defect (c) (`actions/memory.md:50`), and the `Z` format-string question. Recorded
+as independent corroboration, which is worth exactly one thing: the diagnosis is now confirmed by two
+readers who did not share notes, so requirements 1 and 2 should not be re-litigated during the build.
+
+**One genuine addition — the shipped changelog entry stays uncorrected.** `CHANGELOG.md`'s 0.167.0
+entry claims the release "Fixes a real gap on Windows `cmd`, where the prescribed `date -u +FORMAT`
+doesn't exist at all." As shipped it does not, for both reasons above. This REQ's `## Why` notes that
+the entry's claim is "stronger than the code," but no requirement acts on it — whereas REQ-077's
+requirement 7 does exactly that for its own finding ("Disclose the F1 regression in the changelog
+entry, not only the fix"). Add the equivalent here: **this REQ's own changelog entry should state that
+0.167.0's Windows claim did not hold and that this release is what makes it true.** Do not rewrite the
+0.167.0 entry itself — history stays; the correction belongs in the new entry.
+
+No contradiction with anything above.

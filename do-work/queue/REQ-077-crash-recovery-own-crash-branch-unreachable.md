@@ -161,3 +161,40 @@ user before capture.
 ## Full Context
 
 See `do-work/user-requests/UR-015/input.md` for the audit's provenance and the findings it cleared.
+
+---
+
+## Addendum (2026-08-03)
+
+An **external audit**, triaged separately via `do-work validate-feedback` and captured as UR-016,
+reached finding F3 independently: "Step 1 says foreign claims must remain byte-identical, but Step 2
+still says every file in `working/` belongs to this session and will be reclaimed. The regression
+assertion only scans Step 1, so the suite remains green." The user's instruction was to fold that
+audit's evidence into this REQ rather than duplicate it, so F3 stays this REQ's and the external
+finding adds one thing to it.
+
+**The addition — requirement 6 must widen the guard's *scope*, not only its pattern.** The assertion at
+`_dev/tests/contract-regressions.sh:361-364` reads its haystack from a block, not the file:
+
+```bash
+work_step_one_block="$(sed -n '/^### Step 1: Find Next Request/,/^### Step 2\.0/p' "$repo_root/actions/work.md")"
+assert_block_not_contains "$work_step_one_block" "Every .working/. file is this session's own leftover" ...
+```
+
+`actions/work.md`'s Step 1 spans lines 114–210 (`### Step 1: Find Next Request` to
+`### Step 2.0: Pre-Claim Archive Collision Check`). **The stale sentence is at `:224`, inside
+`### Step 2: Claim the Request` — outside that block entirely.** So a broadened *pattern* alone still
+returns green: the assertion never looks at the line it is meant to catch. Requirement 6 must widen the
+haystack to the whole file (or to a block that contains Step 2) as well as generalizing the wording, and
+the requirement's own proof step — "prove it by reverting the sentence and watching the suite name the
+file" — is what will surface this if it is missed.
+
+**Also worth recording:** there is a *second* REQ-071 guard with the same shape, at
+`_dev/tests/contract-regressions.sh:313-316` — `assert_file_not_contains "actions/work-reference.md"
+'no other live session whose in-flight claim a recovery could disturb'`. It is scoped to
+`actions/work-reference.md` by argument, so it cannot see `actions/work.md` at all. Both guards pin the
+same retired premise in one file each; treat them as one set when broadening, per `CLAUDE.md` → Closed
+Enumerations Go Stale, rather than fixing the one this REQ names and leaving its twin narrow.
+
+No contradiction with anything above: the external finding is a subset of F3, and its contribution is
+scope, not diagnosis.
