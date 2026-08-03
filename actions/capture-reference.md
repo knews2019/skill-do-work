@@ -13,7 +13,7 @@
 id: REQ-001
 title: Brief descriptive title
 status: pending
-created_at: 2025-01-26T10:00:00Z  # current UTC instant — date -u +%Y-%m-%dT%H:%M:%SZ, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
+created_at: 2025-01-26T10:00:00Z  # current UTC instant, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
 user_request: UR-001
 domain: frontend  # choose one: frontend, backend, ui-design, general, security, or testing
 prime_files: []  # list paths to relevant prime-*.md files, or leave empty
@@ -138,7 +138,7 @@ Created for every invocation. For simple requests, it's minimal:
 ---
 id: UR-005
 title: Add keyboard shortcuts
-created_at: 2025-01-26T10:00:00Z  # current UTC instant — date -u +%Y-%m-%dT%H:%M:%SZ, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
+created_at: 2025-01-26T10:00:00Z  # current UTC instant, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
 requests: [REQ-020]
 word_count: 4
 ---
@@ -164,7 +164,7 @@ Written for **Addendum for in-flight/completed requests** (`actions/capture.md` 
 id: REQ-021
 title: "Addendum: dark mode sidebar support"
 status: pending
-created_at: 2025-01-27T09:00:00Z  # current UTC instant — date -u +%Y-%m-%dT%H:%M:%SZ (Timestamp rule)
+created_at: 2025-01-27T09:00:00Z  # current UTC instant (Timestamp rule, actions/work-reference.md)
 user_request: UR-006        ← new UR created for this addendum
 addendum_to: REQ-005        ← links back to the original request
 ---

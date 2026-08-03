@@ -121,7 +121,7 @@ Files: `memory/usage-ledger.jsonl` (memory engine) and `usage-ledger.jsonl` at t
 
 | Field | Value |
 | --- | --- |
-| `ts` | `date -u +%Y-%m-%dT%H:%M:%SZ` |
+| `ts` | current UTC instant (Timestamp rule, `actions/work-reference.md`) |
 | `engine` | `memory` \| `bkb` |
 | `event` | memory: `inject`, `capture`, `write`, `recall`, `hit_cited` · bkb: `query`, `ingest`, `hit_cited` (illustrative — new events allowed, auditor buckets unknown events as "other") |
 | `query` | recall/query events only; sanitized token form (same text-operation sanitize as lexical recall), never raw user text |
@@ -129,10 +129,9 @@ Files: `memory/usage-ledger.jsonl` (memory engine) and `usage-ledger.jsonl` at t
 | `source` | file path of the writer (e.g. `hooks/memory-stop-capture.sh`) |
 | `note` | free text, usually empty |
 
-Prescribed append (derive-then-substitute; `$safe_query` and `$hit_count` are already-sanitized values):
+Prescribed append (derive-then-substitute; `$utc_now`, `$safe_query` and `$hit_count` are already-derived values — `$utc_now` per the Timestamp rule, `actions/work-reference.md`):
 
 ```bash
-utc_now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 printf '{"ts":"%s","engine":"memory","event":"recall","query":"%s","hits":%d,"source":"actions/memory.md","note":""}\n' \
   "$utc_now" "$safe_query" "$hit_count" >> "$PROJECT_ROOT/memory/usage-ledger.jsonl" 2>/dev/null || true
 ```

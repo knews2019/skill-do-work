@@ -155,7 +155,7 @@ This check is the mechanical sweep behind the board's invalid-status warning (`t
 
 ### 12. Future-Dated Timestamps
 
-Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, and `find do-work/archive -name 'REQ-*.md'` — and parse every frontmatter timestamp (`created_at`, `claimed_at`, `completed_at`, `blocked_at`, `testing_updated_at`, and any other `*_at` field present). Compare each against the current UTC time (`date -u +%Y-%m-%dT%H:%M:%SZ`), allowing ~2 minutes of clock skew.
+Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, and `find do-work/archive -name 'REQ-*.md'` — and parse every frontmatter timestamp (`created_at`, `claimed_at`, `completed_at`, `blocked_at`, `testing_updated_at`, and any other `*_at` field present). Compare each against the current UTC time (obtain it per the Timestamp rule, `actions/work-reference.md`), allowing ~2 minutes of clock skew.
 
 - **Warning** for each field that parses to later than now + skew: "REQ-NNN's `{field}` is `{value}` — {N} in the future. Likely local wall-clock time stamped with a `Z` suffix (the Timestamp rule in `actions/work-reference.md` requires the current UTC instant). Until the wall clock catches up, elapsed-time math built on it is wrong: the board's stopwatch shows a clock-skew marker, and queue-wait / implementation-time spans go negative."
   **Suggested fix:** Rewrite the field with the instant the event actually happened if recoverable (e.g., from the REQ file's git history), otherwise with the current UTC instant.

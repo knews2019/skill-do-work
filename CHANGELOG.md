@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.167.2 — A Windows Timestamp Command That Actually Runs (2026-08-03)
+
+0.167.0's notes said it fixed a real gap on Windows `cmd`. It didn't — the PowerShell form it shipped needs PowerShell 7 (stock Windows has 5.1), and it named a cmdlet as the remedy for `cmd`, which can't invoke one. Both were readable defects, not runtime surprises. This release is what makes that claim true, and it also does the subtraction that makes the fix reachable at all: eleven action files each spelled `date -u` inline, so an agent following one of them never got as far as the rule.
+
+- The Windows form is now `(Get-Date).ToUniversalTime().ToString("yyyy-MM-dd\THH:mm:ss\Z")`, which runs on Windows PowerShell 5.1; `-AsUTC` is named only as the 7+ shorthand it is
+- `cmd` gets a real entry point: `powershell -NoProfile -Command "…"` — `-NoProfile` so a profile banner can't land in the captured stamp
+- Eleven inline copies of the command across seven action files are gone; the Timestamp rule is the one place that spells it, and a new check names any file that reintroduces a copy
+- The rule was restructured rather than extended — a lead, three numbered sources, and two labelled trailing paragraphs, one of which finally covers the UTC *date-only* shape `memory/logs/` needs
+- The Windows path is reasoned, not executed: nothing here can run PowerShell, and the review says so instead of claiming a test
+
 ## 0.167.1 — Crash Recovery Can Actually Recover A Crash (2026-08-03)
 
 **0.164.0 quietly broke automatic crash recovery, and this fixes it.** That release made recovery check the checkpoint's in-progress record before touching a claimed REQ — a good gate, protecting work that exists nowhere but that file. But the record was only ever written at *session end*, which a hard crash never reaches. So the common case had no record, every crashed REQ was classified as someone else's claim, and it sat in `do-work/working/` untouched for good, one warning line per run, until someone ran `do-work forensics` and reset it by hand. The 0.164.0 notes described the gate; they didn't say the automatic path had stopped working. It had.

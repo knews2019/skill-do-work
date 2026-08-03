@@ -138,7 +138,7 @@ Summary of what was resolved and what's still pending — include any `blocked` 
 When the user reviews a `pending-answers` follow-up and confirms that the builder's original choice was correct (i.e., no implementation change needed):
 
 1. Update the question to `- [x] [question] → Confirmed: [builder's choice]`
-2. Update frontmatter: `status: completed`, `completed_at: <timestamp>` (current UTC instant — `date -u +%Y-%m-%dT%H:%M:%SZ`; Timestamp rule, `actions/work-reference.md`)
+2. Update frontmatter: `status: completed`, `completed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`)
 3. Archive the follow-up REQ directly (skip the work loop — there's nothing to build)
 4. Append a brief note: `## Implementation\n\n**No changes needed.** User confirmed builder's choice from [original REQ].\n\n*Resolved via clarify questions*`
 

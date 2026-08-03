@@ -55,7 +55,7 @@ Show the user what's about to be cancelled — ID, title, current status, and ow
 
 For each confirmed REQ:
 
-1. Frontmatter: set `status: cancelled` and stamp `completed_at: <now, UTC ISO-8601 — date -u +%Y-%m-%dT%H:%M:%SZ>` — that timestamp is what places the card in the board's recently-done window. Leave `claimed_at`/`route` and every other field untouched; they're history.
+1. Frontmatter: set `status: cancelled` and stamp `completed_at: <now>` (current UTC instant — Timestamp rule, `actions/work-reference.md`) — that timestamp is what places the card in the board's recently-done window. Leave `claimed_at`/`route` and every other field untouched; they're history.
 
    **Failed → cancelled path:** a failure archived by the current pipeline carries `completed_at` (the failure instant), `error`, and `error_type` — but a legacy or hand-edited failure may be missing any of them (that is exactly the unclassified case `actions/forensics.md` Check 6 flags and now routes here). Handle each field **by presence, never by assumption:**
    - **`completed_at`:** if present, read and hold it (the original failure instant, for the `## Cancelled` line below), then re-stamp `completed_at` to now; if absent, just stamp now. Re-stamping (not preserving) is deliberate: it satisfies the terminal-flip STAMPING RULE (`actions/work-reference.md`) with no new schema field and keeps the board's completion-anomaly check clean, while any recorded failure instant survives in the body.

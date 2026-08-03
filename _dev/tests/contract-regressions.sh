@@ -118,6 +118,34 @@ assert_contains \
   'Maintenance assessment' \
   'actions/capture.md Step 1 must assess skill-instruction removal/narrowing and set the maintenance marker (work.md is marker-only and never infers it).'
 
+# One home for the timestamp command (REQ-078). The Timestamp rule in actions/work-reference.md is
+# the only place in actions/ that spells a command for obtaining a stamp; every other site cites the
+# rule. Eleven inline copies of `date -u +…` is why 0.167.0's new source-preference order — and the
+# Windows form in particular — was unreachable from any site an agent actually follows: the citing
+# site already handed it a POSIX command, so it never read the rule. Trigger condition, not a file
+# list: any file under actions/ other than the rule's own home that spells a `date -u +…` invocation
+# is a regression, whatever the format specifier. hooks/ is out of scope on purpose (executable POSIX
+# shell, platform-specific by design), as is tools/ (Go source and user-facing strings, a different
+# surface with a different tradeoff).
+timestamp_command_copies="$(grep -rlE 'date -u \+%' "$repo_root/actions" | grep -v 'work-reference\.md' || true)"
+if [ -n "$timestamp_command_copies" ]; then
+  printf 'FAIL: only actions/work-reference.md may spell a timestamp command; these action files inline a copy, so an agent following them never reaches the rule preference order and a Windows agent gets a command that does not exist on its box — cite the Timestamp rule instead (REQ-078):\n%s\n' \
+    "$timestamp_command_copies" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+timestamp_rule_block="$(sed -n '/^\*\*Timestamp rule —/,/^```yaml/p' "$repo_root/actions/work-reference.md")"
+
+assert_block_contains \
+  "$timestamp_rule_block" \
+  'ToUniversalTime' \
+  'actions/work-reference.md Timestamp rule must name the .ToUniversalTime() form for Windows — Get-Date -AsUTC is PowerShell 7+ and a stock box ships 5.1 as powershell.exe, where that parameter is unrecognized and the call fails outright (REQ-078).'
+
+assert_block_contains \
+  "$timestamp_rule_block" \
+  'powershell -NoProfile -Command' \
+  'actions/work-reference.md Timestamp rule must give the cmd entry point explicitly — a bare cmdlet is not a command in cmd, which is the shell the Windows clause exists for (REQ-078).'
+
 # write_set's display-only status must never be argued from a one-REQ-at-a-time premise (REQ-075).
 # The conclusion is right and permanent — nothing schedules, gates, or dispatches on write_set — but
 # REQ-073 falsified that premise: several builders can run at once under a single queue owner. A reader
