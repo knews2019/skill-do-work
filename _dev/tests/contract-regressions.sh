@@ -161,30 +161,72 @@ assert_block_contains \
 # them; Go and JS comments wrap, so it cannot — those two files are covered by the file-level negatives
 # below instead, which is exact because neither has any legitimate reason to state a builder count.
 # `|| true` because grep exits 1 on no-match, which is the passing case and must not abort under `set -e`.
+#
+# TRIGGER CONDITION (REQ-079), not a phrase list: no shipped file may argue write_set's display-only
+# status from ANY builder count, in either of the premise's two fingerprints — the thing it *said*
+# ("one REQ at a time") and the thing it was *called* ("under the exclusive-session model"). The weak
+# form is the more dangerous of the two, because the model it names is still true and only its
+# relevance to this conclusion died, so the sentence survives inspection. Both patterns below enumerate
+# the wordings seen so far and are ILLUSTRATIVE, NOT EXHAUSTIVE — a new phrasing earns a widened
+# pattern, never a second copy of the block. The strong-form pattern is defined once and reused by all
+# three of its consumers for the same reason.
+#
+# tools/queue-kanban/prime-do-kanban.md is deliberately NOT given a file-level negative: its REQ-075
+# lesson entry quotes both fingerprints verbatim, which is the one legitimate reason to name them. The
+# line sweep's write_set|overlaps filter is what keeps that line out of scope, and it must stay that way.
+builder_count_premise_pattern='(one|a single|only one)( [a-z]+){0,2} (REQ|builder|coder|agent)s?( [a-z]+){0,3} (at a time|at once|concurrently)|(one|a single|only one)( [a-z]+){0,2} (REQ|builder|coder|agent)s? is ever (building|running|in flight)'
+exclusive_session_premise_pattern='exclusive.session|no other .do-work. session'
+
 stale_write_set_premise_lines="$(
-  grep -rIEn 'one REQ( [a-z]+)? at a time' \
+  grep -rIEn "$builder_count_premise_pattern" \
     "$repo_root/actions" "$repo_root/docs" "$repo_root/tools/queue-kanban" 2>/dev/null \
     | grep -E 'write_set|overlaps' || true
 )"
 if [ -n "$stale_write_set_premise_lines" ]; then
-  printf 'FAIL: write_set is display-only at ANY builder count — no shipped file may justify that with a one-REQ-at-a-time premise (REQ-075). Point at actions/work-reference.md → Fan-Out Dispatch instead. Offending lines:\n' >&2
+  printf 'FAIL: write_set is display-only at ANY builder count — no shipped file may justify that with a one-REQ-at-a-time premise (REQ-075, pattern widened by REQ-079). Point at actions/work-reference.md → Fan-Out Dispatch instead. Offending lines:\n' >&2
   printf '%s\n' "$stale_write_set_premise_lines" >&2
   fail_count=$((fail_count + 1))
 fi
 
-# The wrapped-comment half of the same rule (REQ-075). model.go and board.js explain write_set in
-# comments and tooltip text that wrap across lines, so the line sweep above cannot see them. Neither
-# file has any business asserting how many REQs run at once — their only mentions were the stale
-# premise — so a file-level negative is both exact and stable here.
+# The weak fingerprint of the same premise (REQ-079). REQ-075 named this form as the more dangerous one
+# in its own lesson and then pinned only the strong one, so the guard could not catch the recurrence it
+# was written for. Naming the exclusive-session model next to write_set is not automatically wrong —
+# the model is still true — but it cannot be the REASON write_set is display-only, because that reason
+# has to hold at any builder count and the model says nothing about builders.
+stale_write_set_weak_premise_lines="$(
+  grep -rIEn "$exclusive_session_premise_pattern" \
+    "$repo_root/actions" "$repo_root/docs" "$repo_root/tools/queue-kanban" 2>/dev/null \
+    | grep -E 'write_set|overlaps' || true
+)"
+if [ -n "$stale_write_set_weak_premise_lines" ]; then
+  printf 'FAIL: write_set is display-only at ANY builder count — no shipped file may justify that by naming the exclusive-session model either (REQ-079). The model is about queue OWNERS, not builders, so it cannot be the reason; point at actions/work-reference.md → Fan-Out Dispatch instead. Offending lines:\n' >&2
+  printf '%s\n' "$stale_write_set_weak_premise_lines" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# The wrapped-comment half of the same rule (REQ-075, weak form added by REQ-079). model.go and
+# board.js explain write_set in comments and tooltip text that wrap across lines, so the line sweeps
+# above cannot see them. Neither file has any business asserting how many REQs run at once, nor any
+# business invoking the exclusive-session model at all — so file-level negatives are exact and stable.
 assert_file_not_contains \
   "tools/queue-kanban/model.go" \
-  'one REQ( [a-z]+)? at a time' \
+  "$builder_count_premise_pattern" \
   'tools/queue-kanban/model.go must not explain write_set with a one-REQ-at-a-time premise — it is advisory input to a human pick and the merge is the non-interference proof, at any builder count (REQ-075).'
 
 assert_file_not_contains \
   "tools/queue-kanban/web/board.js" \
-  'one REQ( [a-z]+)? at a time' \
+  "$builder_count_premise_pattern" \
   'tools/queue-kanban/web/board.js overlaps-badge tooltip must not explain write_set with a one-REQ-at-a-time premise — that reason is false since fan-out dispatch (REQ-075).'
+
+assert_file_not_contains \
+  "tools/queue-kanban/model.go" \
+  "$exclusive_session_premise_pattern" \
+  'tools/queue-kanban/model.go must not invoke the exclusive-session model — it is the weak fingerprint of the retired write_set premise, and the file has no other reason to name it (REQ-079).'
+
+assert_file_not_contains \
+  "tools/queue-kanban/web/board.js" \
+  "$exclusive_session_premise_pattern" \
+  'tools/queue-kanban/web/board.js must not invoke the exclusive-session model — it is the weak fingerprint of the retired write_set premise, and the file has no other reason to name it (REQ-079).'
 
 # write_set parser lock-step (REQ-032, updated by REQ-069). write_set does not gate dispatch; it
 # survives as a display-only field the board parser reads for the overlaps badge, so the parser must

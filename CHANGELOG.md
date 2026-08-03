@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.167.3 — The write_set Guards Now Catch The Premise, Not One Phrasing (2026-08-03)
+
+A guard that only matches the wording you already deleted is worse than no guard, because the green suite reads as coverage. The two checks protecting `write_set`'s display-only rule were in exactly that state — they pinned "one REQ at a time" and nothing else, so the retired premise could walk back in under half a dozen other phrasings, including the one the project's own lesson file calls the more dangerous of the two.
+
+- The count-based pattern is defined once now (it was spelled out three times, which is why its gap was triplicated) and covers the class: `one`/`a single`/`only one`, `REQ`/`builder`/`coder`/`agent`, `at a time`/`at once`/`concurrently`, and the "is ever building" shape
+- A second guard pins the weak fingerprint — justifying `write_set` by naming the exclusive-session model — across prose by line and across `model.go`/`board.js` by file
+- Every one of them was demonstrated failing and then reverted; the old suite exits 0 on the same injected lines, which is the gap observed rather than argued
+- `do-work cleanup`'s Pass 0 no longer argues its own safety from that premise either — it's safe because it sweeps only terminal statuses, which holds at any builder count
+- Two other sites that name the exclusive-session model were checked and deliberately left alone: they cite it for what it actually says, and sweeping a phrase mechanically would delete true statements
+
 ## 0.167.2 — A Windows Timestamp Command That Actually Runs (2026-08-03)
 
 0.167.0's notes said it fixed a real gap on Windows `cmd`. It didn't — the PowerShell form it shipped needs PowerShell 7 (stock Windows has 5.1), and it named a cmdlet as the remedy for `cmd`, which can't invoke one. Both were readable defects, not runtime surprises. This release is what makes that claim true, and it also does the subtraction that makes the fix reachable at all: eleven action files each spelled `date -u` inline, so an agent following one of them never got as far as the rule.

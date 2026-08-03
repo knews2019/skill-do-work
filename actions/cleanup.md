@@ -28,7 +28,7 @@ Seven passes, in order:
 
 Scan `do-work/queue/` and the working directory for REQs with terminal statuses that should have been archived but weren't — typically from manual work, different agents, or legacy sessions that completed outside the standard work pipeline.
 
-**Safe under the exclusive-session model.** This pipeline assumes no other `do-work` session is running against this checkout (`actions/work-reference.md` → **Execution Model — Exclusive Session**), so there is no live coexisting claim to protect — Pass 0 needs no lock and consults none. When cleanup runs at the end of a work loop (`actions/work.md` Step 10), that session's own REQ has already been moved out of `working/` by Step 8 before this pass runs, so no in-flight REQ sits terminal-in-`working/` for Pass 0 to sweep out from under the builder.
+**Safe because it sweeps only terminal statuses.** A REQ carrying `completed`, `failed`, `cancelled` or any of their variants is finished by definition — whoever finished it, and however many builders were running at the time — so moving it out of `working/` takes nothing away from anyone. That is the durable reason, and it holds at any builder count. **Do not argue this pass's safety from the exclusive-session model**: that model is about queue *owners*, and it does not say a claimed `working/` file is this session's — `actions/work-reference.md` → **Crash Recovery (Step 1)** exists precisely because it may not be. Pass 0 never touches a `claimed` REQ (step 4 below), which is what keeps the two rules from colliding. When cleanup runs at the end of a work loop (`actions/work.md` Step 10), Step 8 has already moved out every REQ that run finished — plural under fan-out (`actions/work-reference.md` → **Worktree Dispatch Mode** → Fan-Out Dispatch) — so no in-flight REQ sits terminal-in-`working/` for Pass 0 to sweep out from under a builder.
 
 1. **Glob `do-work/queue/REQ-*.md`**
 2. **Read each REQ's frontmatter** `status` field
@@ -37,7 +37,7 @@ Scan `do-work/queue/` and the working directory for REQs with terminal statuses 
    - Move the REQ to `do-work/archive/` root (Pass 1 and Pass 2 will then consolidate it into the correct UR folder)
    - Report: `Swept REQ-NNN from do-work/queue/ (was status: {original}) → archive`
 4. **Leave `pending`, `pending-answers`, `blocked`, and `claimed` REQs untouched** — those are active queue items (`blocked` waits on an external condition)
-5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`, `cancelled`), it was finished but never moved out (a crashed prior run, under the exclusive-session model). Same treatment: normalize status, move to `do-work/archive/` root, report it.
+5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`, `cancelled`), it was finished but never moved out (a crashed prior run). Same treatment: normalize status, move to `do-work/archive/` root, report it.
 
 ### Pass 1: Close Completed User Requests
 
