@@ -6,6 +6,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.167.0 — The Go Utility Can Now Produce Timestamps (2026-08-03)
+
+`queue-kanban now` prints the exact UTC stamp every `*_at` field wants, and the Timestamp rule prefers it whenever the binary is already built. It joins `next-req` and `next-version` — the other two things the pipeline has to get right and can't eyeball. `date -u` stays the documented fallback, so no action ever needs a compiler.
+
+- Fixes a real gap on Windows `cmd`, where the prescribed `date -u +FORMAT` doesn't exist at all — a PowerShell fallback is now named too
+- The rule never tells you to *build* the tool for a stamp; a compile per timestamp would be worse than the shell command it replaces
+- Amended in one place. The eleven sites that cite the rule were deliberately left alone
+- Read-only, and the one subcommand that needs no `--repo-root` — it reads a clock, not your queue
+- Writer now lives next to the readers that parse it, with a round-trip test through the board's own parser
+
 ## 0.166.2 — The Overlaps Badge Explains Itself Correctly Again (2026-08-03)
 
 Eleven places told you the board's file-overlap badge was harmless *because only one REQ runs at a time* — a reason that stopped being true when fan-out dispatch landed. The badge's behavior never changed; the explanation did. It is advisory input to your pick, and the merge is what proves two builders didn't collide.

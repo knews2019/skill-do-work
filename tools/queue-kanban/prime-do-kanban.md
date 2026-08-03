@@ -1,12 +1,13 @@
 # Prime: do-kanban
 
-queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that walks the version-controlled `do-work/` Markdown tree and renders it as a Kanban board + completion calendar. Subcommands: `summary` | `generate --out DIR` | `serve` | `next-req` | `next-version <patch|minor|major>` | `verify` (the last three serve the release ritual, not the board). It ships as part of the do-work skill and rides its version bumps; the ergonomic entry point is the `do-work board` action (`actions/board.md`), which builds and runs it for you.
+queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that walks the version-controlled `do-work/` Markdown tree and renders it as a Kanban board + completion calendar. Subcommands: `summary` | `generate --out DIR` | `serve` | `next-req` | `next-version <patch|minor|major>` | `verify` | `now` (the last four serve the release ritual and the Timestamp rule, not the board). It ships as part of the do-work skill and rides its version bumps; the ergonomic entry point is the `do-work board` action (`actions/board.md`), which builds and runs it for you.
 
 ## Read first
 - `main.go` — subcommand dispatch + flags (`--repo-root`, `--out`, `--port`; `--recent-window` on summary only, `--version-file` on next-version only)
 - `allocate.go` — `next-req`: max REQ number + 1 across queue/working/archive, built on `enumerateDoWorkTree`
 - `release.go` — the `**Current version**: X.Y.Z` line reader/bumper/writer and the `CHANGELOG.md` entry parser
 - `verify.go` — the read-only invariant probes and their report (wired into `actions/forensics.md` Check 14)
+- `timestamp.go` — `now`: the Timestamp rule's UTC stamp (`actions/work-reference.md`), the only subcommand that reads a clock instead of the tree and so takes no `--repo-root`
 - `walk.go` — repo-root resolution (walks up for `do-work/`) + tree enumeration
 - `model.go` — Board model; column bucketing driven by REQ status
 - `generate.go` — static self-contained site; `//go:embed web/` + inline placeholders

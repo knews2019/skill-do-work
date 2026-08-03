@@ -25,6 +25,7 @@ import (
 //	queue-kanban next-req     [--repo-root DIR]
 //	queue-kanban next-version <patch|minor|major> [--repo-root DIR] [--version-file PATH]
 //	queue-kanban verify       [--repo-root DIR]
+//	queue-kanban now
 //
 // Invoking the binary with no subcommand prints the model summary.
 //
@@ -35,8 +36,11 @@ import (
 // Write surfaces, in full: the board's testing view (serve; see testing.go)
 // writes the testing-track frontmatter fields plus do-work/testers.md, and
 // `next-version` writes one line in one version file. Nothing else here writes
-// anything — `next-req` and `verify` are read-only, and no subcommand ever writes
-// CHANGELOG.md, which stays an owner-only, human-authored file.
+// anything — `next-req`, `verify`, and `now` are read-only, and no subcommand ever
+// writes CHANGELOG.md, which stays an owner-only, human-authored file.
+//
+// `now` takes no --repo-root: it reads a clock, not a tree, so it is the one
+// subcommand that works outside a project entirely.
 func main() {
 	subcommand := ""
 	subcommandArgs := os.Args[1:]
@@ -58,8 +62,10 @@ func main() {
 		runNextVersionCommand(subcommandArgs)
 	case "verify":
 		runVerifyCommand(subcommandArgs)
+	case "now":
+		runNowCommand(subcommandArgs)
 	default:
-		fmt.Fprintf(os.Stderr, "queue-kanban: unknown subcommand %q (want summary | generate | serve | next-req | next-version | verify)\n", subcommand)
+		fmt.Fprintf(os.Stderr, "queue-kanban: unknown subcommand %q (want summary | generate | serve | next-req | next-version | verify | now)\n", subcommand)
 		os.Exit(2)
 	}
 }
@@ -201,6 +207,18 @@ func runNextVersionCommand(args []string) {
 		os.Exit(1)
 	}
 	fmt.Printf("%s\n", allocatedVersion)
+}
+
+// runNowCommand prints the current UTC instant in the Timestamp rule's shape, so
+// a caller can use it directly: `STAMP=$(queue-kanban now)`. Read-only — it
+// reads a clock and touches no file. It parses a FlagSet purely so an
+// unrecognized flag is rejected rather than silently ignored; there are no flags
+// to accept, because there is no tree to point at.
+func runNowCommand(args []string) {
+	flagSet := flag.NewFlagSet("now", flag.ExitOnError)
+	_ = flagSet.Parse(args)
+
+	writeCanonicalTimestamp(os.Stdout, time.Now())
 }
 
 // runVerifyCommand prints the verify report and exits non-zero when it found
