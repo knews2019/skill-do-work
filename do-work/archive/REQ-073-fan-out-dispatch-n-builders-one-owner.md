@@ -4,6 +4,7 @@ title: "Fan-out dispatch: N concurrent builders under one queue owner"
 status: completed
 claimed_at: 2026-08-03T15:09:50Z
 completed_at: 2026-08-03T15:18:56Z
+commit: 9ba2cda
 route: C
 kb_status: pending
 created_at: 2026-08-03T11:41:15Z
