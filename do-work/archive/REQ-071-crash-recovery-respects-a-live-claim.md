@@ -4,6 +4,7 @@ title: Crash recovery must respect a live claim before stripping and re-queueing
 status: completed
 claimed_at: 2026-08-03T14:37:19Z
 completed_at: 2026-08-03T14:48:01Z
+commit: 5c39899
 route: B
 kb_status: pending
 created_at: 2026-08-03T11:41:15Z
