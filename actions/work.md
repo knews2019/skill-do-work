@@ -113,9 +113,9 @@ When `$ARGUMENTS` is empty — no targeting tokens, no flags, no other tokens �
 
 ### Step 1: Find Next Request
 
-**Exclusive session.** This pipeline assumes it is the only `do-work` session running against this checkout (`actions/work-reference.md` → **Execution Model — Exclusive Session**). It does not detect or coordinate a concurrent run, and acquires no lock. On session start (or resuming via CHECKPOINT.md), go straight to the `do-work/CHECKPOINT.md` check and Crash Recovery below.
+**Exclusive session.** This pipeline assumes it is the only `do-work` session running against this checkout (`actions/work-reference.md` → **Execution Model — Exclusive Session**). It does not detect or coordinate a concurrent run, and acquires no lock. On session start, **read `do-work/CHECKPOINT.md` first** (Step 10 → **On session start**): it is Crash Recovery's input, not just resume context, so the read is a precondition of the next paragraph rather than a convenience.
 
-**Crash Recovery:** if `do-work/working/` contains any `REQ-*.md`, a prior run was interrupted before it finished the REQ. Every `working/` file is this session's own leftover to recover — reset and re-queue each per `actions/work-reference.md` → **Crash Recovery (Step 1)** before scanning the queue. Once every `working/` file is recovered, proceed with finding the next request.
+**Crash Recovery:** if `do-work/working/` contains any `REQ-*.md`, a claim outlived the run that made it. **A claimed REQ is not automatically this session's to reclaim** — recovery resets frontmatter and strips thirteen generated sections that nothing has committed yet, so it runs only on a REQ the checkpoint records as this session's own interrupted work. Any other claimed REQ is left byte-identical and reported, and is offered for takeover only once it is stale — where a human, never the threshold, authorizes the takeover. Full classification, the staleness threshold and its timestamp guard, and the unattended path: `actions/work-reference.md` → **Crash Recovery (Step 1)**. Once every `working/` file is recovered, taken over, or left alone, proceed with finding the next request.
 
 Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
 
@@ -624,10 +624,10 @@ At the end of every work session (whether all REQs completed, user stops, or ses
 
 **On session start (Step 1 addition):** Before crash recovery, check for `do-work/CHECKPOINT.md`. If it exists:
 1. Read it and report a brief summary: `Resuming from previous session. Last completed: REQ-NNN. [N] REQs still queued.`
-2. Use the "In Progress" section to inform crash recovery context.
-3. **Do not delete yet.** Keep the checkpoint until crash recovery has recovered every `working/` file, then delete it. Deleting only after recovery is done still prevents losing resume context if the session crashes again mid-recovery.
+2. Its `## In Progress (interrupted)` section is what crash recovery classifies against — a `working/` REQ named there is this session's own to recover, and one that isn't is a foreign claim recovery must not strip.
+3. **Do not delete yet.** Keep the checkpoint until crash recovery has finished with every `working/` file, then delete it. Deleting only after recovery is done still prevents losing resume context if the session crashes again mid-recovery.
 
-This is NOT a blocking gate. If no checkpoint exists, the session starts normally with existing crash-recovery logic.
+This is NOT a blocking gate. With no checkpoint, the session starts normally — crash recovery still runs, it just has nothing to match against, so every claimed `working/` REQ is treated as a foreign claim and left intact.
 
 ## Clarify Questions
 
@@ -636,7 +636,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 ## Orchestrator Checklist (per request)
 
 ```
-□ Step 1: Read CHECKPOINT.md if exists, crash recovery (recover every working/ file), validate frontmatter, pick first pending
+□ Step 1: Read CHECKPOINT.md FIRST (it is recovery's input), crash recovery (recover own-crash files; report foreign claims, ask before takeover), validate frontmatter, pick first pending
 □ Step 2: Claim request (mkdir -p working/ + move, update status & claimed_at)
 □ Step 3: Triage (decide route, append ## Triage, read original if addendum)
 □ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions; a user answer obtained mid-run is written in as - [x] before dispatch — never - [~], no D-XX)
@@ -742,7 +742,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 
 - [ ] All pending REQs processed or explicitly skipped with documented reason
 - [ ] Every completed REQ has an Implementation Summary section with file manifest
-- [ ] No REQ files remain in `do-work/working/` after the work loop ends
+- [ ] No REQ files remain in `do-work/working/` after the work loop ends — except a reported foreign claim this run deliberately left intact (Step 1 Crash Recovery)
 - [ ] CHECKPOINT.md written if ending mid-session (for resume)
 - [ ] Git commit created for each completed REQ
 - [ ] Cleanup pass triggered at end of work loop

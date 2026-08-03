@@ -6,6 +6,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.164.0 — Crash Recovery Asks Before Discarding a Claimed REQ (2026-08-03)
+
+Crash and restart thirty seconds later, and recovery used to throw away the plan, exploration, and scope the interrupted run had just finished writing — nothing is committed before Step 9, so those sections were gone for good. Recovery is now conditional: it only resets what the checkpoint records as this session's own interrupted work, and everything else is left exactly as it is.
+
+- A claimed REQ in `do-work/working/` that `do-work/CHECKPOINT.md` doesn't name as in-progress is reported and left byte-identical — no frontmatter reset, no section stripping, no move
+- Takeover is offered only once a claim is over three hours old, and a human always authorizes it; the threshold reports, it never decides
+- An unparseable, future-dated, or missing `claimed_at` makes a REQ immediately eligible for that offer, so a corrupt stamp can't protect a dead claim forever
+- No checkpoint at all is treated as ambiguous, not as permission — which is the common case, since a hard crash never gets to write one
+- Unattended runs never stall on the prompt: they report the claim and continue to the next REQ
+- Step 1 now reads the checkpoint *before* recovery and says why — it's recovery's input, not just resume context
+
 ## 0.163.3 — Board Copy Includes the REQ Id and Title (2026-08-02)
 
 The drawer's Copy button used to hand you the body text alone — frontmatter holds the id and title, so a paste landed somewhere else as anonymous prose. Every copy now leads with a `# REQ-236: <title>` heading.

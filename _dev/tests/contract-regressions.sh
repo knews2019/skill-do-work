@@ -195,6 +195,72 @@ if [ "$three_attempt_count" != "1" ]; then
   fail_count=$((fail_count + 1))
 fi
 
+# Claim-respecting crash recovery (REQ-071). Recovery resets frontmatter and strips thirteen
+# generated sections, and the pipeline does not commit until Step 9 — so an unconditional recovery
+# destroys a finished Plan/Exploration/Scope that exists nowhere else. The premise that licensed
+# running it on every working/ file ("no other live session whose in-flight claim a recovery could
+# disturb") is gone and must stay gone; what replaced it is a classification, a human-authorized
+# takeover, and an ask-on-ambiguity default. Each assertion below pins one of those.
+assert_file_not_contains \
+  "actions/work-reference.md" \
+  'no other live session whose in-flight claim a recovery could disturb' \
+  'actions/work-reference.md must not restate the removed premise that no live in-flight claim can be disturbed — Crash Recovery classifies each working/ file before it strips anything (REQ-071).'
+
+crash_recovery_block="$(sed -n '/^## Crash Recovery (Step 1)/,/^## Worktree Dispatch Mode/p' "$repo_root/actions/work-reference.md")"
+
+assert_block_contains \
+  "$crash_recovery_block" \
+  'foreign claim' \
+  'actions/work-reference.md Crash Recovery must classify a claimed working/ REQ the checkpoint does not name as a foreign claim, not as this sessions own leftover (REQ-071).'
+
+assert_block_contains \
+  "$crash_recovery_block" \
+  'absent checkpoint is ambiguous' \
+  'actions/work-reference.md Crash Recovery must state that a missing CHECKPOINT.md is ambiguous, never permission to recover — a hard crash usually leaves no checkpoint at all (REQ-071).'
+
+assert_block_contains \
+  "$crash_recovery_block" \
+  'never authorizes' \
+  'actions/work-reference.md Crash Recovery must state that the staleness threshold gates only the offer and never authorizes a takeover by itself, or a later edit simplifies it into an automatic one (REQ-071).'
+
+assert_block_contains \
+  "$crash_recovery_block" \
+  'unparseable, future-dated, or absent' \
+  'actions/work-reference.md Crash Recovery must guard a bad claimed_at toward asking (immediately eligible), or a REQ carrying a corrupt stamp is protected from takeover forever (REQ-071).'
+
+assert_block_contains \
+  "$crash_recovery_block" \
+  'no human to answer' \
+  'actions/work-reference.md Crash Recovery must keep the unattended path non-blocking — a foreign claim is left alone, reported, and the run continues (REQ-071).'
+
+assert_block_contains \
+  "$crash_recovery_block" \
+  'substep 1 removes it' \
+  'actions/work-reference.md Crash Recovery must say claimed_at is read while classifying, before substep 1 discards it — the same ordering trap as the Scope/write_set decision (REQ-071).'
+
+work_step_one_block="$(sed -n '/^### Step 1: Find Next Request/,/^### Step 2\.0/p' "$repo_root/actions/work.md")"
+
+assert_block_not_contains \
+  "$work_step_one_block" \
+  "Every .working/. file is this session's own leftover" \
+  'actions/work.md Step 1 must not claim every working/ file is this sessions own leftover to recover — that is the premise REQ-071 removes.'
+
+assert_block_contains \
+  "$work_step_one_block" \
+  "Crash Recovery's input" \
+  'actions/work.md Step 1 must name do-work/CHECKPOINT.md as Crash Recoverys input, so the read is understood as a precondition rather than resume convenience (REQ-071).'
+
+# Ordering, not just presence: the checkpoint read has to appear ahead of the Crash Recovery
+# paragraph in Step 1. Recovery consumes the checkpoint, so a later edit that moves the read below
+# it would leave recovery classifying against a file it has not opened.
+checkpoint_read_line="$(printf '%s\n' "$work_step_one_block" | grep -n 'CHECKPOINT\.md' | head -1 | cut -d: -f1)"
+crash_recovery_line="$(printf '%s\n' "$work_step_one_block" | grep -n '\*\*Crash Recovery:\*\*' | head -1 | cut -d: -f1)"
+if [ -z "$checkpoint_read_line" ] || [ -z "$crash_recovery_line" ] || [ "$checkpoint_read_line" -ge "$crash_recovery_line" ]; then
+  printf 'FAIL: actions/work.md Step 1 must read do-work/CHECKPOINT.md BEFORE the Crash Recovery paragraph (checkpoint line: %s, recovery line: %s) — the checkpoint is recovery input, not resume decoration (REQ-071).\n' \
+    "${checkpoint_read_line:-none}" "${crash_recovery_line:-none}" >&2
+  fail_count=$((fail_count + 1))
+fi
+
 assert_contains \
   "docs/ai-report-guide.md" \
   'completed-with-issues' \

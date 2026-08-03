@@ -217,9 +217,35 @@ The trigger is the *condition above*, not the caller list: **any reader that fil
 
 ## Crash Recovery (Step 1)
 
-**Crash Recovery:** Before checking the queue, look inside `do-work/working/` for any `REQ-*.md` files. If any exist, a previous run was interrupted before it finished the REQ. Under the exclusive-session model (one active session — `actions/work.md` Step 1), every `working/` file is this session's own leftover to recover; there is no other live session whose in-flight claim a recovery could disturb, so recovery no longer consults any lock.
+**Crash Recovery:** Before checking the queue — but **after** reading `do-work/CHECKPOINT.md`, which is this procedure's input (`actions/work.md` Step 1) — look inside `do-work/working/` for any `REQ-*.md` files. A file there is a claim that outlived the run that made it: either this session's own interrupted work, or a claim this session cannot account for.
 
-For each `REQ-*.md` found in `do-work/working/`:
+**Recovery is destructive, so it is not the default.** Substeps 1–3 below reset the frontmatter, strip thirteen generated sections (`## Plan`, `## Exploration`, `## Scope` and the rest), and move the file back to `do-work/queue/`. Nothing is committed before Step 9, so those sections usually exist nowhere but that file — which makes substeps 1–3 the right treatment for a crash's half-written leftovers and the wrong treatment for anything else. **Classify each `working/` file before touching it:**
+
+- **Named in the checkpoint's `## In Progress (interrupted)` record** → **own crash.** Recover it via substeps 1–3, exactly as before. Only that record counts: `last_completed`, `## Completed This Session`, and `## Still Queued` describe REQs that should not be in `working/` at all, so finding one there is a contradiction to report, not a licence to strip.
+- **Not named there, or there is no checkpoint at all** → **foreign claim.** Leave the file byte-identical — no frontmatter reset, no section stripping, no move — and report it per *Reporting and takeover* below. An **absent checkpoint is ambiguous, not permission**: a session that died before writing one and a claim made by something else are indistinguishable from here, and only one of the two readings is recoverable when it is wrong. Step 10 writes the checkpoint at session end, so a hard crash usually leaves none — this is the ordinary path, not a corner case.
+
+Recovery consults no lock, because the skill keeps none (**Execution Model — Exclusive Session**, above). Its two inputs — `do-work/CHECKPOINT.md` and each REQ's `claimed_at` — already exist for other reasons, so the classification adds no durable state.
+
+**Reporting and takeover.** For each foreign claim, compute its age from `claimed_at` (a UTC ISO-8601 instant — Timestamp rule, **Request File Schema — Full Frontmatter** above). **Read `claimed_at` while classifying, not afterwards: substep 1 removes it** — the same ordering trap the `## Scope` / `write_set` decision carries inside that substep.
+
+- **Under three hours** → report and move on, offering nothing: `⚠ REQ-NNN claimed <age> ago, not recorded as this session's work — left untouched.` To reclaim one deliberately, the user resets it by hand — `actions/forensics.md` Check 1's suggested remediation is that procedure; point there rather than restating it. (Check 1's own 1-hour and 24-hour bands are *reporting* severities for a read-only diagnostic, a different purpose from the threshold here, not a second copy of it.)
+- **Past three hours, or an unparseable, future-dated, or absent `claimed_at`** → report it and offer takeover. A bad stamp counts as eligible on purpose: a negative or meaningless age has to push toward asking, since the alternative protects a corrupt REQ from takeover forever. Allow **2 minutes of clock skew** before calling a stamp future-dated, matching the skill's other timestamp readers (`actions/forensics.md` Check 11, `tools/queue-kanban`).
+
+**Three hours bounds how long a dead claim goes unnoticed; it never authorizes anything.** A Route C REQ with a remediation loop can legitimately run longer, so the threshold is not a liveness test and crossing it proves nothing about whether the claim is dead. **The decision to take over is always a human's.** Do not "simplify" this into an automatic takeover at the threshold: an unattended run crossing it on a live claim would then strip exactly the work this classification exists to protect.
+
+Ask with the takeover prompt — `crew-members/clear-questions.md` governs the wording (one decision, options that state their consequence):
+
+```
+REQ-042 has been claimed for 4h 20m and is not recorded as this session's own interrupted work.
+  (a) Take it over — strip its generated sections (Plan, Exploration, Scope, …) and return it to
+      the queue for a clean re-run. Anything the earlier run produced but never committed is lost.
+  (b) Leave it claimed — skip it this run and continue with the rest of the queue. Nothing is
+      touched; reset it by hand later if it turns out to be dead.
+```
+
+Only answer (a) runs substeps 1–3. **With no human to answer** — an unattended or non-interactive run — the outcome is (b): leave the file, report it, continue to the next queue item. Never stall the loop on the prompt, and never resolve a missing answer by stripping.
+
+For each `REQ-*.md` the classification above sent to recovery — an own crash, or a foreign claim a human approved for takeover:
 1. Reset frontmatter: set `status` to `pending`, **unless** the REQ file contains a `## Open Questions` section with at least one unresolved `- [ ]` item — in that case, restore `status` to `pending-answers`. (If the `## Open Questions` section exists but all items are already `[x]` or `[~]`, or if no `## Open Questions` section exists at all, set `status` to `pending`.) **Exception — a recovered REQ that already carries `status: blocked` with a `blocked_by` condition stays `blocked`** (the mid-run blocked flip completed its frontmatter write before the crash; its condition is unchanged and it must not be silently promoted to runnable). Remove `claimed_at` and `route`; leave `blocked_by`/`blocked_at`/`blocked_check` intact. **Clear `write_set` only when this REQ actually has a `## Scope` section** — check for it here, while it still exists (substep 2 strips it next). `## Scope` is `write_set`'s only source (**Scope Declaration Template (Step 5.5)**, below), so a mirror that outlives its stripped source is stale; clearing it returns the field to *absent ⇒ unknown*, which the board renders as **no** overlaps badge (not conflict) — the correct post-recovery state, since a recovered REQ has not re-declared its scope. **With no `## Scope`, preserve `write_set`** — it is capture-seeded, not a mirror (the REQ crashed before Step 5.5, or it is a Route A REQ that never runs Step 5.5 at all — `actions/work.md` Step 5.5). Nothing downstream ever re-seeds that field, so clearing it would destroy user- and capture-authored frontmatter.
 2. Strip sections generated during the interrupted run: remove `## Triage`, `## Exploration`, `## Plan`, `## Scope`, `## Pre-Flight`, `## Implementation Summary`, `## Qualification`, `## Testing`, `## Review`, `## Lessons Learned`, `## Orientation`, `## Decisions`, and `## Discovered Tasks` sections (and their content) if present — these may be incomplete or stale from the crash. Leave `## Open Questions` and user-authored content intact. (Stripping `## Scope` here is what makes substep 1's `write_set` decision conditional on it — read that decision before this substep runs, never after.)
 3. Move the REQ back to `do-work/queue/`
@@ -230,7 +256,7 @@ For each `REQ-*.md` found in `do-work/working/`:
 - **Unmerged or dirty** (either command refuses): **report it and move on — never `-D`, never `--force`.** The branch may hold the only copy of a builder's work; deleting it belongs to `actions/cleanup.md` → **Pass 5: Orphaned Worktrees (consent-gated)**, which asks first. A reported unmerged leftover does **not** block re-dispatch of its REQ — the Naming rule's collision variant (**Worktree Dispatch Mode (Step 1)**, below) dispatches the recovered REQ under a fresh unique variant, so the two coexist until Pass 5 resolves the leftover.
 - **Any other worktree name**: not ours. Leave it alone.
 
-Once every `working/` file has been recovered, proceed with finding the next request.
+Once every `working/` file has been recovered, taken over, or left alone as a reported foreign claim, proceed with finding the next request.
 
 ## Worktree Dispatch Mode (Step 1)
 

@@ -65,6 +65,8 @@ If you answer a question yourself mid-run — a long run stopping to ask you som
 
 At session end, a `do-work/CHECKPOINT.md` is written with the last completed REQ, queue state, and where any in-progress work stopped — so the next session can resume cleanly.
 
+It also decides what the next session is allowed to clean up. A REQ sitting claimed in `working/` is only reset and re-queued when the checkpoint records it as that session's own interrupted work; anything else is left exactly as it is and reported, and you're asked before it's taken over — and then only once it has been claimed for over three hours. So a crash never costs you the plan, exploration, and scope the interrupted run had already written.
+
 ## What happens when you run it
 
 A typical `do-work run` session:
