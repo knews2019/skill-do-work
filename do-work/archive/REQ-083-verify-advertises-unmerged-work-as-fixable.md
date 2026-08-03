@@ -4,6 +4,7 @@ title: verify reports every builder worktree as a fixable orphan, including acti
 status: completed
 claimed_at: 2026-08-03T23:41:00Z
 completed_at: 2026-08-03T23:52:10Z
+commit: f6c1514
 created_at: 2026-08-03T17:09:21Z
 kb_status: pending
 user_request: UR-016
