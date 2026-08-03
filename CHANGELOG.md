@@ -6,6 +6,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.166.2 — The Overlaps Badge Explains Itself Correctly Again (2026-08-03)
+
+Eleven places told you the board's file-overlap badge was harmless *because only one REQ runs at a time* — a reason that stopped being true when fan-out dispatch landed. The badge's behavior never changed; the explanation did. It is advisory input to your pick, and the merge is what proves two builders didn't collide.
+
+- Fixed in the `write_set` schema itself, both board-action sites, the board and work guides, the tool's prime, four Go comments, and the badge tooltip you actually read in the browser
+- Each site now points at the Fan-Out Dispatch contract instead of restating it
+- New contract assertion, in two parts: a line sweep for prose plus a file-level guard for the Go and JS sources, whose comments wrap and so slip past a line-based check
+- No behavior change anywhere: no Go logic, no schema field, no board column touched
+
 ## 0.166.1 — Crash Recovery Records When It Reset a REQ (2026-08-03)
 
 A REQ the pipeline re-queues after a crash now carries the instant it was recovered, so the board's waiting-time figure counts from the reset rather than from the day the request was written. The by-hand reset in forensics already did this; the automatic one had never done it.

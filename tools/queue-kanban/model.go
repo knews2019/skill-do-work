@@ -100,8 +100,9 @@ type RequestTicket struct {
 	Related      []string // soft relations (not dependency edges)
 	// write_set names the repo-relative paths/globs the REQ expects to write.
 	// Read verbatim, never normalized, and never used for column logic; it is a
-	// display-only field (the exclusive-session pipeline runs one REQ at a time,
-	// so nothing schedules on it) that feeds only the overlaps badge below.
+	// display-only field at any builder count (under fan-out dispatch it is
+	// advisory input to a human's pick and the merge is the non-interference
+	// proof, so nothing schedules on it) feeding only the overlaps badge below.
 	WriteSet []string
 
 	// Derived by annotateWriteSetOverlap after bucketing — never read from
@@ -1102,8 +1103,9 @@ func isWriteSetOverlapCandidateStatus(normalizedStatus string) bool {
 // `**` pattern, a malformed pattern against anything but its own twin, and an
 // entry naming a directory (`actions/` never matches `actions/board.md`, because
 // path.Match is false both for `actions/` and for `actions` against it). Because
-// nothing schedules on write_set under the exclusive-session model, a board
-// false-negative loosens nothing — it is only a missed heads-up for a reader.
+// nothing schedules on write_set at any builder count — the merge, not this
+// field, is what proves two builders did not collide — a board false-negative
+// loosens nothing; it is only a missed heads-up for a reader.
 func writeSetPatternsIntersect(leftPattern string, rightPattern string) bool {
 	if leftPattern == rightPattern {
 		return true
@@ -1121,9 +1123,9 @@ func writeSetPatternsIntersect(leftPattern string, rightPattern string) bool {
 // same file as any entry of the other. An empty set never intersects: on the
 // board, an absent write_set means UNKNOWN, and unknown must not render as
 // conflict — a false badge would cry wolf on every card that never declared a
-// set. (Under the exclusive-session model nothing schedules on write_set, so
-// there is no scheduler that would need the opposite, "absent ⇒ overlaps
-// everything ⇒ serialize" reading.)
+// set. (Nothing schedules on write_set at any builder count, so there is no
+// scheduler that would need the opposite, "absent ⇒ overlaps everything ⇒
+// serialize" reading.)
 func writeSetsIntersect(leftWriteSet []string, rightWriteSet []string) bool {
 	for _, leftPattern := range leftWriteSet {
 		for _, rightPattern := range rightWriteSet {
@@ -1144,8 +1146,10 @@ func writeSetsIntersect(leftWriteSet []string, rightWriteSet []string) bool {
 //
 // This is a DISPLAY annotation. It shows declared file contention for a human
 // reading the board; it never places a card in a column, never blocks anything,
-// and nothing schedules on it — under the exclusive-session model the pipeline
-// runs one REQ at a time (actions/work-reference.md → Execution Model).
+// and nothing schedules on it at any builder count — under fan-out dispatch the
+// declared set is advisory input to a human's pick and the merge is the
+// non-interference proof (actions/work-reference.md → Worktree Dispatch Mode →
+// Fan-Out Dispatch).
 func annotateWriteSetOverlap(tickets []*RequestTicket) {
 	var candidateTickets []*RequestTicket
 	for _, ticket := range tickets {

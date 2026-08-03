@@ -118,10 +118,50 @@ assert_contains \
   'Maintenance assessment' \
   'actions/capture.md Step 1 must assess skill-instruction removal/narrowing and set the maintenance marker (work.md is marker-only and never infers it).'
 
-# write_set parser lock-step (REQ-032, updated by REQ-069). Under the exclusive-session
-# model write_set no longer gates dispatch (one REQ runs at a time — the parallel-dispatch
-# gate and the serial-only rule are gone); write_set survives as a display-only field the
-# board parser reads for the overlaps badge, so the parser must still read it.
+# write_set's display-only status must never be argued from a one-REQ-at-a-time premise (REQ-075).
+# The conclusion is right and permanent — nothing schedules, gates, or dispatches on write_set — but
+# REQ-073 falsified that premise: several builders can run at once under a single queue owner. A reader
+# who follows the old reasoning concludes the opposite of the contract, since the stated cause is gone.
+# The durable reason is that write_set is advisory input to a human's pick and the merge is the
+# non-interference proof (actions/work-reference.md → Worktree Dispatch Mode → Fan-Out Dispatch), which
+# holds at any builder count.
+#
+# Granularity is one line, and deliberately so: the premise is only dangerous sitting next to the field
+# it purports to explain, and a proximity window false-positives on the canonical Fan-Out Dispatch
+# section itself, two lines below the advisory-`write_set` bullet, where "integration runs one REQ at a
+# time" is a true statement about integration. Prose files put both on one long line, so the sweep sees
+# them; Go and JS comments wrap, so it cannot — those two files are covered by the file-level negatives
+# below instead, which is exact because neither has any legitimate reason to state a builder count.
+# `|| true` because grep exits 1 on no-match, which is the passing case and must not abort under `set -e`.
+stale_write_set_premise_lines="$(
+  grep -rIEn 'one REQ( [a-z]+)? at a time' \
+    "$repo_root/actions" "$repo_root/docs" "$repo_root/tools/queue-kanban" 2>/dev/null \
+    | grep -E 'write_set|overlaps' || true
+)"
+if [ -n "$stale_write_set_premise_lines" ]; then
+  printf 'FAIL: write_set is display-only at ANY builder count — no shipped file may justify that with a one-REQ-at-a-time premise (REQ-075). Point at actions/work-reference.md → Fan-Out Dispatch instead. Offending lines:\n' >&2
+  printf '%s\n' "$stale_write_set_premise_lines" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# The wrapped-comment half of the same rule (REQ-075). model.go and board.js explain write_set in
+# comments and tooltip text that wrap across lines, so the line sweep above cannot see them. Neither
+# file has any business asserting how many REQs run at once — their only mentions were the stale
+# premise — so a file-level negative is both exact and stable here.
+assert_file_not_contains \
+  "tools/queue-kanban/model.go" \
+  'one REQ( [a-z]+)? at a time' \
+  'tools/queue-kanban/model.go must not explain write_set with a one-REQ-at-a-time premise — it is advisory input to a human pick and the merge is the non-interference proof, at any builder count (REQ-075).'
+
+assert_file_not_contains \
+  "tools/queue-kanban/web/board.js" \
+  'one REQ( [a-z]+)? at a time' \
+  'tools/queue-kanban/web/board.js overlaps-badge tooltip must not explain write_set with a one-REQ-at-a-time premise — that reason is false since fan-out dispatch (REQ-075).'
+
+# write_set parser lock-step (REQ-032, updated by REQ-069). write_set does not gate dispatch; it
+# survives as a display-only field the board parser reads for the overlaps badge, so the parser must
+# still read it. (The reason it never gates is Fan-Out Dispatch's merge-is-the-proof rule, not any
+# builder count — see the REQ-075 assertion above.)
 assert_contains \
   "tools/queue-kanban/model.go" \
   'fields\["write_set"\]' \
