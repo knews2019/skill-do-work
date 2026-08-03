@@ -181,12 +181,81 @@ assert_contains \
   '^## Execution Model — Exclusive Session' \
   'actions/work-reference.md must define the exclusive-session Execution Model (one session, one active REQ, one coder context) that replaced the orchestrator-lock/parallel-dispatch machinery.'
 
-exclusive_invariant_count="$(grep -roh 'one active REQ, one coder context' "$repo_root/actions" | wc -l | tr -d ' ')"
+# The invariant is about OWNERSHIP, not build count (REQ-073). REQ-069's wording
+# ("one active REQ, one coder context") conflated the two, so lifting the builder
+# cap required rewording it — the ban that stays is two queue owners against one
+# checkout, which is what every piece of deleted concurrency machinery existed to
+# police. Still exactly once: a second copy is drift waiting to diverge.
+# `|| true` is load-bearing under `set -euo pipefail`: grep exits 1 on no match, and
+# with pipefail that aborts the whole suite silently — a missing invariant would read
+# as a crash with no FAIL line rather than as the failure it is.
+exclusive_invariant_count="$( { grep -roh 'one queue owner per checkout' "$repo_root/actions" || true; } | wc -l | tr -d ' ')"
 if [ "$exclusive_invariant_count" != "1" ]; then
-  printf 'FAIL: the exclusive-session invariant ("one active REQ, one coder context") must be stated exactly once across actions/ (found %s) — every other mention is a pointer, not a restatement.\n' \
+  printf 'FAIL: the ownership invariant ("one queue owner per checkout") must be stated exactly once across actions/ (found %s) — every other mention is a pointer, not a restatement.\n' \
     "$exclusive_invariant_count" >&2
   fail_count=$((fail_count + 1))
 fi
+
+# The old wording must be gone, not merely outnumbered: it says one active REQ and
+# one coder context, which is exactly what fan-out makes false.
+retired_invariant_hits="$(grep -rIlE -- 'one active REQ, one coder context' "$repo_root/actions" "$repo_root/docs" "$repo_root/SKILL.md" 2>/dev/null || true)"
+if [ -n "$retired_invariant_hits" ]; then
+  printf 'FAIL: the retired invariant wording "one active REQ, one coder context" still appears (REQ-073 replaced it with the one-queue-owner formulation):\n%s\n' \
+    "$retired_invariant_hits" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# Fan-out dispatch (REQ-073). The builder cap was two sentences in the Worktree
+# Dispatch Mode opening; both must stay gone, and the section that replaced them
+# must keep the three things that make N builders safe without coordination: the
+# human picks, the merge is the proof, and a named set of steps never parallelises.
+for retired_builder_cap_phrase in \
+  'The single active builder' \
+  'only one builder is ever in flight'; do
+  builder_cap_hits="$(grep -rIlE -- "$retired_builder_cap_phrase" "$repo_root/actions" 2>/dev/null || true)"
+  if [ -n "$builder_cap_hits" ]; then
+    printf 'FAIL: the retired builder-cap phrase "%s" still appears — REQ-073 raised worktree dispatch from one builder to N under a single queue owner:\n%s\n' \
+      "$retired_builder_cap_phrase" "$builder_cap_hits" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+
+assert_contains \
+  "actions/work-reference.md" \
+  '\*\*Fan-Out Dispatch' \
+  'actions/work-reference.md must define Fan-Out Dispatch inside Worktree Dispatch Mode — several builders under one queue owner, with no new coordination state.'
+
+fan_out_block="$(sed -n '/\*\*Fan-Out Dispatch/,/^## Composed Exit Summary/p' "$repo_root/actions/work-reference.md")"
+
+assert_block_contains \
+  "$fan_out_block" \
+  'Serial-only' \
+  'Fan-Out Dispatch must name what never parallelises — queue transitions, REQ id allocation, and the version/changelog files.'
+
+assert_block_contains \
+  "$fan_out_block" \
+  'CHANGELOG\.md' \
+  'the Serial-only list must name CHANGELOG.md explicitly — one entry per REQ written by the owner, because unique version numbers do not make a shared prepend safe.'
+
+assert_block_contains \
+  "$fan_out_block" \
+  'advisory input|never a gate' \
+  'Fan-Out Dispatch must keep write_set advisory input to the humans pick and never a gate — nothing schedules on it under any builder count.'
+
+assert_block_contains \
+  "$fan_out_block" \
+  'line proximity, not meaning' \
+  'Fan-Out Dispatch must state the merge gates honest limit: git detects conflicts by line proximity, so two REQs appending to a shared registry merge cleanly and can still be jointly wrong.'
+
+assert_block_contains \
+  "$fan_out_block" \
+  'survivable, not prevented' \
+  'Fan-Out Dispatch must carry crew-members/background-agents.md own ceiling note — the run-directory pattern makes fan-out failures survivable, never prevented.'
+
+assert_block_contains \
+  "$fan_out_block" \
+  'absolute main-tree path' \
+  'Fan-Out Dispatch must state the brief-delivery trap: a repo-relative path resolves inside the worktree against its own stale copy of do-work/.'
 
 three_attempt_count="$(grep -roh 'consecutive fix attempts' "$repo_root/actions" | wc -l | tr -d ' ')"
 if [ "$three_attempt_count" != "1" ]; then

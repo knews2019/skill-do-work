@@ -52,7 +52,7 @@ work action (orchestrator - lightweight, stays in loop)
 
 ## Execution Model — Exclusive Session
 
-The pipeline supports **one active `do-work` session, one active REQ, one coder context.** Parallel sessions, co-dispatched builders, and cross-session ownership are outside the product contract — the pipeline does not detect, coordinate, or recover an unsupported concurrent run, and spends no instructions or durable state trying to make one safe. If two sessions run against one checkout anyway, behavior is unspecified.
+The pipeline supports **one queue owner per checkout** — the one session that claims REQs, flips status, and archives. That session is what "exclusive" names here; builders are not owners, and any number may build at once under that owner (**Worktree Dispatch Mode** → Fan-Out Dispatch, below), because a builder writes only its own worktree and owns no queue state. **Two queue owners on one checkout stays outside the contract**, cross-session ownership with it — the pipeline does not detect, coordinate, or recover a second owner, and spends no durable state on making one safe. Behavior with two owners is unspecified.
 
 **Current-REQ relevance.** Unexpected repository state matters **only** when it prevents the active REQ from being implemented, tested, archived, or committed. Otherwise: preserve it, exclude it from this REQ's staging, and continue — spend no time explaining or repairing it.
 
@@ -260,7 +260,7 @@ Once every `working/` file has been recovered, taken over, or left alone as a re
 
 ## Worktree Dispatch Mode (Step 1)
 
-**Optional, advanced harnesses only.** The single active builder runs in its own git worktree on its own branch; the orchestrator stays in the main tree, merges that branch, and remains the only writer of `do-work/` state. Worktree isolation is orthogonal to the exclusive-session model (**Execution Model — Exclusive Session**, above): it changes only *where* the builder writes — its own tree instead of the main one — so an interrupted build leaves a branch to merge or discard rather than half-written files in the main tree. The isolation is worth having even though only one builder is ever in flight.
+**Optional, advanced harnesses only.** Each builder runs in its own git worktree on its own branch; the orchestrator stays in the main tree, merges those branches, and remains the only writer of `do-work/` state. Worktree isolation is what makes the ownership boundary hold (**Execution Model — Exclusive Session**, above): it changes *where* a builder writes — its own tree instead of the main one — so a builder can neither touch queue state nor collide with a sibling, and an interrupted build leaves a branch to merge or discard rather than half-written files in the main tree. **Everything in this section is written per REQ and therefore already holds for any number of concurrent builders** — one `<operative_name>`, one hand-back sequence, one `<pre>..<merge_hash>` range, one cleanup, each per REQ. Fan-Out Dispatch (below) adds only who picks the set and what never parallelises.
 
 **Precondition, then degrade silently.** Probe `git worktree list` (a non-zero exit, or an unrecognized subcommand, means no worktree support) and confirm the harness can run an agent against a working directory you choose. If either is missing, run the serial loop exactly as documented and say nothing further. Unlike `actions/board.md`'s Go check — which reports and stops, because there the toolchain *is* the capability — this mode's absence is not an error, so it must never surface as one.
 
@@ -294,6 +294,31 @@ Once every `working/` file has been recovered, taken over, or left alone as a re
 **Cleanup — happy path (Step 8).** After the archive move, remove the builder's worktree and branch **by this REQ's operative name** (*Naming*, above — never re-derived from the slug here): `git worktree remove <path>` (no `--force`, where `<path>` is the worktree whose basename is `<operative_name>`), then `git branch -d <operative_name>`, then `git worktree prune`. Run `branch -d` **from the integration branch you merged into**: `-d` tests merged-ness against the current HEAD (or the branch's configured upstream), so from anywhere else a perfectly-merged branch refuses and an unmerged one can pass — "refusal = unmerged" silently becomes "refusal = wrong branch." Both refusals are signal, not friction: `worktree remove` refuses on a dirty worktree (uncommitted builder work you are about to lose), `branch -d` refuses on an unmerged branch (a merge that was skipped or lost). **Never `-D`, never `--force`.** Report the refusal and stop — forcing destroys the only evidence that the integration didn't happen.
 
 **Cleanup — crash path.** Leftovers from an interrupted run are swept by **Crash Recovery (Step 1)** above: already-merged ones are removed mechanically, unmerged ones are reported and never auto-deleted. Discarding unmerged builder work belongs to `actions/cleanup.md` → **Pass 5: Orphaned Worktrees (consent-gated)**, which asks first and only acts when a human can answer.
+
+**Fan-Out Dispatch — several builders, one queue owner.** Every guarantee above is already per REQ, so raising the builder count adds no coordination and no durable state. What it does add:
+
+- **A human picks which REQs run together.** Nothing computes the set. A REQ's declared `write_set` is **advisory input to that pick, never a gate** — it is display-only, nothing schedules on it, and the board's `overlaps` badge misses glob-vs-glob, `**`, and directory entries, so **absence reads as unknown, not safe** (`actions/board.md`).
+- **The non-interference proof is the merge, not the pick.** `git merge --no-ff --no-commit` refusing is the only mechanical evidence that two builders' work does not collide. **Its limit is honest: git detects conflicts by line proximity, not meaning.** Two REQs each appending an entry to a shared registry merge cleanly and can still be jointly wrong. The **integration seam** rule (*Sole integrator*, above) is what covers that — and it works only because one integrator applies every seam by hand, inside the merge commit.
+- **Integration is serial.** Implementation parallelises; merge → qualify → test → review → changelog → archive runs one REQ at a time. Each merge also invalidates the previous REQ's *Post-merge verification* (above), so those checks re-run per REQ against the tree as it then stands. Expect the wall-clock saving in the build phase only, and say so rather than promising more.
+- **A worktree per builder is mandatory, not optional.** Sharing one working tree was considered and ruled out: every test run, qualification check, and review diff would then read a tree carrying the other builder's unfinished edits, so each REQ's evidence steps stop meaning anything and nothing downstream can tell. (The staging race is the lesser problem.) Keep this reason here — without it a later reader re-offers the shared tree as a simplification.
+
+**Serial-only — never parallelised, at any builder count:** every `do-work/` queue transition (claim, status flip, archive move); REQ id allocation (`actions/capture.md`); and `actions/version.md` plus `CHANGELOG.md` — one changelog entry per REQ, written by the owner at merge time. Unique version numbers do not make a shared prepend safe.
+
+**The run directory is mandatory here, not optional.** Fan-out is a background fan-out, so `crew-members/background-agents.md` applies (its JIT_CONTEXT already names `work (multi-REQ)`). Its slots map onto this pipeline:
+
+| Guardrail slot | Fan-out use |
+| --- | --- |
+| run directory | `do-work/runs/work-<YYYY-MM-DD-HHMMSS>/`, created before any spawn |
+| per-builder input | `REQ-NNN-brief.md` — REQ body, worktree path, branch name, never-touch list, hand-back format |
+| per-builder output | `REQ-NNN-handback.md` — branch, file manifest, integration seams |
+| `manifest.md` | REQ id → builder, `<operative_name>`, handback file, landed status |
+| bounded waves | builders per wave, sized to the harness concurrency limit |
+
+Carry that file's own ceiling note verbatim in spirit: the pattern makes fan-out failures **survivable, not prevented**. Never describe it as a fix.
+
+**The brief must reach the builder as prompt content or an absolute main-tree path.** A repo-relative path resolves inside the worktree, against its own stale tracked copy of `do-work/` (*State stays home*, above) — so the builder silently reads a snapshot, or nothing, instead of its brief.
+
+**Dispatch mechanism is deliberately unspecified.** The owner synthesizes from files on disk, never from conversation, so a spawned subagent and a human-opened session are indistinguishable to it. Do not document two routes.
 
 ## Composed Exit Summary (Step 1)
 

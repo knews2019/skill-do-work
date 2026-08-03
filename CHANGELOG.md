@@ -6,6 +6,19 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.166.0 — Several Builders at Once, Under One Queue Owner (2026-08-03)
+
+You can now hand several REQs to several builders at the same time — each in its own git worktree — without any of the locks, heartbeats, or liveness checks that got deleted at 0.161.0. The trick is that none of that was ever needed: worktree dispatch was already written per REQ, so only two sentences were capping the builder count. The boundary that matters is *who owns the queue*, not how many builds run.
+
+- The operating invariant is now **one queue owner per checkout** — the single session that claims, flips status, and archives. Builders aren't owners, so any number can build at once
+- Two queue owners on one checkout stays out of the contract, stated more explicitly than before — nothing that was removed at 0.161.0 comes back
+- New Fan-Out Dispatch section: you pick which REQs run together, `write_set` overlaps are advisory input to that pick and never a gate, and the merge refusing is the only real proof two builders didn't collide
+- It says plainly where the merge gate stops helping: git detects conflicts by line proximity, not meaning, so two REQs each appending to a shared registry merge cleanly and can still be jointly wrong
+- Named serial-only list: queue transitions, REQ id allocation, and `actions/version.md` + `CHANGELOG.md` — one entry per REQ, written by the owner at merge time
+- Integration stays serial. The saving is in the build phase, and the docs say so instead of promising more
+- A worktree per builder is mandatory, with the reason kept in the prose: sharing one tree means every test run and review diff reads the other builder's unfinished edits
+- The version-bump-and-changelog ritual in `CLAUDE.md` is now scoped to the integrating commit, so a builder in a worktree skips it instead of racing its siblings
+
 ## 0.165.0 — REQ and Version Numbers Get Allocated, Release Rules Get Checked (2026-08-03)
 
 Two of the rules you're asked to hand-check on every single commit — the version must beat the newest changelog entry, and the entry title must not already be in use — are documented as having already been gotten wrong. They're now machine-checked, and the board tool can hand you the next REQ number and version instead of you eyeballing a file listing for it.
