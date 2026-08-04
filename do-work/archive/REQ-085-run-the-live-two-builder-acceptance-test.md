@@ -4,6 +4,7 @@ title: Run REQ-073's live two-builder acceptance test and record what it found
 status: completed
 claimed_at: 2026-08-04T00:02:54Z
 completed_at: 2026-08-04T00:14:18Z
+commit: b224e8a
 kb_status: pending
 created_at: 2026-08-03T17:09:21Z
 user_request: UR-016
