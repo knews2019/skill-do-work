@@ -691,6 +691,72 @@ for check_script_entry in "${hardened_check_scripts[@]}"; do
     "$referencing_action_file must reference $check_script — the hardened step's pointer was removed without un-hardening."
 done
 
+# Pre-flight dirty-tree relevance (feedback 2026-08-04). The serial qualifier and
+# reviewer inspect the repository-wide working/staged diff, so changes that predate
+# the active REQ can contaminate its evidence even though Step 9 stages explicit
+# paths. Keep the broad detection, but keep its warning subordinate to the canonical
+# Current-REQ relevance rule: preserve/exclude unexpected state and continue unless
+# it prevents this REQ from completing. The old "may stage unrelated files" rationale
+# contradicted the explicit staging contract and invited removal of a useful check.
+current_req_relevance_block="$(sed -n '/^\*\*Current-REQ relevance\./,/^\*\*Three-attempt stop\./p' "$repo_root/actions/work-reference.md")"
+
+assert_block_contains \
+  "$current_req_relevance_block" \
+  'only.*prevents the active REQ.*implemented, tested, archived, or committed' \
+  'actions/work-reference.md must keep unexpected repository state gated by Current-REQ relevance — otherwise pre-flight warnings can become blockers or cleanup work.'
+
+assert_block_contains \
+  "$current_req_relevance_block" \
+  'preserve it, exclude it from this REQ.s staging, and continue' \
+  'actions/work-reference.md must keep the preserve/exclude/continue response for repository state that does not prevent the active REQ.'
+
+# The rule covers SESSION state too, and says the non-action out loud (feedback
+# 2026-08-04). A session enumerated its sibling claude PIDs, noticed a commit that
+# landed 20 seconds into its run, and blocked on a four-option "how should I proceed?"
+# prompt instead of starting its REQ. Nothing shipped told it to — but the contract
+# only said the *pipeline* does not detect a concurrent run, which an agent can read
+# as leaving the question open for it to raise. Exclusivity is the user's guarantee;
+# asking them to re-confirm it rebuilds the coordination the exclusive-session model
+# deleted, one prompt at a time.
+assert_block_contains \
+  "$current_req_relevance_block" \
+  '[Nn]ever probe for a concurrent session' \
+  'actions/work-reference.md must keep Current-REQ relevance covering session state with the explicit never-probe/never-ask clause — without it an agent re-derives the concurrency check the exclusive-session model removed and stalls the loop on a prompt.'
+
+assert_contains \
+  "tools/checks/preflight.sh" \
+  'git status --porcelain --untracked-files=all' \
+  'tools/checks/preflight.sh must keep repository-wide dirty-file detection — serial qualification and review read the repository-wide working/staged diff.'
+
+preflight_dirty_warning_line="$(grep -E '^[[:space:]]*echo "WARN: .*uncommitted changes' "$repo_root/tools/checks/preflight.sh" || true)"
+
+assert_block_contains \
+  "$preflight_dirty_warning_line" \
+  'unless they prevent the active REQ' \
+  'tools/checks/preflight.sh dirty-file warning must stay subordinate to Current-REQ relevance instead of turning unexpected state into a blocker.'
+
+assert_block_contains \
+  "$preflight_dirty_warning_line" \
+  'qualification/review evidence' \
+  'tools/checks/preflight.sh must explain dirty files as possible qualification/review evidence contamination, not as files the explicit commit step will automatically stage.'
+
+assert_block_not_contains \
+  "$preflight_dirty_warning_line" \
+  'may stage unrelated files|swept into (the )?commit' \
+  'tools/checks/preflight.sh must not claim dirty files are automatically staged — Step 9 stages explicit paths.'
+
+preflight_template_block="$(sed -n '/^## Pre-Flight Template/,/^## Implementation Summary Template/p' "$repo_root/actions/work-reference.md")"
+
+assert_block_contains \
+  "$preflight_template_block" \
+  'preserve/exclude from this REQ.*qualification/review evidence' \
+  'actions/work-reference.md Pre-Flight template must frame pre-existing dirty files as qualification/review evidence contamination.'
+
+assert_file_not_contains \
+  "actions/work.md" \
+  'unrelated dirty files get swept into the commit' \
+  'actions/work.md must not teach that pre-existing dirty files are swept into the explicit per-REQ commit.'
+
 # Review regressions: prescribed shell and roadmap classification are runtime
 # contracts even though they live in Markdown/just recipes rather than compiled code.
 for kanban_recipe_file in "actions/install.md" "justfile"; do

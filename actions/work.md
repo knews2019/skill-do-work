@@ -345,7 +345,7 @@ Quick environment sanity check before the builder starts coding. All checks are 
 <skill-root>/tools/checks/preflight.sh [test-command ...]
 ```
 
-It performs the three checks (git clean with `-uall`, test baseline, dependencies present), prints WARN/OK lines, always exits 0, and — when a test command was given — records `do-work/working/baseline.json` + `baseline-failures.txt` so Step 6.5 can separate pre-existing failures from new regressions. A test command that could not be launched at all records `"launched": false` and no failures file — Step 6.5 must refuse to compare against that rather than treat it as a red baseline. Pass the command as separate words or as one quoted string (the quoted form runs via `sh -c`, so `cd app && npm test` works). If the script is missing, run the same three checks by hand (`git status --porcelain --untracked-files=all`; run the test command; check `node_modules`/venv presence).
+It performs the three checks (pre-existing changes outside `do-work/` with `-uall`, test baseline, dependencies present), prints WARN/OK lines, always exits 0, and — when a test command was given — records `do-work/working/baseline.json` + `baseline-failures.txt` so Step 6.5 can separate pre-existing failures from new regressions. The Git check stays repository-wide because serial qualification and review consume the working/staged diff: pre-existing changes can contaminate that evidence even though Step 9 stages explicit paths. Apply `actions/work-reference.md`'s **Current-REQ relevance** rule — preserve those changes and, unless they prevent this REQ, exclude them from its staging and continue. A test command that could not be launched at all records `"launched": false` and no failures file — Step 6.5 must refuse to compare against that rather than treat it as a red baseline. Pass the command as separate words or as one quoted string (the quoted form runs via `sh -c`, so `cd app && npm test` works). If the script is missing, run the same three checks by hand (`git status --porcelain --untracked-files=all`; run the test command; check `node_modules`/venv presence).
 
 (append findings per the **Pre-Flight Template (Step 5.75)** in `actions/work-reference.md`, only if issues are found — all checks are warnings, not blockers)
 
@@ -660,7 +660,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 4: Plan (Route C: spawn Plan agent + validate plan / Routes A & B: note skipped)
 □ Step 5: Explore (Routes B & C: spawn Explore agent, include prime file lessons)
 □ Step 5.5: Scope Declaration (Routes B & C: declare files + acceptance criteria in REQ)
-□ Step 5.75: Pre-Flight Check (Routes B & C: git clean, test baseline, dependencies)
+□ Step 5.75: Pre-Flight Check (Routes B & C: repository state, test baseline, dependencies)
 □ Step 6: Implement (spawn agent with lessons + TDD mode if set, log decisions as D-XX)
 □ Step 6.25: Implementation Summary (append file manifest — mandatory for all routes)
 □ Step 6.3: Qualify (orchestrator verifies: files exist, substantive, wired, flowing, requirements traced, P-A-U audit)
@@ -735,7 +735,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 
 | If you're thinking... | STOP. Instead... | Because... |
 |---|---|---|
-| "I'll skip Pre-Flight — the baseline is probably stable" | Run `git status` and the test baseline anyway (Step 5.75) | Pre-existing failures get misattributed to the builder, and unrelated dirty files get swept into the commit |
+| "I'll skip Pre-Flight — the baseline is probably stable" | Run `git status` and the test baseline anyway (Step 5.75) | Pre-existing failures get misattributed to the builder, and pre-existing dirty files can contaminate the repository-wide diff used for qualification and review |
 | "I wrote the test after the code but it fails without it, so this counts as TDD" | For `tdd: true`, write the failing test first and show it RED before the code | Post-hoc tests encode the implementation's quirks; the RED-before-GREEN ordering is the evidence Step 6.5 gates on |
 | "P-A-U is bookkeeping — I'll just tick the boxes" | Do each phase; Step 6.3 audits the diff against the checked boxes | A checked `[UNIFY]` over a diff containing `console.log` is a false claim the qualifier will catch |
 | "This file change is small — it doesn't need to go in the Scope section" | Declare every file before coding (Step 5.5) | Undeclared touches are exactly what the scope-drift check flags at review; "small" is judged after the fact, not before |

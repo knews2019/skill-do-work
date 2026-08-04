@@ -25,11 +25,11 @@
 # pre-existing, which is the exact mis-attribution this check exists to prevent.
 set -uo pipefail
 
-# --- 1. Git clean (uncommitted changes outside do-work/ get swept into commits) ---
+# --- 1. Repository state (pre-existing changes can contaminate diff-based evidence) ---
 if git rev-parse --git-dir >/dev/null 2>&1; then
   dirty_files="$(git status --porcelain --untracked-files=all | awk '{print $2}' | grep -v '^do-work/' || true)"
   if [ -n "$dirty_files" ]; then
-    echo "WARN: uncommitted changes detected — the commit step may stage unrelated files:"
+    echo "WARN: pre-existing uncommitted changes detected outside do-work/ — preserve them and, unless they prevent the active REQ, exclude them from its staging; account for them in repository-wide qualification/review evidence:"
     printf '  %s\n' $dirty_files
   else
     echo "OK: working tree clean outside do-work/"

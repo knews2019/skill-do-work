@@ -54,7 +54,7 @@ work action (orchestrator - lightweight, stays in loop)
 
 The pipeline supports **one queue owner per checkout** — the one session that claims REQs, flips status, and archives. That session is what "exclusive" names here; builders are not owners, and any number may build at once under that owner (**Worktree Dispatch Mode** → Fan-Out Dispatch, below), because a builder writes only its own worktree and owns no queue state. **Two queue owners on one checkout stays outside the contract**, cross-session ownership with it — the pipeline does not detect, coordinate, or recover a second owner, and spends no durable state on making one safe. Behavior with two owners is unspecified.
 
-**Current-REQ relevance.** Unexpected repository state matters **only** when it prevents the active REQ from being implemented, tested, archived, or committed. Otherwise: preserve it, exclude it from this REQ's staging, and continue — spend no time explaining or repairing it.
+**Current-REQ relevance.** Unexpected repository **or session** state — a diff you did not make, a commit that lands mid-run, another live process against this checkout — matters **only** when it prevents the active REQ from being implemented, tested, archived, or committed. Otherwise: preserve it, exclude it from this REQ's staging, and continue — spend no time explaining or repairing it. **Never probe for a concurrent session, and never ask the user to arbitrate one.** Exclusivity is the user's guarantee, not this pipeline's check; a prompt asking them to confirm it rebuilds in conversation the coordination this model removed.
 
 **Three-attempt stop.** The coder counts consecutive fix attempts **in its current context only**. After three failures, stop the local retry loop and report the unresolved blocker; use `pending-answers` only when progress genuinely requires a user decision. A restarted coder session starts with a fresh count — the count lives in coder context and is never written to disk.
 
@@ -479,7 +479,7 @@ If **no section applies** (no REQs at all in `do-work/queue/`), report completio
 ```markdown
 ## Pre-Flight
 
-**Git:** ⚠ 3 uncommitted files (src/temp.ts, .env.local, notes.md)
+**Git:** ⚠ 3 pre-existing uncommitted files — preserve/exclude from this REQ and account for them in qualification/review evidence (src/temp.ts, .env.local, notes.md)
 **Tests baseline:** ✓ All passing (47 tests)
 **Dependencies:** ✓ Installed
 

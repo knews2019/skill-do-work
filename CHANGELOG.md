@@ -6,6 +6,26 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.169.5 — Current-REQ Relevance Covers Dirty Trees and Live Sibling Sessions (2026-08-04)
+
+Two things a run can trip over that aren't its problem: files that were already dirty when it
+started, and another session working in the same checkout. Both now route through one rule, and
+the second one says the quiet part out loud — don't go looking, and don't make the user adjudicate it.
+
+- **Pre-flight's dirty-file warning says what's actually at risk.** It claimed unrelated files
+  "may be swept into the commit," which contradicts Step 9's explicit-pathspec staging and made the
+  check look removable. The real exposure is that qualification and review read the repository-wide
+  working/staged diff, so pre-existing changes contaminate *evidence*. Broad detection stays;
+  `tools/checks/preflight.sh`, `actions/work.md` Step 5.75, and the Pre-Flight template now point at
+  Current-REQ relevance instead of at a staging risk that doesn't exist.
+- **Current-REQ relevance now covers session state too.** A run that notices a commit landing
+  mid-flight, or another live process against the checkout, treats it exactly like an unexpected
+  diff: preserve, exclude, continue. Added explicitly — **never probe for a concurrent session, and
+  never ask the user to arbitrate one.** Exclusivity is the user's guarantee; a prompt asking them to
+  confirm it rebuilds in conversation the coordination 0.161.0 deleted.
+- A regression assertion pins the new clause, so the concurrency check can't be re-derived from
+  first principles and quietly reappear as a four-option prompt that stalls the loop.
+
 ## 0.169.4 — Citation Guard Flags Mentions Instead of Idioms (2026-08-04)
 
 The check that stops shipped files pointing at the maintainer doc was matching a hand-written list of
