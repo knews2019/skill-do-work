@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.173.0 — Verify Catches Assignment Drift and Half-Closed URs (2026-08-04)
+
+Two new read-only probes for drift that only became reachable once several checkouts share a queue. Both report and route; neither repairs, and neither is marked fixable, because both resolutions are yours to make.
+
+- `assigned-elsewhere-claimed-here`: a REQ sitting in `working/` while still earmarked for another session. Its marker is now telling every other checkout to skip a REQ you're already building.
+- `ur-archived-with-live-member`: a UR archived while one of its members is still in `queue/` or `working/` — the live REQ is orphaned from the `input.md` that explains why it exists.
+- The UR probe scans `user_request:` frontmatter, never the UR's own `requests:` array, which is capture-time-only and misses follow-up REQs. There's a test that fails if anyone changes that.
+- Both show up in `do-work forensics` Check 14, whose probe table now says out loud that it's a snapshot rather than the authority — the tool's own output is.
+
 ## 0.172.0 — Earmark a REQ for Another Session with `assigned_to` (2026-08-04)
 
 Now that any checkout can claim, there needs to be a way to say "leave this one, it's mine." That's `assigned_to` — one optional frontmatter field naming a session. Another session's default run skips it and tells you why; naming it explicitly takes it anyway and clears the marker. No verb, no status, no clock.

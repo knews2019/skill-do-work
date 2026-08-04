@@ -14,18 +14,20 @@ import (
 // Verify probe categories. Each finding carries one so callers (and tests) can
 // name a probe instead of matching report prose.
 const (
-	verifyCategoryVersionChangelogMismatch     = "version-changelog-mismatch"
-	verifyCategoryChangelogVersionNotAhead     = "changelog-version-not-ahead"
-	verifyCategoryReusedChangelogTitle         = "reused-changelog-title"
-	verifyCategoryDuplicateRequestId           = "duplicate-req-id"
-	verifyCategoryMergedWorktreeLeftover       = "merged-worktree-leftover"
-	verifyCategoryUnmergedWorktreeLeftover     = "unmerged-worktree-leftover"
-	verifyCategoryUndeterminedWorktreeLeftover = "worktree-merge-state-undetermined"
-	verifyCategoryWorktreeWroteQueueState      = "worktree-wrote-queue-state"
-	verifyCategoryWorktreeCommittedQueueState  = "worktree-committed-queue-state"
-	verifyCategoryCheckpointGhostRequest       = "checkpoint-names-missing-req"
-	verifyCategoryClaimNeedsAttention          = "claim-needs-attention"
-	verifyCategoryStrandedFinishedRequest      = "stranded-finished-req"
+	verifyCategoryVersionChangelogMismatch      = "version-changelog-mismatch"
+	verifyCategoryChangelogVersionNotAhead      = "changelog-version-not-ahead"
+	verifyCategoryReusedChangelogTitle          = "reused-changelog-title"
+	verifyCategoryDuplicateRequestId            = "duplicate-req-id"
+	verifyCategoryMergedWorktreeLeftover        = "merged-worktree-leftover"
+	verifyCategoryUnmergedWorktreeLeftover      = "unmerged-worktree-leftover"
+	verifyCategoryUndeterminedWorktreeLeftover  = "worktree-merge-state-undetermined"
+	verifyCategoryWorktreeWroteQueueState       = "worktree-wrote-queue-state"
+	verifyCategoryWorktreeCommittedQueueState   = "worktree-committed-queue-state"
+	verifyCategoryCheckpointGhostRequest        = "checkpoint-names-missing-req"
+	verifyCategoryClaimNeedsAttention           = "claim-needs-attention"
+	verifyCategoryStrandedFinishedRequest       = "stranded-finished-req"
+	verifyCategoryAssignedElsewhereClaimedHere  = "assigned-elsewhere-claimed-here"
+	verifyCategoryArchivedUserRequestLiveMember = "ur-archived-with-live-member"
 )
 
 // staleClaimThreshold is how long a `claimed` REQ may sit before verify reports
@@ -115,6 +117,8 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 	appendCheckpointGhostFindings(&report, repoRoot, board)
 	appendClaimFindings(&report, board, now)
 	appendStrandedFinishedFindings(&report, board)
+	appendAssignedElsewhereFindings(&report, board)
+	appendArchivedUserRequestLiveMemberFindings(&report, board)
 	appendWorktreeFindings(&report, repoRoot)
 
 	return report, nil
@@ -349,6 +353,79 @@ func appendStrandedFinishedFindings(report *VerifyReport, board *Board) {
 			Remedy:   "cleanup Pass 0 moves it into do-work/archive/",
 		})
 	}
+}
+
+// appendAssignedElsewhereFindings flags a REQ that reached do-work/working/ while
+// still carrying assigned_to. Clearing that field is part of Step 2's claim
+// (actions/work.md), so its survival past the move means either the claim skipped
+// the clear or a session claimed work earmarked for another one. The marker is now
+// actively wrong: it tells every other checkout to skip a REQ this one is building.
+// Read-only and not fixable — whose claim wins is a human call, and cleanup asks.
+func appendAssignedElsewhereFindings(report *VerifyReport, board *Board) {
+	for _, ticket := range board.AllRequests {
+		if ticket.AssignedTo == "" || ticket.TreeSection != "working" {
+			continue
+		}
+		report.Findings = append(report.Findings, VerifyFinding{
+			Category: verifyCategoryAssignedElsewhereClaimedHere,
+			Detail: fmt.Sprintf("%s sits in do-work/working/ but is still assigned to %q — the claim did not clear the marker",
+				ticket.RequestId, ticket.AssignedTo),
+			Remedy: "cleanup asks before touching it: clear assigned_to if this checkout is the one building it, or release the claim if the earmark should stand",
+		})
+	}
+}
+
+// appendArchivedUserRequestLiveMemberFindings flags an archived UR that still has a
+// member REQ sitting in do-work/queue/ or do-work/working/. A UR reaches
+// do-work/archive/ only once every member is terminally resolved (actions/work.md
+// Step 8), so this state means the closure check ran on stale information or a
+// folder was moved by hand — and the live REQ is now orphaned from the input.md
+// that records why it exists.
+//
+// Membership is the UR's RequestIds, which linkRequestsToUserRequests fills from
+// each REQ's `user_request:` frontmatter — deliberately NOT the UR's own
+// `requests:` array. That array is written once at capture time and can be wrong in
+// both directions (a follow-up REQ captured later is absent from it, a split or
+// abandoned REQ lingers in it), which is exactly why Step 8's closure predicate is
+// a frontmatter scan. A probe reading the array would go silent on the follow-up
+// case, which is the common one.
+//
+// Read-only and not fixable: un-archiving a UR and force-resolving a live REQ are
+// both human decisions with different consequences.
+func appendArchivedUserRequestLiveMemberFindings(report *VerifyReport, board *Board) {
+	for _, userRequestTicket := range board.UserRequests {
+		if !isArchivedUserRequestPath(userRequestTicket.FilePath) {
+			continue
+		}
+		var liveMemberIds []string
+		for _, memberRequestId := range userRequestTicket.RequestIds {
+			memberTicket, memberFound := board.RequestsById[memberRequestId]
+			if !memberFound {
+				continue
+			}
+			if memberTicket.TreeSection == "queue" || memberTicket.TreeSection == "working" {
+				liveMemberIds = append(liveMemberIds, memberRequestId)
+			}
+		}
+		if len(liveMemberIds) == 0 {
+			continue
+		}
+		report.Findings = append(report.Findings, VerifyFinding{
+			Category: verifyCategoryArchivedUserRequestLiveMember,
+			Detail: fmt.Sprintf("%s is archived but still has live member(s) %s in do-work/queue/ or do-work/working/",
+				userRequestTicket.UserRequestId, strings.Join(liveMemberIds, ", ")),
+			Remedy: "cleanup asks before moving anything: bring the UR folder back to do-work/user-requests/ until the member resolves, or resolve the member (do-work run / do-work abandon) and re-close the UR",
+		})
+	}
+}
+
+// isArchivedUserRequestPath reports whether a UR's input.md lives under
+// do-work/archive/. The UR ticket carries no TreeSection of its own (unlike a REQ),
+// so the path is the only evidence. Matched on the separator-bounded segment so a
+// project directory merely named "archive" somewhere else cannot satisfy it.
+func isArchivedUserRequestPath(userRequestFilePath string) bool {
+	normalizedPath := filepath.ToSlash(userRequestFilePath)
+	return strings.Contains(normalizedPath, "/do-work/archive/")
 }
 
 // worktreeMergeState is what verify can honestly say about a worktree-agent-*
