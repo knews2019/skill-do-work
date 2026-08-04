@@ -247,7 +247,7 @@ func appendCheckpointGhostFindings(report *VerifyReport, repoRoot string, board 
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryCheckpointGhostRequest,
 			Detail:   fmt.Sprintf("do-work/CHECKPOINT.md names %s, which does not exist in queue/, working/, or archive/", mentionedId),
-			Remedy:   "edit or delete the checkpoint — a later session reads it, and crash recovery classifies against it",
+			Remedy:   "edit that id's own entry out of the checkpoint rather than deleting the file — the file may also hold entries under another checkout's writer: label, which are live claims there; a later session reads it, and crash recovery classifies against it",
 		})
 	}
 }

@@ -55,5 +55,9 @@ Rewrite the Execution Model contract (`actions/work-reference.md:53–61`) from 
 
 See `do-work/user-requests/UR-018/input.md` and `assets/approved-plan.md` (Phase 2, items 3–4).
 
+## Addendum (2026-08-04)
+
+From REQ-094's review (Minor finding, folded here because this REQ owns the lines): as of REQ-094, `actions/work-reference.md:55`'s "the pipeline does not detect, coordinate, or recover a second owner" and `docs/work-guide.md:91`'s "does not coordinate a second owner" are **partly false for a reason unrelated to this REQ's own scope** — crash recovery now *detects* another checkout's live claim by its `writer:` label and reports it (`claim held by <writer>, not touched`); it still doesn't coordinate or recover one. The Execution Model rewrite must account for that already-shipped behavior rather than rediscovering it. Also reword `actions/work-reference.md`'s Step-10 template line "recovery classifies each `working/` file by name" → by name *and label* if this REQ touches that paragraph.
+
 ---
 *Source: approved plan, Phase 2*

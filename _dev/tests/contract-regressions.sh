@@ -538,6 +538,31 @@ assert_block_contains \
   'never grow into one' \
   'actions/work-reference.md In-Progress Record must state that the record is a classification input and must never grow into a lock, heartbeat, or liveness check — that is the machinery REQ-069 deleted and REQ-073 declined to revive (REQ-077).'
 
+# The writer label (REQ-094). The checkpoint is a tracked file wherever a consumer commits do-work/,
+# so another checkout's live claim arrives by an ordinary git pull looking exactly like a local one —
+# recovery then reads it as an own crash and strips a REQ someone is actively building. Each
+# assertion below pins one half of the fix: the entry carries the label, and a labeled foreign entry
+# is reported rather than aged into the takeover ladder.
+assert_block_contains \
+  "$in_progress_record_block" \
+  'writer: <hostname>:<absolute-checkout-path>' \
+  'actions/work-reference.md In-Progress Record must give the entry format a writer: <hostname>:<absolute-checkout-path> label — the path alone collides across machines and the hostname alone collides across checkouts on one machine, so neither half identifies a checkout by itself (REQ-094).'
+
+assert_block_contains \
+  "$crash_recovery_block" \
+  'claim held by' \
+  'actions/work-reference.md Crash Recovery must report a foreign-label entry as a claim held by that writer and leave it untouched — a label is positive evidence of another checkouts claim, so it is classified by the label and never aged into the three-hour takeover ladder (REQ-094).'
+
+# The tripwire had to be reworded to admit a static writer label without admitting liveness
+# machinery, and the naive reword drops the ban to make room for the carve-out. Pinning both phrases
+# to the SAME paragraph is the point: a carve-out that drifts into its own paragraph reads as a
+# general permission rather than as the one exception to the ban standing beside it.
+in_progress_tripwire_paragraph="$(printf '%s\n' "$in_progress_record_block" | grep -F 'never grow into one' || true)"
+if [ -z "$in_progress_tripwire_paragraph" ] || ! printf '%s\n' "$in_progress_tripwire_paragraph" | grep -qF 'never refreshed'; then
+  printf 'FAIL: actions/work-reference.md In-Progress Record must keep the tripwire ("never grow into one") and the static-label carve-out ("never refreshed") in one paragraph — the label is the single exception to the lock/heartbeat/liveness ban, and it only reads as an exception standing next to it (REQ-077, REQ-094).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 assert_block_contains \
   "$work_archive_success_block" \
   'In Progress \(interrupted\)' \

@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.170.0 — Checkpoint Writer Label Scopes Crash Recovery to the Claiming Checkout (2026-08-04)
+
+In-progress checkpoint entries now record which checkout wrote them (`writer: <hostname>:<checkout-path>`), and crash recovery only ever strips its own — another checkout's synced live claim is reported as `claim held by <writer>, not touched` instead of being read as a local crash and re-queued. First piece of the UR-018 multi-checkout work: the old behavior replayed the 2026-07-01 collision deterministically on any tree that commits `do-work/`.
+
+- Crash recovery classifies four claim origins: own-label (recover), foreign-label (report, never in the takeover ladder), label-less legacy (own only if the checkpoint is locally modified), unnamed/no-checkpoint (unchanged 3-hour ladder)
+- Step 10's session-end rewrite and the session-start delete preserve entries this checkout didn't write
+- The no-liveness tripwire still bans refresh intervals, staleness checks, and liveness probes by name — the static label is the one carve-out, pinned in the same paragraph by a new contract assertion (3 new assertions total)
+- `queue-kanban verify`'s ghost-REQ remedy no longer suggests deleting a checkpoint that may hold another checkout's live entries
+
 ## 0.169.9 — Verify No Longer Reads a Quoted Shell Glob as a Ghost REQ (2026-08-04)
 
 `queue-kanban verify` exited 1 on this very repo: the checkpoint ghost-REQ scanner's `REQ-\d+`

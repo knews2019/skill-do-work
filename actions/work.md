@@ -117,7 +117,7 @@ When `$ARGUMENTS` is empty — no targeting tokens, no flags, no other tokens �
 
 **Exclusive session.** This pipeline assumes it is the only `do-work` session running against this checkout (`actions/work-reference.md` → **Execution Model — Exclusive Session**). It does not detect or coordinate a concurrent run, and acquires no lock. On session start, **read `do-work/CHECKPOINT.md` first** (Step 10 → **On session start**): it is Crash Recovery's input, not just resume context, so the read is a precondition of the next paragraph rather than a convenience.
 
-**Crash Recovery:** if `do-work/working/` contains any `REQ-*.md`, a claim outlived the run that made it. **A claimed REQ is not automatically this session's to reclaim** — recovery resets frontmatter and strips thirteen generated sections that nothing has committed yet, so it runs only on a REQ the checkpoint records as this session's own interrupted work. Any other claimed REQ is left byte-identical and reported, and is offered for takeover only once it is stale — where a human, never the threshold, authorizes the takeover. Full classification, the staleness threshold and its timestamp guard, and the unattended path: `actions/work-reference.md` → **Crash Recovery (Step 1)**. Once every `working/` file is recovered, taken over, or left alone, proceed with finding the next request.
+**Crash Recovery:** if `do-work/working/` contains any `REQ-*.md`, a claim outlived the run that made it. **A claimed REQ is not automatically this session's to reclaim** — recovery resets frontmatter and strips thirteen generated sections that nothing has committed yet, so it runs only on a REQ the checkpoint records **under this checkout's own `writer:` label** as this session's interrupted work. Any other claimed REQ is left byte-identical and reported: one the checkpoint attributes to a different checkout is reported as that checkout's claim and never offered for takeover, and one nothing accounts for is offered for takeover only once it is stale — where a human, never the threshold, authorizes the takeover. Full classification, the writer label, the staleness threshold and its timestamp guard, and the unattended path: `actions/work-reference.md` → **Crash Recovery (Step 1)**. Once every `working/` file is recovered, taken over, or left alone, proceed with finding the next request.
 
 Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
 
@@ -227,7 +227,7 @@ Exit 0 → no collision, proceed to Step 2. Exit 1 (matching archive paths print
 
 1. `mkdir -p do-work/working` and move the REQ file there. If this session is interrupted after the move, the file stays in `working/` and Crash Recovery (Step 1) classifies it on the next run.
 2. Update frontmatter: `status: claimed`, `claimed_at: <timestamp>` — the current **UTC** instant `YYYY-MM-DDTHH:MM:SSZ`, exactly like `completed_at` (Timestamp rule, `actions/work-reference.md`). Never local wall-clock time with a `Z` suffix — a future-dated stamp freezes the board's claim stopwatch and flags the card with a clock-skew warning.
-3. Record the claim in `do-work/CHECKPOINT.md`'s `## In Progress (interrupted)` list, per `actions/work-reference.md` → **In-Progress Record (Step 2)** (append one entry per claimed REQ; create the file with just that section when it doesn't exist yet). **This is what makes crash recovery reachable:** the record is recovery's classification input, and Step 10's session-end write is too late for a run that dies mid-REQ. It is not a lock — it grants nothing, coordinates nothing, and no second owner reads it; recovery is its only consumer. Step 8 removes the entry when the REQ leaves `working/`.
+3. Record the claim in `do-work/CHECKPOINT.md`'s `## In Progress (interrupted)` list, per `actions/work-reference.md` → **In-Progress Record (Step 2)** (append one entry per claimed REQ, stamped with this checkout's `writer: <hostname>:<absolute-checkout-path>` label; create the file with just that section when it doesn't exist yet). **This is what makes crash recovery reachable:** the record is recovery's classification input, and Step 10's session-end write is too late for a run that dies mid-REQ. It is not a lock — it grants nothing and coordinates nothing; nothing acquires it, nothing waits on it, and another checkout reads it only to classify its entries as foreign and leave them alone. Step 8 removes the entry when the REQ leaves `working/`.
 ### Step 3: Triage
 
 Read the request, apply the decision flow, update frontmatter with `route`. If a `## Triage` section does not already exist, append to the request file:
@@ -552,7 +552,7 @@ Only add a link when the lesson is relevant to that prime file's scope — don't
 
    Classify each by severity and queue follow-ups per `actions/work-reference.md` → **Discovered Tasks Classification (Step 8)**: `[critical]` → `status: pending`, auto-queued + prominent report; `[normal]`/`[low]` → `status: pending-answers` via the Open-Questions consent flow — except test-only mechanical-hygiene discoveries meeting that section's carve-out (all three bullets), which auto-queue as `status: pending` with an auto-approved note and a `↺` report line.
 5. **Cycle detection:** Before creating any follow-up REQ, verify the current REQ's own `addendum_to` chain is not already circular. Algorithm: walk `addendum_to` links (honoring the `amends`/`parent`/`amendment_to` alias per the Schema Read Contract when the canonical key is absent) starting from the current REQ, collecting each visited ID into a seen set. If you encounter the current REQ's ID again during the walk, the chain is already circular — do not create any follow-ups. Report: `⚠ Cycle detected in addendum_to chain: REQ-NNN → REQ-MMM → ... → REQ-NNN. Skipping follow-up — manual resolution needed.` This handles chains of any length.
-6. Archive based on REQ type. The physical move out of `working/` is the archive. **As part of that move, remove this REQ's entry from `do-work/CHECKPOINT.md`'s `## In Progress (interrupted)` list** (`actions/work-reference.md` → **In-Progress Record (Step 2)**) — a REQ still listed there after it leaves `working/` is the contradiction the next run's recovery is told to report. Nothing else is released: the record is recovery's classification input, not a lock, and the exclusive-session model keeps none.
+6. Archive based on REQ type. The physical move out of `working/` is the archive. **As part of that move, remove this REQ's own-label entry from `do-work/CHECKPOINT.md`'s `## In Progress (interrupted)` list** (`actions/work-reference.md` → **In-Progress Record (Step 2)**) — a REQ still listed there after it leaves `working/` is the contradiction the next run's recovery is told to report. Nothing else is released: the record is recovery's classification input, not a lock, and the exclusive-session model keeps none.
 
 | REQ has... | Archive behavior |
 |------------|-----------------|
@@ -634,6 +634,8 @@ At the end of every work session (whether all REQs completed, user stops, or ses
 
 (write `do-work/CHECKPOINT.md` per the **Session Checkpoint Template (Step 10)** in `actions/work-reference.md`, scaled to session depth: light / moderate / heavy)
 
+This write replaces the whole file, so it is the one step that can erase a claim it did not make: **carry every `## In Progress (interrupted)` entry carrying another checkout's `writer:` label through verbatim** and enrich only this checkout's own (`actions/work-reference.md` → **Session Checkpoint Template (Step 10)**).
+
 **Session depth guide:**
 - **light** (1-2 REQs): Minimal checkpoint — Completed + Still Queued sections are sufficient
 - **moderate** (3-5 REQs): Add Session Notes with patterns observed and environment quirks
@@ -641,8 +643,8 @@ At the end of every work session (whether all REQs completed, user stops, or ses
 
 **On session start (Step 1 addition):** Before crash recovery, check for `do-work/CHECKPOINT.md`. If it exists:
 1. Read it and report a brief summary: `Resuming from previous session. Last completed: REQ-NNN. [N] REQs still queued.`
-2. Its `## In Progress (interrupted)` section is what crash recovery classifies against — a `working/` REQ named there is this session's own to recover, and one that isn't is a foreign claim recovery must not strip. Step 2 wrote those entries at claim time, one per claim (`actions/work-reference.md` → **In-Progress Record (Step 2)**), which is why the section survives a crash that never reached this step.
-3. **Do not delete yet.** Keep the checkpoint until crash recovery has finished with every `working/` file, then delete it. Deleting only after recovery is done still prevents losing resume context if the session crashes again mid-recovery.
+2. Its `## In Progress (interrupted)` section is what crash recovery classifies against — a `working/` REQ named there under this checkout's `writer:` label is this session's own to recover, and one that isn't (unlabeled, or labeled for another checkout) is a foreign claim recovery must not strip. Step 2 wrote those entries at claim time, one per claim (`actions/work-reference.md` → **In-Progress Record (Step 2)**), which is why the section survives a crash that never reached this step.
+3. **Do not delete yet.** Keep the checkpoint until crash recovery has finished with every `working/` file, then remove **this checkout's own entries**. Delete the file itself only once no entry carrying another checkout's `writer:` label remains — those record claims held elsewhere, and this session starting is no reason to drop them. Deleting only after recovery is done still prevents losing resume context if the session crashes again mid-recovery.
 
 This is NOT a blocking gate. With no checkpoint, the session starts normally — crash recovery still runs, it just has nothing to match against, so every claimed `working/` REQ is treated as a foreign claim and left intact.
 
@@ -653,8 +655,8 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 ## Orchestrator Checklist (per request)
 
 ```
-□ Step 1: Read CHECKPOINT.md FIRST (it is recovery's input), crash recovery (recover own-crash files; report foreign claims, ask before takeover), validate frontmatter, pick first pending
-□ Step 2: Claim request (mkdir -p working/ + move, update status & claimed_at, append the claim to CHECKPOINT.md's In Progress list)
+□ Step 1: Read CHECKPOINT.md FIRST (it is recovery's input), crash recovery (recover own-label crash files; report foreign claims, ask before takeover, never take over a labeled foreign claim), validate frontmatter, pick first pending
+□ Step 2: Claim request (mkdir -p working/ + move, update status & claimed_at, append the claim + writer label to CHECKPOINT.md's In Progress list)
 □ Step 3: Triage (decide route, append ## Triage, read original if addendum)
 □ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions; a user answer obtained mid-run is written in as - [x] before dispatch — never - [~], no D-XX)
 □ Step 4: Plan (Route C: spawn Plan agent + validate plan / Routes A & B: note skipped)
@@ -667,7 +669,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 6.5: Test (run relevant tests, load debug rules on attempt 2+, verify TDD evidence if tdd:true)
 □ Step 7: Review (spawn actions/review-work.md — gate on acceptance: Pass→archive, Fail→remediate with debug rules)
 □ Step 7.5: Lessons Learned + Orientation (append sections at subsystem altitude, update prime files, skip lessons for Route A if no surprises)
-□ Step 8: Archive (update status, classify failures, triage discovered tasks, cycle-check follow-ups, queue follow-ups, move to archive/ and drop the REQ's In Progress entry)
+□ Step 8: Archive (update status, classify failures, triage discovered tasks, cycle-check follow-ups, queue follow-ups, move to archive/ and drop the REQ's own-label In Progress entry)
 □ Step 9: Commit (stage explicit files, commit if git repo, write hash to REQ via tools/checks/record-commit-hash.sh, then a separate metadata commit)
 □ Step 10: Loop or Exit (context wipe + contamination check if looping, else write CHECKPOINT.md with depth + cleanup)
 ```

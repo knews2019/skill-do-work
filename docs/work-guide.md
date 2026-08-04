@@ -63,9 +63,9 @@ If you answer a question yourself mid-run — a long run stopping to ask you som
 
 ## Checkpoints
 
-`do-work/CHECKPOINT.md` is written as work is claimed, not only at the end: each request is recorded the moment it's picked up, and the file is refreshed at session end with the last completed REQ and the queue state. That's what lets a run that dies mid-request pick its own work back up — a crash never reaches the end of a session, so a checkpoint written only there would be missing exactly when it's needed.
+`do-work/CHECKPOINT.md` is written as work is claimed, not only at the end: each request is recorded the moment it's picked up — stamped with the checkout that recorded it (machine name plus checkout path) — and the file is refreshed at session end with the last completed REQ and the queue state. That's what lets a run that dies mid-request pick its own work back up — a crash never reaches the end of a session, so a checkpoint written only there would be missing exactly when it's needed.
 
-It also decides what the next session is allowed to clean up. A REQ sitting claimed in `working/` is only reset and re-queued when the checkpoint records it as that session's own interrupted work; anything else is left exactly as it is and reported, and you're asked before it's taken over — and then only once it has been claimed for over three hours. So a crash never costs you the plan, exploration, and scope the interrupted run had already written.
+It also decides what the next session is allowed to clean up. A REQ sitting claimed in `working/` is only reset and re-queued when the checkpoint records it as that session's own interrupted work — under this checkout's own stamp; anything else is left exactly as it is and reported, and you're asked before it's taken over — and then only once it has been claimed for over three hours. That stamp matters because the checkpoint is a committed file: if you work the same queue from two checkouts, one of them will eventually pull in the other's live claim, and the stamp is what stops it being read as a local crash and stripped. A claim stamped by another checkout is reported as held there and never offered for takeover. So a crash never costs you the plan, exploration, and scope the interrupted run had already written.
 
 ## What happens when you run it
 

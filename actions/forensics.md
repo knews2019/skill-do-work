@@ -36,7 +36,7 @@ For each found:
 
 Report: file name, title, route, how long stuck, last known phase (check which `##` sections exist — Triage, Plan, Exploration, Implementation Summary, etc.)
 
-**Suggested remediation:** Run `do-work cleanup` — Pass 0 will sweep any REQ with a terminal status. For a truly stuck `claimed` REQ (still in-progress, not terminal), manually reset `status: pending`, stamp `status_changed_at` with the current UTC instant (Timestamp rule, `actions/work-reference.md` — keeps the board's state timer honest about when the reset happened), remove `claimed_at` and `route` from frontmatter, strip incomplete sections, and move the file back to `do-work/queue/` — dropping its `## In Progress (interrupted)` entry from `do-work/CHECKPOINT.md` as part of that move, per `actions/work-reference.md` → **In-Progress Record (Step 2)** — then run `do-work cleanup`.
+**Suggested remediation:** Run `do-work cleanup` — Pass 0 will sweep any REQ with a terminal status. For a truly stuck `claimed` REQ (still in-progress, not terminal), manually reset `status: pending`, stamp `status_changed_at` with the current UTC instant (Timestamp rule, `actions/work-reference.md` — keeps the board's state timer honest about when the reset happened), remove `claimed_at` and `route` from frontmatter, strip incomplete sections, and move the file back to `do-work/queue/` — dropping its own-label `## In Progress (interrupted)` entry from `do-work/CHECKPOINT.md` as part of that move, per `actions/work-reference.md` → **In-Progress Record (Step 2)**, and leaving any entry under another checkout's `writer:` label untouched — then run `do-work cleanup`.
 
 ### 2. Hollow Completions
 
@@ -197,7 +197,7 @@ Exit 0 means no findings. Exit 1 means findings were printed — **a finding, no
 | newest entry's version not strictly greater than an earlier entry's | same — this is the duplicate-version-number failure |
 | newest entry's title already used by an earlier entry | same |
 | duplicate REQ numbers across queue / working / archive | `tools/queue-kanban/model.go`'s duplicate-id resolution |
-| `do-work/CHECKPOINT.md` naming a REQ that no longer exists | — (nothing else checks it; it matters because the checkpoint is crash recovery's input, `actions/work-reference.md` → Crash Recovery (Step 1)) |
+| `do-work/CHECKPOINT.md` naming a REQ that no longer exists — read an entry under another checkout's `writer:` label as expected rather than stale: it can name a REQ that was archived over there, and it is that checkout's to clear | — (nothing else checks it; it matters because the checkpoint is crash recovery's input, `actions/work-reference.md` → Crash Recovery (Step 1)) |
 | stale, unparseable, future-dated, or absent `claimed_at` on a claimed REQ | Check 1 and Check 12 above |
 | finished REQs stranded in `queue/` or `working/` | Check 9 above |
 | `worktree-agent-*` leftovers, classified by merge state — only an already-merged one is marked `[fixable]`; unmerged (which may be a builder still in flight) and undetermined ones are reported and left to you | `actions/cleanup.md` Pass 5, whose mechanical half is exactly the merged case |
