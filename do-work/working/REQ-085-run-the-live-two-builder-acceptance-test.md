@@ -1,7 +1,8 @@
 ---
 id: REQ-085
 title: Run REQ-073's live two-builder acceptance test and record what it found
-status: pending
+status: claimed
+claimed_at: 2026-08-04T00:02:54Z
 created_at: 2026-08-03T17:09:21Z
 user_request: UR-016
 domain: testing

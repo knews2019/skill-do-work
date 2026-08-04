@@ -1,7 +1,8 @@
 ---
 id: REQ-086
 title: The in-progress record's rule is unstated at the two out-of-pipeline movers and contradicted in the user guide
-status: pending
+status: claimed
+claimed_at: 2026-08-04T00:04:10Z
 created_at: 2026-08-03T21:29:26Z
 user_request: UR-015
 domain: general

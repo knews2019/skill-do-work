@@ -1,7 +1,8 @@
 ---
 id: REQ-087
 title: The board and verify hand the user the POSIX-only timestamp command the rule just stopped prescribing
-status: pending
+status: claimed
+claimed_at: 2026-08-04T00:04:10Z
 created_at: 2026-08-03T21:45:43Z
 user_request: UR-015
 domain: general
