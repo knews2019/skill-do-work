@@ -91,7 +91,7 @@ func requestNumberFromFrontmatterId(absolutePath string) (int, bool) {
 	if readError != nil {
 		return 0, false
 	}
-	yamlText, _, hasFrontmatter := splitFrontmatter(string(fileBytes))
+	yamlText, _, _, hasFrontmatter := splitFrontmatter(string(fileBytes))
 	if !hasFrontmatter {
 		return 0, false
 	}

@@ -8,6 +8,20 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.169.7 — Board Copy Round-Trips CRLF Files Byte-for-Byte (2026-08-04)
+
+The drawer's Copy payload was corrupted for Windows-authored (CRLF) REQ/UR files: the frontmatter
+fence was measured by subtracting the parsed body's length from the file's, but the parser had
+CRLF-normalized that body, so the fence kept stolen bytes from the body's start and the body pasted
+back with Unix endings. Ironic, given the exact-suffix approach exists precisely to preserve CRLF.
+
+- `splitFrontmatter` now scans the raw bytes and reports the true body-start offset; callers slice
+  the fence at that offset instead of inferring it by arithmetic.
+- `BodyMarkdown` is now genuinely verbatim (its comment always claimed it was) — CRLF endings
+  survive into the Copy payload, and `FrontmatterMarkdown + BodyMarkdown` equals the file on disk
+  byte-for-byte. YAML parsing still sees normalized text.
+- New tests pin the round-trip invariant at both the splitter and the ticket-parse level.
+
 ## 0.169.6 — Every Historical Changelog Is Back on Disk, Named by Range (2026-08-04)
 
 192 entries of release history hadn't been in the working tree since 0.76.0 — readable only via

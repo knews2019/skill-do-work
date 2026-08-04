@@ -323,6 +323,35 @@ Some body text.
 	}
 }
 
+// TestParseRequestTicketCrlfFileRoundTripsByteExactly pins the Copy contract
+// on a Windows-authored (CRLF) REQ file: FrontmatterMarkdown + BodyMarkdown
+// must equal the file bytes exactly. The old fence-by-subtraction arithmetic
+// measured the fence against a CRLF-normalized body, so the fence stole bytes
+// from the body's start and the body itself came back with Unix endings —
+// the drawer's Copy payload no longer matched the file on disk.
+func TestParseRequestTicketCrlfFileRoundTripsByteExactly(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-556-crlf.md")
+	fixtureContent := "---\r\nid: REQ-556\r\ntitle: CRLF fixture\r\nstatus: pending\r\n---\r\n\r\n# CRLF body\r\n\r\nAuthored on Windows.\r\n"
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.RequestId != "REQ-556" || ticket.Status != "pending" {
+		t.Fatalf("frontmatter fields lost on CRLF file: id=%q status=%q", ticket.RequestId, ticket.Status)
+	}
+	if got := ticket.FrontmatterMarkdown + ticket.BodyMarkdown; got != fixtureContent {
+		t.Fatalf("Copy payload must round-trip the CRLF file byte-for-byte:\ngot  %q\nwant %q", got, fixtureContent)
+	}
+	if !strings.HasSuffix(ticket.FrontmatterMarkdown, "---\r\n") {
+		t.Fatalf("fence must end at the closing --- line, got %q", ticket.FrontmatterMarkdown)
+	}
+}
+
 func TestBucketColumns(t *testing.T) {
 	now := time.Date(2026, 6, 29, 12, 0, 0, 0, time.UTC)
 	window := 48 * time.Hour

@@ -120,8 +120,9 @@ type RequestTicket struct {
 	Batch string
 
 	// FrontmatterMarkdown is the ORIGINAL fence bytes — everything up to and
-	// including the closing `---` and its newline — taken by exact-suffix removal
-	// rather than re-serialized from the parsed fields. Re-serializing would lose
+	// including the closing `---` and its newline — sliced at the body offset
+	// splitFrontmatter reports rather than re-serialized from the parsed
+	// fields. Re-serializing would lose
 	// key order, comments, trailing spaces and CRLF endings, and the board's Copy
 	// payload has to round-trip back into a valid file on disk. Empty when the file
 	// has no frontmatter; never fabricated.
@@ -560,12 +561,14 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 	}
 
 	rawFileText := string(contentBytes)
-	yamlText, bodyText, hasFrontmatter := splitFrontmatter(rawFileText)
-	// Exact-suffix removal, not reconstruction from yamlText — see
-	// RequestTicket.FrontmatterMarkdown on why the original bytes matter.
+	yamlText, bodyText, bodyStartOffset, hasFrontmatter := splitFrontmatter(rawFileText)
+	// Sliced at the splitter-reported body offset, not reconstructed from
+	// yamlText — see RequestTicket.FrontmatterMarkdown on why the original
+	// bytes matter, and splitFrontmatter on why length subtraction miscounts
+	// on CRLF files.
 	frontmatterMarkdown := ""
 	if hasFrontmatter {
-		frontmatterMarkdown = rawFileText[:len(rawFileText)-len(bodyText)]
+		frontmatterMarkdown = rawFileText[:bodyStartOffset]
 	}
 	fields := map[string]any{}
 	if hasFrontmatter {
@@ -637,12 +640,12 @@ func parseUserRequestTicket(filePath string) (*UserRequestTicket, error) {
 	}
 
 	rawFileText := string(contentBytes)
-	yamlText, bodyText, hasFrontmatter := splitFrontmatter(rawFileText)
-	// Same exact-suffix removal as parseRequestTicket — the UR drawer copies its
+	yamlText, bodyText, bodyStartOffset, hasFrontmatter := splitFrontmatter(rawFileText)
+	// Same offset slicing as parseRequestTicket — the UR drawer copies its
 	// file the same way, so it needs the same original bytes.
 	frontmatterMarkdown := ""
 	if hasFrontmatter {
-		frontmatterMarkdown = rawFileText[:len(rawFileText)-len(bodyText)]
+		frontmatterMarkdown = rawFileText[:bodyStartOffset]
 	}
 	fields := map[string]any{}
 	if hasFrontmatter {

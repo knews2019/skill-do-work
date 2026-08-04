@@ -40,17 +40,21 @@ func TestSplitFrontmatter(t *testing.T) {
 			wantBodyExact: "",
 		},
 		{
-			name:        "crlf line endings are normalized",
-			input:       "---\r\nid: REQ-4\r\n---\r\nbody\r\n",
-			wantHas:     true,
-			wantYamlHas: "id: REQ-4",
-			wantBodyHas: "body",
+			// The body must come back VERBATIM — CRLF endings preserved — while
+			// the YAML text is normalized for the parser. A normalized body once
+			// made the fence-by-subtraction arithmetic steal body bytes into the
+			// Copy payload's fence (the CRLF Copy-corruption bug).
+			name:          "crlf body stays verbatim, yaml is normalized",
+			input:         "---\r\nid: REQ-4\r\n---\r\nline one\r\nline two\r\n",
+			wantHas:       true,
+			wantYamlHas:   "id: REQ-4",
+			wantBodyExact: "line one\r\nline two\r\n",
 		},
 	}
 
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			yamlText, bodyText, hasFrontmatter := splitFrontmatter(testCase.input)
+			yamlText, bodyText, bodyStartOffset, hasFrontmatter := splitFrontmatter(testCase.input)
 			if hasFrontmatter != testCase.wantHas {
 				t.Fatalf("hasFrontmatter = %v, want %v", hasFrontmatter, testCase.wantHas)
 			}
@@ -60,13 +64,19 @@ func TestSplitFrontmatter(t *testing.T) {
 				}
 				return
 			}
+			if got := testCase.input[:bodyStartOffset] + bodyText; got != testCase.input {
+				t.Fatalf("fence prefix + body must reassemble the original file byte-for-byte:\ngot  %q\nwant %q", got, testCase.input)
+			}
+			if strings.Contains(yamlText, "\r") {
+				t.Fatalf("yaml %q must be CRLF-normalized for the parser", yamlText)
+			}
 			if testCase.wantYamlHas != "" && !strings.Contains(yamlText, testCase.wantYamlHas) {
 				t.Fatalf("yaml %q missing %q", yamlText, testCase.wantYamlHas)
 			}
 			if testCase.wantBodyHas != "" && !strings.Contains(bodyText, testCase.wantBodyHas) {
 				t.Fatalf("body %q missing %q", bodyText, testCase.wantBodyHas)
 			}
-			if testCase.wantBodyExact != "" || testCase.name == "empty body after closing fence" {
+			if testCase.wantBodyExact != "" || testCase.wantBodyHas == "" {
 				if bodyText != testCase.wantBodyExact {
 					t.Fatalf("body = %q, want exactly %q", bodyText, testCase.wantBodyExact)
 				}

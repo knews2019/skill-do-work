@@ -8,44 +8,63 @@ import (
 
 // splitFrontmatter separates a leading "---\n … \n---" YAML block from the
 // Markdown body of a REQ/UR file. It returns the YAML text (the lines between
-// the fences, without the fence lines), the body text (everything after the
-// closing fence, kept verbatim for later Markdown rendering), and whether a
-// frontmatter block was present at all.
+// the fences, without the fence lines, CRLF-normalized for the YAML parser),
+// the body text (everything after the closing fence, kept VERBATIM — CRLF
+// endings included — for later Markdown rendering and byte-exact Copy), the
+// byte offset in fileContent where that body starts, and whether a frontmatter
+// block was present at all. When hasFrontmatter is true,
+// fileContent[:bodyStartOffset] + bodyText == fileContent, so callers slice
+// the original fence bytes from the reported offset — inferring the fence by
+// length subtraction is wrong on CRLF files, where a normalized body is
+// shorter than the raw one and the subtraction steals body bytes into the
+// fence.
 //
-// Files with no leading frontmatter return ("", originalContent, false) so the
-// caller can skip gracefully. Parsing is purely mechanical (prefix/line splits,
-// no regexp): the opening fence must be the very first line "---", and the
-// closing fence is the next line that is exactly "---".
-func splitFrontmatter(fileContent string) (yamlText string, bodyText string, hasFrontmatter bool) {
-	// Normalize CRLF and strip a leading UTF-8 BOM so the fence checks below are
-	// simple equality tests against "---".
-	normalized := strings.ReplaceAll(fileContent, "\r\n", "\n")
-	normalized = strings.TrimPrefix(normalized, "\ufeff")
-
-	const openingFence = "---\n"
-	if !strings.HasPrefix(normalized, openingFence) {
-		return "", fileContent, false
+// Files with no leading frontmatter return ("", originalContent, 0, false) so
+// the caller can skip gracefully. Parsing is purely mechanical (prefix/line
+// scans, no regexp): the opening fence must be the very first line "---" (a
+// leading UTF-8 BOM is tolerated and stays in the fence prefix), the closing
+// fence is the next line that is exactly "---", and both tolerate a trailing
+// carriage return.
+func splitFrontmatter(fileContent string) (yamlText string, bodyText string, bodyStartOffset int, hasFrontmatter bool) {
+	scanOffset := 0
+	if strings.HasPrefix(fileContent, "\ufeff") {
+		scanOffset = len("\ufeff")
 	}
 
-	afterOpening := normalized[len(openingFence):]
-	lines := strings.Split(afterOpening, "\n")
+	afterBom := fileContent[scanOffset:]
+	switch {
+	case strings.HasPrefix(afterBom, "---\n"):
+		scanOffset += len("---\n")
+	case strings.HasPrefix(afterBom, "---\r\n"):
+		scanOffset += len("---\r\n")
+	default:
+		return "", fileContent, 0, false
+	}
 
-	closingLineIndex := -1
-	for lineIndex, line := range lines {
-		if line == "---" {
-			closingLineIndex = lineIndex
-			break
+	yamlStartOffset := scanOffset
+	for {
+		newlineIndex := strings.IndexByte(fileContent[scanOffset:], '\n')
+		var currentLine string
+		var nextLineOffset int
+		if newlineIndex < 0 {
+			currentLine = fileContent[scanOffset:]
+			nextLineOffset = len(fileContent)
+		} else {
+			currentLine = fileContent[scanOffset : scanOffset+newlineIndex]
+			nextLineOffset = scanOffset + newlineIndex + 1
 		}
+		if strings.TrimSuffix(currentLine, "\r") == "---" {
+			yamlText = strings.ReplaceAll(fileContent[yamlStartOffset:scanOffset], "\r\n", "\n")
+			yamlText = strings.TrimSuffix(yamlText, "\n")
+			return yamlText, fileContent[nextLineOffset:], nextLineOffset, true
+		}
+		if newlineIndex < 0 {
+			// No closing fence — treat the file as having no frontmatter rather
+			// than swallowing the whole document as YAML.
+			return "", fileContent, 0, false
+		}
+		scanOffset = nextLineOffset
 	}
-	if closingLineIndex < 0 {
-		// No closing fence — treat the file as having no frontmatter rather than
-		// swallowing the whole document as YAML.
-		return "", fileContent, false
-	}
-
-	yamlText = strings.Join(lines[:closingLineIndex], "\n")
-	bodyText = strings.Join(lines[closingLineIndex+1:], "\n")
-	return yamlText, bodyText, true
 }
 
 // parseFrontmatterFields unmarshals a YAML frontmatter block into a permissive
