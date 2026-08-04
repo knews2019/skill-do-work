@@ -18,7 +18,6 @@ session_depth: light
 
 ## Still Queued
 
-- REQ-101: Docs + ADR (pending, depends_on REQ-096/097/099)
 - REQ-103: Checkpoint frontmatter writer identity (pending-answers — waits for `do-work clarify`)
 
 **Session ended deliberately at a clean boundary** (user handoff to another session). REQ-095 was claimed for ~30s and released back to `pending` untouched — no recovery needed. **Read `do-work/HANDDOWN-UR-018.md` before processing the queue** — it carries the batch state, per-REQ notes, the suite's pinned phrases near this batch's files, and the traps already hit.

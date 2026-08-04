@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.2 — Multi-Checkout Guide and the Session-Ownership Decision Record (2026-08-04)
+
+The claim-anywhere model now has documentation and a decision record. The guide gets a walkthrough for working one queue from several checkouts; ADR-018 records why the contract changed, including the parts that turned out to cost something.
+
+- New `docs/work-guide.md` section: claiming from a workspace, clone or cloud session; earmarking with `assigned_to` and the two ways to override it; the one-releaser rule; both conflict shapes and how to resolve them without deleting a real claim; `--fan-out`; and the caveat that all of it presumes a committed `do-work/`.
+- ADR-018 is the first decision record this skill has for session ownership at all — the 0.161.0 exclusive-session decision it partially reverses was never written down as one. Six decisions, seven rejected alternatives (including the two that were nearly taken), and the costs the acceptance runs found rather than the ones the plan predicted.
+- The ADR indexes were three counts behind. Those hand-maintained numbers are gone, replaced by a pointer to read `records/` — a count in a file nobody recounts is a stale count.
+
 ## 0.174.1 — Wall-Clock Concurrency Proven for the First Time (2026-08-04)
 
 Fan-out has been in the contract for a while, and until now nobody had watched two builders actually run at the same time — the one recorded attempt logged Partial. This one measured a 4.109-second window where both were genuinely running.

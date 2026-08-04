@@ -94,6 +94,41 @@ A bulk `do-work run` has a few properties worth knowing before firing 20 REQs at
 - **Waiting on an external condition uses `status: blocked`.** When a REQ can't start until something outside the queue is true — LM Studio running, a designer answering, credentials provisioned — it carries `status: blocked` and a free-text `blocked_by` naming the condition (set at capture or when the builder hits the missing precondition mid-run before any edits land). This is distinct from `pending-answers` (a question for you) and `depends_on` (a wait on another REQ). Blocked REQs sit out of the run. If the REQ has an optional `blocked_check` shell probe, the next `do-work run` re-runs it and auto-unblocks on exit 0; otherwise confirm the condition via `do-work clarify` or edit the status back to `pending`. They surface on the board's *Needs input · Blocked* column with a "blocked by" badge.
 - **Failures classify, archive, and queue follow-ups; the loop always continues.** A failed REQ is classified, archived as `failed`, and a follow-up REQ is queued when appropriate; the loop then proceeds to the next pending REQ. Failures that trace back to a failed upstream REQ (via `addendum_to` or `depends_on`) are auto-classified as `spec` with an upstream pointer in the error message — so cascading failures aren't misdiagnosed as fresh code bugs. To triage what landed (including any `pending-answers` follow-ups for completed-with-issues outcomes), run `do-work clarify` after the queue drains.
 
+## Several checkouts against one queue
+
+You can point more than one checkout at the same `do-work/` queue — a second local workspace, a clone, a cloud session, a spawned worktree — and have them cooperate. The rule is short: **anyone may claim and build; exactly one checkout releases.**
+
+**Claiming from anywhere.** Run `do-work run` in whichever checkout you're sitting in. It claims a REQ the normal way, and because the claim is a file move plus a frontmatter flip, it reaches the other checkouts the moment you sync. Nothing locks, nothing waits, and no checkout asks another for permission.
+
+**One releaser.** Pick one checkout to run the release tail: merging integration, bumping the version, writing the `CHANGELOG.md` entry, moving REQs into `archive/`, and closing URs. Everything else can happen anywhere; that part should not happen twice. Two changelog prepends against one queue is the failure to watch for, and unique version numbers do not make it safe. There's no mechanism enforcing this — it's a decision you make once and keep.
+
+**Earmarking with `assigned_to`.** To say "leave this one for me", add one field to a pending REQ:
+
+```yaml
+assigned_to: "cloud-alpha"
+```
+
+Any other checkout's `do-work run` then skips it and tells you why (`REQ-042 — assigned to cloud-alpha`), and the board shows an `assigned` badge. It's a courtesy, not a lock: nothing checks whether that session exists or is still running. Two ways to take an earmarked REQ anyway — name it explicitly (`do-work run REQ-042`), which claims it and clears the field, or delete the field by hand. Reaching it through `do-work run UR-011` does *not* override the earmark: naming a whole capture is a weaker signal than naming the REQ.
+
+**When two checkouts claim the same REQ.** Nothing stops them, and the fix happens where the branches meet. Expect two things from that merge:
+
+- **The REQ file** conflicts on content — the two `claimed_at` values and whatever sections each side wrote. Keep one claim: whichever checkout actually has the work. (It's never a rename conflict, even though the file moved — both sides moved it to the same place, so git resolves that part silently.)
+- **`do-work/CHECKPOINT.md`** conflicts too, and it conflicts on *every* concurrent claim, including two REQs that overlap in nothing. **Keep every entry from both sides.** This one matters: taking only yours deletes another checkout's record of live work, and taking only theirs means your own crash can't be recovered. One REQ listed under two checkouts is not a contradiction to tidy up — it's the honest record of two claims.
+
+If both checkouts made byte-identical claims (same second, nothing written yet), the REQ file won't conflict at all. The checkpoint still will, because each entry is stamped with the checkout that wrote it — which is the only thing that catches that case.
+
+**Captures collide the same way, and the same fix applies.** Two checkouts capturing at once can both mint `REQ-042`. Merge them, renumber one, and run `do-work verify` — its duplicate-id probe is there for exactly this. `do-work verify` also flags two related drifts: a REQ you're building here that's still earmarked for somewhere else, and a UR archived while one of its members is still live.
+
+**Crash recovery only touches its own checkout's work.** Each claim in `CHECKPOINT.md` records the checkout that made it (machine name plus checkout path). A REQ sitting claimed in `working/` is reset and re-queued only when the checkpoint attributes it to *this* checkout; anything else is reported (`claim held by …, not touched`) and left exactly as it is. That's what stops a routine `git pull` from being read as a local crash and wiping a claim another checkout is actively working — which is a real failure that happened once, deterministically, before the stamp existed.
+
+**Building several REQs at once.** Within one checkout, `do-work run --fan-out [N]` computes the ready set itself — pending, dependencies met, unclaimed, not earmarked elsewhere — and dispatches that many builders concurrently, each in its own git worktree, with no confirmation prompt. `--fan-out 3` sets the count; bare `--fan-out` uses your harness's limit, or two. It composes with `--wave N` (`--wave` picks *which* REQs, `--fan-out` picks *how many at once*), and on a harness without worktree support it quietly does nothing and you get the ordinary serial loop.
+
+The wave doesn't check whether the REQs touch the same files. A computed set means "these are all runnable", not "these won't collide" — collisions surface when the branches merge, and that's deliberate: a REQ's `write_set` is a display hint whose absence means *unknown*, so scheduling on it would produce sets that look safe without being safe. Integration stays serial regardless, so the time you save is in the build phase and nowhere else.
+
+**What isn't specified.** Two checkouts both running the release tail, and two `do-work` sessions in the same working tree. Nothing prevents either, nothing detects them, and if one happens, `do-work forensics` shows you the damage and `do-work cleanup` helps you fix it. Don't do them.
+
+**One caveat that changes everything above.** All of it depends on `do-work/` being committed to git. That's the arrangement this skill's own repo uses, and it's what lets a claim, a checkpoint entry, or a captured REQ travel between checkouts at all. If your `do-work/` is untracked (the default for most projects), nothing syncs: the poisoning can't happen, and neither can any of the merge-time detection. `do-work verify`'s duplicate-id probe is then the only cross-checkout check you have, run by hand in each one.
+
 ## Trigger aliases
 
 All of these do the same thing — process the queue:
