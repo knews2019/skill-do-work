@@ -63,7 +63,7 @@ If you answer a question yourself mid-run — a long run stopping to ask you som
 
 ## Checkpoints
 
-At session end, a `do-work/CHECKPOINT.md` is written with the last completed REQ, queue state, and where any in-progress work stopped — so the next session can resume cleanly.
+`do-work/CHECKPOINT.md` is written as work is claimed, not only at the end: each request is recorded the moment it's picked up, and the file is refreshed at session end with the last completed REQ and the queue state. That's what lets a run that dies mid-request pick its own work back up — a crash never reaches the end of a session, so a checkpoint written only there would be missing exactly when it's needed.
 
 It also decides what the next session is allowed to clean up. A REQ sitting claimed in `working/` is only reset and re-queued when the checkpoint records it as that session's own interrupted work; anything else is left exactly as it is and reported, and you're asked before it's taken over — and then only once it has been claimed for over three hours. So a crash never costs you the plan, exploration, and scope the interrupted run had already written.
 
@@ -116,7 +116,7 @@ Use whichever feels natural. `continue` and `resume` read well after a break; `r
 
 - **`continue` vs fresh `run`** — No functional difference. Both scan the queue and pick the next pending REQ. Use `continue` when you're resuming a session; use `run` when you're starting fresh. The checkpoint system handles the actual resume logic.
 - **Failed items** — If a REQ fails review, the system tries one remediation pass. If it still fails, it archives with issues noted and optionally creates a follow-up REQ. You don't need to intervene manually.
-- **Context limits** — Long-running queues may hit context limits. The system writes `do-work/CHECKPOINT.md` before stopping. Just run `do-work run` again in a new session — it picks up where it left off.
+- **Context limits** — Long-running queues may hit context limits. `do-work/CHECKPOINT.md` is already current — it's written as each request is claimed, not just before stopping — so just run `do-work run` again in a new session and it picks up where it left off.
 - **One at a time** — The work action processes one REQ per loop iteration. This keeps commits atomic and reviews focused. Don't try to batch multiple REQs into one pass.
 
 ## Clarify mode
