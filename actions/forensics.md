@@ -36,7 +36,7 @@ For each found:
 
 Report: file name, title, route, how long stuck, last known phase (check which `##` sections exist — Triage, Plan, Exploration, Implementation Summary, etc.)
 
-**Suggested remediation:** Run `do-work cleanup` — Pass 0 will sweep any REQ with a terminal status. For a truly stuck `claimed` REQ (still in-progress, not terminal), manually reset `status: pending`, stamp `status_changed_at` with the current UTC instant (Timestamp rule, `actions/work-reference.md` — keeps the board's state timer honest about when the reset happened), remove `claimed_at` and `route` from frontmatter, strip incomplete sections, and move the file back to `do-work/queue/`, then run `do-work cleanup`.
+**Suggested remediation:** Run `do-work cleanup` — Pass 0 will sweep any REQ with a terminal status. For a truly stuck `claimed` REQ (still in-progress, not terminal), manually reset `status: pending`, stamp `status_changed_at` with the current UTC instant (Timestamp rule, `actions/work-reference.md` — keeps the board's state timer honest about when the reset happened), remove `claimed_at` and `route` from frontmatter, strip incomplete sections, and move the file back to `do-work/queue/` — dropping its `## In Progress (interrupted)` entry from `do-work/CHECKPOINT.md` as part of that move, per `actions/work-reference.md` → **In-Progress Record (Step 2)** — then run `do-work cleanup`.
 
 ### 2. Hollow Completions
 
@@ -200,7 +200,8 @@ Exit 0 means no findings. Exit 1 means findings were printed — **a finding, no
 | `do-work/CHECKPOINT.md` naming a REQ that no longer exists | — (nothing else checks it; it matters because the checkpoint is crash recovery's input, `actions/work-reference.md` → Crash Recovery (Step 1)) |
 | stale, unparseable, future-dated, or absent `claimed_at` on a claimed REQ | Check 1 and Check 12 above |
 | finished REQs stranded in `queue/` or `working/` | Check 9 above |
-| `worktree-agent-*` leftovers, and any such worktree with uncommitted `do-work/` changes | `actions/cleanup.md` Pass 5; the dirty-`do-work/` case is the "state stays home" rule broken |
+| `worktree-agent-*` leftovers, classified by merge state — only an already-merged one is marked `[fixable]`; unmerged (which may be a builder still in flight) and undetermined ones are reported and left to you | `actions/cleanup.md` Pass 5, whose mechanical half is exactly the merged case |
+| a builder that wrote `do-work/` — reported in two states, uncommitted in its worktree or committed on its branch, because the remedies differ (discard the working-tree edits vs. drop the commits before the branch is merged). Neither is `[fixable]` | the "state stays home" / "sole integrator" rules, `actions/work-reference.md` → Worktree Dispatch Mode |
 
 A probe it could not run (no git, no version line, a changelog in a different convention) is reported as `- skipped …` rather than passing silently. Report those too — a skipped probe is an unverified invariant, not a clean one.
 

@@ -14,15 +14,18 @@ import (
 // Verify probe categories. Each finding carries one so callers (and tests) can
 // name a probe instead of matching report prose.
 const (
-	verifyCategoryVersionChangelogMismatch = "version-changelog-mismatch"
-	verifyCategoryChangelogVersionNotAhead = "changelog-version-not-ahead"
-	verifyCategoryReusedChangelogTitle     = "reused-changelog-title"
-	verifyCategoryDuplicateRequestId       = "duplicate-req-id"
-	verifyCategoryOrphanWorktree           = "orphan-worktree"
-	verifyCategoryWorktreeWroteQueueState  = "worktree-wrote-queue-state"
-	verifyCategoryCheckpointGhostRequest   = "checkpoint-names-missing-req"
-	verifyCategoryClaimNeedsAttention      = "claim-needs-attention"
-	verifyCategoryStrandedFinishedRequest  = "stranded-finished-req"
+	verifyCategoryVersionChangelogMismatch     = "version-changelog-mismatch"
+	verifyCategoryChangelogVersionNotAhead     = "changelog-version-not-ahead"
+	verifyCategoryReusedChangelogTitle         = "reused-changelog-title"
+	verifyCategoryDuplicateRequestId           = "duplicate-req-id"
+	verifyCategoryMergedWorktreeLeftover       = "merged-worktree-leftover"
+	verifyCategoryUnmergedWorktreeLeftover     = "unmerged-worktree-leftover"
+	verifyCategoryUndeterminedWorktreeLeftover = "worktree-merge-state-undetermined"
+	verifyCategoryWorktreeWroteQueueState      = "worktree-wrote-queue-state"
+	verifyCategoryWorktreeCommittedQueueState  = "worktree-committed-queue-state"
+	verifyCategoryCheckpointGhostRequest       = "checkpoint-names-missing-req"
+	verifyCategoryClaimNeedsAttention          = "claim-needs-attention"
+	verifyCategoryStrandedFinishedRequest      = "stranded-finished-req"
 )
 
 // staleClaimThreshold is how long a `claimed` REQ may sit before verify reports
@@ -284,7 +287,13 @@ func appendClaimFindings(report *VerifyReport, board *Board, now time.Time) {
 				Category: verifyCategoryClaimNeedsAttention,
 				Detail: fmt.Sprintf("%s has a future-dated claimed_at (%s) — usually local wall-clock time written with a Z suffix",
 					claimedTicket.RequestId, rawClaimStamp),
-				Remedy: "re-stamp it with `date -u +%Y-%m-%dT%H:%M:%SZ` (the Timestamp rule in actions/work-reference.md)",
+				// A command survives here because this is CLI output, read next to a
+				// shell — but it is `queue-kanban now`, the Timestamp rule's own
+				// first-choice source, which prints the right shape on every platform.
+				// The rule's POSIX floor is deliberately not spelled here: anyone
+				// reading this line already has the binary built, and a hardcoded
+				// `date -u +…` is precisely what does not exist on Windows.
+				Remedy: "re-stamp it with the current UTC instant — `queue-kanban now` prints exactly that shape on any platform (the Timestamp rule in actions/work-reference.md)",
 			})
 			continue
 		}
@@ -321,10 +330,85 @@ func appendStrandedFinishedFindings(report *VerifyReport, board *Board) {
 	}
 }
 
+// worktreeMergeState is what verify can honestly say about a worktree-agent-*
+// leftover: its branch is already contained in the integration branch, it is
+// not, or git could not answer. It says nothing about whether a builder is still
+// running — see classifyWorktreeMergeState.
+type worktreeMergeState int
+
+const (
+	worktreeMergeStateMerged worktreeMergeState = iota
+	worktreeMergeStateUnmerged
+	worktreeMergeStateUndetermined
+)
+
+// classifyWorktreeMergeState answers whether leftoverName is already contained in
+// the integration branch, which it reads as the repo-root checkout's HEAD.
+//
+// Merged-ness is HEAD-relative — `git branch -d`'s own trap, documented at
+// actions/work-reference.md → Worktree Dispatch Mode, "Cleanup — happy path":
+// asked from an unrelated checkout, a perfectly merged branch reads unmerged and
+// an unmerged one can read merged. `git -C repoRoot` pins the question to the
+// main checkout the orchestrator merges into, never to a builder's worktree.
+//
+// It CANNOT tell a builder that is still running from one that died and left this
+// behind. There is no lock, heartbeat, or claim registry to ask, and REQ-073
+// forbids adding one; a time threshold is not a stand-in either (see
+// staleClaimThreshold's own doc comment). So the unmerged case names the
+// still-in-flight possibility in its remedy instead of guessing between them.
+func classifyWorktreeMergeState(repoRoot string, leftoverName string) worktreeMergeState {
+	command := exec.Command("git", "-C", repoRoot, "merge-base", "--is-ancestor", leftoverName, "HEAD")
+	runError := command.Run()
+	if runError == nil {
+		return worktreeMergeStateMerged
+	}
+	// Exit 1 is git's answer "not an ancestor". Anything else — most often exit
+	// 128 for a worktree whose branch is gone — is git declining to answer, which
+	// is not the same claim and must not be reported as one.
+	if exitError, isExitError := runError.(*exec.ExitError); isExitError && exitError.ExitCode() == 1 {
+		return worktreeMergeStateUnmerged
+	}
+	return worktreeMergeStateUndetermined
+}
+
+// routeWorktreeLeftover maps a merge state onto the finding it produces.
+//
+// Fixable is true for merged residue and nothing else, because that is the only
+// state actions/cleanup.md → Pass 5 resolves mechanically: `git worktree remove`
+// plus `git branch -d`, neither forcing. Every other state lands on Pass 5's
+// consent-gated path, where the pass "stops being mechanical" and asks — a human
+// decision, which VerifyFinding.Fixable's doc comment says must not be advertised
+// otherwise.
+//
+// An unmerged leftover stays a reported finding during a live run rather than
+// being suppressed while builders are in flight. VerifyReport's doc comment is
+// explicit that silence reads as "checked and clean," and verify has no way to
+// know a run is active (see classifyWorktreeMergeState) — so suppression would
+// have to guess, and would hide genuinely stranded work whenever it guessed
+// wrong. This mirrors how version-changelog-mismatch handles its own expected
+// mid-release state: reported, with the transient case named in the remedy, and
+// not fixable.
+func routeWorktreeLeftover(mergeState worktreeMergeState) (category string, fixable bool, remedy string) {
+	switch mergeState {
+	case worktreeMergeStateMerged:
+		return verifyCategoryMergedWorktreeLeftover, true,
+			"cleanup Pass 5 removes it mechanically — the branch is already contained in HEAD, so nothing is lost"
+	case worktreeMergeStateUnmerged:
+		return verifyCategoryUnmergedWorktreeLeftover, false,
+			"this is either a builder still in flight or work that outlived a dead run — verify cannot tell those apart. Leave it alone during a run; otherwise cleanup Pass 5 asks before discarding it, because the branch may hold the only copy"
+	default:
+		return verifyCategoryUndeterminedWorktreeLeftover, false,
+			"git could not say whether this is merged (typically a worktree whose branch is gone) — inspect it by hand; cleanup Pass 5 deletes nothing it cannot establish a merge target for"
+	}
+}
+
 // appendWorktreeFindings covers the two worktree-dispatch invariants: no
 // `worktree-agent-*` leftovers should outlive their run, and a builder must never
 // write queue state (actions/work-reference.md → Worktree Dispatch Mode, "state
 // stays home" and "sole integrator").
+//
+// Leftovers are classified by merge state rather than reported as one kind of
+// thing, so the report routes only the mechanically-resolvable ones to cleanup.
 func appendWorktreeFindings(report *VerifyReport, repoRoot string) {
 	if !gitBinaryAvailable() {
 		report.SkippedProbes = append(report.SkippedProbes, "worktree probes: git is not on PATH")
@@ -338,6 +422,15 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string) {
 		return
 	}
 	agentBranches := listWorktreeAgentBranches(repoRoot)
+
+	// Resolved once: every builder branch is compared against the same integration
+	// point. An unresolvable one disables only the committed-state half, which is
+	// reported rather than passed over — silence would read as "checked and clean."
+	integrationRef, integrationRefError := resolveIntegrationBranchRef(repoRoot)
+	if integrationRefError != nil {
+		report.SkippedProbes = append(report.SkippedProbes,
+			fmt.Sprintf("committed-queue-state probe: %v", integrationRefError))
+	}
 
 	reportedNames := map[string]bool{}
 	orderedNames := make([]string, 0, len(worktreePathsByBranch)+len(agentBranches))
@@ -361,12 +454,32 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string) {
 		if hasWorktree {
 			locationDetail = worktreePath
 		}
+		category, fixable, remedy := routeWorktreeLeftover(classifyWorktreeMergeState(repoRoot, leftoverName))
 		report.Findings = append(report.Findings, VerifyFinding{
-			Category: verifyCategoryOrphanWorktree,
+			Category: category,
 			Detail:   fmt.Sprintf("%s%s exists — %s", worktreeAgentNamePrefix, strings.TrimPrefix(leftoverName, worktreeAgentNamePrefix), locationDetail),
-			Fixable:  true,
-			Remedy:   "cleanup Pass 5 removes a merged one and asks before discarding an unmerged one; a builder still in flight is not a leftover",
+			Fixable:  fixable,
+			Remedy:   remedy,
 		})
+
+		// Checked before the worktree guard below: a builder's committed queue edits
+		// live in the branch, so they are detectable — and just as wrong — after the
+		// worktree itself is gone.
+		if integrationRefError == nil {
+			committedQueuePaths, committedError := worktreeCommittedQueueState(repoRoot, integrationRef, leftoverName)
+			switch {
+			case committedError != nil:
+				report.SkippedProbes = append(report.SkippedProbes,
+					fmt.Sprintf("committed-queue-state probe for %s: %v", leftoverName, committedError))
+			case len(committedQueuePaths) > 0:
+				report.Findings = append(report.Findings, VerifyFinding{
+					Category: verifyCategoryWorktreeCommittedQueueState,
+					Detail: fmt.Sprintf("%s has committed changes under do-work/ on its branch (%s) — a builder wrote queue state the orchestrator alone owns",
+						leftoverName, strings.Join(committedQueuePaths, ", ")),
+					Remedy: "those commits are in the branch about to be merged — drop or revert them there before integrating; every claim, status flip, and archive move belongs to the main tree",
+				})
+			}
+		}
 
 		if !hasWorktree {
 			continue
@@ -380,6 +493,68 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string) {
 			})
 		}
 	}
+}
+
+// resolveIntegrationBranchRef names the point a builder branch is compared
+// against: the repo-root checkout's own branch.
+//
+// Named explicitly rather than passed as `HEAD`, because `HEAD` means whatever
+// checkout the command runs in — inside a builder's worktree it names the
+// builder's own branch, and the comparison would silently become branch-against-
+// itself. That is the same class of error as `git branch -d` testing merged-ness
+// against whatever HEAD happens to be (actions/work-reference.md → Worktree
+// Dispatch Mode, "Cleanup — happy path"). A detached repo-root checkout has no
+// branch name, so the commit id is returned instead — it names the same point
+// just as explicitly.
+func resolveIntegrationBranchRef(repoRoot string) (string, error) {
+	branchCommand := exec.Command("git", "-C", repoRoot, "rev-parse", "--abbrev-ref", "HEAD")
+	branchOutput, branchError := branchCommand.Output()
+	if branchError != nil {
+		return "", fmt.Errorf("cannot resolve the integration branch at %s", repoRoot)
+	}
+	integrationRef := strings.TrimSpace(string(branchOutput))
+	if integrationRef != "" && integrationRef != "HEAD" {
+		return integrationRef, nil
+	}
+	commitCommand := exec.Command("git", "-C", repoRoot, "rev-parse", "HEAD")
+	commitOutput, commitError := commitCommand.Output()
+	if commitError != nil {
+		return "", fmt.Errorf("cannot resolve the integration commit at %s (detached checkout with no commits?)", repoRoot)
+	}
+	return strings.TrimSpace(string(commitOutput)), nil
+}
+
+// worktreeCommittedQueueState returns the do-work/ paths a builder's BRANCH has
+// added or changed relative to the integration branch — the owner impersonation
+// that survives a commit, and the shape REQ-072 requirement 3 actually asked for.
+//
+// The three dots are load-bearing. `A...B` diffs from merge-base(A,B) to B, so it
+// reports what the builder's branch changed and stays blind to how far the
+// integration branch has moved since the branch point. That distinction is what
+// worktreeDirtyQueueState's doc comment (below) is protecting: where a consumer
+// commits do-work/, the worktree legitimately carries a stale snapshot while the
+// main tree moves constantly as the orchestrator claims and archives. A two-tree
+// comparison would fire on nearly every run; this one fires only on the builder's
+// own writes.
+//
+// Where do-work/ is untracked — the common install — there is nothing committed
+// to diff and this simply returns nothing, leaving the porcelain check as the
+// only probe that can see anything. That is correct, not a gap.
+func worktreeCommittedQueueState(repoRoot string, integrationRef string, branchName string) ([]string, error) {
+	command := exec.Command("git", "-C", repoRoot, "diff", "--name-only",
+		integrationRef+"..."+branchName, "--", "do-work/")
+	output, runError := command.Output()
+	if runError != nil {
+		return nil, fmt.Errorf("`git diff %s...%s -- do-work/` failed (no such branch, or unrelated histories)", integrationRef, branchName)
+	}
+	var committedPaths []string
+	for _, line := range strings.Split(string(output), "\n") {
+		trimmedLine := strings.TrimSpace(line)
+		if trimmedLine != "" {
+			committedPaths = append(committedPaths, trimmedLine)
+		}
+	}
+	return committedPaths, nil
 }
 
 // listWorktreeAgentWorktrees maps each worktree-agent-* name to its worktree

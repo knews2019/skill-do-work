@@ -119,7 +119,14 @@ type RequestTicket struct {
 	Route string
 	Batch string
 
-	BodyMarkdown string // raw Markdown body after the closing frontmatter fence
+	// FrontmatterMarkdown is the ORIGINAL fence bytes — everything up to and
+	// including the closing `---` and its newline — taken by exact-suffix removal
+	// rather than re-serialized from the parsed fields. Re-serializing would lose
+	// key order, comments, trailing spaces and CRLF endings, and the board's Copy
+	// payload has to round-trip back into a valid file on disk. Empty when the file
+	// has no frontmatter; never fabricated.
+	FrontmatterMarkdown string
+	BodyMarkdown        string // raw Markdown body after the closing frontmatter fence
 
 	FilePath    string // absolute path on disk
 	TreeSection string // "queue" | "working" | "archive"
@@ -158,13 +165,17 @@ type RequestTicket struct {
 // link), so RequestIds is populated even for a UR whose input.md is missing — in
 // which case InputFilePresent is false and the node is synthesized.
 type UserRequestTicket struct {
-	UserRequestId    string
-	Title            string
-	CreatedAt        string
-	BodyMarkdown     string
-	FilePath         string
-	InputFilePresent bool
-	RequestIds       []string // REQ ids that point here via user_request, in id order
+	UserRequestId string
+	Title         string
+	CreatedAt     string
+	// Same contract as RequestTicket.FrontmatterMarkdown — original fence bytes,
+	// never re-serialized. URs are a separate parse path and need it too, because
+	// the drawer copies them the same way.
+	FrontmatterMarkdown string
+	BodyMarkdown        string
+	FilePath            string
+	InputFilePresent    bool
+	RequestIds          []string // REQ ids that point here via user_request, in id order
 }
 
 // DependencyEdge is one resolved depends_on relationship: FromRequestId depends
@@ -318,7 +329,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 		ticket.FutureTimestampFields = detectFutureTimestampFields(ticket, now)
 		if len(ticket.FutureTimestampFields) > 0 {
 			board.Warnings = append(board.Warnings, fmt.Sprintf(
-				"%s has future-dated timestamp(s): %s — later than the board's generation time (2min clock-skew allowance); likely local wall-clock time stamped with a Z suffix; fix: rewrite with the current UTC instant (date -u +%%Y-%%m-%%dT%%H:%%M:%%SZ)",
+				"%s has future-dated timestamp(s): %s — later than the board's generation time (2min clock-skew allowance); likely local wall-clock time stamped with a Z suffix; fix: rewrite with the current UTC instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in actions/work-reference.md",
 				ticket.RequestId, strings.Join(ticket.FutureTimestampFields, ", ")))
 		}
 		board.RequestsById[ticket.RequestId] = ticket
@@ -548,7 +559,14 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		return nil, readError
 	}
 
-	yamlText, bodyText, hasFrontmatter := splitFrontmatter(string(contentBytes))
+	rawFileText := string(contentBytes)
+	yamlText, bodyText, hasFrontmatter := splitFrontmatter(rawFileText)
+	// Exact-suffix removal, not reconstruction from yamlText — see
+	// RequestTicket.FrontmatterMarkdown on why the original bytes matter.
+	frontmatterMarkdown := ""
+	if hasFrontmatter {
+		frontmatterMarkdown = rawFileText[:len(rawFileText)-len(bodyText)]
+	}
 	fields := map[string]any{}
 	if hasFrontmatter {
 		parsedFields, parseError := parseFrontmatterFields(yamlText)
@@ -600,6 +618,7 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		WriteSet:                  coerceToStringList(fields["write_set"]),
 		Route:                     coerceScalarToString(fields["route"]),
 		Batch:                     coerceScalarToString(fields["batch"]),
+		FrontmatterMarkdown:       frontmatterMarkdown,
 		BodyMarkdown:              bodyText,
 		FilePath:                  filePath,
 		TreeSection:               treeSection,
@@ -617,7 +636,14 @@ func parseUserRequestTicket(filePath string) (*UserRequestTicket, error) {
 		return nil, readError
 	}
 
-	yamlText, bodyText, hasFrontmatter := splitFrontmatter(string(contentBytes))
+	rawFileText := string(contentBytes)
+	yamlText, bodyText, hasFrontmatter := splitFrontmatter(rawFileText)
+	// Same exact-suffix removal as parseRequestTicket — the UR drawer copies its
+	// file the same way, so it needs the same original bytes.
+	frontmatterMarkdown := ""
+	if hasFrontmatter {
+		frontmatterMarkdown = rawFileText[:len(rawFileText)-len(bodyText)]
+	}
 	fields := map[string]any{}
 	if hasFrontmatter {
 		parsedFields, parseError := parseFrontmatterFields(yamlText)
@@ -632,12 +658,13 @@ func parseUserRequestTicket(filePath string) (*UserRequestTicket, error) {
 	}
 
 	return &UserRequestTicket{
-		UserRequestId:    userRequestId,
-		Title:            coerceScalarToString(fields["title"]),
-		CreatedAt:        coerceScalarToString(fields["created_at"]),
-		BodyMarkdown:     bodyText,
-		FilePath:         filePath,
-		InputFilePresent: true,
+		UserRequestId:       userRequestId,
+		Title:               coerceScalarToString(fields["title"]),
+		CreatedAt:           coerceScalarToString(fields["created_at"]),
+		FrontmatterMarkdown: frontmatterMarkdown,
+		BodyMarkdown:        bodyText,
+		FilePath:            filePath,
+		InputFilePresent:    true,
 	}, nil
 }
 

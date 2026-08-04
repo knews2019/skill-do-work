@@ -330,19 +330,24 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 	return data, nil
 }
 
-// buildGeneratedBoardMarkdownData projects raw Markdown into a compact id-keyed
-// payload. It is separated from buildGeneratedBoardData so the initial page does
-// not download source text that is only needed after a Copy click.
+// buildGeneratedBoardMarkdownData projects each ticket's FILE TEXT — the original
+// frontmatter fence followed by the body — into a compact id-keyed payload. It is
+// the whole file, not just the body, so a Copy from the drawer round-trips: the
+// paste can be saved straight back as a valid REQ or UR file.
+//
+// It is separated from buildGeneratedBoardData so the initial page does not
+// download source text that is only needed after a Copy click. The wire shape is
+// unchanged (map[string]string) — only the value grew by the fence.
 func buildGeneratedBoardMarkdownData(board *Board) generatedBoardMarkdownData {
 	markdownData := generatedBoardMarkdownData{
 		Requests:     map[string]string{},
 		UserRequests: map[string]string{},
 	}
 	for _, ticket := range board.AllRequests {
-		markdownData.Requests[ticket.RequestId] = ticket.BodyMarkdown
+		markdownData.Requests[ticket.RequestId] = ticket.FrontmatterMarkdown + ticket.BodyMarkdown
 	}
 	for _, userRequest := range board.UserRequests {
-		markdownData.UserRequests[userRequest.UserRequestId] = userRequest.BodyMarkdown
+		markdownData.UserRequests[userRequest.UserRequestId] = userRequest.FrontmatterMarkdown + userRequest.BodyMarkdown
 	}
 	return markdownData
 }

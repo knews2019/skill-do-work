@@ -151,8 +151,8 @@
   var clockSkewExplanationText =
     "This timestamp is ahead of your clock by more than the 2-minute skew allowance — " +
     "likely stamped with local wall-clock time plus a Z suffix. Fix the frontmatter with " +
-    "the current UTC instant (date -u +%Y-%m-%dT%H:%M:%SZ); until then the stopwatch " +
-    "cannot measure real elapsed time.";
+    "the current UTC instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in " +
+    "actions/work-reference.md. Until then the stopwatch cannot measure real elapsed time.";
 
   // Stopwatch-style elapsed duration ("47s", "4m 07s", "1h 23m", "3d 04h") for
   // a ticket sitting in a state — second-resolution below an hour because
@@ -550,7 +550,7 @@
         request.futureTimestampFields.join(", ") +
         " — later than the board's generation time (2min skew allowance). Likely local " +
         "wall-clock time stamped with a Z suffix; fix: rewrite with the current UTC " +
-        "instant (date -u +%Y-%m-%dT%H:%M:%SZ).";
+        "instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in actions/work-reference.md.";
       badges.appendChild(futureStampBadge);
     }
     if (request.testingStatus) {
@@ -2142,9 +2142,22 @@
     return null;
   }
 
-  // The stored Markdown is the file body only — id and title live in frontmatter,
-  // which the payload drops. Pasted somewhere else that body is anonymous prose,
-  // so every copy leads with an identifying heading.
+  // Two Copy shapes, one per path, and the difference is deliberate:
+  //
+  //   primary  — board-markdown.js is available, so the payload is the ticket FILE
+  //              (frontmatter fence + body) and is copied VERBATIM. id and title
+  //              ride in the fence, so no heading is synthesized and no H1 is
+  //              de-duplicated: verbatim has to mean verbatim or the paste stops
+  //              round-tripping back into a valid file.
+  //   fallback — board-markdown.js is stale or missing, so all that exists is the
+  //              drawer's rendered text. That has no frontmatter, so it gets the
+  //              identifying heading below; pasted elsewhere it would otherwise be
+  //              anonymous prose. A fence is NEVER fabricated here from display
+  //              state — a reassembled fence that looks verbatim is worse than a
+  //              heading, because it pastes as a file whose values were guessed.
+  //
+  // copyHeadingForDetail and copyTextWithHeading therefore belong to the fallback
+  // path only.
   function copyHeadingForDetail(detailKind, detailId) {
     var record = detailKind === "ur" ? userRequestsById[detailId] : requestsById[detailId];
     var recordTitle = record && record.title ? String(record.title).trim() : "";
@@ -2242,17 +2255,19 @@
       .then(
         function (markdownData) {
           var rawMarkdown = rawMarkdownForDetail(markdownData, requestedKind, requestedId);
-          return rawMarkdown === null ? renderedTextFallback : rawMarkdown;
+          // Primary path: the file's own bytes, copied untouched.
+          if (rawMarkdown !== null) {
+            return rawMarkdown;
+          }
+          return copyTextWithHeading(requestedKind, requestedId, renderedTextFallback);
         },
         function () {
           // Keep Copy useful for stale/incomplete generated bundles that lack
-          // board-markdown.js, while current bundles retain exact source text.
-          return renderedTextFallback;
+          // board-markdown.js. Only this path has no frontmatter text available,
+          // so only this path gets the synthesized heading.
+          return copyTextWithHeading(requestedKind, requestedId, renderedTextFallback);
         }
       )
-      .then(function (bodyText) {
-        return copyTextWithHeading(requestedKind, requestedId, bodyText);
-      })
       .then(writeTextToClipboard)
       .then(
         function () {

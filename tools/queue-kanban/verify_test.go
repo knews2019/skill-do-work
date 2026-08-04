@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -386,6 +387,305 @@ func snapshotTreeContents(t *testing.T, repoRoot string) map[string]string {
 		t.Fatalf("walk: %v", walkError)
 	}
 	return contentsByPath
+}
+
+// runGitInFixture runs one git command while building a worktree fixture. Setup
+// only — the probes under test do their own shelling out.
+func runGitInFixture(t *testing.T, workingDirectory string, arguments ...string) {
+	t.Helper()
+	command := exec.Command("git", arguments...)
+	command.Dir = workingDirectory
+	if output, runError := command.CombinedOutput(); runError != nil {
+		t.Fatalf("git %s: %v\n%s", strings.Join(arguments, " "), runError, output)
+	}
+}
+
+// newWorktreeFixtureRepo seeds a real single-commit git repo whose release files
+// are already clean, so the only findings a worktree test sees are the ones it
+// planted. Skips when git is unavailable, matching how the probe itself degrades.
+func newWorktreeFixtureRepo(t *testing.T) string {
+	t.Helper()
+	if _, lookupError := exec.LookPath("git"); lookupError != nil {
+		t.Skip("git is not on PATH — the worktree probes skip for the same reason")
+	}
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/queue/REQ-071-only-one.md", "---\nid: REQ-071\nstatus: pending\ntitle: fixture\n---\n"},
+	})
+	runGitInFixture(t, repoRoot, "init", "--quiet")
+	runGitInFixture(t, repoRoot, "config", "user.email", "fixture@example.test")
+	runGitInFixture(t, repoRoot, "config", "user.name", "Verify Fixture")
+	runGitInFixture(t, repoRoot, "add", "-A")
+	runGitInFixture(t, repoRoot, "commit", "--quiet", "-m", "fixture base")
+	return repoRoot
+}
+
+// addFixtureWorktree creates a branch and its worktree under a parent directory
+// OUTSIDE the repo, the way worktree dispatch mode requires.
+func addFixtureWorktree(t *testing.T, repoRoot string, worktreeParent string, name string) string {
+	t.Helper()
+	worktreePath := filepath.Join(worktreeParent, name)
+	runGitInFixture(t, repoRoot, "worktree", "add", "--quiet", "-b", name, worktreePath)
+	return worktreePath
+}
+
+// commitFixtureWork puts a commit on whatever branch workingDirectory has checked
+// out — what makes a builder branch genuinely unmerged.
+func commitFixtureWork(t *testing.T, workingDirectory string, fileName string) {
+	t.Helper()
+	if writeError := os.WriteFile(filepath.Join(workingDirectory, fileName), []byte("builder work\n"), 0o644); writeError != nil {
+		t.Fatalf("write %s: %v", fileName, writeError)
+	}
+	runGitInFixture(t, workingDirectory, "add", fileName)
+	runGitInFixture(t, workingDirectory, "commit", "--quiet", "-m", "builder work")
+}
+
+// The contract assertion, not just the finding: an unmerged builder branch is
+// cleanup Pass 5's consent-gated path, so it must never be counted as something
+// `do-work cleanup` will mechanically resolve. This is the assertion that stops
+// the Fixable contract regressing — the finding's presence is the easy half.
+func TestVerifyDoesNotAdvertiseAnUnmergedWorktreeAsFixable(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	unmergedWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-001-unmerged")
+	commitFixtureWork(t, unmergedWorktree, "builder-output.txt")
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if report.FixableCount() != 0 {
+		t.Errorf("FixableCount = %d, want 0 — unmerged builder work is a human decision:\n%s",
+			report.FixableCount(), renderVerifyReport(report))
+	}
+	unmergedFindings := findingsMentioning(report, verifyCategoryUnmergedWorktreeLeftover)
+	if len(unmergedFindings) != 1 {
+		t.Fatalf("got %d unmerged-leftover findings, want 1:\n%s", len(unmergedFindings), renderVerifyReport(report))
+	}
+	if unmergedFindings[0].Fixable {
+		t.Error("cleanup Pass 5 asks before discarding unmerged work — it must not be marked fixable")
+	}
+	// verify cannot tell a live builder from a dead one, so the remedy has to say
+	// so rather than let the reader assume the leftover is abandoned.
+	if !strings.Contains(unmergedFindings[0].Remedy, "in flight") {
+		t.Errorf("the remedy must name the still-running case verify cannot rule out, got: %s", unmergedFindings[0].Remedy)
+	}
+	if strings.Contains(renderVerifyReport(report), "fixable: run do-work cleanup") {
+		t.Errorf("a lone unmerged leftover must not route the user to cleanup:\n%s", renderVerifyReport(report))
+	}
+}
+
+// The full state table REQ-072 deferred. One fixture, five leftovers, so the
+// merged/unmerged split is proved to be a classification rather than a blanket
+// demotion — and a developer's own worktree is proved to stay invisible.
+func TestVerifyClassifiesWorktreeLeftoversByMergeState(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	// 1. Unmerged, worktree still present — the in-flight-or-dead case.
+	unmergedWithWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-001-unmerged-live")
+	commitFixtureWork(t, unmergedWithWorktree, "one.txt")
+
+	// 2. Unmerged, worktree already gone — the branch outlived its worktree.
+	unmergedBranchOnly := addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-002-unmerged-branch")
+	commitFixtureWork(t, unmergedBranchOnly, "two.txt")
+	runGitInFixture(t, repoRoot, "worktree", "remove", unmergedBranchOnly)
+
+	// 3. Merged, worktree still present — pure residue Pass 5 removes mechanically.
+	mergedWithWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-003-merged-live")
+	commitFixtureWork(t, mergedWithWorktree, "three.txt")
+	runGitInFixture(t, repoRoot, "merge", "--no-ff", "--no-edit", "--quiet", "worktree-agent-REQ-003-merged-live")
+
+	// 4. Merged, branch only — points at HEAD, so it is trivially contained.
+	runGitInFixture(t, repoRoot, "branch", "worktree-agent-REQ-004-merged-branch")
+
+	// 5. A worktree that is not a builder's. It must be ignored entirely.
+	runGitInFixture(t, repoRoot, "worktree", "add", "--quiet", "-b", "my-own-feature",
+		filepath.Join(worktreeParent, "my-own-feature"))
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	renderedReport := renderVerifyReport(report)
+
+	categoryByLeftover := map[string]string{}
+	for _, category := range []string{verifyCategoryMergedWorktreeLeftover, verifyCategoryUnmergedWorktreeLeftover, verifyCategoryUndeterminedWorktreeLeftover} {
+		for _, finding := range findingsMentioning(report, category) {
+			for _, leftoverName := range []string{
+				"worktree-agent-REQ-001-unmerged-live",
+				"worktree-agent-REQ-002-unmerged-branch",
+				"worktree-agent-REQ-003-merged-live",
+				"worktree-agent-REQ-004-merged-branch",
+			} {
+				if strings.Contains(finding.Detail, leftoverName) {
+					categoryByLeftover[leftoverName] = category
+				}
+			}
+		}
+	}
+
+	expectedCategoryByLeftover := map[string]string{
+		"worktree-agent-REQ-001-unmerged-live":   verifyCategoryUnmergedWorktreeLeftover,
+		"worktree-agent-REQ-002-unmerged-branch": verifyCategoryUnmergedWorktreeLeftover,
+		"worktree-agent-REQ-003-merged-live":     verifyCategoryMergedWorktreeLeftover,
+		"worktree-agent-REQ-004-merged-branch":   verifyCategoryMergedWorktreeLeftover,
+	}
+	for leftoverName, wantCategory := range expectedCategoryByLeftover {
+		if gotCategory := categoryByLeftover[leftoverName]; gotCategory != wantCategory {
+			t.Errorf("%s classified as %q, want %q:\n%s", leftoverName, gotCategory, wantCategory, renderedReport)
+		}
+	}
+
+	if strings.Contains(renderedReport, "my-own-feature") {
+		t.Errorf("a developer's own worktree must never be reported:\n%s", renderedReport)
+	}
+	// Exactly the two merged leftovers are fixable — proof this is a
+	// classification, not a blanket demotion of the whole probe.
+	if report.FixableCount() != 2 {
+		t.Errorf("FixableCount = %d, want 2 (the merged leftovers only):\n%s", report.FixableCount(), renderedReport)
+	}
+}
+
+// A worktree whose name matches the convention but has no branch behind it (a
+// detached checkout) is git declining to answer, not an answer. Reporting an
+// unanswered question as "unmerged" would be the same class of defect this probe
+// was fixed for, so it gets its own state — and, like unmerged, it is never
+// advertised as something cleanup can mechanically resolve.
+func TestVerifyReportsAnUndeterminedMergeStateSeparately(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	runGitInFixture(t, repoRoot, "worktree", "add", "--quiet", "--detach",
+		filepath.Join(worktreeParent, "worktree-agent-REQ-005-detached"))
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	undeterminedFindings := findingsMentioning(report, verifyCategoryUndeterminedWorktreeLeftover)
+	if len(undeterminedFindings) != 1 {
+		t.Fatalf("got %d undetermined-state findings, want 1:\n%s", len(undeterminedFindings), renderVerifyReport(report))
+	}
+	if undeterminedFindings[0].Fixable {
+		t.Error("verify could not establish a merge target — it must not be advertised as cleanup-fixable")
+	}
+	if report.FixableCount() != 0 {
+		t.Errorf("FixableCount = %d, want 0:\n%s", report.FixableCount(), renderVerifyReport(report))
+	}
+}
+
+// writeFixtureFile writes one file under a checkout, creating parents. Used to
+// plant queue state where it does or does not belong.
+func writeFixtureFile(t *testing.T, checkoutPath string, relativePath string, content string) {
+	t.Helper()
+	absolutePath := filepath.Join(checkoutPath, relativePath)
+	if mkdirError := os.MkdirAll(filepath.Dir(absolutePath), 0o755); mkdirError != nil {
+		t.Fatalf("mkdir for %s: %v", relativePath, mkdirError)
+	}
+	if writeError := os.WriteFile(absolutePath, []byte(content), 0o644); writeError != nil {
+		t.Fatalf("write %s: %v", relativePath, writeError)
+	}
+}
+
+const forgedQueueRequest = "---\nid: REQ-999\nstatus: pending\ntitle: forged by a builder\n---\n"
+
+// The gap REQ-072 requirement 3 actually asked about: a builder that wrote queue
+// state and then COMMITTED it on its own branch. That is the likely shape, since
+// a builder commits its work by design — and it leaves the worktree clean, so a
+// porcelain-only probe sees nothing.
+func TestVerifyFlagsQueueStateCommittedOnABuilderBranch(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-010-impersonator")
+	writeFixtureFile(t, builderWorktree, "do-work/queue/REQ-999-forged.md", forgedQueueRequest)
+	runGitInFixture(t, builderWorktree, "add", "do-work/queue/REQ-999-forged.md")
+	runGitInFixture(t, builderWorktree, "commit", "--quiet", "-m", "builder wrote queue state")
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	committedFindings := findingsMentioning(report, verifyCategoryWorktreeCommittedQueueState)
+	if len(committedFindings) != 1 {
+		t.Fatalf("got %d committed-queue-state findings, want 1:\n%s", len(committedFindings), renderVerifyReport(report))
+	}
+	if !strings.Contains(committedFindings[0].Detail, "REQ-999-forged.md") {
+		t.Errorf("finding must name the path the builder wrote, got: %s", committedFindings[0].Detail)
+	}
+	// The two states need different remedies — one is inside the branch about to
+	// be merged, the other is loose in a working tree — so the detail must say
+	// which was found rather than leaving the reader to guess.
+	if !strings.Contains(committedFindings[0].Detail, "committed") {
+		t.Errorf("finding must say the edits are committed on the branch, got: %s", committedFindings[0].Detail)
+	}
+	if committedFindings[0].Fixable {
+		t.Error("discarding a builder's commits is never mechanical — this must not be marked fixable")
+	}
+}
+
+// Requirement 1: the merge-base comparison is added ALONGSIDE the porcelain
+// check, not in place of it. A merge-base diff cannot see uncommitted edits.
+func TestVerifyStillFlagsUncommittedQueueStateInAWorktree(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-011-loose-edit")
+	writeFixtureFile(t, builderWorktree, "do-work/queue/REQ-999-forged.md", forgedQueueRequest)
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	dirtyFindings := findingsMentioning(report, verifyCategoryWorktreeWroteQueueState)
+	if len(dirtyFindings) != 1 {
+		t.Fatalf("got %d uncommitted-queue-state findings, want 1:\n%s", len(dirtyFindings), renderVerifyReport(report))
+	}
+	if dirtyFindings[0].Fixable {
+		t.Error("uncommitted builder queue edits are a human decision — not fixable")
+	}
+}
+
+// Requirement 4, and the regression test that makes widening the probe safe: a
+// worktree whose do-work/ is merely BEHIND the main tree is the legitimate stale
+// snapshot the original narrowing was protecting. Three-dot diff semantics are
+// what keep it silent — the orchestrator's later queue commits are on the
+// integration branch's side of the merge base, not the builder's.
+//
+// It also pins requirement 6: REQ-082 grants a builder exactly one main-tree
+// write, its own REQ-NNN-handback.md, absolute and never committed. Planted here
+// in the main tree, it must be invisible to both states.
+func TestVerifyIgnoresAStaleQueueSnapshotAndTheHandBackFile(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	// Branch point: the builder's worktree is created here and never touches do-work/.
+	addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-012-innocent")
+
+	// The orchestrator then moves the main tree on, exactly as a live run does.
+	writeFixtureFile(t, repoRoot, "do-work/archive/REQ-071-archived-later.md",
+		"---\nid: REQ-071\nstatus: completed\ntitle: archived after the branch point\ncompleted_at: 2026-08-03T10:00:00Z\ncommit: abc1234\n---\n")
+	runGitInFixture(t, repoRoot, "add", "-A")
+	runGitInFixture(t, repoRoot, "commit", "--quiet", "-m", "orchestrator archived a REQ")
+
+	// REQ-082's one permitted main-tree write by the builder: absolute path, never
+	// committed. It must not read as an owner impersonation.
+	writeFixtureFile(t, repoRoot, "do-work/runs/work-2026-08-03-120000/REQ-012-handback.md",
+		"# Hand-back\n\nbranch: worktree-agent-REQ-012-innocent\n")
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if committedFindings := findingsMentioning(report, verifyCategoryWorktreeCommittedQueueState); len(committedFindings) != 0 {
+		t.Errorf("a stale snapshot is not an impersonation — got %d findings:\n%s", len(committedFindings), renderVerifyReport(report))
+	}
+	if dirtyFindings := findingsMentioning(report, verifyCategoryWorktreeWroteQueueState); len(dirtyFindings) != 0 {
+		t.Errorf("the main tree's uncommitted hand-back file must not be read as a worktree write — got %d findings:\n%s", len(dirtyFindings), renderVerifyReport(report))
+	}
 }
 
 // A repo whose changelog does not follow the house entry key must not produce

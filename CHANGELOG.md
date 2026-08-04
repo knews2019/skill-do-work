@@ -6,6 +6,114 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.169.2 — The Work Action Says Who Runs A Fan-Out (2026-08-04)
+
+Worktree fan-out was described in one document and absent from the other, so `--wave N` read like a
+concurrency switch while every step of the work action processes one request at a time. The two now
+agree: running several builders is a procedure you or an advanced harness drive, not something
+`do-work run` does.
+
+- `actions/work.md` says plainly that it works one request at a time by design, and points at the
+  procedure that does the other thing
+- `--wave N` keeps doing what it always did — pick a batch of mutually independent requests — and now
+  says so instead of implying parallelism
+- The decision favours the floor: the work action stays followable by the simplest agent that can read
+  files and run shell commands
+
+## 0.169.1 — Hand-Back Merge Survives The Owner's Own Claim (2026-08-04)
+
+Worktree dispatch told the orchestrator to merge a builder's branch, but the claim it had just made was
+still sitting uncommitted — so on any project that keeps `do-work/` in git, the merge refused before it
+started. The sequence now says to settle that first.
+
+- New step 0 in the hand-back sequence: commit the claim moves, the checkpoint and the run directory
+  before capturing the merge range's lower bound, so the bookkeeping stays outside the range
+- Says plainly that it's a no-op to skip where `do-work/` isn't tracked, which is the common install
+- Stated in both places the sequence is written, including the one an orchestrator actually follows
+
+## 0.169.0 — Board Copy Carries the Ticket's Frontmatter (2026-08-04)
+
+The drawer shows a ticket's status, domain, user request and timestamps in labelled rows — and **Copy**
+dropped every one of them, handing you an anonymous body. It now copies the ticket file exactly as it
+sits on disk, fence and all, so a paste can be saved straight back as a valid REQ or UR.
+
+- Verbatim means verbatim: the original key order, comments and spacing survive, because the fence is
+  taken from the file's own bytes rather than rebuilt from the parsed fields
+- Works on user requests too, and on a live `do-work board` as well as a generated one
+- Three drawer rows still can't come along — Tree, Overlapping write sets and Unblocks are worked out
+  while the board is built, not stored in the file — and the board guide now says so
+- Older boards missing their source-text bundle still fall back to the rendered text under a
+  `# REQ-042: <title>` heading; no frontmatter is ever fabricated from what's on screen
+
+## 0.168.6 — Fan-Out Dispatch Actually Run For The First Time (2026-08-04)
+
+Worktree fan-out shipped three versions ago with its live acceptance test never run — two checkpoints
+carried it as deferred, so the feature was a claim rather than a demonstrated capability. It has now
+been run end to end, and the record is in the archive rather than in a promise.
+
+- Two real requests built in two worktrees on two branches, integrated one at a time: both merged
+  cleanly, each got its own changelog entry with an increasing version, and both branches came off with
+  a plain `git branch -d` — no force needed
+- A deliberately overlapping pair was confirmed to fail at the merge rather than combine silently
+- Two defects found and queued: the hand-back merge collides with the owner's own uncommitted claim
+  where `do-work/` is tracked, and nothing in the work action actually drives a wave
+- Acceptance recorded as **Partial**, on purpose — the builders never overlapped in time, so genuine
+  concurrency is still unproven and the record says which properties that leaves open
+
+## 0.168.5 — Board And Verify Stop Handing Windows A Dead Command (2026-08-04)
+
+The board's tooltips, its data warnings and `verify`'s remedy line all told you to fix a bad timestamp
+with `date -u +%Y-%m-%dT%H:%M:%SZ` — a command that doesn't exist on Windows. The instruction layer was
+fixed a release ago; these four display strings had been left carrying the old one.
+
+- The tooltips and warnings now name the shape (`YYYY-MM-DDTHH:MM:SSZ`) and point at the Timestamp rule
+- `queue-kanban verify`'s remedy keeps a runnable command, but it's `queue-kanban now` — same output on
+  every platform, and you're already looking at that binary's output when you read it
+- A fourth site turned up during the fix: the board's server-side future-timestamp warning had the same
+  problem
+
+## 0.168.4 — Checkpoint Bookkeeping Stated At Every Mover (2026-08-04)
+
+A completed request could leave a stale entry behind in the session checkpoint, so the next run would
+report a contradiction about a request that finished perfectly normally — and a warning that fires on
+the happy path is the fastest way to teach you to ignore it. The two procedures that move a request out
+of `working/` from outside the pipeline now say the entry goes with it.
+
+- `do-work cleanup` Pass 0 and `do-work forensics` Check 1 each state the rule, citing its canonical
+  home rather than restating it
+- The work guide no longer says the checkpoint is written only at session end — it's written as each
+  request is claimed, which is what lets a crashed run pick its own work back up
+
+## 0.168.3 — Verify Catches A Builder That Committed Its Queue Edits (2026-08-04)
+
+The check that stops a builder from writing queue state only looked at uncommitted changes, so it
+caught a builder interrupted mid-write and missed one that finished and committed — the likelier shape,
+since builders commit their work by design. It now also compares the builder's branch against the
+integration branch, so the edits show up whether they were committed or not.
+
+- New `worktree-committed-queue-state` finding, reported separately from the uncommitted one because
+  the fix differs: drop the commits before merging, versus discard loose working-tree edits
+- Uses a merge-base comparison, so a worktree that is merely *behind* the main tree stays silent —
+  that legitimate case now has a regression test rather than a narrowed probe protecting it
+- Neither state is marked fixable; discarding a builder's work is never mechanical
+- `do-work forensics` Check 14's probe table now lists the two worktree probes separately
+
+## 0.168.2 — Verify Marks Only Merged Worktrees As Fixable (2026-08-03)
+
+`do-work forensics` was reporting every leftover builder worktree as something `do-work cleanup` would
+mechanically resolve — including builders still mid-run and branches holding work that exists nowhere
+else. Sent to cleanup, those cases stop and ask instead, so the count was pointing you at a command
+that could not help. Verify now checks whether the branch is actually merged and says which case it
+found.
+
+- Merged residue reports as `merged-worktree-leftover [fixable]` and is the only kind counted toward
+  `N fixable: run do-work cleanup` — matching what cleanup Pass 5 will actually do
+- Unmerged work reports as `unmerged-worktree-leftover`, not fixable, and its remedy says out loud that
+  verify cannot tell a live builder from a dead one
+- A worktree whose branch is gone gets its own `worktree-merge-state-undetermined` state, so an
+  unanswerable question is never reported as an answer
+- `verify_test.go` gained a real git-repo fixture; every worktree probe used to skip silently in tests
+
 ## 0.168.1 — The Fan-Out Hand-Back File Has Somewhere Legal To Go (2026-08-03)
 
 Fan-out dispatch made a per-builder `REQ-NNN-handback.md` mandatory, and the worktree rules forbade builders from writing the main tree — where `do-work/` lives. There was no location satisfying both, so an agent that got there had three moves and two of them corrupted the run quietly: write the main tree anyway, or write the worktree's copy where the file lands in the builder's branch and the orchestrator reads nothing.

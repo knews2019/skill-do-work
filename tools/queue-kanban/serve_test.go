@@ -133,9 +133,13 @@ func TestServeLazyMarkdownEndpointReturnsExactSources(t *testing.T) {
 	testServer := httptest.NewServer(liveServer)
 	defer testServer.Close()
 
+	// "Exact sources" means the whole file, fence included: REQ-089 made the Copy
+	// payload round-trip back into a valid REQ file, and the live server shares the
+	// static generator's projection, so both surfaces carry the same bytes.
 	markdownData := fetchServedBoardMarkdownData(t, testServer.URL)
-	if got, want := markdownData.Requests["REQ-0001"], "\n# REQ-0001\n"; got != want {
-		t.Fatalf("served REQ Markdown = %q, want %q", got, want)
+	wantFileText := "---\nid: REQ-0001\ntitle: Fixture REQ-0001\nstatus: pending\n---\n\n# REQ-0001\n"
+	if got := markdownData.Requests["REQ-0001"]; got != wantFileText {
+		t.Fatalf("served REQ Markdown = %q, want %q", got, wantFileText)
 	}
 }
 
