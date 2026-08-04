@@ -61,5 +61,19 @@ From REQ-094's review (Minor finding, folded here because this REQ owns the line
 
 Second fold-in (REQ-102 discovered task): the Session Checkpoint Template's inline comment (~`actions/work-reference.md:806`) still says "any entry carrying another checkout's label is copied through verbatim" — the labeled-only scoping REQ-102 fixed at both `actions/work.md` echo sites. Reword to the canonical condition ("every entry this checkout did not write" / "carries every other one through verbatim") so the template comment stops contradicting the prose 15 lines below it.
 
+Third fold-in (REQ-095's two-clone acceptance run, evidence-backed — see its `## Testing` findings F-06
+and F-04): where a consumer commits `do-work/`, **`do-work/CHECKPOINT.md` conflicts on every concurrent
+claim, including two fully disjoint ones** — two single-line appends land at the same position, so git
+reports `CONFLICT (add/add)` / `AA` (or `UU` where the file already existed) while the REQ files
+themselves merge cleanly. The widened-dispatch prose must state the resolution, because both one-sided
+resolves lose data: taking ours drops another checkout's live claim record (the poisoning, by hand),
+taking theirs makes this checkout's own crash unrecoverable. The rule is **keep every entry from both
+sides** — the merge-time reading of the same condition Step 10 already carries ("every entry this
+checkout did not write"). Two shapes worth naming from the same run: a double claim on one REQ is a
+plain **content** conflict, never a rename conflict (both sides perform the identical
+`queue/` → `working/` rename, which git resolves silently); and with byte-identical claim writes the REQ
+file does not conflict at all, so the `writer:` label in `CHECKPOINT.md` is the *only* thing that
+surfaces the double claim. Do not write prose predicting a rename conflict.
+
 ---
 *Source: approved plan, Phase 2*

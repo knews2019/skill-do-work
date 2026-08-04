@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.170.2 — Two-Clone Acceptance Run Confirms the Writer Label (2026-08-04)
+
+The checkpoint writer label from 0.170.0 now has a real experiment behind it instead of an argument. Two clones sharing a bare origin reproduced the old poisoning as a silent fast-forward that erased a live claim, then the shipped rule left the same claim byte-for-byte untouched. The run also found a hole nobody had reasoned their way to.
+
+- Reproduced the pre-0.170.0 strip deterministically: a routine sync exits 0, fast-forwards, and deletes another checkout's live claim along with its Triage and Scope — no conflict, no warning.
+- Confirmed the shipped rule reports `claim held by <writer>, not touched` and writes nothing, verified by matching sha256 before and after.
+- Captured what a cross-checkout claim conflict actually looks like: plain content conflicts, never a rename conflict, plus an `add/add` conflict on `CHECKPOINT.md` for *every* concurrent claim — including two that touch nothing in common.
+- Found that with byte-identical claim writes the REQ file merges clean, so the writer label is the only thing that surfaces the double claim at all.
+- Filed REQ-104: the label-less recovery rule reads "checkpoint is locally modified" as proof this checkout wrote it, which stops being true once resolving a checkpoint conflict is routine.
+
 ## 0.170.1 — Step 10 Preserves Label-Less Checkpoint Entries Too (2026-08-04)
 
 Follow-up to 0.170.0's writer label: the work action's session-end rewrite and session-start delete were scoped to entries "carrying another checkout's label", which quietly excluded label-less legacy entries — recovery refused to touch them, then Step 10 deleted them anyway, sending the REQ into the takeover ladder next run. Both clauses now preserve every entry this checkout did not write, and two new contract assertions pin both destruction paths.

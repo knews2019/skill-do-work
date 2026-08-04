@@ -10,6 +10,7 @@ session_depth: light
 
 ## In Progress (interrupted)
 
+
 ## Completed This Session
 
 - REQ-094: Checkpoint writer label — crash recovery ignores foreign entries (Route B, 90%) — v0.170.0, commit `9c305c0`
@@ -17,7 +18,6 @@ session_depth: light
 
 ## Still Queued
 
-- REQ-095: Two-clone acceptance run (pending — next; deps satisfied)
 - REQ-096: Execution-model re-grain (pending; carries 2 addendum fold-ins)
 - REQ-097: assigned_to field (pending, depends_on REQ-096)
 - REQ-098: Verify probes (pending, depends_on REQ-097)
