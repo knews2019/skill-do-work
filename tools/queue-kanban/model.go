@@ -106,9 +106,14 @@ type RequestTicket struct {
 	WriteSet []string
 
 	// assigned_to names the session a pending REQ is earmarked for — the advisory
-	// cooperative claim marker. Read VERBATIM, never normalized (no case folding,
-	// no trimming, no alias map: there is no canonical vocabulary of session
-	// names), and DISPLAY ONLY at any builder count — a badge and a drawer row,
+	// cooperative claim marker. Read VERBATIM: no case folding and no alias map,
+	// because there is no canonical vocabulary of session names to normalize
+	// against. coerceScalarToString does trim surrounding whitespace, which is the
+	// same treatment every field in this class gets (write_set and prime_files go
+	// through it per element) and is deliberate — padding survives only explicit
+	// YAML quoting, means nothing in a name, and preserving it would make
+	// " cloud-alpha " a different session from "cloud-alpha". DISPLAY ONLY at any
+	// builder count — a badge and a drawer row,
 	// nothing more. The board never buckets, orders, or schedules on it; the one
 	// reader that acts on it is the work pipeline's default scan, which skips and
 	// reports an assigned REQ as a courtesy and is overridden by explicit

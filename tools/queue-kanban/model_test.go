@@ -703,3 +703,28 @@ func TestAssignedToNeverAffectsColumnPlacement(t *testing.T) {
 			assignedTicket.Status, unassignedTicket.Status)
 	}
 }
+
+// The verbatim-read contract's load-bearing half is that NOTHING is normalized
+// against a vocabulary: case is preserved and no alias map applies. Surrounding
+// whitespace is the one documented exception, shared by every field in the class
+// (write_set and prime_files trim per element through the same coercion), because
+// padding survives only explicit YAML quoting and means nothing in a name. Raised by
+// review on PR #128 — the original contract text over-claimed "no trimming".
+func TestParseRequestTicketPreservesAssignedToCaseAndTrimsOnlyPadding(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-570-padded.md")
+	fixtureContent := "---\nid: REQ-570\ntitle: Padded and mixed case\nstatus: pending\n" +
+		"assigned_to: \"  Cloud-ALPHA_2  \"\n---\n\nBody.\n"
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.AssignedTo != "Cloud-ALPHA_2" {
+		t.Fatalf("AssignedTo = %q, want %q — padding trimmed, case and internal characters untouched",
+			ticket.AssignedTo, "Cloud-ALPHA_2")
+	}
+}

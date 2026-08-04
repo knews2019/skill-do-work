@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.3 — Verify's UR Probe Works Under a Relative `--repo-root` (2026-08-04)
+
+Two review findings on the 0.174.x work, both real. One was a probe that silently found nothing; the other was a contract sentence claiming something the code has never done.
+
+- `ur-archived-with-live-member` required a leading `/do-work/archive/` in the UR's path, so `do-work verify --repo-root .` recognized zero archived URs and reported nothing — the quiet kind of wrong. It now anchors on the trailing separator and works under both absolute and relative roots, while still refusing a directory merely named `archive`. Every existing test built its fixture under an absolute temp dir, which is why none of them caught it.
+- The `assigned_to` schema text said readers must not trim the value. They always have: every field in the verbatim-read class, `write_set` and `prime_files` included, goes through the same scalar coercion. Corrected the contract rather than the parser — padding survives only explicit YAML quoting, means nothing in a name, and preserving it would make `" cloud-alpha "` a different session from `"cloud-alpha"`. Verbatim means no alias map, no case folding, no path canonicalization.
+- Three regression tests: the relative-root probe, the lookalike-directory rejections, and case-preserved-padding-trimmed.
+
 ## 0.174.2 — Multi-Checkout Guide and the Session-Ownership Decision Record (2026-08-04)
 
 The claim-anywhere model now has documentation and a decision record. The guide gets a walkthrough for working one queue from several checkouts; ADR-018 records why the contract changed, including the parts that turned out to cost something.

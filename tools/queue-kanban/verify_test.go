@@ -907,3 +907,70 @@ func TestVerifyLiveMemberProbeScansUserRequestFrontmatterNotTheUrArray(t *testin
 		t.Errorf("finding must name the unlisted live member, got %q", liveMemberFindings[0].Detail)
 	}
 }
+
+// resolveRepoRootOrDefault returns an explicit --repo-root override verbatim, so
+// `verify --repo-root .` produces ticket paths with no leading separator. The
+// archived-UR probe used to require a leading "/do-work/archive/" and therefore
+// recognized nothing in that mode — silently, which is the worst way for a probe to
+// fail. Every other test here builds fixtures under t.TempDir() (absolute), so none
+// of them could catch it. Found by review on PR #128.
+func TestVerifyFlagsArchivedUserRequestLiveMemberUnderARelativeRepoRoot(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/UR-093/input.md", "---\nid: UR-093\ntitle: archived early\nrequests: [REQ-084]\n---\n"},
+		{"do-work/archive/UR-093/REQ-084-done.md",
+			"---\nid: REQ-084\nstatus: completed\ntitle: done\nuser_request: UR-093\ncompleted_at: 2026-08-01T10:00:00Z\ncommit: abc1234\n---\n"},
+		{"do-work/queue/REQ-085-still-live.md",
+			"---\nid: REQ-085\nstatus: pending\ntitle: still live\nuser_request: UR-093\n---\n"},
+	})
+
+	originalWorkingDirectory, getwdError := os.Getwd()
+	if getwdError != nil {
+		t.Fatalf("Getwd: %v", getwdError)
+	}
+	if chdirError := os.Chdir(repoRoot); chdirError != nil {
+		t.Fatalf("Chdir: %v", chdirError)
+	}
+	t.Cleanup(func() { _ = os.Chdir(originalWorkingDirectory) })
+
+	// "." is the shape actions/forensics.md Check 14 can pass, and the shape the
+	// leading-slash match could never satisfy.
+	report, verifyError := runVerifyProbes(".", time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	liveMemberFindings := findingsMentioning(report, verifyCategoryArchivedUserRequestLiveMember)
+	if len(liveMemberFindings) != 1 {
+		t.Fatalf("got %d findings under a relative repo root, want 1 — the probe must not depend on a leading separator:\n%s",
+			len(liveMemberFindings), renderVerifyReport(report))
+	}
+	if !strings.Contains(liveMemberFindings[0].Detail, "REQ-085") {
+		t.Errorf("finding must name the live member, got %q", liveMemberFindings[0].Detail)
+	}
+}
+
+// The same probe must still refuse a directory merely named "archive" that is not
+// this project's do-work archive — the reason the match is separator-anchored.
+func TestIsArchivedUserRequestPathRejectsLookalikeDirectories(t *testing.T) {
+	for _, archivedPath := range []string{
+		"do-work/archive/UR-001/input.md",
+		"/abs/repo/do-work/archive/UR-001/input.md",
+		"./do-work/archive/UR-001/input.md",
+	} {
+		if !isArchivedUserRequestPath(archivedPath) {
+			t.Errorf("isArchivedUserRequestPath(%q) = false, want true", archivedPath)
+		}
+	}
+	for _, livePath := range []string{
+		"do-work/user-requests/UR-001/input.md",
+		"/abs/repo/do-work/user-requests/UR-001/input.md",
+		"my-do-work/archive/UR-001/input.md", // not this project's do-work/
+		"archive/UR-001/input.md",            // bare archive/, no do-work/ segment
+		"docs/archive/UR-001/input.md",
+	} {
+		if isArchivedUserRequestPath(livePath) {
+			t.Errorf("isArchivedUserRequestPath(%q) = true, want false", livePath)
+		}
+	}
+}

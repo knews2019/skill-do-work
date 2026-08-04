@@ -421,11 +421,22 @@ func appendArchivedUserRequestLiveMemberFindings(report *VerifyReport, board *Bo
 
 // isArchivedUserRequestPath reports whether a UR's input.md lives under
 // do-work/archive/. The UR ticket carries no TreeSection of its own (unlike a REQ),
-// so the path is the only evidence. Matched on the separator-bounded segment so a
-// project directory merely named "archive" somewhere else cannot satisfy it.
+// so the path is the only evidence.
+//
+// The match must NOT require a leading separator. resolveRepoRootOrDefault returns
+// an explicit --repo-root override verbatim, so `verify --repo-root .` yields ticket
+// paths like "do-work/archive/UR-090/input.md" with no leading slash at all — and a
+// leading-slash pattern silently recognized zero archived URs in that supported CLI
+// mode, which is exactly the mode actions/forensics.md Check 14 can invoke. Anchor
+// on the trailing separator instead: "do-work/archive/" still cannot match a
+// directory merely named "archive", and it matches under both absolute and relative
+// roots. Guard the prefix case explicitly rather than trusting Contains, so a path
+// like "my-do-work/archive/" cannot satisfy it either.
 func isArchivedUserRequestPath(userRequestFilePath string) bool {
 	normalizedPath := filepath.ToSlash(userRequestFilePath)
-	return strings.Contains(normalizedPath, "/do-work/archive/")
+	const archiveSegment = "do-work/archive/"
+	return strings.HasPrefix(normalizedPath, archiveSegment) ||
+		strings.Contains(normalizedPath, "/"+archiveSegment)
 }
 
 // worktreeMergeState is what verify can honestly say about a worktree-agent-*
