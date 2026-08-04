@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-08-04T19:44:17Z
 claimed_at: 2026-08-04T21:16:51Z
 completed_at: 2026-08-04T21:30:00Z
+commit: 0cf9420
 kb_status: pending
 user_request: UR-018
 domain: general
