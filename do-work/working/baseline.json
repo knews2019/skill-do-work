@@ -1,5 +1,0 @@
-{
-  "test_command": "cd tools/queue-kanban && go test ./...",
-  "exit_status": 0,
-  "launched": true
-}
