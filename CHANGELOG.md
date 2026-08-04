@@ -8,6 +8,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.1 — Wall-Clock Concurrency Proven for the First Time (2026-08-04)
+
+Fan-out has been in the contract for a while, and until now nobody had watched two builders actually run at the same time — the one recorded attempt logged Partial. This one measured a 4.109-second window where both were genuinely running.
+
+- Two builders in two git worktrees on two branches, dispatched by the automatic ready-set computation and launched before the owner waited on either.
+- The computation was shown *excluding* as well as including: a REQ whose dependency was still pending stayed out, and one earmarked with `assigned_to` was left for its own session.
+- Serial integration produced two different `<pre>` values, because the first REQ's archive commit moved the tip between merges. That is why the contract says capture it once per REQ — and writing the once-per-wave version by mistake is what proved the rule earned.
+- Wave 2 recomputed and picked up the REQ whose dependency had just landed, which a carried-forward remainder list would have missed.
+- The negative case ran too: two REQs declaring the same `write_set` both entered the wave, and the second merge refused with a content conflict. A computed set claims its REQs are runnable, never that they don't collide.
+- Honest gap, recorded: the builders were scripts. The mechanism is proven under real concurrency; agent behavior under concurrency still isn't.
+
 ## 0.174.0 — `do-work run --fan-out` Computes the Wave Itself (2026-08-04)
 
 The pipeline used to say flatly that nothing computes the set — you picked which REQs ran together, by hand. That was a deliberate design choice, and it's now a deliberate reversal: pass `--fan-out` and the loop works out the ready set and dispatches builders with no confirmation prompt.

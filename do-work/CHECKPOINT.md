@@ -18,7 +18,6 @@ session_depth: light
 
 ## Still Queued
 
-- REQ-100: Live wave acceptance run (pending, depends_on REQ-099)
 - REQ-101: Docs + ADR (pending, depends_on REQ-096/097/099)
 - REQ-103: Checkpoint frontmatter writer identity (pending-answers — waits for `do-work clarify`)
 
