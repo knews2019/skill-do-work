@@ -4,6 +4,7 @@ title: The in-progress record's rule is unstated at the two out-of-pipeline move
 status: completed
 claimed_at: 2026-08-04T00:04:10Z
 completed_at: 2026-08-04T00:09:48Z
+commit: a17e6af
 kb_status: pending
 created_at: 2026-08-03T21:29:26Z
 user_request: UR-015
