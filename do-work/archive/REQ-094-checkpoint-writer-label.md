@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-08-04T19:44:17Z
 claimed_at: 2026-08-04T19:48:36Z
 completed_at: 2026-08-04T20:08:59Z
+commit: 9c305c0
 route: B
 kb_status: pending
 user_request: UR-018
