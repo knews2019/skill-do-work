@@ -753,3 +753,21 @@ func TestParsePorcelainStatusPathsKeepsSpacesAndRenames(t *testing.T) {
 		t.Fatalf("parsePorcelainStatusPaths mismatch:\ngot  %q\nwant %q", got, want)
 	}
 }
+
+// TestCheckpointMentionedRequestIdsSkipsGlobPatterns pins the false positive a
+// real CHECKPOINT.md produced: session notes quoting the shell glob
+// `REQ-0[0-9][0-9]-*.md` made the scanner report a ghost "REQ-0". A digit run
+// continuing into `[` is a pattern, not an id; ids wrapped in markdown
+// emphasis or ending a question must still be found.
+func TestCheckpointMentionedRequestIdsSkipsGlobPatterns(t *testing.T) {
+	checkpointText := strings.Join([]string{
+		"last_completed: REQ-093",
+		"cleanup ran `rm -f kb/raw/inbox/REQ-0[0-9][0-9]-*.md` over the inbox",
+		"**REQ-088** closed; did REQ-074? REQ-093 again.",
+	}, "\n")
+	got := checkpointMentionedRequestIds(checkpointText)
+	want := []string{"REQ-093", "REQ-088", "REQ-074"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("checkpointMentionedRequestIds mismatch:\ngot  %q\nwant %q", got, want)
+	}
+}

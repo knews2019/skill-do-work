@@ -240,21 +240,41 @@ func appendCheckpointGhostFindings(report *VerifyReport, repoRoot string, board 
 		return // no checkpoint is normal, not a finding
 	}
 
-	alreadyReported := map[string]bool{}
-	for _, mentionedId := range requestIdMentionPattern.FindAllString(string(checkpointBytes), -1) {
-		if alreadyReported[mentionedId] {
-			continue
-		}
+	for _, mentionedId := range checkpointMentionedRequestIds(string(checkpointBytes)) {
 		if _, exists := board.RequestsById[mentionedId]; exists {
 			continue
 		}
-		alreadyReported[mentionedId] = true
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryCheckpointGhostRequest,
 			Detail:   fmt.Sprintf("do-work/CHECKPOINT.md names %s, which does not exist in queue/, working/, or archive/", mentionedId),
 			Remedy:   "edit or delete the checkpoint — a later session reads it, and crash recovery classifies against it",
 		})
 	}
+}
+
+// checkpointMentionedRequestIds returns the distinct REQ ids a checkpoint's
+// free text names, in first-mention order. A match whose digit run continues
+// straight into `[` is skipped: that is a quoted shell glob
+// (`REQ-0[0-9][0-9]-*.md` in session notes), not a REQ id — its `REQ-0` prefix
+// used to be reported as a ghost. Go's RE2 has no lookahead, so the boundary
+// is checked here rather than in the pattern; only `[` is treated as a glob
+// continuation, because `*` and `?` legitimately follow real ids in prose
+// (`**REQ-093**` emphasis, a sentence ending "…REQ-093?").
+func checkpointMentionedRequestIds(checkpointText string) []string {
+	var mentionedIds []string
+	seenIds := map[string]bool{}
+	for _, matchSpan := range requestIdMentionPattern.FindAllStringIndex(checkpointText, -1) {
+		if matchSpan[1] < len(checkpointText) && checkpointText[matchSpan[1]] == '[' {
+			continue
+		}
+		mentionedId := checkpointText[matchSpan[0]:matchSpan[1]]
+		if seenIds[mentionedId] {
+			continue
+		}
+		seenIds[mentionedId] = true
+		mentionedIds = append(mentionedIds, mentionedId)
+	}
+	return mentionedIds
 }
 
 // appendClaimFindings reports a claim that has sat past the threshold, and any

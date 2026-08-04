@@ -8,6 +8,19 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.169.9 — Verify No Longer Reads a Quoted Shell Glob as a Ghost REQ (2026-08-04)
+
+`queue-kanban verify` exited 1 on this very repo: the checkpoint ghost-REQ scanner's `REQ-\d+`
+pattern matched the `REQ-0` prefix of the shell glob `REQ-0[0-9][0-9]-*.md` quoted in
+CHECKPOINT.md's session notes, and reported a REQ that never existed.
+
+- The mention scan now skips a digit run that continues straight into `[` — that's a glob
+  character class, not an id. Only `[` is treated as a continuation: `*` and `?` legitimately
+  follow real ids in prose (`**REQ-093**` emphasis, a sentence ending in a question mark), so
+  skipping on those would hide genuine ghosts.
+- The scan lives in its own tested helper (`checkpointMentionedRequestIds`), pinned against the
+  exact line that produced the false positive.
+
 ## 0.169.8 — Update Flow Deletes Orphaned Reserve Files; Verify Keeps Space Paths Whole (2026-08-04)
 
 Two follow-through fixes from an external review of a consumer install. Tar extraction never deletes
