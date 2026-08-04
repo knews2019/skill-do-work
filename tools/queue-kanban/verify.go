@@ -22,6 +22,7 @@ const (
 	verifyCategoryUnmergedWorktreeLeftover     = "unmerged-worktree-leftover"
 	verifyCategoryUndeterminedWorktreeLeftover = "worktree-merge-state-undetermined"
 	verifyCategoryWorktreeWroteQueueState      = "worktree-wrote-queue-state"
+	verifyCategoryWorktreeCommittedQueueState  = "worktree-committed-queue-state"
 	verifyCategoryCheckpointGhostRequest       = "checkpoint-names-missing-req"
 	verifyCategoryClaimNeedsAttention          = "claim-needs-attention"
 	verifyCategoryStrandedFinishedRequest      = "stranded-finished-req"
@@ -416,6 +417,15 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string) {
 	}
 	agentBranches := listWorktreeAgentBranches(repoRoot)
 
+	// Resolved once: every builder branch is compared against the same integration
+	// point. An unresolvable one disables only the committed-state half, which is
+	// reported rather than passed over — silence would read as "checked and clean."
+	integrationRef, integrationRefError := resolveIntegrationBranchRef(repoRoot)
+	if integrationRefError != nil {
+		report.SkippedProbes = append(report.SkippedProbes,
+			fmt.Sprintf("committed-queue-state probe: %v", integrationRefError))
+	}
+
 	reportedNames := map[string]bool{}
 	orderedNames := make([]string, 0, len(worktreePathsByBranch)+len(agentBranches))
 	for name := range worktreePathsByBranch {
@@ -446,6 +456,25 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string) {
 			Remedy:   remedy,
 		})
 
+		// Checked before the worktree guard below: a builder's committed queue edits
+		// live in the branch, so they are detectable — and just as wrong — after the
+		// worktree itself is gone.
+		if integrationRefError == nil {
+			committedQueuePaths, committedError := worktreeCommittedQueueState(repoRoot, integrationRef, leftoverName)
+			switch {
+			case committedError != nil:
+				report.SkippedProbes = append(report.SkippedProbes,
+					fmt.Sprintf("committed-queue-state probe for %s: %v", leftoverName, committedError))
+			case len(committedQueuePaths) > 0:
+				report.Findings = append(report.Findings, VerifyFinding{
+					Category: verifyCategoryWorktreeCommittedQueueState,
+					Detail: fmt.Sprintf("%s has committed changes under do-work/ on its branch (%s) — a builder wrote queue state the orchestrator alone owns",
+						leftoverName, strings.Join(committedQueuePaths, ", ")),
+					Remedy: "those commits are in the branch about to be merged — drop or revert them there before integrating; every claim, status flip, and archive move belongs to the main tree",
+				})
+			}
+		}
+
 		if !hasWorktree {
 			continue
 		}
@@ -458,6 +487,68 @@ func appendWorktreeFindings(report *VerifyReport, repoRoot string) {
 			})
 		}
 	}
+}
+
+// resolveIntegrationBranchRef names the point a builder branch is compared
+// against: the repo-root checkout's own branch.
+//
+// Named explicitly rather than passed as `HEAD`, because `HEAD` means whatever
+// checkout the command runs in — inside a builder's worktree it names the
+// builder's own branch, and the comparison would silently become branch-against-
+// itself. That is the same class of error as `git branch -d` testing merged-ness
+// against whatever HEAD happens to be (actions/work-reference.md → Worktree
+// Dispatch Mode, "Cleanup — happy path"). A detached repo-root checkout has no
+// branch name, so the commit id is returned instead — it names the same point
+// just as explicitly.
+func resolveIntegrationBranchRef(repoRoot string) (string, error) {
+	branchCommand := exec.Command("git", "-C", repoRoot, "rev-parse", "--abbrev-ref", "HEAD")
+	branchOutput, branchError := branchCommand.Output()
+	if branchError != nil {
+		return "", fmt.Errorf("cannot resolve the integration branch at %s", repoRoot)
+	}
+	integrationRef := strings.TrimSpace(string(branchOutput))
+	if integrationRef != "" && integrationRef != "HEAD" {
+		return integrationRef, nil
+	}
+	commitCommand := exec.Command("git", "-C", repoRoot, "rev-parse", "HEAD")
+	commitOutput, commitError := commitCommand.Output()
+	if commitError != nil {
+		return "", fmt.Errorf("cannot resolve the integration commit at %s (detached checkout with no commits?)", repoRoot)
+	}
+	return strings.TrimSpace(string(commitOutput)), nil
+}
+
+// worktreeCommittedQueueState returns the do-work/ paths a builder's BRANCH has
+// added or changed relative to the integration branch — the owner impersonation
+// that survives a commit, and the shape REQ-072 requirement 3 actually asked for.
+//
+// The three dots are load-bearing. `A...B` diffs from merge-base(A,B) to B, so it
+// reports what the builder's branch changed and stays blind to how far the
+// integration branch has moved since the branch point. That distinction is what
+// worktreeDirtyQueueState's doc comment (below) is protecting: where a consumer
+// commits do-work/, the worktree legitimately carries a stale snapshot while the
+// main tree moves constantly as the orchestrator claims and archives. A two-tree
+// comparison would fire on nearly every run; this one fires only on the builder's
+// own writes.
+//
+// Where do-work/ is untracked — the common install — there is nothing committed
+// to diff and this simply returns nothing, leaving the porcelain check as the
+// only probe that can see anything. That is correct, not a gap.
+func worktreeCommittedQueueState(repoRoot string, integrationRef string, branchName string) ([]string, error) {
+	command := exec.Command("git", "-C", repoRoot, "diff", "--name-only",
+		integrationRef+"..."+branchName, "--", "do-work/")
+	output, runError := command.Output()
+	if runError != nil {
+		return nil, fmt.Errorf("`git diff %s...%s -- do-work/` failed (no such branch, or unrelated histories)", integrationRef, branchName)
+	}
+	var committedPaths []string
+	for _, line := range strings.Split(string(output), "\n") {
+		trimmedLine := strings.TrimSpace(line)
+		if trimmedLine != "" {
+			committedPaths = append(committedPaths, trimmedLine)
+		}
+	}
+	return committedPaths, nil
 }
 
 // listWorktreeAgentWorktrees maps each worktree-agent-* name to its worktree

@@ -577,6 +577,117 @@ func TestVerifyReportsAnUndeterminedMergeStateSeparately(t *testing.T) {
 	}
 }
 
+// writeFixtureFile writes one file under a checkout, creating parents. Used to
+// plant queue state where it does or does not belong.
+func writeFixtureFile(t *testing.T, checkoutPath string, relativePath string, content string) {
+	t.Helper()
+	absolutePath := filepath.Join(checkoutPath, relativePath)
+	if mkdirError := os.MkdirAll(filepath.Dir(absolutePath), 0o755); mkdirError != nil {
+		t.Fatalf("mkdir for %s: %v", relativePath, mkdirError)
+	}
+	if writeError := os.WriteFile(absolutePath, []byte(content), 0o644); writeError != nil {
+		t.Fatalf("write %s: %v", relativePath, writeError)
+	}
+}
+
+const forgedQueueRequest = "---\nid: REQ-999\nstatus: pending\ntitle: forged by a builder\n---\n"
+
+// The gap REQ-072 requirement 3 actually asked about: a builder that wrote queue
+// state and then COMMITTED it on its own branch. That is the likely shape, since
+// a builder commits its work by design — and it leaves the worktree clean, so a
+// porcelain-only probe sees nothing.
+func TestVerifyFlagsQueueStateCommittedOnABuilderBranch(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-010-impersonator")
+	writeFixtureFile(t, builderWorktree, "do-work/queue/REQ-999-forged.md", forgedQueueRequest)
+	runGitInFixture(t, builderWorktree, "add", "do-work/queue/REQ-999-forged.md")
+	runGitInFixture(t, builderWorktree, "commit", "--quiet", "-m", "builder wrote queue state")
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	committedFindings := findingsMentioning(report, verifyCategoryWorktreeCommittedQueueState)
+	if len(committedFindings) != 1 {
+		t.Fatalf("got %d committed-queue-state findings, want 1:\n%s", len(committedFindings), renderVerifyReport(report))
+	}
+	if !strings.Contains(committedFindings[0].Detail, "REQ-999-forged.md") {
+		t.Errorf("finding must name the path the builder wrote, got: %s", committedFindings[0].Detail)
+	}
+	// The two states need different remedies — one is inside the branch about to
+	// be merged, the other is loose in a working tree — so the detail must say
+	// which was found rather than leaving the reader to guess.
+	if !strings.Contains(committedFindings[0].Detail, "committed") {
+		t.Errorf("finding must say the edits are committed on the branch, got: %s", committedFindings[0].Detail)
+	}
+	if committedFindings[0].Fixable {
+		t.Error("discarding a builder's commits is never mechanical — this must not be marked fixable")
+	}
+}
+
+// Requirement 1: the merge-base comparison is added ALONGSIDE the porcelain
+// check, not in place of it. A merge-base diff cannot see uncommitted edits.
+func TestVerifyStillFlagsUncommittedQueueStateInAWorktree(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	builderWorktree := addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-011-loose-edit")
+	writeFixtureFile(t, builderWorktree, "do-work/queue/REQ-999-forged.md", forgedQueueRequest)
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	dirtyFindings := findingsMentioning(report, verifyCategoryWorktreeWroteQueueState)
+	if len(dirtyFindings) != 1 {
+		t.Fatalf("got %d uncommitted-queue-state findings, want 1:\n%s", len(dirtyFindings), renderVerifyReport(report))
+	}
+	if dirtyFindings[0].Fixable {
+		t.Error("uncommitted builder queue edits are a human decision — not fixable")
+	}
+}
+
+// Requirement 4, and the regression test that makes widening the probe safe: a
+// worktree whose do-work/ is merely BEHIND the main tree is the legitimate stale
+// snapshot the original narrowing was protecting. Three-dot diff semantics are
+// what keep it silent — the orchestrator's later queue commits are on the
+// integration branch's side of the merge base, not the builder's.
+//
+// It also pins requirement 6: REQ-082 grants a builder exactly one main-tree
+// write, its own REQ-NNN-handback.md, absolute and never committed. Planted here
+// in the main tree, it must be invisible to both states.
+func TestVerifyIgnoresAStaleQueueSnapshotAndTheHandBackFile(t *testing.T) {
+	repoRoot := newWorktreeFixtureRepo(t)
+	worktreeParent := t.TempDir()
+
+	// Branch point: the builder's worktree is created here and never touches do-work/.
+	addFixtureWorktree(t, repoRoot, worktreeParent, "worktree-agent-REQ-012-innocent")
+
+	// The orchestrator then moves the main tree on, exactly as a live run does.
+	writeFixtureFile(t, repoRoot, "do-work/archive/REQ-071-archived-later.md",
+		"---\nid: REQ-071\nstatus: completed\ntitle: archived after the branch point\ncompleted_at: 2026-08-03T10:00:00Z\ncommit: abc1234\n---\n")
+	runGitInFixture(t, repoRoot, "add", "-A")
+	runGitInFixture(t, repoRoot, "commit", "--quiet", "-m", "orchestrator archived a REQ")
+
+	// REQ-082's one permitted main-tree write by the builder: absolute path, never
+	// committed. It must not read as an owner impersonation.
+	writeFixtureFile(t, repoRoot, "do-work/runs/work-2026-08-03-120000/REQ-012-handback.md",
+		"# Hand-back\n\nbranch: worktree-agent-REQ-012-innocent\n")
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if committedFindings := findingsMentioning(report, verifyCategoryWorktreeCommittedQueueState); len(committedFindings) != 0 {
+		t.Errorf("a stale snapshot is not an impersonation — got %d findings:\n%s", len(committedFindings), renderVerifyReport(report))
+	}
+	if dirtyFindings := findingsMentioning(report, verifyCategoryWorktreeWroteQueueState); len(dirtyFindings) != 0 {
+		t.Errorf("the main tree's uncommitted hand-back file must not be read as a worktree write — got %d findings:\n%s", len(dirtyFindings), renderVerifyReport(report))
+	}
+}
+
 // A repo whose changelog does not follow the house entry key must not produce
 // bogus release findings — the Changelog Entry Procedure's precedence rule says
 // match the existing format, so these two probes skip with a note instead.

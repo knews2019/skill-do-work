@@ -6,6 +6,20 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.168.3 — Verify Catches A Builder That Committed Its Queue Edits (2026-08-04)
+
+The check that stops a builder from writing queue state only looked at uncommitted changes, so it
+caught a builder interrupted mid-write and missed one that finished and committed — the likelier shape,
+since builders commit their work by design. It now also compares the builder's branch against the
+integration branch, so the edits show up whether they were committed or not.
+
+- New `worktree-committed-queue-state` finding, reported separately from the uncommitted one because
+  the fix differs: drop the commits before merging, versus discard loose working-tree edits
+- Uses a merge-base comparison, so a worktree that is merely *behind* the main tree stays silent —
+  that legitimate case now has a regression test rather than a narrowed probe protecting it
+- Neither state is marked fixable; discarding a builder's work is never mechanical
+- `do-work forensics` Check 14's probe table now lists the two worktree probes separately
+
 ## 0.168.2 — Verify Marks Only Merged Worktrees As Fixable (2026-08-03)
 
 `do-work forensics` was reporting every leftover builder worktree as something `do-work cleanup` would
