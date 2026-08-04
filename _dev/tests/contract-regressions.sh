@@ -563,6 +563,25 @@ if [ -z "$in_progress_tripwire_paragraph" ] || ! printf '%s\n' "$in_progress_tri
   fail_count=$((fail_count + 1))
 fi
 
+# The two label-destruction paths in actions/work.md Step 10 (REQ-102). Both were scoped to entries
+# "carrying another checkout's writer: label", which silently excludes the label-less legacy entry
+# that Crash Recovery classifies report-only in a clean, committed checkpoint — the wholesale rewrite
+# could drop it and the session-start delete could remove the whole file, after which the next run
+# sees a working/ REQ "not named there" and ages it into the three-hour takeover ladder. Nothing
+# pinned either clause, so a later "simplify the checkpoint rewrite" pass could reopen the hole with
+# the suite green. Both must scope preservation to every entry this checkout did not write.
+work_session_checkpoint_block="$(sed -n '/^#### Session Checkpoint/,/^## Clarify Questions/p' "$repo_root/actions/work.md")"
+
+assert_block_contains \
+  "$work_session_checkpoint_block" \
+  'entry this checkout did not write through verbatim' \
+  'actions/work.md Step 10 Session Checkpoint must carry every In Progress entry this checkout did not write through verbatim — scoping the preserve rule to labeled foreign entries lets the wholesale rewrite drop a label-less entry that Crash Recovery had classified report-only (REQ-102).'
+
+assert_block_contains \
+  "$work_session_checkpoint_block" \
+  'no entry this checkout did not write remains' \
+  'actions/work.md session-start step 3 must gate deleting CHECKPOINT.md on no entry this checkout did not write remaining — gating on labeled foreign entries alone authorizes deleting a checkpoint whose only surviving claim is label-less, which the next run then ages into the takeover ladder (REQ-102).'
+
 assert_block_contains \
   "$work_archive_success_block" \
   'In Progress \(interrupted\)' \

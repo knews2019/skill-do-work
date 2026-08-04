@@ -59,5 +59,7 @@ See `do-work/user-requests/UR-018/input.md` and `assets/approved-plan.md` (Phase
 
 From REQ-094's review (Minor finding, folded here because this REQ owns the lines): as of REQ-094, `actions/work-reference.md:55`'s "the pipeline does not detect, coordinate, or recover a second owner" and `docs/work-guide.md:91`'s "does not coordinate a second owner" are **partly false for a reason unrelated to this REQ's own scope** — crash recovery now *detects* another checkout's live claim by its `writer:` label and reports it (`claim held by <writer>, not touched`); it still doesn't coordinate or recover one. The Execution Model rewrite must account for that already-shipped behavior rather than rediscovering it. Also reword `actions/work-reference.md`'s Step-10 template line "recovery classifies each `working/` file by name" → by name *and label* if this REQ touches that paragraph.
 
+Second fold-in (REQ-102 discovered task): the Session Checkpoint Template's inline comment (~`actions/work-reference.md:806`) still says "any entry carrying another checkout's label is copied through verbatim" — the labeled-only scoping REQ-102 fixed at both `actions/work.md` echo sites. Reword to the canonical condition ("every entry this checkout did not write" / "carries every other one through verbatim") so the template comment stops contradicting the prose 15 lines below it.
+
 ---
 *Source: approved plan, Phase 2*

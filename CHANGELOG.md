@@ -8,6 +8,10 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.170.1 — Step 10 Preserves Label-Less Checkpoint Entries Too (2026-08-04)
+
+Follow-up to 0.170.0's writer label: the work action's session-end rewrite and session-start delete were scoped to entries "carrying another checkout's label", which quietly excluded label-less legacy entries — recovery refused to touch them, then Step 10 deleted them anyway, sending the REQ into the takeover ladder next run. Both clauses now preserve every entry this checkout did not write, and two new contract assertions pin both destruction paths.
+
 ## 0.170.0 — Checkpoint Writer Label Scopes Crash Recovery to the Claiming Checkout (2026-08-04)
 
 In-progress checkpoint entries now record which checkout wrote them (`writer: <hostname>:<checkout-path>`), and crash recovery only ever strips its own — another checkout's synced live claim is reported as `claim held by <writer>, not touched` instead of being read as a local crash and re-queued. First piece of the UR-018 multi-checkout work: the old behavior replayed the 2026-07-01 collision deterministically on any tree that commits `do-work/`.

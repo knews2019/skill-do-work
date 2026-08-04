@@ -634,7 +634,7 @@ At the end of every work session (whether all REQs completed, user stops, or ses
 
 (write `do-work/CHECKPOINT.md` per the **Session Checkpoint Template (Step 10)** in `actions/work-reference.md`, scaled to session depth: light / moderate / heavy)
 
-This write replaces the whole file, so it is the one step that can erase a claim it did not make: **carry every `## In Progress (interrupted)` entry carrying another checkout's `writer:` label through verbatim** and enrich only this checkout's own (`actions/work-reference.md` → **Session Checkpoint Template (Step 10)**).
+This write replaces the whole file, so it is the one step that can erase a claim it did not make: **carry every `## In Progress (interrupted)` entry this checkout did not write through verbatim** — a foreign `writer:` label and no label at all both qualify — and enrich only this checkout's own labeled entries (`actions/work-reference.md` → **Session Checkpoint Template (Step 10)**).
 
 **Session depth guide:**
 - **light** (1-2 REQs): Minimal checkpoint — Completed + Still Queued sections are sufficient
@@ -644,7 +644,7 @@ This write replaces the whole file, so it is the one step that can erase a claim
 **On session start (Step 1 addition):** Before crash recovery, check for `do-work/CHECKPOINT.md`. If it exists:
 1. Read it and report a brief summary: `Resuming from previous session. Last completed: REQ-NNN. [N] REQs still queued.`
 2. Its `## In Progress (interrupted)` section is what crash recovery classifies against — a `working/` REQ named there under this checkout's `writer:` label is this session's own to recover, and one that isn't (unlabeled, or labeled for another checkout) is a foreign claim recovery must not strip. Step 2 wrote those entries at claim time, one per claim (`actions/work-reference.md` → **In-Progress Record (Step 2)**), which is why the section survives a crash that never reached this step.
-3. **Do not delete yet.** Keep the checkpoint until crash recovery has finished with every `working/` file, then remove **this checkout's own entries**. Delete the file itself only once no entry carrying another checkout's `writer:` label remains — those record claims held elsewhere, and this session starting is no reason to drop them. Deleting only after recovery is done still prevents losing resume context if the session crashes again mid-recovery.
+3. **Do not delete yet.** Keep the checkpoint until crash recovery has finished with every `working/` file, then remove **this checkout's own entries**. Delete the file itself only once no entry this checkout did not write remains — a foreign `writer:` label and no label at all both qualify, because the first records a claim held elsewhere and the second a claim of unknown origin that recovery already refused to touch, and this session starting is no reason to drop either. Deleting only after recovery is done still prevents losing resume context if the session crashes again mid-recovery.
 
 This is NOT a blocking gate. With no checkpoint, the session starts normally — crash recovery still runs, it just has nothing to match against, so every claimed `working/` REQ is treated as a foreign claim and left intact.
 
