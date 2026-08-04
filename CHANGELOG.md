@@ -6,6 +6,20 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.169.0 — Board Copy Carries the Ticket's Frontmatter (2026-08-04)
+
+The drawer shows a ticket's status, domain, user request and timestamps in labelled rows — and **Copy**
+dropped every one of them, handing you an anonymous body. It now copies the ticket file exactly as it
+sits on disk, fence and all, so a paste can be saved straight back as a valid REQ or UR.
+
+- Verbatim means verbatim: the original key order, comments and spacing survive, because the fence is
+  taken from the file's own bytes rather than rebuilt from the parsed fields
+- Works on user requests too, and on a live `do-work board` as well as a generated one
+- Three drawer rows still can't come along — Tree, Overlapping write sets and Unblocks are worked out
+  while the board is built, not stored in the file — and the board guide now says so
+- Older boards missing their source-text bundle still fall back to the rendered text under a
+  `# REQ-042: <title>` heading; no frontmatter is ever fabricated from what's on screen
+
 ## 0.168.6 — Fan-Out Dispatch Actually Run For The First Time (2026-08-04)
 
 Worktree fan-out shipped three versions ago with its live acceptance test never run — two checkpoints

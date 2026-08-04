@@ -282,6 +282,76 @@ func TestBuildGeneratedBoardMarkdownDataKeepsExactSources(t *testing.T) {
 	}
 }
 
+// The Copy payload must be the ticket file exactly as it exists on disk —
+// frontmatter fence included — so a paste can be saved straight back as a valid
+// REQ or UR file. Parsed from real files rather than hand-built structs, because
+// the whole point is that the ORIGINAL bytes survive: a reconstructed fence would
+// pass a struct-level assertion while losing key order, comments, and line
+// endings.
+func TestBuildGeneratedBoardMarkdownDataRoundTripsTheWholeFile(t *testing.T) {
+	fixtureDirectory := t.TempDir()
+
+	requestPath := filepath.Join(fixtureDirectory, "REQ-4242-round-trip.md")
+	requestFileText := "---\nid: REQ-4242\nstatus: pending\ntitle: round trip\n" +
+		"# a comment the fence must keep\ndomain:   general\n---\n\n## What\n\n- [ ] keep formatting\n"
+	if writeError := os.WriteFile(requestPath, []byte(requestFileText), 0o644); writeError != nil {
+		t.Fatalf("write REQ fixture: %v", writeError)
+	}
+
+	userRequestPath := filepath.Join(fixtureDirectory, "UR-4242-input.md")
+	userRequestFileText := "---\nid: UR-4242\ntitle: the original ask\nrequests: [REQ-4242]\n---\n\n# Original request\n\nExact text.\n"
+	if writeError := os.WriteFile(userRequestPath, []byte(userRequestFileText), 0o644); writeError != nil {
+		t.Fatalf("write UR fixture: %v", writeError)
+	}
+
+	parsedRequest, requestParseError := parseRequestTicket(requestPath, "queue")
+	if requestParseError != nil {
+		t.Fatalf("parseRequestTicket: %v", requestParseError)
+	}
+	parsedUserRequest, userRequestParseError := parseUserRequestTicket(userRequestPath)
+	if userRequestParseError != nil {
+		t.Fatalf("parseUserRequestTicket: %v", userRequestParseError)
+	}
+
+	board := &Board{
+		AllRequests:  []*RequestTicket{parsedRequest},
+		UserRequests: []*UserRequestTicket{parsedUserRequest},
+	}
+	markdownData := buildGeneratedBoardMarkdownData(board)
+
+	if got := markdownData.Requests["REQ-4242"]; got != requestFileText {
+		t.Errorf("REQ Copy payload is not the file on disk:\n got: %q\nwant: %q", got, requestFileText)
+	}
+	if got := markdownData.UserRequests["UR-4242"]; got != userRequestFileText {
+		t.Errorf("UR Copy payload is not the file on disk:\n got: %q\nwant: %q", got, userRequestFileText)
+	}
+}
+
+// A file with no frontmatter at all must still copy as itself — the fence field
+// is empty, not a fabricated one.
+func TestBuildGeneratedBoardMarkdownDataHandlesAFenceLessFile(t *testing.T) {
+	fixtureDirectory := t.TempDir()
+	requestPath := filepath.Join(fixtureDirectory, "REQ-4243-no-fence.md")
+	requestFileText := "# REQ-4243\n\nA legacy file with no frontmatter.\n"
+	if writeError := os.WriteFile(requestPath, []byte(requestFileText), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	parsedRequest, parseError := parseRequestTicket(requestPath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if parsedRequest.FrontmatterMarkdown != "" {
+		t.Errorf("a file with no frontmatter must yield an empty fence, got %q", parsedRequest.FrontmatterMarkdown)
+	}
+
+	board := &Board{AllRequests: []*RequestTicket{parsedRequest}}
+	markdownData := buildGeneratedBoardMarkdownData(board)
+	if got := markdownData.Requests[parsedRequest.RequestId]; got != requestFileText {
+		t.Errorf("fence-less Copy payload changed:\n got: %q\nwant: %q", got, requestFileText)
+	}
+}
+
 func TestRenderMarkdownBodyToHtmlHeadingsAndTaskLists(t *testing.T) {
 	body := "## What\n\nA paragraph.\n\n- [ ] unchecked item\n- [x] checked item\n"
 	rendered, renderError := renderMarkdownBodyToHtml(body)
