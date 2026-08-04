@@ -1,5 +1,14 @@
 # HANDDOWN — UR-018: Parallel Building Across Checkouts (claim anywhere, one releaser)
 
+> **SUPERSEDED 2026-08-04T21:38Z — the batch is built.** REQ-095 through REQ-101 all shipped
+> (v0.170.2 → v0.174.2); this file's *Where the batch stands* table and per-REQ notes describe work
+> that is now archived, and its "pending" column is wrong. Read `do-work/CHECKPOINT.md` for current
+> state and `decisions/records/adr-018-regrain-session-ownership-to-claim-anywhere-one-releaser.md`
+> for what was decided. Two REQs remain: **REQ-104** (a known safety hole this batch's own acceptance
+> run found — see the checkpoint) and **REQ-103** (`pending-answers`, waits for `do-work clarify`).
+> Kept for its *Traps this session already hit* section, which is still accurate and still worth
+> reading before touching these files.
+
 **Written:** 2026-08-04T20:16Z, at v0.170.1 (HEAD after REQ-102's metadata commit).
 **Batch spec:** `do-work/user-requests/UR-018/assets/approved-plan.md` is the authoritative plan; `do-work/user-requests/UR-018/input.md` records every user decision verbatim (read its "Ask-tool answers" block before overriding anything).
 
