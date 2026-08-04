@@ -8,6 +8,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.171.0 — Claim From Any Checkout, Release From One (2026-08-04)
+
+The ownership contract used to say one queue owner per checkout, and cross-session ownership was out of bounds. It now says the opposite about *claiming*: point as many checkouts at a queue as you like — a worktree, a second workspace, a clone, a cloud session — and each may capture, claim and build. What stays single is the release tail.
+
+- `Execution Model — Exclusive Session` is now `Execution Model — Claim Anywhere, One Releaser`. Any checkout claims; exactly one merges, bumps the version, writes the changelog, archives, and closes URs.
+- Two releasers against one queue, and two sessions in one working tree, both stay unspecified — nothing prevents them, and `do-work forensics` / `do-work cleanup` are the repair path.
+- Cross-checkout collisions are ordinary merge conflicts fixed when branches meet. The duplicate-id probe catches colliding captures; the checkpoint writer label catches double claims.
+- A builder tree no longer has to be a spawned worktree — a workspace, clone, or remote sandbox works too. A remote builder's hand-back travels on its branch, and a non-releaser checkout treats its synced queue as a snapshot rather than the truth.
+- New guidance for the conflict you *will* hit: `CHECKPOINT.md` collides on every concurrent claim, even disjoint ones. Keep every entry from both sides — dropping either one loses a real claim.
+- New red flag: a second checkout running the release tail. Claiming and building elsewhere is now in contract; releasing twice is not.
+
 ## 0.170.2 — Two-Clone Acceptance Run Confirms the Writer Label (2026-08-04)
 
 The checkpoint writer label from 0.170.0 now has a real experiment behind it instead of an argument. Two clones sharing a bare origin reproduced the old poisoning as a silent fast-forward that erased a live claim, then the shipped rule left the same claim byte-for-byte untouched. The run also found a hole nobody had reasoned their way to.

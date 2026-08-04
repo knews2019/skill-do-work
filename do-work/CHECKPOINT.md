@@ -18,7 +18,6 @@ session_depth: light
 
 ## Still Queued
 
-- REQ-096: Execution-model re-grain (pending; carries 2 addendum fold-ins)
 - REQ-097: assigned_to field (pending, depends_on REQ-096)
 - REQ-098: Verify probes (pending, depends_on REQ-097)
 - REQ-099: Automatic wave dispatch (pending, depends_on REQ-096)
