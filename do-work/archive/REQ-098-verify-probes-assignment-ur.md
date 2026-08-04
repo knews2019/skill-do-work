@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-08-04T19:44:17Z
 claimed_at: 2026-08-04T21:12:28Z
 completed_at: 2026-08-04T21:20:00Z
+commit: 47cd408
 kb_status: pending
 user_request: UR-018
 domain: backend
