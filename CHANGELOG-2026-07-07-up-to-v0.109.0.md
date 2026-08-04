@@ -1,6 +1,10 @@
-# Changelog Archive
+# Changelog Archive — 0.65.0 through 0.109.0 (2026-04-15 – 2026-07-07)
 
-Entries older than the newest 20 in [`CHANGELOG.md`](./CHANGELOG.md), moved here verbatim in 0.123.1. This file ships in the git repo only (export-ignored from the distribution tarball); tarball installs browse it at <https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-archive.md>. Pre-0.65 notes: `CHANGELOG-2026-spring.md` / `CHANGELOG-pre-0.50.md` at commit `bf15fe2`.
+Do-work release notes for this range, verbatim. This file is tracked in git but excluded from the distribution tarball, so a tarball install browses it on [GitHub](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-07-07-up-to-v0.109.0.md). It was named `CHANGELOG-archive.md` from 0.123.1 until 0.169.6.
+
+- **Older:** [`CHANGELOG-2026-04-13-up-to-v0.64.1.md`](./CHANGELOG-2026-04-13-up-to-v0.64.1.md) — 0.50.0 through 0.64.1
+- **Newer:** [`CHANGELOG-2026-07-13-up-to-v0.121.0.md`](./CHANGELOG-2026-07-13-up-to-v0.121.0.md) — 0.110.0 through 0.121.0
+- **Current:** [`CHANGELOG.md`](./CHANGELOG.md)
 
 ---
 

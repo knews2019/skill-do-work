@@ -24,6 +24,14 @@
 # (.gitignore/.gitattributes) are repo-maintenance plumbing that's meaningless once the
 # skill is a subdirectory of someone else's repo. All are excluded for a clean install.
 #
+# /CHANGELOG-20*.md is the dated changelog archives (CHANGELOG-<date>-up-to-v<version>.md,
+# one per release range). They are tracked so every entry ever written stays on disk and
+# greppable, but they are ~60k words of history that no action reads at runtime — version.md
+# only ever parses the newest few entries out of the live CHANGELOG.md, which is NOT matched
+# by this glob (it requires "-20" after CHANGELOG). A new archive is covered automatically,
+# so cutting one is a rename plus a pointer edit, never a .gitattributes edit that gets
+# forgotten. Tarball installs read the archives on GitHub; the live CHANGELOG.md ships.
+#
 # CLAUDE.md/AGENTS.md are the maintainer doc for THIS repo, not runtime skill content.
 # Shipped nested inside a consumer's repo, Claude Code auto-loads CLAUDE.md into context
 # on every read of a skill file — a ~2.5k-word tax whose commit protocol (bump
@@ -35,7 +43,7 @@
 # must never cite these two files — see CLAUDE.md → Action File Conventions.
 /do-work         export-ignore
 /kb              export-ignore
-/CHANGELOG-archive.md export-ignore
+/CHANGELOG-20*.md export-ignore
 /ai-reports      export-ignore
 /.vscode         export-ignore
 /_dev            export-ignore

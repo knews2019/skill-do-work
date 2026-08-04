@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.169.5
+**Current version**: 0.169.6
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -70,7 +70,7 @@ When user asks "check for updates", "update", or "is there a newer version":
    - Only continue once `<skill-root>` is confirmed to live inside `<project-root>` (the git root, or the invocation directory when the project isn't a git repo) and not under any global skills location.
 3. **Check for local changes** to shipped skill files at `<skill-root>`:
    - **Scope the check to skill-owned files only.** Ignore `do-work/` (queue data, archives, deliverables) and `kb/` (the project's knowledge base) — those are project-owned runtime content, never overwritten by the update, and should never block it.
-   - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ prompts/ interviews/ specs/ docs/ hooks/ tools/ CHANGELOG.md README.md next-steps.md` (listing every shipped editable path) and check for uncommitted changes. Any dirty file in these paths will be clobbered by the tar extraction in step 5 if you proceed. (Archived release notes are not shipped paths: entries older than the newest 20 live in `CHANGELOG-archive.md`, which is export-ignored — git clones have it on disk, tarball installs browse it at <https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-archive.md>. Pre-0.65 archives `CHANGELOG-2026-spring.md` and `CHANGELOG-pre-0.50.md` were removed in 0.76.0 and remain readable at commit `bf15fe2` on GitHub; git-cloned copies can `git show bf15fe2:CHANGELOG-2026-spring.md` locally.)
+   - If `<skill-root>` is a git repo, run `git -C <skill-root> status --porcelain -- SKILL.md actions/ crew-members/ prompts/ interviews/ specs/ docs/ hooks/ tools/ CHANGELOG.md README.md next-steps.md` (listing every shipped editable path) and check for uncommitted changes. Any dirty file in these paths will be clobbered by the tar extraction in step 5 if you proceed. (Archived release notes are not shipped paths. Entries older than the range `CHANGELOG.md` covers live in dated archives named `CHANGELOG-<date>-up-to-v<version>.md`, all export-ignored — git clones have them on disk, tarball installs browse them at <https://github.com/knews2019/skill-do-work/tree/main>. Match them by that pattern rather than by a fixed list, which goes stale each time a new range is cut.)
    - **Also catch _committed_ customizations before extraction** (git-repo installs) and local edits in non-git installs with a fresh upstream tarball diff. `git status --porcelain` only reports _uncommitted_ edits; a customization committed locally (including an edit to `actions/version.md` itself) otherwise looks clean. Before any destructive write (no pre-clean, no delete, no extraction yet), download the upstream tarball once, extract it to a temporary fresh upstream tree, and diff the current install against that tree:
      ```bash
      # Deterministic paths, not mktemp: Steps 3, 5, and 6 run as SEPARATE shell
