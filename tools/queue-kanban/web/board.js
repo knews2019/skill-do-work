@@ -151,8 +151,8 @@
   var clockSkewExplanationText =
     "This timestamp is ahead of your clock by more than the 2-minute skew allowance — " +
     "likely stamped with local wall-clock time plus a Z suffix. Fix the frontmatter with " +
-    "the current UTC instant (date -u +%Y-%m-%dT%H:%M:%SZ); until then the stopwatch " +
-    "cannot measure real elapsed time.";
+    "the current UTC instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in " +
+    "actions/work-reference.md. Until then the stopwatch cannot measure real elapsed time.";
 
   // Stopwatch-style elapsed duration ("47s", "4m 07s", "1h 23m", "3d 04h") for
   // a ticket sitting in a state — second-resolution below an hour because
@@ -550,7 +550,7 @@
         request.futureTimestampFields.join(", ") +
         " — later than the board's generation time (2min skew allowance). Likely local " +
         "wall-clock time stamped with a Z suffix; fix: rewrite with the current UTC " +
-        "instant (date -u +%Y-%m-%dT%H:%M:%SZ).";
+        "instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in actions/work-reference.md.";
       badges.appendChild(futureStampBadge);
     }
     if (request.testingStatus) {

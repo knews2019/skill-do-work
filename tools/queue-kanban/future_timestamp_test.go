@@ -98,9 +98,15 @@ func TestFutureTimestampWarningNamesFieldAndFix(t *testing.T) {
 		t.Fatalf("want exactly 3 future-timestamp warnings (REQ-9401, REQ-9403, REQ-9405), got %d: %v",
 			len(matchedWarnings), matchedWarnings)
 	}
+	// The assertion's intent is unchanged — the warning must name the field AND
+	// the fix. Only the fix's spelling moved: REQ-087 replaced the POSIX-only
+	// `date -u +…` in every user-facing display string with the target shape plus
+	// a citation, because a Windows reader cannot run the command this used to
+	// hand them.
 	for _, expectedFragment := range []string{
 		"REQ-9401 has future-dated timestamp(s): claimed_at 2026-06-30T14:00:00Z",
-		"date -u +%Y-%m-%dT%H:%M:%SZ",
+		"YYYY-MM-DDTHH:MM:SSZ",
+		"Timestamp rule in actions/work-reference.md",
 	} {
 		found := false
 		for _, warningText := range matchedWarnings {
