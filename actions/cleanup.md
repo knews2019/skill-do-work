@@ -37,7 +37,7 @@ Scan `do-work/queue/` and the working directory for REQs with terminal statuses 
    - Move the REQ to `do-work/archive/` root (Pass 1 and Pass 2 will then consolidate it into the correct UR folder)
    - Report: `Swept REQ-NNN from do-work/queue/ (was status: {original}) → archive`
 4. **Leave `pending`, `pending-answers`, `blocked`, and `claimed` REQs untouched** — those are active queue items (`blocked` waits on an external condition)
-5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`, `cancelled`), it was finished but never moved out (a crashed prior run). Same treatment: normalize status, move to `do-work/archive/` root, report it.
+5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`, `cancelled`), it was finished but never moved out (a crashed prior run). Same treatment: normalize status, move to `do-work/archive/` root, report it. Moving it out of `working/` also drops its `## In Progress (interrupted)` entry from `do-work/CHECKPOINT.md` — `actions/work-reference.md` → **In-Progress Record (Step 2)** states when that removal is owed and why it is part of the move rather than a later sweep.
 
 ### Pass 1: Close Completed User Requests
 
