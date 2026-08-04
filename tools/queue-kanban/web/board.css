@@ -823,6 +823,19 @@ body.is-resizing-detail {
   font-family: var(--font-mono);
   max-width: 100%;
 }
+/* "assigned <session>" — the advisory cooperative claim marker: this REQ is
+   earmarked for a named session. Neutral/muted rather than an accent colour, on
+   purpose: it is somebody's intention, not a state of the work, and it must not
+   read as urgently as blocked or as encouragingly as done. Rendered verbatim
+   (session names have no canonical vocabulary), truncated in JS with the full
+   value in the tooltip. Display only — nothing on the board branches on it. */
+.badge-assigned {
+  color: var(--ink-soft);
+  background-color: var(--surface-3);
+  border-color: var(--line-firm);
+  font-family: var(--font-mono);
+  max-width: 100%;
+}
 /* Completion anomaly — broken completion bookkeeping (see the strip styles
    above). Marks the card wherever it renders, not just inside the strip. */
 .badge-completion-anomaly {

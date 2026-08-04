@@ -18,7 +18,6 @@ session_depth: light
 
 ## Still Queued
 
-- REQ-097: assigned_to field (pending, depends_on REQ-096)
 - REQ-098: Verify probes (pending, depends_on REQ-097)
 - REQ-099: Automatic wave dispatch (pending, depends_on REQ-096)
 - REQ-100: Live wave acceptance run (pending, depends_on REQ-099)

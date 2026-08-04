@@ -627,3 +627,79 @@ func TestWriteSetOverlapNeverAffectsColumnPlacement(t *testing.T) {
 			board.RequestsById["REQ-1"].WriteSetOverlaps, board.RequestsById["REQ-2"].WriteSetOverlaps)
 	}
 }
+
+// assigned_to is the advisory cooperative claim marker: a pending REQ earmarked for a
+// named session, which another session's default scan skips and reports. The board reads
+// it VERBATIM and DISPLAY-ONLY — same class as write_set. These tests pin both halves:
+// the value survives parsing unaltered, and it never moves a card between columns.
+func TestParseRequestTicketReadsAssignedToVerbatim(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-560-earmarked.md")
+	// Mixed case with surrounding whitespace inside the quotes: a normalizing reader would
+	// fold or trim it, and the verbatim-read contract says nothing may.
+	fixtureContent := `---
+id: REQ-560
+title: Earmarked for another checkout
+status: pending
+assigned_to: "Cloud-Alpha_2"
+---
+
+Body.
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.AssignedTo != "Cloud-Alpha_2" {
+		t.Fatalf("AssignedTo = %q, want %q (read verbatim, never normalized)", ticket.AssignedTo, "Cloud-Alpha_2")
+	}
+}
+
+func TestParseRequestTicketLeavesAssignedToEmptyWhenAbsent(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-561-unassigned.md")
+	fixtureContent := "---\nid: REQ-561\ntitle: Nobody's yet\nstatus: pending\n---\n\nBody.\n"
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.AssignedTo != "" {
+		t.Fatalf("AssignedTo = %q, want empty — absence must read as unassigned, not as a value", ticket.AssignedTo)
+	}
+}
+
+func TestAssignedToNeverAffectsColumnPlacement(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	unassignedPath := filepath.Join(temporaryDirectory, "REQ-562-plain.md")
+	assignedPath := filepath.Join(temporaryDirectory, "REQ-563-earmarked.md")
+	if writeError := os.WriteFile(unassignedPath,
+		[]byte("---\nid: REQ-562\ntitle: Plain\nstatus: pending\n---\n\nBody.\n"), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	if writeError := os.WriteFile(assignedPath,
+		[]byte("---\nid: REQ-563\ntitle: Earmarked\nstatus: pending\nassigned_to: \"cloud-alpha\"\n---\n\nBody.\n"),
+		0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	unassignedTicket, parseError := parseRequestTicket(unassignedPath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	assignedTicket, parseError := parseRequestTicket(assignedPath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if assignedTicket.Status != unassignedTicket.Status {
+		t.Fatalf("assigned ticket Status = %q, unassigned = %q — assigned_to must not touch status, which is what buckets the card",
+			assignedTicket.Status, unassignedTicket.Status)
+	}
+}

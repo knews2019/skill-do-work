@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.172.0 — Earmark a REQ for Another Session with `assigned_to` (2026-08-04)
+
+Now that any checkout can claim, there needs to be a way to say "leave this one, it's mine." That's `assigned_to` — one optional frontmatter field naming a session. Another session's default run skips it and tells you why; naming it explicitly takes it anyway and clears the marker. No verb, no status, no clock.
+
+- `assigned_to: "cloud-alpha"` is read verbatim — session names have no canonical spelling, so nothing folds case or trims it.
+- The default work scan skips an assigned REQ and lists it in the exit summary as *assigned to <name>*. It's a courtesy, not a lock: nothing checks whether that session is actually running.
+- `do-work run REQ-NNN` overrides the skip and clears the field as part of the claim. Reaching it through `do-work run UR-NNN` does not — naming a batch is a weaker signal than naming a member.
+- The board shows an `assigned` badge and a drawer row. It never moves, hides, or reorders a card on it.
+- Nothing else came back with it: no `assigned_at`, no staleness threshold, no auto-release, and the reserve verb and `reserved` status stay dead.
+
 ## 0.171.0 — Claim From Any Checkout, Release From One (2026-08-04)
 
 The ownership contract used to say one queue owner per checkout, and cross-session ownership was out of bounds. It now says the opposite about *claiming*: point as many checkouts at a queue as you like — a worktree, a second workspace, a clone, a cloud session — and each may capture, claim and build. What stays single is the release tail.

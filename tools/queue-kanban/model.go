@@ -105,6 +105,18 @@ type RequestTicket struct {
 	// proof, so nothing schedules on it) feeding only the overlaps badge below.
 	WriteSet []string
 
+	// assigned_to names the session a pending REQ is earmarked for — the advisory
+	// cooperative claim marker. Read VERBATIM, never normalized (no case folding,
+	// no trimming, no alias map: there is no canonical vocabulary of session
+	// names), and DISPLAY ONLY at any builder count — a badge and a drawer row,
+	// nothing more. The board never buckets, orders, or schedules on it; the one
+	// reader that acts on it is the work pipeline's default scan, which skips and
+	// reports an assigned REQ as a courtesy and is overridden by explicit
+	// targeting (actions/work.md Step 1). Keep this parser in lock-step with the
+	// Schema Read Contract in actions/work-reference.md — a change to either lands
+	// in the same commit as the other. "" when absent, which reads as unassigned.
+	AssignedTo string
+
 	// Derived by annotateWriteSetOverlap after bucketing — never read from
 	// frontmatter. Other pending/claimed REQ ids whose write_set intersects this
 	// one's, in id order. Display only (badge + drawer row): it makes contention
@@ -619,6 +631,7 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		BlockedCheck:              coerceScalarToString(fields["blocked_check"]),
 		Related:                   coerceToStringList(fields["related"]),
 		WriteSet:                  coerceToStringList(fields["write_set"]),
+		AssignedTo:                coerceScalarToString(fields["assigned_to"]),
 		Route:                     coerceScalarToString(fields["route"]),
 		Batch:                     coerceScalarToString(fields["batch"]),
 		FrontmatterMarkdown:       frontmatterMarkdown,

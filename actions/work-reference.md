@@ -127,6 +127,8 @@ addendum_to: REQ-NNN          # optional — present only when this REQ amends a
 depends_on: []                # optional list of REQ IDs that must reach `completed` or `completed-with-issues` before this REQ runs. Semantically distinct from `addendum_to` ("amends that REQ"): depends_on is "requires that REQ to be done first." A REQ can have both. Honored by Step 1's selection scan and by Step 8's upstream-failure classification. **Legacy alias:** every read site (Step 1 selection, Step 1 cycle detection, Step 1 `--wave` depth, Step 8 upstream walk, roadmap classification) also recognizes a `dependencies:` key as a synonym so muscle-memory typos from Python/Node/Cargo conventions don't silently bypass gating; `depends_on` wins when both are present. Capture and follow-up REQs always emit `depends_on:` — never propagate the alias.
 write_set: []                 # optional list of repo-relative paths/globs this REQ declares it will write. **Display only, at any builder count** — under fan-out it is advisory input to the human's pick and the merge is the non-interference proof, never this field (**Worktree Dispatch Mode (Step 1)** → Fan-Out Dispatch, below), so nothing schedules, gates, or dispatches on it; it feeds the board's overlaps badge. Seeded by capture when the request names files (`actions/capture-reference.md` → Populating `write_set`), then firmed by Step 5.5: the `## Scope` section's "Files I will touch" list is the source and this field is its mirror, never the reverse. **Crash recovery clears it**, but only when the REQ has a `## Scope` for the mirror to have come from (**Crash Recovery (Step 1)**, substep 1). Parsed for display by `tools/queue-kanban/model.go`; **an absent or empty `write_set` gets no overlaps badge at all** — absence reads as *unknown*, not conflict (matching `actions/board.md` and `tools/queue-kanban/prime-do-kanban.md`). Globs use `path.Match` semantics: `*` never crosses `/`, `**` is not recursive, a malformed pattern is no-match for that direction though literal equality short-circuits first (so two REQs declaring the identical malformed pattern still badge each other), and an entry naming a directory never matches a file inside it (`actions/` vs `actions/board.md`) — those board miss-classes are illustrative, not a closed list.
 
+assigned_to: "cloud-alpha"     # OPTIONAL advisory claim marker: the session this REQ is earmarked for (always YAML-quoted — raw user text). **Verbatim-read class**, alongside `write_set` — no alias map, no case folding, no canonical vocabulary of session names (Schema Read Contract → the list-valued/verbatim paragraph). Seeded by capture when the user earmarks work, or written by a session claiming from another checkout. **Not a lock and not a status:** it grants nothing, nothing waits on it, and it carries no `assigned_at` and no staleness clock — an assignment persists until an explicit run or a hand-edit clears it. Exactly one reader acts on it, as a courtesy rather than a gate: the default work scan skips and reports an assigned REQ, and explicit targeting (`do-work run REQ-NNN`) overrides the skip and clears the field as part of the claim (`actions/work.md` Step 1). Everything else is display: parsed by `tools/queue-kanban/model.go` into the card's `assigned` badge and a drawer row, with **no column logic and no scheduling** — keep that parser in lock-step with this line, both changing in the same commit.
+
 # Set by work action when claimed
 claimed_at: 2025-01-26T10:30:00Z
 route: A | B | C
@@ -209,7 +211,7 @@ Nine fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depend
 
 **Write paths are unaffected.** Step 2 claim, Step 8 archive, Step 8 follow-up generation, the kb-lessons handoff, and capture emission always write the canonical key and canonical enum value — never an alias, never the typo'd input. The normalize-and-warn contract is read-only.
 
-**List-valued path fields are outside this contract and are read verbatim.** `prime_files`, `write_set`, and any future path list have no canonical vocabulary to normalize against — no alias map, no case folding, no path canonicalization, no warning. A reader takes the strings as written. (`depends_on`, `related`, and `blocked_by` are likewise row-less here; `depends_on`/`related` carry alias keys, documented on their schema lines above, but their *values* are also read verbatim.)
+**Fields with no canonical vocabulary are outside this contract and are read verbatim.** `prime_files`, `write_set`, and any future path list have no canonical vocabulary to normalize against — no alias map, no case folding, no path canonicalization, no warning. `assigned_to` joins them for the same reason: a session name is whatever the user or the assigning checkout called itself, so there is nothing to normalize *against* and folding case or trimming would silently make two distinct sessions look like one. A reader takes the strings as written. (`depends_on`, `related`, and `blocked_by` are likewise row-less here; `depends_on`/`related` carry alias keys, documented on their schema lines above, but their *values* are also read verbatim.)
 
 ### Terminal-success status set
 
@@ -362,7 +364,7 @@ Carry that file's own ceiling note verbatim in spirit: the pattern makes fan-out
 
 **Exit paths when no `pending` REQs found:**
 
-The exit report is **composed**, not picked from disjoint branches. Whenever the scan finds no dependency-ready `pending` REQ, lead with the headline that matches the actual queue state — `No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked (the blocked-by-dependencies section below then enumerates them, so the headline never strands the user). Then append every section that has at least one REQ. Six sections may apply, in this order:
+The exit report is **composed**, not picked from disjoint branches. Whenever the scan finds no dependency-ready `pending` REQ, lead with the headline that matches the actual queue state — `No pending REQs in queue.` when the queue holds no `pending` REQs at all, or `No dependency-ready pending REQs.` when `pending` REQs exist but every one is dependency-blocked (the blocked-by-dependencies section below then enumerates them, so the headline never strands the user). Then append every section that has at least one REQ — **that condition is the rule, and the list below is the set as it stands today**, so a section added later inherits it without anyone re-counting. In this order:
 
 1. **Completed/done section** — applies if any REQ in `do-work/queue/` has status `completed`, `completed-with-issues`, `cancelled`, or `done`. Read the `user_request` frontmatter field from each to group by UR. Render:
 
@@ -418,9 +420,19 @@ The exit report is **composed**, not picked from disjoint branches. Whenever the
    Resolve the blocking REQs first, then re-run. To force a scoped run that ignores dependency gating for a specific REQ, use `do-work run REQ-NNN`. To break a dependency cycle, edit the REQ's `depends_on` and flip its status back to `pending`. A dependency on a `cancelled` (or `failed`) REQ never self-resolves — re-point the dependent's `depends_on`, or abandon it too (`do-work abandon REQ-NNN`).
    ```
 
+6. **Assigned-elsewhere section** — applies if any `pending` REQ carries a non-empty `assigned_to` (earmarked for another session — **Request File Schema — Full Frontmatter**, above). These stay `pending` and are not a held status: the field is advisory, and the same REQ becomes claimable here the moment a user names it explicitly. Render the value verbatim, never normalized:
+
+   ```
+   ⚠ N REQs assigned to another session:
+     REQ-NNN — [title] (assigned to <assigned_to, verbatim>)
+     ...
+
+   Skipped as a courtesy, not blocked — nothing confirms that session is running. To take one over here, name it explicitly (`do-work run REQ-NNN`), which clears the assignment as part of the claim. To drop an assignment without running it, remove the field by hand.
+   ```
+
 **After rendering all applicable sections, exit the work loop** — do not proceed to Step 2.0 or beyond. There is no `pending` REQ to claim. Step 1's contract on the no-pending path is "render the composed summary, then stop"; the only path that continues is the one where Step 1 finds at least one dependency-ready `pending` REQ.
 
-If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any of the five sections applies — every non-pending or non-ready REQ in the queue is something the user needs to see.
+If **no section applies** (no REQs at all in `do-work/queue/`), report completion and exit. Never silently exit when any section applies — every non-pending or non-ready REQ in the queue is something the user needs to see.
 
 **Composition is deliberate.** A queue with both `pending-answers` and `blocked-archive-collision` REQs (and no completed/done) renders both sections back-to-back. A queue with all five categories renders all five. The user sees the full picture in one report instead of a single branch's slice.
 
