@@ -120,9 +120,10 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 	return report, nil
 }
 
-// appendReleaseFindings covers CLAUDE.md § Before Every Commit items 1 and 2 —
-// the two cross-file checks a human is asked to perform every commit, and the two
-// that have already been gotten wrong.
+// appendReleaseFindings covers the two release invariants the commit ritual asks a
+// human to verify by eye every time: the version file must agree with the newest
+// CHANGELOG.md entry, and that entry's title must not already be in use. They are
+// the two cross-file checks, and the two that have already been gotten wrong.
 func appendReleaseFindings(report *VerifyReport, repoRoot string) {
 	versionFilePath := resolveVersionFilePath(repoRoot, "")
 	changelogPath := filepath.Join(repoRoot, "CHANGELOG.md")
@@ -153,8 +154,8 @@ func appendReleaseFindings(report *VerifyReport, repoRoot string) {
 	newestEntry := changelogEntries[0]
 
 	// The version file and the newest entry must AGREE. "Strictly greater" is the
-	// rule while you are composing a release (CLAUDE.md § Before Every Commit item
-	// 1: the new version must beat the newest entry that already exists) — the
+	// rule while you are composing a release (the new version must beat the newest
+	// entry that already exists) — the
 	// moment the entry is written, the two are equal, and equality is the steady
 	// state a check running at an arbitrary time should see. So the finding is a
 	// mismatch, and its direction names the cause: ahead means a bump landed
@@ -183,8 +184,8 @@ func appendReleaseFindings(report *VerifyReport, repoRoot string) {
 
 	// The "strictly greater" ordering that actually survives into the committed
 	// state is WITHIN the changelog: the newest entry must beat every earlier one.
-	// This is the check that catches the duplicate version numbers CLAUDE.md
-	// records as having already happened.
+	// This is the check that catches duplicate version numbers, which have already
+	// happened in this repo more than once.
 	for _, earlierEntry := range changelogEntries[1:] {
 		entryComparison, entryCompareError := compareSemanticVersions(newestEntry.Version, earlierEntry.Version)
 		if entryCompareError != nil || entryComparison > 0 {

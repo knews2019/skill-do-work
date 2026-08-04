@@ -896,14 +896,60 @@ assert_contains \
   'tools/do-work-update.sh must exclude the upstream knowledge base from both extractions (belt-and-suspenders with /kb export-ignore).'
 
 # Shipped files must not cite the skill's own CLAUDE.md/AGENTS.md — those files are absent
-# downstream, so a citation dangles. The idiom patterns are illustrative, not exhaustive
-# (references to a *consumer project's* CLAUDE.md, like capture.md's prime routing, are fine);
-# the full rule lives in CLAUDE.md → Action File Conventions.
+# downstream, so a citation dangles. The full rule lives in CLAUDE.md → Action File Conventions.
+#
+# The check is INVERTED on purpose: it flags ANY mention of CLAUDE.md/AGENTS.md in a shipped
+# path, and exempts a short per-file allowlist. It used to enumerate citation idioms
+# (`see CLAUDE.md`, `per CLAUDE.md`, `CLAUDE.md →`) and that shape failed exactly as
+# "Closed Enumerations Go Stale" predicts: scored against the seven real occurrences in the
+# tree it caught ZERO — including the `actions/memory-reference.md` line REQ-088 was filed to
+# fix, and six `CLAUDE.md § Before Every Commit` comments in tools/queue-kanban that shipped
+# for months. Extending the idiom list would have caught 4 of 6 and false-positived on
+# actions/prime.md, where the colon is sentence punctuation. A mention is cheap to detect and
+# impossible to phrase around; the judgement lives in the allowlist, where it is visible.
+#
+# The allowlist is PER-FILE, never per-directory: allowlisting `actions/` wholesale would have
+# exempted actions/memory-reference.md, the file that started this. Entries are files whose
+# subject genuinely IS a consumer project's own CLAUDE.md/AGENTS.md (prime registries, the KB
+# schema file, tidy-repo's layout rules, the updater deleting stale vendored copies) — those
+# references are correct and must not be "fixed". A new shipped file that mentions the
+# maintainer doc fails this check until someone decides which of the two it is; that decision
+# is the point.
 shipped_citation_paths=(SKILL.md next-steps.md README.md actions crew-members prompts interviews specs docs hooks tools)
-self_citation_pattern='(see|per|→) `?CLAUDE\.md|CLAUDE\.md`? *→|(see|per) `?AGENTS\.md'
-self_citation_hits="$(cd "$repo_root" && grep -rIEn "$self_citation_pattern" "${shipped_citation_paths[@]}" 2>/dev/null || true)"
-if [ -n "$self_citation_hits" ]; then
-  printf 'FAIL: shipped files must not cite the skill'\''s own CLAUDE.md/AGENTS.md (export-ignored — absent in consumer installs). Restate the rule inline or point at a shipped home:\n%s\n' "$self_citation_hits" >&2
+maintainer_doc_mention_allowlist=(
+  actions/prime.md
+  docs/prime-guide.md
+  actions/version.md
+  actions/tidy-repo.md
+  actions/bkb.md
+  actions/bkb-reference.md
+  docs/bkb-guide.md
+  actions/capture.md
+  actions/validate-feedback.md
+  actions/prompts.md
+  README.md
+  prompts/README.md
+  prompts/prompt-kit-step2-personal-context-doc.md
+  tools/do-work-update.sh
+)
+maintainer_doc_mentions="$(cd "$repo_root" && grep -rIn 'CLAUDE\.md\|AGENTS\.md' "${shipped_citation_paths[@]}" 2>/dev/null || true)"
+unallowed_maintainer_doc_mentions=""
+while IFS= read -r maintainer_doc_hit; do
+  [ -n "$maintainer_doc_hit" ] || continue
+  maintainer_doc_hit_path="${maintainer_doc_hit%%:*}"
+  maintainer_doc_hit_allowed=0
+  for allowlisted_citation_file in "${maintainer_doc_mention_allowlist[@]}"; do
+    if [ "$maintainer_doc_hit_path" = "$allowlisted_citation_file" ]; then
+      maintainer_doc_hit_allowed=1
+      break
+    fi
+  done
+  if [ "$maintainer_doc_hit_allowed" -eq 0 ]; then
+    unallowed_maintainer_doc_mentions="${unallowed_maintainer_doc_mentions}${maintainer_doc_hit}"$'\n'
+  fi
+done <<< "$maintainer_doc_mentions"
+if [ -n "$unallowed_maintainer_doc_mentions" ]; then
+  printf 'FAIL: shipped files must not mention the skill'\''s own CLAUDE.md/AGENTS.md (export-ignored — absent in consumer installs). Restate the rule inline, point at a shipped home, or — if the mention really is about a *consumer project'\''s* CLAUDE.md — add the file to maintainer_doc_mention_allowlist in this script:\n%s' "$unallowed_maintainer_doc_mentions" >&2
   fail_count=$((fail_count + 1))
 fi
 

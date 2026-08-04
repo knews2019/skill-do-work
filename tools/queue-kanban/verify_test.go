@@ -86,9 +86,9 @@ func TestVerifyPassesOnACleanTree(t *testing.T) {
 }
 
 // The version file and the newest changelog entry must agree. A mismatch is the
-// finding, and each direction has its own cause — CLAUDE.md § Before Every Commit
-// item 1 is the mid-release form of this rule ("strictly greater than the entry
-// that already exists"), which becomes equality the moment the entry is written.
+// finding, and each direction has its own cause. The mid-release form of the rule is
+// "strictly greater than the entry that already exists", which becomes equality the
+// moment the entry is written.
 func TestVerifyFlagsVersionAheadOfNewestChangelogEntry(t *testing.T) {
 	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
 		{"actions/version.md", "**Current version**: 0.164.0\n"}, // bumped, entry not written yet
@@ -137,8 +137,8 @@ func TestVerifyFlagsVersionBehindNewestChangelogEntry(t *testing.T) {
 }
 
 // The "strictly greater" ordering that survives into the committed state is
-// within the changelog itself — this is the duplicate-version-number failure
-// CLAUDE.md records as having already happened.
+// within the changelog itself — this is the duplicate-version-number failure that
+// has already happened in this repo more than once.
 func TestVerifyFlagsDuplicateChangelogVersion(t *testing.T) {
 	duplicateVersionChangelog := `# Changelog
 
@@ -168,8 +168,8 @@ Lead.
 	}
 }
 
-// CLAUDE.md § Before Every Commit, item 2: the newest entry's title must not
-// already be in use.
+// The newest changelog entry's title must not already be in use — the second of the
+// two release invariants the commit ritual verifies by eye.
 func TestVerifyFlagsReusedChangelogTitle(t *testing.T) {
 	reusedTitleChangelog := `# Changelog
 

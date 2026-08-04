@@ -75,7 +75,7 @@ A four-quadrant constraint architecture document:
 
 Plus a failure-mode map showing which constraints prevent which failures, and a list of potential gaps.
 
-Keep it concise — CLAUDE.md standard: if removing a line wouldn't cause mistakes, cut it.
+Keep it concise — if removing a line wouldn't cause mistakes, cut it.
 
 ## Rules
 

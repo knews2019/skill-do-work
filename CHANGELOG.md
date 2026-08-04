@@ -6,6 +6,22 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.169.4 — Citation Guard Flags Mentions Instead of Idioms (2026-08-04)
+
+The check that stops shipped files pointing at the maintainer doc was matching a hand-written list of
+citation phrasings, and it turned out to catch none of the eight real ones in the tree — including
+six comments in the board's `verify` code that had been shipping for months. It now flags any mention
+and keeps a short per-file allowlist for the files that legitimately mean *your* `CLAUDE.md`.
+
+- `_dev/tests/contract-regressions.sh` inverted: any `CLAUDE.md`/`AGENTS.md` mention in a shipped
+  path fails, with a 14-file per-file allowlist carrying the judgement
+- Six comments in `tools/queue-kanban/verify.go` and `verify_test.go` now state the release rule
+  they describe instead of citing the maintainer doc
+- `prompts/prompt-kit-step6-constraint-architecture.md` drops an attribution to a "CLAUDE.md
+  standard" that was never in the file
+- Measured, not assumed: old pattern caught 0 of 8, the inverted check catches 8 of 8, and a
+  bare-prose mention (which a wider idiom list would still have missed) now fails
+
 ## 0.169.3 — Memory Recall's Shell-State Note No Longer Cites the Maintainer Doc (2026-08-04)
 
 The memory action's recall procedure explained a rule by pointing at this repo's `CLAUDE.md`, which
