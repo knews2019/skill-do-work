@@ -5,6 +5,7 @@ status: completed
 status_changed_at: 2026-08-03T22:49:47Z
 claimed_at: 2026-08-04T04:21:50Z
 completed_at: 2026-08-04T04:28:03Z
+commit: bb8cf3b
 created_at: 2026-08-03T21:54:55Z
 kb_status: pending
 user_request: UR-015
