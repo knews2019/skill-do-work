@@ -8,6 +8,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.0 — `do-work run --fan-out` Computes the Wave Itself (2026-08-04)
+
+The pipeline used to say flatly that nothing computes the set — you picked which REQs ran together, by hand. That was a deliberate design choice, and it's now a deliberate reversal: pass `--fan-out` and the loop works out the ready set and dispatches builders with no confirmation prompt.
+
+- Ready means pending, dependencies met, unclaimed, and not earmarked for another session. Same predicate the serial scan already uses — no second definition of readiness.
+- Waves are bounded, never an unbounded fan-out over the whole queue. `--fan-out N` sets it; bare `--fan-out` uses the harness limit, or two when that's unknown.
+- Each wave is recomputed after the previous one integrates, so a REQ whose dependency just landed joins the next one.
+- `--fan-out` and `--wave N` compose: `--wave` picks which REQs, `--fan-out` picks how many at once.
+- `write_set` is still not a scheduling input, and now explicitly is not read by the wave at all. A computed set claims its REQs are runnable — not that they don't overlap. The merge is still what proves that.
+- The default is unchanged and still serial, so the simplest agent reads the same instructions it always did. No worktree support means the flag quietly does nothing.
+
 ## 0.173.0 — Verify Catches Assignment Drift and Half-Closed URs (2026-08-04)
 
 Two new read-only probes for drift that only became reachable once several checkouts share a queue. Both report and route; neither repairs, and neither is marked fixable, because both resolutions are yours to make.

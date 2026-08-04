@@ -383,7 +383,7 @@ done
 assert_contains \
   "actions/work-reference.md" \
   '\*\*Fan-Out Dispatch' \
-  'actions/work-reference.md must define Fan-Out Dispatch inside Worktree Dispatch Mode — several builders under one queue owner, with no new coordination state.'
+  'actions/work-reference.md must define Fan-Out Dispatch inside Worktree Dispatch Mode — several builders under one releaser, with no new coordination state.'
 
 fan_out_block="$(sed -n '/\*\*Fan-Out Dispatch/,/^## Composed Exit Summary/p' "$repo_root/actions/work-reference.md")"
 

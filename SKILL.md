@@ -25,7 +25,7 @@ Examine what follows "do-work". Check the patterns below **in order** — first 
 | 1 | empty, bare, `help` | help | Print the menu per `actions/help.md` and wait — never ask "start the work loop?" |
 | 2 | `check for updates`, `check for update` (exact) | version | Wins before "check" hits verify (priority 5) |
 | 3 | `pipeline`, `full` (± request text) | pipeline | Rest → `$ARGUMENTS`. `pipeline status` → status mode; `pipeline abandon` → abandon mode; no args + active pipeline → resume |
-| 4 | `run`, `go`, `start`, `begin`, `work`, `process`, `execute`, `build`, `continue`, `resume` (± REQ/UR IDs ± `--wave N`) | work | REQ/UR IDs scope the run (a UR expands to its member REQs — `actions/work-reference.md` Target ID Resolution); `--wave` and IDs are mutually exclusive → reject; any other leftover token → usage error, never a silent full-queue run (`actions/work.md` Input) |
+| 4 | `run`, `go`, `start`, `begin`, `work`, `process`, `execute`, `build`, `continue`, `resume` (± REQ/UR IDs ± `--wave N` ± `--fan-out [N]`) | work | REQ/UR IDs scope the run (a UR expands to its member REQs — `actions/work-reference.md` Target ID Resolution); `--wave` and IDs are mutually exclusive → reject; `--fan-out` composes with either (it sets how many run at once, not which); any other leftover token → usage error, never a silent full-queue run (`actions/work.md` Input) |
 | 5 | `verify`, `verify-requests`, `verify requests`, `check`, `evaluate`, `audit`, `review requests`, `review reqs` | verify-requests | Bare `check`/`audit` land here; `audit codebase` → code-review (7); `audit primes` → prime (19) |
 | 6 | `clarify`, `questions`, `answers`, `pending`, `pending answers`, `blocked`, `what's blocked`, `what needs answers` | clarify | |
 | 7 | `code-review`, `code review`, `review codebase`, `audit codebase`, `codebase review` (± scope) | code-review | Scope args: prime file refs and/or directory paths |
@@ -79,7 +79,7 @@ Each action has an action file with full instructions. How you execute it depend
 | help               | `./actions/help.md`             | `$ARGUMENTS` (empty, or `<action> help`) |
 | pipeline           | `./actions/pipeline.md`         | `$ARGUMENTS` (request text, "status", or "abandon") |
 | capture-requests   | `./actions/capture.md`          | Full user input text           |
-| work               | `./actions/work.md`             | `$ARGUMENTS` (REQ/UR IDs, `--wave`, or empty) |
+| work               | `./actions/work.md`             | `$ARGUMENTS` (REQ/UR IDs, `--wave`, `--fan-out`, or empty) |
 | clarify questions  | `./actions/clarify.md`          | (none needed)                  |
 | abandon            | `./actions/abandon.md`          | `$ARGUMENTS` (REQ/UR IDs + optional reason) |
 | verify-requests    | `./actions/verify-requests.md`  | Target UR/REQ or "most recent" |
