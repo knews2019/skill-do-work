@@ -4,6 +4,7 @@ title: The board drawer's Copy button omits the ticket's frontmatter, so the pas
 status: completed
 claimed_at: 2026-08-04T00:17:30Z
 completed_at: 2026-08-04T00:23:03Z
+commit: ba54b5d
 kb_status: pending
 created_at: 2026-08-03T22:49:36Z
 user_request: UR-017
