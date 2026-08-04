@@ -7,7 +7,8 @@ claimed_at: 2026-06-01T17:38:31Z
 completed_at: 2026-06-01T17:38:31Z
 commit: 5d048cb
 route: B
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-012-add-do-work-note-command-for-lightweight.md
 user_request: UR-001
 domain: general
 prime_files: []

@@ -7,7 +7,8 @@ claimed_at: 2026-08-04T04:21:50Z
 completed_at: 2026-08-04T04:28:03Z
 commit: bb8cf3b
 created_at: 2026-08-03T21:54:55Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-088-fix-memory-reference-md-s-citation-of-th.md
 user_request: UR-015
 domain: general
 addendum_to: REQ-078

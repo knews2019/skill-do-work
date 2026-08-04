@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-03T22:14:08Z
 completed_at: 2026-08-03T22:17:23Z
 commit: 1cff0a7
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-082-the-fan-out-hand-back-file-has-no-legal.md
 route: B
 created_at: 2026-08-03T17:09:21Z
 user_request: UR-016

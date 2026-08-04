@@ -7,7 +7,8 @@ status_changed_at: 2026-07-29T15:34:19Z
 claimed_at: 2026-07-29T17:43:39Z
 completed_at: 2026-07-29T18:42:07Z
 commit: 3a85811
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-060-no-mechanism-resolves-a-failed-req-so-a.md
 domain: general
 prime_files: []
 tdd: false

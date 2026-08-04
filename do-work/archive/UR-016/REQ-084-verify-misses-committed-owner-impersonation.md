@@ -6,7 +6,8 @@ claimed_at: 2026-08-03T23:54:52Z
 completed_at: 2026-08-04T00:00:52Z
 commit: 0d61054
 created_at: 2026-08-03T17:09:21Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-084-verify-s-queue-state-probe-misses-a-buil.md
 user_request: UR-016
 domain: general
 prime_files: [tools/queue-kanban/prime-do-kanban.md]

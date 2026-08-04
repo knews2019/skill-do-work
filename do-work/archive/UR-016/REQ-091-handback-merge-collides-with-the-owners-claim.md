@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-04T00:26:00Z
 completed_at: 2026-08-04T00:25:54Z
 commit: ecf1966
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-091-the-hand-back-merge-fails-while-the-owne.md
 created_at: 2026-08-04T00:14:18Z
 user_request: UR-016
 domain: general

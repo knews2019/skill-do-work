@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-04T00:04:10Z
 completed_at: 2026-08-04T00:11:37Z
 commit: 5cfe1b5
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-087-the-board-and-verify-hand-the-user-the-p.md
 created_at: 2026-08-03T21:45:43Z
 user_request: UR-015
 domain: general

@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-04T00:27:00Z
 completed_at: 2026-08-04T00:27:44Z
 commit: 92bebe0
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-092-actions-work-md-has-no-wave-selection-or.md
 created_at: 2026-08-04T00:14:18Z
 user_request: UR-016
 domain: general

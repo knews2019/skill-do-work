@@ -6,7 +6,8 @@ claimed_at: 2026-08-03T15:09:50Z
 completed_at: 2026-08-03T15:18:56Z
 commit: 9ba2cda
 route: C
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-073-fan-out-dispatch-n-concurrent-builders-u.md
 created_at: 2026-08-03T11:41:15Z
 user_request: UR-013
 domain: general

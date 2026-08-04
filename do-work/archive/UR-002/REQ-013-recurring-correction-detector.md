@@ -15,7 +15,8 @@ depends_on: []
 related: [REQ-014]
 batch: agent-maintenance-loop-integration
 commit: e2e506a
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-013-forensics-detect-corrections-recurring-a.md
 ---
 
 # forensics: recurring-correction detector

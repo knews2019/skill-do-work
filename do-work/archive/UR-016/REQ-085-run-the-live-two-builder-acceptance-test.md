@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-04T00:02:54Z
 completed_at: 2026-08-04T00:14:18Z
 commit: b224e8a
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-085-run-req-073-s-live-two-builder-acceptanc.md
 created_at: 2026-08-03T17:09:21Z
 user_request: UR-016
 domain: testing

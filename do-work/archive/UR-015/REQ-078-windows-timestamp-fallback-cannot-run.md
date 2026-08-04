@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-03T21:45:43Z
 completed_at: 2026-08-03T21:54:55Z
 commit: 7998740
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-078-the-windows-timestamp-fallback-cannot-ru.md
 route: C
 created_at: 2026-08-03T16:53:42Z
 user_request: UR-015

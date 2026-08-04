@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-03T22:07:20Z
 completed_at: 2026-08-03T22:13:28Z
 commit: 84d79c1
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-081-next-version-ignores-flags-placed-after.md
 route: B
 created_at: 2026-08-03T17:09:21Z
 user_request: UR-016

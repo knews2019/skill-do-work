@@ -6,7 +6,8 @@ claimed_at: 2026-07-31T09:32:00Z
 route: A
 completed_at: 2026-07-31T09:34:31Z
 commit: b0bd8c8
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-066-clear-two-shellcheck-warnings-in-the-com.md
 created_at: 2026-07-31T09:28:23Z
 user_request: UR-010
 addendum_to: REQ-064

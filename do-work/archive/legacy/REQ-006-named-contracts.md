@@ -11,7 +11,8 @@ review_generated: true
 source: code-review
 scope: actions/work.md, actions/kb-lessons-handoff.md, actions/review-work.md, actions/commit.md
 depends_on: [REQ-001]
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-006-code-review-replace-work-md-step-number.md
 ---
 
 # Code Review Fix: Replace work.md Step-Number Coupling with Named Contracts

@@ -15,7 +15,8 @@ suggested_spec:
 depends_on: []
 maintenance: false
 related: [REQ-016]
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-015-sync-the-deferred-status-between-the-que.md
 ---
 
 # Sync the `deferred` status between the queue-kanban parser and the Schema Read Contract

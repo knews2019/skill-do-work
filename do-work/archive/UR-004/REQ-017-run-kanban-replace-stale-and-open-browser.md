@@ -14,7 +14,8 @@ tdd: false
 suggested_spec:
 depends_on: []
 maintenance: false
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-017-just-run-kanban-replace-a-stale-board-se.md
 kb_entry:
 ---
 

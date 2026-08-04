@@ -6,7 +6,8 @@ claimed_at: 2026-07-29T07:54:52Z
 completed_at: 2026-07-29T08:07:08Z
 commit: 4296e11
 route: B
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-036-re-validate-write-set-disjointness-when.md
 created_at: 2026-07-28T21:57:21Z
 user_request: UR-007
 addendum_to: REQ-032

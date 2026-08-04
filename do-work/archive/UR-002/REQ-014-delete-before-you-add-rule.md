@@ -15,7 +15,8 @@ depends_on: []
 related: [REQ-013]
 batch: agent-maintenance-loop-integration
 commit: db4d661
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-014-add-crew-members-maintenance-md-codifyin.md
 ---
 
 # Delete before you add — maintenance crew rule

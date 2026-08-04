@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-03T21:58:03Z
 completed_at: 2026-08-03T22:04:14Z
 commit: 8fdce3c
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-079-two-guards-pin-the-weaker-fingerprint-of.md
 route: B
 created_at: 2026-08-03T16:53:42Z
 user_request: UR-015

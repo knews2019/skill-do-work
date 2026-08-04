@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-04T00:17:30Z
 completed_at: 2026-08-04T00:23:03Z
 commit: ba54b5d
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-089-the-board-drawer-s-copy-button-omits-the.md
 created_at: 2026-08-03T22:49:36Z
 user_request: UR-017
 domain: frontend

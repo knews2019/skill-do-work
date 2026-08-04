@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-04T00:04:10Z
 completed_at: 2026-08-04T00:09:48Z
 commit: a17e6af
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-086-the-in-progress-record-s-rule-is-unstate.md
 created_at: 2026-08-03T21:29:26Z
 user_request: UR-015
 domain: general

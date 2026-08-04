@@ -6,7 +6,8 @@ claimed_at: 2026-07-29T06:59:04Z
 completed_at: 2026-07-29T07:51:14Z
 commit: fd56267
 route: C
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-035-represent-concurrent-claims-in-the-orche.md
 created_at: 2026-07-28T21:57:21Z
 user_request: UR-007
 addendum_to: REQ-032

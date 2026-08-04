@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-03T22:04:55Z
 completed_at: 2026-08-03T22:06:47Z
 commit: 8ee717b
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-080-the-capture-template-emits-a-stray-instr.md
 route: A
 created_at: 2026-08-03T16:53:42Z
 user_request: UR-015

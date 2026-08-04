@@ -6,7 +6,8 @@ claimed_at: 2026-07-29T08:54:22Z
 completed_at: 2026-07-29T09:00:22Z
 commit: acc4722
 route: B
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-040-board-overlap-badge-use-path-match-and-d.md
 created_at: 2026-07-28T23:18:24Z
 user_request: UR-007
 addendum_to: REQ-034

@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-08-03T21:29:26Z
 completed_at: 2026-08-03T21:44:08Z
 commit: 598ef35
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-077-crash-recovery-s-own-crash-branch-is-unr.md
 created_at: 2026-08-03T16:53:42Z
 user_request: UR-015
 domain: general

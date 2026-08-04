@@ -15,7 +15,8 @@ suggested_spec:
 depends_on: []
 maintenance: false
 related: [REQ-015]
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-016-remove-the-producer-less-severity-frontm.md
 ---
 
 # Remove the producer-less `severity` frontmatter field from queue-kanban

@@ -5,7 +5,8 @@ status: completed
 claimed_at: 2026-07-30T22:33:10Z
 completed_at: 2026-07-31T09:28:23Z
 commit: 069c943
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-064-restore-blanked-archived-reqs-from-git-h.md
 route: B
 created_at: 2026-07-30T21:57:34Z
 user_request: UR-010

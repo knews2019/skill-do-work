@@ -10,7 +10,8 @@ route: B
 review_generated: true
 source: code-review
 scope: full-repo
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-001-code-review-split-actions-work-md-into-o.md
 ---
 
 # Code Review Fix: Split actions/work.md into Orchestrator + Reference Companion

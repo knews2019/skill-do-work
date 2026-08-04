@@ -6,7 +6,8 @@ claimed_at: 2026-08-03T23:41:00Z
 completed_at: 2026-08-03T23:52:10Z
 commit: f6c1514
 created_at: 2026-08-03T17:09:21Z
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-083-verify-reports-every-builder-worktree-as.md
 user_request: UR-016
 domain: general
 prime_files: [tools/queue-kanban/prime-do-kanban.md]

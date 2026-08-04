@@ -6,7 +6,8 @@ claimed_at: 2026-07-29T08:09:11Z
 completed_at: 2026-07-29T08:46:38Z
 commit: 1348d11
 route: C
-kb_status: pending
+kb_status: promoted
+kb_entry: REQ-037-place-the-worktree-merge-in-the-step-seq.md
 created_at: 2026-07-28T22:41:30Z
 user_request: UR-007
 addendum_to: REQ-033
