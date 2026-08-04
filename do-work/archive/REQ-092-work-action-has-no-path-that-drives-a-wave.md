@@ -4,6 +4,7 @@ title: actions/work.md has no wave-selection or launch-before-wait path, so docu
 status: completed
 claimed_at: 2026-08-04T00:27:00Z
 completed_at: 2026-08-04T00:27:44Z
+commit: 92bebe0
 kb_status: pending
 created_at: 2026-08-04T00:14:18Z
 user_request: UR-016
