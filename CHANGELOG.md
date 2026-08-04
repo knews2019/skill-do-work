@@ -6,6 +6,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.169.1 — Hand-Back Merge Survives The Owner's Own Claim (2026-08-04)
+
+Worktree dispatch told the orchestrator to merge a builder's branch, but the claim it had just made was
+still sitting uncommitted — so on any project that keeps `do-work/` in git, the merge refused before it
+started. The sequence now says to settle that first.
+
+- New step 0 in the hand-back sequence: commit the claim moves, the checkpoint and the run directory
+  before capturing the merge range's lower bound, so the bookkeeping stays outside the range
+- Says plainly that it's a no-op to skip where `do-work/` isn't tracked, which is the common install
+- Stated in both places the sequence is written, including the one an orchestrator actually follows
+
 ## 0.169.0 — Board Copy Carries the Ticket's Frontmatter (2026-08-04)
 
 The drawer shows a ticket's status, domain, user request and timestamps in labelled rows — and **Copy**
