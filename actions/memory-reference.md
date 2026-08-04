@@ -85,7 +85,7 @@ MEMORY_DIR="$PROJECT_ROOT/memory"
 #    path:line, the log date (or "working memory"), and the nearest preceding ## heading.
 ```
 
-Steps 3–4 are scoring/formatting the agent performs on the grep output — they need no additional shell state, so nothing carries between command blocks (CLAUDE.md: shell state does not survive between prescribed blocks).
+Steps 3–4 are scoring/formatting the agent performs on the grep output — they need no additional shell state, so nothing carries between command blocks (shell state does not survive between prescribed command blocks).
 
 ## Semantic Recall (Layer 2 — optional, detected)
 

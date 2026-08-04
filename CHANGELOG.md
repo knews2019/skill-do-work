@@ -6,6 +6,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.169.3 — Memory Recall's Shell-State Note No Longer Cites the Maintainer Doc (2026-08-04)
+
+The memory action's recall procedure explained a rule by pointing at this repo's `CLAUDE.md`, which
+is excluded from the tarball — so in every install that pointer went nowhere. It now states the rule
+where you're standing, matching the nine other shipped files that already do.
+
+- `actions/memory-reference.md` states the shell-state rule inline instead of citing `CLAUDE.md`
+- Sweeping every shipped path for the same defect turned up six more sites in
+  `tools/queue-kanban/verify.go` and `verify_test.go`, plus the fact that the contract suite's
+  citation guard matches none of them — queued for your decision as REQ-093, not fixed here
+
 ## 0.169.2 — The Work Action Says Who Runs A Fan-Out (2026-08-04)
 
 Worktree fan-out was described in one document and absent from the other, so `--wave N` read like a
