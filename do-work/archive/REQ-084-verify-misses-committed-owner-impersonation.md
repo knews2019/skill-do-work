@@ -4,6 +4,7 @@ title: verify's queue-state probe misses a builder that committed its do-work ed
 status: completed
 claimed_at: 2026-08-03T23:54:52Z
 completed_at: 2026-08-04T00:00:52Z
+commit: 0d61054
 created_at: 2026-08-03T17:09:21Z
 kb_status: pending
 user_request: UR-016
