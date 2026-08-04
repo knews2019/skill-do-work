@@ -6,6 +6,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.168.4 — Checkpoint Bookkeeping Stated At Every Mover (2026-08-04)
+
+A completed request could leave a stale entry behind in the session checkpoint, so the next run would
+report a contradiction about a request that finished perfectly normally — and a warning that fires on
+the happy path is the fastest way to teach you to ignore it. The two procedures that move a request out
+of `working/` from outside the pipeline now say the entry goes with it.
+
+- `do-work cleanup` Pass 0 and `do-work forensics` Check 1 each state the rule, citing its canonical
+  home rather than restating it
+- The work guide no longer says the checkpoint is written only at session end — it's written as each
+  request is claimed, which is what lets a crashed run pick its own work back up
+
 ## 0.168.3 — Verify Catches A Builder That Committed Its Queue Edits (2026-08-04)
 
 The check that stops a builder from writing queue state only looked at uncommitted changes, so it
