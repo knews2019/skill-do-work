@@ -1,7 +1,8 @@
 ---
 id: REQ-090
 title: "Confirm: seven update-script behavior probes fail on the base branch"
-status: pending-answers
+status: cancelled
+completed_at: 2026-08-04T09:00:52Z
 created_at: 2026-08-03T23:52:10Z
 user_request: UR-016
 addendum_to: REQ-083
@@ -68,7 +69,7 @@ establish that these seven failures were not its doing.
 
 ## Open Questions
 
-- [ ] Should the seven failing update-script probes be investigated and resolved as a work item?
+- [x] Should the seven failing update-script probes be investigated and resolved as a work item? → No — the premise did not reproduce; cancelled as not-reproducible (see `## Cancelled`)
   Recommended: Yes, add to queue (will flip to 'pending'). The first step is diagnosis — read the
   history of `tools/do-work-update.sh` and `_dev/tests/update-script-behavior.sh` to establish which of
   the two explanations above is true, then fix accordingly.
@@ -77,3 +78,51 @@ establish that these seven failures were not its doing.
   Risk: if it turns out the behavior was deliberately deferred, this spends effort on something already
   decided — the diagnosis step is cheap and bounds that risk. Low and fully reversible either way.
   Also: No, discard it — you already know why these are red and it is intentional.
+
+## Cancelled
+
+- **When:** 2026-08-04T09:00:52Z
+- **Why:** Not reproducible. The premise — seven update-script behavior probes failing on the base
+  branch — does not hold. Cancelled as not-reproducible rather than fixed or built, because there is
+  nothing failing to fix.
+- **Decided by:** user, via `do-work abandon`
+
+### Evidence gathered before cancelling (2026-08-04, during REQ-088)
+
+The diagnosis step this REQ's Open Question asked for was performed. Findings:
+
+- `bash _dev/tests/contract-regressions.sh` exits **0** with **zero** FAIL lines.
+- `bash _dev/tests/update-script-behavior.sh` standalone reports `update-script behavior probes
+  passed.`
+- `tools/do-work-update.sh` **contains** all five strings this REQ reports as absent:
+  `may be partially updated` (line 166), the `git … checkout --` restore command (194),
+  `restores the COMMITTED content` (202), the `git … clean -nd --` command (204), and
+  `Update did not complete.` (218).
+- The probe asserts exactly those strings at lines 218, 219, 221 and 266, and they pass.
+
+So neither of the two explanations this REQ offered applies: the updater was **not** regressed (the
+behavior is present), and the probes were **not** written ahead of the implementation (the
+implementation exists and the probes pass against it).
+
+**Ruled out as causes of the earlier observation:**
+
+- **Lingering worktrees** — `git worktree list` shows only the main checkout; no
+  `worktree-agent-*` branches remain. (The prior session ran two worktree builders, so this was the
+  leading hypothesis.)
+- **Working-directory sensitivity** — the suite and the standalone probe both pass when invoked
+  from a subdirectory, consistent with `repo_root` deriving from `BASH_SOURCE`.
+- **A vacuous pass** — the probe has exactly one skip path (`git` unavailable, which prints an
+  explicit `SKIP:` line and exits 0). `git` is present, so the pass is a real pass, not a skip.
+- **An intervening fix** — neither `tools/do-work-update.sh` nor
+  `_dev/tests/update-script-behavior.sh` has been committed to since `b583c78`, well before the
+  observation.
+
+**What remains unexplained:** why the prior session observed 8 FAIL lines twice, including once
+with its own changes stashed. That is recorded rather than resolved. The failure state is not
+present now, and no cause was found that would make it recur.
+
+**If it ever returns:** the four checks above are the ones already run — start past them. The most
+likely remaining candidate is something environmental and transient in that session (a shell,
+toolchain, or filesystem condition not captured here), which is precisely why this was cancelled
+rather than left open: an unreproducible red suite cannot be fixed, and a permanently-queued REQ
+about it trains readers to ignore the queue.
