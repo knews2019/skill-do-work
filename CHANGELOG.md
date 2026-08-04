@@ -8,6 +8,22 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.169.8 — Update Flow Deletes Orphaned Reserve Files; Verify Keeps Space Paths Whole (2026-08-04)
+
+Two follow-through fixes from an external review of a consumer install. Tar extraction never deletes
+what upstream removed, so pre-0.161.0 installs still carried the two reservation-workflow files the
+exclusive-session cleanup deleted — and one of them is a `prime-*.md`, which the prime audit's
+recursive glob keeps rediscovering as a live doc.
+
+- `do-work update` Step 5 now removes the two orphaned reservation-workflow files alongside the
+  stale maintainer docs, and the "leftovers in `actions/` are harmless" note gains the prime-glob
+  exception that made it wrong.
+- The contract suite's reservation-token sweep grew a scoped exemption: `actions/version.md` may
+  name the removed files only on `rm -f` lines — any other mention still fails (probed both ways).
+- `queue-kanban verify`'s dirty-worktree probe parsed porcelain output by last whitespace field,
+  truncating any path containing spaces in the report line; it now slices at porcelain's fixed
+  3-byte prefix and keeps a rename's destination side (unit-tested).
+
 ## 0.169.7 — Board Copy Round-Trips CRLF Files Byte-for-Byte (2026-08-04)
 
 The drawer's Copy payload was corrupted for Windows-authored (CRLF) REQ/UR files: the frontmatter

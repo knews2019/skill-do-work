@@ -290,6 +290,22 @@ for removed_reservation_token in \
   reservation_token_hits="$(grep -rIlE -- "$removed_reservation_token" \
     "$repo_root/actions" "$repo_root/docs" "$repo_root/tools/queue-kanban" \
     "$repo_root/SKILL.md" "$repo_root/next-steps.md" 2>/dev/null || true)"
+  # Per-file exemption (same pattern as the maintainer-doc allowlist): the update
+  # flow in actions/version.md must NAME the removed reserve files on its Step 5
+  # deletion line — tar extraction never deletes what upstream removed, so without
+  # that rm every pre-0.161.0 install keeps the orphaned files forever. Only lines
+  # containing `rm -f` are exempt; any other mention in version.md still fails.
+  exempt_update_flow_file="$repo_root/actions/version.md"
+  filtered_reservation_hits=""
+  for reservation_hit_file in $reservation_token_hits; do
+    if [ "$reservation_hit_file" = "$exempt_update_flow_file" ] && \
+       [ -z "$(grep -E -- "$removed_reservation_token" "$reservation_hit_file" | grep -vE -- 'rm -f' || true)" ]; then
+      continue
+    fi
+    filtered_reservation_hits="$filtered_reservation_hits$reservation_hit_file
+"
+  done
+  reservation_token_hits="$(printf '%s' "$filtered_reservation_hits")"
   if [ -n "$reservation_token_hits" ]; then
     printf 'FAIL: removed reservation-workflow token "%s" still present in a shipped file (exclusive-session model — cross-session ownership is unsupported):\n%s\n' \
       "$removed_reservation_token" "$reservation_token_hits" >&2

@@ -610,14 +610,30 @@ func worktreeDirtyQueueState(worktreePath string) []string {
 	if runError != nil {
 		return nil
 	}
+	return parsePorcelainStatusPaths(string(output))
+}
+
+// parsePorcelainStatusPaths extracts the path from each `git status --porcelain`
+// v1 line: a fixed two-character status, one space, then the path — which may
+// itself contain spaces, so the path is everything after the 3-byte prefix, not
+// the last whitespace-separated field. Rename lines carry `old -> new`; the
+// destination side is kept. Git double-quotes paths with special characters;
+// the quotes are stripped for display but inner escapes are left as git printed
+// them (these paths feed a report line, not file operations).
+func parsePorcelainStatusPaths(statusOutput string) []string {
 	var dirtyPaths []string
-	for _, line := range strings.Split(string(output), "\n") {
-		trimmedLine := strings.TrimSpace(line)
-		if trimmedLine == "" {
+	for _, line := range strings.Split(statusOutput, "\n") {
+		if len(line) < 4 {
 			continue
 		}
-		statusFields := strings.Fields(trimmedLine)
-		dirtyPaths = append(dirtyPaths, statusFields[len(statusFields)-1])
+		pathText := line[3:]
+		if renameArrowIndex := strings.LastIndex(pathText, " -> "); renameArrowIndex >= 0 {
+			pathText = pathText[renameArrowIndex+len(" -> "):]
+		}
+		pathText = strings.Trim(pathText, `"`)
+		if pathText != "" {
+			dirtyPaths = append(dirtyPaths, pathText)
+		}
 	}
 	return dirtyPaths
 }

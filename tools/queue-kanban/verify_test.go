@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -724,5 +725,31 @@ func TestVerifySkipsReleaseProbesOnAForeignChangelogFormat(t *testing.T) {
 	}
 	if !skippedChangelogProbe {
 		t.Errorf("the changelog-format skip must be reported by name, got: %v", report.SkippedProbes)
+	}
+}
+
+// TestParsePorcelainStatusPathsKeepsSpacesAndRenames pins the porcelain-v1
+// parsing contract: the path is everything after the fixed 3-byte prefix, so a
+// path containing spaces survives whole (the last-whitespace-field parse used
+// to truncate "REQ-12 draft copy.md" to "copy.md" in the dirty-worktree report
+// line), a rename keeps its destination side, and git's double-quoting of
+// special-character paths is stripped for display.
+func TestParsePorcelainStatusPathsKeepsSpacesAndRenames(t *testing.T) {
+	statusOutput := strings.Join([]string{
+		` M do-work/queue/REQ-12 draft copy.md`,
+		`?? do-work/queue/REQ-13-normal.md`,
+		`R  do-work/queue/REQ-14-old.md -> do-work/queue/REQ-14-new.md`,
+		`?? "do-work/queue/REQ-15 quoted name.md"`,
+		``,
+	}, "\n")
+	got := parsePorcelainStatusPaths(statusOutput)
+	want := []string{
+		"do-work/queue/REQ-12 draft copy.md",
+		"do-work/queue/REQ-13-normal.md",
+		"do-work/queue/REQ-14-new.md",
+		"do-work/queue/REQ-15 quoted name.md",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("parsePorcelainStatusPaths mismatch:\ngot  %q\nwant %q", got, want)
 	}
 }
