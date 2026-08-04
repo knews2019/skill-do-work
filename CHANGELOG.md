@@ -6,6 +6,18 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.168.5 — Board And Verify Stop Handing Windows A Dead Command (2026-08-04)
+
+The board's tooltips, its data warnings and `verify`'s remedy line all told you to fix a bad timestamp
+with `date -u +%Y-%m-%dT%H:%M:%SZ` — a command that doesn't exist on Windows. The instruction layer was
+fixed a release ago; these four display strings had been left carrying the old one.
+
+- The tooltips and warnings now name the shape (`YYYY-MM-DDTHH:MM:SSZ`) and point at the Timestamp rule
+- `queue-kanban verify`'s remedy keeps a runnable command, but it's `queue-kanban now` — same output on
+  every platform, and you're already looking at that binary's output when you read it
+- A fourth site turned up during the fix: the board's server-side future-timestamp warning had the same
+  problem
+
 ## 0.168.4 — Checkpoint Bookkeeping Stated At Every Mover (2026-08-04)
 
 A completed request could leave a stale entry behind in the session checkpoint, so the next run would
