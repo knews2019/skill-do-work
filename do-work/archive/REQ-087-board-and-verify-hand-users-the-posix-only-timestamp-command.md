@@ -4,6 +4,7 @@ title: The board and verify hand the user the POSIX-only timestamp command the r
 status: completed
 claimed_at: 2026-08-04T00:04:10Z
 completed_at: 2026-08-04T00:11:37Z
+commit: 5cfe1b5
 kb_status: pending
 created_at: 2026-08-03T21:45:43Z
 user_request: UR-015
