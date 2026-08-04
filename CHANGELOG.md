@@ -6,6 +6,21 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.168.6 — Fan-Out Dispatch Actually Run For The First Time (2026-08-04)
+
+Worktree fan-out shipped three versions ago with its live acceptance test never run — two checkpoints
+carried it as deferred, so the feature was a claim rather than a demonstrated capability. It has now
+been run end to end, and the record is in the archive rather than in a promise.
+
+- Two real requests built in two worktrees on two branches, integrated one at a time: both merged
+  cleanly, each got its own changelog entry with an increasing version, and both branches came off with
+  a plain `git branch -d` — no force needed
+- A deliberately overlapping pair was confirmed to fail at the merge rather than combine silently
+- Two defects found and queued: the hand-back merge collides with the owner's own uncommitted claim
+  where `do-work/` is tracked, and nothing in the work action actually drives a wave
+- Acceptance recorded as **Partial**, on purpose — the builders never overlapped in time, so genuine
+  concurrency is still unproven and the record says which properties that leaves open
+
 ## 0.168.5 — Board And Verify Stop Handing Windows A Dead Command (2026-08-04)
 
 The board's tooltips, its data warnings and `verify`'s remedy line all told you to fix a bad timestamp
