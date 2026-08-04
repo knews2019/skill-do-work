@@ -6,6 +6,20 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.169.2 — The Work Action Says Who Runs A Fan-Out (2026-08-04)
+
+Worktree fan-out was described in one document and absent from the other, so `--wave N` read like a
+concurrency switch while every step of the work action processes one request at a time. The two now
+agree: running several builders is a procedure you or an advanced harness drive, not something
+`do-work run` does.
+
+- `actions/work.md` says plainly that it works one request at a time by design, and points at the
+  procedure that does the other thing
+- `--wave N` keeps doing what it always did — pick a batch of mutually independent requests — and now
+  says so instead of implying parallelism
+- The decision favours the floor: the work action stays followable by the simplest agent that can read
+  files and run shell commands
+
 ## 0.169.1 — Hand-Back Merge Survives The Owner's Own Claim (2026-08-04)
 
 Worktree dispatch told the orchestrator to merge a builder's branch, but the claim it had just made was

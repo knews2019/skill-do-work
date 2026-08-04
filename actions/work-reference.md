@@ -311,7 +311,11 @@ Once every `working/` file has been recovered, taken over, or left alone as a re
 
 **Cleanup — crash path.** Leftovers from an interrupted run are swept by **Crash Recovery (Step 1)** above: already-merged ones are removed mechanically, unmerged ones are reported and never auto-deleted. Discarding unmerged builder work belongs to `actions/cleanup.md` → **Pass 5: Orphaned Worktrees (consent-gated)**, which asks first and only acts when a human can answer.
 
-**Fan-Out Dispatch — several builders, one queue owner.** Every guarantee above is already per REQ, so raising the builder count adds no coordination and no durable state. What it does add:
+**Fan-Out Dispatch — several builders, one queue owner.** Every guarantee above is already per REQ, so raising the builder count adds no coordination and no durable state.
+
+**This is an owner-driven procedure, not something `actions/work.md` performs.** That action processes one REQ at a time by design and has no wave-selection or launch-before-wait path; the concurrency described here is reached by a human or an advanced harness following *this section*, not by running `do-work run` with a flag. `--wave N` selects a dependency-depth batch and then runs it serially — a scoping flag, not a concurrency one. The separation is deliberate: `actions/work.md` must stay followable by the simplest agent that can read files and run shell commands, and the dispatch mechanism here is deliberately unspecified (below), which a wave loop in the main action would have to violate. Confirmed by execution rather than assumed — the first live two-builder run drove every step by hand for exactly this reason.
+
+What fan-out adds:
 
 - **A human picks which REQs run together.** Nothing computes the set. A REQ's declared `write_set` is **advisory input to that pick, never a gate** — it is display-only, nothing schedules on it, and the board's `overlaps` badge misses glob-vs-glob, `**`, and directory entries, so **absence reads as unknown, not safe** (`actions/board.md`).
 - **The non-interference proof is the merge, not the pick.** `git merge --no-ff --no-commit` refusing is the only mechanical evidence that two builders' work does not collide. **Its limit is honest: git detects conflicts by line proximity, not meaning.** Two REQs each appending an entry to a shared registry merge cleanly and can still be jointly wrong. The **integration seam** rule (*Sole integrator*, above) is what covers that — and it works only because one integrator applies every seam by hand, inside the merge commit.
