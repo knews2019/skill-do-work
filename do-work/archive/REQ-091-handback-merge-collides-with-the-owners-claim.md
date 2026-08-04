@@ -4,6 +4,7 @@ title: The hand-back merge fails while the owner's claim bookkeeping is staged, 
 status: completed
 claimed_at: 2026-08-04T00:26:00Z
 completed_at: 2026-08-04T00:25:54Z
+commit: ecf1966
 kb_status: pending
 created_at: 2026-08-04T00:14:18Z
 user_request: UR-016
