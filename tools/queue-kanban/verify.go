@@ -287,7 +287,13 @@ func appendClaimFindings(report *VerifyReport, board *Board, now time.Time) {
 				Category: verifyCategoryClaimNeedsAttention,
 				Detail: fmt.Sprintf("%s has a future-dated claimed_at (%s) — usually local wall-clock time written with a Z suffix",
 					claimedTicket.RequestId, rawClaimStamp),
-				Remedy: "re-stamp it with `date -u +%Y-%m-%dT%H:%M:%SZ` (the Timestamp rule in actions/work-reference.md)",
+				// A command survives here because this is CLI output, read next to a
+				// shell — but it is `queue-kanban now`, the Timestamp rule's own
+				// first-choice source, which prints the right shape on every platform.
+				// The rule's POSIX floor is deliberately not spelled here: anyone
+				// reading this line already has the binary built, and a hardcoded
+				// `date -u +…` is precisely what does not exist on Windows.
+				Remedy: "re-stamp it with the current UTC instant — `queue-kanban now` prints exactly that shape on any platform (the Timestamp rule in actions/work-reference.md)",
 			})
 			continue
 		}

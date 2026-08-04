@@ -318,7 +318,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 		ticket.FutureTimestampFields = detectFutureTimestampFields(ticket, now)
 		if len(ticket.FutureTimestampFields) > 0 {
 			board.Warnings = append(board.Warnings, fmt.Sprintf(
-				"%s has future-dated timestamp(s): %s — later than the board's generation time (2min clock-skew allowance); likely local wall-clock time stamped with a Z suffix; fix: rewrite with the current UTC instant (date -u +%%Y-%%m-%%dT%%H:%%M:%%SZ)",
+				"%s has future-dated timestamp(s): %s — later than the board's generation time (2min clock-skew allowance); likely local wall-clock time stamped with a Z suffix; fix: rewrite with the current UTC instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in actions/work-reference.md",
 				ticket.RequestId, strings.Join(ticket.FutureTimestampFields, ", ")))
 		}
 		board.RequestsById[ticket.RequestId] = ticket
