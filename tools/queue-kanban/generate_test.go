@@ -256,10 +256,15 @@ func TestGenerateSeparatesRawMarkdownForLazyCopy(t *testing.T) {
 	if !strings.Contains(string(indexBytes), `markdownScript.src = "board-markdown.js"`) {
 		t.Fatalf("inlined board.js has no lazy board-markdown.js loader")
 	}
-	// The lazy payload holds bodies only — the id and title live in frontmatter,
-	// so the Copy path must prepend its own identifying heading before writing.
-	if !strings.Contains(string(indexBytes), "copyTextWithHeading(requestedKind, requestedId, bodyText)") {
-		t.Fatalf("inlined board.js does not prepend the id/title heading to copied Markdown")
+	// Since REQ-089 the lazy payload holds whole FILES (frontmatter fence + body),
+	// so the primary Copy path writes them verbatim — no synthesized heading, or the
+	// paste stops round-tripping back into a valid REQ file. The identifying heading
+	// belongs to the rendered-text fallback alone, which has no frontmatter to carry.
+	if !strings.Contains(string(indexBytes), "copyTextWithHeading(requestedKind, requestedId, renderedTextFallback)") {
+		t.Fatalf("inlined board.js does not prepend the id/title heading on the rendered-text fallback path")
+	}
+	if strings.Contains(string(indexBytes), "copyTextWithHeading(requestedKind, requestedId, bodyText)") {
+		t.Fatalf("inlined board.js still routes the lazy payload through the heading builder — the primary path must copy the file verbatim")
 	}
 }
 
