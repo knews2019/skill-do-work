@@ -132,6 +132,8 @@ User added: "dark mode should also affect the sidebar"
 - Sidebar must also respect dark mode theme
 ```
 
+**The earmark lives in frontmatter, so appending body text does not carry it.** When the addendum names a session the work is reserved for, apply Step 1's earmark assessment in the same edit — seed or update `assigned_to` on the pending REQ's frontmatter, not just the Addendum section.
+
 **Coherence Rule (queued addenda):** After appending an Addendum section to a pending REQ, re-read the full REQ — the original What, Requirements, Constraints, and Red-Green Proof sections plus the new addendum. If the addendum **contradicts** any existing content (e.g., "add dark mode" + "remove all theming"), do not silently write the contradiction. Instead:
 
 1. Present the conflict to the user with concrete options: "The original REQ says X. The new input says Y. These conflict. Which should win?" Use the ask tool if available.
@@ -145,7 +147,7 @@ The goal is that every REQ, at every point in time, expresses a single coherent 
 - Create `do-work/user-requests/UR-NNN/input.md` with the addendum input verbatim (new UR, fresh number)
 - Create `do-work/queue/REQ-NNN-slug.md` linking to that new UR, with `addendum_to` pointing at the original
 
-The `addendum_to` field is what connects the addendum to its origin. The new REQ then enters the queue normally and gets picked up by the next `do-work run`. Write it using the **Addendum REQ Template** in `actions/capture-reference.md` — the exact frontmatter and body shape, including the `## Prior Implementation` section for archived originals.
+The `addendum_to` field is what connects the addendum to its origin. The new REQ then enters the queue normally and gets picked up by the next `do-work run`. Write it using the **Addendum REQ Template** in `actions/capture-reference.md` — the exact frontmatter and body shape, including the `## Prior Implementation` section for archived originals. It is a normal capture in every other respect, so Step 1's assessments apply to it as they do to any new REQ — including the earmark, which the template carries as an optional `assigned_to` line.
 
 **Context is critical for addenda to archived/completed REQs.** When writing the addendum REQ, read the original archived REQ and include a `## Prior Implementation` section summarizing: what was built, key files modified, patterns used, and commit hash (if available). Without this, the builder wastes time re-discovering what already exists. For in-flight REQs this matters less — the builder will encounter the work in progress naturally.
 

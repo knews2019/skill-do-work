@@ -317,6 +317,41 @@ func TestVerifyFlagsStrandedFinishedRequests(t *testing.T) {
 	}
 }
 
+// A terminally-resolved member stranded in queue/ under an ARCHIVED UR used to
+// trip both probes, and the archived-UR remedy then told the user to run or
+// abandon a REQ that was already resolved. The stranded-finished probe owns that
+// state (it is fixable, and cleanup Pass 0 sweeps it), so the archived-UR probe
+// must stay silent on it. Both halves of the terminal set are covered here —
+// `completed` and `cancelled` — because the carve-out keys on
+// isTerminalResolvedStatus, not on completion alone. The converse case (an
+// archived UR whose queued member is genuinely unresolved must still be flagged)
+// is TestVerifyFlagsArchivedUserRequestWithALiveMember, below.
+func TestVerifyStrandedFinishedMemberOfAnArchivedUserRequestFiresOnlyTheStrandedProbe(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/UR-094/input.md", "---\nid: UR-094\ntitle: archived with stranded members\nrequests: [REQ-086, REQ-088]\n---\n"},
+		{"do-work/queue/REQ-086-finished-but-queued.md",
+			"---\nid: REQ-086\nstatus: completed\ntitle: stranded completed member\nuser_request: UR-094\ncompleted_at: 2026-08-01T10:00:00Z\ncommit: abc1234\n---\n"},
+		{"do-work/queue/REQ-088-cancelled-but-queued.md",
+			"---\nid: REQ-088\nstatus: cancelled\ntitle: stranded cancelled member\nuser_request: UR-094\ncompleted_at: 2026-08-01T11:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	strandedFindings := findingsMentioning(report, verifyCategoryStrandedFinishedRequest)
+	if len(strandedFindings) != 2 {
+		t.Fatalf("got %d stranded-finished findings, want 2 (one completed, one cancelled):\n%s",
+			len(strandedFindings), renderVerifyReport(report))
+	}
+	if found := findingsMentioning(report, verifyCategoryArchivedUserRequestLiveMember); len(found) != 0 {
+		t.Fatalf("a terminally-resolved member is not live — the archived-UR probe must not double-fire, got %d findings:\n%s",
+			len(found), renderVerifyReport(report))
+	}
+}
+
 // Requirement 5: the report names how many findings cleanup can mechanically
 // resolve and points at it. It must not claim a human-decision finding is fixable.
 func TestVerifyReportRoutesFixableFindingsToCleanup(t *testing.T) {
@@ -817,6 +852,40 @@ func TestVerifyIgnoresAnAssignedRequestStillInTheQueue(t *testing.T) {
 	}
 	if found := findingsMentioning(report, verifyCategoryAssignedElsewhereClaimedHere); len(found) != 0 {
 		t.Fatalf("an assigned REQ sitting in the queue is the normal case, got %d findings:\n%s",
+			len(found), renderVerifyReport(report))
+	}
+}
+
+// A terminally-resolved REQ stranded in do-work/working/ while still carrying
+// assigned_to used to trip both probes, and the assigned-elsewhere remedy then told
+// the user to clear or release a claim on work that was already done. The
+// stranded-finished probe owns that state (it is fixable, and cleanup Pass 0 sweeps
+// it), so the assigned-elsewhere probe must stay silent on it. Both halves of the
+// terminal set are covered here — `completed` and `cancelled` — because the
+// carve-out keys on isTerminalResolvedStatus, not on completion alone. The converse
+// case (a non-terminal assigned REQ in working/ must still be flagged) is
+// TestVerifyFlagsAssignedRequestClaimedHere, above.
+func TestVerifyStrandedFinishedAssignedRequestFiresOnlyTheStrandedProbe(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/working/REQ-072-finished-but-earmarked.md",
+			"---\nid: REQ-072\nstatus: completed\ntitle: stranded completed claim\nassigned_to: \"cloud-alpha\"\ncompleted_at: 2026-08-01T10:00:00Z\ncommit: abc1234\n---\n"},
+		{"do-work/working/REQ-073-cancelled-but-earmarked.md",
+			"---\nid: REQ-073\nstatus: cancelled\ntitle: stranded cancelled claim\nassigned_to: \"cloud-beta\"\ncompleted_at: 2026-08-01T11:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	strandedFindings := findingsMentioning(report, verifyCategoryStrandedFinishedRequest)
+	if len(strandedFindings) != 2 {
+		t.Fatalf("got %d stranded-finished findings, want 2 (one completed, one cancelled):\n%s",
+			len(strandedFindings), renderVerifyReport(report))
+	}
+	if found := findingsMentioning(report, verifyCategoryAssignedElsewhereClaimedHere); len(found) != 0 {
+		t.Fatalf("a terminally-resolved REQ is not being built here — the assigned-elsewhere probe must not double-fire, got %d findings:\n%s",
 			len(found), renderVerifyReport(report))
 	}
 }

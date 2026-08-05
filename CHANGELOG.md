@@ -8,6 +8,33 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.13 — Recovered Trap's Evidence Corrected, Probe Rows Name the Right Status Set (2026-08-05)
+
+An adversarial review of last release's recovered knowledge-base entry re-ran its verification steps and found one trap's evidence wrong on every point. Fixed, and the negative result is now recorded too — it is the more useful half.
+
+- **The recovered stale-binary trap claimed a hazard wider than the real one.** It said nothing in the pipeline rebuilds the board binary before `verify` runs; in fact both shipped call sites — `actions/forensics.md` Check 14 and `actions/work.md` Step 9 — build in the same command, and did so when the trap was written. Its supporting evidence was wrong twice over: `go version -m` reports `vcs.time`, the *commit's* timestamp rather than the binary's mtime, and a byte-for-byte diff against a fresh build always differs once HEAD has moved, because Go stamps the revision and dirty flag into every build. The entry now scopes the hazard to a hand-run `verify` outside those blocks, and records both failed staleness tests so nobody re-derives them.
+- **`actions/forensics.md`'s Check 14 rows now say "non-terminally-resolved"** instead of "non-terminal". The repo uses both senses — `actions/cleanup.md` calls `failed` terminal, while the Terminal-resolved set deliberately excludes it — so the looser word told readers a `failed` REQ was outside rows that in fact fire on it.
+
+## 0.174.12 — Assignment Probe Stops Double-Reporting Finished Work (2026-08-05)
+
+The double-fire fixed in 0.174.11 was hiding one probe over, so it got the same carve-out. Plus a checklist line that was quietly too narrow, and a note explaining a test suite that only goes red for root.
+
+- **`assigned-elsewhere-claimed-here` now skips terminally-resolved REQs.** A finished REQ stranded in `working/` while still carrying `assigned_to` tripped this probe *and* the stranded-finished one, and this one's remedy told you to clear or release a claim on work that was already done. The stranded-finished probe owns that state alone now — the same carve-out, keyed on the same shared predicate, as the archived-UR fix last release. `actions/forensics.md`'s Check 14 row is qualified to match.
+- **`actions/work.md`'s verification checklist covers every claim Step 1 deliberately leaves alone**, not just a reported foreign one. A label-less claim is left intact too, and the old wording quietly excluded it — the last instance of a vocabulary drift that had been surfacing one file at a time.
+- `_dev/tests/update-script-behavior.sh` says up front that it needs a non-root runner. Its failure injection drops write permission on a directory, which root ignores, so under root seven probes fail on messages the updater never had reason to print — a property of the runner, not the code.
+- Recovered the UR-018 session's still-accurate operational traps into the knowledge base before they were only in git history — exact flag orders, the stale-binary trap that makes `verify` lie, and the contract-suite phrases to reword around. Repo-internal; `kb/` does not ship.
+
+## 0.174.11 — Claim-Sync Timing, Verify Probe Overlap, and Addendum Earmarks (2026-08-05)
+
+An external review of the 0.174.x series turned up six things the docs and the board's verifier were quietly getting wrong — mostly promises a bit broader than the code behind them, plus two probes that both fired on the same state. All small, all now honest.
+
+- **Claims travel when bookkeeping commits, not when the claim happens.** The Execution Model said claims reach other checkouts "by ordinary git sync" without saying that nothing commits a claim until a checkpoint, a hand-back, or the release tail — so the duplicate window was real but undocumented. Crash recovery's detection claim is qualified the same way.
+- **`queue-kanban verify` no longer double-reports a stranded finished REQ.** A terminally-resolved member of an archived UR tripped both `ur-archived-with-live-member` and the stranded-finished probe, and the former's remedy told you to run or abandon work that was already done. The stranded-finished probe owns that state now.
+- **Capture carries the earmark through both addendum paths.** Step 1's `assigned_to` assessment reached a fresh REQ but not an addendum: appending to a queued REQ touched only the body, and the Addendum REQ Template had no `assigned_to` line to fill in.
+- **The exit summary has a headline for "ready, but assigned elsewhere."** When every dependency-ready REQ was earmarked for another session, neither documented headline fit. The reference and `actions/work.md` now say *claimable* where they meant it, and that sixth section finally has a lead that matches it.
+- **The `write_set` fan-out bullet no longer contradicts itself** — its bold lead called the field "not an input to either" pick while the next sentence called it advisory input to the manual one.
+- **Fixed the archive paths the UR-018 consolidation left behind** in `actions/work-reference.md` and ADR-018: REQ-095, REQ-100, `input.md`, and the approved plan all live under `do-work/archive/UR-018/` now.
+
 ## 0.174.10 — Merge-Time Queue Guard, Clean-Index Hand-Back, Synthesized-UR Copy Fix (2026-08-05)
 
 Three accepted findings from an external review of the worktree-dispatch pipeline and the board. The common thread on the first two: the mechanical checks all excluded `do-work/`, so a builder's committed queue edits could integrate with only human review watching.
