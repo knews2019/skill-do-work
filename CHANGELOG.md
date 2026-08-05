@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.14 — Lockfile Version Mirrors Stay in Sync With the Manifest Bump (2026-08-05)
+
+Step 9 bumped `package.json` and left `package-lock.json` still naming the old version, so the next ordinary `npm install` rewrote the lockfile and every dev-server launch showed a dirty tree nobody had touched — one consumer repo drifted 8 patch versions and collected three ad-hoc "sync the lockfile" commits before anyone traced it. The bump now carries its lockfile mirror along, and it does so for Rust and Python too, not just npm.
+
+- `actions/work-reference.md` → Changelog Entry Procedure gains a **Lockfile mirror** note: the trigger condition plus the three known instances — `package-lock.json` (two mirrored fields), `Cargo.lock`, `uv.lock` — each with its lockfile-only refresh command
+- Names the dependency-only lockfiles that are *not* affected (`yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`, `go.sum`) so nobody syncs a file that never held the version
+- Read-the-diff-first guard: only the mirrored version lines may ride along, because `npm install --package-lock-only` against an older lockfile rewrites the whole thing (`lockfileVersion` 1 → 3) and a stale lockfile can re-resolve dependencies into an unrelated REQ's commit
+- Hand-edit fallback keeps the step toolchain-free — a missing package manager never blocks the commit
+- The `git add` block, the lifecycle-file list, and the Implementation-Summary validation set all account for the lockfile now, so a version-only stage still trips the "this isn't the implementation" check
+
 ## 0.174.13 — Recovered Trap's Evidence Corrected, Probe Rows Name the Right Status Set (2026-08-05)
 
 An adversarial review of last release's recovered knowledge-base entry re-ran its verification steps and found one trap's evidence wrong on every point. Fixed, and the negative result is now recorded too — it is the more useful half.

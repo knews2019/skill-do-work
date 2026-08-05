@@ -717,11 +717,29 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 **Where `X.Y.Z` comes from.** Resolve the version source once per entry, in this order:
 
-1. **A version in a repo file** — `package.json`'s `"version"`, `Cargo.toml`, `pyproject.toml`, a `VERSION` file, or the like (this list is illustrative; any file the project maintains a version line in qualifies). Bump that line by the rule below, write the bumped value into the file, and **stage the file with the REQ's commit**. The repo's version and the changelog header stay in lock-step.
+1. **A version in a repo file** — `package.json`'s `"version"`, `Cargo.toml`, `pyproject.toml`, a `VERSION` file, or the like (this list is illustrative; any file the project maintains a version line in qualifies). Bump that line by the rule below, write the bumped value into the file, and **stage the file with the REQ's commit**. The repo's version and the changelog header stay in lock-step. If a lockfile mirrors that version, it is bumped and staged with it — see **Lockfile mirror** below.
 2. **Version only in release tags** (no version line in any file) — take the highest release tag as the current version and bump from it, but write the result **only into the changelog header**. do-work never creates a git tag: a tag is a release announcement, and only a human decides when one happens.
 3. **No version anywhere** — the changelog is the source of truth. Take the highest `X.Y.Z` across the file's existing entries and bump from it. If there are no entries yet (bootstrap), seed the first entry at `0.1.0`. Nothing outside `CHANGELOG.md` is touched — an unversioned repo stays unversioned, and the header number is a changelog fact, not a claim that a release was cut.
 
 Two guards on source resolution. If **two or more version files disagree** with each other, do not guess which one the release process uses: leave every file untouched, fall back to the changelog counter (source 3), and say so in the Step 9 report. If the resolved source is **behind** the newest changelog entry (someone released or edited out of band), bump from whichever is higher — never emit a version below one already in the file.
+
+**Lockfile mirror (source 1 only).** Some ecosystems copy the manifest's own version into their lockfile, so bumping the manifest alone leaves the copy stale. The trigger condition is *the repo keeps a lockfile that records the version of the package you just bumped* — these are the known instances, not the boundary:
+
+| Version file | Lockfile | Where the version is mirrored | Lockfile-only refresh |
+| ------------ | -------- | ----------------------------- | --------------------- |
+| `package.json` | `package-lock.json` | **two** fields — top-level `"version"` and `packages[""].version` | `npm install --package-lock-only` |
+| `Cargo.toml` | `Cargo.lock` | the local crate's own `[[package]]` entry | `cargo generate-lockfile --offline` |
+| `pyproject.toml` | `uv.lock` | the root project's `[[package]]` entry | `uv lock --offline` |
+
+Dependency-only lockfiles never trip this — `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`, and `go.sum` record dependencies, not the root package's version, so a repo with only those has nothing to sync here.
+
+Leave the mirror stale and the drift is invisible until someone runs the ordinary command that reconciles it (`npm install`, `cargo check`, `uv lock`), which rewrites the lockfile — so the tree reads dirty for a change nobody made, and the fix accretes as ad-hoc "sync the lockfile version" commits. The drift is cosmetic, not a correctness bug (`npm ci` passes on a version-only mismatch and leaves it stale), which is exactly why it survives so long unnoticed.
+
+So: **refresh the lockfile in the same breath as the manifest bump, before staging.** Prefer the ecosystem's lockfile-only refresh above — each touches the lockfile alone, leaves `node_modules`/`target`/the venv untouched, and needs no network when the lockfile is otherwise coherent.
+
+**Then read the lockfile's diff before you stage it.** It must contain only the mirrored version line(s) — two for `package-lock.json`, one for the others. Anything beyond that is out of scope for this REQ and must not ride along in its commit: `npm install --package-lock-only` run against a lockfile written by an older npm rewrites the whole file (`lockfileVersion` 1 → 3 restructures `dependencies` into `packages` — a 4-line sync becomes a 26-line rewrite), and a lockfile that is behind its manifest's ranges can re-resolve dependencies, smuggling a supply-chain change into a REQ about something else. When the diff is bigger than the version lines, **restore the lockfile (`git checkout -- <lockfile>`) and hand-edit just the mirrored field(s)** — one or two lines, no toolchain, exactly the minimal diff. Do the same hand-edit when the package manager isn't installed at all: this step must never block the commit on a missing toolchain.
+
+Two traps in the prescribed commands. Don't add `--silent` to the npm form — it suppresses the output you need in order to notice the refresh failed before you stage a half-written lockfile. And run the refresh only when the lockfile already exists: `npm install --package-lock-only` **creates** a `package-lock.json` in a repo that deliberately has none (a pnpm or yarn project), committing a lockfile for the wrong package manager.
 
 **Bump size.** Read the change the REQ actually delivered, not its wording:
 
@@ -733,7 +751,7 @@ Two guards on source resolution. If **two or more version files disagree** with 
 
 Tie-breakers, in order: a breaking change outranks an additive one in the same REQ (bump major, not minor); when genuinely torn between two levels, pick the **smaller** one. **Below `1.0.0`, a breaking change bumps the minor, not the major** — `0.x` is unstable by semver's own definition, so the first breaking change in a seeded repo must not silently promote it to a `1.0.0` release. A `completed-with-issues` REQ is bumped on what it delivered, exactly like `completed`.
 
-The `CHANGELOG.md` change — and the version file, when source 1 applied — are part of the REQ's lifecycle files. Stage them in the commit below.
+The `CHANGELOG.md` change — and the version file plus any lockfile mirroring it, when source 1 applied — are part of the REQ's lifecycle files. Stage them in the commit below.
 
 **Voice contract (house style).** 1–2 casual sentences leading with *why it matters* — the situation that prompted the change and what's better now — then bullets for the specifics. Lead with value, not implementation; file paths and flags belong in the bullets, not the lead. Keep it brief. Newest on top, one entry per REQ (this matches one-commit-per-request).
 
@@ -759,6 +777,13 @@ git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx \
 # version file (source 1). Tag-versioned and unversioned repos have none.
 git add package.json
 
+# Plus the lockfile that mirrors it, when the repo keeps one — see the Changelog
+# Entry Procedure's "Lockfile mirror" note for the condition, the refresh command,
+# and the read-the-diff-first guard. package-lock.json here; Cargo.lock / uv.lock
+# in those ecosystems. Omit this line entirely when the repo has no such lockfile:
+# `git add` on a path that does not exist exits 128 and aborts the commit step.
+git add package-lock.json
+
 # Stage follow-up REQs created in Step 8 (if any)
 git add do-work/queue/REQ-025-confirm-sidebar-palette.md
 
@@ -783,11 +808,11 @@ EOF
 
 **Format:** `[{id}] {title} (Route {route})` + `Implements:` line + summary bullets. Add a co-author trailer if your platform convention calls for one (e.g., `Co-Authored-By: Agent <agent@example.com>`), otherwise omit.
 
-One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, the `CHANGELOG.md` entry and the version file it bumped, if any (successful REQs only — see the Changelog Entry Procedure above), any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), and any UR-folder moves to `archive/`. If Step 8 substep 7 wrote prime-file lessons links, the modified prime files must also be staged — they are part of the REQ's lifecycle changes even though they aren't listed in the Implementation Summary's `Files changed`. Do not use `git add -A` or `git add .`, and never bypass a commit hook (see `actions/commit.md` § Rules for the full guard). Failed requests get committed too.
+One commit per request. Stage all files created, modified, moved, or deleted during this request's lifecycle: implementation files (listed in the Implementation Summary), the archived REQ file, the `CHANGELOG.md` entry and the version file it bumped plus any lockfile mirroring that version, if any (successful REQs only — see the Changelog Entry Procedure above), any follow-up REQs created in Step 8 (`pending-answers` files in `do-work/queue/`), and any UR-folder moves to `archive/`. If Step 8 substep 7 wrote prime-file lessons links, the modified prime files must also be staged — they are part of the REQ's lifecycle changes even though they aren't listed in the Implementation Summary's `Files changed`. Do not use `git add -A` or `git add .`, and never bypass a commit hook (see `actions/commit.md` § Rules for the full guard). Failed requests get committed too.
 
 **In worktree dispatch mode** the builder's implementation is already committed and merged (Step 6's `--no-ff` merge), so do **not** stage implementation files here — stage only the archived REQ, the `CHANGELOG.md` entry and any bumped version file, follow-up REQs, UR-folder moves, and prime-file lessons links. The `commit:` field gets the `--no-ff` merge commit's hash (`<merge_hash>`, captured in Step 6 — the **latest** merge if remediation re-merged; **Worktree Dispatch Mode (Step 1)** above), not this changelog commit's hash.
 
-**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, `CHANGELOG.md`, and/or the version file it bumped (the changelog entry and the version bump describe the implementation, they aren't the implementation), flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected. **In worktree dispatch mode** the implementation files live in the merge commit, not this commit's stage, so validate the `## Implementation Summary` file list against `git diff --name-only <pre>..<merge_hash>` (the merge range, excluding `do-work/` paths) instead of the staged set — a stage of only the changelog/version/`do-work/` metadata is correct here, not a mismatch.
+**Validation check (successful REQs only):** Before committing, compare the `## Implementation Summary` file list against the staged files (excluding `do-work/` paths). If the Implementation Summary lists files that aren't staged, or if the only staged files are `do-work/` metadata, `CHANGELOG.md`, and/or the version file it bumped together with any lockfile mirroring that version (the changelog entry and the version bump describe the implementation, they aren't the implementation — and a lockfile carrying only the mirrored version is part of the bump, not a deliverable), flag the mismatch — the commit may not contain the actual implementation. Fix the staging or update the Implementation Summary before proceeding. Design-artifact files placed outside `do-work/` satisfy this check — they are project deliverables. **Skip this check for failed REQs** — they may have no Implementation Summary or no project files staged, and that's expected. **In worktree dispatch mode** the implementation files live in the merge commit, not this commit's stage, so validate the `## Implementation Summary` file list against `git diff --name-only <pre>..<merge_hash>` (the merge range, excluding `do-work/` paths) instead of the staged set — a stage of only the changelog/version/`do-work/` metadata is correct here, not a mismatch.
 
 **Write commit hash back to the archived REQ.** After the commit succeeds, resolve the implementation hash — **serially** it is the commit you just made, so read it with `git rev-parse --short HEAD`; **in worktree dispatch mode do NOT rev-parse `HEAD` here**, because HEAD is the changelog commit and the implementation lives in Step 6's `--no-ff` merge — use the `<merge_hash>` literal held since Step 6 (the latest merge, if remediation re-merged). Hand that hash to the shipped guard script, which makes the one-line edit and verifies it, then create a **separate metadata commit** (never amend — amending changes the hash and invalidates what was just written):
 
