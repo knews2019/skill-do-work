@@ -5,6 +5,7 @@ status: completed
 status_changed_at: 2026-08-05T11:50:17Z
 claimed_at: 2026-08-05T11:51:58Z
 completed_at: 2026-08-05T11:59:04Z
+commit: 5f50fb7
 route: A
 kb_status: pending
 created_at: 2026-08-05T11:44:27Z
