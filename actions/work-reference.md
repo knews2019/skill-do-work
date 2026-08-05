@@ -723,23 +723,23 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 Two guards on source resolution. If **two or more version files disagree** with each other, do not guess which one the release process uses: leave every file untouched, fall back to the changelog counter (source 3), and say so in the Step 9 report. If the resolved source is **behind** the newest changelog entry (someone released or edited out of band), bump from whichever is higher — never emit a version below one already in the file.
 
-**Lockfile mirror (source 1 only).** Some ecosystems copy the manifest's own version into their lockfile, so bumping the manifest alone leaves the copy stale. The trigger condition is *the repo keeps a lockfile that records the version of the package you just bumped* — these are the known instances, not the boundary:
+**Lockfile mirror (source 1 only).** Some lockfiles record the version of the package you just bumped, not only its dependencies' — so bumping the version file alone leaves a stale copy behind, and the next ordinary build or install rewrites it: the tree reads dirty for a change nobody made, and the fix accretes as ad-hoc "sync the lockfile version" commits. Under npm it is only cosmetic (`npm ci` tolerates a version-only mismatch and leaves it stale, which is exactly why the drift survives unnoticed for many versions), but `cargo check --locked` exits 101 on it and `uv lock --check` exits 1, so elsewhere it hard-fails CI.
 
-| Version file | Lockfile | Where the version is mirrored | Lockfile-only refresh |
-| ------------ | -------- | ----------------------------- | --------------------- |
-| `package.json` | `package-lock.json` | **two** fields — top-level `"version"` and `packages[""].version` | `npm install --package-lock-only` |
-| `Cargo.toml` | `Cargo.lock` | the local crate's own `[[package]]` entry | `cargo generate-lockfile --offline` |
-| `pyproject.toml` | `uv.lock` | the root project's `[[package]]` entry | `uv lock --offline` |
+The trigger is the condition, not the ecosystem — *the repo commits a lockfile that records this package's own version*. Known instances, not the boundary:
 
-Dependency-only lockfiles never trip this — `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`, and `go.sum` record dependencies, not the root package's version, so a repo with only those has nothing to sync here.
+| Lockfile | Where this package's own version is mirrored |
+| -------- | -------------------------------------------- |
+| `package-lock.json` | the top-level `"version"`, **plus** `packages[""].version` when the file has a `packages` map (`lockfileVersion` 2 or 3; a `lockfileVersion` 1 file has one site, not two) |
+| `Cargo.lock` | the `[[package]]` entry whose `name` is this crate — present even in a crate with no dependencies |
+| `uv.lock` | the `[[package]]` entry whose `name` is this project (`source = { editable = "." }` or `virtual`) |
 
-Leave the mirror stale and the drift is invisible until someone runs the ordinary command that reconciles it (`npm install`, `cargo check`, `uv lock`), which rewrites the lockfile — so the tree reads dirty for a change nobody made, and the fix accretes as ad-hoc "sync the lockfile version" commits. The drift is cosmetic, not a correctness bug (`npm ci` passes on a version-only mismatch and leaves it stale), which is exactly why it survives so long unnoticed.
+Dependency-only lockfiles never trip this: `pnpm-lock.yaml`, `yarn.lock`, `poetry.lock`, and `go.sum` record no version for the root package (yarn Berry writes the sentinel `0.0.0-use.local` on purpose), so a repo with only those has nothing to sync. The split follows the **lock tool, not the manifest** — `pyproject.toml` mirrors under uv and not under poetry — so open the lockfile and look rather than inferring from the manifest's name.
 
-So: **refresh the lockfile in the same breath as the manifest bump, before staging.** Prefer the ecosystem's lockfile-only refresh above — each touches the lockfile alone, leaves `node_modules`/`target`/the venv untouched, and needs no network when the lockfile is otherwise coherent.
+**Edit the mirrored value by hand, exactly the way you just edited the version file, then stage the lockfile with it.** It is one or two lines, needs no toolchain and no network, and writes the same bytes the package manager would (verified byte-identical against npm's own output). Do **not** shell out to the package manager for this. `npm install --package-lock-only` executes the target repo's `preinstall`, `install`, `postinstall` **and** `prepare` hooks — arbitrary consumer code, at exit 0, on every successful REQ — silently migrates a `lockfileVersion` 1 file to 3 (a whole-file restructure, not a version bump), re-resolves any dependency the lockfile is behind on, and in a pnpm or yarn repo creates a `package-lock.json` that should not exist. `cargo generate-lockfile` is worse: it drags unrelated dependencies and their checksums forward to the latest compatible versions (`itoa` 1.0.9 → 1.0.18 in a one-dependency probe), putting a supply-chain change inside a REQ about something else. Adding `--silent` only makes the failure modes quieter — npm goes mute on stdout *and* stderr — so never use it here.
 
-**Then read the lockfile's diff before you stage it.** It must contain only the mirrored version line(s) — two for `package-lock.json`, one for the others. Anything beyond that is out of scope for this REQ and must not ride along in its commit: `npm install --package-lock-only` run against a lockfile written by an older npm rewrites the whole file (`lockfileVersion` 1 → 3 restructures `dependencies` into `packages` — a 4-line sync becomes a 26-line rewrite), and a lockfile that is behind its manifest's ranges can re-resolve dependencies, smuggling a supply-chain change into a REQ about something else. When the diff is bigger than the version lines, **restore the lockfile (`git checkout -- <lockfile>`) and hand-edit just the mirrored field(s)** — one or two lines, no toolchain, exactly the minimal diff. Do the same hand-edit when the package manager isn't installed at all: this step must never block the commit on a missing toolchain.
+Three constraints on the hand edit. Change **only this package's own entry** — a dependency may legitimately carry the same version string, so a whole-file search-and-replace corrupts resolutions. Change only the sites that exist. And never create a lockfile the repo doesn't already commit; in a workspace or monorepo the one lockfile sits at the root, not beside the member manifest you bumped. This is a version-line fix, not a dependency resync: a lockfile that has drifted in other ways is its own REQ, not this commit's business. If the mirrored value is already correct, there is nothing to stage.
 
-Two traps in the prescribed commands. Don't add `--silent` to the npm form — it suppresses the output you need in order to notice the refresh failed before you stage a half-written lockfile. And run the refresh only when the lockfile already exists: `npm install --package-lock-only` **creates** a `package-lock.json` in a repo that deliberately has none (a pnpm or yarn project), committing a lockfile for the wrong package manager.
+**Then read the lockfile's diff before you stage it** — it must contain only the mirrored version line(s), and nothing else may ride along in this REQ's commit.
 
 **Bump size.** Read the change the REQ actually delivered, not its wording:
 
@@ -778,9 +778,9 @@ git add src/stores/theme-store.ts src/components/settings/SettingsPanel.tsx \
 git add package.json
 
 # Plus the lockfile that mirrors it, when the repo keeps one — see the Changelog
-# Entry Procedure's "Lockfile mirror" note for the condition, the refresh command,
-# and the read-the-diff-first guard. package-lock.json here; Cargo.lock / uv.lock
-# in those ecosystems. Omit this line entirely when the repo has no such lockfile:
+# Entry Procedure's "Lockfile mirror" note for the condition and for which field(s)
+# to edit by hand. package-lock.json here; Cargo.lock / uv.lock in those
+# ecosystems. Omit this line entirely when the repo has no such lockfile:
 # `git add` on a path that does not exist exits 128 and aborts the commit step.
 git add package-lock.json
 
