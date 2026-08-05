@@ -11,6 +11,7 @@ session_depth: light
 ## In Progress (interrupted)
 
 
+
 ## Completed This Session
 
 - REQ-109: work.md session-start note — canonical recovery terminology, case list deferred to Crash Recovery (Route A) — v0.174.9, commit `5f50fb7` (review: Pass, 95%; closed UR-018)

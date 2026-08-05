@@ -948,6 +948,23 @@ func resolveSchemaField(fieldName string, rawValue string) (string, bool) {
 	return fieldContract.defaultValue, false
 }
 
+// schemaFieldWarningText renders the Schema Read Contract's own warning line for
+// an unrecognized value. One formatter rather than one per caller: the contract
+// specifies the exact wording, and a second hand-typed copy is how a warning
+// stops being greppable.
+func schemaFieldWarningText(fieldName string, rawValue string) string {
+	fieldContract, hasContract := schemaReadContractFields[fieldName]
+	if !hasContract {
+		return fmt.Sprintf("⚠ %s: '%s' not recognized — no canonical vocabulary is defined for this field.",
+			fieldName, strings.TrimSpace(rawValue))
+	}
+	return fmt.Sprintf("⚠ %s: '%s' not recognized — expected one of [%s]. Treating as '%s'.",
+		fieldName,
+		strings.TrimSpace(rawValue),
+		strings.Join(fieldContract.canonicalValues, ", "),
+		fieldContract.defaultValue)
+}
+
 // resolveCommitHash returns the first non-empty commit hash among the canonical
 // field and its accepted variants, in priority order, plus the frontmatter key
 // it came from (so an anomaly report can name the exact broken field).

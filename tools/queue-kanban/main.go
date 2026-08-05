@@ -71,8 +71,10 @@ func main() {
 		runVerifyCommand(subcommandArgs)
 	case "now":
 		runNowCommand(subcommandArgs)
+	case "frontmatter":
+		os.Exit(runFrontmatterCommand(subcommandArgs, os.Stdout, os.Stderr))
 	default:
-		fmt.Fprintf(os.Stderr, "queue-kanban: unknown subcommand %q (want summary | generate | serve | next-req | next-version | verify | now)\n", subcommand)
+		fmt.Fprintf(os.Stderr, "queue-kanban: unknown subcommand %q (want summary | generate | serve | next-req | next-version | verify | now | frontmatter)\n", subcommand)
 		os.Exit(2)
 	}
 }

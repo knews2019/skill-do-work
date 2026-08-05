@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.175.0 — Read a REQ Field From the Command Line (2026-08-05)
+
+The shipped frontmatter parser had no way to call it — none of the tool's subcommands took a file and a field — so every action that needed a REQ's `status` or `domain` hand-rolled its own `awk`. There's now a command for it, which means one tested implementation instead of ~95 copies.
+
+- New `queue-kanban frontmatter get <file> <field>`, with `--normalize` to apply the Schema Read Contract and `--in-set terminal-success|terminal-resolved` for the finished-work check
+- The value goes to stdout and every diagnostic to stderr, so `value=$(… )` captures cleanly even when a contract warning fires
+- Read-only, and an accelerator only: the shell fallback stays documented and nothing builds the tool to read a field
+
 ## 0.174.14 — The Board Now Honors the Schema Read Contract for All Nine Fields (2026-08-05)
 
 `domain: back-end` used to reach the board exactly as written, because only two of the contract's nine enum fields had a normalizer anywhere in the repo. All seven of the others now resolve their documented aliases through one table, so a muscle-memory spelling stops silently meaning something else.
