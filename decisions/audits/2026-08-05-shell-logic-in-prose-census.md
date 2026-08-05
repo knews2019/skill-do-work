@@ -355,6 +355,23 @@ skip-list distinction, and three documented traps — but it runs only when a us
 
 ---
 
+## 4b. What was captured from this audit — and the shelf life of the rest
+
+**Two findings were queued as work on 2026-08-05, and they are the ones that do not rot:**
+
+| REQ | Finding | Where it came from |
+| --- | --- | --- |
+| REQ-111 | Seven of the nine Schema Read Contract enum fields have no normalizer anywhere in the repo | §2 (Schema Read Contract row), §3 closing paragraph |
+| REQ-112 | `frontmatter.go` has no CLI surface, so no prose step can call it | §1 structural fact 1, §4 candidate 1 |
+
+Both are claims about the **absence of a mechanism**, so no amount of editing elsewhere invalidates them. `UR-021` carries the batch constraints, including that REQ-112 `depends_on` REQ-111 and that both must clear the compiled-tooling exception in the accelerator shape rather than making any shell-floor action need Go.
+
+**The 169-row table is perishable, and this is its expiry warning.** It carries **415 line-number citations**, 36 of them into `actions/work.md` and `actions/work-reference.md` — the two most actively edited files in the repo (20 of the commits preceding this audit touched them). Any insert above a cited line silently invalidates that row's citation while leaving the row looking authoritative. So:
+
+- **Read the table as a dated snapshot, not a live index.** Re-verify any row against the current file before acting on it.
+- **Candidates 3, 4, and 5 in §4 were deliberately not captured.** They are real, but each is a copy-paste consolidation whose value depends on the exact call sites still being where the table says — precisely the part that decays. Re-run the relevant grep before queueing one.
+- **If more than a few weeks have passed and nothing further was extracted, prefer re-running the census over trusting it.** The two captured findings above are the durable output; this table was the means of finding them.
+
 ## 5. What this census does not claim
 
 - **It does not propose the extractions.** Every candidate name above is a name for a gap, not an approved design.

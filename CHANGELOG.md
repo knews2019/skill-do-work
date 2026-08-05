@@ -8,22 +8,6 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.174.15 — Census Names Its Read Depth and Counts the Shipped Hooks (2026-08-05)
-
-The census now says which files it read end-to-end, so a `NONE` verdict on the rest reads as "nothing the keyword scan found" rather than "nothing exists". A PR review also caught it treating `tools/checks/` and `queue-kanban` as the whole toolbox — `hooks/` ships too, and already implements more than the census credited.
-
-- §5 names all 14 fully-read action files and states the scan method for the other 49 files
-- §1's inventory now includes `tools/do-work-update.sh` and the four `hooks/*.sh` scripts, both shipped paths
-- Two coverage verdicts corrected upward: the memory capture/redaction/ledger mechanics are FULL (all three ship in `hooks/memory-stop-capture.sh`), and pipeline state-parsing is PARTIAL (`hooks/pipeline-guard.sh`)
-
-## 0.174.14 — Census of Shell Logic Still Living in Action Prose (2026-08-05)
-
-Every mechanical step in `actions/` and `prompts/` is now inventoried against the scripts that already exist, so the next extraction decision starts from evidence instead of a hunch. The headline finding: `frontmatter.go` has no CLI surface at all, so all ~95 prose frontmatter reads are hand reimplementations by construction.
-
-- New `decisions/audits/2026-08-05-shell-logic-in-prose-census.md` — per-step table with FULL/PARTIAL/NONE coverage, every claim cited to exact lines
-- Flags the seven Schema Read Contract enum fields (`domain`, `route`, `caveman`, `maintenance`, `tdd`, `error_type`, `kb_status`) that have no normalizer anywhere in the repo
-- Ranks the top 5 extraction candidates by execution frequency × observed bug risk, and notes that 17 of 18 `prompts/` files carry no shell mechanics at all
-
 ## 0.174.13 — Recovered Trap's Evidence Corrected, Probe Rows Name the Right Status Set (2026-08-05)
 
 An adversarial review of last release's recovered knowledge-base entry re-ran its verification steps and found one trap's evidence wrong on every point. Fixed, and the negative result is now recorded too — it is the more useful half.
