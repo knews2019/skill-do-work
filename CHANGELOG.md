@@ -8,6 +8,38 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.175.2 — The Commit Action Reads a REQ's Status Through the Tool (2026-08-05)
+
+The new `frontmatter` command had no callers, so the hand-rolled reads it exists to replace were all still hand-rolled. `do-work commit` is the first one switched over, and it's the site where getting it wrong actually bit: testing for the literal `completed` drops every remediated-with-issues REQ, so its files never get associated.
+
+- Step 3's terminal-success check now prefers `frontmatter get … --in-set terminal-success`, which normalizes aliases before testing
+- The `awk` floor is spelled out as a working command, and building the tool to get the value is explicitly prohibited
+- One site only — the other read sites stay candidates under REQ-114
+
+## 0.175.1 — A Typo'd Status No Longer Passes Silently (2026-08-05)
+
+`frontmatter get … status --normalize` printed a misspelled status straight through with no complaint, because the two fields whose aliases live in their own normalizers were being force-marked as recognized. That was the exact no-feedback path the command was added to replace.
+
+- `status` and `testing_status` now warn like the other seven contract fields; their alias maps stay in one place and are unchanged
+- A field the contract gives no default now says so, instead of claiming `Treating as ''`
+- Aliases still resolve silently — `status: done` prints `completed` with nothing on stderr
+
+## 0.175.0 — Read a REQ Field From the Command Line (2026-08-05)
+
+The shipped frontmatter parser had no way to call it — none of the tool's subcommands took a file and a field — so every action that needed a REQ's `status` or `domain` hand-rolled its own `awk`. There's now a command for it, which means one tested implementation instead of ~95 copies.
+
+- New `queue-kanban frontmatter get <file> <field>`, with `--normalize` to apply the Schema Read Contract and `--in-set terminal-success|terminal-resolved` for the finished-work check
+- The value goes to stdout and every diagnostic to stderr, so `value=$(… )` captures cleanly even when a contract warning fires
+- Read-only, and an accelerator only: the shell fallback stays documented and nothing builds the tool to read a field
+
+## 0.174.15 — The Board Now Honors the Schema Read Contract for All Nine Fields (2026-08-05)
+
+`domain: back-end` used to reach the board exactly as written, because only two of the contract's nine enum fields had a normalizer anywhere in the repo. All seven of the others now resolve their documented aliases through one table, so a muscle-memory spelling stops silently meaning something else.
+
+- `domain`, `route`, `caveman`, `maintenance`, `tdd`, `error_type`, and `kb_status` now normalize per `actions/work-reference.md`'s Schema Read Contract
+- An unrecognized value falls back to the documented default and reports itself unrecognized, rather than being silently remapped
+- An absent field stays absent for the board — a domain-less card gains no badge and no filter entry
+
 ## 0.174.14 — Version Bumps Now Sync the Lockfile That Mirrors Them (2026-08-05)
 
 Bumping a project's version file left its lockfile's copy of that same version behind, so the next build or install rewrote it and the tree read dirty for a change nobody made — one consumer repo drifted 8 patch versions and collected three ad-hoc "sync the lockfile" commits before anyone traced it. Step 9 now bumps the mirror in the same commit, by hand, so it works in a repo with no toolchain installed at all.

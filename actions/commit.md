@@ -78,6 +78,22 @@ Scan `do-work/archive/` for completed REQs that might own some of the uncommitte
 1. Glob for `do-work/archive/**/REQ-*.md` — find all archived REQs
 2. For each archived REQ:
    - Read the frontmatter — check for `commit:` field and a terminal-success `status` (`completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set)
+
+     **Preferred, when the board binary is already built** — it applies the Schema Read Contract's aliases before testing, so a `status: done` REQ is not silently skipped:
+
+     ```bash
+     <skill-root>/tools/queue-kanban/queue-kanban frontmatter get <req-file> status --in-set terminal-success
+     ```
+
+     Exit 0 means this REQ qualifies, 1 means it does not. **Never build the tool for this** — a compile per REQ is strictly worse than the floor below, and `actions/board.md` is the only capability allowed to need a compiler.
+
+     **The floor** (no binary, or `go` absent) — read the field yourself and accept **both** values:
+
+     ```bash
+     awk 'NR==1&&/^---/{i=1;next} i&&/^---/{exit} i&&/^status:/{print $2}' <req-file>
+     ```
+
+     Testing only for the literal `completed` is the bug in the Red Flags below: it drops every remediated-with-issues REQ, so its files never get associated.
    - Read the `## Implementation Summary` section — extract the list of files created/modified
 3. Also check `do-work/working/` for in-flight REQs with file lists
 

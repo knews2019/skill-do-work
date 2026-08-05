@@ -610,6 +610,21 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		normalizedTestingStatus = ""
 		testingStatusUnrecognized = true
 	}
+	// domain was read verbatim until REQ-111, so `domain: back-end` reached the
+	// card unchanged. Normalize only a PRESENT value: resolveSchemaField maps an
+	// absent field to the contract's default, which is correct for a reader that
+	// must pick a crew file (work.md Step 6) and wrong here — board.js gates the
+	// domain badge and the filter dropdown on `if (request.domain)`, so
+	// defaulting absence to "general" would give every domain-less card a badge
+	// and a filter entry it never had.
+	//
+	// The recognized flag is discarded on purpose: domain drives a display badge
+	// and a drawer row, and the board has no warning channel for it. Surfacing
+	// the contract's warning belongs to the readers that act on the value.
+	normalizedDomain := ""
+	if rawDomain := coerceScalarToString(fields["domain"]); strings.TrimSpace(rawDomain) != "" {
+		normalizedDomain, _ = resolveSchemaField("domain", rawDomain)
+	}
 
 	ticket := &RequestTicket{
 		RequestId:                 requestId,
@@ -623,7 +638,7 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		CommitHash:                commitHashValue,
 		CommitHashField:           commitHashField,
 		UserRequestId:             coerceScalarToString(fields["user_request"]),
-		Domain:                    coerceScalarToString(fields["domain"]),
+		Domain:                    normalizedDomain,
 		TestingStatus:             normalizedTestingStatus,
 		OriginalTestingStatus:     originalTestingStatus,
 		TestingStatusUnrecognized: testingStatusUnrecognized,
@@ -767,6 +782,223 @@ func isNeedsInputOrBlockedStatus(normalizedStatus string) bool {
 	default:
 		return false
 	}
+}
+
+// schemaFieldContract is one row of the Schema Read Contract in
+// actions/work-reference.md: the canonical enum, the alias map that feeds it,
+// the documented default when a value survives normalization unrecognized, and
+// whether the canonical form is upper-case (only `route` is).
+//
+// A table rather than seven near-identical functions for two reasons. The rows
+// are structurally identical — alias map, enum, default — so seven copies would
+// be seven places for the contract to drift out of sync with its own home. And
+// the field name arrives as runtime data at the consumer this REQ's sibling adds
+// (a CLI flag naming the field), which a hardcoded function per field cannot
+// serve without a switch that re-derives this table anyway.
+type schemaFieldContract struct {
+	canonicalValues []string
+	aliases         map[string]string
+	defaultValue    string
+	upperCase       bool
+}
+
+// schemaReadContractFields holds the seven enum/boolean fields that had no
+// normalizer before REQ-111. `status` and `testing_status` are deliberately
+// absent: they already own normalizeStatus / normalizeTestingStatus, and
+// forking their alias maps in here would create the second definition this
+// table exists to prevent. normalizeSchemaField dispatches those two to their
+// existing functions.
+//
+// Every row mirrors actions/work-reference.md's Schema Read Contract table,
+// which is the source of truth — when the two disagree, the contract wins and
+// this table is the stale copy. Keep them changing in the same commit.
+var schemaReadContractFields = map[string]schemaFieldContract{
+	"domain": {
+		canonicalValues: []string{"frontend", "backend", "ui-design", "general", "security", "testing"},
+		aliases: map[string]string{
+			"back-end": "backend", "back_end": "backend",
+			"front-end": "frontend", "front_end": "frontend",
+			"ui_design": "ui-design",
+			"sec":       "security",
+			"test":      "testing",
+		},
+		defaultValue: "general",
+	},
+	"route": {
+		canonicalValues: []string{"A", "B", "C"},
+		aliases:         map[string]string{},
+		// No default value: the contract says an unrecognized route means the
+		// REQ needs re-triage, which is not a value this function can invent.
+		defaultValue: "",
+		upperCase:    true,
+	},
+	"caveman": {
+		canonicalValues: []string{"false", "true", "lite", "full", "ultra"},
+		aliases: map[string]string{
+			"yes": "true", "on": "true",
+			"light": "lite",
+		},
+		defaultValue: "false",
+	},
+	"maintenance": {
+		canonicalValues: []string{"true", "false"},
+		aliases: map[string]string{
+			"yes": "true", "on": "true", "t": "true",
+			"no": "false", "off": "false", "f": "false",
+		},
+		defaultValue: "false",
+	},
+	"tdd": {
+		canonicalValues: []string{"true", "false"},
+		aliases: map[string]string{
+			"test_first": "true", "yes": "true", "on": "true", "t": "true",
+			"no": "false", "off": "false", "f": "false",
+		},
+		defaultValue: "false",
+	},
+	"error_type": {
+		canonicalValues: []string{"intent", "spec", "code", "environment"},
+		// The contract identifies no common typo aliases for this field.
+		aliases:      map[string]string{},
+		defaultValue: "code",
+	},
+	"kb_status": {
+		canonicalValues: []string{"promoted", "pending", "declined", "skipped"},
+		aliases: map[string]string{
+			"skip":     "skipped",
+			"rejected": "declined",
+		},
+		defaultValue: "pending",
+	},
+	// status and testing_status carry a canonical VOCABULARY here but no alias
+	// map: their aliases live in normalizeStatus / normalizeTestingStatus, which
+	// normalizeSchemaField dispatches to, and duplicating them here would create
+	// the second definition this table exists to prevent. The rows exist so
+	// isKnownSchemaFieldValue and schemaFieldWarningText can answer for these two
+	// fields — without them, a typo'd status had no canonical set to fail against
+	// and produced no warning at all (the hole Codex's review of PR #130 found).
+	//
+	// Neither has a default: the contract declines to define one for `status`
+	// ("skip the REQ with the warning text — never claim or archive an
+	// unrecognized status silently"), and an off-vocabulary testing_status renders
+	// as not-tested rather than as some substitute value. An empty defaultValue
+	// means "no documented default", and callers print what was found instead of
+	// fabricating one.
+	"status": {
+		canonicalValues: []string{
+			"pending", "claimed", "completed", "completed-with-issues", "failed",
+			"cancelled", "pending-answers", "blocked", "blocked-archive-collision",
+			"blocked-dependency-cycle",
+		},
+		aliases:      map[string]string{},
+		defaultValue: "",
+	},
+	"testing_status": {
+		canonicalValues: []string{testingStatusInTesting, testingStatusTested, testingStatusReturned},
+		aliases:         map[string]string{},
+		defaultValue:    "",
+	},
+}
+
+// normalizeSchemaField applies fieldName's alias map to rawValue and returns the
+// canonical value. Like normalizeStatus, it does NOT substitute the default for
+// an unrecognized value — it returns the case-folded, trimmed input so the
+// caller can tell "recognized" from "not" and emit the contract's warning.
+// resolveSchemaField is the composition most callers want.
+//
+// An unknown fieldName returns the trimmed input unchanged: this is a reader of
+// a permissive frontmatter map, and refusing to handle a field nobody has
+// contracted yet is not this function's call to make.
+func normalizeSchemaField(fieldName string, rawValue string) string {
+	switch fieldName {
+	case "status":
+		return normalizeStatus(rawValue)
+	case "testing_status":
+		return normalizeTestingStatus(rawValue)
+	}
+	fieldContract, hasContract := schemaReadContractFields[fieldName]
+	if !hasContract {
+		return strings.TrimSpace(rawValue)
+	}
+	normalized := strings.TrimSpace(rawValue)
+	if fieldContract.upperCase {
+		normalized = strings.ToUpper(normalized)
+	} else {
+		normalized = strings.ToLower(normalized)
+	}
+	if canonical, isAlias := fieldContract.aliases[normalized]; isAlias {
+		return canonical
+	}
+	return normalized
+}
+
+// isKnownSchemaFieldValue reports whether an already-normalized value is in
+// fieldName's canonical enum. The empty string is never a member — absence is
+// handled by resolveSchemaField, which treats a missing field as the default
+// rather than as a violation.
+func isKnownSchemaFieldValue(fieldName string, normalizedValue string) bool {
+	fieldContract, hasContract := schemaReadContractFields[fieldName]
+	if !hasContract {
+		return false
+	}
+	for _, canonicalValue := range fieldContract.canonicalValues {
+		if normalizedValue == canonicalValue {
+			return true
+		}
+	}
+	return false
+}
+
+// resolveSchemaField is the normalize-and-warn contract as one call: it returns
+// the value a reader should use and whether the input was recognized. On an
+// unrecognized value it returns the field's documented default with
+// recognized=false, which is the caller's cue to emit
+//
+//	⚠ {field}: '{value}' not recognized — expected one of [{enum}]. Treating as '{default}'.
+//
+// An ABSENT field (empty rawValue) resolves to the default with
+// recognized=true. That distinction is load-bearing: every one of these seven
+// fields is optional, so treating absence as a violation would emit a warning
+// for nearly every REQ in a real queue and train readers to ignore the channel
+// the contract added it for.
+func resolveSchemaField(fieldName string, rawValue string) (string, bool) {
+	fieldContract, hasContract := schemaReadContractFields[fieldName]
+	if !hasContract {
+		return strings.TrimSpace(rawValue), false
+	}
+	if strings.TrimSpace(rawValue) == "" {
+		return fieldContract.defaultValue, true
+	}
+	normalized := normalizeSchemaField(fieldName, rawValue)
+	if isKnownSchemaFieldValue(fieldName, normalized) {
+		return normalized, true
+	}
+	return fieldContract.defaultValue, false
+}
+
+// schemaFieldWarningText renders the Schema Read Contract's own warning line for
+// an unrecognized value. One formatter rather than one per caller: the contract
+// specifies the exact wording, and a second hand-typed copy is how a warning
+// stops being greppable.
+func schemaFieldWarningText(fieldName string, rawValue string) string {
+	fieldContract, hasContract := schemaReadContractFields[fieldName]
+	if !hasContract {
+		return fmt.Sprintf("⚠ %s: '%s' not recognized — no canonical vocabulary is defined for this field.",
+			fieldName, strings.TrimSpace(rawValue))
+	}
+	if fieldContract.defaultValue == "" {
+		// `status`, `testing_status` and `route` have no documented default, so
+		// "Treating as ''" would be both ugly and false — nothing is substituted.
+		return fmt.Sprintf("⚠ %s: '%s' not recognized — expected one of [%s]. No default is defined; reporting it unchanged.",
+			fieldName,
+			strings.TrimSpace(rawValue),
+			strings.Join(fieldContract.canonicalValues, ", "))
+	}
+	return fmt.Sprintf("⚠ %s: '%s' not recognized — expected one of [%s]. Treating as '%s'.",
+		fieldName,
+		strings.TrimSpace(rawValue),
+		strings.Join(fieldContract.canonicalValues, ", "),
+		fieldContract.defaultValue)
 }
 
 // resolveCommitHash returns the first non-empty commit hash among the canonical
