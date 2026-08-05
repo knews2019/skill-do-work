@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.7 — Label-Less Checkpoint Entries Are Never Auto-Recovered (2026-08-05)
+
+Crash recovery no longer treats a locally-modified `CHECKPOINT.md` as proof that this checkout wrote a label-less claim entry — under claim-anywhere, every concurrent claim dirties that file with a merge resolution, so the inference could classify another checkout's live claim as an own crash and strip it (REQ-095 F-06/F-07 reproduced exactly that). A label-less entry is now a claim of unknown origin, always report-only.
+
+- `actions/work-reference.md` Crash Recovery: the label-less bullet drops the authorship heuristic; reclaiming a genuinely-own pre-0.170.0 entry stays a human act (takeover ladder or `actions/forensics.md` Check 1)
+- Contract suite pins the new rule both ways: report-only classification must stay stated, and the retired "locally modified ⇒ mine" inference must stay gone
+- ADR-018's Consequences updated: the known-unsound edge it recorded is now resolved
+
 ## 0.174.6 — Assigned-Badge Comment No Longer Over-Claims (2026-08-05)
 
 The board's assigned-badge comment said "nothing here folds, trims, or rewrites the value" three lines above a call that truncates the badge text. Behavior was always fine — the tooltip and drawer carry the full value — the comment just conflated value normalization with display truncation. It now states both halves accurately.

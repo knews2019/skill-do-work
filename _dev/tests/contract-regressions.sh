@@ -485,6 +485,25 @@ assert_block_contains \
   'substep 1 removes it' \
   'actions/work-reference.md Crash Recovery must say claimed_at is read while classifying, before substep 1 discards it — the same ordering trap as the Scope/write_set decision (REQ-071).'
 
+# A label-less in-progress entry is never auto-recovered (REQ-104). The retired bullet made a
+# locally modified do-work/CHECKPOINT.md stand in for authorship. REQ-095's two-clone acceptance run
+# falsified that premise: F-06 shows the checkpoint conflicting on *every* concurrent claim, even two
+# that overlap in nothing, so a merge-resolving checkout holds a dirty checkpoint for reasons unrelated
+# to who wrote which entry — and F-07 reproduced the consequence, a label-less *foreign* entry
+# classified as an own crash and its live claim stripped. That strip is the 2026-07-01 incident,
+# reached through the label-less door. Both pins are needed: the positive one keeps the report-only
+# classification stated, the negative one keeps the "locally modified ⇒ mine" inference from being
+# reintroduced as an optimization for pre-0.170.0 checkpoints.
+assert_block_contains \
+  "$crash_recovery_block" \
+  'claim of unknown origin, always report-only' \
+  'actions/work-reference.md Crash Recovery must classify a label-less In Progress entry as a claim of unknown origin that is always report-only — never recovered, whatever state the local checkpoint is in (REQ-104).'
+
+assert_block_not_contains \
+  "$crash_recovery_block" \
+  'locally modified or otherwise uncommitted' \
+  'actions/work-reference.md Crash Recovery must not treat a locally modified CHECKPOINT.md as evidence this checkout authored a label-less entry: under claim-anywhere every concurrent claim conflicts on that file, so a merge-resolving checkout is dirty for reasons unrelated to authorship and the inference strips a live foreign claim (REQ-104).'
+
 # Recovery stamps the flip instant (REQ-074). The automatic reset had been silently out of compliance
 # with status_changed_at's own trigger condition since the field was introduced, and nothing caught it
 # for that entire span — the manual reset in actions/forensics.md stamped, this one did not. Since the
