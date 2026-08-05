@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.13 — Recovered Trap's Evidence Corrected, Probe Rows Name the Right Status Set (2026-08-05)
+
+An adversarial review of last release's recovered knowledge-base entry re-ran its verification steps and found one trap's evidence wrong on every point. Fixed, and the negative result is now recorded too — it is the more useful half.
+
+- **The recovered stale-binary trap claimed a hazard wider than the real one.** It said nothing in the pipeline rebuilds the board binary before `verify` runs; in fact both shipped call sites — `actions/forensics.md` Check 14 and `actions/work.md` Step 9 — build in the same command, and did so when the trap was written. Its supporting evidence was wrong twice over: `go version -m` reports `vcs.time`, the *commit's* timestamp rather than the binary's mtime, and a byte-for-byte diff against a fresh build always differs once HEAD has moved, because Go stamps the revision and dirty flag into every build. The entry now scopes the hazard to a hand-run `verify` outside those blocks, and records both failed staleness tests so nobody re-derives them.
+- **`actions/forensics.md`'s Check 14 rows now say "non-terminally-resolved"** instead of "non-terminal". The repo uses both senses — `actions/cleanup.md` calls `failed` terminal, while the Terminal-resolved set deliberately excludes it — so the looser word told readers a `failed` REQ was outside rows that in fact fire on it.
+
 ## 0.174.12 — Assignment Probe Stops Double-Reporting Finished Work (2026-08-05)
 
 The double-fire fixed in 0.174.11 was hiding one probe over, so it got the same carve-out. Plus a checklist line that was quietly too narrow, and a note explaining a test suite that only goes red for root.

@@ -21,8 +21,11 @@ That handdown was deleted as a stale session artifact in commit `b1792d0` once t
 traps section outlived the handdown's status table, so it is recovered here. **This is repo-internal
 maintainer knowledge about do-work's own tooling — not consumer-facing skill documentation.**
 
-Every trap below was re-verified against the working tree at v0.174.11 before being written down.
-Verification method is stated per trap, so a future reader can re-run it rather than trust this file.
+Every trap below was re-verified against the working tree before being written down, and the
+verification method is stated per trap so a future reader can re-run it rather than trust this file.
+That is not a formality: an adversarial review of this entry re-ran them and found the stale-binary
+bullet's evidence wrong on every point, which is why that bullet now records what does **not** prove
+staleness. Re-run rather than trust applies to this file too.
 
 ## What didn't work
 
@@ -36,16 +39,25 @@ Verification method is stated per trap, so a future reader can re-run it rather 
 
 - **Trusting `queue-kanban verify` findings from a binary nobody rebuilt.** A stale compiled binary
   reported a ghost-REQ false positive that had already been fixed in 0.169.9 (the checkpoint mention
-  scan matching the `REQ-0` prefix of a quoted shell glob `REQ-0[0-9][0-9]-*.md`). *Verified still
-  live, and reproducing right now:* the binary is gitignored by `tools/queue-kanban/.gitignore`
-  (`/queue-kanban`), so nothing in the pipeline rebuilds it before `verify` runs. In this very tree the
-  checked-out binary is older than the newest Go source (binary 13:01, `verify_test.go` 13:14) and
-  differs byte-for-byte from a fresh `go build`; two consecutive fresh builds were byte-identical, so
-  the build is deterministic and the difference is real staleness, not build noise. Rebuild first:
+  scan matching the `REQ-0` prefix of a quoted shell glob `REQ-0[0-9][0-9]-*.md`). *Scope corrected on
+  recovery — narrower than the original claimed:* the two shipped call sites that run `verify` already
+  rebuild in the same command, and both did so when this trap was first written —
+  `actions/forensics.md` Check 14 and `actions/work.md` Step 9 each prescribe
+  `(cd <skill-root>/tools/queue-kanban && go build -o queue-kanban .) && … verify …`. The residual
+  exposure is a **hand-run `verify` outside those prescribed blocks**, which is how the original
+  incident happened. Rebuild first:
 
   ```
   cd tools/queue-kanban && go build -o queue-kanban .
   ```
+
+  Two ways of *testing* for staleness that do not work, recorded because this recovery pass tried both
+  and drew a false conclusion from each. Comparing the binary against a fresh `go build` byte-for-byte
+  always differs once HEAD has moved, and `go version -m` reports `vcs.time` — the **commit's**
+  timestamp, not the binary's mtime. Go stamps `vcs.revision`, `vcs.time` and `vcs.modified` into every
+  build, so that delta is the stamp rather than the code: `go build -buildvcs=false` twice is
+  byte-identical, and a one-commit-old binary produces identical `verify` output. Compare mtimes against
+  the `.go` sources if you must, but rebuilding is cheaper than proving you need to.
 
 ## Worth knowing
 
