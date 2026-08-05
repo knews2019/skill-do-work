@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.8 — Label-Less Drop Carried Through the Satellite Rules (2026-08-05)
+
+Follow-through on 0.174.7: the rules that orbit crash recovery now agree with it. The In-Progress Record paragraph states the own-label condition instead of restating the case list (one enumeration, at its canonical home), and a label-less checkpoint entry finally has a documented exit — it leaves with the REQ when a human reclaims it, in both the removal rule and forensics Check 1's manual reset.
+
+- `actions/work-reference.md` In-Progress Record: condition stated once, case list deferred to Crash Recovery; removal rule covers the label-less reclaim
+- `actions/forensics.md` Check 1: the manual reset sends a label-less entry with the reclaimed REQ
+- Decision records: ADR-018 `updated:` bumped, decision log notes the edge closed
+
 ## 0.174.7 — Label-Less Checkpoint Entries Are Never Auto-Recovered (2026-08-05)
 
 Crash recovery no longer treats a locally-modified `CHECKPOINT.md` as proof that this checkout wrote a label-less claim entry — under claim-anywhere, every concurrent claim dirties that file with a merge resolution, so the inference could classify another checkout's live claim as an own crash and strip it (REQ-095 F-06/F-07 reproduced exactly that). A label-less entry is now a claim of unknown origin, always report-only.
