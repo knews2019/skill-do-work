@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.5 — Auto-Wave Honors Targeting-Token Provenance (2026-08-05)
+
+Reading only work-reference's Auto-wave list, an explicitly-named but dependency-blocked REQ looked excluded from the wave — while work.md said it runs. The two files now give the same answer.
+
+- Auto-wave condition 2 (dependency-ready) carries the serial scan's provenance carve-out: a named `REQ-NNN` enters the wave regardless of `depends_on`; a UR-expanded member stays gated, scoped to the UR's set.
+- A new paragraph states that targeting tokens scope the wave's candidate pool, per-token provenance survives, and there is no separate readiness predicate for waves — the rule work.md already carried.
+- Doc-only alignment; no behavior change to the default (untargeted) wave computation.
+
 ## 0.174.4 — Capture Now Seeds `assigned_to` Earmarks (2026-08-05)
 
 The schema said "seeded by capture when the user earmarks work" — but the capture action never mentioned the field, so nothing could ever seed it. A downstream sync review caught the gap; capture now carries the instruction.
