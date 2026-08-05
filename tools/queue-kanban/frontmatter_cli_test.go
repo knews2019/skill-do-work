@@ -199,3 +199,64 @@ func TestRunFrontmatterCommandRejectsUsageErrors(t *testing.T) {
 		}
 	}
 }
+
+// TestRunFrontmatterCommandWarnsOnUnrecognizedStatus closes the hole REQ-112
+// shipped: status and testing_status are not rows in the contract table (their
+// alias maps live in their own normalizers), and the first implementation forced
+// recognized=true for them — so a typo printed to stdout, exited 0, and emitted
+// no warning at all. That is the exact no-feedback path this command exists to
+// replace. Found by Codex's review of PR #130.
+func TestRunFrontmatterCommandWarnsOnUnrecognizedStatus(t *testing.T) {
+	testCases := []struct {
+		fieldName   string
+		rawValue    string
+		wantStdout  string
+		wantWarning bool
+	}{
+		{"status", "completed", "completed\n", false},
+		{"status", "done", "completed\n", false},         // alias still resolves silently
+		{"status", "completedd", "completedd\n", true},   // typo must warn
+		{"status", "in-progress", "in-progress\n", true}, // hand-edited value must warn
+		{"status", "blocked-dependency-cycle", "blocked-dependency-cycle\n", false},
+		{"testing_status", "in_testing", "in-testing\n", false},
+		{"testing_status", "half-tested", "half-tested\n", true},
+	}
+	for _, testCase := range testCases {
+		fixturePath := writeFrontmatterFixture(t, "id: REQ-998\n"+testCase.fieldName+": "+testCase.rawValue)
+		var standardOut, standardErr strings.Builder
+		exitCode := runFrontmatterCommand(
+			[]string{"get", fixturePath, testCase.fieldName, "--normalize"}, &standardOut, &standardErr)
+
+		if exitCode != 0 {
+			t.Fatalf("%s=%q: exit = %d, want 0", testCase.fieldName, testCase.rawValue, exitCode)
+		}
+		if standardOut.String() != testCase.wantStdout {
+			t.Fatalf("%s=%q: stdout = %q, want %q — an unrecognized value prints what was found, never a fabricated default",
+				testCase.fieldName, testCase.rawValue, standardOut.String(), testCase.wantStdout)
+		}
+		gotWarning := standardErr.String() != ""
+		if gotWarning != testCase.wantWarning {
+			t.Fatalf("%s=%q: warning present = %v, want %v (stderr %q)",
+				testCase.fieldName, testCase.rawValue, gotWarning, testCase.wantWarning, standardErr.String())
+		}
+		if testCase.wantWarning && !strings.Contains(standardErr.String(), testCase.rawValue) {
+			t.Fatalf("%s=%q: warning %q must name the offending value",
+				testCase.fieldName, testCase.rawValue, standardErr.String())
+		}
+	}
+}
+
+// An unrecognized status must also fail the membership test rather than slipping
+// through as "not completed" without a word.
+func TestRunFrontmatterCommandInSetWarnsOnUnrecognizedStatus(t *testing.T) {
+	fixturePath := writeFrontmatterFixture(t, "id: REQ-998\nstatus: completedd")
+	var standardOut, standardErr strings.Builder
+	exitCode := runFrontmatterCommand(
+		[]string{"get", fixturePath, "status", "--in-set", "terminal-success"}, &standardOut, &standardErr)
+	if exitCode != 1 {
+		t.Fatalf("exit = %d, want 1 — a typo is not a member", exitCode)
+	}
+	if standardErr.String() == "" {
+		t.Fatal("stderr empty — an unrecognized status must warn even on the membership path")
+	}
+}

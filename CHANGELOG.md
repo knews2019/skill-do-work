@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.175.1 — A Typo'd Status No Longer Passes Silently (2026-08-05)
+
+`frontmatter get … status --normalize` printed a misspelled status straight through with no complaint, because the two fields whose aliases live in their own normalizers were being force-marked as recognized. That was the exact no-feedback path the command was added to replace.
+
+- `status` and `testing_status` now warn like the other seven contract fields; their alias maps stay in one place and are unchanged
+- A field the contract gives no default now says so, instead of claiming `Treating as ''`
+- Aliases still resolve silently — `status: done` prints `completed` with nothing on stderr
+
 ## 0.175.0 — Read a REQ Field From the Command Line (2026-08-05)
 
 The shipped frontmatter parser had no way to call it — none of the tool's subcommands took a file and a field — so every action that needed a REQ's `status` or `domain` hand-rolled its own `awk`. There's now a command for it, which means one tested implementation instead of ~95 copies.

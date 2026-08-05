@@ -177,17 +177,22 @@ func runFrontmatterCommand(args []string, standardOut io.Writer, standardErr io.
 		// --in-set normalizes too: a membership test on a raw `done` has to
 		// resolve the alias before asking, or the alias map the contract
 		// promises would apply to `get` and not to the set check.
-		normalizedValue, recognized := resolveSchemaField(parsed.FieldName, rawValue)
-		if parsed.FieldName == "status" || parsed.FieldName == "testing_status" {
-			// These two own their normalizers and are not rows in the contract
-			// table, so resolveSchemaField has no default for them.
-			normalizedValue = normalizeSchemaField(parsed.FieldName, rawValue)
-			recognized = true
-		}
-		if !recognized {
+		normalizedValue := normalizeSchemaField(parsed.FieldName, rawValue)
+		if !isKnownSchemaFieldValue(parsed.FieldName, normalizedValue) {
+			// Every field with a contract row warns here, `status` and
+			// `testing_status` included. An earlier version force-suppressed the
+			// warning for those two because they are not alias-map rows, which
+			// left a typo'd status printing to stdout at exit 0 with no feedback
+			// — the exact path this command exists to replace.
 			fmt.Fprintf(standardErr, "%s\n", schemaFieldWarningText(parsed.FieldName, rawValue))
 		}
+		// Prefer the contract's documented default; when a field has none
+		// (`status`, `testing_status`, `route`), print what was actually found
+		// rather than inventing a substitute the contract declined to define.
 		resolvedValue = normalizedValue
+		if defaultedValue, _ := resolveSchemaField(parsed.FieldName, rawValue); defaultedValue != "" {
+			resolvedValue = defaultedValue
+		}
 	}
 
 	if parsed.InSetName != "" {

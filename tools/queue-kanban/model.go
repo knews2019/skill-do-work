@@ -870,6 +870,34 @@ var schemaReadContractFields = map[string]schemaFieldContract{
 		},
 		defaultValue: "pending",
 	},
+	// status and testing_status carry a canonical VOCABULARY here but no alias
+	// map: their aliases live in normalizeStatus / normalizeTestingStatus, which
+	// normalizeSchemaField dispatches to, and duplicating them here would create
+	// the second definition this table exists to prevent. The rows exist so
+	// isKnownSchemaFieldValue and schemaFieldWarningText can answer for these two
+	// fields — without them, a typo'd status had no canonical set to fail against
+	// and produced no warning at all (the hole Codex's review of PR #130 found).
+	//
+	// Neither has a default: the contract declines to define one for `status`
+	// ("skip the REQ with the warning text — never claim or archive an
+	// unrecognized status silently"), and an off-vocabulary testing_status renders
+	// as not-tested rather than as some substitute value. An empty defaultValue
+	// means "no documented default", and callers print what was found instead of
+	// fabricating one.
+	"status": {
+		canonicalValues: []string{
+			"pending", "claimed", "completed", "completed-with-issues", "failed",
+			"cancelled", "pending-answers", "blocked", "blocked-archive-collision",
+			"blocked-dependency-cycle",
+		},
+		aliases:      map[string]string{},
+		defaultValue: "",
+	},
+	"testing_status": {
+		canonicalValues: []string{testingStatusInTesting, testingStatusTested, testingStatusReturned},
+		aliases:         map[string]string{},
+		defaultValue:    "",
+	},
 }
 
 // normalizeSchemaField applies fieldName's alias map to rawValue and returns the
@@ -957,6 +985,14 @@ func schemaFieldWarningText(fieldName string, rawValue string) string {
 	if !hasContract {
 		return fmt.Sprintf("⚠ %s: '%s' not recognized — no canonical vocabulary is defined for this field.",
 			fieldName, strings.TrimSpace(rawValue))
+	}
+	if fieldContract.defaultValue == "" {
+		// `status`, `testing_status` and `route` have no documented default, so
+		// "Treating as ''" would be both ugly and false — nothing is substituted.
+		return fmt.Sprintf("⚠ %s: '%s' not recognized — expected one of [%s]. No default is defined; reporting it unchanged.",
+			fieldName,
+			strings.TrimSpace(rawValue),
+			strings.Join(fieldContract.canonicalValues, ", "))
 	}
 	return fmt.Sprintf("⚠ %s: '%s' not recognized — expected one of [%s]. Treating as '%s'.",
 		fieldName,
