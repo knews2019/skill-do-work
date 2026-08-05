@@ -26,6 +26,16 @@ The complete inventory of shipped executables, read from source:
 | `queue-kanban next-version` | rewrites one `**Current version**: X.Y.Z` line | `main.go` L23, L180–196 |
 | `queue-kanban verify` | 13 probe categories | `verify.go` L16–31 |
 | `queue-kanban now` | the UTC instant, one shape | `main.go` L28, L47–49 |
+| `tools/do-work-update.sh` | the project-local guarded skill updater (`just run-do-work-update`) | header L2; `upstream_url` L5 |
+| `hooks/session-start.sh` | injects do-work queue status at session start | header L2 |
+| `hooks/pipeline-guard.sh` | Stop hook — blocks stopping while a pipeline is active; counts pending steps | header L2 |
+| `hooks/memory-session-start.sh` | injects the memory engine's frozen snapshot; appends the inject ledger line | header L2 |
+| `hooks/memory-stop-capture.sh` | session capture: `sed -E` credential redaction before truncation (L84–95), `grep -q` dedupe gate (L195), best-effort ledger append (L232) | L80–95, L195, L232 |
+
+`hooks/` and `tools/` are both shipped paths (`actions/version.md` L73 lists them in the update's dirty-check set), so
+the four hook scripts and the updater are coverage, not scaffolding — they are counted below wherever they implement a
+prescribed mechanic. **Both additions came from Codex's review of this audit on PR #130**, which correctly caught that
+the inventory omitted them while later rows cited them.
 
 `verify`'s 13 probes, verbatim from `verify.go` L17–30: `version-changelog-mismatch`, `changelog-version-not-ahead`,
 `reused-changelog-title`, `duplicate-req-id`, `merged-worktree-leftover`, `unmerged-worktree-leftover`,
@@ -170,7 +180,7 @@ source but is not reachable as a command, or only the violation-detection half e
 | `present-work.md` L42, L62, L154–156, L397 | Highest terminal-success UR/REQ scan; `git show <commit>`; the same `'<sha>^2'` merge-commit test repeated 4× in one file | **NONE** | `queue-kanban latest-completed`; `tools/checks/req-diff.sh` |
 | `present-work.md` Step 1, L429–433 | Scan the archive, read `title`/`route`/`commit`/`completed_at` frontmatter + parse the `## Review` block's `Overall: X%` | **NONE** | `queue-kanban recap` |
 | `pipeline.md` Step 3, L84 | `git ls-files -- do-work/pipeline.json` (a `check-ignore` pass is powerless over an indexed file) + local-ignore append | **NONE** | `tools/checks/local-ignore.sh` |
-| `pipeline.md` Step 4, L91, L101–127 | Find the first step whose `status` is `pending`/`in-progress`/`failed`; write `status`/`completed_at`; parse action output for REQ/UR ids | **NONE** | `tools/checks/pipeline-state.sh` |
+| `pipeline.md` Step 4, L91, L101–127 | Find the first step whose `status` is `pending`/`in-progress`/`failed`; write `status`/`completed_at`; parse action output for REQ/UR ids | **PARTIAL** — `hooks/pipeline-guard.sh` L46–49 already parses `pipeline.json` (jq preferred, `grep -c` fallback) and counts `pending`/`in-progress` steps; it does not select the first one or write anything back. *(Found by applying the grep-the-primitive rule after Codex's two findings — same understated-coverage class.)* | `tools/checks/pipeline-state.sh` |
 | `pipeline.md` Step 5, L137–142 | Read each REQ's `id`/`title`/`commit`/`domain` frontmatter + `## Implementation Summary` + `## Testing`; group rows by domain; `git rev-parse --verify -q '{sha}^2'` again | **NONE** | `queue-kanban recap`; `tools/checks/req-diff.sh` |
 | `pipeline.md` Step 5, L140 | Scan for `status: pending-answers` REQs, deferred items in `## Lessons Learned`, TODO/FIXME introduced by this run's commits | **NONE** | `tools/checks/carry-forward.sh` |
 | `pipeline.md` Step 5/5a, L156, L168 | Scan `queue/REQ-*.md` for `status: pending`, excluding ids in the pipeline's `artifacts` array; loop | **PARTIAL** — same gap as work Step 1 | `queue-kanban ready-set` |
@@ -193,7 +203,7 @@ source but is not reachable as a command, or only the violation-detection half e
 | `kb-lessons-handoff.md` L20, L58–63, L141–150 | Gate on `kb_status` absent-or-`pending`; read `title`/`completed_at`/`id`/`domain`/`prime_files` with a today's-date fallback; write back `kb_status` + `kb_entry` touching no other field | **NONE** | `tools/checks/set-frontmatter-field.sh` |
 | `memory.md` L49, L60, L77 | `wc -c` against a 2,500-char cap; update the `updated:` frontmatter date; report cap usage, log-file count, newest date, `tail -5` of the ledger | **NONE** | `tools/checks/memory-status.sh` |
 | `memory-reference.md` L16, L70, L104–110 | `PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null \|\| pwd)"`; consolidation loop re-checking `wc -c` ≤ 2,500 | **NONE** | `tools/checks/memory-status.sh` |
-| `memory-reference.md` L132–136, L149, L158 | `printf … >> usage-ledger.jsonl 2>/dev/null \|\| true`; `grep -q "session capture $hash8"` idempotence gate; `sed -E` credential redaction over 7 token shapes **before** truncation | **NONE** | `hooks/` (partly shipped as hook scripts) |
+| `memory-reference.md` L132–136, L149, L158 | `printf … >> usage-ledger.jsonl 2>/dev/null \|\| true`; `grep -q "session capture $hash8"` idempotence gate; `sed -E` credential redaction over 7 token shapes **before** truncation | **FULL** — all three ship in `hooks/memory-stop-capture.sh`: redaction at L84–95 with the before-truncation ordering and its rationale at L80–83, the dedupe gate at L195, the ledger append at L232; `hooks/memory-session-start.sh` appends the inject line. Extraction work here should **extend the hooks, not duplicate them** | `hooks/memory-stop-capture.sh` (exists) |
 | `memory-reference.md` L188 | `jq . "$settings_file" >/dev/null` parse check; assert both hook filenames present; compare entry counts against the backup | **NONE** | `tools/checks/merge-settings.sh` |
 | `memory-value.md` L29–33 | `find <kb-root>/wiki -name '*.md' \| wc -l`; `git log --oneline -- <kb-root>/ \| wc -l`; `git log -1 --format=%ci`; `git log --format=%an \| sort -u`; grep date headings in `log.md`; `grep -rl 'wiki/'` inbound-reference scan | **NONE** | `tools/checks/engine-probe.sh` |
 | `memory-value.md` L37–40 | `memory/working-memory.md` char count vs cap; `ls memory/logs/*.md \| wc -l`; heading-ratio count; grep `.claude/settings.json` for both hook names | **NONE** | `tools/checks/engine-probe.sh` |
@@ -355,3 +365,14 @@ skip-list distinction, and three documented traps — but it runs only when a us
   `review-work.md`'s Restatement Sweep (L124–133), `forensics.md` Check 10's theme grouping (L136),
   `capture.md`'s duplicate-intent match (L111). Those are marked NONE because they contain a mechanical enumeration,
   not because the whole step should be a script.
+- **It does not claim uniform read depth, and this is the census's completeness floor.** Every row's citation was read
+  — no row is inferred, so the VERIFIED claim holds as worded — but only **14 files were read end-to-end**:
+  `actions/work.md`, `actions/work-reference.md`, `actions/forensics.md`, `actions/cleanup.md`, `actions/version.md`,
+  `actions/commit.md`, `actions/inspect.md`, `actions/board.md`, `actions/tidy-repo.md`, `actions/stray-check.md`,
+  `actions/ai-report.md`, `actions/review-work.md`, `actions/memory-value.md`, and `actions/validate-feedback.md`.
+  The remaining 31 action files and all 18 `prompts/` files were scanned with a keyword pattern — backticked shell
+  commands, `glob`, `frontmatter`, and `scan`/`parse`/`compare`/`filter`/`count` — and only the matching lines were
+  read. **A mechanic phrased without any of those tokens would have been missed there.** So "every step" is a strong
+  claim for the 14 and a pattern-bounded one for the rest; treat a NONE verdict on a grep-derived file as "nothing the
+  pattern found," not as "nothing exists." Closing that gap means reading the other 49 files in full, which this pass
+  did not do.

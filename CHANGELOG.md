@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.15 — Census Names Its Read Depth and Counts the Shipped Hooks (2026-08-05)
+
+The census now says which files it read end-to-end, so a `NONE` verdict on the rest reads as "nothing the keyword scan found" rather than "nothing exists". A PR review also caught it treating `tools/checks/` and `queue-kanban` as the whole toolbox — `hooks/` ships too, and already implements more than the census credited.
+
+- §5 names all 14 fully-read action files and states the scan method for the other 49 files
+- §1's inventory now includes `tools/do-work-update.sh` and the four `hooks/*.sh` scripts, both shipped paths
+- Two coverage verdicts corrected upward: the memory capture/redaction/ledger mechanics are FULL (all three ship in `hooks/memory-stop-capture.sh`), and pipeline state-parsing is PARTIAL (`hooks/pipeline-guard.sh`)
+
 ## 0.174.14 — Census of Shell Logic Still Living in Action Prose (2026-08-05)
 
 Every mechanical step in `actions/` and `prompts/` is now inventoried against the scripts that already exist, so the next extraction decision starts from evidence instead of a hunch. The headline finding: `frontmatter.go` has no CLI surface at all, so all ~95 prose frontmatter reads are hand reimplementations by construction.
