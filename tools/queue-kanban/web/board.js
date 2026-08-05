@@ -531,11 +531,13 @@
     }
     if (request.assignedTo) {
       // The advisory cooperative claim marker: this REQ is earmarked for another
-      // session. Rendered verbatim — session names have no canonical vocabulary,
-      // so nothing here folds, trims, or rewrites the value. Display only: the
-      // board never buckets, orders, or hides a card on it. The one reader that
-      // acts on it is the work pipeline's default scan, which skips and reports
-      // an assigned REQ and is overridden by explicitly targeting it.
+      // session. The value is never normalized — session names have no canonical
+      // vocabulary, so nothing folds case, maps aliases, or rewrites it. Only the
+      // badge's visible text is truncated for layout; the title tooltip below and
+      // the drawer row carry the full value. Display only: the board never
+      // buckets, orders, or hides a card on it. The one reader that acts on it is
+      // the work pipeline's default scan, which skips and reports an assigned REQ
+      // and is overridden by explicitly targeting it.
       var assignedBadge = makeBadge(
         "badge-assigned",
         "assigned",

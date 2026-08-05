@@ -8,6 +8,12 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.6 — Assigned-Badge Comment No Longer Over-Claims (2026-08-05)
+
+The board's assigned-badge comment said "nothing here folds, trims, or rewrites the value" three lines above a call that truncates the badge text. Behavior was always fine — the tooltip and drawer carry the full value — the comment just conflated value normalization with display truncation. It now states both halves accurately.
+
+- `tools/queue-kanban/web/board.js` comment-only reword; no executable change, Go tests pass.
+
 ## 0.174.5 — Auto-Wave Honors Targeting-Token Provenance (2026-08-05)
 
 Reading only work-reference's Auto-wave list, an explicitly-named but dependency-blocked REQ looked excluded from the wave — while work.md said it runs. The two files now give the same answer.
