@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.14 — Census of Shell Logic Still Living in Action Prose (2026-08-05)
+
+Every mechanical step in `actions/` and `prompts/` is now inventoried against the scripts that already exist, so the next extraction decision starts from evidence instead of a hunch. The headline finding: `frontmatter.go` has no CLI surface at all, so all ~95 prose frontmatter reads are hand reimplementations by construction.
+
+- New `decisions/audits/2026-08-05-shell-logic-in-prose-census.md` — per-step table with FULL/PARTIAL/NONE coverage, every claim cited to exact lines
+- Flags the seven Schema Read Contract enum fields (`domain`, `route`, `caveman`, `maintenance`, `tdd`, `error_type`, `kb_status`) that have no normalizer anywhere in the repo
+- Ranks the top 5 extraction candidates by execution frequency × observed bug risk, and notes that 17 of 18 `prompts/` files carry no shell mechanics at all
+
 ## 0.174.13 — Recovered Trap's Evidence Corrected, Probe Rows Name the Right Status Set (2026-08-05)
 
 An adversarial review of last release's recovered knowledge-base entry re-ran its verification steps and found one trap's evidence wrong on every point. Fixed, and the negative result is now recorded too — it is the more useful half.
