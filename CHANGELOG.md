@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.175.2 — The Commit Action Reads a REQ's Status Through the Tool (2026-08-05)
+
+The new `frontmatter` command had no callers, so the hand-rolled reads it exists to replace were all still hand-rolled. `do-work commit` is the first one switched over, and it's the site where getting it wrong actually bit: testing for the literal `completed` drops every remediated-with-issues REQ, so its files never get associated.
+
+- Step 3's terminal-success check now prefers `frontmatter get … --in-set terminal-success`, which normalizes aliases before testing
+- The `awk` floor is spelled out as a working command, and building the tool to get the value is explicitly prohibited
+- One site only — the other read sites stay candidates under REQ-114
+
 ## 0.175.1 — A Typo'd Status No Longer Passes Silently (2026-08-05)
 
 `frontmatter get … status --normalize` printed a misspelled status straight through with no complaint, because the two fields whose aliases live in their own normalizers were being force-marked as recognized. That was the exact no-feedback path the command was added to replace.
