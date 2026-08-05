@@ -16,13 +16,25 @@ The shipped frontmatter parser had no way to call it — none of the tool's subc
 - The value goes to stdout and every diagnostic to stderr, so `value=$(… )` captures cleanly even when a contract warning fires
 - Read-only, and an accelerator only: the shell fallback stays documented and nothing builds the tool to read a field
 
-## 0.174.14 — The Board Now Honors the Schema Read Contract for All Nine Fields (2026-08-05)
+## 0.174.15 — The Board Now Honors the Schema Read Contract for All Nine Fields (2026-08-05)
 
 `domain: back-end` used to reach the board exactly as written, because only two of the contract's nine enum fields had a normalizer anywhere in the repo. All seven of the others now resolve their documented aliases through one table, so a muscle-memory spelling stops silently meaning something else.
 
 - `domain`, `route`, `caveman`, `maintenance`, `tdd`, `error_type`, and `kb_status` now normalize per `actions/work-reference.md`'s Schema Read Contract
 - An unrecognized value falls back to the documented default and reports itself unrecognized, rather than being silently remapped
 - An absent field stays absent for the board — a domain-less card gains no badge and no filter entry
+
+## 0.174.14 — Version Bumps Now Sync the Lockfile That Mirrors Them (2026-08-05)
+
+Bumping a project's version file left its lockfile's copy of that same version behind, so the next build or install rewrote it and the tree read dirty for a change nobody made — one consumer repo drifted 8 patch versions and collected three ad-hoc "sync the lockfile" commits before anyone traced it. Step 9 now bumps the mirror in the same commit, by hand, so it works in a repo with no toolchain installed at all.
+
+- **New "Lockfile mirror" note** in the Changelog Entry Procedure's source 1. The trigger is stated as a condition — the repo commits a lockfile recording this package's own version — with `package-lock.json`, `Cargo.lock` and `uv.lock` named as known instances rather than the boundary. `pnpm-lock.yaml`, `yarn.lock`, `poetry.lock` and `go.sum` carry no root version and need nothing, and the split follows the lock tool, not the manifest: `pyproject.toml` mirrors under uv and not under poetry.
+- **The mirror is hand-edited, not delegated to the package manager.** `npm install --package-lock-only` runs the target repo's `preinstall`/`install`/`postinstall`/`prepare` hooks, restructures an old `lockfileVersion` 1 file wholesale, re-resolves dependencies the lockfile is behind on, and fabricates a `package-lock.json` in a pnpm or yarn repo — all at exit 0. `cargo generate-lockfile` drags unrelated dependencies and checksums forward. The hand edit writes the same bytes with none of that.
+- Notes that the drift is cosmetic under npm (`npm ci` tolerates it) but hard-fails `cargo check --locked` and `uv lock --check` — so it isn't always just tidiness.
+- **Workspace members mirror somewhere else.** Bumping a member's `package.json` leaves `packages["<member-path>"].version` in the root lockfile stale while both root-package sites correctly stay put — so reading only those two says "nothing to sync" and the drift survives. The table calls this out.
+- **The Step 9 staging validation kept working.** Its exemption list only fires when nothing outside it is staged, so it gained the lockfile too — otherwise a fourth staged file class would have silently switched the "this commit contains no implementation" check off entirely.
+- Every staging list names the lockfile, worktree dispatch mode included — its list says "stage **only**", so omitting the lockfile there would have contradicted the generic list directly above it.
+- The `git add` block, the lifecycle-file list, and three restatements in `actions/work.md` now name the lockfile, including the Go accelerator note, which says plainly that it touches no manifest or lockfile.
 
 ## 0.174.13 — Recovered Trap's Evidence Corrected, Probe Rows Name the Right Status Set (2026-08-05)
 

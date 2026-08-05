@@ -13,7 +13,7 @@ session_depth: moderate
 ## Completed This Session
 
 - REQ-110: Name the census's fully-read files so its completeness floor is explicit (Route A) — commit `66a7fcc` (review: Pass, 95%; closed UR-020)
-- REQ-111: Implement the seven missing Schema Read Contract field normalizers (Route A) — v0.174.14, commit `e77383a` (review: Pass, 98%)
+- REQ-111: Implement the seven missing Schema Read Contract field normalizers (Route A) — v0.174.15, commit `e77383a` (review: Pass, 98%). Renumbered from 0.174.14 when main's own 0.174.14 (lockfile mirror) landed first; the merge kept both entries.
 - REQ-112: Give frontmatter.go a CLI surface so prose can stop reimplementing it (Route A) — v0.175.0, commit `a6560bc` (review: Pass, 97%)
 
 ## Still Queued
