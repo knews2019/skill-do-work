@@ -8,6 +8,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.11 — Claim-Sync Timing, Verify Probe Overlap, and Addendum Earmarks (2026-08-05)
+
+An external review of the 0.174.x series turned up six things the docs and the board's verifier were quietly getting wrong — mostly promises a bit broader than the code behind them, plus two probes that both fired on the same state. All small, all now honest.
+
+- **Claims travel when bookkeeping commits, not when the claim happens.** The Execution Model said claims reach other checkouts "by ordinary git sync" without saying that nothing commits a claim until a checkpoint, a hand-back, or the release tail — so the duplicate window was real but undocumented. Crash recovery's detection claim is qualified the same way.
+- **`queue-kanban verify` no longer double-reports a stranded finished REQ.** A terminally-resolved member of an archived UR tripped both `ur-archived-with-live-member` and the stranded-finished probe, and the former's remedy told you to run or abandon work that was already done. The stranded-finished probe owns that state now.
+- **Capture carries the earmark through both addendum paths.** Step 1's `assigned_to` assessment reached a fresh REQ but not an addendum: appending to a queued REQ touched only the body, and the Addendum REQ Template had no `assigned_to` line to fill in.
+- **The exit summary has a headline for "ready, but assigned elsewhere."** When every dependency-ready REQ was earmarked for another session, neither documented headline fit. The reference and `actions/work.md` now say *claimable* where they meant it, and that sixth section finally has a lead that matches it.
+- **The `write_set` fan-out bullet no longer contradicts itself** — its bold lead called the field "not an input to either" pick while the next sentence called it advisory input to the manual one.
+- **Fixed the archive paths the UR-018 consolidation left behind** in `actions/work-reference.md` and ADR-018: REQ-095, REQ-100, `input.md`, and the approved plan all live under `do-work/archive/UR-018/` now.
+
 ## 0.174.10 — Merge-Time Queue Guard, Clean-Index Hand-Back, Synthesized-UR Copy Fix (2026-08-05)
 
 Three accepted findings from an external review of the worktree-dispatch pipeline and the board. The common thread on the first two: the mechanical checks all excluded `do-work/`, so a builder's committed queue edits could integrate with only human review watching.

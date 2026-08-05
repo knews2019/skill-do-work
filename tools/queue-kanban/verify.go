@@ -390,6 +390,11 @@ func appendAssignedElsewhereFindings(report *VerifyReport, board *Board) {
 // a frontmatter scan. A probe reading the array would go silent on the follow-up
 // case, which is the common one.
 //
+// A terminally-resolved member stranded in queue/ or working/ is deliberately NOT
+// reported here: appendStrandedFinishedFindings already owns that state, it is
+// mechanically fixable, and this probe's remedy would tell the user to run or
+// abandon a REQ that is already resolved.
+//
 // Read-only and not fixable: un-archiving a UR and force-resolving a live REQ are
 // both human decisions with different consequences.
 func appendArchivedUserRequestLiveMemberFindings(report *VerifyReport, board *Board) {
@@ -401,6 +406,10 @@ func appendArchivedUserRequestLiveMemberFindings(report *VerifyReport, board *Bo
 		for _, memberRequestId := range userRequestTicket.RequestIds {
 			memberTicket, memberFound := board.RequestsById[memberRequestId]
 			if !memberFound {
+				continue
+			}
+			// Stranded, not live — see the carve-out in this function's doc comment.
+			if isTerminalResolvedStatus(memberTicket.Status) {
 				continue
 			}
 			if memberTicket.TreeSection == "queue" || memberTicket.TreeSection == "working" {

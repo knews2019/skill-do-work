@@ -10,7 +10,7 @@ sources:
   - tools/queue-kanban/ (model.go assigned_to parse, verify.go two probes, web/ badge)
   - docs/work-guide.md (Several checkouts against one queue)
   - _dev/tests/contract-regressions.sh (invariant retarget + retirement ratchet)
-  - do-work/user-requests/UR-018/ (the batch, its input.md and approved plan)
+  - do-work/archive/UR-018/ (the batch, its input.md and approved plan)
 related:
   - page: adr-005-pipeline-is-stateful-and-resumable
     rel: extends
@@ -60,7 +60,7 @@ The governing philosophy, chosen by the user at every fork: **no prevention mach
 
 6. **`do-work/CHECKPOINT.md` stays tracked and committed.** The user's reasoning: *"checkpoints are transient, it's fine to commit them before changing, this way different versions of it already is available in the git history."* Committing it is what makes the writer label necessary — and, it turned out, what makes a double claim detectable at all.
 
-Both halves of the model were proven by acceptance run rather than argued. `do-work/archive/REQ-095-two-clone-acceptance-run.md` reproduced the pre-label poisoning as a silent fast-forward that erased a live claim, showed the shipped rule leaving the same claim byte-identical, and captured the real cross-checkout conflict shapes. `do-work/archive/REQ-100-live-wave-acceptance-run.md` measured two builders running concurrently for 4.109 seconds — the first recorded wall-clock overlap in this skill.
+Both halves of the model were proven by acceptance run rather than argued. `do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md` reproduced the pre-label poisoning as a silent fast-forward that erased a live claim, showed the shipped rule leaving the same claim byte-identical, and captured the real cross-checkout conflict shapes. `do-work/archive/UR-018/REQ-100-live-wave-acceptance-run.md` measured two builders running concurrently for 4.109 seconds — the first recorded wall-clock overlap in this skill.
 
 ## Alternatives
 
@@ -88,9 +88,9 @@ Two ratchets were tightened rather than loosened while doing this. The retired w
 - [tools/queue-kanban/model.go](../../tools/queue-kanban/model.go) — the display-only `assigned_to` parse, in lock-step with the Schema Read Contract
 - [tools/queue-kanban/verify.go](../../tools/queue-kanban/verify.go) — the two new probes
 - [do-work/archive/UR-012/REQ-069-exclusive-session-model-removes-concurrency-machinery.md](../../do-work/archive/UR-012/REQ-069-exclusive-session-model-removes-concurrency-machinery.md) — the decision this partially reverses, and the only prior record of it
-- [do-work/user-requests/UR-018/input.md](../../do-work/user-requests/UR-018/input.md) — the verbatim user decisions
-- [do-work/user-requests/UR-018/assets/approved-plan.md](../../do-work/user-requests/UR-018/assets/approved-plan.md) — the approved plan, including the do-not-build list
-- [do-work/archive/REQ-095-two-clone-acceptance-run.md](../../do-work/archive/REQ-095-two-clone-acceptance-run.md) — the poisoning repro and the cross-checkout conflict evidence
-- [do-work/archive/REQ-100-live-wave-acceptance-run.md](../../do-work/archive/REQ-100-live-wave-acceptance-run.md) — the measured wall-clock concurrency run
+- [do-work/archive/UR-018/input.md](../../do-work/archive/UR-018/input.md) — the verbatim user decisions
+- [do-work/archive/UR-018/assets/approved-plan.md](../../do-work/archive/UR-018/assets/approved-plan.md) — the approved plan, including the do-not-build list
+- [do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md](../../do-work/archive/UR-018/REQ-095-two-clone-acceptance-run.md) — the poisoning repro and the cross-checkout conflict evidence
+- [do-work/archive/UR-018/REQ-100-live-wave-acceptance-run.md](../../do-work/archive/UR-018/REQ-100-live-wave-acceptance-run.md) — the measured wall-clock concurrency run
 - [[adr-005-pipeline-is-stateful-and-resumable]] — the resumability model whose checkpoint this builds on
 - [[adr-016-vendor-queue-kanban-into-the-skill]] — why the board's parser and the schema it tracks live in one repo, which is what let `assigned_to` and its parse land together

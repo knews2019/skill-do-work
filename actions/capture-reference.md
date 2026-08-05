@@ -166,6 +166,7 @@ status: pending
 created_at: 2025-01-27T09:00:00Z  # current UTC instant (Timestamp rule, actions/work-reference.md)
 user_request: UR-006        ← new UR created for this addendum
 addendum_to: REQ-005        ← links back to the original request
+# assigned_to: "cloud-alpha"   # OPTIONAL advisory earmark — same contract as the Simple/Complex REQ template above: emit ONLY when the user names a session to reserve this work for (Step 1's earmark assessment), verbatim and YAML-quoted, never invented
 ---
 
 # Addendum: Dark Mode Sidebar Support
