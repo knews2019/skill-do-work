@@ -1,8 +1,8 @@
 ---
-session_ended: 2026-08-05T11:46:30Z
-last_completed: REQ-108
-queue_state: 0 pending, 1 pending-answers, 0 blocked, 0 in-progress
-reqs_processed_this_session: 2
+session_ended: 2026-08-05T12:01:30Z
+last_completed: REQ-109
+queue_state: 0 pending, 0 pending-answers, 0 blocked, 0 in-progress
+reqs_processed_this_session: 1
 session_depth: light
 ---
 
@@ -12,16 +12,14 @@ session_depth: light
 
 ## Completed This Session
 
-- REQ-104: Label-less checkpoint entries — authorship heuristic dropped, always report-only (Route B) — v0.174.7, commit `f2177b1` (review: Pass, 90%; spawned REQ-108)
-- REQ-108: Review fix — In-Progress Record case list + label-less removal rule (Route A) — v0.174.8, commit `53929a2`
-- (via `do-work clarify`, same session: REQ-103 resolved as builder-was-right — checkpoint frontmatter stays without a `writer:` label — archived, commit `27221b6`)
+- REQ-109: work.md session-start note — canonical recovery terminology, case list deferred to Crash Recovery (Route A) — v0.174.9, commit `5f50fb7` (review: Pass, 95%; closed UR-018)
 
 ## Still Queued
 
-- REQ-109: work.md session-start note recovery-case-list terminology (**pending-answers** — [low] discovered task from REQ-108; waits for `do-work clarify` consent)
+- Nothing. Queue, working/, and user-requests/ are all empty; UR-018 consolidated to `do-work/archive/UR-018/` (13 REQs).
 
 ## Session Notes
 
-- UR-018 remains open in `do-work/user-requests/` until REQ-109 resolves (its last live member).
-- REQ-104's review found the drop had orphaned the label-less entry's removal rules — fixed in REQ-108 the same session. Lesson recorded in both REQs: when a classification case loses its auto-path, sweep the lifecycle rules scoped to the old classes in the same change.
-- Both REQs carry `kb_status: pending` — lessons handoff deferred (unattended run); offer via `do-work bkb` triage when convenient.
+- Review's restatement sweep found one more instance of the REQ-104 vocabulary drift, **not yet fixed**: `actions/work.md` Verification Checklist ("except a reported foreign claim this run deliberately left intact") is under-inclusive for the label-less / unknown-origin case. Minor finding, report-only per contract — capture it if wanted (suggested one-phrase fix: "except a claim Step 1 deliberately left intact").
+- Lesson (recorded in REQ-109): when a vocabulary changes, grep the old term across every shipped file in the first fix — this drift class has now surfaced one file at a time across REQ-104 → 108 → 109 → the finding above.
+- REQ-109 carries `kb_status: pending` (unattended run — lessons handoff deferred), joining REQ-104/108; offer via `do-work bkb` triage when convenient.
