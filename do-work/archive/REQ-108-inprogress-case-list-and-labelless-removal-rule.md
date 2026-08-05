@@ -3,6 +3,7 @@ id: REQ-108
 title: "Review fix: In-Progress Record still enumerates two recovery cases and owes no removal rule for a label-less entry"
 status: completed
 completed_at: 2026-08-05T11:44:27Z
+commit: 53929a2
 claimed_at: 2026-08-05T11:38:54Z
 created_at: 2026-08-05T11:36:39Z
 kb_status: pending
