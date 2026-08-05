@@ -529,6 +529,26 @@
         "when several builders run at once it is advisory input to your pick, and the merge is what proves they did not collide.";
       badges.appendChild(overlapBadge);
     }
+    if (request.assignedTo) {
+      // The advisory cooperative claim marker: this REQ is earmarked for another
+      // session. Rendered verbatim — session names have no canonical vocabulary,
+      // so nothing here folds, trims, or rewrites the value. Display only: the
+      // board never buckets, orders, or hides a card on it. The one reader that
+      // acts on it is the work pipeline's default scan, which skips and reports
+      // an assigned REQ and is overridden by explicitly targeting it.
+      var assignedBadge = makeBadge(
+        "badge-assigned",
+        "assigned",
+        truncateBadgeText(request.assignedTo, 18)
+      );
+      assignedBadge.title =
+        "Earmarked for " +
+        request.assignedTo +
+        " — an advisory claim marker, not a lock. Another session's default run skips and reports it; " +
+        "naming it explicitly overrides that and clears the field. Display only: the board never " +
+        "reorders, blocks, or hides on this.";
+      badges.appendChild(assignedBadge);
+    }
     if (request.completionAnomaly) {
       // Broken completion bookkeeping (flagged by the Go side) — mark the card
       // wherever it renders, not just inside the anomalies strip.
@@ -1698,6 +1718,9 @@
     }
     if (request.writeSet && request.writeSet.length > 0) {
       appendMetaRow("Write set", request.writeSet.join(", "));
+    }
+    if (request.assignedTo) {
+      appendMetaRow("Assigned to", request.assignedTo);
     }
     // The card badge names the contending REQs; the drawer makes them clickable
     // so "what else writes these files?" is one hop away.

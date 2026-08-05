@@ -8,6 +8,84 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.3 — Verify's UR Probe Works Under a Relative `--repo-root` (2026-08-04)
+
+Two review findings on the 0.174.x work, both real. One was a probe that silently found nothing; the other was a contract sentence claiming something the code has never done.
+
+- `ur-archived-with-live-member` required a leading `/do-work/archive/` in the UR's path, so `do-work verify --repo-root .` recognized zero archived URs and reported nothing — the quiet kind of wrong. It now anchors on the trailing separator and works under both absolute and relative roots, while still refusing a directory merely named `archive`. Every existing test built its fixture under an absolute temp dir, which is why none of them caught it.
+- The `assigned_to` schema text said readers must not trim the value. They always have: every field in the verbatim-read class, `write_set` and `prime_files` included, goes through the same scalar coercion. Corrected the contract rather than the parser — padding survives only explicit YAML quoting, means nothing in a name, and preserving it would make `" cloud-alpha "` a different session from `"cloud-alpha"`. Verbatim means no alias map, no case folding, no path canonicalization.
+- Three regression tests: the relative-root probe, the lookalike-directory rejections, and case-preserved-padding-trimmed.
+
+## 0.174.2 — Multi-Checkout Guide and the Session-Ownership Decision Record (2026-08-04)
+
+The claim-anywhere model now has documentation and a decision record. The guide gets a walkthrough for working one queue from several checkouts; ADR-018 records why the contract changed, including the parts that turned out to cost something.
+
+- New `docs/work-guide.md` section: claiming from a workspace, clone or cloud session; earmarking with `assigned_to` and the two ways to override it; the one-releaser rule; both conflict shapes and how to resolve them without deleting a real claim; `--fan-out`; and the caveat that all of it presumes a committed `do-work/`.
+- ADR-018 is the first decision record this skill has for session ownership at all — the 0.161.0 exclusive-session decision it partially reverses was never written down as one. Six decisions, seven rejected alternatives (including the two that were nearly taken), and the costs the acceptance runs found rather than the ones the plan predicted.
+- The ADR indexes were three counts behind. Those hand-maintained numbers are gone, replaced by a pointer to read `records/` — a count in a file nobody recounts is a stale count.
+
+## 0.174.1 — Wall-Clock Concurrency Proven for the First Time (2026-08-04)
+
+Fan-out has been in the contract for a while, and until now nobody had watched two builders actually run at the same time — the one recorded attempt logged Partial. This one measured a 4.109-second window where both were genuinely running.
+
+- Two builders in two git worktrees on two branches, dispatched by the automatic ready-set computation and launched before the owner waited on either.
+- The computation was shown *excluding* as well as including: a REQ whose dependency was still pending stayed out, and one earmarked with `assigned_to` was left for its own session.
+- Serial integration produced two different `<pre>` values, because the first REQ's archive commit moved the tip between merges. That is why the contract says capture it once per REQ — and writing the once-per-wave version by mistake is what proved the rule earned.
+- Wave 2 recomputed and picked up the REQ whose dependency had just landed, which a carried-forward remainder list would have missed.
+- The negative case ran too: two REQs declaring the same `write_set` both entered the wave, and the second merge refused with a content conflict. A computed set claims its REQs are runnable, never that they don't collide.
+- Honest gap, recorded: the builders were scripts. The mechanism is proven under real concurrency; agent behavior under concurrency still isn't.
+
+## 0.174.0 — `do-work run --fan-out` Computes the Wave Itself (2026-08-04)
+
+The pipeline used to say flatly that nothing computes the set — you picked which REQs ran together, by hand. That was a deliberate design choice, and it's now a deliberate reversal: pass `--fan-out` and the loop works out the ready set and dispatches builders with no confirmation prompt.
+
+- Ready means pending, dependencies met, unclaimed, and not earmarked for another session. Same predicate the serial scan already uses — no second definition of readiness.
+- Waves are bounded, never an unbounded fan-out over the whole queue. `--fan-out N` sets it; bare `--fan-out` uses the harness limit, or two when that's unknown.
+- Each wave is recomputed after the previous one integrates, so a REQ whose dependency just landed joins the next one.
+- `--fan-out` and `--wave N` compose: `--wave` picks which REQs, `--fan-out` picks how many at once.
+- `write_set` is still not a scheduling input, and now explicitly is not read by the wave at all. A computed set claims its REQs are runnable — not that they don't overlap. The merge is still what proves that.
+- The default is unchanged and still serial, so the simplest agent reads the same instructions it always did. No worktree support means the flag quietly does nothing.
+
+## 0.173.0 — Verify Catches Assignment Drift and Half-Closed URs (2026-08-04)
+
+Two new read-only probes for drift that only became reachable once several checkouts share a queue. Both report and route; neither repairs, and neither is marked fixable, because both resolutions are yours to make.
+
+- `assigned-elsewhere-claimed-here`: a REQ sitting in `working/` while still earmarked for another session. Its marker is now telling every other checkout to skip a REQ you're already building.
+- `ur-archived-with-live-member`: a UR archived while one of its members is still in `queue/` or `working/` — the live REQ is orphaned from the `input.md` that explains why it exists.
+- The UR probe scans `user_request:` frontmatter, never the UR's own `requests:` array, which is capture-time-only and misses follow-up REQs. There's a test that fails if anyone changes that.
+- Both show up in `do-work forensics` Check 14, whose probe table now says out loud that it's a snapshot rather than the authority — the tool's own output is.
+
+## 0.172.0 — Earmark a REQ for Another Session with `assigned_to` (2026-08-04)
+
+Now that any checkout can claim, there needs to be a way to say "leave this one, it's mine." That's `assigned_to` — one optional frontmatter field naming a session. Another session's default run skips it and tells you why; naming it explicitly takes it anyway and clears the marker. No verb, no status, no clock.
+
+- `assigned_to: "cloud-alpha"` is read verbatim — session names have no canonical spelling, so nothing folds case or trims it.
+- The default work scan skips an assigned REQ and lists it in the exit summary as *assigned to <name>*. It's a courtesy, not a lock: nothing checks whether that session is actually running.
+- `do-work run REQ-NNN` overrides the skip and clears the field as part of the claim. Reaching it through `do-work run UR-NNN` does not — naming a batch is a weaker signal than naming a member.
+- The board shows an `assigned` badge and a drawer row. It never moves, hides, or reorders a card on it.
+- Nothing else came back with it: no `assigned_at`, no staleness threshold, no auto-release, and the reserve verb and `reserved` status stay dead.
+
+## 0.171.0 — Claim From Any Checkout, Release From One (2026-08-04)
+
+The ownership contract used to say one queue owner per checkout, and cross-session ownership was out of bounds. It now says the opposite about *claiming*: point as many checkouts at a queue as you like — a worktree, a second workspace, a clone, a cloud session — and each may capture, claim and build. What stays single is the release tail.
+
+- `Execution Model — Exclusive Session` is now `Execution Model — Claim Anywhere, One Releaser`. Any checkout claims; exactly one merges, bumps the version, writes the changelog, archives, and closes URs.
+- Two releasers against one queue, and two sessions in one working tree, both stay unspecified — nothing prevents them, and `do-work forensics` / `do-work cleanup` are the repair path.
+- Cross-checkout collisions are ordinary merge conflicts fixed when branches meet. The duplicate-id probe catches colliding captures; the checkpoint writer label catches double claims.
+- A builder tree no longer has to be a spawned worktree — a workspace, clone, or remote sandbox works too. A remote builder's hand-back travels on its branch, and a non-releaser checkout treats its synced queue as a snapshot rather than the truth.
+- New guidance for the conflict you *will* hit: `CHECKPOINT.md` collides on every concurrent claim, even disjoint ones. Keep every entry from both sides — dropping either one loses a real claim.
+- New red flag: a second checkout running the release tail. Claiming and building elsewhere is now in contract; releasing twice is not.
+
+## 0.170.2 — Two-Clone Acceptance Run Confirms the Writer Label (2026-08-04)
+
+The checkpoint writer label from 0.170.0 now has a real experiment behind it instead of an argument. Two clones sharing a bare origin reproduced the old poisoning as a silent fast-forward that erased a live claim, then the shipped rule left the same claim byte-for-byte untouched. The run also found a hole nobody had reasoned their way to.
+
+- Reproduced the pre-0.170.0 strip deterministically: a routine sync exits 0, fast-forwards, and deletes another checkout's live claim along with its Triage and Scope — no conflict, no warning.
+- Confirmed the shipped rule reports `claim held by <writer>, not touched` and writes nothing, verified by matching sha256 before and after.
+- Captured what a cross-checkout claim conflict actually looks like: plain content conflicts, never a rename conflict, plus an `add/add` conflict on `CHECKPOINT.md` for *every* concurrent claim — including two that touch nothing in common.
+- Found that with byte-identical claim writes the REQ file merges clean, so the writer label is the only thing that surfaces the double claim at all.
+- Filed REQ-104: the label-less recovery rule reads "checkpoint is locally modified" as proof this checkout wrote it, which stops being true once resolving a checkpoint conflict is routine.
+
 ## 0.170.1 — Step 10 Preserves Label-Less Checkpoint Entries Too (2026-08-04)
 
 Follow-up to 0.170.0's writer label: the work action's session-end rewrite and session-start delete were scoped to entries "carrying another checkout's label", which quietly excluded label-less legacy entries — recovery refused to touch them, then Step 10 deleted them anyway, sending the REQ into the takeover ladder next run. Both clauses now preserve every entry this checkout did not write, and two new contract assertions pin both destruction paths.

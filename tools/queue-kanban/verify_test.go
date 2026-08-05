@@ -771,3 +771,206 @@ func TestCheckpointMentionedRequestIdsSkipsGlobPatterns(t *testing.T) {
 		t.Fatalf("checkpointMentionedRequestIds mismatch:\ngot  %q\nwant %q", got, want)
 	}
 }
+
+// assigned_to is advisory, and clearing it is part of Step 2's claim
+// (actions/work.md). A REQ that reached do-work/working/ still carrying the field
+// means either the claim skipped the clear, or a session claimed work earmarked
+// for somebody else without meaning to. Either way the marker is now lying to
+// every other checkout: it says "skip me", about a REQ already being built here.
+func TestVerifyFlagsAssignedRequestClaimedHere(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/working/REQ-070-claimed-but-assigned.md",
+			"---\nid: REQ-070\nstatus: claimed\ntitle: claimed but still earmarked\nassigned_to: \"cloud-alpha\"\nclaimed_at: " +
+				time.Now().UTC().Format(time.RFC3339) + "\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	assignedFindings := findingsMentioning(report, verifyCategoryAssignedElsewhereClaimedHere)
+	if len(assignedFindings) != 1 {
+		t.Fatalf("got %d assigned-elsewhere findings, want 1:\n%s", len(assignedFindings), renderVerifyReport(report))
+	}
+	if !strings.Contains(assignedFindings[0].Detail, "cloud-alpha") {
+		t.Errorf("finding must name the assignee verbatim so the reader knows whose marker it is, got %q", assignedFindings[0].Detail)
+	}
+	if assignedFindings[0].Fixable {
+		t.Error("clearing somebody else's claim marker is a human decision — cleanup must not advertise it as mechanical")
+	}
+}
+
+func TestVerifyIgnoresAnAssignedRequestStillInTheQueue(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		// Earmarked and NOT claimed here: this is the field working exactly as designed.
+		{"do-work/queue/REQ-071-earmarked.md",
+			"---\nid: REQ-071\nstatus: pending\ntitle: earmarked and left alone\nassigned_to: \"cloud-alpha\"\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if found := findingsMentioning(report, verifyCategoryAssignedElsewhereClaimedHere); len(found) != 0 {
+		t.Fatalf("an assigned REQ sitting in the queue is the normal case, got %d findings:\n%s",
+			len(found), renderVerifyReport(report))
+	}
+}
+
+// A UR moves to do-work/archive/ only once every member REQ is terminally
+// resolved (actions/work.md Step 8). A member still in queue/ or working/ after
+// the UR was archived means the closure check passed on stale information, or a
+// cleanup pass moved the folder by hand — and the live REQ is now orphaned from
+// the input.md that explains it.
+func TestVerifyFlagsArchivedUserRequestWithALiveMember(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/UR-090/input.md", "---\nid: UR-090\ntitle: archived too early\nrequests: [REQ-080]\n---\n"},
+		{"do-work/archive/UR-090/REQ-079-done.md",
+			"---\nid: REQ-079\nstatus: completed\ntitle: done\nuser_request: UR-090\ncompleted_at: 2026-08-01T10:00:00Z\ncommit: abc1234\n---\n"},
+		{"do-work/queue/REQ-080-still-live.md",
+			"---\nid: REQ-080\nstatus: pending\ntitle: still live\nuser_request: UR-090\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	liveMemberFindings := findingsMentioning(report, verifyCategoryArchivedUserRequestLiveMember)
+	if len(liveMemberFindings) != 1 {
+		t.Fatalf("got %d archived-UR-live-member findings, want 1:\n%s",
+			len(liveMemberFindings), renderVerifyReport(report))
+	}
+	detail := liveMemberFindings[0].Detail
+	if !strings.Contains(detail, "UR-090") || !strings.Contains(detail, "REQ-080") {
+		t.Errorf("finding must name both the archived UR and the live member, got %q", detail)
+	}
+	if strings.Contains(detail, "REQ-079") {
+		t.Errorf("the terminally-resolved member is not the problem and must not be listed, got %q", detail)
+	}
+	if liveMemberFindings[0].Fixable {
+		t.Error("un-archiving a UR or force-resolving a live REQ are both human decisions — not mechanical")
+	}
+}
+
+func TestVerifyIgnoresAnArchivedUserRequestWhoseMembersAreAllResolved(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/UR-091/input.md", "---\nid: UR-091\ntitle: properly closed\nrequests: [REQ-081]\n---\n"},
+		{"do-work/archive/UR-091/REQ-081-done.md",
+			"---\nid: REQ-081\nstatus: completed\ntitle: done\nuser_request: UR-091\ncompleted_at: 2026-08-01T10:00:00Z\ncommit: abc1234\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	if found := findingsMentioning(report, verifyCategoryArchivedUserRequestLiveMember); len(found) != 0 {
+		t.Fatalf("a fully-closed archived UR is the normal case, got %d findings:\n%s",
+			len(found), renderVerifyReport(report))
+	}
+}
+
+// The UR's own `requests:` array is capture-time-only and can be wrong in both
+// directions; the closure predicate actions/work.md Step 8 evaluates is a scan of
+// `user_request:` frontmatter. This fixture makes the two disagree: the array omits
+// the live member entirely, so a probe reading the array sees a closed UR.
+func TestVerifyLiveMemberProbeScansUserRequestFrontmatterNotTheUrArray(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/UR-092/input.md", "---\nid: UR-092\ntitle: array disagrees with the tree\nrequests: [REQ-082]\n---\n"},
+		{"do-work/archive/UR-092/REQ-082-done.md",
+			"---\nid: REQ-082\nstatus: completed\ntitle: done\nuser_request: UR-092\ncompleted_at: 2026-08-01T10:00:00Z\ncommit: abc1234\n---\n"},
+		// Points at UR-092 by frontmatter, absent from its requests: array.
+		{"do-work/working/REQ-083-unlisted-live-member.md",
+			"---\nid: REQ-083\nstatus: claimed\ntitle: unlisted but live\nuser_request: UR-092\nclaimed_at: " +
+				time.Now().UTC().Format(time.RFC3339) + "\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	liveMemberFindings := findingsMentioning(report, verifyCategoryArchivedUserRequestLiveMember)
+	if len(liveMemberFindings) != 1 {
+		t.Fatalf("got %d findings, want 1 — the probe must scan user_request: frontmatter, not the UR's requests: array:\n%s",
+			len(liveMemberFindings), renderVerifyReport(report))
+	}
+	if !strings.Contains(liveMemberFindings[0].Detail, "REQ-083") {
+		t.Errorf("finding must name the unlisted live member, got %q", liveMemberFindings[0].Detail)
+	}
+}
+
+// resolveRepoRootOrDefault returns an explicit --repo-root override verbatim, so
+// `verify --repo-root .` produces ticket paths with no leading separator. The
+// archived-UR probe used to require a leading "/do-work/archive/" and therefore
+// recognized nothing in that mode — silently, which is the worst way for a probe to
+// fail. Every other test here builds fixtures under t.TempDir() (absolute), so none
+// of them could catch it. Found by review on PR #128.
+func TestVerifyFlagsArchivedUserRequestLiveMemberUnderARelativeRepoRoot(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/UR-093/input.md", "---\nid: UR-093\ntitle: archived early\nrequests: [REQ-084]\n---\n"},
+		{"do-work/archive/UR-093/REQ-084-done.md",
+			"---\nid: REQ-084\nstatus: completed\ntitle: done\nuser_request: UR-093\ncompleted_at: 2026-08-01T10:00:00Z\ncommit: abc1234\n---\n"},
+		{"do-work/queue/REQ-085-still-live.md",
+			"---\nid: REQ-085\nstatus: pending\ntitle: still live\nuser_request: UR-093\n---\n"},
+	})
+
+	originalWorkingDirectory, getwdError := os.Getwd()
+	if getwdError != nil {
+		t.Fatalf("Getwd: %v", getwdError)
+	}
+	if chdirError := os.Chdir(repoRoot); chdirError != nil {
+		t.Fatalf("Chdir: %v", chdirError)
+	}
+	t.Cleanup(func() { _ = os.Chdir(originalWorkingDirectory) })
+
+	// "." is the shape actions/forensics.md Check 14 can pass, and the shape the
+	// leading-slash match could never satisfy.
+	report, verifyError := runVerifyProbes(".", time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	liveMemberFindings := findingsMentioning(report, verifyCategoryArchivedUserRequestLiveMember)
+	if len(liveMemberFindings) != 1 {
+		t.Fatalf("got %d findings under a relative repo root, want 1 — the probe must not depend on a leading separator:\n%s",
+			len(liveMemberFindings), renderVerifyReport(report))
+	}
+	if !strings.Contains(liveMemberFindings[0].Detail, "REQ-085") {
+		t.Errorf("finding must name the live member, got %q", liveMemberFindings[0].Detail)
+	}
+}
+
+// The same probe must still refuse a directory merely named "archive" that is not
+// this project's do-work archive — the reason the match is separator-anchored.
+func TestIsArchivedUserRequestPathRejectsLookalikeDirectories(t *testing.T) {
+	for _, archivedPath := range []string{
+		"do-work/archive/UR-001/input.md",
+		"/abs/repo/do-work/archive/UR-001/input.md",
+		"./do-work/archive/UR-001/input.md",
+	} {
+		if !isArchivedUserRequestPath(archivedPath) {
+			t.Errorf("isArchivedUserRequestPath(%q) = false, want true", archivedPath)
+		}
+	}
+	for _, livePath := range []string{
+		"do-work/user-requests/UR-001/input.md",
+		"/abs/repo/do-work/user-requests/UR-001/input.md",
+		"my-do-work/archive/UR-001/input.md", // not this project's do-work/
+		"archive/UR-001/input.md",            // bare archive/, no do-work/ segment
+		"docs/archive/UR-001/input.md",
+	} {
+		if isArchivedUserRequestPath(livePath) {
+			t.Errorf("isArchivedUserRequestPath(%q) = true, want false", livePath)
+		}
+	}
+}

@@ -276,11 +276,14 @@ for removed_concurrency_token in \
   fi
 done
 
-# Reservation removal (exclusive-session follow-through). The reserve action allocated REQs to a
-# DIFFERENT worktree/cloud session — cross-session ownership, which the exclusive-session model
-# declares outside the product contract. The action, the `reserved` status, and its frontmatter
-# fields are gone; none of the vocabulary may survive in shipped prose or the board tool. Tokens
-# are underscore/path-shaped on purpose so ordinary English "reserved for" never false-positives.
+# Reservation removal. The reserve action allocated REQs to a DIFFERENT worktree/cloud session, which
+# the then-current exclusive-session model declared outside the product contract. REQ-096 re-grained
+# that model to claim-anywhere, so the IDEA is now in contract — but the machinery is not, and this
+# ratchet does not loosen: what stays dead is the reserve VERB, the `reserved` STATUS, and the
+# frontmatter fields, because a claim is marked with the advisory `assigned_to` field instead (no
+# staleness clock, no router-budget cost). None of the retired vocabulary may survive in shipped prose
+# or the board tool. Tokens are underscore/path-shaped on purpose so ordinary English "reserved for"
+# never false-positives — and `assigned_to` deliberately matches none of them.
 for removed_reservation_token in \
   'status: reserved' \
   'reserved_for' \
@@ -307,7 +310,7 @@ for removed_reservation_token in \
   done
   reservation_token_hits="$(printf '%s' "$filtered_reservation_hits")"
   if [ -n "$reservation_token_hits" ]; then
-    printf 'FAIL: removed reservation-workflow token "%s" still present in a shipped file (exclusive-session model — cross-session ownership is unsupported):\n%s\n' \
+    printf 'FAIL: removed reservation-workflow token "%s" still present in a shipped file — the reserve verb/status stay dead; the advisory assigned_to field is how a claim is marked (REQ-096/REQ-097):\n%s\n' \
       "$removed_reservation_token" "$reservation_token_hits" >&2
     fail_count=$((fail_count + 1))
   fi
@@ -315,7 +318,7 @@ done
 
 assert_file_missing \
   "actions/reserve.md" \
-  'the reserve action must stay removed — cross-session REQ allocation is outside the exclusive-session product contract.'
+  'the reserve action must stay removed — a claim is marked with the advisory assigned_to field, not a reserve verb or a reserved status (REQ-096 re-grained ownership to claim-anywhere without reviving either).'
 
 assert_file_missing \
   "actions/prime-req-reservation.md" \
@@ -323,21 +326,33 @@ assert_file_missing \
 
 assert_contains \
   "actions/work-reference.md" \
-  '^## Execution Model — Exclusive Session' \
-  'actions/work-reference.md must define the exclusive-session Execution Model (one session, one active REQ, one coder context) that replaced the orchestrator-lock/parallel-dispatch machinery.'
+  '^## Execution Model — Claim Anywhere, One Releaser' \
+  'actions/work-reference.md must define the Execution Model section that replaced the orchestrator-lock/parallel-dispatch machinery. Renamed from "Exclusive Session" by REQ-096: claiming is no longer exclusive to one checkout, only the release tail is, and a heading naming the retired boundary is exactly the stale-name drift this suite exists to catch.'
 
-# The invariant is about OWNERSHIP, not build count (REQ-073). REQ-069's wording
-# ("one active REQ, one coder context") conflated the two, so lifting the builder
-# cap required rewording it — the ban that stays is two queue owners against one
-# checkout, which is what every piece of deleted concurrency machinery existed to
-# police. Still exactly once: a second copy is drift waiting to diverge.
+# The invariant is about OWNERSHIP, not build count (REQ-073), and REQ-096 moved which
+# ownership it names. REQ-069's wording ("one active REQ, one coder context") conflated
+# ownership with build count, so lifting the builder cap required rewording it to
+# "one queue owner per checkout"; REQ-096 then re-grained the model to claim-anywhere,
+# which makes the *claiming* half false and leaves the release tail as the only thing
+# that must not run twice. So the invariant is now "one releaser per queue" — still
+# exactly once, because a second copy is drift waiting to diverge.
 # `|| true` is load-bearing under `set -euo pipefail`: grep exits 1 on no match, and
 # with pipefail that aborts the whole suite silently — a missing invariant would read
 # as a crash with no FAIL line rather than as the failure it is.
-exclusive_invariant_count="$( { grep -roh 'one queue owner per checkout' "$repo_root/actions" || true; } | wc -l | tr -d ' ')"
-if [ "$exclusive_invariant_count" != "1" ]; then
-  printf 'FAIL: the ownership invariant ("one queue owner per checkout") must be stated exactly once across actions/ (found %s) — every other mention is a pointer, not a restatement.\n' \
-    "$exclusive_invariant_count" >&2
+releaser_invariant_count="$( { grep -roh 'one releaser per queue' "$repo_root/actions" || true; } | wc -l | tr -d ' ')"
+if [ "$releaser_invariant_count" != "1" ]; then
+  printf 'FAIL: the ownership invariant ("one releaser per queue") must be stated exactly once across actions/ (found %s) — every other mention is a pointer, not a restatement.\n' \
+    "$releaser_invariant_count" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# The superseded wording must be gone, not merely outnumbered — same ratchet the
+# "one active REQ, one coder context" check below applies to its predecessor. It bounds
+# claiming to a single checkout, which is exactly what claim-anywhere makes false.
+superseded_owner_invariant_hits="$(grep -rIlE -- 'one queue owner per checkout' "$repo_root/actions" "$repo_root/docs" "$repo_root/SKILL.md" 2>/dev/null || true)"
+if [ -n "$superseded_owner_invariant_hits" ]; then
+  printf 'FAIL: the superseded invariant wording "one queue owner per checkout" still appears (REQ-096 replaced it with the one-releaser-per-queue formulation — any checkout may claim):\n%s\n' \
+    "$superseded_owner_invariant_hits" >&2
   fail_count=$((fail_count + 1))
 fi
 
@@ -368,7 +383,7 @@ done
 assert_contains \
   "actions/work-reference.md" \
   '\*\*Fan-Out Dispatch' \
-  'actions/work-reference.md must define Fan-Out Dispatch inside Worktree Dispatch Mode — several builders under one queue owner, with no new coordination state.'
+  'actions/work-reference.md must define Fan-Out Dispatch inside Worktree Dispatch Mode — several builders under one releaser, with no new coordination state.'
 
 fan_out_block="$(sed -n '/\*\*Fan-Out Dispatch/,/^## Composed Exit Summary/p' "$repo_root/actions/work-reference.md")"
 

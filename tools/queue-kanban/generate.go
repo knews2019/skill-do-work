@@ -108,6 +108,10 @@ type generatedRequest struct {
 	BlockedCheck       string   `json:"blockedCheck,omitempty"`
 	Related            []string `json:"related"`
 	WriteSet           []string `json:"writeSet"`
+	// The session a pending REQ is earmarked for (see RequestTicket.AssignedTo).
+	// Verbatim and display only — a card badge and a drawer row, never column or
+	// dispatch meaning.
+	AssignedTo string `json:"assignedTo,omitempty"`
 	// Other pending/claimed REQ ids whose write_set could touch the same files
 	// (see RequestTicket.WriteSetOverlaps). Display only — the card badge and a
 	// drawer row; no column or dispatch meaning.
@@ -269,6 +273,7 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			Related:              ticket.Related,
 			WriteSet:             ticket.WriteSet,
 			WriteSetOverlaps:     ticket.WriteSetOverlaps,
+			AssignedTo:           ticket.AssignedTo,
 			Route:                ticket.Route,
 			Batch:                ticket.Batch,
 			TreeSection:          ticket.TreeSection,
