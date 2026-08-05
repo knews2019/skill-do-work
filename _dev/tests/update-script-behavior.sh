@@ -13,6 +13,14 @@
 # Invoked by _dev/tests/contract-regressions.sh — there is no auto-discovery of test files,
 # so a probe added here only runs because that file calls this one.
 #
+# RUN AS AN ORDINARY USER, NOT ROOT. The mid-update-failure and dirty-install probes make the
+# destructive region fail by dropping write permission on a directory (`chmod 500`), and root
+# ignores permission bits — so under root the update succeeds, the updater exits 0, and seven
+# probes fail asserting recovery messages that were never printed. Identical failures appear on
+# a pristine checkout, so a red suite here means "wrong user", not a regression: re-run non-root
+# before diagnosing anything. This is what REQ-090 observed twice, could not reproduce, and
+# closed with the cause unexplained.
+#
 # Exit 0: every probe passed (or the whole suite was skipped for a missing prerequisite).
 # Exit 1: at least one probe failed; each failure prints a FAIL line naming the probe.
 set -uo pipefail

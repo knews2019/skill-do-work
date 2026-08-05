@@ -856,6 +856,40 @@ func TestVerifyIgnoresAnAssignedRequestStillInTheQueue(t *testing.T) {
 	}
 }
 
+// A terminally-resolved REQ stranded in do-work/working/ while still carrying
+// assigned_to used to trip both probes, and the assigned-elsewhere remedy then told
+// the user to clear or release a claim on work that was already done. The
+// stranded-finished probe owns that state (it is fixable, and cleanup Pass 0 sweeps
+// it), so the assigned-elsewhere probe must stay silent on it. Both halves of the
+// terminal set are covered here — `completed` and `cancelled` — because the
+// carve-out keys on isTerminalResolvedStatus, not on completion alone. The converse
+// case (a non-terminal assigned REQ in working/ must still be flagged) is
+// TestVerifyFlagsAssignedRequestClaimedHere, above.
+func TestVerifyStrandedFinishedAssignedRequestFiresOnlyTheStrandedProbe(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/working/REQ-072-finished-but-earmarked.md",
+			"---\nid: REQ-072\nstatus: completed\ntitle: stranded completed claim\nassigned_to: \"cloud-alpha\"\ncompleted_at: 2026-08-01T10:00:00Z\ncommit: abc1234\n---\n"},
+		{"do-work/working/REQ-073-cancelled-but-earmarked.md",
+			"---\nid: REQ-073\nstatus: cancelled\ntitle: stranded cancelled claim\nassigned_to: \"cloud-beta\"\ncompleted_at: 2026-08-01T11:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	strandedFindings := findingsMentioning(report, verifyCategoryStrandedFinishedRequest)
+	if len(strandedFindings) != 2 {
+		t.Fatalf("got %d stranded-finished findings, want 2 (one completed, one cancelled):\n%s",
+			len(strandedFindings), renderVerifyReport(report))
+	}
+	if found := findingsMentioning(report, verifyCategoryAssignedElsewhereClaimedHere); len(found) != 0 {
+		t.Fatalf("a terminally-resolved REQ is not being built here — the assigned-elsewhere probe must not double-fire, got %d findings:\n%s",
+			len(found), renderVerifyReport(report))
+	}
+}
+
 // A UR moves to do-work/archive/ only once every member REQ is terminally
 // resolved (actions/work.md Step 8). A member still in queue/ or working/ after
 // the UR was archived means the closure check passed on stale information, or a

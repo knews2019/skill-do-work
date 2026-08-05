@@ -20,6 +20,6 @@ session_depth: light
 
 ## Session Notes
 
-- Review's restatement sweep found one more instance of the REQ-104 vocabulary drift, **not yet fixed**: `actions/work.md` Verification Checklist ("except a reported foreign claim this run deliberately left intact") is under-inclusive for the label-less / unknown-origin case. Minor finding, report-only per contract — capture it if wanted (suggested one-phrase fix: "except a claim Step 1 deliberately left intact").
+- Review's restatement sweep found one more instance of the REQ-104 vocabulary drift — `actions/work.md` Verification Checklist was under-inclusive for the label-less / unknown-origin case. **Now fixed** at v0.174.12 by the suggested one-phrase change: the line reads "except a claim Step 1 deliberately left intact".
 - Lesson (recorded in REQ-109): when a vocabulary changes, grep the old term across every shipped file in the first fix — this drift class has now surfaced one file at a time across REQ-104 → 108 → 109 → the finding above.
 - REQ-109 carries `kb_status: pending` (unattended run — lessons handoff deferred), joining REQ-104/108; offer via `do-work bkb` triage when convenient.

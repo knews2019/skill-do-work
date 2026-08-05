@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.12 — Assignment Probe Stops Double-Reporting Finished Work (2026-08-05)
+
+The double-fire fixed in 0.174.11 was hiding one probe over, so it got the same carve-out. Plus a checklist line that was quietly too narrow, and a note explaining a test suite that only goes red for root.
+
+- **`assigned-elsewhere-claimed-here` now skips terminally-resolved REQs.** A finished REQ stranded in `working/` while still carrying `assigned_to` tripped this probe *and* the stranded-finished one, and this one's remedy told you to clear or release a claim on work that was already done. The stranded-finished probe owns that state alone now — the same carve-out, keyed on the same shared predicate, as the archived-UR fix last release. `actions/forensics.md`'s Check 14 row is qualified to match.
+- **`actions/work.md`'s verification checklist covers every claim Step 1 deliberately leaves alone**, not just a reported foreign one. A label-less claim is left intact too, and the old wording quietly excluded it — the last instance of a vocabulary drift that had been surfacing one file at a time.
+- `_dev/tests/update-script-behavior.sh` says up front that it needs a non-root runner. Its failure injection drops write permission on a directory, which root ignores, so under root seven probes fail on messages the updater never had reason to print — a property of the runner, not the code.
+- Recovered the UR-018 session's still-accurate operational traps into the knowledge base before they were only in git history — exact flag orders, the stale-binary trap that makes `verify` lie, and the contract-suite phrases to reword around. Repo-internal; `kb/` does not ship.
+
 ## 0.174.11 — Claim-Sync Timing, Verify Probe Overlap, and Addendum Earmarks (2026-08-05)
 
 An external review of the 0.174.x series turned up six things the docs and the board's verifier were quietly getting wrong — mostly promises a bit broader than the code behind them, plus two probes that both fired on the same state. All small, all now honest.

@@ -771,7 +771,7 @@ See [sample-archived-req.md](./sample-archived-req.md) for a complete example of
 
 - [ ] All pending REQs processed or explicitly skipped with documented reason
 - [ ] Every completed REQ has an Implementation Summary section with file manifest
-- [ ] No REQ files remain in `do-work/working/` after the work loop ends — except a reported foreign claim this run deliberately left intact (Step 1 Crash Recovery)
+- [ ] No REQ files remain in `do-work/working/` after the work loop ends — except a claim Step 1 deliberately left intact (Step 1 Crash Recovery)
 - [ ] CHECKPOINT.md written if ending mid-session (for resume)
 - [ ] Git commit created for each completed REQ
 - [ ] Cleanup pass triggered at end of work loop

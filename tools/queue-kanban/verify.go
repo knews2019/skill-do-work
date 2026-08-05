@@ -360,10 +360,20 @@ func appendStrandedFinishedFindings(report *VerifyReport, board *Board) {
 // (actions/work.md), so its survival past the move means either the claim skipped
 // the clear or a session claimed work earmarked for another one. The marker is now
 // actively wrong: it tells every other checkout to skip a REQ this one is building.
+//
+// A terminally-resolved REQ stranded in working/ is deliberately NOT reported here:
+// appendStrandedFinishedFindings already owns that state, it is mechanically
+// fixable, and this probe's remedy would tell the user to clear or release a claim
+// on work that is already done.
+//
 // Read-only and not fixable — whose claim wins is a human call, and cleanup asks.
 func appendAssignedElsewhereFindings(report *VerifyReport, board *Board) {
 	for _, ticket := range board.AllRequests {
 		if ticket.AssignedTo == "" || ticket.TreeSection != "working" {
+			continue
+		}
+		// Stranded, not being built — see the carve-out in this function's doc comment.
+		if isTerminalResolvedStatus(ticket.Status) {
 			continue
 		}
 		report.Findings = append(report.Findings, VerifyFinding{
