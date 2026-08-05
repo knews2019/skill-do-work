@@ -11,6 +11,7 @@ prime_files: []
 tdd: false
 claimed_at: 2026-08-05T19:59:16Z
 completed_at: 2026-08-05T20:01:30Z
+commit: d2576a7
 route: A
 depends_on: [REQ-112]
 maintenance: false
