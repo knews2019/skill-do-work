@@ -3,6 +3,7 @@ id: REQ-104
 title: Label-less checkpoint entries — "locally modified" is not evidence of authorship
 status: completed
 completed_at: 2026-08-05T11:37:40Z
+commit: f2177b1
 claimed_at: 2026-08-05T11:19:30Z
 created_at: 2026-08-04T21:15:00Z
 kb_status: pending
