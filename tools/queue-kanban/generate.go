@@ -352,6 +352,13 @@ func buildGeneratedBoardMarkdownData(board *Board) generatedBoardMarkdownData {
 		markdownData.Requests[ticket.RequestId] = ticket.FrontmatterMarkdown + ticket.BodyMarkdown
 	}
 	for _, userRequest := range board.UserRequests {
+		// A synthesized UR (no input.md on disk) has no file text to offer. The
+		// frontend treats key PRESENCE as "the real file is available" and copies
+		// the value verbatim, so an empty entry here would put an empty string on
+		// the clipboard instead of triggering the rendered-text fallback.
+		if !userRequest.InputFilePresent {
+			continue
+		}
 		markdownData.UserRequests[userRequest.UserRequestId] = userRequest.FrontmatterMarkdown + userRequest.BodyMarkdown
 	}
 	return markdownData

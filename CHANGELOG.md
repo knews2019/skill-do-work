@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.10 — Merge-Time Queue Guard, Clean-Index Hand-Back, Synthesized-UR Copy Fix (2026-08-05)
+
+Three accepted findings from an external review of the worktree-dispatch pipeline and the board. The common thread on the first two: the mechanical checks all excluded `do-work/`, so a builder's committed queue edits could integrate with only human review watching.
+
+- Hand-back step 2 now opens with a pre-merge guard: `git diff <pre>...<operative_name> -- do-work/` must print nothing — run before the merge because the three-dot diff (and verify's probe, which reads the same one) goes blind after it (`actions/work-reference.md`)
+- Hand-back step 0 now requires a clean index: bookkeeping commits path-limited, anything else staged stops and surfaces to the user — a plain commit was silently sweeping unrelated staged files below `<pre>`, outside every evidence step's range
+- The board's Copy button no longer copies an empty string for a synthesized UR card (a REQ pointing at a UR with no `input.md`) — those URs are omitted from the markdown map so the rendered-text fallback fires (`tools/queue-kanban/generate.go`)
+
 ## 0.174.9 — Session-Start Note Uses the Canonical Recovery Terms (2026-08-05)
 
 Last stale restatement from the 0.174.7 vocabulary change (or so we thought — review found one more, see below). work.md's Step 10 session-start note now states the own-label condition and defers the recovery case list to Crash Recovery, instead of hand-enumerating the cases and calling a label-less entry a "foreign claim" (canonically a *claim of unknown origin* since 0.174.7).

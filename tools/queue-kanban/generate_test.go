@@ -274,7 +274,7 @@ func TestBuildGeneratedBoardMarkdownDataKeepsExactSources(t *testing.T) {
 			{RequestId: "REQ-1", BodyMarkdown: "## What\n\n- [ ] keep formatting\n"},
 		},
 		UserRequests: []*UserRequestTicket{
-			{UserRequestId: "UR-1", BodyMarkdown: "# Original request\n\nExact text.\n"},
+			{UserRequestId: "UR-1", InputFilePresent: true, BodyMarkdown: "# Original request\n\nExact text.\n"},
 		},
 	}
 
@@ -354,6 +354,28 @@ func TestBuildGeneratedBoardMarkdownDataHandlesAFenceLessFile(t *testing.T) {
 	markdownData := buildGeneratedBoardMarkdownData(board)
 	if got := markdownData.Requests[parsedRequest.RequestId]; got != requestFileText {
 		t.Errorf("fence-less Copy payload changed:\n got: %q\nwant: %q", got, requestFileText)
+	}
+}
+
+// A synthesized UR node (a REQ points at a UR whose input.md was never found)
+// must NOT get a markdown-map entry: the frontend reads key presence as "the
+// real file is available" and copies the value verbatim, so an empty entry
+// makes the drawer's Copy button write an empty string instead of falling back
+// to the rendered text with its identifying heading.
+func TestBuildGeneratedBoardMarkdownDataOmitsSynthesizedUserRequests(t *testing.T) {
+	board := &Board{
+		UserRequests: []*UserRequestTicket{
+			{UserRequestId: "UR-7", InputFilePresent: true, BodyMarkdown: "# Real request\n"},
+			{UserRequestId: "UR-8", InputFilePresent: false},
+		},
+	}
+
+	markdownData := buildGeneratedBoardMarkdownData(board)
+	if _, exists := markdownData.UserRequests["UR-7"]; !exists {
+		t.Errorf("a UR with a real input.md must keep its markdown-map entry")
+	}
+	if _, exists := markdownData.UserRequests["UR-8"]; exists {
+		t.Errorf("a synthesized UR must have NO markdown-map entry — key presence sends the frontend down the verbatim-copy path with an empty payload")
 	}
 }
 
