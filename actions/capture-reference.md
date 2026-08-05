@@ -21,6 +21,7 @@ tdd: true  # default true when a runnable RED test can be written in this projec
 suggested_spec:  # optional — spec template name if one clearly matches (e.g., "api-endpoint", "bug-fix")
 depends_on: []  # optional — list of REQ IDs that must complete before this REQ runs; honored by actions/work.md's selection scan
 maintenance: false  # set true ONLY for a deliberate removal/narrowing of the skill's OWN operating instructions — see Step 1's maintenance assessment; loads crew-members/maintenance.md in actions/work.md Step 6
+# assigned_to: "cloud-alpha"   # OPTIONAL advisory earmark — emit ONLY when the user names a session to reserve this work for (Step 1's earmark assessment); verbatim and YAML-quoted, never invented. The default work scan skips-and-reports it; explicit targeting clears it on claim (actions/work-reference.md → Request File Schema)
 # External-condition fields — set ONLY when the task waits on something outside the queue (see Step 1's external-condition assessment). Omit all three for normal REQs.
 # status: blocked            # use INSTEAD OF `status: pending` when the REQ cannot start until an external condition is met — distinct from depends_on (another REQ) and Open Questions (a question for the user)
 # blocked_by: "..."          # free text naming the condition (always YAML-quoted), e.g. "LM Studio running locally", "designer answered on mockups"

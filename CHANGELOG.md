@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.4 — Capture Now Seeds `assigned_to` Earmarks (2026-08-05)
+
+The schema said "seeded by capture when the user earmarks work" — but the capture action never mentioned the field, so nothing could ever seed it. A downstream sync review caught the gap; capture now carries the instruction.
+
+- Capture Step 1 gains an **Earmark assessment**: "leave this for cloud-alpha" in the request text seeds `assigned_to: "cloud-alpha"` — verbatim, YAML-quoted, never invented when the user names no session.
+- The Simple REQ template documents the optional field alongside the other conditional frontmatter.
+- Scope correction from triage: the seeding claim only ever lived in the schema line, not the 0.172.0 changelog entry — so the docs and the behavior now agree everywhere.
+
 ## 0.174.3 — Verify's UR Probe Works Under a Relative `--repo-root` (2026-08-04)
 
 Two review findings on the 0.174.x work, both real. One was a probe that silently found nothing; the other was a contract sentence claiming something the code has never done.
