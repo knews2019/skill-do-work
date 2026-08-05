@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.174.9 — Session-Start Note Uses the Canonical Recovery Terms (2026-08-05)
+
+Last stale restatement from the 0.174.7 vocabulary change (or so we thought — review found one more, see below). work.md's Step 10 session-start note now states the own-label condition and defers the recovery case list to Crash Recovery, instead of hand-enumerating the cases and calling a label-less entry a "foreign claim" (canonically a *claim of unknown origin* since 0.174.7).
+
+- `actions/work.md` Step 10 session-start note, item 2: condition stated once, cases deferred to `actions/work-reference.md` → Crash Recovery (Step 1)
+- Closes UR-018 (parallel building across checkouts) — REQ-109 was its last live member
+- Known remainder: the review's restatement sweep flagged `actions/work.md`'s Verification Checklist ("a reported foreign claim") as the same drift class — minor, not yet fixed
+
 ## 0.174.8 — Label-Less Drop Carried Through the Satellite Rules (2026-08-05)
 
 Follow-through on 0.174.7: the rules that orbit crash recovery now agree with it. The In-Progress Record paragraph states the own-label condition instead of restating the case list (one enumeration, at its canonical home), and a label-less checkpoint entry finally has a documented exit — it leaves with the REQ when a human reclaims it, in both the removal rule and forensics Check 1's manual reset.
