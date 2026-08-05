@@ -728,3 +728,164 @@ func TestParseRequestTicketPreservesAssignedToCaseAndTrimsOnlyPadding(t *testing
 			ticket.AssignedTo, "Cloud-ALPHA_2")
 	}
 }
+
+// TestNormalizeSchemaFieldCoversContractAliases exercises the seven Schema Read
+// Contract fields that had no normalizer before REQ-111 — the contract table
+// lives in actions/work-reference.md's Schema Read Contract and is the source of
+// truth for every row below.
+func TestNormalizeSchemaFieldCoversContractAliases(t *testing.T) {
+	testCases := []struct {
+		fieldName string
+		raw       string
+		want      string
+	}{
+		// domain — the field the board was reading verbatim.
+		{"domain", "backend", "backend"},
+		{"domain", "back-end", "backend"},
+		{"domain", "back_end", "backend"},
+		{"domain", "front-end", "frontend"},
+		{"domain", "front_end", "frontend"},
+		{"domain", "ui_design", "ui-design"},
+		{"domain", "sec", "security"},
+		{"domain", "test", "testing"},
+		{"domain", "  Back-End  ", "backend"},
+		// route — lowercase letters uppercase.
+		{"route", "a", "A"},
+		{"route", "B", "B"},
+		{"route", " c ", "C"},
+		// caveman — truthy strings plus the intensity alias.
+		{"caveman", "yes", "true"},
+		{"caveman", "on", "true"},
+		{"caveman", "light", "lite"},
+		{"caveman", "ultra", "ultra"},
+		{"caveman", "false", "false"},
+		// maintenance — YAML boolean plus truthy/falsey strings.
+		{"maintenance", "yes", "true"},
+		{"maintenance", "t", "true"},
+		{"maintenance", "off", "false"},
+		{"maintenance", "f", "false"},
+		// tdd — same, plus test_first.
+		{"tdd", "test_first", "true"},
+		{"tdd", "yes", "true"},
+		{"tdd", "no", "false"},
+		{"tdd", "TRUE", "true"},
+		// error_type — no aliases identified by the contract; canonical passthrough.
+		{"error_type", "environment", "environment"},
+		{"error_type", " Code ", "code"},
+		// kb_status — two aliases.
+		{"kb_status", "skip", "skipped"},
+		{"kb_status", "rejected", "declined"},
+		{"kb_status", "promoted", "promoted"},
+	}
+	for _, testCase := range testCases {
+		if got := normalizeSchemaField(testCase.fieldName, testCase.raw); got != testCase.want {
+			t.Fatalf("normalizeSchemaField(%q, %q) = %q, want %q",
+				testCase.fieldName, testCase.raw, got, testCase.want)
+		}
+	}
+}
+
+// TestResolveSchemaFieldFallsBackWithoutSilentRemap covers the never-silently-drop
+// leg of the contract: an unrecognized value resolves to the documented default
+// AND reports itself unrecognized, so the caller can emit the warning.
+func TestResolveSchemaFieldFallsBackWithoutSilentRemap(t *testing.T) {
+	testCases := []struct {
+		fieldName      string
+		raw            string
+		wantValue      string
+		wantRecognized bool
+	}{
+		{"domain", "back-end", "backend", true},
+		{"domain", "quantum", "general", false},
+		{"caveman", "medium", "false", false},
+		{"maintenance", "maybe", "false", false},
+		{"tdd", "sometimes", "false", false},
+		{"error_type", "cosmic-ray", "code", false},
+		{"kb_status", "half-promoted", "pending", false},
+		{"route", "Z", "", false},
+		// An absent field is not an unrecognized value — it resolves to the
+		// default and must NOT warn, or every REQ omitting an optional field
+		// would emit noise.
+		{"domain", "", "general", true},
+		{"tdd", "", "false", true},
+	}
+	for _, testCase := range testCases {
+		gotValue, gotRecognized := resolveSchemaField(testCase.fieldName, testCase.raw)
+		if gotValue != testCase.wantValue || gotRecognized != testCase.wantRecognized {
+			t.Fatalf("resolveSchemaField(%q, %q) = (%q, %v), want (%q, %v)",
+				testCase.fieldName, testCase.raw,
+				gotValue, gotRecognized, testCase.wantValue, testCase.wantRecognized)
+		}
+	}
+}
+
+// TestNormalizeSchemaFieldDispatchesStatusToItsOwnNormalizer keeps the two
+// pre-existing normalizers authoritative for their fields rather than forking
+// their alias maps into the new table.
+func TestNormalizeSchemaFieldDispatchesStatusToItsOwnNormalizer(t *testing.T) {
+	if got := normalizeSchemaField("status", "done"); got != "completed" {
+		t.Fatalf(`normalizeSchemaField("status", "done") = %q, want "completed"`, got)
+	}
+	if got := normalizeSchemaField("testing_status", "in_testing"); got != "in-testing" {
+		t.Fatalf(`normalizeSchemaField("testing_status", "in_testing") = %q, want "in-testing"`, got)
+	}
+}
+
+// TestParseRequestTicketNormalizesDomain is REQ-111's stated RED case: the board
+// read domain verbatim via coerceScalarToString, so an aliased value reached the
+// card unchanged and silently mis-selected the crew file at work.md Step 6.
+func TestParseRequestTicketNormalizesDomain(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-901-aliased-domain.md")
+	fixtureContent := `---
+id: REQ-901
+title: Aliased domain value
+status: pending
+domain: back-end
+---
+
+Body.
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.Domain != "backend" {
+		t.Fatalf("Domain = %q, want %q — domain must normalize per the Schema Read Contract",
+			ticket.Domain, "backend")
+	}
+}
+
+// TestParseRequestTicketPreservesAbsentDomain guards the regression the REQ-111
+// wiring nearly shipped: resolveSchemaField maps an ABSENT field to the
+// contract's default, which is right for a reader that must pick a crew file
+// (work.md Step 6) and wrong for the renderer. board.js gates both the domain
+// badge and the filter dropdown on `if (request.domain)`, so defaulting absence
+// to "general" would give every domain-less card a badge and a filter entry it
+// never had.
+func TestParseRequestTicketPreservesAbsentDomain(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-902-no-domain.md")
+	fixtureContent := `---
+id: REQ-902
+title: No domain field at all
+status: pending
+---
+
+Body.
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.Domain != "" {
+		t.Fatalf("Domain = %q, want %q — an absent domain must stay absent for the renderer",
+			ticket.Domain, "")
+	}
+}
