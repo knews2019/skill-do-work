@@ -17,6 +17,7 @@ Every build now carries a naming rule you don't have to paste: no cryptic or sin
 - States its precedence against § 3 Surgical Changes: the rule governs names you *introduce*, not names already in the host codebase. No drive-by renames.
 - `actions/review-work.md`'s Principle Check gains a fifth (informational) item so review spot-checks new names, and explicitly excludes short locals and untouched pre-existing names from being findings.
 - `docs/standing-preferences.md` maps the "no cryptic names / must be greppable" nudge to the new default, and notes that language-specific vocabulary still belongs in your own project's agent instructions.
+- Every place that enumerated the guardrail set is updated and marked illustrative rather than closed — `actions/work.md` Step 6's loader gloss, the loader summary below it (now un-enumerated), the three spec templates, and the README. Per the Closed-Enumerations-Go-Stale rule, the guardrail file is now stated as authoritative so the next addition can't strand a caller list.
 
 ## 0.178.1 — The Secret Scan Catches `.envrc`, and the Scripts Run on Bash 3 (2026-08-06)
 
