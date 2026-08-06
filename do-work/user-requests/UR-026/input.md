@@ -27,7 +27,7 @@ Guiding principle, stated by the user: keep "see something, say something" — n
 - **Nothing is suppressed.** Every finding still becomes a REQ (or a sweep checklist item). Report-only outcomes were explicitly rejected by the user ("I still want all the REQs created, I just need to know their impact").
 - **Severity vocabulary is untouched.** Important/Minor/Nit judgment stays as-is; the gate routes findings, it never re-scores them. State this explicitly in the shipped text so agents don't resolve tension by downgrading severities.
 - **Same-commit lock-step** for any field the board parses: `tools/queue-kanban/model.go`, the board-parsed-fields enumeration in this repo's CLAUDE.md, and the Schema Read Contract in `actions/work-reference.md`.
-- **Restatement sweep before any REQ here is called done:** the one-REQ-per-Important rule is restated at `actions/work.md` ~:495, ~:501, ~:505 and in `actions/review-work.md` (~:333 Step 10, ~:448, ~:464, ~:491) — all restatements move together. Line numbers are as of capture; re-grep, don't trust them.
+- **Restatement sweep before any REQ here is called done:** the one-REQ-per-Important rule is restated at `actions/work.md` ~:495, ~:501, ~:505 and in `actions/review-work.md` (~:335 Step 10, ~:450, ~:466, ~:493) — all restatements move together. Line numbers refreshed after the 2026-08-06 merge of main (PR #135); re-grep, don't trust them.
 - **Inline fixes are out of scope** for all three REQs — deferred by user decision until the shipped result has been lived with.
 - All three REQs are `maintenance: true` — each rewrites/narrows the skill's own operating instructions; `crew-members/maintenance.md` (delete-before-you-add) loads at work time.
 

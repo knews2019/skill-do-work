@@ -46,7 +46,7 @@ The token is mandatory and auditable: it appears in the finding's line in the `#
 
 - Closed two-value enum, deliberately — a triage bit, not an estimation system. Document the vocabulary as pinned in the schema comment.
 - Absent or unrecognized reads as `normal` (normalize-and-warn class per the Schema Read Contract) — zero migration for existing REQs.
-- Automatic follow-ups MUST set it from the gate token (`gate: trivial` → `trivial`; `user-visible`/`rule-change` → `normal`). Capture MAY set it.
+- Automatic follow-ups MUST set it from the gate token (`gate: trivial` → `trivial`; `user-visible`/`rule-change` → `normal`). Capture MAY set it. "Automatic follow-ups" means every REQ the pipeline creates without the user typing it: review follow-ups (Step 7 / review-work Step 10) AND Discovered-Tasks follow-ups (Step 8 substep 4) — both flows stamp the field at creation.
 - In this REQ, every Important finding still becomes a `status: pending` REQ exactly as today — suppression/rerouting/consolidation are REQ-123 and REQ-124.
 
 **The chip.** `tools/queue-kanban` renders `effort_estimate: trivial` as a visible chip on the card (and a drawer row), so trivial mechanical fixes are distinguishable from real work at a glance. Display only — no column logic, no scheduling.
@@ -59,7 +59,7 @@ The token is mandatory and auditable: it appears in the finding's line in the `#
 
 **Text sites to update** (line numbers as of capture — re-grep, don't trust them):
 
-- `actions/review-work.md` ~:333 (Step 10 creation template: add `effort_estimate` + require the gate token), ~:464 (Common Rationalizations row "This finding is minor, not worth a follow-up REQ" — rewrite around the gate, do NOT delete: the failure it guards, silently dropping real findings, is still real), ~:491 (Verification Checklist item "Each Important finding has a follow-up REQ drafted" — update to require a recorded gate disposition and an `effort_estimate` on each created REQ), ~:448 (the existing anti-loop warning — cite the gate as its mechanism).
+- `actions/review-work.md` ~:335 (Step 10 creation template: add `effort_estimate` + require the gate token), ~:466 (Common Rationalizations row "This finding is minor, not worth a follow-up REQ" — rewrite around the gate, do NOT delete: the failure it guards, silently dropping real findings, is still real), ~:493 (Verification Checklist item "Each Important finding has a follow-up REQ drafted" — update to require a recorded gate disposition and an `effort_estimate` on each created REQ), ~:450 (the existing anti-loop warning — cite the gate as its mechanism).
 - `actions/work.md` ~:495, ~:501, ~:505 (all three restatements of one-REQ-per-Important gain the gate + label language together).
 
 **Restatement sweep before done:** grep `"Important finding"` across `actions/`, `crew-members/`, `SKILL.md` — all restatements of the follow-up-creation contract move in this commit.

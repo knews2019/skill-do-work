@@ -38,7 +38,8 @@ The UR-489 chain (1305 → 1307 → … → 1321, sixteen REQs over two days) gr
 - **Failure-path exemption:** Step 8 Failure Classification follow-ups remain allowed at any depth — a failed generation-≥2 REQ still gets its Intent/Spec/Code follow-up, else failed work dies silently with no successor.
 - **Step 8 Discovered Tasks from generation-≥2 REQs:** unchanged — `[normal]`/`[low]` are already human-gated via `pending-answers`, `[critical]` already auto-queues; both are consistent with this rule. Verify the text reads coherently side-by-side rather than duplicating logic.
 - **Fixed point, stated explicitly in the shipped text:** sweep REQs (REQ-124) created by a generation-1 review carry `review_generated: true`, so their own reviews fall under this rule — the cascade converges at depth 2 by construction. Say it so nobody "fixes" it later.
-- **Sites:** `actions/work.md` Step 7 (~:495, ~:501, ~:505 — the same restatements REQ-122 touches; coordinate wording), `actions/review-work.md` Step 10 (~:333 creation rules), and a pointer in `actions/work-reference.md` where Discovered Tasks Classification / Failure Classification are defined. Re-grep line numbers.
+- **Sweep appends are not new REQs:** appending an instance to an existing `status: pending` sweep (REQ-124's append contract) remains allowed at any generation — the reroute governs REQ *creation* only.
+- **Sites:** `actions/work.md` Step 7 (~:495, ~:501, ~:505 — the same restatements REQ-122 touches; coordinate wording), `actions/review-work.md` Step 10 (~:335 creation rules), and a pointer in `actions/work-reference.md` where Discovered Tasks Classification / Failure Classification are defined. Re-grep line numbers.
 - When authoring the `pending-answers` Open Questions text, honor the existing rule at `actions/work.md` ~:559: load `crew-members/clear-questions.md` and write for a cold reader.
 
 ## Constraints
