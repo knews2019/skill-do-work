@@ -28,7 +28,14 @@ set -uo pipefail
 repository_root="."
 while [ $# -gt 0 ]; do
   case "$1" in
-    --repo-root) repository_root="${2:-}"; shift 2 ;;
+    --repo-root)
+      if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+        echo "usage: $0 [--repo-root DIR] < candidate-paths" >&2
+        exit 2
+      fi
+      repository_root="$2"
+      shift 2
+      ;;
     *) echo "usage: $0 [--repo-root DIR] < candidate-paths" >&2; exit 2 ;;
   esac
 done

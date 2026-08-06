@@ -22,7 +22,7 @@ Two strips sit above the columns and stay visible in every view:
 - **Notes** — your `do-work note` lines, verbatim and collapsible. Hidden when there are none.
 - **Completion anomalies** — finished REQs whose completion instant can't be resolved. Bookkeeping to fix, not recent work, so the strip ignores the filters and the window.
 
-The toolbar carries a text filter (id or title), domain and status selects, a **Recently done** window (24h / 48h / 7d), a **Lens** toggle (flat Columns vs. grouped **By UR**), and the **Board / Calendar / Testing** switch. Calendar shows completed work day by day.
+The toolbar carries a text filter (id or title), domain and status selects, a **Recently done** window (24h / 48h / 7d), a **Lens** toggle (flat Columns vs. grouped **By UR**), and the **Board / Calendar / Testing** switch. In the By UR lens, **Active** shows URs with open work or a REQ inside the selected Recently done window; **All** also browses older resolved URs. Calendar shows completed work day by day.
 
 ## Badges
 

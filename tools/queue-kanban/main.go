@@ -13,9 +13,9 @@ import (
 // board subcommands — `summary` (column counts), `open-work` (a per-ticket
 // digest of what is in flight), `generate` (a self-contained static board), and
 // `serve` (a live local board that re-walks the tree per
-// request) — plus three release-ritual subcommands: `next-req` and
-// `next-version` allocate numbers, and `verify` checks the cross-file invariants
-// that are otherwise verified by hand on every commit.
+// request) — plus the read-only `frontmatter` field reader and three
+// release-ritual subcommands: `next-req` and `next-version` allocate numbers,
+// and `verify` checks the cross-file invariants otherwise checked by hand.
 //
 // Dispatch is a minimal hand-rolled subcommand switch over os.Args[1] — no
 // external CLI library — with each subcommand owning its own flag.FlagSet:
@@ -27,6 +27,7 @@ import (
 //	queue-kanban next-req     [--repo-root DIR]
 //	queue-kanban next-version <patch|minor|major> [--repo-root DIR] [--version-file PATH]
 //	queue-kanban verify       [--repo-root DIR]
+//	queue-kanban frontmatter get FILE FIELD [--normalize] [--in-set SET]
 //	queue-kanban now
 //
 // Invoking the binary with no subcommand prints the model summary.
@@ -47,8 +48,9 @@ import (
 // Write surfaces, in full: the board's testing view (serve; see testing.go)
 // writes the testing-track frontmatter fields plus do-work/testers.md, and
 // `next-version` writes one line in one version file. Nothing else here writes
-// anything — `open-work`, `next-req`, `verify`, and `now` are read-only, and no subcommand ever
-// writes CHANGELOG.md, which stays an owner-only, human-authored file.
+// anything — `open-work`, `frontmatter`, `next-req`, `verify`, and `now` are
+// read-only, and no subcommand ever writes CHANGELOG.md, which stays an
+// owner-only, human-authored file.
 //
 // `now` takes no --repo-root: it reads a clock, not a tree, so it is the one
 // subcommand that works outside a project entirely.

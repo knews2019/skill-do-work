@@ -8,6 +8,21 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.180.1 — Hand-Back, Frontmatter, and Board-State Correctness (2026-08-06)
+
+An external-feedback pass found real edge cases in the newest Git workflow, shell checks,
+frontmatter reader, and By UR lens. The fixes fail closed, preserve raw schema evidence,
+and give the board the right escape or refresh instead of a plausible stale answer.
+
+- Hand-back bookkeeping now stages and rechecks an explicit path set before a plain commit;
+  missing shell arguments and failed `git status` reads return diagnosed usage/tool errors.
+- `frontmatter get` rejects empty or non-status membership gates and emits YAML sequences one
+  item per line, with empty lists producing empty output instead of Go debug formatting.
+- The board carries raw domain/route provenance, distinguishes scope-hidden search matches,
+  keeps Testing-only filters out of By UR decisions, and invalidates By UR after test updates.
+- Regression probes now isolate global Git ignores, clean up on setup failure, compare exact
+  output, derive CLI subcommands structurally, and execute the critical JavaScript state cases.
+
 ## 0.180.0 — The Board's By UR Lens Stops Going Blank on a Shipped Queue (2026-08-06)
 
 The moment a queue was fully shipped, the board's **By UR** lens with URs set to Active
@@ -1498,4 +1513,3 @@ Fan-out runs now distinguish “assembled” from “delivered,” so an interru
 - Added `in-progress` → `synthesized` → `consumed` run states, persisted code-review reports, a root deep-explore manifest, and consumed-only cleanup with explicit staging for deleted run paths
 - Aligned cleanup's five-pass documentation, changelog-title examples, and prime's interactive questions with their canonical contracts
 - Moved raw REQ/UR Markdown into lazy `board-markdown.js`; the current tree's initial `board-data.js` is 43% smaller while generated and live boards still copy exact source text
-

@@ -318,9 +318,15 @@
     return (
       filterState.searchText !== "" ||
       filterState.domain !== "" ||
-      filterState.status !== "" ||
-      filterState.doneWindow !== ""
+      filterState.status !== ""
     );
+  }
+
+  // doneWindow is a Testing-view filter, so it must not change empty-state
+  // decisions in Columns, Calendar, or By UR after the user switches views.
+  // It still counts for the visible Clear button while Testing is on screen.
+  function hasActiveVisibleFilters() {
+    return hasActiveFilters() || (viewState.view === "testing" && filterState.doneWindow !== "");
   }
 
   function searchMatchesRequest(request, requestId, searchNeedle) {
@@ -396,6 +402,33 @@
     return "the last " + windowHours + " hour" + (windowHours === 1 ? "" : "s");
   }
 
+  function userRequestLensEmptyText(
+    filtersActive,
+    hiddenResolvedCount,
+    hiddenResolvedFilterMatchCount,
+    windowPhrase
+  ) {
+    if (hiddenResolvedFilterMatchCount > 0) {
+      return (
+        "No Active user requests match the current filters — switch URs to All to see " +
+        hiddenResolvedFilterMatchCount +
+        " resolved match" +
+        (hiddenResolvedFilterMatchCount === 1 ? "." : "es.")
+      );
+    }
+    if (filtersActive) {
+      return "No user requests match the current filters.";
+    }
+    if (hiddenResolvedCount > 0) {
+      return (
+        "No user requests with open work or activity in " +
+        windowPhrase +
+        " — widen the RECENTLY DONE window, or switch URs to All to browse the archive."
+      );
+    }
+    return "No user requests in this tree yet.";
+  }
+
   function populateFilterSelects() {
     var domainSet = {};
     var statusSet = {};
@@ -424,7 +457,7 @@
   // A filter change re-renders whatever is on screen; the other views are
   // marked stale so they re-render with the new filters when switched to.
   function onFiltersChanged() {
-    document.getElementById("filter-clear").hidden = !hasActiveFilters();
+    document.getElementById("filter-clear").hidden = !hasActiveVisibleFilters();
     // Columns have no renderedOnce guard (they render at boot), so refresh
     // them unconditionally; the lazily-rendered views refresh if visible and
     // go stale otherwise, re-rendering on their next activation.
@@ -504,13 +537,27 @@
 
     var badges = createElement("div", "req-card-badges");
     if (request.domain) {
-      badges.appendChild(makeBadge("badge-domain", null, request.domain));
+      var domainBadge = makeBadge("badge-domain", null, request.domain);
+      if (request.domainUnrecognized) {
+        domainBadge.appendChild(createElement("span", "status-invalid-flag", "invalid"));
+        domainBadge.title = 'Unrecognized domain "' + (request.originalDomain || request.domain) + '"';
+      } else if (request.originalDomain && request.originalDomain !== request.domain) {
+        domainBadge.title = 'Declared as "' + request.originalDomain + '"; normalized to "' + request.domain + '"';
+      }
+      badges.appendChild(domainBadge);
     }
     if (request.userRequestId) {
       badges.appendChild(makeBadge("badge-ur", null, request.userRequestId));
     }
     if (request.route) {
-      badges.appendChild(makeBadge("badge-route", "route", request.route));
+      var routeBadge = makeBadge("badge-route", "route", request.route);
+      if (request.routeUnrecognized) {
+        routeBadge.appendChild(createElement("span", "status-invalid-flag", "invalid"));
+        routeBadge.title = 'Unrecognized route "' + (request.originalRoute || request.route) + '"';
+      } else if (request.originalRoute && request.originalRoute !== request.route) {
+        routeBadge.title = 'Declared as "' + request.originalRoute + '"; normalized to "' + request.route + '"';
+      }
+      badges.appendChild(routeBadge);
     }
     if (request.status === "blocked" && request.blockedBy && request.blockedBy.length > 0) {
       // Waiting on an external condition (a service being up, a person answering)
@@ -851,6 +898,7 @@
     var host = document.getElementById("user-request-lens");
     host.textContent = "";
     var hiddenResolvedCount = 0;
+    var hiddenResolvedFilterMatchCount = 0;
 
     // Built once per render, not once per UR: recentlyDoneIds walks the whole
     // calendar, and a real tree has hundreds of URs to test against it.
@@ -864,16 +912,10 @@
       if (!userRequest) {
         return;
       }
-      if (
-        filterState.userRequestActivity === "active" &&
-        !userRequestHasOpenOrRecentWork(userRequest, recentlyDoneIdSet)
-      ) {
-        hiddenResolvedCount += 1;
-        return;
-      }
 
-      // A search hit on the UR header keeps the whole group; domain/status
-      // still filter the cards inside it.
+      // Compute non-scope filters before the Active gate. If a search matches a
+      // resolved UR that Active hides, switching to All is a real escape and the
+      // empty state must say so instead of claiming the filters matched nothing.
       var groupMatchesSearch =
         filterState.searchText !== "" &&
         searchMatchesUserRequest(userRequest, userRequestId, filterState.searchText);
@@ -881,6 +923,16 @@
       var shownRequestIds = requestIds.filter(function (requestId) {
         return requestMatchesFilters(requestId, { skipSearch: groupMatchesSearch });
       });
+      if (
+        filterState.userRequestActivity === "active" &&
+        !userRequestHasOpenOrRecentWork(userRequest, recentlyDoneIdSet)
+      ) {
+        hiddenResolvedCount += 1;
+        if (shownRequestIds.length > 0) {
+          hiddenResolvedFilterMatchCount += 1;
+        }
+        return;
+      }
       if (hasActiveFilters() && shownRequestIds.length === 0) {
         return;
       }
@@ -924,24 +976,19 @@
       // the right one: a filter matched nothing, the Active scope hid everything
       // outside the window, or the tree genuinely has no URs. The middle branch
       // names both escapes — widen the window, or drop the scope.
-      var emptyText;
-      if (hasActiveFilters()) {
-        emptyText = "No user requests match the current filters.";
-      } else if (hiddenResolvedCount > 0) {
-        emptyText =
-          "No user requests with open work or activity in " +
-          windowPhrase +
-          " — widen the RECENTLY DONE window, or switch URs to All to browse the archive.";
-      } else {
-        emptyText = "No user requests in this tree yet.";
-      }
+      var emptyText = userRequestLensEmptyText(
+        hasActiveFilters(),
+        hiddenResolvedCount,
+        hiddenResolvedFilterMatchCount,
+        windowPhrase
+      );
       host.appendChild(createElement("p", "ur-lens-empty", emptyText));
     }
 
     // The note used to sit behind an early return, so it never fired in the one
-    // case it exists for: every UR hidden. It stays silent only when a filter —
-    // not the scope — emptied the list, where switching to All brings back
-    // nothing and the suggestion is a false lead.
+    // case it exists for: every UR hidden. It stays silent when filters emptied
+    // the list; if those filters matched only scope-hidden URs, the empty-state
+    // decision above already gives the precise All-scope escape and match count.
     if (hiddenResolvedCount > 0 && !(listIsEmpty && hasActiveFilters())) {
       host.appendChild(
         createElement(
@@ -1373,6 +1420,11 @@
         }
         renderTestingView();
         renderColumns(); // the main board's testing badge tracks the same record
+        renderedOnce.userRequestLens = false;
+        if (viewState.view === "board" && viewState.lens === "user-request") {
+          renderUserRequestLens();
+          renderedOnce.userRequestLens = true;
+        }
       })
       .catch(function (postError) {
         showTestingError("Update failed: " + postError.message);
@@ -1686,6 +1738,17 @@
     drawerMeta.appendChild(dd);
   }
 
+  function schemaFieldDetailValue(originalValue, normalizedValue, isUnrecognized) {
+    var displayedValue = originalValue || normalizedValue || "—";
+    if (!isUnrecognized) {
+      return displayedValue;
+    }
+    var invalidValue = createElement("span", "detail-status-invalid");
+    invalidValue.appendChild(document.createTextNode(displayedValue));
+    invalidValue.appendChild(createElement("span", "status-invalid-flag", "invalid"));
+    return invalidValue;
+  }
+
   // Each dependency listed with the status that decides whether it is met, so
   // "why is this still waiting?" is answerable without opening the upstream REQ.
   function makeDependencyDetailList(request) {
@@ -1744,8 +1807,11 @@
     } else {
       appendMetaRow("Status", request.originalStatus || request.status || "—");
     }
-    if (request.domain) {
-      appendMetaRow("Domain", request.domain);
+    if (request.domain || request.originalDomain) {
+      appendMetaRow(
+        "Domain",
+        schemaFieldDetailValue(request.originalDomain, request.domain, request.domainUnrecognized)
+      );
     }
     if (request.userRequestId) {
       appendMetaRow("User request", makeTicketLink("ur", request.userRequestId));
@@ -1786,8 +1852,11 @@
     if (overlappingRequestIds.length > 0) {
       appendMetaRow("Overlapping write sets", makeTicketLinkList(overlappingRequestIds));
     }
-    if (request.route) {
-      appendMetaRow("Route", request.route);
+    if (request.route || request.originalRoute) {
+      appendMetaRow(
+        "Route",
+        schemaFieldDetailValue(request.originalRoute, request.route, request.routeUnrecognized)
+      );
     }
     if (request.createdAt) {
       appendMetaRow("Created", makeInstantWithRelativeNode(request.createdAt) || request.createdAt);
@@ -2049,6 +2118,7 @@
     document.getElementById("lens-group").hidden = viewState.view !== "board";
     document.getElementById("recent-window-group").hidden = viewState.view !== "board";
     document.getElementById("filter-done-window").hidden = viewState.view !== "testing";
+    document.getElementById("filter-clear").hidden = !hasActiveVisibleFilters();
 
     if (viewState.view === "calendar" && !renderedOnce.calendar) {
       renderCalendar();
