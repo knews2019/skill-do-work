@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.1 — Sweep Lookup, Gate Audit Trail, and Append Staging Hardened (2026-08-06)
+
+Codex's review of the 0.181–0.183 set found four gaps between the new contracts and the
+machinery around them — all closed before first real use.
+
+- Sweep REQs carry a `sweep_key` root-cause slug, and the lookup matches on root cause (key first, then the What-section rule statement) instead of "append when one exists" — two unrelated sweeps under one UR can no longer swallow each other's instances
+- The lookup also accepts `pending-answers` sweeps, so a generation-≥2 sweep awaiting clarify can't be duplicated by the next review
+- The archived `## Review` template now persists each Important finding's `gate:` token and destination — the durable audit record the gate mandates, not just counts
+- Both commit recipes (standalone review and pipeline Step 9) stage existing sweep REQs that were appended to, closing the path where new `## Instances` lines silently stayed uncommitted
+
 ## 0.183.0 — Same-Root-Cause Review Findings Consolidate Into One Sweep REQ (2026-08-06)
 
 Fifteen facets of one root cause used to mean fifteen queued REQs to wade through. Findings

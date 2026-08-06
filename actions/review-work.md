@@ -343,9 +343,10 @@ Record the answer on the finding's line — in the report and in the appended `#
 
 **Sweep consolidation — same root cause, one REQ, never one REQ per facet.** Before drafting any individual follow-up, route each gated finding:
 
-- **A `gate: trivial` finding, or any set of findings sharing one root cause, folds into a sweep REQ.** Find an existing sweep mechanically — `grep -rl "^sweep: true" do-work/queue/`, filtered to files whose `user_request:` matches this REQ's UR and whose `status:` is `pending` — never by judging title similarity (two reviews judging differently mint duplicate sweeps, recreating the runaway at half scale).
-- **Append when one exists:** add one checklist line per instance under the sweep's `## Instances` section — `- [ ] [file/site]: [instance]`. The append never touches the sweep's frontmatter. Never append to a claimed or working sweep — create a new one instead.
-- **Otherwise create ONE sweep REQ named for the ROOT CAUSE** (e.g. "tokenize all remaining hardcoded colors and make the guard catch every notation"), with the normal follow-up fields below plus `sweep: true` and an `## Instances` checklist; `effort_estimate: normal` when solving it establishes or changes a multi-site rule (`gate: rule-change`), `trivial` otherwise.
+- **A `gate: trivial` finding, or any set of findings sharing one root cause, folds into a sweep REQ.** Find candidate sweeps mechanically — `grep -rl "^sweep: true" do-work/queue/`, filtered to files whose `user_request:` matches this REQ's UR and whose `status:` is `pending` **or `pending-answers`** (a generation-≥2 review creates its sweeps as `pending-answers`, and excluding them would let a second review mint a duplicate for the same root cause before the user runs clarify).
+- **Append only to the sweep for THIS root cause.** Marker + UR + status narrow the candidates; the root cause decides. Compare the finding's root cause against each candidate's `sweep_key:` — append on a key match. When no key matches literally, read each candidate's `## What` root-cause statement and append only if the finding's root cause is the **same rule** (would one fix close both?); title resemblance remains forbidden as a match signal (two reviews judging titles differently mint duplicate sweeps — recreating the runaway at half scale). No candidate shares the root cause → create a new sweep, however many sweeps the UR already has.
+- **Append = checklist lines only:** one line per instance under the sweep's `## Instances` section — `- [ ] [file/site]: [instance]`. The append never touches the sweep's frontmatter. Appending to a `pending-answers` sweep is fine (the user approves the sweep with its accumulated instances); never append to a claimed or working sweep — create a new one instead.
+- **Otherwise create ONE sweep REQ named for the ROOT CAUSE** (e.g. "tokenize all remaining hardcoded colors and make the guard catch every notation"), with the normal follow-up fields below plus `sweep: true`, a `sweep_key: <root-cause-slug>` (short kebab-case name for the root cause, e.g. `hardcoded-colors-untokenized` — the deterministic append discriminator future reviews grep first), and an `## Instances` checklist; `effort_estimate: normal` when solving it establishes or changes a multi-site rule (`gate: rule-change`), `trivial` otherwise.
 - **Done means the class cannot recur** — the rule is changed everywhere it applies, not N spots patched one drop at a time. State that in the sweep's What section.
 - **Only a genuinely non-trivial, thematically unrelated finding (`gate: user-visible`, standing alone) earns its own REQ** — and its body must state in one line why it couldn't fold into a sweep.
 - At generation ≥ 2, appends stay allowed (the depth stop below is creation-only); a NEW sweep falls under the reroute like any other creation (`status: pending-answers`; critical pierces).
@@ -423,10 +424,14 @@ After generating the report, append a Review section to the REQ file:
 | Risk | [level] |
 | Acceptance | [result] |
 
-**Findings:** [count] important, [count] minor
+**Important findings (each with its recorded gate disposition — this is the durable audit record the gate mandates):**
+- [finding, one line] — gate: [user-visible | rule-change | trivial] → [REQ-NNN created / appended to REQ-NNN / rerouted pending-answers as REQ-NNN]
+[or "None"]
+
+**Minor findings:** [count] (report only)
 **Acceptance:** [Pass/Partial/Fail/Untested] — [1-line summary]
 **Suggested testing:** [count] items
-**Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"
+**Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"; **sweeps appended to:** [REQ-NNN] or "None"
 
 *Reviewed by review-work action*
 ```
@@ -446,6 +451,12 @@ git add do-work/archive/UR-NNN/REQ-NNN-slug.md
 # Stage any follow-up REQs created
 git add do-work/queue/REQ-NNN-slug.md
 
+# Stage any EXISTING sweep REQs this review appended instances to — an append
+# modifies a queue file rather than creating one, so the created-files line
+# above never covers it and the new ## Instances entries would silently stay
+# unstaged.
+git add do-work/queue/REQ-NNN-existing-sweep.md
+
 git commit -m "$(cat <<'EOF'
 [REQ-NNN] review: {score}% (Route {route})
 
@@ -458,7 +469,7 @@ EOF
 
 **Format:** `[REQ-NNN] review: {score}% (Route {route})` — where `{score}` is the overall review percentage and `{route}` is the original triage route. List the reviewed file path and any follow-up REQs created.
 
-Stage only the modified archived REQ and any new follow-up REQs — never `git add -A`/`.` or bypass a hook (see `actions/commit.md` § Rules for the full guard).
+Stage only the modified archived REQ, any new follow-up REQs, and any existing sweep REQs appended to — never `git add -A`/`.` or bypass a hook (see `actions/commit.md` § Rules for the full guard).
 
 ## Calibrating Review Depth
 
