@@ -41,12 +41,19 @@ fi
 
 # A secret-shaped BASENAME. Matched on the basename rather than the whole path
 # so a directory that merely contains "secret" does not tag every ordinary file
-# beneath it. These are the four globs both prose copies list; the broad
-# *credentials* / *secret* forms subsume the narrower ones they also spell out.
+# beneath it. The broad *credentials* / *secret* forms subsume the narrower ones
+# the prose also spells out.
+#
+# `.env*` is a prefix glob, deliberately: an earlier `.env|.env.*` spelling let
+# `.envrc` through — a direnv file, routinely full of exported secrets — because
+# neither branch matches a suffix with no dot. Under-matching here is the one
+# failure this script exists to prevent, so the pattern tracks the advertised
+# `.env*` exactly. `*.env` is the deliberate extra: `production.env` is an env
+# file by any reading, and both callers advertise it alongside the prefix form.
 is_secret_shaped() {
   local candidate_basename="${1##*/}"
   case "$candidate_basename" in
-    .env|.env.*|*.env)         return 0 ;;
+    .env*|*.env)               return 0 ;;
     *credentials*)             return 0 ;;
     *.pem|*.key|*.p12|*.pfx)   return 0 ;;
     *secret*)                  return 0 ;;

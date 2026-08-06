@@ -53,13 +53,13 @@ It gates on `git rev-parse --git-dir`, enumerates every uncommitted path, and pr
 - **M** — modified (a renamed path is tagged M too: read its diff, don't re-read it as new content)
 - **A** — added, covering both staged-new and untracked
 - **D** — deleted
-- **X** — excluded: a secret-shaped name (`.env*`, `*credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, `*secret*`)
+- **X** — excluded: a secret-shaped name (`.env*` or `*.env`, `*credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, `*secret*`)
 
 Exit 1 means the working tree is clean — report "Nothing to commit" and exit. Exit 2 means this is not a git repo — report and exit.
 
 **`X` rows are reported, never skipped silently.** Carry them into the final report so the user knows a secret-shaped file is sitting uncommitted; just never read or diff their contents, and never include them in a commit.
 
-If the script is missing, do it by hand: `git status --porcelain --untracked-files=all`, then categorize M/A/D and apply the four exclusion globs above. The `-uall` flag is not optional — plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so every file inside a brand-new folder escapes the exclusion scan. That is a secret-leak path, and `actions/stray-check.md`'s Red Flags record that it has been hit.
+If the script is missing or will not run, do it by hand: `git status --porcelain --untracked-files=all`, then categorize M/A/D and apply the four exclusion globs above. The `-uall` flag is not optional — plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so every file inside a brand-new folder escapes the exclusion scan. That is a secret-leak path, and `actions/stray-check.md`'s Red Flags record that it has been hit.
 
 ### Step 2: Read Changes
 
@@ -92,7 +92,7 @@ What the script settles, so this prose no longer has to:
 
 Files that come back `-` remain unassociated and move to Step 4.
 
-If the script is missing, do it by hand: glob both directories, read each REQ's `status` (accepting every alias above) and `## Implementation Summary` list, path-match, and tie-break on the latest `completed_at`.
+If the script is missing or will not run, do it by hand: glob both directories, read each REQ's `status` (accepting every alias above) and `## Implementation Summary` list, path-match, and tie-break on the latest `completed_at`.
 
 ### Step 4: Group Unassociated Files
 

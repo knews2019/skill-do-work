@@ -14,6 +14,15 @@
 #
 # Read-only. This script resolves ownership and prints it; grouping, commit
 # messages, and verdicts stay with the caller.
+#
+# Bash 3.2 compatible, because stock macOS /bin/bash still is and every other
+# script in tools/checks/ holds that floor. That rules out `mapfile` and
+# `declare -A`, so ownership is resolved in awk — which has had associative
+# arrays all along — rather than in shell.
+#
+# Known limit: the candidate stream and the ownership table are line- and
+# TAB-oriented, so a path containing a literal newline or tab cannot be matched.
+# Such a path comes back "-" (unassociated) rather than mis-attributed.
 set -uo pipefail
 
 repository_root="."
@@ -34,13 +43,13 @@ if [ ! -d "do-work" ]; then
   exit 2
 fi
 
-mapfile -t candidate_paths
-# Drop blank lines so a trailing newline on stdin does not become a candidate.
-filtered_candidates=()
-for candidate_path in "${candidate_paths[@]}"; do
-  [ -n "$candidate_path" ] && filtered_candidates+=("$candidate_path")
-done
-if [ "${#filtered_candidates[@]}" -eq 0 ]; then
+candidate_paths_file="$(mktemp)"
+ownership_table_file="$(mktemp)"
+trap 'rm -f "$candidate_paths_file" "$ownership_table_file"' EXIT
+
+# Blank lines dropped so a trailing newline on stdin does not become a candidate.
+grep -v '^[[:space:]]*$' > "$candidate_paths_file" || true
+if [ ! -s "$candidate_paths_file" ]; then
   exit 1
 fi
 
@@ -85,19 +94,13 @@ extract_implementation_summary_paths() {
   ' "$1" | sed -n 's/^[[:space:]]*- `\([^`]*\)`.*/\1/p' | grep -v '^do-work/'
 }
 
-# owning_req_by_path / owning_stamp_by_path hold the current best claim per
-# path. The stamp is the tie-break: when two REQs both list a path, the most
-# recently completed one wins. An in-flight working/ REQ has no completed_at
-# and is stamped empty, which sorts below every archived claim — deliberately,
-# since a finished REQ is stronger evidence of ownership than a running one.
-declare -A owning_req_by_path=()
-declare -A owning_stamp_by_path=()
-
-consider_request_file() {
+# Emit "path \t completed_at \t REQ-NNN" rows for one REQ file. The stamp is the
+# tie-break the awk join applies below.
+append_ownership_rows() {
   local request_file="$1" require_terminal_success="$2"
   [ -f "$request_file" ] || return 0
 
-  local request_id request_status completed_stamp
+  local request_id request_status completed_stamp summary_path
   request_id="$(read_frontmatter_field "$request_file" id)"
   [ -n "$request_id" ] || return 0
 
@@ -107,28 +110,34 @@ consider_request_file() {
   fi
   completed_stamp="$(read_frontmatter_field "$request_file" completed_at)"
 
-  local summary_path
   while IFS= read -r summary_path; do
     [ -n "$summary_path" ] || continue
-    if [ -z "${owning_req_by_path[$summary_path]:-}" ] ||
-       [[ "$completed_stamp" > "${owning_stamp_by_path[$summary_path]:-}" ]]; then
-      owning_req_by_path["$summary_path"]="$request_id"
-      owning_stamp_by_path["$summary_path"]="$completed_stamp"
-    fi
+    printf '%s\t%s\t%s\n' "$summary_path" "$completed_stamp" "$request_id" \
+      >> "$ownership_table_file"
   done < <(extract_implementation_summary_paths "$request_file")
 }
 
 while IFS= read -r archived_request_file; do
-  consider_request_file "$archived_request_file" yes
+  append_ownership_rows "$archived_request_file" yes
 done < <(find do-work/archive -type f -name 'REQ-*.md' 2>/dev/null | sort)
 
 # In-flight REQs are considered regardless of status — they are claimed, not
-# finished, so a terminal-success gate would exclude every one of them.
+# finished, so a terminal-success gate would exclude every one of them. They
+# carry no completed_at, so their empty stamp loses every tie against an
+# archived claim: a finished REQ is stronger evidence of ownership.
 while IFS= read -r working_request_file; do
-  consider_request_file "$working_request_file" no
+  append_ownership_rows "$working_request_file" no
 done < <(find do-work/working -type f -name 'REQ-*.md' 2>/dev/null | sort)
 
-for candidate_path in "${filtered_candidates[@]}"; do
-  printf '%s\t%s\n' "${owning_req_by_path[$candidate_path]:--}" "$candidate_path"
-done
+awk -F'\t' '
+  FILENAME == ARGV[1] {
+    # ISO-8601 stamps compare correctly as strings, and "" sorts below them all.
+    if (!($1 in owning_req) || $2 > owning_stamp[$1]) {
+      owning_req[$1] = $3
+      owning_stamp[$1] = $2
+    }
+    next
+  }
+  { print ($0 in owning_req ? owning_req[$0] : "-") "\t" $0 }
+' "$ownership_table_file" "$candidate_paths_file"
 exit 0
