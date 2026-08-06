@@ -1,11 +1,11 @@
 # Coding Guardrails Crew Member
 
-<!-- JIT_CONTEXT: This file is always loaded during implementation (Step 6) alongside general.md, regardless of domain. It encodes four behavioral guardrails adapted from Andrej Karpathy's observations on LLM coding pitfalls (via forrestchang/andrej-karpathy-skills). These rules shape *how* code is written at every step; they are orthogonal to the workflow machinery. -->
+<!-- JIT_CONTEXT: This file is always loaded during implementation (Step 6) alongside general.md, regardless of domain. Guardrails 1-4 are behavioral, adapted from Andrej Karpathy's observations on LLM coding pitfalls (via forrestchang/andrej-karpathy-skills); guardrail 5 (Naming for Reach) is the skill's own and is the canonical home for naming rules. These rules shape *how* code is written at every step; they are orthogonal to the workflow machinery. -->
 
-> Behavioral guardrails adapted from Andrej Karpathy's observations on LLM coding
+> Guardrails 1-4 are behavioral, adapted from Andrej Karpathy's observations on LLM coding
 > pitfalls — models make silent assumptions, overcomplicate, and drift beyond
 > scope. Original source: [forrestchang/andrej-karpathy-skills](https://github.com/forrestchang/andrej-karpathy-skills).
-> These four principles prioritize caution over velocity. Do-work's complexity
+> Guardrail 5 is the skill's own. These five principles prioritize caution over velocity. Do-work's complexity
 > triage already sends simple REQs straight to implementation — so apply
 > judgment, not ceremony.
 
@@ -110,6 +110,37 @@ For multi-step tasks, state a brief plan:
 
 Strong success criteria let you loop independently. Weak criteria require constant clarification.
 
+## 5. Naming for Reach
+
+**Names with reach get descriptive names. Short-lived locals can stay short.**
+This is the canonical statement of the naming rules; other files point here.
+
+*Reach* means anything a reader can meet far from its declaration: functions, types,
+methods, struct fields, package-level and exported identifiers, files, folders, database
+tables and columns, CLI flags, env vars, CSS classes, template names.
+
+- **No cryptic or single-word names for anything with reach.** Two words minimum
+  (`invoiceTotal`, `retryCount`, `image_pipeline.go`). If a name needs a comment to
+  explain it, the name is wrong — `pendingInvoiceItems` beats `pii`.
+- **Optimize for grepability.** A plain text search must find every usage: you have no
+  LSP, and neither does the next agent to open the file.
+- **Per-language form, same rule.** Identifiers take the host language's casing; files, DB
+  tables and columns, CLI flags, and env vars take the conventional form for their kind
+  (`content_type`, `--site-repo-path`, `IWR_SITE_REPO_PATH`). The rule is about word count
+  and searchability, never about imposing one casing everywhere.
+- **Idiomatic short locals are fine — don't go nuts.** Conventional loop indices, error and
+  context and receiver names, and other short-lived locals a fluent reader recognizes
+  instantly stay short. The test: (a) it's conventional vocabulary in this language, **and**
+  (b) declaration-to-last-use fits on one screen. Fail either and it needs a descriptive
+  name. Never a cryptic local for a *domain* concept.
+- **Single-word-by-design is exempt.** CLI subcommands and Make/just targets are already
+  two words where they're invoked (`do-work run`) — don't "fix" them, and don't let a
+  conventions review flag them.
+
+**Precedence against §3:** this rule governs names *you introduce*; §3 (match existing
+style) still governs code that's already there. A host codebase with shorter names than
+this doesn't get renamed — you just don't add more.
+
 ---
 
 **Success indicators** — observable behaviors that show the principles are landing:
@@ -118,3 +149,5 @@ Strong success criteria let you loop independently. Weak criteria require consta
 - Diffs stay small and focused on the REQ
 - Neighboring files stay untouched unless the REQ requires them
 - You talk in verification terms ("here's what turns GREEN") rather than "I implemented it"
+- New exported names, files, and columns read as two words; short names are confined to
+  short-lived locals

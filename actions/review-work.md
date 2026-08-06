@@ -144,12 +144,13 @@ The directive check is informational — it does not affect the overall score. I
 
 **Coding-Guardrails Principle Check (informational)**
 
-`crew-members/coding-guardrails.md` was always-loaded during implementation. Spot-check the diff against its four principles — these overlap with existing dimensions but frame them as observable behaviors:
+`crew-members/coding-guardrails.md` was always-loaded during implementation. Spot-check the diff against its five principles — these overlap with existing dimensions but frame them as observable behaviors:
 
 1. **Think Before Coding** — did Open Questions / Decisions get surfaced (`- [~]` marks, `## Decisions`), or were ambiguities silently resolved?
 2. **Simplicity First (YAGNI)** — does the code match the senior-engineer test? Flag speculative abstractions, unrequested configurability, and defensive handling for impossible inputs. (Remember: simplify ≠ strip — if removing it would need restoring next week, it's foundation.) See `crew-members/coding-guardrails.md` § Simplicity First for the canonical statement.
 3. **Surgical Changes** — every changed line should trace to the REQ. Adjacent-code "improvements", style-only edits, and unrelated refactors are drift.
 4. **Goal-Driven Execution** — does the Testing section show verification (red-green, targeted regression, or equivalent proof), or just "it compiles"?
+5. **Naming for Reach** — do names the diff *introduces* with reach (exported identifiers, struct fields, files, DB columns, CLI flags, env vars) read as two words and survive a plain-text grep? Idiomatic short locals are fine and are not a finding; neither are pre-existing short names the diff didn't touch. See `crew-members/coding-guardrails.md` § Naming for Reach for the canonical statement.
 
 Most guardrail issues are already caught by Scope Discipline, Code Quality, and Test Adequacy. This check is a mnemonic pass — note anything the rubric missed under a **Minor** finding. Do not double-penalize the same issue across dimensions.
 
@@ -159,6 +160,7 @@ Most guardrail issues are already caught by Scope Discipline, Code Quality, and 
 | Simplicity First | Code Quality | Fewest lines; no speculative abstractions |
 | Surgical Changes | Scope Discipline | Only declared files touched |
 | Goal-Driven Execution | Test Adequacy | RED→GREEN proof honored |
+| Naming for Reach | Code Quality | New names with reach are two words and greppable |
 
 **Domain-Specific Review (if domain rules provided)**
 
