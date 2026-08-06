@@ -58,26 +58,27 @@ inspect action
 
 ### Step 1: Preflight
 
-Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, report and exit.
+Run the shipped check:
 
-Run `git status --porcelain --untracked-files=all` to get all uncommitted changes — staged, unstaged, and untracked. The `--untracked-files=all` (`-uall`) flag matters: plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so Step 2 would never see (or would try to "read") the files inside a new untracked folder. With `-uall`, every untracked file is listed individually.
+```bash
+<skill-root>/tools/checks/uncommitted-inventory.sh
+```
 
-If the working tree is clean:
+It gates on `git rev-parse --git-dir`, enumerates every uncommitted path, and prints one `<tag>\t<path>` row per file:
+
+- **M** — modified (a renamed path is tagged M too: read its diff, don't re-read it as new content)
+- **A** — added, covering both staged-new and untracked
+- **D** — deleted
+- **X** — excluded from full analysis: a secret-shaped name (`.env*` or `*.env`, `*credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, `*secret*`)
+
+Exit 2 means this is not a git repo — report and exit. Exit 1 means the working tree is clean:
+
 - **No REQ/UR scope:** Report "No uncommitted changes" and exit.
 - **REQ/UR scope:** Continue to Step 2 — committed files from the Implementation Summary will still be inspected.
 
-Categorize each file by its status:
-- **Modified** (M) — existing files with changes
-- **Added** (??, A) — new or untracked files
-- **Deleted** (D) — removed files
+**`X` rows are reported, never skipped silently.** Carry them into the report so the user knows a secret-shaped file is sitting uncommitted; just never read or diff their contents.
 
-**Exclude dangerous files** from full analysis (still report them):
-- `.env`, `.env.*` — environment variables
-- `credentials.*`, `*credentials*` — credential files
-- `*.pem`, `*.key`, `*.p12`, `*.pfx` — certificates and keys
-- `*.secret`, `*secret*` — secret files
-
-Collect excluded files for the report. Do not silently skip them.
+If the script is missing or will not run, do it by hand: `git status --porcelain --untracked-files=all`, then categorize M/A/D and apply the four exclusion globs above. The `-uall` flag is not optional — plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so every file inside a brand-new folder escapes the exclusion scan. That is a secret-leak path, and `actions/stray-check.md`'s Red Flags record that it has been hit.
 
 ### Step 2: Read Changes
 
@@ -114,21 +115,26 @@ Uncommitted files that are **not** in the target REQ's Implementation Summary re
 
 #### Unscoped mode (default)
 
-Scan for REQs that might own some of the uncommitted files:
+Feed the non-`X` paths from Step 1 into the shipped check:
 
-1. Glob for `do-work/archive/**/REQ-*.md` — find all archived REQs
-2. For each archived REQ:
-   - Read the frontmatter — check for `status: completed` or `status: completed-with-issues`
-   - Read the `## Implementation Summary` section — extract the list of files created/modified
-3. Also check `do-work/working/` for in-flight REQs with file lists
+```bash
+printf '%s\n' <paths> | <skill-root>/tools/checks/associate-files.sh
+```
 
-Match uncommitted files against these file lists by path. A file is associated with a REQ if it appears in that REQ's Implementation Summary.
+It scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 2 means there is no `do-work/` directory, which is the skip condition already stated above.
 
-**Conflict resolution:** If a file matches multiple REQs, associate it with the most recently completed one (latest `completed_at` timestamp).
+What the script settles, so this prose no longer has to:
+
+- **Terminal-success matching honors the Schema Read Contract's aliases**, so `completed`, `completed-with-issues`, and `done`/`finished`/`closed` all qualify. Testing only for the literal `completed` drops every remediated-with-issues REQ, and its files then never get associated.
+- **In-flight `working/` REQs are included** regardless of status, since a claimed REQ is never terminal.
+- **Conflict resolution:** a path claimed by two REQs goes to the one with the latest `completed_at`. An archived REQ outranks an in-flight one.
+- **`do-work/` metadata paths are excluded** from association, matching `tools/checks/scope-drift.sh`.
 
 **Partial matches count.** If 3 out of 5 files in a REQ's Implementation Summary are among the uncommitted files, group all 3 under that REQ.
 
-Files that don't match any REQ remain unassociated and move to Step 4.
+Files that come back `-` remain unassociated and move to Step 4.
+
+If the script is missing or will not run, do it by hand: glob both directories, read each REQ's `status` (accepting every alias above) and `## Implementation Summary` list, path-match, and tie-break on the latest `completed_at`.
 
 ### Step 4: Group Unassociated Files
 

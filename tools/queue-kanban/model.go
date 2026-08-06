@@ -852,13 +852,14 @@ type schemaFieldContract struct {
 // this table is the stale copy. Keep them changing in the same commit.
 var schemaReadContractFields = map[string]schemaFieldContract{
 	"domain": {
-		canonicalValues: []string{"frontend", "backend", "ui-design", "general", "security", "testing"},
+		canonicalValues: []string{"frontend", "backend", "ui-design", "general", "security", "testing", "cms"},
 		aliases: map[string]string{
 			"back-end": "backend", "back_end": "backend",
 			"front-end": "frontend", "front_end": "frontend",
-			"ui_design": "ui-design",
-			"sec":       "security",
-			"test":      "testing",
+			"ui_design":          "ui-design",
+			"sec":                "security",
+			"test":               "testing",
+			"content-management": "cms", "content_management": "cms",
 		},
 		defaultValue: "general",
 	},

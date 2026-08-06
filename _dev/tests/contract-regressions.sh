@@ -790,6 +790,10 @@ hardened_check_scripts=(
   "tools/checks/record-commit-hash.sh|actions/work.md"
   "tools/checks/blanked-req-scan.sh|actions/forensics.md"
   "tools/checks/blanked-req-scan.sh|actions/cleanup.md"
+  "tools/checks/uncommitted-inventory.sh|actions/commit.md"
+  "tools/checks/uncommitted-inventory.sh|actions/inspect.md"
+  "tools/checks/associate-files.sh|actions/commit.md"
+  "tools/checks/associate-files.sh|actions/inspect.md"
 )
 
 for check_script_entry in "${hardened_check_scripts[@]}"; do
@@ -836,6 +840,35 @@ assert_block_contains \
   "$current_req_relevance_block" \
   '[Nn]ever probe for a concurrent session' \
   'actions/work-reference.md must keep Current-REQ relevance covering session state with the explicit never-probe/never-ask clause — without it an agent re-derives the concurrency check the exclusive-session model removed and stalls the loop on a prompt.'
+
+# The secret-shaped exclusion is a behavior probe, not a grep, because the bug it
+# guards was a glob that LOOKED right. `.env|.env.*` reads as covering ".env*" but
+# matches neither `.envrc` (direnv — routinely full of exported secrets) nor
+# `.environment`: both are suffixes with no dot, so each fell through to `A` and the
+# callers would read and stage them. Codex caught it on PR #134. Assert the tags,
+# not the pattern — the next wrong pattern will look right too.
+inventory_probe_dir="$(mktemp -d)"
+(
+  cd "$inventory_probe_dir" || exit 1
+  git init -q . && git config user.email probe@test && git config user.name probe
+  mkdir -p nested
+  for probe_name in .env .env.local .envrc .environment production.env \
+                    credentials.json server.pem ordinary.js; do
+    echo probe > "nested/$probe_name"
+  done
+) >/dev/null 2>&1
+inventory_probe_output="$("$repo_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
+for must_be_excluded in .env .env.local .envrc .environment production.env credentials.json server.pem; do
+  if ! printf '%s\n' "$inventory_probe_output" | grep -qF "$(printf 'X\tnested/%s' "$must_be_excluded")"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag nested/%s as X (secret-shaped) — it is reachable by the advertised exclusion globs.\n' "$must_be_excluded" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+if ! printf '%s\n' "$inventory_probe_output" | grep -qF "$(printf 'A\tnested/ordinary.js')"; then
+  printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag an ordinary file as A — an over-broad exclusion glob starves both callers of every file.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+rm -rf "$inventory_probe_dir"
 
 assert_contains \
   "tools/checks/preflight.sh" \
