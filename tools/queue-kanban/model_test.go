@@ -748,6 +748,10 @@ func TestNormalizeSchemaFieldCoversContractAliases(t *testing.T) {
 		{"domain", "ui_design", "ui-design"},
 		{"domain", "sec", "security"},
 		{"domain", "test", "testing"},
+		{"domain", "cms", "cms"},
+		{"domain", "CMS", "cms"},
+		{"domain", "content-management", "cms"},
+		{"domain", "content_management", "cms"},
 		{"domain", "  Back-End  ", "backend"},
 		// route — lowercase letters uppercase.
 		{"route", "a", "A"},

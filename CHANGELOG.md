@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.177.0 — `cms` Is a Recognized Domain (2026-08-06)
+
+Content-management work had nowhere to live in the domain vocabulary, so `domain: cms` normalized to `general` and warned on the board every time. It's now a first-class domain with its own crew rules.
+
+- `cms` joins the `domain` enum in the Schema Read Contract, the board's normalizer table, capture's closed set, and both frontmatter samples — one addition, six definition sites, all in step
+- `content-management` / `content_management` resolve to `cms`; `CMS` already worked, since the normalizer case-folds before the alias lookup
+- New `crew-members/cms.md`, loaded just-in-time like every other domain file. Its opinions are the ones that don't fall out of `backend.md` or `frontend.md`: a content-model change is a data migration, content the CMS owns isn't yours to hand-edit, draft is a state rather than a copy, and editor-facing strings are a deliverable
+
 ## 0.176.6 — Shipped Comments Stop Pointing at a File Consumers Don't Have (2026-08-06)
 
 Four comments in the shipped board tool cited this repo's maintainer doc, which is export-ignored — so the pointer dangles in every consumer install. The repo already has a check for exactly this; it had been failing, partly since 0.175.0, hidden in the same output as seven unrelated runner-dependent failures.

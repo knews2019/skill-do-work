@@ -15,7 +15,7 @@ title: Brief descriptive title
 status: pending
 created_at: 2025-01-26T10:00:00Z  # current UTC instant, never local time with a Z suffix (Timestamp rule, actions/work-reference.md)
 user_request: UR-001
-domain: frontend  # choose one: frontend, backend, ui-design, general, security, or testing
+domain: frontend  # choose one: frontend, backend, ui-design, general, security, testing, or cms
 prime_files: []  # list paths to relevant prime-*.md files, or leave empty
 tdd: true  # default true when a runnable RED test can be written in this project's harness; false otherwise (see heuristic below)
 suggested_spec:  # optional — spec template name if one clearly matches (e.g., "api-endpoint", "bug-fix")
