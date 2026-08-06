@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.175.4 — A Typo'd Domain Leaves a Footprint on the Board Again (2026-08-06)
+
+`domain: quantum` rendered as a plain `general` badge with no warning anywhere, so a misspelled domain was *harder* to spot after 0.174.15 than before it — the value at least used to reach the card verbatim. The board now says so, in the same warnings banner it already uses for a typo'd testing status.
+
+- The unrecognized flag is kept rather than discarded; the card still shows the contract's `general` default, and the board raises the contract's own warning line naming what was actually written
+- The code comment defending the silence claimed the board had no warning channel for domain. It has one, the sibling field has used it since it shipped, and the frontend already renders it — the comment now says that instead
+- A documented alias (`back-end`) and an absent domain stay silent, each with its own test: a channel that fires on ordinary REQs is a channel readers learn to ignore
+- No frontend change was needed — anything appended to the board's warnings list already prints in `do-work board summary` and renders in the data-warnings banner
+
 ## 0.175.3 — The Board Now Normalizes Route, Which 0.174.15 Claimed and Didn't (2026-08-06)
 
 An external review caught 0.174.15 overclaiming: its title said the board honored the Schema Read Contract for all nine fields, but only `domain` was ever wired. `route` kept reading verbatim, so a REQ written `route: a` showed a lowercase `a` badge — in the one other contract field the board actually displays. Now wired, with the correction on the record.

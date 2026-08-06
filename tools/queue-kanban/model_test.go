@@ -890,6 +890,107 @@ Body.
 	}
 }
 
+// TestUnrecognizedDomainFlagsAndWarns is REQ-117's stated RED case, and it is the
+// exact shape TestUnrecognizedTestingStatusFlagsAndWarns already holds for the
+// sibling field. Before REQ-111 the board read domain verbatim, so a typo was at
+// least visible on the card; wiring it through resolveSchemaField silently
+// substituted the contract's default and discarded the recognized flag, which made
+// the typo *less* visible than it had been. The value may default — the contract
+// says `general` — but the footprint is not optional (Schema Read Contract item 3,
+// "Never silently drop").
+func TestUnrecognizedDomainFlagsAndWarns(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	reqFileContent := "---\nid: REQ-0103\ntitle: Fixture\nstatus: pending\ndomain: quantum\n---\nbody\n"
+	if writeError := os.WriteFile(filepath.Join(queueDir, "REQ-0103-bad-domain.md"), []byte(reqFileContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	ticket := board.RequestsById["REQ-0103"]
+	if ticket == nil {
+		t.Fatalf("REQ-0103 not parsed")
+	}
+	if !ticket.DomainUnrecognized {
+		t.Errorf("DomainUnrecognized = false, want true")
+	}
+	if ticket.Domain != "general" {
+		t.Errorf("Domain = %q, want %q — the contract's documented default still applies", ticket.Domain, "general")
+	}
+	if ticket.OriginalDomain != "quantum" {
+		t.Errorf("OriginalDomain = %q, want %q — the warning has to name what was actually written",
+			ticket.OriginalDomain, "quantum")
+	}
+	warningFound := false
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "domain") && strings.Contains(warningText, "quantum") {
+			warningFound = true
+		}
+	}
+	if !warningFound {
+		t.Errorf("no domain warning naming the written value; warnings=%v", board.Warnings)
+	}
+}
+
+// TestRecognizedDomainRaisesNoWarning is the other half, and the one that keeps
+// the channel worth reading: a documented alias must resolve in silence. If every
+// `domain: back-end` also warned, the warnings list would fill with noise on a
+// real queue and readers would learn to ignore it — which is the failure mode the
+// contract's absent-field carve-out exists to prevent.
+func TestRecognizedDomainRaisesNoWarning(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	for _, fixture := range []struct {
+		fileName        string
+		requestId       string
+		frontmatterLine string
+	}{
+		{"REQ-0104-alias-domain.md", "REQ-0104", "domain: back-end\n"},
+		{"REQ-0105-no-domain.md", "REQ-0105", ""},
+	} {
+		reqFileContent := "---\nid: " + fixture.requestId +
+			"\ntitle: Fixture\nstatus: pending\n" + fixture.frontmatterLine + "---\nbody\n"
+		if writeError := os.WriteFile(filepath.Join(queueDir, fixture.fileName), []byte(reqFileContent), 0o644); writeError != nil {
+			t.Fatalf("write fixture %s: %v", fixture.fileName, writeError)
+		}
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "domain") {
+			t.Errorf("unexpected domain warning for a recognized alias / absent field: %q", warningText)
+		}
+	}
+	aliasTicket := board.RequestsById["REQ-0104"]
+	if aliasTicket == nil {
+		t.Fatalf("REQ-0104 not parsed")
+	}
+	if aliasTicket.Domain != "backend" || aliasTicket.DomainUnrecognized {
+		t.Errorf("alias ticket: Domain = %q, DomainUnrecognized = %v — want %q, false",
+			aliasTicket.Domain, aliasTicket.DomainUnrecognized, "backend")
+	}
+	absentTicket := board.RequestsById["REQ-0105"]
+	if absentTicket == nil {
+		t.Fatalf("REQ-0105 not parsed")
+	}
+	if absentTicket.Domain != "" || absentTicket.DomainUnrecognized {
+		t.Errorf("absent-domain ticket: Domain = %q, DomainUnrecognized = %v — want empty, false",
+			absentTicket.Domain, absentTicket.DomainUnrecognized)
+	}
+}
+
 // TestParseRequestTicketNormalizesRoute is REQ-116's stated RED case. REQ-111
 // added the route contract row and its normalizer but wired only `domain` at the
 // read site, so the board kept reading route through coerceScalarToString — which

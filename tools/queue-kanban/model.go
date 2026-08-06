@@ -53,6 +53,12 @@ type RequestTicket struct {
 	Title          string
 	Status         string // normalized status (complete/done/finished/closed → completed)
 	OriginalStatus string // verbatim frontmatter status before normalization
+	OriginalDomain string // verbatim frontmatter domain before normalization ("" when absent)
+	// Set when a PRESENT domain value survives normalization outside the canonical
+	// enum. The ticket keeps rendering with the contract's default (`general`) and
+	// collectDomainWarnings raises the matching data warning — the value defaults,
+	// the footprint does not (Schema Read Contract item 3, "Never silently drop").
+	DomainUnrecognized bool
 
 	// Set by bucketColumns when the normalized status falls outside the Schema
 	// Read Contract vocabulary (actions/work-reference.md). The ticket is parked
@@ -388,6 +394,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	annotateWriteSetOverlap(board.AllRequests)
 
 	board.Warnings = append(board.Warnings, collectTestingWarnings(board.AllRequests)...)
+	board.Warnings = append(board.Warnings, collectDomainWarnings(board.AllRequests)...)
 	board.Calendar = buildCalendar(board.AllRequests)
 	board.Notes = loadQueueNotes(discovered.NotesFilePath)
 	board.TestingProfiles = loadTestingProfiles(discovered.TestersFilePath)
@@ -616,14 +623,21 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 	// must pick a crew file (work.md Step 6) and wrong here — board.js gates the
 	// domain badge and the filter dropdown on `if (request.domain)`, so
 	// defaulting absence to "general" would give every domain-less card a badge
-	// and a filter entry it never had.
+	// and a filter entry it never had. An absent field is not a contract
+	// violation either, so it is never flagged.
 	//
-	// The recognized flag is discarded on purpose: domain drives a display badge
-	// and a drawer row, and the board has no warning channel for it. Surfacing
-	// the contract's warning belongs to the readers that act on the value.
+	// The recognized flag is KEPT (REQ-117). REQ-111 discarded it, reasoning that
+	// the board had no warning channel for domain — which was wrong: board.Warnings
+	// is that channel, and the sibling field testing_status has used it since it
+	// shipped. Discarding the flag made a typo'd domain *less* visible than it was
+	// before REQ-111, when the wrong value at least reached the card verbatim.
+	originalDomain := coerceScalarToString(fields["domain"])
 	normalizedDomain := ""
-	if rawDomain := coerceScalarToString(fields["domain"]); strings.TrimSpace(rawDomain) != "" {
-		normalizedDomain, _ = resolveSchemaField("domain", rawDomain)
+	domainUnrecognized := false
+	if strings.TrimSpace(originalDomain) != "" {
+		var domainRecognized bool
+		normalizedDomain, domainRecognized = resolveSchemaField("domain", originalDomain)
+		domainUnrecognized = !domainRecognized
 	}
 	// route was left reading verbatim by REQ-111, which wired only `domain` — so a
 	// lowercase letter reached the badge and the drawer row in a field the contract
@@ -652,6 +666,8 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		CommitHashField:           commitHashField,
 		UserRequestId:             coerceScalarToString(fields["user_request"]),
 		Domain:                    normalizedDomain,
+		OriginalDomain:            originalDomain,
+		DomainUnrecognized:        domainUnrecognized,
 		TestingStatus:             normalizedTestingStatus,
 		OriginalTestingStatus:     originalTestingStatus,
 		TestingStatusUnrecognized: testingStatusUnrecognized,
@@ -987,6 +1003,23 @@ func resolveSchemaField(fieldName string, rawValue string) (string, bool) {
 		return normalized, true
 	}
 	return fieldContract.defaultValue, false
+}
+
+// collectDomainWarnings emits one warning per ticket whose domain is present but
+// outside the canonical enum — the never-silently-drop leg of the contract, and a
+// direct mirror of collectTestingWarnings (testing.go) for the sibling field. The
+// ticket keeps rendering with the contract's default; the warning is the feedback
+// channel, and it is reused rather than re-worded because schemaFieldWarningText
+// is where the contract's exact phrasing lives.
+func collectDomainWarnings(tickets []*RequestTicket) []string {
+	var domainWarnings []string
+	for _, ticket := range tickets {
+		if ticket.DomainUnrecognized {
+			domainWarnings = append(domainWarnings, fmt.Sprintf("%s %s",
+				ticket.RequestId, schemaFieldWarningText("domain", ticket.OriginalDomain)))
+		}
+	}
+	return domainWarnings
 }
 
 // schemaFieldWarningText renders the Schema Read Contract's own warning line for
