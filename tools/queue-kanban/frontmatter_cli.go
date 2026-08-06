@@ -22,17 +22,20 @@ import (
 // `completed-with-issues`.
 //
 // THE FLOOR STILL WINS. This is an accelerator in the same class as `next-req`,
-// `next-version`, and `now` (CLAUDE.md → Shipped Tooling, "Toolchain exception
-// to design for the floor"): an action may name it as the PREFERRED source for
+// `next-version`, and `now`: an action may name it as the PREFERRED source for
 // something it can already obtain with shell primitives, gated on the binary
 // being already built, with the prose procedure documented as the fallback.
 // Nothing may build the tool to read a field, and no action may lose its floor
-// path — do-work board is the only capability allowed to *need* a compiler.
+// path — `do-work board` is the only capability allowed to *need* a compiler,
+// which is why `actions/board.md` precondition-checks `go` and degrades instead
+// of blocking. `actions/work-reference.md` → Timestamp rule states the same
+// already-built-and-falls-back shape for `now`.
 //
-// READ-ONLY, deliberately. The tool has exactly two write surfaces (the board's
-// Testing view and `next-version`), and CLAUDE.md requires that sentence to be
-// amended in the same commit as any third. This command adds none: there is no
-// `set` verb, and adding one is out of scope rather than merely unimplemented.
+// READ-ONLY, deliberately. The tool has exactly two write surfaces — the board's
+// Testing view and `next-version` — and a third may only be added by amending the
+// sentence that states the count, in the same commit. This command adds none:
+// there is no `set` verb, and adding one is out of scope rather than merely
+// unimplemented.
 
 // frontmatterFieldSets maps the --in-set names to the canonical status sets in
 // actions/work-reference.md's Schema Read Contract. Membership is delegated to
@@ -172,7 +175,30 @@ func runFrontmatterCommand(args []string, standardOut io.Writer, standardErr io.
 		return 1
 	}
 
+	// A field the contract does not govern has nothing to normalize against, so
+	// --normalize is a no-op on it rather than a violation to report: stdout gets
+	// the value, stderr stays empty, and the call is observably identical to the
+	// same get without the flag. Before REQ-118 the branch below fired here too,
+	// because isKnownSchemaFieldValue returns false for a contract-less field just
+	// as it does for a bad value — so every `--normalize created_at` printed a
+	// warning claiming the timestamp was "not recognized", contradicting the
+	// contract's own statement that such fields are outside it and read verbatim.
+	//
+	// --in-set is different and must NOT fall through quietly: both set names are
+	// `status` sets, so a membership test on a field with no canonical vocabulary
+	// is a question this command cannot answer, and answering "no" (exit 1) would
+	// read at a call site as a real negative.
 	resolvedValue := rawValue
+	if !hasSchemaFieldContract(parsed.FieldName) {
+		if parsed.InSetName != "" {
+			fmt.Fprintf(standardErr,
+				"queue-kanban frontmatter: %s is outside the Schema Read Contract — --in-set %s tests the status vocabulary and cannot answer for it\n",
+				parsed.FieldName, parsed.InSetName)
+			return 2
+		}
+		fmt.Fprintf(standardOut, "%s\n", resolvedValue)
+		return 0
+	}
 	if parsed.Normalize || parsed.InSetName != "" {
 		// --in-set normalizes too: a membership test on a raw `done` has to
 		// resolve the alias before asking, or the alias map the contract

@@ -889,3 +889,306 @@ Body.
 			ticket.Domain, "")
 	}
 }
+
+// TestUnrecognizedDomainFlagsAndWarns is REQ-117's stated RED case, and it is the
+// exact shape TestUnrecognizedTestingStatusFlagsAndWarns already holds for the
+// sibling field. Before REQ-111 the board read domain verbatim, so a typo was at
+// least visible on the card; wiring it through resolveSchemaField silently
+// substituted the contract's default and discarded the recognized flag, which made
+// the typo *less* visible than it had been. The value may default — the contract
+// says `general` — but the footprint is not optional (Schema Read Contract item 3,
+// "Never silently drop").
+func TestUnrecognizedDomainFlagsAndWarns(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	reqFileContent := "---\nid: REQ-0103\ntitle: Fixture\nstatus: pending\ndomain: quantum\n---\nbody\n"
+	if writeError := os.WriteFile(filepath.Join(queueDir, "REQ-0103-bad-domain.md"), []byte(reqFileContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	ticket := board.RequestsById["REQ-0103"]
+	if ticket == nil {
+		t.Fatalf("REQ-0103 not parsed")
+	}
+	if !ticket.DomainUnrecognized {
+		t.Errorf("DomainUnrecognized = false, want true")
+	}
+	if ticket.Domain != "general" {
+		t.Errorf("Domain = %q, want %q — the contract's documented default still applies", ticket.Domain, "general")
+	}
+	if ticket.OriginalDomain != "quantum" {
+		t.Errorf("OriginalDomain = %q, want %q — the warning has to name what was actually written",
+			ticket.OriginalDomain, "quantum")
+	}
+	warningFound := false
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "domain") && strings.Contains(warningText, "quantum") {
+			warningFound = true
+		}
+	}
+	if !warningFound {
+		t.Errorf("no domain warning naming the written value; warnings=%v", board.Warnings)
+	}
+}
+
+// TestUnrecognizedRouteFlagsAndWarns is REQ-119's stated RED case, and it closes
+// the asymmetry REQ-116 and REQ-117 left between two fields of the same class:
+// REQ-116 taught the board to normalize `route` before REQ-117 established the
+// warning channel, so `domain: quantum` warned while `route: z` passed in silence.
+//
+// The resolved value deliberately stays `Z` rather than being defaulted — route's
+// documented default is the empty string, so substituting it would make an
+// unrecognized letter indistinguishable from an absent field and destroy the
+// evidence a re-triage reads. The footprint is what was missing, not the value.
+func TestUnrecognizedRouteFlagsAndWarns(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	reqFileContent := "---\nid: REQ-0106\ntitle: Fixture\nstatus: pending\nroute: z\n---\nbody\n"
+	if writeError := os.WriteFile(filepath.Join(queueDir, "REQ-0106-bad-route.md"), []byte(reqFileContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	ticket := board.RequestsById["REQ-0106"]
+	if ticket == nil {
+		t.Fatalf("REQ-0106 not parsed")
+	}
+	if !ticket.RouteUnrecognized {
+		t.Errorf("RouteUnrecognized = false, want true")
+	}
+	if ticket.Route != "Z" {
+		t.Errorf("Route = %q, want %q — an unrecognized route is reported case-folded, never blanked or defaulted",
+			ticket.Route, "Z")
+	}
+	warningFound := false
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "route") && strings.Contains(warningText, "z") {
+			warningFound = true
+		}
+	}
+	if !warningFound {
+		t.Errorf("no route warning naming the written value; warnings=%v", board.Warnings)
+	}
+}
+
+// TestRecognizedRouteRaisesNoWarning is route's silence half — the alias case
+// (`a` → `A`) and the absent case must both stay quiet, for the same reason the
+// domain equivalent does.
+func TestRecognizedRouteRaisesNoWarning(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	for _, fixture := range []struct {
+		fileName        string
+		requestId       string
+		frontmatterLine string
+	}{
+		{"REQ-0107-lowercase-route.md", "REQ-0107", "route: a\n"},
+		{"REQ-0108-no-route.md", "REQ-0108", ""},
+	} {
+		reqFileContent := "---\nid: " + fixture.requestId +
+			"\ntitle: Fixture\nstatus: pending\n" + fixture.frontmatterLine + "---\nbody\n"
+		if writeError := os.WriteFile(filepath.Join(queueDir, fixture.fileName), []byte(reqFileContent), 0o644); writeError != nil {
+			t.Fatalf("write fixture %s: %v", fixture.fileName, writeError)
+		}
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "route") {
+			t.Errorf("unexpected route warning for a recognized alias / absent field: %q", warningText)
+		}
+	}
+	aliasTicket := board.RequestsById["REQ-0107"]
+	if aliasTicket == nil {
+		t.Fatalf("REQ-0107 not parsed")
+	}
+	if aliasTicket.Route != "A" || aliasTicket.RouteUnrecognized {
+		t.Errorf("alias ticket: Route = %q, RouteUnrecognized = %v — want %q, false",
+			aliasTicket.Route, aliasTicket.RouteUnrecognized, "A")
+	}
+	absentTicket := board.RequestsById["REQ-0108"]
+	if absentTicket == nil {
+		t.Fatalf("REQ-0108 not parsed")
+	}
+	if absentTicket.Route != "" || absentTicket.RouteUnrecognized {
+		t.Errorf("absent-route ticket: Route = %q, RouteUnrecognized = %v — want empty, false",
+			absentTicket.Route, absentTicket.RouteUnrecognized)
+	}
+}
+
+// TestRecognizedDomainRaisesNoWarning is the other half, and the one that keeps
+// the channel worth reading: a documented alias must resolve in silence. If every
+// `domain: back-end` also warned, the warnings list would fill with noise on a
+// real queue and readers would learn to ignore it — which is the failure mode the
+// contract's absent-field carve-out exists to prevent.
+func TestRecognizedDomainRaisesNoWarning(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	for _, fixture := range []struct {
+		fileName        string
+		requestId       string
+		frontmatterLine string
+	}{
+		{"REQ-0104-alias-domain.md", "REQ-0104", "domain: back-end\n"},
+		{"REQ-0105-no-domain.md", "REQ-0105", ""},
+	} {
+		reqFileContent := "---\nid: " + fixture.requestId +
+			"\ntitle: Fixture\nstatus: pending\n" + fixture.frontmatterLine + "---\nbody\n"
+		if writeError := os.WriteFile(filepath.Join(queueDir, fixture.fileName), []byte(reqFileContent), 0o644); writeError != nil {
+			t.Fatalf("write fixture %s: %v", fixture.fileName, writeError)
+		}
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "domain") {
+			t.Errorf("unexpected domain warning for a recognized alias / absent field: %q", warningText)
+		}
+	}
+	aliasTicket := board.RequestsById["REQ-0104"]
+	if aliasTicket == nil {
+		t.Fatalf("REQ-0104 not parsed")
+	}
+	if aliasTicket.Domain != "backend" || aliasTicket.DomainUnrecognized {
+		t.Errorf("alias ticket: Domain = %q, DomainUnrecognized = %v — want %q, false",
+			aliasTicket.Domain, aliasTicket.DomainUnrecognized, "backend")
+	}
+	absentTicket := board.RequestsById["REQ-0105"]
+	if absentTicket == nil {
+		t.Fatalf("REQ-0105 not parsed")
+	}
+	if absentTicket.Domain != "" || absentTicket.DomainUnrecognized {
+		t.Errorf("absent-domain ticket: Domain = %q, DomainUnrecognized = %v — want empty, false",
+			absentTicket.Domain, absentTicket.DomainUnrecognized)
+	}
+}
+
+// TestParseRequestTicketNormalizesRoute is REQ-116's stated RED case. REQ-111
+// added the route contract row and its normalizer but wired only `domain` at the
+// read site, so the board kept reading route through coerceScalarToString — which
+// trims and nothing else. A lowercase route letter therefore reached the card
+// badge and the drawer row as written, in a field the contract says is uppercase.
+//
+// Parse-level on purpose: the normalizer's own table test (route a→A, B→B, " c "→C)
+// passed the whole time the board was wrong, so only a test that goes through
+// parseRequestTicket can hold this line.
+func TestParseRequestTicketNormalizesRoute(t *testing.T) {
+	for _, testCase := range []struct {
+		name          string
+		routeLine     string
+		expectedRoute string
+	}{
+		{"lowercase letter uppercases", "route: a", "A"},
+		{"canonical letter is unchanged", "route: B", "B"},
+		{"padded lowercase letter uppercases", "route: \" c \"", "C"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			temporaryDirectory := t.TempDir()
+			fixturePath := filepath.Join(temporaryDirectory, "REQ-903-route-case.md")
+			fixtureContent := `---
+id: REQ-903
+title: Route letter case
+status: pending
+` + testCase.routeLine + `
+---
+
+Body.
+`
+			if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+				t.Fatalf("write fixture: %v", writeError)
+			}
+			ticket, parseError := parseRequestTicket(fixturePath, "queue")
+			if parseError != nil {
+				t.Fatalf("parseRequestTicket: %v", parseError)
+			}
+			if ticket.Route != testCase.expectedRoute {
+				t.Fatalf("Route = %q, want %q — route must normalize per the Schema Read Contract",
+					ticket.Route, testCase.expectedRoute)
+			}
+		})
+	}
+}
+
+// TestParseRequestTicketPreservesAbsentRoute is the absent-field half of the same
+// wiring, and the reason the read site must not call resolveSchemaField: that
+// helper substitutes the field's documented default, and route's default is the
+// empty string, so absence and an unrecognized letter would become the same
+// value. board.js gates the route badge and the drawer row on `if (request.route)`.
+func TestParseRequestTicketPreservesAbsentRoute(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-904-no-route.md")
+	fixtureContent := `---
+id: REQ-904
+title: No route field at all
+status: pending
+---
+
+Body.
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.Route != "" {
+		t.Fatalf("Route = %q, want %q — an absent route must stay absent for the renderer",
+			ticket.Route, "")
+	}
+}
+
+// TestParseRequestTicketReportsUnrecognizedRouteUnchanged pins the no-default half
+// of route's contract row: an unrecognized letter means the REQ needs re-triage,
+// which is not a value this parser can invent. Blanking it — what
+// resolveSchemaField would do, since route's documented default is "" — would
+// destroy the evidence that re-triage reads.
+func TestParseRequestTicketReportsUnrecognizedRouteUnchanged(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-905-unknown-route.md")
+	fixtureContent := `---
+id: REQ-905
+title: Route letter outside the enum
+status: pending
+route: z
+---
+
+Body.
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.Route != "Z" {
+		t.Fatalf("Route = %q, want %q — an unrecognized route is reported case-folded, never blanked",
+			ticket.Route, "Z")
+	}
+}

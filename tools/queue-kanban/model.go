@@ -53,6 +53,16 @@ type RequestTicket struct {
 	Title          string
 	Status         string // normalized status (complete/done/finished/closed → completed)
 	OriginalStatus string // verbatim frontmatter status before normalization
+	OriginalDomain string // verbatim frontmatter domain before normalization ("" when absent)
+	OriginalRoute  string // verbatim frontmatter route before normalization ("" when absent)
+	// Set when a PRESENT domain/route value survives normalization outside the
+	// canonical enum. Each ticket keeps rendering — domain with the contract's
+	// default (`general`), route with the case-folded input, since route has no
+	// documented default — and collectSchemaFieldWarnings raises the matching data
+	// warning. The value resolves; the footprint is not optional (Schema Read
+	// Contract item 3, "Never silently drop").
+	DomainUnrecognized bool
+	RouteUnrecognized  bool
 
 	// Set by bucketColumns when the normalized status falls outside the Schema
 	// Read Contract vocabulary (actions/work-reference.md). The ticket is parked
@@ -388,6 +398,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	annotateWriteSetOverlap(board.AllRequests)
 
 	board.Warnings = append(board.Warnings, collectTestingWarnings(board.AllRequests)...)
+	board.Warnings = append(board.Warnings, collectSchemaFieldWarnings(board.AllRequests)...)
 	board.Calendar = buildCalendar(board.AllRequests)
 	board.Notes = loadQueueNotes(discovered.NotesFilePath)
 	board.TestingProfiles = loadTestingProfiles(discovered.TestersFilePath)
@@ -616,14 +627,37 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 	// must pick a crew file (work.md Step 6) and wrong here — board.js gates the
 	// domain badge and the filter dropdown on `if (request.domain)`, so
 	// defaulting absence to "general" would give every domain-less card a badge
-	// and a filter entry it never had.
+	// and a filter entry it never had. An absent field is not a contract
+	// violation either, so it is never flagged.
 	//
-	// The recognized flag is discarded on purpose: domain drives a display badge
-	// and a drawer row, and the board has no warning channel for it. Surfacing
-	// the contract's warning belongs to the readers that act on the value.
+	// The recognized flag is KEPT (REQ-117). REQ-111 discarded it, reasoning that
+	// the board had no warning channel for domain — which was wrong: board.Warnings
+	// is that channel, and the sibling field testing_status has used it since it
+	// shipped. Discarding the flag made a typo'd domain *less* visible than it was
+	// before REQ-111, when the wrong value at least reached the card verbatim.
+	originalDomain := coerceScalarToString(fields["domain"])
 	normalizedDomain := ""
-	if rawDomain := coerceScalarToString(fields["domain"]); strings.TrimSpace(rawDomain) != "" {
-		normalizedDomain, _ = resolveSchemaField("domain", rawDomain)
+	domainUnrecognized := false
+	if strings.TrimSpace(originalDomain) != "" {
+		var domainRecognized bool
+		normalizedDomain, domainRecognized = resolveSchemaField("domain", originalDomain)
+		domainUnrecognized = !domainRecognized
+	}
+	// route was left reading verbatim by REQ-111, which wired only `domain` — so a
+	// lowercase letter reached the badge and the drawer row in a field the contract
+	// spells uppercase. Same present-value-only guard as domain: board.js gates
+	// both on `if (request.route)`.
+	//
+	// normalizeSchemaField, NOT resolveSchemaField: route's documented default is
+	// the empty string ("treat as needing re-triage"), so resolving would turn an
+	// unrecognized letter into absence and destroy the evidence re-triage reads.
+	// Case-folding without substituting is exactly what this function does.
+	originalRoute := coerceScalarToString(fields["route"])
+	normalizedRoute := ""
+	routeUnrecognized := false
+	if strings.TrimSpace(originalRoute) != "" {
+		normalizedRoute = normalizeSchemaField("route", originalRoute)
+		routeUnrecognized = !isKnownSchemaFieldValue("route", normalizedRoute)
 	}
 
 	ticket := &RequestTicket{
@@ -639,6 +673,8 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		CommitHashField:           commitHashField,
 		UserRequestId:             coerceScalarToString(fields["user_request"]),
 		Domain:                    normalizedDomain,
+		OriginalDomain:            originalDomain,
+		DomainUnrecognized:        domainUnrecognized,
 		TestingStatus:             normalizedTestingStatus,
 		OriginalTestingStatus:     originalTestingStatus,
 		TestingStatusUnrecognized: testingStatusUnrecognized,
@@ -652,7 +688,9 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		Related:                   coerceToStringList(fields["related"]),
 		WriteSet:                  coerceToStringList(fields["write_set"]),
 		AssignedTo:                coerceScalarToString(fields["assigned_to"]),
-		Route:                     coerceScalarToString(fields["route"]),
+		Route:                     normalizedRoute,
+		OriginalRoute:             originalRoute,
+		RouteUnrecognized:         routeUnrecognized,
 		Batch:                     coerceScalarToString(fields["batch"]),
 		FrontmatterMarkdown:       frontmatterMarkdown,
 		BodyMarkdown:              bodyText,
@@ -932,6 +970,22 @@ func normalizeSchemaField(fieldName string, rawValue string) string {
 	return normalized
 }
 
+// hasSchemaFieldContract reports whether the Schema Read Contract governs
+// fieldName at all. It is the predicate callers need BEFORE asking
+// isKnownSchemaFieldValue, which answers false both for a genuinely bad value and
+// for a field that has no canonical vocabulary — two different facts that a single
+// false cannot distinguish. The contract states the second case explicitly:
+// fields with no canonical vocabulary (`prime_files`, `write_set`, `assigned_to`,
+// any path list, and every field with no row here) are OUTSIDE the contract and
+// read verbatim — no alias map, no case folding, and no warning.
+//
+// A lookup, never a hand-listed set of exempt names: the exempt set is "whatever
+// has no row", so enumerating it would go stale the moment the contract grows one.
+func hasSchemaFieldContract(fieldName string) bool {
+	_, hasContract := schemaReadContractFields[fieldName]
+	return hasContract
+}
+
 // isKnownSchemaFieldValue reports whether an already-normalized value is in
 // fieldName's canonical enum. The empty string is never a member — absence is
 // handled by resolveSchemaField, which treats a missing field as the default
@@ -976,6 +1030,37 @@ func resolveSchemaField(fieldName string, rawValue string) (string, bool) {
 	return fieldContract.defaultValue, false
 }
 
+// collectSchemaFieldWarnings emits one warning per ticket per contract field whose
+// value is present but outside the canonical enum — the never-silently-drop leg of
+// the contract, and the same shape collectTestingWarnings (testing.go) holds for
+// testing_status. The wording always comes from schemaFieldWarningText so the
+// contract's exact phrasing lives in one place; that is also why this is one
+// collector over both fields rather than one function per field, which is how the
+// second hand-typed copy of a warning gets introduced.
+//
+// Adding a field here means adding its unrecognized flag and Original* value at
+// the read site; the two halves are useless apart.
+func collectSchemaFieldWarnings(tickets []*RequestTicket) []string {
+	var schemaFieldWarnings []string
+	for _, ticket := range tickets {
+		for _, unrecognizedField := range []struct {
+			fieldName      string
+			isUnrecognized bool
+			originalValue  string
+		}{
+			{"domain", ticket.DomainUnrecognized, ticket.OriginalDomain},
+			{"route", ticket.RouteUnrecognized, ticket.OriginalRoute},
+		} {
+			if unrecognizedField.isUnrecognized {
+				schemaFieldWarnings = append(schemaFieldWarnings, fmt.Sprintf("%s %s",
+					ticket.RequestId,
+					schemaFieldWarningText(unrecognizedField.fieldName, unrecognizedField.originalValue)))
+			}
+		}
+	}
+	return schemaFieldWarnings
+}
+
 // schemaFieldWarningText renders the Schema Read Contract's own warning line for
 // an unrecognized value. One formatter rather than one per caller: the contract
 // specifies the exact wording, and a second hand-typed copy is how a warning
@@ -983,7 +1068,13 @@ func resolveSchemaField(fieldName string, rawValue string) (string, bool) {
 func schemaFieldWarningText(fieldName string, rawValue string) string {
 	fieldContract, hasContract := schemaReadContractFields[fieldName]
 	if !hasContract {
-		return fmt.Sprintf("⚠ %s: '%s' not recognized — no canonical vocabulary is defined for this field.",
+		// Unreachable from this package's callers, which gate on
+		// hasSchemaFieldContract — kept as a guard so a future caller that forgets
+		// the gate gets a true statement instead of "expected one of []". The old
+		// wording called the VALUE "not recognized", which contradicted the
+		// contract's own classification of such a field: nothing is wrong with the
+		// value, the contract simply does not govern the field (REQ-118).
+		return fmt.Sprintf("⚠ %s is outside the Schema Read Contract — no canonical vocabulary, so '%s' is read verbatim and normalization does not apply.",
 			fieldName, strings.TrimSpace(rawValue))
 	}
 	if fieldContract.defaultValue == "" {

@@ -127,6 +127,76 @@ func TestRunFrontmatterCommandNormalizeWarnsOnUnrecognizedValue(t *testing.T) {
 	}
 }
 
+// TestRunFrontmatterCommandNormalizeIsSilentOnFieldOutsideTheContract is REQ-118's
+// stated RED case. isKnownSchemaFieldValue answers false both for a genuinely bad
+// value and for a field the contract does not govern at all, so the warn branch
+// fired on every --normalize of a timestamp, a title, or a path list — telling the
+// reader the value was "not recognized" when actions/work-reference.md's Schema
+// Read Contract explicitly places such fields OUTSIDE it, to be read verbatim
+// ("no alias map, no case folding, no path canonicalization, no warning").
+func TestRunFrontmatterCommandNormalizeIsSilentOnFieldOutsideTheContract(t *testing.T) {
+	fixturePath := writeFrontmatterFixture(t,
+		"id: REQ-777\nstatus: completed\ncreated_at: 2026-08-05T15:53:39Z\ntitle: A plain title\nwrite_set: [a.go, b.go]")
+
+	for _, fieldName := range []string{"created_at", "title", "id"} {
+		t.Run(fieldName, func(t *testing.T) {
+			var standardOut, standardErr strings.Builder
+			exitCode := runFrontmatterCommand([]string{"get", fixturePath, fieldName, "--normalize"}, &standardOut, &standardErr)
+
+			if exitCode != 0 {
+				t.Fatalf("exit = %d, want 0", exitCode)
+			}
+			if standardOut.String() == "" {
+				t.Fatalf("stdout is empty — the value must still print")
+			}
+			if standardErr.String() != "" {
+				t.Fatalf("stderr = %q, want empty — %s has no canonical vocabulary, so the contract does not govern it and --normalize is a no-op",
+					standardErr.String(), fieldName)
+			}
+		})
+	}
+}
+
+// TestRunFrontmatterCommandNormalizeMatchesPlainGetOutsideTheContract states the
+// no-op property directly: for a field the contract does not govern, --normalize
+// must change nothing a caller can observe.
+func TestRunFrontmatterCommandNormalizeMatchesPlainGetOutsideTheContract(t *testing.T) {
+	fixturePath := writeFrontmatterFixture(t, "id: REQ-777\ncreated_at: 2026-08-05T15:53:39Z")
+
+	var plainOut, plainErr strings.Builder
+	plainExit := runFrontmatterCommand([]string{"get", fixturePath, "created_at"}, &plainOut, &plainErr)
+	var normalizedOut, normalizedErr strings.Builder
+	normalizedExit := runFrontmatterCommand([]string{"get", fixturePath, "created_at", "--normalize"}, &normalizedOut, &normalizedErr)
+
+	if plainExit != normalizedExit || plainOut.String() != normalizedOut.String() || plainErr.String() != normalizedErr.String() {
+		t.Fatalf("--normalize changed observable output for a contract-less field:\n  plain: exit=%d out=%q err=%q\n  normalized: exit=%d out=%q err=%q",
+			plainExit, plainOut.String(), plainErr.String(),
+			normalizedExit, normalizedOut.String(), normalizedErr.String())
+	}
+}
+
+// TestRunFrontmatterCommandInSetRejectsFieldOutsideTheContract covers the other
+// flag. Both set names are `status` sets, so a membership test on a field with no
+// canonical vocabulary is a question the command cannot answer — a usage error,
+// not a silent "no".
+func TestRunFrontmatterCommandInSetRejectsFieldOutsideTheContract(t *testing.T) {
+	fixturePath := writeFrontmatterFixture(t, "id: REQ-777\ncreated_at: 2026-08-05T15:53:39Z")
+
+	var standardOut, standardErr strings.Builder
+	exitCode := runFrontmatterCommand(
+		[]string{"get", fixturePath, "created_at", "--in-set", "terminal-success"}, &standardOut, &standardErr)
+
+	if exitCode != 2 {
+		t.Fatalf("exit = %d, want 2 — a membership test on a field with no canonical vocabulary is a usage error, not a false answer", exitCode)
+	}
+	if standardOut.String() != "" {
+		t.Fatalf("stdout = %q, want empty on a usage error", standardOut.String())
+	}
+	if !strings.Contains(standardErr.String(), "created_at") {
+		t.Fatalf("stderr = %q, want it to name the offending field", standardErr.String())
+	}
+}
+
 // --in-set is the membership check ~35 prose sites perform by hand. It prints
 // nothing and answers via the exit code.
 func TestRunFrontmatterCommandInSetExitCodes(t *testing.T) {
