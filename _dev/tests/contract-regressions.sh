@@ -524,6 +524,33 @@ assert_block_contains \
 # restoring the contradiction.
 worktree_dispatch_block="$(sed -n '/^## Worktree Dispatch Mode (Step 1)/,/^## Composed Exit Summary/p' "$repo_root/actions/work-reference.md")"
 
+# actions/work.md is the executable, condensed hand-back path. It must retain the two
+# pre-merge guards from the canonical reference: isolate owner bookkeeping from any
+# unrelated staged work, and reject builder commits under do-work/ while the branch
+# diff can still see them. A trailing pointer to the reference is too late because a
+# reader following the numbered commands has already merged by then.
+work_action_handback_block="$(sed -n '/^\*\*Hand-back merge/,/^### Step 6\.25:/p' "$repo_root/actions/work.md")"
+
+assert_block_contains \
+  "$work_action_handback_block" \
+  'git diff --cached --name-only' \
+  'actions/work.md hand-back step 0 must inspect the index before committing owner bookkeeping, or a plain commit can hide unrelated staged work below the evidence range.'
+
+assert_block_contains \
+  "$work_action_handback_block" \
+  'git commit -- do-work/' \
+  'actions/work.md hand-back step 0 must commit owner bookkeeping path-limited, never sweep the whole index into the bookkeeping commit.'
+
+assert_block_contains \
+  "$work_action_handback_block" \
+  'clean index' \
+  'actions/work.md hand-back step 0 must end with a clean index so unrelated staged work cannot leak into the merge commit.'
+
+assert_block_contains \
+  "$work_action_handback_block" \
+  'git diff --name-only <pre>\.\.\.<operative_name> -- do-work/' \
+  'actions/work.md must reject builder queue-state commits before merging, while the three-dot branch diff can still see them.'
+
 assert_block_contains \
   "$worktree_dispatch_block" \
   'exactly one exception' \
