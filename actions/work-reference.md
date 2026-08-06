@@ -663,6 +663,8 @@ The existence-verify check on the resolved path runs in Step 8 (post-move) — t
 ## Failure Classification (Step 8)
 
 
+This classification runs at any generation: `review_generated: true` on the failed REQ does **not** suppress its failure follow-up — the cascade depth stop (`actions/review-work.md` Step 10 → **Generation ≥ 2**) governs review-*finding* follow-ups only, and a failed generation-≥2 REQ with no successor would die silently.
+
 Before classifying via the symptom table below, **check for upstream failure**. Cascades from a failed prerequisite often present as plausible-looking `code` or `spec` symptoms in the downstream REQ; misclassifying them sends the builder chasing phantom bugs in the wrong domain.
 
 **Upstream-failure short-circuit:**

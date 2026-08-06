@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.182.0 — Review Cascades Stop at Depth Two Behind a Consent Gate (2026-08-06)
+
+Reviews of review-spawned REQs could mint fresh auto-worked REQs forever — the UR-489 chain
+ran sixteen deep before a human noticed. The cascade now converges at depth two, with the
+user as the only escalation path and nothing lost along the way.
+
+- A review of a `review_generated: true` REQ creates its non-critical follow-ups as `pending-answers` — on the board with their effort chip, approved via `do-work clarify`, never auto-worked (`actions/review-work.md` Step 10 → Generation ≥ 2)
+- Critical-grade findings (security, data loss, broken production paths) still auto-queue at any depth, prominently reported
+- Failure-classification follow-ups and sweep appends are exempt — the stop governs REQ creation from review findings only
+
 ## 0.181.0 — Review Follow-Ups Get a Disposition Gate and a Trivial-Work Chip (2026-08-06)
 
 One user request's review chain minted sixteen follow-up REQs over two days — fifteen of them

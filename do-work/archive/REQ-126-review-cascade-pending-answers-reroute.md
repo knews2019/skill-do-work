@@ -1,8 +1,11 @@
 ---
 id: REQ-126
 title: Cascade depth stop — generation-≥2 review follow-ups reroute to pending-answers
-status: pending
+status: completed
 created_at: 2026-08-06T15:48:11Z
+claimed_at: 2026-08-06T16:38:05Z
+completed_at: 2026-08-06T16:40:24Z
+route: A
 user_request: UR-027
 domain: general
 prime_files: []
@@ -22,9 +25,13 @@ write_set: [actions/review-work.md, actions/work.md, actions/work-reference.md, 
 A REQ carrying `review_generated: true` is generation ≥2. Its own review still records every Important finding as a follow-up REQ — but creates non-critical ones with `status: pending-answers` instead of `status: pending`, so they are visible on the board (with their `effort_estimate` chip from REQ-125) and surfaced via `do-work clarify`, yet cannot be autonomously worked without the user's yes. The depth cap stops autonomous propagation, not record-keeping.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Land the depth stop as a named block in review-work.md Step 10 (the creation home REQ-125 just rebuilt), with a one-line exception pointer in work.md's :505 restatement and a generation-agnostic exemption sentence at the top of work-reference.md's Failure Classification. Reuse clarify's exact discriminator wording — no clarify.md edit (the REQ's preferred path; delete-before-add).
+- [x] **[APPLY]:** Three files edited (review-work.md, work.md, work-reference.md); clarify.md left untouched by design — a DECIDE & STATE choice the REQ itself pre-authorized as preferred. write_set had four files; the fourth was conditional on the generalize alternative not taken.
+- [x] **[UNIFY]:** `git diff --stat` reviewed (3 files, prose only). `bash _dev/tests/contract-regressions.sh` re-run — still the 7-probe root-runner baseline, no new FAIL lines. No shipped file cites the maintainer doc; the :495/:501 restatements inherit the depth stop via their Step 10 pointer, verified by reading both.
+
+## Decisions
+
+**D-01 (DECIDE & STATE):** Reuse `actions/clarify.md`'s exact discovered-task discriminator (`Should I process this as a new task?` + `Recommended: Yes, add to queue`) instead of generalizing clarify's condition to a durable marker. Reasoning: the REQ names exact-wording reuse as preferred (zero clarify change); generalizing would add a second discriminator mechanism for one caller — the maintenance crew's delete-before-add posture says don't. Reversible: if a future flow needs different wording, that flow generalizes clarify then.
 
 ## Why (if provided)
 
@@ -69,4 +76,77 @@ Certainty: Firm. The `pending-answers` reroute (instead of the originally propos
 See `do-work/user-requests/UR-027/input.md` for complete verbatim input and the decision record.
 
 ---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Prose-only edits to precisely named sites (review-work.md Step 10, work.md Step 7/8, a work-reference pointer), with the design fully specified in Detailed Requirements including the exact clarify discriminator wording. No pattern discovery needed — REQ-125 just landed the surrounding text this builds on.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+---
 *Source: "do-work capture-request Ship priorities 1 through 3" — priority 2 of the agreed design*
+
+## Implementation Summary
+
+**Files changed:**
+- `actions/review-work.md` (modified) — new **Generation ≥ 2 — the cascade depth stop** block in Step 10: marker-only test, `pending-answers` reroute with the exact clarify discriminator (P1 fix honored), critical pierce with the Discovered-Tasks rubric and `⚠` report line, creation-only scope (sweep appends + failure-path follow-ups exempt), and the intended fixed point
+- `actions/work.md` (modified) — Step 7's :505 follow-up-fields paragraph gained the generation-≥2 exception pointer to Step 10's named block
+- `actions/work-reference.md` (modified) — Failure Classification opens with the any-generation exemption sentence (review-finding reroute never suppresses failure follow-ups)
+
+**What was done:** A review of a `review_generated: true` REQ now records every finding as a REQ but can no longer mint autonomous work: non-critical follow-ups land as `pending-answers` behind clarify's exact consent discriminator, critical findings still auto-queue at any depth, failure follow-ups are exempt, and the cascade converges at depth 2 by construction. `actions/clarify.md` deliberately unchanged (D-01).
+
+## Qualification
+
+Passed — 3 files verified in the diff, all seven Detailed Requirements traced, P-A-U confirmed, D-01 recorded. Mechanical script OK; Route A has no Scope section (scope-drift correctly inapplicable).
+
+## Testing
+
+**Tests run:** `bash _dev/tests/contract-regressions.sh`; grep verification of the captured RED/GREEN
+**Result:** ✓ Contract suite at its pre-existing 7-probe root-runner baseline (no new FAIL lines). Non-behavioral-code change — regression evidence in place of red-green tests.
+
+**Red-green validation:**
+- Captured RED (`grep -n "review_generated" actions/review-work.md` showed the marker written but never read as a gate) is now GREEN: Step 10's **Generation ≥ 2** block reads it and reroutes; `grep -c "Should I process this as a new task?" actions/review-work.md` = 1 (the discriminator ships verbatim); the critical-pierce and failure-exemption sentences grep at their prescribed sites
+
+*Verified by work action*
+
+## Review
+
+**Overall: 96%** | 2026-08-06T16:41:00Z
+
+**Approve** — the depth stop lands exactly as designed, with the P1 discriminator fix honored and both exemptions stated at their canonical homes.
+Route A | uncommitted (hash written back at Step 9)
+
+**Findings:**
+
+**Important:** None.
+
+**Minor:**
+- `actions/clarify.md`'s Step 3 story-layer presentation doesn't distinguish review-rerouted follow-ups from discovered tasks; both render through the same fallback (its line ~80 already names review-work follow-ups). Cosmetic — the flows are mechanically identical by design. Report-only.
+
+**Requirements Checklist:**
+- [x] Marker-only generation test (`review_generated: true`), never description-inferred — delivered
+- [x] Non-critical reroute to `pending-answers` with `effort_estimate` + gate token carried — delivered
+- [x] Exact clarify discriminator mandated, with the silent-close failure mode explained — delivered (Codex P1 honored)
+- [x] Critical pierce at any depth with prominent report line, Discovered-Tasks rubric — delivered
+- [x] Failure-path exemption at Failure Classification's canonical home — delivered
+- [x] Sweep appends exempt (creation-only scope) — delivered
+- [x] Fixed point stated as intended behavior — delivered
+- [x] No numeric generation counter added — confirmed absent
+
+**Acceptance Testing — Result: Pass** (prose contract: all prescribed greps hit; restatements at work.md :495/:501 inherit via their Step 10 pointer, read and confirmed coherent)
+
+**Scores:** Requirements 98% | Code Quality 95% | Test Adequacy 92% | Scope 100% | Acceptance Pass
+
+*Reviewed in pipeline mode by work action (Step 7) — Route A quick scan*
+
+## Orientation
+
+The review cascade now has a brake the user operates: reviews of review-spawned REQs record everything but auto-work nothing — approvals happen in `do-work clarify`, critical findings still jump the gate. Lives in the review/follow-up machinery (`actions/review-work.md` Step 10). Builds directly on REQ-125's gate; REQ-127's sweeps complete the set.
