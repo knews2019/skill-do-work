@@ -1,10 +1,11 @@
 # Prime: do-kanban
 
-queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that walks the version-controlled `do-work/` Markdown tree and renders it as a Kanban board + completion calendar. Subcommands: `summary` | `open-work` | `generate --out DIR` | `serve` | `next-req` | `next-version <patch|minor|major>` | `verify` | `now` (the last four serve the release ritual and the Timestamp rule, not the board). It ships as part of the do-work skill and rides its version bumps; the ergonomic entry point is the `do-work board` action (`actions/board.md`), which builds and runs it for you.
+queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that walks the version-controlled `do-work/` Markdown tree and renders it as a Kanban board + completion calendar. Subcommands: `summary` | `open-work` | `generate --out DIR` | `serve` | `frontmatter get FILE FIELD` | `next-req` | `next-version <patch|minor|major>` | `verify` | `now`. The latter group reads frontmatter or supports the release ritual and Timestamp rule rather than rendering the board. It ships as part of the do-work skill and rides its version bumps; the ergonomic entry point is the `do-work board` action (`actions/board.md`), which builds and runs it for you.
 
 ## Read first
 - `main.go` — subcommand dispatch + flags (`--repo-root`, `--out`, `--port`; `--recent-window` on summary only, `--version-file` on next-version only)
 - `open_work.go` — `open-work`: the headless in-flight digest (open count, claimed titles, needs-input statuses); reads the bucketed columns only, shows nothing terminal
+- `frontmatter_cli.go` — `frontmatter`: typed, read-only field access with optional Schema Read Contract normalization/status-set membership
 - `allocate.go` — `next-req`: max REQ number + 1 across queue/working/archive, built on `enumerateDoWorkTree`
 - `release.go` — the `**Current version**: X.Y.Z` line reader/bumper/writer and the `CHANGELOG.md` entry parser
 - `verify.go` — the read-only invariant probes and their report (wired into `actions/forensics.md` Check 14)
@@ -23,7 +24,7 @@ queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that
 - Direct (portable, any repo with a `do-work/`): `cd <skill-dir>/tools/queue-kanban && go build -o queue-kanban .` → `./queue-kanban serve --repo-root <consumer-repo-root>` (live board) or `./queue-kanban generate --out DIR --repo-root <consumer-repo-root>` (static). The binary is gitignored in-place. Needs the Go toolchain (see `go.mod` for the required version).
 
 ## Traps
-- **`next-version` is the tool's only write outside the testing fields** — one line, in one file, outside `do-work/`. It must NEVER write `CHANGELOG.md`: unique version numbers do not make a shared prepend safe, so the changelog stays an owner-only, human-authored write. `next-req` and `verify` write nothing at all.
+- **`next-version` is the tool's only write outside the testing fields** — one line, in one file, outside `do-work/`. It must NEVER write `CHANGELOG.md`: unique version numbers do not make a shared prepend safe, so the changelog stays an owner-only, human-authored write. `frontmatter`, `next-req`, and `verify` write nothing at all.
 - **`verify`'s version probe asserts AGREEMENT, not "strictly greater"** — after a release lands, the version file and the newest changelog entry are equal, and that is the healthy steady state. "Strictly greater" is the mid-release condition (the new version beats the entry that already exists); a probe built on it fires on every clean repo. The strictly-greater ordering that *is* checkable lives inside the changelog: newest entry > every earlier entry.
 - **The bump size is an argument, never inferred** — patch vs minor vs major is a judgment about what the change did to consumers. An empty or unrecognized size is an error, not a default to patch.
 - **`next-req` allocates, it does not reserve** — two captures at the same instant can compute the same number. Accepted on purpose (a reservation would be new durable coordination state); `verify` reports the duplicate, and the title in the filename makes it cheap to renumber. Do not add a locking scheme, and do not claim duplicates are impossible.

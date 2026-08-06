@@ -34,6 +34,21 @@ func TestReadFrontmatterFieldReturnsRawValue(t *testing.T) {
 	}
 }
 
+func TestReadFrontmatterFieldRendersSequenceOneItemPerLine(t *testing.T) {
+	fixturePath := writeFrontmatterFixture(t, "id: REQ-777\ndepends_on: [REQ-001, REQ-002]")
+
+	value, found, readError := readFrontmatterField(fixturePath, "depends_on")
+	if readError != nil {
+		t.Fatalf("readFrontmatterField: %v", readError)
+	}
+	if !found {
+		t.Fatal("found = false, want true — depends_on is present")
+	}
+	if value != "REQ-001\nREQ-002" {
+		t.Fatalf("value = %q, want one dependency per line", value)
+	}
+}
+
 func TestReadFrontmatterFieldReportsAbsentField(t *testing.T) {
 	fixturePath := writeFrontmatterFixture(t, "id: REQ-777\nstatus: pending")
 
@@ -85,6 +100,33 @@ func TestRunFrontmatterCommandGetPrintsValue(t *testing.T) {
 	}
 	if standardOut.String() != "completed\n" {
 		t.Fatalf("stdout = %q, want %q", standardOut.String(), "completed\n")
+	}
+}
+
+func TestRunFrontmatterCommandGetPrintsListsWithoutGoFormatting(t *testing.T) {
+	testCases := []struct {
+		caseName        string
+		frontmatterBody string
+		wantStdout      string
+	}{
+		{"flow list", "id: REQ-777\ndepends_on: [REQ-001, REQ-002]", "REQ-001\nREQ-002\n"},
+		{"block list", "id: REQ-777\ndepends_on:\n  - REQ-003\n  - REQ-004", "REQ-003\nREQ-004\n"},
+		{"singleton", "id: REQ-777\ndepends_on: [REQ-005]", "REQ-005\n"},
+		{"empty list", "id: REQ-777\ndepends_on: []", ""},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.caseName, func(t *testing.T) {
+			fixturePath := writeFrontmatterFixture(t, testCase.frontmatterBody)
+			var standardOut, standardErr strings.Builder
+			exitCode := runFrontmatterCommand(
+				[]string{"get", fixturePath, "depends_on"}, &standardOut, &standardErr)
+			if exitCode != 0 {
+				t.Fatalf("exit = %d, want 0 (stderr: %q)", exitCode, standardErr.String())
+			}
+			if standardOut.String() != testCase.wantStdout {
+				t.Fatalf("stdout = %q, want %q", standardOut.String(), testCase.wantStdout)
+			}
+		})
 	}
 }
 
@@ -175,25 +217,34 @@ func TestRunFrontmatterCommandNormalizeMatchesPlainGetOutsideTheContract(t *test
 	}
 }
 
-// TestRunFrontmatterCommandInSetRejectsFieldOutsideTheContract covers the other
-// flag. Both set names are `status` sets, so a membership test on a field with no
-// canonical vocabulary is a question the command cannot answer — a usage error,
-// not a silent "no".
-func TestRunFrontmatterCommandInSetRejectsFieldOutsideTheContract(t *testing.T) {
-	fixturePath := writeFrontmatterFixture(t, "id: REQ-777\ncreated_at: 2026-08-05T15:53:39Z")
+// Both --in-set names are status vocabularies. Contract-less fields and fields
+// with other vocabularies are equally invalid targets, and the usage error must
+// win before any field value is read or normalized.
+func TestRunFrontmatterCommandInSetRejectsEveryNonStatusField(t *testing.T) {
+	fixturePath := writeFrontmatterFixture(t, strings.Join([]string{
+		"id: REQ-777",
+		"created_at: 2026-08-05T15:53:39Z",
+		"domain: backend",
+		"route: A",
+		"testing_status: tested",
+	}, "\n"))
 
-	var standardOut, standardErr strings.Builder
-	exitCode := runFrontmatterCommand(
-		[]string{"get", fixturePath, "created_at", "--in-set", "terminal-success"}, &standardOut, &standardErr)
+	for _, fieldName := range []string{"created_at", "domain", "route", "testing_status"} {
+		t.Run(fieldName, func(t *testing.T) {
+			var standardOut, standardErr strings.Builder
+			exitCode := runFrontmatterCommand(
+				[]string{"get", fixturePath, fieldName, "--in-set", "terminal-success"}, &standardOut, &standardErr)
 
-	if exitCode != 2 {
-		t.Fatalf("exit = %d, want 2 — a membership test on a field with no canonical vocabulary is a usage error, not a false answer", exitCode)
-	}
-	if standardOut.String() != "" {
-		t.Fatalf("stdout = %q, want empty on a usage error", standardOut.String())
-	}
-	if !strings.Contains(standardErr.String(), "created_at") {
-		t.Fatalf("stderr = %q, want it to name the offending field", standardErr.String())
+			if exitCode != 2 {
+				t.Fatalf("exit = %d, want 2 — terminal sets apply only to status", exitCode)
+			}
+			if standardOut.String() != "" {
+				t.Fatalf("stdout = %q, want empty on a usage error", standardOut.String())
+			}
+			if !strings.Contains(standardErr.String(), fieldName) {
+				t.Fatalf("stderr = %q, want it to name the offending field %q", standardErr.String(), fieldName)
+			}
+		})
 	}
 }
 
@@ -255,6 +306,7 @@ func TestRunFrontmatterCommandRejectsUsageErrors(t *testing.T) {
 		{"unknown verb", []string{"set", fixturePath, "status"}},
 		{"missing field", []string{"get", fixturePath}},
 		{"leftover token", []string{"get", fixturePath, "status", "extra"}},
+		{"empty set name", []string{"get", fixturePath, "status", "--in-set", ""}},
 		{"unknown set name", []string{"get", fixturePath, "status", "--in-set", "nonsense"}},
 		{"missing file", []string{"get", filepath.Join(t.TempDir(), "absent.md"), "status"}},
 	}

@@ -118,10 +118,27 @@ Uncommitted files that are **not** in the target REQ's Implementation Summary re
 Feed the non-`X` paths from Step 1 into the shipped check:
 
 ```bash
-printf '%s\n' <paths> | <skill-root>/tools/checks/associate-files.sh
+repository_root="$(git rev-parse --show-toplevel)" || exit 2
+inventory_file="$(mktemp)" || exit 2
+candidate_paths_file="$(mktemp)" || { rm -f "$inventory_file"; exit 2; }
+trap 'rm -f "$inventory_file" "$candidate_paths_file"' EXIT
+
+if "<skill-root>/tools/checks/uncommitted-inventory.sh" "$repository_root" > "$inventory_file"; then
+  inventory_exit=0
+else
+  inventory_exit=$?
+fi
+case "$inventory_exit" in
+  0) ;;
+  1) exit 1 ;;
+  *) exit 2 ;;
+esac
+
+awk -F '\t' '$1 != "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" > "$candidate_paths_file"
+"<skill-root>/tools/checks/associate-files.sh" --repo-root "$repository_root" < "$candidate_paths_file"
 ```
 
-It scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 2 means there is no `do-work/` directory, which is the skip condition already stated above.
+This self-contained block re-derives the repository root and moves paths through files rather than interpolating them into shell source. It scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no non-`X` candidates; continue with the reported `X` rows only. Exit 2 means a usage error or no `do-work/` directory, which is the skip condition already stated above.
 
 What the script settles, so this prose no longer has to:
 

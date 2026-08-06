@@ -76,10 +76,27 @@ The goal is to understand each file well enough to group it with related changes
 Feed the non-`X` paths from Step 1 into the shipped check:
 
 ```bash
-printf '%s\n' <paths> | <skill-root>/tools/checks/associate-files.sh
+repository_root="$(git rev-parse --show-toplevel)" || exit 2
+inventory_file="$(mktemp)" || exit 2
+candidate_paths_file="$(mktemp)" || { rm -f "$inventory_file"; exit 2; }
+trap 'rm -f "$inventory_file" "$candidate_paths_file"' EXIT
+
+if "<skill-root>/tools/checks/uncommitted-inventory.sh" "$repository_root" > "$inventory_file"; then
+  inventory_exit=0
+else
+  inventory_exit=$?
+fi
+case "$inventory_exit" in
+  0) ;;
+  1) exit 1 ;;
+  *) exit 2 ;;
+esac
+
+awk -F '\t' '$1 != "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" > "$candidate_paths_file"
+"<skill-root>/tools/checks/associate-files.sh" --repo-root "$repository_root" < "$candidate_paths_file"
 ```
 
-It scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 2 means there is no `do-work/` directory; skip REQ tracing entirely and send every file to Step 4.
+This self-contained block re-derives the repository root and moves paths through files rather than interpolating them into shell source. It scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no non-`X` candidates; continue with the reported `X` rows only. Exit 2 means a usage error or no `do-work/` directory; skip REQ tracing and send every non-`X` file to Step 4.
 
 What the script settles, so this prose no longer has to:
 
@@ -226,7 +243,7 @@ Guard against these when committing:
 - Single commit with >20 files (likely needs splitting)
 - Commit message has no REQ reference when matching REQs exist in the system
 - Files from multiple unrelated REQs grouped in a single commit
-- Uncommitted files belonging to a `completed-with-issues` REQ aren't associated to it — Step 3 is filtering on the literal `completed` instead of the terminal-success set (`completed` or `completed-with-issues`; see `actions/work-reference.md`)
+- Uncommitted files belonging to a terminal-success REQ aren't associated to it — Step 3 is filtering on the literal `completed` instead of the full success set (`completed`, `completed-with-issues`, plus `done`/`finished`/`closed` aliases; see `actions/work-reference.md`)
 
 ## Verification Checklist
 

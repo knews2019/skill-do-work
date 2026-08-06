@@ -62,6 +62,11 @@ is_secret_shaped() {
 }
 
 emitted_any_row=0
+status_output_file="$(mktemp)" || {
+  echo "STATUS-FAILED: could not allocate temporary output" >&2
+  exit 2
+}
+trap 'rm -f "$status_output_file"' EXIT
 
 # --untracked-files=all is load-bearing, not cosmetic. Plain
 # `git status --porcelain` collapses a wholly-untracked directory into a single
@@ -72,11 +77,18 @@ emitted_any_row=0
 #
 # -z terminates each record with NUL so paths containing spaces, quotes, or
 # newlines survive verbatim; without it git quotes such paths and the consumer
-# reads the quoting as part of the name. The output is read through process
-# substitution rather than "$(...)": bash strips NUL bytes from command
-# substitution, which would silently collapse every record into one. Process
-# substitution also keeps the loop in this shell, so emitted_any_row survives —
-# a pipe would run it in a subshell and the count would always read 0.
+# reads the quoting as part of the name. Capture that stream in a temporary file
+# first so git's exit status remains observable. A process substitution hides the
+# producer's status from the loop; on a bare repository that used to turn Git's
+# fatal error into exit 1, which callers correctly interpret as "clean tree."
+if ! git status --porcelain --untracked-files=all -z > "$status_output_file"; then
+  echo "STATUS-FAILED: git status could not read the working tree" >&2
+  exit 2
+fi
+
+# Redirecting the file into the loop keeps the loop in this shell, so
+# emitted_any_row survives. A pipe would run it in a subshell and the count would
+# always read 0.
 while IFS= read -r -d '' status_record; do
   index_status="${status_record:0:1}"
   worktree_status="${status_record:1:1}"
@@ -107,7 +119,7 @@ while IFS= read -r -d '' status_record; do
 
   printf '%s\t%s\n' "$path_tag" "$changed_path"
   emitted_any_row=1
-done < <(git status --porcelain --untracked-files=all -z)
+done < "$status_output_file"
 
 [ "$emitted_any_row" -eq 1 ] || exit 1
 exit 0

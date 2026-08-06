@@ -99,6 +99,8 @@ type generatedRequest struct {
 	OriginalStatus     string   `json:"originalStatus"`
 	StatusUnrecognized bool     `json:"statusUnrecognized,omitempty"`
 	Domain             string   `json:"domain"`
+	OriginalDomain     string   `json:"originalDomain,omitempty"`
+	DomainUnrecognized bool     `json:"domainUnrecognized,omitempty"`
 	UserRequestId      string   `json:"userRequestId"`
 	DependsOn          []string `json:"dependsOn"`
 	UnmetDependencies  []string `json:"unmetDependencies"`
@@ -117,6 +119,8 @@ type generatedRequest struct {
 	// drawer row; no column or dispatch meaning.
 	WriteSetOverlaps     []string `json:"writeSetOverlaps,omitempty"`
 	Route                string   `json:"route"`
+	OriginalRoute        string   `json:"originalRoute,omitempty"`
+	RouteUnrecognized    bool     `json:"routeUnrecognized,omitempty"`
 	Batch                string   `json:"batch"`
 	TreeSection          string   `json:"treeSection"`
 	CreatedAt            string   `json:"createdAt"`
@@ -263,6 +267,8 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			OriginalStatus:       ticket.OriginalStatus,
 			StatusUnrecognized:   ticket.StatusUnrecognized,
 			Domain:               ticket.Domain,
+			OriginalDomain:       ticket.OriginalDomain,
+			DomainUnrecognized:   ticket.DomainUnrecognized,
 			UserRequestId:        ticket.UserRequestId,
 			DependsOn:            ticket.DependsOn,
 			UnmetDependencies:    ticket.UnmetDependencies,
@@ -275,6 +281,8 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			WriteSetOverlaps:     ticket.WriteSetOverlaps,
 			AssignedTo:           ticket.AssignedTo,
 			Route:                ticket.Route,
+			OriginalRoute:        ticket.OriginalRoute,
+			RouteUnrecognized:    ticket.RouteUnrecognized,
 			Batch:                ticket.Batch,
 			TreeSection:          ticket.TreeSection,
 			CreatedAt:            ticket.CreatedAt,
