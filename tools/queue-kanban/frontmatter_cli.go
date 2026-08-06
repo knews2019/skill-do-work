@@ -50,9 +50,12 @@ var frontmatterFieldSets = map[string]func(string) bool{
 // file, whether the field was present, and an error for an input that is not a
 // usable file.
 //
-// Present-but-empty and absent are both reported as found=false: a caller asking
-// for a value cannot act on either, and the contract already treats an empty
-// optional field as absent.
+// Present-but-empty scalars and absent fields are both reported as found=false:
+// a caller asking for a scalar cannot act on either, and the contract already
+// treats an empty optional field as absent. An explicitly empty YAML sequence is
+// different: it is present and renders as empty stdout at exit 0, so callers can
+// distinguish `depends_on: []` from a missing field without receiving Go's `[]`
+// debug representation as a false value.
 //
 // A file with NO frontmatter block is an error rather than an absent field. The
 // caller has to be able to tell "this REQ does not set domain" from "this is not
@@ -78,6 +81,9 @@ func readFrontmatterField(filePath string, fieldName string) (string, bool, erro
 	if !isPresent {
 		return "", false, nil
 	}
+	if _, isSequence := rawValue.([]any); isSequence {
+		return strings.Join(coerceToStringList(rawValue), "\n"), true, nil
+	}
 	scalarValue := strings.TrimSpace(coerceScalarToString(rawValue))
 	if scalarValue == "" {
 		return "", false, nil
@@ -93,6 +99,7 @@ type frontmatterCommandArguments struct {
 	FieldName  string
 	Normalize  bool
 	InSetName  string
+	InSetGiven bool
 	UsageError string
 }
 
@@ -119,6 +126,7 @@ func parseFrontmatterCommandArguments(args []string) frontmatterCommandArguments
 				return parsed
 			}
 			index++
+			parsed.InSetGiven = true
 			parsed.InSetName = remaining[index]
 		default:
 			if strings.HasPrefix(remaining[index], "-") {
@@ -138,7 +146,17 @@ func parseFrontmatterCommandArguments(args []string) frontmatterCommandArguments
 	}
 	parsed.FilePath = positionals[0]
 	parsed.FieldName = positionals[1]
-	if parsed.InSetName != "" {
+	if parsed.InSetGiven {
+		if parsed.FieldName != "status" {
+			parsed.UsageError = fmt.Sprintf(
+				"--in-set %s applies only to the status field, not %s",
+				parsed.InSetName, parsed.FieldName)
+			return parsed
+		}
+		if parsed.InSetName == "" {
+			parsed.UsageError = "--in-set needs a non-empty set name"
+			return parsed
+		}
 		if _, isKnownSet := frontmatterFieldSets[parsed.InSetName]; !isKnownSet {
 			parsed.UsageError = fmt.Sprintf("unknown --in-set %q (want: terminal-success | terminal-resolved)", parsed.InSetName)
 		}
@@ -184,22 +202,12 @@ func runFrontmatterCommand(args []string, standardOut io.Writer, standardErr io.
 	// warning claiming the timestamp was "not recognized", contradicting the
 	// contract's own statement that such fields are outside it and read verbatim.
 	//
-	// --in-set is different and must NOT fall through quietly: both set names are
-	// `status` sets, so a membership test on a field with no canonical vocabulary
-	// is a question this command cannot answer, and answering "no" (exit 1) would
-	// read at a call site as a real negative.
 	resolvedValue := rawValue
 	if !hasSchemaFieldContract(parsed.FieldName) {
-		if parsed.InSetName != "" {
-			fmt.Fprintf(standardErr,
-				"queue-kanban frontmatter: %s is outside the Schema Read Contract — --in-set %s tests the status vocabulary and cannot answer for it\n",
-				parsed.FieldName, parsed.InSetName)
-			return 2
-		}
-		fmt.Fprintf(standardOut, "%s\n", resolvedValue)
+		writeFrontmatterValue(standardOut, resolvedValue)
 		return 0
 	}
-	if parsed.Normalize || parsed.InSetName != "" {
+	if parsed.Normalize || parsed.InSetGiven {
 		// --in-set normalizes too: a membership test on a raw `done` has to
 		// resolve the alias before asking, or the alias map the contract
 		// promises would apply to `get` and not to the set check.
@@ -221,7 +229,7 @@ func runFrontmatterCommand(args []string, standardOut io.Writer, standardErr io.
 		}
 	}
 
-	if parsed.InSetName != "" {
+	if parsed.InSetGiven {
 		isMember := frontmatterFieldSets[parsed.InSetName]
 		if isMember(resolvedValue) {
 			return 0
@@ -229,6 +237,16 @@ func runFrontmatterCommand(args []string, standardOut io.Writer, standardErr io.
 		return 1
 	}
 
-	fmt.Fprintf(standardOut, "%s\n", resolvedValue)
+	writeFrontmatterValue(standardOut, resolvedValue)
 	return 0
+}
+
+// writeFrontmatterValue prints scalar values and sequence items one per line.
+// An empty sequence deliberately emits no byte at all; a captured value then
+// answers false to `test -n` instead of becoming the misleading string `[]`.
+func writeFrontmatterValue(standardOut io.Writer, value string) {
+	if value == "" {
+		return
+	}
+	fmt.Fprintf(standardOut, "%s\n", value)
 }

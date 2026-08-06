@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.2 — The Effort Chip Shows What Was Declared, Not Just What It Resolved To (2026-08-06)
+
+0.180.1 taught the board's domain and route badges to carry raw provenance — what the REQ
+actually declared, flagged when it isn't recognized. The effort chip that landed in parallel
+now does the same, so a typo'd value can't be the one field that leaves no mark on the card.
+
+- `effort_estimate` carries `originalEffortEstimate` and its unrecognized flag through to the board, matching how domain and route report themselves
+- An unrecognized value now chips as `normal` with an `invalid` flag instead of rendering nothing — the resolved value alone would have hidden the typo everywhere except the warnings banner
+- The drawer's Effort estimate row uses the shared declared-vs-normalized renderer
+
 ## 0.183.1 — Sweep Lookup, Gate Audit Trail, and Append Staging Hardened (2026-08-06)
 
 Codex's review of the 0.181–0.183 set found four gaps between the new contracts and the
@@ -47,6 +57,21 @@ through them by hand. Every automatic follow-up now declares its weight before i
 - Reviews record a `gate:` token (user-visible / rule-change / trivial) on each Important finding before any follow-up REQ is created — severity judgment is unchanged, the gate only routes (`actions/review-work.md` Step 10)
 - New `effort_estimate: trivial | normal` frontmatter field, stamped from the gate on review and Discovered-Tasks follow-ups; capture may set it; absent reads as `normal`, so existing REQs need no migration
 - The board chips `effort_estimate: trivial` cards and adds a drawer row — display-only, with domain-style normalize-and-warn handling (`tools/queue-kanban`)
+
+## 0.180.1 — Hand-Back, Frontmatter, and Board-State Correctness (2026-08-06)
+
+An external-feedback pass found real edge cases in the newest Git workflow, shell checks,
+frontmatter reader, and By UR lens. The fixes fail closed, preserve raw schema evidence,
+and give the board the right escape or refresh instead of a plausible stale answer.
+
+- Hand-back bookkeeping now stages and rechecks an explicit path set before a plain commit;
+  missing shell arguments and failed `git status` reads return diagnosed usage/tool errors.
+- `frontmatter get` rejects empty or non-status membership gates and emits YAML sequences one
+  item per line, with empty lists producing empty output instead of Go debug formatting.
+- The board carries raw domain/route provenance, distinguishes scope-hidden search matches,
+  keeps Testing-only filters out of By UR decisions, and invalidates By UR after test updates.
+- Regression probes now isolate global Git ignores, clean up on setup failure, compare exact
+  output, derive CLI subcommands structurally, and execute the critical JavaScript state cases.
 
 ## 0.180.0 — The Board's By UR Lens Stops Going Blank on a Shipped Queue (2026-08-06)
 
@@ -1538,4 +1563,3 @@ Fan-out runs now distinguish “assembled” from “delivered,” so an interru
 - Added `in-progress` → `synthesized` → `consumed` run states, persisted code-review reports, a root deep-explore manifest, and consumed-only cleanup with explicit staging for deleted run paths
 - Aligned cleanup's five-pass documentation, changelog-title examples, and prime's interactive questions with their canonical contracts
 - Moved raw REQ/UR Markdown into lazy `board-markdown.js`; the current tree's initial `board-data.js` is 43% smaller while generated and live boards still copy exact source text
-

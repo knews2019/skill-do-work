@@ -691,14 +691,31 @@ if [ -z "$unknown_subcommand_message" ]; then
   printf 'FAIL: tools/queue-kanban/main.go has no unknown-subcommand message — a mistyped subcommand must name the valid ones, not exit silently.\n' >&2
   fail_count=$((fail_count + 1))
 else
-  dispatched_subcommands="$(sed -n '/^\tswitch subcommand {$/,/^\t}$/p' "$repo_root/tools/queue-kanban/main.go" \
-    | grep -oE '"[a-z-]+"' | tr -d '"' | sort -u)"
+  dispatched_subcommands="$(awk '
+    /^\tswitch subcommand \{$/ { in_dispatch_switch=1; next }
+    in_dispatch_switch && /^\t}$/ { exit }
+    in_dispatch_switch && /^\tcase / {
+      case_labels=$0
+      sub(/^[[:space:]]*case[[:space:]]+/, "", case_labels)
+      sub(/:.*/, "", case_labels)
+      while (match(case_labels, /"[a-z-]+"/)) {
+        print substr(case_labels, RSTART + 1, RLENGTH - 2)
+        case_labels=substr(case_labels, RSTART + RLENGTH)
+      }
+    }
+  ' "$repo_root/tools/queue-kanban/main.go" | sort -u)"
+
+  advertised_subcommands="$(printf '%s\n' "$unknown_subcommand_message" \
+    | sed -n 's/.*(want \(.*\))\\n".*/\1/p' \
+    | tr '|' '\n' \
+    | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+    | sort -u)"
   if [ -z "$dispatched_subcommands" ]; then
     printf 'FAIL: could not read the subcommand dispatch switch in tools/queue-kanban/main.go — this check derives the expected list from it, so a shape change here silently disables it.\n' >&2
     fail_count=$((fail_count + 1))
   fi
   for dispatched_subcommand in $dispatched_subcommands; do
-    if ! grep -qF -- "$dispatched_subcommand" <<<"$unknown_subcommand_message"; then
+    if ! grep -qxF -- "$dispatched_subcommand" <<<"$advertised_subcommands"; then
       printf 'FAIL: tools/queue-kanban/main.go dispatches %s but its unknown-subcommand message does not list it — the error text lies about what exists.\n' \
         "$dispatched_subcommand" >&2
       fail_count=$((fail_count + 1))
@@ -875,27 +892,111 @@ assert_block_contains \
 # callers would read and stage them. Codex caught it on PR #134. Assert the tags,
 # not the pattern — the next wrong pattern will look right too.
 inventory_probe_dir="$(mktemp -d)"
-(
+cleanup_inventory_probe() {
+  rm -rf -- "$inventory_probe_dir"
+}
+trap cleanup_inventory_probe EXIT
+inventory_probe_setup_error="$inventory_probe_dir/setup-error.txt"
+if ! (
+  export GIT_CONFIG_GLOBAL=/dev/null
+  export GIT_CONFIG_SYSTEM=/dev/null
   cd "$inventory_probe_dir" || exit 1
-  git init -q . && git config user.email probe@test && git config user.name probe
-  mkdir -p nested
+  git init -q .
+  git config user.email probe@test
+  git config user.name probe
+  mkdir -p nested uppercase
   for probe_name in .env .env.local .envrc .environment production.env \
-                    credentials.json server.pem ordinary.js; do
+                    credentials.json server.pem .ENV.PRODUCTION AuthCredentials.json \
+                    private.PEM UPPER-SECRET.txt ordinary.js; do
     echo probe > "nested/$probe_name"
   done
-) >/dev/null 2>&1
-inventory_probe_output="$("$repo_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
-for must_be_excluded in .env .env.local .envrc .environment production.env credentials.json server.pem; do
-  if ! printf '%s\n' "$inventory_probe_output" | grep -qF "$(printf 'X\tnested/%s' "$must_be_excluded")"; then
-    printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag nested/%s as X (secret-shaped) — it is reachable by the advertised exclusion globs.\n' "$must_be_excluded" >&2
+  echo probe > uppercase/.ENV
+  git add nested/.env.local
+  git commit -qm 'seed tracked secret deletion'
+  rm nested/.env.local
+) 2>"$inventory_probe_setup_error"; then
+  printf 'FAIL: could not set up the uncommitted-inventory behavior probe:\n' >&2
+  sed 's/^/  /' "$inventory_probe_setup_error" >&2
+  fail_count=$((fail_count + 1))
+else
+  inventory_probe_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    "$repo_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
+  for must_be_excluded in .env .envrc .environment production.env credentials.json server.pem \
+                          .ENV.PRODUCTION AuthCredentials.json private.PEM UPPER-SECRET.txt; do
+    if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'X\tnested/%s' "$must_be_excluded")"; then
+      printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag nested/%s as X (secret-shaped) — it is reachable by the advertised exclusion globs.\n' "$must_be_excluded" >&2
+      fail_count=$((fail_count + 1))
+    fi
+  done
+  if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'X\tuppercase/.ENV')"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag uppercase/.ENV as X (case-insensitive secret-shaped basename).\n' >&2
     fail_count=$((fail_count + 1))
   fi
-done
-if ! printf '%s\n' "$inventory_probe_output" | grep -qF "$(printf 'A\tnested/ordinary.js')"; then
-  printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag an ordinary file as A — an over-broad exclusion glob starves both callers of every file.\n' >&2
+  if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'XD\tnested/.env.local')"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag a deleted secret-shaped path as XD so its deletion can be associated and committed without reading its former contents.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+  if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'A\tnested/ordinary.js')"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag an ordinary file as A — an over-broad exclusion glob starves both callers of every file.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+fi
+cleanup_inventory_probe
+trap - EXIT
+
+# Argument parsing must fail fast. The watchdog keeps a regression from hanging
+# the entire suite forever: the original `shift 2` with one argument left made
+# the loop reread --repo-root indefinitely on Bash 3.2 and newer alike.
+associate_missing_value_output="$(mktemp)"
+"$repo_root/tools/checks/associate-files.sh" --repo-root </dev/null \
+  >"$associate_missing_value_output" 2>&1 &
+associate_missing_value_pid=$!
+(
+  sleep 2
+  if kill -0 "$associate_missing_value_pid" 2>/dev/null; then
+    kill "$associate_missing_value_pid" 2>/dev/null || true
+  fi
+) &
+associate_missing_value_watchdog_pid=$!
+if wait "$associate_missing_value_pid"; then
+  associate_missing_value_exit=0
+else
+  associate_missing_value_exit=$?
+fi
+kill "$associate_missing_value_watchdog_pid" 2>/dev/null || true
+wait "$associate_missing_value_watchdog_pid" 2>/dev/null || true
+if [ "$associate_missing_value_exit" -ne 2 ]; then
+  printf 'FAIL: tools/checks/associate-files.sh --repo-root with no value must fail promptly with exit 2, got %s.\n' \
+    "$associate_missing_value_exit" >&2
   fail_count=$((fail_count + 1))
 fi
-rm -rf "$inventory_probe_dir"
+rm -f "$associate_missing_value_output"
+
+# A git-status failure is not a clean tree. Process substitution used to hide
+# the producer's failure, making a bare repository return the clean-tree exit 1.
+inventory_failure_probe_dir="$(mktemp -d)"
+if ! GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+  git init -q --bare "$inventory_failure_probe_dir"; then
+  printf 'FAIL: could not set up the uncommitted-inventory git-status failure probe.\n' >&2
+  fail_count=$((fail_count + 1))
+else
+  if inventory_failure_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    "$repo_root/tools/checks/uncommitted-inventory.sh" "$inventory_failure_probe_dir" 2>&1)"; then
+    inventory_failure_exit=0
+  else
+    inventory_failure_exit=$?
+  fi
+  if [ "$inventory_failure_exit" -ne 2 ]; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must return exit 2 when git status fails, got %s.\n' \
+      "$inventory_failure_exit" >&2
+    fail_count=$((fail_count + 1))
+  fi
+  if ! grep -qF 'STATUS-FAILED:' <<<"$inventory_failure_output"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must diagnose a git-status failure instead of reporting a clean tree.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+fi
+rm -rf -- "$inventory_failure_probe_dir"
 
 assert_contains \
   "tools/checks/preflight.sh" \

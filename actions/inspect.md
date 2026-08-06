@@ -69,16 +69,21 @@ It gates on `git rev-parse --git-dir`, enumerates every uncommitted path, and pr
 - **M** — modified (a renamed path is tagged M too: read its diff, don't re-read it as new content)
 - **A** — added, covering both staged-new and untracked
 - **D** — deleted
-- **X** — excluded from full analysis: a secret-shaped name (`.env*` or `*.env`, `*credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, `*secret*`)
+- **X** — non-deleted secret-shaped path; fully excluded from analysis
+- **XD** — deleted secret-shaped path; path/deletion state only
+
+Secret-shaped matching is case-insensitive and applies to the basename only: `.env*` or `*.env`, `*credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, and `*secret*`. Thus `.ENV`, `AuthCredentials.json`, `private.PEM`, and `UPPER-SECRET.txt` are all secret-shaped, while an ordinary file beneath a directory named `secrets/` is not classified from the directory name alone.
 
 Exit 2 means this is not a git repo — report and exit. Exit 1 means the working tree is clean:
 
 - **No REQ/UR scope:** Report "No uncommitted changes" and exit.
 - **REQ/UR scope:** Continue to Step 2 — committed files from the Implementation Summary will still be inspected.
 
-**`X` rows are reported, never skipped silently.** Carry them into the report so the user knows a secret-shaped file is sitting uncommitted; just never read or diff their contents.
+**`X` rows are reported, never skipped silently.** Carry them into the report so the user knows a secret-shaped file is sitting uncommitted; never read, diff, stage, or commit them.
 
-If the script is missing or will not run, do it by hand: `git status --porcelain --untracked-files=all`, then categorize M/A/D and apply the four exclusion globs above. The `-uall` flag is not optional — plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so every file inside a brand-new folder escapes the exclusion scan. That is a secret-leak path, and `actions/stray-check.md`'s Red Flags record that it has been hit.
+**`XD` rows are also reported.** A later commit action may stage their deletion, but this read-only action inspects only the path and deletion state. Never read, diff, reconstruct, or retrieve the former contents from the index, a commit, or any other Git history.
+
+If the script is missing or will not run, do it by hand: `git status --porcelain --untracked-files=all`, first classify every path as M/A/D, then lowercase its basename with `tr '[:upper:]' '[:lower:]'` and apply the patterns above. Change a non-deleted secret-shaped tag to X and a deleted one to XD. The `-uall` flag is not optional — plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so every file inside a brand-new folder escapes the exclusion scan. That is a secret-leak path, and `actions/stray-check.md`'s Red Flags record that it has been hit.
 
 ### Step 2: Read Changes
 
@@ -86,7 +91,8 @@ Build a semantic understanding of each uncommitted file:
 
 - **Modified files**: Read the `git diff` for each file. Understand what changed and why.
 - **New/untracked files**: Read the file contents. Skip binary files (detect by extension: images, compiled assets, archives). For large files (>500 lines), read the first 100 lines and last 50 lines to understand purpose.
-- **Deleted files**: Note the path and what the file likely was (infer from path and name).
+- **Deleted files (`D`)**: Note the path and what the file likely was (infer from path and name).
+- **Deleted secret-shaped files (`XD`)**: Note only the path and that it is deleted. Do not run `git diff`, `git show`, `git log -p`, or any equivalent that reads, reconstructs, or displays former contents.
 
 #### Committed files (REQ/UR scope only)
 
@@ -94,7 +100,7 @@ When `$ARGUMENTS` specifies a REQ or UR, also collect committed files from the t
 
 1. Read the target REQ file(s) and extract the file list from `## Implementation Summary`.
 2. For each file in the list that has no uncommitted changes:
-   - **Deleted files** (marked `(deleted)` in the Implementation Summary): Note the path and that it was deleted by this REQ. Do not attempt `git show` — there is no content to read. Mark as **committed (deleted)**.
+   - **Deleted files** (marked `(deleted)` in the Implementation Summary): Note the path and that it was deleted by this REQ. Do not attempt `git show` — there is no content to read. If the basename is secret-shaped, do not consult any historical source either. Mark as **committed (deleted)**.
    - **All other files**: Read content via `git show <commit>:<path>`:
      - Use the `commit:` field from the REQ's frontmatter if present.
      - Otherwise, fall back to `HEAD`.
@@ -115,13 +121,30 @@ Uncommitted files that are **not** in the target REQ's Implementation Summary re
 
 #### Unscoped mode (default)
 
-Feed the non-`X` paths from Step 1 into the shipped check:
+Feed the M/A/D/XD paths from Step 1 into the shipped check, excluding only exact `X` rows:
 
 ```bash
-printf '%s\n' <paths> | <skill-root>/tools/checks/associate-files.sh
+repository_root="$(git rev-parse --show-toplevel)" || exit 2
+inventory_file="$(mktemp)" || exit 2
+candidate_paths_file="$(mktemp)" || { rm -f "$inventory_file"; exit 2; }
+trap 'rm -f "$inventory_file" "$candidate_paths_file"' EXIT
+
+if "<skill-root>/tools/checks/uncommitted-inventory.sh" "$repository_root" > "$inventory_file"; then
+  inventory_exit=0
+else
+  inventory_exit=$?
+fi
+case "$inventory_exit" in
+  0) ;;
+  1) exit 1 ;;
+  *) exit 2 ;;
+esac
+
+awk -F '\t' '$1 != "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" > "$candidate_paths_file"
+"<skill-root>/tools/checks/associate-files.sh" --repo-root "$repository_root" < "$candidate_paths_file"
 ```
 
-It scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 2 means there is no `do-work/` directory, which is the skip condition already stated above.
+This self-contained block re-derives the repository root and moves paths through files rather than interpolating them into shell source. The exact `$1 != "X"` filter is intentional: M/A/D/XD participate in association, and only X is excluded. The check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory, which is the skip condition already stated above.
 
 What the script settles, so this prose no longer has to:
 
@@ -140,7 +163,7 @@ If the script is missing or will not run, do it by hand: glob both directories, 
 
 Cluster the remaining files into semantic groups of 1-5 files each:
 
-1. **Use the diffs/contents** from Step 2 for each unassociated file
+1. **Use the safe evidence from Step 2** for each unassociated file — diffs/contents for M/A, path metadata for D/XD
 2. **Identify logical changes** — files that work together toward a single purpose:
    - A component and its test file
    - Multiple files in the same module touching the same feature
@@ -201,6 +224,8 @@ Scan diff content for sensitive data patterns:
 - Inline secrets: `password = "..."`, `secret = "..."`, `token = "..."`
 - This is a heuristic scan. False positives are acceptable — better to flag and be wrong.
 
+Run this scan only on the M/A diff or content that Step 2 permits reading. D, X, and XD are path-only report entries; X and XD must never enter a content or diff scan.
+
 #### Improvement Hints
 
 Flag obvious opportunities without redesigning. Only mention what jumps out:
@@ -221,6 +246,8 @@ Each uncommitted file/group gets one verdict:
 - **Needs attention** — minor issues (missing tests, TODOs) the user should be aware of
 - **Not ready** — blocking issues (WIP code, possible secrets, incomplete implementation)
 
+X paths are excluded and receive no readiness verdict. XD may be marked **Ready (deletion only)** from its path, REQ association, and deletion state alone; no content-based judgment is permitted.
+
 Committed files (REQ/UR scope only) get a separate label:
 
 - **Already Committed** — already in the repository; shown for informational completeness only. The six readiness signals above are evaluated and any findings are reported, but the verdict label is always "Already Committed" regardless of findings — the user is not deciding whether to commit these files. This is a status label, not a quality judgment.
@@ -238,7 +265,7 @@ The report uses a **hybrid format**: narrative explanations per group (like a co
 
 **Date:** {timestamp}
 **Scope:** {All changes / REQ-NNN / UR-NNN}
-**Uncommitted files:** {N} ({M modified}, {A added}, {D deleted})
+**Uncommitted files:** {N} ({M modified}, {A added}, {D deleted}, {XD secret-shaped deletions}, {X excluded})
 **Committed files:** {N} (from Implementation Summary — REQ/UR scope only)
 
 ## REQ-Associated Changes
@@ -303,6 +330,10 @@ The report uses a **hybrid format**: narrative explanations per group (like a co
 
 - `.env.local` — environment variables (skipped)
 
+## Secret-Shaped Deletions
+
+- `.env.production` — deletion detected; former contents not inspected; eligible for deletion-only commit
+
 ## Readiness Summary
 
 | File | REQ | Status | Verdict |
@@ -318,6 +349,8 @@ The report uses a **hybrid format**: narrative explanations per group (like a co
 
 **Overall: Needs attention** — 3 of 5 uncommitted files ready to commit. 1 has a contradicting config value. 1 is a debug file with TODOs. 3 committed files shown for context.
 ```
+
+Whenever XD appears, add this warning: committing the deletion removes the path from the new tree only; it does not erase the secret from Git history or rotate/revoke the credential.
 
 **Formatting rules:**
 
@@ -353,7 +386,7 @@ No uncommitted changes.
 | Scoped REQ/UR has no matching uncommitted files | Continue with committed-only inspection from Implementation Summary. Report shows only committed files under the REQ group |
 | Binary files in untracked | Note as binary, skip content analysis, assess based on path/name only |
 | Very large number of files (50+) | Process normally but warn: "Large changeset — {N} files. Consider reviewing in smaller batches." |
-| All files excluded | Report the exclusions, no analysis to perform |
+| All paths are X/XD | Report X exclusions and XD deletion states; perform no content analysis |
 
 ## What This Action Does NOT Do
 
@@ -369,12 +402,12 @@ No uncommitted changes.
 
 ```
 □ Step 1: Check for git repo
-□ Step 1: Run git status, categorize files (M/A/D)
-□ Step 1: Identify excluded files (.env, credentials, keys)
+□ Step 1: Run git status, categorize files (M/A/D/X/XD)
+□ Step 1: Identify X exclusions and XD deletion-only paths (.env, credentials, keys)
 □ Step 1: If clean tree + REQ/UR scope, continue (don't exit)
 □ Step 2: Read diffs for modified files
 □ Step 2: Read contents for new files (skip binaries)
-□ Step 2: Note deleted file paths
+□ Step 2: Note deleted file paths; never read/diff/reconstruct XD contents
 □ Step 2: (REQ/UR scope) Collect committed files from Implementation Summary via git show
 □ Step 3: Scan archive/working for REQs with Implementation Summaries (skip if no do-work/)
 □ Step 3: (Scoped) Pre-associate all Implementation Summary files, skip matching
@@ -385,13 +418,13 @@ No uncommitted changes.
 □ Step 5: Check test coverage (corresponding test files)
 □ Step 5: Note REQ traceability status
 □ Step 5: Check coherence across changed files (flag contradictions)
-□ Step 5: Scan for safety issues (secrets in diffs)
+□ Step 5: Scan permitted diffs for safety issues; exclude X/XD from diff scans
 □ Step 5: Note improvement hints (length, duplication, missing types, naming)
 □ Step 5: Assign per-file and per-group readiness verdicts (Already Committed for committed files)
 □ Step 6: Write narrative What/Why per group
 □ Step 6: Separate Uncommitted and Committed Files subsections in REQ groups
 □ Step 6: Include Hints and Contradictions where applicable
-□ Step 6: Report excluded files
+□ Step 6: Report X exclusions and XD deletions separately
 □ Step 6: Print readiness summary table with Status column
 ```
 
@@ -405,10 +438,12 @@ No uncommitted changes.
 - Flagging style preferences as contradictions — only flag logical conflicts
 - Exiting early when no uncommitted files match a scoped REQ/UR — committed files should still be inspected
 - Giving a committed file a "Ready"/"Needs attention"/"Not ready" verdict — use "Already Committed" instead
+- Reading a secret-shaped deletion from Git history to explain it — XD is path/deletion-state only
 
 ## Rules
 
 - **Read-only.** This action never modifies files, creates commits, stages changes, or writes to the do-work queue. It only reads and reports.
+- **X and XD are restricted.** X is never read or diffed. XD may be associated and reported as a deletion, but its former or historical contents are never read, diffed, or reconstructed.
 - **Safe to run anytime.** No side effects. Can be run mid-work, between sessions, or before deciding whether to commit.
 - **Explain, don't act.** The report tells the user what changed, why, and whether it's ready. The user decides what to do next.
 
@@ -425,7 +460,7 @@ No uncommitted changes.
 
 - Report produced without a `git status` / `git diff` reading actually happening (hollow analysis)
 - Files listed with no REQ association attempt — even "unassociated" should be an explicit conclusion
-- "Ready" verdict given to a group containing `.env`, credentials, or secrets-shaped strings
+- "Ready" verdict given to an X path, or an XD verdict based on anything beyond its path, association, and deletion state
 - Debug artifacts (console.log, debugger, commented-out blocks) appear in added lines but aren't flagged
 - Committed files inspected under REQ/UR scope but given readiness verdicts instead of "Already Committed"
 

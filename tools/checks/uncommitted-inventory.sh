@@ -8,7 +8,9 @@
 #           M  modified (tracked, content changed)
 #           A  added (staged-new or untracked)
 #           D  deleted
-#           X  excluded: secret-shaped name, reported but not to be read
+#           X  non-deleted secret-shaped name, reported but not to be read
+#          XD  deleted secret-shaped name, deletion may be committed without
+#              reading its former contents
 # Exit 0: rows emitted. Exit 1: clean working tree (no rows).
 # Exit 2: not a git repository, or usage error.
 #
@@ -21,10 +23,11 @@
 # is never corrupted or truncated — it just cannot be rendered on one line, and
 # a line-oriented format is what the prose callers consume.
 #
-# X is a tag, never a silent drop. Both callers must still report excluded
-# paths — the user needs to know a secret-shaped file is sitting uncommitted —
-# they just must not read or diff the contents. A script that omitted the row
-# would reintroduce exactly the silence both prose copies warn against.
+# X and XD are tags, never silent drops. Both callers must still report these
+# paths — the user needs to know a secret-shaped file is sitting uncommitted or
+# deleted. X contents stay fully excluded; XD exposes only the deletion state.
+# A script that omitted either row would reintroduce exactly the silence both
+# prose copies warn against.
 set -uo pipefail
 
 repository_root="${1:-.}"
@@ -52,7 +55,9 @@ fi
 # file by any reading, and both callers advertise it alongside the prefix form.
 is_secret_shaped() {
   local candidate_basename="${1##*/}"
-  case "$candidate_basename" in
+  local normalized_basename
+  normalized_basename="$(printf '%s' "$candidate_basename" | LC_ALL=C tr '[:upper:]' '[:lower:]')" || return 1
+  case "$normalized_basename" in
     .env*|*.env)               return 0 ;;
     *credentials*)             return 0 ;;
     *.pem|*.key|*.p12|*.pfx)   return 0 ;;
@@ -62,6 +67,11 @@ is_secret_shaped() {
 }
 
 emitted_any_row=0
+status_output_file="$(mktemp)" || {
+  echo "STATUS-FAILED: could not allocate temporary output" >&2
+  exit 2
+}
+trap 'rm -f "$status_output_file"' EXIT
 
 # --untracked-files=all is load-bearing, not cosmetic. Plain
 # `git status --porcelain` collapses a wholly-untracked directory into a single
@@ -72,11 +82,18 @@ emitted_any_row=0
 #
 # -z terminates each record with NUL so paths containing spaces, quotes, or
 # newlines survive verbatim; without it git quotes such paths and the consumer
-# reads the quoting as part of the name. The output is read through process
-# substitution rather than "$(...)": bash strips NUL bytes from command
-# substitution, which would silently collapse every record into one. Process
-# substitution also keeps the loop in this shell, so emitted_any_row survives —
-# a pipe would run it in a subshell and the count would always read 0.
+# reads the quoting as part of the name. Capture that stream in a temporary file
+# first so git's exit status remains observable. A process substitution hides the
+# producer's status from the loop; on a bare repository that used to turn Git's
+# fatal error into exit 1, which callers correctly interpret as "clean tree."
+if ! git status --porcelain --untracked-files=all -z > "$status_output_file"; then
+  echo "STATUS-FAILED: git status could not read the working tree" >&2
+  exit 2
+fi
+
+# Redirecting the file into the loop keeps the loop in this shell, so
+# emitted_any_row survives. A pipe would run it in a subshell and the count would
+# always read 0.
 while IFS= read -r -d '' status_record; do
   index_status="${status_record:0:1}"
   worktree_status="${status_record:1:1}"
@@ -89,15 +106,11 @@ while IFS= read -r -d '' status_record; do
     R*|C*|*R|*C) IFS= read -r -d '' _rename_origin_path || true ;;
   esac
 
-  if is_secret_shaped "$changed_path"; then
-    printf 'X\t%s\n' "$changed_path"
-    emitted_any_row=1
-    continue
-  fi
-
   # Deleted wins over modified: a path deleted in either the index or the
   # worktree cannot be read, so a caller that saw "M" would try to diff a file
-  # that is gone. Added covers both staged-new (A) and untracked (??).
+  # that is gone. Added covers both staged-new (A) and untracked (??). Compute
+  # this ordinary state before secret classification so a secret deletion can
+  # become XD instead of the fully excluded X.
   case "$index_status$worktree_status" in
     *D*)  path_tag='D' ;;
     '??') path_tag='A' ;;
@@ -105,9 +118,17 @@ while IFS= read -r -d '' status_record; do
     *)    path_tag='M' ;;
   esac
 
+  if is_secret_shaped "$changed_path"; then
+    if [ "$path_tag" = 'D' ]; then
+      path_tag='XD'
+    else
+      path_tag='X'
+    fi
+  fi
+
   printf '%s\t%s\n' "$path_tag" "$changed_path"
   emitted_any_row=1
-done < <(git status --porcelain --untracked-files=all -z)
+done < "$status_output_file"
 
 [ "$emitted_any_row" -eq 1 ] || exit 1
 exit 0

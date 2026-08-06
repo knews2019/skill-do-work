@@ -99,6 +99,8 @@ type generatedRequest struct {
 	OriginalStatus     string   `json:"originalStatus"`
 	StatusUnrecognized bool     `json:"statusUnrecognized,omitempty"`
 	Domain             string   `json:"domain"`
+	OriginalDomain     string   `json:"originalDomain,omitempty"`
+	DomainUnrecognized bool     `json:"domainUnrecognized,omitempty"`
 	UserRequestId      string   `json:"userRequestId"`
 	DependsOn          []string `json:"dependsOn"`
 	UnmetDependencies  []string `json:"unmetDependencies"`
@@ -115,21 +117,27 @@ type generatedRequest struct {
 	// Other pending/claimed REQ ids whose write_set could touch the same files
 	// (see RequestTicket.WriteSetOverlaps). Display only — the card badge and a
 	// drawer row; no column or dispatch meaning.
-	WriteSetOverlaps []string `json:"writeSetOverlaps,omitempty"`
-	Route            string   `json:"route"`
+	WriteSetOverlaps  []string `json:"writeSetOverlaps,omitempty"`
+	Route             string   `json:"route"`
+	OriginalRoute     string   `json:"originalRoute,omitempty"`
+	RouteUnrecognized bool     `json:"routeUnrecognized,omitempty"`
 	// Triage bit separating small mechanical fixes from real work (see
 	// RequestTicket.EffortEstimate). Display only — a card chip rendered only
 	// when trivial, plus a drawer row; never column or scheduling meaning.
-	EffortEstimate       string `json:"effortEstimate,omitempty"`
-	Batch                string `json:"batch"`
-	TreeSection          string `json:"treeSection"`
-	CreatedAt            string `json:"createdAt"`
-	ClaimedAt            string `json:"claimedAt"`
-	CompletedAt          string `json:"completedAt"`
-	StatusChangedAt      string `json:"statusChangedAt,omitempty"` // last no-dedicated-stamp status flip (see RequestTicket.StatusChangedAt)
-	FileModifiedAt       string `json:"fileModifiedAt,omitempty"`  // file mtime at generation, RFC3339 — state-timer fallback only, never completion dating
-	CompletionTime       string `json:"completionTime"`
-	CompletionTimeSource string `json:"completionTimeSource"`
+	// Carries the same raw provenance as domain/route so the chip can say what
+	// was declared, not just what it normalized to.
+	EffortEstimate             string `json:"effortEstimate,omitempty"`
+	OriginalEffortEstimate     string `json:"originalEffortEstimate,omitempty"`
+	EffortEstimateUnrecognized bool   `json:"effortEstimateUnrecognized,omitempty"`
+	Batch                      string `json:"batch"`
+	TreeSection                string `json:"treeSection"`
+	CreatedAt                  string `json:"createdAt"`
+	ClaimedAt                  string `json:"claimedAt"`
+	CompletedAt                string `json:"completedAt"`
+	StatusChangedAt            string `json:"statusChangedAt,omitempty"` // last no-dedicated-stamp status flip (see RequestTicket.StatusChangedAt)
+	FileModifiedAt             string `json:"fileModifiedAt,omitempty"`  // file mtime at generation, RFC3339 — state-timer fallback only, never completion dating
+	CompletionTime             string `json:"completionTime"`
+	CompletionTimeSource       string `json:"completionTimeSource"`
 
 	CompletionAnomaly       bool   `json:"completionAnomaly,omitempty"`
 	CompletionAnomalyReason string `json:"completionAnomalyReason,omitempty"`
@@ -261,34 +269,40 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 		}
 		data.RequestOrder = append(data.RequestOrder, ticket.RequestId)
 		data.Requests[ticket.RequestId] = generatedRequest{
-			RequestId:            ticket.RequestId,
-			Title:                ticket.Title,
-			Status:               ticket.Status,
-			OriginalStatus:       ticket.OriginalStatus,
-			StatusUnrecognized:   ticket.StatusUnrecognized,
-			Domain:               ticket.Domain,
-			UserRequestId:        ticket.UserRequestId,
-			DependsOn:            ticket.DependsOn,
-			UnmetDependencies:    ticket.UnmetDependencies,
-			Dependents:           ticket.Dependents,
-			BlockedBy:            ticket.BlockedBy,
-			BlockedAt:            ticket.BlockedAt,
-			BlockedCheck:         ticket.BlockedCheck,
-			Related:              ticket.Related,
-			WriteSet:             ticket.WriteSet,
-			WriteSetOverlaps:     ticket.WriteSetOverlaps,
-			AssignedTo:           ticket.AssignedTo,
-			Route:                ticket.Route,
-			EffortEstimate:       ticket.EffortEstimate,
-			Batch:                ticket.Batch,
-			TreeSection:          ticket.TreeSection,
-			CreatedAt:            ticket.CreatedAt,
-			ClaimedAt:            ticket.ClaimedAt,
-			CompletedAt:          ticket.CompletedAt,
-			StatusChangedAt:      ticket.StatusChangedAt,
-			FileModifiedAt:       formatTimestamp(ticket.FileModifiedAt),
-			CompletionTime:       formatTimestamp(ticket.CompletionTime),
-			CompletionTimeSource: string(ticket.CompletionTimeSource),
+			RequestId:                  ticket.RequestId,
+			Title:                      ticket.Title,
+			Status:                     ticket.Status,
+			OriginalStatus:             ticket.OriginalStatus,
+			StatusUnrecognized:         ticket.StatusUnrecognized,
+			Domain:                     ticket.Domain,
+			OriginalDomain:             ticket.OriginalDomain,
+			DomainUnrecognized:         ticket.DomainUnrecognized,
+			UserRequestId:              ticket.UserRequestId,
+			DependsOn:                  ticket.DependsOn,
+			UnmetDependencies:          ticket.UnmetDependencies,
+			Dependents:                 ticket.Dependents,
+			BlockedBy:                  ticket.BlockedBy,
+			BlockedAt:                  ticket.BlockedAt,
+			BlockedCheck:               ticket.BlockedCheck,
+			Related:                    ticket.Related,
+			WriteSet:                   ticket.WriteSet,
+			WriteSetOverlaps:           ticket.WriteSetOverlaps,
+			AssignedTo:                 ticket.AssignedTo,
+			Route:                      ticket.Route,
+			OriginalRoute:              ticket.OriginalRoute,
+			RouteUnrecognized:          ticket.RouteUnrecognized,
+			EffortEstimate:             ticket.EffortEstimate,
+			OriginalEffortEstimate:     ticket.OriginalEffortEstimate,
+			EffortEstimateUnrecognized: ticket.EffortEstimateUnrecognized,
+			Batch:                      ticket.Batch,
+			TreeSection:                ticket.TreeSection,
+			CreatedAt:                  ticket.CreatedAt,
+			ClaimedAt:                  ticket.ClaimedAt,
+			CompletedAt:                ticket.CompletedAt,
+			StatusChangedAt:            ticket.StatusChangedAt,
+			FileModifiedAt:             formatTimestamp(ticket.FileModifiedAt),
+			CompletionTime:             formatTimestamp(ticket.CompletionTime),
+			CompletionTimeSource:       string(ticket.CompletionTimeSource),
 
 			CompletionAnomaly:       ticket.CompletionAnomaly,
 			CompletionAnomalyReason: ticket.CompletionAnomalyReason,

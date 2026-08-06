@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -284,6 +285,70 @@ func TestBuildGeneratedBoardMarkdownDataKeepsExactSources(t *testing.T) {
 	}
 	if got := markdownData.UserRequests["UR-1"]; got != board.UserRequests[0].BodyMarkdown {
 		t.Fatalf("UR raw Markdown changed: got %q, want %q", got, board.UserRequests[0].BodyMarkdown)
+	}
+}
+
+func TestBuildGeneratedBoardDataCarriesDomainAndRouteProvenance(t *testing.T) {
+	board := &Board{
+		AllRequests: []*RequestTicket{
+			{
+				RequestId:          "REQ-1",
+				Domain:             "backend",
+				OriginalDomain:     "back-end",
+				DomainUnrecognized: false,
+				Route:              "A",
+				OriginalRoute:      "a",
+				RouteUnrecognized:  false,
+			},
+			{
+				RequestId:          "REQ-2",
+				Domain:             "general",
+				OriginalDomain:     "quantum",
+				DomainUnrecognized: true,
+				Route:              "Z",
+				OriginalRoute:      "z",
+				RouteUnrecognized:  true,
+			},
+		},
+	}
+
+	generatedData, buildError := buildGeneratedBoardData(board)
+	if buildError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", buildError)
+	}
+	request := generatedData.Requests["REQ-1"]
+	if request.OriginalDomain != "back-end" || request.DomainUnrecognized {
+		t.Fatalf("domain provenance = (%q, %v), want (%q, false)",
+			request.OriginalDomain, request.DomainUnrecognized, "back-end")
+	}
+	if request.OriginalRoute != "a" || request.RouteUnrecognized {
+		t.Fatalf("route provenance = (%q, %v), want (%q, false)",
+			request.OriginalRoute, request.RouteUnrecognized, "a")
+	}
+	invalidRequest := generatedData.Requests["REQ-2"]
+	if invalidRequest.OriginalDomain != "quantum" || !invalidRequest.DomainUnrecognized {
+		t.Fatalf("invalid domain provenance = (%q, %v), want (%q, true)",
+			invalidRequest.OriginalDomain, invalidRequest.DomainUnrecognized, "quantum")
+	}
+	if invalidRequest.OriginalRoute != "z" || !invalidRequest.RouteUnrecognized {
+		t.Fatalf("invalid route provenance = (%q, %v), want (%q, true)",
+			invalidRequest.OriginalRoute, invalidRequest.RouteUnrecognized, "z")
+	}
+}
+
+func TestDomainAndRouteProvenanceRenderAtFieldLevel(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	for _, requiredToken := range []string{
+		"request.originalDomain || request.domain",
+		"request.domainUnrecognized",
+		"request.originalRoute || request.route",
+		"request.routeUnrecognized",
+		"schemaFieldDetailValue(request.originalDomain, request.domain",
+		"schemaFieldDetailValue(request.originalRoute, request.route",
+	} {
+		if !strings.Contains(indexHtml, requiredToken) {
+			t.Fatalf("domain/route field provenance is not rendered: %q missing", requiredToken)
+		}
 	}
 }
 
@@ -688,10 +753,10 @@ func TestByUserRequestLensEmptyStateNamesWindow(t *testing.T) {
 	// returned before it. Pin the absence of that early return by requiring the
 	// note's guard to be a condition rather than dead code below a return.
 	lensSource := sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens(")
-	emptyBranchIndex := strings.Index(lensSource, "No user requests in this tree yet.")
+	emptyBranchIndex := strings.Index(lensSource, "userRequestLensEmptyText(")
 	hiddenNoteIndex := strings.Index(lensSource, " with no open work or activity in ")
 	if emptyBranchIndex == -1 || hiddenNoteIndex == -1 {
-		t.Fatalf("empty branch and hidden note are not both inside renderUserRequestLens")
+		t.Fatalf("empty-state decision and hidden note are not both inside renderUserRequestLens")
 	}
 	if hiddenNoteIndex < emptyBranchIndex {
 		t.Fatalf("hidden-count note renders before the empty branch; it must render under it")
@@ -699,6 +764,101 @@ func TestByUserRequestLensEmptyStateNamesWindow(t *testing.T) {
 	betweenBranchAndNote := lensSource[emptyBranchIndex:hiddenNoteIndex]
 	if strings.Contains(betweenBranchAndNote, "return;") {
 		t.Fatalf("an early return still separates the empty branch from the hidden-count note, making the note unreachable when every UR is hidden")
+	}
+}
+
+// Execute the pure empty-state decision under Node so the regression is pinned
+// to state transitions rather than the presence of reassuring source strings.
+func TestByUserRequestLensEmptyStateBehavior(t *testing.T) {
+	nodePath, lookupError := exec.LookPath("node")
+	if lookupError != nil {
+		t.Skip("node is unavailable; skipping board.js state-behavior check")
+	}
+	indexHtml := generateLiveSite(t)
+	emptyStateFunction := sliceBalancedBlockAfter(t, indexHtml, "function userRequestLensEmptyText(")
+	javascriptProbe := emptyStateFunction + `
+const results = [
+  userRequestLensEmptyText(true, 4, 2, "the last 24 hours"),
+  userRequestLensEmptyText(true, 4, 0, "the last 24 hours"),
+  userRequestLensEmptyText(false, 4, 0, "the last 24 hours"),
+  userRequestLensEmptyText(false, 0, 0, "the last 24 hours")
+];
+process.stdout.write(JSON.stringify(results));`
+	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
+	probeOutput, probeError := probeCommand.CombinedOutput()
+	if probeError != nil {
+		t.Fatalf("execute board.js empty-state decision: %v\n%s", probeError, probeOutput)
+	}
+	var results []string
+	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
+		t.Fatalf("decode board.js empty-state results: %v (output %q)", decodeError, probeOutput)
+	}
+	if len(results) != 4 {
+		t.Fatalf("empty-state result count = %d, want 4", len(results))
+	}
+	if !strings.Contains(results[0], "switch URs to All") || !strings.Contains(results[0], "2 resolved matches") {
+		t.Fatalf("scope-hidden search result = %q, want an All-scope escape with the match count", results[0])
+	}
+	if results[1] != "No user requests match the current filters." {
+		t.Fatalf("genuine filter miss = %q, want the generic no-match message", results[1])
+	}
+	if !strings.Contains(results[2], "widen the RECENTLY DONE window") || !strings.Contains(results[2], "switch URs to All") {
+		t.Fatalf("scope-only empty state = %q, want both scope escapes", results[2])
+	}
+	if results[3] != "No user requests in this tree yet." {
+		t.Fatalf("empty tree state = %q, want the empty-tree message", results[3])
+	}
+}
+
+func TestTestingDoneWindowIsViewSpecific(t *testing.T) {
+	nodePath, lookupError := exec.LookPath("node")
+	if lookupError != nil {
+		t.Skip("node is unavailable; skipping board.js filter-state check")
+	}
+	indexHtml := generateLiveSite(t)
+	activeFiltersFunction := sliceBalancedBlockAfter(t, indexHtml, "function hasActiveFilters(")
+	visibleFiltersFunction := sliceBalancedBlockAfter(t, indexHtml, "function hasActiveVisibleFilters(")
+	javascriptProbe := `
+const filterState = { searchText: "", domain: "", status: "", doneWindow: "168" };
+const viewState = { view: "board" };
+` + activeFiltersFunction + "\n" + visibleFiltersFunction + `
+const boardResult = [hasActiveFilters(), hasActiveVisibleFilters()];
+viewState.view = "testing";
+const testingResult = [hasActiveFilters(), hasActiveVisibleFilters()];
+process.stdout.write(JSON.stringify([boardResult, testingResult]));`
+	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
+	probeOutput, probeError := probeCommand.CombinedOutput()
+	if probeError != nil {
+		t.Fatalf("execute board.js filter-state decision: %v\n%s", probeError, probeOutput)
+	}
+	var results [][]bool
+	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
+		t.Fatalf("decode board.js filter-state results: %v (output %q)", decodeError, probeOutput)
+	}
+	if len(results) != 2 || len(results[0]) != 2 || len(results[1]) != 2 {
+		t.Fatalf("unexpected filter-state result shape: %#v", results)
+	}
+	if results[0][0] || results[0][1] {
+		t.Fatalf("board view counted Testing-only doneWindow as active: %#v", results[0])
+	}
+	if results[1][0] || !results[1][1] {
+		t.Fatalf("testing view filter decisions = %#v, want request filters false and visible filters true", results[1])
+	}
+}
+
+func TestTestingStatusUpdateInvalidatesUserRequestLens(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	postTestingSource := sliceBalancedBlockAfter(t, indexHtml, "function postTestingStatus(")
+	updateCallback := sliceBalancedBlockAfter(t, postTestingSource, ".then(function (payload) {")
+	for _, requiredToken := range []string{
+		"renderedOnce.userRequestLens = false",
+		`viewState.view === "board" && viewState.lens === "user-request"`,
+		"renderUserRequestLens()",
+		"renderedOnce.userRequestLens = true",
+	} {
+		if !strings.Contains(updateCallback, requiredToken) {
+			t.Fatalf("testing-status success callback does not refresh the By-UR lens: %q missing", requiredToken)
+		}
 	}
 }
 
