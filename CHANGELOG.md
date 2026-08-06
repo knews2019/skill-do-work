@@ -8,7 +8,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.175.5 — Reading a Timestamp With --normalize Stops Warning About It (2026-08-06)
+## 0.176.4 — Reading a Timestamp With --normalize Stops Warning About It (2026-08-06)
 
 `frontmatter get … created_at --normalize` printed a warning calling the timestamp "not recognized" on every single call — and the contract it cited says the opposite: a field with no canonical vocabulary is *outside* the contract and read verbatim. Now it's a clean no-op for those fields.
 
@@ -17,7 +17,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 - `--in-set` is deliberately not silent there: both set names are `status` sets, so a membership test on a timestamp is now a usage error instead of a "no" that reads as a real answer at a call site
 - A typo'd `status` still warns exactly as before — 0.175.1's fix has a regression guard here so this couldn't quietly re-open it
 
-## 0.175.4 — A Typo'd Domain Leaves a Footprint on the Board Again (2026-08-06)
+## 0.176.3 — A Typo'd Domain Leaves a Footprint on the Board Again (2026-08-06)
 
 `domain: quantum` rendered as a plain `general` badge with no warning anywhere, so a misspelled domain was *harder* to spot after 0.174.15 than before it — the value at least used to reach the card verbatim. The board now says so, in the same warnings banner it already uses for a typo'd testing status.
 
@@ -26,7 +26,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 - A documented alias (`back-end`) and an absent domain stay silent, each with its own test: a channel that fires on ordinary REQs is a channel readers learn to ignore
 - No frontend change was needed — anything appended to the board's warnings list already prints in `do-work board summary` and renders in the data-warnings banner
 
-## 0.175.3 — The Board Now Normalizes Route, Which 0.174.15 Claimed and Didn't (2026-08-06)
+## 0.176.2 — The Board Now Normalizes Route, Which 0.174.15 Claimed and Didn't (2026-08-06)
 
 An external review caught 0.174.15 overclaiming: its title said the board honored the Schema Read Contract for all nine fields, but only `domain` was ever wired. `route` kept reading verbatim, so a REQ written `route: a` showed a lowercase `a` badge — in the one other contract field the board actually displays. Now wired, with the correction on the record.
 
@@ -34,6 +34,22 @@ An external review caught 0.174.15 overclaiming: its title said the board honore
 - Deliberately `normalizeSchemaField`, not `resolveSchemaField`: route has no documented default, so resolving would blank an unrecognized letter and hide the REQ that needs re-triage
 - **0.174.15's claim was too broad and stays on the record as written.** Only `domain` was wired then; five of the seven fields it named (`caveman`, `maintenance`, `tdd`, `error_type`, `kb_status`) the board still doesn't read at all, which is correct — they have no display role, and adding one to make an old title true would be backwards
 - The maintainer doc's list of fields the board parses for display had never included `route` — which is why the field carried no keep-in-sync obligation and drifted in the first place
+
+## 0.176.1 — The Just-Kanban Install Verifies All Five Recipes (2026-08-06)
+
+`just-kanban`'s verify step checked two of its recipes and reported success for all of them. An absent recipe is not a syntax error, so `just --list` parsed happily over a partial append and the install claimed to have provided commands that weren't there.
+
+- Phase 3 now greps every recipe header and names the missing ones
+- Each pattern requires a space or colon after the name, so `run-kanban` can no longer be satisfied by `run-kanban-cli`
+
+## 0.176.0 — Terminal Digest of What's In Flight (`just run-kanban-cli`) (2026-08-06)
+
+Opening a board tab is more than "what am I working on?" deserves. `just run-kanban-cli` answers it in one screen: how many REQs are open, every claimed REQ with its title, and every needs-input/blocked REQ with the status that parked it there.
+
+- New `queue-kanban open-work` subcommand (read-only) behind the recipe, also reachable as `do-work board cli`
+- Blocked lines carry the `blocked_by` condition; an off-vocabulary status shows verbatim as `invalid:<value>` instead of hiding
+- Finished work never appears — this is open work only; parse warnings show as a count pointing at `summary`
+- `do-work install just-kanban` now installs five recipes, and the unknown-subcommand error is checked against the dispatch switch itself rather than a hand-written list
 
 ## 0.175.2 — The Commit Action Reads a REQ's Status Through the Tool (2026-08-05)
 

@@ -12,11 +12,11 @@ session_depth: moderate
 
 ## Completed This Session
 
-- REQ-116: Normalize route at the board's read site and correct 0.174.15's board-wide claim (Route A) — v0.175.3, commit `2a2cd59` (review: Pass, 97%)
-- REQ-117: An unrecognized domain must leave a footprint on the board, not become general in silence (Route A) — v0.175.4, commit `42f71e2` (review: Pass, 96%)
-- REQ-118: The normalize flag must stop calling vocabulary-less field values unrecognized (Route A) — v0.175.5, commit `8d1a9f2` (review: Pass, 96%; closed UR-024)
+- REQ-116: Normalize route at the board's read site and correct 0.174.15's board-wide claim (Route A) — v0.176.2, commit `2a2cd59` (review: Pass, 97%)
+- REQ-117: An unrecognized domain must leave a footprint on the board, not become general in silence (Route A) — v0.176.3, commit `42f71e2` (review: Pass, 96%)
+- REQ-118: The normalize flag must stop calling vocabulary-less field values unrecognized (Route A) — v0.176.4, commit `8d1a9f2` (review: Pass, 96%; closed UR-024)
 
-All three came from an external review of the 0.174.15–0.175.2 series, triaged in this session via `do-work validate-feedback`. The review's fourth item (one-commit-per-REQ) was verdicted **Already done** and deliberately never captured.
+Renumbered from 0.175.3/4/5 to 0.176.2/3/4 when main's own 0.176.0/0.176.1 (`just run-kanban-cli`) landed first and PR #133 hit a CHANGELOG/version conflict — the same collision REQ-111 hit at 0.174.14. All three came from an external review of the 0.174.15–0.175.2 series, triaged in this session via `do-work validate-feedback`. The review's fourth item (one-commit-per-REQ) was verdicted **Already done** and deliberately never captured.
 
 ## Still Queued
 

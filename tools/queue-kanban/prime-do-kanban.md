@@ -1,9 +1,10 @@
 # Prime: do-kanban
 
-queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that walks the version-controlled `do-work/` Markdown tree and renders it as a Kanban board + completion calendar. Subcommands: `summary` | `generate --out DIR` | `serve` | `next-req` | `next-version <patch|minor|major>` | `verify` | `now` (the last four serve the release ritual and the Timestamp rule, not the board). It ships as part of the do-work skill and rides its version bumps; the ergonomic entry point is the `do-work board` action (`actions/board.md`), which builds and runs it for you.
+queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that walks the version-controlled `do-work/` Markdown tree and renders it as a Kanban board + completion calendar. Subcommands: `summary` | `open-work` | `generate --out DIR` | `serve` | `next-req` | `next-version <patch|minor|major>` | `verify` | `now` (the last four serve the release ritual and the Timestamp rule, not the board). It ships as part of the do-work skill and rides its version bumps; the ergonomic entry point is the `do-work board` action (`actions/board.md`), which builds and runs it for you.
 
 ## Read first
 - `main.go` — subcommand dispatch + flags (`--repo-root`, `--out`, `--port`; `--recent-window` on summary only, `--version-file` on next-version only)
+- `open_work.go` — `open-work`: the headless in-flight digest (open count, claimed titles, needs-input statuses); reads the bucketed columns only, shows nothing terminal
 - `allocate.go` — `next-req`: max REQ number + 1 across queue/working/archive, built on `enumerateDoWorkTree`
 - `release.go` — the `**Current version**: X.Y.Z` line reader/bumper/writer and the `CHANGELOG.md` entry parser
 - `verify.go` — the read-only invariant probes and their report (wired into `actions/forensics.md` Check 14)
@@ -18,7 +19,7 @@ queue-kanban — standalone Go module (`tools/queue-kanban/`, own `go.mod`) that
 - `go.sum` — managed by the Go toolchain
 
 ## Must build
-- Easiest: run `do-work board` (builds + serves for you; `do-work board static` for the shareable static artifact, `do-work board summary` for counts). See `actions/board.md`.
+- Easiest: run `do-work board` (builds + serves for you; `do-work board static` for the shareable static artifact, `do-work board summary` for counts, `do-work board cli` for the in-flight digest). See `actions/board.md`.
 - Direct (portable, any repo with a `do-work/`): `cd <skill-dir>/tools/queue-kanban && go build -o queue-kanban .` → `./queue-kanban serve --repo-root <consumer-repo-root>` (live board) or `./queue-kanban generate --out DIR --repo-root <consumer-repo-root>` (static). The binary is gitignored in-place. Needs the Go toolchain (see `go.mod` for the required version).
 
 ## Traps
