@@ -12,7 +12,7 @@ depends_on: [REQ-122]
 maintenance: true
 related: [REQ-122, REQ-124]
 batch: follow-up-runaway-fix
-write_set: [actions/review-work.md, actions/work.md, actions/work-reference.md]
+write_set: [actions/review-work.md, actions/work.md, actions/work-reference.md, actions/clarify.md]
 ---
 
 # Cascade Depth Stop: Generation-≥2 Follow-ups Reroute to pending-answers
@@ -34,6 +34,7 @@ The UR-489 chain (1305 → 1307 → … → 1321, sixteen REQs over two days) gr
 
 - **Generation test:** the reviewed REQ has `review_generated: true` in frontmatter. Marker-only — never inferred from descriptions (same posture as the `maintenance` marker). The marker already exists in `actions/review-work.md` Step 10's template; no schema change needed.
 - **Reroute:** in that case, follow-up REQs for Important findings are created with `status: pending-answers` plus an `## Open Questions` entry (consent checkbox in the style of the Discovered Tasks `pending-answers` flow: recommended "Yes, add to queue", also "No, discard"). They carry `effort_estimate` and the recorded `gate:` token per REQ-122, plus the usual `user_request` / `addendum_to` / `domain` / `review_generated: true` fields.
+- **The consent question MUST contain the exact discriminator phrase `Should I process this as a new task?` with `Recommended: Yes, add to queue`** — `actions/clarify.md` (:104, :157, "Approved Discovered Task") keys its flip-to-`pending` on that literal wording; any equally valid rewording routes an approved follow-up down the "Confirmed Builder Decision" path, which marks it `completed` and archives it without ever building it (Codex P1 finding on PR #137). Either reuse the exact phrase (preferred — zero clarify change, delete-before-add) or, if the builder generalizes clarify's discriminator to a durable marker instead, `actions/clarify.md` is in the write_set for exactly that edit and both texts must move in the same commit.
 - **Critical pierce:** a critical-grade finding — security vulnerability, data-loss risk, broken functionality in production paths, same rubric as `actions/work-reference.md` → Discovered Tasks Classification — creates `status: pending` at ANY depth, auto-queued with a prominent report line, mirroring the existing `[critical]` auto-queue exemption. User confirmed: "categorization of critical is definitely useful."
 - **Failure-path exemption:** Step 8 Failure Classification follow-ups remain allowed at any depth — a failed generation-≥2 REQ still gets its Intent/Spec/Code follow-up, else failed work dies silently with no successor.
 - **Step 8 Discovered Tasks from generation-≥2 REQs:** unchanged — `[normal]`/`[low]` are already human-gated via `pending-answers`, `[critical]` already auto-queues; both are consistent with this rule. Verify the text reads coherently side-by-side rather than duplicating logic.

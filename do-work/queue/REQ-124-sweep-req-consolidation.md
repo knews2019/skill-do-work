@@ -32,7 +32,7 @@ UR-489 produced fifteen separate REQs that were all facets of ONE root cause (ha
 
 ## Detailed Requirements
 
-- **Marker:** new frontmatter field `sweep: true` (boolean; absent reads as false). Document in `actions/work-reference.md` (Full Frontmatter + Schema Read Contract) and `actions/capture-reference.md`. Sweeps are found mechanically — e.g. `grep -l "sweep: true" do-work/queue/` filtered to the same `user_request:` — never by judging title similarity (duplicate sweeps would recreate the runaway at half scale).
+- **Marker:** new frontmatter field `sweep: true` (boolean; absent reads as false). Document in `actions/work-reference.md` (Full Frontmatter + Schema Read Contract) and `actions/capture-reference.md`. Sweeps are found mechanically — e.g. `grep -rl "^sweep: true" do-work/queue/` filtered to the same `user_request:` — never by judging title similarity (duplicate sweeps would recreate the runaway at half scale). (The `-r` and `^`-anchor are load-bearing: `grep -l` against the bare directory exits 2 with "Is a directory" and returns no candidates, silently defeating consolidation — Codex P2 finding on PR #137; per CLAUDE.md's prescribed-commands rule, the shipped command must actually emit what the step consumes.)
 - **Routing (consumes REQ-122's gate token):** a `gate: trivial` finding, or any finding sharing a root cause with others, folds into a sweep. A `gate: user-visible`, thematically unrelated finding still gets its own REQ with a one-line why-not-sweep justification in the body.
 - **Append contract** (appending to a queued REQ file is a new write pattern — keep it tight):
   - Append only to a sweep with the same `user_request:` and `status: pending`. Never append to a claimed/working sweep — create a new sweep instead.
