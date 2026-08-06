@@ -8,6 +8,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.179.0 — Naming Conventions Are Now a Loaded Guardrail (2026-08-06)
+
+Every build now carries a naming rule you don't have to paste: no cryptic or single-word names for anything with reach, and names have to be findable with plain-text search. It was a per-project preference people re-typed into each `CLAUDE.md`; now it ships.
+
+- `crew-members/coding-guardrails.md` gains § 5 Naming for Reach — the canonical home. Scopes the two-word minimum to names with *reach* (exported identifiers, struct fields, files, DB tables and columns, CLI flags, env vars, CSS classes), keeps a per-language form clause, and carves out idiomatic short locals behind a two-part test (conventional vocabulary **and** declaration-to-last-use fits one screen).
+- Exempts single-word-by-design invocations — CLI subcommands and Make/just targets are already two words where you type them, and a conventions review must not "fix" them.
+- States its precedence against § 3 Surgical Changes: the rule governs names you *introduce*, not names already in the host codebase. No drive-by renames.
+- `actions/review-work.md`'s Principle Check gains a fifth (informational) item so review spot-checks new names, and explicitly excludes short locals and untouched pre-existing names from being findings.
+- `docs/standing-preferences.md` maps the "no cryptic names / must be greppable" nudge to the new default, and notes that language-specific vocabulary still belongs in your own project's agent instructions.
+- Every place that enumerated the guardrail set is updated and marked illustrative rather than closed — `actions/work.md` Step 6's loader gloss, the loader summary below it (now un-enumerated), the three spec templates, and the README. Per the Closed-Enumerations-Go-Stale rule, the guardrail file is now stated as authoritative so the next addition can't strand a caller list.
+
 ## 0.178.1 — The Secret Scan Catches `.envrc`, and the Scripts Run on Bash 3 (2026-08-06)
 
 Two fixes from an external review of the scripts 0.178.0 shipped, both real.
