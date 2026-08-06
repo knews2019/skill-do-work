@@ -14,6 +14,7 @@ The tool is a standalone Go module that ships inside the skill at `tools/queue-k
 - The user wants to track **who tested which finished REQ** — the board's Testing view (serve mode; linked from the Board/Calendar view toggle) lets a tester pick their profile, select a finished REQ to test, and mark it in-testing / tested / returned-with-feedback.
 - The user wants a shareable static HTML snapshot of queue state (`static` mode).
 - The user wants quick column counts without a browser (`summary` mode).
+- The user asks what's in flight / in progress / blocked right now and wants it in the terminal, not a browser tab (`open-work` mode — open count, claimed REQ titles, the status parking each needs-input REQ).
 
 **Do NOT use when:**
 - The user wants a text roadmap or dependency rollup → `actions/roadmap.md`.
@@ -29,6 +30,7 @@ The tool is a standalone Go module that ships inside the skill at `tools/queue-k
 | _(empty)_, `serve`, `live` | serve | Live board at `http://localhost:8090` (re-walks the tree per request). |
 | `static`, `generate`, `html` | generate | Self-contained static board written to `build/queue-kanban-board/` (opens from `file://`, zero network). |
 | `summary`, `status`, `counts` | summary | Prints column counts to the terminal — no browser. |
+| `cli`, `open`, `open-work`, `in-flight` | open-work | Prints the open-work digest to the terminal — open count, claimed REQs with titles, needs-input/blocked REQs with their statuses. No browser. |
 
 An optional trailing `--port N` (serve) or `--out DIR` (static) overrides the default; pass it straight through to the tool.
 
@@ -88,6 +90,7 @@ From `<skill-root>/tools/queue-kanban`:
 
   `.git/info/exclude` is git's local-only ignore list — no tracked file changes, so this stays inside the action's read-only contract for the project. The `check-ignore` guard makes the append idempotent, and the root-anchored pattern is checked from `$REPO_ROOT` so a subdirectory invocation can't mismatch (an ignore pattern with an interior slash is root-anchored, while `check-ignore` tests cwd-relative paths). In a non-git project the guard skips silently.
 - **summary** — `./queue-kanban summary --repo-root "$REPO_ROOT"` and relay the printed counts.
+- **open-work** — `./queue-kanban open-work --repo-root "$REPO_ROOT"` and relay the printed digest. Terminal-resolved REQs never appear in it (recently-done and the calendar are history, not open work), and parse warnings arrive as a count pointing at `summary` — if the user wants those details, that's the summary mode, not a second command here.
 
 A pending or claimed card carries an `overlaps` badge naming the other pending/claimed REQs whose declared `write_set` could touch the same files — an informational heads-up, never a block (the detail drawer shows the card's own write set and links each contending REQ). The badge schedules nothing at any builder count: under fan-out the declared set is advisory input to the human's pick and the merge is the non-interference proof, never the badge (`actions/work-reference.md` → Worktree Dispatch Mode → Fan-Out Dispatch). It just surfaces declared file contention for a human reading the board. No badge means no *declared* overlap: on a REQ that never declared a `write_set` that reads as unknown, not safe. Globs are matched with `path.Match` semantics (OS-independent, `/`-separated): `*` never crosses `/`, `**` is not recursive, and a malformed pattern is treated as no-match for that direction — but literal equality short-circuits first, so two REQs declaring the *identical* malformed pattern still badge each other. The badge can therefore miss real contention; illustrative miss-classes, not a closed list: glob-vs-glob, `**`, a malformed pattern against anything but its own twin, and an entry naming a directory (`actions/` never badges against `actions/board.md` — `path.Match` is false both for `actions/` and for `actions` against it).
 
@@ -100,12 +103,13 @@ The served board's **Testing** view (a third view next to Board / Calendar) trac
 
 The main Board view shows a `testing` badge on any card carrying a record, so testing state is visible without switching views. In `static` mode the Testing view renders read-only (no server, no actions). There is no locking: changes land in the working tree and git is the audit trail — when the user asks "who tested REQ-NNN?", the frontmatter (or `git log` on the REQ file) answers.
 
-**Standing shortcut:** if the user wants the board runnable without the agent, `do-work install just-kanban` (`actions/install.md`) appends `just run-kanban` / `kanban-static` / `kanban-summary` recipes to the project's justfile — same build-then-run contract as this action — plus `just run-do-work-update` for the guarded project-local skill updater. Re-running it on a project whose installed recipes have drifted from the shipped block offers a diff-and-consent upgrade. One difference: `just run-kanban` auto-opens your default browser at the board URL (a user-initiated shortcut, not an agent action); this action's serve mode (Step 5) never does.
+**Standing shortcut:** if the user wants the board runnable without the agent, `do-work install just-kanban` (`actions/install.md`) appends `just run-kanban` / `run-kanban-cli` / `kanban-static` / `kanban-summary` recipes to the project's justfile — same build-then-run contract as this action — plus `just run-do-work-update` for the guarded project-local skill updater. Re-running it on a project whose installed recipes have drifted from the shipped block offers a diff-and-consent upgrade. One difference: `just run-kanban` auto-opens your default browser at the board URL (a user-initiated shortcut, not an agent action); this action's serve mode (Step 5) never does.
 
 ## Output Format
 
 - **serve:** the live URL + how to stop it.
 - **static:** the path to `index.html` and a one-line column-count recap.
+- **open-work:** the tool's digest — the open total with its pending (ready/waiting) · claimed · needs-input/blocked breakdown, then each claimed REQ as id + title, then each needs-input/blocked REQ as id + status + title (with the `blocked_by` condition when one is named), then a warnings count when the parse raised any.
 - **summary:** the tool's column-count block (total REQs, pending — split into ready-to-work and waiting-on-deps — claimed, needs-input/blocked, recently-done, completion anomalies — with the offending REQ ids listed when nonzero — calendar entries, dependency edges).
 
 ## Rules
@@ -136,6 +140,6 @@ The main Board view shows a `testing` badge on any card carrying a record, so te
 - [ ] `go version` checked before any build; missing Go reported, not worked around.
 - [ ] Built fresh via `go build -o queue-kanban .` inside `tools/queue-kanban/`.
 - [ ] `--repo-root` resolved from `git rev-parse --show-toplevel 2>/dev/null || pwd` and passed explicitly.
-- [ ] Correct mode dispatched (serve / static / summary) with the user told the URL, artifact path, or counts.
+- [ ] Correct mode dispatched (serve / static / summary / open-work) with the user told the URL, artifact path, counts, or digest.
 - [ ] Static mode with the default `--out`: `build/queue-kanban-board/` no longer appears untracked in `git status` (the info/exclude entry landed, or was already covered).
 - [ ] No binary or generated artifact staged or committed.

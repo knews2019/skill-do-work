@@ -10,8 +10,9 @@ import (
 
 // queue-kanban parses the do-work/ Markdown tree into a board model and renders
 // it. The model + parser (LoadBoard) is the foundation; on top of it sit the
-// board subcommands — `summary` (column counts), `generate` (a self-contained
-// static board), and `serve` (a live local board that re-walks the tree per
+// board subcommands — `summary` (column counts), `open-work` (a per-ticket
+// digest of what is in flight), `generate` (a self-contained static board), and
+// `serve` (a live local board that re-walks the tree per
 // request) — plus three release-ritual subcommands: `next-req` and
 // `next-version` allocate numbers, and `verify` checks the cross-file invariants
 // that are otherwise verified by hand on every commit.
@@ -20,6 +21,7 @@ import (
 // external CLI library — with each subcommand owning its own flag.FlagSet:
 //
 //	queue-kanban summary      [--repo-root DIR] [--recent-window DUR]
+//	queue-kanban open-work    [--repo-root DIR]
 //	queue-kanban generate     --out DIR [--repo-root DIR]
 //	queue-kanban serve        [--port PORT] [--repo-root DIR] [--open]
 //	queue-kanban next-req     [--repo-root DIR]
@@ -38,12 +40,14 @@ import (
 //
 // Only summary exposes --recent-window: the HTML board picks its visible
 // Recently-done window client-side (the 24h/48h/7d toggle, default 24h), so a
-// server-side window flag on generate/serve would be advertised but inert.
+// server-side window flag on generate/serve would be advertised but inert. The
+// same reasoning keeps it off open-work, which shows only open work and so has no
+// recently-done section for a window to size.
 //
 // Write surfaces, in full: the board's testing view (serve; see testing.go)
 // writes the testing-track frontmatter fields plus do-work/testers.md, and
 // `next-version` writes one line in one version file. Nothing else here writes
-// anything — `next-req`, `verify`, and `now` are read-only, and no subcommand ever
+// anything — `open-work`, `next-req`, `verify`, and `now` are read-only, and no subcommand ever
 // writes CHANGELOG.md, which stays an owner-only, human-authored file.
 //
 // `now` takes no --repo-root: it reads a clock, not a tree, so it is the one
@@ -59,6 +63,8 @@ func main() {
 	switch subcommand {
 	case "", "summary":
 		runSummaryCommand(subcommandArgs)
+	case "open-work":
+		runOpenWorkCommand(subcommandArgs)
 	case "generate":
 		runGenerateCommand(subcommandArgs)
 	case "serve":
@@ -74,7 +80,7 @@ func main() {
 	case "frontmatter":
 		os.Exit(runFrontmatterCommand(subcommandArgs, os.Stdout, os.Stderr))
 	default:
-		fmt.Fprintf(os.Stderr, "queue-kanban: unknown subcommand %q (want summary | generate | serve | next-req | next-version | verify | now | frontmatter)\n", subcommand)
+		fmt.Fprintf(os.Stderr, "queue-kanban: unknown subcommand %q (want summary | generate | serve | next-req | next-version | verify | now | frontmatter | open-work)\n", subcommand)
 		os.Exit(2)
 	}
 }
@@ -128,6 +134,22 @@ func writeBoardSummary(outputWriter io.Writer, board *Board) {
 			fmt.Fprintf(outputWriter, "    ! %s\n", warningText)
 		}
 	}
+}
+
+// runOpenWorkCommand prints the open-work digest — the fast terminal answer to
+// "what is in flight?" (open count, claimed titles, needs-input statuses). The
+// renderer lives in open_work.go; see its header for why this is a separate
+// subcommand rather than more lines in summary.
+func runOpenWorkCommand(args []string) {
+	flagSet := flag.NewFlagSet("open-work", flag.ExitOnError)
+	repoRootOverride := flagSet.String("repo-root", "", "repo root containing do-work/ (default: walk up from the working directory)")
+	_ = flagSet.Parse(args)
+	exitOnLeftoverArguments("open-work", flagSet.Args())
+
+	// defaultRecentWindow is passed because LoadBoard requires a window, not
+	// because the digest has anything windowed to show.
+	board := loadBoardOrExit(*repoRootOverride, defaultRecentWindow)
+	writeOpenWorkDigest(os.Stdout, board)
 }
 
 // runGenerateCommand writes the self-contained static board into --out.

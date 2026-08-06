@@ -654,10 +654,30 @@ assert_file_not_contains \
   'os\.(WriteFile|Create|OpenFile|Remove|Rename)\(' \
   'tools/queue-kanban/verify.go must stay read-only — verify reports and routes, and repairs belong to actions/cleanup.md, which asks first.'
 
-assert_contains \
-  "tools/queue-kanban/main.go" \
-  'want summary \| generate \| serve \| next-req \| next-version \| verify' \
-  'tools/queue-kanban/main.go unknown-subcommand message must list every subcommand it dispatches, or the error text lies about what exists.'
+# The unknown-subcommand message must list every subcommand main() dispatches, or the
+# error text lies about what exists. Derived from the dispatch switch rather than pinned
+# to a hand-written chain: a frozen list only ever verifies the subcommands that already
+# existed when it was written, which is exactly how it would miss the next one added
+# (Closed Enumerations Go Stale).
+unknown_subcommand_message="$(grep -F 'unknown subcommand %q' "$repo_root/tools/queue-kanban/main.go" || true)"
+if [ -z "$unknown_subcommand_message" ]; then
+  printf 'FAIL: tools/queue-kanban/main.go has no unknown-subcommand message — a mistyped subcommand must name the valid ones, not exit silently.\n' >&2
+  fail_count=$((fail_count + 1))
+else
+  dispatched_subcommands="$(sed -n '/^\tswitch subcommand {$/,/^\t}$/p' "$repo_root/tools/queue-kanban/main.go" \
+    | grep -oE '"[a-z-]+"' | tr -d '"' | sort -u)"
+  if [ -z "$dispatched_subcommands" ]; then
+    printf 'FAIL: could not read the subcommand dispatch switch in tools/queue-kanban/main.go — this check derives the expected list from it, so a shape change here silently disables it.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+  for dispatched_subcommand in $dispatched_subcommands; do
+    if ! grep -qF -- "$dispatched_subcommand" <<<"$unknown_subcommand_message"; then
+      printf 'FAIL: tools/queue-kanban/main.go dispatches %s but its unknown-subcommand message does not list it — the error text lies about what exists.\n' \
+        "$dispatched_subcommand" >&2
+      fail_count=$((fail_count + 1))
+    fi
+  done
+fi
 
 # The prescribed invocation's ARGUMENT ORDER, not just the subcommand name (REQ-081). next-version
 # takes the bump size as a positional and --repo-root/--version-file as flags. The parser now accepts

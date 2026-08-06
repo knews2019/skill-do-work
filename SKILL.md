@@ -54,7 +54,7 @@ Examine what follows "do-work". Check the patterns below **in order** — first 
 | 30 | `stray-check` (± path), `stray files`, `strays`, `orphan files`, `orphans`, `junk`, `what doesn't belong`, `file hygiene` | stray-check | Repo junk, NOT do-work's own files (that's cleanup). Optional path scope; `fix` applies on confirmation, `report` forces read-only. Relocating legitimate files → tidy-repo (34) |
 | 31 | `ai-report`, `ai report`, `make-report`, `make report`, `screenshot-report`, `visual report`, `proof of work` (± target) | ai-report | Target: `UR-NNN`, `REQ-NNN`, `most recent`, or empty. Distinct from present-work (explainer) and pipeline's debrief |
 | 32 | `note <text>`, `note add <text>`, `add note <text>` | note | Rest → `$ARGUMENTS` (strips a leading `add `); appends `- [YYYY-MM-DD] text` to `do-work/notes.md`. Not a capture — no UR/REQ, no work loop, no commit |
-| 33 | `board` (± mode), `kanban`, `kanban board`, `queue board`, `visualize queue`, `show the board` | board | Mode: empty/`serve`/`live` → live board at `:8090`; `static`/`generate`/`html` → static HTML; `summary`/`status` → column counts. Needs the Go toolchain |
+| 33 | `board` (± mode), `kanban`, `kanban board`, `queue board`, `visualize queue`, `show the board` | board | Mode: empty/`serve`/`live` → live board at `:8090`; `static`/`generate`/`html` → static HTML; `summary`/`status` → column counts; `cli`/`open`/`in-flight` → in-flight digest. Needs the Go toolchain |
 | 34 | `tidy-repo`, `tidy repo`, `file-reorg` (legacy), `reorg`, `reorganize`, `restructure`, `declutter`, `tidy layout`, `fix the layout`, `clean up the root` (± path ± `plan`) | tidy-repo | Junk deletion → stray-check (30); do-work bookkeeping → cleanup (12); code architecture changes → the work pipeline |
 | 35 | `abandon`, `cancel`, `wont-do`, `won't do` — only with empty args or a `REQ-NNN`/`UR-NNN` ID | abandon | Rest → `$ARGUMENTS` (REQ/UR IDs + optional reason; a UR cancels its cancellable members). `abandon`/`cancel` + ID-less prose is descriptive content → capture (38). `pipeline abandon` already matched (3). Bare verb → list cancellable REQs and ask |
 | 37 | `remember <text>`, `forget <text>`, `recall <query>`, `memory` (± `remember`/`forget`/`recall`/`status`/`bootstrap`/`audit`/`value`), `what do you remember` | memory | Rest → `$ARGUMENTS`, but bare aliases keep their verb: pass `remember <rest>` / `forget <rest>` / `recall <rest>`; `what do you remember` → `recall <rest>`. Stores facts, not tasks: `remember to <verb> …` is queued work → capture (38). `consolidate memory`/`memory cleanup` already matched dream (29). Bare `memory` → its help menu |
@@ -111,7 +111,7 @@ Each action has an action file with full instructions. How you execute it depend
 | tutorial           | `./actions/tutorial.md`         | `$ARGUMENTS` (mode name or empty) |
 | slop-check         | `./actions/slop-check.md`       | `$ARGUMENTS` (file path, REQ/UR ID, "most recent", or empty for newest deliverable) |
 | dream              | `./actions/dream.md`            | `$ARGUMENTS` (memory directory path or empty for default resolution) |
-| board              | `./actions/board.md`            | `$ARGUMENTS` (mode: `serve` / `static` / `summary`) |
+| board              | `./actions/board.md`            | `$ARGUMENTS` (mode: `serve` / `static` / `summary` / `cli`) |
 
 **Per-command help:** any action invoked with `help` as its sole argument (e.g. `do-work commit help`) routes to `actions/help.md` per-command mode instead of executing — except `pipeline`, `prime`, `bkb`, and `memory`, which handle `help` internally (dispatch those normally).
 
@@ -120,7 +120,7 @@ Each action has an action file with full instructions. How you execute it depend
 Dispatch each action to a subagent. The subagent reads the action file and executes it — the main thread only sees the routing decision and the returned summary.
 
 - **`work`**, **`cleanup`**: run in the background if supported; print a status line and return control to the user.
-- **`board`** (`serve` mode): run in the background if supported — it's a long-running local server; print the URL (`http://localhost:8090`). The `static` and `summary` modes run in the foreground.
+- **`board`** (`serve` mode): run in the background if supported — it's a long-running local server; print the URL (`http://localhost:8090`). The `static`, `summary`, and `cli` modes run in the foreground.
 - **Exception — pipeline dispatch**: when the pipeline action dispatches `work`, it runs in the **foreground** (blocking); the pipeline requires each step to complete before advancing.
 - **All other actions**: run in the foreground (blocking) — they need user interaction or produce small immediate output.
 - **Screenshots (`capture-requests` only):** subagents can't see images from the main conversation. Before dispatching, save screenshots to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of each, and include the paths + descriptions in the subagent prompt.
