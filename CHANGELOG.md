@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.178.1 — The Secret Scan Catches `.envrc`, and the Scripts Run on Bash 3 (2026-08-06)
+
+Two fixes from an external review of the scripts 0.178.0 shipped, both real.
+
+- The `.env*` exclusion didn't actually cover `.env*`. `.env|.env.*` matches neither `.envrc` nor `.environment` — a suffix with no dot fails both branches — so a direnv file full of exported secrets was tagged as an ordinary new file and could be read and staged. Now `.env*|*.env`, with both callers advertising both forms
+- `associate-files.sh` used `mapfile` and `declare -A`, which stock macOS bash 3.2 doesn't have. It died instead of degrading, and the documented fallback only covered a *missing* script. Ownership resolution moved into awk; the fallback now reads "missing or will not run"
+- The new regression guard is a behavior probe, not a grep — the bug was a glob that looked right, so the test asserts the emitted tags instead
+
 ## 0.178.0 — The Secret-File Scan Is a Script, Not a Paragraph Twice (2026-08-06)
 
 `commit` and `inspect` each carried a word-for-word copy of the same uncommitted-changes scan, including the paragraph explaining why the `-uall` flag is load-bearing. Both are now one shipped script, and so is the REQ-association pass they also duplicated.
