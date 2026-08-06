@@ -625,6 +625,19 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 	if rawDomain := coerceScalarToString(fields["domain"]); strings.TrimSpace(rawDomain) != "" {
 		normalizedDomain, _ = resolveSchemaField("domain", rawDomain)
 	}
+	// route was left reading verbatim by REQ-111, which wired only `domain` — so a
+	// lowercase letter reached the badge and the drawer row in a field the contract
+	// spells uppercase. Same present-value-only guard as domain: board.js gates
+	// both on `if (request.route)`.
+	//
+	// normalizeSchemaField, NOT resolveSchemaField: route's documented default is
+	// the empty string ("treat as needing re-triage"), so resolving would turn an
+	// unrecognized letter into absence and destroy the evidence re-triage reads.
+	// Case-folding without substituting is exactly what this function does.
+	normalizedRoute := ""
+	if rawRoute := coerceScalarToString(fields["route"]); strings.TrimSpace(rawRoute) != "" {
+		normalizedRoute = normalizeSchemaField("route", rawRoute)
+	}
 
 	ticket := &RequestTicket{
 		RequestId:                 requestId,
@@ -652,7 +665,7 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		Related:                   coerceToStringList(fields["related"]),
 		WriteSet:                  coerceToStringList(fields["write_set"]),
 		AssignedTo:                coerceScalarToString(fields["assigned_to"]),
-		Route:                     coerceScalarToString(fields["route"]),
+		Route:                     normalizedRoute,
 		Batch:                     coerceScalarToString(fields["batch"]),
 		FrontmatterMarkdown:       frontmatterMarkdown,
 		BodyMarkdown:              bodyText,

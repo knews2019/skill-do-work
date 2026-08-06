@@ -889,3 +889,108 @@ Body.
 			ticket.Domain, "")
 	}
 }
+
+// TestParseRequestTicketNormalizesRoute is REQ-116's stated RED case. REQ-111
+// added the route contract row and its normalizer but wired only `domain` at the
+// read site, so the board kept reading route through coerceScalarToString — which
+// trims and nothing else. A lowercase route letter therefore reached the card
+// badge and the drawer row as written, in a field the contract says is uppercase.
+//
+// Parse-level on purpose: the normalizer's own table test (route a→A, B→B, " c "→C)
+// passed the whole time the board was wrong, so only a test that goes through
+// parseRequestTicket can hold this line.
+func TestParseRequestTicketNormalizesRoute(t *testing.T) {
+	for _, testCase := range []struct {
+		name          string
+		routeLine     string
+		expectedRoute string
+	}{
+		{"lowercase letter uppercases", "route: a", "A"},
+		{"canonical letter is unchanged", "route: B", "B"},
+		{"padded lowercase letter uppercases", "route: \" c \"", "C"},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			temporaryDirectory := t.TempDir()
+			fixturePath := filepath.Join(temporaryDirectory, "REQ-903-route-case.md")
+			fixtureContent := `---
+id: REQ-903
+title: Route letter case
+status: pending
+` + testCase.routeLine + `
+---
+
+Body.
+`
+			if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+				t.Fatalf("write fixture: %v", writeError)
+			}
+			ticket, parseError := parseRequestTicket(fixturePath, "queue")
+			if parseError != nil {
+				t.Fatalf("parseRequestTicket: %v", parseError)
+			}
+			if ticket.Route != testCase.expectedRoute {
+				t.Fatalf("Route = %q, want %q — route must normalize per the Schema Read Contract",
+					ticket.Route, testCase.expectedRoute)
+			}
+		})
+	}
+}
+
+// TestParseRequestTicketPreservesAbsentRoute is the absent-field half of the same
+// wiring, and the reason the read site must not call resolveSchemaField: that
+// helper substitutes the field's documented default, and route's default is the
+// empty string, so absence and an unrecognized letter would become the same
+// value. board.js gates the route badge and the drawer row on `if (request.route)`.
+func TestParseRequestTicketPreservesAbsentRoute(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-904-no-route.md")
+	fixtureContent := `---
+id: REQ-904
+title: No route field at all
+status: pending
+---
+
+Body.
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.Route != "" {
+		t.Fatalf("Route = %q, want %q — an absent route must stay absent for the renderer",
+			ticket.Route, "")
+	}
+}
+
+// TestParseRequestTicketReportsUnrecognizedRouteUnchanged pins the no-default half
+// of route's contract row: an unrecognized letter means the REQ needs re-triage,
+// which is not a value this parser can invent. Blanking it — what
+// resolveSchemaField would do, since route's documented default is "" — would
+// destroy the evidence that re-triage reads.
+func TestParseRequestTicketReportsUnrecognizedRouteUnchanged(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-905-unknown-route.md")
+	fixtureContent := `---
+id: REQ-905
+title: Route letter outside the enum
+status: pending
+route: z
+---
+
+Body.
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	ticket, parseError := parseRequestTicket(fixturePath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.Route != "Z" {
+		t.Fatalf("Route = %q, want %q — an unrecognized route is reported case-folded, never blanked",
+			ticket.Route, "Z")
+	}
+}

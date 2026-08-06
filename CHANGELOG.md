@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.175.3 — The Board Now Normalizes Route, Which 0.174.15 Claimed and Didn't (2026-08-06)
+
+An external review caught 0.174.15 overclaiming: its title said the board honored the Schema Read Contract for all nine fields, but only `domain` was ever wired. `route` kept reading verbatim, so a REQ written `route: a` showed a lowercase `a` badge — in the one other contract field the board actually displays. Now wired, with the correction on the record.
+
+- `route` normalizes at the board's read site, through the same table REQ-111 added
+- Deliberately `normalizeSchemaField`, not `resolveSchemaField`: route has no documented default, so resolving would blank an unrecognized letter and hide the REQ that needs re-triage
+- **0.174.15's claim was too broad and stays on the record as written.** Only `domain` was wired then; five of the seven fields it named (`caveman`, `maintenance`, `tdd`, `error_type`, `kb_status`) the board still doesn't read at all, which is correct — they have no display role, and adding one to make an old title true would be backwards
+- The maintainer doc's list of fields the board parses for display had never included `route` — which is why the field carried no keep-in-sync obligation and drifted in the first place
+
 ## 0.175.2 — The Commit Action Reads a REQ's Status Through the Tool (2026-08-05)
 
 The new `frontmatter` command had no callers, so the hand-rolled reads it exists to replace were all still hand-rolled. `do-work commit` is the first one switched over, and it's the site where getting it wrong actually bit: testing for the literal `completed` drops every remediated-with-issues REQ, so its files never get associated.
