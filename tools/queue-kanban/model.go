@@ -146,6 +146,19 @@ type RequestTicket struct {
 	Route string
 	Batch string
 
+	// effort_estimate — the triage bit separating small mechanical fixes from
+	// real work (trivial | normal). Stamped by automatic follow-up creation
+	// (review + discovered-tasks flows, actions/work.md Steps 7-8) from the
+	// review gate's disposition; capture MAY set it. Absent or unrecognized
+	// reads as the contract default `normal`. DISPLAY ONLY at any builder
+	// count — a card chip (rendered only when trivial) and a drawer row; the
+	// board never buckets, orders, or schedules on it. Keep this parser in
+	// lock-step with the Schema Read Contract in actions/work-reference.md — a
+	// change to either lands in the same commit as the other.
+	EffortEstimate             string
+	OriginalEffortEstimate     string // verbatim frontmatter effort_estimate before normalization ("" when absent)
+	EffortEstimateUnrecognized bool
+
 	// FrontmatterMarkdown is the ORIGINAL fence bytes — everything up to and
 	// including the closing `---` and its newline — sliced at the body offset
 	// splitFrontmatter reports rather than re-serialized from the parsed
@@ -659,43 +672,60 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		normalizedRoute = normalizeSchemaField("route", originalRoute)
 		routeUnrecognized = !isKnownSchemaFieldValue("route", normalizedRoute)
 	}
+	// effort_estimate follows the domain pattern: present-value-only guard, so
+	// absence stays "" and board.js's gates don't chip a card that never carried
+	// the field (absent reads as `normal` semantically, and `normal` renders no
+	// chip anyway). resolveSchemaField substitutes the contract default (normal)
+	// for an unrecognized PRESENT value; the flag raises the data warning — the
+	// value resolves, the footprint is not optional.
+	originalEffortEstimate := coerceScalarToString(fields["effort_estimate"])
+	normalizedEffortEstimate := ""
+	effortEstimateUnrecognized := false
+	if strings.TrimSpace(originalEffortEstimate) != "" {
+		var effortEstimateRecognized bool
+		normalizedEffortEstimate, effortEstimateRecognized = resolveSchemaField("effort_estimate", originalEffortEstimate)
+		effortEstimateUnrecognized = !effortEstimateRecognized
+	}
 
 	ticket := &RequestTicket{
-		RequestId:                 requestId,
-		Title:                     coerceScalarToString(fields["title"]),
-		Status:                    normalizeStatus(originalStatus),
-		OriginalStatus:            originalStatus,
-		CreatedAt:                 coerceScalarToString(fields["created_at"]),
-		ClaimedAt:                 coerceScalarToString(fields["claimed_at"]),
-		CompletedAt:               coerceScalarToString(fields["completed_at"]),
-		StatusChangedAt:           coerceScalarToString(fields["status_changed_at"]),
-		CommitHash:                commitHashValue,
-		CommitHashField:           commitHashField,
-		UserRequestId:             coerceScalarToString(fields["user_request"]),
-		Domain:                    normalizedDomain,
-		OriginalDomain:            originalDomain,
-		DomainUnrecognized:        domainUnrecognized,
-		TestingStatus:             normalizedTestingStatus,
-		OriginalTestingStatus:     originalTestingStatus,
-		TestingStatusUnrecognized: testingStatusUnrecognized,
-		TestedBy:                  coerceScalarToString(fields["tested_by"]),
-		TestingUpdatedAt:          coerceScalarToString(fields["testing_updated_at"]),
-		TestingFeedback:           coerceScalarToString(fields["testing_feedback"]),
-		DependsOn:                 resolveDependsOn(fields),
-		BlockedBy:                 coerceToStringList(fields["blocked_by"]),
-		BlockedAt:                 coerceScalarToString(fields["blocked_at"]),
-		BlockedCheck:              coerceScalarToString(fields["blocked_check"]),
-		Related:                   coerceToStringList(fields["related"]),
-		WriteSet:                  coerceToStringList(fields["write_set"]),
-		AssignedTo:                coerceScalarToString(fields["assigned_to"]),
-		Route:                     normalizedRoute,
-		OriginalRoute:             originalRoute,
-		RouteUnrecognized:         routeUnrecognized,
-		Batch:                     coerceScalarToString(fields["batch"]),
-		FrontmatterMarkdown:       frontmatterMarkdown,
-		BodyMarkdown:              bodyText,
-		FilePath:                  filePath,
-		TreeSection:               treeSection,
+		RequestId:                  requestId,
+		Title:                      coerceScalarToString(fields["title"]),
+		Status:                     normalizeStatus(originalStatus),
+		OriginalStatus:             originalStatus,
+		CreatedAt:                  coerceScalarToString(fields["created_at"]),
+		ClaimedAt:                  coerceScalarToString(fields["claimed_at"]),
+		CompletedAt:                coerceScalarToString(fields["completed_at"]),
+		StatusChangedAt:            coerceScalarToString(fields["status_changed_at"]),
+		CommitHash:                 commitHashValue,
+		CommitHashField:            commitHashField,
+		UserRequestId:              coerceScalarToString(fields["user_request"]),
+		Domain:                     normalizedDomain,
+		OriginalDomain:             originalDomain,
+		DomainUnrecognized:         domainUnrecognized,
+		TestingStatus:              normalizedTestingStatus,
+		OriginalTestingStatus:      originalTestingStatus,
+		TestingStatusUnrecognized:  testingStatusUnrecognized,
+		TestedBy:                   coerceScalarToString(fields["tested_by"]),
+		TestingUpdatedAt:           coerceScalarToString(fields["testing_updated_at"]),
+		TestingFeedback:            coerceScalarToString(fields["testing_feedback"]),
+		DependsOn:                  resolveDependsOn(fields),
+		BlockedBy:                  coerceToStringList(fields["blocked_by"]),
+		BlockedAt:                  coerceScalarToString(fields["blocked_at"]),
+		BlockedCheck:               coerceScalarToString(fields["blocked_check"]),
+		Related:                    coerceToStringList(fields["related"]),
+		WriteSet:                   coerceToStringList(fields["write_set"]),
+		AssignedTo:                 coerceScalarToString(fields["assigned_to"]),
+		Route:                      normalizedRoute,
+		OriginalRoute:              originalRoute,
+		RouteUnrecognized:          routeUnrecognized,
+		EffortEstimate:             normalizedEffortEstimate,
+		OriginalEffortEstimate:     originalEffortEstimate,
+		EffortEstimateUnrecognized: effortEstimateUnrecognized,
+		Batch:                      coerceScalarToString(fields["batch"]),
+		FrontmatterMarkdown:        frontmatterMarkdown,
+		BodyMarkdown:               bodyText,
+		FilePath:                   filePath,
+		TreeSection:                treeSection,
 	}
 	if fileInfo, statError := os.Stat(filePath); statError == nil {
 		ticket.FileModifiedAt = fileInfo.ModTime()
@@ -840,8 +870,9 @@ type schemaFieldContract struct {
 	upperCase       bool
 }
 
-// schemaReadContractFields holds the seven enum/boolean fields that had no
-// normalizer before REQ-111. `status` and `testing_status` are deliberately
+// schemaReadContractFields holds the enum/boolean fields that had no
+// normalizer before REQ-111 (plus later schema additions such as
+// effort_estimate). `status` and `testing_status` are deliberately
 // absent: they already own normalizeStatus / normalizeTestingStatus, and
 // forking their alias maps in here would create the second definition this
 // table exists to prevent. normalizeSchemaField dispatches those two to their
@@ -908,6 +939,13 @@ var schemaReadContractFields = map[string]schemaFieldContract{
 			"rejected": "declined",
 		},
 		defaultValue: "pending",
+	},
+	"effort_estimate": {
+		// Deliberately a closed two-value enum — a triage bit, not an
+		// estimation system. Do not grow it toward t-shirt sizes.
+		canonicalValues: []string{"trivial", "normal"},
+		aliases:         map[string]string{},
+		defaultValue:    "normal",
 	},
 	// status and testing_status carry a canonical VOCABULARY here but no alias
 	// map: their aliases live in normalizeStatus / normalizeTestingStatus, which
@@ -1051,6 +1089,7 @@ func collectSchemaFieldWarnings(tickets []*RequestTicket) []string {
 		}{
 			{"domain", ticket.DomainUnrecognized, ticket.OriginalDomain},
 			{"route", ticket.RouteUnrecognized, ticket.OriginalRoute},
+			{"effort_estimate", ticket.EffortEstimateUnrecognized, ticket.OriginalEffortEstimate},
 		} {
 			if unrecognizedField.isUnrecognized {
 				schemaFieldWarnings = append(schemaFieldWarnings, fmt.Sprintf("%s %s",

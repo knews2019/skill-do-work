@@ -252,7 +252,7 @@ Route [A/B/C] | [commit hash or "uncommitted"]
 ### Findings
 
 **Important:**
-- [Specific finding with file:line reference]
+- [Specific finding with file:line reference] — gate: [user-visible | rule-change | trivial]
 
 **Minor:**
 - [Style nit or suggestion]
@@ -332,7 +332,16 @@ Self-validation runs in **both modes**. Lesson capture, prime file updates, and 
 
 ### Step 10: Create Follow-up REQs
 
-For each **Important** finding, create a follow-up REQ:
+**The disposition gate runs first — every Important finding gets a recorded `gate:` token before any REQ is created.** Ask two questions of the current state:
+
+- **(a)** Would any user or developer actually notice this issue in real use?
+- **(b)** Does fixing it establish or change a rule that applies in several places (a genuine maintainability rule, not a one-spot patch)?
+
+Record the answer on the finding's line — in the report and in the appended `## Review` section — as `gate: user-visible` (yes to a), `gate: rule-change` (yes to b; a wins when both are yes), or `gate: trivial` (no to both). **The token is mandatory and auditable.** The pre-gate rule failed precisely because nothing recorded a checkable decision: one UR's review chain minted sixteen REQs over two days, fifteen of them facets of a single root cause, and every one was discovered trivial only by the user's own investigation (UR-489/UR-027). A finding line without a token is a gate that was skipped, and reviewers of the review can see it.
+
+**The gate routes; it never re-scores.** Severity (Important/Minor/Nit) is judged exactly as before — a finding can be genuinely Important ("the guard is blind to one color notation") while its disposition is `trivial` (the current state is realistically fine to ship). Do not resolve that tension by downgrading severity: severity measures the issue, the gate decides how its fix lands. Downgrading corrupts the severity axis the score bands read.
+
+For each **Important** finding, create a follow-up REQ, stamping `effort_estimate` from the gate token — `gate: trivial` → `effort_estimate: trivial`, `gate: user-visible`/`gate: rule-change` → `effort_estimate: normal` (the field is the board's triage chip; schema: `actions/work-reference.md` → Request File Schema):
 
 ```markdown
 ---
@@ -344,6 +353,7 @@ created_at: [timestamp]
 user_request: [same UR as the reviewed REQ]
 addendum_to: [reviewed REQ id]
 review_generated: true
+effort_estimate: [trivial | normal — stamped from the finding's gate token, never omitted]
 ---
 
 # Review Fix: [Brief Description]
@@ -447,7 +457,7 @@ Match effort to complexity:
 ## What NOT to Do
 
 - Don't re-implement — you're reviewing, not building
-- Don't review your own review's follow-up REQs more strictly than the original work — avoid infinite loops of diminishing-return fixes
+- Don't review your own review's follow-up REQs more strictly than the original work — avoid infinite loops of diminishing-return fixes. The Step 10 disposition gate is this rule's mechanism: a `gate: trivial` finding arrives labeled `effort_estimate: trivial`, so diminishing returns are visible on the board instead of re-litigated each loop
 - Don't block on minor issues — report them but keep moving
 - Don't invent requirements — review against what the REQ says, not what you think it should say
 - Don't penalize the absence of things the project doesn't have (no test infrastructure = don't fail on test adequacy)
@@ -463,7 +473,7 @@ Guard against these when conducting the review:
 | "Requirements are met because the builder says so" | Walk the REQ requirements against the diff, line by line | Implementation summaries are claims, not evidence |
 | "Acceptance passes because unit tests pass" | Run the feature end-to-end | Unit tests and acceptance testing catch different defects |
 | "The score is borderline, I'll round up" | Apply the scoring guidelines mechanically | Rounding up defeats the quality gate |
-| "This finding is minor, not worth a follow-up REQ" | Ask: would a senior engineer request changes on this in a PR? | The threshold is documented; use it |
+| "This finding is minor, not worth a follow-up REQ" | Judge severity honestly (senior-engineer test), then let the Step 10 gate decide the landing — a trivial disposition is recorded, never silently dropped | Downgrading severity to avoid queue traffic corrupts the score bands; the gate token is how a real-but-trivial finding lands lightly without disappearing |
 | "I can't run the code so I'll skip acceptance" | Score Untested and note exactly what you couldn't test | Skipping silently hides risk |
 | "That stale restatement is in a file this REQ never declared — out of scope" | Report it as a finding and route the fix to a follow-up REQ | The diff changed the meaning; leaving other statements of it on the old contract is the defect, and the REQ's Scope declaration bounds the *builder*, not the sweep |
 | "All requirements checked and tests pass, so it's good" | Apply the Klarna Test — did we optimize for measurable things (checkboxes, passing tests) at the expense of unmeasured intent? | Checkbox compliance + passing tests can still miss what the user actually wanted |
@@ -490,6 +500,6 @@ Before presenting the review report:
 - [ ] Overall score computed using the documented formula
 - [ ] P-A-U checkboxes checked — if the REQ has an "AI Execution State (P-A-U Loop)" section, verify all three boxes (`[PLAN]`, `[APPLY]`, `[UNIFY]`) are marked `[x]`. Unchecked boxes suggest the builder skipped a phase — flag as a Minor finding.
 - [ ] Acceptance testing was attempted (or scored Untested with specific reason)
-- [ ] Each Important finding has a follow-up REQ drafted
+- [ ] Each Important finding carries a recorded `gate:` token, and each drafted follow-up REQ carries `effort_estimate` stamped from it
 - [ ] Suggested Additional Testing includes only items relevant to this change
 - [ ] Self-validation pass completed

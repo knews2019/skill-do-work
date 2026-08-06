@@ -1,16 +1,16 @@
 ---
-id: REQ-124
+id: REQ-127
 title: Sweep-REQ consolidation — same-root-cause findings land in one sweep, not one REQ each
 status: pending
 created_at: 2026-08-06T15:48:11Z
-user_request: UR-026
+user_request: UR-027
 domain: general
 prime_files: []
 tdd: false
 suggested_spec:
-depends_on: [REQ-122]
+depends_on: [REQ-125]
 maintenance: true
-related: [REQ-122, REQ-123]
+related: [REQ-125, REQ-126]
 batch: follow-up-runaway-fix
 write_set: [actions/review-work.md, actions/work.md, actions/work-reference.md, actions/capture-reference.md]
 ---
@@ -28,30 +28,30 @@ Trivial or same-root-cause findings from a review never get individual REQs. The
 
 ## Why (if provided)
 
-UR-489 produced fifteen separate REQs that were all facets of ONE root cause (hardcoded colors not tokenized + a guard blind to them). With REQ-122's label and REQ-123's brake, the remaining pain is queue clutter: fifteen chipped-trivial REQs the user would rather see — and approve — as one.
+UR-489 produced fifteen separate REQs that were all facets of ONE root cause (hardcoded colors not tokenized + a guard blind to them). With REQ-125's label and REQ-126's brake, the remaining pain is queue clutter: fifteen chipped-trivial REQs the user would rather see — and approve — as one.
 
 ## Detailed Requirements
 
 - **Marker:** new frontmatter field `sweep: true` (boolean; absent reads as false). Document in `actions/work-reference.md` (Full Frontmatter + Schema Read Contract) and `actions/capture-reference.md`. Sweeps are found mechanically — e.g. `grep -rl "^sweep: true" do-work/queue/` filtered to the same `user_request:` — never by judging title similarity (duplicate sweeps would recreate the runaway at half scale). (The `-r` and `^`-anchor are load-bearing: `grep -l` against the bare directory exits 2 with "Is a directory" and returns no candidates, silently defeating consolidation — Codex P2 finding on PR #137; per CLAUDE.md's prescribed-commands rule, the shipped command must actually emit what the step consumes.)
-- **Routing (consumes REQ-122's gate token):** a `gate: trivial` finding, or any finding sharing a root cause with others, folds into a sweep. A `gate: user-visible`, thematically unrelated finding still gets its own REQ with a one-line why-not-sweep justification in the body.
+- **Routing (consumes REQ-125's gate token):** a `gate: trivial` finding, or any finding sharing a root cause with others, folds into a sweep. A `gate: user-visible`, thematically unrelated finding still gets its own REQ with a one-line why-not-sweep justification in the body.
 - **Append contract** (appending to a queued REQ file is a new write pattern — keep it tight):
   - Append only to a sweep with the same `user_request:` and `status: pending`. Never append to a claimed/working sweep — create a new sweep instead.
   - Appends land as checklist items (`- [ ] [file/site]: [instance]`) under a defined `## Instances` section. The append never touches the sweep's frontmatter.
 - **Creation:** when no appendable sweep exists, create ONE sweep REQ named for the ROOT CAUSE (e.g. "tokenize all remaining hardcoded colors and make the guard catch every notation"), with the normal follow-up fields (`user_request`, `addendum_to`, `domain`, `review_generated: true` when review-created), `sweep: true`, an `## Instances` checklist, and `effort_estimate` per the gate: `normal` when solving it changes a multi-site rule (gate (b)), `trivial` otherwise.
 - **Definition of done for a sweep, stated in the shipped text:** solving the sweep means the class of finding cannot recur — the rule is changed everywhere it applies — not that N spots got patched one drop at a time.
-- **Interaction with REQ-123:** a generation-≥2 review may still append to existing pending sweeps (an append is not a new REQ); a new sweep it needs falls under the reroute (`status: pending-answers`, critical pierces). Sweeps are themselves `review_generated: true` when review-created, so their reviews converge under REQ-123's rule.
-- **Sites:** `actions/review-work.md` Step 10 (the routing decision lives here), `actions/work.md` Step 7/8 restatements, `actions/work-reference.md` (schema + a sweep contract home), `actions/capture-reference.md` (schema comment). Re-grep line numbers; coordinate wording with REQ-122/123's edits.
+- **Interaction with REQ-126:** a generation-≥2 review may still append to existing pending sweeps (an append is not a new REQ); a new sweep it needs falls under the reroute (`status: pending-answers`, critical pierces). Sweeps are themselves `review_generated: true` when review-created, so their reviews converge under REQ-126's rule.
+- **Sites:** `actions/review-work.md` Step 10 (the routing decision lives here), `actions/work.md` Step 7/8 restatements, `actions/work-reference.md` (schema + a sweep contract home), `actions/capture-reference.md` (schema comment). Re-grep line numbers; coordinate wording with REQ-125/123's edits.
 - The board is NOT required to parse `sweep` in this REQ. If the builder chooses to badge it, the same-commit lock-step applies: `tools/queue-kanban/model.go` + the CLAUDE.md board-parsed-fields enumeration.
 
 ## Constraints
 
 - No information loss: every instance is enumerated in the sweep's `## Instances` checklist — nothing becomes report-only.
-- Severity vocabulary untouched; the gate token (REQ-122) is the routing input.
-- **Out of scope, deliberately (user decision):** fix-inline-at-review-resolution — the originally proposed priority 4. Do not build it here; the deferral is on record in UR-026's decision record, to be revisited only if labeled-and-gated trivia still feels too heavy after living with REQ-122/123/124.
+- Severity vocabulary untouched; the gate token (REQ-125) is the routing input.
+- **Out of scope, deliberately (user decision):** fix-inline-at-review-resolution — the originally proposed priority 4. Do not build it here; the deferral is on record in UR-027's decision record, to be revisited only if labeled-and-gated trivia still feels too heavy after living with REQ-125/123/124.
 
 ## Dependencies
 
-Depends on REQ-122 (routing consumes the gate token and sets `effort_estimate`). Complements REQ-123; buildable before or after it, but the interaction paragraph above must match whichever text is already shipped.
+Depends on REQ-125 (routing consumes the gate token and sets `effort_estimate`). Complements REQ-126; buildable before or after it, but the interaction paragraph above must match whichever text is already shipped.
 
 ## Builder Guidance
 
@@ -66,7 +66,7 @@ Certainty: Firm on the marker, append contract, and root-cause naming (all user-
 
 ## Full Context
 
-See `do-work/user-requests/UR-026/input.md` for complete verbatim input and the decision record.
+See `do-work/user-requests/UR-027/input.md` for complete verbatim input and the decision record.
 
 ---
 *Source: "do-work capture-request Ship priorities 1 through 3" — priority 3 of the agreed design*

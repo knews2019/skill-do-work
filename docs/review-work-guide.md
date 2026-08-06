@@ -52,7 +52,7 @@ Includes anti-rationalization tables, red flags (patterns that trigger extra scr
 
 ## Follow-ups
 
-Important findings generate follow-up REQ files automatically. Minor findings stay in the report only.
+Important findings generate follow-up REQ files automatically — each one first passes a recorded disposition gate (would anyone notice in real use? does the fix change a multi-site rule?) whose token stamps the follow-up's `effort_estimate` (`trivial` or `normal`), so the board shows at a glance which follow-ups are small mechanical fixes. Minor findings stay in the report only.
 
 ## Output
 

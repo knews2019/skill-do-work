@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.181.0 — Review Follow-Ups Get a Disposition Gate and a Trivial-Work Chip (2026-08-06)
+
+One user request's review chain minted sixteen follow-up REQs over two days — fifteen of them
+trivial facets of a single root cause — and nothing on the board said so until the user dug
+through them by hand. Every automatic follow-up now declares its weight before it lands.
+
+- Reviews record a `gate:` token (user-visible / rule-change / trivial) on each Important finding before any follow-up REQ is created — severity judgment is unchanged, the gate only routes (`actions/review-work.md` Step 10)
+- New `effort_estimate: trivial | normal` frontmatter field, stamped from the gate on review and Discovered-Tasks follow-ups; capture may set it; absent reads as `normal`, so existing REQs need no migration
+- The board chips `effort_estimate: trivial` cards and adds a drawer row — display-only, with domain-style normalize-and-warn handling (`tools/queue-kanban`)
+
 ## 0.180.0 — The Board's By UR Lens Stops Going Blank on a Shipped Queue (2026-08-06)
 
 The moment a queue was fully shipped, the board's **By UR** lens with URs set to Active

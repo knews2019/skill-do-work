@@ -115,17 +115,21 @@ type generatedRequest struct {
 	// Other pending/claimed REQ ids whose write_set could touch the same files
 	// (see RequestTicket.WriteSetOverlaps). Display only — the card badge and a
 	// drawer row; no column or dispatch meaning.
-	WriteSetOverlaps     []string `json:"writeSetOverlaps,omitempty"`
-	Route                string   `json:"route"`
-	Batch                string   `json:"batch"`
-	TreeSection          string   `json:"treeSection"`
-	CreatedAt            string   `json:"createdAt"`
-	ClaimedAt            string   `json:"claimedAt"`
-	CompletedAt          string   `json:"completedAt"`
-	StatusChangedAt      string   `json:"statusChangedAt,omitempty"` // last no-dedicated-stamp status flip (see RequestTicket.StatusChangedAt)
-	FileModifiedAt       string   `json:"fileModifiedAt,omitempty"`  // file mtime at generation, RFC3339 — state-timer fallback only, never completion dating
-	CompletionTime       string   `json:"completionTime"`
-	CompletionTimeSource string   `json:"completionTimeSource"`
+	WriteSetOverlaps []string `json:"writeSetOverlaps,omitempty"`
+	Route            string   `json:"route"`
+	// Triage bit separating small mechanical fixes from real work (see
+	// RequestTicket.EffortEstimate). Display only — a card chip rendered only
+	// when trivial, plus a drawer row; never column or scheduling meaning.
+	EffortEstimate       string `json:"effortEstimate,omitempty"`
+	Batch                string `json:"batch"`
+	TreeSection          string `json:"treeSection"`
+	CreatedAt            string `json:"createdAt"`
+	ClaimedAt            string `json:"claimedAt"`
+	CompletedAt          string `json:"completedAt"`
+	StatusChangedAt      string `json:"statusChangedAt,omitempty"` // last no-dedicated-stamp status flip (see RequestTicket.StatusChangedAt)
+	FileModifiedAt       string `json:"fileModifiedAt,omitempty"`  // file mtime at generation, RFC3339 — state-timer fallback only, never completion dating
+	CompletionTime       string `json:"completionTime"`
+	CompletionTimeSource string `json:"completionTimeSource"`
 
 	CompletionAnomaly       bool   `json:"completionAnomaly,omitempty"`
 	CompletionAnomalyReason string `json:"completionAnomalyReason,omitempty"`
@@ -275,6 +279,7 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			WriteSetOverlaps:     ticket.WriteSetOverlaps,
 			AssignedTo:           ticket.AssignedTo,
 			Route:                ticket.Route,
+			EffortEstimate:       ticket.EffortEstimate,
 			Batch:                ticket.Batch,
 			TreeSection:          ticket.TreeSection,
 			CreatedAt:            ticket.CreatedAt,

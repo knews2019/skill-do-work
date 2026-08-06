@@ -729,10 +729,11 @@ func TestParseRequestTicketPreservesAssignedToCaseAndTrimsOnlyPadding(t *testing
 	}
 }
 
-// TestNormalizeSchemaFieldCoversContractAliases exercises the seven Schema Read
-// Contract fields that had no normalizer before REQ-111 — the contract table
-// lives in actions/work-reference.md's Schema Read Contract and is the source of
-// truth for every row below.
+// TestNormalizeSchemaFieldCoversContractAliases exercises the Schema Read
+// Contract fields the shared table normalizes (the seven that had no normalizer
+// before REQ-111, plus later schema additions such as effort_estimate) — the
+// contract table lives in actions/work-reference.md's Schema Read Contract and
+// is the source of truth for every row below.
 func TestNormalizeSchemaFieldCoversContractAliases(t *testing.T) {
 	testCases := []struct {
 		fieldName string
@@ -780,6 +781,10 @@ func TestNormalizeSchemaFieldCoversContractAliases(t *testing.T) {
 		{"kb_status", "skip", "skipped"},
 		{"kb_status", "rejected", "declined"},
 		{"kb_status", "promoted", "promoted"},
+		// effort_estimate — no aliases; closed two-value enum, case-folded.
+		{"effort_estimate", "trivial", "trivial"},
+		{"effort_estimate", " TRIVIAL ", "trivial"},
+		{"effort_estimate", "Normal", "normal"},
 	}
 	for _, testCase := range testCases {
 		if got := normalizeSchemaField(testCase.fieldName, testCase.raw); got != testCase.want {
@@ -806,6 +811,8 @@ func TestResolveSchemaFieldFallsBackWithoutSilentRemap(t *testing.T) {
 		{"tdd", "sometimes", "false", false},
 		{"error_type", "cosmic-ray", "code", false},
 		{"kb_status", "half-promoted", "pending", false},
+		{"effort_estimate", "huge", "normal", false},
+		{"effort_estimate", "", "normal", true},
 		{"route", "Z", "", false},
 		// An absent field is not an unrecognized value — it resolves to the
 		// default and must NOT warn, or every REQ omitting an optional field
@@ -1036,6 +1043,134 @@ func TestRecognizedRouteRaisesNoWarning(t *testing.T) {
 	if absentTicket.Route != "" || absentTicket.RouteUnrecognized {
 		t.Errorf("absent-route ticket: Route = %q, RouteUnrecognized = %v — want empty, false",
 			absentTicket.Route, absentTicket.RouteUnrecognized)
+	}
+}
+
+// TestUnrecognizedEffortEstimateFlagsAndWarns mirrors the domain shape for the
+// effort_estimate field (REQ-122): an off-vocabulary PRESENT value resolves to
+// the contract default (normal), keeps the verbatim original, and leaves a
+// footprint in board.Warnings — never a silent drop.
+func TestUnrecognizedEffortEstimateFlagsAndWarns(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	reqFileContent := "---\nid: REQ-0110\ntitle: Fixture\nstatus: pending\neffort_estimate: huge\n---\nbody\n"
+	if writeError := os.WriteFile(filepath.Join(queueDir, "REQ-0110-bad-effort.md"), []byte(reqFileContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	ticket := board.RequestsById["REQ-0110"]
+	if ticket == nil {
+		t.Fatalf("REQ-0110 not parsed")
+	}
+	if !ticket.EffortEstimateUnrecognized {
+		t.Errorf("EffortEstimateUnrecognized = false, want true")
+	}
+	if ticket.EffortEstimate != "normal" {
+		t.Errorf("EffortEstimate = %q, want %q — the contract's documented default still applies", ticket.EffortEstimate, "normal")
+	}
+	if ticket.OriginalEffortEstimate != "huge" {
+		t.Errorf("OriginalEffortEstimate = %q, want %q — the warning has to name what was actually written",
+			ticket.OriginalEffortEstimate, "huge")
+	}
+	warningFound := false
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "effort_estimate") && strings.Contains(warningText, "huge") {
+			warningFound = true
+		}
+	}
+	if !warningFound {
+		t.Errorf("no effort_estimate warning naming the written value; warnings=%v", board.Warnings)
+	}
+}
+
+// TestRecognizedEffortEstimateRaisesNoWarning is the silence half: a case-folded
+// canonical value and an absent field must both stay quiet, and the absent field
+// must stay empty at the parse layer (board.js chips only on the literal
+// "trivial", so defaulting absence would be invisible today — the guard is what
+// keeps that true if the frontend gate ever loosens).
+func TestRecognizedEffortEstimateRaisesNoWarning(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	for _, fixture := range []struct {
+		fileName        string
+		requestId       string
+		frontmatterLine string
+	}{
+		{"REQ-0111-cased-effort.md", "REQ-0111", "effort_estimate: Trivial\n"},
+		{"REQ-0112-no-effort.md", "REQ-0112", ""},
+	} {
+		reqFileContent := "---\nid: " + fixture.requestId +
+			"\ntitle: Fixture\nstatus: pending\n" + fixture.frontmatterLine + "---\nbody\n"
+		if writeError := os.WriteFile(filepath.Join(queueDir, fixture.fileName), []byte(reqFileContent), 0o644); writeError != nil {
+			t.Fatalf("write fixture %s: %v", fixture.fileName, writeError)
+		}
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "effort_estimate") {
+			t.Errorf("unexpected effort_estimate warning for a recognized / absent value: %q", warningText)
+		}
+	}
+	casedTicket := board.RequestsById["REQ-0111"]
+	if casedTicket == nil {
+		t.Fatalf("REQ-0111 not parsed")
+	}
+	if casedTicket.EffortEstimate != "trivial" || casedTicket.EffortEstimateUnrecognized {
+		t.Errorf("cased ticket: EffortEstimate = %q, EffortEstimateUnrecognized = %v — want %q, false",
+			casedTicket.EffortEstimate, casedTicket.EffortEstimateUnrecognized, "trivial")
+	}
+	absentTicket := board.RequestsById["REQ-0112"]
+	if absentTicket == nil {
+		t.Fatalf("REQ-0112 not parsed")
+	}
+	if absentTicket.EffortEstimate != "" || absentTicket.EffortEstimateUnrecognized {
+		t.Errorf("absent-effort ticket: EffortEstimate = %q, EffortEstimateUnrecognized = %v — want empty, false",
+			absentTicket.EffortEstimate, absentTicket.EffortEstimateUnrecognized)
+	}
+}
+
+// TestEffortEstimateNeverAffectsColumnPlacement pins the display-only guarantee:
+// the chip is information for a human's pick, and a trivial REQ buckets exactly
+// like its unmarked twin.
+func TestEffortEstimateNeverAffectsColumnPlacement(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	plainPath := filepath.Join(temporaryDirectory, "REQ-572-plain.md")
+	trivialPath := filepath.Join(temporaryDirectory, "REQ-573-trivial.md")
+	if writeError := os.WriteFile(plainPath,
+		[]byte("---\nid: REQ-572\ntitle: Plain\nstatus: pending\n---\n\nBody.\n"), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	if writeError := os.WriteFile(trivialPath,
+		[]byte("---\nid: REQ-573\ntitle: Trivial twin\nstatus: pending\neffort_estimate: trivial\n---\n\nBody.\n"),
+		0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	plainTicket, parseError := parseRequestTicket(plainPath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	trivialTicket, parseError := parseRequestTicket(trivialPath, "queue")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if trivialTicket.Status != plainTicket.Status {
+		t.Fatalf("trivial ticket Status = %q, plain = %q — effort_estimate must not touch status, which is what buckets the card",
+			trivialTicket.Status, plainTicket.Status)
 	}
 }
 

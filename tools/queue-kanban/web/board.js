@@ -576,6 +576,18 @@
         "reorders, blocks, or hides on this.";
       badges.appendChild(assignedBadge);
     }
+    if (request.effortEstimate === "trivial") {
+      // The triage bit from the review gate: this REQ is a small mechanical fix,
+      // not real work. Only `trivial` chips — `normal` is the default and would
+      // chip every card into noise. Display only: the board never buckets,
+      // orders, or schedules on it; it exists so the user can tell at a glance
+      // which queued follow-ups are cheap to approve or batch.
+      var effortEstimateBadge = makeBadge("badge-effort-estimate", null, "trivial");
+      effortEstimateBadge.title =
+        "effort_estimate: trivial — a small mechanical fix, stamped by the review gate " +
+        "(or capture). Display only: the board never reorders, blocks, or hides on this.";
+      badges.appendChild(effortEstimateBadge);
+    }
     if (request.completionAnomaly) {
       // Broken completion bookkeeping (flagged by the Go side) — mark the card
       // wherever it renders, not just inside the anomalies strip.
@@ -1788,6 +1800,9 @@
     }
     if (request.route) {
       appendMetaRow("Route", request.route);
+    }
+    if (request.effortEstimate) {
+      appendMetaRow("Effort estimate", request.effortEstimate);
     }
     if (request.createdAt) {
       appendMetaRow("Created", makeInstantWithRelativeNode(request.createdAt) || request.createdAt);

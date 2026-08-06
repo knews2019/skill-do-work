@@ -1,16 +1,16 @@
 ---
-id: REQ-123
+id: REQ-126
 title: Cascade depth stop — generation-≥2 review follow-ups reroute to pending-answers
 status: pending
 created_at: 2026-08-06T15:48:11Z
-user_request: UR-026
+user_request: UR-027
 domain: general
 prime_files: []
 tdd: false
 suggested_spec:
-depends_on: [REQ-122]
+depends_on: [REQ-125]
 maintenance: true
-related: [REQ-122, REQ-124]
+related: [REQ-125, REQ-127]
 batch: follow-up-runaway-fix
 write_set: [actions/review-work.md, actions/work.md, actions/work-reference.md, actions/clarify.md]
 ---
@@ -19,7 +19,7 @@ write_set: [actions/review-work.md, actions/work.md, actions/work-reference.md, 
 
 ## What
 
-A REQ carrying `review_generated: true` is generation ≥2. Its own review still records every Important finding as a follow-up REQ — but creates non-critical ones with `status: pending-answers` instead of `status: pending`, so they are visible on the board (with their `effort_estimate` chip from REQ-122) and surfaced via `do-work clarify`, yet cannot be autonomously worked without the user's yes. The depth cap stops autonomous propagation, not record-keeping.
+A REQ carrying `review_generated: true` is generation ≥2. Its own review still records every Important finding as a follow-up REQ — but creates non-critical ones with `status: pending-answers` instead of `status: pending`, so they are visible on the board (with their `effort_estimate` chip from REQ-125) and surfaced via `do-work clarify`, yet cannot be autonomously worked without the user's yes. The depth cap stops autonomous propagation, not record-keeping.
 
 ## AI Execution State (P-A-U Loop)
 - [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
@@ -33,25 +33,25 @@ The UR-489 chain (1305 → 1307 → … → 1321, sixteen REQs over two days) gr
 ## Detailed Requirements
 
 - **Generation test:** the reviewed REQ has `review_generated: true` in frontmatter. Marker-only — never inferred from descriptions (same posture as the `maintenance` marker). The marker already exists in `actions/review-work.md` Step 10's template; no schema change needed.
-- **Reroute:** in that case, follow-up REQs for Important findings are created with `status: pending-answers` plus an `## Open Questions` entry (consent checkbox in the style of the Discovered Tasks `pending-answers` flow: recommended "Yes, add to queue", also "No, discard"). They carry `effort_estimate` and the recorded `gate:` token per REQ-122, plus the usual `user_request` / `addendum_to` / `domain` / `review_generated: true` fields.
+- **Reroute:** in that case, follow-up REQs for Important findings are created with `status: pending-answers` plus an `## Open Questions` entry (consent checkbox in the style of the Discovered Tasks `pending-answers` flow: recommended "Yes, add to queue", also "No, discard"). They carry `effort_estimate` and the recorded `gate:` token per REQ-125, plus the usual `user_request` / `addendum_to` / `domain` / `review_generated: true` fields.
 - **The consent question MUST contain the exact discriminator phrase `Should I process this as a new task?` with `Recommended: Yes, add to queue`** — `actions/clarify.md` (:104, :157, "Approved Discovered Task") keys its flip-to-`pending` on that literal wording; any equally valid rewording routes an approved follow-up down the "Confirmed Builder Decision" path, which marks it `completed` and archives it without ever building it (Codex P1 finding on PR #137). Either reuse the exact phrase (preferred — zero clarify change, delete-before-add) or, if the builder generalizes clarify's discriminator to a durable marker instead, `actions/clarify.md` is in the write_set for exactly that edit and both texts must move in the same commit.
 - **Critical pierce:** a critical-grade finding — security vulnerability, data-loss risk, broken functionality in production paths, same rubric as `actions/work-reference.md` → Discovered Tasks Classification — creates `status: pending` at ANY depth, auto-queued with a prominent report line, mirroring the existing `[critical]` auto-queue exemption. User confirmed: "categorization of critical is definitely useful."
 - **Failure-path exemption:** Step 8 Failure Classification follow-ups remain allowed at any depth — a failed generation-≥2 REQ still gets its Intent/Spec/Code follow-up, else failed work dies silently with no successor.
 - **Step 8 Discovered Tasks from generation-≥2 REQs:** unchanged — `[normal]`/`[low]` are already human-gated via `pending-answers`, `[critical]` already auto-queues; both are consistent with this rule. Verify the text reads coherently side-by-side rather than duplicating logic.
-- **Fixed point, stated explicitly in the shipped text:** sweep REQs (REQ-124) created by a generation-1 review carry `review_generated: true`, so their own reviews fall under this rule — the cascade converges at depth 2 by construction. Say it so nobody "fixes" it later.
-- **Sweep appends are not new REQs:** appending an instance to an existing `status: pending` sweep (REQ-124's append contract) remains allowed at any generation — the reroute governs REQ *creation* only.
-- **Sites:** `actions/work.md` Step 7 (~:495, ~:501, ~:505 — the same restatements REQ-122 touches; coordinate wording), `actions/review-work.md` Step 10 (~:335 creation rules), and a pointer in `actions/work-reference.md` where Discovered Tasks Classification / Failure Classification are defined. Re-grep line numbers.
+- **Fixed point, stated explicitly in the shipped text:** sweep REQs (REQ-127) created by a generation-1 review carry `review_generated: true`, so their own reviews fall under this rule — the cascade converges at depth 2 by construction. Say it so nobody "fixes" it later.
+- **Sweep appends are not new REQs:** appending an instance to an existing `status: pending` sweep (REQ-127's append contract) remains allowed at any generation — the reroute governs REQ *creation* only.
+- **Sites:** `actions/work.md` Step 7 (~:495, ~:501, ~:505 — the same restatements REQ-125 touches; coordinate wording), `actions/review-work.md` Step 10 (~:335 creation rules), and a pointer in `actions/work-reference.md` where Discovered Tasks Classification / Failure Classification are defined. Re-grep line numbers.
 - When authoring the `pending-answers` Open Questions text, honor the existing rule at `actions/work.md` ~:559: load `crew-members/clear-questions.md` and write for a cold reader.
 
 ## Constraints
 
-- Nothing becomes report-only. Every finding lands as a REQ (or, after REQ-124, a sweep checklist item).
+- Nothing becomes report-only. Every finding lands as a REQ (or, after REQ-127, a sweep checklist item).
 - Do not add a numeric generation counter — `review_generated: true` is the entire depth test. Depth 2 is where autonomy stops; the marker's presence is sufficient.
-- Inline fixes remain out of scope (deferred by user decision — UR-026 decision record).
+- Inline fixes remain out of scope (deferred by user decision — UR-027 decision record).
 
 ## Dependencies
 
-Depends on REQ-122 — the rerouted follow-ups must carry the `effort_estimate` label and gate token that REQ-122 introduces.
+Depends on REQ-125 — the rerouted follow-ups must carry the `effort_estimate` label and gate token that REQ-125 introduces.
 
 ## Builder Guidance
 
@@ -66,7 +66,7 @@ Certainty: Firm. The `pending-answers` reroute (instead of the originally propos
 
 ## Full Context
 
-See `do-work/user-requests/UR-026/input.md` for complete verbatim input and the decision record.
+See `do-work/user-requests/UR-027/input.md` for complete verbatim input and the decision record.
 
 ---
 *Source: "do-work capture-request Ship priorities 1 through 3" — priority 2 of the agreed design*

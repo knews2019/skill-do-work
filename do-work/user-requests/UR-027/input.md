@@ -1,8 +1,8 @@
 ---
-id: UR-026
+id: UR-027
 title: Stop the trivial follow-up REQ runaway — gate, effort label, cascade reroute, sweep consolidation
 created_at: 2026-08-06T15:48:11Z
-requests: [REQ-122, REQ-123, REQ-124]
+requests: [REQ-125, REQ-126, REQ-127]
 word_count: 5
 ---
 
@@ -18,9 +18,9 @@ Guiding principle, stated by the user: keep "see something, say something" — n
 
 | REQ | Title | Depends on |
 |---|---|---|
-| REQ-122 | Disposition gate + `effort_estimate` label + board chip | — |
-| REQ-123 | Cascade depth stop: generation-≥2 follow-ups reroute to `pending-answers` | REQ-122 |
-| REQ-124 | Sweep-REQ consolidation for same-root-cause findings | REQ-122 |
+| REQ-125 | Disposition gate + `effort_estimate` label + board chip | — |
+| REQ-126 | Cascade depth stop: generation-≥2 follow-ups reroute to `pending-answers` | REQ-125 |
+| REQ-127 | Sweep-REQ consolidation for same-root-cause findings | REQ-125 |
 
 ## Batch Constraints
 
