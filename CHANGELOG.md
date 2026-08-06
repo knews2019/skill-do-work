@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.176.5 — An Off-Vocabulary Route Warns Like a Bad Domain Does (2026-08-06)
+
+0.176.2 taught the board to normalize `route` and 0.176.3 gave `domain` a warning when its value is off-vocabulary. `route` got the first and not the second, so `route: z` displayed as `Z` with no footprint — the exact silence 0.176.3 removed, one field over. An external review caught the asymmetry.
+
+- `route: z` still shows as `Z` and now raises the contract's warning; blanking it was never an option, since route has no documented default and an absent route would then look identical
+- The two contract fields the board reads share one collector now, so the warning's wording still lives in exactly one function
+- A lowercase `a` and an absent route both stay silent, each with its own test
+
 ## 0.176.4 — Reading a Timestamp With --normalize Stops Warning About It (2026-08-06)
 
 `frontmatter get … created_at --normalize` printed a warning calling the timestamp "not recognized" on every single call — and the contract it cited says the opposite: a field with no canonical vocabulary is *outside* the contract and read verbatim. Now it's a clean no-op for those fields.

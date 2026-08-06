@@ -938,6 +938,103 @@ func TestUnrecognizedDomainFlagsAndWarns(t *testing.T) {
 	}
 }
 
+// TestUnrecognizedRouteFlagsAndWarns is REQ-119's stated RED case, and it closes
+// the asymmetry REQ-116 and REQ-117 left between two fields of the same class:
+// REQ-116 taught the board to normalize `route` before REQ-117 established the
+// warning channel, so `domain: quantum` warned while `route: z` passed in silence.
+//
+// The resolved value deliberately stays `Z` rather than being defaulted — route's
+// documented default is the empty string, so substituting it would make an
+// unrecognized letter indistinguishable from an absent field and destroy the
+// evidence a re-triage reads. The footprint is what was missing, not the value.
+func TestUnrecognizedRouteFlagsAndWarns(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	reqFileContent := "---\nid: REQ-0106\ntitle: Fixture\nstatus: pending\nroute: z\n---\nbody\n"
+	if writeError := os.WriteFile(filepath.Join(queueDir, "REQ-0106-bad-route.md"), []byte(reqFileContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	ticket := board.RequestsById["REQ-0106"]
+	if ticket == nil {
+		t.Fatalf("REQ-0106 not parsed")
+	}
+	if !ticket.RouteUnrecognized {
+		t.Errorf("RouteUnrecognized = false, want true")
+	}
+	if ticket.Route != "Z" {
+		t.Errorf("Route = %q, want %q — an unrecognized route is reported case-folded, never blanked or defaulted",
+			ticket.Route, "Z")
+	}
+	warningFound := false
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "route") && strings.Contains(warningText, "z") {
+			warningFound = true
+		}
+	}
+	if !warningFound {
+		t.Errorf("no route warning naming the written value; warnings=%v", board.Warnings)
+	}
+}
+
+// TestRecognizedRouteRaisesNoWarning is route's silence half — the alias case
+// (`a` → `A`) and the absent case must both stay quiet, for the same reason the
+// domain equivalent does.
+func TestRecognizedRouteRaisesNoWarning(t *testing.T) {
+	repoRoot := t.TempDir()
+	queueDir := filepath.Join(repoRoot, "do-work", "queue")
+	if mkdirError := os.MkdirAll(queueDir, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	for _, fixture := range []struct {
+		fileName        string
+		requestId       string
+		frontmatterLine string
+	}{
+		{"REQ-0107-lowercase-route.md", "REQ-0107", "route: a\n"},
+		{"REQ-0108-no-route.md", "REQ-0108", ""},
+	} {
+		reqFileContent := "---\nid: " + fixture.requestId +
+			"\ntitle: Fixture\nstatus: pending\n" + fixture.frontmatterLine + "---\nbody\n"
+		if writeError := os.WriteFile(filepath.Join(queueDir, fixture.fileName), []byte(reqFileContent), 0o644); writeError != nil {
+			t.Fatalf("write fixture %s: %v", fixture.fileName, writeError)
+		}
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "route") {
+			t.Errorf("unexpected route warning for a recognized alias / absent field: %q", warningText)
+		}
+	}
+	aliasTicket := board.RequestsById["REQ-0107"]
+	if aliasTicket == nil {
+		t.Fatalf("REQ-0107 not parsed")
+	}
+	if aliasTicket.Route != "A" || aliasTicket.RouteUnrecognized {
+		t.Errorf("alias ticket: Route = %q, RouteUnrecognized = %v — want %q, false",
+			aliasTicket.Route, aliasTicket.RouteUnrecognized, "A")
+	}
+	absentTicket := board.RequestsById["REQ-0108"]
+	if absentTicket == nil {
+		t.Fatalf("REQ-0108 not parsed")
+	}
+	if absentTicket.Route != "" || absentTicket.RouteUnrecognized {
+		t.Errorf("absent-route ticket: Route = %q, RouteUnrecognized = %v — want empty, false",
+			absentTicket.Route, absentTicket.RouteUnrecognized)
+	}
+}
+
 // TestRecognizedDomainRaisesNoWarning is the other half, and the one that keeps
 // the channel worth reading: a documented alias must resolve in silence. If every
 // `domain: back-end` also warned, the warnings list would fill with noise on a

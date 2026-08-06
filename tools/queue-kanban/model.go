@@ -54,11 +54,15 @@ type RequestTicket struct {
 	Status         string // normalized status (complete/done/finished/closed → completed)
 	OriginalStatus string // verbatim frontmatter status before normalization
 	OriginalDomain string // verbatim frontmatter domain before normalization ("" when absent)
-	// Set when a PRESENT domain value survives normalization outside the canonical
-	// enum. The ticket keeps rendering with the contract's default (`general`) and
-	// collectDomainWarnings raises the matching data warning — the value defaults,
-	// the footprint does not (Schema Read Contract item 3, "Never silently drop").
+	OriginalRoute  string // verbatim frontmatter route before normalization ("" when absent)
+	// Set when a PRESENT domain/route value survives normalization outside the
+	// canonical enum. Each ticket keeps rendering — domain with the contract's
+	// default (`general`), route with the case-folded input, since route has no
+	// documented default — and collectSchemaFieldWarnings raises the matching data
+	// warning. The value resolves; the footprint is not optional (Schema Read
+	// Contract item 3, "Never silently drop").
 	DomainUnrecognized bool
+	RouteUnrecognized  bool
 
 	// Set by bucketColumns when the normalized status falls outside the Schema
 	// Read Contract vocabulary (actions/work-reference.md). The ticket is parked
@@ -394,7 +398,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	annotateWriteSetOverlap(board.AllRequests)
 
 	board.Warnings = append(board.Warnings, collectTestingWarnings(board.AllRequests)...)
-	board.Warnings = append(board.Warnings, collectDomainWarnings(board.AllRequests)...)
+	board.Warnings = append(board.Warnings, collectSchemaFieldWarnings(board.AllRequests)...)
 	board.Calendar = buildCalendar(board.AllRequests)
 	board.Notes = loadQueueNotes(discovered.NotesFilePath)
 	board.TestingProfiles = loadTestingProfiles(discovered.TestersFilePath)
@@ -648,9 +652,12 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 	// the empty string ("treat as needing re-triage"), so resolving would turn an
 	// unrecognized letter into absence and destroy the evidence re-triage reads.
 	// Case-folding without substituting is exactly what this function does.
+	originalRoute := coerceScalarToString(fields["route"])
 	normalizedRoute := ""
-	if rawRoute := coerceScalarToString(fields["route"]); strings.TrimSpace(rawRoute) != "" {
-		normalizedRoute = normalizeSchemaField("route", rawRoute)
+	routeUnrecognized := false
+	if strings.TrimSpace(originalRoute) != "" {
+		normalizedRoute = normalizeSchemaField("route", originalRoute)
+		routeUnrecognized = !isKnownSchemaFieldValue("route", normalizedRoute)
 	}
 
 	ticket := &RequestTicket{
@@ -682,6 +689,8 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		WriteSet:                  coerceToStringList(fields["write_set"]),
 		AssignedTo:                coerceScalarToString(fields["assigned_to"]),
 		Route:                     normalizedRoute,
+		OriginalRoute:             originalRoute,
+		RouteUnrecognized:         routeUnrecognized,
 		Batch:                     coerceScalarToString(fields["batch"]),
 		FrontmatterMarkdown:       frontmatterMarkdown,
 		BodyMarkdown:              bodyText,
@@ -1022,21 +1031,35 @@ func resolveSchemaField(fieldName string, rawValue string) (string, bool) {
 	return fieldContract.defaultValue, false
 }
 
-// collectDomainWarnings emits one warning per ticket whose domain is present but
-// outside the canonical enum — the never-silently-drop leg of the contract, and a
-// direct mirror of collectTestingWarnings (testing.go) for the sibling field. The
-// ticket keeps rendering with the contract's default; the warning is the feedback
-// channel, and it is reused rather than re-worded because schemaFieldWarningText
-// is where the contract's exact phrasing lives.
-func collectDomainWarnings(tickets []*RequestTicket) []string {
-	var domainWarnings []string
+// collectSchemaFieldWarnings emits one warning per ticket per contract field whose
+// value is present but outside the canonical enum — the never-silently-drop leg of
+// the contract, and the same shape collectTestingWarnings (testing.go) holds for
+// testing_status. The wording always comes from schemaFieldWarningText so the
+// contract's exact phrasing lives in one place; that is also why this is one
+// collector over both fields rather than one function per field, which is how the
+// second hand-typed copy of a warning gets introduced.
+//
+// Adding a field here means adding its unrecognized flag and Original* value at
+// the read site; the two halves are useless apart.
+func collectSchemaFieldWarnings(tickets []*RequestTicket) []string {
+	var schemaFieldWarnings []string
 	for _, ticket := range tickets {
-		if ticket.DomainUnrecognized {
-			domainWarnings = append(domainWarnings, fmt.Sprintf("%s %s",
-				ticket.RequestId, schemaFieldWarningText("domain", ticket.OriginalDomain)))
+		for _, unrecognizedField := range []struct {
+			fieldName      string
+			isUnrecognized bool
+			originalValue  string
+		}{
+			{"domain", ticket.DomainUnrecognized, ticket.OriginalDomain},
+			{"route", ticket.RouteUnrecognized, ticket.OriginalRoute},
+		} {
+			if unrecognizedField.isUnrecognized {
+				schemaFieldWarnings = append(schemaFieldWarnings, fmt.Sprintf("%s %s",
+					ticket.RequestId,
+					schemaFieldWarningText(unrecognizedField.fieldName, unrecognizedField.originalValue)))
+			}
 		}
 	}
-	return domainWarnings
+	return schemaFieldWarnings
 }
 
 // schemaFieldWarningText renders the Schema Read Contract's own warning line for
