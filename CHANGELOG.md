@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.176.6 — Shipped Comments Stop Pointing at a File Consumers Don't Have (2026-08-06)
+
+Four comments in the shipped board tool cited this repo's maintainer doc, which is export-ignored — so the pointer dangles in every consumer install. The repo already has a check for exactly this; it had been failing, partly since 0.175.0, hidden in the same output as seven unrelated runner-dependent failures.
+
+- Each rule is restated instead of dropped: two now point at `actions/board.md` and `actions/work-reference.md`, which ship; two state the obligation directly, having no shipped home to cite
+- The board prime's route lesson keeps its content and gains the actionable half — a field joins the display-parsed list the moment the board starts parsing it
+- The check's per-file allowlist was deliberately not widened: it exists for mentions of a *consumer's* CLAUDE.md, so using it here would have silenced the probe rather than satisfied it
+- No behaviour change; the contract-regression suite is back to its true baseline
+
 ## 0.176.5 — An Off-Vocabulary Route Warns Like a Bad Domain Does (2026-08-06)
 
 0.176.2 taught the board to normalize `route` and 0.176.3 gave `domain` a warning when its value is off-vocabulary. `route` got the first and not the second, so `route: z` displayed as `Z` with no footprint — the exact silence 0.176.3 removed, one field over. An external review caught the asymmetry.

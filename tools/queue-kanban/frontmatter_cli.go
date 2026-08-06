@@ -22,17 +22,20 @@ import (
 // `completed-with-issues`.
 //
 // THE FLOOR STILL WINS. This is an accelerator in the same class as `next-req`,
-// `next-version`, and `now` (CLAUDE.md → Shipped Tooling, "Toolchain exception
-// to design for the floor"): an action may name it as the PREFERRED source for
+// `next-version`, and `now`: an action may name it as the PREFERRED source for
 // something it can already obtain with shell primitives, gated on the binary
 // being already built, with the prose procedure documented as the fallback.
 // Nothing may build the tool to read a field, and no action may lose its floor
-// path — do-work board is the only capability allowed to *need* a compiler.
+// path — `do-work board` is the only capability allowed to *need* a compiler,
+// which is why `actions/board.md` precondition-checks `go` and degrades instead
+// of blocking. `actions/work-reference.md` → Timestamp rule states the same
+// already-built-and-falls-back shape for `now`.
 //
-// READ-ONLY, deliberately. The tool has exactly two write surfaces (the board's
-// Testing view and `next-version`), and CLAUDE.md requires that sentence to be
-// amended in the same commit as any third. This command adds none: there is no
-// `set` verb, and adding one is out of scope rather than merely unimplemented.
+// READ-ONLY, deliberately. The tool has exactly two write surfaces — the board's
+// Testing view and `next-version` — and a third may only be added by amending the
+// sentence that states the count, in the same commit. This command adds none:
+// there is no `set` verb, and adding one is out of scope rather than merely
+// unimplemented.
 
 // frontmatterFieldSets maps the --in-set names to the canonical status sets in
 // actions/work-reference.md's Schema Read Contract. Membership is delegated to

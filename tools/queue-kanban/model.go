@@ -980,8 +980,7 @@ func normalizeSchemaField(fieldName string, rawValue string) string {
 // read verbatim — no alias map, no case folding, and no warning.
 //
 // A lookup, never a hand-listed set of exempt names: the exempt set is "whatever
-// has no row", so enumerating it would go stale the moment the contract grows one
-// (CLAUDE.md → Closed Enumerations Go Stale).
+// has no row", so enumerating it would go stale the moment the contract grows one.
 func hasSchemaFieldContract(fieldName string) bool {
 	_, hasContract := schemaReadContractFields[fieldName]
 	return hasContract
