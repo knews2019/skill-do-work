@@ -39,26 +39,26 @@ type openWorkCounts struct {
 
 // countOpenWork derives the headline breakdown from the bucketed columns.
 func countOpenWork(board *Board) openWorkCounts {
-	counts := openWorkCounts{
+	openCounts := openWorkCounts{
 		Pending:             len(board.Columns.Pending),
 		PendingReady:        len(board.Columns.PendingReady),
 		PendingWaiting:      len(board.Columns.PendingWaiting),
 		Claimed:             len(board.Columns.Claimed),
 		NeedsInputOrBlocked: len(board.Columns.NeedsInputOrBlocked),
 	}
-	counts.OpenTotal = counts.Pending + counts.Claimed + counts.NeedsInputOrBlocked
-	return counts
+	openCounts.OpenTotal = openCounts.Pending + openCounts.Claimed + openCounts.NeedsInputOrBlocked
+	return openCounts
 }
 
 // writeOpenWorkDigest renders the whole digest. Split from the command wrapper
 // (which owns flag parsing and os.Exit) so the output shape is directly
 // assertable — the same split writeBoardSummary uses.
 func writeOpenWorkDigest(outputWriter io.Writer, board *Board) {
-	counts := countOpenWork(board)
+	openCounts := countOpenWork(board)
 
-	fmt.Fprintf(outputWriter, "queue-kanban open work: %d open %s\n", counts.OpenTotal, pluralizeRequestNoun(counts.OpenTotal))
+	fmt.Fprintf(outputWriter, "queue-kanban open work: %d open %s\n", openCounts.OpenTotal, pluralizeRequestNoun(openCounts.OpenTotal))
 	fmt.Fprintf(outputWriter, "  pending %d (%d ready, %d waiting) | claimed %d | needs-input/blocked %d\n",
-		counts.Pending, counts.PendingReady, counts.PendingWaiting, counts.Claimed, counts.NeedsInputOrBlocked)
+		openCounts.Pending, openCounts.PendingReady, openCounts.PendingWaiting, openCounts.Claimed, openCounts.NeedsInputOrBlocked)
 
 	writeClaimedSection(outputWriter, board.Columns.Claimed)
 	writeNeedsInputSection(outputWriter, board.Columns.NeedsInputOrBlocked)

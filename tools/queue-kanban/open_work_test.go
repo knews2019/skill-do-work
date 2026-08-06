@@ -20,7 +20,7 @@ func renderOpenWorkDigest(t *testing.T, board *Board) string {
 // Schema Read Contract instead of freezing today's fixture arithmetic.
 func TestOpenWorkCountsEveryNonTerminalTicketExactlyOnce(t *testing.T) {
 	board := syntheticBoard(t)
-	counts := countOpenWork(board)
+	openCounts := countOpenWork(board)
 
 	expectedOpenTotal := 0
 	for _, ticket := range board.AllRequests {
@@ -29,15 +29,15 @@ func TestOpenWorkCountsEveryNonTerminalTicketExactlyOnce(t *testing.T) {
 		}
 	}
 
-	if counts.OpenTotal != expectedOpenTotal {
-		t.Fatalf("open total = %d, want %d (the non-terminal tickets in the tree)", counts.OpenTotal, expectedOpenTotal)
+	if openCounts.OpenTotal != expectedOpenTotal {
+		t.Fatalf("open total = %d, want %d (the non-terminal tickets in the tree)", openCounts.OpenTotal, expectedOpenTotal)
 	}
-	if counts.Pending+counts.Claimed+counts.NeedsInputOrBlocked != counts.OpenTotal {
+	if openCounts.Pending+openCounts.Claimed+openCounts.NeedsInputOrBlocked != openCounts.OpenTotal {
 		t.Fatalf("bucket split %d+%d+%d does not sum to the open total %d",
-			counts.Pending, counts.Claimed, counts.NeedsInputOrBlocked, counts.OpenTotal)
+			openCounts.Pending, openCounts.Claimed, openCounts.NeedsInputOrBlocked, openCounts.OpenTotal)
 	}
-	if counts.PendingReady+counts.PendingWaiting != counts.Pending {
-		t.Fatalf("ready %d + waiting %d does not sum to pending %d", counts.PendingReady, counts.PendingWaiting, counts.Pending)
+	if openCounts.PendingReady+openCounts.PendingWaiting != openCounts.Pending {
+		t.Fatalf("ready %d + waiting %d does not sum to pending %d", openCounts.PendingReady, openCounts.PendingWaiting, openCounts.Pending)
 	}
 }
 

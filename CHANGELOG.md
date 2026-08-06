@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.176.1 — The Just-Kanban Install Verifies All Five Recipes (2026-08-06)
+
+`just-kanban`'s verify step checked two of its recipes and reported success for all of them. An absent recipe is not a syntax error, so `just --list` parsed happily over a partial append and the install claimed to have provided commands that weren't there.
+
+- Phase 3 now greps every recipe header and names the missing ones
+- Each pattern requires a space or colon after the name, so `run-kanban` can no longer be satisfied by `run-kanban-cli`
+
 ## 0.176.0 — Terminal Digest of What's In Flight (`just run-kanban-cli`) (2026-08-06)
 
 Opening a board tab is more than "what am I working on?" deserves. `just run-kanban-cli` answers it in one screen: how many REQs are open, every claimed REQ with its title, and every needs-input/blocked REQ with the status that parked it there.

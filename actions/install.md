@@ -410,7 +410,13 @@ JUSTFILE_PATH=""
 for justfile_candidate in justfile Justfile .justfile; do
   [ -f "$PROJECT_ROOT/$justfile_candidate" ] && { JUSTFILE_PATH="$PROJECT_ROOT/$justfile_candidate"; break; }
 done
-[ -n "$JUSTFILE_PATH" ] && grep -qE '^run-kanban[ :]' "$JUSTFILE_PATH" && grep -qE '^run-do-work-update[ :]' "$JUSTFILE_PATH" && echo "recipes: OK" || echo "recipes: FAILED"
+missing_recipes=""
+if [ -n "$JUSTFILE_PATH" ]; then
+  for installed_recipe_name in run-kanban run-kanban-cli kanban-static kanban-summary run-do-work-update; do
+    grep -qE "^${installed_recipe_name}[ :]" "$JUSTFILE_PATH" || missing_recipes="$missing_recipes $installed_recipe_name"
+  done
+fi
+if [ -n "$JUSTFILE_PATH" ] && [ -z "$missing_recipes" ]; then echo "recipes: OK"; else echo "recipes: FAILED — missing:${missing_recipes:- (no justfile found)}"; fi
 if command -v just >/dev/null; then
   just --justfile "$JUSTFILE_PATH" --list >/dev/null 2>&1 && echo "justfile parses: OK" || echo "justfile parses: FAILED"
 else
@@ -418,6 +424,8 @@ else
 fi
 command -v go >/dev/null && echo "go toolchain: OK" || echo "go toolchain: MISSING (the board needs Go to build — see tools/queue-kanban/go.mod)"
 ```
+
+All five recipe headers are checked, not just the first and last: an absent recipe is not a syntax error, so `just --list` parses happily over a partial append and the install would otherwise report success while a promised command does not exist. Each pattern requires a space or colon immediately after the name (`^run-kanban[ :]`) so it matches only its own header — a bare `^run-kanban` would also match `run-kanban-cli`, and a missing `run-kanban` would then be reported as present.
 
 Report "Installed successfully" only when `recipes: OK` and — whenever `just` is available to check — `justfile parses: OK` (a FAILED parse means the append corrupted the file: restore it and re-append). Missing `just` or `go` are **warnings, not failures**: the recipes are inert text until run, and `actions/board.md` already treats a missing Go toolchain as a graceful stop rather than a blocker.
 
@@ -694,7 +702,7 @@ Then stop.
 - [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty (skill-file targets: `ui-design`, `bowser`, `last30days`, `ideation-adhd`).
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
 - [ ] (last30days only) a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
-- [ ] (just-kanban only) the justfile gained exactly one appended block, `run-kanban` and `run-do-work-update` greps present, `just --list` parses when `just` is available, and no existing recipe was modified.
+- [ ] (just-kanban only) the justfile gained exactly one appended block, all five recipe-header greps present (`run-kanban`, `run-kanban-cli`, `kanban-static`, `kanban-summary`, `run-do-work-update` — a parse-clean justfile proves nothing about a recipe that is simply absent), `just --list` parses when `just` is available, and no existing recipe was modified.
 - [ ] (memory-module only) `memory/logs/`, a non-empty `working-memory.md`, and `usage-ledger.jsonl` exist; `git check-ignore` covers `memory/logs/`, `memory/usage-ledger.jsonl`, and `memory/.bootstrap-imported`, **and `git ls-files` returns nothing for those three paths** (ignored ≠ untracked), while the project's `.gitignore` is unmodified; `.claude/settings.json` parses and every pre-existing hook entry survived; the backup was removed on success.
 - [ ] The report names the destination path so the user can verify location.
 - [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the machine-local `.git/info/exclude` entry; for `just-kanban`, the project justfile; for `memory-module`, `<project-root>/memory/`, `.claude/settings.json`, and the machine-local `.git/info/exclude` entries).
