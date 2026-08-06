@@ -550,3 +550,185 @@ func TestGenerateInlinesWriteSetOverlapBadgeRenderPath(t *testing.T) {
 		}
 	}
 }
+
+// sliceBalancedBlockAfter returns the source text of the first brace-balanced
+// block that starts at or after anchorToken, including the anchor itself. It
+// brace-matches rather than scanning to a blank line so the slice stays exact
+// under reformatting; the blocks it is pointed at contain no braces inside
+// string literals, which is what makes the naive counter safe here.
+func sliceBalancedBlockAfter(t *testing.T, sourceText string, anchorToken string) string {
+	t.Helper()
+	anchorIndex := strings.Index(sourceText, anchorToken)
+	if anchorIndex == -1 {
+		t.Fatalf("anchor %q not found in the generated page", anchorToken)
+	}
+	braceDepth := 0
+	sawOpeningBrace := false
+	for scanOffset := anchorIndex; scanOffset < len(sourceText); scanOffset++ {
+		switch sourceText[scanOffset] {
+		case '{':
+			braceDepth++
+			sawOpeningBrace = true
+		case '}':
+			braceDepth--
+			if sawOpeningBrace && braceDepth == 0 {
+				return sourceText[anchorIndex : scanOffset+1]
+			}
+		}
+	}
+	t.Fatalf("no brace-balanced block found after anchor %q", anchorToken)
+	return ""
+}
+
+// TestByUserRequestLensCountsRecentlyDoneAsActive pins the widened Active rule
+// for the by-UR lens. The old predicate (userRequestIsActive) passed only for a
+// UR holding a non-terminal REQ, so on a fully-shipped queue — every REQ
+// completed / completed-with-issues / cancelled — it was unsatisfiable and the
+// lens rendered nothing while the Columns lens showed those same REQs as
+// recently done.
+//
+// Both the definition AND the call site are asserted: a half-finished rename
+// would leave the lens filtering on the old rule, and that has no symptom at all
+// until the queue next hits zero, which is exactly when nobody is testing.
+func TestByUserRequestLensCountsRecentlyDoneAsActive(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	// The superseded predicate must be gone entirely, not merely unused.
+	if strings.Contains(indexHtml, "userRequestIsActive") {
+		t.Fatalf("superseded predicate userRequestIsActive is still present in the inlined board.js")
+	}
+
+	for _, requiredToken := range []string{
+		// The definition.
+		"function userRequestHasOpenOrRecentWork(",
+		// The call site inside the lens gate.
+		"userRequestHasOpenOrRecentWork(userRequest, recentlyDoneIdSet)",
+		// The set is built from the shared recentlyDoneIds() so the two lenses
+		// can never disagree about what "recent" means.
+		"recentlyDoneIds(viewState.windowHours)",
+	} {
+		if !strings.Contains(indexHtml, requiredToken) {
+			t.Fatalf("widened by-UR Active rule is missing from the inlined board.js: %q not found", requiredToken)
+		}
+	}
+
+	// The id set must be built once per render, in renderUserRequestLens — not
+	// once per UR inside the predicate, which would rescan the calendar 390 times
+	// on a real tree.
+	lensSource := sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens(")
+	if !strings.Contains(lensSource, "recentlyDoneIds(viewState.windowHours)") {
+		t.Fatalf("renderUserRequestLens does not build the recently-done id set; the window cannot reach the lens")
+	}
+}
+
+// TestRecentlyDoneWindowHandlerRefreshesUserRequestLens pins that the RECENTLY
+// DONE chips drive the by-UR lens too. The handler used to hardcode
+// renderColumns() and never invalidate renderedOnce.userRequestLens, so the
+// chips were a dead knob in that lens: visible, repainting hidden columns, and
+// changing nothing on screen.
+//
+// The assertion slices the handler body rather than searching the whole page —
+// renderUserRequestLens appears elsewhere in board.js, so a page-wide
+// strings.Contains would pass on the buggy version and prove nothing.
+func TestRecentlyDoneWindowHandlerRefreshesUserRequestLens(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	handlerSource := sliceBalancedBlockAfter(t, indexHtml, `document.querySelectorAll("[data-window-hours]")`)
+
+	for _, requiredToken := range []string{
+		// The by-UR lens is re-rendered when it is the visible one...
+		"renderUserRequestLens()",
+		// ...and the cache is dropped so the hidden lens re-renders on switch-back.
+		"renderedOnce.userRequestLens = false",
+		// Columns stay refreshed — they have no renderedOnce guard, so nothing
+		// else would bring them up to date when the lens switches back.
+		"renderColumns()",
+	} {
+		if !strings.Contains(handlerSource, requiredToken) {
+			t.Fatalf("the [data-window-hours] handler does not reach the by-UR lens: %q missing from its body, which was:\n%s", requiredToken, handlerSource)
+		}
+	}
+}
+
+// TestByUserRequestLensEmptyStateNamesWindow pins the reworked empty/hidden
+// block. Two things were wrong: the empty branch early-returned before the
+// hidden-count note, so the reader was never told how many URs sat behind the
+// toggle in the one case where all of them did; and the copy hardcoded a "every
+// UR is fully resolved" claim that no longer describes the widened rule.
+func TestByUserRequestLensEmptyStateNamesWindow(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	// The superseded copy asserted a rule the lens no longer applies.
+	if strings.Contains(indexHtml, "every UR is fully resolved") {
+		t.Fatalf("stale by-UR empty-state copy is still present in the inlined board.js")
+	}
+
+	for _, requiredToken := range []string{
+		// The window phrase is derived, so the copy tracks the selected chip
+		// instead of baking in a span.
+		"function recentWindowPhrase(",
+		"recentWindowPhrase(viewState.windowHours)",
+		// Escape one: widen the window. Escape two: switch the scope to All.
+		"widen the RECENTLY DONE window",
+		"switch URs to All",
+		// The three empty branches.
+		"No user requests match the current filters.",
+		"No user requests with open work or activity in ",
+		"No user requests in this tree yet.",
+		// The hidden-count note now names the window rather than claiming the
+		// hidden URs are "fully resolved".
+		" with no open work or activity in ",
+	} {
+		if !strings.Contains(indexHtml, requiredToken) {
+			t.Fatalf("by-UR empty-state copy is missing from the inlined board.js: %q not found", requiredToken)
+		}
+	}
+
+	// The hidden note must be reachable from the empty branch: the old code
+	// returned before it. Pin the absence of that early return by requiring the
+	// note's guard to be a condition rather than dead code below a return.
+	lensSource := sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens(")
+	emptyBranchIndex := strings.Index(lensSource, "No user requests in this tree yet.")
+	hiddenNoteIndex := strings.Index(lensSource, " with no open work or activity in ")
+	if emptyBranchIndex == -1 || hiddenNoteIndex == -1 {
+		t.Fatalf("empty branch and hidden note are not both inside renderUserRequestLens")
+	}
+	if hiddenNoteIndex < emptyBranchIndex {
+		t.Fatalf("hidden-count note renders before the empty branch; it must render under it")
+	}
+	betweenBranchAndNote := lensSource[emptyBranchIndex:hiddenNoteIndex]
+	if strings.Contains(betweenBranchAndNote, "return;") {
+		t.Fatalf("an early return still separates the empty branch from the hidden-count note, making the note unreachable when every UR is hidden")
+	}
+}
+
+// TestUserRequestActivityToggleDocumentsWidenedRule pins the template half: the
+// Active chip must explain the widened rule on hover, because "Active" alone no
+// longer means what a reader would assume it means.
+func TestUserRequestActivityToggleDocumentsWidenedRule(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	if !strings.Contains(indexHtml, `data-ur-activity="active"`) {
+		t.Fatalf("the Active user-request scope button is missing from the generated page")
+	}
+	activeButtonSource := indexHtml[strings.Index(indexHtml, `data-ur-activity="active"`):]
+	if closingIndex := strings.Index(activeButtonSource, "</button>"); closingIndex != -1 {
+		activeButtonSource = activeButtonSource[:closingIndex]
+	}
+	if !strings.Contains(activeButtonSource, "title=") {
+		t.Fatalf("the Active scope button has no title explaining the widened rule: %s", activeButtonSource)
+	}
+	if !strings.Contains(activeButtonSource, "RECENTLY DONE window") {
+		t.Fatalf("the Active scope button's title does not mention the RECENTLY DONE window: %s", activeButtonSource)
+	}
+
+	// Two comments restated the old rule in prose — one above the template's
+	// control group, one on the filterState declaration in board.js. Renaming the
+	// predicate did not touch either, so a grep for the identifier missed them
+	// both; this substring is the phrasing they shared. Per the skill's
+	// closed-enumerations rule the fix was to point at the predicate as the
+	// canonical statement rather than to re-copy the widened rule a third time.
+	if strings.Contains(indexHtml, "whose REQs are all resolved") {
+		t.Fatalf("a stale prose restatement of the by-UR Active rule is still present in the generated page")
+	}
+}
