@@ -364,11 +364,35 @@
     return true;
   }
 
-  function userRequestIsActive(userRequest) {
+  // The by-UR lens's Active scope. "Active" is deliberately wider than "holds a
+  // non-terminal REQ": on a fully-shipped queue every REQ is terminal, so the
+  // narrow rule was unsatisfiable and the lens went blank while the Columns lens
+  // showed those same REQs under RECENTLY DONE. A UR therefore also counts as
+  // active when one of its REQs completed inside the current window.
+  //
+  // recentlyDoneIdSet is passed in rather than derived here: the caller builds it
+  // once per render from the shared recentlyDoneIds(), which both keeps this off
+  // the calendar-rescan path and guarantees the two lenses can never disagree
+  // about what "recent" means.
+  function userRequestHasOpenOrRecentWork(userRequest, recentlyDoneIdSet) {
     return (userRequest.requestIds || []).some(function (requestId) {
+      if (recentlyDoneIdSet[requestId]) {
+        return true;
+      }
       var request = requestsById[requestId];
       return request && !isTerminalResolvedStatus(request.status);
     });
+  }
+
+  // Reads the selected RECENTLY DONE chip back as prose for the lens's empty and
+  // hidden-count copy, so those lines track the chip instead of baking in a span.
+  // Days only from 7d up, matching how the chips themselves are labelled.
+  function recentWindowPhrase(windowHours) {
+    if (windowHours >= 168 && windowHours % 24 === 0) {
+      var windowDays = windowHours / 24;
+      return "the last " + windowDays + " day" + (windowDays === 1 ? "" : "s");
+    }
+    return "the last " + windowHours + " hour" + (windowHours === 1 ? "" : "s");
   }
 
   function populateFilterSelects() {
@@ -827,12 +851,22 @@
     host.textContent = "";
     var hiddenResolvedCount = 0;
 
+    // Built once per render, not once per UR: recentlyDoneIds walks the whole
+    // calendar, and a real tree has hundreds of URs to test against it.
+    var recentlyDoneIdSet = {};
+    recentlyDoneIds(viewState.windowHours).forEach(function (requestId) {
+      recentlyDoneIdSet[requestId] = true;
+    });
+
     (boardData.userRequestOrder || []).forEach(function (userRequestId) {
       var userRequest = userRequestsById[userRequestId];
       if (!userRequest) {
         return;
       }
-      if (filterState.userRequestActivity === "active" && !userRequestIsActive(userRequest)) {
+      if (
+        filterState.userRequestActivity === "active" &&
+        !userRequestHasOpenOrRecentWork(userRequest, recentlyDoneIdSet)
+      ) {
         hiddenResolvedCount += 1;
         return;
       }
@@ -881,21 +915,42 @@
       host.appendChild(group);
     });
 
-    if (host.childNodes.length === 0) {
-      var emptyText = hasActiveFilters()
-        ? "No user requests match the current filters."
-        : "No active user requests — every UR is fully resolved. Switch URs to All to browse the archive.";
+    var windowPhrase = recentWindowPhrase(viewState.windowHours);
+    var listIsEmpty = host.childNodes.length === 0;
+
+    if (listIsEmpty) {
+      // Three distinct reasons for an empty list, and the reader can only act on
+      // the right one: a filter matched nothing, the Active scope hid everything
+      // outside the window, or the tree genuinely has no URs. The middle branch
+      // names both escapes — widen the window, or drop the scope.
+      var emptyText;
+      if (hasActiveFilters()) {
+        emptyText = "No user requests match the current filters.";
+      } else if (hiddenResolvedCount > 0) {
+        emptyText =
+          "No user requests with open work or activity in " +
+          windowPhrase +
+          " — widen the RECENTLY DONE window, or switch URs to All to browse the archive.";
+      } else {
+        emptyText = "No user requests in this tree yet.";
+      }
       host.appendChild(createElement("p", "ur-lens-empty", emptyText));
-      return;
     }
-    if (hiddenResolvedCount > 0) {
+
+    // The note used to sit behind an early return, so it never fired in the one
+    // case it exists for: every UR hidden. It stays silent only when a filter —
+    // not the scope — emptied the list, where switching to All brings back
+    // nothing and the suggestion is a false lead.
+    if (hiddenResolvedCount > 0 && !(listIsEmpty && hasActiveFilters())) {
       host.appendChild(
         createElement(
           "p",
           "ur-lens-hidden-note",
           hiddenResolvedCount +
-            " fully resolved UR" +
+            " UR" +
             (hiddenResolvedCount === 1 ? "" : "s") +
+            " with no open work or activity in " +
+            windowPhrase +
             " hidden — switch URs to All to see them."
         )
       );
@@ -2054,7 +2109,15 @@
       button.addEventListener("click", function () {
         viewState.windowHours = parseInt(button.getAttribute("data-window-hours"), 10) || 24;
         setActiveButton("#recent-window-group", "data-window-hours", String(viewState.windowHours));
+        // The window now scopes both lenses. Columns have no renderedOnce guard,
+        // so they are refreshed unconditionally; the by-UR lens has one, so drop
+        // it and re-render only when it is the lens actually on screen.
         renderColumns();
+        renderedOnce.userRequestLens = false;
+        if (viewState.view === "board" && viewState.lens === "user-request") {
+          renderUserRequestLens();
+          renderedOnce.userRequestLens = true;
+        }
       });
     });
 
