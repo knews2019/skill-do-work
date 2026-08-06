@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.178.0 — The Secret-File Scan Is a Script, Not a Paragraph Twice (2026-08-06)
+
+`commit` and `inspect` each carried a word-for-word copy of the same uncommitted-changes scan, including the paragraph explaining why the `-uall` flag is load-bearing. Both are now one shipped script, and so is the REQ-association pass they also duplicated.
+
+- New `tools/checks/uncommitted-inventory.sh` — tags every uncommitted path M/A/D, and tags secret-shaped names `X` so they get reported without being read. Without `-uall`, a brand-new directory collapses to one `?? dir/` row and every file inside escapes the secret scan; that path is now closed by a tested script instead of a paragraph each caller had to get right
+- New `tools/checks/associate-files.sh` — matches paths against archived and in-flight REQs, honoring the `status` aliases from the Schema Read Contract. `commit`'s copy knew a `status: done` REQ must still associate; `inspect`'s copy didn't. That's the drift two copies produce, and it's fixed in one place now
+- Both callers keep their manual procedure as a documented fallback, and both scripts are pinned in the regression suite so a prose pointer at a missing script fails the build
+- Candidate B of REQ-114, split out and shipped as REQ-121. Candidates A and C stay queued, with their grep counts refreshed — the census figures had gone stale exactly as that REQ predicted
+
 ## 0.177.0 — `cms` Is a Recognized Domain (2026-08-06)
 
 Content-management work had nowhere to live in the domain vocabulary, so `domain: cms` normalized to `general` and warned on the board every time. It's now a first-class domain with its own crew rules.

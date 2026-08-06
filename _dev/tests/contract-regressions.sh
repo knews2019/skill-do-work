@@ -790,6 +790,10 @@ hardened_check_scripts=(
   "tools/checks/record-commit-hash.sh|actions/work.md"
   "tools/checks/blanked-req-scan.sh|actions/forensics.md"
   "tools/checks/blanked-req-scan.sh|actions/cleanup.md"
+  "tools/checks/uncommitted-inventory.sh|actions/commit.md"
+  "tools/checks/uncommitted-inventory.sh|actions/inspect.md"
+  "tools/checks/associate-files.sh|actions/commit.md"
+  "tools/checks/associate-files.sh|actions/inspect.md"
 )
 
 for check_script_entry in "${hardened_check_scripts[@]}"; do

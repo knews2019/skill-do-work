@@ -42,24 +42,24 @@ commit action
 
 ### Step 1: Preflight
 
-Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, report and exit.
+Run the shipped check:
 
-Run `git status --porcelain --untracked-files=all` to get all uncommitted changes — staged, unstaged, and untracked. The `--untracked-files=all` (`-uall`) flag matters: plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so Step 2 would never see (or would try to "read") the files inside a new untracked folder. With `-uall`, every untracked file is listed individually.
+```bash
+<skill-root>/tools/checks/uncommitted-inventory.sh
+```
 
-If the working tree is clean, report "Nothing to commit" and exit.
+It gates on `git rev-parse --git-dir`, enumerates every uncommitted path, and prints one `<tag>\t<path>` row per file:
 
-Categorize each file by its status:
-- **Modified** (M) — existing files with changes
-- **Added** (??, A) — new or untracked files
-- **Deleted** (D) — removed files
+- **M** — modified (a renamed path is tagged M too: read its diff, don't re-read it as new content)
+- **A** — added, covering both staged-new and untracked
+- **D** — deleted
+- **X** — excluded: a secret-shaped name (`.env*`, `*credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, `*secret*`)
 
-**Exclude dangerous files** from all subsequent steps:
-- `.env`, `.env.*` — environment variables
-- `credentials.*`, `*credentials*` — credential files
-- `*.pem`, `*.key`, `*.p12`, `*.pfx` — certificates and keys
-- `*.secret`, `*secret*` — secret files
+Exit 1 means the working tree is clean — report "Nothing to commit" and exit. Exit 2 means this is not a git repo — report and exit.
 
-If any files are excluded, collect them for the final report. Do not silently skip them — the user needs to know.
+**`X` rows are reported, never skipped silently.** Carry them into the final report so the user knows a secret-shaped file is sitting uncommitted; just never read or diff their contents, and never include them in a commit.
+
+If the script is missing, do it by hand: `git status --porcelain --untracked-files=all`, then categorize M/A/D and apply the four exclusion globs above. The `-uall` flag is not optional — plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so every file inside a brand-new folder escapes the exclusion scan. That is a secret-leak path, and `actions/stray-check.md`'s Red Flags record that it has been hit.
 
 ### Step 2: Read Changes
 
@@ -73,37 +73,26 @@ The goal is to understand each file well enough to group it with related changes
 
 ### Step 3: Associate with REQs
 
-Scan `do-work/archive/` for completed REQs that might own some of the uncommitted files:
+Feed the non-`X` paths from Step 1 into the shipped check:
 
-1. Glob for `do-work/archive/**/REQ-*.md` — find all archived REQs
-2. For each archived REQ:
-   - Read the frontmatter — check for `commit:` field and a terminal-success `status` (`completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set)
+```bash
+printf '%s\n' <paths> | <skill-root>/tools/checks/associate-files.sh
+```
 
-     **Preferred, when the board binary is already built** — it applies the Schema Read Contract's aliases before testing, so a `status: done` REQ is not silently skipped:
+It scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 2 means there is no `do-work/` directory; skip REQ tracing entirely and send every file to Step 4.
 
-     ```bash
-     <skill-root>/tools/queue-kanban/queue-kanban frontmatter get <req-file> status --in-set terminal-success
-     ```
+What the script settles, so this prose no longer has to:
 
-     Exit 0 means this REQ qualifies, 1 means it does not. **Never build the tool for this** — a compile per REQ is strictly worse than the floor below, and `actions/board.md` is the only capability allowed to need a compiler.
-
-     **The floor** (no binary, or `go` absent) — read the field yourself and accept **both** values:
-
-     ```bash
-     awk 'NR==1&&/^---/{i=1;next} i&&/^---/{exit} i&&/^status:/{print $2}' <req-file>
-     ```
-
-     Testing only for the literal `completed` is the bug in the Red Flags below: it drops every remediated-with-issues REQ, so its files never get associated.
-   - Read the `## Implementation Summary` section — extract the list of files created/modified
-3. Also check `do-work/working/` for in-flight REQs with file lists
-
-Match uncommitted files against these file lists by path. A file is associated with a REQ if it appears in that REQ's Implementation Summary (created, modified, or referenced).
-
-**Conflict resolution:** If a file matches multiple REQs, associate it with the most recently completed one (latest `completed_at` timestamp).
+- **Terminal-success matching honors the Schema Read Contract's aliases**, so `completed`, `completed-with-issues`, and `done`/`finished`/`closed` all qualify. Testing only for the literal `completed` is the bug in the Red Flags below — it drops every remediated-with-issues REQ, and its files then never get associated.
+- **In-flight `working/` REQs are included** regardless of status, since a claimed REQ is never terminal.
+- **Conflict resolution:** a path claimed by two REQs goes to the one with the latest `completed_at`. An archived REQ outranks an in-flight one.
+- **`do-work/` metadata paths are excluded** from association, matching `tools/checks/scope-drift.sh`.
 
 **Partial matches count.** If 3 out of 5 files in a REQ's Implementation Summary are among the uncommitted files, group all 3 under that REQ.
 
-Files that don't match any REQ remain unassociated and move to Step 4.
+Files that come back `-` remain unassociated and move to Step 4.
+
+If the script is missing, do it by hand: glob both directories, read each REQ's `status` (accepting every alias above) and `## Implementation Summary` list, path-match, and tie-break on the latest `completed_at`.
 
 ### Step 4: Group Unassociated Files
 

@@ -33,6 +33,8 @@ Every candidate below is described by **what to grep for**, not by line numbers.
 
 ### Candidate B — one uncommitted-changes inventory, one REQ-association pass
 
+> **Split out and approved as REQ-121 on 2026-08-06.** Kept here for the record; do not implement it under this REQ.
+
 **The primitive:** `git rev-parse --git-dir` gate, then `git status --porcelain --untracked-files=all`, then M/A/D categorization, then four secret-shaped exclusion globs (`.env*`, `credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, `*secret*`). Separately: glob archived REQs, read `commit:` and a terminal-success `status`, parse `## Implementation Summary` file lists, path-match, tie-break on latest `completed_at`.
 
 **Find every site:** `grep -rln "untracked-files=all" actions/` and `grep -rln "Implementation Summary" actions/ | xargs grep -ln "completed_at"`. At census time `commit.md` and `inspect.md` carried a near-verbatim copy of both halves, and `tidy-repo.md` and `validate-feedback.md` carried parts of the first.
@@ -81,6 +83,18 @@ The census's two durable findings are implemented (REQ-111, REQ-112). These thre
 Not applicable as written — this REQ carries three candidates rather than one behaviour change, and each will state its own proof when it is split out and approved. Recording that explicitly rather than inventing a proof target for work nobody has approved.
 
 **Validation:** User confirmed the *intent* (move the census's value into the queue); the candidate contents are restated from the audit, not separately confirmed.
+
+## Grep Refresh — 2026-08-06
+
+Re-ran all three greps per the Detailed Requirements. The census figures were stale, as predicted:
+
+| Candidate | Census | Now | Movement |
+|---|---|---|---|
+| A — merge-aware diff (`grep -rn "verify -q" actions/`) | 7 sites | **8 sites** | `actions/work.md` gained one; the other 7 hold (`present-work.md` ×3, `review-work.md`, `ai-report.md`, `pipeline.md`, `pipeline-reference.md`) |
+| B — inventory (`grep -rln "untracked-files=all" actions/`) | 4 files | **5 files** | `validate-feedback.md` dropped out; `stray-check.md` and `work.md` joined. `commit.md` + `inspect.md` still carry the word-for-word copy |
+| C — writer label (`grep -n "writer:" actions/work-reference.md`) | 1 site | **1 site** | Unchanged. The `hostname -s` derivation is at line 463; no second site anywhere in `actions/` |
+
+**One constraint is now cheaper than the REQ assumed.** `tools/checks/` already ships six scripts (`archive-collision.sh`, `blanked-req-scan.sh`, `preflight.sh`, `qualify.sh`, `record-commit-hash.sh`, `scope-drift.sh`) and `_dev/tests/contract-regressions.sh` already pins each to its calling action. So the `tools/checks/*.sh` shape is an established, floor-compatible pattern for all three candidates — no compiled-tooling exception is in play for any of them, and the floor decision the REQ reserves is settled in advance.
 
 ## Full Context
 
