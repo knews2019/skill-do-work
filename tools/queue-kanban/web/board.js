@@ -29,7 +29,8 @@
   };
 
   // Shared filters — applied to whichever view is active. userRequestActivity
-  // only affects the by-UR lens ("active" hides URs whose REQs are all resolved).
+  // only affects the by-UR lens; userRequestHasOpenOrRecentWork is the canonical
+  // statement of what "active" means there, so don't restate the rule here.
   // doneWindow only affects the testing view (its select is hidden elsewhere):
   // "" | hours-as-string ("24", "168", "720") | "old" (older than 30 days).
   var filterState = {

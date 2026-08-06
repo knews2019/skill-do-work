@@ -722,8 +722,13 @@ func TestUserRequestActivityToggleDocumentsWidenedRule(t *testing.T) {
 		t.Fatalf("the Active scope button's title does not mention the RECENTLY DONE window: %s", activeButtonSource)
 	}
 
-	// The comment above the group described the old rule.
-	if strings.Contains(indexHtml, "hide user requests whose REQs are all resolved") {
-		t.Fatalf("the stale by-UR scope comment is still present in the generated page")
+	// Two comments restated the old rule in prose — one above the template's
+	// control group, one on the filterState declaration in board.js. Renaming the
+	// predicate did not touch either, so a grep for the identifier missed them
+	// both; this substring is the phrasing they shared. Per the skill's
+	// closed-enumerations rule the fix was to point at the predicate as the
+	// canonical statement rather than to re-copy the widened rule a third time.
+	if strings.Contains(indexHtml, "whose REQs are all resolved") {
+		t.Fatalf("a stale prose restatement of the by-UR Active rule is still present in the generated page")
 	}
 }
