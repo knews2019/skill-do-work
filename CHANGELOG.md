@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.0 — Same-Root-Cause Review Findings Consolidate Into One Sweep REQ (2026-08-06)
+
+Fifteen facets of one root cause used to mean fifteen queued REQs to wade through. Findings
+that share a cause now land in a single sweep REQ with a checklist of instances — approve one
+decision, fix one class.
+
+- Reviews route trivial and same-root-cause findings into a `sweep: true` REQ named for the root cause, appending to the existing pending sweep for that UR when one exists (found by grep, never by judging titles)
+- Solving a sweep means the class cannot recur — the rule changes everywhere it applies, not N spots patched one at a time
+- Only a standalone user-visible finding still earns its own REQ, stating in one line why it couldn't fold into a sweep (`actions/review-work.md` Step 10)
+
 ## 0.182.0 — Review Cascades Stop at Depth Two Behind a Consent Gate (2026-08-06)
 
 Reviews of review-spawned REQs could mint fresh auto-worked REQs forever — the UR-489 chain

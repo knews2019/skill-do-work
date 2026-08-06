@@ -105,6 +105,7 @@ See `do-work/user-requests/UR-NNN/input.md` for complete verbatim input.
 - `batch: auth-system` — batch name grouping related requests
 - `addendum_to: REQ-005` — if this amends an in-flight/completed request
 - `write_set: [src/auth/session.ts, src/auth/*.test.ts]` — repo-relative paths/globs this REQ expects to write
+- `sweep: true` — a review-created consolidation sweep (one REQ per root cause with an `## Instances` checklist). Set by the review flow (`actions/review-work.md` Step 10 → Sweep consolidation), **not by capture** — listed here so the marker is recognized, never emitted by this action
 
 (`maintenance` is **not** complex-only — it lives in the base schema above. Step 1's *Maintenance assessment* is its authoritative home.)
 

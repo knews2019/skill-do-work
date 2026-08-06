@@ -341,7 +341,16 @@ Record the answer on the finding's line — in the report and in the appended `#
 
 **The gate routes; it never re-scores.** Severity (Important/Minor/Nit) is judged exactly as before — a finding can be genuinely Important ("the guard is blind to one color notation") while its disposition is `trivial` (the current state is realistically fine to ship). Do not resolve that tension by downgrading severity: severity measures the issue, the gate decides how its fix lands. Downgrading corrupts the severity axis the score bands read.
 
-For each **Important** finding, create a follow-up REQ, stamping `effort_estimate` from the gate token — `gate: trivial` → `effort_estimate: trivial`, `gate: user-visible`/`gate: rule-change` → `effort_estimate: normal` (the field is the board's triage chip; schema: `actions/work-reference.md` → Request File Schema):
+**Sweep consolidation — same root cause, one REQ, never one REQ per facet.** Before drafting any individual follow-up, route each gated finding:
+
+- **A `gate: trivial` finding, or any set of findings sharing one root cause, folds into a sweep REQ.** Find an existing sweep mechanically — `grep -rl "^sweep: true" do-work/queue/`, filtered to files whose `user_request:` matches this REQ's UR and whose `status:` is `pending` — never by judging title similarity (two reviews judging differently mint duplicate sweeps, recreating the runaway at half scale).
+- **Append when one exists:** add one checklist line per instance under the sweep's `## Instances` section — `- [ ] [file/site]: [instance]`. The append never touches the sweep's frontmatter. Never append to a claimed or working sweep — create a new one instead.
+- **Otherwise create ONE sweep REQ named for the ROOT CAUSE** (e.g. "tokenize all remaining hardcoded colors and make the guard catch every notation"), with the normal follow-up fields below plus `sweep: true` and an `## Instances` checklist; `effort_estimate: normal` when solving it establishes or changes a multi-site rule (`gate: rule-change`), `trivial` otherwise.
+- **Done means the class cannot recur** — the rule is changed everywhere it applies, not N spots patched one drop at a time. State that in the sweep's What section.
+- **Only a genuinely non-trivial, thematically unrelated finding (`gate: user-visible`, standing alone) earns its own REQ** — and its body must state in one line why it couldn't fold into a sweep.
+- At generation ≥ 2, appends stay allowed (the depth stop below is creation-only); a NEW sweep falls under the reroute like any other creation (`status: pending-answers`; critical pierces).
+
+For each finding that routes to its own REQ (and for each new sweep), create the follow-up, stamping `effort_estimate` from the gate token — `gate: trivial` → `effort_estimate: trivial`, `gate: user-visible`/`gate: rule-change` → `effort_estimate: normal` (the field is the board's triage chip; schema: `actions/work-reference.md` → Request File Schema):
 
 ```markdown
 ---
