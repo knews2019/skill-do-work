@@ -8,6 +8,56 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.2 — The Effort Chip Shows What Was Declared, Not Just What It Resolved To (2026-08-06)
+
+0.180.1 taught the board's domain and route badges to carry raw provenance — what the REQ
+actually declared, flagged when it isn't recognized. The effort chip that landed in parallel
+now does the same, so a typo'd value can't be the one field that leaves no mark on the card.
+
+- `effort_estimate` carries `originalEffortEstimate` and its unrecognized flag through to the board, matching how domain and route report themselves
+- An unrecognized value now chips as `normal` with an `invalid` flag instead of rendering nothing — the resolved value alone would have hidden the typo everywhere except the warnings banner
+- The drawer's Effort estimate row uses the shared declared-vs-normalized renderer
+
+## 0.183.1 — Sweep Lookup, Gate Audit Trail, and Append Staging Hardened (2026-08-06)
+
+Codex's review of the 0.181–0.183 set found four gaps between the new contracts and the
+machinery around them — all closed before first real use.
+
+- Sweep REQs carry a `sweep_key` root-cause slug, and the lookup matches on root cause (key first, then the What-section rule statement) instead of "append when one exists" — two unrelated sweeps under one UR can no longer swallow each other's instances
+- The lookup also accepts `pending-answers` sweeps, so a generation-≥2 sweep awaiting clarify can't be duplicated by the next review
+- The archived `## Review` template now persists each Important finding's `gate:` token and destination — the durable audit record the gate mandates, not just counts
+- Both commit recipes (standalone review and pipeline Step 9) stage existing sweep REQs that were appended to, closing the path where new `## Instances` lines silently stayed uncommitted
+
+## 0.183.0 — Same-Root-Cause Review Findings Consolidate Into One Sweep REQ (2026-08-06)
+
+Fifteen facets of one root cause used to mean fifteen queued REQs to wade through. Findings
+that share a cause now land in a single sweep REQ with a checklist of instances — approve one
+decision, fix one class.
+
+- Reviews route trivial and same-root-cause findings into a `sweep: true` REQ named for the root cause, appending to the existing pending sweep for that UR when one exists (found by grep, never by judging titles)
+- Solving a sweep means the class cannot recur — the rule changes everywhere it applies, not N spots patched one at a time
+- Only a standalone user-visible finding still earns its own REQ, stating in one line why it couldn't fold into a sweep (`actions/review-work.md` Step 10)
+
+## 0.182.0 — Review Cascades Stop at Depth Two Behind a Consent Gate (2026-08-06)
+
+Reviews of review-spawned REQs could mint fresh auto-worked REQs forever — the UR-489 chain
+ran sixteen deep before a human noticed. The cascade now converges at depth two, with the
+user as the only escalation path and nothing lost along the way.
+
+- A review of a `review_generated: true` REQ creates its non-critical follow-ups as `pending-answers` — on the board with their effort chip, approved via `do-work clarify`, never auto-worked (`actions/review-work.md` Step 10 → Generation ≥ 2)
+- Critical-grade findings (security, data loss, broken production paths) still auto-queue at any depth, prominently reported
+- Failure-classification follow-ups and sweep appends are exempt — the stop governs REQ creation from review findings only
+
+## 0.181.0 — Review Follow-Ups Get a Disposition Gate and a Trivial-Work Chip (2026-08-06)
+
+One user request's review chain minted sixteen follow-up REQs over two days — fifteen of them
+trivial facets of a single root cause — and nothing on the board said so until the user dug
+through them by hand. Every automatic follow-up now declares its weight before it lands.
+
+- Reviews record a `gate:` token (user-visible / rule-change / trivial) on each Important finding before any follow-up REQ is created — severity judgment is unchanged, the gate only routes (`actions/review-work.md` Step 10)
+- New `effort_estimate: trivial | normal` frontmatter field, stamped from the gate on review and Discovered-Tasks follow-ups; capture may set it; absent reads as `normal`, so existing REQs need no migration
+- The board chips `effort_estimate: trivial` cards and adds a drawer row — display-only, with domain-style normalize-and-warn handling (`tools/queue-kanban`)
+
 ## 0.180.1 — Hand-Back, Frontmatter, and Board-State Correctness (2026-08-06)
 
 An external-feedback pass found real edge cases in the newest Git workflow, shell checks,

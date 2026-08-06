@@ -623,6 +623,31 @@
         "reorders, blocks, or hides on this.";
       badges.appendChild(assignedBadge);
     }
+    if (request.effortEstimate === "trivial" || request.effortEstimateUnrecognized) {
+      // The triage bit from the review gate: this REQ is a small mechanical fix,
+      // not real work. Only `trivial` chips — `normal` is the default and would
+      // chip every card into noise. Display only: the board never buckets,
+      // orders, or schedules on it; it exists so the user can tell at a glance
+      // which queued follow-ups are cheap to approve or batch.
+      //
+      // An UNRECOGNIZED value also chips, even though it resolves to `normal`:
+      // the resolved value alone would render nothing, so the card would be the
+      // one place a typo'd effort_estimate left no footprint — the same
+      // never-silently-drop leg domain and route carry on their badges.
+      var effortEstimateBadge = makeBadge("badge-effort-estimate", null, request.effortEstimate || "normal");
+      if (request.effortEstimateUnrecognized) {
+        effortEstimateBadge.appendChild(createElement("span", "status-invalid-flag", "invalid"));
+        effortEstimateBadge.title =
+          'Unrecognized effort_estimate "' +
+          (request.originalEffortEstimate || request.effortEstimate) +
+          '" — expected trivial or normal; treated as normal.';
+      } else {
+        effortEstimateBadge.title =
+          "effort_estimate: trivial — a small mechanical fix, stamped by the review gate " +
+          "(or capture). Display only: the board never reorders, blocks, or hides on this.";
+      }
+      badges.appendChild(effortEstimateBadge);
+    }
     if (request.completionAnomaly) {
       // Broken completion bookkeeping (flagged by the Go side) — mark the card
       // wherever it renders, not just inside the anomalies strip.
@@ -1856,6 +1881,16 @@
       appendMetaRow(
         "Route",
         schemaFieldDetailValue(request.originalRoute, request.route, request.routeUnrecognized)
+      );
+    }
+    if (request.effortEstimate || request.originalEffortEstimate) {
+      appendMetaRow(
+        "Effort estimate",
+        schemaFieldDetailValue(
+          request.originalEffortEstimate,
+          request.effortEstimate,
+          request.effortEstimateUnrecognized
+        )
       );
     }
     if (request.createdAt) {

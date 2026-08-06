@@ -129,6 +129,10 @@ write_set: []                 # optional list of repo-relative paths/globs this 
 
 assigned_to: "cloud-alpha"     # OPTIONAL advisory claim marker: the session this REQ is earmarked for (always YAML-quoted — raw user text). **Verbatim-read class**, alongside `write_set` — no alias map, no case folding, no canonical vocabulary of session names (Schema Read Contract → the verbatim paragraph, which also states the one shared exception: surrounding whitespace is trimmed, as it is for every field in the class). Seeded by capture when the user earmarks work, or written by a session claiming from another checkout. **Not a lock and not a status:** it grants nothing, nothing waits on it, and it carries no `assigned_at` and no staleness clock — an assignment persists until an explicit run or a hand-edit clears it. Exactly one reader acts on it, as a courtesy rather than a gate: the default work scan skips and reports an assigned REQ, and explicit targeting (`do-work run REQ-NNN`) overrides the skip and clears the field as part of the claim (`actions/work.md` Step 1). Everything else is display: parsed by `tools/queue-kanban/model.go` into the card's `assigned` badge and a drawer row, with **no column logic and no scheduling** — keep that parser in lock-step with this line, both changing in the same commit.
 
+sweep: true                    # OPTIONAL marker: this REQ is a review-created consolidation sweep — ONE REQ per root cause, carrying an `## Instances` checklist of every occurrence (`actions/review-work.md` Step 10 → Sweep consolidation, the marker's canonical home). Boolean; absent reads as false. Written by the review flow at sweep creation, greppable by design (`grep -rl "^sweep: true" do-work/queue/`) so reviews find the existing sweep instead of judging titles. Appends add checklist lines only — nothing ever edits a sweep's frontmatter after creation; a `pending` or `pending-answers` sweep is appendable, a claimed one never is. Not parsed by the board and not in the normalize-and-warn table (marker class, like `review_generated`).
+sweep_key: hardcoded-colors-untokenized   # REQUIRED on sweep REQs (meaningless elsewhere): short kebab-case name for the ROOT CAUSE — the deterministic append discriminator. A review appends to the candidate whose key matches its finding's root cause; when no key matches literally, it compares root-cause statements (same rule = same sweep), never titles (`actions/review-work.md` Step 10). Free slug, no canonical vocabulary — verbatim-read class.
+effort_estimate: normal        # OPTIONAL triage bit: trivial | normal — separates small mechanical fixes from real work so the user can tell at a glance which queued REQs are cheap to approve or batch. Closed two-value enum, deliberately — a triage bit, not an estimation system; do not grow it toward t-shirt sizes. Absent or unrecognized reads as `normal` (Schema Read Contract row below), so every REQ predating the field is valid unchanged. Automatic follow-up creation MUST stamp it from the review gate's recorded disposition (`gate: trivial` → `trivial`, else `normal` — `actions/review-work.md` Step 10; Discovered Tasks follow-ups per **Discovered Tasks Classification (Step 8)** below); capture MAY set it. Display only: parsed by `tools/queue-kanban/model.go` into a card chip (rendered only when `trivial` — `normal` is the default and would be noise) and a drawer row, with no column logic and no scheduling — keep that parser in lock-step with this line, both changing in the same commit.
+
 # Set by work action when claimed
 claimed_at: 2025-01-26T10:30:00Z
 route: A | B | C
@@ -185,7 +189,7 @@ testing_feedback: "…"             # present only while testing_status is retur
 
 ## Schema Read Contract
 
-Nine fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `dependencies:` → `depends_on` patch surfaced that several silently swallow natural typo variants from sister conventions (snake_case vs kebab-case YAML, `done`/`finished`/`closed` as English glosses of `completed`, lowercase route letters, etc.). Pure silent-alias is risky for enum values because an unknown value should not be quietly remapped — it should leave a footprint. Every read site in this file (and in `actions/roadmap.md`) honors a uniform **normalize-and-warn contract** for these fields:
+The enum-or-boolean-valued fields above (one table row each, below) are covered by this contract; an audit of `0.76.2`'s `dependencies:` → `depends_on` patch surfaced that several silently swallow natural typo variants from sister conventions (snake_case vs kebab-case YAML, `done`/`finished`/`closed` as English glosses of `completed`, lowercase route letters, etc.). Pure silent-alias is risky for enum values because an unknown value should not be quietly remapped — it should leave a footprint. Every read site in this file (and in `actions/roadmap.md`) honors a uniform **normalize-and-warn contract** for these fields:
 
 1. **Normalize first.** Apply the per-field alias map below. If a canonical match results, use it silently.
 2. **Warn-on-fallback.** If after normalization the value still doesn't match the canonical enum, emit:
@@ -207,6 +211,7 @@ Nine fields above are enum-or-boolean-valued, and an audit of `0.76.2`'s `depend
 | `tdd` (Step 6 testing-crew load, Step 6.5 TDD-evidence gate; emission validated in `actions/capture.md`) | `true`, `false` (YAML boolean) | `test_first`/`yes`/`on`/`t` → `true`; `no`/`off`/`f` → `false` | `false` (Step 6 testing crew not loaded; Step 6.5 gate not enforced) |
 | `error_type` (Step 8 failure classification, Step 8 upstream-failure short-circuit, forensics) | `intent`, `spec`, `code`, `environment` | (no common typo aliases identified) | `code` |
 | `kb_status` (kb-lessons handoff — work.md's Lessons-Capture Phase / review-work.md's Self-Validation & Lessons Learned step; roadmap lessons rollup) | `promoted`, `pending`, `declined`, `skipped` | `skip` → `skipped`; `rejected` → `declined` | `pending` |
+| `effort_estimate` (stamped by automatic follow-up creation — review-work.md Step 10, work.md Step 8's Discovered Tasks flow; board display — `tools/queue-kanban` parser; capture MAY emit) | `trivial`, `normal` | (no aliases — closed two-value enum, deliberately) | `normal` |
 | `testing_status` (board Testing view — `tools/queue-kanban` parser + `/api/testing/status` writes; no work-pipeline read sites) | `in-testing`, `tested`, `returned` | `in_testing`/`in testing`/`testing`/`selected-for-testing` → `in-testing`; `returned-with-feedback`/`returned_with_feedback` → `returned` | treat as not-tested (Ready to test) with an invalid flag + data warning |
 
 **Write paths are unaffected.** Step 2 claim, Step 8 archive, Step 8 follow-up generation, the kb-lessons handoff, and capture emission always write the canonical key and canonical enum value — never an alias, never the typo'd input. The normalize-and-warn contract is read-only.
@@ -638,6 +643,8 @@ The existence-verify check on the resolved path runs in Step 8 (post-move) — t
    - **normal**: Technical debt, missing tests, minor bugs in non-critical paths
    - **low**: Style issues, naming, dead code, documentation gaps
 
+   **Stamp `effort_estimate` on every follow-up REQ this classification creates** (any severity, either status path). Apply the review gate's two questions to the discovery (`actions/review-work.md` Step 10 — would any user or developer actually notice this in real use? does fixing it establish or change a rule that applies in several places?): no to both → `effort_estimate: trivial`, otherwise `effort_estimate: normal`. Severity and effort are different axes — a `[low]` style sweep can be `normal` effort, and a `[normal]` one-line fix can be `trivial`. The field is the board's triage chip (**Request File Schema — Full Frontmatter** above); a follow-up without it silently reads as `normal`, which defeats the chip for exactly the small fixes it exists to mark.
+
    **For `[critical]` discoveries:** Create follow-up REQ with `status: pending` (not `pending-answers`) — these skip user confirmation and go straight into the work queue. Add a note in Open Questions: `- [x] Auto-approved: critical severity (security/data/production risk). → Added to queue immediately.` Report prominently: `⚠ CRITICAL discovered: [description] — auto-queued as REQ-NNN`
 
    **Test-hygiene carve-out:** A `[normal]` or `[low]` discovery ALSO auto-queues with `status: pending` (same as critical) when ALL three hold:
@@ -657,6 +664,8 @@ The existence-verify check on the resolved path runs in Step 8 (post-move) — t
 
 ## Failure Classification (Step 8)
 
+
+This classification runs at any generation: `review_generated: true` on the failed REQ does **not** suppress its failure follow-up — the cascade depth stop (`actions/review-work.md` Step 10 → **Generation ≥ 2**) governs review-*finding* follow-ups only, and a failed generation-≥2 REQ with no successor would die silently.
 
 Before classifying via the symptom table below, **check for upstream failure**. Cascades from a failed prerequisite often present as plausible-looking `code` or `spec` symptoms in the downstream REQ; misclassifying them sends the builder chasing phantom bugs in the wrong domain.
 
@@ -784,8 +793,12 @@ git add package.json
 # `git add` on a path that does not exist exits 128 and aborts the commit step.
 git add package-lock.json
 
-# Stage follow-up REQs created in Step 8 (if any)
+# Stage follow-up REQs created in Step 8 (if any), AND any existing sweep REQs
+# the review appended instances to — an append modifies a queue file rather than
+# creating one, so "created follow-ups" alone leaves the new ## Instances lines
+# unstaged.
 git add do-work/queue/REQ-025-confirm-sidebar-palette.md
+git add do-work/queue/REQ-021-existing-sweep.md
 
 # Stage UR-folder move (if this was the last REQ and the UR moved to archive/)
 # Both the old path (deletion) and new path (addition) must be staged.

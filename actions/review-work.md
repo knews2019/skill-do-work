@@ -252,7 +252,7 @@ Route [A/B/C] | [commit hash or "uncommitted"]
 ### Findings
 
 **Important:**
-- [Specific finding with file:line reference]
+- [Specific finding with file:line reference] — gate: [user-visible | rule-change | trivial]
 
 **Minor:**
 - [Style nit or suggestion]
@@ -332,7 +332,26 @@ Self-validation runs in **both modes**. Lesson capture, prime file updates, and 
 
 ### Step 10: Create Follow-up REQs
 
-For each **Important** finding, create a follow-up REQ:
+**The disposition gate runs first — every Important finding gets a recorded `gate:` token before any REQ is created.** Ask two questions of the current state:
+
+- **(a)** Would any user or developer actually notice this issue in real use?
+- **(b)** Does fixing it establish or change a rule that applies in several places (a genuine maintainability rule, not a one-spot patch)?
+
+Record the answer on the finding's line — in the report and in the appended `## Review` section — as `gate: user-visible` (yes to a), `gate: rule-change` (yes to b; a wins when both are yes), or `gate: trivial` (no to both). **The token is mandatory and auditable.** The pre-gate rule failed precisely because nothing recorded a checkable decision: one UR's review chain minted sixteen REQs over two days, fifteen of them facets of a single root cause, and every one was discovered trivial only by the user's own investigation (UR-489/UR-027). A finding line without a token is a gate that was skipped, and reviewers of the review can see it.
+
+**The gate routes; it never re-scores.** Severity (Important/Minor/Nit) is judged exactly as before — a finding can be genuinely Important ("the guard is blind to one color notation") while its disposition is `trivial` (the current state is realistically fine to ship). Do not resolve that tension by downgrading severity: severity measures the issue, the gate decides how its fix lands. Downgrading corrupts the severity axis the score bands read.
+
+**Sweep consolidation — same root cause, one REQ, never one REQ per facet.** Before drafting any individual follow-up, route each gated finding:
+
+- **A `gate: trivial` finding, or any set of findings sharing one root cause, folds into a sweep REQ.** Find candidate sweeps mechanically — `grep -rl "^sweep: true" do-work/queue/`, filtered to files whose `user_request:` matches this REQ's UR and whose `status:` is `pending` **or `pending-answers`** (a generation-≥2 review creates its sweeps as `pending-answers`, and excluding them would let a second review mint a duplicate for the same root cause before the user runs clarify).
+- **Append only to the sweep for THIS root cause.** Marker + UR + status narrow the candidates; the root cause decides. Compare the finding's root cause against each candidate's `sweep_key:` — append on a key match. When no key matches literally, read each candidate's `## What` root-cause statement and append only if the finding's root cause is the **same rule** (would one fix close both?); title resemblance remains forbidden as a match signal (two reviews judging titles differently mint duplicate sweeps — recreating the runaway at half scale). No candidate shares the root cause → create a new sweep, however many sweeps the UR already has.
+- **Append = checklist lines only:** one line per instance under the sweep's `## Instances` section — `- [ ] [file/site]: [instance]`. The append never touches the sweep's frontmatter. Appending to a `pending-answers` sweep is fine (the user approves the sweep with its accumulated instances); never append to a claimed or working sweep — create a new one instead.
+- **Otherwise create ONE sweep REQ named for the ROOT CAUSE** (e.g. "tokenize all remaining hardcoded colors and make the guard catch every notation"), with the normal follow-up fields below plus `sweep: true`, a `sweep_key: <root-cause-slug>` (short kebab-case name for the root cause, e.g. `hardcoded-colors-untokenized` — the deterministic append discriminator future reviews grep first), and an `## Instances` checklist; `effort_estimate: normal` when solving it establishes or changes a multi-site rule (`gate: rule-change`), `trivial` otherwise.
+- **Done means the class cannot recur** — the rule is changed everywhere it applies, not N spots patched one drop at a time. State that in the sweep's What section.
+- **Only a genuinely non-trivial, thematically unrelated finding (`gate: user-visible`, standing alone) earns its own REQ** — and its body must state in one line why it couldn't fold into a sweep.
+- At generation ≥ 2, appends stay allowed (the depth stop below is creation-only); a NEW sweep falls under the reroute like any other creation (`status: pending-answers`; critical pierces).
+
+For each finding that routes to its own REQ (and for each new sweep), create the follow-up, stamping `effort_estimate` from the gate token — `gate: trivial` → `effort_estimate: trivial`, `gate: user-visible`/`gate: rule-change` → `effort_estimate: normal` (the field is the board's triage chip; schema: `actions/work-reference.md` → Request File Schema):
 
 ```markdown
 ---
@@ -344,6 +363,7 @@ created_at: [timestamp]
 user_request: [same UR as the reviewed REQ]
 addendum_to: [reviewed REQ id]
 review_generated: true
+effort_estimate: [trivial | normal — stamped from the finding's gate token, never omitted]
 ---
 
 # Review Fix: [Brief Description]
@@ -375,6 +395,13 @@ The `pending-answers` status means the work loop won't pick this up until the us
 
 **Author the question text for a cold reader** — load `crew-members/clear-questions.md` first, as with any Open Questions destined for `do-work clarify`: gloss every coined label, finding number, or spec §-reference, and state why the decision is the user's rather than the reviewer's (Principle 7). You have the review findings in your head right now; the user answering in a later clarify session has none of it.
 
+**Generation ≥ 2 — the cascade depth stop.** When the REQ under review itself carries `review_generated: true`, this review is reviewing review-spawned work — generation two or deeper. The marker is the entire test: marker-only, never inferred from a description (same posture as the `maintenance` marker). The review still records every Important finding as a follow-up REQ, but creates non-critical ones with `status: pending-answers` instead of `status: pending`: visible on the board with their `effort_estimate` chip, surfaced by `do-work clarify`, and unable to spawn autonomous work without the user's yes. The depth cap stops autonomous propagation, not record-keeping — nothing becomes report-only, and no finding is lost. (This is what hard-stops the UR-489 chain shape: sixteen auto-worked REQs where the user wanted one decision point.)
+
+- **The consent question MUST contain the exact discriminator phrase `Should I process this as a new task?`** with `Recommended: Yes, add to queue (will flip to 'pending').` and `Also: No, discard it.` — `actions/clarify.md`'s **Approved Discovered Task** path keys its flip-to-`pending` on that literal wording, and an equally valid rewording routes an approved follow-up down the **Confirmed Builder Decision** path instead, which archives it `completed` without ever building it. Load `crew-members/clear-questions.md` before authoring the rest of the question text, as with any clarify-bound Open Questions.
+- **Critical pierce:** a critical-grade finding — security vulnerability, data-loss risk, broken functionality in production paths; the same rubric as `actions/work-reference.md` → **Discovered Tasks Classification (Step 8)** — creates `status: pending` at ANY depth, auto-queued with a prominent report line (`⚠ CRITICAL review finding auto-queued as REQ-NNN`), mirroring that section's `[critical]` exemption. Categorizing impact is the point of the gate; burying a security finding behind a consent checkbox is the wrong trade.
+- **The reroute governs REQ *creation* only.** Editing an existing queued REQ — e.g. appending an instance to a `status: pending` sweep REQ under the same UR — is not creation and stays allowed at any generation. Failure-path follow-ups (`actions/work.md` Step 8 → **Failure Classification**) are likewise exempt at any depth: a failed generation-≥2 REQ still gets its Intent/Spec/Code follow-up, else failed work dies silently with no successor.
+- **The fixed point is intended — do not "fix" it.** Follow-ups created here carry `review_generated: true` themselves, so their own reviews fall under this same rule: the cascade converges at depth 2 by construction, with the user as the only escalation path.
+
 Follow-up REQs go in `do-work/queue/`. In pipeline mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do-work run`.
 
 **Don't create follow-ups for minor issues.** Minor findings go in the report only. The threshold: would a senior engineer request changes on this in a PR review, or just leave a comment?
@@ -397,10 +424,14 @@ After generating the report, append a Review section to the REQ file:
 | Risk | [level] |
 | Acceptance | [result] |
 
-**Findings:** [count] important, [count] minor
+**Important findings (each with its recorded gate disposition — this is the durable audit record the gate mandates):**
+- [finding, one line] — gate: [user-visible | rule-change | trivial] → [REQ-NNN created / appended to REQ-NNN / rerouted pending-answers as REQ-NNN]
+[or "None"]
+
+**Minor findings:** [count] (report only)
 **Acceptance:** [Pass/Partial/Fail/Untested] — [1-line summary]
 **Suggested testing:** [count] items
-**Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"
+**Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"; **sweeps appended to:** [REQ-NNN] or "None"
 
 *Reviewed by review-work action*
 ```
@@ -420,6 +451,12 @@ git add do-work/archive/UR-NNN/REQ-NNN-slug.md
 # Stage any follow-up REQs created
 git add do-work/queue/REQ-NNN-slug.md
 
+# Stage any EXISTING sweep REQs this review appended instances to — an append
+# modifies a queue file rather than creating one, so the created-files line
+# above never covers it and the new ## Instances entries would silently stay
+# unstaged.
+git add do-work/queue/REQ-NNN-existing-sweep.md
+
 git commit -m "$(cat <<'EOF'
 [REQ-NNN] review: {score}% (Route {route})
 
@@ -432,7 +469,7 @@ EOF
 
 **Format:** `[REQ-NNN] review: {score}% (Route {route})` — where `{score}` is the overall review percentage and `{route}` is the original triage route. List the reviewed file path and any follow-up REQs created.
 
-Stage only the modified archived REQ and any new follow-up REQs — never `git add -A`/`.` or bypass a hook (see `actions/commit.md` § Rules for the full guard).
+Stage only the modified archived REQ, any new follow-up REQs, and any existing sweep REQs appended to — never `git add -A`/`.` or bypass a hook (see `actions/commit.md` § Rules for the full guard).
 
 ## Calibrating Review Depth
 
@@ -447,7 +484,7 @@ Match effort to complexity:
 ## What NOT to Do
 
 - Don't re-implement — you're reviewing, not building
-- Don't review your own review's follow-up REQs more strictly than the original work — avoid infinite loops of diminishing-return fixes
+- Don't review your own review's follow-up REQs more strictly than the original work — avoid infinite loops of diminishing-return fixes. The Step 10 disposition gate is this rule's mechanism: a `gate: trivial` finding arrives labeled `effort_estimate: trivial`, so diminishing returns are visible on the board instead of re-litigated each loop
 - Don't block on minor issues — report them but keep moving
 - Don't invent requirements — review against what the REQ says, not what you think it should say
 - Don't penalize the absence of things the project doesn't have (no test infrastructure = don't fail on test adequacy)
@@ -463,7 +500,7 @@ Guard against these when conducting the review:
 | "Requirements are met because the builder says so" | Walk the REQ requirements against the diff, line by line | Implementation summaries are claims, not evidence |
 | "Acceptance passes because unit tests pass" | Run the feature end-to-end | Unit tests and acceptance testing catch different defects |
 | "The score is borderline, I'll round up" | Apply the scoring guidelines mechanically | Rounding up defeats the quality gate |
-| "This finding is minor, not worth a follow-up REQ" | Ask: would a senior engineer request changes on this in a PR? | The threshold is documented; use it |
+| "This finding is minor, not worth a follow-up REQ" | Judge severity honestly (senior-engineer test), then let the Step 10 gate decide the landing — a trivial disposition is recorded, never silently dropped | Downgrading severity to avoid queue traffic corrupts the score bands; the gate token is how a real-but-trivial finding lands lightly without disappearing |
 | "I can't run the code so I'll skip acceptance" | Score Untested and note exactly what you couldn't test | Skipping silently hides risk |
 | "That stale restatement is in a file this REQ never declared — out of scope" | Report it as a finding and route the fix to a follow-up REQ | The diff changed the meaning; leaving other statements of it on the old contract is the defect, and the REQ's Scope declaration bounds the *builder*, not the sweep |
 | "All requirements checked and tests pass, so it's good" | Apply the Klarna Test — did we optimize for measurable things (checkboxes, passing tests) at the expense of unmeasured intent? | Checkbox compliance + passing tests can still miss what the user actually wanted |
@@ -490,6 +527,6 @@ Before presenting the review report:
 - [ ] Overall score computed using the documented formula
 - [ ] P-A-U checkboxes checked — if the REQ has an "AI Execution State (P-A-U Loop)" section, verify all three boxes (`[PLAN]`, `[APPLY]`, `[UNIFY]`) are marked `[x]`. Unchecked boxes suggest the builder skipped a phase — flag as a Minor finding.
 - [ ] Acceptance testing was attempted (or scored Untested with specific reason)
-- [ ] Each Important finding has a follow-up REQ drafted
+- [ ] Each Important finding carries a recorded `gate:` token, and each drafted follow-up REQ carries `effort_estimate` stamped from it
 - [ ] Suggested Additional Testing includes only items relevant to this change
 - [ ] Self-validation pass completed
