@@ -1,8 +1,8 @@
 ---
-session_ended: 2026-08-05T20:04:00Z
-last_completed: REQ-113
-queue_state: 1 pending (REQ-114), 0 pending-answers, 0 blocked, 0 in-progress
-reqs_processed_this_session: 6
+session_ended: 2026-08-06T11:16:00Z
+last_completed: REQ-118
+queue_state: 1 pending (REQ-114), 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 in-progress
+reqs_processed_this_session: 3
 session_depth: moderate
 ---
 
@@ -12,22 +12,20 @@ session_depth: moderate
 
 ## Completed This Session
 
-- REQ-110: Name the census's fully-read files so its completeness floor is explicit (Route A) — commit `66a7fcc` (review: Pass, 95%; closed UR-020)
-- REQ-111: Implement the seven missing Schema Read Contract field normalizers (Route A) — v0.174.15, commit `e77383a` (review: Pass, 98%). Renumbered from 0.174.14 when main's own 0.174.14 (lockfile mirror) landed first; the merge kept both entries.
-- REQ-112: Give frontmatter.go a CLI surface so prose can stop reimplementing it (Route A) — v0.175.0, commit `a6560bc` (review: Pass, 97%)
-- REQ-115: status/testing_status normalization suppressed its own contract warning (Route A) — v0.175.1, commit `c976d64` (review: Pass, 98%; closed UR-023). From Codex's review of PR #130.
-- REQ-113: Migrate the first prose frontmatter read site onto queue-kanban (Route A) — v0.175.2, commit `d2576a7` (review: Pass, 98%; closed UR-021)
+- REQ-116: Normalize route at the board's read site and correct 0.174.15's board-wide claim (Route A) — v0.175.3, commit `2a2cd59` (review: Pass, 97%)
+- REQ-117: An unrecognized domain must leave a footprint on the board, not become general in silence (Route A) — v0.175.4, commit `42f71e2` (review: Pass, 96%)
+- REQ-118: The normalize flag must stop calling vocabulary-less field values unrecognized (Route A) — v0.175.5, commit `8d1a9f2` (review: Pass, 96%; closed UR-024)
+
+All three came from an external review of the 0.174.15–0.175.2 series, triaged in this session via `do-work validate-feedback`. The review's fourth item (one-commit-per-REQ) was verdicted **Already done** and deliberately never captured.
 
 ## Still Queued
 
-- REQ-114: `pending` — the three residual shell-logic extraction candidates (merge-aware diff, uncommitted inventory + REQ association, writer-label claim classification), restated as greps rather than line numbers. **Not approved work**: each needs its own floor decision before it becomes a change, and each candidate's grep must be re-run because the as-of-census site counts are explicitly untrusted.
-- UR-021 closed to `archive/UR-021/` (3 REQs). UR-022 stays open in `user-requests/` — its only member is REQ-114.
+- REQ-114: `pending` — the three residual shell-logic extraction candidates, restated as greps rather than line numbers. **Still not approved work** (unchanged from last session): each needs its own floor decision, and each candidate's grep must be re-run because the as-of-census site counts are explicitly untrusted. UR-022 stays open in `user-requests/` — REQ-114 is its only member.
 
 ## Session Notes
 
-- **The census's two durable findings are now implemented.** `decisions/audits/2026-08-05-shell-logic-in-prose-census.md` was the evidence; REQ-111 added the seven missing Schema Read Contract normalizers, REQ-112 exposed the parser as `queue-kanban frontmatter get`. The audit's own §4b records that these two were the non-perishable findings and that candidates 3–5 need their greps re-run before anyone queues them.
-- **Version discipline correction made this session:** the census itself got two version bumps and two changelog entries before being reverted — `decisions/` is `export-ignore`d, so nothing shipped and the changelog records delivered change only. REQ-111/112 *are* shipped changes (`tools/` ships), so they carry entries legitimately.
-- **Lesson from REQ-111, worth carrying:** a RED/GREEN pair proves the stated behaviour and does not bound the change. Wiring `domain` through the new normalizer made an *absent* domain resolve to `general`, which would have given every domain-less board card a badge and a filter entry. The suite went green over it; the catch came from UNIFY asking who consumes the changed field (`grep '\.Domain'`, then `grep domain web/*.js`).
-- **Lesson from REQ-112:** unit tests with injected writers prove a command's logic and nothing about its dispatch wiring — a missing `case "frontmatter"` in `main.go` would leave every test green while the binary reported `unknown subcommand`. Build the binary and exercise it for real; that step is mandatory for any future subcommand.
-- REQ-110/111/112 all carry no `kb_status` (the lessons handoff was not run in this session). Offer via `do-work bkb` triage when convenient, alongside the REQ-104/108/109 backlog.
-- `_dev/tests/contract-regressions.sh` has 7 pre-existing failures in its update-script probes, reproduced identically on `main`. Unrelated to this session's work and still untracked — nothing has queued them.
+- **The run was scoped to `UR-024`, not the whole queue.** The user's `do-work run` arrived with the trailing menu gloss "Process the captured fixes" attached. Read literally, work.md's unrecognized-argument guard would have halted the run; read as a full-queue default, it would have picked up REQ-114, which its own body marks as not-approved work. Scoping to the UR just captured was the only reading that matched intent. Worth remembering that the next-steps menu lines in this skill's own reports are copy-paste-shaped, so a description can arrive looking like an argument.
+- **A `git add` whose pathspec list contains one non-existent path stages nothing at all** and exits non-zero — it is not partial. REQ-116's first commit therefore captured only the REQ file's rename with 0 content changes, because the list still named the pre-`git mv` queue path. Recovered with `git reset --soft HEAD~2` (both commits local and unpushed), the stale `commit:` line removed, then re-staged and re-committed. `record-commit-hash.sh --verify` is what caught it — the FAIL names the extra lines in the metadata commit, which is exactly the symptom of an implementation commit that never happened. **Check column 1 of `git status --porcelain` after every `git add`**, and note that `git mv` stages the *old* blob at the new path, so the content edits still need an explicit add afterwards.
+- **`_dev/tests/contract-regressions.sh` still fails exactly 7 probes**, all in the update-script behavior section, byte-identical to the documented baseline and caused by running as root (the suite says up front it needs a non-root runner). Unrelated to this session's work. Run it as `bash _dev/tests/contract-regressions.sh` — the file is not executable in this checkout, and `./` returns permission-denied with exit 0 through a pipe, which reads as "0 failures" if you count FAIL lines without checking the verdict.
+- **Recurring shape across all three REQs:** each was a *feedback leg* the contract already specified and the code silently skipped — route uppercasing, the domain warning, the vocabulary-less no-op. REQ-111 shipped the table and wired one field; three follow-ups were needed for the rest. When a contract is implemented as a table plus per-field wiring, the wiring is where it goes wrong, and a table test passes right over it.
+- All three carry `kb_status: pending` — the lessons handoff was not run, consistent with REQ-110/111/112/113 and the REQ-104/108/109 backlog. Worth one `do-work bkb` pass over the whole set rather than per-REQ.
