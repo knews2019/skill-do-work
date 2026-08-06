@@ -564,15 +564,15 @@ func sliceBalancedBlockAfter(t *testing.T, sourceText string, anchorToken string
 	}
 	braceDepth := 0
 	sawOpeningBrace := false
-	for offset := anchorIndex; offset < len(sourceText); offset++ {
-		switch sourceText[offset] {
+	for scanOffset := anchorIndex; scanOffset < len(sourceText); scanOffset++ {
+		switch sourceText[scanOffset] {
 		case '{':
 			braceDepth++
 			sawOpeningBrace = true
 		case '}':
 			braceDepth--
 			if sawOpeningBrace && braceDepth == 0 {
-				return sourceText[anchorIndex : offset+1]
+				return sourceText[anchorIndex : scanOffset+1]
 			}
 		}
 	}
