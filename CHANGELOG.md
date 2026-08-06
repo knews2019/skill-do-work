@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.175.5 — Reading a Timestamp With --normalize Stops Warning About It (2026-08-06)
+
+`frontmatter get … created_at --normalize` printed a warning calling the timestamp "not recognized" on every single call — and the contract it cited says the opposite: a field with no canonical vocabulary is *outside* the contract and read verbatim. Now it's a clean no-op for those fields.
+
+- A field with no contract row prints its value and nothing else, observably identical to the same `get` without the flag
+- The gate is a lookup of the contract table, not a list of exempt field names — the exempt set is "whatever has no row", so a hand-written list would go stale the first time a row is added
+- `--in-set` is deliberately not silent there: both set names are `status` sets, so a membership test on a timestamp is now a usage error instead of a "no" that reads as a real answer at a call site
+- A typo'd `status` still warns exactly as before — 0.175.1's fix has a regression guard here so this couldn't quietly re-open it
+
 ## 0.175.4 — A Typo'd Domain Leaves a Footprint on the Board Again (2026-08-06)
 
 `domain: quantum` rendered as a plain `general` badge with no warning anywhere, so a misspelled domain was *harder* to spot after 0.174.15 than before it — the value at least used to reach the card verbatim. The board now says so, in the same warnings banner it already uses for a typo'd testing status.

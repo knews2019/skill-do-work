@@ -961,6 +961,23 @@ func normalizeSchemaField(fieldName string, rawValue string) string {
 	return normalized
 }
 
+// hasSchemaFieldContract reports whether the Schema Read Contract governs
+// fieldName at all. It is the predicate callers need BEFORE asking
+// isKnownSchemaFieldValue, which answers false both for a genuinely bad value and
+// for a field that has no canonical vocabulary — two different facts that a single
+// false cannot distinguish. The contract states the second case explicitly:
+// fields with no canonical vocabulary (`prime_files`, `write_set`, `assigned_to`,
+// any path list, and every field with no row here) are OUTSIDE the contract and
+// read verbatim — no alias map, no case folding, and no warning.
+//
+// A lookup, never a hand-listed set of exempt names: the exempt set is "whatever
+// has no row", so enumerating it would go stale the moment the contract grows one
+// (CLAUDE.md → Closed Enumerations Go Stale).
+func hasSchemaFieldContract(fieldName string) bool {
+	_, hasContract := schemaReadContractFields[fieldName]
+	return hasContract
+}
+
 // isKnownSchemaFieldValue reports whether an already-normalized value is in
 // fieldName's canonical enum. The empty string is never a member — absence is
 // handled by resolveSchemaField, which treats a missing field as the default
@@ -1029,7 +1046,13 @@ func collectDomainWarnings(tickets []*RequestTicket) []string {
 func schemaFieldWarningText(fieldName string, rawValue string) string {
 	fieldContract, hasContract := schemaReadContractFields[fieldName]
 	if !hasContract {
-		return fmt.Sprintf("⚠ %s: '%s' not recognized — no canonical vocabulary is defined for this field.",
+		// Unreachable from this package's callers, which gate on
+		// hasSchemaFieldContract — kept as a guard so a future caller that forgets
+		// the gate gets a true statement instead of "expected one of []". The old
+		// wording called the VALUE "not recognized", which contradicted the
+		// contract's own classification of such a field: nothing is wrong with the
+		// value, the contract simply does not govern the field (REQ-118).
+		return fmt.Sprintf("⚠ %s is outside the Schema Read Contract — no canonical vocabulary, so '%s' is read verbatim and normalization does not apply.",
 			fieldName, strings.TrimSpace(rawValue))
 	}
 	if fieldContract.defaultValue == "" {

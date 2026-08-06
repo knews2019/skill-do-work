@@ -172,7 +172,30 @@ func runFrontmatterCommand(args []string, standardOut io.Writer, standardErr io.
 		return 1
 	}
 
+	// A field the contract does not govern has nothing to normalize against, so
+	// --normalize is a no-op on it rather than a violation to report: stdout gets
+	// the value, stderr stays empty, and the call is observably identical to the
+	// same get without the flag. Before REQ-118 the branch below fired here too,
+	// because isKnownSchemaFieldValue returns false for a contract-less field just
+	// as it does for a bad value — so every `--normalize created_at` printed a
+	// warning claiming the timestamp was "not recognized", contradicting the
+	// contract's own statement that such fields are outside it and read verbatim.
+	//
+	// --in-set is different and must NOT fall through quietly: both set names are
+	// `status` sets, so a membership test on a field with no canonical vocabulary
+	// is a question this command cannot answer, and answering "no" (exit 1) would
+	// read at a call site as a real negative.
 	resolvedValue := rawValue
+	if !hasSchemaFieldContract(parsed.FieldName) {
+		if parsed.InSetName != "" {
+			fmt.Fprintf(standardErr,
+				"queue-kanban frontmatter: %s is outside the Schema Read Contract — --in-set %s tests the status vocabulary and cannot answer for it\n",
+				parsed.FieldName, parsed.InSetName)
+			return 2
+		}
+		fmt.Fprintf(standardOut, "%s\n", resolvedValue)
+		return 0
+	}
 	if parsed.Normalize || parsed.InSetName != "" {
 		// --in-set normalizes too: a membership test on a raw `done` has to
 		// resolve the alias before asking, or the alias map the contract
