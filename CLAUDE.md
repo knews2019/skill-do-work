@@ -193,9 +193,11 @@ Skip it when the iteration was by design (`scan-ideas`, `deep-explore`, review l
 
 ## Naming Conventions
 
-- **No cryptic or single-word variable names.** Every variable and function name should be at least two words
-  (e.g., `invoice_total`, `retry_count`, `alignment_score`) so its purpose is immediately obvious.
-- **Optimize for grepability.** Names should be unique enough across the codebase that a simple text search
-  (ripgrep, fd, sad) locates every usage — no IDE or LSP required to trace where a name has effect.
-- **Favor clarity over brevity.** `pending_invoice_items` beats `pii`. `max_retry_attempts` beats `mra`.
-  If a name needs a comment to explain it, the name isn't good enough.
+No cryptic or single-word names for anything with reach; two words minimum; names must be
+findable by plain-text search. The full rule — what counts as reach, the per-language form
+clause, the idiomatic-short-locals carve-out, and its precedence against surgical-changes —
+now lives in `crew-members/coding-guardrails.md` § 5 Naming for Reach, which ships and
+always loads during implementation. It applies here like it does in any consumer project;
+this section is a pointer so the two can't drift. That file's exemption for
+single-word-by-design invocations is why `do-work run` and the Go tool's subcommands are
+fine as they are.

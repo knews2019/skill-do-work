@@ -19,7 +19,7 @@
 - No hardcoded strings for user-facing text — use the project's i18n system if one exists
 - Error boundaries — component failures don't crash the entire page
 - `prefers-reduced-motion` respected for animations
-- Behavioral guardrails in `crew-members/coding-guardrails.md` apply during implementation — think before coding, simplicity first, surgical changes, goal-driven execution
+- Guardrails in `crew-members/coding-guardrails.md` apply during implementation (think before coding, simplicity first, surgical changes, goal-driven execution, naming for reach — that file is authoritative for the current set)
 
 ## Implementation Checklist
 

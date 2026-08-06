@@ -17,7 +17,7 @@
 - No new dependencies introduced unless the refactor specifically requires them
 - Call sites updated — no broken imports, no dangling references
 - Clean imports — removed unused imports, no circular dependencies introduced
-- Behavioral guardrails in `crew-members/coding-guardrails.md` apply during implementation — think before coding, simplicity first, surgical changes, goal-driven execution
+- Guardrails in `crew-members/coding-guardrails.md` apply during implementation (think before coding, simplicity first, surgical changes, goal-driven execution, naming for reach — that file is authoritative for the current set)
 
 ## Implementation Checklist
 
