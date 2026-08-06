@@ -6,6 +6,10 @@ run-kanban $port="8090":
     if command -v lsof >/dev/null 2>&1; then listener_pid="$(lsof -ti tcp:"$port" -sTCP:LISTEN 2>/dev/null | head -n1)"; if [ -n "$listener_pid" ]; then listener_executable="$(lsof -a -p "$listener_pid" -d txt -Fn 2>/dev/null | sed -n 's/^n//p' | head -n1)"; listener_executable_name="${listener_executable##*/}"; listener_command="$(ps -p "$listener_pid" -o args= 2>/dev/null)"; case "$listener_executable_name" in *queue-kanban*) echo "queue-kanban: stopping previous session on :$port (pid $listener_pid): $listener_command"; kill "$listener_pid" 2>/dev/null; wait_count=0; while kill -0 "$listener_pid" 2>/dev/null && [ "$wait_count" -lt 20 ]; do sleep 0.1; wait_count=$((wait_count+1)); done;; *) echo "queue-kanban: port $port is already in use by another process ($listener_command, pid $listener_pid) - refusing to kill it. Stop it manually, or run 'just run-kanban <port>' with a different port." >&2; exit 1;; esac; fi; fi
     cd tools/queue-kanban && go build -o queue-kanban . && ./queue-kanban serve --open --repo-root "{{justfile_directory()}}" --port "$port"
 
+# Fast terminal read of what's in flight — open count, every claimed REQ with its title, every needs-input/blocked REQ with its status (no browser, no server)
+run-kanban-cli:
+    cd tools/queue-kanban && go build -o queue-kanban . && ./queue-kanban open-work --repo-root "{{justfile_directory()}}"
+
 # Shareable static snapshot → build/queue-kanban-board/index.html (locally git-excluded so it never dirties git status)
 kanban-static:
     cd tools/queue-kanban && go build -o queue-kanban . && ./queue-kanban generate --out "{{justfile_directory()}}/build/queue-kanban-board" --repo-root "{{justfile_directory()}}"

@@ -11,6 +11,7 @@ Renders the `do-work/` queue as a Kanban board in your browser, plus a completio
 | **serve** (default) | Live board at `http://localhost:8090` (`--port N` to change). Reload the page to see new state — it re-reads the queue per request rather than pushing updates. Ctrl-C stops it. |
 | **static** | Self-contained HTML under `build/queue-kanban-board/` (`--out DIR` to change) — opens from `file://`, no server, shareable. Throwaway; safe to delete. |
 | **summary** | Column counts in the terminal. No browser. |
+| **open-work** | What's in flight, in the terminal: the open total (pending / claimed / needs-input-blocked), every claimed REQ with its title, and every needs-input/blocked REQ with the status parking it there. Nothing finished, no browser — the two-second check when opening a board tab is more than the question deserves. |
 
 ## Board view
 
@@ -61,7 +62,8 @@ Each action writes the record into the REQ's own frontmatter, so `git log` on th
 do-work board
 do-work board static
 do-work board summary
+do-work board cli
 do-work kanban
 ```
 
-`do-work install just-kanban` adds `just run-kanban` / `kanban-static` / `kanban-summary` recipes if you'd rather run the board without the agent, plus `just run-do-work-update` for the guarded project-local skill updater.
+`do-work install just-kanban` adds `just run-kanban` / `run-kanban-cli` / `kanban-static` / `kanban-summary` recipes if you'd rather run the board without the agent, plus `just run-do-work-update` for the guarded project-local skill updater.

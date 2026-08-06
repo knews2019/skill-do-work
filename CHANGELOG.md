@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.176.0 — Terminal Digest of What's In Flight (`just run-kanban-cli`) (2026-08-06)
+
+Opening a board tab is more than "what am I working on?" deserves. `just run-kanban-cli` answers it in one screen: how many REQs are open, every claimed REQ with its title, and every needs-input/blocked REQ with the status that parked it there.
+
+- New `queue-kanban open-work` subcommand (read-only) behind the recipe, also reachable as `do-work board cli`
+- Blocked lines carry the `blocked_by` condition; an off-vocabulary status shows verbatim as `invalid:<value>` instead of hiding
+- Finished work never appears — this is open work only; parse warnings show as a count pointing at `summary`
+- `do-work install just-kanban` now installs five recipes, and the unknown-subcommand error is checked against the dispatch switch itself rather than a hand-written list
+
 ## 0.175.2 — The Commit Action Reads a REQ's Status Through the Tool (2026-08-05)
 
 The new `frontmatter` command had no callers, so the hand-rolled reads it exists to replace were all still hand-rolled. `do-work commit` is the first one switched over, and it's the site where getting it wrong actually bit: testing for the literal `completed` drops every remediated-with-issues REQ, so its files never get associated.
