@@ -49,11 +49,19 @@
           <button type="button" class="control-button filter-clear" id="filter-clear" hidden>Clear</button>
         </div>
 
-        <!-- By-UR lens only: hide user requests whose REQs are all resolved.
+        <!-- By-UR lens only: Active hides user requests with no open REQ and no
+             REQ completed inside the RECENTLY DONE window, so a just-shipped
+             queue still shows the session's work instead of going blank.
              board.js toggles this group's visibility with the lens. -->
         <div class="control-group" role="group" aria-label="User-request activity" id="ur-activity-group" hidden>
           <span class="control-label">URs</span>
-          <button type="button" class="control-button is-active" data-ur-activity="active" aria-pressed="true">
+          <button
+            type="button"
+            class="control-button is-active"
+            data-ur-activity="active"
+            aria-pressed="true"
+            title="User requests with open work, or a REQ completed inside the RECENTLY DONE window"
+          >
             Active
           </button>
           <button type="button" class="control-button" data-ur-activity="all" aria-pressed="false">All</button>

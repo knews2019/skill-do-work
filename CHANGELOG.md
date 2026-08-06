@@ -8,6 +8,27 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.180.0 — The Board's By UR Lens Stops Going Blank on a Shipped Queue (2026-08-06)
+
+The moment a queue was fully shipped, the board's **By UR** lens with URs set to Active
+showed nothing at all — while the Columns lens, same board, same moment, happily showed
+the recently-done cards for those very requests. Since "everything shipped" is the normal
+state after a run finishes, the lens was unusable exactly when you'd reach for it to see
+what a session touched. Reported from a live 390-UR tree.
+
+- **Active now means open work _or_ a REQ completed inside the RECENTLY DONE window.** It
+  used to mean "holds a non-terminal REQ", which is unsatisfiable once everything ships.
+  A UR that qualifies via the window shows all its REQ cards, not just the recent ones.
+- **The RECENTLY DONE chips drive the By UR lens too.** They were a dead knob there —
+  visible, repainting hidden columns, changing nothing on screen. Switching the window
+  from one lens now updates the other instead of leaving it stale. Both lenses read the
+  same window, so they can no longer disagree about what "recent" means.
+- **The hidden-UR count finally shows up when every UR is hidden** — the one case it
+  exists for, and the one case an early `return` used to skip. It stays quiet when a
+  search, not the scope, emptied the list, where "switch to All" would be a false lead.
+- **The empty-state copy tells you which escape to take** — widen the window or drop the
+  scope — and names the window you actually selected instead of a hardcoded span.
+
 ## 0.179.0 — Naming Conventions Are Now a Loaded Guardrail (2026-08-06)
 
 Every build now carries a naming rule you don't have to paste: no cryptic or single-word names for anything with reach, and names have to be findable with plain-text search. It was a per-project preference people re-typed into each `CLAUDE.md`; now it ships.
