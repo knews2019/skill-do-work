@@ -1,11 +1,11 @@
 # Prime: do-work update shortcut
 
-`tools/do-work-update.sh` is the terminal-facing implementation behind `just run-do-work-update`. It updates only a do-work skill installed inside the invoking project; `actions/install.md` installs the just recipe, and `actions/version.md` remains the canonical agent-driven update contract.
+`tools/do-work-update.sh` is the terminal-facing implementation behind `just run-do-work-update`. It updates only a do-work skill installed inside the invoking project; `../do-work-toolbox/actions/install.md` installs the just recipe, and `actions/version.md` remains the canonical agent-driven update contract.
 
 ## Read first
 
 - `tools/do-work-update.sh` — project-root gate, upstream fetch, confirmation, extraction, and audit.
-- `actions/install.md` — shipped recipe block, drift upgrade, and installer verification.
+- `../do-work-toolbox/actions/install.md` — shipped recipe block, drift upgrade, and installer verification.
 - `actions/version.md` — canonical safeguards the script must keep aligned with.
 
 ## Do not edit
@@ -26,4 +26,3 @@
 - [REQ-136: staged suite artifacts must remain export-ignored through the bridge release](../do-work/archive/REQ-136-define-four-skill-suite-contract.md#lessons-learned)
 - [REQ-137: the installed bridge validator must remain authoritative over a future archive](../do-work/archive/REQ-137-ship-suite-aware-bridge-updater.md#lessons-learned)
 - [REQ-138: ambiguous unmarked legacy recipe spans must fail instead of absorbing client content](../do-work/archive/REQ-138-add-managed-text-section-replacement.md#lessons-learned)
-- [REQ-139: staged sibling references must be manifest-declared before their packages exist](../do-work/archive/REQ-139-stage-modular-core-skill.md#lessons-learned)

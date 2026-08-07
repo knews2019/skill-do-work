@@ -1,3 +1,3 @@
 # Session Checkpoint
 
-## In Progress (interrupted)
+No interrupted work. The next ready request is REQ-140.

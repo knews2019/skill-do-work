@@ -1,0 +1,532 @@
+# Review Work Action
+
+> **Part of the do-work skill.** Invoked automatically after work completes or manually when the user requests a review. Evaluates whether the work actually delivers what was requested — through requirements checking, code review, acceptance testing, and additional testing recommendations. User-facing walkthrough: [`docs/review-work-guide.md`](../docs/review-work-guide.md).
+
+A post-work quality gate with three jobs: (1) confirm the implementation matches the requirements, (2) verify the code is solid, and (3) actually test that the thing works. Creates follow-up REQs for anything that needs fixing.
+
+## Philosophy
+
+- **Did we build what was asked?** Requirements check comes first. Everything else is secondary if the wrong thing got built.
+- **Does it actually work?** Reading diffs catches logic errors. Running the code catches everything else. Do both.
+- **Traceability makes this powerful.** You have the original input (UR), the structured requirements (REQ), the triage/plan/exploration history, and the actual diff — use all of it.
+- **Actionable output.** Don't just report problems — create follow-up REQs for issues worth fixing.
+- **Proportional effort.** A Route A config change gets a quick scan. A Route C multi-file feature gets a thorough review.
+- **Suggest what's next.** After checking what you can, tell the user what else should be tested — manual checks, edge cases, integration scenarios, things only a human can verify.
+
+## When to Use
+
+**Use when:**
+- Reviewing completed work against its REQ requirements (post-build quality gate)
+- User says "review", "review-work", "review code", or "audit code"
+- Automatically after actions/work.md completes each REQ
+
+**Do NOT use when:**
+- See `SKILL.md` routing table for sibling action selection.
+
+## Two Modes
+
+| Mode | Trigger | REQ location | How to get the diff |
+|------|---------|-------------|---------------------|
+| **Pipeline** | Auto-triggered by actions/work.md after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary — in worktree dispatch mode the tree is clean post-merge, so read the merge range `<pre>..<merge_hash>` the orchestrator passes (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**) |
+| **Standalone** | User invokes manually: `do-work review`, `do-work review-work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field — for a worktree-merged REQ the `commit:` hash is a merge commit, so use the first-parent form (Step 4) |
+
+Both modes follow the same workflow. The only difference is where the REQ lives and how you obtain the diff.
+
+## Steps
+
+### Step 1: Find the Target
+
+**Pipeline mode:** the work action hands you the REQ file path (in `do-work/working/`). Skip to Step 2.
+
+**Standalone mode:**
+1. **If user specifies a REQ** (e.g., "review REQ-005"): Find it in `do-work/archive/` or `do-work/archive/UR-NNN/`
+2. **If user specifies a UR** (e.g., "review UR-003"): Find all REQs whose status normalizes to the Terminal-success status set under that UR and review each
+3. **If no target specified**: Find the most recently completed REQ — check both `do-work/archive/` (root) and all `do-work/archive/UR-NNN/` subdirectories for the highest REQ number whose status normalizes to the Terminal-success status set in `actions/work-reference.md`
+
+If the target REQ has no `commit` field (standalone mode) or no implementation changes (pipeline mode), report that there's nothing to review and exit. In worktree dispatch mode the working tree is clean after the merge, so judge "no changes" from the merge range `<pre>..<merge_hash>` (`git diff --stat <pre>..<merge_hash>`), not the working diff — an empty working diff there is the normal post-merge state, not an empty REQ.
+
+### Step 2: Read the REQ
+
+Read the full REQ file. Extract:
+- **What was requested** — the What/Detailed Requirements sections
+- **Builder Guidance** — certainty level (Firm vs Exploratory), scope cues, implementation hints. Use this to calibrate expectations: Exploratory requests get more latitude on interpretation; Firm requirements must match exactly.
+- **Triage decision** — the route and reasoning
+- **Plan** — what was planned (if Route C)
+- **Implementation Summary** — what the builder says it did
+- **Testing results** — what tests exist and pass
+
+### Step 3: Read the Original Input
+
+Find the UR via the REQ's `user_request` frontmatter field. Read `do-work/user-requests/UR-NNN/input.md`. If not found there (UR already archived), check `do-work/archive/UR-NNN/input.md`. This is the source of truth for what the user actually wanted.
+
+If the REQ is a legacy file without `user_request`, use whatever context is available (the REQ content itself, any `context_ref` file).
+
+### Step 4: Get the Diff
+
+**Pipeline mode:** Run `git diff` to see uncommitted changes, or read the files the Implementation Summary lists as created/modified. If the working tree is clean (implementation agent already staged), use `git diff --staged`. **In worktree dispatch mode** the builder's work is already committed and merged, so the working tree is clean by design — read the diff from the merge range the orchestrator passes: `git diff <pre>..<merge_hash>` (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**).
+
+**Standalone mode:** Run `git show <commit>` using the hash from the REQ's `commit` frontmatter. This gives you the full diff of what was committed. **If that hash is a merge commit** — `git rev-parse --verify -q '<commit>^2'` succeeds (quoted — `^` is special in some shells), the normal case for work integrated by worktree dispatch mode's `--no-ff` merge (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**) — plain `git show` prints a combined diff that is usually empty, so diff against the first parent instead: `git show --first-parent -m <commit>`.
+
+Read the diff carefully. For large diffs, focus on:
+- New files created (read them fully)
+- Modified files (understand what changed and why)
+- Deleted files (was deletion justified?)
+
+### Step 5: Requirements Check
+
+Walk through every requirement in the REQ and the original UR input. For each one, determine: **was it built?**
+
+This is not a code quality check — it's a checklist. Go requirement by requirement:
+
+1. **Extract all requirements** from the REQ's What/Detailed Requirements sections AND from the UR's original input. Include explicit requirements, implicit UX expectations, constraints, and edge cases the user mentioned.
+2. **For each requirement**, check the diff and implementation:
+   - **Delivered**: The requirement is implemented and visible in the diff
+   - **Partially delivered**: Some aspects implemented, others missing
+   - **Not delivered**: No evidence of implementation in the diff
+   - **N/A**: Requirement doesn't apply (e.g., deferred by Open Questions)
+3. **Compare against Implementation Summary claims.** If the builder says it did something, verify it actually appears in the diff.
+
+Score: **Requirements Compliance (0-100%)** — percentage of requirements that are fully delivered.
+
+### Step 6: Code Review
+
+Evaluate the implementation quality by reading the diff:
+
+**Code Quality (0-100%)**
+- Does it follow existing project patterns and conventions?
+- Naming clarity, readability, maintainability
+- Appropriate error handling for the context
+- No obvious bugs or logic errors in the diff
+- Diff hygiene — no debug artifacts, console.log/print statements, or temporary files left behind. **Protect lessons learned** — comments that document *why* something was done, what was tried and didn't work, or architectural reasoning are valuable and should stay. Strip noise, keep knowledge.
+
+**Test Adequacy (0-100%)**
+- Are there tests for the new/changed behavior?
+- Do tests cover the important paths (not just the happy path)?
+- Are test assertions meaningful (not just "doesn't throw")?
+- **Were the right tests run?** Check the prime file for a testing section that maps code areas to test commands. If the prime says "changes to `lib/foo.js` → run `npm run test:foo`" and the builder only ran `node -c`, flag it. The prime's test map is the project-specific source of truth for which tests validate which code.
+- **Do the tests prove the request is implemented?** For bug fixes and new features, look for red-green validation — tests that failed before implementation and pass after. If the Testing section has no red-green evidence for a behavioral change, the tests may not actually validate it. For non-behavioral changes (refactors, config, docs, cleanup), red-green may not apply — targeted regression tests, lint/build validation, or non-regression evidence is appropriate proof instead.
+- **Were behavior changes to other requests documented?** If existing tests were updated, verify each update is traced to the originating REQ and the behavior change is intentional. This is how we track which request altered which other request's behavior. Missing traceability here is an Important finding.
+- If no tests exist and the project has no test infrastructure, score N/A — this dimension is excluded from the overall average (don't count it as 0%)
+
+**Scope Discipline (0-100%)**
+- Did the implementation stay focused on the request?
+- Any unnecessary refactoring, feature additions, or style changes?
+- Files touched that didn't need touching?
+- **If a `## Scope` section exists in the REQ** (Routes B/C): compare the Implementation Summary file list against the Scope declaration. Files touched that were not declared = scope drift. Declared files not touched = incomplete scope. Flag significant drift as an Important finding.
+- **If a `## Decisions` section exists in the REQ**: verify that significant implementation choices visible in the diff are documented. Undocumented decisions that changed behavior (e.g., choosing a different API shape than the pattern suggests, adding an unexpected dependency) are an Important finding — they break traceability.
+
+**Risk Assessment (Critical / Low / None)**
+- Security concerns (injection, auth bypass, data exposure)
+- Performance risks (N+1 queries, unbounded loops, memory leaks)
+- Data integrity risks (race conditions, missing validation at boundaries)
+- Regression risk — identify callers/dependents of changed code, flag interfaces whose contract changed, note shared utilities that other features rely on
+
+**Restatement Sweep (when the diff redefines something other text restates)**
+
+Risk Assessment above covers the *code* consumers of a changed interface. This is its documented-consumer twin, and it is the check that catches the most common way a high-scoring REQ still ships broken: the meaning of something changes in its canonical home while a restatement or consumer elsewhere keeps the old meaning.
+
+1. **Trigger — ask the question, don't consult a list.** For each element the diff touches: *does this change the meaning of something that is stated in more than one place?* A contract token, a schema field's semantics, a gate's wording, what a stored value actually holds, the shape a prescribed command's output is consumed as — anything whose definition lives in one home while other files restate, gloss, parse, or act on it. Those are illustrative examples, not the set to check against; a hand-maintained token list goes stale the moment the contract grows, so ask the question of whatever *this* diff redefines.
+2. **Sweep each redefined element.** Grep the repo for every other statement or consumer of it — the token itself, the phrasings that gloss it, and the tests, tooling, and templates that parse or restate it — and verify each still agrees with the new meaning. This generalizes the rule already required for prescribed shell commands (when a fix changes a command primitive, grep that primitive across every action before calling it fixed — these get copy-pasted, so the fix is rarely local) from commands to contracts.
+3. **Every stale restatement is a finding.** Severity is your judgment: **Important** when the stale text would lead a reader or an agent to act on the old contract, **Minor** when it's cosmetic. **A stale restatement in a file the REQ never declared is still a finding** — drift between a canonical home and its restatements is exactly what this check exists to surface. Route the fix to a follow-up REQ (Step 10); do not score it as the builder's scope drift.
+4. **Skip it when nothing was redefined.** A typo fix, a new case inside one function, or text nothing else restates gets no sweep. The trigger is redefinition, not diff size — this is not a blanket "grep everything" pass on every change.
+
+Origin: the REQ-035–040 batch reviewed at 86–98%, yet every top defect a later independent pass found was this one class — a token changed in its canonical home with a restatement elsewhere left on the old semantics, and no review step forcing the sweep.
+
+**Directive Alignment Check (if an approach directive was assigned)**
+
+If the REQ's Implementation Summary notes an assigned approach directive (e.g., "Directive: Simplicity-First"):
+
+1. **Was the directive applied?** Check whether the implementation reflects the assigned lens. A Simplicity-First directive should produce minimal, readable code. A Correctness-First directive should show thorough edge case handling.
+2. **Did the lens create blind spots?** Each lens has natural trade-offs. Simplicity-First may skip important error handling. Performance-First may sacrifice readability. Note any blind spots that need follow-up.
+3. **Report in findings:** If the directive was effectively applied, note it as a positive finding. If the directive was ignored or created significant blind spots, flag it as a Minor finding.
+
+The directive check is informational — it does not affect the overall score. Its purpose is to track whether approach diversity produces better outcomes over time.
+
+**Coding-Guardrails Principle Check (informational)**
+
+`crew-members/coding-guardrails.md` was always-loaded during implementation. Spot-check the diff against its five principles — these overlap with existing dimensions but frame them as observable behaviors:
+
+1. **Think Before Coding** — did Open Questions / Decisions get surfaced (`- [~]` marks, `## Decisions`), or were ambiguities silently resolved?
+2. **Simplicity First (YAGNI)** — does the code match the senior-engineer test? Flag speculative abstractions, unrequested configurability, and defensive handling for impossible inputs. (Remember: simplify ≠ strip — if removing it would need restoring next week, it's foundation.) See `crew-members/coding-guardrails.md` § Simplicity First for the canonical statement.
+3. **Surgical Changes** — every changed line should trace to the REQ. Adjacent-code "improvements", style-only edits, and unrelated refactors are drift.
+4. **Goal-Driven Execution** — does the Testing section show verification (red-green, targeted regression, or equivalent proof), or just "it compiles"?
+5. **Naming for Reach** — do names the diff *introduces* with reach (exported identifiers, struct fields, files, DB columns, CLI flags, env vars) read as two words and survive a plain-text grep? Idiomatic short locals are fine and are not a finding; neither are pre-existing short names the diff didn't touch. See `crew-members/coding-guardrails.md` § Naming for Reach for the canonical statement.
+
+Most guardrail issues are already caught by Scope Discipline, Code Quality, and Test Adequacy. This check is a mnemonic pass — note anything the rubric missed under a **Minor** finding. Do not double-penalize the same issue across dimensions.
+
+| Principle | Caught by | Tell |
+|---|---|---|
+| Think Before Coding | Scope / Decisions | Clarifying questions logged before code |
+| Simplicity First | Code Quality | Fewest lines; no speculative abstractions |
+| Surgical Changes | Scope Discipline | Only declared files touched |
+| Goal-Driven Execution | Test Adequacy | RED→GREEN proof honored |
+| Naming for Reach | Code Quality | New names with reach are two words and greppable |
+
+**Domain-Specific Review (if domain rules provided)**
+
+If `crew-members/[domain].md` was provided alongside this review, apply any review criteria defined in that file in addition to the standard rubric above. Report domain-specific findings in a separate `### Domain Review` subsection within the `## Review` output. Domain-specific scores are advisory — they inform the overall assessment but don't replace the standard dimensions.
+
+### Step 7: Acceptance Testing
+
+Actually verify the implementation works. Reading diffs catches logic errors; running code catches everything else.
+
+**What to do:**
+
+1. **Run the test suite** — if tests weren't already run by the work pipeline (pipeline mode should have run them in Step 6.5), run them now. Check the prime file for a testing section — if it maps changed code areas to specific test commands, run those. Otherwise, target tests related to changed code first, then broader tests if fast enough.
+2. **Try the feature** — if the change produces observable behavior (UI, CLI output, API response, file output), verify it works end-to-end:
+   - Run the app/server/tool if applicable
+   - Exercise the specific feature that was built
+   - Try the happy path first, then obvious edge cases
+   - For CLI tools: run the command with expected inputs
+   - For APIs: make a test request
+   - For UI: describe what you'd check (the reviewer may not have a browser, but should note what to verify)
+3. **Verify the fix** — for bug fixes, confirm the original bug no longer reproduces
+4. **Check for regressions** — based on the risks identified in code review:
+   - Run tests for adjacent/dependent features, not just the changed code
+   - If the change modifies a shared utility, API, or interface, exercise the other consumers
+   - For bug fixes, verify the fix doesn't break the feature's other behaviors
+   - Try the most obvious related flow — if you changed checkout, make sure the cart still works
+5. **Verify cross-REQ test updates** — if the Testing section lists "Existing tests updated (cross-REQ impact)", verify: (a) the behavior change is genuinely intentional, (b) the updated tests still meaningfully validate their original REQ's requirements, and (c) the original REQ is referenced so the change is traceable. Flag undocumented test modifications as an Important finding.
+
+**What NOT to do:**
+- Don't build an exhaustive test harness — this is a quick smoke test, not QA
+- Don't test things unrelated to the change
+- Don't skip this step just because unit tests pass — unit tests and acceptance testing catch different things
+
+**If you can't run the code** (e.g., requires external services, credentials, or hardware you don't have), note what you couldn't test and include it in the "Suggested Additional Testing" section.
+
+Score: **Acceptance (Pass / Partial / Fail / Untested)**
+- **Pass**: Feature works end-to-end as specified
+- **Partial**: Core functionality works but edge cases or secondary behaviors don't
+- **Fail**: Feature doesn't work as specified
+- **Untested**: Couldn't run the code (note why)
+
+### Step 8: Suggest Additional Testing
+
+After completing your review and acceptance testing, recommend what else should be checked. This is where you flag things only a human can verify, things that need specific environments, or edge cases worth exploring.
+
+**Categories to consider:**
+
+- **Manual verification needed** — UI appearance, UX flow, accessibility, things that need eyes on a screen
+- **Environment-specific testing** — different browsers, mobile, OS-specific behavior, production-like data
+- **Integration testing** — third-party services, APIs, database migrations, auth flows
+- **Edge cases worth exploring** — unusual inputs, boundary conditions, concurrent usage, error recovery
+- **Performance testing** — if the change could affect performance (large datasets, frequent operations, network calls)
+- **Security review** — if the change handles user input, auth, or sensitive data
+- **Regression scenarios** — adjacent flows that could break: shared utilities, upstream/downstream consumers, features that depend on the same data or state
+
+Only include categories that are relevant to this specific change. A copy change doesn't need security review suggestions. A new auth flow does.
+
+### Scoring Guidelines
+
+**Computing the overall score:** Average the percentage dimensions — Requirements, Code Quality, Test Adequacy (skip if N/A), and Scope Discipline. Then apply qualitative modifiers: Risk = Critical caps the overall at 60% max; Acceptance = Fail caps at 50% max; Acceptance = Partial applies a 10-point penalty.
+
+**90-100%**: Ship-ready. Clean implementation, good tests, on-spec, acceptance passes.
+**75-89%**: Minor issues. Style nits, a missing edge case test, small scope drift. Not worth blocking.
+**50-74%**: Needs attention. Missed requirements, inadequate tests, acceptance issues, or code quality concerns.
+**Below 50%**: Significant problems. Major requirements missed, no tests for new behavior, acceptance fails, or risky code.
+
+Nit findings carry zero weight on the overall score — they're stylistic suggestions only and never block a recommendation of Approve.
+
+### Step 9: Report
+
+Load `crew-members/anti-slop.md` before composing the report — the review output is a human-facing artifact and falls under those principles, especially **§ 8: lead with the decision/verdict in words, demote the self-grade**. Shape the report as the **Decision Brief** (`actions/work-reference.md` → **Decision Brief (hand-back format)**): the worded verdict and what's-built first; the score table on the record, below. **This restructures only the human-facing report** — the persisted `## Review` block (see **Append to REQ File**) keeps `Overall: [X]%` first, because `../do-work-toolbox/actions/present-work.md` parses it for the score.
+
+**Pipeline mode:** Report to actions/work.md orchestrator (which reports to the user).
+**Standalone mode:** Report directly to the user.
+
+Format:
+
+```
+## Review: REQ-NNN
+
+**[Approve | Approve with follow-ups | Request changes]** — [one-line verdict in words]
+Route [A/B/C] | [commit hash or "uncommitted"]
+
+### What's built
+- [1-3 lines at feature altitude — what now works, what's still missing]
+
+### Decisions / risks for you
+- [Anything the user must weigh, each with its value + risk; "None" if clean]
+
+### Findings
+
+**Important:**
+- [Specific finding with file:line reference] — gate: [user-visible | rule-change | trivial]
+
+**Minor:**
+- [Style nit or suggestion]
+
+**Nit:**
+- [Optional stylistic suggestion — no score impact]
+
+### Requirements Checklist
+
+- [x] Dark mode toggle in settings — delivered
+- [x] Persists preference in localStorage — delivered
+- [ ] Applies to sidebar — not delivered (only main content area)
+- [x] Respects OS preference on first visit — delivered
+
+### Acceptance Testing
+
+**Result: [Pass/Partial/Fail/Untested]**
+- [What was tested and outcome]
+- [Any issues found during hands-on testing]
+
+### Suggested Additional Testing
+
+- [Manual verification: check dark mode renders correctly across all page layouts]
+- [Browser testing: verify localStorage persistence in Safari private mode]
+- [Edge case: toggle rapidly between modes to check for flicker/race conditions]
+
+### Scores (on the record — not the headline)
+
+**Overall: [X]%**
+
+| Dimension | Score | Notes |
+|-----------|-------|-------|
+| Requirements | 95% | All requirements implemented |
+| Code Quality | 85% | Clean, follows patterns |
+| Test Adequacy | 70% | Missing edge case coverage |
+| Scope | 100% | Focused, no drift |
+| Risk | None | — |
+| Acceptance | Pass | Feature works end-to-end |
+
+### Follow-up REQs Created
+- REQ-025: "Add edge case tests for dark mode toggle" (addendum_to: REQ-003)
+```
+
+**Verdict mapping** (keep consistent with the score bands above and the work.md Step 7 gate): **Approve** = Acceptance Pass *and* Overall ≥ 75%. **Approve with follow-ups** = Acceptance Partial *or* Overall 50–74% (Important findings become follow-up REQs). **Request changes** = Acceptance Fail *or* Overall < 50%. The percentage still appears (under **Scores**) so the Step 7 gate and commit-message format read it unchanged — it just stops leading.
+
+### Step 9.5: Self-Validation & Lessons Learned
+
+After presenting the review report, perform a self-validation pass — no human prompt needed.
+
+1. **Re-examine your own review.** Look for blind spots: did you test the happy path but skip error cases? Did you verify the feature works but not check for regressions? Did you assume something works because the code looks right without actually running it?
+2. **If self-validation reveals new issues:** Treat them as **Important** findings. Pass them to Step 10 so the system automatically generates follow-up REQ files (status: pending), linking back via `addendum_to`.
+3. **Capture lessons learned (Standalone mode only).** Append a `## Lessons Learned` section to the REQ file (create it if it doesn't exist) with:
+   - **What worked:** Approaches, patterns, or tools that paid off during this review
+   - **What didn't:** Dead ends, false assumptions, things the review missed initially
+   - **Worth knowing:** Gotchas, edge cases, or non-obvious dependencies discovered during review
+
+   In **Pipeline mode**, skip lesson capture — actions/work.md's Lessons-Capture Phase handles it after the review returns.
+
+4. **Update prime files (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant:
+
+   - **Check for the inline-only marker first.** Look at the prime file's `## Lessons` section (if it already exists). If it opens with an HTML comment containing the phrase "inlined, not linked" (the pattern is `<!-- Lessons are inlined, not linked: ... -->` — see `../do-work-board/tools/queue-kanban/prime-do-kanban.md`'s `## Lessons` header for the exact wording), the prime has declared itself inline-only: append a plain bullet with the lesson summary instead — `- REQ-NNN: 1-line summary` (no link, matching the prime's existing inlined entries) — and skip the link steps below.
+   - Otherwise (no marker present), append a link under a `## Lessons` section (create it if it doesn't exist):
+
+     ```markdown
+     ## Lessons
+
+     - [REQ-NNN: 1-line summary](<relative-path-to-req>#lessons-learned)
+     ```
+
+     **Path must be relative to the prime file's location**, not the repo root. Compute the correct relative path from the prime file's directory to the archived REQ file. For example, if the prime file is at `src/utils/prime-auth.md` and the REQ is at `do-work/archive/UR-005/REQ-042-auth-fix.md`, the link should use `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`.
+
+   Only link lessons relevant to that prime file's scope. In **Pipeline mode**, actions/work.md's Lessons-Capture Phase handles prime file updates.
+
+5. **Offer knowledge-base handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. Update the REQ's `kb_status` and (if promoted) `kb_entry` frontmatter based on the outcome. The handoff asks before writing, degrades to `pending` if no `kb/` exists, and never blocks archival. In **Pipeline mode**, actions/work.md's Lessons-Capture Phase runs the handoff instead.
+
+Self-validation runs in **both modes**. Lesson capture, prime file updates, and the knowledge-base handoff are **standalone-only** to avoid duplication with actions/work.md.
+
+### Step 10: Create Follow-up REQs
+
+**The disposition gate runs first — every Important finding gets a recorded `gate:` token before any REQ is created.** Ask two questions of the current state:
+
+- **(a)** Would any user or developer actually notice this issue in real use?
+- **(b)** Does fixing it establish or change a rule that applies in several places (a genuine maintainability rule, not a one-spot patch)?
+
+Record the answer on the finding's line — in the report and in the appended `## Review` section — as `gate: user-visible` (yes to a), `gate: rule-change` (yes to b; a wins when both are yes), or `gate: trivial` (no to both). **The token is mandatory and auditable.** The pre-gate rule failed precisely because nothing recorded a checkable decision: one UR's review chain minted sixteen REQs over two days, fifteen of them facets of a single root cause, and every one was discovered trivial only by the user's own investigation (UR-489/UR-027). A finding line without a token is a gate that was skipped, and reviewers of the review can see it.
+
+**The gate routes; it never re-scores.** Severity (Important/Minor/Nit) is judged exactly as before — a finding can be genuinely Important ("the guard is blind to one color notation") while its disposition is `trivial` (the current state is realistically fine to ship). Do not resolve that tension by downgrading severity: severity measures the issue, the gate decides how its fix lands. Downgrading corrupts the severity axis the score bands read.
+
+**Sweep consolidation — same root cause, one REQ, never one REQ per facet.** Before drafting any individual follow-up, route each gated finding:
+
+- **A `gate: trivial` finding, or any set of findings sharing one root cause, folds into a sweep REQ.** Find candidate sweeps mechanically — `grep -rl "^sweep: true" do-work/queue/`, filtered to files whose `user_request:` matches this REQ's UR and whose `status:` is `pending` **or `pending-answers`** (a generation-≥2 review creates its sweeps as `pending-answers`, and excluding them would let a second review mint a duplicate for the same root cause before the user runs clarify).
+- **Append only to the sweep for THIS root cause.** Marker + UR + status narrow the candidates; the root cause decides. Compare the finding's root cause against each candidate's `sweep_key:` — append on a key match. When no key matches literally, read each candidate's `## What` root-cause statement and append only if the finding's root cause is the **same rule** (would one fix close both?); title resemblance remains forbidden as a match signal (two reviews judging titles differently mint duplicate sweeps — recreating the runaway at half scale). No candidate shares the root cause → create a new sweep, however many sweeps the UR already has.
+- **Append = checklist lines only:** one line per instance under the sweep's `## Instances` section — `- [ ] [file/site]: [instance]`. The append never touches the sweep's frontmatter. Appending to a `pending-answers` sweep is fine (the user approves the sweep with its accumulated instances); never append to a claimed or working sweep — create a new one instead.
+- **Otherwise create ONE sweep REQ named for the ROOT CAUSE** (e.g. "tokenize all remaining hardcoded colors and make the guard catch every notation"), with the normal follow-up fields below plus `sweep: true`, a `sweep_key: <root-cause-slug>` (short kebab-case name for the root cause, e.g. `hardcoded-colors-untokenized` — the deterministic append discriminator future reviews grep first), and an `## Instances` checklist; `effort_estimate: normal` when solving it establishes or changes a multi-site rule (`gate: rule-change`), `trivial` otherwise.
+- **Done means the class cannot recur** — the rule is changed everywhere it applies, not N spots patched one drop at a time. State that in the sweep's What section.
+- **Only a genuinely non-trivial, thematically unrelated finding (`gate: user-visible`, standing alone) earns its own REQ** — and its body must state in one line why it couldn't fold into a sweep.
+- At generation ≥ 2, appends stay allowed (the depth stop below is creation-only); a NEW sweep falls under the reroute like any other creation (`status: pending-answers`; critical pierces).
+
+For each finding that routes to its own REQ (and for each new sweep), create the follow-up, stamping `effort_estimate` from the gate token — `gate: trivial` → `effort_estimate: trivial`, `gate: user-visible`/`gate: rule-change` → `effort_estimate: normal` (the field is the board's triage chip; schema: `actions/work-reference.md` → Request File Schema):
+
+```markdown
+---
+id: REQ-NNN
+title: "Review fix: [brief description]"
+status: pending
+domain: [same domain as the reviewed REQ]
+created_at: [timestamp]
+user_request: [same UR as the reviewed REQ]
+addendum_to: [reviewed REQ id]
+review_generated: true
+effort_estimate: [trivial | normal — stamped from the finding's gate token, never omitted]
+---
+
+# Review Fix: [Brief Description]
+
+## What
+[Describe the issue found and the fix needed]
+
+## Context
+Found during review of [REQ-id]. [1 sentence on what the review found.]
+
+## Requirements
+- [Specific fix needed]
+```
+
+**When the root cause is ambiguous requirements** — not a code quality issue or missed implementation, but genuine ambiguity in what the user wanted — add an `## Open Questions` section to the follow-up REQ and set its status to `pending-answers`:
+
+```markdown
+---
+status: pending-answers
+---
+
+## Open Questions
+- [ ] [What needs clarification before this fix can be implemented]
+  Recommended: [best default based on review findings]
+  Also: [alternative A], [alternative B]
+```
+
+The `pending-answers` status means the work loop won't pick this up until the user reviews it, answers the questions, and flips the status to `pending`. The recommended choices let the user quickly pick an option without deep context-switching. Only add Open Questions when the ambiguity caused the issue — if the fix is clear (e.g., "missed a null check"), use `status: pending` and skip the Open Questions.
+
+**Author the question text for a cold reader** — load `crew-members/clear-questions.md` first, as with any Open Questions destined for `do-work clarify`: gloss every coined label, finding number, or spec §-reference, and state why the decision is the user's rather than the reviewer's (Principle 7). You have the review findings in your head right now; the user answering in a later clarify session has none of it.
+
+**Generation ≥ 2 — the cascade depth stop.** When the REQ under review itself carries `review_generated: true`, this review is reviewing review-spawned work — generation two or deeper. The marker is the entire test: marker-only, never inferred from a description (same posture as the `maintenance` marker). The review still records every Important finding as a follow-up REQ, but creates non-critical ones with `status: pending-answers` instead of `status: pending`: visible on the board with their `effort_estimate` chip, surfaced by `do-work clarify`, and unable to spawn autonomous work without the user's yes. The depth cap stops autonomous propagation, not record-keeping — nothing becomes report-only, and no finding is lost. (This is what hard-stops the UR-489 chain shape: sixteen auto-worked REQs where the user wanted one decision point.)
+
+- **The consent question MUST contain the exact discriminator phrase `Should I process this as a new task?`** with `Recommended: Yes, add to queue (will flip to 'pending').` and `Also: No, discard it.` — `actions/clarify.md`'s **Approved Discovered Task** path keys its flip-to-`pending` on that literal wording, and an equally valid rewording routes an approved follow-up down the **Confirmed Builder Decision** path instead, which archives it `completed` without ever building it. Load `crew-members/clear-questions.md` before authoring the rest of the question text, as with any clarify-bound Open Questions.
+- **Critical pierce:** a critical-grade finding — security vulnerability, data-loss risk, broken functionality in production paths; the same rubric as `actions/work-reference.md` → **Discovered Tasks Classification (Step 8)** — creates `status: pending` at ANY depth, auto-queued with a prominent report line (`⚠ CRITICAL review finding auto-queued as REQ-NNN`), mirroring that section's `[critical]` exemption. Categorizing impact is the point of the gate; burying a security finding behind a consent checkbox is the wrong trade.
+- **The reroute governs REQ *creation* only.** Editing an existing queued REQ — e.g. appending an instance to a `status: pending` sweep REQ under the same UR — is not creation and stays allowed at any generation. Failure-path follow-ups (`actions/work.md` Step 8 → **Failure Classification**) are likewise exempt at any depth: a failed generation-≥2 REQ still gets its Intent/Spec/Code follow-up, else failed work dies silently with no successor.
+- **The fixed point is intended — do not "fix" it.** Follow-ups created here carry `review_generated: true` themselves, so their own reviews fall under this same rule: the cascade converges at depth 2 by construction, with the user as the only escalation path.
+
+Follow-up REQs go in `do-work/queue/`. In pipeline mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do-work run`.
+
+**Don't create follow-ups for minor issues.** Minor findings go in the report only. The threshold: would a senior engineer request changes on this in a PR review, or just leave a comment?
+
+### Append to REQ File
+
+After generating the report, append a Review section to the REQ file:
+
+```markdown
+## Review
+
+**Overall: [X]%** | [timestamp]
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | X% |
+| Code Quality | X% |
+| Test Adequacy | X% |
+| Scope | X% |
+| Risk | [level] |
+| Acceptance | [result] |
+
+**Important findings (each with its recorded gate disposition — this is the durable audit record the gate mandates):**
+- [finding, one line] — gate: [user-visible | rule-change | trivial] → [REQ-NNN created / appended to REQ-NNN / rerouted pending-answers as REQ-NNN]
+[or "None"]
+
+**Minor findings:** [count] (report only)
+**Acceptance:** [Pass/Partial/Fail/Untested] — [1-line summary]
+**Suggested testing:** [count] items
+**Follow-ups created:** [REQ-NNN, REQ-NNN] or "None"; **sweeps appended to:** [REQ-NNN] or "None"
+
+*Reviewed by review-work action*
+```
+
+In standalone mode, this is an exception to the archive immutability rule — review annotations are post-work metadata, not content changes.
+
+### Commit (Standalone mode, git repos only)
+
+In **standalone mode**, after appending the Review section and creating any follow-up REQs, commit the changes. In **pipeline mode**, skip this — actions/work.md's Commit Phase handles the commit.
+
+Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
+
+```bash
+# Stage the modified archived REQ (with appended Review section)
+git add do-work/archive/UR-NNN/REQ-NNN-slug.md
+
+# Stage any follow-up REQs created
+git add do-work/queue/REQ-NNN-slug.md
+
+# Stage any EXISTING sweep REQs this review appended instances to — an append
+# modifies a queue file rather than creating one, so the created-files line
+# above never covers it and the new ## Instances entries would silently stay
+# unstaged.
+git add do-work/queue/REQ-NNN-existing-sweep.md
+
+git commit -m "$(cat <<'EOF'
+[REQ-NNN] review: {score}% (Route {route})
+
+Reviewed: do-work/archive/UR-NNN/REQ-NNN-slug.md
+Follow-ups: {REQ-NNN, REQ-NNN} or "None"
+
+EOF
+)"
+```
+
+**Format:** `[REQ-NNN] review: {score}% (Route {route})` — where `{score}` is the overall review percentage and `{route}` is the original triage route. List the reviewed file path and any follow-up REQs created.
+
+Stage only the modified archived REQ, any new follow-up REQs, and any existing sweep REQs appended to — never `git add -A`/`.` or bypass a hook (see `actions/commit.md` § Rules for the full guard).
+
+## Calibrating Review Depth
+
+Match effort to complexity:
+
+| Route | Review depth |
+|-------|-------------|
+| **A** (Simple) | Quick scan. Requirements check is a glance, code review focuses on correctness, acceptance is a quick smoke test. Skip dimensions that don't apply (e.g., Test Adequacy for a copy change). Suggested testing is usually empty or 1 item. |
+| **B** (Medium) | Standard review. Full requirements checklist. Code review checks all dimensions. Acceptance tests the feature end-to-end. Suggested testing covers obvious gaps. |
+| **C** (Complex) | Thorough review. Requirements checklist cross-referenced against plan and UR. Code review checks architectural decisions. Acceptance tests multiple paths. Suggested testing is comprehensive — integration, edge cases, performance. |
+
+## What NOT to Do
+
+- Don't re-implement — you're reviewing, not building
+- Don't review your own review's follow-up REQs more strictly than the original work — avoid infinite loops of diminishing-return fixes. The Step 10 disposition gate is this rule's mechanism: a `gate: trivial` finding arrives labeled `effort_estimate: trivial`, so diminishing returns are visible on the board instead of re-litigated each loop
+- Don't block on minor issues — report them but keep moving
+- Don't invent requirements — review against what the REQ says, not what you think it should say
+- Don't penalize the absence of things the project doesn't have (no test infrastructure = don't fail on test adequacy)
+- Don't turn acceptance testing into a full QA cycle — it's a smoke test, not an exhaustive regression suite
+- Don't suggest testing for things that are clearly irrelevant to the change
+
+## Common Rationalizations
+
+Guard against these when conducting the review:
+
+| If you're thinking... | STOP. Instead... | Because... |
+|---|---|---|
+| "Requirements are met because the builder says so" | Walk the REQ requirements against the diff, line by line | Implementation summaries are claims, not evidence |
+| "Acceptance passes because unit tests pass" | Run the feature end-to-end | Unit tests and acceptance testing catch different defects |
+| "The score is borderline, I'll round up" | Apply the scoring guidelines mechanically | Rounding up defeats the quality gate |
+| "This finding is minor, not worth a follow-up REQ" | Judge severity honestly (senior-engineer test), then let the Step 10 gate decide the landing — a trivial disposition is recorded, never silently dropped | Downgrading severity to avoid queue traffic corrupts the score bands; the gate token is how a real-but-trivial finding lands lightly without disappearing |
+| "I can't run the code so I'll skip acceptance" | Score Untested and note exactly what you couldn't test | Skipping silently hides risk |
+| "That stale restatement is in a file this REQ never declared — out of scope" | Report it as a finding and route the fix to a follow-up REQ | The diff changed the meaning; leaving other statements of it on the old contract is the defect, and the REQ's Scope declaration bounds the *builder*, not the sweep |
+| "All requirements checked and tests pass, so it's good" | Apply the Klarna Test — did we optimize for measurable things (checkboxes, passing tests) at the expense of unmeasured intent? | Checkbox compliance + passing tests can still miss what the user actually wanted |
+
+## Red Flags
+
+If any of these are true, escalate review depth regardless of route:
+
+- Implementation Summary lists files but `git diff` shows no changes in those files
+- Builder checked all P-A-U boxes but the diff contains `console.log`, `debugger`, or TODO/FIXME
+- New files exist but nothing imports them (dead code)
+- Tests pass but test file has trivial assertions (`expect(true).toBe(true)` style)
+- Scope section declares 3 files but Implementation Summary lists 8
+- No red-green evidence on a behavioral change with `tdd: true`
+- "Most recent work" silently skips a `completed-with-issues` REQ — Step 1 is filtering on the literal `completed` instead of the terminal-success set (`completed` or `completed-with-issues`; see `actions/work-reference.md`)
+
+## Verification Checklist
+
+Before presenting the review report:
+
+- [ ] Every requirement from the REQ walked against the diff (not skimmed)
+- [ ] Restatement Sweep applied — for anything the diff redefines, every other statement or consumer of it was grepped and verified (or recorded as "nothing redefined, sweep N/A")
+- [ ] All applicable scoring dimensions have a numeric score (no blanks)
+- [ ] Overall score computed using the documented formula
+- [ ] P-A-U checkboxes checked — if the REQ has an "AI Execution State (P-A-U Loop)" section, verify all three boxes (`[PLAN]`, `[APPLY]`, `[UNIFY]`) are marked `[x]`. Unchecked boxes suggest the builder skipped a phase — flag as a Minor finding.
+- [ ] Acceptance testing was attempted (or scored Untested with specific reason)
+- [ ] Each Important finding carries a recorded `gate:` token, and each drafted follow-up REQ carries `effort_estimate` stamped from it
+- [ ] Suggested Additional Testing includes only items relevant to this change
+- [ ] Self-validation pass completed

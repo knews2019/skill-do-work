@@ -1,0 +1,181 @@
+#!/usr/bin/env bash
+# uncommitted-inventory.sh — mechanical form of the Step 1 preflight shared by
+# actions/commit.md and actions/inspect.md: enumerate every uncommitted path,
+# categorize it, and tag the secret-shaped ones.
+#
+# Usage: tools/checks/uncommitted-inventory.sh [repo-root]
+# Output: one TAB-separated row per path — "<tag>\t<path>"
+#           M  modified (tracked, content changed)
+#           A  added (staged-new or untracked)
+#           D  deleted
+#           X  non-deleted excluded path: secret-shaped, secret-derived, or
+#              an ambiguous addition beside X or XD; reported but not to be read
+#          XD  deleted secret-shaped name, deletion may be committed without
+#              reading its former contents
+# Exit 0: rows emitted. Exit 1: clean working tree (no rows).
+# Exit 2: not a git repository, or usage error.
+#
+# A renamed destination is tagged M, not A: the caller's treatment of M ("read
+# the git diff") is the correct one for a move, whereas A tells it to read the
+# whole file as if the content were new. Its origin is classified too: when a
+# secret-shaped source is renamed to an ordinary-looking destination, emit XD
+# for the source and X for the destination. That reports the deletion while
+# preventing either caller from reading or staging the moved contents. Copy
+# records are parsed defensively, and copy-aware status detection is forced so
+# a secret-derived destination cannot degrade into an ordinary addition.
+#
+# Known limit: paths are emitted verbatim, so a filename containing a literal
+# newline produces a row that spans lines. The -z read below means such a path
+# is never corrupted or truncated — it just cannot be rendered on one line, and
+# a line-oriented format is what the prose callers consume.
+#
+# X and XD are tags, never silent drops. Both callers must still report these
+# paths — the user needs to know a secret-shaped file is sitting uncommitted or
+# deleted. X contents stay fully excluded; XD exposes only the deletion state.
+# A script that omitted either row would reintroduce exactly the silence both
+# prose copies warn against.
+set -uo pipefail
+
+repository_root="${1:-.}"
+if [ ! -d "$repository_root" ]; then
+  echo "usage: $0 [repo-root]" >&2
+  exit 2
+fi
+cd "$repository_root" || exit 2
+
+if ! git rev-parse --git-dir >/dev/null 2>&1; then
+  echo "NOT-A-GIT-REPO: $repository_root" >&2
+  exit 2
+fi
+
+# A secret-shaped BASENAME. Matched on the basename rather than the whole path
+# so a directory that merely contains "secret" does not tag every ordinary file
+# beneath it. The broad *credentials* / *secret* forms subsume the narrower ones
+# the prose also spells out.
+#
+# `.env*` is a prefix glob, deliberately: an earlier `.env|.env.*` spelling let
+# `.envrc` through — a direnv file, routinely full of exported secrets — because
+# neither branch matches a suffix with no dot. Under-matching here is the one
+# failure this script exists to prevent, so the pattern tracks the advertised
+# `.env*` exactly. `*.env` is the deliberate extra: `production.env` is an env
+# file by any reading, and both callers advertise it alongside the prefix form.
+is_secret_shaped() {
+  local candidate_basename="${1##*/}"
+  local normalized_basename
+  normalized_basename="$(printf '%s' "$candidate_basename" | LC_ALL=C tr '[:upper:]' '[:lower:]')" || return 1
+  case "$normalized_basename" in
+    .env*|*.env)               return 0 ;;
+    *credentials*)             return 0 ;;
+    *.pem|*.key|*.p12|*.pfx)   return 0 ;;
+    *secret*)                  return 0 ;;
+  esac
+  return 1
+}
+
+emitted_any_row=0
+inventory_contains_excluded_path=0
+inventory_contains_addition=0
+status_output_file="$(mktemp)" || {
+  echo "STATUS-FAILED: could not allocate temporary output" >&2
+  exit 2
+}
+inventory_rows_file="$(mktemp)" || {
+  rm -f "$status_output_file"
+  echo "STATUS-FAILED: could not allocate temporary inventory" >&2
+  exit 2
+}
+trap 'rm -f "$status_output_file" "$inventory_rows_file"' EXIT
+
+# --untracked-files=all is load-bearing, not cosmetic. Plain
+# `git status --porcelain` collapses a wholly-untracked directory into a single
+# "?? dir/" row and never lists the files inside it, so every file in a
+# brand-new directory would escape the secret-shaped exclusion above. That is a
+# secret-leak path, and actions/stray-check.md's Red Flags record that it has
+# been hit.
+#
+# -z terminates each record with NUL so paths containing spaces, quotes, or
+# newlines survive verbatim; without it git quotes such paths and the consumer
+# reads the quoting as part of the name. Force copy-aware rename detection at the
+# command boundary so repository configuration cannot turn a secret-derived copy
+# into an ordinary addition. Capture that stream in a temporary file first so
+# git's exit status remains observable. A process substitution hides the
+# producer's status from the loop; on a bare repository that used to turn Git's
+# fatal error into exit 1, which callers correctly interpret as "clean tree."
+if ! git -c status.renames=copies status --porcelain=v1 --untracked-files=all -z > "$status_output_file"; then
+  echo "STATUS-FAILED: git status could not read the working tree" >&2
+  exit 2
+fi
+
+# Redirecting the file into the loop keeps the loop in this shell, so
+# emitted_any_row survives. A pipe would run it in a subshell and the count would
+# always read 0.
+while IFS= read -r -d '' status_record; do
+  index_status="${status_record:0:1}"
+  worktree_status="${status_record:1:1}"
+  changed_path="${status_record:3}"
+  rename_origin_path=''
+  rename_origin_is_deleted=0
+
+  # A rename or copy record is followed by a SECOND NUL-terminated field holding
+  # the origin path. Preserve it for secret classification, or the origin gets
+  # parsed as the next record's status bytes and every row after it shifts by one.
+  case "$index_status$worktree_status" in
+    R*|*R)
+      IFS= read -r -d '' rename_origin_path || true
+      rename_origin_is_deleted=1
+      ;;
+    C*|*C) IFS= read -r -d '' rename_origin_path || true ;;
+  esac
+
+  # Deleted wins over modified: a path deleted in either the index or the
+  # worktree cannot be read, so a caller that saw "M" would try to diff a file
+  # that is gone. Added covers both staged-new (A) and untracked (??). Compute
+  # this ordinary state before secret classification so a secret deletion can
+  # become XD instead of the fully excluded X.
+  case "$index_status$worktree_status" in
+    *D*)  path_tag='D' ;;
+    '??') path_tag='A' ;;
+    A*)   path_tag='A' ;;
+    *)    path_tag='M' ;;
+  esac
+
+  if is_secret_shaped "$changed_path" || { [ -n "$rename_origin_path" ] && is_secret_shaped "$rename_origin_path"; }; then
+    if [ "$path_tag" = 'D' ]; then
+      path_tag='XD'
+    else
+      path_tag='X'
+    fi
+  fi
+
+  if [ "$rename_origin_is_deleted" -eq 1 ] && is_secret_shaped "$rename_origin_path"; then
+    printf 'XD\0%s\0' "$rename_origin_path" >> "$inventory_rows_file"
+    emitted_any_row=1
+    inventory_contains_excluded_path=1
+  fi
+  printf '%s\0%s\0' "$path_tag" "$changed_path" >> "$inventory_rows_file"
+  emitted_any_row=1
+  case "$path_tag" in
+    X|XD) inventory_contains_excluded_path=1 ;;
+    A)  inventory_contains_addition=1 ;;
+  esac
+done < "$status_output_file"
+
+[ "$emitted_any_row" -eq 1 ] || exit 1
+
+# An X or XD plus an ordinary A has no trustworthy provenance. Git can represent
+# a staged secret rename as a cached deletion plus an untracked destination, and
+# it cannot identify a copy when both the secret-shaped source and its ordinary
+# destination are untracked. Fail closed for the complete inventory: every A
+# becomes X before either caller can read, associate, or stage it. Buffering
+# tag/path fields with NUL separators keeps that second pass safe for every
+# filename Git can report.
+while IFS= read -r -d '' path_tag && IFS= read -r -d '' changed_path; do
+  if [ "$inventory_contains_excluded_path" -eq 1 ] &&
+     [ "$inventory_contains_addition" -eq 1 ] &&
+     [ "$path_tag" = 'A' ]; then
+    path_tag='X'
+  fi
+  printf '%s\t%s\n' "$path_tag" "$changed_path"
+done < "$inventory_rows_file"
+
+exit 0

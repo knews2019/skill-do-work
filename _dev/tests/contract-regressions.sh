@@ -1899,6 +1899,18 @@ elif ! bash "$update_script_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# The modular suite is staged before cutover, so its package boundaries need a contract
+# independent from the active root skill. This checks the staged router, required core
+# runtime, hook targets, and the ban on leaking repository maintainer instructions.
+staged_skills_probe="$repo_root/_dev/tests/staged-skills-contract.sh"
+if [ ! -f "$staged_skills_probe" ]; then
+  printf 'FAIL: _dev/tests/staged-skills-contract.sh is missing — staged skill packages have no boundary coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$staged_skills_probe"; then
+  printf 'FAIL: staged skills contract probes failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # Managed Just sections are a byte-preserving ownership boundary, not a prose convention.
 # Exercise the real utility across replacement, legacy migration, append, creation, malformed
 # markers, filename variants, spaces, modes, idempotence, and Just parsing.
