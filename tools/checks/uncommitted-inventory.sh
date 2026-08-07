@@ -8,7 +8,8 @@
 #           M  modified (tracked, content changed)
 #           A  added (staged-new or untracked)
 #           D  deleted
-#           X  non-deleted secret-shaped name, reported but not to be read
+#           X  non-deleted excluded path: secret-shaped, secret-derived, or
+#              an ambiguous addition beside XD; reported but not to be read
 #          XD  deleted secret-shaped name, deletion may be committed without
 #              reading its former contents
 # Exit 0: rows emitted. Exit 1: clean working tree (no rows).
@@ -19,8 +20,9 @@
 # whole file as if the content were new. Its origin is classified too: when a
 # secret-shaped source is renamed to an ordinary-looking destination, emit XD
 # for the source and X for the destination. That reports the deletion while
-# preventing either caller from reading or staging the moved contents. A copy's
-# source remains unchanged, so only its destination is emitted.
+# preventing either caller from reading or staging the moved contents. Copy
+# records are parsed defensively when Git emits them, but this inventory does
+# not perform content-based copy detection.
 #
 # Known limit: paths are emitted verbatim, so a filename containing a literal
 # newline produces a row that spans lines. The -z read below means such a path
@@ -71,11 +73,18 @@ is_secret_shaped() {
 }
 
 emitted_any_row=0
+inventory_contains_xd=0
+inventory_contains_addition=0
 status_output_file="$(mktemp)" || {
   echo "STATUS-FAILED: could not allocate temporary output" >&2
   exit 2
 }
-trap 'rm -f "$status_output_file"' EXIT
+inventory_rows_file="$(mktemp)" || {
+  rm -f "$status_output_file"
+  echo "STATUS-FAILED: could not allocate temporary inventory" >&2
+  exit 2
+}
+trap 'rm -f "$status_output_file" "$inventory_rows_file"' EXIT
 
 # --untracked-files=all is load-bearing, not cosmetic. Plain
 # `git status --porcelain` collapses a wholly-untracked directory into a single
@@ -90,7 +99,7 @@ trap 'rm -f "$status_output_file"' EXIT
 # first so git's exit status remains observable. A process substitution hides the
 # producer's status from the loop; on a bare repository that used to turn Git's
 # fatal error into exit 1, which callers correctly interpret as "clean tree."
-if ! git status --porcelain --untracked-files=all -z > "$status_output_file"; then
+if ! git status --porcelain --untracked-files=all --renames -z > "$status_output_file"; then
   echo "STATUS-FAILED: git status could not read the working tree" >&2
   exit 2
 fi
@@ -137,12 +146,32 @@ while IFS= read -r -d '' status_record; do
   fi
 
   if [ "$rename_origin_is_deleted" -eq 1 ] && is_secret_shaped "$rename_origin_path"; then
-    printf 'XD\t%s\n' "$rename_origin_path"
+    printf 'XD\0%s\0' "$rename_origin_path" >> "$inventory_rows_file"
     emitted_any_row=1
+    inventory_contains_xd=1
   fi
-  printf '%s\t%s\n' "$path_tag" "$changed_path"
+  printf '%s\0%s\0' "$path_tag" "$changed_path" >> "$inventory_rows_file"
   emitted_any_row=1
+  case "$path_tag" in
+    XD) inventory_contains_xd=1 ;;
+    A)  inventory_contains_addition=1 ;;
+  esac
 done < "$status_output_file"
 
 [ "$emitted_any_row" -eq 1 ] || exit 1
+
+# An XD plus an ordinary A has no trustworthy provenance once a staged secret
+# rename has degraded into a cached deletion and an untracked destination. Fail
+# closed for the complete inventory: every A becomes X before either caller can
+# read, associate, or stage it. Buffering tag/path fields with NUL separators
+# keeps that second pass safe for every filename Git can report.
+while IFS= read -r -d '' path_tag && IFS= read -r -d '' changed_path; do
+  if [ "$inventory_contains_xd" -eq 1 ] &&
+     [ "$inventory_contains_addition" -eq 1 ] &&
+     [ "$path_tag" = 'A' ]; then
+    path_tag='X'
+  fi
+  printf '%s\t%s\n' "$path_tag" "$changed_path"
+done < "$inventory_rows_file"
+
 exit 0

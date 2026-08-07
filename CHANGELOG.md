@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.4 — Secret Rename Quarantine Survives Re-inventory (2026-08-07)
+
+Resetting a staged secret rename can no longer make its ordinary-looking destination readable on the next inventory pass. Deletion-only commits also accept the safe state Git already staged instead of failing while trying to stage it again.
+
+- Inventory now forces rename detection and quarantines every ambiguous addition when a secret-shaped deletion has lost its rename provenance
+- Commit and inspect retain every excluded path for the full action run, including their manual fallback paths
+- Secret deletions verify cached name/status only, skipping `git add -u` when the exact deletion is already staged
+
 ## 0.183.3 — Residual Shell-Logic Candidates Have an Accurate Disposition (2026-08-07)
 
 The census's remaining candidates no longer imply that every extraction is still unapproved. The record now says what happened without bringing its obsolete line-number table back to life.

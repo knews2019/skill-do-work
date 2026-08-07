@@ -61,7 +61,25 @@ inspect action
 Run the shipped check:
 
 ```bash
-<skill-root>/tools/checks/uncommitted-inventory.sh
+repository_root="$(git rev-parse --show-toplevel)" || exit 2
+quarantine_paths_file="$(git rev-parse --git-path do-work-inspect-secret-quarantine)" || exit 2
+inventory_file="$(mktemp)" || exit 2
+: > "$quarantine_paths_file" || { rm -f "$inventory_file"; exit 2; }
+
+if "<skill-root>/tools/checks/uncommitted-inventory.sh" "$repository_root" > "$inventory_file"; then
+  inventory_exit=0
+else
+  inventory_exit=$?
+fi
+case "$inventory_exit" in
+  0)
+    awk -F '\t' '$1 == "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" > "$quarantine_paths_file"
+    cat "$inventory_file"
+    rm -f "$inventory_file"
+    ;;
+  1) rm -f "$inventory_file" "$quarantine_paths_file"; exit 1 ;;
+  *) rm -f "$inventory_file" "$quarantine_paths_file"; exit 2 ;;
+esac
 ```
 
 It gates on `git rev-parse --git-dir`, enumerates every uncommitted path, and prints one `<tag>\t<path>` row per file:
@@ -69,7 +87,7 @@ It gates on `git rev-parse --git-dir`, enumerates every uncommitted path, and pr
 - **M** — modified (a renamed path is tagged M too: read its diff, don't re-read it as new content)
 - **A** — added, covering both staged-new and untracked
 - **D** — deleted
-- **X** — non-deleted secret-shaped path; fully excluded from analysis
+- **X** — non-deleted excluded path: secret-shaped, secret-derived, or an ambiguous addition beside `XD`; fully excluded from analysis
 - **XD** — deleted secret-shaped path; path/deletion state only
 
 Secret-shaped matching is case-insensitive and applies to the basename only: `.env*` or `*.env`, `*credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, and `*secret*`. Thus `.ENV`, `AuthCredentials.json`, `private.PEM`, and `UPPER-SECRET.txt` are all secret-shaped, while an ordinary file beneath a directory named `secrets/` is not classified from the directory name alone.
@@ -79,11 +97,13 @@ Exit 2 means this is not a git repo — report and exit. Exit 1 means the workin
 - **No REQ/UR scope:** Report "No uncommitted changes" and exit.
 - **REQ/UR scope:** Continue to Step 2 — committed files from the Implementation Summary will still be inspected.
 
-**`X` rows are reported, never skipped silently.** Carry them into the report so the user knows a secret-shaped file is sitting uncommitted; never read, diff, stage, or commit them.
+**`X` rows are reported, never skipped silently.** Carry them into the report so the user knows a secret-shaped, secret-derived, or ambiguity-quarantined file is sitting uncommitted; never read, diff, stage, or commit them.
+
+Start a run-level quarantine with the first inventory. The deterministic file comes from `git rev-parse --git-path`, so every later command block re-derives the same worktree-safe location instead of relying on shell state that does not survive between steps. Before consuming any inventory, add every current `X` path to that set and overlay the full set on the current rows, changing any matching M/A path back to `X`. Apply this before every later read or REQ association in Steps 2 and 3. The invariant is **once `X`, always `X` for this action run**: a later inventory with degraded rename provenance cannot make an excluded destination readable.
 
 **`XD` rows are also reported.** A later commit action may stage their deletion, but this read-only action inspects only the path and deletion state. Never read, diff, reconstruct, or retrieve the former contents from the index, a commit, or any other Git history.
 
-If the script is missing or will not run, do it by hand: `git status --porcelain --untracked-files=all`, first classify every path as M/A/D, then lowercase its basename with `tr '[:upper:]' '[:lower:]'` and apply the patterns above. Change a non-deleted secret-shaped tag to X and a deleted one to XD. The `-uall` flag is not optional — plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so every file inside a brand-new folder escapes the exclusion scan. That is a secret-leak path, and `actions/stray-check.md`'s Red Flags record that it has been hit.
+If the script is missing or will not run, do it by hand from the complete NUL-delimited output of `git status --porcelain --untracked-files=all --renames -z`; `--renames` is required even when repository configuration disables rename detection. First classify every path as M/A/D, including each rename's second NUL-delimited origin path, then lowercase its basename with `tr '[:upper:]' '[:lower:]'` and apply the patterns above. Change a non-deleted secret-shaped tag to X and a deleted one to XD; a secret-shaped rename origin is XD and its destination is X. Buffer the complete classification before using it. If the finished inventory contains any XD and any remaining A, provenance is ambiguous, so change every A to X. Finally add all X paths to the run-level quarantine and overlay that quarantine before any row is consumed. The `-uall` flag is not optional — plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so every file inside a brand-new folder escapes the exclusion scan. That is a secret-leak path, and `actions/stray-check.md`'s Red Flags record that it has been hit.
 
 ### Step 2: Read Changes
 
@@ -125,9 +145,14 @@ Feed the M/A/D/XD paths from Step 1 into the shipped check, excluding only exact
 
 ```bash
 repository_root="$(git rev-parse --show-toplevel)" || exit 2
+quarantine_paths_file="$(git rev-parse --git-path do-work-inspect-secret-quarantine)" || exit 2
 inventory_file="$(mktemp)" || exit 2
 candidate_paths_file="$(mktemp)" || { rm -f "$inventory_file"; exit 2; }
 trap 'rm -f "$inventory_file" "$candidate_paths_file"' EXIT
+
+# Step 1 creates this deterministic run artifact. Never silently recreate an
+# empty file here: that would erase the only record of an earlier X path.
+test -f "$quarantine_paths_file" || exit 2
 
 if "<skill-root>/tools/checks/uncommitted-inventory.sh" "$repository_root" > "$inventory_file"; then
   inventory_exit=0
@@ -140,11 +165,19 @@ case "$inventory_exit" in
   *) exit 2 ;;
 esac
 
-awk -F '\t' '$1 != "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" > "$candidate_paths_file"
+awk -F '\t' '$1 == "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" >> "$quarantine_paths_file"
+awk -F '\t' '
+  NR == FNR { excluded[$0] = 1; next }
+  {
+    tag = $1
+    sub(/^[^\t]*\t/, "")
+    if (tag != "X" && !($0 in excluded)) print
+  }
+' "$quarantine_paths_file" "$inventory_file" > "$candidate_paths_file"
 "<skill-root>/tools/checks/associate-files.sh" --repo-root "$repository_root" < "$candidate_paths_file"
 ```
 
-This self-contained block re-derives the repository root and moves paths through files rather than interpolating them into shell source. The exact `$1 != "X"` filter is intentional: M/A/D/XD participate in association, and only X is excluded. The check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory, which is the skip condition already stated above.
+This block re-derives the repository root and moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory, which is the skip condition already stated above.
 
 What the script settles, so this prose no longer has to:
 
@@ -253,6 +286,8 @@ Committed files (REQ/UR scope only) get a separate label:
 - **Already Committed** — already in the repository; shown for informational completeness only. The six readiness signals above are evaluated and any findings are reported, but the verdict label is always "Already Committed" regardless of findings — the user is not deciding whether to commit these files. This is a status label, not a quality judgment.
 
 ### Step 6: Report
+
+Remove the run's Git-private quarantine file before reporting: `rm -f "$(git rev-parse --git-path do-work-inspect-secret-quarantine)"`. Do this on every exit after Step 1; the next run truncates the same deterministic path defensively, but a completed inspection leaves no scratch state behind. This temporary Git-private file is the action's only write; the working tree and index remain untouched.
 
 Print the structured report. See Output Format below.
 

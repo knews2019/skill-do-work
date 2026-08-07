@@ -45,7 +45,25 @@ commit action
 Run the shipped check:
 
 ```bash
-<skill-root>/tools/checks/uncommitted-inventory.sh
+repository_root="$(git rev-parse --show-toplevel)" || exit 2
+quarantine_paths_file="$(git rev-parse --git-path do-work-commit-secret-quarantine)" || exit 2
+inventory_file="$(mktemp)" || exit 2
+: > "$quarantine_paths_file" || { rm -f "$inventory_file"; exit 2; }
+
+if "<skill-root>/tools/checks/uncommitted-inventory.sh" "$repository_root" > "$inventory_file"; then
+  inventory_exit=0
+else
+  inventory_exit=$?
+fi
+case "$inventory_exit" in
+  0)
+    awk -F '\t' '$1 == "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" > "$quarantine_paths_file"
+    cat "$inventory_file"
+    rm -f "$inventory_file"
+    ;;
+  1) rm -f "$inventory_file" "$quarantine_paths_file"; exit 1 ;;
+  *) rm -f "$inventory_file" "$quarantine_paths_file"; exit 2 ;;
+esac
 ```
 
 It gates on `git rev-parse --git-dir`, enumerates every uncommitted path, and prints one `<tag>\t<path>` row per file:
@@ -53,20 +71,22 @@ It gates on `git rev-parse --git-dir`, enumerates every uncommitted path, and pr
 - **M** — modified (a renamed path is tagged M too: read its diff, don't re-read it as new content)
 - **A** — added, covering both staged-new and untracked
 - **D** — deleted
-- **X** — non-deleted secret-shaped path; fully excluded
+- **X** — non-deleted excluded path: secret-shaped, secret-derived, or an ambiguous addition beside `XD`; fully excluded
 - **XD** — deleted secret-shaped path; eligible for a deletion-only commit
 
 Secret-shaped matching is case-insensitive and applies to the basename only: `.env*` or `*.env`, `*credentials*`, `*.pem`/`*.key`/`*.p12`/`*.pfx`, and `*secret*`. Thus `.ENV`, `AuthCredentials.json`, `private.PEM`, and `UPPER-SECRET.txt` are all secret-shaped, while an ordinary file beneath a directory named `secrets/` is not classified from the directory name alone.
 
 Exit 1 means the working tree is clean — report "Nothing to commit" and exit. Exit 2 means this is not a git repo — report and exit.
 
-**`X` rows are reported, never skipped silently.** Carry them into the final report so the user knows a secret-shaped file is sitting uncommitted; never read, diff, stage, or commit them.
+**`X` rows are reported, never skipped silently.** Carry them into the final report so the user knows a secret-shaped, secret-derived, or ambiguity-quarantined file is sitting uncommitted; never read, diff, stage, or commit them.
 
-If an X path was already staged before this action began, stop before making any commit. Remove it from the index without reading it (for example, `git reset -- <path>`), then re-run the inventory; the action must not let a pre-staged X path ride along with an otherwise safe group.
+Start a run-level quarantine with the first inventory. The deterministic file comes from `git rev-parse --git-path`, so every later command block re-derives the same worktree-safe location instead of relying on shell state that does not survive between steps. Before consuming any inventory, add every current `X` path to that set and overlay the full set on the current rows, changing any matching M/A path back to `X`. Apply this before every later read, REQ association, or staging decision in Steps 2, 3, and 5. The invariant is **once `X`, always `X` for this action run**: resetting a pre-staged rename destination must not make its contents readable when the next inventory can see only an addition.
+
+If an X path was already staged before this action began, stop before making any commit. Remove it from the index without reading it (for example, `git reset -- <path>`), then re-run the inventory using the retained quarantine — re-derive its Git-private path, do not truncate it, append the new X rows, and overlay the full set before consuming the result. The action must not let a pre-staged X path ride along with an otherwise safe group.
 
 **`XD` rows are also reported, but only the deletion may proceed.** Never read, diff, reconstruct, or retrieve the former contents from the index, a commit, or any other Git history. The path and its current deletion state are the complete inspection surface.
 
-If the script is missing or will not run, do it by hand: `git status --porcelain --untracked-files=all`, first classify every path as M/A/D, then lowercase its basename with `tr '[:upper:]' '[:lower:]'` and apply the patterns above. Change a non-deleted secret-shaped tag to X and a deleted one to XD. The `-uall` flag is not optional — plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so every file inside a brand-new folder escapes the exclusion scan. That is a secret-leak path, and `actions/stray-check.md`'s Red Flags record that it has been hit.
+If the script is missing or will not run, do it by hand from the complete NUL-delimited output of `git status --porcelain --untracked-files=all --renames -z`; `--renames` is required even when repository configuration disables rename detection. First classify every path as M/A/D, including each rename's second NUL-delimited origin path, then lowercase its basename with `tr '[:upper:]' '[:lower:]'` and apply the patterns above. Change a non-deleted secret-shaped tag to X and a deleted one to XD; a secret-shaped rename origin is XD and its destination is X. Buffer the complete classification before using it. If the finished inventory contains any XD and any remaining A, provenance is ambiguous, so change every A to X. Finally add all X paths to the run-level quarantine and overlay that quarantine before any row is consumed. The `-uall` flag is not optional — plain `git status --porcelain` collapses a wholly-untracked directory into a single `?? dir/` row, so every file inside a brand-new folder escapes the exclusion scan. That is a secret-leak path, and `actions/stray-check.md`'s Red Flags record that it has been hit.
 
 ### Step 2: Read Changes
 
@@ -85,9 +105,14 @@ Feed the M/A/D/XD paths from Step 1 into the shipped check, excluding only exact
 
 ```bash
 repository_root="$(git rev-parse --show-toplevel)" || exit 2
+quarantine_paths_file="$(git rev-parse --git-path do-work-commit-secret-quarantine)" || exit 2
 inventory_file="$(mktemp)" || exit 2
 candidate_paths_file="$(mktemp)" || { rm -f "$inventory_file"; exit 2; }
 trap 'rm -f "$inventory_file" "$candidate_paths_file"' EXIT
+
+# Step 1 creates this deterministic run artifact. Never silently recreate an
+# empty file here: that would erase the only record of an earlier X path.
+test -f "$quarantine_paths_file" || exit 2
 
 if "<skill-root>/tools/checks/uncommitted-inventory.sh" "$repository_root" > "$inventory_file"; then
   inventory_exit=0
@@ -100,11 +125,19 @@ case "$inventory_exit" in
   *) exit 2 ;;
 esac
 
-awk -F '\t' '$1 != "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" > "$candidate_paths_file"
+awk -F '\t' '$1 == "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" >> "$quarantine_paths_file"
+awk -F '\t' '
+  NR == FNR { excluded[$0] = 1; next }
+  {
+    tag = $1
+    sub(/^[^\t]*\t/, "")
+    if (tag != "X" && !($0 in excluded)) print
+  }
+' "$quarantine_paths_file" "$inventory_file" > "$candidate_paths_file"
 "<skill-root>/tools/checks/associate-files.sh" --repo-root "$repository_root" < "$candidate_paths_file"
 ```
 
-This self-contained block re-derives the repository root and moves paths through files rather than interpolating them into shell source. The exact `$1 != "X"` filter is intentional: M/A/D/XD participate in association, and only X is excluded. The check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory; skip REQ tracing and send every M/A/D/XD file to Step 4.
+This block re-derives the repository root and moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory; skip REQ tracing and send the remaining safe M/A/D/XD files to Step 4.
 
 What the script settles, so this prose no longer has to:
 
@@ -140,7 +173,48 @@ Cluster the remaining files into semantic groups of 1-5 files each:
 
 Commit each group in order — REQ-associated groups first, then unassociated groups.
 
-For each XD path, re-run the inventory immediately before staging and proceed only while the exact row is still XD. Stage its deletion with `git add -u -- <path>` and verify only its path/status with `git status --short -- <path>`; never inspect a staged diff. If it is no longer XD, stop and reclassify it. X paths are never staged by any command, and no commit proceeds while an X path remains pre-staged.
+For each XD path, re-run the inventory immediately before staging using Step 3's complete procedure: re-derive `do-work-commit-secret-quarantine` with `git rev-parse --git-path`, require it to exist, append the new X rows, and overlay it before checking the exact XD row. Proceed only while the exact row is still XD and the path has never been X. Check the cached name/status without reading content:
+
+```bash
+cached_deletion_file="$(mktemp)" || exit 2
+if ! git diff --cached --name-status --no-renames -z -- "$path" > "$cached_deletion_file"; then
+  rm -f "$cached_deletion_file"
+  exit 2
+fi
+cached_status=''
+cached_path=''
+cached_extra=''
+{
+  IFS= read -r -d '' cached_status || true
+  IFS= read -r -d '' cached_path || true
+  IFS= read -r -d '' cached_extra || true
+} < "$cached_deletion_file"
+
+if [ "$cached_status" = 'D' ] && [ "$cached_path" = "$path" ] && [ -z "$cached_extra" ]; then
+  : # Already staged as one exact deletion: skip git add -u.
+else
+  git add -u -- "$path" || { rm -f "$cached_deletion_file"; exit 2; }
+  git diff --cached --name-status --no-renames -z -- "$path" > "$cached_deletion_file" || {
+    rm -f "$cached_deletion_file"
+    exit 2
+  }
+  cached_status=''
+  cached_path=''
+  cached_extra=''
+  {
+    IFS= read -r -d '' cached_status || true
+    IFS= read -r -d '' cached_path || true
+    IFS= read -r -d '' cached_extra || true
+  } < "$cached_deletion_file"
+  if [ "$cached_status" != 'D' ] || [ "$cached_path" != "$path" ] || [ -n "$cached_extra" ]; then
+    rm -f "$cached_deletion_file"
+    exit 2
+  fi
+fi
+rm -f "$cached_deletion_file"
+```
+
+This accepts a path already staged as one exact deletion without `git add -u`; otherwise it stages the tracked deletion and verifies the same exact cached metadata afterward. Never inspect a staged diff. If the path is no longer XD, stop and reclassify it. X paths are never staged by any command, and no commit proceeds while an X path remains pre-staged.
 
 **REQ-associated commits** (one per REQ):
 
@@ -183,6 +257,8 @@ EOF
 Committing an XD deletion removes the path from the new tree only. It does **not** erase the secret from Git history and does **not** rotate or revoke the credential; report those as separate remediation needs when applicable.
 
 ### Step 6: Report
+
+Remove the run's Git-private quarantine file before reporting: `rm -f "$(git rev-parse --git-path do-work-commit-secret-quarantine)"`. Do this on every exit after Step 1; the next run truncates the same deterministic path defensively, but a completed action leaves no scratch state behind.
 
 Print a summary of all commits:
 

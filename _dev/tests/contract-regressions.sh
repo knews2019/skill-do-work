@@ -976,13 +976,154 @@ else
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must fail closed when a secret-shaped rename origin moves to an ordinary-looking destination: XD for the source and X for the destination.\n' >&2
     fail_count=$((fail_count + 1))
   fi
-  if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'A\tnested/ordinary.js')"; then
-    printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag an ordinary file as A — an over-broad exclusion glob starves both callers of every file.\n' >&2
+  if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'X\tnested/ordinary.js')"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must quarantine every A as X when an unrelated XD makes addition provenance ambiguous.\n' >&2
     fail_count=$((fail_count + 1))
+  fi
+
+  # A caller can disable rename detection in repository config. The shipped
+  # inventory must override that setting explicitly; otherwise the same staged
+  # rename above degrades to an XD + A pair before the action has any provenance
+  # to retain.
+  git -C "$inventory_probe_dir" config status.renames false
+  inventory_renames_disabled_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    "$repo_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
+  if ! printf '%s\n' "$inventory_renames_disabled_output" | grep -qxF "$(printf 'XD\t.env')" || \
+      ! printf '%s\n' "$inventory_renames_disabled_output" | grep -qxF "$(printf 'X\tvisible-config.txt')"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must force rename detection even when status.renames=false: XD for .env and X for visible-config.txt.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+
+  # commit Step 1 resets a pre-staged X destination. That erases rename
+  # provenance from porcelain status and leaves an already-staged source
+  # deletion plus an untracked destination. The destination must remain X.
+  if ! git -C "$inventory_probe_dir" reset -q -- visible-config.txt; then
+    printf 'FAIL: could not reset the secret-rename destination for the re-inventory probe.\n' >&2
+    fail_count=$((fail_count + 1))
+  else
+    inventory_after_reset_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+      "$repo_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
+    if ! printf '%s\n' "$inventory_after_reset_output" | grep -qxF "$(printf 'XD\t.env')" || \
+        ! printf '%s\n' "$inventory_after_reset_output" | grep -qxF "$(printf 'X\tvisible-config.txt')"; then
+      printf 'FAIL: reset-and-reinventory must fail closed: XD for .env and X, never A, for visible-config.txt.\n' >&2
+      fail_count=$((fail_count + 1))
+    fi
+
+    staged_deletion_metadata="$inventory_probe_dir/staged-deletion-metadata.bin"
+    git -C "$inventory_probe_dir" diff --cached --name-status --no-renames -z -- .env > "$staged_deletion_metadata"
+    staged_deletion_status=''
+    staged_deletion_path=''
+    staged_deletion_extra=''
+    {
+      IFS= read -r -d '' staged_deletion_status
+      IFS= read -r -d '' staged_deletion_path
+      IFS= read -r -d '' staged_deletion_extra || true
+    } < "$staged_deletion_metadata"
+    if [ "$staged_deletion_status" != 'D' ] || [ "$staged_deletion_path" != '.env' ] || [ -n "$staged_deletion_extra" ]; then
+      printf 'FAIL: reset probe must leave one exact cached deletion for .env; got status=%s path=%s extra=%s.\n' \
+        "$staged_deletion_status" "$staged_deletion_path" "$staged_deletion_extra" >&2
+      fail_count=$((fail_count + 1))
+    fi
+    if git -C "$inventory_probe_dir" add -u -- .env 2>/dev/null; then
+      printf 'FAIL: probe no longer reproduces Git rejecting git add -u for an already-staged rename-source deletion.\n' >&2
+      fail_count=$((fail_count + 1))
+    fi
   fi
 fi
 cleanup_inventory_probe
 trap - EXIT
+
+# An ordinary addition remains readable when no secret-shaped deletion makes
+# its provenance ambiguous. Keep this in a separate repository: combining it
+# with the XD fixture above would assert the unsafe behavior REQ-128 removes.
+ordinary_addition_probe_dir="$(mktemp -d)"
+if ! (
+  export GIT_CONFIG_GLOBAL=/dev/null
+  export GIT_CONFIG_SYSTEM=/dev/null
+  cd "$ordinary_addition_probe_dir" || exit 1
+  git init -q .
+  echo ordinary > ordinary.js
+); then
+  printf 'FAIL: could not set up the ordinary-addition inventory probe.\n' >&2
+  fail_count=$((fail_count + 1))
+else
+  ordinary_addition_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    "$repo_root/tools/checks/uncommitted-inventory.sh" "$ordinary_addition_probe_dir" 2>/dev/null || true)"
+  if ! printf '%s\n' "$ordinary_addition_output" | grep -qxF "$(printf 'A\tordinary.js')"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must leave an ordinary addition as A when no XD exists.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+fi
+rm -rf -- "$ordinary_addition_probe_dir"
+
+# The other Step 5 branch remains live: a tracked secret deletion that is not
+# cached yet still needs git add -u, followed by deletion-only metadata.
+unstaged_deletion_probe_dir="$(mktemp -d)"
+if ! (
+  export GIT_CONFIG_GLOBAL=/dev/null
+  export GIT_CONFIG_SYSTEM=/dev/null
+  cd "$unstaged_deletion_probe_dir" || exit 1
+  git init -q .
+  git config user.email probe@test
+  git config user.name probe
+  echo probe > .env
+  git add .env
+  git commit -qm 'seed unstaged secret deletion'
+  rm .env
+); then
+  printf 'FAIL: could not set up the unstaged secret-deletion probe.\n' >&2
+  fail_count=$((fail_count + 1))
+else
+  if [ -n "$(git -C "$unstaged_deletion_probe_dir" diff --cached --name-status --no-renames -- .env)" ]; then
+    printf 'FAIL: unstaged secret-deletion probe unexpectedly began with cached metadata.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! git -C "$unstaged_deletion_probe_dir" add -u -- .env || \
+       ! git -C "$unstaged_deletion_probe_dir" diff --cached --name-status --no-renames -- .env \
+         | grep -qxF "$(printf 'D\t.env')"; then
+    printf 'FAIL: an unstaged tracked secret deletion must still stage as one exact cached D entry.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+fi
+rm -rf -- "$unstaged_deletion_probe_dir"
+
+# The action prose is executable behavior. Both consumers must retain a
+# run-level quarantine before their second inventory reaches content or REQ
+# association, and the manual fallback must force rename detection too.
+for inventory_consumer in actions/commit.md actions/inspect.md; do
+  assert_contains \
+    "$inventory_consumer" \
+    'once X.*always X|once `X`.*always `X`' \
+    "$inventory_consumer must preserve a once-X-always-X quarantine across every re-inventory in the action run."
+  assert_contains \
+    "$inventory_consumer" \
+    'git status --porcelain --untracked-files=all --renames' \
+    "$inventory_consumer manual fallback must force rename detection instead of inheriting status.renames=false."
+done
+
+assert_contains \
+  'actions/commit.md' \
+  'git rev-parse --git-path do-work-commit-secret-quarantine' \
+  'actions/commit.md must re-derive a deterministic Git-private quarantine across separate command blocks.'
+
+assert_contains \
+  'actions/inspect.md' \
+  'git rev-parse --git-path do-work-inspect-secret-quarantine' \
+  'actions/inspect.md must re-derive a deterministic Git-private quarantine across separate command blocks.'
+
+assert_contains \
+  'actions/commit.md' \
+  'already staged.*exact.*deletion|exact.*deletion.*already staged' \
+  'actions/commit.md Step 5 must recognize an exact already-staged XD deletion before deciding whether git add -u is needed.'
+
+assert_contains \
+  'actions/commit.md' \
+  'skip.*git add -u|without.*git add -u' \
+  'actions/commit.md Step 5 must skip git add -u when cached name/status already proves the XD deletion.'
+
+assert_contains \
+  'actions/commit.md' \
+  'otherwise.*stages.*verif|otherwise it stages.*verif' \
+  'actions/commit.md Step 5 must retain the unstaged-deletion branch and verify deletion-only metadata after git add -u.'
 
 # Argument parsing must fail fast. The watchdog keeps a regression from hanging
 # the entire suite forever: the original `shift 2` with one argument left made
