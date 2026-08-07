@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.19 — Full-Suite Installer and Reconciler (2026-08-08)
+
+The staged four-skill suite now has one copy-paste bootstrap and a recoverable client-configuration transaction, ready for live publication at cutover.
+
+- Downloads one archive, validates the shared version and exact four-module manifest, asks once, verifies installed bytes, and restores exact managed originals on failure or interruption
+- Reconciles complete, managed, custom, and legacy Justfiles through the board template and managed-section utility without changing exterior client bytes
+- Composes core hooks with jq or Python, migrates only known legacy memory command paths, keeps fresh memory capture disabled, and leaves settings unchanged with an exact manual step when no JSON tool exists
+
 ## 0.183.18 — Staged Modular Toolbox Skill (2026-08-08)
 
 Optional reviews, reporting, discovery, repository utilities, and companion installers now have an independently loadable staged package.

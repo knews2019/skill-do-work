@@ -1911,6 +1911,18 @@ elif ! bash "$staged_skills_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# Fresh installation is a four-module/configuration transaction with its own hermetic
+# bootstrap. Keep these probes separate because they build several isolated Git clients,
+# including malformed, fallback, rollback, and interruption states.
+suite_installer_probe="$repo_root/_dev/tests/install-suite-behavior.sh"
+if [ ! -f "$suite_installer_probe" ]; then
+  printf 'FAIL: _dev/tests/install-suite-behavior.sh is missing — the full-suite installer has no behavioral coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$suite_installer_probe"; then
+  printf 'FAIL: suite installer behavior probes failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # Managed Just sections are a byte-preserving ownership boundary, not a prose convention.
 # Exercise the real utility across replacement, legacy migration, append, creation, malformed
 # markers, filename variants, spaces, modes, idempotence, and Just parsing.
