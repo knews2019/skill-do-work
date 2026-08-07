@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.12 — Four-Skill Suite Contract (2026-08-07)
+
+The modular split now has one version, one exact manifest, and one validation boundary, while existing clients continue receiving the unchanged monolithic archive.
+
+- Defines the four source-to-client mappings and all-or-recover update semantics in ADR-019
+- Adds a reusable fail-closed manifest validator with malformed-path, duplicate, completeness, symlink, and missing-skill coverage
+- Keeps `VERSION`, `suite/`, and `skills/` export-ignored until the bridge rollout gate is satisfied
+
 ## 0.183.11 — Warning-Clean Listener Fixture (2026-08-07)
 
 The foreign-listener safety fixture is warning-clean again, keeping later modularization lint failures attributable to the work that introduced them.

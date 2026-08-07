@@ -1595,6 +1595,13 @@ assert_contains \
   '^/AGENTS\.md[[:space:]]+export-ignore' \
   '.gitattributes must export-ignore /AGENTS.md — the redirect stub must not ship to consumer installs.'
 
+for staged_suite_path in VERSION suite skills; do
+  assert_contains \
+    ".gitattributes" \
+    "^/${staged_suite_path}[[:space:]]+export-ignore" \
+    ".gitattributes must temporarily export-ignore /${staged_suite_path} while the bridge archive remains monolithic; REQ-144 removes this staging guard at cutover."
+done
+
 # do-work/ and kb/ are TRACKED in this repo (they are the same Trail of Intent the skill tells
 # consumers to commit, and the tracked-path-only data-loss guards in tools/checks/record-commit-hash.sh
 # plus cleanup Pass 6 blanked-REQ recovery only work on tracked REQs). That makes these two
@@ -1853,6 +1860,18 @@ assert_contains \
   "actions/clarify.md" \
   'Canonical answered-question format' \
   'actions/clarify.md Step 4 must keep the named entry point declaring its - [x] form canonical for any caller that obtains a user answer — cited by name (not step number) from clear-questions.md Principle 8 and work.md Step 3.5.'
+
+# The suite manifest is executable input to both update paths and the fresh installer. Keep
+# its path-safety and exact-module contract in one behavioral probe rather than duplicating
+# grep assertions for each caller.
+suite_manifest_probe="$repo_root/_dev/tests/suite-manifest-contract.sh"
+if [ ! -f "$suite_manifest_probe" ]; then
+  printf 'FAIL: _dev/tests/suite-manifest-contract.sh is missing — the suite layout has no behavioral coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$suite_manifest_probe"; then
+  printf 'FAIL: suite manifest contract probes failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
 
 # Behavioral probes for tools/checks/record-commit-hash.sh. Kept in their own file because
 # they build a throwaway git repo and run the real script rather than grepping prose — but

@@ -1,0 +1,5 @@
+source	destination
+skills/do-work	.claude/skills/do-work
+skills/do-work-board	.claude/skills/do-work-board
+skills/do-work-knowledge	.claude/skills/do-work-knowledge
+skills/do-work-toolbox	.claude/skills/do-work-toolbox
