@@ -1056,6 +1056,49 @@ else
 fi
 rm -rf -- "$ordinary_addition_probe_dir"
 
+# Copy detection must be requested explicitly rather than inherited from
+# repository configuration. Without it, a secret-derived copy is reported as an
+# ordinary A and both action callers are allowed to read it. Keep an ordinary
+# rename in the same repository to prove copy-aware detection does not change
+# the established M classification for non-secret moves.
+copy_inventory_probe_dir="$(mktemp -d)"
+if ! (
+  export GIT_CONFIG_GLOBAL=/dev/null
+  export GIT_CONFIG_SYSTEM=/dev/null
+  cd "$copy_inventory_probe_dir" || exit 1
+  git init -q .
+  git config user.email probe@test
+  git config user.name probe
+  copy_line=1
+  while [ "$copy_line" -le 100 ]; do
+    printf 'secret-source-%03d\n' "$copy_line"
+    copy_line=$((copy_line + 1))
+  done > .env.copy-source
+  echo ordinary-source > ordinary-source.txt
+  git add .env.copy-source ordinary-source.txt
+  git commit -qm 'seed copy and rename sources'
+  cp .env.copy-source copied-config.txt
+  echo changed >> .env.copy-source
+  git add .env.copy-source copied-config.txt
+  git mv ordinary-source.txt ordinary-destination.txt
+  git config status.renames false
+); then
+  printf 'FAIL: could not set up the copy-aware inventory probe.\n' >&2
+  fail_count=$((fail_count + 1))
+else
+  copy_inventory_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    "$repo_root/tools/checks/uncommitted-inventory.sh" "$copy_inventory_probe_dir" 2>/dev/null || true)"
+  if ! printf '%s\n' "$copy_inventory_output" | grep -qxF "$(printf 'X\tcopied-config.txt')"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag a secret-derived copy destination as X, never A, even when status.renames=false.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+  if ! printf '%s\n' "$copy_inventory_output" | grep -qxF "$(printf 'M\tordinary-destination.txt')"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must retain M for an ordinary rename while copy-aware detection is active.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+fi
+rm -rf -- "$copy_inventory_probe_dir"
+
 # The other Step 5 branch remains live: a tracked secret deletion that is not
 # cached yet still needs git add -u, followed by deletion-only metadata.
 unstaged_deletion_probe_dir="$(mktemp -d)"
@@ -1088,7 +1131,7 @@ rm -rf -- "$unstaged_deletion_probe_dir"
 
 # The action prose is executable behavior. Both consumers must retain a
 # run-level quarantine before their second inventory reaches content or REQ
-# association, and the manual fallback must force rename detection too.
+# association, and the manual fallback must force copy-aware detection too.
 for inventory_consumer in actions/commit.md actions/inspect.md; do
   assert_contains \
     "$inventory_consumer" \
@@ -1096,8 +1139,8 @@ for inventory_consumer in actions/commit.md actions/inspect.md; do
     "$inventory_consumer must preserve a once-X-always-X quarantine across every re-inventory in the action run."
   assert_contains \
     "$inventory_consumer" \
-    'git status --porcelain --untracked-files=all --renames' \
-    "$inventory_consumer manual fallback must force rename detection instead of inheriting status.renames=false."
+    'git -c status.renames=copies status --porcelain=v1 --untracked-files=all -z' \
+    "$inventory_consumer manual fallback must force copy-aware detection instead of inheriting status.renames=false."
 done
 
 assert_contains \

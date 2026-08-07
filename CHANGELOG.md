@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.5 — Copy-Aware Secret Inventory (2026-08-07)
+
+Git copy records are now requested explicitly, preventing a destination copied from a secret-shaped source from degrading into a readable ordinary addition when repository rename detection is disabled.
+
+- Secret-derived copy destinations are classified as `X`
+- Secret renames remain `XD` plus `X`, while ordinary renames remain `M`
+- Commit and inspect manual fallbacks use the same copy-aware porcelain command
+
 ## 0.183.4 — Secret Rename Quarantine Survives Re-inventory (2026-08-07)
 
 Resetting a staged secret rename can no longer make its ordinary-looking destination readable on the next inventory pass. Deletion-only commits also accept the safe state Git already staged instead of failing while trying to stage it again.

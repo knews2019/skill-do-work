@@ -21,8 +21,8 @@
 # secret-shaped source is renamed to an ordinary-looking destination, emit XD
 # for the source and X for the destination. That reports the deletion while
 # preventing either caller from reading or staging the moved contents. Copy
-# records are parsed defensively when Git emits them, but this inventory does
-# not perform content-based copy detection.
+# records are parsed defensively, and copy-aware status detection is forced so
+# a secret-derived destination cannot degrade into an ordinary addition.
 #
 # Known limit: paths are emitted verbatim, so a filename containing a literal
 # newline produces a row that spans lines. The -z read below means such a path
@@ -95,11 +95,13 @@ trap 'rm -f "$status_output_file" "$inventory_rows_file"' EXIT
 #
 # -z terminates each record with NUL so paths containing spaces, quotes, or
 # newlines survive verbatim; without it git quotes such paths and the consumer
-# reads the quoting as part of the name. Capture that stream in a temporary file
-# first so git's exit status remains observable. A process substitution hides the
+# reads the quoting as part of the name. Force copy-aware rename detection at the
+# command boundary so repository configuration cannot turn a secret-derived copy
+# into an ordinary addition. Capture that stream in a temporary file first so
+# git's exit status remains observable. A process substitution hides the
 # producer's status from the loop; on a bare repository that used to turn Git's
 # fatal error into exit 1, which callers correctly interpret as "clean tree."
-if ! git status --porcelain --untracked-files=all --renames -z > "$status_output_file"; then
+if ! git -c status.renames=copies status --porcelain=v1 --untracked-files=all -z > "$status_output_file"; then
   echo "STATUS-FAILED: git status could not read the working tree" >&2
   exit 2
 fi
