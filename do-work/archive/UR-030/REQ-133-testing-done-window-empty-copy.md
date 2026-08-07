@@ -3,6 +3,7 @@ id: REQ-133
 title: Testing columns honor doneWindow in their empty copy
 status: completed
 completed_at: 2026-08-07T14:55:51Z
+commit: 680be8e
 claimed_at: 2026-08-07T14:47:08Z
 created_at: 2026-08-07T14:42:57Z
 user_request: UR-030
