@@ -63,7 +63,7 @@ do-work ai-report                 Most recently completed UR in do-work/archive/
 do-work ai-report most recent     Same — explicit form
 ```
 
-If nothing is terminally successful (`status: completed` or `completed-with-issues`) for the target, the action stops and says so — there's nothing to report on.
+If nothing normalizes to a terminal-success status (`completed` or `completed-with-issues`) for the target, the action stops and says so — there's nothing to report on.
 
 ## Output
 
