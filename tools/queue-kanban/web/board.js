@@ -953,7 +953,7 @@
         !userRequestHasOpenOrRecentWork(userRequest, recentlyDoneIdSet)
       ) {
         hiddenResolvedCount += 1;
-        if (shownRequestIds.length > 0) {
+        if (hasActiveFilters() && shownRequestIds.length > 0) {
           hiddenResolvedFilterMatchCount += 1;
         }
         return;
