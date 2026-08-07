@@ -810,6 +810,73 @@ process.stdout.write(JSON.stringify(results));`
 	}
 }
 
+// TestByUserRequestLensDefaultScopeUsesScopeOnlyEmptyState exercises the lens
+// caller, not only its pure copy helper. With no filters, every request matches
+// by definition, so a resolved UR hidden by the Active scope must offer the
+// scope/window escape instead of claiming filters matched it.
+func TestByUserRequestLensDefaultScopeUsesScopeOnlyEmptyState(t *testing.T) {
+	nodePath, lookupError := exec.LookPath("node")
+	if lookupError != nil {
+		t.Skip("node is unavailable; skipping board.js by-UR caller behavior check")
+	}
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function isTerminalResolvedStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function hasActiveFilters("),
+		sliceBalancedBlockAfter(t, indexHtml, "function searchMatchesRequest("),
+		sliceBalancedBlockAfter(t, indexHtml, "function searchMatchesUserRequest("),
+		sliceBalancedBlockAfter(t, indexHtml, "function requestMatchesFilters("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestHasOpenOrRecentWork("),
+		sliceBalancedBlockAfter(t, indexHtml, "function recentWindowPhrase("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestLensEmptyText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function recentlyDoneIds("),
+		sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens("),
+	}
+	javascriptProbe := `
+var boardData = {
+  requests: { "REQ-501": { status: "completed", title: "old work" } },
+  userRequests: { "UR-301": { requestIds: ["REQ-501"], title: "old request", inputFilePresent: true } },
+  userRequestOrder: ["UR-301"],
+  calendar: []
+};
+var requestsById = boardData.requests;
+var userRequestsById = boardData.userRequests;
+var viewState = { windowHours: 24 };
+var filterState = { searchText: "", domain: "", status: "", userRequestActivity: "active" };
+function makeNode() {
+  return {
+    childNodes: [],
+    dataset: {},
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+  };
+}
+var userRequestLensNode = makeNode();
+var document = {
+  getElementById: function (nodeId) { return nodeId === "user-request-lens" ? userRequestLensNode : null; },
+  createElement: function () { return makeNode(); }
+};
+` + strings.Join(functionBlocks, "\n") + `
+renderUserRequestLens();
+process.stdout.write(JSON.stringify(userRequestLensNode.childNodes.map(function (node) { return node.textContent; })));
+`
+	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
+	probeOutput, probeError := probeCommand.CombinedOutput()
+	if probeError != nil {
+		t.Fatalf("execute board.js by-UR caller behavior: %v\n%s", probeError, probeOutput)
+	}
+	var renderedText []string
+	if decodeError := json.Unmarshal(probeOutput, &renderedText); decodeError != nil {
+		t.Fatalf("decode board.js by-UR caller output: %v (output %q)", decodeError, probeOutput)
+	}
+	if len(renderedText) != 2 {
+		t.Fatalf("default Active lens rendered %d nodes, want empty-state plus hidden-note: %q", len(renderedText), renderedText)
+	}
+	if !strings.Contains(renderedText[0], "No user requests with open work or activity") {
+		t.Fatalf("default Active lens empty state = %q, want the scope-only message", renderedText[0])
+	}
+}
+
 func TestTestingDoneWindowIsViewSpecific(t *testing.T) {
 	nodePath, lookupError := exec.LookPath("node")
 	if lookupError != nil {
