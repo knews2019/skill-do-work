@@ -977,7 +977,7 @@ else
     fail_count=$((fail_count + 1))
   fi
   if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'X\tnested/ordinary.js')"; then
-    printf 'FAIL: tools/checks/uncommitted-inventory.sh must quarantine every A as X when an unrelated XD makes addition provenance ambiguous.\n' >&2
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must quarantine every A as X when an excluded path makes addition provenance ambiguous.\n' >&2
     fail_count=$((fail_count + 1))
   fi
 
@@ -1055,6 +1055,32 @@ else
   fi
 fi
 rm -rf -- "$ordinary_addition_probe_dir"
+
+# Git has no tracked source blob to compare when both a secret-shaped source and
+# its copied destination are untracked. The inventory must therefore quarantine
+# the ordinary-looking destination too, rather than trusting copy detection
+# that cannot exist for this shape.
+untracked_secret_copy_probe_dir="$(mktemp -d)"
+if ! (
+  export GIT_CONFIG_GLOBAL=/dev/null
+  export GIT_CONFIG_SYSTEM=/dev/null
+  cd "$untracked_secret_copy_probe_dir" || exit 1
+  git init -q .
+  printf 'fixture-secret\n' > .env
+  cp .env application-config.txt
+); then
+  printf 'FAIL: could not set up the untracked secret-copy inventory probe.\n' >&2
+  fail_count=$((fail_count + 1))
+else
+  untracked_secret_copy_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
+    "$repo_root/tools/checks/uncommitted-inventory.sh" "$untracked_secret_copy_probe_dir" 2>/dev/null || true)"
+  if ! printf '%s\n' "$untracked_secret_copy_output" | grep -qxF "$(printf 'X\t.env')" || \
+      ! printf '%s\n' "$untracked_secret_copy_output" | grep -qxF "$(printf 'X\tapplication-config.txt')"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must quarantine an ordinary-looking untracked copy beside an untracked secret-shaped source.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+fi
+rm -rf -- "$untracked_secret_copy_probe_dir"
 
 # Copy detection must be requested explicitly rather than inherited from
 # repository configuration. Without it, a secret-derived copy is reported as an

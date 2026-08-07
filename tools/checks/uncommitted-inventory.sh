@@ -9,7 +9,7 @@
 #           A  added (staged-new or untracked)
 #           D  deleted
 #           X  non-deleted excluded path: secret-shaped, secret-derived, or
-#              an ambiguous addition beside XD; reported but not to be read
+#              an ambiguous addition beside X or XD; reported but not to be read
 #          XD  deleted secret-shaped name, deletion may be committed without
 #              reading its former contents
 # Exit 0: rows emitted. Exit 1: clean working tree (no rows).
@@ -73,7 +73,7 @@ is_secret_shaped() {
 }
 
 emitted_any_row=0
-inventory_contains_xd=0
+inventory_contains_excluded_path=0
 inventory_contains_addition=0
 status_output_file="$(mktemp)" || {
   echo "STATUS-FAILED: could not allocate temporary output" >&2
@@ -150,25 +150,27 @@ while IFS= read -r -d '' status_record; do
   if [ "$rename_origin_is_deleted" -eq 1 ] && is_secret_shaped "$rename_origin_path"; then
     printf 'XD\0%s\0' "$rename_origin_path" >> "$inventory_rows_file"
     emitted_any_row=1
-    inventory_contains_xd=1
+    inventory_contains_excluded_path=1
   fi
   printf '%s\0%s\0' "$path_tag" "$changed_path" >> "$inventory_rows_file"
   emitted_any_row=1
   case "$path_tag" in
-    XD) inventory_contains_xd=1 ;;
+    X|XD) inventory_contains_excluded_path=1 ;;
     A)  inventory_contains_addition=1 ;;
   esac
 done < "$status_output_file"
 
 [ "$emitted_any_row" -eq 1 ] || exit 1
 
-# An XD plus an ordinary A has no trustworthy provenance once a staged secret
-# rename has degraded into a cached deletion and an untracked destination. Fail
-# closed for the complete inventory: every A becomes X before either caller can
-# read, associate, or stage it. Buffering tag/path fields with NUL separators
-# keeps that second pass safe for every filename Git can report.
+# An X or XD plus an ordinary A has no trustworthy provenance. Git can represent
+# a staged secret rename as a cached deletion plus an untracked destination, and
+# it cannot identify a copy when both the secret-shaped source and its ordinary
+# destination are untracked. Fail closed for the complete inventory: every A
+# becomes X before either caller can read, associate, or stage it. Buffering
+# tag/path fields with NUL separators keeps that second pass safe for every
+# filename Git can report.
 while IFS= read -r -d '' path_tag && IFS= read -r -d '' changed_path; do
-  if [ "$inventory_contains_xd" -eq 1 ] &&
+  if [ "$inventory_contains_excluded_path" -eq 1 ] &&
      [ "$inventory_contains_addition" -eq 1 ] &&
      [ "$path_tag" = 'A' ]; then
     path_tag='X'
