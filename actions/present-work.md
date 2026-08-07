@@ -38,8 +38,8 @@ The code is done. Now communicate its value. This action reads the full history 
 Same pattern as review-work standalone mode:
 
 1. **If user specifies a REQ** (e.g., "present REQ-005"): Find it in `do-work/archive/` or `do-work/archive/UR-NNN/`
-2. **If user specifies a UR** (e.g., "present UR-003"): Find all terminally-successful REQs (`completed` or `completed-with-issues`) under that UR — present them as one deliverable
-3. **If no target specified**: Find the most recently completed UR (or REQ if no UR). Check `do-work/archive/` for the highest UR/REQ number with a terminal-success status (`status: completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set)
+2. **If user specifies a UR** (e.g., "present UR-003"): Find all REQs whose status normalizes to the Terminal-success status set under that UR — present them as one deliverable
+3. **If no target specified**: Find the most recently completed UR (or REQ if no UR). Check `do-work/archive/` for the highest UR/REQ number whose status normalizes to the Terminal-success status set in `actions/work-reference.md`
 
 If the target has no terminally-successful REQs, report that there's nothing to present and exit.
 
