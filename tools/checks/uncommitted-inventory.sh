@@ -14,9 +14,13 @@
 # Exit 0: rows emitted. Exit 1: clean working tree (no rows).
 # Exit 2: not a git repository, or usage error.
 #
-# A renamed path is tagged M, not A: the caller's treatment of M ("read the
-# git diff") is the correct one for a move, whereas A tells it to read the
-# whole file as if the content were new.
+# A renamed destination is tagged M, not A: the caller's treatment of M ("read
+# the git diff") is the correct one for a move, whereas A tells it to read the
+# whole file as if the content were new. Its origin is classified too: when a
+# secret-shaped source is renamed to an ordinary-looking destination, emit XD
+# for the source and X for the destination. That reports the deletion while
+# preventing either caller from reading or staging the moved contents. A copy's
+# source remains unchanged, so only its destination is emitted.
 #
 # Known limit: paths are emitted verbatim, so a filename containing a literal
 # newline produces a row that spans lines. The -z read below means such a path
@@ -98,12 +102,18 @@ while IFS= read -r -d '' status_record; do
   index_status="${status_record:0:1}"
   worktree_status="${status_record:1:1}"
   changed_path="${status_record:3}"
+  rename_origin_path=''
+  rename_origin_is_deleted=0
 
   # A rename or copy record is followed by a SECOND NUL-terminated field holding
-  # the origin path. Read and discard it, or the origin gets parsed as the next
-  # record's status bytes and every row after it shifts by one.
+  # the origin path. Preserve it for secret classification, or the origin gets
+  # parsed as the next record's status bytes and every row after it shifts by one.
   case "$index_status$worktree_status" in
-    R*|C*|*R|*C) IFS= read -r -d '' _rename_origin_path || true ;;
+    R*|*R)
+      IFS= read -r -d '' rename_origin_path || true
+      rename_origin_is_deleted=1
+      ;;
+    C*|*C) IFS= read -r -d '' rename_origin_path || true ;;
   esac
 
   # Deleted wins over modified: a path deleted in either the index or the
@@ -118,7 +128,7 @@ while IFS= read -r -d '' status_record; do
     *)    path_tag='M' ;;
   esac
 
-  if is_secret_shaped "$changed_path"; then
+  if is_secret_shaped "$changed_path" || { [ -n "$rename_origin_path" ] && is_secret_shaped "$rename_origin_path"; }; then
     if [ "$path_tag" = 'D' ]; then
       path_tag='XD'
     else
@@ -126,6 +136,10 @@ while IFS= read -r -d '' status_record; do
     fi
   fi
 
+  if [ "$rename_origin_is_deleted" -eq 1 ] && is_secret_shaped "$rename_origin_path"; then
+    printf 'XD\t%s\n' "$rename_origin_path"
+    emitted_any_row=1
+  fi
   printf '%s\t%s\n' "$path_tag" "$changed_path"
   emitted_any_row=1
 done < "$status_output_file"
