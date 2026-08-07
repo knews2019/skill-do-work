@@ -322,52 +322,6 @@ func upsertFrontmatterFields(filePath string, fieldUpdates []frontmatterFieldUpd
 	return nil
 }
 
-// writeFileAtomically writes fileContents to a temporary file in the target's
-// directory, then renames it over filePath — so a reader (or a crash) sees
-// either the complete old file or the complete new one, never a truncated
-// in-between. The dot-prefixed temp name keeps a crash leftover out of the
-// board's REQ-*.md walk.
-func writeFileAtomically(filePath string, fileContents []byte) error {
-	// Preserve the target's existing permission bits across the rename — a
-	// direct write to an existing file leaves its mode alone, and the atomic
-	// replacement must not silently widen a 0600 REQ or strip group-write from
-	// a umask-002 checkout. 0644 applies only when the target does not exist
-	// yet (matching os.WriteFile's create-time perm). ACLs/xattrs are not
-	// carried over — an accepted limit of the rename-replacement design.
-	replacementFileMode := os.FileMode(0o644)
-	if originalInfo, statError := os.Stat(filePath); statError == nil {
-		replacementFileMode = originalInfo.Mode().Perm()
-	}
-	parentDirectory := filepath.Dir(filePath)
-	temporaryFile, createError := os.CreateTemp(parentDirectory, "."+filepath.Base(filePath)+".tmp-*")
-	if createError != nil {
-		return fmt.Errorf("creating temp file in %s: %w", parentDirectory, createError)
-	}
-	temporaryPath := temporaryFile.Name()
-	defer os.Remove(temporaryPath) // no-op once the rename has landed
-
-	if _, writeError := temporaryFile.Write(fileContents); writeError != nil {
-		temporaryFile.Close()
-		return fmt.Errorf("writing %s: %w", temporaryPath, writeError)
-	}
-	// CreateTemp opens 0600; restore the mode the target file had.
-	if chmodError := temporaryFile.Chmod(replacementFileMode); chmodError != nil {
-		temporaryFile.Close()
-		return fmt.Errorf("setting mode on %s: %w", temporaryPath, chmodError)
-	}
-	if syncError := temporaryFile.Sync(); syncError != nil {
-		temporaryFile.Close()
-		return fmt.Errorf("syncing %s: %w", temporaryPath, syncError)
-	}
-	if closeError := temporaryFile.Close(); closeError != nil {
-		return fmt.Errorf("closing %s: %w", temporaryPath, closeError)
-	}
-	if renameError := os.Rename(temporaryPath, filePath); renameError != nil {
-		return fmt.Errorf("replacing %s: %w", filePath, renameError)
-	}
-	return nil
-}
-
 // applyFrontmatterFieldUpdate performs one field's upsert/removal against the
 // frontmatter lines (indexes 1..closingFenceIndex-1) and returns the updated
 // line slice plus the (possibly shifted) closing-fence index.

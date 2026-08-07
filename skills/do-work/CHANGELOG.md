@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.21 — Cross-Platform Atomic Queue Writes (2026-08-08)
+
+Queue-kanban now keeps its complete-file replacement guarantee on both Unix and Windows and refuses symlinked write targets without changing them.
+
+- Uses same-directory rename on Unix and Windows `ReplaceFileW` instead of overstating the cross-platform guarantee of Go's generic `os.Rename`
+- Rejects symlinks, special files, missing targets, and targets whose identity changes before replacement without leaving temporary artifacts
+- Preserves modes, synced temporary writes, version read-back verification, normal bump behavior, and the Testing-view write guards
+
 ## 0.183.20 — Configuration-Aware Bridge Updater (2026-08-08)
 
 Existing bridge clients can now complete the later modular cutover through the trusted updater they already have, including managed configuration migration.

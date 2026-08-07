@@ -162,6 +162,50 @@ func TestAllocateNextVersionAtomicallyReplacesAndPreservesMode(t *testing.T) {
 	}
 }
 
+// A version-file symlink used to be followed while reading, then silently
+// replaced by the temporary-file rename. Fail before creating a temporary file
+// so the link identity and its intended target both remain unchanged.
+func TestAllocateNextVersionRejectsSymlinkWithoutWriting(t *testing.T) {
+	repoRoot := writeReleaseFixture(t, "**Current version**: 0.163.3", "")
+	versionFilePath := filepath.Join(repoRoot, "actions", "version.md")
+	versionTargetPath := filepath.Join(repoRoot, "actual-version.md")
+	originalBytes, readError := os.ReadFile(versionFilePath)
+	if readError != nil {
+		t.Fatalf("read original version fixture: %v", readError)
+	}
+	if renameError := os.Rename(versionFilePath, versionTargetPath); renameError != nil {
+		t.Fatalf("move version fixture: %v", renameError)
+	}
+	if symlinkError := os.Symlink(versionTargetPath, versionFilePath); symlinkError != nil {
+		t.Skipf("symlinks unavailable: %v", symlinkError)
+	}
+
+	if _, allocateError := allocateNextVersion(versionFilePath, "patch"); allocateError == nil {
+		t.Fatal("allocateNextVersion succeeded through a symlinked version file")
+	}
+	linkInfo, lstatError := os.Lstat(versionFilePath)
+	if lstatError != nil {
+		t.Fatalf("lstat version symlink: %v", lstatError)
+	}
+	if linkInfo.Mode()&os.ModeSymlink == 0 {
+		t.Fatal("allocateNextVersion replaced the version symlink entry")
+	}
+	targetBytes, readError := os.ReadFile(versionTargetPath)
+	if readError != nil {
+		t.Fatalf("read version target: %v", readError)
+	}
+	if string(targetBytes) != string(originalBytes) {
+		t.Fatal("allocateNextVersion modified the symlink target before rejecting it")
+	}
+	temporaryMatches, globError := filepath.Glob(filepath.Join(filepath.Dir(versionFilePath), ".version.md.tmp-*"))
+	if globError != nil {
+		t.Fatalf("glob atomic-write leftovers: %v", globError)
+	}
+	if len(temporaryMatches) != 0 {
+		t.Fatalf("symlink rejection left temporary files behind: %v", temporaryMatches)
+	}
+}
+
 // next-version writes exactly one file (the Constraints section): nothing under
 // do-work/, and no CHANGELOG.md — not even to create it.
 func TestAllocateNextVersionWritesNothingElse(t *testing.T) {
