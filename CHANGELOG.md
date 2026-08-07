@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.6 — Parseable Request Recovery Chains (2026-08-07)
+
+Recovery now distinguishes parseable historical requests from merely non-empty blobs, so malformed metadata damage cannot be selected and reported as a successful repair.
+
+- Historical source selection skips malformed and empty blobs until it finds valid frontmatter
+- Recorded-hash traversal treats malformed blobs as part of the damage chain
+- Restore validates recovered content before replacement, with a clean-rescan regression
+
 ## 0.183.5 — Copy-Aware Secret Inventory (2026-08-07)
 
 Git copy records are now requested explicitly, preventing a destination copied from a secret-shaped source from degrading into a readable ordinary addition when repository rename detection is disabled.

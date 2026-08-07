@@ -28,7 +28,7 @@
 #
 #   BLANKED<TAB><path><TAB><recovery-source-sha><TAB><recorded-hash>
 #
-# `<recovery-source-sha>` is `-` when git holds no non-empty version of the file, and
+# `<recovery-source-sha>` is `-` when git holds no parseable version of the file, and
 # `<recorded-hash>` is `-` when no blanking commit message carried one. Callers consuming
 # these records must handle both.
 #
@@ -87,24 +87,26 @@ git rev-parse --git-dir >/dev/null 2>&1 && git_available=1
 # same (recover content, not edit a field).
 has_parseable_frontmatter() {
   awk '
-    NR == 1 && $0 != "---" { exit 1 }
-    NR > 1 && $0 == "---" { found_close = 1; exit }
-    NR > 200 { exit 1 }
-    END { if (!found_close) exit 1 }
-  ' "$1" 2>/dev/null
+    NR == 1 && $0 != "---" { invalid_open = 1 }
+    NR > 1 && NR <= 200 && $0 == "---" { found_close = 1 }
+    END {
+      if (NR == 0 || invalid_open || !found_close) exit 1
+    }
+  ' "$@" 2>/dev/null
 }
 
-# Walk this file's history newest-first and return the newest commit whose blob is non-empty.
+# Walk this file's history newest-first and return the newest commit whose blob has parseable
+# frontmatter. The validator consumes the complete stream, so git cat-file cannot receive SIGPIPE
+# under the script's pipefail setting when a closing delimiter appears near the top of a large REQ.
 # --full-history because default history simplification can hide a commit that touched the
 # file on a side branch — exactly where a bad merge-time edit would live.
 resolve_recovery_source() {
-  local file_path="$1" tracked_name candidate_sha blob_size
+  local file_path="$1" tracked_name candidate_sha
   tracked_name="$(git ls-files --full-name -- "$file_path" 2>/dev/null)"
   [ -z "$tracked_name" ] && return 1
   while IFS= read -r candidate_sha; do
     [ -z "$candidate_sha" ] && continue
-    blob_size="$(git cat-file -s "$candidate_sha:$tracked_name" 2>/dev/null || echo 0)"
-    if [ "${blob_size:-0}" -gt 0 ]; then
+    if git cat-file -p "$candidate_sha:$tracked_name" 2>/dev/null | has_parseable_frontmatter; then
       printf '%s' "$candidate_sha"
       return 0
     fi
@@ -117,13 +119,12 @@ resolve_recovery_source() {
 # Never `git show --name-only` here: it prints the commit header and message before the file
 # list, so a message line can pass a filename grep and become a phantom path.
 resolve_recorded_hash() {
-  local file_path="$1" tracked_name candidate_sha blob_size subject_text extracted_hash
+  local file_path="$1" tracked_name candidate_sha subject_text extracted_hash
   tracked_name="$(git ls-files --full-name -- "$file_path" 2>/dev/null)"
   [ -z "$tracked_name" ] && return 1
   while IFS= read -r candidate_sha; do
     [ -z "$candidate_sha" ] && continue
-    blob_size="$(git cat-file -s "$candidate_sha:$tracked_name" 2>/dev/null || echo 0)"
-    if [ "${blob_size:-0}" -gt 0 ]; then
+    if git cat-file -p "$candidate_sha:$tracked_name" 2>/dev/null | has_parseable_frontmatter; then
       return 1   # walked past the damage without finding a recorded hash
     fi
     subject_text="$(git log -1 --format=%s "$candidate_sha" 2>/dev/null)"
@@ -144,7 +145,8 @@ resolve_recorded_hash() {
 # committing it records wrong provenance under a report that claims full repair. This runs in
 # a command substitution, so a variable set here cannot reach the caller — the token is the
 # only channel. Content is written to a temp file in the target's own directory and moved into
-# place only after it is confirmed non-empty — the recovery must never itself blank the file.
+# place only after it is confirmed non-empty and parseable — the recovery must never itself
+# install malformed content that the next scan still reports as damaged.
 restore_one_file() {
   local target_path="$1" recovery_sha="$2" recorded_hash="$3"
   local tracked_name recovered_bytes restore_temp write_back_output
@@ -182,6 +184,12 @@ restore_one_file() {
   if [ ! -s "$restore_temp" ]; then
     rm -f "$restore_temp"
     echo "FAIL: the recovered content for $target_path is empty; refusing to write it. $target_path is unchanged." >&2
+    printf 'skipped'
+    return 0
+  fi
+  if ! has_parseable_frontmatter "$restore_temp"; then
+    rm -f "$restore_temp"
+    echo "FAIL: the recovered content for $target_path has no parseable frontmatter; refusing to write it. $target_path is unchanged." >&2
     printf 'skipped'
     return 0
   fi
@@ -254,7 +262,7 @@ while IFS= read -r candidate_file; do
       fi
       echo "  Restore with: do-work cleanup   (Pass 6 restores it and re-applies the hash, after asking)"
     elif [ "$git_available" -eq 1 ]; then
-      echo "  No recoverable content in git history — every recorded version of this file is empty."
+      echo "  No recoverable content in git history — no recorded version has parseable frontmatter."
       echo "  If it was never committed with content, the body cannot be recovered here; check backups or re-capture the work."
     else
       echo "  Not a git repository — no history to recover from. Check backups."

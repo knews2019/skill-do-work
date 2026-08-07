@@ -493,6 +493,55 @@ run_restore_script --restore
 assert_status 0 "restore rerun: exits 0"
 assert_output_matches 'No blanked' "restore rerun: nothing left to restore"
 
+# --- --restore: malformed non-empty blobs stay inside the damage chain -------------------
+# A failed metadata write can leave bytes behind without leaving parseable frontmatter. The
+# newest non-empty blob is therefore not necessarily recoverable content: selection must walk
+# through malformed damage to the earlier valid request, while the same malformed commit's
+# subject remains eligible to supply the recorded implementation hash.
+malformed_root="$(mktemp -d)"
+cleanup_malformed() { rm -rf "$malformed_root"; }
+trap 'cleanup_fixture; cleanup_scan; cleanup_restore; cleanup_malformed' EXIT
+
+git -c init.defaultBranch=main init -q "$malformed_root"
+git -C "$malformed_root" config user.name "Fixture Runner"
+git -C "$malformed_root" config user.email "fixture@example.invalid"
+mkdir -p "$malformed_root/do-work/archive/UR-900"
+malformed_target="$malformed_root/do-work/archive/UR-900/REQ-1291-malformed-chain.md"
+printf -- '---\nid: REQ-1291\ntitle: Malformed chain fixture\nstatus: completed\ncompleted_at: 2026-07-30T10:00:00Z\ncommit: 0000000\n---\n\n# Valid recovery body\n\nIrreplaceable context.\n' \
+  > "$malformed_target"
+git -C "$malformed_root" add -A
+git -C "$malformed_root" commit -q -m "[REQ-1291] Valid recovery fixture (Route B)"
+malformed_valid_sha="$(git -C "$malformed_root" rev-parse HEAD)"
+malformed_recorded_hash="$(git -C "$malformed_root" rev-parse --short HEAD)"
+malformed_expected_content="$(cat "$malformed_target")"
+
+printf 'not frontmatter\npartial decision trail\n' > "$malformed_target"
+git -C "$malformed_root" add -A
+git -C "$malformed_root" commit -q -m "[REQ-1291] record commit hash $malformed_recorded_hash"
+malformed_damage_sha="$(git -C "$malformed_root" rev-parse HEAD)"
+
+probe_output="$(cd "$malformed_root" && "$scan_script" 2>&1)"; probe_status=$?
+assert_status 1 "malformed chain scan: exits 1 before repair"
+malformed_scan_record="$(printf '%s\n' "$probe_output" | grep '^BLANKED' | head -1)"
+malformed_expected_record="$(printf 'BLANKED\tdo-work/archive/UR-900/REQ-1291-malformed-chain.md\t%s\t%s' \
+  "$malformed_valid_sha" "$malformed_recorded_hash")"
+assert_equals "$malformed_expected_record" \
+  "$malformed_scan_record" "malformed chain scan: reports the earlier valid source and the damage commit's recorded hash"
+if printf '%s\n' "$malformed_scan_record" | grep -qF "$malformed_damage_sha"; then
+  printf 'FAIL: malformed chain scan: selected the malformed damage blob as its recovery source.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+probe_output="$(cd "$malformed_root" && "$scan_script" --restore 2>&1)"; probe_status=$?
+assert_status 0 "malformed chain restore: exits 0 only after valid content is repaired"
+malformed_expected_after_restore="$(printf '%s' "$malformed_expected_content" | sed "s/^commit: 0000000$/commit: $malformed_recorded_hash/")"
+assert_equals "$malformed_expected_after_restore" "$(cat "$malformed_target")" \
+  "malformed chain restore: restores the earlier valid content and recorded hash"
+
+probe_output="$(cd "$malformed_root" && "$scan_script" 2>&1)"; probe_status=$?
+assert_status 0 "malformed chain rescan: exits 0 after repair"
+assert_output_matches 'No blanked' "malformed chain rescan: reports a clean tree"
+
 # --- --restore: a PARTIAL repair is a finding, not a success -------------------------------
 # Content back but the recorded commit: hash rejected leaves a file that looks healthy and is
 # committable with provenance pointing at nothing. Reporting that as repaired would put a
@@ -502,7 +551,7 @@ assert_output_matches 'No blanked' "restore rerun: nothing left to restore"
 # recovered from a different clone).
 partial_root="$(mktemp -d)"
 cleanup_partial() { rm -rf "$partial_root"; }
-trap 'cleanup_fixture; cleanup_scan; cleanup_restore; cleanup_partial' EXIT
+trap 'cleanup_fixture; cleanup_scan; cleanup_restore; cleanup_malformed; cleanup_partial' EXIT
 
 git -c init.defaultBranch=main init -q "$partial_root"
 git -C "$partial_root" config user.name "Fixture Runner"
