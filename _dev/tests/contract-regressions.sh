@@ -546,6 +546,38 @@ assert_block_contains \
   'clean index' \
   'actions/work.md hand-back step 0 must end with a clean index so unrelated staged work cannot leak into the merge commit.'
 
+# Hand-back scratch is expected main-tree state, but it must never enter the
+# bookkeeping commit. Preserve all three categories in both the canonical and
+# condensed instructions: stage owner bookkeeping, tolerate the named scratch
+# file without staging it, and stop on everything else.
+for handback_staging_block in "$worktree_dispatch_block" "$work_action_handback_block"
+do
+  assert_block_contains \
+    "$handback_staging_block" \
+    'stage.*`manifest\.md`.*`REQ-NNN-brief\.md`' \
+    'Hand-back step 0 must stage the owner-written manifest and per-builder briefs explicitly instead of admitting the whole run directory.'
+
+  assert_block_contains \
+    "$handback_staging_block" \
+    'allow but never stage.*`REQ-NNN-handback\.md`' \
+    'Hand-back step 0 must treat each expected REQ-NNN-handback.md as allowed scratch that remains unstaged.'
+
+  assert_block_contains \
+    "$handback_staging_block" \
+    'stop and surface.*every other `do-work/` path' \
+    'Hand-back step 0 must stop on do-work paths outside the explicit bookkeeping and scratch categories.'
+done
+
+assert_block_not_contains \
+  "$worktree_dispatch_block" \
+  'the run directory if fan-out created one' \
+  'actions/work-reference.md must not restore the whole fan-out run directory to the stage set, because it contains never-staged hand-back scratch.'
+
+assert_block_not_contains \
+  "$work_action_handback_block" \
+  "this run's directory" \
+  'actions/work.md must not restore the whole run directory to the stage set, because it contains never-staged hand-back scratch.'
+
 assert_block_contains \
   "$work_action_handback_block" \
   'git diff --name-only <pre>\.\.\.<operative_name> -- do-work/' \
@@ -914,6 +946,10 @@ if ! (
   git add nested/.env.local
   git commit -qm 'seed tracked secret deletion'
   rm nested/.env.local
+  echo probe > .env
+  git add .env
+  git commit -qm 'seed tracked secret rename'
+  git mv .env visible-config.txt
 ) 2>"$inventory_probe_setup_error"; then
   printf 'FAIL: could not set up the uncommitted-inventory behavior probe:\n' >&2
   sed 's/^/  /' "$inventory_probe_setup_error" >&2
@@ -934,6 +970,10 @@ else
   fi
   if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'XD\tnested/.env.local')"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag a deleted secret-shaped path as XD so its deletion can be associated and committed without reading its former contents.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+  if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'XD\t.env')" || ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'X\tvisible-config.txt')"; then
+    printf 'FAIL: tools/checks/uncommitted-inventory.sh must fail closed when a secret-shaped rename origin moves to an ordinary-looking destination: XD for the source and X for the destination.\n' >&2
     fail_count=$((fail_count + 1))
   fi
   if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'A\tnested/ordinary.js')"; then
@@ -971,6 +1011,34 @@ if [ "$associate_missing_value_exit" -ne 2 ]; then
   fail_count=$((fail_count + 1))
 fi
 rm -f "$associate_missing_value_output"
+
+# The status alias belongs to the Schema Read Contract, but this shell reader
+# owns its own terminal-success predicate. Exercise the new alias against a
+# real REQ fixture so the prose and helper cannot drift back apart.
+assert_contains \
+  "actions/work-reference.md" \
+  '`complete`/`done`/`finished`/`closed`.*`completed`' \
+  'actions/work-reference.md must document complete with the other aliases that normalize to completed before terminal-success readers consume the status.'
+
+associate_complete_probe_dir="$(mktemp -d)"
+mkdir -p "$associate_complete_probe_dir/do-work/archive/UR-301"
+cat > "$associate_complete_probe_dir/do-work/archive/UR-301/REQ-501-legacy-complete.md" <<'EOF'
+---
+id: REQ-501
+status: complete
+completed_at: 2026-08-07T12:00:00Z
+---
+
+## Implementation Summary
+
+**Files changed:**
+- `legacy-file.txt` (modified)
+EOF
+if ! associate_complete_output="$(printf 'legacy-file.txt\n' | "$repo_root/tools/checks/associate-files.sh" --repo-root "$associate_complete_probe_dir")" || ! printf '%s\n' "$associate_complete_output" | grep -qxF "$(printf 'REQ-501\tlegacy-file.txt')"; then
+  printf 'FAIL: tools/checks/associate-files.sh must associate a status: complete REQ after normalizing the documented terminal-success alias.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+rm -rf -- "$associate_complete_probe_dir"
 
 # A git-status failure is not a clean tree. Process substitution used to hide
 # the producer's failure, making a bare repository return the clean-tree exit 1.

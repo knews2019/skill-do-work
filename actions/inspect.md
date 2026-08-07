@@ -148,7 +148,7 @@ This self-contained block re-derives the repository root and moves paths through
 
 What the script settles, so this prose no longer has to:
 
-- **Terminal-success matching honors the Schema Read Contract's aliases**, so `completed`, `completed-with-issues`, and `done`/`finished`/`closed` all qualify. Testing only for the literal `completed` drops every remediated-with-issues REQ, and its files then never get associated.
+- **Terminal-success matching honors the Schema Read Contract's aliases**, so `completed`, `completed-with-issues`, and `complete`/`done`/`finished`/`closed` all qualify. Testing only for the literal `completed` drops every remediated-with-issues REQ, and its files then never get associated.
 - **In-flight `working/` REQs are included** regardless of status, since a claimed REQ is never terminal.
 - **Conflict resolution:** a path claimed by two REQs goes to the one with the latest `completed_at`. An archived REQ outranks an in-flight one.
 - **`do-work/` metadata paths are excluded** from association, matching `tools/checks/scope-drift.sh`.

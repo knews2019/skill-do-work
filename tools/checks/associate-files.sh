@@ -63,11 +63,11 @@ fi
 # Terminal-success per actions/work-reference.md's Schema Read Contract. The
 # aliases are the point: commit.md's Red Flags warn that testing only for the
 # literal `completed` drops every remediated-with-issues REQ, and the contract
-# additionally aliases done/finished/closed onto completed. Both prose copies
+# additionally aliases complete/done/finished/closed onto completed. Both prose copies
 # had to restate this; now neither does.
 is_terminal_success_status() {
   case "$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]')" in
-    completed|completed-with-issues|done|finished|closed) return 0 ;;
+    completed|completed-with-issues|complete|done|finished|closed) return 0 ;;
   esac
   return 1
 }
