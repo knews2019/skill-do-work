@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.8 — Listener-Specific Kanban Shutdown Guard (2026-08-07)
+
+The standing Kanban recipe now refuses to build or start a replacement server while any listener remains on the requested port after shutdown.
+
+- Waits up to 320 one-tenth-second iterations for the old PID to stop listening on that port
+- Re-queries the port and names the remaining PID and full command before refusing startup
+- Preserves foreign-process protection and keeps the root and installer recipes regression-synchronized
+
 ## 0.183.7 — Metadata-Only Commit Hash Recovery (2026-08-07)
 
 Commit-hash idempotency now distinguishes a stranded frontmatter-only metadata edit from unrelated archived-request changes before printing a staging instruction.

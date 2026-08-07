@@ -1286,6 +1286,25 @@ assert_file_not_contains \
 
 # Review regressions: prescribed shell and roadmap classification are runtime
 # contracts even though they live in Markdown/just recipes rather than compiled code.
+extract_kanban_shutdown_line() {
+  awk '
+    /^run-kanban \$port=/ {
+      getline
+      getline
+      sub(/^[[:space:]]*/, "")
+      print
+      exit
+    }
+  ' "$repo_root/$1"
+}
+
+root_kanban_shutdown_line="$(extract_kanban_shutdown_line justfile)"
+installer_kanban_shutdown_line="$(extract_kanban_shutdown_line actions/install.md)"
+if [ "$root_kanban_shutdown_line" != "$installer_kanban_shutdown_line" ]; then
+  printf 'FAIL: justfile and actions/install.md must carry one identical run-kanban shutdown line; installer drift would ship different port safety to consumers.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 for kanban_recipe_file in "actions/install.md" "justfile"; do
   assert_file_not_contains \
     "$kanban_recipe_file" \
@@ -1297,9 +1316,87 @@ for kanban_recipe_file in "actions/install.md" "justfile"; do
     "$kanban_recipe_file must identify a stale board from its executable, preserving cross-repo binary names without matching unrelated arguments."
   assert_contains \
     "$kanban_recipe_file" \
+    'wait_count.*-lt 320.*lsof -a -p "\$listener_pid".*tcp:"\$port".*-sTCP:LISTEN' \
+    "$kanban_recipe_file must bound a listener-specific wait at 320 iterations instead of polling process existence."
+  assert_contains \
+    "$kanban_recipe_file" \
+    'remaining_listener_pid=.*lsof -ti tcp:"\$port".*-sTCP:LISTEN' \
+    "$kanban_recipe_file must query the port again after the bounded shutdown wait."
+  assert_contains \
+    "$kanban_recipe_file" \
+    'ps -p "\$remaining_listener_pid" -o args=' \
+    "$kanban_recipe_file must resolve the remaining listener's full command for the refusal."
+  assert_file_not_contains \
+    "$kanban_recipe_file" \
+    'while kill -0 "\$listener_pid"' \
+    "$kanban_recipe_file must wait on listener ownership, not process existence."
+  assert_contains \
+    "$kanban_recipe_file" \
     '^run-do-work-update:' \
     "$kanban_recipe_file must ship the project-local do-work update shortcut."
 done
+
+# Execute the canonical shutdown line with command seams. A queue-kanban PID that remains a
+# listener throughout the bounded wait must make the recipe line fail before build+serve, and
+# the diagnosis must name both the PID and full command. sleep is a no-op in the fixture, so all
+# 320 iterations run without slowing the suite.
+if stuck_listener_output="$(
+  port=8090
+  lsof() {
+    if [ "${4:-}" = "-d" ]; then
+      printf 'n/tmp/queue-kanban\n'
+    else
+      printf '4242\n'
+    fi
+  }
+  ps() { printf '/tmp/queue-kanban serve --port 8090\n'; }
+  kill() { return 0; }
+  sleep() { return 0; }
+  eval "$root_kanban_shutdown_line" 2>&1
+)"; then
+  stuck_listener_status=0
+else
+  stuck_listener_status=$?
+fi
+if [ "$stuck_listener_status" -ne 1 ]; then
+  printf 'FAIL: run-kanban shutdown must refuse startup when a listener remains after the bounded wait; got exit %s.\n' "$stuck_listener_status" >&2
+  fail_count=$((fail_count + 1))
+fi
+if ! printf '%s\n' "$stuck_listener_output" | grep -qF 'pid 4242'; then
+  printf 'FAIL: run-kanban stuck-listener refusal must name pid 4242.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+if ! printf '%s\n' "$stuck_listener_output" | grep -qF '/tmp/queue-kanban serve --port 8090'; then
+  printf 'FAIL: run-kanban stuck-listener refusal must name the listener command.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# Preserve the older safety boundary: a foreign executable is refused immediately and never
+# passed to kill. This behavior probe complements the executable-identity contract above.
+foreign_kill_marker="$(mktemp)"
+if foreign_listener_output="$(
+  port=8090
+  lsof() {
+    if [ "${4:-}" = "-d" ]; then
+      printf 'n/usr/bin/python3\n'
+    else
+      printf '3131\n'
+    fi
+  }
+  ps() { printf '/usr/bin/python3 -m http.server 8090\n'; }
+  kill() { printf 'called\n' > "$foreign_kill_marker"; }
+  sleep() { return 0; }
+  eval "$root_kanban_shutdown_line" 2>&1
+)"; then
+  foreign_listener_status=0
+else
+  foreign_listener_status=$?
+fi
+if [ "$foreign_listener_status" -ne 1 ] || [ -s "$foreign_kill_marker" ]; then
+  printf 'FAIL: run-kanban must refuse a foreign listener without calling kill.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+rm -f "$foreign_kill_marker"
 
 if [ ! -x "$repo_root/tools/do-work-update.sh" ]; then
   printf 'FAIL: tools/do-work-update.sh must be executable for the just shortcut.\n' >&2
