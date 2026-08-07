@@ -3,6 +3,7 @@ id: REQ-136
 title: "Define the Four-Skill Suite Contract"
 status: completed
 completed_at: 2026-08-07T20:42:31Z
+commit: f8aecd8
 claimed_at: 2026-08-07T20:35:56Z
 route: C
 created_at: 2026-08-07T18:58:02Z
