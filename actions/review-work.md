@@ -40,8 +40,8 @@ Both modes follow the same workflow. The only difference is where the REQ lives 
 
 **Standalone mode:**
 1. **If user specifies a REQ** (e.g., "review REQ-005"): Find it in `do-work/archive/` or `do-work/archive/UR-NNN/`
-2. **If user specifies a UR** (e.g., "review UR-003"): Find all terminally-successful REQs (`completed` or `completed-with-issues`) under that UR and review each
-3. **If no target specified**: Find the most recently completed REQ — check both `do-work/archive/` (root) and all `do-work/archive/UR-NNN/` subdirectories for the highest REQ number with a terminal-success status (`status: completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set)
+2. **If user specifies a UR** (e.g., "review UR-003"): Find all REQs whose status normalizes to the Terminal-success status set under that UR and review each
+3. **If no target specified**: Find the most recently completed REQ — check both `do-work/archive/` (root) and all `do-work/archive/UR-NNN/` subdirectories for the highest REQ number whose status normalizes to the Terminal-success status set in `actions/work-reference.md`
 
 If the target REQ has no `commit` field (standalone mode) or no implementation changes (pipeline mode), report that there's nothing to review and exit. In worktree dispatch mode the working tree is clean after the merge, so judge "no changes" from the merge range `<pre>..<merge_hash>` (`git diff --stat <pre>..<merge_hash>`), not the working diff — an empty working diff there is the normal post-merge state, not an empty REQ.
 
