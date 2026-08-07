@@ -154,7 +154,7 @@ When user asks "recap":
 4. **Label each UR**:
    - No label if fully archived
    - `(pending)` if the UR has any pending REQs
-   - `(completed, awaiting archive)` if all its REQs are completed/done but the UR isn't archived yet
+   - `(completed, awaiting archive)` if all its REQs normalize to terminally resolved statuses but the UR isn't archived yet
 5. **Format as a "Recent Work" section**:
    ```
    ## Recent Work
