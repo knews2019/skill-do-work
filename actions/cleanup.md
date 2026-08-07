@@ -32,12 +32,12 @@ Scan `do-work/queue/` and the working directory for REQs with terminal statuses 
 
 1. **Glob `do-work/queue/REQ-*.md`**
 2. **Read each REQ's frontmatter** `status` field
-3. **If status is any terminal value** — `completed`, `completed-with-issues`, `failed`, `cancelled`, or any non-standard terminal status (`done`, `finished`, `closed`, `canceled`, `abandoned`, `wont-do`):
-   - **Normalize non-standard statuses** before moving: change `done` → `completed`, `finished` → `completed`, `closed` → `completed`, `canceled`/`abandoned`/`wont-do` → `cancelled` in frontmatter
+3. **If status is a canonical terminal value or a documented status alias** — normalize the alias under the Schema Read Contract before moving, then treat its canonical terminal value as the archival decision:
+   - **Normalize non-standard statuses** before moving according to the Schema Read Contract's `status` row; do not maintain a second alias list here
    - Move the REQ to `do-work/archive/` root (Pass 1 and Pass 2 will then consolidate it into the correct UR folder)
    - Report: `Swept REQ-NNN from do-work/queue/ (was status: {original}) → archive`
 4. **Leave `pending`, `pending-answers`, `blocked`, and `claimed` REQs untouched** — those are active queue items (`blocked` waits on an external condition)
-5. **Also check `do-work/working/`** — if any REQ there has a terminal status (`completed`, `completed-with-issues`, `done`, `finished`, `closed`, `failed`, `cancelled`), it was finished but never moved out (a crashed prior run). Same treatment: normalize status, move to `do-work/archive/` root, report it. Moving it out of `working/` also drops its `## In Progress (interrupted)` entry from `do-work/CHECKPOINT.md` — **this checkout's own-label entry only; one carrying another checkout's `writer:` label records a claim held elsewhere and is left alone.** `actions/work-reference.md` → **In-Progress Record (Step 2)** states when that removal is owed, how the label is derived, and why the removal is part of the move rather than a later sweep.
+5. **Also check `do-work/working/`** — if any REQ there has a canonical terminal status or a documented status alias, it was finished but never moved out (a crashed prior run). Apply the same Schema Read Contract normalization, move it to `do-work/archive/` root, and report it. Moving it out of `working/` also drops its `## In Progress (interrupted)` entry from `do-work/CHECKPOINT.md` — **this checkout's own-label entry only; one carrying another checkout's `writer:` label records a claim held elsewhere and is left alone.** `actions/work-reference.md` → **In-Progress Record (Step 2)** states when that removal is owed, how the label is derived, and why the removal is part of the move rather than a later sweep.
 
 ### Pass 1: Close Completed User Requests
 
@@ -52,7 +52,7 @@ For each UR folder in `do-work/user-requests/`:
    - `do-work/working/REQ-*.md` (in flight)
    - `do-work/archive/REQ-*.md` (loose in archive root — non-recursive; `archive/legacy/` REQs have no `user_request` by definition)
    - `do-work/archive/UR-NNN/REQ-*.md` (already consolidated)
-2. **Check each collected REQ's status against the terminal-resolved set** (`completed`, `completed-with-issues`, or `cancelled` — see `actions/work-reference.md`'s Schema Read Contract → Terminal-resolved status set; don't restate or fork that set here). Any status outside it holds the UR open, **`failed` included** (how a `failed` REQ is resolved so it leaves this held-open state is defined at that canonical statement — do not re-derive it here).
+2. **Normalize each collected REQ's status, then check the terminal-resolved set** (see `actions/work-reference.md`'s Schema Read Contract → Terminal-resolved status set; don't restate or fork either list here). Any status outside it holds the UR open, **`failed` included** (how a `failed` REQ is resolved so it leaves this held-open state is defined at that canonical statement — do not re-derive it here).
    If the same REQ-ID is found in **both** `do-work/archive/` root and `do-work/archive/UR-NNN/`, flag it and leave the UR in `user-requests/` untouched: `⚠ Duplicate: REQ-NNN found in both archive/ root and archive/UR-NNN/. Resolve manually, then re-run cleanup.`
 3. If **ALL** collected REQs are terminally resolved (and no duplicates flagged):
    - Gather any loose completed/cancelled REQ files from `do-work/archive/` root into the UR folder
