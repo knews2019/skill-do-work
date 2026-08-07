@@ -40,7 +40,7 @@ Report: file name, title, route, how long stuck, last known phase (check which `
 
 ### 2. Hollow Completions
 
-Scan `do-work/archive/` (including `UR-*/` subdirectories) for REQs with `status: completed` or `status: completed-with-issues`.
+Scan `do-work/archive/` (including `UR-*/` subdirectories) for REQs whose status normalizes to a terminal-success value under the Schema Read Contract.
 
 For each, check:
 - Does `## Implementation Summary` exist?
@@ -114,7 +114,7 @@ For recently archived REQs (last 10 with `commit` in frontmatter):
 
 ### 9. Stranded Finished REQs
 
-Scan `do-work/queue/REQ-*.md` (queue, not archive) AND `do-work/working/REQ-*.md` for REQs with any terminal status: `completed`, `completed-with-issues`, `failed`, `cancelled`, or non-standard variants like `done`, `finished`, `closed`, `abandoned`, `wont-do`.
+Scan `do-work/queue/REQ-*.md` (queue, not archive) AND `do-work/working/REQ-*.md` for REQs whose status is terminal after Schema Read Contract normalization.
 
 **Queue findings:** Group by `user_request` frontmatter field. For each UR group:
 - **Warning**: "UR-NNN has N completed REQs stranded in queue awaiting archive: REQ-NNN, REQ-NNN, ..."
@@ -146,7 +146,7 @@ Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, an
 
 **Skip any file with no parseable frontmatter — check 13 owns those.** A 0-byte or header-destroyed file has no `status:` at all, so it reads here as an empty value and would be reported as an unrecognized status. That framing is actively harmful: its suggested fix is "edit the `status:` field," which writes over a file whose body needs recovering first. One finding, from check 13, with the remedy that fits.
 
-Judge each remaining value against the `status` row of the Schema Read Contract in `actions/work-reference.md` — that table is the canonical vocabulary and alias list; do not re-enumerate it here. A value is a finding when it is neither a recognized status nor a documented alias (aliases like `done` → `completed` are normalization inputs, not defects — check 9 already covers *terminal* statuses stranded in queue/working).
+Judge each remaining value against the `status` row of the Schema Read Contract in `actions/work-reference.md` — that table is the canonical vocabulary and alias list; do not re-enumerate it here. A value is a finding when it is neither a recognized status nor a documented alias (aliases like `complete` → `completed` are normalization inputs, not defects — check 9 already covers *terminal* statuses stranded in queue/working).
 
 - **Warning** for each REQ whose status is outside the vocabulary and alias set (e.g., a hand-edited `in-progress`, a typo like `pnding`, or a foreign tool's status): "REQ-NNN has unrecognized status '{status}' — the work scan skips it and the Kanban board parks it under Needs input / Blocked with an invalid-status highlight."
   **Suggested fix:** Edit the REQ's `status:` field to the recognized value that matches its actual state (see the Schema Read Contract). A REQ mid-work is `claimed`; one waiting in the queue is `pending`.
