@@ -48,12 +48,13 @@ exception is `architecture-decisions-log_create-or-expand.md`, which gates on `g
 branch-name check, and audits `[[wiki-link]]` targets. Worth knowing so nobody re-audits the directory expecting to
 find something.
 
-### Findings 4–6 — three extraction candidates. **Moved to the queue as REQ-114.**
+### Findings 4–6 — residual extraction candidates. **Carried by REQ-114.**
 
 The census ranked five extraction candidates by execution frequency × bug risk. The top two became REQ-111 and
 REQ-112 above. The remaining three — consolidating the merge-commit-aware diff idiom, the uncommitted-changes
 inventory plus REQ association, and writer-label claim classification — are carried by **REQ-114**, restated as
-greps rather than line numbers so they cannot decay the way this table did. None is approved work.
+greps rather than line numbers so they cannot decay the way this table did. Candidate B was separately approved and
+delivered as REQ-121; Candidates A and C remain unapproved, separate work.
 
 ---
 

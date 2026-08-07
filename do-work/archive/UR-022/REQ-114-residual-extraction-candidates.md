@@ -1,14 +1,19 @@
 ---
 id: REQ-114
 title: The three remaining shell-logic extraction candidates, restated decay-free
-status: pending
+status: completed
 created_at: 2026-08-05T19:32:52Z
+claimed_at: 2026-08-07T07:25:25Z
+completed_at: 2026-08-07T07:29:24Z
+route: A
 user_request: UR-022
 domain: general
 prime_files: []
 tdd: false
 depends_on: []
 maintenance: false
+kb_status: pending
+kb_entry: ""
 related: [REQ-111, REQ-112]
 batch: census-durable-findings
 ---
@@ -17,7 +22,7 @@ batch: census-durable-findings
 
 ## What
 
-Carries forward the three extraction candidates the shell-logic census ranked but never captured, restated so they survive without the census's line-number table. Each is a consolidation of a primitive that is currently copy-pasted across several action files. **None of these is approved work** — this REQ exists so the candidates are in the queue rather than in a decaying document, and each must clear the compiled-tooling and floor constraints before it becomes a change.
+Carries forward the three extraction candidates the shell-logic census ranked but never captured, restated so they survive without the census's line-number table. Each is a consolidation of a primitive that is currently copy-pasted across several action files. Candidate B was split out, approved, and delivered as REQ-121; **Candidates A and C are not approved work** and must each clear the floor constraints before becoming a change.
 
 Every candidate below is described by **what to grep for**, not by line numbers. That is the point: the census's citations went stale within hours of a single merge to `actions/work-reference.md`, so a durable record has to name the search rather than the coordinate.
 
@@ -54,9 +59,9 @@ Every candidate below is described by **what to grep for**, not by line numbers.
 **Candidate shape:** `tools/checks/classify-claims.sh`.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Re-run the durable discovery searches, verify Candidate B's separate delivery, and update only the census's concise disposition note. Verify: Candidate A's merge-aware-diff copies remain discoverable by grep, Candidate B's two scripts and callers exist, and Candidate C remains a single crash-recovery classification surface.
+- [x] **[APPLY]:** Updated the audit and this request's status wording to distinguish Candidate B's completed REQ-121 delivery from still-unapproved Candidates A and C. No extraction, script, or action prose was changed.
+- [x] **[UNIFY]:** Reviewed the audit and request status wording: both preserve the no-table approach and state no new implementation as fact. Ran `git diff --check`, `bash -n _dev/tests/contract-regressions.sh`, and `bash _dev/tests/contract-regressions.sh` (all pass). Verified the Candidate B inventory script still reports the current changed paths, and re-ran the Candidate A/C discovery searches. No debug artifacts or unrelated source changes.
 
 ## Why (if provided)
 
@@ -99,3 +104,77 @@ Re-ran all three greps per the Detailed Requirements. The census figures were st
 ## Full Context
 
 See `do-work/user-requests/UR-022/input.md`. The originating audit is `decisions/audits/2026-08-05-shell-logic-in-prose-census.md`, trimmed in the same change that created this REQ.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** This is a bounded documentation close-out: its durable candidate record already exists, Candidate B has a separately approved delivery, and the two remaining candidates explicitly lack implementation approval. The only source change is a concise status correction in the originating audit.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Decisions
+
+- **D-01: Close the inventory without implementing Candidate A or Candidate C.** DECIDE & STATE. The REQ and its source audit explicitly reserve both as unapproved work; treating a queue run as permission to choose an extraction would violate that boundary. Candidate B is already independently delivered by REQ-121.
+
+## Implementation Summary
+
+**Files changed:**
+- `decisions/audits/2026-08-05-shell-logic-in-prose-census.md` (modified)
+
+**What was done:** Recorded the durable current disposition: Candidate B is delivered by REQ-121, while Candidates A and C remain separate, unapproved candidates. Corrected this request's now-false original "None of these" status wording; no extraction implementation or action-prose change was made.
+
+## Qualification
+
+Passed — 1 project file verified in the diff, the P-A-U record is complete, and the requirements trace directly to the audit's corrected candidate disposition. The change is substantive documentation: it removes the now-false "None is approved" claim without reviving the perishable census table.
+
+## Testing
+
+**Tests run:** `git diff --check`; `bash -n _dev/tests/contract-regressions.sh`; `bash _dev/tests/contract-regressions.sh`; `tools/checks/uncommitted-inventory.sh .`; Candidate A/C discovery searches.
+
+**Result:** All checks pass. The regression suite reports no failures; the inventory script still emits the individual changed paths; Candidate A's search still finds the expected merge-aware-diff pattern, and Candidate C's classification surface remains in Crash Recovery / In-Progress Record.
+
+*Verified by work action*
+
+## Review
+
+**Overall: 100%** | 2026-08-07T07:25:25Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 100% |
+| Test Adequacy | 100% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded gate disposition — this is the durable audit record the gate mandates):**
+None
+
+**Minor findings:** 0 (report only)
+**Acceptance:** Pass — the audit and REQ now distinguish Candidate B's completed REQ-121 delivery from unapproved Candidates A and C, without reviving the decaying table or implementing an unapproved extraction.
+**Suggested testing:** 0 items
+**Follow-ups created:** None; **sweeps appended to:** None
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Keeping the candidate record grep-based made it possible to verify the current state without reviving the census's stale line-number table.
+
+**What didn't:** The inventory's original blanket statement that none of its candidates was approved became stale after Candidate B split into REQ-121; a disposition close-out needs to update that statement in both the audit and the REQ.
+
+**Worth knowing:** A queue run authorizes processing the inventory REQ, not selecting an unapproved candidate for implementation. Candidate A and Candidate C remain separate decisions.
+
+## Orientation
+
+The shell-logic census now records its residual candidate status accurately: Candidate B is shipped under REQ-121, while Candidate A and Candidate C remain explicit future decisions. The durable candidate record lives in `decisions/audits/2026-08-05-shell-logic-in-prose-census.md`; no system contract changed.

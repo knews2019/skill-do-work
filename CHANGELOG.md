@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.3 — Residual Shell-Logic Candidates Have an Accurate Disposition (2026-08-07)
+
+The census's remaining candidates no longer imply that every extraction is still unapproved. The record now says what happened without bringing its obsolete line-number table back to life.
+
+- Candidate B is recorded as the separately approved and shipped REQ-121 work
+- Candidates A and C remain explicit future decisions rather than accidental work from a queue run
+
+
 ## 0.183.2 — The Effort Chip Shows What Was Declared, Not Just What It Resolved To (2026-08-06)
 
 0.180.1 taught the board's domain and route badges to carry raw provenance — what the REQ
