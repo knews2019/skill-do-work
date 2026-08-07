@@ -4,6 +4,7 @@ title: "Stage the Modular Core Skill"
 status: completed
 claimed_at: 2026-08-07T21:20:27Z
 completed_at: 2026-08-07T21:31:33Z
+commit: 9ba534e
 route: C
 created_at: 2026-08-07T18:58:02Z
 user_request: UR-031
