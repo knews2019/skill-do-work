@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.10 — Testing Date-Filter Empty State (2026-08-07)
+
+Testing columns now say “No matches” when their date window hides existing cards, while ordinary Board empty states stay independent of that Testing-only filter.
+
+- Passes Testing-visible filter state explicitly to the shared empty-copy helper
+- Keeps Board, Calendar, and By-UR on the ordinary search/domain/status fallback
+- Adds caller-level regression coverage for Board, hidden Board, and Testing columns
+
 ## 0.183.9 — Crash-Safe Version Allocation (2026-08-07)
 
 `queue-kanban next-version` now replaces the version file atomically, so an interrupted write cannot leave the release marker truncated.

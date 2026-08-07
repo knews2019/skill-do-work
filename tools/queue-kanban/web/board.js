@@ -731,8 +731,12 @@
     return shownCount < totalCount ? shownCount + " / " + totalCount : String(shownCount);
   }
 
-  function columnEmptyText() {
-    return hasActiveFilters() ? "No matches" : "Nothing here";
+  function columnEmptyText(filtersActive) {
+    var resolvedFiltersActive =
+      typeof filtersActive === "boolean"
+        ? filtersActive
+        : hasActiveFilters();
+    return resolvedFiltersActive ? "No matches" : "Nothing here";
   }
 
   function fillColumn(columnKey, requestIds, options, totalCount) {
@@ -1233,7 +1237,7 @@
     container.textContent = "";
     countNode.textContent = formatFilteredCount(requestIds.length, totalCount);
     if (requestIds.length === 0) {
-      container.appendChild(createElement("p", "column-empty", columnEmptyText()));
+      container.appendChild(createElement("p", "column-empty", columnEmptyText(hasActiveVisibleFilters())));
       return;
     }
     requestIds.forEach(function (requestId) {

@@ -880,36 +880,67 @@ process.stdout.write(JSON.stringify(userRequestLensNode.childNodes.map(function 
 func TestTestingDoneWindowIsViewSpecific(t *testing.T) {
 	nodePath, lookupError := exec.LookPath("node")
 	if lookupError != nil {
-		t.Skip("node is unavailable; skipping board.js filter-state check")
+		t.Skip("node is unavailable; skipping board.js empty-copy check")
 	}
 	indexHtml := generateLiveSite(t)
-	activeFiltersFunction := sliceBalancedBlockAfter(t, indexHtml, "function hasActiveFilters(")
-	visibleFiltersFunction := sliceBalancedBlockAfter(t, indexHtml, "function hasActiveVisibleFilters(")
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
+		sliceBalancedBlockAfter(t, indexHtml, "function hasActiveFilters("),
+		sliceBalancedBlockAfter(t, indexHtml, "function hasActiveVisibleFilters("),
+		sliceBalancedBlockAfter(t, indexHtml, "function formatFilteredCount("),
+		sliceBalancedBlockAfter(t, indexHtml, "function columnEmptyText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function fillColumn("),
+		sliceBalancedBlockAfter(t, indexHtml, "function fillTestingColumn("),
+	}
 	javascriptProbe := `
-const filterState = { searchText: "", domain: "", status: "", doneWindow: "168" };
-const viewState = { view: "board" };
-` + activeFiltersFunction + "\n" + visibleFiltersFunction + `
-const boardResult = [hasActiveFilters(), hasActiveVisibleFilters()];
+var filterState = { searchText: "", domain: "", status: "", doneWindow: "168" };
+var viewState = { view: "board" };
+var nodesBySelector = {};
+function makeNode() {
+  return {
+    childNodes: [],
+    textContent: "",
+    appendChild: function (childNode) { this.childNodes.push(childNode); return childNode; }
+  };
+}
+var document = {
+  createElement: function () { return makeNode(); },
+  querySelector: function (selector) {
+    if (!nodesBySelector[selector]) {
+      nodesBySelector[selector] = makeNode();
+    }
+    return nodesBySelector[selector];
+  }
+};
+` + strings.Join(functionBlocks, "\n") + `
+fillColumn("board", [], null, 1);
+var boardCopy = nodesBySelector['[data-cards="board"]'].childNodes[0].textContent;
 viewState.view = "testing";
-const testingResult = [hasActiveFilters(), hasActiveVisibleFilters()];
-process.stdout.write(JSON.stringify([boardResult, testingResult]));`
+fillColumn("hidden-board", [], null, 1);
+var hiddenBoardCopy = nodesBySelector['[data-cards="hidden-board"]'].childNodes[0].textContent;
+fillTestingColumn("testing-ready", [], 1);
+var testingCopy = nodesBySelector['[data-cards="testing-ready"]'].childNodes[0].textContent;
+process.stdout.write(JSON.stringify([boardCopy, hiddenBoardCopy, testingCopy]));`
 	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
 	probeOutput, probeError := probeCommand.CombinedOutput()
 	if probeError != nil {
-		t.Fatalf("execute board.js filter-state decision: %v\n%s", probeError, probeOutput)
+		t.Fatalf("execute board.js empty-copy decision: %v\n%s", probeError, probeOutput)
 	}
-	var results [][]bool
+	var results []string
 	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
-		t.Fatalf("decode board.js filter-state results: %v (output %q)", decodeError, probeOutput)
+		t.Fatalf("decode board.js empty-copy results: %v (output %q)", decodeError, probeOutput)
 	}
-	if len(results) != 2 || len(results[0]) != 2 || len(results[1]) != 2 {
-		t.Fatalf("unexpected filter-state result shape: %#v", results)
+	if len(results) != 3 {
+		t.Fatalf("empty-copy result count = %d, want 3: %#v", len(results), results)
 	}
-	if results[0][0] || results[0][1] {
-		t.Fatalf("board view counted Testing-only doneWindow as active: %#v", results[0])
+	if results[0] != "Nothing here" {
+		t.Fatalf("Board empty copy with only doneWindow = %q, want Nothing here", results[0])
 	}
-	if results[1][0] || !results[1][1] {
-		t.Fatalf("testing view filter decisions = %#v, want request filters false and visible filters true", results[1])
+	if results[1] != "Nothing here" {
+		t.Fatalf("hidden Board empty copy during Testing view = %q, want Nothing here", results[1])
+	}
+	if results[2] != "No matches" {
+		t.Fatalf("Testing empty copy with doneWindow = %q, want No matches", results[2])
 	}
 }
 

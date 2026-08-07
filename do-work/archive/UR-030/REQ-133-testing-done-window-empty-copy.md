@@ -1,7 +1,9 @@
 ---
 id: REQ-133
 title: Testing columns honor doneWindow in their empty copy
-status: pending
+status: completed
+completed_at: 2026-08-07T14:55:51Z
+claimed_at: 2026-08-07T14:47:08Z
 created_at: 2026-08-07T14:42:57Z
 user_request: UR-030
 domain: frontend
@@ -11,6 +13,7 @@ suggested_spec: bug-fix
 depends_on: []
 maintenance: false
 write_set: [tools/queue-kanban/web/board.js, tools/queue-kanban/generate_test.go]
+route: A
 ---
 
 # Testing Columns Honor DoneWindow in Their Empty Copy
@@ -21,9 +24,9 @@ Fix the queue-kanban Testing-view empty-state regression. When `filterState.done
 
 ## AI Execution State (P-A-U Loop)
 
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Extend the Node-backed Go regression to execute `columnEmptyText()` for ordinary Board copy before and during Testing view, plus the explicit Testing filter decision; prove RED before adding the optional boolean override and passing `hasActiveVisibleFilters()` only from `fillTestingColumn()`.
+- [x] **[APPLY]:** Added the three-outcome caller regression and the optional explicit filter override. Root cause: `fillTestingColumn()` used the ordinary no-argument empty-copy path, so its Testing-only `doneWindow` decision was never supplied; ordinary callers remain no-argument and Board-scoped.
+- [x] **[UNIFY]:** Reviewed `tools/queue-kanban/web/board.js` for explicit Testing-only filter propagation and preserved no-argument ordinary callers; reviewed `tools/queue-kanban/generate_test.go` for all three runnable copy assertions and production-faithful caller seams; reviewed this REQ for P-A-U/root-cause notes. `gofmt`, focused/full Go tests, `go vet`, `go build`, `git diff --check`, and `_dev/tests/contract-regressions.sh` pass; no debug artifacts or unrelated project-file changes found.
 
 ## Context
 
@@ -87,3 +90,75 @@ See `do-work/user-requests/UR-030/input.md` for the current verbatim command and
 
 ---
 *Source: UR-030 - "Fix the queue-kanban Testing-view empty-state regression using the validated requirements above"*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The request identifies the exact production and test files, gives the required helper shape and caller behavior, and defines runnable regression outcomes.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Root Cause
+
+`fillTestingColumn()` reused the ordinary no-argument `columnEmptyText()` path, whose fallback deliberately checks only search, domain, and status. The Testing-only `doneWindow` decision therefore never reached the empty-copy helper; changing the fallback globally would have leaked that filter into hidden Board columns.
+
+## Implementation Summary
+
+**Files changed:**
+- `tools/queue-kanban/web/board.js` (modified)
+- `tools/queue-kanban/generate_test.go` (modified)
+
+**What was done:** Added an optional explicit filter-state argument to the shared empty-copy helper, passed Testing-visible filter state only from the Testing-column caller, and replaced the helper-only regression with runnable Board, hidden-Board, and Testing empty-copy assertions.
+
+## Qualification
+
+Passed — 2 project files verified, all 8 detailed requirements traced, P-A-U confirmed. The production diff is the requested optional-boolean helper plus one explicit Testing caller; ordinary callers remain no-argument, the regression runs the real caller seams, and no debug artifacts or unrelated changes were found.
+
+## Testing
+
+**Tests run:** `gofmt -w generate_test.go`; `go test ./... -run '^TestTestingDoneWindowIsViewSpecific$' -count=1`; `go test ./...`; `go vet ./...`; `go build ./...` in `tools/queue-kanban`; repository checks `_dev/tests/contract-regressions.sh`, `_dev/tests/record-commit-hash-guards.sh`, `_dev/tests/update-script-behavior.sh`; `git diff --check`
+**Result:** ✓ All passing
+
+**Red-green validation:**
+- `TestTestingDoneWindowIsViewSpecific` in `tools/queue-kanban/generate_test.go`: ✗ before implementation (`Testing empty copy with doneWindow = "Nothing here", want No matches`) → ✓ after implementation
+
+**Existing tests updated (cross-REQ impact):**
+- `tools/queue-kanban/generate_test.go`: strengthened the existing view-specific filter regression from helper booleans to production caller-seam copy assertions; intended Board isolation is preserved while the previously untested Testing empty-copy behavior is now covered.
+
+*Verified by work action*
+
+## Review
+
+**Overall: 100%** | 2026-08-07T14:55:30Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 100% |
+| Test Adequacy | 100% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded gate disposition — this is the durable audit record the gate mandates):**
+- None
+
+**Minor findings:** 0 (report only)
+**Acceptance:** Pass — all three caller-seam copy outcomes pass and the Testing-only filter remains isolated from ordinary columns.
+**Suggested testing:** 1 optional browser smoke test
+**Follow-ups created:** None; **sweeps appended to:** None
+
+*Reviewed by review-work action*
+
+## Orientation
+
+Testing columns now distinguish date-filtered emptiness from a genuinely empty queue without changing Board, Calendar, or By-UR copy; this lives in the queue-kanban frontend rendering subsystem.
