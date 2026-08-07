@@ -67,6 +67,15 @@ assert_output_matches() {
   fi
 }
 
+assert_output_not_matches() {
+  local pattern_text="$1" probe_name="$2"
+  if printf '%s' "$probe_output" | grep -Eq -- "$pattern_text"; then
+    printf 'FAIL: %s — output unexpectedly matched /%s/. Output:\n%s\n' \
+      "$probe_name" "$pattern_text" "$probe_output" >&2
+    fail_count=$((fail_count + 1))
+  fi
+}
+
 assert_equals() {
   local expected_value="$1" actual_value="$2" probe_name="$3"
   if [ "$expected_value" != "$actual_value" ]; then
@@ -154,6 +163,35 @@ commit_fixture "record the insert"
 run_record_script "do-work/archive/UR-900/REQ-1282-insert.md" "$implementation_hash"
 assert_status 0 "noop: exits 0"
 assert_output_matches '^NOOP:' "noop: a committed, already-recorded hash is a no-op"
+
+# The stranded-edit exception is metadata-specific, not a blanket permission for any dirty
+# archived request. Normalize only the first frontmatter block's top-level commit field; body
+# prose and fenced examples remain evidence and must reject the staging instruction.
+idempotency_body_path="do-work/archive/UR-900/REQ-1282-idempotency-body.md"
+write_request_fixture "$idempotency_body_path" "$implementation_hash"
+commit_fixture "seed idempotency body fixture"
+sed 's/Body prose that quotes the schema:/Body prose changed after metadata write:/' \
+  "$fixture_root/$idempotency_body_path" > "$fixture_root/idempotency-body.tmp"
+mv "$fixture_root/idempotency-body.tmp" "$fixture_root/$idempotency_body_path"
+run_record_script "$idempotency_body_path" "$implementation_hash"
+assert_status 1 "idempotency body change: exits 1"
+assert_output_matches 'content beyond.*frontmatter.*commit' \
+  "idempotency body change: explains that non-metadata content differs"
+assert_output_not_matches 'Stage and commit it now' \
+  "idempotency body change: does not print the staging instruction"
+
+idempotency_fence_path="do-work/archive/UR-900/REQ-1282-idempotency-fence.md"
+write_request_fixture "$idempotency_fence_path" "$implementation_hash"
+commit_fixture "seed idempotency fenced-example fixture"
+sed 's/^commit: deadbee/commit: feed123/' \
+  "$fixture_root/$idempotency_fence_path" > "$fixture_root/idempotency-fence.tmp"
+mv "$fixture_root/idempotency-fence.tmp" "$fixture_root/$idempotency_fence_path"
+run_record_script "$idempotency_fence_path" "$implementation_hash"
+assert_status 1 "idempotency fenced commit change: exits 1"
+assert_output_matches 'content beyond.*frontmatter.*commit' \
+  "idempotency fenced commit change: keeps body commit text significant"
+assert_output_not_matches 'Stage and commit it now' \
+  "idempotency fenced commit change: does not print the staging instruction"
 
 # --- Probe 4: the incident — an already-blanked REQ ------------------------------------
 # This is the state the six destroyed files were left in. Recording a hash here would commit

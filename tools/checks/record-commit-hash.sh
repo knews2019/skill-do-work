@@ -602,8 +602,56 @@ fi
 # an earlier run leaves exactly that state, and reporting NOOP there would strand the edit
 # uncommitted forever.
 # ---------------------------------------------------------------------------
+normalize_without_frontmatter_commit() {
+  awk '
+    NR == 1 && $0 == "---" {
+      inside_first_frontmatter = 1
+      print
+      next
+    }
+    inside_first_frontmatter && $0 == "---" {
+      inside_first_frontmatter = 0
+      first_frontmatter_closed = 1
+      print
+      next
+    }
+    inside_first_frontmatter && !first_frontmatter_closed &&
+      !commit_removed && $0 ~ /^commit:[[:space:]]*/ {
+      commit_removed = 1
+      next
+    }
+    { print }
+  '
+}
+
 if [ "$edit_kind" = "none" ]; then
   if [ "$path_tracked" -eq 1 ] && [ "$head_exists" -eq 1 ] && ! git diff --quiet HEAD -- "$request_file" 2>/dev/null; then
+    request_directory="$(dirname "$request_file")"
+    backup_file="$(mktemp "$request_directory/.record-commit-hash.head-normalized.XXXXXX")" || {
+      echo "FAIL: could not allocate the normalized HEAD comparison file. Nothing was staged or committed."
+      exit 1
+    }
+    temp_file="$(mktemp "$request_directory/.record-commit-hash.worktree-normalized.XXXXXX")" || {
+      echo "FAIL: could not allocate the normalized worktree comparison file. Nothing was staged or committed."
+      exit 1
+    }
+    if ! git cat-file -p "HEAD:$tracked_full_name" 2>/dev/null |
+         normalize_without_frontmatter_commit > "$backup_file"; then
+      echo "FAIL: could not normalize HEAD:$tracked_full_name for the metadata-only comparison. Nothing was staged or committed."
+      exit 1
+    fi
+    if ! normalize_without_frontmatter_commit < "$request_file" > "$temp_file"; then
+      echo "FAIL: could not normalize $request_file for the metadata-only comparison. Nothing was staged or committed."
+      exit 1
+    fi
+    if ! cmp -s "$backup_file" "$temp_file"; then
+      echo "FAIL: $request_file has content beyond the first frontmatter commit: field that differs from HEAD."
+      echo "  Refusing metadata-interruption recovery. Nothing was staged or committed."
+      exit 1
+    fi
+    rm -f "$backup_file" "$temp_file"
+    backup_file=""
+    temp_file=""
     echo "OK: $request_file already records commit: $commit_hash on disk, but that edit is not in HEAD — an earlier metadata commit did not land. Stage and commit it now."
     exit 0
   fi

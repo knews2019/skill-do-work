@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.7 — Metadata-Only Commit Hash Recovery (2026-08-07)
+
+Commit-hash idempotency now distinguishes a stranded frontmatter-only metadata edit from unrelated archived-request changes before printing a staging instruction.
+
+- Normalized HEAD and worktree content may differ only by the first frontmatter block's column-zero `commit:` field
+- Body prose and fenced-example `commit:` lines remain significant and are rejected when changed
+- Temp-file and producer failures remain visible under Bash 3.2 with `pipefail`
+
 ## 0.183.6 — Parseable Request Recovery Chains (2026-08-07)
 
 Recovery now distinguishes parseable historical requests from merely non-empty blobs, so malformed metadata damage cannot be selected and reported as a successful repair.
