@@ -3,7 +3,7 @@ id: REQ-147
 title: "Addendum: reserve request numbers during allocation"
 status: completed
 completed_at: 2026-08-07T22:49:55Z
-commit:
+commit: 4851438
 claimed_at: 2026-08-07T22:41:26Z
 status_changed_at: 2026-08-07T22:41:26Z
 created_at: 2026-08-07T19:15:15Z
