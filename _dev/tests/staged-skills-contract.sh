@@ -52,9 +52,58 @@ core_files=(
   skills/do-work/tools/replace-text-section.sh
 )
 
+board_files=(
+  skills/do-work-board/SKILL.md
+  skills/do-work-board/actions/board.md
+  skills/do-work-board/actions/help.md
+  skills/do-work-board/docs/board-guide.md
+  skills/do-work-board/justfile.template
+  skills/do-work-board/tools/queue-kanban/go.mod
+  skills/do-work-board/tools/queue-kanban/main.go
+  skills/do-work-board/tools/queue-kanban/generate_test.go
+  skills/do-work-board/tools/queue-kanban/web/board.js
+  skills/do-work-board/tools/queue-kanban/web/board.css
+)
+
 for core_file in "${core_files[@]}"; do
   require_file "$core_file"
 done
+
+for board_file in "${board_files[@]}"; do
+  require_file "$board_file"
+done
+
+if [ -f "$repo_root/skills/do-work-board/justfile.template" ]; then
+  board_template="$repo_root/skills/do-work-board/justfile.template"
+  board_recipe_count="$(grep -cF '.claude/skills/do-work-board/tools/queue-kanban' "$board_template" || true)"
+  if [ "$board_recipe_count" -ne 4 ]; then
+    fail "board Just template must use the do-work-board queue-kanban path in exactly four board recipes (found $board_recipe_count)"
+  fi
+  if ! grep -Fq '.claude/skills/do-work/tools/do-work-update.sh' "$board_template"; then
+    fail 'board Just template must route run-do-work-update to the core updater'
+  fi
+  if [ "$(grep -cF '# >>> do-work:recipes >>>' "$board_template")" -ne 1 ] \
+    || [ "$(grep -cF '# <<< do-work:recipes <<<' "$board_template")" -ne 1 ]; then
+    fail 'board Just template must contain exactly one managed do-work:recipes section'
+  fi
+  for board_recipe_contract in \
+    '[ "$wait_count" -lt 320 ]' \
+    'remaining_listener_pid=' \
+    'listener_executable_name=' \
+    'serve --open'
+  do
+    if ! grep -Fq "$board_recipe_contract" "$board_template"; then
+      fail "board Just template lost safety/launch contract: $board_recipe_contract"
+    fi
+  done
+fi
+
+if [ -d "$repo_root/skills/do-work-board/tools/queue-kanban" ]; then
+  while IFS= read -r board_source; do
+    staged_board_source="skills/do-work-board/tools/queue-kanban/${board_source#tools/queue-kanban/}"
+    require_file "$staged_board_source"
+  done < <(git -C "$repo_root" ls-files tools/queue-kanban)
+fi
 
 if [ -d "$repo_root/skills" ]; then
   maintainer_citations="$(grep -rIEn '\[[^]]*\]\([^)]*(CLAUDE|AGENTS)\.md|(^|[[:space:]])(see|per|according to)[[:space:]]+`?(CLAUDE|AGENTS)\.md' "$repo_root/skills" || true)"
@@ -80,16 +129,25 @@ assert_core_sibling_reference actions/forensics.md do-work-board
 assert_core_sibling_reference actions/kb-lessons-handoff.md do-work-knowledge
 assert_core_sibling_reference actions/pipeline.md do-work-toolbox
 
-if [ -f "$repo_root/skills/do-work/SKILL.md" ]; then
-  while IFS= read -r action_path; do
-    if [ ! -f "$repo_root/skills/do-work/${action_path#./}" ]; then
-      fail "core router dispatch target does not resolve: $action_path"
-    fi
-  done < <(grep -Eo '`\./actions/[A-Za-z0-9._/-]+\.md`' "$repo_root/skills/do-work/SKILL.md" | tr -d '`' | sort -u)
+if [ -f "$repo_root/skills/do-work/actions/work.md" ] \
+  && ! grep -Fq -- '--version-file "<skill-root>/actions/version.md"' "$repo_root/skills/do-work/actions/work.md"; then
+  fail 'modular core next-version call must name the core version file explicitly instead of using the board tool default'
 fi
 
-if [ -d "$repo_root/skills/do-work" ]; then
-  if ! python3 - "$repo_root/skills/do-work" "$repo_root/suite/modules.tsv" <<'PY'
+for staged_router in "$repo_root"/skills/do-work*/SKILL.md; do
+  [ -f "$staged_router" ] || continue
+  staged_router_root="$(dirname "$staged_router")"
+  while IFS= read -r action_path; do
+    if [ ! -f "$staged_router_root/${action_path#./}" ]; then
+      fail "staged router dispatch target does not resolve: ${staged_router_root##*/}/$action_path"
+    fi
+  done < <(grep -Eo '`\./actions/[A-Za-z0-9._/-]+\.md`' "$staged_router" | tr -d '`' | sort -u)
+done
+
+if [ -d "$repo_root/skills" ]; then
+  for staged_skill_root in "$repo_root"/skills/do-work*; do
+    [ -d "$staged_skill_root" ] || continue
+    if ! python3 - "$staged_skill_root" "$repo_root/suite/modules.tsv" <<'PY'
 import pathlib
 import re
 import sys
@@ -134,13 +192,14 @@ for source in sorted(skill_root.rglob("*.md")):
                     f"{source.relative_to(skill_root)}:{line_number}: {reference}"
                 )
 if missing:
-    print("unresolved staged core runtime references:", file=sys.stderr)
-    print("\n".join(missing), file=sys.stderr)
+    sys.stderr.write(f"unresolved staged runtime references in {skill_root.name}:\n")
+    sys.stderr.write("\n".join(missing) + "\n")
     raise SystemExit(1)
 PY
-  then
-    fail_count=$((fail_count + 1))
-  fi
+    then
+      fail_count=$((fail_count + 1))
+    fi
+  done
 fi
 
 if [ -f "$repo_root/SKILL.md" ]; then

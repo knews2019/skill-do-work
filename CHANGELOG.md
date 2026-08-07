@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.16 — Staged Modular Board Skill (2026-08-08)
+
+Queue visualization now has an independently loadable staged package, including its full compiled server/CLI, embedded UI, and safe project recipes.
+
+- Preserves live, static, summary, terminal, calendar, Testing, and done-window behavior in `skills/do-work-board`
+- Moves the exact managed Just section to a board-owned template with bounded listener shutdown, foreign-process refusal, browser opening, and core updater paths
+- Validates complete source inventory, router/runtime references, install paths, recipe safety, and the modular core version-file seam
+
 ## 0.183.15 — Staged Modular Core Skill (2026-08-08)
 
 The feature-rich request lifecycle now has an independently loadable staged core package, while the current all-in-one distribution stays active for bridge clients.

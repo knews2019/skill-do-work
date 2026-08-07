@@ -27,3 +27,4 @@
 - [REQ-137: the installed bridge validator must remain authoritative over a future archive](../do-work/archive/REQ-137-ship-suite-aware-bridge-updater.md#lessons-learned)
 - [REQ-138: ambiguous unmarked legacy recipe spans must fail instead of absorbing client content](../do-work/archive/REQ-138-add-managed-text-section-replacement.md#lessons-learned)
 - [REQ-139: staged sibling references must be manifest-declared before their packages exist](../do-work/archive/REQ-139-stage-modular-core-skill.md#lessons-learned)
+- [REQ-140: copy staged modules from committed Git state when the active tree has unrelated edits](../do-work/archive/REQ-140-stage-modular-board-skill.md#lessons-learned)
