@@ -123,6 +123,45 @@ func TestAllocateNextVersionWritesBackAndConfirms(t *testing.T) {
 	}
 }
 
+// The version rewrite must replace a fully written temporary file over the
+// original, not truncate the original in place. A distinct file identity pins
+// that crash-safety boundary; preserving the mode keeps the atomic replacement
+// behavior equivalent to writing the existing file directly.
+func TestAllocateNextVersionAtomicallyReplacesAndPreservesMode(t *testing.T) {
+	repoRoot := writeReleaseFixture(t, "**Current version**: 0.163.3", "")
+	versionFilePath := filepath.Join(repoRoot, "actions", "version.md")
+	originalFileMode := os.FileMode(0o600)
+	if chmodError := os.Chmod(versionFilePath, originalFileMode); chmodError != nil {
+		t.Fatalf("chmod version fixture: %v", chmodError)
+	}
+	originalFileInfo, statError := os.Stat(versionFilePath)
+	if statError != nil {
+		t.Fatalf("stat original version file: %v", statError)
+	}
+
+	if _, allocateError := allocateNextVersion(versionFilePath, "patch"); allocateError != nil {
+		t.Fatalf("allocateNextVersion: %v", allocateError)
+	}
+
+	replacedFileInfo, statError := os.Stat(versionFilePath)
+	if statError != nil {
+		t.Fatalf("stat replaced version file: %v", statError)
+	}
+	if os.SameFile(originalFileInfo, replacedFileInfo) {
+		t.Error("allocateNextVersion rewrote the original file in place; want an atomic replacement")
+	}
+	if replacedFileInfo.Mode().Perm() != originalFileMode {
+		t.Errorf("mode after version write = %v, want %v", replacedFileInfo.Mode().Perm(), originalFileMode)
+	}
+	temporaryMatches, globError := filepath.Glob(filepath.Join(filepath.Dir(versionFilePath), ".version.md.tmp-*"))
+	if globError != nil {
+		t.Fatalf("glob atomic-write leftovers: %v", globError)
+	}
+	if len(temporaryMatches) != 0 {
+		t.Errorf("atomic version write left temporary files behind: %v", temporaryMatches)
+	}
+}
+
 // next-version writes exactly one file (the Constraints section): nothing under
 // do-work/, and no CHANGELOG.md — not even to create it.
 func TestAllocateNextVersionWritesNothingElse(t *testing.T) {

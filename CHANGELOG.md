@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.9 — Crash-Safe Version Allocation (2026-08-07)
+
+`queue-kanban next-version` now replaces the version file atomically, so an interrupted write cannot leave the release marker truncated.
+
+- Reuses the existing synced temporary-file and rename path
+- Preserves the version file's permission bits and existing read-back verification
+- Adds regression coverage for atomic replacement, normal bumps, and temporary-file cleanup
+
 ## 0.183.8 — Listener-Specific Kanban Shutdown Guard (2026-08-07)
 
 The standing Kanban recipe now refuses to build or start a replacement server while any listener remains on the requested port after shutdown.

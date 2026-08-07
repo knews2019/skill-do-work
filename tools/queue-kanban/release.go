@@ -137,10 +137,6 @@ func allocateNextVersion(versionFilePath string, bumpSize string) (string, error
 	if readError != nil {
 		return "", readError
 	}
-	fileInfo, statError := os.Stat(versionFilePath)
-	if statError != nil {
-		return "", statError
-	}
 
 	rewrittenLines := strings.Split(string(originalBytes), "\n")
 	replacedLineCount := 0
@@ -160,7 +156,7 @@ func allocateNextVersion(versionFilePath string, bumpSize string) (string, error
 			versionFilePath, replacedLineCount, strings.TrimSuffix(currentVersionLinePrefix, " "))
 	}
 
-	if writeError := os.WriteFile(versionFilePath, []byte(strings.Join(rewrittenLines, "\n")), fileInfo.Mode().Perm()); writeError != nil {
+	if writeError := writeFileAtomically(versionFilePath, []byte(strings.Join(rewrittenLines, "\n"))); writeError != nil {
 		return "", writeError
 	}
 
