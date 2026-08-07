@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.13 — Suite-Aware Bridge Updater (2026-08-07)
+
+Existing clients can now receive the modular four-skill distribution safely after the rollout gate, while the current release continues shipping the monolithic layout.
+
+- Makes agent-driven and Justfile updates use one capability-reporting engine for legacy and future suite archives
+- Validates every module with the installed bridge validator, shows one reviewed diff and confirmation, and verifies the installed bytes
+- Automatically restores only managed Git paths after failure while preserving application files, queue/KB data, Justfiles, and settings
+
 ## 0.183.12 — Four-Skill Suite Contract (2026-08-07)
 
 The modular split now has one version, one exact manifest, and one validation boundary, while existing clients continue receiving the unchanged monolithic archive.

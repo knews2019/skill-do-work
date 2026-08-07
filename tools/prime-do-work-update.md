@@ -10,7 +10,7 @@
 
 ## Do not edit
 
-- `<project-root>/do-work/` — runtime queue, archives, and deliverables; the updater must always exclude it from extraction.
+- `<project-root>/do-work/` — runtime queue, archives, and deliverables; the updater's explicit managed-path plan must never include it.
 - A consumer's justfile outside the installer’s consent-gated recipe spans.
 
 ## Stakes
@@ -18,10 +18,10 @@
 - `do-work-update.sh` — project-local overwrite boundary
   Req: reject skill roots outside the invoking project, show the reviewed diff, require confirmation, and verify the installed version afterward.
   Value: users can update without an agent turn while retaining the protection against clobbering a shared install or local customization.
-  Risk: weakening any guard can overwrite user work or runtime queue data. The script keeps **no** rollback copy — version control is the undo — so a failure inside the destructive region must report the partial install with runnable recovery commands (`print_recovery_instructions`), and runtime state must never need recovery because it is never touched. Do not reintroduce a `cp -R` snapshot; `_dev/tests/contract-regressions.sh` fails the build if you do.
-  Because git only restores what was **committed**, the one thing the snapshot did cover is now a warning, not a mechanism: uncommitted edits to shipped files die at the extraction, so the script must name them before the confirmation prompt and repeat in the recovery path that the printed `git checkout` will not bring them back. `_dev/tests/update-script-behavior.sh` Probe 4 holds both messages.
+  Risk: weakening any guard can overwrite user work or runtime queue data. The bridge requires the project Git root, validates the full archive with its already-installed manifest validator, inventories only explicit managed destinations, and automatically restores their committed bytes plus removes only newly created managed paths after failure. Runtime and application paths must never enter that plan. Dirty managed changes are named before the one confirmation; accepting discards them from both index and worktree before installation. `_dev/tests/update-script-behavior.sh` holds legacy, suite, hostile-manifest, dirty-consent, and forced-recovery behavior.
 
 ## Lessons
 
 - REQ-061: semantic-version comparison must execute on the platform’s `awk` implementation; avoid names such as `index`, which some implementations reserve as built-ins.
 - [REQ-136: staged suite artifacts must remain export-ignored through the bridge release](../do-work/archive/REQ-136-define-four-skill-suite-contract.md#lessons-learned)
+- [REQ-137: the installed bridge validator must remain authoritative over a future archive](../do-work/archive/REQ-137-ship-suite-aware-bridge-updater.md#lessons-learned)

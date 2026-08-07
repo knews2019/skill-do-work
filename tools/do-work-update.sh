@@ -1,354 +1,339 @@
 #!/usr/bin/env bash
-# Updates a project-local do-work install. Invoked by `just run-do-work-update`.
+# Update a project-local do-work install from either archive layout.
 set -euo pipefail
 
 upstream_url='https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz'
-# `justfile` is deliberately NOT in this list — it is appended below for a nested install
-# only. See the root-fallback note after the skill/project path resolution.
-shipped_paths=(SKILL.md actions crew-members prompts interviews specs docs hooks tools CHANGELOG.md README.md next-steps.md)
+bridge_capability='suite-layout-v2'
+legacy_shipped_paths=(SKILL.md actions crew-members prompts interviews specs docs hooks tools CHANGELOG.md README.md next-steps.md)
 
 fail() {
   printf 'do-work update: %s\n' "$*" >&2
   exit 1
 }
 
-version_is_newer() {
+version_order() {
   awk -v local_version="$1" -v remote_version="$2" '
     BEGIN {
       split(local_version, local_parts, ".")
       split(remote_version, remote_parts, ".")
       for (part_number = 1; part_number <= 3; part_number++) {
-        local_part = (part_number in local_parts) ? local_parts[part_number] + 0 : 0
-        remote_part = (part_number in remote_parts) ? remote_parts[part_number] + 0 : 0
-        if (remote_part > local_part) exit 0
-        if (remote_part < local_part) exit 1
+        local_part = local_parts[part_number] + 0
+        remote_part = remote_parts[part_number] + 0
+        if (remote_part > local_part) { print 1; exit }
+        if (remote_part < local_part) { print -1; exit }
       }
-      exit 1
+      print 0
     }
   '
 }
 
-# Files that legitimately exist only in an install and are not an upstream deletion: build
-# output, OS and editor droppings, merge leftovers. Everything else that is install-only gets
-# surfaced rather than dropped — see append_install_diff.
-is_transient_local_extra() {
-  case "$1" in
-    tools/queue-kanban/queue-kanban) return 0 ;;   # the compiled board binary (gitignored, rebuilt per run)
-    *.DS_Store|*.sw[a-p]|*.orig|*.rej|*~) return 0 ;;
-    *) return 1 ;;
-  esac
+read_action_version() {
+  sed -n 's/^\*\*Current version\*\*: *\([0-9][0-9.]*\).*/\1/p' "$1" | head -n 1
 }
 
-# Splits the installed-versus-upstream comparison into two streams, because the two things
-# `diff` reports on one `Only in <install>` line have opposite severities.
-#
-#   $destination      real divergence — content diffs and files upstream ships that the
-#                     install lacks. The post-update caller treats ANY line here as fatal.
-#   $extras_dest      paths present only in the install. NEVER fatal: a local-only file must
-#                     not abort an update (that regression was fixed once already). But
-#                     dropping them wholesale — the previous `grep -vF "Only in <install>"` —
-#                     is how a file upstream DELETED survives forever downstream: the tar
-#                     extraction only overwrites, it never removes, so nothing else in this
-#                     script can see a stale shipped action or check. So classify: known
-#                     droppings are dropped, the rest are reported for a human to judge.
-#                     Reported, never auto-removed — a consumer's own file dropped into a
-#                     shipped directory is indistinguishable from a stale one at this level.
-append_install_diff() {
-  local fresh_root="$1"
-  local installed_root="$2"
-  local destination="$3"
-  local extras_dest="$4"
-  local shipped_path diff_line entry_directory entry_basename relative_entry
-
-  for shipped_path in "${shipped_paths[@]}"; do
-    if [ -e "$fresh_root/$shipped_path" ] && [ ! -e "$installed_root/$shipped_path" ]; then
-      # Upstream ships this but it's wholly absent from the install: `diff` on a
-      # missing argument only errors to stderr, so flag it here instead.
-      printf 'Missing from install (shipped upstream): %s\n' "$shipped_path" >> "$destination"
-    elif [ ! -e "$fresh_root/$shipped_path" ] && [ -e "$installed_root/$shipped_path" ]; then
-      # The whole top-level path is gone upstream — the same "stale shipped file" case as the
-      # per-entry one below, just at the coarsest grain. Also not a diff failure.
-      printf '%s\n' "$shipped_path" >> "$extras_dest"
-    elif [ -e "$fresh_root/$shipped_path" ]; then
-      while IFS= read -r diff_line; do
-        case "$diff_line" in
-          # The install root is inside double quotes so a regex/glob metachar in the path
-          # cannot widen this pattern — the same reason the old filter used `grep -vF`.
-          "Only in $installed_root"*)
-            # "Only in <dir>: <name>" → rebuild the install-relative path to classify on.
-            entry_basename="${diff_line##*: }"
-            entry_directory="${diff_line#Only in }"
-            entry_directory="${entry_directory%: *}"
-            entry_directory="${entry_directory#"$installed_root"}"
-            entry_directory="${entry_directory#/}"
-            relative_entry="$entry_basename"
-            [ -n "$entry_directory" ] && relative_entry="$entry_directory/$entry_basename"
-            is_transient_local_extra "$relative_entry" \
-              || printf '%s\n' "$relative_entry" >> "$extras_dest"
-            ;;
-          *) printf '%s\n' "$diff_line" >> "$destination" ;;
-        esac
-      done < <(diff -ru "$fresh_root/$shipped_path" "$installed_root/$shipped_path")
-    fi
-  done
-}
+if [ "$#" -eq 1 ] && [ "$1" = '--capabilities' ]; then
+  printf '%s\n' "$bridge_capability"
+  exit 0
+fi
 
 project_root=''
-if [ "$#" = 2 ] && [ "$1" = '--project-root' ]; then
+if [ "$#" -eq 2 ] && [ "$1" = '--project-root' ]; then
   project_root="$2"
 else
-  fail 'usage: do-work-update.sh --project-root <project-root>'
+  fail 'usage: do-work-update.sh --project-root <project-root> | --capabilities'
 fi
 
 [ -d "$project_root" ] || fail "project root does not exist: $project_root"
 project_root="$(cd "$project_root" && pwd -P)"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 skill_root="$(cd "$script_dir/.." && pwd -P)"
+installed_manifest_validator="$script_dir/validate-suite-manifest.sh"
 
 case "$skill_root" in
   "$project_root"|"$project_root"/*) ;;
   *) fail "skill is outside this project ($skill_root is not within $project_root); refusing to update a shared install" ;;
 esac
 
-# `justfile` is project-owned: `actions/install.md` → Workflow: `just-kanban` states that
-# `do-work update` never touches it. In a NESTED install the tarball's justfile extracts
-# inside the skill directory — the skill's own copy, refreshed and reviewed like any other
-# shipped file. In the ROOT FALLBACK (skill_root IS project_root — the second branch of the
-# `just run-do-work-update` recipe) that very same path is the PROJECT's justfile, holding
-# the project's own recipes. So it stays out of the reviewed-and-verified shipped set here,
-# and is preserved byte-for-byte across the extraction below.
-root_fallback_install=''
-project_justfile_name=''
-if [ "$skill_root" = "$project_root" ]; then
-  root_fallback_install=1
-  # Which name this project's justfile actually uses — same candidate order as
-  # `actions/install.md` → Workflow: `just-kanban` Phase 1. The name matters as much as the
-  # bytes: on a case-INSENSITIVE filesystem (APFS/HFS+ by default) the tarball's lowercase
-  # `justfile` resolves to an existing `Justfile`, so extracting clobbers the project's file
-  # AND renames it; restoring to the recorded name puts both back. For the same reason the
-  # candidate test reads the directory's REAL entry names instead of
-  # `[ -f "$project_root/$candidate" ]`, which resolves case-insensitively and would always
-  # pick the first candidate — renaming the very file this is meant to leave alone.
-  project_root_entries="$(ls -A "$project_root" 2>/dev/null || true)"
-  for justfile_candidate in justfile Justfile .justfile; do
-    if printf '%s\n' "$project_root_entries" | grep -qxF "$justfile_candidate" \
-       && [ -f "$project_root/$justfile_candidate" ]; then
-      project_justfile_name="$justfile_candidate"
-      break
-    fi
-  done
-else
-  shipped_paths+=(justfile)
-fi
-
 [ -s "$skill_root/SKILL.md" ] || fail "SKILL.md is missing at $skill_root"
 [ -f "$skill_root/actions/version.md" ] || fail "actions/version.md is missing at $skill_root"
+local_version="$(read_action_version "$skill_root/actions/version.md")"
+printf '%s\n' "$local_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+  || fail 'could not read a semantic local version'
 
-local_version="$(sed -n 's/^\*\*Current version\*\*: *\([0-9][0-9.]*\).*/\1/p' "$skill_root/actions/version.md" | head -n 1)"
-[ -n "$local_version" ] || fail 'could not read the local version'
+git_root="$(git -C "$project_root" rev-parse --show-toplevel 2>/dev/null || true)"
+[ -n "$git_root" ] || fail 'the project must be a Git repository so a failed suite update can be recovered'
+git_root="$(cd "$git_root" && pwd -P)"
+[ "$git_root" = "$project_root" ] \
+  || fail "--project-root must name the Git worktree root ($git_root)"
 
 update_tmp="$(mktemp -d "${TMPDIR:-/tmp}/do-work-update.XXXXXX")"
-install_modified=''
-update_verified=''
-shipped_files_tracked=''
-# Declared here, before the EXIT trap is installed, because print_recovery_instructions reads
-# it: under `set -u` a trap firing before the git probe below would abort on an unset variable.
-dirty_files=''
-
-# This updater keeps no rollback copy: version control is the undo, and duplicating a tracked
-# tree on every run buys nothing git does not already hold. The cost is that recovery from a
-# mid-update failure is the operator's call, so a partial install has to say exactly what to
-# run rather than exit quietly and let a half-old, half-new tree pass for a clean cancel.
-print_recovery_instructions() {
-  local candidate_path
-  local candidate_paths=("${shipped_paths[@]}")
-  local tracked_paths=()
-  printf 'The install at %s may be partially updated (some files v%s, some v%s).\n' \
-    "$skill_root" "$local_version" "$remote_version" >&2
-  if [ -z "$shipped_files_tracked" ]; then
-    printf 'These files are not tracked in git here, so there is nothing to restore from.\n' >&2
-    printf 'Re-run the update once the cause is fixed — the extraction overwrites in place, so repeating it is safe.\n' >&2
-    return
-  fi
-  # Beyond the shipped set: the two paths a failure can damage that the shipped set does not
-  # name. Root fallback — the project's own justfile, deliberately excluded from the reviewed
-  # set, which a failure between the extraction and its restore leaves holding the skill's
-  # recipes. Nested — the stale vendored maintainer docs the update deletes on purpose, worth
-  # offering back on a failed run since a re-run deletes them again.
-  if [ -n "$root_fallback_install" ]; then
-    candidate_paths+=(justfile)
-    if [ -n "$project_justfile_name" ] && [ "$project_justfile_name" != 'justfile' ]; then
-      candidate_paths+=("$project_justfile_name")
-    fi
-  else
-    candidate_paths+=(CLAUDE.md AGENTS.md)
-  fi
-  # Only the paths git actually has, so the printed command runs instead of dying on an
-  # unmatched pathspec (an install may legitimately be missing a shipped directory, and the
-  # extra candidates above are often untracked or absent).
-  for candidate_path in "${candidate_paths[@]}"; do
-    if [ -n "$(git -C "$skill_root" ls-files -- "$candidate_path")" ]; then
-      tracked_paths+=("$candidate_path")
-    fi
-  done
-  printf 'Restore the tracked skill files from git:\n  git -C %s checkout -- %s\n' \
-    "$skill_root" "${tracked_paths[*]}" >&2
-  # What "git is the undo" does NOT cover. git restores COMMITTED content, so any edit that was
-  # uncommitted when this run started is already gone — the extraction overwrote it and there is
-  # no copy. Say so here rather than let the checkout above read as a full undo: the operator is
-  # about to run it, and would otherwise expect their customizations back.
-  if [ -n "$dirty_files" ]; then
-    printf 'NOTE: these shipped files had uncommitted edits when the update started:\n%s\n' "$dirty_files" >&2
-    printf 'The extraction has already overwritten them and no copy was kept, so the checkout above restores the COMMITTED content — not those edits. Recover them from your editor history or re-apply by hand.\n' >&2
-  fi
-  printf 'Then review what the extraction added and delete what you do not want (-nd lists, -fd deletes):\n  git -C %s clean -nd -- %s\n' \
-    "$skill_root" "${tracked_paths[*]}" >&2
-  if [ -n "$root_fallback_install" ]; then
-    printf 'This is a root install (the skill IS the project root), so those paths also hold files your project owns — read the -nd list before running -fd.\n' >&2
-  fi
-}
-
-cleanup() {
-  rm -rf "$update_tmp"
-  # `update_verified` is set on the fully-verified path only, so EVERY earlier exit inside the
-  # destructive region lands here — a mid-extract ENOSPC, a failed post-update version check,
-  # `set -e` firing anywhere in between. Nothing is undone automatically; the contract is to
-  # report the partial state loudly and hand the operator the exact recovery commands.
-  if [ -n "$install_modified" ] && [ -z "$update_verified" ]; then
-    printf 'Update did not complete.\n' >&2
-    print_recovery_instructions
-  fi
-}
-trap cleanup EXIT
 upstream_tarball="$update_tmp/upstream.tar.gz"
 fresh_upstream="$update_tmp/fresh"
 mkdir -p "$fresh_upstream"
+
+plan_sources=()
+plan_destinations=()
+managed_relative_paths=()
+preexisting_paths=()
+deletion_source="$update_tmp/deleted-upstream-path"
+write_started=''
+update_verified=''
+remote_version='unknown'
+
+path_preexisted() {
+  local candidate_path="$1" recorded_path
+  for recorded_path in "${preexisting_paths[@]}"; do
+    [ "$recorded_path" = "$candidate_path" ] && return 0
+  done
+  return 1
+}
+
+recover_managed_paths() {
+  local relative_path destination_path candidate_path tracked_files recovery_failed=''
+
+  set +e
+  for relative_path in "${managed_relative_paths[@]}"; do
+    tracked_files="$(git -C "$project_root" ls-files -- "$relative_path")"
+    if [ -n "$tracked_files" ]; then
+      git -C "$project_root" restore --source=HEAD --staged --worktree -- "$relative_path" \
+        || recovery_failed=1
+    fi
+  done
+
+  for destination_path in "${plan_destinations[@]}"; do
+    if [ -e "$destination_path" ] || [ -L "$destination_path" ]; then
+      while IFS= read -r -d '' candidate_path; do
+        if ! path_preexisted "$candidate_path"; then
+          rm -rf -- "$candidate_path" || recovery_failed=1
+        fi
+      done < <(find "$destination_path" -depth -print0 2>/dev/null)
+    fi
+  done
+  set -e
+
+  if [ -n "$recovery_failed" ]; then
+    printf 'Automatic recovery was incomplete; inspect only these managed paths before retrying:\n' >&2
+    printf '  %s\n' "${managed_relative_paths[@]}" >&2
+    return 1
+  fi
+  printf 'Restored the previous managed installation after the failed update.\n' >&2
+}
+
+cleanup() {
+  local exit_status=$?
+  trap - EXIT
+  if [ -n "$write_started" ] && [ -z "$update_verified" ]; then
+    printf 'Update did not complete; recovering the managed skill paths.\n' >&2
+    recover_managed_paths || exit_status=1
+  fi
+  rm -rf "$update_tmp"
+  exit "$exit_status"
+}
+trap cleanup EXIT
 
 printf 'Checking do-work updates…\n'
 curl -fsSL -o "$upstream_tarball.download" "$upstream_url" \
   || fail 'upstream tarball download failed; no files were changed'
 mv "$upstream_tarball.download" "$upstream_tarball"
 tar xzf "$upstream_tarball" -C "$fresh_upstream" --strip-components=1 \
-  --exclude='_dev' --exclude='do-work' --exclude='kb' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
+  || fail 'upstream archive could not be extracted; no files were changed'
 
-remote_version="$(sed -n 's/^\*\*Current version\*\*: *\([0-9][0-9.]*\).*/\1/p' "$fresh_upstream/actions/version.md" | head -n 1)"
-[ -n "$remote_version" ] || fail 'could not read the upstream version'
+archive_layout='legacy all-in-one skill'
+if [ -e "$fresh_upstream/VERSION" ] \
+  || [ -e "$fresh_upstream/suite" ] \
+  || [ -e "$fresh_upstream/skills" ]; then
+  archive_layout='four-module suite'
+  [ -x "$installed_manifest_validator" ] \
+    || fail 'the installed bridge manifest validator is missing or not executable'
+  bash "$installed_manifest_validator" --root "$fresh_upstream" \
+    || fail 'suite manifest validation failed; no files were changed'
+  remote_version="$(sed -n '1p' "$fresh_upstream/VERSION")"
 
-if ! version_is_newer "$local_version" "$remote_version"; then
-  printf "You're up to date (v%s)\n" "$local_version"
-  exit 0
+  while IFS=$'\t' read -r module_source module_destination; do
+    [ "$module_source" = 'source' ] && continue
+    plan_sources+=("$fresh_upstream/$module_source")
+    plan_destinations+=("$project_root/$module_destination")
+    managed_relative_paths+=("$module_destination")
+  done < "$fresh_upstream/suite/modules.tsv"
+else
+  [ -s "$fresh_upstream/SKILL.md" ] \
+    || fail 'legacy archive is missing SKILL.md; no files were changed'
+  [ -f "$fresh_upstream/actions/version.md" ] \
+    || fail 'legacy archive is missing actions/version.md; no files were changed'
+  remote_version="$(read_action_version "$fresh_upstream/actions/version.md")"
+
+  if [ "$skill_root" = "$project_root" ]; then
+    skill_relative_root=''
+  else
+    skill_relative_root="${skill_root#"$project_root"/}"
+  fi
+  for legacy_path in "${legacy_shipped_paths[@]}"; do
+    [ -e "$fresh_upstream/$legacy_path" ] || continue
+    [ ! -L "$fresh_upstream/$legacy_path" ] \
+      || fail "legacy archive path is a symlink: $legacy_path"
+    plan_sources+=("$fresh_upstream/$legacy_path")
+    plan_destinations+=("$skill_root/$legacy_path")
+    if [ -n "$skill_relative_root" ]; then
+      managed_relative_paths+=("$skill_relative_root/$legacy_path")
+    else
+      managed_relative_paths+=("$legacy_path")
+    fi
+  done
+  if [ "$skill_root" != "$project_root" ] && [ -e "$fresh_upstream/justfile" ]; then
+    plan_sources+=("$fresh_upstream/justfile")
+    plan_destinations+=("$skill_root/justfile")
+    managed_relative_paths+=("$skill_relative_root/justfile")
+  fi
+  # Preserve the legacy updater's one intentional stale-file cleanup. These maintainer docs
+  # shipped in old nested installs but are not skill content; root fallback paths are the
+  # consuming project's own instructions and are therefore never managed here.
+  if [ "$skill_root" != "$project_root" ]; then
+    for stale_maintainer_doc in CLAUDE.md AGENTS.md; do
+      if [ -e "$skill_root/$stale_maintainer_doc" ] || [ -L "$skill_root/$stale_maintainer_doc" ]; then
+        plan_sources+=("$deletion_source")
+        plan_destinations+=("$skill_root/$stale_maintainer_doc")
+        managed_relative_paths+=("$skill_relative_root/$stale_maintainer_doc")
+      fi
+    done
+  fi
 fi
 
-printf 'Update available: v%s (you have v%s).\n' "$remote_version" "$local_version"
+printf '%s\n' "$remote_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+  || fail 'could not read a semantic upstream version'
 
-dirty_files=''
-if git -C "$skill_root" rev-parse --git-dir >/dev/null 2>&1; then
-  dirty_files="$(git -C "$skill_root" status --porcelain -- "${shipped_paths[@]}")"
-  # Whether git can actually serve as the undo. A repo whose ignore rules cover the skill —
-  # a project that gitignores `.claude/`, say — reports a git dir while tracking none of
-  # these files, so the presence of a repo is not the question; tracked content is.
-  if [ -n "$(git -C "$skill_root" ls-files -- "${shipped_paths[@]}")" ]; then
-    shipped_files_tracked=1
+case "$(version_order "$local_version" "$remote_version")" in
+  0)
+    printf "You're up to date (v%s)\n" "$local_version"
+    exit 0
+    ;;
+  -1) fail "upstream version v$remote_version is older than installed v$local_version" ;;
+esac
+
+[ "${#plan_sources[@]}" -gt 0 ] || fail 'archive declares no managed update paths'
+
+# Suite validation covers its four module roots. Legacy archives have no manifest, so reject
+# symlinks anywhere in their managed source paths before constructing a destination write.
+for source_path in "${plan_sources[@]}"; do
+  [ "$source_path" = "$deletion_source" ] && continue
+  if [ -L "$source_path" ]; then
+    fail "managed source path is a symlink: $source_path"
   fi
+  if [ -d "$source_path" ] && find "$source_path" -type l -print -quit | grep -q .; then
+    fail "managed source path contains a symlink: $source_path"
+  fi
+done
+
+# A textual manifest destination can still escape through an existing parent symlink. Resolve
+# each nearest existing parent physically before showing the diff or accepting confirmation.
+for destination_path in "${plan_destinations[@]}"; do
+  destination_parent="$(dirname "$destination_path")"
+  while [ ! -d "$destination_parent" ]; do
+    next_parent="$(dirname "$destination_parent")"
+    [ "$next_parent" != "$destination_parent" ] \
+      || fail "could not resolve managed destination parent: $destination_path"
+    destination_parent="$next_parent"
+  done
+  destination_parent="$(cd "$destination_parent" && pwd -P)"
+  case "$destination_parent" in
+    "$project_root"|"$project_root"/*) ;;
+    *) fail "managed destination resolves outside the project: $destination_path" ;;
+  esac
+done
+
+printf 'Update available: v%s (you have v%s), archive layout: %s.\n' \
+  "$remote_version" "$local_version" "$archive_layout"
+
+dirty_files="$(git -C "$project_root" status --porcelain -- "${managed_relative_paths[@]}")"
+if [ -n "$dirty_files" ]; then
+  printf 'Managed skill paths have uncommitted changes:\n%s\n' "$dirty_files" >&2
+  printf 'Continuing discards those changes and restores from committed Git content if recovery is needed.\n' >&2
 fi
 
 diff_file="$update_tmp/install.diff"
-extras_file="$update_tmp/install-extras.txt"
-append_install_diff "$fresh_upstream" "$skill_root" "$diff_file" "$extras_file"
-
-if [ -n "$dirty_files" ]; then
-  printf 'Shipped skill files have uncommitted changes:\n%s\n' "$dirty_files" >&2
-  # The warning that has to land BEFORE the prompt, because this is the point of no return for
-  # this content. The extraction overwrites these paths and no rollback copy is kept, so an
-  # uncommitted edit here is unrecoverable afterwards — git can only give back what was
-  # committed. This is the one guarantee the removed `cp -R` snapshot used to provide.
-  printf 'Continuing OVERWRITES those edits with the upstream files, and no rollback copy is kept — git can only restore what is committed, so uncommitted work here is gone for good.\n' >&2
-  printf 'Keep them by committing first, or stash them:\n  git -C %s stash push -- %s\n' \
-    "$skill_root" "${shipped_paths[*]}" >&2
-fi
-if [ -s "$diff_file" ]; then
-  printf 'Reviewing installed-versus-upstream skill changes before overwrite:\n'
-  cat "$diff_file"
-fi
-if [ -s "$extras_file" ]; then
-  printf 'Present in the install but not shipped upstream — the update will NOT remove these:\n'
-  sed 's/^/  /' "$extras_file"
-  printf 'Upstream may have deleted them; a stale shipped file keeps being read and never updates again.\n'
-  printf 'Delete by hand the ones you recognise as ours.\n'
-  if [ -n "$root_fallback_install" ]; then
-    printf 'This is a root install (the skill IS the project root), so files your project owns inside these directories are listed here too — leave those alone.\n'
+: > "$diff_file"
+for plan_index in "${!plan_sources[@]}"; do
+  source_path="${plan_sources[$plan_index]}"
+  destination_path="${plan_destinations[$plan_index]}"
+  printf '\n--- managed destination: %s ---\n' \
+    "${managed_relative_paths[$plan_index]}" >> "$diff_file"
+  if [ "$source_path" = "$deletion_source" ]; then
+    printf 'Upstream deletion: %s\n' "$destination_path" >> "$diff_file"
+  else
+    diff_status=0
+    diff -ruN "$destination_path" "$source_path" >> "$diff_file" 2>&1 || diff_status=$?
+    [ "$diff_status" -le 1 ] \
+      || fail "could not compare managed destination ${managed_relative_paths[$plan_index]}"
   fi
-fi
+done
 
-if [ -z "$shipped_files_tracked" ]; then
-  printf 'These skill files are not tracked in git here, and this updater keeps no rollback copy: if the update fails partway there is nothing to restore from. Commit or copy the install yourself first if that matters.\n' >&2
-fi
-
-printf 'Continue with the update? Files are overwritten in place and no rollback copy is kept. [y/N] '
-# EOF / non-interactive stdin (piped, CI, </dev/null) makes `read` return non-zero; under
-# `set -e` a bare `read` would abort here before the case below can default to No. Treat
-# EOF as an explicit No so the cancel path runs and the script exits 0.
+printf 'Reviewing the complete managed update before overwrite:\n'
+cat "$diff_file"
+printf 'Continue with this one %s update? [y/N] ' "$archive_layout"
 read -r confirmation || confirmation=''
 case "$confirmation" in
   y|Y|yes|YES) ;;
   *) printf 'Update cancelled; no files were changed.\n'; exit 0 ;;
 esac
 
-preserved_justfile=''
-if [ -n "$project_justfile_name" ]; then
-  preserved_justfile="$update_tmp/project-justfile"
-  cp -p "$project_root/$project_justfile_name" "$preserved_justfile" \
-    || fail "could not preserve the project justfile at $project_root/$project_justfile_name"
-fi
-
-# First write into the install: from here to the verification below, a failure leaves a
-# partial install and the EXIT trap prints the recovery commands.
-install_modified=1
-find "$skill_root/prompts" -maxdepth 1 -name '*.md' ! -name 'README.md' -delete 2>/dev/null || true
-find "$skill_root/interviews" -maxdepth 1 -name '*.md' -delete 2>/dev/null || true
-tar xzf "$upstream_tarball" -C "$skill_root" --strip-components=1 \
-  --exclude='_dev' --exclude='do-work' --exclude='kb' --exclude='ai-reports' --exclude='.vscode' --exclude='decisions'
-
-# Root fallback only: undo the extraction's write to the project-owned justfile. Always
-# delete the extracted lowercase `justfile` FIRST, then put the project's own file back under
-# the name it had. That order is what makes this correct on a case-insensitive filesystem,
-# where the extracted `justfile` and a project `Justfile` are one and the same file — delete
-# resolves to the clobbered file, and the restore recreates the original name and bytes. On a
-# case-sensitive filesystem the delete removes a file the project never had (leaving one would
-# plant a second, do-work-authored justfile beside its `Justfile`/`.justfile`) and the restore
-# rewrites an untouched file with identical content. Restoring a saved copy rather than passing
-# `tar --exclude` keeps this independent of tar dialect and of the archive's top-level
-# directory name — `--exclude=justfile` matches that basename at ANY depth, the `diff -x` trap.
-if [ -n "$root_fallback_install" ]; then
-  rm -f "$project_root/justfile"
-  if [ -n "$preserved_justfile" ]; then
-    cp -p "$preserved_justfile" "$project_root/$project_justfile_name" \
-      || fail "could not restore the project justfile at $project_root/$project_justfile_name"
+# Record every path that exists inside the validated destinations. Recovery later removes only
+# paths absent from this inventory, then restores tracked content from HEAD. It never invokes a
+# broad checkout/clean and therefore cannot cross into project-owned runtime or configuration.
+for destination_path in "${plan_destinations[@]}"; do
+  if [ -e "$destination_path" ] || [ -L "$destination_path" ]; then
+    while IFS= read -r -d '' existing_path; do
+      preexisting_paths+=("$existing_path")
+    done < <(find "$destination_path" -print0)
   fi
-fi
+done
 
-# Remove stale vendored maintainer docs (older installs shipped CLAUDE.md/AGENTS.md into
-# the skill dir before they were export-ignored from the tarball). ONLY in a nested
-# install: when skill_root IS the project root (the justfile recipe's root fallback),
-# these are the project's own instruction files, not the skill's — deleting them would
-# destroy project instructions, so leave them in place.
-if [ -z "$root_fallback_install" ]; then
-  rm -f "$skill_root/CLAUDE.md" "$skill_root/AGENTS.md"
-fi
+write_started=1
+# Confirmation explicitly authorizes discarding dirty managed content. Normalize tracked
+# managed paths in both index and worktree first so a previously staged customization cannot
+# survive underneath the new files or reappear during a later Git restore.
+for relative_path in "${managed_relative_paths[@]}"; do
+  if [ -n "$(git -C "$project_root" ls-files -- "$relative_path")" ]; then
+    git -C "$project_root" restore --source=HEAD --staged --worktree -- "$relative_path"
+  fi
+done
 
-installed_version="$(sed -n 's/^\*\*Current version\*\*: *\([0-9][0-9.]*\).*/\1/p' "$skill_root/actions/version.md" | head -n 1)"
+for plan_index in "${!plan_sources[@]}"; do
+  source_path="${plan_sources[$plan_index]}"
+  destination_path="${plan_destinations[$plan_index]}"
+  rm -rf -- "$destination_path"
+  [ "$source_path" = "$deletion_source" ] && continue
+  mkdir -p "$(dirname "$destination_path")"
+  if [ -d "$source_path" ]; then
+    mkdir -p "$destination_path"
+    cp -R "$source_path/." "$destination_path/"
+  else
+    cp -p "$source_path" "$destination_path"
+  fi
+done
+
+for plan_index in "${!plan_sources[@]}"; do
+  source_path="${plan_sources[$plan_index]}"
+  destination_path="${plan_destinations[$plan_index]}"
+  if [ "$source_path" = "$deletion_source" ]; then
+    if [ -e "$destination_path" ] || [ -L "$destination_path" ]; then
+      fail "post-update deletion verification failed for ${managed_relative_paths[$plan_index]}"
+    fi
+    continue
+  fi
+  if [ -d "$source_path" ]; then
+    diff -qr "$source_path" "$destination_path" >/dev/null \
+      || fail "post-update byte verification failed for ${managed_relative_paths[$plan_index]}"
+  else
+    cmp -s "$source_path" "$destination_path" \
+      || fail "post-update byte verification failed for ${managed_relative_paths[$plan_index]}"
+  fi
+done
+
+installed_version="$(read_action_version "$project_root/.claude/skills/do-work/actions/version.md" 2>/dev/null || true)"
+if [ "$skill_root" = "$project_root" ] && [ "$archive_layout" = 'legacy all-in-one skill' ]; then
+  installed_version="$(read_action_version "$project_root/actions/version.md")"
+fi
 [ "$installed_version" = "$remote_version" ] \
-  || fail "post-update verification failed (expected v$remote_version, found v${installed_version:-unknown})"
+  || fail "post-update version verification failed (expected v$remote_version, found v${installed_version:-unknown})"
 
-post_diff="$update_tmp/post-update.diff"
-# The extras stream is deliberately discarded here: install-only files are exactly what this
-# check must NOT abort on, and they were already reported before the confirmation prompt.
-append_install_diff "$fresh_upstream" "$skill_root" "$post_diff" "$update_tmp/post-update-extras.txt"
-if [ -s "$post_diff" ]; then
-  printf 'Update aborted: the extracted files differ from the reviewed upstream tree:\n' >&2
-  cat "$post_diff" >&2
-  exit 1
-fi
-
-update_verified=1  # install matches the reviewed upstream tree; cleanup's failure report stands down
-printf 'Updated to v%s at %s\n' "$remote_version" "$skill_root"
+update_verified=1
+printf 'Updated to v%s at %s using the %s.\n' "$remote_version" "$project_root" "$archive_layout"

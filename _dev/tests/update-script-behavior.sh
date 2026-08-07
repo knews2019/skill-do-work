@@ -1,279 +1,427 @@
 #!/usr/bin/env bash
-# update-script-behavior.sh — behavioral probes for tools/do-work-update.sh.
-#
-# The updater overwrites a live install in place and keeps NO rollback copy: git is the undo.
-# That contract only holds if two things are true at runtime, and neither is greppable from
-# prose — the happy path must leave no `.preupdate-*.bak` behind, and a failure inside the
-# destructive region must announce the partial install with runnable recovery commands
-# instead of exiting quietly (there is nothing to restore from automatically any more).
-#
-# The real upstream fetch is stubbed by putting a fake `curl` first on PATH, so these probes
-# never touch the network and pin an exact upstream tree to assert against.
-#
-# Invoked by _dev/tests/contract-regressions.sh — there is no auto-discovery of test files,
-# so a probe added here only runs because that file calls this one.
-#
-# RUN AS AN ORDINARY USER, NOT ROOT. The mid-update-failure and dirty-install probes make the
-# destructive region fail by dropping write permission on a directory (`chmod 500`), and root
-# ignores permission bits — so under root the update succeeds, the updater exits 0, and seven
-# probes fail asserting recovery messages that were never printed. Identical failures appear on
-# a pristine checkout, so a red suite here means "wrong user", not a regression: re-run non-root
-# before diagnosing anything. This is what REQ-090 observed twice, could not reproduce, and
-# closed with the cause unexplained.
-#
-# Exit 0: every probe passed (or the whole suite was skipped for a missing prerequisite).
-# Exit 1: at least one probe failed; each failure prints a FAIL line naming the probe.
+# Hermetic behavioral probes for the legacy-to-suite bridge updater.
 set -uo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 update_script="$repo_root/tools/do-work-update.sh"
+manifest_validator="$repo_root/tools/validate-suite-manifest.sh"
 fail_count=0
 
-if ! command -v git >/dev/null 2>&1; then
-  printf 'SKIP: git unavailable — update-script behavior probes not run.\n'
-  exit 0
-fi
-if [ ! -x "$update_script" ]; then
-  printf 'FAIL: tools/do-work-update.sh must exist and be executable.\n' >&2
+for required_command in bash git tar diff; do
+  if ! command -v "$required_command" >/dev/null 2>&1; then
+    printf 'SKIP: %s unavailable — update-script behavior probes not run.\n' "$required_command"
+    exit 0
+  fi
+done
+if [ ! -x "$update_script" ] || [ ! -x "$manifest_validator" ]; then
+  printf 'FAIL: bridge updater and suite validator must exist and be executable.\n' >&2
   exit 1
 fi
 
-# Same reasoning as the record-commit-hash fixture: a developer's global git config
-# (core.hooksPath, commit.gpgsign, init.templateDir) must not change what these measure.
 export GIT_CONFIG_GLOBAL=/dev/null
 export GIT_CONFIG_SYSTEM=/dev/null
 export GIT_TERMINAL_PROMPT=0
 
 fixture_root="$(mktemp -d)"
 cleanup_fixture() {
-  # The failure probe deliberately makes a directory unwritable; restore it or rm -rf fails.
   chmod -R u+rwX "$fixture_root" 2>/dev/null || true
   rm -rf "$fixture_root"
 }
 trap cleanup_fixture EXIT
 
-probe_output=""
+probe_output=''
 probe_status=0
+
+record_failure() {
+  printf 'FAIL: %s\n' "$1" >&2
+  fail_count=$((fail_count + 1))
+}
 
 assert_status() {
   local expected_status="$1" probe_name="$2"
   if [ "$probe_status" -ne "$expected_status" ]; then
-    printf 'FAIL: %s — expected exit %s, got %s. Output:\n%s\n' \
-      "$probe_name" "$expected_status" "$probe_status" "$probe_output" >&2
-    fail_count=$((fail_count + 1))
+    record_failure "$probe_name — expected exit $expected_status, got $probe_status. Output: $probe_output"
   fi
 }
 
 assert_status_nonzero() {
   local probe_name="$1"
   if [ "$probe_status" -eq 0 ]; then
-    printf 'FAIL: %s — expected a non-zero exit, got 0. Output:\n%s\n' \
-      "$probe_name" "$probe_output" >&2
-    fail_count=$((fail_count + 1))
+    record_failure "$probe_name — expected a non-zero exit. Output: $probe_output"
   fi
 }
 
 assert_output_matches() {
   local pattern_text="$1" probe_name="$2"
   if ! printf '%s' "$probe_output" | grep -Eq -- "$pattern_text"; then
-    printf 'FAIL: %s — output did not match /%s/. Output:\n%s\n' \
-      "$probe_name" "$pattern_text" "$probe_output" >&2
-    fail_count=$((fail_count + 1))
+    record_failure "$probe_name — output did not match /$pattern_text/. Output: $probe_output"
   fi
 }
 
 assert_output_lacks() {
   local pattern_text="$1" probe_name="$2"
   if printf '%s' "$probe_output" | grep -Eq -- "$pattern_text"; then
-    printf 'FAIL: %s — output unexpectedly matched /%s/. Output:\n%s\n' \
-      "$probe_name" "$pattern_text" "$probe_output" >&2
-    fail_count=$((fail_count + 1))
+    record_failure "$probe_name — output unexpectedly matched /$pattern_text/. Output: $probe_output"
   fi
 }
 
-assert_path_exists() {
-  local candidate_path="$1" probe_name="$2"
-  if [ ! -e "$candidate_path" ]; then
-    printf 'FAIL: %s — expected %s to exist.\n' "$probe_name" "$candidate_path" >&2
-    fail_count=$((fail_count + 1))
+assert_file_contains() {
+  local candidate_path="$1" pattern_text="$2" probe_name="$3"
+  if [ ! -f "$candidate_path" ] || ! grep -Eq -- "$pattern_text" "$candidate_path"; then
+    record_failure "$probe_name — $candidate_path did not contain /$pattern_text/."
   fi
 }
 
 assert_path_absent() {
   local candidate_path="$1" probe_name="$2"
-  if [ -e "$candidate_path" ]; then
-    printf 'FAIL: %s — expected %s to be absent.\n' "$probe_name" "$candidate_path" >&2
-    fail_count=$((fail_count + 1))
+  if [ -e "$candidate_path" ] || [ -L "$candidate_path" ]; then
+    record_failure "$probe_name — expected $candidate_path to be absent."
   fi
 }
 
-# No rollback copy, anywhere under the project — the whole point of the no-copy contract.
-assert_no_backup_copy() {
-  local project_path="$1" probe_name="$2"
-  local stray_backups
-  stray_backups="$(find "$project_path" -name '*.preupdate-*.bak' -maxdepth 4 2>/dev/null)"
-  if [ -n "$stray_backups" ]; then
-    printf 'FAIL: %s — the updater left a rollback copy:\n%s\n' "$probe_name" "$stray_backups" >&2
-    fail_count=$((fail_count + 1))
-  fi
+init_project() {
+  local project_path="$1"
+  git -c init.defaultBranch=main init -q "$project_path"
+  git -C "$project_path" config user.name 'Fixture Runner'
+  git -C "$project_path" config user.email 'fixture@example.invalid'
 }
 
-# --- Fake upstream ----------------------------------------------------------------------
-# A minimal but structurally real skill tree at v0.0.2, tarred with a top-level directory
-# because the updater extracts with --strip-components=1.
-upstream_tree="$fixture_root/upstream-src/do-work-upstream"
-mkdir -p "$upstream_tree/actions" "$upstream_tree/prompts" "$upstream_tree/interviews" \
-  "$upstream_tree/docs" "$upstream_tree/tools"
-printf '# do-work\n\nFake upstream SKILL.md at v0.0.2.\n' > "$upstream_tree/SKILL.md"
-printf '# Version Action\n\n**Current version**: 0.0.2\n' > "$upstream_tree/actions/version.md"
-printf '# Prompts\n' > "$upstream_tree/prompts/README.md"
-printf '# Fresh prompt\n' > "$upstream_tree/prompts/fresh-prompt.md"
-printf '# Fresh interview\n' > "$upstream_tree/interviews/fresh-interview.md"
-printf '# Guide\n' > "$upstream_tree/docs/guide.md"
-cp "$update_script" "$upstream_tree/tools/do-work-update.sh"
-chmod +x "$upstream_tree/tools/do-work-update.sh"
-upstream_tarball="$fixture_root/upstream.tar.gz"
-tar czf "$upstream_tarball" -C "$fixture_root/upstream-src" do-work-upstream
+commit_project() {
+  local project_path="$1" message_text="$2"
+  git -C "$project_path" add -A
+  git -C "$project_path" commit -qm "$message_text"
+}
 
-# --- Stub curl --------------------------------------------------------------------------
-# The updater calls `curl -fsSL -o <dest> <url>`; the stub honours -o and serves the fixture
-# tarball, so the probes are hermetic and the upstream tree is known exactly.
-stub_bin="$fixture_root/stub-bin"
-mkdir -p "$stub_bin"
-cat > "$stub_bin/curl" <<STUB
-#!/usr/bin/env bash
-destination_path=''
-while [ "\$#" -gt 0 ]; do
-  case "\$1" in
-    -o) destination_path="\$2"; shift 2 ;;
-    *) shift ;;
-  esac
-done
-[ -n "\$destination_path" ] || exit 2
-cp "$upstream_tarball" "\$destination_path"
-STUB
-chmod +x "$stub_bin/curl"
-export PATH="$stub_bin:$PATH"
-
-# --- Fixture installs ---------------------------------------------------------------------
-# A v0.0.1 nested install, plus a runtime queue file that must survive, plus stale globbed
-# files that the pre-clean must remove.
-build_install() {
+build_legacy_install() {
   local project_path="$1"
   local install_path="$project_path/.claude/skills/do-work"
   mkdir -p "$install_path/actions" "$install_path/prompts" "$install_path/interviews" \
-    "$install_path/docs" "$install_path/tools" "$project_path/do-work/queue"
-  printf '# do-work\n\nInstalled SKILL.md at v0.0.1.\n' > "$install_path/SKILL.md"
+    "$install_path/docs" "$install_path/tools" "$project_path/do-work/queue" "$project_path/kb"
+  printf '# do-work\n\nLegacy install.\n' > "$install_path/SKILL.md"
   printf '# Version Action\n\n**Current version**: 0.0.1\n' > "$install_path/actions/version.md"
-  printf '# Prompts\n' > "$install_path/prompts/README.md"
-  printf '# Stale prompt\n' > "$install_path/prompts/stale-prompt.md"
-  printf '# Stale interview\n' > "$install_path/interviews/stale-interview.md"
-  printf '# Guide\n' > "$install_path/docs/guide.md"
+  printf '# stale prompt\n' > "$install_path/prompts/stale.md"
+  printf '# stale interview\n' > "$install_path/interviews/stale.md"
+  printf '# old guide\n' > "$install_path/docs/guide.md"
   cp "$update_script" "$install_path/tools/do-work-update.sh"
+  cp "$manifest_validator" "$install_path/tools/validate-suite-manifest.sh"
   chmod +x "$install_path/tools/do-work-update.sh"
-  printf 'REQ-001 sentinel\n' > "$project_path/do-work/queue/sentinel.txt"
+  chmod +x "$install_path/tools/validate-suite-manifest.sh"
+  printf 'queue sentinel\n' > "$project_path/do-work/queue/sentinel.txt"
+  printf 'kb sentinel\n' > "$project_path/kb/sentinel.txt"
+  printf 'project recipe\n' > "$project_path/Justfile"
+  mkdir -p "$project_path/.claude"
+  printf '{"hooks":{}}\n' > "$project_path/.claude/settings.json"
 }
 
+build_root_legacy_install() {
+  local project_path="$1"
+  mkdir -p "$project_path/actions" "$project_path/prompts" "$project_path/interviews" \
+    "$project_path/docs" "$project_path/tools" "$project_path/do-work/queue" "$project_path/kb"
+  printf '# do-work\n\nRoot fallback install.\n' > "$project_path/SKILL.md"
+  printf '# Version Action\n\n**Current version**: 0.0.1\n' > "$project_path/actions/version.md"
+  printf '# old guide\n' > "$project_path/docs/guide.md"
+  cp "$update_script" "$project_path/tools/do-work-update.sh"
+  cp "$manifest_validator" "$project_path/tools/validate-suite-manifest.sh"
+  chmod +x "$project_path/tools/do-work-update.sh"
+  chmod +x "$project_path/tools/validate-suite-manifest.sh"
+  printf 'application sentinel\n' > "$project_path/app.txt"
+  printf 'queue sentinel\n' > "$project_path/do-work/queue/sentinel.txt"
+  printf 'kb sentinel\n' > "$project_path/kb/sentinel.txt"
+  printf 'project recipe\n' > "$project_path/Justfile"
+}
+
+build_suite_install() {
+  local project_path="$1" module_name module_path
+  mkdir -p "$project_path/do-work/queue" "$project_path/kb" "$project_path/.claude/skills"
+  for module_name in do-work do-work-board do-work-knowledge do-work-toolbox; do
+    module_path="$project_path/.claude/skills/$module_name"
+    mkdir -p "$module_path"
+    printf '# %s\n\nOld module.\n' "$module_name" > "$module_path/SKILL.md"
+    printf 'old %s payload\n' "$module_name" > "$module_path/payload.txt"
+  done
+  mkdir -p "$project_path/.claude/skills/do-work/actions" \
+    "$project_path/.claude/skills/do-work/tools"
+  printf '# Version Action\n\n**Current version**: 0.0.1\n' \
+    > "$project_path/.claude/skills/do-work/actions/version.md"
+  cp "$update_script" "$project_path/.claude/skills/do-work/tools/do-work-update.sh"
+  cp "$manifest_validator" \
+    "$project_path/.claude/skills/do-work/tools/validate-suite-manifest.sh"
+  chmod +x "$project_path/.claude/skills/do-work/tools/do-work-update.sh"
+  chmod +x "$project_path/.claude/skills/do-work/tools/validate-suite-manifest.sh"
+  printf 'queue sentinel\n' > "$project_path/do-work/queue/sentinel.txt"
+  printf 'kb sentinel\n' > "$project_path/kb/sentinel.txt"
+  printf 'project recipe\n' > "$project_path/Justfile"
+  printf '{"hooks":{}}\n' > "$project_path/.claude/settings.json"
+}
+
+build_legacy_archive() {
+  local archive_path="$1" tree_root="$fixture_root/legacy-src/do-work-upstream"
+  mkdir -p "$tree_root/actions" "$tree_root/prompts" "$tree_root/interviews" \
+    "$tree_root/docs" "$tree_root/tools"
+  printf '# do-work\n\nLegacy upstream.\n' > "$tree_root/SKILL.md"
+  printf '# Version Action\n\n**Current version**: 0.0.2\n' > "$tree_root/actions/version.md"
+  printf '# fresh prompt\n' > "$tree_root/prompts/fresh.md"
+  printf '# fresh interview\n' > "$tree_root/interviews/fresh.md"
+  printf '# new guide\n' > "$tree_root/docs/guide.md"
+  cp "$update_script" "$tree_root/tools/do-work-update.sh"
+  cp "$manifest_validator" "$tree_root/tools/validate-suite-manifest.sh"
+  chmod +x "$tree_root/tools/do-work-update.sh"
+  chmod +x "$tree_root/tools/validate-suite-manifest.sh"
+  tar czf "$archive_path" -C "$fixture_root/legacy-src" do-work-upstream
+}
+
+build_suite_tree() {
+  local tree_root="$1" module_name module_path
+  mkdir -p "$tree_root/suite" "$tree_root/tools" "$tree_root/skills"
+  printf '0.0.2\n' > "$tree_root/VERSION"
+  cp "$repo_root/suite/modules.tsv" "$tree_root/suite/modules.tsv"
+  cp "$manifest_validator" "$tree_root/tools/validate-suite-manifest.sh"
+  chmod +x "$tree_root/tools/validate-suite-manifest.sh"
+  for module_name in do-work do-work-board do-work-knowledge do-work-toolbox; do
+    module_path="$tree_root/skills/$module_name"
+    mkdir -p "$module_path"
+    printf '# %s\n\nNew module.\n' "$module_name" > "$module_path/SKILL.md"
+    printf 'new %s payload\n' "$module_name" > "$module_path/payload.txt"
+  done
+  mkdir -p "$tree_root/skills/do-work/actions" "$tree_root/skills/do-work/tools"
+  printf '# Version Action\n\n**Current version**: 0.0.2\n' \
+    > "$tree_root/skills/do-work/actions/version.md"
+  cp "$update_script" "$tree_root/skills/do-work/tools/do-work-update.sh"
+  cp "$manifest_validator" \
+    "$tree_root/skills/do-work/tools/validate-suite-manifest.sh"
+  chmod +x "$tree_root/skills/do-work/tools/do-work-update.sh"
+  chmod +x "$tree_root/skills/do-work/tools/validate-suite-manifest.sh"
+  printf 'created during update\n' > "$tree_root/skills/do-work/new-core.txt"
+}
+
+archive_suite_tree() {
+  local tree_root="$1" archive_path="$2" parent_path archive_name
+  parent_path="$(dirname "$tree_root")"
+  archive_name="$(basename "$tree_root")"
+  tar czf "$archive_path" -C "$parent_path" "$archive_name"
+}
+
+legacy_tarball="$fixture_root/legacy.tar.gz"
+suite_tree="$fixture_root/suite-src/do-work-upstream"
+suite_tarball="$fixture_root/suite.tar.gz"
+build_legacy_archive "$legacy_tarball"
+build_suite_tree "$suite_tree"
+archive_suite_tree "$suite_tree" "$suite_tarball"
+
+stub_bin="$fixture_root/stub-bin"
+mkdir -p "$stub_bin"
+real_cp="$(command -v cp)"
+printf '%s\n' '#!/usr/bin/env bash' \
+  'destination_path=""' \
+  'while [ "$#" -gt 0 ]; do' \
+  '  case "$1" in -o) destination_path="$2"; shift 2 ;; *) shift ;; esac' \
+  'done' \
+  '[ -n "$destination_path" ] || exit 2' \
+  'printf "download\\n" >> "$CURL_CALL_LOG"' \
+  '"$REAL_CP" "$FAKE_TARBALL" "$destination_path"' > "$stub_bin/curl"
+chmod +x "$stub_bin/curl"
+export PATH="$stub_bin:$PATH"
+export REAL_CP="$real_cp"
+export CURL_CALL_LOG="$fixture_root/curl-calls.log"
+
 run_updater() {
-  local project_path="$1" answer_text="$2"
+  local project_path="$1" answer_text="$2" tarball_path="$3"
+  : > "$CURL_CALL_LOG"
   probe_output="$(printf '%s\n' "$answer_text" \
-    | bash "$project_path/.claude/skills/do-work/tools/do-work-update.sh" \
+    | FAKE_TARBALL="$tarball_path" \
+      bash "$project_path/.claude/skills/do-work/tools/do-work-update.sh" \
         --project-root "$project_path" 2>&1)"
   probe_status=$?
 }
 
-# --- Probe 1: happy path leaves no rollback copy ------------------------------------------
-git_project="$fixture_root/git-project"
-build_install "$git_project"
-git -c init.defaultBranch=main init -q "$git_project"
-git -C "$git_project" config user.name "Fixture Runner"
-git -C "$git_project" config user.email "fixture@example.invalid"
-git -C "$git_project" add -A
-git -C "$git_project" commit -qm 'install do-work v0.0.1'
-
-run_updater "$git_project" y
-git_install="$git_project/.claude/skills/do-work"
-assert_status 0 'happy path: updater exits 0'
-assert_output_matches 'Updated to v0\.0\.2' 'happy path: reports the new version'
-assert_output_lacks 'Rollback copy' 'happy path: no rollback-copy pointer is printed'
-assert_no_backup_copy "$git_project" 'happy path'
-assert_output_matches 'no rollback copy is kept' 'happy path: the prompt states the no-copy contract'
-if ! grep -q '0\.0\.2' "$git_install/actions/version.md"; then
-  printf 'FAIL: happy path — the install was not advanced to v0.0.2.\n' >&2
-  fail_count=$((fail_count + 1))
+# Capability discovery is exact, standalone, and side-effect free.
+capability_probe="$fixture_root/capability-project"
+mkdir -p "$capability_probe"
+before_capability="$(find "$capability_probe" -print)"
+probe_output="$(cd "$capability_probe" && bash "$update_script" --capabilities 2>&1)"
+probe_status=$?
+assert_status 0 'capabilities: exits 0'
+if [ "$probe_output" != 'suite-layout-v2' ]; then
+  record_failure "capabilities: expected exact suite-layout-v2, got: $probe_output"
 fi
-assert_path_absent "$git_install/prompts/stale-prompt.md" 'happy path: stale globbed prompt removed'
-assert_path_absent "$git_install/interviews/stale-interview.md" 'happy path: stale interview removed'
-assert_path_exists "$git_install/prompts/fresh-prompt.md" 'happy path: upstream prompt extracted'
-assert_path_exists "$git_project/do-work/queue/sentinel.txt" 'happy path: runtime queue preserved'
-
-# --- Probe 2: failure in the destructive region reports, never restores --------------------
-# An unwritable shipped directory makes the extraction fail after the pre-clean has already
-# deleted files — the exact half-old/half-new state the removed rollback copy used to undo.
-failing_project="$fixture_root/failing-project"
-build_install "$failing_project"
-git -c init.defaultBranch=main init -q "$failing_project"
-git -C "$failing_project" config user.name "Fixture Runner"
-git -C "$failing_project" config user.email "fixture@example.invalid"
-git -C "$failing_project" add -A
-git -C "$failing_project" commit -qm 'install do-work v0.0.1'
-failing_install="$failing_project/.claude/skills/do-work"
-chmod 500 "$failing_install/docs"
-
-run_updater "$failing_project" y
-chmod 700 "$failing_install/docs"
-assert_status_nonzero 'mid-update failure: updater exits non-zero'
-assert_output_matches 'Update did not complete' 'mid-update failure: announces the incomplete update'
-assert_output_matches 'may be partially updated' 'mid-update failure: names the partial state'
-assert_output_matches 'git -C .* checkout --' 'mid-update failure: prints a runnable git restore command'
-assert_output_matches 'git -C .* clean -nd --' 'mid-update failure: prints the added-file cleanup command'
-assert_no_backup_copy "$failing_project" 'mid-update failure'
-# No automatic restore: what the pre-clean deleted stays deleted, and the operator is told so.
-assert_path_absent "$failing_install/prompts/stale-prompt.md" 'mid-update failure: nothing is silently restored'
-
-# --- Probe 3: a non-git install is warned before the prompt --------------------------------
-# Without the copy, an untracked install has no undo at all — the updater must say so rather
-# than let the operator infer a safety net that no longer exists.
-plain_project="$fixture_root/plain-project"
-build_install "$plain_project"
-
-run_updater "$plain_project" n
-assert_status 0 'non-git cancel: declining exits 0'
-assert_output_matches 'not tracked in git here' 'non-git install: warns that nothing can be restored'
-assert_output_matches 'Update cancelled; no files were changed' 'non-git cancel: reports the clean cancel'
-assert_no_backup_copy "$plain_project" 'non-git cancel'
-if ! grep -q '0\.0\.1' "$plain_project/.claude/skills/do-work/actions/version.md"; then
-  printf 'FAIL: non-git cancel — the declined update modified the install.\n' >&2
-  fail_count=$((fail_count + 1))
+after_capability="$(find "$capability_probe" -print)"
+if [ "$before_capability" != "$after_capability" ]; then
+  record_failure 'capabilities: modified the filesystem'
 fi
 
-# --- Probe 4: uncommitted customizations are called out as unrecoverable -------------------
-# The gap the removed rollback copy used to cover. `cp -R` snapshotted the WORKTREE, so a
-# failed update handed local edits back; git only ever restores what was committed. So an
-# uncommitted edit to a shipped file dies at the extraction, and the operator has to hear that
-# before the prompt — not infer it from a `git checkout` command that looks like a full undo.
+# Legacy archives still update through the bridge and preserve all project-owned surfaces.
+legacy_project="$fixture_root/legacy-project"
+build_legacy_install "$legacy_project"
+init_project "$legacy_project"
+commit_project "$legacy_project" 'legacy install'
+run_updater "$legacy_project" y "$legacy_tarball"
+assert_status 0 'legacy update: exits 0'
+assert_output_matches 'Updated to v0\.0\.2' 'legacy update: reports version'
+assert_file_contains "$legacy_project/.claude/skills/do-work/docs/guide.md" 'new guide' \
+  'legacy update: installs reviewed bytes'
+assert_path_absent "$legacy_project/.claude/skills/do-work/prompts/stale.md" \
+  'legacy update: removes stale managed content'
+assert_file_contains "$legacy_project/do-work/queue/sentinel.txt" 'queue sentinel' \
+  'legacy update: preserves queue runtime'
+assert_file_contains "$legacy_project/kb/sentinel.txt" 'kb sentinel' \
+  'legacy update: preserves KB runtime'
+assert_file_contains "$legacy_project/Justfile" 'project recipe' \
+  'legacy update: preserves Justfile'
+assert_file_contains "$legacy_project/.claude/settings.json" 'hooks' \
+  'legacy update: preserves settings'
+if [ "$(wc -l < "$CURL_CALL_LOG" | tr -d ' ')" != 1 ]; then
+  record_failure 'legacy update: expected exactly one archive download'
+fi
+
+# The Just recipe's repository-root fallback uses the same engine without managing app files.
+root_project="$fixture_root/root-project"
+build_root_legacy_install "$root_project"
+init_project "$root_project"
+commit_project "$root_project" 'root fallback install'
+: > "$CURL_CALL_LOG"
+probe_output="$(printf 'y\n' | FAKE_TARBALL="$legacy_tarball" \
+  bash "$root_project/tools/do-work-update.sh" --project-root "$root_project" 2>&1)"
+probe_status=$?
+assert_status 0 'root fallback: exits 0'
+assert_file_contains "$root_project/actions/version.md" '0\.0\.2' \
+  'root fallback: advances managed skill files'
+assert_file_contains "$root_project/app.txt" 'application sentinel' \
+  'root fallback: preserves application file'
+assert_file_contains "$root_project/Justfile" 'project recipe' \
+  'root fallback: preserves project Justfile'
+
+# A valid future archive installs all four modules as one reviewed transaction.
+suite_project="$fixture_root/suite-project"
+build_legacy_install "$suite_project"
+init_project "$suite_project"
+commit_project "$suite_project" 'bridge install'
+run_updater "$suite_project" y "$suite_tarball"
+assert_status 0 'suite update: exits 0'
+assert_output_matches 'four-module suite' 'suite update: identifies layout'
+for module_name in do-work do-work-board do-work-knowledge do-work-toolbox; do
+  assert_file_contains "$suite_project/.claude/skills/$module_name/payload.txt" \
+    "new $module_name payload" "suite update: installs $module_name"
+done
+assert_file_contains "$suite_project/do-work/queue/sentinel.txt" 'queue sentinel' \
+  'suite update: preserves queue runtime'
+assert_file_contains "$suite_project/kb/sentinel.txt" 'kb sentinel' \
+  'suite update: preserves KB runtime'
+if [ "$(wc -l < "$CURL_CALL_LOG" | tr -d ' ')" != 1 ]; then
+  record_failure 'suite update: expected exactly one archive download'
+fi
+
+# Malformed and traversing suite manifests fail before a managed write.
+for unsafe_case in malformed traversal; do
+  unsafe_tree="$fixture_root/$unsafe_case-src/do-work-upstream"
+  unsafe_tarball="$fixture_root/$unsafe_case.tar.gz"
+  build_suite_tree "$unsafe_tree"
+  if [ "$unsafe_case" = malformed ]; then
+    printf 'source\tdestination\textra\n' > "$unsafe_tree/suite/modules.tsv"
+  else
+    printf 'source\tdestination\n../escape\t.claude/skills/do-work\n' \
+      > "$unsafe_tree/suite/modules.tsv"
+    printf '#!/usr/bin/env bash\nexit 0\n' > "$unsafe_tree/tools/validate-suite-manifest.sh"
+    chmod +x "$unsafe_tree/tools/validate-suite-manifest.sh"
+  fi
+  archive_suite_tree "$unsafe_tree" "$unsafe_tarball"
+  unsafe_project="$fixture_root/$unsafe_case-project"
+  build_legacy_install "$unsafe_project"
+  init_project "$unsafe_project"
+  commit_project "$unsafe_project" 'bridge install'
+  before_head="$(git -C "$unsafe_project" status --porcelain)"
+  run_updater "$unsafe_project" y "$unsafe_tarball"
+  assert_status_nonzero "$unsafe_case manifest: exits non-zero"
+  if [ "$unsafe_case" = malformed ]; then
+    assert_output_matches 'manifest header' "$unsafe_case manifest: trusted validator reports failure"
+  else
+    assert_output_matches 'source traverses directories' \
+      "$unsafe_case manifest: trusted validator rejects traversal despite bundled override"
+  fi
+  assert_output_lacks 'Continue with this one' \
+    "$unsafe_case manifest: fails before the confirmation boundary"
+  after_head="$(git -C "$unsafe_project" status --porcelain)"
+  if [ "$before_head" != "$after_head" ]; then
+    record_failure "$unsafe_case manifest: changed the managed install before validation"
+  fi
+  assert_path_absent "$fixture_root/escape" "$unsafe_case manifest: no traversal write"
+done
+
+# Even a valid textual destination must not escape through an existing client-side symlink.
+symlink_project="$fixture_root/symlink-project"
+symlink_target="$fixture_root/outside-project"
+build_root_legacy_install "$symlink_project"
+mkdir -p "$symlink_target"
+ln -s "$symlink_target" "$symlink_project/.claude"
+init_project "$symlink_project"
+commit_project "$symlink_project" 'root bridge with unsafe client symlink'
+: > "$CURL_CALL_LOG"
+probe_output="$(printf 'y\n' | FAKE_TARBALL="$suite_tarball" \
+  bash "$symlink_project/tools/do-work-update.sh" --project-root "$symlink_project" 2>&1)"
+probe_status=$?
+assert_status_nonzero 'destination symlink: exits non-zero'
+assert_output_matches 'resolves outside the project' \
+  'destination symlink: reports physical escape before confirmation'
+assert_path_absent "$symlink_target/skills" 'destination symlink: does not write outside project'
+
+# Dirty managed content is named, the discard is explicit, and declining is mutation-free.
 dirty_project="$fixture_root/dirty-project"
-build_install "$dirty_project"
-git -c init.defaultBranch=main init -q "$dirty_project"
-git -C "$dirty_project" config user.name "Fixture Runner"
-git -C "$dirty_project" config user.email "fixture@example.invalid"
-git -C "$dirty_project" add -A
-git -C "$dirty_project" commit -qm 'install do-work v0.0.1'
-dirty_install="$dirty_project/.claude/skills/do-work"
-printf '# do-work\n\nLOCAL CUSTOMIZATION the operator has not committed.\n' > "$dirty_install/SKILL.md"
-# Fail inside the destructive region as well, so one run exercises both messages.
-chmod 500 "$dirty_install/docs"
+build_suite_install "$dirty_project"
+init_project "$dirty_project"
+commit_project "$dirty_project" 'old suite'
+printf '# LOCAL BOARD CUSTOMIZATION\n' > "$dirty_project/.claude/skills/do-work-board/SKILL.md"
+run_updater "$dirty_project" n "$suite_tarball"
+assert_status 0 'dirty cancel: exits 0'
+assert_output_matches 'do-work-board/SKILL\.md' 'dirty cancel: lists managed dirty path'
+assert_output_matches 'discards those changes' 'dirty cancel: warns before confirmation'
+assert_output_matches 'Update cancelled; no files were changed' 'dirty cancel: reports cancellation'
+assert_file_contains "$dirty_project/.claude/skills/do-work-board/SKILL.md" \
+  'LOCAL BOARD CUSTOMIZATION' 'dirty cancel: preserves declined customization'
 
-run_updater "$dirty_project" y
-chmod 700 "$dirty_install/docs"
-assert_status_nonzero 'dirty install: updater exits non-zero'
-assert_output_matches 'uncommitted changes' 'dirty install: lists the uncommitted shipped files'
-assert_output_matches 'gone for good' \
-  'dirty install: warns BEFORE the prompt that the extraction destroys uncommitted edits'
-assert_output_matches 'stash' 'dirty install: names the action that would preserve them'
-assert_output_matches 'restores the COMMITTED content' \
-  'dirty install: the recovery note says the checkout will not bring those edits back'
-assert_no_backup_copy "$dirty_project" 'dirty install'
+git -C "$dirty_project" add .claude/skills/do-work-board/SKILL.md
+run_updater "$dirty_project" y "$suite_tarball"
+assert_status 0 'dirty confirm: exits 0'
+assert_file_contains "$dirty_project/.claude/skills/do-work-board/SKILL.md" \
+  'New module' 'dirty confirm: installs reviewed module after consent'
+if [ -n "$(git -C "$dirty_project" diff --cached --name-only -- .claude/skills)" ]; then
+  record_failure 'dirty confirm: confirmed discard left staged managed customization behind'
+fi
+
+# Fail while copying module two: module one is restored from Git and only new paths vanish.
+failure_project="$fixture_root/failure-project"
+build_suite_install "$failure_project"
+init_project "$failure_project"
+commit_project "$failure_project" 'old suite'
+printf '%s\n' '#!/usr/bin/env bash' \
+  'case "$*" in *skills/do-work-board*) exit 88 ;; esac' \
+  'exec "$REAL_CP" "$@"' > "$stub_bin/cp"
+chmod +x "$stub_bin/cp"
+run_updater "$failure_project" y "$suite_tarball"
+rm -f "$stub_bin/cp"
+assert_status_nonzero 'partial failure: exits non-zero'
+assert_output_matches 'Restored the previous managed installation' \
+  'partial failure: reports automatic recovery'
+assert_file_contains "$failure_project/.claude/skills/do-work/payload.txt" \
+  'old do-work payload' 'partial failure: restores first changed module'
+assert_file_contains "$failure_project/.claude/skills/do-work-board/payload.txt" \
+  'old do-work-board payload' 'partial failure: restores failed module'
+assert_path_absent "$failure_project/.claude/skills/do-work/new-core.txt" \
+  'partial failure: cleans only newly created file'
+assert_file_contains "$failure_project/do-work/queue/sentinel.txt" 'queue sentinel' \
+  'partial failure: preserves queue runtime'
+assert_file_contains "$failure_project/kb/sentinel.txt" 'kb sentinel' \
+  'partial failure: preserves KB runtime'
+assert_file_contains "$failure_project/Justfile" 'project recipe' \
+  'partial failure: preserves Justfile'
+assert_file_contains "$failure_project/.claude/settings.json" 'hooks' \
+  'partial failure: preserves settings'
+if [ -n "$(git -C "$failure_project" status --porcelain)" ]; then
+  record_failure "partial failure: recovery did not return the managed worktree to HEAD: $(git -C "$failure_project" status --porcelain)"
+fi
+
+# The agent-facing path must delegate mutation to the same tested engine.
+if ! grep -q 'tools/do-work-update\.sh.*--project-root' "$repo_root/actions/version.md"; then
+  record_failure 'entry-point parity: actions/version.md does not delegate to tools/do-work-update.sh'
+fi
 
 if [ "$fail_count" -gt 0 ]; then
   printf 'update-script behavior probes: %s failure(s).\n' "$fail_count" >&2

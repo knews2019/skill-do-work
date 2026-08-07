@@ -95,13 +95,13 @@ assert_contains \
 
 assert_contains \
   "actions/version.md" \
-  'fresh upstream tarball|fresh upstream tree' \
-  'actions/version.md update flow must compare against a freshly extracted upstream tarball before overwriting.'
+  'tools/do-work-update\.sh.*--project-root' \
+  'actions/version.md update flow must delegate mutation to the shared updater engine.'
 
 assert_contains \
   "actions/version.md" \
-  'diff -ru' \
-  'actions/version.md update flow must prescribe a recursive pre-extraction diff against the fresh upstream tree.'
+  'do not duplicate its archive or overwrite logic here' \
+  'actions/version.md must keep archive review and overwrite logic in the shared updater rather than a second agent-only implementation.'
 
 assert_file_not_contains \
   "actions/version.md" \
@@ -1438,11 +1438,11 @@ assert_contains \
   'tools/do-work-update.sh must derive and validate the consuming project root before updating.'
 assert_contains \
   "tools/do-work-update.sh" \
-  "--exclude='do-work'" \
-  'tools/do-work-update.sh must exclude runtime do-work data from both upstream extractions.'
+  'tar xzf "\$upstream_tarball" -C "\$fresh_upstream"' \
+  'tools/do-work-update.sh must extract only into staging; behavioral probes verify runtime do-work data is outside every managed destination.'
 assert_contains \
   "tools/do-work-update.sh" \
-  'Continue with the update' \
+  'Continue with this one .* update' \
   'tools/do-work-update.sh must require an interactive overwrite confirmation after showing the reviewed diff.'
 assert_file_not_contains \
   "tools/do-work-update.sh" \
@@ -1450,8 +1450,8 @@ assert_file_not_contains \
   'tools/do-work-update.sh must not reintroduce the pre-update rollback copy — git is the undo, and a duplicated tree on every run buys nothing git does not already hold. A mid-update failure reports the partial install instead; see _dev/tests/update-script-behavior.sh.'
 assert_contains \
   "tools/do-work-update.sh" \
-  'print_recovery_instructions' \
-  'tools/do-work-update.sh keeps no rollback copy, so a failure inside the destructive region must hand the operator runnable recovery commands rather than exit quietly.'
+  'recover_managed_paths' \
+  'tools/do-work-update.sh must automatically recover only its validated managed paths after a destructive-region failure.'
 
 assert_file_not_contains \
   "actions/work.md" \
@@ -1619,8 +1619,8 @@ assert_contains \
 
 assert_contains \
   "tools/do-work-update.sh" \
-  "--exclude='kb'" \
-  'tools/do-work-update.sh must exclude the upstream knowledge base from both extractions (belt-and-suspenders with /kb export-ignore).'
+  'managed_relative_paths' \
+  'tools/do-work-update.sh must construct an explicit managed-path plan; behavioral probes verify the project knowledge base is outside it.'
 
 # Shipped files must not cite the skill's own CLAUDE.md/AGENTS.md — those files are absent
 # downstream, so a citation dangles. The full rule lives in CLAUDE.md → Action File Conventions.
