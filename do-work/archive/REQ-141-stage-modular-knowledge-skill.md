@@ -4,6 +4,7 @@ title: "Stage the Modular Knowledge Skill"
 status: completed
 claimed_at: 2026-08-07T21:41:06Z
 completed_at: 2026-08-07T21:46:13Z
+commit: ecd6831
 route: C
 created_at: 2026-08-07T18:58:02Z
 user_request: UR-031
