@@ -4,6 +4,7 @@ title: Kanban restart refuses a surviving port listener
 status: completed
 claimed_at: 2026-08-07T11:05:02Z
 completed_at: 2026-08-07T11:09:38Z
+commit: 7173c93
 route: B
 created_at: 2026-08-07T08:45:11Z
 user_request: UR-029
