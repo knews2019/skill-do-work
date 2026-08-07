@@ -3,6 +3,7 @@ id: REQ-138
 title: "Add Managed Text-Section Replacement"
 status: completed
 completed_at: 2026-08-07T21:18:13Z
+commit: aabc363
 claimed_at: 2026-08-07T21:07:49Z
 route: C
 created_at: 2026-08-07T18:58:02Z
