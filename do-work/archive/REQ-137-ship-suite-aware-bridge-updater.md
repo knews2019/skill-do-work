@@ -3,6 +3,7 @@ id: REQ-137
 title: "Ship the Suite-Aware Bridge Updater"
 status: completed
 completed_at: 2026-08-07T21:03:11Z
+commit: bef7334
 claimed_at: 2026-08-07T20:46:54Z
 route: C
 created_at: 2026-08-07T18:58:02Z
