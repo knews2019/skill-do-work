@@ -4,6 +4,7 @@ title: Malformed request recovery walks to valid history
 status: completed
 claimed_at: 2026-08-07T10:58:08Z
 completed_at: 2026-08-07T11:00:10Z
+commit: 42de4c0
 route: B
 created_at: 2026-08-07T08:45:11Z
 user_request: UR-029
