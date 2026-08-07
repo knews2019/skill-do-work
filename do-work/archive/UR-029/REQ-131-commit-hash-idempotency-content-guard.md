@@ -4,6 +4,7 @@ title: Commit-hash idempotency rejects body changes
 status: completed
 claimed_at: 2026-08-07T11:01:20Z
 completed_at: 2026-08-07T11:03:42Z
+commit: 2eb5252
 route: B
 created_at: 2026-08-07T08:45:11Z
 user_request: UR-029
