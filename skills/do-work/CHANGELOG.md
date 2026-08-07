@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.17 — Staged Modular Knowledge Skill (2026-08-08)
+
+Knowledge retention now has an independently loadable staged package, while automatic memory capture remains off until the user explicitly enables it.
+
+- Groups BKB, memory, dream, interviews, prompts, references, guides, assets, and privacy guardrails under `skills/do-work-knowledge`
+- Gives explicit memory setup sole ownership of scaffolding, machine-local raw-store protection, hook composition, verification, and rollback
+- Moves optional hook commands to deterministic knowledge paths and pins exact legacy migrations without adding memory hooks to core defaults
+
 ## 0.183.16 — Staged Modular Board Skill (2026-08-08)
 
 Queue visualization now has an independently loadable staged package, including its full compiled server/CLI, embedded UI, and safe project recipes.

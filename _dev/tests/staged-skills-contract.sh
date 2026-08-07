@@ -65,6 +65,27 @@ board_files=(
   skills/do-work-board/tools/queue-kanban/web/board.css
 )
 
+knowledge_files=(
+  skills/do-work-knowledge/SKILL.md
+  skills/do-work-knowledge/actions/help.md
+  skills/do-work-knowledge/actions/bkb.md
+  skills/do-work-knowledge/actions/bkb-reference.md
+  skills/do-work-knowledge/actions/dream.md
+  skills/do-work-knowledge/actions/memory.md
+  skills/do-work-knowledge/actions/memory-reference.md
+  skills/do-work-knowledge/actions/memory-value.md
+  skills/do-work-knowledge/actions/interview.md
+  skills/do-work-knowledge/actions/interview-reference.md
+  skills/do-work-knowledge/actions/prompts.md
+  skills/do-work-knowledge/actions/setup-memory.md
+  skills/do-work-knowledge/hooks/memory-hooks.json
+  skills/do-work-knowledge/hooks/memory-session-start.sh
+  skills/do-work-knowledge/hooks/memory-stop-capture.sh
+  skills/do-work-knowledge/interviews/work-operating-model.md
+  skills/do-work-knowledge/prompts/README.md
+  skills/do-work-knowledge/crew-members/interviewer.md
+)
+
 for core_file in "${core_files[@]}"; do
   require_file "$core_file"
 done
@@ -72,6 +93,46 @@ done
 for board_file in "${board_files[@]}"; do
   require_file "$board_file"
 done
+
+for knowledge_file in "${knowledge_files[@]}"; do
+  require_file "$knowledge_file"
+done
+
+if [ -f "$repo_root/skills/do-work/hooks/hooks.json" ] \
+  && grep -Fq 'memory-' "$repo_root/skills/do-work/hooks/hooks.json"; then
+  fail 'fresh suite core hooks must not enable memory capture'
+fi
+
+if [ -f "$repo_root/skills/do-work-knowledge/hooks/memory-hooks.json" ]; then
+  if grep -Fq '.claude/skills/do-work/hooks/memory-' "$repo_root/skills/do-work-knowledge/hooks/memory-hooks.json"; then
+    fail 'knowledge hook fragment still targets the legacy core hook directory'
+  fi
+  for knowledge_hook in memory-session-start.sh memory-stop-capture.sh; do
+    if ! grep -Fq ".claude/skills/do-work-knowledge/hooks/$knowledge_hook" "$repo_root/skills/do-work-knowledge/hooks/memory-hooks.json"; then
+      fail "knowledge hook fragment does not target $knowledge_hook in do-work-knowledge"
+    fi
+  done
+fi
+
+if [ -f "$repo_root/skills/do-work-knowledge/actions/setup-memory.md" ]; then
+  for migration_pair in \
+    '.claude/skills/do-work/hooks/memory-session-start.sh|.claude/skills/do-work-knowledge/hooks/memory-session-start.sh' \
+    '.claude/skills/do-work/hooks/memory-stop-capture.sh|.claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh'
+  do
+    old_hook="${migration_pair%%|*}"
+    new_hook="${migration_pair#*|}"
+    grep -Fq "$old_hook" "$repo_root/skills/do-work-knowledge/actions/setup-memory.md" \
+      || fail "memory setup lacks legacy migration source: $old_hook"
+    grep -Fq "$new_hook" "$repo_root/skills/do-work-knowledge/actions/setup-memory.md" \
+      || fail "memory setup lacks modular migration target: $new_hook"
+  done
+fi
+
+if [ -d "$repo_root/skills/do-work-knowledge" ]; then
+  while IFS= read -r knowledge_asset; do
+    require_file "skills/do-work-knowledge/$knowledge_asset"
+  done < <(git -C "$repo_root" ls-files prompts interviews)
+fi
 
 if [ -f "$repo_root/skills/do-work-board/justfile.template" ]; then
   board_template="$repo_root/skills/do-work-board/justfile.template"

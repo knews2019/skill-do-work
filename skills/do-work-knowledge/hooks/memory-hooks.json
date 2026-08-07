@@ -1,0 +1,25 @@
+{
+  "_comment": "Optional fragment merged only by explicit `do-work-knowledge setup-memory` — APPEND these entries to existing SessionStart/Stop arrays; fresh suite installation leaves them disabled (see actions/memory-reference.md, Hook Install Internals).",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-session-start.sh\""
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh\""
+          }
+        ]
+      }
+    ]
+  }
+}
