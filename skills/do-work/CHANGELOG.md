@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.20 — Configuration-Aware Bridge Updater (2026-08-08)
+
+Existing bridge clients can now complete the later modular cutover through the trusted updater they already have, including managed configuration migration.
+
+- Keeps the installed bridge validator and full-suite installer as the trusted transaction engine; downloaded archive executables cannot redefine that boundary
+- Reviews all four modules plus the owned Just section and known hook migrations, asks once, verifies installed bytes, and restores managed originals after failure
+- Carries the full-suite installer inside the staged core for future updates while leaving the live monolithic export guards in place for this final bridge rollout
+
 ## 0.183.19 — Full-Suite Installer and Reconciler (2026-08-08)
 
 The staged four-skill suite now has one copy-paste bootstrap and a recoverable client-configuration transaction, ready for live publication at cutover.

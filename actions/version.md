@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.183.19
+**Current version**: 0.183.20
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -47,7 +47,7 @@ All update discovery, review, confirmation, mutation, byte verification, and rec
    ```
 4. Do not download a second archive, perform a second diff, add another confirmation, or fall back to a direct `curl | tar` mutation. If the engine refuses or fails, report that exact failure; it is the authoritative safety boundary.
 
-The engine supports both the bridge-era all-in-one archive and the four-module suite archive. It downloads and reviews one archive, validates every managed module before writing, asks once, verifies installed bytes, and automatically recovers only its validated managed paths after a failed write. It never mutates `do-work/`, `kb/`, project Justfiles, settings, or application paths.
+The engine supports both the bridge-era all-in-one archive and the four-module suite archive. Legacy archives keep the existing skill-only transaction. For a suite archive, the installed bridge validator approves all four modules first, then the updater delegates that same downloaded archive to its bundled full-suite installer so the one reviewed confirmation also refreshes the owned Just section and composes core/migrated memory-hook settings. Both paths verify installed bytes and recover their managed writes on failure. Neither path mutates `do-work/`, `kb/`, application files, bytes outside the marked Just section, unrelated settings entries, or any other project configuration.
 
 Capability probes use the same installed engine and are side-effect free:
 

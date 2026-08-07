@@ -127,7 +127,7 @@ else
   fi
 fi
 assert_output_contains "$(cat "$bootstrap_output")" 'Installed do-work suite v[0-9]+\.[0-9]+\.[0-9]+' 'bootstrap must report the verified installed suite version'
-if [ "$(grep -c 'Install this complete four-skill suite?' "$bootstrap_output")" -ne 1 ]; then
+if [ "$(grep -c '^Install this complete four-skill suite?' "$bootstrap_output")" -ne 1 ]; then
   fail 'fresh bootstrap must present exactly one confirmation boundary'
 fi
 
@@ -285,7 +285,7 @@ fi
 # Python is the JSON fallback when jq is absent.
 python_path="$workdir/python-path"
 mkdir -p "$python_path"
-for command_name in awk bash chmod cmp cp diff dirname find git grep head mkdir mktemp mv python3 rm sed stat tar tr wc; do
+for command_name in awk bash cat chmod cmp cp diff dirname find git grep head mkdir mktemp mv python3 rm sed stat tar tr wc; do
   command_path="$(command -v "$command_name" 2>/dev/null || true)"
   [ -z "$command_path" ] || ln -s "$command_path" "$python_path/$command_name"
 done
@@ -305,7 +305,7 @@ fi
 # With neither jq nor Python, a fresh project still gets modules/Justfile while settings stay exact and a precise manual step is printed.
 no_json_path="$workdir/no-json-path"
 mkdir -p "$no_json_path"
-for command_name in awk bash chmod cmp cp diff dirname find git grep head mkdir mktemp mv rm sed stat tar tr wc; do
+for command_name in awk bash cat chmod cmp cp diff dirname find git grep head mkdir mktemp mv rm sed stat tar tr wc; do
   command_path="$(command -v "$command_name" 2>/dev/null || true)"
   [ -z "$command_path" ] || ln -s "$command_path" "$no_json_path/$command_name"
 done

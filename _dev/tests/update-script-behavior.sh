@@ -5,6 +5,8 @@ set -uo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 update_script="$repo_root/tools/do-work-update.sh"
 manifest_validator="$repo_root/tools/validate-suite-manifest.sh"
+suite_installer="$repo_root/tools/install-do-work-suite.sh"
+section_replacer="$repo_root/tools/replace-text-section.sh"
 fail_count=0
 
 for required_command in bash git tar diff; do
@@ -13,8 +15,9 @@ for required_command in bash git tar diff; do
     exit 0
   fi
 done
-if [ ! -x "$update_script" ] || [ ! -x "$manifest_validator" ]; then
-  printf 'FAIL: bridge updater and suite validator must exist and be executable.\n' >&2
+if [ ! -x "$update_script" ] || [ ! -x "$manifest_validator" ] \
+  || [ ! -x "$suite_installer" ] || [ ! -x "$section_replacer" ]; then
+  printf 'FAIL: bridge updater, suite installer, manifest validator, and section replacer must exist and be executable.\n' >&2
   exit 1
 fi
 
@@ -104,8 +107,9 @@ build_legacy_install() {
   printf '# old guide\n' > "$install_path/docs/guide.md"
   cp "$update_script" "$install_path/tools/do-work-update.sh"
   cp "$manifest_validator" "$install_path/tools/validate-suite-manifest.sh"
-  chmod +x "$install_path/tools/do-work-update.sh"
-  chmod +x "$install_path/tools/validate-suite-manifest.sh"
+  cp "$suite_installer" "$install_path/tools/install-do-work-suite.sh"
+  cp "$section_replacer" "$install_path/tools/replace-text-section.sh"
+  chmod +x "$install_path/tools/"*.sh
   printf 'queue sentinel\n' > "$project_path/do-work/queue/sentinel.txt"
   printf 'kb sentinel\n' > "$project_path/kb/sentinel.txt"
   printf 'project recipe\n' > "$project_path/Justfile"
@@ -122,8 +126,9 @@ build_root_legacy_install() {
   printf '# old guide\n' > "$project_path/docs/guide.md"
   cp "$update_script" "$project_path/tools/do-work-update.sh"
   cp "$manifest_validator" "$project_path/tools/validate-suite-manifest.sh"
-  chmod +x "$project_path/tools/do-work-update.sh"
-  chmod +x "$project_path/tools/validate-suite-manifest.sh"
+  cp "$suite_installer" "$project_path/tools/install-do-work-suite.sh"
+  cp "$section_replacer" "$project_path/tools/replace-text-section.sh"
+  chmod +x "$project_path/tools/"*.sh
   printf 'application sentinel\n' > "$project_path/app.txt"
   printf 'queue sentinel\n' > "$project_path/do-work/queue/sentinel.txt"
   printf 'kb sentinel\n' > "$project_path/kb/sentinel.txt"
@@ -146,11 +151,14 @@ build_suite_install() {
   cp "$update_script" "$project_path/.claude/skills/do-work/tools/do-work-update.sh"
   cp "$manifest_validator" \
     "$project_path/.claude/skills/do-work/tools/validate-suite-manifest.sh"
-  chmod +x "$project_path/.claude/skills/do-work/tools/do-work-update.sh"
-  chmod +x "$project_path/.claude/skills/do-work/tools/validate-suite-manifest.sh"
+  cp "$suite_installer" \
+    "$project_path/.claude/skills/do-work/tools/install-do-work-suite.sh"
+  cp "$section_replacer" \
+    "$project_path/.claude/skills/do-work/tools/replace-text-section.sh"
+  chmod +x "$project_path/.claude/skills/do-work/tools/"*.sh
   printf 'queue sentinel\n' > "$project_path/do-work/queue/sentinel.txt"
   printf 'kb sentinel\n' > "$project_path/kb/sentinel.txt"
-  printf 'project recipe\n' > "$project_path/Justfile"
+  printf 'project-recipe:\n    echo project\n' > "$project_path/Justfile"
   printf '{"hooks":{}}\n' > "$project_path/.claude/settings.json"
 }
 
@@ -165,8 +173,9 @@ build_legacy_archive() {
   printf '# new guide\n' > "$tree_root/docs/guide.md"
   cp "$update_script" "$tree_root/tools/do-work-update.sh"
   cp "$manifest_validator" "$tree_root/tools/validate-suite-manifest.sh"
-  chmod +x "$tree_root/tools/do-work-update.sh"
-  chmod +x "$tree_root/tools/validate-suite-manifest.sh"
+  cp "$suite_installer" "$tree_root/tools/install-do-work-suite.sh"
+  cp "$section_replacer" "$tree_root/tools/replace-text-section.sh"
+  chmod +x "$tree_root/tools/"*.sh
   tar czf "$archive_path" -C "$fixture_root/legacy-src" do-work-upstream
 }
 
@@ -176,21 +185,31 @@ build_suite_tree() {
   printf '0.0.2\n' > "$tree_root/VERSION"
   cp "$repo_root/suite/modules.tsv" "$tree_root/suite/modules.tsv"
   cp "$manifest_validator" "$tree_root/tools/validate-suite-manifest.sh"
-  chmod +x "$tree_root/tools/validate-suite-manifest.sh"
+  cp "$suite_installer" "$tree_root/tools/install-do-work-suite.sh"
+  cp "$section_replacer" "$tree_root/tools/replace-text-section.sh"
+  chmod +x "$tree_root/tools/"*.sh
   for module_name in do-work do-work-board do-work-knowledge do-work-toolbox; do
     module_path="$tree_root/skills/$module_name"
     mkdir -p "$module_path"
     printf '# %s\n\nNew module.\n' "$module_name" > "$module_path/SKILL.md"
     printf 'new %s payload\n' "$module_name" > "$module_path/payload.txt"
   done
-  mkdir -p "$tree_root/skills/do-work/actions" "$tree_root/skills/do-work/tools"
+  mkdir -p "$tree_root/skills/do-work/actions" "$tree_root/skills/do-work/tools" \
+    "$tree_root/skills/do-work/hooks" "$tree_root/skills/do-work-board"
   printf '# Version Action\n\n**Current version**: 0.0.2\n' \
     > "$tree_root/skills/do-work/actions/version.md"
+  printf '0.0.2\n' > "$tree_root/skills/do-work/VERSION"
   cp "$update_script" "$tree_root/skills/do-work/tools/do-work-update.sh"
   cp "$manifest_validator" \
     "$tree_root/skills/do-work/tools/validate-suite-manifest.sh"
-  chmod +x "$tree_root/skills/do-work/tools/do-work-update.sh"
-  chmod +x "$tree_root/skills/do-work/tools/validate-suite-manifest.sh"
+  cp "$suite_installer" \
+    "$tree_root/skills/do-work/tools/install-do-work-suite.sh"
+  cp "$section_replacer" \
+    "$tree_root/skills/do-work/tools/replace-text-section.sh"
+  chmod +x "$tree_root/skills/do-work/tools/"*.sh
+  cp "$repo_root/skills/do-work/hooks/hooks.json" "$tree_root/skills/do-work/hooks/hooks.json"
+  cp "$repo_root/skills/do-work-board/justfile.template" \
+    "$tree_root/skills/do-work-board/justfile.template"
   printf 'created during update\n' > "$tree_root/skills/do-work/new-core.txt"
 }
 
@@ -293,6 +312,35 @@ assert_file_contains "$root_project/Justfile" 'project recipe' \
 # A valid future archive installs all four modules as one reviewed transaction.
 suite_project="$fixture_root/suite-project"
 build_legacy_install "$suite_project"
+cat > "$suite_project/Justfile" <<'JUST'
+custom-before:
+    echo keep
+
+# --- do-work board recipes (installed by `do-work install just-kanban`) ---
+run-kanban $port="8090":
+    echo board
+run-kanban-cli:
+    echo cli
+kanban-static:
+    echo static
+kanban-summary:
+    echo summary
+run-do-work-update:
+    echo update
+JUST
+cat > "$suite_project/.claude/settings.json" <<'JSON'
+{
+  "custom": "keep",
+  "hooks": {
+    "SessionStart": [
+      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/memory-session-start.sh\""}]}
+    ],
+    "Stop": [
+      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/memory-stop-capture.sh\""}]}
+    ]
+  }
+}
+JSON
 init_project "$suite_project"
 commit_project "$suite_project" 'bridge install'
 run_updater "$suite_project" y "$suite_tarball"
@@ -306,9 +354,54 @@ assert_file_contains "$suite_project/do-work/queue/sentinel.txt" 'queue sentinel
   'suite update: preserves queue runtime'
 assert_file_contains "$suite_project/kb/sentinel.txt" 'kb sentinel' \
   'suite update: preserves KB runtime'
+assert_file_contains "$suite_project/Justfile" '^# >>> do-work:recipes >>>$' \
+  'suite update: migrates the managed Just section'
+assert_file_contains "$suite_project/Justfile" '\.claude/skills/do-work-board/tools/queue-kanban' \
+  'suite update: points board recipes at the board sibling'
+assert_file_contains "$suite_project/Justfile" '^custom-before:$' \
+  'suite update: preserves custom Just content'
+if grep -q '\.claude/skills/do-work/tools/queue-kanban' "$suite_project/Justfile"; then
+  record_failure 'suite update: retained the legacy board recipe path'
+fi
+assert_file_contains "$suite_project/.claude/settings.json" \
+  '\.claude/skills/do-work-knowledge/hooks/memory-session-start\.sh' \
+  'suite update: migrates the legacy memory SessionStart path'
+assert_file_contains "$suite_project/.claude/settings.json" \
+  '\.claude/skills/do-work-knowledge/hooks/memory-stop-capture\.sh' \
+  'suite update: migrates the legacy memory Stop path'
+assert_file_contains "$suite_project/.claude/settings.json" '"custom"[[:space:]]*:[[:space:]]*"keep"' \
+  'suite update: preserves unrelated settings'
+if grep -q '\.claude/skills/do-work/hooks/memory-' "$suite_project/.claude/settings.json"; then
+  record_failure 'suite update: retained a legacy memory hook path'
+fi
 if [ "$(wc -l < "$CURL_CALL_LOG" | tr -d ' ')" != 1 ]; then
   record_failure 'suite update: expected exactly one archive download'
 fi
+
+# The installed bridge remains the trusted transaction engine. A valid archive cannot
+# replace that engine with an executable of its own before the reviewed write boundary.
+hostile_installer_tree="$fixture_root/hostile-installer-src/do-work-upstream"
+hostile_installer_tarball="$fixture_root/hostile-installer.tar.gz"
+archive_installer_marker="$fixture_root/archive-installer-ran"
+build_suite_tree "$hostile_installer_tree"
+printf '%s\n' '#!/usr/bin/env bash' \
+  ': > "$ARCHIVE_INSTALLER_MARKER"' \
+  'exit 91' > "$hostile_installer_tree/tools/install-do-work-suite.sh"
+chmod +x "$hostile_installer_tree/tools/install-do-work-suite.sh"
+printf '%s\n' '#!/usr/bin/env bash' \
+  ': > "$ARCHIVE_INSTALLER_MARKER"' \
+  'exit 92' > "$hostile_installer_tree/skills/do-work/tools/replace-text-section.sh"
+chmod +x "$hostile_installer_tree/skills/do-work/tools/replace-text-section.sh"
+archive_suite_tree "$hostile_installer_tree" "$hostile_installer_tarball"
+trusted_engine_project="$fixture_root/trusted-engine-project"
+build_suite_install "$trusted_engine_project"
+init_project "$trusted_engine_project"
+commit_project "$trusted_engine_project" 'bridge install'
+export ARCHIVE_INSTALLER_MARKER="$archive_installer_marker"
+run_updater "$trusted_engine_project" y "$hostile_installer_tarball"
+assert_status 0 'installer trust: uses installed transaction engine'
+assert_path_absent "$archive_installer_marker" \
+  'installer trust: does not execute archive transaction helpers'
 
 # Malformed and traversing suite manifests fail before a managed write.
 for unsafe_case in malformed traversal; do
@@ -373,7 +466,7 @@ run_updater "$dirty_project" n "$suite_tarball"
 assert_status 0 'dirty cancel: exits 0'
 assert_output_matches 'do-work-board/SKILL\.md' 'dirty cancel: lists managed dirty path'
 assert_output_matches 'discards those changes' 'dirty cancel: warns before confirmation'
-assert_output_matches 'Update cancelled; no files were changed' 'dirty cancel: reports cancellation'
+assert_output_matches 'Installation cancelled; no files were changed' 'dirty cancel: reports cancellation'
 assert_file_contains "$dirty_project/.claude/skills/do-work-board/SKILL.md" \
   'LOCAL BOARD CUSTOMIZATION' 'dirty cancel: preserves declined customization'
 
@@ -392,13 +485,14 @@ build_suite_install "$failure_project"
 init_project "$failure_project"
 commit_project "$failure_project" 'old suite'
 printf '%s\n' '#!/usr/bin/env bash' \
-  'case "$*" in *skills/do-work-board*) exit 88 ;; esac' \
+  'last_argument="${!#}"' \
+  'case "$last_argument" in */.claude/skills/do-work-board/) if [ ! -f "$CP_FAILURE_MARKER" ]; then : > "$CP_FAILURE_MARKER"; exit 88; fi ;; esac' \
   'exec "$REAL_CP" "$@"' > "$stub_bin/cp"
 chmod +x "$stub_bin/cp"
-run_updater "$failure_project" y "$suite_tarball"
+CP_FAILURE_MARKER="$fixture_root/cp-failed-once" run_updater "$failure_project" y "$suite_tarball"
 rm -f "$stub_bin/cp"
 assert_status_nonzero 'partial failure: exits non-zero'
-assert_output_matches 'Restored the previous managed installation' \
+assert_output_matches 'restored every managed path to its exact pre-install state' \
   'partial failure: reports automatic recovery'
 assert_file_contains "$failure_project/.claude/skills/do-work/payload.txt" \
   'old do-work payload' 'partial failure: restores first changed module'
@@ -410,7 +504,7 @@ assert_file_contains "$failure_project/do-work/queue/sentinel.txt" 'queue sentin
   'partial failure: preserves queue runtime'
 assert_file_contains "$failure_project/kb/sentinel.txt" 'kb sentinel' \
   'partial failure: preserves KB runtime'
-assert_file_contains "$failure_project/Justfile" 'project recipe' \
+assert_file_contains "$failure_project/Justfile" 'project-recipe' \
   'partial failure: preserves Justfile'
 assert_file_contains "$failure_project/.claude/settings.json" 'hooks' \
   'partial failure: preserves settings'

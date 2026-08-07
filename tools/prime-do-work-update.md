@@ -1,10 +1,11 @@
 # Prime: do-work update shortcut
 
-`tools/do-work-update.sh` is the terminal-facing implementation behind `just run-do-work-update`. It updates only a do-work skill installed inside the invoking project; `actions/install.md` installs the just recipe, and `actions/version.md` remains the canonical agent-driven update contract.
+`tools/do-work-update.sh` is the terminal-facing implementation behind `just run-do-work-update`. It updates only a do-work installation inside the invoking project; `actions/install.md` installs the bridge-era recipe, the already-installed `tools/install-do-work-suite.sh` owns modular module/configuration reconciliation, and `actions/version.md` remains the canonical agent-driven update contract.
 
 ## Read first
 
 - `tools/do-work-update.sh` — project-root gate, upstream fetch, confirmation, extraction, and audit.
+- `tools/install-do-work-suite.sh` — suite module, Just section, hook composition, verification, and exact recovery transaction.
 - `actions/install.md` — shipped recipe block, drift upgrade, and installer verification.
 - `actions/version.md` — canonical safeguards the script must keep aligned with.
 
@@ -18,7 +19,7 @@
 - `do-work-update.sh` — project-local overwrite boundary
   Req: reject skill roots outside the invoking project, show the reviewed diff, require confirmation, and verify the installed version afterward.
   Value: users can update without an agent turn while retaining the protection against clobbering a shared install or local customization.
-  Risk: weakening any guard can overwrite user work or runtime queue data. The bridge requires the project Git root, validates the full archive with its already-installed manifest validator, inventories only explicit managed destinations, and automatically restores their committed bytes plus removes only newly created managed paths after failure. Runtime and application paths must never enter that plan. Dirty managed changes are named before the one confirmation; accepting discards them from both index and worktree before installation. `_dev/tests/update-script-behavior.sh` holds legacy, suite, hostile-manifest, dirty-consent, and forced-recovery behavior.
+  Risk: weakening any guard can overwrite user work or runtime queue data. The bridge requires the project Git root and validates a suite archive with its already-installed manifest validator before delegating that same archive to the full-suite installer. The installer reviews modules plus the owned Just/settings changes, snapshots exact managed originals, and restores them on failure. Runtime, KB, application paths, exterior Just bytes, and unrelated settings must never enter that plan. Dirty module changes are named before the one confirmation; accepting discards them from both index and worktree before installation. `_dev/tests/update-script-behavior.sh` holds legacy, suite, configuration migration, hostile-manifest, dirty-consent, and forced-recovery behavior.
 
 ## Lessons
 

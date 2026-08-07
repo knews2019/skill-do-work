@@ -48,6 +48,7 @@ project_root="$(cd "$project_root" && pwd -P)"
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 skill_root="$(cd "$script_dir/.." && pwd -P)"
 installed_manifest_validator="$script_dir/validate-suite-manifest.sh"
+installed_suite_installer="$script_dir/install-do-work-suite.sh"
 
 case "$skill_root" in
   "$project_root"|"$project_root"/*) ;;
@@ -139,6 +140,7 @@ tar xzf "$upstream_tarball" -C "$fresh_upstream" --strip-components=1 \
   || fail 'upstream archive could not be extracted; no files were changed'
 
 archive_layout='legacy all-in-one skill'
+suite_installer=''
 if [ -e "$fresh_upstream/VERSION" ] \
   || [ -e "$fresh_upstream/suite" ] \
   || [ -e "$fresh_upstream/skills" ]; then
@@ -148,13 +150,9 @@ if [ -e "$fresh_upstream/VERSION" ] \
   bash "$installed_manifest_validator" --root "$fresh_upstream" \
     || fail 'suite manifest validation failed; no files were changed'
   remote_version="$(sed -n '1p' "$fresh_upstream/VERSION")"
-
-  while IFS=$'\t' read -r module_source module_destination; do
-    [ "$module_source" = 'source' ] && continue
-    plan_sources+=("$fresh_upstream/$module_source")
-    plan_destinations+=("$project_root/$module_destination")
-    managed_relative_paths+=("$module_destination")
-  done < "$fresh_upstream/suite/modules.tsv"
+  [ -x "$installed_suite_installer" ] \
+    || fail 'the installed bridge full-suite installer is missing or not executable'
+  suite_installer="$installed_suite_installer"
 else
   [ -s "$fresh_upstream/SKILL.md" ] \
     || fail 'legacy archive is missing SKILL.md; no files were changed'
@@ -208,6 +206,28 @@ case "$(version_order "$local_version" "$remote_version")" in
     ;;
   -1) fail "upstream version v$remote_version is older than installed v$local_version" ;;
 esac
+
+if [ -n "$suite_installer" ]; then
+  printf 'Update available: v%s (you have v%s), archive layout: %s.\n' \
+    "$remote_version" "$local_version" "$archive_layout"
+  suite_install_status=0
+  DO_WORK_INSTALL_CANCEL_EXIT_STATUS=3 \
+    bash "$suite_installer" --project-root "$project_root" --archive "$upstream_tarball" \
+    || suite_install_status=$?
+  if [ "$suite_install_status" -eq 3 ]; then
+    update_verified=1
+    printf 'Update cancelled; no files were changed.\n'
+    exit 0
+  fi
+  [ "$suite_install_status" -eq 0 ] \
+    || fail 'full-suite installation failed; managed paths were recovered'
+  installed_version="$(read_action_version "$project_root/.claude/skills/do-work/actions/version.md" 2>/dev/null || true)"
+  [ "$installed_version" = "$remote_version" ] \
+    || fail "post-update version verification failed (expected v$remote_version, found v${installed_version:-unknown})"
+  update_verified=1
+  printf 'Updated to v%s at %s using the %s.\n' "$remote_version" "$project_root" "$archive_layout"
+  exit 0
+fi
 
 [ "${#plan_sources[@]}" -gt 0 ] || fail 'archive declares no managed update paths'
 

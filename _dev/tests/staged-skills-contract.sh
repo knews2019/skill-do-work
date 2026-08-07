@@ -48,6 +48,7 @@ core_files=(
   skills/do-work/tools/checks/qualify.sh
   skills/do-work/tools/checks/record-commit-hash.sh
   skills/do-work/tools/do-work-update.sh
+  skills/do-work/tools/install-do-work-suite.sh
   skills/do-work/tools/validate-suite-manifest.sh
   skills/do-work/tools/replace-text-section.sh
 )
@@ -118,6 +119,12 @@ toolbox_files=(
 for core_file in "${core_files[@]}"; do
   require_file "$core_file"
 done
+
+if [ -f "$repo_root/skills/do-work/tools/install-do-work-suite.sh" ] \
+  && ! cmp -s "$repo_root/tools/install-do-work-suite.sh" \
+    "$repo_root/skills/do-work/tools/install-do-work-suite.sh"; then
+  fail 'staged core installer must be byte-identical to the canonical suite installer'
+fi
 
 for board_file in "${board_files[@]}"; do
   require_file "$board_file"
