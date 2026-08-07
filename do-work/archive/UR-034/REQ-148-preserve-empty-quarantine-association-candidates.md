@@ -3,7 +3,7 @@ id: REQ-148
 title: "Addendum: preserve association candidates with empty quarantine"
 status: completed
 completed_at: 2026-08-07T22:55:24Z
-commit:
+commit: 0ed7786
 claimed_at: 2026-08-07T22:51:17Z
 status_changed_at: 2026-08-07T22:51:17Z
 route: A
