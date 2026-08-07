@@ -14,8 +14,9 @@ import (
 // digest of what is in flight), `generate` (a self-contained static board), and
 // `serve` (a live local board that re-walks the tree per
 // request) — plus the read-only `frontmatter` field reader and three
-// release-ritual subcommands: `next-req` and `next-version` allocate numbers,
-// and `verify` checks the cross-file invariants otherwise checked by hand.
+// release-ritual subcommands: `next-req` atomically reserves a number,
+// `next-version` allocates a version, and `verify` checks the cross-file
+// invariants otherwise checked by hand.
 //
 // Dispatch is a minimal hand-rolled subcommand switch over os.Args[1] — no
 // external CLI library — with each subcommand owning its own flag.FlagSet:
@@ -46,9 +47,9 @@ import (
 // recently-done section for a window to size.
 //
 // Write surfaces, in full: the board's testing view (serve; see testing.go)
-// writes the testing-track frontmatter fields plus do-work/testers.md, and
-// `next-version` writes one line in one version file. Nothing else here writes
-// anything — `open-work`, `frontmatter`, `next-req`, `verify`, and `now` are
+// writes the testing-track frontmatter fields plus do-work/testers.md;
+// `next-version` writes one line in one version file; and `next-req` creates one
+// durable marker under do-work/.req-reservations/. Everything else here is
 // read-only, and no subcommand ever writes CHANGELOG.md, which stays an
 // owner-only, human-authored file.
 //
@@ -187,10 +188,9 @@ func loadBoardOrExit(repoRootOverride string, recentWindow time.Duration) *Board
 	return board
 }
 
-// runNextRequestCommand prints the next free REQ number and nothing else, so a
-// caller can use it directly: `REQ-$(queue-kanban next-req)`. Read-only toward
-// the queue — it allocates a number, it does not reserve one (see allocate.go on
-// why that is accepted).
+// runNextRequestCommand atomically reserves the next free REQ number, then
+// prints the number and nothing else so a caller can use it directly:
+// `REQ-$(queue-kanban next-req)`.
 func runNextRequestCommand(args []string) {
 	flagSet := flag.NewFlagSet("next-req", flag.ExitOnError)
 	repoRootOverride := flagSet.String("repo-root", "", "repo root containing do-work/ (default: walk up from the working directory)")

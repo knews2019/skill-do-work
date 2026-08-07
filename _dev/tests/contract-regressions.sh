@@ -792,8 +792,13 @@ done
 
 assert_contains \
   "CLAUDE.md" \
-  'two write surfaces' \
-  'CLAUDE.md must state the tool has exactly two write surfaces once next-version exists — the ONE-write-surface claim was true only while the testing view was alone, and nothing but this sentence records it.'
+  'three write surfaces' \
+  'CLAUDE.md must state the tool has exactly three write surfaces once next-req reserves ids — testing fields, next-version, and reservation markers are the complete set, and nothing but this sentence records the count.'
+
+assert_contains \
+  "actions/capture.md" \
+  '\.req-reservations/REQ-NNNNNN' \
+  'actions/capture.md must stage next-req reservation markers with the UR/REQ capture — an uncommitted marker would reserve only one checkout and pollute git status.'
 
 assert_contains \
   "docs/forensics-guide.md" \

@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.22 — Atomic Request Number Reservations (2026-08-08)
+
+Concurrent captures now receive distinct REQ ids before either request file exists, without a global lock or recyclable stale claims.
+
+- Reserves each returned number with an exclusively created marker under `do-work/.req-reservations/` and advances past both request records and prior markers
+- Keeps abandoned markers as safe gaps, rejects path escapes and symlinked reservation stores, and roots marker writes inside the repository
+- Makes capture stage the marker and proves sequential plus cross-process allocation, existing markers, unsafe paths, and the unchanged decimal output contract
+
 ## 0.183.21 — Cross-Platform Atomic Queue Writes (2026-08-08)
 
 Queue-kanban now keeps its complete-file replacement guarantee on both Unix and Windows and refuses symlinked write targets without changing them.

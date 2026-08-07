@@ -1,8 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"sort"
+	"strconv"
+	"strings"
+	"sync"
 	"testing"
 )
 
@@ -126,8 +132,176 @@ func TestNextRequestNumberHonorsFrontmatterIdAboveFilename(t *testing.T) {
 	}
 }
 
-// The allocator is read-only with respect to the queue (requirement 1): it must
-// not create, move, or rewrite anything under do-work/.
+// Every successful allocation reserves its number. Sequential callers must
+// therefore receive distinct ids even when neither has written a REQ file yet.
+func TestNextRequestNumberReservesNumberForTheNextCall(t *testing.T) {
+	repoRoot := writeAllocationFixture(t, []string{"do-work/queue/REQ-042-only.md"})
+
+	firstNumber, firstError := nextRequestNumber(repoRoot)
+	if firstError != nil {
+		t.Fatalf("first nextRequestNumber: %v", firstError)
+	}
+	secondNumber, secondError := nextRequestNumber(repoRoot)
+	if secondError != nil {
+		t.Fatalf("second nextRequestNumber: %v", secondError)
+	}
+	if firstNumber != 43 || secondNumber != 44 {
+		t.Fatalf("sequential reservations = (%d, %d), want (43, 44)", firstNumber, secondNumber)
+	}
+
+	for _, reservedNumber := range []int{43, 44} {
+		reservationPath := filepath.Join(repoRoot, "do-work", ".req-reservations", requestReservationFileName(reservedNumber))
+		if _, statError := os.Stat(reservationPath); statError != nil {
+			t.Errorf("reservation %d missing at %s: %v", reservedNumber, reservationPath, statError)
+		}
+	}
+}
+
+// Exclusive marker creation is the concurrency boundary: separate allocator
+// processes that all see the same highest REQ must race safely and each return a
+// different number.
+func TestNextRequestNumberConcurrentProcessesReserveDistinctNumbers(t *testing.T) {
+	repoRoot := writeAllocationFixture(t, nil)
+	const callerCount = 16
+
+	allocatedNumbers := make(chan int, callerCount)
+	allocationErrors := make(chan error, callerCount)
+	var processes sync.WaitGroup
+	for processIndex := 0; processIndex < callerCount; processIndex++ {
+		processes.Add(1)
+		go func() {
+			defer processes.Done()
+			allocatorProcess := exec.Command(os.Args[0], "-test.run=^TestNextRequestNumberProcessHelper$", "--", repoRoot)
+			allocatorProcess.Env = append(os.Environ(), "QUEUE_KANBAN_ALLOCATOR_HELPER=1")
+			processOutput, processError := allocatorProcess.CombinedOutput()
+			if processError != nil {
+				allocationErrors <- fmt.Errorf("allocator process: %w: %s", processError, strings.TrimSpace(string(processOutput)))
+				return
+			}
+			allocatedNumber, parseError := strconv.Atoi(strings.TrimSpace(string(processOutput)))
+			if parseError != nil {
+				allocationErrors <- fmt.Errorf("allocator output %q is not one decimal number: %w", processOutput, parseError)
+				return
+			}
+			allocatedNumbers <- allocatedNumber
+		}()
+	}
+	processes.Wait()
+	close(allocatedNumbers)
+	close(allocationErrors)
+
+	for allocateError := range allocationErrors {
+		t.Errorf("concurrent nextRequestNumber: %v", allocateError)
+	}
+	var sortedNumbers []int
+	for allocatedNumber := range allocatedNumbers {
+		sortedNumbers = append(sortedNumbers, allocatedNumber)
+	}
+	if len(sortedNumbers) != callerCount {
+		t.Fatalf("successful allocations = %d, want %d", len(sortedNumbers), callerCount)
+	}
+	sort.Ints(sortedNumbers)
+	for numberIndex, allocatedNumber := range sortedNumbers {
+		expectedNumber := numberIndex + 1
+		if allocatedNumber != expectedNumber {
+			t.Fatalf("sorted allocation %d = %d, want %d; all=%v", numberIndex, allocatedNumber, expectedNumber, sortedNumbers)
+		}
+	}
+}
+
+// TestNextRequestNumberProcessHelper is re-entered through the test binary so
+// the concurrency test exercises OS processes rather than goroutines sharing
+// one Go runtime. It exits immediately to keep stdout to exactly one decimal
+// number and a newline, matching the next-req command contract.
+func TestNextRequestNumberProcessHelper(t *testing.T) {
+	if os.Getenv("QUEUE_KANBAN_ALLOCATOR_HELPER") != "1" {
+		return
+	}
+	argumentSeparator := -1
+	for argumentIndex, argumentValue := range os.Args {
+		if argumentValue == "--" {
+			argumentSeparator = argumentIndex
+			break
+		}
+	}
+	if argumentSeparator < 0 || argumentSeparator+1 >= len(os.Args) {
+		fmt.Fprintln(os.Stderr, "missing allocator repository root")
+		os.Exit(2)
+	}
+	allocatedNumber, allocateError := nextRequestNumber(os.Args[argumentSeparator+1])
+	if allocateError != nil {
+		fmt.Fprintln(os.Stderr, allocateError)
+		os.Exit(2)
+	}
+	fmt.Println(allocatedNumber)
+	os.Exit(0)
+}
+
+// Reservation markers remain authoritative even when no matching REQ exists —
+// an interrupted capture consumes a number rather than making it reusable.
+func TestNextRequestNumberAdvancesPastExistingReservation(t *testing.T) {
+	repoRoot := writeAllocationFixture(t, []string{"do-work/queue/REQ-042-only.md"})
+	reservationDirectory := filepath.Join(repoRoot, "do-work", requestReservationDirectoryName)
+	if mkdirError := os.Mkdir(reservationDirectory, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir reservation directory: %v", mkdirError)
+	}
+	if writeError := os.WriteFile(filepath.Join(reservationDirectory, requestReservationFileName(88)), nil, 0o644); writeError != nil {
+		t.Fatalf("write existing reservation: %v", writeError)
+	}
+
+	allocatedNumber, allocateError := nextRequestNumber(repoRoot)
+	if allocateError != nil {
+		t.Fatalf("nextRequestNumber: %v", allocateError)
+	}
+	if allocatedNumber != 89 {
+		t.Fatalf("nextRequestNumber = %d, want 89 after reserved REQ-88", allocatedNumber)
+	}
+}
+
+// A reservation directory symlink could redirect next-req's new write surface
+// outside do-work. Fail closed instead of following it.
+func TestNextRequestNumberRejectsSymlinkedReservationDirectory(t *testing.T) {
+	repoRoot := writeAllocationFixture(t, nil)
+	outsideDirectory := t.TempDir()
+	reservationDirectory := filepath.Join(repoRoot, "do-work", requestReservationDirectoryName)
+	if symlinkError := os.Symlink(outsideDirectory, reservationDirectory); symlinkError != nil {
+		t.Skipf("symlinks unavailable: %v", symlinkError)
+	}
+
+	if _, allocateError := nextRequestNumber(repoRoot); allocateError == nil {
+		t.Fatal("nextRequestNumber succeeded through a symlinked reservation directory")
+	}
+	outsideEntries, readError := os.ReadDir(outsideDirectory)
+	if readError != nil {
+		t.Fatalf("read outside directory: %v", readError)
+	}
+	if len(outsideEntries) != 0 {
+		t.Fatalf("nextRequestNumber wrote outside do-work through a symlink: %v", outsideEntries)
+	}
+}
+
+// The parent metadata directory is untrusted too: a repository-local do-work
+// symlink must not redirect reservation markers anywhere outside the checkout.
+func TestNextRequestNumberRejectsDoWorkRootOutsideRepository(t *testing.T) {
+	repoRoot := t.TempDir()
+	outsideDirectory := t.TempDir()
+	if mkdirError := os.Mkdir(filepath.Join(outsideDirectory, "queue"), 0o755); mkdirError != nil {
+		t.Fatalf("mkdir outside queue: %v", mkdirError)
+	}
+	if symlinkError := os.Symlink(outsideDirectory, filepath.Join(repoRoot, "do-work")); symlinkError != nil {
+		t.Skipf("symlinks unavailable: %v", symlinkError)
+	}
+
+	if _, allocateError := nextRequestNumber(repoRoot); allocateError == nil {
+		t.Fatal("nextRequestNumber succeeded through a do-work symlink outside the repository")
+	}
+	if _, statError := os.Lstat(filepath.Join(outsideDirectory, requestReservationDirectoryName)); !os.IsNotExist(statError) {
+		t.Fatalf("nextRequestNumber created an outside reservation path: %v", statError)
+	}
+}
+
+// Reserving a number must not rewrite or add a REQ in queue/. The only new entry
+// belongs in the dedicated reservation store.
 func TestNextRequestNumberLeavesTheQueueUntouched(t *testing.T) {
 	repoRoot := writeAllocationFixture(t, []string{"do-work/queue/REQ-042-only.md"})
 	queueFile := filepath.Join(repoRoot, "do-work", "queue", "REQ-042-only.md")
@@ -157,6 +331,6 @@ func TestNextRequestNumberLeavesTheQueueUntouched(t *testing.T) {
 		t.Fatalf("list after: %v", listError)
 	}
 	if len(afterEntries) != len(beforeEntries) {
-		t.Errorf("queue entry count changed from %d to %d; the allocator must not create files", len(beforeEntries), len(afterEntries))
+		t.Errorf("queue entry count changed from %d to %d; reservations must not create REQ files", len(beforeEntries), len(afterEntries))
 	}
 }

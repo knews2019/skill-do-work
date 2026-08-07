@@ -69,10 +69,11 @@ Files in `working/` and `archive/` are **immutable**. If someone wants to add to
 - **REQ files:** `REQ-[number]-[slug].md` in `do-work/queue/`
 - **UR folders:** `do-work/user-requests/UR-[number]/` containing `input.md` and optional `assets/`
 - **Assets:** `do-work/user-requests/UR-NNN/assets/REQ-[num]-[descriptive-name].png`
+- **REQ reservations:** `do-work/.req-reservations/REQ-NNNNNN` — durable empty markers written by `queue-kanban next-req`; stage the marker with the capture
 
-To get the next REQ number, check existing `REQ-*.md` files across `do-work/queue/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`), then increment from the highest. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences. If no existing files are found anywhere, start at 1.
+To get the next REQ number, check existing `REQ-*.md` files across `do-work/queue/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`) plus reservation marker names under `do-work/.req-reservations/`, then increment from the highest number in either set. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences. If no existing records or markers are found anywhere, start at 1.
 
-**Shortcut for the REQ number** — the shipped board tool runs that exact scan, so you can read the answer instead of eyeballing a file listing:
+**Preferred reservation path for the REQ number** — the shipped board tool runs that scan and atomically reserves the answer, so concurrent captures receive different ids:
 
 ```bash
 # Optional accelerator. Needs the Go toolchain; the build is cached after the first run.
@@ -80,7 +81,7 @@ To get the next REQ number, check existing `REQ-*.md` files across `do-work/queu
   && <skill-root>/tools/queue-kanban/queue-kanban next-req --repo-root <project-root>
 ```
 
-It prints one number. **If `go` is absent or the build fails, do the scan above by hand** — this is an accelerator, never a dependency (`actions/board.md` Step 2 is the same toolchain exception, except there the tool *is* the capability, so it stops; here you fall back). It covers REQ numbers only; UR numbering stays a manual scan. The number is **not reserved** — two captures running at the same instant can compute the same one — which is accepted: the title is in the filename, so a rare duplicate is cheap to spot and renumber (`queue-kanban verify` reports duplicates).
+It prints one number after creating `do-work/.req-reservations/REQ-NNNNNN` with exclusive-create semantics. A concurrent caller that loses that marker race advances until it reserves a different number. Call it once for each REQ being captured; the markers are durable queue metadata, so an interrupted capture leaves a harmless gap instead of releasing an id another capture may already have observed. **If `go` is absent or the build fails, do the scan above by hand** — this is an accelerator, never a dependency (`actions/board.md` Step 2 is the same toolchain exception, except there the tool *is* the capability, so it stops; here you fall back). The fallback cannot reserve, so immediately before each write re-scan and refuse if that id now exists. The tool covers REQ numbers only; UR numbering stays a manual scan.
 
 ### Backward Compatibility
 
@@ -219,6 +220,7 @@ Before writing, ensure `do-work/` and `do-work/user-requests/UR-NNN/` exist (cre
 2. Create REQ-NNN-slug.md files using the **Simple REQ** or **Complex REQ (additional sections)** template in `actions/capture-reference.md`, adding user_request: UR-NNN, the inferred domain, the prime_files array populated with any discovered paths, and `maintenance: true` when the Step 1 maintenance assessment flagged this as a removal/narrowing pass on the skill's own instructions (otherwise emit `maintenance: false`). If any field's value doesn't match the canonical enum, apply the **Schema Aliases** section's normalize-and-warn contract before writing.
 3. If the request is behavior-changing and has a meaningful RED/GREEN proof target, add a `## Red-Green Proof` section. If `tdd: true`, this section is required.
 4. Update the UR's `requests` array with all created REQ IDs
+5. When `next-req` supplied an id, keep its `do-work/.req-reservations/REQ-NNNNNN` marker; it is the durable record that prevents a later allocator from reissuing the number even if the capture is interrupted or the REQ is subsequently moved.
 
 **The `requests:` array is the capture-time record only — never the UR's closure predicate.** It names the REQs *this capture* created, and nothing appends to it afterward: review-spawned follow-ups (`actions/work.md` Step 8), addendum REQs, and clarify-derived REQs all carry `user_request: UR-NNN` without ever landing in the array. So "is this UR finished?" is always answered by scanning `user_request:` frontmatter across `do-work/queue/`, `do-work/working/`, `do-work/archive/` root, and `do-work/archive/UR-NNN/` — the condition `actions/work.md` Step 8 and `actions/cleanup.md` Pass 1 both evaluate. The array's legitimate readers are the ones asking *what the user originally asked for* (e.g. `actions/verify-requests.md`, which grades capture coverage against the original input); any reader deciding whether a UR may close must use the scan instead.
 
@@ -251,6 +253,9 @@ git add do-work/user-requests/UR-NNN/assets/  # only if assets were created
 
 # Stage each created REQ file
 git add do-work/queue/REQ-NNN-slug.md
+
+# Stage each reservation created by queue-kanban next-req (skip for manual fallback)
+git add do-work/.req-reservations/REQ-NNNNNN
 
 git commit -m "$(cat <<'EOF'
 [UR-NNN] captured {title} ({N} REQs)

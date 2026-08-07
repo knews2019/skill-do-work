@@ -71,7 +71,7 @@ Files in `working/` and `archive/` are **immutable**. If someone wants to add to
 - **Assets:** `do-work/user-requests/UR-NNN/assets/REQ-[num]-[descriptive-name].png`
 - **REQ reservations:** `do-work/.req-reservations/REQ-NNNNNN` — durable empty markers written by `queue-kanban next-req`; stage the marker with the capture
 
-To get the next REQ number, check existing `REQ-*.md` files across `do-work/queue/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`), then increment from the highest. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences. If no existing files are found anywhere, start at 1.
+To get the next REQ number, check existing `REQ-*.md` files across `do-work/queue/`, `do-work/working/`, and `do-work/archive/` (including inside `do-work/archive/UR-*/`) plus reservation marker names under `do-work/.req-reservations/`, then increment from the highest number in either set. For the next UR number, check `do-work/user-requests/UR-*/` and `do-work/archive/UR-*/`. REQ and UR use separate numbering sequences. If no existing records or markers are found anywhere, start at 1.
 
 **Preferred reservation path for the REQ number** — the shipped board tool runs that scan and atomically reserves the answer, so concurrent captures receive different ids:
 

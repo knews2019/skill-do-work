@@ -31,9 +31,10 @@ import (
 // of blocking. `actions/work-reference.md` → Timestamp rule states the same
 // already-built-and-falls-back shape for `now`.
 //
-// READ-ONLY, deliberately. The tool has exactly two write surfaces — the board's
-// Testing view and `next-version` — and a third may only be added by amending the
-// sentence that states the count, in the same commit. This command adds none:
+// READ-ONLY, deliberately. The tool has exactly three write surfaces — the
+// board's Testing view, `next-version`, and `next-req`'s reservation markers —
+// and a fourth may only be added by amending the sentence that states the count,
+// in the same commit. This command adds none:
 // there is no `set` verb, and adding one is out of scope rather than merely
 // unimplemented.
 

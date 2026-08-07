@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -12,27 +15,31 @@ import (
 // what orders ids, so REQ-0142 and REQ-142 are the same number.
 var requestIdNumberPattern = regexp.MustCompile(`^REQ-0*(\d+)`)
 
-// nextRequestNumber returns the next free REQ number for a repo: one past the
-// highest number already in use across do-work/queue/, do-work/working/, and the
-// whole do-work/archive/ subtree (including nested archive/UR-NNN/ folders), and
-// 1 when the tree holds no REQ at all.
+// requestReservationDirectoryName is the queue-local durable coordination
+// store used by next-req. The board walk skips hidden directories, so markers
+// never become cards or stray-REQ warnings; capture commits them as queue
+// metadata alongside the UR/REQ they reserved the number for.
+const requestReservationDirectoryName = ".req-reservations"
+
+// nextRequestNumber atomically reserves and returns the next free REQ number for
+// a repo: one past the highest number already in use across do-work/queue/,
+// do-work/working/, the whole do-work/archive/ subtree (including nested
+// archive/UR-NNN/ folders), and prior reservation markers; 1 when neither the
+// tree nor the reservation store holds a number.
 //
 // This is actions/capture.md's existing allocation rule, executed instead of
 // eyeballed. It reuses enumerateDoWorkTree (walk.go) — the same walk the board
 // builds on, with the same pruning of deliverables/, runs/, and assets/ — rather
 // than introducing a second scan that could drift from it.
 //
-// Gaps are deliberately fine (REQ-072 requirement 7): max+1 tolerates them and
-// nothing in the skill walks a contiguous sequence, so there is no gap-filling,
-// gap-detection, or compaction here and none should be added.
+// Gaps are deliberately fine (REQ-072 requirement 7): reservations are durable,
+// so a capture that stops after allocation consumes a number without creating a
+// REQ. Nothing in the skill requires a contiguous sequence; a gap is safer than
+// handing the abandoned number to another capture.
 //
-// Read-only toward the queue: nothing under do-work/ is created, moved, or
-// rewritten. Allocation is also NOT atomic — two allocators running at the same
-// instant can both compute the same number and both succeed, because the number
-// is not reserved anywhere. That is accepted (a number-keyed reservation would be
-// new durable coordination state); allocation is human-initiated and runs in
-// milliseconds, which is what makes the collision window negligible rather than
-// impossible.
+// Atomicity comes from O_CREATE|O_EXCL on a per-number marker. Concurrent callers
+// can compute the same candidate, but exactly one creates that marker; every
+// loser advances and retries. No global lock or stale-lock recovery is needed.
 func nextRequestNumber(repoRootOverride string) (int, error) {
 	repoRoot, resolveError := resolveRepoRootOrDefault(repoRootOverride)
 	if resolveError != nil {
@@ -51,7 +58,111 @@ func nextRequestNumber(repoRootOverride string) (int, error) {
 			}
 		}
 	}
-	return highestNumberInUse + 1, nil
+
+	reservationStore, reservationDirectoryError := ensureRequestReservationDirectory(repoRoot)
+	if reservationDirectoryError != nil {
+		return 0, reservationDirectoryError
+	}
+	defer reservationStore.root.Close()
+	reservationEntries, reservationReadError := fs.ReadDir(reservationStore.root.FS(), ".")
+	if reservationReadError != nil {
+		return 0, fmt.Errorf("queue-kanban: reading REQ reservations at %s: %w", reservationStore.directoryPath, reservationReadError)
+	}
+	for _, reservationEntry := range reservationEntries {
+		if reservationEntry.IsDir() {
+			continue
+		}
+		if reservedNumber, parsedOk := requestNumberFromText(reservationEntry.Name()); parsedOk && reservedNumber > highestNumberInUse {
+			highestNumberInUse = reservedNumber
+		}
+	}
+
+	for candidateNumber := highestNumberInUse + 1; ; candidateNumber++ {
+		reservationFileName := requestReservationFileName(candidateNumber)
+		reservationPath := filepath.Join(reservationStore.directoryPath, reservationFileName)
+		reservationFile, createError := reservationStore.root.OpenFile(reservationFileName, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+		if createError == nil {
+			if closeError := reservationFile.Close(); closeError != nil {
+				return 0, fmt.Errorf("queue-kanban: closing REQ reservation %s: %w", reservationPath, closeError)
+			}
+			return candidateNumber, nil
+		}
+		if os.IsExist(createError) {
+			continue
+		}
+		return 0, fmt.Errorf("queue-kanban: reserving REQ-%d at %s: %w", candidateNumber, reservationPath, createError)
+	}
+}
+
+type requestReservationStore struct {
+	directoryPath string
+	root          *os.Root
+}
+
+// ensureRequestReservationDirectory resolves the repo and do-work roots before
+// creating the marker directory. It returns a rooted filesystem handle so a
+// later symlink swap cannot turn the checked path into an arbitrary write.
+func ensureRequestReservationDirectory(repoRoot string) (*requestReservationStore, error) {
+	absoluteRepoRoot, absoluteRootError := filepath.Abs(repoRoot)
+	if absoluteRootError != nil {
+		return nil, fmt.Errorf("queue-kanban: resolving repository root %s: %w", repoRoot, absoluteRootError)
+	}
+	resolvedRepoRoot, repoResolveError := filepath.EvalSymlinks(absoluteRepoRoot)
+	if repoResolveError != nil {
+		return nil, fmt.Errorf("queue-kanban: resolving repository root %s: %w", absoluteRepoRoot, repoResolveError)
+	}
+	resolvedDoWorkRoot, doWorkResolveError := filepath.EvalSymlinks(filepath.Join(absoluteRepoRoot, "do-work"))
+	if doWorkResolveError != nil {
+		return nil, fmt.Errorf("queue-kanban: resolving do-work root: %w", doWorkResolveError)
+	}
+	relativeDoWorkPath, relativeError := filepath.Rel(resolvedRepoRoot, resolvedDoWorkRoot)
+	if relativeError != nil || relativeDoWorkPath == ".." || strings.HasPrefix(relativeDoWorkPath, ".."+string(filepath.Separator)) {
+		return nil, fmt.Errorf("queue-kanban: do-work root resolves outside the repository — refusing to reserve a REQ number")
+	}
+	repositoryRoot, repositoryOpenError := os.OpenRoot(resolvedRepoRoot)
+	if repositoryOpenError != nil {
+		return nil, fmt.Errorf("queue-kanban: opening repository root %s: %w", resolvedRepoRoot, repositoryOpenError)
+	}
+	defer repositoryRoot.Close()
+	doWorkRoot, doWorkOpenError := repositoryRoot.OpenRoot(relativeDoWorkPath)
+	if doWorkOpenError != nil {
+		return nil, fmt.Errorf("queue-kanban: opening contained do-work root %s: %w", resolvedDoWorkRoot, doWorkOpenError)
+	}
+	defer doWorkRoot.Close()
+
+	reservationDirectory := filepath.Join(resolvedDoWorkRoot, requestReservationDirectoryName)
+	for {
+		reservationInfo, lstatError := doWorkRoot.Lstat(requestReservationDirectoryName)
+		switch {
+		case lstatError == nil:
+			if !reservationInfo.IsDir() {
+				return nil, fmt.Errorf("queue-kanban: REQ reservation path %s is not a directory", reservationDirectory)
+			}
+			reservationRoot, reservationOpenError := doWorkRoot.OpenRoot(requestReservationDirectoryName)
+			if reservationOpenError != nil {
+				return nil, fmt.Errorf("queue-kanban: opening contained REQ reservation directory %s: %w", reservationDirectory, reservationOpenError)
+			}
+			return &requestReservationStore{directoryPath: reservationDirectory, root: reservationRoot}, nil
+		case !os.IsNotExist(lstatError):
+			return nil, fmt.Errorf("queue-kanban: checking REQ reservation directory %s: %w", reservationDirectory, lstatError)
+		}
+
+		mkdirError := doWorkRoot.Mkdir(requestReservationDirectoryName, 0o755)
+		if mkdirError == nil {
+			continue
+		}
+		if !os.IsExist(mkdirError) {
+			return nil, fmt.Errorf("queue-kanban: creating REQ reservation directory %s: %w", reservationDirectory, mkdirError)
+		}
+		// Another allocator created the path between Lstat and Mkdir. Re-check
+		// its type instead of trusting that the colliding entry is a directory.
+	}
+}
+
+// requestReservationFileName uses fixed-width decimal names so directory
+// listings remain naturally ordered while numeric parsing stays width-agnostic.
+func requestReservationFileName(requestNumber int) string {
+	return fmt.Sprintf("REQ-%06d", requestNumber)
 }
 
 // requestNumbersInFile returns every REQ number a single file lays claim to: the
