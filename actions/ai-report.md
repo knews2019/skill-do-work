@@ -15,7 +15,7 @@ The report exists to make a UI change **visible**: a stakeholder opens one HTML 
 ## When to Use
 
 **Use when:**
-- A UR/REQ is terminally successful (`status: completed` or `completed-with-issues`) and the user wants a stakeholder-visible artifact showing *what changed visually*.
+- A UR/REQ is terminally successful after Schema Read Contract normalization (`completed` or `completed-with-issues`) and the user wants a stakeholder-visible artifact showing *what changed visually*.
 - A feature touches the UI and "show me the change" beats "describe the change."
 - You have before/after assets (in `do-work/archive/UR-NNN/assets/`, `do-work/user-requests/UR-NNN/assets/`, or `do-work/working/`) and want a side-by-side comparison.
 
@@ -44,8 +44,8 @@ Read `crew-members/anti-slop.md`. Keep **all** of its principles active for ever
 ### Step 2: Resolve the Target
 
 1. If a UR/REQ was specified, locate it in `do-work/archive/`.
-2. If blank or "most recent": scan `do-work/archive/UR-*/` for the highest UR number whose folder contains at least one REQ file with a terminal-success status (`status: completed` or `completed-with-issues` — see `actions/work-reference.md`'s Terminal-success status set).
-3. For a UR target, collect all terminally-successful REQs (`completed` or `completed-with-issues`) under it. For a REQ target, collect just that file.
+2. If blank or "most recent": scan `do-work/archive/UR-*/` for the highest UR number whose folder contains at least one REQ whose status normalizes to the Terminal-success status set in `actions/work-reference.md`.
+3. For a UR target, collect all REQs whose status normalizes to that terminal-success set. For a REQ target, collect just that file.
 4. If nothing is found with a terminal-success status, stop and tell the user there's nothing to report on.
 
 Extract from each REQ:
