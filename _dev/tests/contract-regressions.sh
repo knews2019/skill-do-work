@@ -1402,6 +1402,8 @@ fi
 foreign_kill_marker="$(mktemp)"
 if foreign_listener_output="$(
   port=8090
+  # The shutdown recipe reads this through eval, which ShellCheck cannot trace.
+  : "$port"
   lsof() {
     if [ "${4:-}" = "-d" ]; then
       printf 'n/usr/bin/python3\n'
@@ -1418,6 +1420,8 @@ if foreign_listener_output="$(
 else
   foreign_listener_status=$?
 fi
+# This fixture asserts the refusal status and kill boundary; its captured text is intentionally ignored.
+: "$foreign_listener_output"
 if [ "$foreign_listener_status" -ne 1 ] || [ -s "$foreign_kill_marker" ]; then
   printf 'FAIL: run-kanban must refuse a foreign listener without calling kill.\n' >&2
   fail_count=$((fail_count + 1))

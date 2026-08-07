@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.11 — Warning-Clean Listener Fixture (2026-08-07)
+
+The foreign-listener safety fixture is warning-clean again, keeping later modularization lint failures attributable to the work that introduced them.
+
+- Makes ShellCheck-visible no-op reads of the output captured only for fixture execution and the port consumed indirectly through `eval`
+- Preserves the listener refusal, foreign-process protection, and kill boundary unchanged
+
 ## 0.183.10 — Testing Date-Filter Empty State (2026-08-07)
 
 Testing columns now say “No matches” when their date window hides existing cards, while ordinary Board empty states stay independent of that Testing-only filter.
