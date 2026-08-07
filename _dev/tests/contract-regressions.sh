@@ -1061,6 +1061,75 @@ else
 fi
 rm -rf -- "$ordinary_addition_probe_dir"
 
+# REQ-148: awk's common `NR == FNR` first-file discriminator fails when the
+# quarantine file is empty: every record from the inventory then also satisfies
+# NR == FNR and is swallowed as if it belonged to the exclusion table. Pin the
+# portable filename discriminator in every active bridge/modular copy, then
+# exercise both an empty quarantine and a populated once-X-always-X set.
+association_candidate_action_files=(
+  actions/commit.md
+  actions/inspect.md
+  skills/do-work/actions/commit.md
+  skills/do-work-toolbox/actions/inspect.md
+)
+for association_candidate_action_file in "${association_candidate_action_files[@]}"; do
+  assert_contains \
+    "$association_candidate_action_file" \
+    'FILENAME == ARGV\[1\] \{ excluded\[\$0\] = 1; next \}' \
+    "$association_candidate_action_file must distinguish the quarantine by filename so an empty first file cannot swallow every inventory candidate."
+  assert_file_not_contains \
+    "$association_candidate_action_file" \
+    'NR == FNR \{ excluded\[\$0\] = 1; next \}' \
+    "$association_candidate_action_file must not use NR == FNR for the possibly-empty quarantine merge."
+done
+
+association_candidate_probe_dir="$(mktemp -d)"
+association_empty_quarantine="$association_candidate_probe_dir/empty-quarantine.txt"
+association_populated_quarantine="$association_candidate_probe_dir/populated-quarantine.txt"
+association_inventory="$association_candidate_probe_dir/inventory.txt"
+association_expected_empty="$association_candidate_probe_dir/expected-empty.txt"
+association_expected_populated="$association_candidate_probe_dir/expected-populated.txt"
+association_actual_output="$association_candidate_probe_dir/actual.txt"
+: > "$association_empty_quarantine"
+printf 'M\tsrc/modified.js\nA\tsrc/added.js\nD\tsrc/deleted.js\nXD\t.env.deleted\nX\tcurrent-secret.txt\n' > "$association_inventory"
+printf '%s\n' \
+  'src/modified.js' \
+  'src/added.js' \
+  'src/deleted.js' \
+  '.env.deleted' > "$association_expected_empty"
+
+filter_association_candidates() {
+  awk -F '\t' '
+    FILENAME == ARGV[1] { excluded[$0] = 1; next }
+    {
+      tag = $1
+      sub(/^[^\t]*\t/, "")
+      if (tag != "X" && !($0 in excluded)) print
+    }
+  ' "$1" "$2"
+}
+
+filter_association_candidates "$association_empty_quarantine" "$association_inventory" > "$association_actual_output"
+if ! cmp -s "$association_expected_empty" "$association_actual_output"; then
+  printf 'FAIL: an empty secret quarantine must preserve every safe M/A/D/XD association candidate; expected/actual diff:\n' >&2
+  diff -u "$association_expected_empty" "$association_actual_output" >&2 || true
+  fail_count=$((fail_count + 1))
+fi
+
+printf '%s\n' 'src/added.js' 'previous-secret.txt' > "$association_populated_quarantine"
+awk -F '\t' '$1 == "X" { sub(/^[^\t]*\t/, ""); print }' "$association_inventory" >> "$association_populated_quarantine"
+printf '%s\n' \
+  'src/modified.js' \
+  'src/deleted.js' \
+  '.env.deleted' > "$association_expected_populated"
+filter_association_candidates "$association_populated_quarantine" "$association_inventory" > "$association_actual_output"
+if ! cmp -s "$association_expected_populated" "$association_actual_output"; then
+  printf 'FAIL: a populated secret quarantine must exclude only retained/current X paths and preserve every other safe candidate; expected/actual diff:\n' >&2
+  diff -u "$association_expected_populated" "$association_actual_output" >&2 || true
+  fail_count=$((fail_count + 1))
+fi
+rm -rf -- "$association_candidate_probe_dir"
+
 # Git has no tracked source blob to compare when both a secret-shaped source and
 # its copied destination are untracked. The inventory must therefore quarantine
 # the ordinary-looking destination too, rather than trusting copy detection

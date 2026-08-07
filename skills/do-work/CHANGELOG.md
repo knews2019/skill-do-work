@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.23 — Empty-Quarantine Association Fix (2026-08-08)
+
+Commit and unscoped inspect runs no longer lose every safe candidate when their run-level secret quarantine starts empty.
+
+- Distinguishes the quarantine input by filename instead of the empty-file-unsafe `NR == FNR` idiom
+- Preserves all safe M/A/D/XD candidates while retaining current and previously quarantined X paths
+- Covers both bridge and staged modular action copies with empty and populated quarantine regressions
+
 ## 0.183.22 — Atomic Request Number Reservations (2026-08-08)
 
 Concurrent captures now receive distinct REQ ids before either request file exists, without a global lock or recyclable stale claims.

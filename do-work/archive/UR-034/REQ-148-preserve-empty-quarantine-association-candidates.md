@@ -1,7 +1,14 @@
 ---
 id: REQ-148
 title: "Addendum: preserve association candidates with empty quarantine"
-status: pending
+status: completed
+completed_at: 2026-08-07T22:55:24Z
+commit:
+claimed_at: 2026-08-07T22:51:17Z
+status_changed_at: 2026-08-07T22:51:17Z
+route: A
+kb_status: pending
+kb_entry:
 created_at: 2026-08-07T22:40:46Z
 user_request: UR-034
 addendum_to: REQ-128
@@ -63,3 +70,54 @@ None.
 
 ---
 *Source: `do-work capture-request for accepted issue`, referring to the accepted empty-quarantine validate-feedback finding in the preceding conversation.*
+
+## Triage
+
+**Route: A** — this is a reproduced one-condition shell bug with exact affected files, an established repository-local correction, and explicit regression cases.
+
+## Pre-Flight
+
+The archive collision check passed. All four active bridge/modular action copies still use `NR == FNR`; `tools/checks/associate-files.sh` already demonstrates the portable `FILENAME == ARGV[1]` form. Unrelated dirty modular-cutover planning files will be preserved and excluded.
+
+## Root Cause
+
+`NR == FNR` identifies the first input only while that input contributes at least one record. An empty quarantine contributes none, so `NR` and `FNR` remain equal throughout the second file and every inventory row is consumed by the exclusion-table branch. The merge needs to identify its first input by filename, not record counters.
+
+## Implementation Summary
+
+- `actions/commit.md` (modified) — uses `FILENAME == ARGV[1]` for the commit candidate merge.
+- `actions/inspect.md` (modified) — uses the same safe discriminator for unscoped inspection.
+- `skills/do-work/actions/commit.md` (modified) — mirrors the bridge fix in staged core.
+- `skills/do-work-toolbox/actions/inspect.md` (modified) — mirrors the inspect fix in staged toolbox.
+- `_dev/tests/contract-regressions.sh` (modified) — ratchets all four sources and executes empty/populated quarantine cases with multiple safe rows and a current X row.
+- `VERSION` (modified) — bumps the bridge release to v0.183.23.
+- `actions/version.md` (modified) — reports v0.183.23.
+- `CHANGELOG.md` (modified) — records the empty-quarantine association fix.
+- `skills/do-work/VERSION` (modified) — synchronizes the staged core release.
+- `skills/do-work/actions/version.md` (modified) — synchronizes staged version reporting.
+- `skills/do-work/CHANGELOG.md` (modified) — mirrors the release notes.
+
+## Testing
+
+**RED:** The new source ratchets failed for all four action copies, each still carrying the unsafe counter discriminator. The behavioral fixture independently demonstrated the intended empty and populated quarantine outputs.
+
+**GREEN:** Replacing exactly those four conditions makes the full contract suite pass. The empty fixture emits every M/A/D/XD path, while the populated fixture excludes a prior quarantined path and the current X path without dropping unrelated candidates.
+
+Warning-level ShellCheck, Bash syntax, Just parsing, root and staged queue-kanban Go tests/vet, all repository contract suites, queue-kanban verification, and `git diff --check` pass.
+
+## Qualification
+
+Passed. The four production changes are the exact one-condition correction requested; the regression covers the bridge and modular sources plus both data states, and no helper or interface changed.
+
+## Review
+
+**Acceptance: Pass.** `FILENAME == ARGV[1]` is already the repository's working portable two-file join pattern and remains correct whether its first file has zero, one, or many records. The once-X-always-X overlay and current-X exclusion are unchanged. No Important or Minor findings remain.
+
+## Lessons Learned
+
+- `NR == FNR` is not a safe first-file test when an input may be empty; identify that input explicitly through `FILENAME` and `ARGV`.
+- A regression for a two-input merge must cover the zero-record first input, not only populated joins.
+
+## Orientation
+
+[MAP UNCHANGED] Commit and inspect still own their candidate filtering inline; only the first-input discriminator changed, with no new tool or interface.

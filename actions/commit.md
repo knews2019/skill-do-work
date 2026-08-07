@@ -127,7 +127,7 @@ esac
 
 awk -F '\t' '$1 == "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" >> "$quarantine_paths_file"
 awk -F '\t' '
-  NR == FNR { excluded[$0] = 1; next }
+  FILENAME == ARGV[1] { excluded[$0] = 1; next }
   {
     tag = $1
     sub(/^[^\t]*\t/, "")
