@@ -1,3 +1,4 @@
+# >>> do-work:recipes >>>
 # --- do-work board recipes (installed by `do-work install just-kanban`) ---
 
 # Serve the do-work queue as a live Kanban board, replacing a stale instance on the port and opening your browser (Ctrl-C to stop; reload the page to refresh)
@@ -19,6 +20,7 @@ kanban-static:
 kanban-summary:
     cd tools/queue-kanban && go build -o queue-kanban . && ./queue-kanban summary --repo-root "{{justfile_directory()}}"
 
-# Update the project-local do-work skill without an agent (reviews differences, then overwrites in place — git is the undo)
+# Update the project-local do-work suite without an agent (one reviewed archive, one confirmation, managed-path recovery)
 run-do-work-update:
     project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root"; bash "$skill_root/tools/do-work-update.sh" --project-root "$project_root"
+# <<< do-work:recipes <<<

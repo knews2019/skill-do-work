@@ -29,7 +29,7 @@ Each target is idempotent — running it when the target is already present and 
 - `ui-design` — Install Anthropic's `frontend-design` skill for production-grade UI design capabilities.
 - `bowser` — Install Playwright CLI (global) plus the Bowser skill (project-scoped) for browser automation, screenshots, and visual UI verification.
 - `last30days` — Vendor the engagement-ranked social-research engine (project-scoped, git-ignored, keyless).
-- `just-kanban` — Append `just` recipes (`run-kanban`, `run-kanban-cli`, `kanban-static`, `kanban-summary`, `run-do-work-update`) for the shipped queue-kanban board and project-local do-work updates to the project's justfile; if the recipes are already present but diverge from the shipped block, offer a consent-gated upgrade. (`run-do-work-update` is an accepted alias for this target.)
+- `just-kanban` — Install the managed `just` recipe section (`run-kanban`, `run-kanban-cli`, `kanban-static`, `kanban-summary`, `run-do-work-update`) for the shipped board and project-local updater; existing managed or legacy recipes get a consent-gated diff. (`run-do-work-update` is an accepted alias for this target.)
 - `ideation-adhd` — Install the upstream `adhd` skill (project-scoped) for parallel divergent ideation: isolated branches under distinct cognitive frames, scored, clustered, and deepened. (`adhd` is an accepted alias for this target.)
 - `memory-module` — Scaffold the `memory/` store (working-memory template, logs dir, usage ledger) and merge the memory SessionStart/Stop hook entries into `.claude/settings.json` — composing with, never clobbering, existing hooks.
 
@@ -44,7 +44,7 @@ Every target follows the same four-step shape (detect → install → verify →
 | `ui-design` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md && mv "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download" "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" || { rm -f "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download"; false; }` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
 | `bowser` | `playwright-cli --help >/dev/null 2>&1 && test -s "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md"` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
 | `last30days` | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | (multi-step — see `last30days` workflow below) | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | Engagement-ranked social-research engine — Reddit/HN/Polymarket/GitHub/YouTube keyless out of the box; X/TikTok/Instagram unlock only via user-global API keys. |
-| `just-kanban` | (multi-step — see `just-kanban` workflow below) | (multi-step — see `just-kanban` workflow below; appends fresh, consent-gated upgrade when present-but-divergent) | (multi-step — see `just-kanban` workflow below) | Justfile recipes for the shipped queue-kanban board and project-local updater — `just run-kanban` serves the live board, `run-kanban-cli`/`kanban-static`/`kanban-summary` cover the other modes, and `run-do-work-update` runs the guarded updater without an agent. |
+| `just-kanban` | (multi-step — see `just-kanban` workflow below) | (multi-step — see `just-kanban` workflow below; creates/appends fresh, atomically migrates or replaces divergent managed content) | (multi-step — see `just-kanban` workflow below) | Managed Justfile section for the shipped queue-kanban board and project-local updater — `run-kanban` serves the live board, the other board recipes cover terminal/static modes, and `run-do-work-update` runs the guarded updater without an agent. |
 | `memory-module` | (multi-step — see `memory-module` workflow below; gates on scaffolding + hook wiring) | (multi-step — see `memory-module` workflow below; repair mode when scaffolding exists but hooks are absent) | (multi-step — see `memory-module` workflow below) | Hermes-style working-memory + dated-logs engine with SessionStart/Stop hooks and layered recall — the experimental counterpart to `actions/bkb.md` (see `decisions/records/adr-017-run-a-parallel-memory-engine-experiment-with-usage-ledgers.md`). |
 | `ideation-adhd` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/adhd" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download" https://raw.githubusercontent.com/UditAkhourii/adhd/main/skills/adhd/SKILL.md && mv "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download" "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" || { rm -f "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download"; false; }` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | The `adhd` skill (MIT) — parallel divergent ideation: spawns isolated branches under distinct cognitive frames (regulator, biology, speedrunner, 10-year-old, $0 budget, …), scores on novelty/viability/fit, clusters, prunes traps, deepens the top survivors. Explicitly invoked (`/adhd`), never fires on its own. |
 
@@ -323,38 +323,32 @@ project keeps its action-usage docs.
 
 ## Workflow: `just-kanban`
 
-The `just-kanban` target appends [`just`](https://github.com/casey/just) recipes for the shipped queue-kanban board (`tools/queue-kanban/`, normally run via `actions/board.md`) and a project-local do-work updater to the consuming project's justfile. `just run-kanban` serves the live board — replacing a stale queue-kanban instance still holding the port, then opening your default browser at it — while `just run-do-work-update` runs the shipped updater without consuming an agent turn. The updater still reviews the installed-versus-upstream diff, asks before overwriting, and excludes the runtime `do-work/` directory — but it keeps **no** rollback copy: version control is the undo, and duplicating a tracked tree on every run buys nothing git does not already hold. A failure partway therefore leaves a partial install and prints the exact `git checkout` / `git clean` commands for the shipped paths git actually tracks; when the install is *not* tracked in git the updater says so before the confirmation prompt, because there nothing can be restored at all. Since git restores only what was *committed*, uncommitted edits to shipped files are the one thing that is unrecoverable once the extraction runs — so the updater names those files before the prompt, tells you plainly that continuing overwrites them for good, and repeats in the recovery output that the printed `git checkout` will not bring them back. It also lists, before the prompt, any file sitting in your install that upstream no longer ships — the extraction overwrites but never deletes, so a removed action or check would otherwise stay readable downstream forever. Those are reported, never removed: at that level a file your project put in a shipped directory looks identical to a stale one. The justfile is a **project-owned** file — `do-work update` never touches it, and `tools/do-work-update.sh` enforces that by name: when the skill is installed at the project root (the recipe's fallback branch, where the tarball's own `justfile` would land on top of the project's), it records which of `justfile`/`Justfile`/`.justfile` the project uses, keeps it out of the reviewed shipped set, and restores that exact name and content across the extraction. A nested install's `justfile` is the skill's own copy and *is* refreshed like any shipped file. Meanwhile the tool source the recipes point at is refreshed by every update; the recipes rebuild the binary on each run so those refreshes take effect automatically. Changes to the recipe *text* itself don't propagate that way, which is why re-running this install on an already-installed project compares and offers an upgrade (Phase 1b) instead of stopping at "already installed".
+The `just-kanban` target installs [`just`](https://github.com/casey/just) recipes for the shipped queue-kanban board and the project-local updater. The project Justfile remains project-owned: do-work owns only the bytes between `# >>> do-work:recipes >>>` and `# <<< do-work:recipes <<<`. `tools/replace-text-section.sh` validates that ownership grammar, migrates the legacy five-recipe block once, preserves every exterior byte and the file mode, and uses a same-directory atomic replacement. A malformed, duplicate, nested, reversed, or unbalanced marker set is a hard stop. The updater invoked by `run-do-work-update` uses its own reviewed archive, one confirmation, and managed-path recovery; it never owns the Justfile, runtime `do-work/`/`kb/`, settings, or application paths.
 
 #### Phase 1: Check if already installed
 
-```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-JUSTFILE_PATH=""
-for justfile_candidate in justfile Justfile .justfile; do
-  [ -f "$PROJECT_ROOT/$justfile_candidate" ] && { JUSTFILE_PATH="$PROJECT_ROOT/$justfile_candidate"; break; }
-done
-[ -n "$JUSTFILE_PATH" ] && grep -qE '^run-kanban[ :]' "$JUSTFILE_PATH" \
-  && echo "run-kanban recipe: present" || echo "run-kanban recipe: absent"
-```
+Resolve `PROJECT_ROOT` and the first existing `justfile` / `Justfile` / `.justfile`. Resolve `<skill-root>` as the directory containing this action's parent `SKILL.md`, enforce that it is inside `PROJECT_ROOT`, and resolve `<kanban-dir>` relative to the project. Render the exact managed block from Phase 2 with `<kanban-dir>` substituted into a temporary section file. Render the same block as the complete template for the no-Justfile case.
 
-If no `run-kanban` recipe is present, skip to Phase 2 (fresh append). If one is present, do **not** stop at "already installed" — presence alone doesn't mean current. Continue to Phase 1b.
+- **No Justfile exists:** continue to Phase 2; the utility creates `PROJECT_ROOT/justfile` from the complete template.
+- **A Justfile exists:** copy it byte-for-byte to a temporary candidate and run:
+  ```bash
+  bash "<skill-root>/tools/replace-text-section.sh" \
+    --target "$CANDIDATE_PATH" \
+    --section-file "$MANAGED_SECTION_FILE" \
+    --migrate-legacy-do-work
+  ```
+  The candidate run is the dry review seam: the utility mutates only the throwaway copy. If it rejects ownership markers or an incomplete legacy block, stop without touching the project Justfile. If candidate and target are byte-identical, report `already installed (current)` and clean up. Otherwise continue to Phase 1b.
 
 #### Phase 1b: Compare and upgrade (recipe already present)
 
-A project that installed before a recipe change (auto-open, stale-instance replacement, port validation, or any future one) still carries the old text — the justfile is project-owned, so nothing else ever refreshes it. Compare before deciding:
+Show one unified diff from the real Justfile to the reconciled candidate. Existing managed or legacy recipes may contain deliberate local edits, so ask whether to install the reviewed managed section.
 
-1. Render the current shipped block: resolve `<kanban-dir>` per Phase 2's path-resolution steps and substitute it into Phase 2's recipe block.
-2. Extract the installed do-work recipes from the justfile: for each of `run-kanban`, `run-kanban-cli`, `kanban-static`, `kanban-summary`, `run-do-work-update`, the span from the comment line(s) immediately above its `name …:` header line through its last indented line. A recipe that is missing entirely counts as divergent. Match each name **exactly** up to its parameters or colon — `run-kanban` is a prefix of `run-kanban-cli`, so a loose prefix match would extract the wrong span and diff two unrelated recipes against each other.
-3. Compare each extracted recipe against its rendered shipped version, ignoring trailing whitespace.
+- **User accepts:** run the same utility command against the real Justfile, with `--migrate-legacy-do-work`. The utility revalidates the live bytes, preserves everything outside the owned section and the target mode, then atomically replaces the file. Continue to Phase 3.
+- **User declines:** report `kept existing recipes` and stop without touching the target.
 
-Then branch on the result:
+For a marker-free custom Justfile with no recognizable do-work recipe, the candidate diff is a pure append. The user's explicit `install just-kanban` invocation authorizes that fresh append; show the candidate diff, apply it without a second consent prompt, and continue to Phase 3. Any recognizable but incomplete legacy recipe set is a hard failure, never an append.
 
-- **All five identical** → report "already installed (current)" and stop.
-- **Any divergence** → show the user a unified diff (installed vs. shipped) and ask with your environment's ask-user prompt whether to upgrade. This consent gate is the load-bearing safety step, not a formality: the divergence may be an older shipped version, but it may equally be deliberate project-specific edits — only the user can tell those apart, and the diff is what lets them.
-  - **User accepts** → replace each divergent recipe span in place with its shipped version, and append any of the five that were missing (inside the `# --- do-work board recipes … ---` block when that header comment exists, else at the end of the file). Touch nothing else in the justfile — no reordering, no reformatting of the user's own recipes or variables. Then continue to Phase 3 (verify).
-  - **User declines** → stop and report "kept existing recipes", naming the shipped behaviors their version lacks so the choice is informed, not final by accident.
-
-#### Phase 2: Append the recipes
+#### Phase 2: Reconcile the recipes
 
 Resolve the two paths as a text operation first, then substitute the literal result into the block below (derive values *before* they enter a file, the same discipline as never interpolating raw text inside shell quoting):
 
@@ -362,9 +356,20 @@ Resolve the two paths as a text operation first, then substitute the literal res
 2. **Global-install gate:** if `<skill-root>` is not inside `PROJECT_ROOT`, stop and report — a project justfile must not point outside the project, and this skill's norms reject global installs anyway.
 3. `<kanban-dir>` — the `PROJECT_ROOT`-relative path of `<skill-root>/tools/queue-kanban` (e.g. `.claude/skills/do-work/tools/queue-kanban`).
 
-Pick the justfile the same way Phase 1 does (`justfile` / `Justfile` / `.justfile` at `PROJECT_ROOT`, first match); when none exists, create `PROJECT_ROOT/justfile`. Append the block with your file-editing capability (or a quoted heredoc — `<<'RECIPES'` quoting keeps every token literal), adding one blank line of separation when the file already has content. Substitute `<kanban-dir>`; keep the `{{…}}` tokens **verbatim** — that is `just`'s own interpolation, resolved when the recipe runs, not by this install:
+Pick the target the same way Phase 1 does (`justfile` / `Justfile` / `.justfile`, first match; default to `PROJECT_ROOT/justfile` when none exists). Render the block below byte-for-byte into `MANAGED_SECTION_FILE` after substituting `<kanban-dir>`; keep the `{{…}}` tokens **verbatim** because Just resolves them when the recipe runs. For an absent target, use the rendered block as the complete template and run:
+
+```bash
+bash "<skill-root>/tools/replace-text-section.sh" \
+  --target "$JUSTFILE_PATH" \
+  --section-file "$MANAGED_SECTION_FILE" \
+  --template-file "$COMPLETE_TEMPLATE_FILE" \
+  --migrate-legacy-do-work
+```
+
+For an existing target, run the reviewed Phase 1b command without `--template-file`. Never hand-edit marker spans, extract recipes independently, or rewrite the rest of the Justfile. Clean up every rendered/candidate temporary after success, decline, or failure.
 
 ```just
+# >>> do-work:recipes >>>
 # --- do-work board recipes (installed by `do-work install just-kanban`) ---
 
 # Serve the do-work queue as a live Kanban board, replacing a stale instance on the port and opening your browser (Ctrl-C to stop; reload the page to refresh)
@@ -386,9 +391,10 @@ kanban-static:
 kanban-summary:
     cd <kanban-dir> && go build -o queue-kanban . && ./queue-kanban summary --repo-root "{{justfile_directory()}}"
 
-# Update the project-local do-work skill without an agent (reviews differences, then overwrites in place — git is the undo)
+# Update the project-local do-work suite without an agent (one reviewed archive, one confirmation, managed-path recovery)
 run-do-work-update:
     project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root"; bash "$skill_root/tools/do-work-update.sh" --project-root "$project_root"
+# <<< do-work:recipes <<<
 ```
 
 Seven deliberate choices in these recipes:
@@ -411,12 +417,17 @@ for justfile_candidate in justfile Justfile .justfile; do
   [ -f "$PROJECT_ROOT/$justfile_candidate" ] && { JUSTFILE_PATH="$PROJECT_ROOT/$justfile_candidate"; break; }
 done
 missing_recipes=""
+ownership_markers="FAILED"
 if [ -n "$JUSTFILE_PATH" ]; then
   for installed_recipe_name in run-kanban run-kanban-cli kanban-static kanban-summary run-do-work-update; do
     grep -qE "^${installed_recipe_name}[ :]" "$JUSTFILE_PATH" || missing_recipes="$missing_recipes $installed_recipe_name"
   done
+  [ "$(grep -c '^# >>> do-work:recipes >>>$' "$JUSTFILE_PATH")" -eq 1 ] \
+    && [ "$(grep -c '^# <<< do-work:recipes <<<$' "$JUSTFILE_PATH")" -eq 1 ] \
+    && ownership_markers="OK"
 fi
 if [ -n "$JUSTFILE_PATH" ] && [ -z "$missing_recipes" ]; then echo "recipes: OK"; else echo "recipes: FAILED — missing:${missing_recipes:- (no justfile found)}"; fi
+echo "managed markers: $ownership_markers"
 if command -v just >/dev/null; then
   just --justfile "$JUSTFILE_PATH" --list >/dev/null 2>&1 && echo "justfile parses: OK" || echo "justfile parses: FAILED"
 else
@@ -427,14 +438,14 @@ command -v go >/dev/null && echo "go toolchain: OK" || echo "go toolchain: MISSI
 
 All five recipe headers are checked, not just the first and last: an absent recipe is not a syntax error, so `just --list` parses happily over a partial append and the install would otherwise report success while a promised command does not exist. Each pattern requires a space or colon immediately after the name (`^run-kanban[ :]`) so it matches only its own header — a bare `^run-kanban` would also match `run-kanban-cli`, and a missing `run-kanban` would then be reported as present.
 
-Report "Installed successfully" only when `recipes: OK` and — whenever `just` is available to check — `justfile parses: OK` (a FAILED parse means the append corrupted the file: restore it and re-append). Missing `just` or `go` are **warnings, not failures**: the recipes are inert text until run, and `actions/board.md` already treats a missing Go toolchain as a graceful stop rather than a blocker.
+Report "Installed successfully" only when `recipes: OK`, `managed markers: OK`, and — whenever `just` is available to check — `justfile parses: OK`. A marker or parse failure means the atomic reconciliation did not establish valid ownership; report it instead of trying a textual repair. Missing `just` or `go` are **warnings, not failures**: the recipes are inert text until run, and `actions/board.md` already treats a missing Go toolchain as a graceful stop rather than a blocker.
 
 #### Phase 4: Report back
 
 ```
 Installed: just recipes for the queue-kanban board
 
-Appended to: <project-root>/justfile
+Installed in: <project-root>/<justfile-name>
 
   just run-kanban          Live board at http://localhost:8090, opens in your browser (reload to refresh)
   just run-kanban 9000     Same, custom port
@@ -637,7 +648,7 @@ Then stop.
 - **`ui-design`**, **`ideation-adhd`**: a short status line — "already installed", "installed successfully", or an error describing what failed and how to finish manually.
 - **`bowser`**: a two-line status — one for `playwright-cli`, one for the Bowser skill. Each is either "OK" (installed and verified), "already installed" (detected in Phase 1), or an error with the exact command the user can re-run.
 - **`last30days`**: a per-guarantee status (skill file, ignore rule, Python 3.12+) — "already installed" only when every guarantee holds; otherwise "installed successfully" with the destination path, or the FAILED line(s) and the exact command the user can re-run.
-- **`just-kanban`**: a per-component status (recipes appended or upgraded, justfile parses, `just`/`go` availability) — "already installed (current)" only when the installed recipes match the shipped block; a divergent block gets a diff and a consent-gated upgrade (Phase 1b), reported as "Upgraded" or "kept existing recipes". Missing toolchains are warnings, not failures.
+- **`just-kanban`**: a per-component status (managed section installed/upgraded, markers valid, Justfile parses, `just`/`go` availability) — "already installed (current)" only when the installed section is byte-current; divergent managed or legacy content gets a diff and consent gate. Missing toolchains are warnings, not failures.
 - **`memory-module`**: a per-guarantee status (logs dir, working memory, ledger, local-ignore entries, settings parses, memory hooks) — "already installed" only when scaffolding AND hook wiring hold; hooks may report `MANUAL STEP` (no jq) or `n/a` (not Claude Code) as warnings, not failures.
 - **Unknown / missing target**: the help block above.
 
@@ -650,7 +661,7 @@ Then stop.
 - **Don't silently substitute a different skill or repo.** If the upstream URL fails, report the error — don't download a similarly-named skill from elsewhere.
 - **Keyless in the project (last30days).** This install writes no config file at all. If a project-local `.claude/last30days.env` ever exists, it must never contain API keys — real keys live only in the user-global `~/.config/last30days/.env`. Never write a secret into any file inside the repo.
 - **The vendor drop must be ignored (last30days).** Phase 2 adds `**/.claude/skills/last30days/` to the enclosing repo's `.git/info/exclude` when it isn't already covered — machine-local, never the project's committable `.gitignore` — because ~15 MB of upstream Python must never become committable in the consuming repo.
-- **Touch only the five do-work recipes in the justfile (just-kanban).** Never reorder, reformat, or modify justfile content outside `run-kanban`/`run-kanban-cli`/`kanban-static`/`kanban-summary`/`run-do-work-update`. A divergent installed recipe is replaced only after the user has seen the diff and accepted (Phase 1b) — never silently, and never on the assumption that different means stale. Create a `justfile` only when none of `justfile`/`Justfile`/`.justfile` exists at the project root.
+- **Own only the marked do-work section (just-kanban).** Reconcile with `tools/replace-text-section.sh`; never modify bytes outside the exact begin/end sentinels. Migrate the complete legacy five-recipe block only through the utility, and replace divergent managed/legacy content only after the user sees and accepts the diff. Create `justfile` from the complete template only when none of `justfile`/`Justfile`/`.justfile` exists.
 - **Compose hook entries (memory-module).** Append to the `hooks.SessionStart`/`hooks.Stop` arrays in `.claude/settings.json`; never replace, reorder, or rewrite existing entries. Back up to `settings.json.pre-memory-module` before the merge; a post-merge parse failure or any lost pre-existing entry → restore the backup and report. Never overwrite an existing `memory/working-memory.md`.
 - **Keep the raw memory store out of version control (memory-module).** `memory/logs/`, `memory/usage-ledger.jsonl`, and `memory/.bootstrap-imported` go in the enclosing repo's `.git/info/exclude` — machine-local, never the project's committable `.gitignore`. Only the curated `working-memory.md` is committable. The sentinel belongs there because `memory bootstrap` refuses to run when it exists: committed, one machine's import permanently blocks every other clone from importing its own history. **An ignore rule is not proof — verify with `git ls-files` too.** Ignore rules have no effect on tracked files, so on a repair install `check-ignore` reports OK over a raw log that is already in the index and still being appended to. Report tracked paths and hand the user the `git rm --cached` remedy; never untrack a file on their behalf.
 - **One target per invocation.** If the user wants both, they run two separate commands. The action never chains targets.
@@ -686,7 +697,7 @@ Then stop.
 - (last30days) `git check-ignore -q .claude/skills/last30days/SKILL.md` exits non-zero in a git repo — the exclude entry was skipped or mismatched; fix it before anything gets committed. (Don't eyeball `git status` for this: a wholly-untracked `.claude/` collapses to a single `?? .claude/` row that hides the path either way.)
 - (last30days) A project file (e.g. `.claude/last30days.env`) contains anything that looks like a credential — remove it and move the key to the user-global `~/.config/last30days/.env`.
 - (last30days) Verify found no Python 3.12+ interpreter — the engine can't run; treat it as a failed install, not a soft warning.
-- (just-kanban) The justfile diff shows anything beyond one appended block — existing recipes were reordered or rewritten; restore the file and re-append.
+- (just-kanban) The candidate diff changes bytes outside the legacy/managed do-work span — stop; the utility or rendered candidate is wrong, and unrelated recipes must remain byte-identical.
 - (just-kanban) The appended recipe contains an absolute path (especially into `$HOME`) — the skill-root resolution went wrong; recipes must use project-relative paths.
 - (memory-module) The merged `.claude/settings.json` has fewer hook entries than the `settings.json.pre-memory-module` backup — an existing hook was clobbered; restore the backup.
 - (memory-module) `memory/working-memory.md` changed content during install — the never-overwrite gate was bypassed.
@@ -702,7 +713,7 @@ Then stop.
 - [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty (skill-file targets: `ui-design`, `bowser`, `last30days`, `ideation-adhd`).
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
 - [ ] (last30days only) a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
-- [ ] (just-kanban only) the justfile gained exactly one appended block, all five recipe-header greps present (`run-kanban`, `run-kanban-cli`, `kanban-static`, `kanban-summary`, `run-do-work-update` — a parse-clean justfile proves nothing about a recipe that is simply absent), `just --list` parses when `just` is available, and no existing recipe was modified.
+- [ ] (just-kanban only) the Justfile has exactly one balanced managed section, all five recipe headers, byte-identical exterior content, preserved mode, and a successful `just --list` parse when Just is available.
 - [ ] (memory-module only) `memory/logs/`, a non-empty `working-memory.md`, and `usage-ledger.jsonl` exist; `git check-ignore` covers `memory/logs/`, `memory/usage-ledger.jsonl`, and `memory/.bootstrap-imported`, **and `git ls-files` returns nothing for those three paths** (ignored ≠ untracked), while the project's `.gitignore` is unmodified; `.claude/settings.json` parses and every pre-existing hook entry survived; the backup was removed on success.
 - [ ] The report names the destination path so the user can verify location.
 - [ ] No changes were made outside `<project-root>/.claude/skills/<skill-name>/` (plus, for `bowser`, the global npm install; for `last30days`, the machine-local `.git/info/exclude` entry; for `just-kanban`, the project justfile; for `memory-module`, `<project-root>/memory/`, `.claude/settings.json`, and the machine-local `.git/info/exclude` entries).

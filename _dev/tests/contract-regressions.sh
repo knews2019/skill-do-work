@@ -1899,6 +1899,151 @@ elif ! bash "$update_script_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# Managed Just sections are a byte-preserving ownership boundary, not a prose convention.
+# Exercise the real utility across replacement, legacy migration, append, creation, malformed
+# markers, filename variants, spaces, modes, idempotence, and Just parsing.
+replace_section_tool="$repo_root/tools/replace-text-section.sh"
+if [ ! -x "$replace_section_tool" ]; then
+  printf 'FAIL: tools/replace-text-section.sh is missing or not executable — managed recipe ownership has no implementation.\n' >&2
+  fail_count=$((fail_count + 1))
+else
+  section_workdir="$(mktemp -d)"
+  section_file="$section_workdir/managed-section.just"
+  template_file="$section_workdir/complete-template.just"
+  printf '# >>> do-work:recipes >>>\nmanaged-probe:\n    echo managed\n# <<< do-work:recipes <<<\n' > "$section_file"
+  printf 'set shell := ["bash", "-cu"]\n\n# >>> do-work:recipes >>>\nmanaged-probe:\n    echo managed\n# <<< do-work:recipes <<<\n' > "$template_file"
+  chmod 750 "$template_file"
+
+  byte_target="$section_workdir/project with spaces/Justfile"
+  mkdir -p "$(dirname "$byte_target")"
+  printf 'prefix\000byte\n# >>> do-work:recipes >>>\nold:\n    echo old\n# <<< do-work:recipes <<<\nsuffix\n' > "$byte_target"
+  chmod 640 "$byte_target"
+  expected_target="$section_workdir/expected-byte-target"
+  printf 'prefix\000byte\n# >>> do-work:recipes >>>\nmanaged-probe:\n    echo managed\n# <<< do-work:recipes <<<\nsuffix\n' > "$expected_target"
+  if ! "$replace_section_tool" --target "$byte_target" --section-file "$section_file"; then
+    printf 'FAIL: replace-text-section could not replace one valid managed section.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! cmp -s "$byte_target" "$expected_target"; then
+    printf 'FAIL: replace-text-section changed bytes outside the managed section or wrote the wrong replacement.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+  target_mode="$(stat -f '%Lp' "$byte_target" 2>/dev/null || stat -c '%a' "$byte_target" 2>/dev/null || true)"
+  if [ "$target_mode" != 640 ]; then
+    printf 'FAIL: replace-text-section changed the existing target mode (got %s, want 640).\n' "$target_mode" >&2
+    fail_count=$((fail_count + 1))
+  fi
+  cp "$byte_target" "$section_workdir/idempotent-snapshot"
+  if ! "$replace_section_tool" --target "$byte_target" --section-file "$section_file" \
+     || ! cmp -s "$byte_target" "$section_workdir/idempotent-snapshot"; then
+    printf 'FAIL: replace-text-section is not byte-idempotent on repeated execution.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+
+  absent_target="$section_workdir/absent project/.justfile"
+  mkdir -p "$(dirname "$absent_target")"
+  if ! "$replace_section_tool" --target "$absent_target" --section-file "$section_file" --template-file "$template_file" \
+     || ! cmp -s "$absent_target" "$template_file"; then
+    printf 'FAIL: replace-text-section did not create an absent target from the complete supplied template.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+  absent_mode="$(stat -f '%Lp' "$absent_target" 2>/dev/null || stat -c '%a' "$absent_target" 2>/dev/null || true)"
+  if [ "$absent_mode" != 750 ]; then
+    printf 'FAIL: replace-text-section did not preserve the complete template mode on create (got %s, want 750).\n' "$absent_mode" >&2
+    fail_count=$((fail_count + 1))
+  fi
+
+  for justfile_variant in justfile Justfile .justfile; do
+    variant_target="$section_workdir/variants/$justfile_variant"
+    mkdir -p "$(dirname "$variant_target")"
+    printf 'custom-%s:\n    echo untouched\n' "$justfile_variant" > "$variant_target"
+    if ! "$replace_section_tool" --target "$variant_target" --section-file "$section_file"; then
+      printf 'FAIL: replace-text-section could not append to marker-free %s.\n' "$justfile_variant" >&2
+      fail_count=$((fail_count + 1))
+    elif [ "$(grep -c '^# >>> do-work:recipes >>>$' "$variant_target")" -ne 1 ] \
+      || ! grep -q "^custom-$justfile_variant:" "$variant_target"; then
+      printf 'FAIL: replace-text-section duplicated ownership or changed custom content in %s.\n' "$justfile_variant" >&2
+      fail_count=$((fail_count + 1))
+    fi
+  done
+
+  legacy_target="$section_workdir/legacy.just"
+  printf 'custom-before:\n    echo before\n\n# --- do-work board recipes (installed by `do-work install just-kanban`) ---\nrun-kanban $port="8090":\n    echo board\nrun-kanban-cli:\n    echo cli\nkanban-static:\n    echo static\nkanban-summary:\n    echo summary\nrun-do-work-update:\n    echo update\n\ncustom-after:\n    echo after\n' > "$legacy_target"
+  if ! "$replace_section_tool" --target "$legacy_target" --section-file "$section_file" --migrate-legacy-do-work; then
+    printf 'FAIL: replace-text-section could not migrate the exact legacy five-recipe block.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif [ "$(grep -c '^# >>> do-work:recipes >>>$' "$legacy_target")" -ne 1 ] \
+    || grep -q '^run-kanban ' "$legacy_target" \
+    || ! grep -q '^custom-before:' "$legacy_target" \
+    || ! grep -q '^custom-after:' "$legacy_target"; then
+    printf 'FAIL: legacy migration duplicated recipes or changed unrelated custom recipes.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+
+  interleaved_target="$section_workdir/interleaved-legacy.just"
+  printf '# --- do-work board recipes (installed by `do-work install just-kanban`) ---\nrun-kanban $port="8090":\n    echo board\nrun-kanban-cli:\n    echo cli\ncustom-middle:\n    echo preserve-me\nkanban-static:\n    echo static\nkanban-summary:\n    echo summary\nrun-do-work-update:\n    echo update\n' > "$interleaved_target"
+  cp "$interleaved_target" "$interleaved_target.before"
+  if "$replace_section_tool" --target "$interleaved_target" --section-file "$section_file" --migrate-legacy-do-work >/dev/null 2>&1; then
+    printf 'FAIL: replace-text-section claimed an ambiguous legacy block containing an interleaved custom recipe.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! cmp -s "$interleaved_target" "$interleaved_target.before"; then
+    printf 'FAIL: replace-text-section changed an ambiguous legacy block after rejecting it.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+
+  malformed_index=0
+  for malformed_content in \
+    '# >>> do-work:recipes >>>|one|# >>> do-work:recipes >>>|# <<< do-work:recipes <<<' \
+    '# <<< do-work:recipes <<<|one|# >>> do-work:recipes >>>' \
+    '# >>> do-work:recipes >>>|one' \
+    'one|# <<< do-work:recipes <<<' ; do
+    malformed_index=$((malformed_index + 1))
+    malformed_target="$section_workdir/malformed-$malformed_index.just"
+    printf '%s\n' "$malformed_content" | tr '|' '\n' > "$malformed_target"
+    cp "$malformed_target" "$malformed_target.before"
+    if "$replace_section_tool" --target "$malformed_target" --section-file "$section_file" >/dev/null 2>&1; then
+      printf 'FAIL: replace-text-section accepted malformed marker case %s.\n' "$malformed_index" >&2
+      fail_count=$((fail_count + 1))
+    elif ! cmp -s "$malformed_target" "$malformed_target.before"; then
+      printf 'FAIL: replace-text-section changed the target after rejecting malformed marker case %s.\n' "$malformed_index" >&2
+      fail_count=$((fail_count + 1))
+    fi
+  done
+
+  if command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$section_workdir/variants/justfile" --list >/dev/null 2>&1; then
+    printf 'FAIL: replace-text-section produced a Justfile that does not parse.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+  rm -rf "$section_workdir"
+fi
+
+assert_contains \
+  "justfile" \
+  '^# >>> do-work:recipes >>>$' \
+  'root justfile must open the exact managed do-work recipe section.'
+assert_contains \
+  "justfile" \
+  '^# <<< do-work:recipes <<<$' \
+  'root justfile must close the exact managed do-work recipe section.'
+assert_contains \
+  "actions/install.md" \
+  'tools/replace-text-section\.sh' \
+  'actions/install.md must reconcile recipes through the managed-section utility.'
+root_managed_section="$(awk '$0 == "# >>> do-work:recipes >>>" {inside=1} inside {print} $0 == "# <<< do-work:recipes <<<" {exit}' "$repo_root/justfile")"
+installer_managed_section="$(awk '$0 == "# >>> do-work:recipes >>>" {inside=1} inside {print} $0 == "# <<< do-work:recipes <<<" {exit}' "$repo_root/actions/install.md" | sed 's|<kanban-dir>|tools/queue-kanban|g')"
+if [ "$root_managed_section" != "$installer_managed_section" ]; then
+  printf 'FAIL: root justfile and actions/install.md must carry the same complete managed recipe section after path substitution.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+assert_contains \
+  "tools/replace-text-section.sh" \
+  'suffix=.*dir=parent' \
+  'replace-text-section must create its temporary file in the target directory for atomic replacement.'
+assert_contains \
+  "tools/replace-text-section.sh" \
+  'os\.replace\(temporary_path, path\)' \
+  'replace-text-section must atomically rename the validated temporary over the target.'
+
 if [ "$fail_count" -gt 0 ]; then
   exit 1
 fi

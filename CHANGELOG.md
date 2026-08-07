@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.14 — Managed Justfile Recipe Section (2026-08-07)
+
+Do-work now owns one explicit recipe section and can reconcile it without reformatting or overwriting the client's surrounding Justfile.
+
+- Adds a byte-preserving, mode-preserving, same-directory atomic section replacement utility
+- Creates fresh templates, appends to custom Justfiles, and migrates the exact legacy five-recipe block without duplication
+- Rejects malformed markers and ambiguous interleaved legacy content unchanged, with idempotence and Just parse coverage
+
 ## 0.183.13 — Suite-Aware Bridge Updater (2026-08-07)
 
 Existing clients can now receive the modular four-skill distribution safely after the rollout gate, while the current release continues shipping the monolithic layout.
