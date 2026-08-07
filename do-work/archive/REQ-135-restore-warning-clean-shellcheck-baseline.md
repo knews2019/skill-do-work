@@ -3,6 +3,7 @@ id: REQ-135
 title: "Restore the Warning-Clean ShellCheck Baseline"
 status: completed
 completed_at: 2026-08-07T20:33:34Z
+commit: 99901ae
 claimed_at: 2026-08-07T20:31:33Z
 route: A
 created_at: 2026-08-07T18:58:02Z
