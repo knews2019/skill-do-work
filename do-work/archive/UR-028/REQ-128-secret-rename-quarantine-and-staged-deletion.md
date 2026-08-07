@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-08-07T08:05:50Z
 claimed_at: 2026-08-07T08:06:54Z
 completed_at: 2026-08-07T08:29:17Z
+commit: 7bb03d2
 user_request: UR-028
 addendum_to: REQ-121
 domain: general
