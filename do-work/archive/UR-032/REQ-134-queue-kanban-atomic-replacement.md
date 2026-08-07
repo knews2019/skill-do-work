@@ -3,6 +3,7 @@ id: REQ-134
 title: "Addendum: make queue-kanban atomic replacement cross-platform and symlink-safe"
 status: completed
 completed_at: 2026-08-07T22:38:55Z
+commit: 7e0536a
 claimed_at: 2026-08-07T22:32:02Z
 route: B
 created_at: 2026-08-07T18:58:52Z
