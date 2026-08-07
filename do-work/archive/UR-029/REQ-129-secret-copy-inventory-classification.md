@@ -4,6 +4,7 @@ title: Secret-derived copies remain quarantined
 status: completed
 claimed_at: 2026-08-07T10:52:04Z
 completed_at: 2026-08-07T10:56:44Z
+commit: 4ea68ae
 route: B
 created_at: 2026-08-07T08:45:11Z
 user_request: UR-029
