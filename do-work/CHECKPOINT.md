@@ -1,3 +1,5 @@
 # Session Checkpoint
 
-No interrupted work. The next ready request is REQ-142.
+## In Progress
+
+None. REQ-142 completed and is ready for its implementation commit.

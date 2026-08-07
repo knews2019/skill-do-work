@@ -86,6 +86,35 @@ knowledge_files=(
   skills/do-work-knowledge/crew-members/interviewer.md
 )
 
+toolbox_actions=(
+  validate-feedback
+  code-review
+  ui-review
+  present-work
+  ai-report
+  slop-check
+  quick-wins
+  scan-ideas
+  deep-explore
+  prime
+  inspect
+  note
+  stray-check
+  tidy-repo
+  tutorial
+  install
+)
+
+toolbox_files=(
+  skills/do-work-toolbox/SKILL.md
+  skills/do-work-toolbox/actions/help.md
+  skills/do-work-toolbox/actions/ai-report-reference.md
+  skills/do-work-toolbox/actions/deep-explore-reference.md
+  skills/do-work-toolbox/docs/code-review-guide.md
+  skills/do-work-toolbox/docs/present-work-guide.md
+  skills/do-work-toolbox/crew-members/ui-design.md
+)
+
 for core_file in "${core_files[@]}"; do
   require_file "$core_file"
 done
@@ -97,6 +126,25 @@ done
 for knowledge_file in "${knowledge_files[@]}"; do
   require_file "$knowledge_file"
 done
+
+for toolbox_file in "${toolbox_files[@]}"; do
+  require_file "$toolbox_file"
+done
+
+for toolbox_action in "${toolbox_actions[@]}"; do
+  require_file "skills/do-work-toolbox/actions/$toolbox_action.md"
+  if [ -f "$repo_root/skills/do-work-toolbox/SKILL.md" ]; then
+    toolbox_route_count="$(grep -Fo "\`./actions/$toolbox_action.md\`" "$repo_root/skills/do-work-toolbox/SKILL.md" | wc -l | tr -d ' ' || true)"
+    if [ "$toolbox_route_count" -ne 1 ]; then
+      fail "toolbox route $toolbox_action must appear exactly once (found $toolbox_route_count)"
+    fi
+  fi
+done
+
+if [ -f "$repo_root/skills/do-work-toolbox/actions/install.md" ] \
+  && grep -Eq 'just-kanban|memory-module|do-work-update' "$repo_root/skills/do-work-toolbox/actions/install.md"; then
+  fail 'toolbox installer must not own board recipes, memory setup, or core self-update'
+fi
 
 if [ -f "$repo_root/skills/do-work/hooks/hooks.json" ] \
   && grep -Fq 'memory-' "$repo_root/skills/do-work/hooks/hooks.json"; then
@@ -234,7 +282,14 @@ for source in sorted(skill_root.rglob("*.md")):
             reference = match.group("path").rstrip(".,:;)")
             if reference in {"docs/prime-bar.md", "docs/prime-foo.md"}:
                 continue
-            if reference.startswith("docs/design/"):
+            if reference.startswith(
+                (
+                    "docs/design/",
+                    "docs/handoffs/",
+                    "docs/lessons-learned/",
+                    "docs/specs/",
+                )
+            ) or reference == "docs/worklog.md":
                 continue
             if reference.startswith("../"):
                 target = (skill_root / reference).resolve()

@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.183.18 — Staged Modular Toolbox Skill (2026-08-08)
+
+Optional reviews, reporting, discovery, repository utilities, and companion installers now have an independently loadable staged package.
+
+- Preserves all sixteen retained toolbox actions, their references, guides, and guardrails under `skills/do-work-toolbox`
+- Gives toolbox a dedicated router and canonical command surface while resolving queue, board, and knowledge dependencies through explicit sibling paths
+- Limits companion installation to ui-design, bowser, last30days, and ideation-adhd, with exact-route and suite-wide runtime-reference coverage
+
 ## 0.183.17 — Staged Modular Knowledge Skill (2026-08-08)
 
 Knowledge retention now has an independently loadable staged package, while automatic memory capture remains off until the user explicitly enables it.
