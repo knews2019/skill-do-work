@@ -5,7 +5,7 @@
 ## Format Constraints
 
 - Render as a fenced block starting with `Next steps:`, one command per line, command left-aligned, a short gloss on the right, columns aligned.
-- Suggest only commands `SKILL.md`'s **Routing Decision** table actually routes — pick a trigger from the target action's routing row, never its Action Dispatch name. The dispatch name is a file-lookup key, not necessarily a trigger: `capture-requests` doesn't route (the single-word rule treats it as ambiguous), so a capture suggestion is written `do-work capture-request: <text>`. Don't invent or abbreviate a verb.
+- Suggest core commands from `SKILL.md`'s Routing table and extension commands from the owning sibling router. A capture suggestion is written `do-work capture-request: <text>`; a moved command uses `do-work-board`, `do-work-knowledge`, or `do-work-toolbox` directly, never the temporary core shim.
 - Cap at 2-3 suggestions, ranked by relevance to what just happened and what's outstanding.
 - Always close with: `do-work help` — full command reference.
 
@@ -25,7 +25,7 @@ Most actions have a next step inferable from what just ran (after `code-review`,
 | After... | State | Suggest |
 | --- | --- | --- |
 | `pipeline` | Interrupted — active pipeline still exists | `do-work pipeline` to resume, or `do-work pipeline status` to check progress |
-| `pipeline` | Completed — queue fully processed | `do-work present all`, `do-work commit` |
+| `pipeline` | Completed — queue fully processed | `do-work-toolbox present-work all`, `do-work commit` |
 | `capture-requests` | New REQs captured | `do-work verify-requests` before `do-work run` — check capture quality before building |
 | `clarify` | Questions still pending | `do-work clarify` again, not `do-work run` — unanswered REQs won't be picked up |
 | `clarify` | All answered | `do-work run` to process them |

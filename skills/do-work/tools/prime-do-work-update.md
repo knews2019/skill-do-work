@@ -26,3 +26,4 @@
 - [REQ-136: staged suite artifacts must remain export-ignored through the bridge release](../do-work/archive/REQ-136-define-four-skill-suite-contract.md#lessons-learned)
 - [REQ-137: the installed bridge validator must remain authoritative over a future archive](../do-work/archive/REQ-137-ship-suite-aware-bridge-updater.md#lessons-learned)
 - [REQ-138: ambiguous unmarked legacy recipe spans must fail instead of absorbing client content](../do-work/archive/REQ-138-add-managed-text-section-replacement.md#lessons-learned)
+- [REQ-144: bridge and fresh installs must converge on one verified four-skill recovery transaction](../../../do-work/archive/REQ-144-activate-four-skill-distribution.md#lessons-learned)

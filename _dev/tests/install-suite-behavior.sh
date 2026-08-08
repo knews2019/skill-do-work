@@ -54,6 +54,23 @@ if [ ! -x "$installer" ]; then
   exit 1
 fi
 
+for cutover_export_path in VERSION suite skills; do
+  if git -C "$repo_root" check-attr export-ignore -- "$cutover_export_path" \
+    | grep -q 'export-ignore: set'; then
+    fail "fresh-install archive still excludes /$cutover_export_path"
+  fi
+done
+
+for retired_runtime_path in SKILL.md actions tools/do-work-update.sh tools/queue-kanban; do
+  if [ -f "$repo_root/$retired_runtime_path" ] \
+    || { [ -d "$repo_root/$retired_runtime_path" ] \
+      && find "$repo_root/$retired_runtime_path" -type f \
+        ! -path "$repo_root/tools/queue-kanban/queue-kanban" -print -quit \
+        | grep -q .; }; then
+    fail "fresh-install source still carries legacy root runtime: $retired_runtime_path"
+  fi
+done
+
 workdir="$(mktemp -d "${TMPDIR:-/tmp}/do-work-suite-install-test.XXXXXX")"
 trap 'rm -rf "$workdir"' EXIT
 
@@ -74,6 +91,15 @@ tar czf "$archive_file" -C "$archive_parent" skill-do-work-main
 bootstrap_command="$(bash "$installer" --print-bootstrap-command)"
 assert_output_contains "$bootstrap_command" 'main\.tar\.gz' 'canonical bootstrap must fetch the upstream source archive'
 assert_output_contains "$bootstrap_command" '--archive "\$archive_file"' 'canonical bootstrap must pass the downloaded archive to the installer instead of downloading a second artifact'
+readme_bootstrap_command="$(awk '
+  /^## Installation$/ {in_installation=1; next}
+  in_installation && /^```bash$/ {in_command=1; next}
+  in_command && /^```$/ {exit}
+  in_command {print}
+' "$repo_root/README.md")"
+if [ "$readme_bootstrap_command" != "$bootstrap_command" ]; then
+  fail 'README installation block must be byte-identical to --print-bootstrap-command output'
+fi
 
 fake_bin="$workdir/fake-bin"
 mkdir -p "$fake_bin"

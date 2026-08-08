@@ -23,12 +23,13 @@ do-work — core request and queue orchestration
   do-work help                      Show this menu
 
 Extensions installed beside core:
-  do-work-board       Kanban, Testing, calendar, summaries, and board CLI
-  do-work-knowledge   BKB, memory, dream, interviews, and prompts
-  do-work-toolbox     Reviews, reports, presentation, inspection, and repo utilities
+  do-work-board board                 Kanban, Testing, calendar, summaries, and board CLI
+  do-work-knowledge bkb               BKB, memory, dream, interviews, and prompts
+  do-work-toolbox code-review         Reviews, reports, presentation, inspection, and repo utilities
 
 Temporary compatibility:
   do-work pipeline <request>        Stateful end-to-end flow; removed after modular cutover
+  do-work <moved-command>           Prints its exact sibling invocation and stops
 ```
 
 For `<core-command> help`, read that action's Input and When to Use sections and return no more than 15 lines: purpose, usage, accepted arguments, and two examples. Never execute the command while serving help.
@@ -37,4 +38,5 @@ For `<core-command> help`, read that action's Input and When to Use sections and
 
 - Keep this menu aligned with the core router.
 - Do not duplicate extension menus; point to the named sibling skill.
+- Moved-command help must be explanatory only; never forward to a sibling action.
 - Help never mutates the queue, project, or Git state.

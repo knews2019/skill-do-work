@@ -1,35 +1,52 @@
-# do-work
+# do-work suite
 
-A task queue skill for agentic coding tools. Capture requests fast, process them later.
+A four-skill task queue suite for agentic coding tools. Capture requests fast, process them later.
 
 ## Installation
 
-do-work installs into `.claude/skills/do-work/`, so it never touches your project's own files. Run from your repo root:
+Run this exact command from the root of the Git repository where you want the suite installed:
 
 ```bash
-mkdir -p .claude/skills/do-work
-curl -sL https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz \
-  | tar xz -C .claude/skills/do-work --strip-components=1 \
-      --exclude='_dev' --exclude='do-work' --exclude='kb' --exclude='ai-reports' \
-      --exclude='.vscode' --exclude='decisions'
+(
+  set -e
+  project_root="$(git rev-parse --show-toplevel 2>/dev/null)" || { printf 'do-work bootstrap: run this from inside the target Git repository\n' >&2; exit 1; }
+  bootstrap_tmp="$(mktemp -d "${TMPDIR:-/tmp}/do-work-suite-bootstrap.XXXXXX")"
+  trap 'rm -rf "$bootstrap_tmp"' EXIT
+  archive_file="$bootstrap_tmp/do-work-suite.tar.gz"
+  curl -fsSL -o "$archive_file.download" https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz
+  mv "$archive_file.download" "$archive_file"
+  mkdir -p "$bootstrap_tmp/source"
+  tar xzf "$archive_file" -C "$bootstrap_tmp/source" --strip-components=1
+  bash "$bootstrap_tmp/source/tools/install-do-work-suite.sh" --project-root "$project_root" --archive "$archive_file"
+)
 ```
 
-The entry point is `.claude/skills/do-work/SKILL.md`.
+One reviewed archive installs four required sibling skills at one shared version:
 
-- **Claude Code** auto-discovers it — just say `do-work help`.
-- **Codex / Gemini** don't auto-discover skills — point the agent at `.claude/skills/do-work/SKILL.md` once per session (or add a one-line pointer to your `AGENTS.md` / `GEMINI.md`).
+- `.claude/skills/do-work/` — capture, queue execution, review, and maintenance
+- `.claude/skills/do-work-board/` — Kanban, Testing, summaries, and managed Just recipes
+- `.claude/skills/do-work-knowledge/` — BKB, memory, dreams, interviews, and prompts
+- `.claude/skills/do-work-toolbox/` — audits, reports, presentation, and repository utilities
 
-Commit `.claude/skills/do-work/` to your repo — each repo carries its own copy of the skill.
+The installer validates all four modules before the first managed write, asks once, verifies every installed byte before reporting success, and restores every changed managed module/configuration path after failure. It creates or refreshes the sentinel-owned Just section, enables core hooks, leaves memory capture disabled on fresh installs, and migrates only previously enabled legacy memory-hook paths. Project `do-work/`, `kb/`, application files, and unrelated Just/settings bytes stay outside the managed plan.
 
-### Install with an AI agent
+Claude Code can invoke the four skill names directly. In Codex or Gemini, point the agent at the appropriate sibling `SKILL.md` once per session, or add those pointers to the project's agent instructions. Commit all four `.claude/skills/do-work*` directories so each repository carries its suite.
 
-Paste this into Claude Code, Codex, or Gemini — it fetches the instructions and does the install for you:
+**Updating:** `do-work update` and `just run-do-work-update` call the same installed core engine. Both review one archive, reconcile all four module trees plus the managed Just/settings surfaces behind one confirmation, and either verify the complete resulting suite or recover every managed path. Never delete the repository-root `do-work/` queue or `kb/`; neither update entry point manages them.
 
-> Install the **do-work** skill into this repository by fetching and following the Installation section here: https://raw.githubusercontent.com/knews2019/skill-do-work/refs/heads/main/README.md — install into `.claude/skills/do-work/`, don't modify anything outside that folder, then confirm `SKILL.md` exists and tell me how to run it.
+### Upgrade an existing installation with an AI agent
 
-The prompt stays short because the raw README it points at carries the command, the install location, the verify step, and the per-tool invocation notes.
+Paste this into an AI agent from the root of a repository that already has do-work installed:
 
-**Updating:** The cleanest path is `do-work update` — it checks the upstream version, snapshots your install, pre-cleans the globbed `prompts/` and `interviews/` directories, then extracts (see `actions/version.md`). If you have installed the `just-kanban` recipes, `just run-do-work-update` performs the same project-local update from the terminal: it shows the installed-versus-upstream diff and asks before overwriting, then overwrites in place — no rollback copy is kept, so version control is the undo (it warns before the prompt if the install is not tracked in git, or if a shipped file has uncommitted edits, which the extraction overwrites beyond recovery). If you update manually by re-running the install command instead, note that `tar` overwrites files in place but does **not** delete files removed upstream. For directories the skill loads by name (`actions/`, `crew-members/`, `specs/`, `docs/`) leftover files are harmless. But `prompts/` and `interviews/` are *globbed* — `do-work prompts list`/`run` and `do-work interview list` enumerate every `*.md` in them — so a prompt or interview removed upstream stays runnable until you delete it. For a guaranteed-clean manual update, delete the whole `.claude/skills/do-work/` folder and re-extract — it's self-contained, so nothing else is affected. Never delete the repo-root `do-work/` runtime directory (your queue, archives, and deliverables) or `kb/` (your knowledge base) — neither is part of the skill install, and no update path touches them.
+> Upgrade this repository's existing project-local do-work installation.
+>
+> Work only inside the current Git repository. Locate its installed do-work skill, normally at `.claude/skills/do-work/`, and confirm its updater reports exactly `suite-layout-v2` when run with `--capabilities`. If the installation or compatible updater is missing, stop and tell me what is missing instead of attempting a fresh installation.
+>
+> Run the installed `tools/do-work-update.sh` with this repository's Git root passed through `--project-root`. Use that updater as the only mutation path. Show me its complete managed-file diff and preserve its built-in confirmation before overwriting anything; do not answer the confirmation automatically.
+>
+> Do not modify the repository's `do-work/` queue, `kb/` data, application files, or unrelated configuration. When finished, verify the installed version and report the previous version, resulting version, and whether the update completed or was cancelled.
+
+This prompt updates only the repository where it is run, so you can paste it separately into each existing installation whenever its owner is ready.
 
 ## The idea
 
@@ -49,7 +66,7 @@ do-work capture-request: [paste meeting notes, specs, or a screenshot]
 
 The skill splits compound inputs into separate REQ files automatically. It asks clarifying questions during capture (while you're present) but never starts building — capture and execution are strictly separate. For testable behavioral work, capture also infers and confirms the RED case: how we know it's failing or missing now, and what turns GREEN when the work is done.
 
-See the [Capture Guide](docs/capture-guide.md) for folder structure, REQ file format, and full workflow.
+See the [Capture Guide](skills/do-work/docs/capture-guide.md) for folder structure, REQ file format, and full workflow.
 
 ### Run (process the queue)
 
@@ -63,11 +80,11 @@ do-work run
 - **Medium** (clear goal, unknown location) — explore codebase first
 - **Complex** (new features, architectural) — plan, explore, then build
 
-Each completed request gets archived with implementation notes and a git commit. A built-in review runs after each item. The build phase always loads behavioral guardrails (`crew-members/coding-guardrails.md`) — minimal, surgical changes with verifiable success criteria and names that stay findable by plain-text search, not "it compiles" handwaves.
+Each completed request gets archived with implementation notes and a git commit. A built-in review runs after each item. The build phase always loads behavioral guardrails (`skills/do-work/crew-members/coding-guardrails.md`) — minimal, surgical changes with verifiable success criteria and names that stay findable by plain-text search, not "it compiles" handwaves.
 
 Other trigger words: `go`, `start`, `begin`, `process`, `execute`, `build`, `continue`, `resume`.
 
-See the [Work Guide](docs/work-guide.md) for the full pipeline, triage routes, and clarify mode.
+See the [Work Guide](skills/do-work/docs/work-guide.md) for the full pipeline, triage routes, and clarify mode.
 
 ### Pipeline (full end-to-end)
 
@@ -84,13 +101,13 @@ Pipeline state lives at `do-work/pipeline.json`. Each step dispatches to an exis
 
 ## Other actions
 
-Run `do-work help` for the full menu. Per-action guides live in [`docs/`](./docs/).
+Run each sibling's `help` command for its menu. Core guides live in [`skills/do-work/docs/`](./skills/do-work/docs/); extension guides live with their owning skill.
 
-Common ones: `verify-requests`, `review-work`, `validate-feedback`, `clarify`, `abandon`, `code-review`, `ui-review`, `quick-wins`, `scan-ideas`, `deep-explore`, `prime`, `present-work`, `commit`, `inspect`, `cleanup`, `forensics`, `roadmap`, `board`, `stray-check`, `tidy-repo`, `bkb`, `dream`, `interview`, `prompts`, `install ui-design`, `install bowser`, `install last30days`, `install just-kanban`, `install ideation-adhd`, `version`, `update`, `recap`, `tutorial`, `help`.
+Common extension calls include `do-work-board board`, `do-work-knowledge bkb`, `do-work-knowledge memory`, `do-work-toolbox code-review`, `do-work-toolbox present-work`, and `do-work-toolbox inspect`. For one modular release, entering a moved command through core prints its exact replacement and stops.
 
-### Queue board (`do-work board`)
+### Queue board (`do-work-board board`)
 
-`do-work board` builds and runs a small Go tool (`tools/queue-kanban/`, shipped with the skill) that renders your `do-work/` queue as a live Kanban board + completion calendar. `do-work board` serves it at `http://localhost:8090`; `do-work board static` writes a self-contained HTML snapshot you can hand off; `do-work board summary` prints column counts. It's a read-only viewer and it's the one part of the skill that needs the **Go toolchain**. Because the tool ships inside the skill, `do-work update` keeps it current — no separate install.
+`do-work-board board` builds and runs the board sibling's Go tool, serving the queue at `http://localhost:8090`. `do-work-board static` writes a self-contained snapshot, `do-work-board summary` prints column counts, and `do-work-board cli` prints the in-flight digest. The board is the suite's only Go-toolchain dependency; updates keep it synchronized with core.
 
 ## File structure
 
@@ -144,28 +161,28 @@ Yes. They're plain markdown with frontmatter. You can change priority, edit requ
 
 ### Do I need to remind it to write lessons, keep working, commit often, or not block when I'm AFK?
 
-Mostly no — those are already built in. `do-work run` appends a `## Lessons Learned` section per REQ, logs out-of-scope finds to `## Discovered Tasks`, commits each finished REQ atomically, loads the YAGNI guardrail on every build, and never blocks on ambiguity (it records a best-judgment decision and files a `pending-answers` follow-up you review later via `do-work clarify`). The two things you *can't* get just by asking — an unbounded "loop until the queue is empty" runner and a backgrounded commit — are deliberately not the default. See the [Standing Preferences](docs/standing-preferences.md) reference for the full map of common nudges → where each already lives.
+Mostly no — those are already built in. `do-work run` appends a `## Lessons Learned` section per REQ, logs out-of-scope finds to `## Discovered Tasks`, commits each finished REQ atomically, loads the YAGNI guardrail on every build, and never blocks on ambiguity (it records a best-judgment decision and files a `pending-answers` follow-up you review later via `do-work clarify`). The two things you *can't* get just by asking — an unbounded "loop until the queue is empty" runner and a backgrounded commit — are deliberately not the default. See the [Standing Preferences](skills/do-work/docs/standing-preferences.md) reference for the full map of common nudges → where each already lives.
 
 ## Token efficiency
 
-The skill is designed for selective loading — you don't need everything in context at once.
+The suite is designed for selective loading — you don't need everything in context at once.
 
-- **SKILL.md** is the only file loaded initially. It handles routing and dispatches to the relevant action file.
+- Each sibling's **SKILL.md** handles only that package's routing and dispatches to the relevant action file.
 - **Action files** are loaded on-demand by the routing decision. Only the active action file needs to be in context.
-- **crew-members/** are JIT-loaded during implementation based on REQ domain. They never need to be pre-loaded.
-- **docs/** guides are for human reading, not agent context. Don't load them during work.
-- **specs/** templates are loaded by the work action after triage, only when a REQ matches.
+- Core **crew-members/** are JIT-loaded during implementation based on REQ domain. They never need to be pre-loaded.
+- Package **docs/** guides are for human reading, not agent context. Don't load them during work.
+- Core **specs/** templates are loaded by the work action after triage, only when a REQ matches.
 
-If your agent has limited context, prioritize: **SKILL.md → active action file → relevant crew-member**. Everything else is optional.
+If your agent has limited context, prioritize: **owning sibling SKILL.md → active action file → relevant crew-member**. Everything else is optional.
 
-## Hooks (optional)
+## Hooks
 
-Two optional hook scripts for Claude Code users:
+The suite installer enables two core Claude Code hooks:
 
-- **`hooks/pipeline-guard.sh`** — Stop hook that prevents the agent from stopping mid-pipeline. Install as a `Stop` hook.
-- **`hooks/session-start.sh`** — SessionStart hook that injects a status line (version, pending REQs, active pipeline) at the beginning of each session.
+- **`skills/do-work/hooks/pipeline-guard.sh`** — Stop hook that prevents the agent from stopping mid-pipeline.
+- **`skills/do-work/hooks/session-start.sh`** — SessionStart hook that injects a status line (version, pending REQs, active pipeline) at the beginning of each session.
 
-To install, merge the hook config from `hooks/hooks.json` into your `.claude/settings.json`. See each script for details.
+Fresh installs do not enable memory capture. To opt in later, run `do-work-knowledge setup-memory`; it composes the knowledge hook fragment without clobbering existing settings.
 
 The sample commands are anchored to `$CLAUDE_PROJECT_DIR/.claude/skills/do-work/hooks/…` — Claude Code runs hooks from your project root, not the skill directory, so a project-relative `hooks/…` path wouldn't resolve. This assumes do-work lives at the canonical `.claude/skills/do-work/`; if you installed it elsewhere, change the path in your `.claude/settings.json` to match.
 

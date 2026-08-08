@@ -1,33 +1,30 @@
-# Do-Work Skill Project
+# Do-Work Suite Project
 
 A task queue skill for agentic coding tools. Platform-agnostic — works with any agent that can read/write files and run shell commands.
 
 ## Project Structure
 
 ```
-SKILL.md              # Entry point — routing logic, action dispatch; authoritative action-name → file-path index
-next-steps.md         # Per-action next-step suggestions
 README.md             # Installation + quick usage
-actions/              # Action files — each a standalone prompt; heavy actions ship a *-reference.md companion
-specs/                # Specification templates (see specs/README.md)
-prompts/              # Prompt library (see prompts/README.md for the index)
-interviews/           # Prescriptive templates loaded by the interview action
-crew-members/         # Agent rules loaded just-in-time — each file's JIT_CONTEXT comment states when it loads
-hooks/                # Optional hook scripts (platform-specific; hooks.json + shell scripts)
-tools/                # Shipped compiled tooling — queue-kanban/ renders the do-work queue as a Kanban board; built via `do-work board`
-docs/                 # User guides — not every action has one
+VERSION               # Shared four-skill suite version
+suite/                # Sole module source/destination manifest
+skills/do-work/       # Core router, queue actions, orchestration, hooks, specs, and updater
+skills/do-work-board/ # Queue-kanban, board action, and managed Just template
+skills/do-work-knowledge/ # BKB, memory, dreams, interviews, and prompts
+skills/do-work-toolbox/   # Reviews, reports, presentation, and repository utilities
+tools/                # Root bootstrap/manifest/managed-section distribution utilities only
 decisions/            # ADRs (records/), imported specs, topic indexes, decision log
 AGENTS.md             # Stub — redirects to CLAUDE.md
 CHANGELOG.md          # Release notes
 ```
 
-For the per-action file list with descriptions, read `SKILL.md` — it is the canonical name→path mapping. This tree deliberately stops at directories so it cannot drift from the repo.
+For action routing, read the `SKILL.md` in the owning directory under `skills/`. `suite/modules.tsv` is the only source/destination declaration for the required sibling packages.
 
 ## Before Every Commit
 
-**Scope: the integrating commit only.** This ritual belongs to whoever commits the change into the integration branch — in the work pipeline, the queue owner at Step 9. A builder committing on its own `worktree-agent-*` branch **skips it entirely**: `actions/version.md` and `CHANGELOG.md` are serial-only files owned by the integrator (`actions/work-reference.md` → Worktree Dispatch Mode → Fan-Out Dispatch), and a builder bumping either would race every sibling. This file auto-loads in any session rooted here, a builder's worktree included, so the exemption has to live in the rule rather than in each builder's brief — a rule that every brief must override will eventually meet a brief that forgets.
+**Scope: the integrating commit only.** This ritual belongs to whoever commits the change into the integration branch — in the work pipeline, the queue owner at Step 9. A builder committing on its own `worktree-agent-*` branch **skips it entirely**: `skills/do-work/actions/version.md` and `CHANGELOG.md` are serial-only files owned by the integrator (`skills/do-work/actions/work-reference.md` → Worktree Dispatch Mode → Fan-Out Dispatch), and a builder bumping either would race every sibling.
 
-1. **Bump the version** in `actions/version.md` (line starting with `**Current version**:`). Use semver — patch for fixes, minor for features, major for breaking changes. When in doubt, patch. **Verify the new version number is strictly greater than the first existing entry in `CHANGELOG.md`** — duplicate version numbers have occurred before.
+1. **Bump the shared version** in `VERSION`, `skills/do-work/VERSION`, and `skills/do-work/actions/version.md` (line starting with `**Current version**:`). Use semver — patch for fixes, minor for features, major for breaking changes. When in doubt, patch. **Verify the new version number is strictly greater than the first existing entry in `CHANGELOG.md`** — duplicate version numbers have occurred before.
 
 2. **Add a changelog entry** at the top of `CHANGELOG.md` (below the header). The title must **say what was delivered** — a reader scanning only headings should know what changed ("Board View Filters", not "The Fine Sieve"). No whimsical codenames. **Verify the title is not already used** by an earlier entry. (Historical entries were retroactively retitled to this convention in 0.117.1.)
 
@@ -43,7 +40,7 @@ Keep it brief, newest on top, lead with value not implementation. Every version 
 
 ## Action File Conventions
 
-**Every NEW action must justify not being a sibling skill.** Before an action file is added, state — in its description blockquote or an accompanying ADR — why it belongs inside do-work rather than in a separate skill: what queue/pipeline machinery it needs, or which existing action it completes. Reviewers reject additions without this justification. (Ratchet from the 2026-07 bloat cleanup: bkb, interview, dream, and the prompt library accreted ~47k words with no such gate — see `decisions/audits/2026-07-15-relocation-extraction-plans.md`.) Every new action also adds a routing row, a dispatch row, a help-menu block, and a next-steps block — SKILL.md's word budget is enforced by `_dev/tests/contract-regressions.sh`, and the answer to hitting it is a merge or lazy-load, not a bigger budget.
+**Every NEW action must justify its package.** Before an action file is added, state — in its description blockquote or an accompanying ADR — why it belongs in core, board, knowledge, or toolbox: what package machinery it needs or which existing action it completes. Reviewers reject additions without this justification. Every new action also updates the owning `skills/do-work*/SKILL.md`, help, and any next-step surface; router budgets are enforced by `_dev/tests/contract-regressions.sh`.
 
 Action files follow a consistent structure. When adding or modifying actions, use this template:
 
@@ -119,7 +116,7 @@ Action files follow a consistent structure. When adding or modifying actions, us
 - **State-based actions** (`version.md`, `pipeline.md`) — Response sections keyed by input type instead of sequential steps.
 - **Checklist-based diagnostics** (`forensics.md`) — Use a `## Checks` section with independently-runnable items instead of ordered `## Steps`. Each check is a diagnostic probe, not a sequential step.
 
-Cross-reference other actions by their **file path** (e.g., `actions/work.md`, or `actions/work-reference.md`'s Schema Read Contract) so an agent reading the file can open the target directly without resolving a name to a path. Shipped files must never cite this repo's own `CLAUDE.md` or `AGENTS.md` — both are export-ignored (they're the maintainer doc, and nested CLAUDE.md auto-loads into consumer agents' context), so the citation dangles downstream; restate the rule inline or point at a shipped home instead. `_dev/tests/contract-regressions.sh` enforces this by flagging **any** mention of either file in a shipped path — not by matching citation idioms, which caught 0 of 8 real occurrences before being inverted. References to a *consumer project's* CLAUDE.md (prime routing, tidy-repo, KB schema files) are fine, and that exemption is recorded as a **per-file** allowlist in the check itself; a new shipped file mentioning the maintainer doc fails until someone decides which of the two it is. Companion reference files take a path too (`actions/interview-reference.md`, `actions/bkb-reference.md`). The one exception is a `do-work <verb>` **command invocation** (`do-work run`, `do-work clarify`) — that's how an action is _run_, not a pointer to its file, so keep it as a command. SKILL.md remains the authoritative name→path mapping and may use short names in its routing prose.
+Cross-reference same-package actions by their local path (for example `actions/work.md`); cross a package boundary with an explicit sibling path such as `../do-work-knowledge/actions/bkb.md`. Shipped files must never cite this repo's own `CLAUDE.md` or `AGENTS.md` — both are export-ignored maintainer instructions. `_dev/tests/contract-regressions.sh` enforces this across the shipped `skills/` tree.
 
 ### Prescribed Shell Commands Must Surface What the Steps Consume
 
@@ -143,30 +140,30 @@ When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep 
 
 ## Agent Rules
 
-Just-in-time rules live in `crew-members/[name].md`. Each file's `JIT_CONTEXT` comment is the canonical statement of when it loads — that comment is the contract, not any list duplicated here or elsewhere. The loading order for the work pipeline is specified in `actions/work.md` Step 6.
+Just-in-time work rules live in `skills/do-work/crew-members/[name].md`. Each file's `JIT_CONTEXT` comment is the canonical statement of when it loads. The loading order is specified in `skills/do-work/actions/work.md` Step 6.
 
 - `general.md` and `coding-guardrails.md` are always loaded during implementation. Everything else loads conditionally per its `JIT_CONTEXT` (e.g., domain match, `tdd`/`caveman` flags, security surface, fan-out, human-facing artifact production, third-party content ingestion, skill-instruction maintenance passes, debugging retries, interviews).
-- Four contracts worth knowing without opening files: `clear-questions.md` loads before presenting the user any **interactive question** (ask-tool prompt, clarifying question, option menu) and governs question wording — one decision per question, no unglossed shorthand, options that state their consequence; `anti-slop.md` loads before producing any **human-facing artifact**; `prompt-injection.md` loads before ingesting any **content not authored by the current invocation or the shipped skill files**; `maintenance.md` loads before a **deliberate maintenance pass on the skill's own instructions** (fixing a drifting agent/action/crew/prime file, where removing or narrowing is a candidate fix) and codifies delete-before-you-add — the maintenance-time complement to `coding-guardrails.md`'s implementation-time surgical-changes rule. In the work pipeline the trigger is the `maintenance: true` REQ marker (set by capture for a removal/narrowing finding on the skill's own instructions; loaded by `actions/work.md` Step 6) — marker-only, never a description heuristic, which would misfire on ordinary implementation REQs. New actions that hit any of these triggers must load the corresponding file.
+- Four contracts worth knowing without opening files: `clear-questions.md` loads before an interactive question; `anti-slop.md` loads before a human-facing artifact; `prompt-injection.md` loads before untrusted-content ingestion; `maintenance.md` loads for a `maintenance: true` instruction-maintenance REQ. Each package carries the crew files its actions need.
 - If a rules file is missing, proceed without it — never block on a missing rules file.
 
 ## Queue Path Convention
 
 Pending REQ files live in `do-work/queue/` — not `do-work/` root.
 
-## Shipped Tooling (`tools/`)
+## Shipped Board Tooling (`skills/do-work-board/tools/`)
 
-`tools/queue-kanban/` is a standalone Go module (its own `go.mod`, embedded `web/` frontend) that renders the `do-work/` queue as a Kanban board. It ships in the tarball (it is **not** `export-ignore`'d) so `do-work update` carries it into every consumer; the `do-work board` action (`actions/board.md`) builds and runs it. Conventions:
+`skills/do-work-board/tools/queue-kanban/` is a standalone Go module (its own `go.mod`, embedded `web/` frontend) that renders the `do-work/` queue as a Kanban board. It ships in the board module and is invoked by `do-work-board board` (`skills/do-work-board/actions/board.md`). Conventions:
 
 - **Versioning is folded into the skill.** The tool has no independent changelog — its changes get entries in the root `CHANGELOG.md` and a normal skill version bump, exactly like any action. (It was independently versioned through 1.1.0 before being vendored in; that history lives in `decisions/records/adr-016-*`.)
-- **Keep the parser in lock-step with the schema.** The board buckets tickets by the `status` vocabulary defined in `actions/work-reference.md`'s Schema Read Contract; `depends_on`, `domain`, `route`, `write_set`, `assigned_to`, `effort_estimate` (the trivial-work triage chip — rendered only when `trivial`; absent/unrecognized resolves to `normal` with a data warning), and the blocked fields (`blocked_by`/`blocked_at`/`blocked_check`) are parsed for display only (badges, drawer metadata — no column logic; a `status: blocked` card is routed by its `status` value alone, and the board never runs `blocked_check` — the work pipeline does). Unlike the read-only list in the next bullet, **this enumeration is load-bearing**: it is what attaches the mirroring obligation below to a specific field, so a field the board parses but that is missing from this list carries no obligation and drifts silently — which is how `route` came to be read verbatim while the contract said uppercase. Add a field here when the board starts parsing it. `write_set` feeds one derived, display-only overlap annotation (`annotateWriteSetOverlap`, run after bucketing) behind the `overlaps` badge and its drawer row — never column logic, never scheduling. Nothing schedules on `write_set` at all, and that does not depend on how many REQs are in flight: under fan-out dispatch it is advisory input to a human's pick and the merge is the non-interference proof (`actions/work-reference.md` → Worktree Dispatch Mode → Fan-Out Dispatch). The field is purely a display input. `assigned_to` is the same class one step further out: the board only badges it, and the single reader that *acts* on it is the work pipeline's default scan, which skips-and-reports as a courtesy and is overridden by explicit targeting — never the board. Any change to that contract must be mirrored in `tools/queue-kanban/model.go` (and vice-versa) in the same commit — co-location is the whole point. The same lock-step applies to the testing placeholders (`testing_status` / `tested_by` / `testing_updated_at` / `testing_feedback`, mirrored in `tools/queue-kanban/testing.go`).
+- **Keep the parser in lock-step with the schema.** The board buckets tickets by the `status` vocabulary in `skills/do-work/actions/work-reference.md`; its parsed display fields must stay aligned with `skills/do-work-board/tools/queue-kanban/model.go`, and the Testing placeholders with `skills/do-work-board/tools/queue-kanban/testing.go`.
 - **The tool has exactly three write surfaces, and none touches pipeline state.** (1) The board's Testing view writes only the testing placeholders above plus `do-work/testers.md`. (2) `queue-kanban next-version` rewrites the single `**Current version**: X.Y.Z` line in one version file (`actions/version.md` by default, `--version-file` to point elsewhere). (3) `queue-kanban next-req` atomically creates one durable number marker under `do-work/.req-reservations/`; this is queue coordination metadata, not a REQ or pipeline-field edit. Everything else the tool does is read-only — illustratively `summary`, `open-work`, `generate`, `serve`'s board views, `frontmatter`, `verify`, and `now` (which reads a clock, not even the tree); the rule is the count, not this list. Nothing in the tool writes `status`, any other pipeline field, or **`CHANGELOG.md`** — the changelog stays an owner-only, human-authored write. Adding a fourth write surface means amending this sentence in the same commit; that is the co-location rule applied to itself.
-- **`verify` is the mechanical half of "Before Every Commit."** `queue-kanban verify` checks items 1 and 2 of that section (version/changelog agreement, entry-title reuse) plus queue, assignment, UR-closure and worktree invariants, and it is wired into `actions/forensics.md` Check 14. It reports and routes; it never repairs — fixes belong to `actions/cleanup.md`, which asks first.
-- **Toolchain exception to "design for the floor."** The board is the one capability that needs a compiler (Go, per `tools/queue-kanban/go.mod`). `actions/board.md` precondition-checks `go` and degrades gracefully when it's absent — it never blocks the rest of the skill. Don't reach for a compiled tool in any other action, with one narrow class of exception: a subcommand may be named as the **preferred** source for something an action already obtains a shell-portable way, provided the fallback stays documented and nothing builds the binary to get it. Four qualify today — `frontmatter`, `next-req`, `next-version`, and `now` (`actions/work-reference.md` → Timestamp rule) — each gated on the binary being *already built* and each falling back to the manual procedure it accelerates. That gate is the whole exception: an action that would compile the tool, or that has no floor path, is the prohibited shape.
-- **Never commit build outputs.** The compiled `queue-kanban` binary is gitignored by `tools/queue-kanban/.gitignore` (which ships, keeping it ignored downstream); the `do-work board static` artifact lands in `build/` at the repo root.
+- **`verify` is the mechanical half of "Before Every Commit."** It is wired into `skills/do-work/actions/forensics.md`; it reports and routes, while repairs belong to `skills/do-work/actions/cleanup.md`.
+- **Toolchain exception to "design for the floor."** The board is the one capability that needs Go (`skills/do-work-board/tools/queue-kanban/go.mod`); `skills/do-work-board/actions/board.md` degrades gracefully when it is absent. Core may use an already-built sibling binary only where a shell-portable fallback remains documented.
+- **Never commit build outputs.** The compiled `queue-kanban` binary is gitignored by `skills/do-work-board/tools/queue-kanban/.gitignore`; the `do-work-board static` artifact lands in `build/` at the repo root.
 
 ## Lessons → Knowledge Base Handoff
 
-After a REQ's review passes, review-work (standalone mode) and work (pipeline mode) both offer to promote `## Lessons Learned` into the project's KB via `actions/kb-lessons-handoff.md` — see that file for the full contract (payload shape, consent flow, the optional `kb_status`/`kb_entry` REQ frontmatter fields). The handoff is pure do-work, never blocks archival, and defers to `pending` when no `kb/` exists.
+After review passes, core offers to promote `## Lessons Learned` through `skills/do-work/actions/kb-lessons-handoff.md`; later BKB processing belongs to `do-work-knowledge`.
 
 ## Agent Compatibility
 
@@ -196,7 +193,7 @@ Skip it when the iteration was by design (`scan-ideas`, `deep-explore`, review l
 No cryptic or single-word names for anything with reach; two words minimum; names must be
 findable by plain-text search. The full rule — what counts as reach, the per-language form
 clause, the idiomatic-short-locals carve-out, and its precedence against surgical-changes —
-now lives in `crew-members/coding-guardrails.md` § 5 Naming for Reach, which ships and
+now lives in `skills/do-work/crew-members/coding-guardrails.md` § 5 Naming for Reach, which ships and
 always loads during implementation. It applies here like it does in any consumer project;
 this section is a pointer so the two can't drift. That file's exemption for
 single-word-by-design invocations is why `do-work run` and the Go tool's subcommands are

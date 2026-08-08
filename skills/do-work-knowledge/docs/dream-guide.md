@@ -2,7 +2,7 @@
 
 A manual, four-phase consolidation pass over a plain-text memory directory — find rot, heal contradictions, merge near-duplicates, rebuild the index. Destructive by design, so it never runs automatically and never runs without a preview-then-confirm round.
 
-> **Not to be confused with cleanup, stray-check, or bkb commands.** `do-work cleanup` works on do-work's own archive bookkeeping. `do-work stray-check` works on repo-wide file hygiene. `do-work-knowledge bkb lint` produces a read-only health report on a bkb wiki. `do-work-knowledge bkb garden` does conservative relationship hygiene. Dream is the destructive, one-pass rewrite of an existing memory store after lint has been flagging the same issues for a while.
+> **Not to be confused with cleanup, stray-check, or bkb commands.** `do-work cleanup` works on do-work's own archive bookkeeping. `do-work-toolbox stray-check` works on repo-wide file hygiene. `do-work-knowledge bkb lint` produces a read-only health report on a bkb wiki. `do-work-knowledge bkb garden` does conservative relationship hygiene. Dream is the destructive, one-pass rewrite of an existing memory store after lint has been flagging the same issues for a while.
 
 ## What it operates on
 
@@ -89,5 +89,5 @@ do-work lint and merge notes        Same
 - You want a read-only health report on a bkb wiki → `do-work-knowledge bkb lint`.
 - You want routine, conservative relationship hygiene on a bkb wiki → `do-work-knowledge bkb garden`.
 - You want structural defragmentation → `do-work-knowledge bkb defrag`.
-- You want repo-wide file hygiene (not memory) → `do-work stray-check`.
+- You want repo-wide file hygiene (not memory) → `do-work-toolbox stray-check`.
 - You want do-work archive consolidation → `do-work cleanup`.

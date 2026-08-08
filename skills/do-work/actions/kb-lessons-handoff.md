@@ -9,7 +9,7 @@ This file is not a standalone action — it is loaded by other actions as a refe
 - **Suite-local dependency.** The handoff writes into the KB system owned by the installed sibling `do-work-knowledge` skill (see `../do-work-knowledge/actions/bkb.md`). It never imports knowledge logic into core.
 - **One-way and terminal per REQ.** The handoff runs once per REQ, after lessons are captured. Downstream processing (triage, ingest, wiki compilation) is `../do-work-knowledge/actions/bkb.md`'s job, not this handoff's.
 - **User pilots the drop.** do-work prepares a structured source document and asks before writing. That keeps the handoff consistent across harnesses — any agent that can read/write files can run it.
-- **Graceful degradation.** If the project has no `kb/` directory yet, the handoff records the lessons as `pending` on the REQ and points the user at `do-work bkb init`. It never blocks archival.
+- **Graceful degradation.** If the project has no `kb/` directory yet, the handoff records the lessons as `pending` on the REQ and points the user at `do-work-knowledge bkb init`. It never blocks archival.
 
 ## When to run this
 
@@ -169,7 +169,7 @@ Then return. The caller (work.md's Lessons-Capture Phase or review-work.md's Sel
 - Never write anywhere in the KB other than `raw/inbox/`. Triage and ingest are `../do-work-knowledge/actions/bkb.md`'s responsibilities — this handoff stops at the drop.
 - Never modify fields on the REQ other than `kb_status` and `kb_entry`.
 - Never block the rest of actions/work.md on this handoff. If the user ignores the prompt or the interaction times out, default to `pending` and continue.
-- Never auto-init the KB. If no `kb/` exists, point the user at `do-work bkb init` and set `kb_status: pending`.
+- Never auto-init the KB. If no `kb/` exists, point the user at `do-work-knowledge bkb init` and set `kb_status: pending`.
 
 ## Common Rationalizations
 

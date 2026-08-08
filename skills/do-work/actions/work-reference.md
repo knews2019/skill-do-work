@@ -106,7 +106,7 @@ Obtain the instant from the first of these that applies:
 
    Three things about that form are load-bearing. **`.ToUniversalTime()`, not `-AsUTC`** — the flag reads better but arrived in PowerShell 7, which ships as `pwsh.exe` and is absent from a stock box; `powershell.exe` is Windows PowerShell 5.1, where `-AsUTC` is an unrecognized parameter and the call fails outright. **The `\T` and `\Z` escapes** — in a .NET custom format string the specifiers are case-sensitive (`t`/`tt` are the AM/PM designators, `z`/`zz`/`zzz` the UTC offset), so bare `T` and `Z` happen to fall through to "copied unchanged"; the backslash says *literal* outright instead of depending on that. **`-NoProfile`** — a user profile can print banners into stdout and corrupt the captured value.
 
-**Never stamp local wall-clock time with a `Z` suffix appended.** In any zone east of UTC that produces a *future* instant, which silently corrupts every elapsed-time reading (queue wait, claim stopwatch) and gets the REQ flagged by `do-work board` (a "future stamp" card badge plus a data warning, allowing 2 minutes of clock skew).
+**Never stamp local wall-clock time with a `Z` suffix appended.** In any zone east of UTC that produces a *future* instant, which silently corrupts every elapsed-time reading (queue wait, claim stopwatch) and gets the REQ flagged by `do-work-board board` (a "future stamp" card badge plus a data warning, allowing 2 minutes of clock skew).
 
 **Date-only stamps are a different shape and not part of the rule above.** A few sites need a UTC *calendar date* — `YYYY-MM-DD`, for a log filename or a daily heading — rather than an instant; `../do-work-knowledge/actions/memory.md`'s `memory/logs/` mirror is the current one. It is spelled out here so those sites cite one home too, but it is **not** an `*_at` value and must never be written into one. Obtain it as `date -u +%F` on POSIX, or `powershell -NoProfile -Command "(Get-Date).ToUniversalTime().ToString('yyyy-MM-dd')"` on Windows. There is no tool subcommand for it: `queue-kanban now` prints the instant only, and adding a date-only mode for a single consumer would spend the skill's narrow compiled-tooling exception (`../do-work-board/actions/board.md` is the only capability allowed to need a compiler) on something the floor already covers — revisit if a second consumer appears. **A local-time date is a different thing again** and is correct where it is used deliberately (changelog entry headings, run-directory names, report slugs); those sites are not governed here.
 
@@ -160,7 +160,7 @@ status_changed_at: 2026-07-22T20:38:00Z
 # hash in a git repo. These two fields are the ONLY sources the board resolves
 # a terminal REQ's completion instant from (no file-mtime fallback); a
 # terminal REQ missing both — or carrying an unparseable completed_at or a
-# hash git can't resolve — is flagged as a completion anomaly by do-work board
+# hash git can't resolve — is flagged as a completion anomaly by do-work-board board
 # (all three modes: serve, static, summary).
 completed_at: 2025-01-26T10:45:00Z   # required on every terminal flip — UTC ISO instant
 status: completed | completed-with-issues | failed
@@ -179,7 +179,7 @@ completed_at: 2025-01-26T10:45:00Z  # stamped (or, on the failed→cancelled pat
 kb_status: promoted | pending | declined | skipped
 kb_entry: REQ-042-lesson-slug.md   # filename only (survives bkb moves from inbox/ to capture/ to processed/); present only when kb_status: promoted
 
-# Set by the board's Testing view (do-work board serve — ../do-work-board/actions/board.md Step 6). Optional; the testing track is orthogonal to `status`: the board never writes `status`, and the work pipeline never writes these. Absent = not tested yet.
+# Set by the board's Testing view (do-work-board board — ../do-work-board/actions/board.md Step 6). Optional; the testing track is orthogonal to `status`: the board never writes `status`, and the work pipeline never writes these. Absent = not tested yet.
 testing_status: in-testing | tested | returned   # who-tested-what tracking for finished REQs
 tested_by: "Alice"                # tester profile from do-work/testers.md (raw user text, always YAML-quoted)
 testing_updated_at: 2026-07-17T10:00:00Z   # stamped by the board server on every transition

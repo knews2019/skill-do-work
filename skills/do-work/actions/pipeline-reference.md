@@ -252,7 +252,7 @@ Non-technical-reader-facing. Single `.html` file, zero build steps. Same content
 9. **Carry-forward work** — cards with a bold title, muted explanation, and the capture command in a `<pre>` block (skip if none)
 10. **How to verify** — numbered headings, each followed by a copy-pasteable `<pre><code>` block
 11. **Related deliverables** — a navigation card grid **before** the final follow-ups list, splitting cross-links by audience. Left card group "Understand what was built" with real `<a href="./{UR-NNN}-client-brief.md">` / `<a href="./{UR-NNN}-interactive-explainer.single.html">` / `<a href="./{UR-NNN}-video/">` anchors (only include tiles for artifacts that actually exist on disk — if present ran and produced them). If a visual report exists at the project root (glob BOTH shapes: `ai-reports/*{UR-NNN}*/index.html` folder reports and legacy pre-0.100.0 single-file `ai-reports/*{UR-NNN}*.html`), add a fourth tile in this group linking to the newest match by mtime (`<a href="../../ai-reports/<newest-match>/index.html">Visual report</a>`, or the legacy `.html` file directly — pixel-anchored screenshots + SVG callouts). Right card group "Audit the run" linking the markdown (`<a href="./{UR-NNN}-pipeline-summary.md">`), Marp source (`<a href="./{UR-NNN}-pipeline-summary.marp.md">`), and Marp HTML export (`<a href="./{UR-NNN}-pipeline-summary.marp.html">`) siblings. The `.single.html` is the most discoverable surface for a non-technical reader — it must point them to the deeper, more educational artifacts.
-12. **Footer / next steps** — ordered list with `do-work present {UR-NNN}` and other follow-ups
+12. **Footer / next steps** — ordered list with `do-work-toolbox present-work {UR-NNN}` and other follow-ups
 
 **Design requirements:**
 

@@ -3,7 +3,7 @@
 set -uo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-update_script="$repo_root/tools/do-work-update.sh"
+update_script="$repo_root/skills/do-work/tools/do-work-update.sh"
 manifest_validator="$repo_root/tools/validate-suite-manifest.sh"
 suite_installer="$repo_root/tools/install-do-work-suite.sh"
 section_replacer="$repo_root/tools/replace-text-section.sh"
@@ -378,6 +378,25 @@ if [ "$(wc -l < "$CURL_CALL_LOG" | tr -d ' ')" != 1 ]; then
   record_failure 'suite update: expected exactly one archive download'
 fi
 
+# The managed Just entry point and direct core entry point converge on byte-identical state.
+just_entry_project="$fixture_root/just-entry-project"
+cp -R "$suite_project" "$just_entry_project"
+rm -rf "$just_entry_project/.git"
+init_project "$just_entry_project"
+commit_project "$just_entry_project" 'modular suite baseline'
+run_updater "$suite_project" y "$suite_tarball"
+assert_status 0 'entry-point parity: direct updater exits 0'
+: > "$CURL_CALL_LOG"
+probe_output="$(cd "$just_entry_project" && printf 'y\n' \
+  | FAKE_TARBALL="$suite_tarball" just run-do-work-update 2>&1)"
+probe_status=$?
+assert_status 0 'entry-point parity: managed Just updater exits 0'
+if ! diff -qr "$suite_project/.claude/skills" "$just_entry_project/.claude/skills" >/dev/null \
+  || ! cmp -s "$suite_project/Justfile" "$just_entry_project/Justfile" \
+  || ! cmp -s "$suite_project/.claude/settings.json" "$just_entry_project/.claude/settings.json"; then
+  record_failure 'entry-point parity: direct and managed Just updates produced different managed bytes'
+fi
+
 # The installed bridge remains the trusted transaction engine. A valid archive cannot
 # replace that engine with an executable of its own before the reviewed write boundary.
 hostile_installer_tree="$fixture_root/hostile-installer-src/do-work-upstream"
@@ -513,8 +532,8 @@ if [ -n "$(git -C "$failure_project" status --porcelain)" ]; then
 fi
 
 # The agent-facing path must delegate mutation to the same tested engine.
-if ! grep -q 'tools/do-work-update\.sh.*--project-root' "$repo_root/actions/version.md"; then
-  record_failure 'entry-point parity: actions/version.md does not delegate to tools/do-work-update.sh'
+if ! grep -q 'tools/do-work-update\.sh.*--project-root' "$repo_root/skills/do-work/actions/version.md"; then
+  record_failure 'entry-point parity: modular actions/version.md does not delegate to tools/do-work-update.sh'
 fi
 
 if [ "$fail_count" -gt 0 ]; then

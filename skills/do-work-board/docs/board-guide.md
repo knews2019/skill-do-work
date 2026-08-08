@@ -19,7 +19,7 @@ Four columns: **Pending**, **Claimed**, **Needs input · Blocked**, **Recently d
 
 Two strips sit above the columns and stay visible in every view:
 
-- **Notes** — your `do-work note` lines, verbatim and collapsible. Hidden when there are none.
+- **Notes** — your `do-work-toolbox note` lines, verbatim and collapsible. Hidden when there are none.
 - **Completion anomalies** — finished REQs whose completion instant can't be resolved. Bookkeeping to fix, not recent work, so the strip ignores the filters and the window.
 
 The toolbar carries a text filter (id or title), domain and status selects, a **Recently done** window (24h / 48h / 7d), a **Lens** toggle (flat Columns vs. grouped **By UR**), and the **Board / Calendar / Testing** switch. In the By UR lens, **Active** shows URs with open work or a REQ inside the selected Recently done window; **All** also browses older resolved URs. Calendar shows completed work day by day.
@@ -59,11 +59,11 @@ Each action writes the record into the REQ's own frontmatter, so `git log` on th
 ## Usage
 
 ```
-do-work board
-do-work board static
-do-work board summary
-do-work board cli
-do-work kanban
+do-work-board board
+do-work-board static
+do-work-board summary
+do-work-board cli
+do-work-board board
 ```
 
 the full-suite installer adds `just run-kanban` / `run-kanban-cli` / `kanban-static` / `kanban-summary` recipes if you'd rather run the board without the agent, plus `just run-do-work-update` for the guarded project-local skill updater.

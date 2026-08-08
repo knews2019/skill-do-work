@@ -8,7 +8,7 @@ Read-only queue survey — what's done, what's in progress, what's pending, and 
 
 | Section | What it shows |
 |---------|---------------|
-| **Notes** | Lightweight next-step hints from `do-work note` (`do-work/notes.md`), verbatim in append order — rendered only when notes exist |
+| **Notes** | Lightweight next-step hints from `do-work-toolbox note` (`do-work/notes.md`), verbatim in append order — rendered only when notes exist |
 | **Ready to Pick Up** | Queue REQs with clear scope, no `pending-answers`, no unresolved blockers |
 | **Needs Clarification** | `status: pending-answers` or open questions in the body |
 | **Blocked** | Depends on a REQ still pending/in-progress, or `status: blocked` waiting on an external condition (named in `blocked_by`) |
@@ -27,7 +27,7 @@ Markdown report. When `do-work/notes.md` is non-empty, a **Notes** block renders
 - Read-only — never modifies REQs, moves files, or creates commits
 - Feasibility is a read, not a verdict — flags concerns, never reclassifies a REQ as blocked
 - Cites evidence for every classification (frontmatter field, section, missing artifact)
-- No ideation — surveys what exists; for new ideas use `do-work scan-ideas`
+- No ideation — surveys what exists; for new ideas use `do-work-toolbox scan-ideas`
 
 ## Usage
 
@@ -46,6 +46,6 @@ do-work what should I work on next
 ## When NOT to use
 
 - Suspect something is *broken* or *stuck* → `do-work forensics`
-- Want *new ideas* for what to build → `do-work scan-ideas`
-- Want to *review specific completed code* → `do-work review-work` or `do-work code-review`
-- Want to *explain uncommitted local changes* → `do-work inspect`
+- Want *new ideas* for what to build → `do-work-toolbox scan-ideas`
+- Want to *review specific completed code* → `do-work review-work` or `do-work-toolbox code-review`
+- Want to *explain uncommitted local changes* → `do-work-toolbox inspect`

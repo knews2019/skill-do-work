@@ -52,10 +52,3 @@
 /.gitattributes  export-ignore
 /CLAUDE.md       export-ignore
 /AGENTS.md       export-ignore
-
-# The modular suite is staged in-repo before cutover, but the bridge release must remain a
-# monolithic archive. REQ-144 removes these three temporary guards when every known client
-# has the suite-layout-v2 updater capability.
-/VERSION         export-ignore
-/suite           export-ignore
-/skills          export-ignore

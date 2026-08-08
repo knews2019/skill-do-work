@@ -30,7 +30,7 @@ Optional argument may scope the report (id tokens — `REQ-NNN` and `UR-NNN` —
 - `in-progress` — only `do-work/working/` REQs
 - `done` — only archived REQs
 - `UR-NNN` — scope to a single user request and its REQs
-- `REQ-NNN` — scope to a single REQ: its status, dependency position (what it waits on and what waits on it), a feasibility read, and its sibling REQs under the same UR for context. The output is thin by nature — one card's worth of status plus its dependency neighbourhood, **not** a mini-report; per-REQ detail is `do-work inspect`'s job (`../do-work-toolbox/actions/inspect.md`), and duplicating it here would be the failure to avoid.
+- `REQ-NNN` — scope to a single REQ: its status, dependency position (what it waits on and what waits on it), a feasibility read, and its sibling REQs under the same UR for context. The output is thin by nature — one card's worth of status plus its dependency neighbourhood, **not** a mini-report; per-REQ detail is `do-work-toolbox inspect`'s job (`../do-work-toolbox/actions/inspect.md`), and duplicating it here would be the failure to avoid.
 - `since <date>` — filter archive entries to those completed on/after the date
 
 **Multiple id tokens resolve to their union** (e.g. `do-work roadmap REQ-067 REQ-070`), each surveyed as above. If the argument is unrecognized, default to the full survey and note the unrecognized argument in the report — only a recognized `REQ-`/`UR-` id token is scoped; a genuinely unrecognized token (e.g. `banana`) still falls through to the full survey with its note.
@@ -39,13 +39,13 @@ Optional argument may scope the report (id tokens — `REQ-NNN` and `UR-NNN` —
 
 ### Step 0: Surface Notes
 
-Before inventorying the queue, check for lightweight notes (written by `do-work note`):
+Before inventorying the queue, check for lightweight notes (written by `do-work-toolbox note`):
 
 1. If `do-work/notes.md` exists, capture its **bullet lines** verbatim for rendering — each is already in `- [YYYY-MM-DD] <text>` form. Do not reformat, sort, or dedupe.
 2. A bullet is what marks a line as a note. Skip everything else the file carries: a `#` heading, prose preamble lines, horizontal rules, and — before testing for bullets — the contents of any `<!-- ... -->` HTML comment block, which is where pruned entries get parked and whose own bullets must not resurface.
 3. If `do-work/notes.md` is absent, or holds no bullet lines once comments are stripped, skip the Notes section **silently** — render nothing for it.
 
-These lines render as a `## Notes` block at the very top of the report body (see Output Format), independent of queue state — Notes appear even when the queue is empty. Reading `notes.md` is read-only; the roadmap never writes, prunes, or reorders it (the user curates it by hand, and `do-work note` is the only writer).
+These lines render as a `## Notes` block at the very top of the report body (see Output Format), independent of queue state — Notes appear even when the queue is empty. Reading `notes.md` is read-only; the roadmap never writes, prunes, or reorders it (the user curates it by hand, and `do-work-toolbox note` is the only writer).
 
 ### Step 1: Inventory
 
@@ -107,11 +107,11 @@ For each REQ in `do-work/archive/`:
 
   **Durability caveat:** the `processed` rule is **durable** across `git clone`, archive restores, and file copies because it sorts on directory names embedded in the path. The `capture` and `inbox` rules use **mtime**, which resets on clone (all files get the clone time) and is not preserved by most archive tools. An operator inspecting their KB on a different machine, or after restoring from backup, may see different `capture`/`inbox` bucketing than the original — `processed` will not drift. Roadmap is a survey, not a deterministic ledger; treat the report as a snapshot of the current filesystem rather than a stable identifier.
 
-  - **Promoted, awaiting triage** — match found under `<kb>/raw/inbox/` and **not** in capture or processed. Suggested next step: `do-work bkb triage` then `do-work bkb ingest`.
-  - **Promoted, awaiting ingest** — match found under `<kb>/raw/capture/<type>/` and **not** in processed. Triage already ran. Suggested next step: `do-work bkb ingest`.
+  - **Promoted, awaiting triage** — match found under `<kb>/raw/inbox/` and **not** in capture or processed. Suggested next step: `do-work-knowledge bkb triage` then `do-work-knowledge bkb ingest`.
+  - **Promoted, awaiting ingest** — match found under `<kb>/raw/capture/<type>/` and **not** in processed. Triage already ran. Suggested next step: `do-work-knowledge bkb ingest`.
   - **Promoted, processed** — match found under `<kb>/raw/processed/<date>/`. Terminal for roadmap purposes; report alongside the REQ but do not surface as actionable. Wins over earlier-pipeline matches.
   - **Promoted, file not found** — `kb_entry` matches no path in any of the three branches (neither the exact filename nor a `HHMMSS-` prefixed variant). Surface as a data inconsistency (the file may have been deleted or `kb/` may have moved); do not silently treat as awaiting triage.
-  - **Pending** — `kb_status: pending`. No file was staged (handoff was deferred or no `kb/` existed). Needs the handoff to be re-run via `do-work review REQ-NNN`, possibly after `do-work bkb init`.
+  - **Pending** — `kb_status: pending`. No file was staged (handoff was deferred or no `kb/` existed). Needs the handoff to be re-run via `do-work review REQ-NNN`, possibly after `do-work-knowledge bkb init`.
 
   If `<kb>/` itself doesn't exist in the project, skip the location check and report all `promoted` REQs together with a single line noting the missing KB root.
 - Record `tdd` posture per REQ so completed work shows whether tests went in test-first.
@@ -140,7 +140,7 @@ Render the report per the Output Format below. Lead with the actionable section 
 
 ## Notes
 
-*(Rendered only when `do-work/notes.md` is non-empty — lightweight next-step hints from `do-work note`, in append order. Omit the whole section when there are no notes. These are user hints, not REQs — surface them, don't classify or act on them.)*
+*(Rendered only when `do-work/notes.md` is non-empty — lightweight next-step hints from `do-work-toolbox note`, in append order. Omit the whole section when there are no notes. These are user hints, not REQs — surface them, don't classify or act on them.)*
 
 - [2026-05-30] check the cache TTL before the next perf run
 - [2026-06-01] investigate prototype xyz.html
@@ -193,14 +193,14 @@ Grouped by UR or by week:
 REQs whose `kb_entry` was found under `<kb>/raw/inbox/` — staged but not yet sorted.
 
 - REQ-NNN — kb_status: promoted, kb_entry: <filename> (located in raw/inbox/)
-  Suggested next step: `do-work bkb triage` to sort, then `do-work bkb ingest` to compile into the wiki.
+  Suggested next step: `do-work-knowledge bkb triage` to sort, then `do-work-knowledge bkb ingest` to compile into the wiki.
 
 ## Lessons Promoted (Awaiting Ingest)
 
 REQs whose `kb_entry` was found under `<kb>/raw/capture/<type>/` — triage already sorted them; ingest hasn't compiled them yet.
 
 - REQ-NNN — kb_status: promoted, kb_entry: <filename> (located in raw/capture/<type>/)
-  Suggested next step: `do-work bkb ingest` to compile into the wiki.
+  Suggested next step: `do-work-knowledge bkb ingest` to compile into the wiki.
 
 ## Lessons Processed (Terminal)
 
@@ -220,7 +220,7 @@ REQs with `kb_status: promoted` whose `kb_entry` filename matches no file under 
 REQs whose Lessons Learned were captured but never staged — either the user chose "save for later", or no `kb/` existed at handoff time. **Nothing is in the inbox**, so `bkb triage` has nothing to find.
 
 - REQ-NNN — kb_status: pending, kb_entry: none
-  Suggested next step: re-run the handoff via `do-work review REQ-NNN` (run `do-work bkb init` first if no `kb/` directory exists).
+  Suggested next step: re-run the handoff via `do-work review REQ-NNN` (run `do-work-knowledge bkb init` first if no `kb/` directory exists).
 
 ## Suggested Next Steps
 
@@ -228,10 +228,10 @@ REQs whose Lessons Learned were captured but never staged — either the user ch
 2. Run `do-work clarify` to work through the N pending-answers REQs.
 3. Consider enabling `tdd: true` on the N TDD-eligible REQs before they're picked up.
 4. Confirm or discard the N stale REQs with the user.
-5. Run `do-work bkb triage` then `do-work bkb ingest` for the N lessons in Awaiting Triage.
-6. Run `do-work bkb ingest` for the N lessons in Awaiting Ingest.
+5. Run `do-work-knowledge bkb triage` then `do-work-knowledge bkb ingest` for the N lessons in Awaiting Triage.
+6. Run `do-work-knowledge bkb ingest` for the N lessons in Awaiting Ingest.
 7. Investigate the N File Not Found lessons — restage from the REQ or clear `kb_status` if the file was intentionally removed.
-8. Re-run the handoff via `do-work review REQ-NNN` for the N pending-handoff lessons (run `do-work bkb init` first if no `kb/` directory exists).
+8. Re-run the handoff via `do-work review REQ-NNN` for the N pending-handoff lessons (run `do-work-knowledge bkb init` first if no `kb/` directory exists).
 ```
 
 The Suggested Next Steps list is **filtered** — emit only the items whose corresponding section had at least one entry. The numbering in the rendered report stays compact (1, 2, 3 … without gaps); the template above shows the canonical line per category.

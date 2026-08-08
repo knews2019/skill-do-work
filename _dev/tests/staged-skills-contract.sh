@@ -35,6 +35,7 @@ core_files=(
   skills/do-work/actions/forensics.md
   skills/do-work/actions/version.md
   skills/do-work/actions/help.md
+  skills/do-work/actions/moved-command-shim.md
   skills/do-work/actions/pipeline.md
   skills/do-work/actions/pipeline-reference.md
   skills/do-work/crew-members/coding-guardrails.md
@@ -52,6 +53,46 @@ core_files=(
   skills/do-work/tools/validate-suite-manifest.sh
   skills/do-work/tools/replace-text-section.sh
 )
+
+for cutover_export_path in VERSION suite skills; do
+  if git -C "$repo_root" check-attr export-ignore -- "$cutover_export_path" \
+    | grep -q 'export-ignore: set'; then
+    fail "live modular archive must export /$cutover_export_path"
+  fi
+done
+
+legacy_runtime_paths=(
+  SKILL.md
+  next-steps.md
+  actions
+  crew-members
+  docs
+  hooks
+  interviews
+  prompts
+  specs
+  tools/checks
+  tools/do-work-update.sh
+  tools/queue-kanban
+  tools/prime-do-work-update.md
+)
+for legacy_runtime_path in "${legacy_runtime_paths[@]}"; do
+  if [ -f "$repo_root/$legacy_runtime_path" ] \
+    || { [ -d "$repo_root/$legacy_runtime_path" ] \
+      && find "$repo_root/$legacy_runtime_path" -type f \
+        ! -path "$repo_root/tools/queue-kanban/queue-kanban" -print -quit \
+        | grep -q .; }; then
+    fail "legacy root runtime must be retired at modular cutover: $legacy_runtime_path"
+  fi
+done
+
+for retained_bootstrap_tool in \
+  tools/install-do-work-suite.sh \
+  tools/validate-suite-manifest.sh \
+  tools/replace-text-section.sh
+do
+  require_file "$retained_bootstrap_tool"
+done
 
 board_files=(
   skills/do-work-board/SKILL.md
@@ -119,6 +160,33 @@ toolbox_files=(
 for core_file in "${core_files[@]}"; do
   require_file "$core_file"
 done
+
+if [ -f "$repo_root/skills/do-work/SKILL.md" ]; then
+  moved_shim_route_count="$(grep -Ec '^\|.*`\./actions/moved-command-shim\.md`[[:space:]]*\|$' "$repo_root/skills/do-work/SKILL.md" || true)"
+  if [ "$moved_shim_route_count" -ne 3 ]; then
+    fail "core must route board, knowledge, and toolbox legacy commands through exactly three moved-command rows (found $moved_shim_route_count)"
+  fi
+fi
+
+if [ -f "$repo_root/skills/do-work/actions/moved-command-shim.md" ]; then
+  for replacement_invocation in \
+    'do-work-board board' \
+    'do-work-knowledge bkb' \
+    'do-work-knowledge memory' \
+    'do-work-knowledge dream' \
+    'do-work-knowledge interview' \
+    'do-work-knowledge prompts' \
+    'do-work-knowledge setup-memory' \
+    'do-work-toolbox <canonical trigger>' \
+    'do-work-toolbox install <canonical target>' \
+    'just run-kanban'
+  do
+    grep -Fq "$replacement_invocation" "$repo_root/skills/do-work/actions/moved-command-shim.md" \
+      || fail "moved-command shim lacks exact replacement surface: $replacement_invocation"
+  done
+  grep -Fq 'Do not dispatch another skill' "$repo_root/skills/do-work/actions/moved-command-shim.md" \
+    || fail 'moved-command shim must print and stop instead of forwarding'
+fi
 
 if [ -f "$repo_root/skills/do-work/tools/install-do-work-suite.sh" ] \
   && ! cmp -s "$repo_root/tools/install-do-work-suite.sh" \

@@ -4,13 +4,53 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 fail_count=0
+core_root="$repo_root/skills/do-work"
+board_root="$repo_root/skills/do-work-board"
+knowledge_root="$repo_root/skills/do-work-knowledge"
+toolbox_root="$repo_root/skills/do-work-toolbox"
+
+resolve_runtime_file() {
+  local relative_path="$1"
+
+  case "$relative_path" in
+    SKILL.md|next-steps.md) printf '%s/%s\n' "$core_root" "$relative_path" ;;
+    actions/board.md|docs/board-guide.md) printf '%s/%s\n' "$board_root" "$relative_path" ;;
+    actions/bkb*|actions/dream.md|actions/interview*|actions/memory*|actions/prompts.md|actions/setup-memory.md|docs/bkb-guide.md|docs/dream-guide.md|docs/interview-guide.md|docs/prompts-guide.md|prompts/*|interviews/*|hooks/memory-*)
+      printf '%s/%s\n' "$knowledge_root" "$relative_path" ;;
+    actions/ai-report*|actions/code-review.md|actions/deep-explore*|actions/inspect.md|actions/install.md|actions/note.md|actions/present-work.md|actions/prime.md|actions/quick-wins.md|actions/scan-ideas.md|actions/slop-check.md|actions/stray-check.md|actions/tidy-repo.md|actions/tutorial.md|actions/ui-review.md|actions/validate-feedback.md|docs/ai-report-guide.md|docs/code-review-guide.md|docs/inspect-guide.md|docs/present-work-guide.md|docs/prime-guide.md|docs/quick-wins-guide.md|docs/slop-check-guide.md|docs/stray-check-guide.md|docs/ui-review-guide.md)
+      printf '%s/%s\n' "$toolbox_root" "$relative_path" ;;
+    actions/*|crew-members/*|docs/*|hooks/*|specs/*|tools/checks/*|tools/do-work-update.sh|tools/prime-do-work-update.md)
+      printf '%s/%s\n' "$core_root" "$relative_path" ;;
+    tools/queue-kanban/*) printf '%s/%s\n' "$board_root" "$relative_path" ;;
+    *) printf '%s/%s\n' "$repo_root" "$relative_path" ;;
+  esac
+}
+
+for cutover_export_path in VERSION suite skills; do
+  if git -C "$repo_root" check-attr export-ignore -- "$cutover_export_path" \
+    | grep -q 'export-ignore: set'; then
+    printf 'FAIL: live modular archive still excludes /%s.\n' "$cutover_export_path" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
+
+for retired_runtime_path in SKILL.md next-steps.md actions crew-members docs hooks interviews prompts specs tools/checks tools/do-work-update.sh tools/queue-kanban tools/prime-do-work-update.md; do
+  if [ -f "$repo_root/$retired_runtime_path" ] \
+    || { [ -d "$repo_root/$retired_runtime_path" ] \
+      && find "$repo_root/$retired_runtime_path" -type f \
+        ! -path "$repo_root/tools/queue-kanban/queue-kanban" -print -quit \
+        | grep -q .; }; then
+    printf 'FAIL: legacy root runtime still exists after modular cutover: %s.\n' "$retired_runtime_path" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
 
 assert_contains() {
   local file_path="$1"
   local pattern_text="$2"
   local message_text="$3"
 
-  if ! grep -Eq -- "$pattern_text" "$repo_root/$file_path"; then
+  if ! grep -Eq -- "$pattern_text" "$(resolve_runtime_file "$file_path")"; then
     printf 'FAIL: %s\n' "$message_text" >&2
     fail_count=$((fail_count + 1))
   fi
@@ -53,20 +93,22 @@ assert_file_not_contains() {
   local pattern_text="$2"
   local message_text="$3"
 
-  if grep -Eiq "$pattern_text" "$repo_root/$file_path"; then
+  local resolved_file
+  resolved_file="$(resolve_runtime_file "$file_path")"
+  if grep -Eiq "$pattern_text" "$resolved_file"; then
     printf 'FAIL: %s\n' "$message_text" >&2
-    grep -Ein "$pattern_text" "$repo_root/$file_path" >&2 || true
+    grep -Ein "$pattern_text" "$resolved_file" >&2 || true
     fail_count=$((fail_count + 1))
   fi
 }
 
-skill_dispatch_block="$(sed -n '/^## Action Dispatch/,/^## Suggest Next Steps/p' "$repo_root/SKILL.md")"
-work_archive_success_block="$(sed -n '/^### Step 8: Archive/,/^\*\*On failure:/p' "$repo_root/actions/work.md")"
+skill_dispatch_block="$(sed -n '/^## Routing/,/^## Dispatch/p' "$core_root/SKILL.md")"
+work_archive_success_block="$(sed -n '/^### Step 8: Archive/,/^\*\*On failure:/p' "$core_root/actions/work.md")"
 
 assert_block_contains \
   "$skill_dispatch_block" \
-  '^\| work[[:space:]]*\| `\./actions/work\.md`[[:space:]]*\| `\$ARGUMENTS`' \
-  'SKILL.md must pass work arguments through so scoped REQ IDs and --wave are not dropped.'
+  '^\| `run`[^|]*\| `\./actions/work\.md`' \
+  'Core SKILL.md must route work triggers to actions/work.md so scoped REQ IDs and --wave reach the action input.'
 
 assert_block_contains \
   "$work_archive_success_block" \
@@ -146,14 +188,14 @@ assert_contains \
 # is a regression, whatever the format specifier. hooks/ is out of scope on purpose (executable POSIX
 # shell, platform-specific by design), as is tools/ (Go source and user-facing strings, a different
 # surface with a different tradeoff).
-timestamp_command_copies="$(grep -rlE 'date -u \+%' "$repo_root/actions" | grep -v 'work-reference\.md' || true)"
+timestamp_command_copies="$(grep -rlE 'date -u \+%' "$core_root/actions" | grep -v 'work-reference\.md' || true)"
 if [ -n "$timestamp_command_copies" ]; then
   printf 'FAIL: only actions/work-reference.md may spell a timestamp command; these action files inline a copy, so an agent following them never reaches the rule preference order and a Windows agent gets a command that does not exist on its box — cite the Timestamp rule instead (REQ-078):\n%s\n' \
     "$timestamp_command_copies" >&2
   fail_count=$((fail_count + 1))
 fi
 
-timestamp_rule_block="$(sed -n '/^\*\*Timestamp rule —/,/^```yaml/p' "$repo_root/actions/work-reference.md")"
+timestamp_rule_block="$(sed -n '/^\*\*Timestamp rule —/,/^```yaml/p' "$core_root/actions/work-reference.md")"
 
 assert_block_contains \
   "$timestamp_rule_block" \
@@ -198,7 +240,7 @@ exclusive_session_premise_pattern='exclusive.session|no other .do-work. session'
 
 stale_write_set_premise_lines="$(
   grep -rIEn "$builder_count_premise_pattern" \
-    "$repo_root/actions" "$repo_root/docs" "$repo_root/tools/queue-kanban" 2>/dev/null \
+    "$core_root/actions" "$core_root/docs" "$board_root/tools/queue-kanban" 2>/dev/null \
     | grep -E 'write_set|overlaps' || true
 )"
 if [ -n "$stale_write_set_premise_lines" ]; then
@@ -214,7 +256,7 @@ fi
 # has to hold at any builder count and the model says nothing about builders.
 stale_write_set_weak_premise_lines="$(
   grep -rIEn "$exclusive_session_premise_pattern" \
-    "$repo_root/actions" "$repo_root/docs" "$repo_root/tools/queue-kanban" 2>/dev/null \
+    "$core_root/actions" "$core_root/docs" "$board_root/tools/queue-kanban" 2>/dev/null \
     | grep -E 'write_set|overlaps' || true
 )"
 if [ -n "$stale_write_set_weak_premise_lines" ]; then
@@ -268,7 +310,7 @@ for removed_concurrency_token in \
   'claimed_reqs' \
   'heartbeat_at' \
   'orchestrator-lock\.json'; do
-  concurrency_token_hits="$(grep -rIlE -- "$removed_concurrency_token" "$repo_root/actions" 2>/dev/null || true)"
+  concurrency_token_hits="$(grep -rIlE -- "$removed_concurrency_token" "$core_root/actions" 2>/dev/null || true)"
   if [ -n "$concurrency_token_hits" ]; then
     printf 'FAIL: removed concurrency-machinery token "%s" still present in a shipped action file (exclusive-session model, REQ-069):\n%s\n' \
       "$removed_concurrency_token" "$concurrency_token_hits" >&2
@@ -291,14 +333,14 @@ for removed_reservation_token in \
   'do-work reserve' \
   'actions/reserve\.md'; do
   reservation_token_hits="$(grep -rIlE -- "$removed_reservation_token" \
-    "$repo_root/actions" "$repo_root/docs" "$repo_root/tools/queue-kanban" \
-    "$repo_root/SKILL.md" "$repo_root/next-steps.md" 2>/dev/null || true)"
+    "$core_root/actions" "$core_root/docs" "$board_root/tools/queue-kanban" \
+    "$core_root/SKILL.md" "$core_root/next-steps.md" 2>/dev/null || true)"
   # Per-file exemption (same pattern as the maintainer-doc allowlist): the update
   # flow in actions/version.md must NAME the removed reserve files on its Step 5
   # deletion line — tar extraction never deletes what upstream removed, so without
   # that rm every pre-0.161.0 install keeps the orphaned files forever. Only lines
   # containing `rm -f` are exempt; any other mention in version.md still fails.
-  exempt_update_flow_file="$repo_root/actions/version.md"
+  exempt_update_flow_file="$core_root/actions/version.md"
   filtered_reservation_hits=""
   for reservation_hit_file in $reservation_token_hits; do
     if [ "$reservation_hit_file" = "$exempt_update_flow_file" ] && \
@@ -339,7 +381,7 @@ assert_contains \
 # `|| true` is load-bearing under `set -euo pipefail`: grep exits 1 on no match, and
 # with pipefail that aborts the whole suite silently — a missing invariant would read
 # as a crash with no FAIL line rather than as the failure it is.
-releaser_invariant_count="$( { grep -roh 'one releaser per queue' "$repo_root/actions" || true; } | wc -l | tr -d ' ')"
+releaser_invariant_count="$( { grep -roh 'one releaser per queue' "$core_root/actions" || true; } | wc -l | tr -d ' ')"
 if [ "$releaser_invariant_count" != "1" ]; then
   printf 'FAIL: the ownership invariant ("one releaser per queue") must be stated exactly once across actions/ (found %s) — every other mention is a pointer, not a restatement.\n' \
     "$releaser_invariant_count" >&2
@@ -349,7 +391,7 @@ fi
 # The superseded wording must be gone, not merely outnumbered — same ratchet the
 # "one active REQ, one coder context" check below applies to its predecessor. It bounds
 # claiming to a single checkout, which is exactly what claim-anywhere makes false.
-superseded_owner_invariant_hits="$(grep -rIlE -- 'one queue owner per checkout' "$repo_root/actions" "$repo_root/docs" "$repo_root/SKILL.md" 2>/dev/null || true)"
+superseded_owner_invariant_hits="$(grep -rIlE -- 'one queue owner per checkout' "$core_root/actions" "$core_root/docs" "$core_root/SKILL.md" 2>/dev/null || true)"
 if [ -n "$superseded_owner_invariant_hits" ]; then
   printf 'FAIL: the superseded invariant wording "one queue owner per checkout" still appears (REQ-096 replaced it with the one-releaser-per-queue formulation — any checkout may claim):\n%s\n' \
     "$superseded_owner_invariant_hits" >&2
@@ -358,7 +400,7 @@ fi
 
 # The old wording must be gone, not merely outnumbered: it says one active REQ and
 # one coder context, which is exactly what fan-out makes false.
-retired_invariant_hits="$(grep -rIlE -- 'one active REQ, one coder context' "$repo_root/actions" "$repo_root/docs" "$repo_root/SKILL.md" 2>/dev/null || true)"
+retired_invariant_hits="$(grep -rIlE -- 'one active REQ, one coder context' "$core_root/actions" "$core_root/docs" "$core_root/SKILL.md" 2>/dev/null || true)"
 if [ -n "$retired_invariant_hits" ]; then
   printf 'FAIL: the retired invariant wording "one active REQ, one coder context" still appears (REQ-073 replaced it with the one-queue-owner formulation):\n%s\n' \
     "$retired_invariant_hits" >&2
@@ -372,7 +414,7 @@ fi
 for retired_builder_cap_phrase in \
   'The single active builder' \
   'only one builder is ever in flight'; do
-  builder_cap_hits="$(grep -rIlE -- "$retired_builder_cap_phrase" "$repo_root/actions" 2>/dev/null || true)"
+  builder_cap_hits="$(grep -rIlE -- "$retired_builder_cap_phrase" "$core_root/actions" 2>/dev/null || true)"
   if [ -n "$builder_cap_hits" ]; then
     printf 'FAIL: the retired builder-cap phrase "%s" still appears — REQ-073 raised worktree dispatch from one builder to N under a single queue owner:\n%s\n' \
       "$retired_builder_cap_phrase" "$builder_cap_hits" >&2
@@ -385,7 +427,7 @@ assert_contains \
   '\*\*Fan-Out Dispatch' \
   'actions/work-reference.md must define Fan-Out Dispatch inside Worktree Dispatch Mode — several builders under one releaser, with no new coordination state.'
 
-fan_out_block="$(sed -n '/\*\*Fan-Out Dispatch/,/^## Composed Exit Summary/p' "$repo_root/actions/work-reference.md")"
+fan_out_block="$(sed -n '/\*\*Fan-Out Dispatch/,/^## Composed Exit Summary/p' "$core_root/actions/work-reference.md")"
 
 assert_block_contains \
   "$fan_out_block" \
@@ -417,7 +459,7 @@ assert_block_contains \
   'absolute main-tree path' \
   'Fan-Out Dispatch must state the brief-delivery trap: a repo-relative path resolves inside the worktree against its own stale copy of do-work/.'
 
-three_attempt_count="$(grep -roh 'consecutive fix attempts' "$repo_root/actions" | wc -l | tr -d ' ')"
+three_attempt_count="$(grep -roh 'consecutive fix attempts' "$core_root/actions" | wc -l | tr -d ' ')"
 if [ "$three_attempt_count" != "1" ]; then
   printf 'FAIL: the three-attempt stop condition ("consecutive fix attempts ... in its current context only") must be stated exactly once across actions/ (found %s).\n' \
     "$three_attempt_count" >&2
@@ -453,7 +495,7 @@ for premise_file in actions/work.md actions/work-reference.md; do
   done
 done
 
-crash_recovery_block="$(sed -n '/^## Crash Recovery (Step 1)/,/^## Worktree Dispatch Mode/p' "$repo_root/actions/work-reference.md")"
+crash_recovery_block="$(sed -n '/^## Crash Recovery (Step 1)/,/^## Worktree Dispatch Mode/p' "$core_root/actions/work-reference.md")"
 
 assert_block_contains \
   "$crash_recovery_block" \
@@ -522,14 +564,14 @@ assert_block_contains \
 # the orchestrator reads nothing). The failure this guards is a later maintenance pass reading "the
 # builder never writes the main tree" as absolute and deleting the carve-out as redundant, silently
 # restoring the contradiction.
-worktree_dispatch_block="$(sed -n '/^## Worktree Dispatch Mode (Step 1)/,/^## Composed Exit Summary/p' "$repo_root/actions/work-reference.md")"
+worktree_dispatch_block="$(sed -n '/^## Worktree Dispatch Mode (Step 1)/,/^## Composed Exit Summary/p' "$core_root/actions/work-reference.md")"
 
 # actions/work.md is the executable, condensed hand-back path. It must retain the two
 # pre-merge guards from the canonical reference: isolate owner bookkeeping from any
 # unrelated staged work, and reject builder commits under do-work/ while the branch
 # diff can still see them. A trailing pointer to the reference is too late because a
 # reader following the numbered commands has already merged by then.
-work_action_handback_block="$(sed -n '/^\*\*Hand-back merge/,/^### Step 6\.25:/p' "$repo_root/actions/work.md")"
+work_action_handback_block="$(sed -n '/^\*\*Hand-back merge/,/^### Step 6\.25:/p' "$core_root/actions/work.md")"
 
 assert_block_contains \
   "$work_action_handback_block" \
@@ -612,14 +654,14 @@ assert_block_not_contains \
 # branch became unreachable by the exact event it exists to handle. Each assertion below pins one
 # numbered requirement of the fix: write it at claim time, keep it a list, keep it from becoming a
 # lock, and remove it when the REQ leaves working/.
-work_step_two_block="$(sed -n '/^### Step 2: Claim the Request/,/^### Step 3: Triage/p' "$repo_root/actions/work.md")"
+work_step_two_block="$(sed -n '/^### Step 2: Claim the Request/,/^### Step 3: Triage/p' "$core_root/actions/work.md")"
 
 assert_block_contains \
   "$work_step_two_block" \
   'In Progress \(interrupted\)' \
   'actions/work.md Step 2 must record the claim in CHECKPOINT.md In Progress (interrupted) at claim time — with Step 10 (session end) as the only write site, a hard crash leaves recovery no classification input and the REQ strands in working/ forever (REQ-077).'
 
-in_progress_record_block="$(sed -n '/^## In-Progress Record (Step 2)/,/^## Triage Section Template/p' "$repo_root/actions/work-reference.md")"
+in_progress_record_block="$(sed -n '/^## In-Progress Record (Step 2)/,/^## Triage Section Template/p' "$core_root/actions/work-reference.md")"
 
 assert_block_contains \
   "$in_progress_record_block" \
@@ -663,7 +705,7 @@ fi
 # sees a working/ REQ "not named there" and ages it into the three-hour takeover ladder. Nothing
 # pinned either clause, so a later "simplify the checkpoint rewrite" pass could reopen the hole with
 # the suite green. Both must scope preservation to every entry this checkout did not write.
-work_session_checkpoint_block="$(sed -n '/^#### Session Checkpoint/,/^## Clarify Questions/p' "$repo_root/actions/work.md")"
+work_session_checkpoint_block="$(sed -n '/^#### Session Checkpoint/,/^## Clarify Questions/p' "$core_root/actions/work.md")"
 
 assert_block_contains \
   "$work_session_checkpoint_block" \
@@ -680,7 +722,7 @@ assert_block_contains \
   'In Progress \(interrupted\)' \
   'actions/work.md Step 8 must remove the REQ In Progress entry as part of the archive move — a REQ still listed there after it leaves working/ is the contradiction the next run is told to report, and a report that fires on every normal completion trains readers to ignore it (REQ-077).'
 
-work_step_one_block="$(sed -n '/^### Step 1: Find Next Request/,/^### Step 2\.0/p' "$repo_root/actions/work.md")"
+work_step_one_block="$(sed -n '/^### Step 1: Find Next Request/,/^### Step 2\.0/p' "$core_root/actions/work.md")"
 
 assert_block_contains \
   "$work_step_one_block" \
@@ -718,7 +760,7 @@ assert_file_not_contains \
 # to a hand-written chain: a frozen list only ever verifies the subcommands that already
 # existed when it was written, which is exactly how it would miss the next one added
 # (Closed Enumerations Go Stale).
-unknown_subcommand_message="$(grep -F 'unknown subcommand %q' "$repo_root/tools/queue-kanban/main.go" || true)"
+unknown_subcommand_message="$(grep -F 'unknown subcommand %q' "$board_root/tools/queue-kanban/main.go" || true)"
 if [ -z "$unknown_subcommand_message" ]; then
   printf 'FAIL: tools/queue-kanban/main.go has no unknown-subcommand message — a mistyped subcommand must name the valid ones, not exit silently.\n' >&2
   fail_count=$((fail_count + 1))
@@ -735,7 +777,7 @@ else
         case_labels=substr(case_labels, RSTART + RLENGTH)
       }
     }
-  ' "$repo_root/tools/queue-kanban/main.go" | sort -u)"
+  ' "$board_root/tools/queue-kanban/main.go" | sort -u)"
 
   advertised_subcommands="$(printf '%s\n' "$unknown_subcommand_message" \
     | sed -n 's/.*(want \(.*\))\\n".*/\1/p' \
@@ -763,7 +805,7 @@ fi
 # documented form stay broken through a release. Flags first is the form pinned here.
 assert_contains \
   "actions/work.md" \
-  'queue-kanban next-version --repo-root <project-root> <patch\|minor\|major>' \
+  'queue-kanban/queue-kanban next-version --repo-root <project-root> --version-file "<skill-root>/actions/version\.md" <patch\|minor\|major>' \
   'actions/work.md must prescribe next-version with the flags BEFORE the positional bump size — a trailing --repo-root was silently discarded before REQ-081, and the documented form is what every agent copies even now that the parser tolerates both.'
 
 assert_contains \
@@ -849,7 +891,7 @@ done
 # lazy-load (see actions/help.md for the pattern), not a bigger budget — raise it
 # only with an accompanying decisions/ note saying why routing itself had to grow.
 router_word_budget=2650
-router_word_count="$(wc -w < "$repo_root/SKILL.md")"
+router_word_count="$(wc -w < "$core_root/SKILL.md")"
 if [ "$router_word_count" -gt "$router_word_budget" ]; then
   printf 'FAIL: SKILL.md is %s words — over the %s-word router budget. Merge or lazy-load; do not grow the always-loaded router.\n' \
     "$router_word_count" "$router_word_budget" >&2
@@ -880,7 +922,7 @@ hardened_check_scripts=(
 for check_script_entry in "${hardened_check_scripts[@]}"; do
   check_script="${check_script_entry%%|*}"
   referencing_action_file="${check_script_entry##*|}"
-  if [ ! -x "$repo_root/$check_script" ]; then
+  if [ ! -x "$(resolve_runtime_file "$check_script")" ]; then
     printf 'FAIL: %s must exist and be executable (%s points at it).\n' "$check_script" "$referencing_action_file" >&2
     fail_count=$((fail_count + 1))
   fi
@@ -897,7 +939,7 @@ done
 # Current-REQ relevance rule: preserve/exclude unexpected state and continue unless
 # it prevents this REQ from completing. The old "may stage unrelated files" rationale
 # contradicted the explicit staging contract and invited removal of a useful check.
-current_req_relevance_block="$(sed -n '/^\*\*Current-REQ relevance\./,/^\*\*Three-attempt stop\./p' "$repo_root/actions/work-reference.md")"
+current_req_relevance_block="$(sed -n '/^\*\*Current-REQ relevance\./,/^\*\*Three-attempt stop\./p' "$core_root/actions/work-reference.md")"
 
 assert_block_contains \
   "$current_req_relevance_block" \
@@ -961,7 +1003,7 @@ if ! (
   fail_count=$((fail_count + 1))
 else
   inventory_probe_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
-    "$repo_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
+    "$core_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
   for must_be_excluded in .env .envrc .environment production.env credentials.json server.pem \
                           .ENV.PRODUCTION AuthCredentials.json private.PEM UPPER-SECRET.txt; do
     if ! printf '%s\n' "$inventory_probe_output" | grep -qxF "$(printf 'X\tnested/%s' "$must_be_excluded")"; then
@@ -992,7 +1034,7 @@ else
   # to retain.
   git -C "$inventory_probe_dir" config status.renames false
   inventory_renames_disabled_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
-    "$repo_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
+    "$core_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
   if ! printf '%s\n' "$inventory_renames_disabled_output" | grep -qxF "$(printf 'XD\t.env')" || \
       ! printf '%s\n' "$inventory_renames_disabled_output" | grep -qxF "$(printf 'X\tvisible-config.txt')"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must force rename detection even when status.renames=false: XD for .env and X for visible-config.txt.\n' >&2
@@ -1007,7 +1049,7 @@ else
     fail_count=$((fail_count + 1))
   else
     inventory_after_reset_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
-      "$repo_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
+      "$core_root/tools/checks/uncommitted-inventory.sh" "$inventory_probe_dir" 2>/dev/null || true)"
     if ! printf '%s\n' "$inventory_after_reset_output" | grep -qxF "$(printf 'XD\t.env')" || \
         ! printf '%s\n' "$inventory_after_reset_output" | grep -qxF "$(printf 'X\tvisible-config.txt')"; then
       printf 'FAIL: reset-and-reinventory must fail closed: XD for .env and X, never A, for visible-config.txt.\n' >&2
@@ -1053,7 +1095,7 @@ if ! (
   fail_count=$((fail_count + 1))
 else
   ordinary_addition_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
-    "$repo_root/tools/checks/uncommitted-inventory.sh" "$ordinary_addition_probe_dir" 2>/dev/null || true)"
+    "$core_root/tools/checks/uncommitted-inventory.sh" "$ordinary_addition_probe_dir" 2>/dev/null || true)"
   if ! printf '%s\n' "$ordinary_addition_output" | grep -qxF "$(printf 'A\tordinary.js')"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must leave an ordinary addition as A when no XD exists.\n' >&2
     fail_count=$((fail_count + 1))
@@ -1147,7 +1189,7 @@ if ! (
   fail_count=$((fail_count + 1))
 else
   untracked_secret_copy_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
-    "$repo_root/tools/checks/uncommitted-inventory.sh" "$untracked_secret_copy_probe_dir" 2>/dev/null || true)"
+    "$core_root/tools/checks/uncommitted-inventory.sh" "$untracked_secret_copy_probe_dir" 2>/dev/null || true)"
   if ! printf '%s\n' "$untracked_secret_copy_output" | grep -qxF "$(printf 'X\t.env')" || \
       ! printf '%s\n' "$untracked_secret_copy_output" | grep -qxF "$(printf 'X\tapplication-config.txt')"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must quarantine an ordinary-looking untracked copy beside an untracked secret-shaped source.\n' >&2
@@ -1187,7 +1229,7 @@ if ! (
   fail_count=$((fail_count + 1))
 else
   copy_inventory_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
-    "$repo_root/tools/checks/uncommitted-inventory.sh" "$copy_inventory_probe_dir" 2>/dev/null || true)"
+    "$core_root/tools/checks/uncommitted-inventory.sh" "$copy_inventory_probe_dir" 2>/dev/null || true)"
   if ! printf '%s\n' "$copy_inventory_output" | grep -qxF "$(printf 'X\tcopied-config.txt')"; then
     printf 'FAIL: tools/checks/uncommitted-inventory.sh must tag a secret-derived copy destination as X, never A, even when status.renames=false.\n' >&2
     fail_count=$((fail_count + 1))
@@ -1272,7 +1314,7 @@ assert_contains \
 # the entire suite forever: the original `shift 2` with one argument left made
 # the loop reread --repo-root indefinitely on Bash 3.2 and newer alike.
 associate_missing_value_output="$(mktemp)"
-"$repo_root/tools/checks/associate-files.sh" --repo-root </dev/null \
+"$core_root/tools/checks/associate-files.sh" --repo-root </dev/null \
   >"$associate_missing_value_output" 2>&1 &
 associate_missing_value_pid=$!
 (
@@ -1318,7 +1360,7 @@ completed_at: 2026-08-07T12:00:00Z
 **Files changed:**
 - `legacy-file.txt` (modified)
 EOF
-if ! associate_complete_output="$(printf 'legacy-file.txt\n' | "$repo_root/tools/checks/associate-files.sh" --repo-root "$associate_complete_probe_dir")" || ! printf '%s\n' "$associate_complete_output" | grep -qxF "$(printf 'REQ-501\tlegacy-file.txt')"; then
+if ! associate_complete_output="$(printf 'legacy-file.txt\n' | "$core_root/tools/checks/associate-files.sh" --repo-root "$associate_complete_probe_dir")" || ! printf '%s\n' "$associate_complete_output" | grep -qxF "$(printf 'REQ-501\tlegacy-file.txt')"; then
   printf 'FAIL: tools/checks/associate-files.sh must associate a status: complete REQ after normalizing the documented terminal-success alias.\n' >&2
   fail_count=$((fail_count + 1))
 fi
@@ -1333,7 +1375,7 @@ if ! GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
   fail_count=$((fail_count + 1))
 else
   if inventory_failure_output="$(GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null \
-    "$repo_root/tools/checks/uncommitted-inventory.sh" "$inventory_failure_probe_dir" 2>&1)"; then
+    "$core_root/tools/checks/uncommitted-inventory.sh" "$inventory_failure_probe_dir" 2>&1)"; then
     inventory_failure_exit=0
   else
     inventory_failure_exit=$?
@@ -1355,7 +1397,7 @@ assert_contains \
   'git status --porcelain --untracked-files=all' \
   'tools/checks/preflight.sh must keep repository-wide dirty-file detection — serial qualification and review read the repository-wide working/staged diff.'
 
-preflight_dirty_warning_line="$(grep -E '^[[:space:]]*echo "WARN: .*uncommitted changes' "$repo_root/tools/checks/preflight.sh" || true)"
+preflight_dirty_warning_line="$(grep -E '^[[:space:]]*echo "WARN: .*uncommitted changes' "$core_root/tools/checks/preflight.sh" || true)"
 
 assert_block_contains \
   "$preflight_dirty_warning_line" \
@@ -1372,7 +1414,7 @@ assert_block_not_contains \
   'may stage unrelated files|swept into (the )?commit' \
   'tools/checks/preflight.sh must not claim dirty files are automatically staged — Step 9 stages explicit paths.'
 
-preflight_template_block="$(sed -n '/^## Pre-Flight Template/,/^## Implementation Summary Template/p' "$repo_root/actions/work-reference.md")"
+preflight_template_block="$(sed -n '/^## Pre-Flight Template/,/^## Implementation Summary Template/p' "$core_root/actions/work-reference.md")"
 
 assert_block_contains \
   "$preflight_template_block" \
@@ -1398,14 +1440,14 @@ extract_kanban_shutdown_line() {
   ' "$repo_root/$1"
 }
 
-root_kanban_shutdown_line="$(extract_kanban_shutdown_line justfile)"
-installer_kanban_shutdown_line="$(extract_kanban_shutdown_line actions/install.md)"
+root_kanban_shutdown_line="$(extract_kanban_shutdown_line Justfile)"
+installer_kanban_shutdown_line="$(extract_kanban_shutdown_line skills/do-work-board/justfile.template)"
 if [ "$root_kanban_shutdown_line" != "$installer_kanban_shutdown_line" ]; then
-  printf 'FAIL: justfile and actions/install.md must carry one identical run-kanban shutdown line; installer drift would ship different port safety to consumers.\n' >&2
+  printf 'FAIL: Justfile and the board-owned template must carry one identical run-kanban shutdown line.\n' >&2
   fail_count=$((fail_count + 1))
 fi
 
-for kanban_recipe_file in "actions/install.md" "justfile"; do
+for kanban_recipe_file in "skills/do-work-board/justfile.template" "Justfile"; do
   assert_file_not_contains \
     "$kanban_recipe_file" \
     'case "\$listener_command" in \*queue-kanban\*' \
@@ -1502,8 +1544,8 @@ if [ "$foreign_listener_status" -ne 1 ] || [ -s "$foreign_kill_marker" ]; then
 fi
 rm -f "$foreign_kill_marker"
 
-if [ ! -x "$repo_root/tools/do-work-update.sh" ]; then
-  printf 'FAIL: tools/do-work-update.sh must be executable for the just shortcut.\n' >&2
+if [ ! -x "$core_root/tools/do-work-update.sh" ]; then
+  printf 'FAIL: modular core tools/do-work-update.sh must be executable for the Just shortcut.\n' >&2
   fail_count=$((fail_count + 1))
 fi
 assert_contains \
@@ -1537,7 +1579,7 @@ assert_contains \
   'probe_exit=124' \
   'actions/work.md must preserve a bounded portable fallback and report a timed-out blocked check as exit 124.'
 
-blocked_probe_shell_block="$(sed -n '/^# Re-derive paths deterministically/,/^rm -f "\$BLOCKED_CHECK_SCRIPT"/p' "$repo_root/actions/work.md")"
+blocked_probe_shell_block="$(sed -n '/^# Re-derive paths deterministically/,/^rm -f "\$BLOCKED_CHECK_SCRIPT"/p' "$core_root/actions/work.md")"
 if ! bash -n <<<"$blocked_probe_shell_block"; then
   printf 'FAIL: actions/work.md blocked-check shell block must remain syntactically valid.\n' >&2
   fail_count=$((fail_count + 1))
@@ -1553,7 +1595,7 @@ assert_contains \
   '### Target ID Resolution' \
   'actions/work-reference.md must define the shared Target ID Resolution contract (REQ-/UR- token shapes + UR->REQ expansion by user_request: scan) that the id-taking actions cite instead of restating.'
 
-work_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$repo_root/actions/work.md")"
+work_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$core_root/actions/work.md")"
 
 assert_block_contains \
   "$work_input_block" \
@@ -1566,7 +1608,7 @@ assert_block_contains \
 # the resolution rule. Scope the UR- check to the Input section — abandon.md already names
 # archive/UR-NNN/ folders elsewhere, so a file-wide grep would pass vacuously without the action
 # actually accepting a UR argument.
-abandon_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$repo_root/actions/abandon.md")"
+abandon_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$core_root/actions/abandon.md")"
 
 assert_block_contains \
   "$abandon_input_block" \
@@ -1582,7 +1624,7 @@ assert_contains \
 # `do-work roadmap REQ-067` silently fell through to a whole-queue survey — the inverse of the
 # UR-run asymmetry the batch fixed. Its Input must now name a REQ-NNN scope token and cite the
 # shared Target ID Resolution contract for the token shape (rather than restating it).
-roadmap_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$repo_root/actions/roadmap.md")"
+roadmap_input_block="$(sed -n '/^## Input/,/^## Steps/p' "$core_root/actions/roadmap.md")"
 
 assert_block_contains \
   "$roadmap_input_block" \
@@ -1626,14 +1668,14 @@ assert_contains \
   'actions/memory.md recall must load the prompt-injection guardrail before reading hook-captured log content.'
 
 assert_contains \
-  "actions/install.md" \
-  'memory-module' \
-  'actions/install.md must carry the memory-module target (ADR-017).'
+  "actions/setup-memory.md" \
+  'install memory-module' \
+  'knowledge setup-memory must retain the documented memory-module migration alias (ADR-017).'
 
 assert_contains \
-  "actions/install.md" \
+  "actions/setup-memory.md" \
   'settings\.json\.pre-memory-module' \
-  'actions/install.md memory-module hook merge must back up settings.json before composing entries.'
+  'knowledge setup-memory hook merge must back up settings.json before composing entries.'
 
 assert_contains \
   "hooks/memory-stop-capture.sh" \
@@ -1643,14 +1685,14 @@ assert_contains \
 # Raw captures and the per-machine ledger must never become committable: the installer
 # adds them to .git/info/exclude (machine-local), never the project's .gitignore.
 assert_contains \
-  "actions/install.md" \
+  "actions/setup-memory.md" \
   '\*\*/memory/logs/' \
-  'actions/install.md memory-module must add memory/logs/ to .git/info/exclude — verbatim captures must not be committable.'
+  'knowledge setup-memory must add memory/logs/ to .git/info/exclude — verbatim captures must not be committable.'
 
 assert_contains \
-  "actions/install.md" \
+  "actions/setup-memory.md" \
   '\*\*/memory/usage-ledger\.jsonl' \
-  'actions/install.md memory-module must add memory/usage-ledger.jsonl to .git/info/exclude.'
+  'knowledge setup-memory must add memory/usage-ledger.jsonl to .git/info/exclude.'
 
 assert_contains \
   "hooks/memory-session-start.sh" \
@@ -1668,13 +1710,6 @@ assert_contains \
   ".gitattributes" \
   '^/AGENTS\.md[[:space:]]+export-ignore' \
   '.gitattributes must export-ignore /AGENTS.md — the redirect stub must not ship to consumer installs.'
-
-for staged_suite_path in VERSION suite skills; do
-  assert_contains \
-    ".gitattributes" \
-    "^/${staged_suite_path}[[:space:]]+export-ignore" \
-    ".gitattributes must temporarily export-ignore /${staged_suite_path} while the bridge archive remains monolithic; REQ-144 removes this staging guard at cutover."
-done
 
 # do-work/ and kb/ are TRACKED in this repo (they are the same Trail of Intent the skill tells
 # consumers to commit, and the tracked-path-only data-loss guards in tools/checks/record-commit-hash.sh
@@ -1796,7 +1831,7 @@ is_grandfathered_rationalizations_file() {
 rationalization_noun_pattern_case_sensitive='\bREQ-?[0-9]*\b|\bUR-[0-9]+\b'
 rationalization_noun_pattern_case_insensitive='queue|frontmatter|pipeline|\barchive|do-work|\bdomain\b|\bblocked\b|\bkb/|\bprime\b|\bclarify|working/|crew-member|\bschema\b|status:|working memory|daily log|\bledger\b|\bbootstrap\b|stop hook'
 
-for action_file_path in "$repo_root"/actions/*.md; do
+for action_file_path in "$repo_root"/skills/do-work*/actions/*.md; do
   action_file_name="$(basename "$action_file_path")"
   if is_grandfathered_rationalizations_file "$action_file_name"; then
     continue
@@ -1836,7 +1871,7 @@ if command -v jq &>/dev/null; then
   printf '{"type":"user","message":{"content":"%sghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ012345 tail"}}\n{"type":"assistant","message":{"content":[{"type":"text","text":"shortreply"}]}}\n' \
     "$redaction_order_pad" > "$redaction_order_workdir/transcript.jsonl"
   printf '{"transcript_path":"%s/transcript.jsonl"}' "$redaction_order_workdir" \
-    | CLAUDE_PROJECT_DIR="$redaction_order_workdir" bash "$repo_root/hooks/memory-stop-capture.sh" >/dev/null 2>&1 || true
+    | CLAUDE_PROJECT_DIR="$redaction_order_workdir" bash "$knowledge_root/hooks/memory-stop-capture.sh" >/dev/null 2>&1 || true
   if ! ls "$redaction_order_workdir/memory/logs/"*.md >/dev/null 2>&1; then
     printf 'FAIL: hooks/memory-stop-capture.sh redaction-order probe wrote no capture — the probe transcript should be captured, not dropped.\n' >&2
     fail_count=$((fail_count + 1))
@@ -1882,7 +1917,7 @@ assert_contains \
 # the real call-site order inside buildBoard rather than a comment: a comment survives
 # the move. Paired with the instruction-side claim in actions/board.md, whose rewording
 # is the other way the invariant quietly stops being a promise.
-build_board_block="$(sed -n '/^func buildBoard(/,/^}/p' "$repo_root/tools/queue-kanban/model.go")"
+build_board_block="$(sed -n '/^func buildBoard(/,/^}/p' "$board_root/tools/queue-kanban/model.go")"
 bucket_columns_call_line="$(grep -nF 'bucketColumns(board.AllRequests' <<<"$build_board_block" | head -1 | cut -d: -f1 || true)"
 overlap_annotation_call_line="$(grep -nF 'annotateWriteSetOverlap(board.AllRequests)' <<<"$build_board_block" | head -1 | cut -d: -f1 || true)"
 
@@ -1894,7 +1929,7 @@ elif [ "$overlap_annotation_call_line" -lt "$bucket_columns_call_line" ]; then
   fail_count=$((fail_count + 1))
 fi
 
-board_rules_block="$(sed -n '/^## Rules/,/^## Common Rationalizations/p' "$repo_root/actions/board.md")"
+board_rules_block="$(sed -n '/^## Rules/,/^## Common Rationalizations/p' "$board_root/actions/board.md")"
 
 assert_block_contains \
   "$board_rules_block" \
@@ -1918,7 +1953,7 @@ assert_contains \
   'outlive the transcript' \
   'crew-members/clear-questions.md must keep the principle that an interactively obtained answer is written into the durable record before it is acted on — wording rules alone let a compliant question produce an answer that dies with the session.'
 
-work_open_questions_block="$(sed -n '/^### Step 3\.5: Open Questions/,/^### Step 3\.7/p' "$repo_root/actions/work.md")"
+work_open_questions_block="$(sed -n '/^### Step 3\.5: Open Questions/,/^### Step 3\.7/p' "$core_root/actions/work.md")"
 
 assert_block_contains \
   "$work_open_questions_block" \
@@ -1955,7 +1990,10 @@ record_commit_hash_probe="$repo_root/_dev/tests/record-commit-hash-guards.sh"
 if [ ! -f "$record_commit_hash_probe" ]; then
   printf 'FAIL: _dev/tests/record-commit-hash-guards.sh is missing — the write-back guards have no behavioral coverage.\n' >&2
   fail_count=$((fail_count + 1))
-elif ! bash "$record_commit_hash_probe"; then
+elif ! bash <(sed \
+  -e "s|^repo_root=.*|repo_root=\"$repo_root\"|" \
+  -e 's|\$repo_root/tools/checks/|\$repo_root/skills/do-work/tools/checks/|g' \
+  "$record_commit_hash_probe"); then
   printf 'FAIL: record-commit-hash guard probes failed (see the FAIL lines above).\n' >&2
   fail_count=$((fail_count + 1))
 fi
@@ -2116,23 +2154,25 @@ else
 fi
 
 assert_contains \
-  "justfile" \
+  "Justfile" \
   '^# >>> do-work:recipes >>>$' \
   'root justfile must open the exact managed do-work recipe section.'
 assert_contains \
-  "justfile" \
+  "Justfile" \
   '^# <<< do-work:recipes <<<$' \
   'root justfile must close the exact managed do-work recipe section.'
 assert_contains \
-  "actions/install.md" \
-  'tools/replace-text-section\.sh' \
-  'actions/install.md must reconcile recipes through the managed-section utility.'
-root_managed_section="$(awk '$0 == "# >>> do-work:recipes >>>" {inside=1} inside {print} $0 == "# <<< do-work:recipes <<<" {exit}' "$repo_root/justfile")"
-installer_managed_section="$(awk '$0 == "# >>> do-work:recipes >>>" {inside=1} inside {print} $0 == "# <<< do-work:recipes <<<" {exit}' "$repo_root/actions/install.md" | sed 's|<kanban-dir>|tools/queue-kanban|g')"
-if [ "$root_managed_section" != "$installer_managed_section" ]; then
-  printf 'FAIL: root justfile and actions/install.md must carry the same complete managed recipe section after path substitution.\n' >&2
-  fail_count=$((fail_count + 1))
-fi
+  "tools/install-do-work-suite.sh" \
+  'tools/replace-text-section\.sh|replace-text-section\.sh' \
+  'suite installer must reconcile recipes through the managed-section utility.'
+assert_contains \
+  "Justfile" \
+  'skills/do-work-board/tools/queue-kanban' \
+  'root Justfile must build the canonical board sibling source.'
+assert_contains \
+  "Justfile" \
+  'skill_root="\$project_root/skills/do-work".*\$skill_root/tools/do-work-update\.sh' \
+  'root Justfile fallback must invoke the canonical modular core updater.'
 assert_contains \
   "tools/replace-text-section.sh" \
   'suffix=.*dir=parent' \

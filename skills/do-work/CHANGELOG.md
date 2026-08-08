@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.184.0 — Live Four-Skill Distribution (2026-08-08)
+
+Existing bridge clients can now leave the monolith behind through the same recoverable transaction used by fresh installs. The live archive has one shared version and four focused sibling skills, while project data and unrelated configuration stay outside the managed plan.
+
+- Makes core, board, knowledge, and toolbox the only shipped runtime sources and retains only the three root bootstrap utilities
+- Publishes the tested one-archive bootstrap and makes direct plus managed-Just updates converge on validate-first, verify-complete, exact-recovery behavior
+- Migrates owned Just recipes and enabled legacy memory hooks, preserves the feature-rich work pipeline for its scheduled follow-up, and starts the one-release moved-command compatibility window
+
 ## 0.183.23 — Empty-Quarantine Association Fix (2026-08-08)
 
 Commit and unscoped inspect runs no longer lose every safe candidate when their run-level secret quarantine starts empty.
