@@ -26,9 +26,6 @@ Extensions installed beside core:
   do-work-board board                 Kanban, Testing, calendar, summaries, and board CLI
   do-work-knowledge bkb               BKB, memory, dream, interviews, and prompts
   do-work-toolbox code-review         Reviews, reports, presentation, inspection, and repo utilities
-
-Temporary compatibility:
-  do-work <moved-command>           Prints its exact sibling invocation and stops
 ```
 
 ## Full cycle without persistent state
@@ -54,5 +51,4 @@ For `<core-command> help`, read that action's Input and When to Use sections and
 
 - Keep this menu aligned with the core router.
 - Do not duplicate extension menus; point to the named sibling skill.
-- Moved-command help must be explanatory only; never forward to a sibling action.
 - Help never mutates the queue, project, or Git state.

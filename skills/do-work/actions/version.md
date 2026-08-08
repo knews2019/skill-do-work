@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.185.0
+**Current version**: 0.186.0
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/actions/version.md
 
@@ -47,15 +47,7 @@ All update discovery, review, confirmation, mutation, byte verification, and rec
    ```
 4. Do not download a second archive, perform a second diff, add another confirmation, or fall back to a direct `curl | tar` mutation. If the engine refuses or fails, report that exact failure; it is the authoritative safety boundary.
 
-The engine supports both the bridge-era all-in-one archive and the four-module suite archive. Legacy archives keep the existing skill-only transaction. For a suite archive, the installed bridge validator approves all four modules first, then the updater delegates that same downloaded archive to its bundled full-suite installer so the one reviewed confirmation also refreshes the owned Just section and composes core/migrated memory-hook settings. Both paths verify installed bytes and recover their managed writes on failure. Neither path mutates `do-work/`, `kb/`, application files, bytes outside the marked Just section, unrelated settings entries, or any other project configuration.
-
-Capability probes use the same installed engine and are side-effect free:
-
-```bash
-bash "<skill-root>/tools/do-work-update.sh" --capabilities
-```
-
-The bridge capability output is exactly `suite-layout-v2`.
+The installed manifest validator approves all four modules first, then the updater delegates that same downloaded archive to its installed full-suite installer. The installer owns the reviewed confirmation, refreshes the managed Just section, composes core hook settings, verifies every installed byte, and restores every changed managed path on failure. The update does not mutate `do-work/`, `kb/`, application files, bytes outside the marked Just section, unrelated settings entries, or any other project configuration.
 
 ## Responding to Recap Requests
 

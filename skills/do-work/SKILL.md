@@ -36,14 +36,9 @@ Check these patterns in order; first match wins.
 | `forensics`, `diagnose`, `health check` | `./actions/forensics.md` |
 | `roadmap`, `queue-status`, `where are we`, `what's left` | `./actions/roadmap.md` |
 | `version`, `update`, `what's new`, `release notes`, `history`, `recap` | `./actions/version.md` |
-| `board`, `kanban`, `kanban board`, `queue board`, `visualize queue`, `show the board` | `./actions/moved-command-shim.md` |
-| `bkb`, `build knowledge base`, `knowledge base`, `kb`; `memory`, `remember`, `forget`, `recall`, `what do you remember`; `dream`, `consolidate memory`, `clean up wiki`, `lint and merge notes`, `memory cleanup`; `interview`, `elicit`, `operating model`; `prompts`, `prompt` | `./actions/moved-command-shim.md` |
-| `validate-feedback`, `validate feedback`, `triage findings`, `triage feedback`, `feedback review`, `review feedback`, `assess feedback`, `should we push back`; `code-review`, `code review`, `review codebase`, `audit codebase`, `codebase review`; `ui-review`, `review ui`, `design review`, `validate ui`, `ui audit`, `design audit`; `present`, `present-work`, `present work`, `showcase`, `deliver`, `pitch`, `client brief`; `ai-report`, `ai report`, `make-report`, `make report`, `screenshot-report`, `visual report`, `proof of work`; `slop-check`, `slop check`, `anti-slop`; `quick-wins`, `quick wins`, `low-hanging`, `low hanging fruit`, `scan`, `opportunities`, `what can we improve`; `scan-ideas`, `ideas`, `ideate`, `brainstorm`, `what should I build`, `suggest`, `what's next`, `what could we improve`; `deep-explore`, `explore concept`, `deep dive`, `develop idea`, `explore idea`; `prime`, `prime create`, `prime audit`, `create prime`, `audit primes`, `primes`; `inspect`, `explain changes`, `what changed`, `show changes`, `describe changes`; `note`, `note add`, `add note`; `stray-check`, `stray files`, `strays`, `orphan files`, `orphans`, `junk`, `what doesn't belong`, `file hygiene`; `tidy-repo`, `tidy repo`, `file-reorg`, `reorg`, `reorganize`, `restructure`, `declutter`, `tidy layout`, `fix the layout`, `clean up the root`; `tutorial`, `learn`, `getting started`, `how does this work`; `install`, `install-`, `setup` | `./actions/moved-command-shim.md` |
 | `capture-request:` / `capture request:` or unmatched descriptive multi-word input | `./actions/capture.md` |
 
 An unknown single word is ambiguous: ask whether the user wants it captured or meant another command.
-
-Moved commands retain one modular-release compatibility route. It reads `./actions/moved-command-shim.md`, prints the exact sibling invocation, and stops without forwarding. New calls should use `do-work-board`, `do-work-knowledge`, or `do-work-toolbox` directly.
 
 ## Dispatch
 

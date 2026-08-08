@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Atomically create, append, migrate, or replace do-work's managed text section.
+# Atomically create, append, or replace do-work's managed text section.
 set -euo pipefail
 
 if ! command -v python3 >/dev/null 2>&1; then
@@ -10,21 +10,12 @@ fi
 exec python3 - "$@" <<'PY'
 import argparse
 import os
-import re
 import stat
 import sys
 import tempfile
 
 BEGIN = b"# >>> do-work:recipes >>>"
 END = b"# <<< do-work:recipes <<<"
-LEGACY_HEADER = b"# --- do-work board recipes (installed by `do-work install just-kanban`) ---"
-RECIPE_NAMES = (
-    b"run-kanban",
-    b"run-kanban-cli",
-    b"kanban-static",
-    b"kanban-summary",
-    b"run-do-work-update",
-)
 
 
 def die(message: str) -> "None":
@@ -84,61 +75,6 @@ def marker_span(data: bytes, label: str, require_section_only: bool = False):
     return span_start, span_end
 
 
-def recipe_header_matches(body: bytes, recipe_name: bytes) -> bool:
-    return re.match(rb"^" + re.escape(recipe_name) + rb"(?:[ \t].*)?:[ \t]*$", body) is not None
-
-
-def legacy_span(data: bytes):
-    lines, offsets = lines_with_offsets(data)
-    bodies = [line_body(line) for line in lines]
-    header_indexes = [index for index, body in enumerate(bodies) if body == LEGACY_HEADER]
-    recipe_indexes = {}
-    any_recipe_header = False
-
-    for recipe_name in RECIPE_NAMES:
-        matches = [
-            index
-            for index, body in enumerate(bodies)
-            if recipe_header_matches(body, recipe_name)
-        ]
-        if matches:
-            any_recipe_header = True
-        recipe_indexes[recipe_name] = matches
-
-    if not header_indexes and not any_recipe_header:
-        return None
-    if len(header_indexes) != 1:
-        die("legacy migration requires exactly one legacy do-work recipe header")
-    if any(len(recipe_indexes[name]) != 1 for name in RECIPE_NAMES):
-        die("legacy migration requires exactly one of each of the five do-work recipes")
-
-    ordered_indexes = [recipe_indexes[name][0] for name in RECIPE_NAMES]
-    if ordered_indexes != sorted(ordered_indexes) or header_indexes[0] >= ordered_indexes[0]:
-        die("legacy do-work recipes are reversed, duplicated, or out of order")
-
-    known_headers = set(ordered_indexes)
-    for index in range(header_indexes[0] + 1, ordered_indexes[-1]):
-        body = bodies[index]
-        if (
-            not body
-            or body.startswith(b"#")
-            or lines[index].startswith((b" ", b"\t"))
-            or index in known_headers
-        ):
-            continue
-        die("legacy do-work block contains interleaved custom content; refusing to own it")
-
-    last_header = ordered_indexes[-1]
-    body_index = last_header + 1
-    if body_index >= len(lines) or not lines[body_index].startswith((b" ", b"\t")):
-        die("legacy run-do-work-update recipe has no indented body")
-    last_body = body_index
-    while last_body + 1 < len(lines) and lines[last_body + 1].startswith((b" ", b"\t")):
-        last_body += 1
-
-    return offsets[header_indexes[0]], offsets[last_body] + len(lines[last_body])
-
-
 def atomic_replace(path: str, content: bytes, mode: int) -> None:
     parent = os.path.dirname(os.path.abspath(path))
     if not os.path.isdir(parent):
@@ -185,17 +121,16 @@ parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument("--target")
 parser.add_argument("--section-file")
 parser.add_argument("--template-file")
-parser.add_argument("--migrate-legacy-do-work", action="store_true")
 parser.add_argument("--help", action="store_true")
 try:
     arguments, residue = parser.parse_known_args()
 except SystemExit:
-    die("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>] [--migrate-legacy-do-work]")
+    die("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>]")
 if arguments.help:
-    print("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>] [--migrate-legacy-do-work]")
+    sys.stdout.write("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>]\n")
     raise SystemExit(0)
 if residue or not arguments.target or not arguments.section_file:
-    die("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>] [--migrate-legacy-do-work]")
+    die("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>]")
 
 section_data = read_regular(arguments.section_file, "section file")
 section_span = marker_span(section_data, "section file", require_section_only=True)
@@ -223,23 +158,15 @@ target_span = marker_span(target_data, "target")
 if target_span is not None:
     replacement_data = target_data[: target_span[0]] + section_data + target_data[target_span[1] :]
 else:
-    migration_span = legacy_span(target_data) if arguments.migrate_legacy_do_work else None
-    if migration_span is not None:
-        replacement_data = target_data[: migration_span[0]] + section_data + target_data[migration_span[1] :]
+    if not target_data:
+        separator = b""
+    elif target_data.endswith(b"\n\n"):
+        separator = b""
+    elif target_data.endswith(b"\n"):
+        separator = b"\n"
     else:
-        # Refuse to append beside recognizable but incomplete legacy recipes even when the
-        # caller forgot the migration flag. Duplication is worse than an explicit hard stop.
-        if legacy_span(target_data) is not None:
-            die("legacy do-work recipes require --migrate-legacy-do-work")
-        if not target_data:
-            separator = b""
-        elif target_data.endswith(b"\n\n"):
-            separator = b""
-        elif target_data.endswith(b"\n"):
-            separator = b"\n"
-        else:
-            separator = b"\n\n"
-        replacement_data = target_data + separator + section_data
+        separator = b"\n\n"
+    replacement_data = target_data + separator + section_data
 
 if replacement_data != target_data:
     atomic_replace(arguments.target, replacement_data, target_mode)

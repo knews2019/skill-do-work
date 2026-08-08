@@ -13,15 +13,6 @@ PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 KNOWLEDGE_ROOT="<directory containing this package's SKILL.md>"
 ```
 
-The two deterministic legacy-to-modular hook migrations are:
-
-```text
-.claude/skills/do-work/hooks/memory-session-start.sh -> .claude/skills/do-work-knowledge/hooks/memory-session-start.sh
-.claude/skills/do-work/hooks/memory-stop-capture.sh  -> .claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh
-```
-
-Replace only those exact command substrings. Never rewrite unrelated hook commands or whole hook arrays.
-
 ## Phase 1: Inspect before writing
 
 Check all four store components: non-empty `memory/working-memory.md`, `memory/logs/`, `memory/usage-ledger.jsonl`, and the machine-local ignore coverage for logs, ledger, and `.bootstrap-imported`.
@@ -67,11 +58,10 @@ With `jq` available:
 
 1. Create `{}` only when settings is absent; otherwise require it to parse.
 2. Back up the exact original to `settings.json.pre-memory-module` before the first mutation.
-3. Migrate each known legacy command substring above to its exact modular target. No other string changes.
-4. Gate each hook independently by its script filename, then append only the missing fragment entry with array `+`; never assign a replacement hooks object.
-5. Write through a sibling temporary file and rename only after `jq` validates the candidate.
-6. Verify both filenames, every pre-existing unrelated hook, and entry counts. On any failure, restore the exact backup and report failure.
-7. Remove the backup only after verification succeeds.
+3. Gate each hook independently by its script filename, then append only the missing fragment entry with array `+`; never assign a replacement hooks object.
+4. Write through a sibling temporary file and rename only after `jq` validates the candidate.
+5. Verify both filenames, every pre-existing unrelated hook, and entry counts. On any failure, restore the exact backup and report failure.
+6. Remove the backup only after verification succeeds.
 
 The complete append expression and fragment shape live in `actions/memory-reference.md` → **Hook Install Internals**. Follow them rather than inventing a second merge algorithm.
 
@@ -84,7 +74,7 @@ Verify:
 - Git tracks none of the three raw-store paths;
 - local ignore covers logs, ledger, and sentinel independently;
 - settings parses and retains every prior unrelated hook;
-- when enabled, both commands point to `do-work-knowledge`, with no known legacy memory-hook command left;
+- when enabled, both commands point to `do-work-knowledge`;
 - when declined or unsupported, settings is byte-identical to its pre-action state.
 
 Report scaffolding and hooks separately. Never call hookless memory unusable: every memory subcommand remains functional without automatic capture.

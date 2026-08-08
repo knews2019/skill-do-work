@@ -28,7 +28,7 @@ One reviewed archive installs four required sibling skills at one shared version
 - `.claude/skills/do-work-knowledge/` — BKB, memory, dreams, interviews, and prompts
 - `.claude/skills/do-work-toolbox/` — audits, reports, presentation, and repository utilities
 
-The installer validates all four modules before the first managed write, asks once, verifies every installed byte before reporting success, and restores every changed managed module/configuration path after failure. It creates or refreshes the sentinel-owned Just section, enables core hooks, leaves memory capture disabled on fresh installs, and migrates only previously enabled legacy memory-hook paths. Project `do-work/`, `kb/`, application files, and unrelated Just/settings bytes stay outside the managed plan.
+The installer validates all four modules before the first managed write, asks once, verifies every installed byte before reporting success, and restores every changed managed module/configuration path after failure. It creates or refreshes the sentinel-owned Just section, enables core hooks, leaves memory capture disabled on fresh installs, and preserves existing optional knowledge hooks. Project `do-work/`, `kb/`, application files, and unrelated Just/settings bytes stay outside the managed plan.
 
 Claude Code can invoke the four skill names directly. In Codex or Gemini, point the agent at the appropriate sibling `SKILL.md` once per session, or add those pointers to the project's agent instructions. Commit all four `.claude/skills/do-work*` directories so each repository carries its suite.
 
@@ -40,7 +40,7 @@ Paste this into an AI agent from the root of a repository that already has do-wo
 
 > Upgrade this repository's existing project-local do-work installation.
 >
-> Work only inside the current Git repository. Locate its installed do-work skill, normally at `.claude/skills/do-work/`, and confirm its updater reports exactly `suite-layout-v2` when run with `--capabilities`. If the installation or compatible updater is missing, stop and tell me what is missing instead of attempting a fresh installation.
+> Work only inside the current Git repository. Locate its installed four-skill do-work suite, normally under `.claude/skills/`, and confirm the core updater, manifest validator, and full-suite installer are present. If the current suite installation or updater is missing, stop and tell me what is missing instead of attempting a fresh installation.
 >
 > Run the installed `tools/do-work-update.sh` with this repository's Git root passed through `--project-root`. Use that updater as the only mutation path. Show me its complete managed-file diff and preserve its built-in confirmation before overwriting anything; do not answer the confirmation automatically.
 >
@@ -109,7 +109,7 @@ Request:
 
 Run each sibling's `help` command for its menu. Core guides live in [`skills/do-work/docs/`](./skills/do-work/docs/); extension guides live with their owning skill.
 
-Common extension calls include `do-work-board board`, `do-work-knowledge bkb`, `do-work-knowledge memory`, `do-work-toolbox code-review`, `do-work-toolbox present-work`, and `do-work-toolbox inspect`. For one modular release, entering a moved command through core prints its exact replacement and stops.
+Common extension calls include `do-work-board board`, `do-work-knowledge bkb`, `do-work-knowledge memory`, `do-work-toolbox code-review`, `do-work-toolbox present-work`, and `do-work-toolbox inspect`.
 
 ### Queue board (`do-work-board board`)
 

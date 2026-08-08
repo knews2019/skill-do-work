@@ -35,7 +35,6 @@ core_files=(
   skills/do-work/actions/forensics.md
   skills/do-work/actions/version.md
   skills/do-work/actions/help.md
-  skills/do-work/actions/moved-command-shim.md
   skills/do-work/crew-members/coding-guardrails.md
   skills/do-work/crew-members/clear-questions.md
   skills/do-work/specs/bug-fix.md
@@ -204,32 +203,34 @@ then
   fail 'README and core help must carry the approved UR-031 full-cycle prompt byte-for-byte'
 fi
 
-if [ -f "$repo_root/skills/do-work/SKILL.md" ]; then
-  moved_shim_route_count="$(grep -Ec '^\|.*`\./actions/moved-command-shim\.md`[[:space:]]*\|$' "$repo_root/skills/do-work/SKILL.md" || true)"
-  if [ "$moved_shim_route_count" -ne 3 ]; then
-    fail "core must route board, knowledge, and toolbox legacy commands through exactly three moved-command rows (found $moved_shim_route_count)"
-  fi
+if [ -e "$repo_root/skills/do-work/actions/moved-command-shim.md" ]; then
+  fail 'the one-release moved-command shim must be absent after the migration window'
+fi
+if sed -n '/^## Routing/,/^## Dispatch/p' "$repo_root/skills/do-work/SKILL.md" \
+  | grep -Fq 'moved-command-shim.md'; then
+  fail 'core routing must not retain moved-command compatibility rows'
 fi
 
-if [ -f "$repo_root/skills/do-work/actions/moved-command-shim.md" ]; then
-  for replacement_invocation in \
-    'do-work-board board' \
-    'do-work-knowledge bkb' \
-    'do-work-knowledge memory' \
-    'do-work-knowledge dream' \
-    'do-work-knowledge interview' \
-    'do-work-knowledge prompts' \
-    'do-work-knowledge setup-memory' \
-    'do-work-toolbox <canonical trigger>' \
-    'do-work-toolbox install <canonical target>' \
-    'just run-kanban'
-  do
-    grep -Fq "$replacement_invocation" "$repo_root/skills/do-work/actions/moved-command-shim.md" \
-      || fail "moved-command shim lacks exact replacement surface: $replacement_invocation"
-  done
-  grep -Fq 'Do not dispatch another skill' "$repo_root/skills/do-work/actions/moved-command-shim.md" \
-    || fail 'moved-command shim must print and stop instead of forwarding'
-fi
+extension_actions=(
+  board
+  bkb
+  dream
+  memory
+  interview
+  prompts
+  setup-memory
+  "${toolbox_actions[@]}"
+)
+for extension_action in "${extension_actions[@]}"; do
+  ownership_count="$(find "$repo_root"/skills/do-work*/actions -maxdepth 1 -type f -name "$extension_action.md" | wc -l | tr -d ' ')"
+  if [ "$ownership_count" -ne 1 ]; then
+    fail "public extension action $extension_action must have exactly one owning skill (found $ownership_count)"
+  fi
+  if sed -n '/^## Routing/,/^## Dispatch/p' "$repo_root/skills/do-work/SKILL.md" \
+    | grep -Fq "./actions/$extension_action.md"; then
+    fail "core must not route sibling-owned action $extension_action"
+  fi
+done
 
 if [ -f "$repo_root/skills/do-work/tools/install-do-work-suite.sh" ] \
   && ! cmp -s "$repo_root/tools/install-do-work-suite.sh" \
@@ -281,16 +282,13 @@ if [ -f "$repo_root/skills/do-work-knowledge/hooks/memory-hooks.json" ]; then
 fi
 
 if [ -f "$repo_root/skills/do-work-knowledge/actions/setup-memory.md" ]; then
-  for migration_pair in \
-    '.claude/skills/do-work/hooks/memory-session-start.sh|.claude/skills/do-work-knowledge/hooks/memory-session-start.sh' \
-    '.claude/skills/do-work/hooks/memory-stop-capture.sh|.claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh'
-  do
-    old_hook="${migration_pair%%|*}"
-    new_hook="${migration_pair#*|}"
-    grep -Fq "$old_hook" "$repo_root/skills/do-work-knowledge/actions/setup-memory.md" \
-      || fail "memory setup lacks legacy migration source: $old_hook"
-    grep -Fq "$new_hook" "$repo_root/skills/do-work-knowledge/actions/setup-memory.md" \
-      || fail "memory setup lacks modular migration target: $new_hook"
+  if grep -Fq '.claude/skills/do-work/hooks/memory-' "$repo_root/skills/do-work-knowledge/actions/setup-memory.md"; then
+    fail 'memory setup must not retain old core-path hook migration instructions'
+  fi
+  for knowledge_hook in memory-session-start.sh memory-stop-capture.sh; do
+    grep -Fq ".claude/skills/do-work-knowledge/hooks/$knowledge_hook" \
+      "$repo_root/skills/do-work-knowledge/actions/setup-memory.md" \
+      || fail "memory setup must target the current modular hook: $knowledge_hook"
   done
 fi
 

@@ -54,6 +54,16 @@ if [ ! -x "$installer" ]; then
   exit 1
 fi
 
+for retired_installer_token in \
+  '--migrate-legacy-do-work' \
+  '.claude/skills/do-work/hooks/memory-session-start.sh' \
+  '.claude/skills/do-work/hooks/memory-stop-capture.sh'
+do
+  if grep -Fq -- "$retired_installer_token" "$installer"; then
+    fail "suite installer retained migration-window logic: $retired_installer_token"
+  fi
+done
+
 for cutover_export_path in VERSION suite skills; do
   if git -C "$repo_root" check-attr export-ignore -- "$cutover_export_path" \
     | grep -q 'export-ignore: set'; then
@@ -159,7 +169,7 @@ if [ "$(grep -c '^Install this complete four-skill suite?' "$bootstrap_output")"
   fail 'fresh bootstrap must present exactly one confirmation boundary'
 fi
 
-# Reinstall preserves custom Just bytes, composes custom hooks, and migrates only known memory paths.
+# Reinstall preserves custom Just bytes and composes current modular hooks.
 cat > "$fresh_project/justfile" <<'JUST'
 set shell := ["bash", "-cu"]
 custom-before:
@@ -180,14 +190,14 @@ cat > "$fresh_project/.claude/settings.json" <<'JSON'
   "hooks": {
     "SessionStart": [
       {"hooks": [{"type": "command", "command": "echo custom-start"}]},
-      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/memory-session-start.sh\""}]}
+      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-session-start.sh\""}]}
     ],
     "Stop": [
       {"hooks": [
         {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""},
         {"type": "command", "command": "echo custom-stop"}
       ]},
-      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/memory-stop-capture.sh\""}]}
+      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh\""}]}
     ]
   }
 }
@@ -208,13 +218,11 @@ just_mode="$(stat -f '%Lp' "$fresh_project/justfile" 2>/dev/null || stat -c '%a'
 [ "$just_mode" = 640 ] || fail "reinstall changed Justfile mode (got $just_mode, want 640)"
 settings_mode="$(stat -f '%Lp' "$fresh_project/.claude/settings.json" 2>/dev/null || stat -c '%a' "$fresh_project/.claude/settings.json")"
 [ "$settings_mode" = 600 ] || fail "reinstall changed settings mode (got $settings_mode, want 600)"
-python3 - "$fresh_project/.claude/settings.json" <<'PY' || fail 'reinstall did not preserve/compose/migrate hook settings'
+python3 - "$fresh_project/.claude/settings.json" <<'PY' || fail 'reinstall did not preserve and compose current hook settings'
 import json, pathlib, sys
 data = json.loads(pathlib.Path(sys.argv[1]).read_text())
 assert data["custom"] == {"keep": [1, 2, 3]}
 serialized = json.dumps(data)
-assert ".claude/skills/do-work/hooks/memory-session-start.sh" not in serialized
-assert ".claude/skills/do-work/hooks/memory-stop-capture.sh" not in serialized
 assert serialized.count(".claude/skills/do-work-knowledge/hooks/memory-session-start.sh") == 1
 assert serialized.count(".claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh") == 1
 assert serialized.count("do-work/hooks/session-start.sh") == 1
@@ -229,36 +237,6 @@ if ! run_installer "$fresh_project" "$archive_file" "$workdir/reinstall-idempote
 elif ! cmp -s "$fresh_project/justfile" "$workdir/reinstall.just.snapshot" \
   || ! cmp -s "$fresh_project/.claude/settings.json" "$workdir/reinstall.settings.snapshot"; then
   fail 'reinstall is not byte-idempotent for reconciled Just/settings files'
-fi
-
-# Exact legacy recipes migrate while surrounding custom content survives.
-legacy_project="$workdir/legacy-project"
-new_git_project "$legacy_project"
-cat > "$legacy_project/Justfile" <<'JUST'
-custom-before:
-    echo before
-
-# --- do-work board recipes (installed by `do-work install just-kanban`) ---
-run-kanban $port="8090":
-    echo board
-run-kanban-cli:
-    echo cli
-kanban-static:
-    echo static
-kanban-summary:
-    echo summary
-run-do-work-update:
-    echo update
-
-custom-after:
-    echo after
-JUST
-if ! run_installer "$legacy_project" "$archive_file" "$workdir/legacy.out"; then
-  fail 'installer could not migrate the exact legacy five-recipe block'
-else
-  assert_file_contains "$legacy_project/Justfile" '^# >>> do-work:recipes >>>$' 'legacy migration did not add managed markers'
-  assert_file_contains "$legacy_project/Justfile" '^custom-before:$' 'legacy migration changed custom prefix'
-  assert_file_contains "$legacy_project/Justfile" '^custom-after:$' 'legacy migration changed custom suffix'
 fi
 
 # A marker-free custom Justfile is preserved and receives one managed append.

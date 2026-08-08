@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.0 — Modular Migration Shims Removed (2026-08-08)
+
+The one-release compatibility window is closed. Core now owns only core commands, and current modular updates use one validated archive through the installed all-or-recover installer instead of carrying bridge, monolith, or legacy-configuration branches.
+
+- Deletes the moved-command shim/routes and removes capability probing, root/monolith update handling, exact legacy Just migration, and old core memory-hook rewriting
+- Preserves marker-managed configuration, current hooks, dirty/confirmation guards, installed-helper trust, byte verification, and exact recovery with focused RED/GREEN and full regression coverage
+- Queues targeted follow-ups for tool-independent reserved-recipe collision rejection and the remaining retired-command restatement sweep found during independent review
+
 ## 0.185.0 — Stateful Pipeline Removed (2026-08-08)
 
 End-to-end work no longer has a second state machine competing with the queue orchestrator. A copyable prompt now composes capture, verification, `do-work run`, and toolbox presentation while the tested work lifecycle stays in one place.

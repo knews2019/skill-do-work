@@ -95,9 +95,9 @@ assert_file_not_contains() {
 
   local resolved_file
   resolved_file="$(resolve_runtime_file "$file_path")"
-  if grep -Eiq "$pattern_text" "$resolved_file"; then
+  if grep -Eiq -- "$pattern_text" "$resolved_file"; then
     printf 'FAIL: %s\n' "$message_text" >&2
-    grep -Ein "$pattern_text" "$resolved_file" >&2 || true
+    grep -Ein -- "$pattern_text" "$resolved_file" >&2 || true
     fail_count=$((fail_count + 1))
   fi
 }
@@ -119,6 +119,30 @@ assert_block_not_contains \
   "$skill_dispatch_block" \
   '^\|[^|]*`(pipeline|full)`' \
   'Core SKILL.md must not retain a pipeline/full route or compatibility alias.'
+
+assert_file_missing \
+  "skills/do-work/actions/moved-command-shim.md" \
+  'The one-release moved-command shim must be deleted after client migration.'
+
+assert_block_not_contains \
+  "$skill_dispatch_block" \
+  'moved-command-shim\.md' \
+  'Core routing must not retain compatibility rows for sibling-owned commands.'
+
+assert_file_not_contains \
+  "tools/do-work-update.sh" \
+  'suite-layout-v2|--capabilities|legacy_shipped_paths|legacy all-in-one skill' \
+  'The current updater must not retain bridge capability, monolith, or stale-copy branches.'
+
+assert_file_not_contains \
+  "tools/install-do-work-suite.sh" \
+  '--migrate-legacy-do-work|\.claude/skills/do-work/hooks/memory-' \
+  'The suite installer must not retain exact recipe or old core memory-hook migrations.'
+
+assert_file_not_contains \
+  "actions/setup-memory.md" \
+  '\.claude/skills/do-work/hooks/memory-' \
+  'Knowledge memory setup must describe only the current modular hook paths.'
 
 assert_file_not_contains \
   ".gitignore" \
@@ -1612,17 +1636,17 @@ assert_contains \
   'tar xzf "\$upstream_tarball" -C "\$fresh_upstream"' \
   'tools/do-work-update.sh must extract only into staging; behavioral probes verify runtime do-work data is outside every managed destination.'
 assert_contains \
-  "tools/do-work-update.sh" \
-  'Continue with this one .* update' \
-  'tools/do-work-update.sh must require an interactive overwrite confirmation after showing the reviewed diff.'
+  "tools/install-do-work-suite.sh" \
+  'Install this complete four-skill suite' \
+  'The installed suite transaction must require confirmation after showing its reviewed diff.'
 assert_file_not_contains \
   "tools/do-work-update.sh" \
   'cp -R "\$skill_root"' \
   'tools/do-work-update.sh must not reintroduce the pre-update rollback copy — git is the undo, and a duplicated tree on every run buys nothing git does not already hold. A mid-update failure reports the partial install instead; see _dev/tests/update-script-behavior.sh.'
 assert_contains \
-  "tools/do-work-update.sh" \
-  'recover_managed_paths' \
-  'tools/do-work-update.sh must automatically recover only its validated managed paths after a destructive-region failure.'
+  "tools/install-do-work-suite.sh" \
+  'recover_install' \
+  'The installed suite transaction must automatically recover its validated managed paths after a destructive-region failure.'
 
 assert_file_not_contains \
   "actions/work.md" \
@@ -1782,9 +1806,9 @@ assert_contains \
   '.gitattributes must export-ignore /kb — this repo tracks its own knowledge base, so without this line it ships to every consumer install.'
 
 assert_contains \
-  "tools/do-work-update.sh" \
-  'managed_relative_paths' \
-  'tools/do-work-update.sh must construct an explicit managed-path plan; behavioral probes verify the project knowledge base is outside it.'
+  "tools/install-do-work-suite.sh" \
+  'module_relatives' \
+  'The installed suite transaction must construct an explicit managed module plan; behavioral probes verify the project knowledge base is outside it.'
 
 # Shipped files must not cite the skill's own CLAUDE.md/AGENTS.md — those files are absent
 # downstream, so a citation dangles. The full rule lives in CLAUDE.md → Action File Conventions.
@@ -1802,7 +1826,7 @@ assert_contains \
 # The allowlist is PER-FILE, never per-directory: allowlisting `actions/` wholesale would have
 # exempted actions/memory-reference.md, the file that started this. Entries are files whose
 # subject genuinely IS a consumer project's own CLAUDE.md/AGENTS.md (prime registries, the KB
-# schema file, tidy-repo's layout rules, the updater deleting stale vendored copies) — those
+# schema file, and tidy-repo's layout rules) — those
 # references are correct and must not be "fixed". A new shipped file that mentions the
 # maintainer doc fails this check until someone decides which of the two it is; that decision
 # is the point.
@@ -1821,7 +1845,6 @@ maintainer_doc_mention_allowlist=(
   README.md
   prompts/README.md
   prompts/prompt-kit-step2-personal-context-doc.md
-  tools/do-work-update.sh
 )
 maintainer_doc_mentions="$(cd "$repo_root" && grep -rIn 'CLAUDE\.md\|AGENTS\.md' "${shipped_citation_paths[@]}" 2>/dev/null || true)"
 unallowed_maintainer_doc_mentions=""
@@ -2066,8 +2089,8 @@ elif ! bash "$update_script_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
-# The modular suite is staged before cutover, so its package boundaries need a contract
-# independent from the active root skill. This checks the staged router, required core
+# The live modular suite package boundaries need a contract independent from the active
+# root bootstrap tools. This checks the staged router, required core
 # runtime, hook targets, and the ban on leaking repository maintainer instructions.
 staged_skills_probe="$repo_root/_dev/tests/staged-skills-contract.sh"
 if [ ! -f "$staged_skills_probe" ]; then
@@ -2091,7 +2114,7 @@ elif ! bash "$suite_installer_probe"; then
 fi
 
 # Managed Just sections are a byte-preserving ownership boundary, not a prose convention.
-# Exercise the real utility across replacement, legacy migration, append, creation, malformed
+# Exercise the real utility across replacement, append, creation, malformed
 # markers, filename variants, spaces, modes, idempotence, and Just parsing.
 replace_section_tool="$repo_root/tools/replace-text-section.sh"
 if [ ! -x "$replace_section_tool" ]; then
@@ -2157,27 +2180,14 @@ else
     fi
   done
 
-  legacy_target="$section_workdir/legacy.just"
-  printf 'custom-before:\n    echo before\n\n# --- do-work board recipes (installed by `do-work install just-kanban`) ---\nrun-kanban $port="8090":\n    echo board\nrun-kanban-cli:\n    echo cli\nkanban-static:\n    echo static\nkanban-summary:\n    echo summary\nrun-do-work-update:\n    echo update\n\ncustom-after:\n    echo after\n' > "$legacy_target"
-  if ! "$replace_section_tool" --target "$legacy_target" --section-file "$section_file" --migrate-legacy-do-work; then
-    printf 'FAIL: replace-text-section could not migrate the exact legacy five-recipe block.\n' >&2
+  retired_flag_target="$section_workdir/retired-flag.just"
+  printf 'custom-only:\n    echo untouched\n' > "$retired_flag_target"
+  cp "$retired_flag_target" "$retired_flag_target.before"
+  if "$replace_section_tool" --target "$retired_flag_target" --section-file "$section_file" --migrate-legacy-do-work >/dev/null 2>&1; then
+    printf 'FAIL: replace-text-section still accepts the retired legacy-migration flag.\n' >&2
     fail_count=$((fail_count + 1))
-  elif [ "$(grep -c '^# >>> do-work:recipes >>>$' "$legacy_target")" -ne 1 ] \
-    || grep -q '^run-kanban ' "$legacy_target" \
-    || ! grep -q '^custom-before:' "$legacy_target" \
-    || ! grep -q '^custom-after:' "$legacy_target"; then
-    printf 'FAIL: legacy migration duplicated recipes or changed unrelated custom recipes.\n' >&2
-    fail_count=$((fail_count + 1))
-  fi
-
-  interleaved_target="$section_workdir/interleaved-legacy.just"
-  printf '# --- do-work board recipes (installed by `do-work install just-kanban`) ---\nrun-kanban $port="8090":\n    echo board\nrun-kanban-cli:\n    echo cli\ncustom-middle:\n    echo preserve-me\nkanban-static:\n    echo static\nkanban-summary:\n    echo summary\nrun-do-work-update:\n    echo update\n' > "$interleaved_target"
-  cp "$interleaved_target" "$interleaved_target.before"
-  if "$replace_section_tool" --target "$interleaved_target" --section-file "$section_file" --migrate-legacy-do-work >/dev/null 2>&1; then
-    printf 'FAIL: replace-text-section claimed an ambiguous legacy block containing an interleaved custom recipe.\n' >&2
-    fail_count=$((fail_count + 1))
-  elif ! cmp -s "$interleaved_target" "$interleaved_target.before"; then
-    printf 'FAIL: replace-text-section changed an ambiguous legacy block after rejecting it.\n' >&2
+  elif ! cmp -s "$retired_flag_target" "$retired_flag_target.before"; then
+    printf 'FAIL: replace-text-section changed the target after rejecting the retired flag.\n' >&2
     fail_count=$((fail_count + 1))
   fi
 

@@ -5,7 +5,7 @@
 ## Format Constraints
 
 - Render as a fenced block starting with `Next steps:`, one command per line, command left-aligned, a short gloss on the right, columns aligned.
-- Suggest core commands from `SKILL.md`'s Routing table and extension commands from the owning sibling router. A capture suggestion is written `do-work capture-request: <text>`; a moved command uses `do-work-board`, `do-work-knowledge`, or `do-work-toolbox` directly, never the temporary core shim.
+- Suggest core commands from `SKILL.md`'s Routing table and extension commands from the owning sibling router. A capture suggestion is written `do-work capture-request: <text>`; extension commands use `do-work-board`, `do-work-knowledge`, or `do-work-toolbox` directly.
 - Cap at 2-3 suggestions, ranked by relevance to what just happened and what's outstanding.
 - Always close with: `do-work help` — full command reference.
 

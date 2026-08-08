@@ -226,11 +226,11 @@ just_candidate="$install_tmp/justfile.candidate"
 if command -v python3 >/dev/null 2>&1; then
   if [ "$just_existed" = 1 ]; then
     cp -p "$just_target" "$just_candidate"
-    bash "$section_replacer" --target "$just_candidate" --section-file "$managed_section" --migrate-legacy-do-work \
+    bash "$section_replacer" --target "$just_candidate" --section-file "$managed_section" \
       || fail 'Justfile ownership validation failed; no client files were changed'
   else
     bash "$section_replacer" --target "$just_candidate" --section-file "$managed_section" \
-      --template-file "$board_template" --migrate-legacy-do-work \
+      --template-file "$board_template" \
       || fail 'complete Justfile candidate creation failed; no client files were changed'
   fi
 else
@@ -280,27 +280,9 @@ if [ "$settings_tool" != manual ]; then
 
   if [ "$settings_tool" = jq ]; then
     jq --slurpfile fragment "$core_hooks" '
-      def rewrite_memory_commands:
-        if type == "object" then
-          with_entries(
-            if .key == "command" and (.value | type) == "string" then
-              .value |= (
-                split(".claude/skills/do-work/hooks/memory-session-start.sh")
-                | join(".claude/skills/do-work-knowledge/hooks/memory-session-start.sh")
-                | split(".claude/skills/do-work/hooks/memory-stop-capture.sh")
-                | join(".claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh")
-              )
-            else
-              .value |= rewrite_memory_commands
-            end
-          )
-        elif type == "array" then map(rewrite_memory_commands)
-        else .
-        end;
       def append_unique($base; $extra):
         reduce $extra[] as $item ($base; if index($item) == null then . + [$item] else . end);
-      rewrite_memory_commands
-      | if .hooks == null then .hooks = {}
+      if .hooks == null then .hooks = {}
         elif (.hooks | type) != "object" then error("settings hooks must be an object")
         else . end
       | if .hooks.Stop == null then .
@@ -345,27 +327,6 @@ with fragment_path.open() as handle:
 if not isinstance(settings, dict):
     raise TypeError("settings root must be an object")
 
-replacements = {
-    ".claude/skills/do-work/hooks/memory-session-start.sh": ".claude/skills/do-work-knowledge/hooks/memory-session-start.sh",
-    ".claude/skills/do-work/hooks/memory-stop-capture.sh": ".claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh",
-}
-
-def rewrite(value):
-    if isinstance(value, dict):
-        rewritten = {}
-        for key, child in value.items():
-            if key == "command" and isinstance(child, str):
-                for old, new in replacements.items():
-                    child = child.replace(old, new)
-                rewritten[key] = child
-            else:
-                rewritten[key] = rewrite(child)
-        return rewritten
-    if isinstance(value, list):
-        return [rewrite(child) for child in value]
-    return value
-
-settings = rewrite(settings)
 hooks = settings.setdefault("hooks", {})
 if not isinstance(hooks, dict):
     raise TypeError("settings hooks must be an object")
@@ -414,9 +375,6 @@ PY
     || fail 'composed settings omitted the core SessionStart hook'
   if grep -q 'do-work/hooks/pipeline-guard.sh' "$settings_candidate"; then
     fail 'composed settings retained the retired pipeline Stop hook'
-  fi
-  if grep -q '\.claude/skills/do-work/hooks/memory-' "$settings_candidate"; then
-    fail 'composed settings retained a known legacy memory hook path'
   fi
 fi
 

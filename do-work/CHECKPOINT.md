@@ -1,7 +1,5 @@
 # Session Checkpoint
 
-## In Progress (interrupted)
-
 ## Completed
 
 - REQ-148 — empty secret-quarantine merges now preserve every safe association candidate.

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Hermetic behavioral probes for the legacy-to-suite bridge updater.
+# Hermetic behavioral probes for the current four-module suite updater.
 set -uo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -17,9 +17,21 @@ for required_command in bash git tar diff; do
 done
 if [ ! -x "$update_script" ] || [ ! -x "$manifest_validator" ] \
   || [ ! -x "$suite_installer" ] || [ ! -x "$section_replacer" ]; then
-  printf 'FAIL: bridge updater, suite installer, manifest validator, and section replacer must exist and be executable.\n' >&2
+  printf 'FAIL: suite updater, installer, manifest validator, and section replacer must exist and be executable.\n' >&2
   exit 1
 fi
+
+for retired_updater_token in \
+  'suite-layout-v2' \
+  '--capabilities' \
+  'legacy_shipped_paths' \
+  'legacy all-in-one skill'
+do
+  if grep -Fq -- "$retired_updater_token" "$update_script"; then
+    printf 'FAIL: current updater retained migration-window logic: %s\n' "$retired_updater_token" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done
 
 export GIT_CONFIG_GLOBAL=/dev/null
 export GIT_CONFIG_SYSTEM=/dev/null
@@ -95,46 +107,6 @@ commit_project() {
   git -C "$project_path" commit -qm "$message_text"
 }
 
-build_legacy_install() {
-  local project_path="$1"
-  local install_path="$project_path/.claude/skills/do-work"
-  mkdir -p "$install_path/actions" "$install_path/prompts" "$install_path/interviews" \
-    "$install_path/docs" "$install_path/tools" "$project_path/do-work/queue" "$project_path/kb"
-  printf '# do-work\n\nLegacy install.\n' > "$install_path/SKILL.md"
-  printf '# Version Action\n\n**Current version**: 0.0.1\n' > "$install_path/actions/version.md"
-  printf '# stale prompt\n' > "$install_path/prompts/stale.md"
-  printf '# stale interview\n' > "$install_path/interviews/stale.md"
-  printf '# old guide\n' > "$install_path/docs/guide.md"
-  cp "$update_script" "$install_path/tools/do-work-update.sh"
-  cp "$manifest_validator" "$install_path/tools/validate-suite-manifest.sh"
-  cp "$suite_installer" "$install_path/tools/install-do-work-suite.sh"
-  cp "$section_replacer" "$install_path/tools/replace-text-section.sh"
-  chmod +x "$install_path/tools/"*.sh
-  printf 'queue sentinel\n' > "$project_path/do-work/queue/sentinel.txt"
-  printf 'kb sentinel\n' > "$project_path/kb/sentinel.txt"
-  printf 'project recipe\n' > "$project_path/Justfile"
-  mkdir -p "$project_path/.claude"
-  printf '{"hooks":{}}\n' > "$project_path/.claude/settings.json"
-}
-
-build_root_legacy_install() {
-  local project_path="$1"
-  mkdir -p "$project_path/actions" "$project_path/prompts" "$project_path/interviews" \
-    "$project_path/docs" "$project_path/tools" "$project_path/do-work/queue" "$project_path/kb"
-  printf '# do-work\n\nRoot fallback install.\n' > "$project_path/SKILL.md"
-  printf '# Version Action\n\n**Current version**: 0.0.1\n' > "$project_path/actions/version.md"
-  printf '# old guide\n' > "$project_path/docs/guide.md"
-  cp "$update_script" "$project_path/tools/do-work-update.sh"
-  cp "$manifest_validator" "$project_path/tools/validate-suite-manifest.sh"
-  cp "$suite_installer" "$project_path/tools/install-do-work-suite.sh"
-  cp "$section_replacer" "$project_path/tools/replace-text-section.sh"
-  chmod +x "$project_path/tools/"*.sh
-  printf 'application sentinel\n' > "$project_path/app.txt"
-  printf 'queue sentinel\n' > "$project_path/do-work/queue/sentinel.txt"
-  printf 'kb sentinel\n' > "$project_path/kb/sentinel.txt"
-  printf 'project recipe\n' > "$project_path/Justfile"
-}
-
 build_suite_install() {
   local project_path="$1" module_name module_path
   mkdir -p "$project_path/do-work/queue" "$project_path/kb" "$project_path/.claude/skills"
@@ -160,23 +132,6 @@ build_suite_install() {
   printf 'kb sentinel\n' > "$project_path/kb/sentinel.txt"
   printf 'project-recipe:\n    echo project\n' > "$project_path/Justfile"
   printf '{"hooks":{}}\n' > "$project_path/.claude/settings.json"
-}
-
-build_legacy_archive() {
-  local archive_path="$1" tree_root="$fixture_root/legacy-src/do-work-upstream"
-  mkdir -p "$tree_root/actions" "$tree_root/prompts" "$tree_root/interviews" \
-    "$tree_root/docs" "$tree_root/tools"
-  printf '# do-work\n\nLegacy upstream.\n' > "$tree_root/SKILL.md"
-  printf '# Version Action\n\n**Current version**: 0.0.2\n' > "$tree_root/actions/version.md"
-  printf '# fresh prompt\n' > "$tree_root/prompts/fresh.md"
-  printf '# fresh interview\n' > "$tree_root/interviews/fresh.md"
-  printf '# new guide\n' > "$tree_root/docs/guide.md"
-  cp "$update_script" "$tree_root/tools/do-work-update.sh"
-  cp "$manifest_validator" "$tree_root/tools/validate-suite-manifest.sh"
-  cp "$suite_installer" "$tree_root/tools/install-do-work-suite.sh"
-  cp "$section_replacer" "$tree_root/tools/replace-text-section.sh"
-  chmod +x "$tree_root/tools/"*.sh
-  tar czf "$archive_path" -C "$fixture_root/legacy-src" do-work-upstream
 }
 
 build_suite_tree() {
@@ -220,10 +175,8 @@ archive_suite_tree() {
   tar czf "$archive_path" -C "$parent_path" "$archive_name"
 }
 
-legacy_tarball="$fixture_root/legacy.tar.gz"
 suite_tree="$fixture_root/suite-src/do-work-upstream"
 suite_tarball="$fixture_root/suite.tar.gz"
-build_legacy_archive "$legacy_tarball"
 build_suite_tree "$suite_tree"
 archive_suite_tree "$suite_tree" "$suite_tarball"
 
@@ -253,96 +206,46 @@ run_updater() {
   probe_status=$?
 }
 
-# Capability discovery is exact, standalone, and side-effect free.
-capability_probe="$fixture_root/capability-project"
-mkdir -p "$capability_probe"
-before_capability="$(find "$capability_probe" -print)"
-probe_output="$(cd "$capability_probe" && bash "$update_script" --capabilities 2>&1)"
+# The bridge-only capability probe is no longer a public updater mode.
+probe_output="$(bash "$update_script" --capabilities 2>&1)"
 probe_status=$?
-assert_status 0 'capabilities: exits 0'
-if [ "$probe_output" != 'suite-layout-v2' ]; then
-  record_failure "capabilities: expected exact suite-layout-v2, got: $probe_output"
-fi
-after_capability="$(find "$capability_probe" -print)"
-if [ "$before_capability" != "$after_capability" ]; then
-  record_failure 'capabilities: modified the filesystem'
-fi
+assert_status_nonzero 'retired capabilities: exits non-zero'
 
-# Legacy archives still update through the bridge and preserve all project-owned surfaces.
-legacy_project="$fixture_root/legacy-project"
-build_legacy_install "$legacy_project"
-init_project "$legacy_project"
-commit_project "$legacy_project" 'legacy install'
-run_updater "$legacy_project" y "$legacy_tarball"
-assert_status 0 'legacy update: exits 0'
-assert_output_matches 'Updated to v0\.0\.2' 'legacy update: reports version'
-assert_file_contains "$legacy_project/.claude/skills/do-work/docs/guide.md" 'new guide' \
-  'legacy update: installs reviewed bytes'
-assert_path_absent "$legacy_project/.claude/skills/do-work/prompts/stale.md" \
-  'legacy update: removes stale managed content'
-assert_file_contains "$legacy_project/do-work/queue/sentinel.txt" 'queue sentinel' \
-  'legacy update: preserves queue runtime'
-assert_file_contains "$legacy_project/kb/sentinel.txt" 'kb sentinel' \
-  'legacy update: preserves KB runtime'
-assert_file_contains "$legacy_project/Justfile" 'project recipe' \
-  'legacy update: preserves Justfile'
-assert_file_contains "$legacy_project/.claude/settings.json" 'hooks' \
-  'legacy update: preserves settings'
-if [ "$(wc -l < "$CURL_CALL_LOG" | tr -d ' ')" != 1 ]; then
-  record_failure 'legacy update: expected exactly one archive download'
-fi
-
-# The Just recipe's repository-root fallback uses the same engine without managing app files.
-root_project="$fixture_root/root-project"
-build_root_legacy_install "$root_project"
-init_project "$root_project"
-commit_project "$root_project" 'root fallback install'
-: > "$CURL_CALL_LOG"
-probe_output="$(printf 'y\n' | FAKE_TARBALL="$legacy_tarball" \
-  bash "$root_project/tools/do-work-update.sh" --project-root "$root_project" 2>&1)"
-probe_status=$?
-assert_status 0 'root fallback: exits 0'
-assert_file_contains "$root_project/actions/version.md" '0\.0\.2' \
-  'root fallback: advances managed skill files'
-assert_file_contains "$root_project/app.txt" 'application sentinel' \
-  'root fallback: preserves application file'
-assert_file_contains "$root_project/Justfile" 'project recipe' \
-  'root fallback: preserves project Justfile'
-
-# A valid future archive installs all four modules as one reviewed transaction.
+# A current modular archive installs all four modules as one reviewed transaction.
 suite_project="$fixture_root/suite-project"
-build_legacy_install "$suite_project"
+build_suite_install "$suite_project"
 cat > "$suite_project/Justfile" <<'JUST'
 custom-before:
     echo keep
 
-# --- do-work board recipes (installed by `do-work install just-kanban`) ---
+# >>> do-work:recipes >>>
 run-kanban $port="8090":
-    echo board
+    .claude/skills/do-work-board/tools/queue-kanban serve --port {{port}}
 run-kanban-cli:
-    echo cli
+    .claude/skills/do-work-board/tools/queue-kanban serve
 kanban-static:
-    echo static
+    .claude/skills/do-work-board/tools/queue-kanban generate
 kanban-summary:
-    echo summary
+    .claude/skills/do-work-board/tools/queue-kanban summary
 run-do-work-update:
-    echo update
+    bash .claude/skills/do-work/tools/do-work-update.sh --project-root .
+# <<< do-work:recipes <<<
 JUST
 cat > "$suite_project/.claude/settings.json" <<'JSON'
 {
   "custom": "keep",
   "hooks": {
     "SessionStart": [
-      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/memory-session-start.sh\""}]}
+      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-session-start.sh\""}]}
     ],
     "Stop": [
-      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/memory-stop-capture.sh\""}]}
+      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh\""}]}
     ]
   }
 }
 JSON
 init_project "$suite_project"
-commit_project "$suite_project" 'bridge install'
+commit_project "$suite_project" 'current modular install'
 run_updater "$suite_project" y "$suite_tarball"
 assert_status 0 'suite update: exits 0'
 assert_output_matches 'four-module suite' 'suite update: identifies layout'
@@ -355,25 +258,19 @@ assert_file_contains "$suite_project/do-work/queue/sentinel.txt" 'queue sentinel
 assert_file_contains "$suite_project/kb/sentinel.txt" 'kb sentinel' \
   'suite update: preserves KB runtime'
 assert_file_contains "$suite_project/Justfile" '^# >>> do-work:recipes >>>$' \
-  'suite update: migrates the managed Just section'
+  'suite update: reconciles the managed Just section'
 assert_file_contains "$suite_project/Justfile" '\.claude/skills/do-work-board/tools/queue-kanban' \
   'suite update: points board recipes at the board sibling'
 assert_file_contains "$suite_project/Justfile" '^custom-before:$' \
   'suite update: preserves custom Just content'
-if grep -q '\.claude/skills/do-work/tools/queue-kanban' "$suite_project/Justfile"; then
-  record_failure 'suite update: retained the legacy board recipe path'
-fi
 assert_file_contains "$suite_project/.claude/settings.json" \
   '\.claude/skills/do-work-knowledge/hooks/memory-session-start\.sh' \
-  'suite update: migrates the legacy memory SessionStart path'
+  'suite update: preserves the current memory SessionStart path'
 assert_file_contains "$suite_project/.claude/settings.json" \
   '\.claude/skills/do-work-knowledge/hooks/memory-stop-capture\.sh' \
-  'suite update: migrates the legacy memory Stop path'
+  'suite update: preserves the current memory Stop path'
 assert_file_contains "$suite_project/.claude/settings.json" '"custom"[[:space:]]*:[[:space:]]*"keep"' \
   'suite update: preserves unrelated settings'
-if grep -q '\.claude/skills/do-work/hooks/memory-' "$suite_project/.claude/settings.json"; then
-  record_failure 'suite update: retained a legacy memory hook path'
-fi
 if [ "$(wc -l < "$CURL_CALL_LOG" | tr -d ' ')" != 1 ]; then
   record_failure 'suite update: expected exactly one archive download'
 fi
@@ -397,7 +294,7 @@ if ! diff -qr "$suite_project/.claude/skills" "$just_entry_project/.claude/skill
   record_failure 'entry-point parity: direct and managed Just updates produced different managed bytes'
 fi
 
-# The installed bridge remains the trusted transaction engine. A valid archive cannot
+# The installed suite remains the trusted transaction engine. A valid archive cannot
 # replace that engine with an executable of its own before the reviewed write boundary.
 hostile_installer_tree="$fixture_root/hostile-installer-src/do-work-upstream"
 hostile_installer_tarball="$fixture_root/hostile-installer.tar.gz"
@@ -415,7 +312,7 @@ archive_suite_tree "$hostile_installer_tree" "$hostile_installer_tarball"
 trusted_engine_project="$fixture_root/trusted-engine-project"
 build_suite_install "$trusted_engine_project"
 init_project "$trusted_engine_project"
-commit_project "$trusted_engine_project" 'bridge install'
+commit_project "$trusted_engine_project" 'current modular install'
 export ARCHIVE_INSTALLER_MARKER="$archive_installer_marker"
 run_updater "$trusted_engine_project" y "$hostile_installer_tarball"
 assert_status 0 'installer trust: uses installed transaction engine'
@@ -437,9 +334,9 @@ for unsafe_case in malformed traversal; do
   fi
   archive_suite_tree "$unsafe_tree" "$unsafe_tarball"
   unsafe_project="$fixture_root/$unsafe_case-project"
-  build_legacy_install "$unsafe_project"
+  build_suite_install "$unsafe_project"
   init_project "$unsafe_project"
-  commit_project "$unsafe_project" 'bridge install'
+  commit_project "$unsafe_project" 'current modular install'
   before_head="$(git -C "$unsafe_project" status --porcelain)"
   run_updater "$unsafe_project" y "$unsafe_tarball"
   assert_status_nonzero "$unsafe_case manifest: exits non-zero"
@@ -461,17 +358,15 @@ done
 # Even a valid textual destination must not escape through an existing client-side symlink.
 symlink_project="$fixture_root/symlink-project"
 symlink_target="$fixture_root/outside-project"
-build_root_legacy_install "$symlink_project"
+build_suite_install "$symlink_project"
+rm -rf "$symlink_project/.claude/skills/do-work-board"
 mkdir -p "$symlink_target"
-ln -s "$symlink_target" "$symlink_project/.claude"
+ln -s "$symlink_target" "$symlink_project/.claude/skills/do-work-board"
 init_project "$symlink_project"
-commit_project "$symlink_project" 'root bridge with unsafe client symlink'
-: > "$CURL_CALL_LOG"
-probe_output="$(printf 'y\n' | FAKE_TARBALL="$suite_tarball" \
-  bash "$symlink_project/tools/do-work-update.sh" --project-root "$symlink_project" 2>&1)"
-probe_status=$?
+commit_project "$symlink_project" 'modular install with unsafe client symlink'
+run_updater "$symlink_project" y "$suite_tarball"
 assert_status_nonzero 'destination symlink: exits non-zero'
-assert_output_matches 'resolves outside the project' \
+assert_output_matches 'managed destination must not be a symlink|resolves outside the project' \
   'destination symlink: reports physical escape before confirmation'
 assert_path_absent "$symlink_target/skills" 'destination symlink: does not write outside project'
 
