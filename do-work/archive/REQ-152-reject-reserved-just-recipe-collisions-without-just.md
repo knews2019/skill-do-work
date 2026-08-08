@@ -3,6 +3,7 @@ id: REQ-152
 title: "Review fix: Reject reserved Just recipe collisions without Just"
 status: completed
 completed_at: 2026-08-08T19:56:48Z
+commit: e2230b8
 claimed_at: 2026-08-08T19:31:35Z
 domain: general
 kb_status: pending
