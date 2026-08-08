@@ -3,6 +3,7 @@ id: REQ-151
 title: "Review fix: Retire the pipeline guard in manual settings reconciliation"
 status: completed
 completed_at: 2026-08-08T19:30:20Z
+commit: 1ab5ed8
 claimed_at: 2026-08-08T19:18:15Z
 domain: general
 kb_status: pending
