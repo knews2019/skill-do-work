@@ -2193,6 +2193,80 @@ else
     fi
   done
 
+  reserved_section_file="$section_workdir/reserved-section.just"
+  awk '
+    $0 == "# >>> do-work:recipes >>>" { inside=1 }
+    inside { print }
+    $0 == "# <<< do-work:recipes <<<" { found_end=1; exit }
+    END { if (!inside || !found_end) exit 1 }
+  ' "$repo_root/skills/do-work-board/justfile.template" > "$reserved_section_file"
+
+  collision_index=0
+  for reserved_recipe_name in run-kanban run-kanban-cli kanban-static kanban-summary run-do-work-update; do
+    collision_index=$((collision_index + 1))
+    collision_target="$section_workdir/collision-$collision_index.just"
+    case "$reserved_recipe_name" in
+      run-kanban)
+        printf 'run-kanban:\n    echo collision\n' > "$collision_target"
+        ;;
+      run-kanban-cli)
+        printf '@run-kanban-cli $view="open:all": dependency-recipe\n    echo collision\n' > "$collision_target"
+        ;;
+      kanban-static)
+        printf 'kanban-static destination="build/output": dependency-recipe\n    echo collision\n' > "$collision_target"
+        ;;
+      kanban-summary)
+        printf 'alias kanban-summary := custom-summary\n' > "$collision_target"
+        ;;
+      run-do-work-update)
+        printf 'run-do-work-update:\r\n    echo collision\r\n' > "$collision_target"
+        ;;
+    esac
+    cp "$collision_target" "$collision_target.before"
+    collision_output="$section_workdir/collision-$collision_index.out"
+    if "$replace_section_tool" --target "$collision_target" --section-file "$reserved_section_file" \
+      --reject-recipe-collisions >"$collision_output" 2>&1; then
+      printf 'FAIL: replace-text-section accepted external reserved recipe or alias %s.\n' "$reserved_recipe_name" >&2
+      fail_count=$((fail_count + 1))
+    elif ! grep -Fq "reserved Just recipe or alias outside managed section: $reserved_recipe_name" "$collision_output"; then
+      printf 'FAIL: replace-text-section collision error did not name %s.\n' "$reserved_recipe_name" >&2
+      fail_count=$((fail_count + 1))
+    elif ! cmp -s "$collision_target" "$collision_target.before"; then
+      printf 'FAIL: replace-text-section changed the target after rejecting collision %s.\n' "$reserved_recipe_name" >&2
+      fail_count=$((fail_count + 1))
+    fi
+  done
+
+  noncollision_target="$section_workdir/noncollisions.just"
+  {
+    printf '# run-kanban:\n'
+    printf 'reserved_value := "run-kanban-cli:"\n'
+    printf "[doc('kanban-static: is reserved')]\n"
+    printf 'custom-recipe: kanban-summary\n'
+    printf '    echo run-do-work-update:\n'
+    printf 'run-kanban-extra:\n    echo prefix\n'
+    printf 'alias custom-summary := kanban-summary\n\n'
+    cat "$reserved_section_file"
+  } > "$noncollision_target"
+  if ! "$replace_section_tool" --target "$noncollision_target" --section-file "$reserved_section_file" \
+    --reject-recipe-collisions; then
+    printf 'FAIL: replace-text-section treated comments, variables, attributes, dependencies, bodies, prefixes, aliases to reserved recipes, or managed definitions as collisions.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+
+  external_collision_target="$section_workdir/external-after-managed.just"
+  cat "$reserved_section_file" > "$external_collision_target"
+  printf '\nrun-kanban:\n    echo external collision\n' >> "$external_collision_target"
+  cp "$external_collision_target" "$external_collision_target.before"
+  if "$replace_section_tool" --target "$external_collision_target" --section-file "$reserved_section_file" \
+    --reject-recipe-collisions >/dev/null 2>&1; then
+    printf 'FAIL: replace-text-section ignored a reserved recipe outside an existing managed span.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! cmp -s "$external_collision_target" "$external_collision_target.before"; then
+    printf 'FAIL: replace-text-section mutated a managed target before rejecting its external collision.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+
   retired_flag_target="$section_workdir/retired-flag.just"
   printf 'custom-only:\n    echo untouched\n' > "$retired_flag_target"
   cp "$retired_flag_target" "$retired_flag_target.before"

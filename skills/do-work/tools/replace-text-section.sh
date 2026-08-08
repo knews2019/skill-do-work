@@ -10,12 +10,15 @@ fi
 exec python3 - "$@" <<'PY'
 import argparse
 import os
+import re
 import stat
 import sys
 import tempfile
 
 BEGIN = b"# >>> do-work:recipes >>>"
 END = b"# <<< do-work:recipes <<<"
+JUST_IDENTIFIER = re.compile(rb"[A-Za-z_][A-Za-z0-9_-]*")
+JUST_ALIAS = re.compile(rb"alias[ \t]+([A-Za-z_][A-Za-z0-9_-]*)[ \t]*:=")
 
 
 def die(message: str) -> "None":
@@ -75,6 +78,50 @@ def marker_span(data: bytes, label: str, require_section_only: bool = False):
     return span_start, span_end
 
 
+def just_definition_name(line: bytes):
+    body = line_body(line)
+    if not body or body[:1] in (b" ", b"\t", b"#"):
+        return None
+
+    alias_match = JUST_ALIAS.match(body)
+    if alias_match:
+        return alias_match.group(1)
+
+    name_offset = 1 if body.startswith(b"@") else 0
+    name_match = JUST_IDENTIFIER.match(body, name_offset)
+    if not name_match:
+        return None
+
+    remainder = body[name_match.end() :]
+    quote = None
+    escaped = False
+    for index, character in enumerate(remainder):
+        if quote is not None:
+            if escaped:
+                escaped = False
+            elif character == 92 and quote == 34:
+                escaped = True
+            elif character == quote:
+                quote = None
+            continue
+        if character in (34, 39, 96):
+            quote = character
+        elif character == 58:
+            if index + 1 < len(remainder) and remainder[index + 1] == 61:
+                return None
+            return name_match.group(0)
+    return None
+
+
+def just_definition_names(data: bytes):
+    return {
+        definition_name
+        for line in data.splitlines(keepends=True)
+        for definition_name in [just_definition_name(line)]
+        if definition_name is not None
+    }
+
+
 def atomic_replace(path: str, content: bytes, mode: int) -> None:
     parent = os.path.dirname(os.path.abspath(path))
     if not os.path.isdir(parent):
@@ -121,16 +168,17 @@ parser = argparse.ArgumentParser(add_help=False)
 parser.add_argument("--target")
 parser.add_argument("--section-file")
 parser.add_argument("--template-file")
+parser.add_argument("--reject-recipe-collisions", action="store_true")
 parser.add_argument("--help", action="store_true")
 try:
     arguments, residue = parser.parse_known_args()
 except SystemExit:
-    die("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>]")
+    die("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>] [--reject-recipe-collisions]")
 if arguments.help:
-    sys.stdout.write("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>]\n")
+    sys.stdout.write("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>] [--reject-recipe-collisions]\n")
     raise SystemExit(0)
 if residue or not arguments.target or not arguments.section_file:
-    die("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>]")
+    die("usage: replace-text-section.sh --target <path> --section-file <path> [--template-file <path>] [--reject-recipe-collisions]")
 
 section_data = read_regular(arguments.section_file, "section file")
 section_span = marker_span(section_data, "section file", require_section_only=True)
@@ -154,6 +202,21 @@ if os.path.islink(arguments.target):
 target_data = read_regular(arguments.target, "target")
 target_mode = stat.S_IMODE(os.stat(arguments.target).st_mode)
 target_span = marker_span(target_data, "target")
+
+if arguments.reject_recipe_collisions:
+    reserved_recipe_names = just_definition_names(section_data)
+    if not reserved_recipe_names:
+        die("section file defines no Just recipes or aliases for collision validation")
+    if target_span is None:
+        unmanaged_target_data = target_data
+    else:
+        unmanaged_target_data = target_data[: target_span[0]] + target_data[target_span[1] :]
+    collision_names = sorted(just_definition_names(unmanaged_target_data) & reserved_recipe_names)
+    if collision_names:
+        die(
+            "target defines reserved Just recipe or alias outside managed section: "
+            + ", ".join(name.decode("ascii") for name in collision_names)
+        )
 
 if target_span is not None:
     replacement_data = target_data[: target_span[0]] + section_data + target_data[target_span[1] :]

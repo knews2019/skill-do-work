@@ -227,6 +227,7 @@ if command -v python3 >/dev/null 2>&1; then
   if [ "$just_existed" = 1 ]; then
     cp -p "$just_target" "$just_candidate"
     bash "$section_replacer" --target "$just_candidate" --section-file "$managed_section" \
+      --reject-recipe-collisions \
       || fail 'Justfile ownership validation failed; no client files were changed'
   else
     bash "$section_replacer" --target "$just_candidate" --section-file "$managed_section" \

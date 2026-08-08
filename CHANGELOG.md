@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.4 — Tool-Independent Just Recipe Collision Guard (2026-08-08)
+
+Installing the suite can no longer duplicate its managed Just recipes merely because the Just executable is absent. Reserved external recipes and aliases are rejected by name before confirmation or any client write.
+
+- Derives the protected namespace from the shipped managed section instead of maintaining a second recipe list
+- Excludes the replaceable managed span and accepts comments, variables, attributes, dependencies, bodies, and longer custom names
+- Proves no-Just rejection preserves exact Just/settings bytes, modes, modules, and Git state before mutation
+
 ## 0.186.3 — Manual Pipeline-Guard Retirement Guidance (2026-08-08)
 
 Projects without jq or Python now receive a targeted manual settings step instead of advice that would preserve the deleted pipeline guard. Custom Stop hooks and unrelated settings remain explicitly protected.

@@ -252,6 +252,48 @@ else
   fi
 fi
 
+# A reserved marker-free recipe is rejected without Just, before confirmation or client mutation.
+no_just_path="$workdir/no-just-path"
+mkdir -p "$no_just_path"
+for command_name in awk bash cat chmod cmp cp diff dirname find git grep head mkdir mktemp mv python3 rm sed stat tar tr wc; do
+  command_path="$(command -v "$command_name" 2>/dev/null || true)"
+  [ -z "$command_path" ] || ln -s "$command_path" "$no_just_path/$command_name"
+done
+collision_project="$workdir/reserved-recipe-collision"
+new_git_project "$collision_project"
+mkdir -p "$collision_project/.claude"
+printf '@run-kanban $port="9000":\r\n    echo custom collision\r\n' > "$collision_project/justfile"
+printf '{"custom":"unchanged"}\n' > "$collision_project/.claude/settings.json"
+chmod 640 "$collision_project/justfile"
+chmod 600 "$collision_project/.claude/settings.json"
+git -C "$collision_project" add justfile .claude/settings.json
+git -C "$collision_project" commit -qm 'collision fixture'
+cp "$collision_project/justfile" "$workdir/collision.just.before"
+cp "$collision_project/.claude/settings.json" "$workdir/collision.settings.before"
+collision_mode="$(stat -f '%Lp' "$collision_project/justfile" 2>/dev/null || stat -c '%a' "$collision_project/justfile")"
+collision_status_before="$(git -C "$collision_project" status --porcelain --untracked-files=all)"
+collision_output="$workdir/reserved-recipe-collision.out"
+collision_exit_status=0
+printf 'y\n' | PATH="$no_just_path" bash "$installer" --project-root "$collision_project" --archive "$archive_file" >"$collision_output" 2>&1 \
+  || collision_exit_status=$?
+if [ "$collision_exit_status" -eq 0 ]; then
+  fail 'installer accepted a marker-free reserved recipe when Just was unavailable'
+else
+  assert_file_contains "$collision_output" 'reserved Just recipe or alias outside managed section: run-kanban' 'installer collision error did not name the reserved recipe'
+  if grep -Fq 'Install this complete four-skill suite?' "$collision_output"; then
+    fail 'installer asked for confirmation before rejecting the reserved recipe collision'
+  fi
+  if ! cmp -s "$collision_project/justfile" "$workdir/collision.just.before" \
+    || ! cmp -s "$collision_project/.claude/settings.json" "$workdir/collision.settings.before" \
+    || [ -e "$collision_project/.claude/skills/do-work" ]; then
+    fail 'reserved recipe rejection changed Justfile, settings, or modules'
+  fi
+  collision_mode_after="$(stat -f '%Lp' "$collision_project/justfile" 2>/dev/null || stat -c '%a' "$collision_project/justfile")"
+  [ "$collision_mode_after" = "$collision_mode" ] || fail "reserved recipe rejection changed Justfile mode (got $collision_mode_after, want $collision_mode)"
+  collision_status_after="$(git -C "$collision_project" status --porcelain --untracked-files=all)"
+  [ "$collision_status_after" = "$collision_status_before" ] || fail 'reserved recipe rejection changed Git status'
+fi
+
 # Invalid Just ownership or invalid JSON is rejected before any module/configuration write.
 invalid_just_project="$workdir/invalid-just"
 new_git_project "$invalid_just_project"
