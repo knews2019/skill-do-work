@@ -26,7 +26,9 @@ For action routing, read the `SKILL.md` in the owning directory under `skills/`.
 
 1. **Bump the shared version** in `VERSION`, `skills/do-work/VERSION`, and `skills/do-work/actions/version.md` (line starting with `**Current version**:`). Use semver — patch for fixes, minor for features, major for breaking changes. When in doubt, patch. **Verify the new version number is strictly greater than the first existing entry in `CHANGELOG.md`** — duplicate version numbers have occurred before.
 
-2. **Add a changelog entry** at the top of `CHANGELOG.md` (below the header). The title must **say what was delivered** — a reader scanning only headings should know what changed ("Board View Filters", not "The Fine Sieve"). No whimsical codenames. **Verify the title is not already used** by an earlier entry. (Historical entries were retroactively retitled to this convention in 0.117.1.)
+2. **Add a changelog entry** at the top of `CHANGELOG.md` (below the header). The title must **say what was delivered** — a reader scanning only headings should know what changed ("Board View Filters", not "The Fine Sieve"). No whimsical codenames. **Verify the title is not already used** by an earlier entry. (Historical entries were retroactively retitled to this convention in 0.117.1.) Repository-only dated history must use canonical `https://github.com/knews2019/skill-do-work/blob/main/...` links, because the installed core package does not carry those sidecars.
+
+3. **Synchronize the installed changelog mirror** by copying root `CHANGELOG.md` to `skills/do-work/CHANGELOG.md` after the entry and any history-link edits are complete. The two files must be byte-identical before committing; `_dev/tests/shipped-package-reference-contract.sh` enforces this with the rest of the shipped reference contract.
 
 ```markdown
 ## X.Y.Z — [Short Descriptive Title] (YYYY-MM-DD)

@@ -2,11 +2,19 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
-> Covers **0.121.1 onward**. Older releases live in dated archives, each named for the range it holds: [0.110.0–0.121.0](./CHANGELOG-2026-07-13-up-to-v0.121.0.md) · [0.65.0–0.109.0](./CHANGELOG-2026-07-07-up-to-v0.109.0.md) · [0.50.0–0.64.1](./CHANGELOG-2026-04-13-up-to-v0.64.1.md) · [0.1.0–0.49.0](./CHANGELOG-2026-04-07-up-to-v0.49.0.md). They are tracked in git but export-ignored from the distribution tarball, so a tarball install browses them at <https://github.com/knews2019/skill-do-work/tree/main>.
+> Covers **0.121.1 onward**. Older releases live in dated archives, each named for the range it holds: [0.110.0–0.121.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-07-13-up-to-v0.121.0.md) · [0.65.0–0.109.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-07-07-up-to-v0.109.0.md) · [0.50.0–0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md) · [0.1.0–0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md). They are tracked in git but export-ignored from the distribution tarball, so a tarball install browses them at <https://github.com/knews2019/skill-do-work/tree/main>.
 >
 > Keep this note short: `actions/version.md` reads only the first ~80 lines to find the newest 5 entries.
 
 ---
+
+## 0.186.2 — Shipped Package Reference Guard (2026-08-08)
+
+Links published by the four installed skills now resolve from both the source archive and the manifest-mapped client layout. Repository-only history stays browseable through canonical GitHub links, and installed changelog history stays current as a verified mirror.
+
+- Points version discovery at the live modular action and repairs five updater-prime lesson links
+- Replaces absent installed sidecar paths with tracked repository history URLs and synchronizes the installed changelog
+- Adds a local, manifest-derived reference guard for relative source/install paths and first-party raw/blob targets
 
 ## 0.186.1 — Permanent Sibling Routing Contract (2026-08-08)
 

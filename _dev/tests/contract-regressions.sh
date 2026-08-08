@@ -2060,6 +2060,19 @@ elif ! bash "$suite_manifest_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# Published package links have two valid execution contexts: this source tree and the
+# manifest-mapped install under .claude/skills/. The local probe parses rendered Markdown
+# outside code, validates first-party raw/blob paths without network access, and keeps the
+# installed core changelog byte-identical to the release source.
+shipped_reference_probe="$repo_root/_dev/tests/shipped-package-reference-contract.sh"
+if [ ! -f "$shipped_reference_probe" ]; then
+  printf 'FAIL: _dev/tests/shipped-package-reference-contract.sh is missing — shipped package references have no source/install coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$shipped_reference_probe"; then
+  printf 'FAIL: shipped package reference contract failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # Behavioral probes for tools/checks/record-commit-hash.sh. Kept in their own file because
 # they build a throwaway git repo and run the real script rather than grepping prose — but
 # invoked from here, since nothing auto-discovers _dev/tests/*.sh and an uninvoked probe file
