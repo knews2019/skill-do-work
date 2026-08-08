@@ -341,7 +341,23 @@ done
 manual_project="$workdir/manual-settings"
 new_git_project "$manual_project"
 mkdir -p "$manual_project/.claude"
-printf '{"custom":"unchanged"}\n' > "$manual_project/.claude/settings.json"
+cat > "$manual_project/.claude/settings.json" <<'JSON'
+{
+  "custom": {"keep": [1, 2, 3]},
+  "hooks": {
+    "SessionStart": [
+      {"hooks": [{"type": "command", "command": "echo manual-custom-start"}]}
+    ],
+    "Stop": [
+      {"hooks": [
+        {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""},
+        {"type": "command", "command": "echo manual-custom-stop-same-wrapper"}
+      ]},
+      {"hooks": [{"type": "command", "command": "echo manual-custom-stop-neighbor"}]}
+    ]
+  }
+}
+JSON
 cp "$manual_project/.claude/settings.json" "$workdir/manual-settings.before"
 manual_output="$workdir/manual.out"
 manual_status=0
@@ -352,8 +368,11 @@ if [ "$manual_status" -ne 0 ]; then
 else
   assert_four_modules "$manual_project"
   cmp -s "$manual_project/.claude/settings.json" "$workdir/manual-settings.before" \
-    || fail 'no-JSON-tool path changed settings instead of leaving them exact'
-  assert_output_contains "$(cat "$manual_output")" '^MANUAL STEP: merge \.claude/skills/do-work/hooks/hooks\.json into \.claude/settings\.json; preserve every existing entry\.$' 'no-JSON-tool path did not print the exact manual hook instruction'
+    || fail 'no-JSON-tool path changed mixed custom and retired Stop hooks instead of leaving settings exact'
+  assert_output_contains "$(cat "$manual_output")" '^MANUAL STEP: in \.claude/settings\.json, remove only hooks\.Stop\[\*\]\.hooks objects whose string command contains \.claude/skills/do-work/hooks/pipeline-guard\.sh; preserve every other entry, including custom hooks in the same Stop event; then merge \.claude/skills/do-work/hooks/hooks\.json\.$' 'no-JSON-tool path did not print the exact targeted retired-hook removal and custom-hook preservation instruction'
+  if grep -Fq 'preserve every existing entry' "$manual_output"; then
+    fail 'no-JSON-tool path still tells users to preserve the retired pipeline guard'
+  fi
 fi
 
 # A post-write Just validation failure restores exact module, Just, and settings originals.

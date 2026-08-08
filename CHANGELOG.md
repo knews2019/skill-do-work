@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.3 — Manual Pipeline-Guard Retirement Guidance (2026-08-08)
+
+Projects without jq or Python now receive a targeted manual settings step instead of advice that would preserve the deleted pipeline guard. Custom Stop hooks and unrelated settings remain explicitly protected.
+
+- Names the retired command substring and limits removal to nested Stop-hook content
+- Preserves other hooks in the same Stop event and merges the current core hook fragment afterward
+- Adds a mixed custom/retired settings fixture that proves manual mode never mutates the file
+
 ## 0.186.2 — Shipped Package Reference Guard (2026-08-08)
 
 Links published by the four installed skills now resolve from both the source archive and the manifest-mapped client layout. Repository-only history stays browseable through canonical GitHub links, and installed changelog history stays current as a verified mirror.

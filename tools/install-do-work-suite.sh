@@ -3,7 +3,7 @@
 set -euo pipefail
 
 upstream_url='https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz'
-manual_settings_instruction='MANUAL STEP: merge .claude/skills/do-work/hooks/hooks.json into .claude/settings.json; preserve every existing entry.'
+manual_settings_instruction='MANUAL STEP: in .claude/settings.json, remove only hooks.Stop[*].hooks objects whose string command contains .claude/skills/do-work/hooks/pipeline-guard.sh; preserve every other entry, including custom hooks in the same Stop event; then merge .claude/skills/do-work/hooks/hooks.json.'
 cancel_exit_status="${DO_WORK_INSTALL_CANCEL_EXIT_STATUS:-0}"
 case "$cancel_exit_status" in
   ''|*[!0-9]*) printf 'do-work suite install: invalid cancellation status override\n' >&2; exit 1 ;;
