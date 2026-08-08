@@ -1,7 +1,7 @@
 ---
 title: "ADR-007: Close the Pipeline with Present and a Technical Debrief"
 type: architecture-decision-record
-status: accepted
+status: superseded
 topic_cluster: pipeline-deliverables
 decided: 2026-04-13
 sources:
@@ -17,12 +17,16 @@ related:
     rel: complements
   - page: adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats
     rel: complements
+  - page: adr-019-four-skill-suite-contract
+    rel: superseded-by
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-08-08
 confidence: high
 ---
 
 # ADR-007: Close the Pipeline with Present and a Technical Debrief
+
+> **Superseded 2026-08-08.** ADR-019 and REQ-145 replaced the pipeline-owned debrief with an explicit `do-work-toolbox present-work` step in the copyable full-cycle prompt.
 
 Topic cluster: [[_index_pipeline-deliverables]] ([topic index](../topics/_index_pipeline-deliverables.md))
 See also: [[adr-005-pipeline-is-stateful-and-resumable]] (depends-on), [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]] (complements), [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]] (complements)
@@ -31,7 +35,7 @@ See also: [[adr-005-pipeline-is-stateful-and-resumable]] (depends-on), [[adr-006
 
 The pipeline originally stopped after review, which left a manual handoff gap between shipping the work and communicating it. The changelog then added `present` as a sixth step and immediately followed that with a rule that completion must generate a technical debrief containing final summary, test state, coherence, carry-forward work, deliverables, and how-to-verify guidance.
 
-Those expectations are now embedded in the live pipeline action. `pipeline.md` still frames completion as education, not a checkmark, and `present-work.md` still carries the sibling client-facing brief, explainer, and verification recipe that the pipeline is expected to surface.
+Those expectations remained embedded in the stateful action until modular cutover. The current successor keeps presentation explicit through `do-work-toolbox present-work`, while implementation, tests, decisions, and deliverable paths are reported by the composed full-cycle prompt.
 
 ## Decision
 
@@ -61,6 +65,6 @@ The cost is more completion work per pipeline run. The orchestration step must c
 ## References
 
 - [CHANGELOG.md](../../CHANGELOG.md) — `0.63.0 The Closing Act`, `0.63.1 The Debrief`
-- [actions/pipeline.md](../../actions/pipeline.md)
-- [actions/present-work.md](../../actions/present-work.md)
-- [README.md](../../README.md) — pipeline section
+- [skills/do-work-toolbox/actions/present-work.md](../../skills/do-work-toolbox/actions/present-work.md)
+- [README.md](../../README.md) — current stateless full-cycle prompt
+- [[adr-019-four-skill-suite-contract]] — superseding modular-suite contract

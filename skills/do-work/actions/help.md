@@ -28,8 +28,24 @@ Extensions installed beside core:
   do-work-toolbox code-review         Reviews, reports, presentation, inspection, and repo utilities
 
 Temporary compatibility:
-  do-work pipeline <request>        Stateful end-to-end flow; removed after modular cutover
   do-work <moved-command>           Prints its exact sibling invocation and stops
+```
+
+## Full cycle without persistent state
+
+`do-work run` already owns implementation, testing, and review for every REQ, so a full cycle composes the public commands without a separate testing stage or resumable state file. Copy this prompt and replace the final placeholder:
+
+```text
+Use the installed do-work suite to complete this request end to end:
+
+1. Use do-work to capture the request below and record the resulting UR ID.
+2. Run do-work verify-requests for that UR. Stop and report if verification fails.
+3. Run the UR's REQs through do-work run. Require its built-in tests and review to pass.
+4. Use do-work-toolbox present-work for the same UR.
+5. Report the implementation, tests, decisions, and deliverable paths.
+
+Request:
+<paste request here>
 ```
 
 For `<core-command> help`, read that action's Input and When to Use sections and return no more than 15 lines: purpose, usage, accepted arguments, and two examples. Never execute the command while serving help.

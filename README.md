@@ -84,20 +84,26 @@ Each completed request gets archived with implementation notes and a git commit.
 
 Other trigger words: `go`, `start`, `begin`, `process`, `execute`, `build`, `continue`, `resume`.
 
-See the [Work Guide](skills/do-work/docs/work-guide.md) for the full pipeline, triage routes, and clarify mode.
+See the [Work Guide](skills/do-work/docs/work-guide.md) for the full work loop, triage routes, and clarify mode.
 
-### Pipeline (full end-to-end)
+### Full cycle without persistent state
 
-One command, full cycle: investigate → capture → verify → run → review → present. Stateful and resumable — if the session ends mid-pipeline (context limit, crash, closed terminal), re-invoking picks up from the last step.
+`do-work run` already performs implementation, testing, and review for each REQ. A full cycle therefore composes capture, verification, run, and presentation directly; it does not need a second testing stage or a resumable state file.
 
+Copy this prompt and replace the final placeholder:
+
+```text
+Use the installed do-work suite to complete this request end to end:
+
+1. Use do-work to capture the request below and record the resulting UR ID.
+2. Run do-work verify-requests for that UR. Stop and report if verification fails.
+3. Run the UR's REQs through do-work run. Require its built-in tests and review to pass.
+4. Use do-work-toolbox present-work for the same UR.
+5. Report the implementation, tests, decisions, and deliverable paths.
+
+Request:
+<paste request here>
 ```
-do-work pipeline add dark mode to settings    # initialize with a request
-do-work pipeline                              # resume the active pipeline
-do-work pipeline status                       # progress without advancing
-do-work pipeline abandon                      # deactivate without completing
-```
-
-Pipeline state lives at `do-work/pipeline.json`. Each step dispatches to an existing action — the pipeline never re-implements logic.
 
 ## Other actions
 
@@ -177,10 +183,9 @@ If your agent has limited context, prioritize: **owning sibling SKILL.md → act
 
 ## Hooks
 
-The suite installer enables two core Claude Code hooks:
+The suite installer enables one core Claude Code hook:
 
-- **`skills/do-work/hooks/pipeline-guard.sh`** — Stop hook that prevents the agent from stopping mid-pipeline.
-- **`skills/do-work/hooks/session-start.sh`** — SessionStart hook that injects a status line (version, pending REQs, active pipeline) at the beginning of each session.
+- **`skills/do-work/hooks/session-start.sh`** — SessionStart hook that injects the installed version and pending REQ count at the beginning of each session.
 
 Fresh installs do not enable memory capture. To opt in later, run `do-work-knowledge setup-memory`; it composes the knowledge hook fragment without clobbering existing settings.
 

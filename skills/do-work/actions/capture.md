@@ -39,7 +39,7 @@ If `do-work/` doesn't exist yet (first invocation in a project):
 - The user pastes raw content (screenshots, specs, transcripts) that should be preserved as source-of-truth before any building.
 
 **Do NOT use when:**
-- The user wants the work done **right now** in this turn — that's the `work` action (or `pipeline` for full end-to-end).
+- The user wants the work done **right now** in this turn — that's the `work` action; capture still stops after preserving intent unless the same invocation explicitly requests execution.
 - The queue already contains the same request (check for an open UR with matching intent first).
 - The user is asking a question or requesting a read-only report — capture is for *intent*, not conversations.
 

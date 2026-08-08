@@ -13,7 +13,7 @@ A hygiene scanner for the **whole repository**, not do-work's own bookkeeping. T
 
 **Do NOT use when:**
 - The clutter is do-work's own files — loose REQs, misplaced `do-work/` directories → use the **cleanup** action
-- The user wants do-work pipeline health — stuck/hollow REQs, orphaned URs → use the **forensics** action
+- The user wants do-work queue health — stuck/hollow REQs, orphaned URs → use the **forensics** action
 - The user wants to validate a single human-facing artifact (brief, report) → use the **slop-check** action
 - The user wants code-quality review of a change → use the **code-review** action
 

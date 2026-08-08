@@ -1,7 +1,7 @@
 ---
 title: "ADR-005: Pipeline Is Stateful and Resumable"
 type: architecture-decision-record
-status: accepted
+status: superseded
 topic_cluster: workflow-orchestration
 decided: 2026-04-08
 sources:
@@ -16,12 +16,16 @@ related:
     rel: complements
   - page: adr-007-close-the-pipeline-with-present-and-a-technical-debrief
     rel: complements
+  - page: adr-019-four-skill-suite-contract
+    rel: superseded-by
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-08-08
 confidence: high
 ---
 
 # ADR-005: Pipeline Is Stateful and Resumable
+
+> **Superseded 2026-08-08.** ADR-019 and REQ-145 retired the stateful runtime after modular cutover. This page remains the historical record of the former design.
 
 Topic cluster: [[_index_workflow-orchestration]] ([topic index](../topics/_index_workflow-orchestration.md))
 See also: [[adr-004-canonicalize-pending-reqs-under-do-work-queue]] (depends-on), [[adr-006-pipeline-processes-follow-up-work-in-bounded-reviewed-cycles]] (complements), [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] (complements)
@@ -30,7 +34,7 @@ See also: [[adr-004-canonicalize-pending-reqs-under-do-work-queue]] (depends-on)
 
 The project needed an end-to-end path that could investigate, capture, verify, run, and review a request without re-implementing those actions inline. The first pipeline release made orchestration itself a first-class action, with explicit state tracking, resume behavior, and a stop hook to guard mid-run exits. Later refinements preserved the same core shape rather than replacing it.
 
-That architecture is still intact. The current `pipeline.md` describes the pipeline as a six-step orchestrator, uses `do-work/pipeline.json` as source of truth, requires foreground dispatch, and reiterates that the pipeline never re-implements existing action logic.
+That architecture remained intact until the four-skill modular cutover. REQ-145 then removed the action, state file, and Stop guard in favor of a copyable capture → verify → run → present sequence; `do-work run` continues to own testing and review.
 
 ## Decision
 
@@ -58,6 +62,5 @@ The trade-off is more state-management discipline. `pipeline.json` must reflect 
 ## References
 
 - [CHANGELOG.md](../../CHANGELOG.md) — `0.51.5 The Full Send`
-- [README.md](../../README.md) — pipeline overview
-- [actions/pipeline.md](../../actions/pipeline.md)
-- [hooks/pipeline-guard.sh](../../hooks/pipeline-guard.sh)
+- [README.md](../../README.md) — current stateless full-cycle prompt
+- [[adr-019-four-skill-suite-contract]] — superseding modular-suite contract

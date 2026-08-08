@@ -19,7 +19,6 @@ sources:
   - actions/capture.md
   - actions/interview.md
   - actions/interview-reference.md
-  - actions/pipeline.md
   - actions/review-work.md
   - actions/work.md
   - crew-members/karpathy.md
@@ -43,7 +42,7 @@ related:
   - page: adr-016-vendor-queue-kanban-into-the-skill
     rel: complements
 created: 2026-04-15
-updated: 2026-07-01
+updated: 2026-08-08
 confidence: high
 ---
 
@@ -63,6 +62,5 @@ How the skill is structured, standardized, and behaviorally guided.
 
 ## Cross-Cluster Links
 
-- [[adr-001-modular-action-prompts-and-companion-references]] complements [[adr-005-pipeline-is-stateful-and-resumable]] in [[_index_workflow-orchestration]].
-- [[adr-001-modular-action-prompts-and-companion-references]] complements [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]] in [[_index_pipeline-deliverables]].
-- [[adr-003-always-load-karpathy-guardrails]] complements [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] in [[_index_pipeline-deliverables]].
+- [[adr-001-modular-action-prompts-and-companion-references]] historically complemented the now-superseded [[adr-005-pipeline-is-stateful-and-resumable]] and [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]].
+- [[adr-003-always-load-karpathy-guardrails]] historically complemented the now-superseded [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]].

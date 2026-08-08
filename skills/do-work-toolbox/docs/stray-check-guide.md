@@ -2,7 +2,7 @@
 
 Repo-wide scan for orphan/junk files that pollute where they don't belong — leftover temp/backup files, committed build artifacts, files that should be gitignored, misplaced/duplicate/empty files, large blobs, AI scratch droppings, and best-effort dead code. Report-only by default; applies fixes only on explicit confirmation.
 
-> **Not to be confused with cleanup or forensics.** `do-work cleanup` and `do-work forensics` both work on do-work's *own* bookkeeping (loose REQs, misplaced `do-work/` directories, stuck/hollow work). Stray-check works on the **whole repository** and deliberately skips the `do-work/` tree. If the clutter is do-work's own files, use cleanup; if you want pipeline health, use forensics.
+> **Not to be confused with cleanup or forensics.** `do-work cleanup` and `do-work forensics` both work on do-work's *own* bookkeeping (loose REQs, misplaced `do-work/` directories, stuck/hollow work). Stray-check works on the **whole repository** and deliberately skips the `do-work/` tree. If the clutter is do-work's own files, use cleanup; if you want queue health, use forensics.
 
 ## What it checks
 
@@ -56,6 +56,6 @@ do-work-toolbox stray-check           Same thing
 ## When NOT to use
 
 - Loose REQs or a misplaced `do-work/` directory → `do-work cleanup`
-- do-work pipeline health (stuck/hollow REQs, orphaned URs) → `do-work forensics`
+- do-work queue health (stuck/hollow REQs, orphaned URs) → `do-work forensics`
 - Validating a single human-facing artifact (brief, report) → `do-work-toolbox slop-check`
 - Code-quality review of a change → `do-work-toolbox code-review`

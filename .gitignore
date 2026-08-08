@@ -1,4 +1,3 @@
-do-work/pipeline.json
 .playwright-mcp
 /build/
 ai-reports/.DS_Store

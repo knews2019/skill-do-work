@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.185.0 — Stateful Pipeline Removed (2026-08-08)
+
+End-to-end work no longer has a second state machine competing with the queue orchestrator. A copyable prompt now composes capture, verification, `do-work run`, and toolbox presentation while the tested work lifecycle stays in one place.
+
+- Removes the `pipeline`/`full` routes, pipeline action/reference, `pipeline.json` reporting, Stop guard, and stale completion-report guidance
+- Publishes the approved full-cycle prompt byte-for-byte in core help and the README, with testing and review explicitly owned by `do-work run`
+- Migrates the retired guard safely through jq and Python settings paths while preserving custom Stop hooks; the no-JSON-tool manual fallback remains queued for correction
+
 ## 0.184.0 — Live Four-Skill Distribution (2026-08-08)
 
 Existing bridge clients can now leave the monolith behind through the same recoverable transaction used by fresh installs. The live archive has one shared version and four focused sibling skills, while project data and unrelated configuration stay outside the managed plan.

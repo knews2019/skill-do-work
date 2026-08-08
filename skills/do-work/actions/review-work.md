@@ -27,7 +27,7 @@ A post-work quality gate with three jobs: (1) confirm the implementation matches
 
 | Mode | Trigger | REQ location | How to get the diff |
 |------|---------|-------------|---------------------|
-| **Pipeline** | Auto-triggered by actions/work.md after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary — in worktree dispatch mode the tree is clean post-merge, so read the merge range `<pre>..<merge_hash>` the orchestrator passes (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**) |
+| **Orchestrated** | Auto-triggered by actions/work.md after testing passes | `do-work/working/` | `git diff` (uncommitted changes) or read the files listed in the Implementation Summary — in worktree dispatch mode the tree is clean post-merge, so read the merge range `<pre>..<merge_hash>` the orchestrator passes (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**) |
 | **Standalone** | User invokes manually: `do-work review`, `do-work review-work`, `do-work review REQ-005` | `do-work/archive/` or `do-work/archive/UR-NNN/` | `git show <commit>` using the `commit` frontmatter field — for a worktree-merged REQ the `commit:` hash is a merge commit, so use the first-parent form (Step 4) |
 
 Both modes follow the same workflow. The only difference is where the REQ lives and how you obtain the diff.
@@ -36,14 +36,14 @@ Both modes follow the same workflow. The only difference is where the REQ lives 
 
 ### Step 1: Find the Target
 
-**Pipeline mode:** the work action hands you the REQ file path (in `do-work/working/`). Skip to Step 2.
+**Orchestrated mode:** the work action hands you the REQ file path (in `do-work/working/`). Skip to Step 2.
 
 **Standalone mode:**
 1. **If user specifies a REQ** (e.g., "review REQ-005"): Find it in `do-work/archive/` or `do-work/archive/UR-NNN/`
 2. **If user specifies a UR** (e.g., "review UR-003"): Find all REQs whose status normalizes to the Terminal-success status set under that UR and review each
 3. **If no target specified**: Find the most recently completed REQ — check both `do-work/archive/` (root) and all `do-work/archive/UR-NNN/` subdirectories for the highest REQ number whose status normalizes to the Terminal-success status set in `actions/work-reference.md`
 
-If the target REQ has no `commit` field (standalone mode) or no implementation changes (pipeline mode), report that there's nothing to review and exit. In worktree dispatch mode the working tree is clean after the merge, so judge "no changes" from the merge range `<pre>..<merge_hash>` (`git diff --stat <pre>..<merge_hash>`), not the working diff — an empty working diff there is the normal post-merge state, not an empty REQ.
+If the target REQ has no `commit` field (standalone mode) or no implementation changes (orchestrated mode), report that there's nothing to review and exit. In worktree dispatch mode the working tree is clean after the merge, so judge "no changes" from the merge range `<pre>..<merge_hash>` (`git diff --stat <pre>..<merge_hash>`), not the working diff — an empty working diff there is the normal post-merge state, not an empty REQ.
 
 ### Step 2: Read the REQ
 
@@ -63,7 +63,7 @@ If the REQ is a legacy file without `user_request`, use whatever context is avai
 
 ### Step 4: Get the Diff
 
-**Pipeline mode:** Run `git diff` to see uncommitted changes, or read the files the Implementation Summary lists as created/modified. If the working tree is clean (implementation agent already staged), use `git diff --staged`. **In worktree dispatch mode** the builder's work is already committed and merged, so the working tree is clean by design — read the diff from the merge range the orchestrator passes: `git diff <pre>..<merge_hash>` (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**).
+**Orchestrated mode:** Run `git diff` to see uncommitted changes, or read the files the Implementation Summary lists as created/modified. If the working tree is clean (implementation agent already staged), use `git diff --staged`. **In worktree dispatch mode** the builder's work is already committed and merged, so the working tree is clean by design — read the diff from the merge range the orchestrator passes: `git diff <pre>..<merge_hash>` (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**).
 
 **Standalone mode:** Run `git show <commit>` using the hash from the REQ's `commit` frontmatter. This gives you the full diff of what was committed. **If that hash is a merge commit** — `git rev-parse --verify -q '<commit>^2'` succeeds (quoted — `^` is special in some shells), the normal case for work integrated by worktree dispatch mode's `--no-ff` merge (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**) — plain `git show` prints a combined diff that is usually empty, so diff against the first parent instead: `git show --first-parent -m <commit>`.
 
@@ -172,7 +172,7 @@ Actually verify the implementation works. Reading diffs catches logic errors; ru
 
 **What to do:**
 
-1. **Run the test suite** — if tests weren't already run by the work pipeline (pipeline mode should have run them in Step 6.5), run them now. Check the prime file for a testing section — if it maps changed code areas to specific test commands, run those. Otherwise, target tests related to changed code first, then broader tests if fast enough.
+1. **Run the test suite** — if tests weren't already run by the work action (orchestrated mode should have run them in Step 6.5), run them now. Check the prime file for a testing section — if it maps changed code areas to specific test commands, run those. Otherwise, target tests related to changed code first, then broader tests if fast enough.
 2. **Try the feature** — if the change produces observable behavior (UI, CLI output, API response, file output), verify it works end-to-end:
    - Run the app/server/tool if applicable
    - Exercise the specific feature that was built
@@ -232,7 +232,7 @@ Nit findings carry zero weight on the overall score — they're stylistic sugges
 
 Load `crew-members/anti-slop.md` before composing the report — the review output is a human-facing artifact and falls under those principles, especially **§ 8: lead with the decision/verdict in words, demote the self-grade**. Shape the report as the **Decision Brief** (`actions/work-reference.md` → **Decision Brief (hand-back format)**): the worded verdict and what's-built first; the score table on the record, below. **This restructures only the human-facing report** — the persisted `## Review` block (see **Append to REQ File**) keeps `Overall: [X]%` first, because `../do-work-toolbox/actions/present-work.md` parses it for the score.
 
-**Pipeline mode:** Report to actions/work.md orchestrator (which reports to the user).
+**Orchestrated mode:** Report to actions/work.md orchestrator (which reports to the user).
 **Standalone mode:** Report directly to the user.
 
 Format:
@@ -309,7 +309,7 @@ After presenting the review report, perform a self-validation pass — no human 
    - **What didn't:** Dead ends, false assumptions, things the review missed initially
    - **Worth knowing:** Gotchas, edge cases, or non-obvious dependencies discovered during review
 
-   In **Pipeline mode**, skip lesson capture — actions/work.md's Lessons-Capture Phase handles it after the review returns.
+   In **orchestrated mode**, skip lesson capture — actions/work.md's Lessons-Capture Phase handles it after the review returns.
 
 4. **Update prime files (Standalone mode only).** Check the REQ's `prime_files` frontmatter. For each listed prime file where the lesson is relevant:
 
@@ -324,9 +324,9 @@ After presenting the review report, perform a self-validation pass — no human 
 
      **Path must be relative to the prime file's location**, not the repo root. Compute the correct relative path from the prime file's directory to the archived REQ file. For example, if the prime file is at `src/utils/prime-auth.md` and the REQ is at `do-work/archive/UR-005/REQ-042-auth-fix.md`, the link should use `../../do-work/archive/UR-005/REQ-042-auth-fix.md#lessons-learned`.
 
-   Only link lessons relevant to that prime file's scope. In **Pipeline mode**, actions/work.md's Lessons-Capture Phase handles prime file updates.
+   Only link lessons relevant to that prime file's scope. In **orchestrated mode**, actions/work.md's Lessons-Capture Phase handles prime file updates.
 
-5. **Offer knowledge-base handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. Update the REQ's `kb_status` and (if promoted) `kb_entry` frontmatter based on the outcome. The handoff asks before writing, degrades to `pending` if no `kb/` exists, and never blocks archival. In **Pipeline mode**, actions/work.md's Lessons-Capture Phase runs the handoff instead.
+5. **Offer knowledge-base handoff (Standalone mode only).** If the REQ now has a non-empty `## Lessons Learned` section, follow `actions/kb-lessons-handoff.md` to offer dropping a structured source document into `kb/raw/inbox/` so the next `bkb triage` + `bkb ingest` cycle compiles the lessons into the wiki. Update the REQ's `kb_status` and (if promoted) `kb_entry` frontmatter based on the outcome. The handoff asks before writing, degrades to `pending` if no `kb/` exists, and never blocks archival. In **orchestrated mode**, actions/work.md's Lessons-Capture Phase runs the handoff instead.
 
 Self-validation runs in **both modes**. Lesson capture, prime file updates, and the knowledge-base handoff are **standalone-only** to avoid duplication with actions/work.md.
 
@@ -402,7 +402,7 @@ The `pending-answers` status means the work loop won't pick this up until the us
 - **The reroute governs REQ *creation* only.** Editing an existing queued REQ — e.g. appending an instance to a `status: pending` sweep REQ under the same UR — is not creation and stays allowed at any generation. Failure-path follow-ups (`actions/work.md` Step 8 → **Failure Classification**) are likewise exempt at any depth: a failed generation-≥2 REQ still gets its Intent/Spec/Code follow-up, else failed work dies silently with no successor.
 - **The fixed point is intended — do not "fix" it.** Follow-ups created here carry `review_generated: true` themselves, so their own reviews fall under this same rule: the cascade converges at depth 2 by construction, with the user as the only escalation path.
 
-Follow-up REQs go in `do-work/queue/`. In pipeline mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do-work run`.
+Follow-up REQs go in `do-work/queue/`. In orchestrated mode, the work loop picks them up on the next iteration. In standalone mode, they wait for the user to run `do-work run`.
 
 **Don't create follow-ups for minor issues.** Minor findings go in the report only. The threshold: would a senior engineer request changes on this in a PR review, or just leave a comment?
 
@@ -440,7 +440,7 @@ In standalone mode, this is an exception to the archive immutability rule — re
 
 ### Commit (Standalone mode, git repos only)
 
-In **standalone mode**, after appending the Review section and creating any follow-up REQs, commit the changes. In **pipeline mode**, skip this — actions/work.md's Commit Phase handles the commit.
+In **standalone mode**, after appending the Review section and creating any follow-up REQs, commit the changes. In **orchestrated mode**, skip this — actions/work.md's Commit Phase handles the commit.
 
 Check for git with `git rev-parse --git-dir 2>/dev/null`. If not a git repo, skip.
 

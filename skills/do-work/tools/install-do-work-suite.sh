@@ -303,6 +303,23 @@ if [ "$settings_tool" != manual ]; then
       | if .hooks == null then .hooks = {}
         elif (.hooks | type) != "object" then error("settings hooks must be an object")
         else . end
+      | if .hooks.Stop == null then .
+        elif (.hooks.Stop | type) != "array" then error("settings Stop hook event must be an array")
+        else
+          .hooks.Stop |= map(
+            if type == "object" and (.hooks | type) == "array" then
+              .hooks |= map(select(
+                ((.command | type) == "string"
+                  and (.command | contains(".claude/skills/do-work/hooks/pipeline-guard.sh")))
+                | not
+              ))
+            else . end
+          )
+          | .hooks.Stop |= map(select(
+              (type != "object") or (.hooks | type) != "array" or (.hooks | length) > 0
+            ))
+          | if (.hooks.Stop | length) == 0 then del(.hooks.Stop) else . end
+        end
       | reduce ($fragment[0].hooks | keys[]) as $event (.;
           if .hooks[$event] == null then .hooks[$event] = []
           elif (.hooks[$event] | type) != "array" then error("settings hook event must be an array")
@@ -352,6 +369,32 @@ settings = rewrite(settings)
 hooks = settings.setdefault("hooks", {})
 if not isinstance(hooks, dict):
     raise TypeError("settings hooks must be an object")
+stop_entries = hooks.get("Stop")
+if stop_entries is not None:
+    if not isinstance(stop_entries, list):
+        raise TypeError("settings Stop hook event must be an array")
+    retained_stop_entries = []
+    for entry in stop_entries:
+        if isinstance(entry, dict) and isinstance(entry.get("hooks"), list):
+            retained_hooks = [
+                hook
+                for hook in entry["hooks"]
+                if not (
+                    isinstance(hook, dict)
+                    and isinstance(hook.get("command"), str)
+                    and ".claude/skills/do-work/hooks/pipeline-guard.sh" in hook["command"]
+                )
+            ]
+            if retained_hooks:
+                entry = dict(entry)
+                entry["hooks"] = retained_hooks
+                retained_stop_entries.append(entry)
+        else:
+            retained_stop_entries.append(entry)
+    if retained_stop_entries:
+        hooks["Stop"] = retained_stop_entries
+    else:
+        hooks.pop("Stop")
 for event, entries in fragment.get("hooks", {}).items():
     installed_entries = hooks.setdefault(event, [])
     if not isinstance(installed_entries, list) or not isinstance(entries, list):
@@ -369,8 +412,9 @@ PY
   chmod "$settings_mode" "$settings_candidate"
   grep -q 'do-work/hooks/session-start.sh' "$settings_candidate" \
     || fail 'composed settings omitted the core SessionStart hook'
-  grep -q 'do-work/hooks/pipeline-guard.sh' "$settings_candidate" \
-    || fail 'composed settings omitted the core Stop hook'
+  if grep -q 'do-work/hooks/pipeline-guard.sh' "$settings_candidate"; then
+    fail 'composed settings retained the retired pipeline Stop hook'
+  fi
   if grep -q '\.claude/skills/do-work/hooks/memory-' "$settings_candidate"; then
     fail 'composed settings retained a known legacy memory hook path'
   fi

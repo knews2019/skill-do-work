@@ -1,5 +1,5 @@
 ---
-title: "Topic Index: Pipeline Deliverables"
+title: "Topic Index: Retired Pipeline Deliverables"
 type: topic-index
 status: reference
 topic_cluster: pipeline-deliverables
@@ -11,26 +11,25 @@ sources:
   - CHANGELOG.md (0.64.0 The Cross-Linked Set)
   - CHANGELOG.md (0.64.1 The Companion Split)
   - README.md
-  - actions/pipeline.md
-  - actions/present-work.md
+  - skills/do-work-toolbox/actions/present-work.md
 related:
   - page: adr-007-close-the-pipeline-with-present-and-a-technical-debrief
     rel: complements
   - page: adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats
     rel: complements
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-08-08
 confidence: high
 ---
 
-# Pipeline Deliverables
+# Retired Pipeline Deliverables
 
-How completed pipeline work is presented, summarized, and linked for different audiences.
+Historical record of how the retired stateful pipeline presented, summarized, and linked completed work. The live successor is `do-work-toolbox present-work`, invoked explicitly by the full-cycle prompt.
 
 ## ADRs
 
-- [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] — [ADR-007](../records/adr-007-close-the-pipeline-with-present-and-a-technical-debrief.md): A finished pipeline must end with present-work artifacts and a persisted completion debrief, not a terse success message.
-- [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]] — [ADR-008](../records/adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats.md): Render the same completion dataset as markdown, Marp, and HTML, keep the facts identical, and cross-link every sibling artifact for both technical and non-technical readers.
+- [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] — [ADR-007](../records/adr-007-close-the-pipeline-with-present-and-a-technical-debrief.md) (**superseded**): Historical completion/debrief contract retired by ADR-019 and REQ-145.
+- [[adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats]] — [ADR-008](../records/adr-008-render-pipeline-debriefs-in-three-cross-linked-audience-specific-formats.md) (**superseded**): Historical three-rendering contract retired with the stateful action.
 
 ## Cross-Cluster Links
 

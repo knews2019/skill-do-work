@@ -68,3 +68,9 @@ The validator becomes security-sensitive distribution code. New manifest fields,
 - [do-work/user-requests/UR-031/input.md](../../do-work/user-requests/UR-031/input.md) — confirmed rollout and ownership decisions
 - [[adr-013-harden-the-vendored-skill-distribution-model]] — existing whole-tree archive and update safeguards
 - [[adr-016-vendor-queue-kanban-into-the-skill]] — current board ownership and distribution history
+
+## Stateful Pipeline Retirement
+
+After modular cutover, REQ-145 removed the separate stateful pipeline action, companion reference, `do-work/pipeline.json` lifecycle, and Stop guard. The core router exposes no `pipeline` or `full` alias. The approved successor is the copyable capture → verify → `do-work run` → `do-work-toolbox present-work` prompt in the root README and core help; testing and review remain built into `do-work run`, with no replacement state or separate testing stage.
+
+This retirement supersedes ADR-005 through ADR-008 while preserving them as historical records.

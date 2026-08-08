@@ -1,7 +1,7 @@
 ---
 title: "ADR-006: Pipeline Processes Follow-Up Work in Bounded Reviewed Cycles"
 type: architecture-decision-record
-status: accepted
+status: superseded
 topic_cluster: workflow-orchestration
 decided: 2026-04-10
 sources:
@@ -18,12 +18,16 @@ related:
     rel: depends-on
   - page: adr-007-close-the-pipeline-with-present-and-a-technical-debrief
     rel: complements
+  - page: adr-019-four-skill-suite-contract
+    rel: superseded-by
 created: 2026-04-15
-updated: 2026-04-15
+updated: 2026-08-08
 confidence: high
 ---
 
 # ADR-006: Pipeline Processes Follow-Up Work in Bounded Reviewed Cycles
+
+> **Superseded 2026-08-08.** ADR-019 and REQ-145 retired the separate continuation loop with the stateful pipeline. This page remains the historical record of its safeguards.
 
 Topic cluster: [[_index_workflow-orchestration]] ([topic index](../topics/_index_workflow-orchestration.md))
 See also: [[adr-004-canonicalize-pending-reqs-under-do-work-queue]] (depends-on), [[adr-005-pipeline-is-stateful-and-resumable]] (depends-on), [[adr-007-close-the-pipeline-with-present-and-a-technical-debrief]] (complements)
@@ -32,7 +36,7 @@ See also: [[adr-004-canonicalize-pending-reqs-under-do-work-queue]] (depends-on)
 
 Once the pipeline existed, the next load-bearing question was how it should behave when follow-up REQs remained in the queue. The changelog shows a sequence of releases that first added queue continuation, then tightened its safeguards: explicit error handling, a three-cycle cap, and a rule that continuation reviews must target the REQ IDs from that cycle rather than broad UR scopes.
 
-The current `pipeline.md` still encodes the same bounded continuation design. It scans `do-work/queue/` after completion, records the REQs about to be processed, runs standard queue work, reviews each REQ individually, stops after three cycles, and does not reopen the formal pipeline state machine during that continuation.
+That bounded continuation design remained active until REQ-145 removed the separate stateful orchestrator. The surviving `do-work run` loop processes dependency-ready work with its own built-in review and exits when its current ready set is exhausted.
 
 ## Decision
 
@@ -64,6 +68,6 @@ The trade-off is extra orchestration complexity. The continuation loop needs car
 ## References
 
 - [CHANGELOG.md](../../CHANGELOG.md) — `0.56.0 The Clean Sweep`, `0.56.1 The Safety Net`, `0.56.2 The Tight Scope`
-- [actions/pipeline.md](../../actions/pipeline.md)
 - [actions/work.md](../../actions/work.md)
 - [actions/review-work.md](../../actions/review-work.md)
+- [[adr-019-four-skill-suite-contract]] — superseding modular-suite contract

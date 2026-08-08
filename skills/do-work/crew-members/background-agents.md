@@ -1,6 +1,6 @@
 # Background Agent Durability
 
-<!-- JIT_CONTEXT: This file is loaded by any action that fans work out to background or parallel sub-agents — that condition is the contract; illustrative callers today include code-review, work (multi-REQ), pipeline, deep-explore, and tidy-repo (Step 4 gap pass). It prescribes a disk-durable run-directory pattern so fan-out work survives an interrupted, compacted, or corrupted orchestrator session. Not loaded for single-agent in-context work that returns one result. -->
+<!-- JIT_CONTEXT: This file is loaded by any action that fans work out to background or parallel sub-agents — that condition is the contract; illustrative callers today include code-review, work (multi-REQ), deep-explore, and tidy-repo (Step 4 gap pass). It prescribes a disk-durable run-directory pattern so fan-out work survives an interrupted, compacted, or corrupted orchestrator session. Not loaded for single-agent in-context work that returns one result. -->
 
 > When you fan work out to background or parallel sub-agents, the chat transcript
 > is the worst possible place to keep the results. Make a directory on disk the
@@ -33,8 +33,8 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
    The run directory is an ordinary **committable** path under `do-work/` (the
    Trail of Intent) — not gitignored, not added to `.git/info/exclude`. Keeping it
    trackable is what lets a run be inspected and survive across sessions while it is
-   live: if the user commits their `do-work/` tree mid-run (common in a multi-session
-   pipeline), the run travels with the commit instead of sitting as untracked noise or
+   live: if the user commits their `do-work/` tree mid-run (common during long work),
+   the run travels with the commit instead of sitting as untracked noise or
    being lost. It is not permanent, though — see the lifecycle in step 5: once its
    findings are consumed, the run directory is deleted, and the permanent record is the
    promoted output, never the raw scratch.
@@ -86,8 +86,8 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
 
 Run directories are committable (step 1) and must **never** be added to any ignore list.
 But some sibling paths *are* genuinely transient and must stay out of git regardless of
-install layout — `do-work/pipeline.json` (live pipeline state), a vendored engine install,
-a `build/` artifact. The shipped `.gitignore` can't reach a project-root path from a nested
+install layout — for example, a vendored engine install or a `build/` artifact. The shipped
+`.gitignore` can't reach a project-root path from a nested
 `.claude/skills/do-work/` install, so those paths append to the enclosing repo's
 `.git/info/exclude` (local-only — never committed, never shipped). This is the canonical
 snippet they reference; substitute the path being ignored:
@@ -199,7 +199,7 @@ invariant above carries down all three.
 how much orchestration the harness hands you. Whether each builder runs in its own
 **git worktree** (an isolated working directory + branch, so parallel builders can't
 interleave writes to the same file) is an orthogonal capability, available at any
-rung. The do-work pipeline's optional worktree dispatch mode is documented in
+rung. `do-work run`'s optional worktree dispatch mode is documented in
 `actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**; reach for it when
 you fan builders out across overlapping files, not just to size concurrency.
 

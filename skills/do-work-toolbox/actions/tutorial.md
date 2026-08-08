@@ -19,7 +19,7 @@
 | Mode | Trigger | What it does |
 |------|---------|-------------|
 | **Quick Start** | `do-work-toolbox tutorial quick-start` | Hands-on walkthrough: capture one task, run it, review it. ~5 minutes. |
-| **Concepts** | `do-work-toolbox tutorial concepts` | Explains the mental model: URs, REQs, pipeline stages, trail of intent. Non-interactive. |
+| **Concepts** | `do-work-toolbox tutorial concepts` | Explains the mental model: URs, REQs, work stages, trail of intent. Non-interactive. |
 | **Recipes** | `do-work-toolbox tutorial recipes` | Workflow cheat sheet: common scenarios mapped to exact commands. |
 | **Interactive Tour** | `do-work-toolbox tutorial tour` | Menu-driven — pick a topic, get a self-contained explanation with examples. |
 
@@ -41,7 +41,7 @@ When invoked with no arguments, present the four modes and wait for the user to 
 do-work-toolbox tutorial — learn how the skill works
 
   1. Quick Start        Capture a task, run it, review it — hands-on in ~5 min
-  2. Concepts           Mental model: URs, REQs, pipeline, trail of intent
+  2. Concepts           Mental model: URs, REQs, work stages, trail of intent
   3. Recipes            Common scenarios → exact commands (cheat sheet)
   4. Interactive Tour   Pick a topic, get a self-contained deep dive
 
@@ -158,28 +158,28 @@ URs AND REQs
 
   REQ (Requirement)  — A structured task with: what, why, acceptance
                        criteria, and a status that moves through the
-                       pipeline. Each REQ links back to its parent UR.
+                       work loop. Each REQ links back to its parent UR.
 
   Example: "Fix the search and update the header" (1 UR) →
            REQ-001: Fix search performance
            REQ-002: Fix header alignment
 ```
 
-### Step C-3: The Pipeline
+### Step C-3: The Full Cycle
 
 ```
-THE PIPELINE
+THE FULL CYCLE
 
-  capture → verify → run → review → present
+  capture → verify → run → present
 
   capture    Turn plain language into UR + REQ files
   verify     Quality-check: did capture get it right?
   run        Triage → plan → build → test → self-review (per REQ)
-  review     Human-facing review: requirements + code + acceptance
   present    Client-facing deliverables (optional)
 
-  "do-work pipeline [request]" runs all stages end-to-end.
-  Or run each stage individually for more control.
+  Run these commands in sequence for an end-to-end request. Testing and
+  review are already inside do-work run; there is no separate state file
+  or second testing stage.
 ```
 
 ### Step C-4: Trail of Intent
@@ -187,7 +187,7 @@ THE PIPELINE
 ```
 TRAIL OF INTENT
 
-Every REQ is a living document. As it moves through the pipeline, each
+Every REQ is a living document. As it moves through the work loop, each
 stage appends its decisions:
 
   Original intent (capture) → triage route → plan → implementation
@@ -238,8 +238,11 @@ WORKFLOW RECIPES — common scenarios → exact commands
     do-work verify-requests
     do-work run
 
-  "I want the full hands-off pipeline"
-    do-work pipeline [describe what you want]
+  "I want the full cycle"
+    do-work capture-request: [describe what you want]
+    do-work verify-requests UR-NNN
+    do-work run UR-NNN
+    do-work-toolbox present-work UR-NNN
 
   "I want to check what was captured before building"
     do-work verify-requests
@@ -281,7 +284,7 @@ INTERACTIVE TOUR — pick a topic to learn about
   1. Capturing requests     How tasks enter the system
   2. Running the queue      How work gets built
   3. Reviewing work         Post-build quality checks
-  4. The pipeline           End-to-end automation
+  4. The full cycle         End-to-end command sequence
   5. Knowledge base (bkb)   Building a persistent wiki from sources
   6. Prime files            AI context documents for codebases
   7. Code & UI review       Standalone quality audits
@@ -305,8 +308,8 @@ Explain triage routes (A/B/C), autonomous build cycle, test-first approach, self
 **Topic 3 — Reviewing work:**
 Explain requirements checking, code review, acceptance testing, pass/fail, and what happens on failure (re-queue). Key commands: `review-work`, `review-work REQ-NNN`.
 
-**Topic 4 — The pipeline:**
-Explain the 5-stage sequence, persistent state tracking, resume behavior, and when to use pipeline vs individual commands. Key commands: `pipeline [request]`, `pipeline status`, `pipeline abandon`.
+**Topic 4 — The full cycle:**
+Explain the capture → verify → run → present sequence, that `do-work run` already includes testing and review, and how the UR ID ties the commands together. Key commands: `capture-request:`, `verify-requests UR-NNN`, `run UR-NNN`, `do-work-toolbox present-work UR-NNN`.
 
 **Topic 5 — Knowledge base:**
 Explain what a BKB is (Markdown wiki compiled from raw sources), the init → triage → ingest cycle, querying, and maintenance. Key commands: `bkb init`, `bkb ingest`, `bkb query [question]`.

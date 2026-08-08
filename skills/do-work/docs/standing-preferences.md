@@ -9,7 +9,7 @@ If you find yourself pasting the same reminders every session, read this once. F
 | You often type... | Already built in? | How it works / where |
 | --- | --- | --- |
 | "when you see something, say something" / "keep writing lessons learned with improvement suggestions" | **Yes** | Every non-trivial REQ appends a `## Lessons Learned` section before archiving (`actions/work.md` Lessons-Capture Phase; standalone mode via `actions/review-work.md`). Out-of-scope things the builder notices go to `## Discovered Tasks` and are queued as follow-ups (`crew-members/general.md` Discovered-Tasks Contract). For a free-form jot, `do-work-toolbox note "…"` (`../do-work-toolbox/actions/note.md`). Lessons can be promoted into a project knowledge base via `actions/kb-lessons-handoff.md`. |
-| "keep working until all the REQ's are done" | **Partly — bounded on purpose** | `do-work run` loops through every dependency-ready `pending` REQ, one at a time, until none remain (`actions/work.md` Loop-or-Exit). `do-work pipeline` also continues into leftover pending REQs, but caps at **3 run → review cycles** — not an unattended, infinite re-drain. A standalone "loop until empty" runner was considered and **declined**: see `decisions/records/adr-006-*` and `adr-014-*`. |
+| "keep working until all the REQ's are done" | **Partly — bounded on purpose** | `do-work run` loops through every dependency-ready `pending` REQ, one at a time, until none remain (`actions/work.md` Loop-or-Exit). It exits when the current ready set is exhausted rather than running an unattended, infinite re-drain. A separate "loop until empty forever" runner was considered and **declined**: see `decisions/records/adr-014-*`. |
 | "use background agents / workflows to manage context" | **Yes (when your tool supports it)** | Actions that fan work out use the durability pattern in `crew-members/background-agents.md`; `SKILL.md` dispatches `work` and `cleanup` to the background when subagents are available; each REQ gets a fresh agent and a context wipe between iterations (`actions/work.md` Loop-or-Exit). Subagents are a nice-to-have, never a requirement. |
 | "it's safe to commit / `do-work commit` as a background agent" | **Commit: yes. Background: no, by design** | `do-work run` commits each finished REQ itself (`actions/work.md` Commit Phase); `do-work commit` batches loose changes into small atomic commits (`actions/commit.md`). Commit runs in the **foreground** on purpose — only `work` and `cleanup` are background-eligible in `SKILL.md`'s dispatch. |
 | "I prefer frequent, well-defined commits" | **Yes** | The convention is **one atomic commit per REQ**, staging explicit files only — never `git add -A`/`.` (`actions/work.md` Commit Phase; `actions/commit.md`). That already is "frequent and well-defined." It was requested once as `UR-003` and folded into this convention. |
@@ -27,10 +27,10 @@ If you find yourself pasting the same reminders every session, read this once. F
   in place, that is a deliberate change to this guardrail — say so explicitly; it isn't the
   default.
 - **The queue continuation is bounded on purpose.** "Keep going until it's all done" is
-  honored *within* a run (every dependency-ready `pending` REQ) and for up to 3 pipeline
-  cycles, but there is no unattended loop that drains and re-drains the queue forever. That
-  was a design decision (`adr-006`, `adr-014`), not an oversight — the cap keeps every REQ
-  reviewed instead of racing to empty the board.
+  honored *within* a run for every dependency-ready `pending` REQ, but there is no unattended
+  loop that drains and re-drains newly generated work forever. That was a design decision
+  (`adr-014`), not an oversight — the boundary keeps every REQ reviewed instead of racing to
+  empty the board.
 
 ## So do I still need to paste my nudges?
 

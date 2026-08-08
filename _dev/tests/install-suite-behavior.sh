@@ -147,7 +147,9 @@ if [ ! -f "$fresh_project/.claude/settings.json" ]; then
   fail 'fresh install did not create Claude settings for core hooks'
 else
   assert_file_contains "$fresh_project/.claude/settings.json" 'do-work/hooks/session-start\.sh' 'fresh settings must enable the core SessionStart hook'
-  assert_file_contains "$fresh_project/.claude/settings.json" 'do-work/hooks/pipeline-guard\.sh' 'fresh settings must enable the current core Stop hook'
+  if grep -q 'do-work/hooks/pipeline-guard\.sh' "$fresh_project/.claude/settings.json"; then
+    fail 'fresh settings must not enable the retired pipeline Stop hook'
+  fi
   if grep -q 'memory-' "$fresh_project/.claude/settings.json"; then
     fail 'fresh install must not enable memory hooks'
   fi
@@ -181,8 +183,11 @@ cat > "$fresh_project/.claude/settings.json" <<'JSON'
       {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/memory-session-start.sh\""}]}
     ],
     "Stop": [
-      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/memory-stop-capture.sh\""}]},
-      {"hooks": [{"type": "command", "command": "echo custom-stop"}]}
+      {"hooks": [
+        {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""},
+        {"type": "command", "command": "echo custom-stop"}
+      ]},
+      {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/memory-stop-capture.sh\""}]}
     ]
   }
 }
@@ -213,7 +218,7 @@ assert ".claude/skills/do-work/hooks/memory-stop-capture.sh" not in serialized
 assert serialized.count(".claude/skills/do-work-knowledge/hooks/memory-session-start.sh") == 1
 assert serialized.count(".claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh") == 1
 assert serialized.count("do-work/hooks/session-start.sh") == 1
-assert serialized.count("do-work/hooks/pipeline-guard.sh") == 1
+assert "do-work/hooks/pipeline-guard.sh" not in serialized
 assert serialized.count("echo custom-start") == 1
 assert serialized.count("echo custom-stop") == 1
 PY
@@ -317,6 +322,19 @@ for command_name in awk bash cat chmod cmp cp diff dirname find git grep head mk
 done
 python_project="$workdir/python-fallback"
 new_git_project "$python_project"
+mkdir -p "$python_project/.claude"
+cat > "$python_project/.claude/settings.json" <<'JSON'
+{
+  "hooks": {
+    "Stop": [
+      {"hooks": [
+        {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""},
+        {"type": "command", "command": "echo python-custom-stop"}
+      ]}
+    ]
+  }
+}
+JSON
 python_output="$workdir/python-fallback.out"
 python_status=0
 printf 'y\n' | PATH="$python_path" bash "$installer" --project-root "$python_project" --archive "$archive_file" >"$python_output" 2>&1 \
@@ -326,6 +344,13 @@ if [ "$python_status" -ne 0 ]; then
 else
   assert_output_contains "$(cat "$python_output")" 'settings reconciler: python3' 'installer did not report/use Python when jq was unavailable'
   assert_file_contains "$python_project/.claude/settings.json" 'do-work/hooks/session-start\.sh' 'Python fallback did not compose core hooks'
+  python3 - "$python_project/.claude/settings.json" <<'PY' || fail 'Python fallback did not remove only the retired guard and preserve custom Stop hooks'
+import json, pathlib, sys
+data = json.loads(pathlib.Path(sys.argv[1]).read_text())
+serialized = json.dumps(data)
+assert "do-work/hooks/pipeline-guard.sh" not in serialized
+assert serialized.count("echo python-custom-stop") == 1
+PY
 fi
 
 # With neither jq nor Python, a fresh project still gets modules/Justfile while settings stay exact and a precise manual step is printed.

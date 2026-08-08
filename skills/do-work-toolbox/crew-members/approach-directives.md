@@ -1,6 +1,6 @@
 # Approach Directives
 
-<!-- JIT_CONTEXT: This file is loaded by the work action or pipeline action when dispatching multiple sub-agents for parallel or sequential work on related REQs. It assigns each agent a distinct implementation lens to improve solution diversity. Not loaded for single-REQ processing. -->
+<!-- JIT_CONTEXT: This file is loaded by the work action when dispatching multiple sub-agents for parallel or sequential work on related REQs. It assigns each agent a distinct implementation lens to improve solution diversity. Not loaded for single-REQ processing. -->
 
 > When dispatching sub-agents for parallel or sequential work, assign each agent
 > a distinct approach directive. This shapes their implementation lens without

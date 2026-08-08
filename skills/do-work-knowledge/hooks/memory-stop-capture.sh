@@ -28,8 +28,8 @@
 #   - verbatim tail of the final user+assistant exchange, ~1,500 chars, third-person framed
 #   - sha256-prefix (8 hex chars) dedup key in the heading — idempotent across re-fires
 #   - ALWAYS exits 0. Capture is never worth blocking a session end; every failure path
-#     below falls through to exit 0. This hook must NEVER emit a blocking decision the
-#     way pipeline-guard.sh does — _dev/tests/contract-regressions.sh enforces this.
+#     below falls through to exit 0. This hook must NEVER emit a blocking decision;
+#     _dev/tests/contract-regressions.sh enforces this.
 
 # Deliberately no `set -e`: a parse failure must not abort before the final exit 0.
 set -u

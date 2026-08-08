@@ -36,15 +36,12 @@ core_files=(
   skills/do-work/actions/version.md
   skills/do-work/actions/help.md
   skills/do-work/actions/moved-command-shim.md
-  skills/do-work/actions/pipeline.md
-  skills/do-work/actions/pipeline-reference.md
   skills/do-work/crew-members/coding-guardrails.md
   skills/do-work/crew-members/clear-questions.md
   skills/do-work/specs/bug-fix.md
   skills/do-work/specs/refactor.md
   skills/do-work/hooks/hooks.json
   skills/do-work/hooks/session-start.sh
-  skills/do-work/hooks/pipeline-guard.sh
   skills/do-work/tools/checks/preflight.sh
   skills/do-work/tools/checks/qualify.sh
   skills/do-work/tools/checks/record-commit-hash.sh
@@ -160,6 +157,52 @@ toolbox_files=(
 for core_file in "${core_files[@]}"; do
   require_file "$core_file"
 done
+
+for retired_pipeline_path in \
+  skills/do-work/actions/pipeline.md \
+  skills/do-work/actions/pipeline-reference.md \
+  skills/do-work/hooks/pipeline-guard.sh
+do
+  if [ -e "$repo_root/$retired_pipeline_path" ]; then
+    fail "stateful pipeline runtime must be retired: $retired_pipeline_path"
+  fi
+done
+
+if sed -n '/^## Routing/,/^## Dispatch/p' "$repo_root/skills/do-work/SKILL.md" \
+  | grep -Eq '^\|[^|]*`(pipeline|full)`'; then
+  fail 'core router must not retain the pipeline/full compatibility route'
+fi
+if grep -Fq 'do-work/pipeline.json' "$repo_root/.gitignore" \
+  || grep -Fq 'do-work/pipeline.json' "$repo_root/skills/do-work/hooks/session-start.sh"; then
+  fail 'pipeline.json lifecycle must be absent from the live runtime and root ignore file'
+fi
+if grep -Fq 'pipeline-guard.sh' "$repo_root/skills/do-work/hooks/hooks.json"; then
+  fail 'fresh core hooks must not install the retired pipeline Stop guard'
+fi
+
+if ! python3 - \
+  "$repo_root/README.md" \
+  "$repo_root/skills/do-work/actions/help.md" <<'PY'
+import pathlib
+import sys
+
+approved_prompt = """Use the installed do-work suite to complete this request end to end:
+
+1. Use do-work to capture the request below and record the resulting UR ID.
+2. Run do-work verify-requests for that UR. Stop and report if verification fails.
+3. Run the UR's REQs through do-work run. Require its built-in tests and review to pass.
+4. Use do-work-toolbox present-work for the same UR.
+5. Report the implementation, tests, decisions, and deliverable paths.
+
+Request:
+<paste request here>"""
+missing = [path for path in sys.argv[1:] if approved_prompt not in pathlib.Path(path).read_text()]
+if missing:
+    raise SystemExit("approved full-cycle prompt is not byte-identical in: " + ", ".join(missing))
+PY
+then
+  fail 'README and core help must carry the approved UR-031 full-cycle prompt byte-for-byte'
+fi
 
 if [ -f "$repo_root/skills/do-work/SKILL.md" ]; then
   moved_shim_route_count="$(grep -Ec '^\|.*`\./actions/moved-command-shim\.md`[[:space:]]*\|$' "$repo_root/skills/do-work/SKILL.md" || true)"
@@ -311,7 +354,6 @@ assert_core_sibling_reference actions/capture.md do-work-board
 assert_core_sibling_reference actions/work.md do-work-board
 assert_core_sibling_reference actions/forensics.md do-work-board
 assert_core_sibling_reference actions/kb-lessons-handoff.md do-work-knowledge
-assert_core_sibling_reference actions/pipeline.md do-work-toolbox
 
 if [ -f "$repo_root/skills/do-work/actions/work.md" ] \
   && ! grep -Fq -- '--version-file "<skill-root>/actions/version.md"' "$repo_root/skills/do-work/actions/work.md"; then

@@ -16,7 +16,7 @@ The code is done. Now communicate its value. This action reads the full history 
 
 **Use when:**
 - Work is **completed and archived**, and the user wants a client-facing or stakeholder-facing summary.
-- A pipeline just finished and the user wants briefs/videos/diagrams as the closing step.
+- A full-cycle request reached its presentation step and the user wants briefs, videos, or diagrams as the closing deliverable.
 - The user asks for a portfolio summary across everything shipped to date (`do-work-toolbox present-work all`).
 
 **Do NOT use when:**
@@ -179,9 +179,6 @@ Cross-link sibling deliverables so the reader can drill in or zoom out. Render a
 
 - [`{UR-NNN}-interactive-explainer.single.html`](./{UR-NNN}-interactive-explainer.single.html) — click-through Before/After demo in any browser
 - [`{UR-NNN}-video/`](./{UR-NNN}-video/) — animated walkthrough (run `npm install && npm run preview`)
-- [`{UR-NNN}-pipeline-summary.md`](./{UR-NNN}-pipeline-summary.md) — developer-facing debrief: commits, test deltas, how to verify *(exists if this work was produced by a pipeline run)*
-- [`{UR-NNN}-pipeline-summary.single.html`](./{UR-NNN}-pipeline-summary.single.html) — same debrief, browser-readable *(same condition)*
-- [`{UR-NNN}-pipeline-summary.marp.html`](./{UR-NNN}-pipeline-summary.marp.html) — stakeholder-facing Marp slide deck, exported to HTML *(same condition)*
 ```
 
 #### 4b: Remotion Video (when the feature is user-facing/demo-able)
@@ -395,7 +392,7 @@ Always generate a self-contained HTML file at `do-work/deliverables/UR-NNN-inter
 - **Design:** Make it look modern and highly polished — large typography, soft shadows, generous whitespace. Include tooltips or sidebars that explain technical decisions in plain English.
 - **Layout — full-bleed, not a narrow scrolling column.** Let the page fill the browser width (side padding only), not a fixed `max-w-*` centered column that leaves empty gutters on a wide monitor and forces needless scrolling. Cap width only on *running prose*; arrange the sections as horizontal, wrapping bands (`flex-wrap` / responsive grid) so related content — an explanation beside its diagram, a side-by-side Before/After — stays visible together on a wide screen and stacks cleanly on a narrow one. Minimize scrolling by using the horizontal space, not by hiding content behind clicks.
 - **Content:** Pull real context from the REQ files. Include a 'The Problem', 'The Interactive Demo', and a 'Value Delivered' section. Also include a collapsible (or small-print, bottom-of-page) 'For the developer' section listing the commit SHAs from each REQ's frontmatter, a copy-pasteable `git show <sha>` block (for a merge-commit SHA — `git rev-parse --verify -q '<sha>^2'` succeeds — emit `git show --first-parent -m <sha>` instead, or the block shows an empty diff), and the project's test command. A dev who landed on the explainer shouldn't have to leave to verify it's real — the explainer serves both the "no clue" reader and the "show me the receipts" reader in one file.
-- **Navigation footer:** End the page with a "Keep exploring" section — a responsive card grid of `<a>` links to sibling deliverables that exist in the same folder. Always link the client brief (`./{UR-NNN}-client-brief.md`) with a note that GitHub/VS Code renders markdown natively. When the pipeline ran, also link `./{UR-NNN}-pipeline-summary.single.html` (developer debrief), `./{UR-NNN}-pipeline-summary.marp.html` (stakeholder deck), and `./{UR-NNN}-video/` (walkthrough). Check the `do-work/deliverables/` folder before rendering — only include tiles for files that actually exist. This is the reader's escape hatch from the explainer's breadth-first view into deeper, audience-specific context.
+- **Navigation footer:** End the page with a "Keep exploring" section — a responsive card grid of `<a>` links to sibling deliverables that exist in the same folder. Always link the client brief (`./{UR-NNN}-client-brief.md`) with a note that GitHub/VS Code renders markdown natively. Link `./{UR-NNN}-video/` when the walkthrough exists. Check the `do-work/deliverables/` folder before rendering — only include tiles for files that actually exist. This is the reader's escape hatch from the explainer's breadth-first view into deeper, audience-specific context.
 
 #### 4d: Portfolio artifacts (portfolio mode only — see below)
 

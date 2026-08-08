@@ -9,7 +9,7 @@
 **Use when:**
 - About to send a report, brief, summary, or message and want a sanity check first
 - Received a long AI-generated draft and want to know what to cut
-- A pipeline produced a deliverable that feels bloated — check it before the user reads it
+- A workflow produced a deliverable that feels bloated — check it before the user reads it
 - Pre-handoff validation of any human-facing artifact (client brief, review report, completion summary)
 
 **Do NOT use when:**
@@ -143,7 +143,7 @@ Print the table from Step 3, the verdict block from Step 4, and either the rewri
 - **Cite, don't editorialize.** Every FLAG quotes the artifact or gives a line number. "Tone is bloated" is not evidence; "`it's worth noting` appears 6×" is.
 - **Don't run on code.** This action checks prose artifacts. If the input is a source file, refuse and redirect to `do-work-toolbox code-review`.
 - **The report is shorter than the artifact.** If your slop-check report is longer than the thing it's checking, you've just produced more slop. Tighten ruthlessly.
-- **Don't penalize length when length is earned.** A multi-REQ pipeline completion report can legitimately be long; a one-question memo cannot. Principle #7 (medium matches stakes) does the work here.
+- **Don't penalize length when length is earned.** A multi-REQ presentation artifact can legitimately be long; a one-question memo cannot. Principle #7 (medium matches stakes) does the work here.
 
 ## Common Rationalizations
 

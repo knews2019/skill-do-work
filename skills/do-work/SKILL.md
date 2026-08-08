@@ -26,7 +26,6 @@ Check these patterns in order; first match wins.
 | Trigger | Route |
 |---|---|
 | empty, `help` | `./actions/help.md` |
-| `pipeline`, `full` | `./actions/pipeline.md` (temporary compatibility; removed after modular cutover) |
 | `run`, `go`, `start`, `work`, `process`, `continue`, `resume` | `./actions/work.md` |
 | `verify`, `verify-requests`, `check`, `review requests` | `./actions/verify-requests.md` |
 | `review`, `review-work`, `review code`, `audit implementation` | `./actions/review-work.md` |
@@ -48,9 +47,9 @@ Moved commands retain one modular-release compatibility route. It reads `./actio
 
 ## Dispatch
 
-Read the selected action file completely and pass through the user's arguments. If subagents are available, the action may be dispatched to one with the action file and complete target context; otherwise execute it inline. `work` and `cleanup` may run in the background when the harness supports that, except that temporary pipeline dispatch remains synchronous.
+Read the selected action file completely and pass through the user's arguments. If subagents are available, the action may be dispatched to one with the action file and complete target context; otherwise execute it inline. `work` and `cleanup` may run in the background when the harness supports that.
 
-Per-command `help` reads the selected action and returns a compact usage summary without executing it. `pipeline help` stays within the temporary pipeline action.
+Per-command `help` reads the selected action and returns a compact usage summary without executing it.
 
 ## Safety
 

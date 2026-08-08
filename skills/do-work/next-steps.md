@@ -1,6 +1,6 @@
 # Suggest Next Steps
 
-**Intent:** After any do-work action completes, infer 2-3 next actions from what the action actually did and the current queue/pipeline state, then suggest them as copy-pasteable `do-work <verb>` commands. Judge from the real outcome — an empty queue doesn't get a `run` suggestion, a clean tree doesn't get a `commit` suggestion, a domain of `ui-design` earns a `ui-review` suggestion where another domain wouldn't — rather than pattern-matching a fixed action-to-suggestion table.
+**Intent:** After any do-work action completes, infer 2-3 next actions from what the action actually did and the current queue state, then suggest them as copy-pasteable `do-work <verb>` commands. Judge from the real outcome — an empty queue doesn't get a `run` suggestion, a clean tree doesn't get a `commit` suggestion, a domain of `ui-design` earns a `ui-review` suggestion where another domain wouldn't — rather than pattern-matching a fixed action-to-suggestion table.
 
 ## Format Constraints
 
@@ -24,8 +24,6 @@ Most actions have a next step inferable from what just ran (after `code-review`,
 
 | After... | State | Suggest |
 | --- | --- | --- |
-| `pipeline` | Interrupted — active pipeline still exists | `do-work pipeline` to resume, or `do-work pipeline status` to check progress |
-| `pipeline` | Completed — queue fully processed | `do-work-toolbox present-work all`, `do-work commit` |
 | `capture-requests` | New REQs captured | `do-work verify-requests` before `do-work run` — check capture quality before building |
 | `clarify` | Questions still pending | `do-work clarify` again, not `do-work run` — unanswered REQs won't be picked up |
 | `clarify` | All answered | `do-work run` to process them |

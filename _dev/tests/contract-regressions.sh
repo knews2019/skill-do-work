@@ -105,6 +105,61 @@ assert_file_not_contains() {
 skill_dispatch_block="$(sed -n '/^## Routing/,/^## Dispatch/p' "$core_root/SKILL.md")"
 work_archive_success_block="$(sed -n '/^### Step 8: Archive/,/^\*\*On failure:/p' "$core_root/actions/work.md")"
 
+for retired_pipeline_path in \
+  skills/do-work/actions/pipeline.md \
+  skills/do-work/actions/pipeline-reference.md \
+  skills/do-work/hooks/pipeline-guard.sh
+do
+  assert_file_missing \
+    "$retired_pipeline_path" \
+    "stateful pipeline runtime must remain retired: $retired_pipeline_path"
+done
+
+assert_block_not_contains \
+  "$skill_dispatch_block" \
+  '^\|[^|]*`(pipeline|full)`' \
+  'Core SKILL.md must not retain a pipeline/full route or compatibility alias.'
+
+assert_file_not_contains \
+  ".gitignore" \
+  'do-work/pipeline\.json' \
+  'Root .gitignore must not recreate the retired pipeline state-file lifecycle.'
+
+assert_file_not_contains \
+  "hooks/session-start.sh" \
+  'pipeline\.json|Pipeline active|do-work pipeline' \
+  'SessionStart must report queue state without reading or advertising the retired pipeline state machine.'
+
+assert_file_not_contains \
+  "hooks/hooks.json" \
+  'pipeline-guard\.sh' \
+  'Fresh core hook settings must not install the retired pipeline Stop guard.'
+
+if ! python3 - \
+  "$repo_root/README.md" \
+  "$core_root/actions/help.md" <<'PY'
+import pathlib
+import sys
+
+approved_prompt = """Use the installed do-work suite to complete this request end to end:
+
+1. Use do-work to capture the request below and record the resulting UR ID.
+2. Run do-work verify-requests for that UR. Stop and report if verification fails.
+3. Run the UR's REQs through do-work run. Require its built-in tests and review to pass.
+4. Use do-work-toolbox present-work for the same UR.
+5. Report the implementation, tests, decisions, and deliverable paths.
+
+Request:
+<paste request here>"""
+missing = [path for path in sys.argv[1:] if approved_prompt not in pathlib.Path(path).read_text()]
+if missing:
+    raise SystemExit("approved full-cycle prompt is not byte-identical in: " + ", ".join(missing))
+PY
+then
+  printf 'FAIL: README and core help must carry the approved UR-031 full-cycle prompt byte-for-byte.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 assert_block_contains \
   "$skill_dispatch_block" \
   '^\| `run`[^|]*\| `\./actions/work\.md`' \
@@ -1804,7 +1859,7 @@ common_rationalizations_baseline_action_files=(
   abandon.md ai-report.md bkb-reference.md bkb.md board.md capture.md clarify.md
   cleanup.md code-review.md commit.md deep-explore-reference.md deep-explore.md
   dream.md forensics.md help.md inspect.md install.md interview-reference.md
-  interview.md kb-lessons-handoff.md note.md pipeline.md present-work.md
+  interview.md kb-lessons-handoff.md note.md present-work.md
   prime.md prompts.md quick-wins.md
   review-work.md roadmap.md sample-archived-req.md scan-ideas.md slop-check.md
   stray-check.md tidy-repo.md tutorial.md ui-review.md validate-feedback.md
