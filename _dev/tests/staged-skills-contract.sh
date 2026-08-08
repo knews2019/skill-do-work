@@ -211,24 +211,71 @@ if sed -n '/^## Routing/,/^## Dispatch/p' "$repo_root/skills/do-work/SKILL.md" \
   fail 'core routing must not retain moved-command compatibility rows'
 fi
 
-extension_actions=(
-  board
-  bkb
-  dream
-  memory
-  interview
-  prompts
-  setup-memory
-  "${toolbox_actions[@]}"
+sibling_route_contracts=(
+  'do-work-board|board'
+  'do-work-knowledge|bkb'
+  'do-work-knowledge|dream'
+  'do-work-knowledge|memory'
+  'do-work-knowledge|interview'
+  'do-work-knowledge|prompts'
+  'do-work-knowledge|setup-memory'
 )
-for extension_action in "${extension_actions[@]}"; do
-  ownership_count="$(find "$repo_root"/skills/do-work*/actions -maxdepth 1 -type f -name "$extension_action.md" | wc -l | tr -d ' ')"
-  if [ "$ownership_count" -ne 1 ]; then
-    fail "public extension action $extension_action must have exactly one owning skill (found $ownership_count)"
+for toolbox_action in "${toolbox_actions[@]}"; do
+  sibling_route_contracts+=("do-work-toolbox|$toolbox_action")
+done
+
+core_routing_section="$(sed -n '/^## Routing/,/^## Dispatch/p' "$repo_root/skills/do-work/SKILL.md")"
+for sibling_route_contract in "${sibling_route_contracts[@]}"; do
+  IFS='|' read -r sibling_owner public_action <<< "$sibling_route_contract"
+  expected_action_path="$repo_root/skills/$sibling_owner/actions/$public_action.md"
+  ownership_matches="$(find "$repo_root"/skills/do-work*/actions -maxdepth 1 -type f -name "$public_action.md" -print)"
+  ownership_count="$(printf '%s\n' "$ownership_matches" | awk 'NF { count++ } END { print count + 0 }')"
+  if [ "$ownership_count" -ne 1 ] || [ "$ownership_matches" != "$expected_action_path" ]; then
+    fail "public sibling action $public_action must be owned only by $sibling_owner (found $ownership_count: ${ownership_matches:-none})"
   fi
-  if sed -n '/^## Routing/,/^## Dispatch/p' "$repo_root/skills/do-work/SKILL.md" \
-    | grep -Fq "./actions/$extension_action.md"; then
-    fail "core must not route sibling-owned action $extension_action"
+
+  sibling_routing_section="$(sed -n '/^## Routing/,/^## /p' "$repo_root/skills/$sibling_owner/SKILL.md")"
+  sibling_route_count="$(printf '%s\n' "$sibling_routing_section" | grep -cF "\`./actions/$public_action.md\`" || true)"
+  if [ "$sibling_route_count" -ne 1 ]; then
+    fail "$sibling_owner must route $public_action exactly once (found $sibling_route_count)"
+  fi
+
+  core_route_count="$(printf '%s\n' "$core_routing_section" | grep -cF "\`./actions/$public_action.md\`" || true)"
+  if [ "$core_route_count" -ne 0 ]; then
+    fail "core must not route sibling-owned action $public_action"
+  fi
+done
+
+for sibling_owner in do-work-board do-work-knowledge do-work-toolbox; do
+  expected_route_count=0
+  for sibling_route_contract in "${sibling_route_contracts[@]}"; do
+    case "$sibling_route_contract" in
+      "$sibling_owner"'|'*) expected_route_count=$((expected_route_count + 1)) ;;
+    esac
+  done
+  sibling_routing_section="$(sed -n '/^## Routing/,/^## /p' "$repo_root/skills/$sibling_owner/SKILL.md")"
+  routed_action_paths="$(printf '%s\n' "$sibling_routing_section" \
+    | grep -Eo '`\./actions/[A-Za-z0-9._/-]+\.md`' \
+    | grep -vF '`./actions/help.md`' || true)"
+  actual_route_count="$(printf '%s\n' "$routed_action_paths" | awk 'NF { count++ } END { print count + 0 }')"
+  if [ "$actual_route_count" -ne "$expected_route_count" ]; then
+    fail "$sibling_owner must expose exactly its $expected_route_count declared public action routes (found $actual_route_count)"
+  fi
+done
+
+router_behavior_contracts=(
+  'do-work-board|Pass `serve`, `static`, `summary`, `cli`, `--port N`, and `--out DIR` through to the board action.|An unknown command prints board help and stops.'
+  'do-work-knowledge|Pass the complete remainder through.|An unknown command prints help and stops.'
+  'do-work-toolbox|Pass all remaining arguments through.|Unknown single words print help;'
+)
+for router_behavior_contract in "${router_behavior_contracts[@]}"; do
+  IFS='|' read -r sibling_owner pass_through_contract unknown_help_contract <<< "$router_behavior_contract"
+  sibling_router="$repo_root/skills/$sibling_owner/SKILL.md"
+  if [ "$(grep -cF "$pass_through_contract" "$sibling_router" || true)" -ne 1 ]; then
+    fail "$sibling_owner must state its argument pass-through contract exactly once"
+  fi
+  if [ "$(grep -cF "$unknown_help_contract" "$sibling_router" || true)" -ne 1 ]; then
+    fail "$sibling_owner must state its unknown-command help contract exactly once"
   fi
 done
 
@@ -252,12 +299,6 @@ done
 
 for toolbox_action in "${toolbox_actions[@]}"; do
   require_file "skills/do-work-toolbox/actions/$toolbox_action.md"
-  if [ -f "$repo_root/skills/do-work-toolbox/SKILL.md" ]; then
-    toolbox_route_count="$(grep -Fo "\`./actions/$toolbox_action.md\`" "$repo_root/skills/do-work-toolbox/SKILL.md" | wc -l | tr -d ' ' || true)"
-    if [ "$toolbox_route_count" -ne 1 ]; then
-      fail "toolbox route $toolbox_action must appear exactly once (found $toolbox_route_count)"
-    fi
-  fi
 done
 
 if [ -f "$repo_root/skills/do-work-toolbox/actions/install.md" ] \
@@ -299,13 +340,51 @@ if [ -d "$repo_root/skills/do-work-knowledge" ]; then
 fi
 
 if [ -f "$repo_root/skills/do-work-board/justfile.template" ]; then
-  board_template="$repo_root/skills/do-work-board/justfile.template"
+  board_template="${STAGED_SKILLS_BOARD_TEMPLATE:-$repo_root/skills/do-work-board/justfile.template}"
   board_recipe_count="$(grep -cF '.claude/skills/do-work-board/tools/queue-kanban' "$board_template" || true)"
   if [ "$board_recipe_count" -ne 4 ]; then
     fail "board Just template must use the do-work-board queue-kanban path in exactly four board recipes (found $board_recipe_count)"
   fi
-  if ! grep -Fq '.claude/skills/do-work/tools/do-work-update.sh' "$board_template"; then
-    fail 'board Just template must route run-do-work-update to the core updater'
+  if ! python3 - "$board_template" <<'PY'
+import pathlib
+import re
+import sys
+
+template_file = pathlib.Path(sys.argv[1])
+template_text = template_file.read_text()
+template_lines = template_text.splitlines()
+recipe_header = re.compile(r"^run-do-work-update(?:\s+.*)?:\s*$")
+next_recipe_header = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]*(?:\s+.*)?:\s*$")
+
+header_indexes = [
+    index for index, line in enumerate(template_lines) if recipe_header.match(line)
+]
+if len(header_indexes) != 1 or template_text.count("run-do-work-update") != 1:
+    raise SystemExit("run-do-work-update must appear as exactly one recipe")
+
+recipe_body_lines = []
+for line in template_lines[header_indexes[0] + 1 :]:
+    if line == "# <<< do-work:recipes <<<" or next_recipe_header.match(line):
+        break
+    recipe_body_lines.append(line)
+recipe_body = "\n".join(recipe_body_lines)
+
+core_updater_path = ".claude/skills/do-work/tools/do-work-update.sh"
+core_updater_invocation = re.compile(
+    r'\bbash\s+"\$project_root/' + re.escape(core_updater_path) + r'"'
+)
+if recipe_body.count(core_updater_path) != 1 or len(core_updater_invocation.findall(recipe_body)) != 1:
+    raise SystemExit("run-do-work-update must invoke the core updater exactly once")
+
+for forbidden_board_call in ("run-kanban", "do-work-board", "queue-kanban"):
+    if forbidden_board_call in recipe_body:
+        raise SystemExit(
+            "run-do-work-update must not invoke a board recipe or binary: "
+            + forbidden_board_call
+        )
+PY
+  then
+    fail 'board Just template has an invalid isolated run-do-work-update recipe'
   fi
   if [ "$(grep -cF '# >>> do-work:recipes >>>' "$board_template")" -ne 1 ] \
     || [ "$(grep -cF '# <<< do-work:recipes <<<' "$board_template")" -ne 1 ]; then

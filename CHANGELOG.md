@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.1 — Permanent Sibling Routing Contract (2026-08-08)
+
+The expired moved-command follow-up now protects the permanent four-skill boundary instead of restoring retired aliases. Every extension action has one sibling owner/route, and the managed update recipe is validated as a core-only call.
+
+- Table-drives all 23 active board, knowledge, and toolbox actions across exact ownership and sibling routing
+- Guards each sibling router's pass-through/help behavior while keeping every extension action out of core
+- Parses `run-do-work-update` as an isolated recipe and rejects board recipes or binaries in its body
+
 ## 0.186.0 — Modular Migration Shims Removed (2026-08-08)
 
 The one-release compatibility window is closed. Core now owns only core commands, and current modular updates use one validated archive through the installed all-or-recover installer instead of carrying bridge, monolith, or legacy-configuration branches.
