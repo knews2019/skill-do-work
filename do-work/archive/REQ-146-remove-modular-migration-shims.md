@@ -3,6 +3,7 @@ id: REQ-146
 title: "Remove Modular-Migration Compatibility Shims"
 status: completed
 completed_at: 2026-08-08T18:33:10Z
+commit: 0b9bcde
 claimed_at: 2026-08-08T17:52:07Z
 route: C
 status_changed_at: 2026-08-07T21:40:04Z
