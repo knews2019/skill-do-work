@@ -78,6 +78,6 @@ do-work-toolbox code-review
 do-work-toolbox code-review prime-auth
 do-work-toolbox code-review src/api/
 do-work-toolbox code-review prime-auth src/utils/
-do-work audit codebase
-do-work codebase review
+do-work-toolbox audit codebase
+do-work-toolbox review codebase
 ```

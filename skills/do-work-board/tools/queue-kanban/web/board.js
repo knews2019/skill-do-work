@@ -894,7 +894,7 @@
 
   // ---- notes strip (do-work/notes.md) -------------------------------------
   // Notes are plain text, never Markdown: they are appended verbatim by
-  // `do-work note` and rendered with textContent, so a stray `<` or a pasted
+  // `do-work-toolbox note` and rendered with textContent, so a stray `<` or a pasted
   // tag in a hint can never become markup.
 
   function renderNotesStrip() {
@@ -1498,7 +1498,7 @@
 
     if (!testingLiveApiAvailable) {
       addToggleButton.disabled = true;
-      addToggleButton.title = "Adding testers needs the live board (do-work board)";
+      addToggleButton.title = "Adding testers needs the live board (do-work-board board)";
     }
 
     addToggleButton.addEventListener("click", function () {

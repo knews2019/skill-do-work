@@ -224,6 +224,69 @@ for toolbox_action in "${toolbox_actions[@]}"; do
   sibling_route_contracts+=("do-work-toolbox|$toolbox_action")
 done
 
+if ! python3 - "$repo_root" "${sibling_route_contracts[@]}" <<'PY'
+import pathlib
+import re
+import sys
+
+repository_root = pathlib.Path(sys.argv[1])
+sibling_actions = {contract.split("|", 1)[1] for contract in sys.argv[2:]}
+retired_core_forms = {f"do-work {action}" for action in sibling_actions}
+retired_core_forms.update(
+    {
+        "do-work audit codebase",
+        "do-work clean up wiki",
+        "do-work codebase review",
+        "do-work consolidate memory",
+        "do-work lint and merge notes",
+        "do-work show changes",
+        "do-work what changed",
+    }
+)
+retired_pattern = re.compile(
+    r"(?<![A-Za-z0-9_-])(?:"
+    + "|".join(re.escape(form) for form in sorted(retired_core_forms, key=len, reverse=True))
+    + r")(?![A-Za-z0-9_'-])"
+)
+
+live_files = [repository_root / "justfile"]
+live_files.extend(
+    path
+    for path in (repository_root / "skills").rglob("*")
+    if path.is_file() and path.name not in {"CHANGELOG.md", "queue-kanban"}
+)
+violations = []
+for live_file in live_files:
+    for line_number, line in enumerate(live_file.read_text(errors="replace").splitlines(), 1):
+        match = retired_pattern.search(line)
+        if match:
+            violations.append(
+                f"{live_file.relative_to(repository_root)}:{line_number}: {match.group(0)}"
+            )
+
+prime_file = repository_root / "skills/do-work/tools/prime-do-work-update.md"
+transition_fingerprints = (
+    "export-ignored through the bridge release",
+    "installed bridge validator",
+    "unmarked legacy recipe spans",
+    "bridge and fresh installs",
+    "delete migration branches",
+)
+prime_text = prime_file.read_text()
+for fingerprint in transition_fingerprints:
+    if fingerprint in prime_text:
+        violations.append(f"{prime_file.relative_to(repository_root)}: {fingerprint}")
+
+if violations:
+    raise SystemExit(
+        "retired core command or updater-transition restatements remain on live surfaces:\n"
+        + "\n".join(violations)
+    )
+PY
+then
+  fail 'live shipped surfaces must use sibling-owned commands and permanent updater contracts'
+fi
+
 core_routing_section="$(sed -n '/^## Routing/,/^## Dispatch/p' "$repo_root/skills/do-work/SKILL.md")"
 for sibling_route_contract in "${sibling_route_contracts[@]}"; do
   IFS='|' read -r sibling_owner public_action <<< "$sibling_route_contract"

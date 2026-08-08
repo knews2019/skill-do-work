@@ -85,7 +85,7 @@ if [ -f "$TODAY_LOG" ]; then
   ' "$TODAY_LOG" 2>/dev/null || true)"
   if [ -n "$(printf '%s' "$CURATED_LOG_LINES" | tr -d '[:space:]')" ]; then
     echo
-    echo "## Today's log ($(date -u +%F)) — curated entries only; raw session captures load via \`do-work memory recall\`"
+    echo "## Today's log ($(date -u +%F)) — curated entries only; raw session captures load via \`do-work-knowledge memory recall\`"
     printf '%s\n' "$CURATED_LOG_LINES"
   fi
 fi

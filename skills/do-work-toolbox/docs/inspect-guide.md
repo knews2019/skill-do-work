@@ -47,6 +47,5 @@ do-work-toolbox inspect
 do-work-toolbox inspect REQ-005
 do-work-toolbox inspect UR-003
 do-work-toolbox explain changes
-do-work what changed
-do-work show changes
+do-work-toolbox what changed
 ```

@@ -1,5 +1,5 @@
 # >>> do-work:recipes >>>
-# --- do-work board recipes (installed by `do-work install just-kanban`) ---
+# --- board recipes (managed by the full-suite installer; run with `do-work-board board`) ---
 
 # Serve the do-work queue as a live Kanban board, replacing a stale instance on the port and opening your browser (Ctrl-C to stop; reload the page to refresh)
 run-kanban $port="8090":

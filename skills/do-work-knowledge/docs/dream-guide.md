@@ -68,9 +68,9 @@ do-work-knowledge dream                       Resolve default memory dir, run th
 do-work-knowledge dream ./memory              Run on a specific dir
 do-work-knowledge dream --dry-run             Build the worklist, print preview, exit without writing
 do-work-knowledge dream --dry-run ./kb/wiki   Both — preview the bkb wiki without touching it
-do-work consolidate memory          Same as `do-work-knowledge dream`
-do-work clean up wiki               Same — dream wins over the cleanup verb when "wiki" / "memory" / "notes" appear
-do-work lint and merge notes        Same
+do-work-knowledge consolidate memory           Natural-language route to dream
+do-work-knowledge clean up wiki                Same — dream wins over other knowledge-maintenance verbs
+do-work-knowledge dream ./kb/wiki               Run on a specific bkb wiki directory
 ```
 
 ## Key rules

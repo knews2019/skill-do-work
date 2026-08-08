@@ -367,7 +367,7 @@ if [ "$git_available" -eq 1 ]; then
     tracked_full_name="$(git ls-files --full-name -- "$request_file")"
   fi
 
-  # A hash the repo cannot resolve makes the REQ a completion anomaly on `do-work board` and
+  # A hash the repo cannot resolve makes the REQ a completion anomaly on `do-work-board board` and
   # breaks review-work / present-work traceability.
   if ! git rev-parse --verify --quiet "${commit_hash}^{commit}" >/dev/null 2>&1; then
     echo "FAIL: '$commit_hash' does not resolve to a commit in this repository. Nothing was written."

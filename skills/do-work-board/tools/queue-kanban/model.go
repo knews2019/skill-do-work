@@ -247,7 +247,7 @@ type CalendarEntry struct {
 }
 
 // QueueNote is one line of do-work/notes.md — a lightweight, dated next-step
-// hint written by `do-work note`. A note is deliberately NOT a REQ: it has no
+// hint written by `do-work-toolbox note`. A note is deliberately NOT a REQ: it has no
 // frontmatter, no status, and no id, so it never enters a column, the calendar,
 // or the dependency graph. The board surfaces notes the way `do-work roadmap`
 // does — verbatim, in append order, above the queue.
@@ -420,7 +420,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 }
 
 // loadQueueNotes reads do-work/notes.md into one QueueNote per note BULLET,
-// preserving append order (the user curates the file by hand; `do-work note` only
+// preserving append order (the user curates the file by hand; `do-work-toolbox note` only
 // appends, so file order IS chronological order). It is best-effort: an absent or
 // unreadable file yields no notes rather than failing the board build.
 //
@@ -494,7 +494,7 @@ func stripHtmlComments(rawLine string, insideHtmlComment bool) (string, bool) {
 
 // parseQueueNoteLine splits one notes.md line into its optional date prefix and
 // its text, reporting whether the line is a note at all. The canonical shape
-// written by `do-work note` is `- [YYYY-MM-DD] text`; the bullet is what marks a
+// written by `do-work-toolbox note` is `- [YYYY-MM-DD] text`; the bullet is what marks a
 // line as a note, so a heading, a preamble sentence, a horizontal rule, or a
 // frontmatter fence is skipped rather than rendered. The DATE is still optional —
 // a hand-typed bullet whose date prefix drifted keeps its text.

@@ -23,8 +23,8 @@
 ## Lessons
 
 - REQ-061: semantic-version comparison must execute on the platform’s `awk` implementation; avoid names such as `index`, which some implementations reserve as built-ins.
-- [REQ-136: staged suite artifacts must remain export-ignored through the bridge release](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-136-define-four-skill-suite-contract.md#lessons-learned)
-- [REQ-137: the installed bridge validator must remain authoritative over a future archive](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-137-ship-suite-aware-bridge-updater.md#lessons-learned)
-- [REQ-138: ambiguous unmarked legacy recipe spans must fail instead of absorbing client content](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-138-add-managed-text-section-replacement.md#lessons-learned)
-- [REQ-144: bridge and fresh installs must converge on one verified four-skill recovery transaction](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-144-activate-four-skill-distribution.md#lessons-learned)
-- [REQ-146: delete migration branches while preserving one installed all-or-recover transaction](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-146-remove-modular-migration-shims.md#lessons-learned)
+- [REQ-136: the suite manifest is the sole module source/destination contract](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-136-define-four-skill-suite-contract.md#lessons-learned)
+- [REQ-137: the installed manifest validator must authorize every candidate archive](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-137-ship-suite-aware-bridge-updater.md#lessons-learned)
+- [REQ-138: managed recipe markers preserve exterior client bytes and reject malformed ownership](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-138-add-managed-text-section-replacement.md#lessons-learned)
+- [REQ-144: every install must use one verified four-skill recovery transaction](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-144-activate-four-skill-distribution.md#lessons-learned)
+- [REQ-146: modular updates retain one installed all-or-recover transaction](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-146-remove-modular-migration-shims.md#lessons-learned)

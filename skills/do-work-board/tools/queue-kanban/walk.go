@@ -104,7 +104,7 @@ func resolveRepoRootOrDefault(repoRootOverride string) (string, error) {
 // (from queue/, working/, and the entire archive/** subtree — handling both the
 // flat archive/UR-NNN/ shape and the banded archive/UR-NNN-MMM/ shape with its
 // nested UR-NNN/ subfolders) plus every UR input.md (from user-requests/** and
-// archive/**) and the top-level notes.md written by `do-work note`.
+// archive/**) and the top-level notes.md written by `do-work-toolbox note`.
 //
 // The do-work/deliverables/ and do-work/runs/ subtrees are skipped entirely, as
 // is any assets/ folder (at any depth). The kb/wiki/sources/ mirror lives OUTSIDE

@@ -132,7 +132,7 @@ func TestStripHtmlCommentsShapes(t *testing.T) {
 }
 
 // TestLoadQueueNotesPreservesAppendOrder asserts blank lines are skipped and the
-// surviving lines keep file order — `do-work note` only appends, so file order
+// surviving lines keep file order — `do-work-toolbox note` only appends, so file order
 // is chronological order and must not be sorted or deduped.
 func TestLoadQueueNotesPreservesAppendOrder(t *testing.T) {
 	repoRoot := writeNotesTree(t, "- [2026-07-01] first\n\n- [2026-06-01] second, older, still second\n\n")

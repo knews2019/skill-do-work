@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.5 — Modular Command Restatement Sweep (2026-08-08)
+
+Live board, knowledge, and toolbox guidance now names the skill that actually owns each command. Transition-era updater lessons have also been reduced to the permanent manifest, validation, marker, and recovery contracts.
+
+- Replaces retired core command hints across managed recipes, board UI/source, knowledge hooks/guides, toolbox guides, and core diagnostics
+- Aligns root and installed recipe guidance with the full-suite installer and keeps repaired lesson URLs intact
+- Adds a narrow live-surface regression for sibling-owned commands and stale updater-transition fingerprints while preserving history and branding
+
 ## 0.186.4 — Tool-Independent Just Recipe Collision Guard (2026-08-08)
 
 Installing the suite can no longer duplicate its managed Just recipes merely because the Just executable is absent. Reserved external recipes and aliases are rejected by name before confirmation or any client write.
