@@ -4,6 +4,7 @@ title: "Remove the Stateful Pipeline"
 status: completed
 claimed_at: 2026-08-08T17:03:56Z
 completed_at: 2026-08-08T17:48:23Z
+commit: c42f228
 route: C
 kb_status: pending
 kb_entry:
