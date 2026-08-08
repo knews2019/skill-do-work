@@ -3,6 +3,7 @@ id: REQ-153
 title: "Review fix: Sweep retired core command restatements"
 status: completed
 completed_at: 2026-08-08T20:14:33Z
+commit: 157b89e
 claimed_at: 2026-08-08T19:58:00Z
 domain: general
 kb_status: pending
