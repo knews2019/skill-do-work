@@ -3,6 +3,7 @@ id: REQ-149
 title: "Review fix: Complete moved-command shim mapping"
 status: completed
 completed_at: 2026-08-08T18:52:55Z
+commit: dd509cd
 claimed_at: 2026-08-08T18:36:03Z
 domain: general
 kb_status: pending
