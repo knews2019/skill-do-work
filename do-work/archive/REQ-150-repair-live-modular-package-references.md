@@ -3,6 +3,7 @@ id: REQ-150
 title: "Review fix: Repair live modular package references"
 status: completed
 completed_at: 2026-08-08T19:17:28Z
+commit: 6dbb1cf
 claimed_at: 2026-08-08T18:53:44Z
 domain: general
 kb_status: pending
