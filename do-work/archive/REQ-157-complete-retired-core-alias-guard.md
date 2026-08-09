@@ -3,6 +3,7 @@ id: REQ-157
 title: "Review fix: Complete the retired core alias guard"
 status: completed
 completed_at: 2026-08-09T20:38:50Z
+commit: 1f7a245
 status_changed_at: 2026-08-09T18:01:17Z
 claimed_at: 2026-08-09T20:05:21Z
 route: C
