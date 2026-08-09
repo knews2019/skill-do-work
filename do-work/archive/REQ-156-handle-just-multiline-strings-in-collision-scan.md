@@ -3,6 +3,7 @@ id: REQ-156
 title: "Review fix: Handle Just multiline strings in collision scanning"
 status: completed
 completed_at: 2026-08-09T19:23:31Z
+commit: db9cd11
 claimed_at: 2026-08-09T18:57:07Z
 route: C
 status_changed_at: 2026-08-09T18:01:17Z
