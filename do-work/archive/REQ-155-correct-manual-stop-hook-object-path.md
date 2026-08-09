@@ -3,6 +3,7 @@ id: REQ-155
 title: "Review fix: Correct the manual Stop-hook object path"
 status: completed
 completed_at: 2026-08-09T18:55:17Z
+commit: c1f8e21
 claimed_at: 2026-08-09T18:43:00Z
 route: B
 status_changed_at: 2026-08-09T18:01:17Z
