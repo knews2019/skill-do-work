@@ -3,6 +3,7 @@ id: REQ-154
 title: "Review fix: Harden shipped Markdown reference parsing"
 status: completed
 completed_at: 2026-08-09T18:40:34Z
+commit: 22551dc
 claimed_at: 2026-08-09T18:14:46Z
 route: C
 status_changed_at: 2026-08-09T18:01:17Z
