@@ -224,44 +224,337 @@ for toolbox_action in "${toolbox_actions[@]}"; do
   sibling_route_contracts+=("do-work-toolbox|$toolbox_action")
 done
 
-if ! python3 - "$repo_root" "${sibling_route_contracts[@]}" <<'PY'
+if ! python3 - \
+  "$repo_root" \
+  "$repo_root/_dev/tests/fixtures/retired-core-moved-command-triggers.tsv" \
+  "${sibling_route_contracts[@]}" <<'PY'
+import collections
+import csv
 import pathlib
 import re
 import sys
+import tempfile
 
 repository_root = pathlib.Path(sys.argv[1])
-sibling_actions = {contract.split("|", 1)[1] for contract in sys.argv[2:]}
-retired_core_forms = {f"do-work {action}" for action in sibling_actions}
-retired_core_forms.update(
+trigger_fixture = pathlib.Path(sys.argv[2])
+declared_owner_actions = {
+    tuple(contract.split("|", 1)) for contract in sys.argv[3:]
+}
+
+fixture_lines = [
+    line
+    for line in trigger_fixture.read_text().splitlines()
+    if line and not line.startswith("#")
+]
+fixture_reader = csv.DictReader(fixture_lines, delimiter="\t")
+expected_header = ["owner", "canonical_action", "match_kind", "legacy_trigger"]
+if fixture_reader.fieldnames != expected_header:
+    raise SystemExit(
+        f"invalid retired-trigger fixture header: {fixture_reader.fieldnames!r}"
+    )
+trigger_rows = list(fixture_reader)
+for row_number, row in enumerate(trigger_rows, 1):
+    if None in row or any(not value or value != value.strip() for value in row.values()):
+        raise SystemExit(f"incomplete retired-trigger fixture row {row_number}: {row!r}")
+
+legacy_triggers = [row["legacy_trigger"] for row in trigger_rows]
+duplicate_triggers = sorted(
+    trigger
+    for trigger, count in collections.Counter(legacy_triggers).items()
+    if count != 1
+)
+if duplicate_triggers:
+    raise SystemExit(
+        "duplicate retired-trigger fixture entries: " + ", ".join(duplicate_triggers)
+    )
+
+invalid_owner_actions = sorted(
     {
-        "do-work audit codebase",
-        "do-work clean up wiki",
-        "do-work codebase review",
-        "do-work consolidate memory",
-        "do-work lint and merge notes",
-        "do-work show changes",
-        "do-work what changed",
+        (row["owner"], row["canonical_action"])
+        for row in trigger_rows
+        if (row["owner"], row["canonical_action"]) not in declared_owner_actions
     }
 )
-retired_pattern = re.compile(
-    r"(?<![A-Za-z0-9_-])(?:"
-    + "|".join(re.escape(form) for form in sorted(retired_core_forms, key=len, reverse=True))
-    + r")(?![A-Za-z0-9_'-])"
-)
+if invalid_owner_actions:
+    raise SystemExit(
+        "invalid retired-trigger owner/action pairs: "
+        + ", ".join("/".join(pair) for pair in invalid_owner_actions)
+    )
 
-live_files = [repository_root / "justfile"]
-live_files.extend(
-    path
-    for path in (repository_root / "skills").rglob("*")
-    if path.is_file() and path.name not in {"CHANGELOG.md", "queue-kanban"}
+allowed_match_kinds = {
+    "direct",
+    "install-space",
+    "install-prefix",
+    "setup-space",
+    "install-head",
+}
+invalid_match_kinds = sorted(
+    {row["match_kind"] for row in trigger_rows} - allowed_match_kinds
 )
+if invalid_match_kinds:
+    raise SystemExit(
+        "invalid retired-trigger match kinds: " + ", ".join(invalid_match_kinds)
+    )
+
+expected_direct_counts = {
+    ("do-work-board", "board"): 6,
+    ("do-work-knowledge", "bkb"): 4,
+    ("do-work-knowledge", "memory"): 5,
+    ("do-work-knowledge", "dream"): 5,
+    ("do-work-knowledge", "interview"): 3,
+    ("do-work-knowledge", "prompts"): 2,
+    ("do-work-toolbox", "validate-feedback"): 8,
+    ("do-work-toolbox", "code-review"): 5,
+    ("do-work-toolbox", "ui-review"): 6,
+    ("do-work-toolbox", "present-work"): 7,
+    ("do-work-toolbox", "ai-report"): 7,
+    ("do-work-toolbox", "slop-check"): 3,
+    ("do-work-toolbox", "quick-wins"): 7,
+    ("do-work-toolbox", "scan-ideas"): 8,
+    ("do-work-toolbox", "deep-explore"): 5,
+    ("do-work-toolbox", "prime"): 6,
+    ("do-work-toolbox", "inspect"): 5,
+    ("do-work-toolbox", "note"): 3,
+    ("do-work-toolbox", "stray-check"): 8,
+    ("do-work-toolbox", "tidy-repo"): 10,
+    ("do-work-toolbox", "tutorial"): 4,
+}
+actual_direct_counts = collections.Counter(
+    (row["owner"], row["canonical_action"])
+    for row in trigger_rows
+    if row["match_kind"] == "direct"
+)
+if actual_direct_counts != collections.Counter(expected_direct_counts):
+    raise SystemExit(
+        "retired-trigger direct inventory counts drifted: "
+        f"expected {expected_direct_counts!r}, found {dict(actual_direct_counts)!r}"
+    )
+
+install_kind_prefixes = {
+    "install-space": "install ",
+    "install-prefix": "install-",
+    "setup-space": "setup ",
+}
+install_target_maps = {}
+for match_kind, trigger_prefix in install_kind_prefixes.items():
+    kind_rows = [row for row in trigger_rows if row["match_kind"] == match_kind]
+    malformed = [
+        row["legacy_trigger"]
+        for row in kind_rows
+        if not row["legacy_trigger"].startswith(trigger_prefix)
+        or row["legacy_trigger"] == trigger_prefix
+    ]
+    if malformed:
+        raise SystemExit(
+            f"malformed {match_kind} retired triggers: " + ", ".join(malformed)
+        )
+    target_map = {
+        row["legacy_trigger"][len(trigger_prefix) :]: (
+            row["owner"],
+            row["canonical_action"],
+        )
+        for row in kind_rows
+    }
+    if len(target_map) != len(kind_rows):
+        raise SystemExit(f"duplicate install targets in retired-trigger kind {match_kind}")
+    install_target_maps[match_kind] = target_map
+
+baseline_install_targets = install_target_maps["install-space"]
+for match_kind, target_map in install_target_maps.items():
+    if target_map != baseline_install_targets:
+        raise SystemExit(
+            f"retired install families disagree for {match_kind}: {target_map!r}"
+        )
+if len(baseline_install_targets) != 22:
+    raise SystemExit(
+        f"retired install inventory must contain 22 targets, found {len(baseline_install_targets)}"
+    )
+expected_install_ownership = collections.Counter(
+    {
+        ("do-work-board", "board"): 4,
+        ("do-work-knowledge", "setup-memory"): 3,
+        ("do-work-toolbox", "install"): 15,
+    }
+)
+if collections.Counter(baseline_install_targets.values()) != expected_install_ownership:
+    raise SystemExit(
+        "retired install target ownership drifted: "
+        f"{dict(collections.Counter(baseline_install_targets.values()))!r}"
+    )
+
+install_head_rows = [
+    row for row in trigger_rows if row["match_kind"] == "install-head"
+]
+actual_install_heads = {
+    (row["owner"], row["canonical_action"], row["legacy_trigger"])
+    for row in install_head_rows
+}
+expected_install_heads = {
+    ("do-work-toolbox", "install", "install"),
+    ("do-work-toolbox", "install", "setup"),
+    ("do-work-toolbox", "install", "install-"),
+}
+if actual_install_heads != expected_install_heads or len(install_head_rows) != 3:
+    raise SystemExit(
+        f"retired bare install heads drifted: {sorted(actual_install_heads)!r}"
+    )
+
+sorted_triggers = sorted(legacy_triggers, key=lambda trigger: (-len(trigger), trigger))
+retired_command_head = re.compile(r"(?<![A-Za-z0-9_-])do-work ")
+forbidden_right_boundary = re.compile(r"[A-Za-z0-9_'-]")
+
+def collect_live_files(root):
+    live_files = [root / "justfile"]
+    live_files.extend(
+        path
+        for path in sorted((root / "skills").rglob("*"))
+        if path.is_file() and path.name not in {"CHANGELOG.md", "queue-kanban"}
+    )
+    return [path for path in live_files if path.is_file()]
+
+
+def find_retired_matches(text):
+    matches = []
+    for command_match in retired_command_head.finditer(text):
+        command_start = command_match.end()
+        command_remainder = text[command_start:]
+        trigger = next(
+            (
+                candidate
+                for candidate in sorted_triggers
+                if command_remainder.startswith(candidate)
+            ),
+            None,
+        )
+        if trigger is None:
+            continue
+        boundary_index = command_start + len(trigger)
+        if boundary_index < len(text) and forbidden_right_boundary.match(
+            text[boundary_index]
+        ):
+            continue
+        product_title_start = command_match.start() - len("PROJECT_NAME — ")
+        if (
+            trigger == "queue board"
+            and product_title_start >= 0
+            and text[product_title_start:boundary_index]
+            == "PROJECT_NAME — do-work queue board"
+        ):
+            continue
+        matches.append(trigger)
+    return matches
+
+
+negative_controls = (
+    "Do-Work Board Skill",
+    "PROJECT_NAME — do-work queue board",
+    "do-work board's testing view",
+    "The board shows knowledge and toolbox status as ordinary nouns.",
+    "This work pipeline runs after the CI pipeline and data pipeline.",
+    "do-work run REQ-157",
+    "do-work review code",
+    "do-work help",
+    "do-work-board board",
+    "do-work-knowledge memory recall",
+    "do-work-toolbox code-review",
+)
+for negative_control in negative_controls:
+    if find_retired_matches(negative_control):
+        raise SystemExit(
+            f"retired-trigger matcher rejected negative control: {negative_control!r}"
+        )
+
+positive_controls = {
+    "Deprecated — do-work kanban": "kanban",
+}
+for positive_control, expected_trigger in positive_controls.items():
+    matches = find_retired_matches(positive_control)
+    if matches != [expected_trigger]:
+        raise SystemExit(
+            f"retired-trigger matcher missed positive control {positive_control!r}: "
+            f"expected {expected_trigger!r}, found {matches!r}"
+        )
+
+for row in trigger_rows:
+    trigger = row["legacy_trigger"]
+    for negative_form in (
+        f"undo-work {trigger}",
+        f"do-work {trigger}-suffix",
+        f"do-work {trigger}suffix",
+        f"do-work {trigger}'s",
+    ):
+        if find_retired_matches(negative_form):
+            raise SystemExit(
+                f"retired-trigger matcher crossed a command boundary for {row!r}: "
+                f"{negative_form!r}"
+            )
+
+with tempfile.TemporaryDirectory(prefix="retired-trigger-contract-") as temp_directory:
+    mutation_root = pathlib.Path(temp_directory)
+    root_mutation_file = mutation_root / "justfile"
+    module_mutation_file = mutation_root / "skills/do-work-example/SKILL.md"
+    module_mutation_file.parent.mkdir(parents=True)
+    root_mutation_file.write_text(
+        "\n".join(
+            f"row-{row_number}: do-work {row['legacy_trigger']} --example"
+            for row_number, row in enumerate(trigger_rows, 1)
+        )
+        + "\n"
+    )
+    module_mutation_file.write_text(
+        "\n".join(
+            f"row-{row_number}: `do-work {row['legacy_trigger']}:`"
+            for row_number, row in enumerate(trigger_rows, 1)
+        )
+        + "\n"
+    )
+
+    historical_mutations = {
+        mutation_root / "CHANGELOG.md": "do-work kanban\n",
+        mutation_root / "skills/do-work/CHANGELOG.md": "do-work recall\n",
+        mutation_root / "do-work/archive/REQ-historical.md": "do-work code review\n",
+        mutation_root / "_dev/tests/fixtures/negative.md": "do-work describe changes\n",
+    }
+    for historical_file, historical_text in historical_mutations.items():
+        historical_file.parent.mkdir(parents=True, exist_ok=True)
+        historical_file.write_text(historical_text)
+
+    collected_mutation_files = collect_live_files(mutation_root)
+    expected_mutation_files = [root_mutation_file, module_mutation_file]
+    if collected_mutation_files != expected_mutation_files:
+        raise SystemExit(
+            "live-surface collector included history/fixtures or missed a live surface: "
+            f"{collected_mutation_files!r}"
+        )
+    for mutation_file in collected_mutation_files:
+        mutation_lines = mutation_file.read_text().splitlines()
+        if len(mutation_lines) != len(trigger_rows):
+            raise SystemExit(f"incomplete mutation file: {mutation_file}")
+        for row, mutation_line in zip(trigger_rows, mutation_lines):
+            matches = find_retired_matches(mutation_line)
+            if len(matches) != 1:
+                raise SystemExit(
+                    f"expected exactly one retired match for {row!r} in "
+                    f"{mutation_file.name}, found {len(matches)}"
+                )
+            if matches[0] != row["legacy_trigger"]:
+                raise SystemExit(
+                    f"retired-trigger row identity mismatch for {row!r}: "
+                    f"matched {matches[0]!r}"
+                )
+
 violations = []
-for live_file in live_files:
+for live_file in collect_live_files(repository_root):
     for line_number, line in enumerate(live_file.read_text(errors="replace").splitlines(), 1):
-        match = retired_pattern.search(line)
-        if match:
+        for legacy_trigger in find_retired_matches(line):
+            if legacy_trigger == "queue board" and (
+                '<title> text "do-work queue board"' in line
+                or 'strings.Contains(bodyText, "do-work queue board")' in line
+            ):
+                continue
             violations.append(
-                f"{live_file.relative_to(repository_root)}:{line_number}: {match.group(0)}"
+                f"{live_file.relative_to(repository_root)}:{line_number}: "
+                f"do-work {legacy_trigger}"
             )
 
 prime_file = repository_root / "skills/do-work/tools/prime-do-work-update.md"

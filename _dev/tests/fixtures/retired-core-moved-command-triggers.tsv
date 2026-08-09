@@ -1,0 +1,189 @@
+# TEST-ONLY historical inventory. Do not copy these retired aliases into runtime routing or guidance.
+# Sources: 0b9bcde^:skills/do-work/SKILL.md; 0b9bcde^:skills/do-work/actions/moved-command-shim.md; a3c2612^:SKILL.md (install normalization).
+owner	canonical_action	match_kind	legacy_trigger
+do-work-board	board	direct	board
+do-work-board	board	direct	kanban
+do-work-board	board	direct	kanban board
+do-work-board	board	direct	queue board
+do-work-board	board	direct	visualize queue
+do-work-board	board	direct	show the board
+do-work-knowledge	bkb	direct	bkb
+do-work-knowledge	bkb	direct	build knowledge base
+do-work-knowledge	bkb	direct	knowledge base
+do-work-knowledge	bkb	direct	kb
+do-work-knowledge	memory	direct	memory
+do-work-knowledge	memory	direct	remember
+do-work-knowledge	memory	direct	forget
+do-work-knowledge	memory	direct	recall
+do-work-knowledge	memory	direct	what do you remember
+do-work-knowledge	dream	direct	dream
+do-work-knowledge	dream	direct	consolidate memory
+do-work-knowledge	dream	direct	clean up wiki
+do-work-knowledge	dream	direct	lint and merge notes
+do-work-knowledge	dream	direct	memory cleanup
+do-work-knowledge	interview	direct	interview
+do-work-knowledge	interview	direct	elicit
+do-work-knowledge	interview	direct	operating model
+do-work-knowledge	prompts	direct	prompts
+do-work-knowledge	prompts	direct	prompt
+do-work-toolbox	validate-feedback	direct	validate-feedback
+do-work-toolbox	validate-feedback	direct	validate feedback
+do-work-toolbox	validate-feedback	direct	triage findings
+do-work-toolbox	validate-feedback	direct	triage feedback
+do-work-toolbox	validate-feedback	direct	feedback review
+do-work-toolbox	validate-feedback	direct	review feedback
+do-work-toolbox	validate-feedback	direct	assess feedback
+do-work-toolbox	validate-feedback	direct	should we push back
+do-work-toolbox	code-review	direct	code-review
+do-work-toolbox	code-review	direct	code review
+do-work-toolbox	code-review	direct	review codebase
+do-work-toolbox	code-review	direct	audit codebase
+do-work-toolbox	code-review	direct	codebase review
+do-work-toolbox	ui-review	direct	ui-review
+do-work-toolbox	ui-review	direct	review ui
+do-work-toolbox	ui-review	direct	design review
+do-work-toolbox	ui-review	direct	validate ui
+do-work-toolbox	ui-review	direct	ui audit
+do-work-toolbox	ui-review	direct	design audit
+do-work-toolbox	present-work	direct	present
+do-work-toolbox	present-work	direct	present-work
+do-work-toolbox	present-work	direct	present work
+do-work-toolbox	present-work	direct	showcase
+do-work-toolbox	present-work	direct	deliver
+do-work-toolbox	present-work	direct	pitch
+do-work-toolbox	present-work	direct	client brief
+do-work-toolbox	ai-report	direct	ai-report
+do-work-toolbox	ai-report	direct	ai report
+do-work-toolbox	ai-report	direct	make-report
+do-work-toolbox	ai-report	direct	make report
+do-work-toolbox	ai-report	direct	screenshot-report
+do-work-toolbox	ai-report	direct	visual report
+do-work-toolbox	ai-report	direct	proof of work
+do-work-toolbox	slop-check	direct	slop-check
+do-work-toolbox	slop-check	direct	slop check
+do-work-toolbox	slop-check	direct	anti-slop
+do-work-toolbox	quick-wins	direct	quick-wins
+do-work-toolbox	quick-wins	direct	quick wins
+do-work-toolbox	quick-wins	direct	low-hanging
+do-work-toolbox	quick-wins	direct	low hanging fruit
+do-work-toolbox	quick-wins	direct	scan
+do-work-toolbox	quick-wins	direct	opportunities
+do-work-toolbox	quick-wins	direct	what can we improve
+do-work-toolbox	scan-ideas	direct	scan-ideas
+do-work-toolbox	scan-ideas	direct	ideas
+do-work-toolbox	scan-ideas	direct	ideate
+do-work-toolbox	scan-ideas	direct	brainstorm
+do-work-toolbox	scan-ideas	direct	what should I build
+do-work-toolbox	scan-ideas	direct	suggest
+do-work-toolbox	scan-ideas	direct	what's next
+do-work-toolbox	scan-ideas	direct	what could we improve
+do-work-toolbox	deep-explore	direct	deep-explore
+do-work-toolbox	deep-explore	direct	explore concept
+do-work-toolbox	deep-explore	direct	deep dive
+do-work-toolbox	deep-explore	direct	develop idea
+do-work-toolbox	deep-explore	direct	explore idea
+do-work-toolbox	prime	direct	prime
+do-work-toolbox	prime	direct	prime create
+do-work-toolbox	prime	direct	prime audit
+do-work-toolbox	prime	direct	create prime
+do-work-toolbox	prime	direct	audit primes
+do-work-toolbox	prime	direct	primes
+do-work-toolbox	inspect	direct	inspect
+do-work-toolbox	inspect	direct	explain changes
+do-work-toolbox	inspect	direct	what changed
+do-work-toolbox	inspect	direct	show changes
+do-work-toolbox	inspect	direct	describe changes
+do-work-toolbox	note	direct	note
+do-work-toolbox	note	direct	note add
+do-work-toolbox	note	direct	add note
+do-work-toolbox	stray-check	direct	stray-check
+do-work-toolbox	stray-check	direct	stray files
+do-work-toolbox	stray-check	direct	strays
+do-work-toolbox	stray-check	direct	orphan files
+do-work-toolbox	stray-check	direct	orphans
+do-work-toolbox	stray-check	direct	junk
+do-work-toolbox	stray-check	direct	what doesn't belong
+do-work-toolbox	stray-check	direct	file hygiene
+do-work-toolbox	tidy-repo	direct	tidy-repo
+do-work-toolbox	tidy-repo	direct	tidy repo
+do-work-toolbox	tidy-repo	direct	file-reorg
+do-work-toolbox	tidy-repo	direct	reorg
+do-work-toolbox	tidy-repo	direct	reorganize
+do-work-toolbox	tidy-repo	direct	restructure
+do-work-toolbox	tidy-repo	direct	declutter
+do-work-toolbox	tidy-repo	direct	tidy layout
+do-work-toolbox	tidy-repo	direct	fix the layout
+do-work-toolbox	tidy-repo	direct	clean up the root
+do-work-toolbox	tutorial	direct	tutorial
+do-work-toolbox	tutorial	direct	learn
+do-work-toolbox	tutorial	direct	getting started
+do-work-toolbox	tutorial	direct	how does this work
+do-work-toolbox	install	install-space	install ui-design
+do-work-toolbox	install	install-prefix	install-ui-design
+do-work-toolbox	install	setup-space	setup ui-design
+do-work-toolbox	install	install-space	install ui design
+do-work-toolbox	install	install-prefix	install-ui design
+do-work-toolbox	install	setup-space	setup ui design
+do-work-toolbox	install	install-space	install ui
+do-work-toolbox	install	install-prefix	install-ui
+do-work-toolbox	install	setup-space	setup ui
+do-work-toolbox	install	install-space	install frontend-design
+do-work-toolbox	install	install-prefix	install-frontend-design
+do-work-toolbox	install	setup-space	setup frontend-design
+do-work-toolbox	install	install-space	install design skill
+do-work-toolbox	install	install-prefix	install-design skill
+do-work-toolbox	install	setup-space	setup design skill
+do-work-toolbox	install	install-space	install bowser
+do-work-toolbox	install	install-prefix	install-bowser
+do-work-toolbox	install	setup-space	setup bowser
+do-work-toolbox	install	install-space	install playwright
+do-work-toolbox	install	install-prefix	install-playwright
+do-work-toolbox	install	setup-space	setup playwright
+do-work-toolbox	install	install-space	install playwright-cli
+do-work-toolbox	install	install-prefix	install-playwright-cli
+do-work-toolbox	install	setup-space	setup playwright-cli
+do-work-toolbox	install	install-space	install last30days
+do-work-toolbox	install	install-prefix	install-last30days
+do-work-toolbox	install	setup-space	setup last30days
+do-work-toolbox	install	install-space	install last 30 days
+do-work-toolbox	install	install-prefix	install-last 30 days
+do-work-toolbox	install	setup-space	setup last 30 days
+do-work-toolbox	install	install-space	install ideation-adhd
+do-work-toolbox	install	install-prefix	install-ideation-adhd
+do-work-toolbox	install	setup-space	setup ideation-adhd
+do-work-toolbox	install	install-space	install ideation adhd
+do-work-toolbox	install	install-prefix	install-ideation adhd
+do-work-toolbox	install	setup-space	setup ideation adhd
+do-work-toolbox	install	install-space	install adhd
+do-work-toolbox	install	install-prefix	install-adhd
+do-work-toolbox	install	setup-space	setup adhd
+do-work-toolbox	install	install-space	install adhd mode
+do-work-toolbox	install	install-prefix	install-adhd mode
+do-work-toolbox	install	setup-space	setup adhd mode
+do-work-toolbox	install	install-space	install adhd-mode
+do-work-toolbox	install	install-prefix	install-adhd-mode
+do-work-toolbox	install	setup-space	setup adhd-mode
+do-work-board	board	install-space	install just-kanban
+do-work-board	board	install-prefix	install-just-kanban
+do-work-board	board	setup-space	setup just-kanban
+do-work-board	board	install-space	install justfile
+do-work-board	board	install-prefix	install-justfile
+do-work-board	board	setup-space	setup justfile
+do-work-board	board	install-space	install run-kanban
+do-work-board	board	install-prefix	install-run-kanban
+do-work-board	board	setup-space	setup run-kanban
+do-work-board	board	install-space	install run-do-work-update
+do-work-board	board	install-prefix	install-run-do-work-update
+do-work-board	board	setup-space	setup run-do-work-update
+do-work-knowledge	setup-memory	install-space	install memory-module
+do-work-knowledge	setup-memory	install-prefix	install-memory-module
+do-work-knowledge	setup-memory	setup-space	setup memory-module
+do-work-knowledge	setup-memory	install-space	install memory module
+do-work-knowledge	setup-memory	install-prefix	install-memory module
+do-work-knowledge	setup-memory	setup-space	setup memory module
+do-work-knowledge	setup-memory	install-space	install memory hooks
+do-work-knowledge	setup-memory	install-prefix	install-memory hooks
+do-work-knowledge	setup-memory	setup-space	setup memory hooks
+do-work-toolbox	install	install-head	install
+do-work-toolbox	install	install-head	setup
+do-work-toolbox	install	install-head	install-

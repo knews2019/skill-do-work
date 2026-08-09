@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.9 — Complete Retired Core Alias Inventory (2026-08-09)
+
+Retired core command drift can no longer return under an alias merely because it was absent from a hand-picked sample. The distribution guard now reads one test-only historical inventory without republishing compatibility routes or banning ordinary prose.
+
+- Reconstructs 186 concrete trigger rows from the deleted router, shim, and install-normalization contract: 117 direct aliases, 22 install targets across three families, and three bare historical heads
+- Validates fixture shape, ownership, counts, install-family symmetry, exact boundaries, and every row on synthetic root and module surfaces
+- Preserves current sibling commands, branding/noun phrases, generic pipeline prose, history/fixture exclusions, unique ownership, updater-prime fingerprints, and all REQ-153 live repairs
+- Independent review isolated two occurrence-matching edge classes in consent-gated REQ-160; the historical vocabulary itself is complete
+
 ## 0.186.8 — Just Triple-String Collision Scanning (2026-08-09)
 
 Valid raw and cooked triple-quoted Just variables can now contain recipe- or alias-shaped payload without blocking suite installation. Real reserved definitions around those values still fail before mutation with the existing exact diagnostic.
