@@ -8,6 +8,7 @@ import csv
 import os
 import pathlib
 import re
+import string
 import subprocess
 import sys
 import urllib.parse
@@ -52,13 +53,20 @@ def read_manifest():
 
 
 def strip_markdown_code(markdown_text):
-    output_lines = []
+    code_free_text = list(markdown_text)
     fence_character = None
     fence_length = 0
+    line_start = 0
 
     for line in markdown_text.splitlines(keepends=True):
+        line_end = line_start + len(line)
         fence_match = re.match(r"^[ ]{0,3}(`{3,}|~{3,})", line)
-        if fence_match:
+        indented_code = fence_character is None and (
+            line.startswith("\t") or line.startswith("    ")
+        )
+        if indented_code:
+            pass
+        elif fence_match:
             fence = fence_match.group(1)
             if fence_character is None:
                 fence_character = fence[0]
@@ -66,78 +74,193 @@ def strip_markdown_code(markdown_text):
             elif fence[0] == fence_character and len(fence) >= fence_length:
                 fence_character = None
                 fence_length = 0
-            output_lines.append("\n" if line.endswith("\n") else "")
+        elif fence_character is None:
+            line_start = line_end
             continue
-        if fence_character is not None:
-            output_lines.append("\n" if line.endswith("\n") else "")
-            continue
-        output_lines.append(line)
+        for code_index in range(line_start, line_end):
+            if code_free_text[code_index] != "\n":
+                code_free_text[code_index] = " "
+        line_start = line_end
 
-    rendered_text = "".join(output_lines)
-    code_free_text = list(rendered_text)
+    rendered_text = "".join(code_free_text)
     index = 0
     while index < len(code_free_text):
-        if code_free_text[index] != "`":
+        if rendered_text.startswith("<!--", index):
+            comment_end = rendered_text.find("-->", index + 4)
+            masked_end = len(rendered_text) if comment_end < 0 else comment_end + 3
+            for code_index in range(index, masked_end):
+                if code_free_text[code_index] != "\n":
+                    code_free_text[code_index] = " "
+            index = masked_end
+            continue
+        if rendered_text[index] != "`":
             index += 1
             continue
         run_end = index
-        while run_end < len(code_free_text) and code_free_text[run_end] == "`":
+        while run_end < len(rendered_text) and rendered_text[run_end] == "`":
             run_end += 1
-        marker = "`" * (run_end - index)
-        closing = rendered_text.find(marker, run_end)
-        if closing < 0:
+        marker_length = run_end - index
+        closing_start = None
+        search_index = run_end
+        while search_index < len(rendered_text):
+            if rendered_text[search_index] != "`":
+                search_index += 1
+                continue
+            search_end = search_index
+            while search_end < len(rendered_text) and rendered_text[search_end] == "`":
+                search_end += 1
+            if search_end - search_index == marker_length:
+                closing_start = search_index
+                break
+            search_index = search_end
+        if closing_start is None:
             index = run_end
             continue
-        for code_index in range(index, closing + len(marker)):
+        masked_end = closing_start + marker_length
+        for code_index in range(index, masked_end):
             if code_free_text[code_index] != "\n":
                 code_free_text[code_index] = " "
-        index = closing + len(marker)
+        index = masked_end
     return "".join(code_free_text)
+
+
+def punctuation_is_escaped(markdown_text, punctuation_index):
+    preceding_backslashes = 0
+    cursor = punctuation_index - 1
+    while cursor >= 0 and markdown_text[cursor] == "\\":
+        preceding_backslashes += 1
+        cursor -= 1
+    return preceding_backslashes % 2 == 1
 
 
 def inline_link_targets(markdown_text):
     targets = []
-    for match in re.finditer(r"\]\(", markdown_text):
-        target_start = match.end()
+    label_start = 0
+    while label_start < len(markdown_text):
+        label_start = markdown_text.find("[", label_start)
+        if label_start < 0:
+            break
+        if punctuation_is_escaped(markdown_text, label_start):
+            label_start += 1
+            continue
+
+        label_end = label_start + 1
+        nested_labels = 0
+        while label_end < len(markdown_text):
+            if markdown_text[label_end] == "[" and not punctuation_is_escaped(markdown_text, label_end):
+                nested_labels += 1
+            elif markdown_text[label_end] == "]" and not punctuation_is_escaped(markdown_text, label_end):
+                if nested_labels == 0:
+                    break
+                nested_labels -= 1
+            label_end += 1
+        if label_end >= len(markdown_text):
+            label_start += 1
+            continue
+
+        opening_parenthesis = label_end + 1
+        if (
+            opening_parenthesis >= len(markdown_text)
+            or markdown_text[opening_parenthesis] != "("
+            or punctuation_is_escaped(markdown_text, opening_parenthesis)
+        ):
+            label_start = label_end + 1
+            continue
+
+        target_start = opening_parenthesis + 1
         while target_start < len(markdown_text) and markdown_text[target_start] in " \t":
             target_start += 1
         if target_start >= len(markdown_text):
-            continue
+            break
 
-        if markdown_text[target_start] == "<":
-            target_end = markdown_text.find(">", target_start + 1)
-            if target_end >= 0:
-                targets.append((target_start + 1, target_end, markdown_text[target_start + 1 : target_end]))
+        if markdown_text[target_start] == "<" and not punctuation_is_escaped(markdown_text, target_start):
+            target_end = target_start + 1
+            while target_end < len(markdown_text):
+                if markdown_text[target_end] == "\n":
+                    break
+                if markdown_text[target_end] == ">" and not punctuation_is_escaped(markdown_text, target_end):
+                    targets.append(
+                        (target_start + 1, target_end, markdown_text[target_start + 1 : target_end])
+                    )
+                    break
+                target_end += 1
+            label_start = label_end + 1
             continue
 
         cursor = target_start
         nested_parentheses = 0
-        escaped = False
         while cursor < len(markdown_text):
             character = markdown_text[cursor]
-            if escaped:
-                escaped = False
-            elif character == "\\":
-                escaped = True
-            elif character == "(":
+            punctuation_escaped = punctuation_is_escaped(markdown_text, cursor)
+            if character == "(" and not punctuation_escaped:
                 nested_parentheses += 1
-            elif character == ")":
+            elif character == ")" and not punctuation_escaped:
                 if nested_parentheses == 0:
                     break
                 nested_parentheses -= 1
-            elif character in " \t\n" and nested_parentheses == 0:
+            elif (
+                character in " \t\n"
+                and nested_parentheses == 0
+                and not punctuation_escaped
+            ):
                 break
             cursor += 1
         if cursor > target_start:
             targets.append((target_start, cursor, markdown_text[target_start:cursor]))
+        label_start = label_end + 1
     return targets
 
 
 def markdown_targets(markdown_text):
     targets = inline_link_targets(markdown_text)
-    for match in re.finditer(r"(?m)^[ ]{0,3}\[[^]\n]+\]:[ \t]*(?:<([^>]+)>|([^\s]+))", markdown_text):
-        target = match.group(1) or match.group(2)
-        targets.append((match.start(), match.end(), target))
+    line_start = 0
+    for line in markdown_text.splitlines(keepends=True):
+        definition_start = len(line) - len(line.lstrip(" "))
+        if (
+            definition_start > 3
+            or definition_start >= len(line)
+            or line[definition_start] != "["
+        ):
+            line_start += len(line)
+            continue
+
+        label_end = definition_start + 1
+        while label_end < len(line):
+            if line[label_end] == "]" and not punctuation_is_escaped(line, label_end):
+                break
+            label_end += 1
+        if label_end >= len(line) or label_end + 1 >= len(line) or line[label_end + 1] != ":":
+            line_start += len(line)
+            continue
+
+        target_start = label_end + 2
+        while target_start < len(line) and line[target_start] in " \t":
+            target_start += 1
+        target_end = target_start
+        if target_start < len(line) and line[target_start] == "<":
+            target_start += 1
+            target_end = target_start
+            while target_end < len(line):
+                if line[target_end] == ">" and not punctuation_is_escaped(line, target_end):
+                    break
+                if line[target_end] in "\r\n":
+                    break
+                target_end += 1
+            if target_end >= len(line) or line[target_end] != ">":
+                line_start += len(line)
+                continue
+        else:
+            while target_end < len(line) and not line[target_end].isspace():
+                target_end += 1
+        if target_end > target_start:
+            targets.append(
+                (
+                    line_start + target_start,
+                    line_start + target_end,
+                    line[target_start:target_end],
+                )
+            )
+        line_start += len(line)
 
     occupied_ranges = [(start, end) for start, end, _ in targets]
     first_party_url = re.compile(
@@ -150,6 +273,126 @@ def markdown_targets(markdown_text):
         target = match.group(0).rstrip("),;:")
         targets.append((match.start(), match.start() + len(target), target))
     return sorted(targets)
+
+
+def normalize_markdown_target(target):
+    normalized_target = []
+    target_index = 0
+    while target_index < len(target):
+        if (
+            target[target_index] == "\\"
+            and target_index + 1 < len(target)
+            and (target[target_index + 1] in string.punctuation or target[target_index + 1] == " ")
+        ):
+            normalized_target.append(target[target_index + 1])
+            target_index += 2
+            continue
+        normalized_target.append(target[target_index])
+        target_index += 1
+    return "".join(normalized_target)
+
+
+def run_parser_fixtures():
+    parser_cases = [
+        (
+            "backtick fenced code",
+            "[before](before.md)\n```markdown\n[hidden](missing-fence.md)\n```\n[after](after.md)\n",
+            ["before.md", "after.md"],
+        ),
+        (
+            "tilde fenced code",
+            "~~~\n[hidden](missing-tilde.md)\n~~~\n[live](live.md)\n",
+            ["live.md"],
+        ),
+        (
+            "indented code",
+            "    [hidden](missing-indent.md)\n\t[also hidden](missing-tab.md)\n   [live](live.md)\n",
+            ["live.md"],
+        ),
+        (
+            "HTML comments",
+            "[before](before.md) <!-- [hidden](missing-inline-comment.md) -->\n<!--\n`comment backtick` [hidden](missing-block-comment.md)\n--> [after](after.md)\n",
+            ["before.md", "after.md"],
+        ),
+        (
+            "unterminated HTML comment",
+            "[before](before.md)\n<!-- [hidden](missing-eof-comment.md)\n",
+            ["before.md"],
+        ),
+        (
+            "inline code delimiter runs",
+            "`` code `tick` and ```longer``` [hidden](missing-code.md) `` [live](live.md)\n",
+            ["live.md"],
+        ),
+        (
+            "comment marker inside inline code",
+            "`<!-- [hidden](missing-code-comment.md) -->` [live](live.md)\n",
+            ["live.md"],
+        ),
+        (
+            "escaped inline syntax",
+            r"\[hidden](missing-open.md) [hidden\](missing-close.md) \\[live](even.md)" + "\n",
+            ["even.md"],
+        ),
+        (
+            "escaped reference syntax",
+            r"\[hidden]: missing-open.md" + "\n" + r"[hidden\]: missing-close.md" + "\n[live]: live.md\n",
+            ["live.md"],
+        ),
+        (
+            "published link forms",
+            "[inline](inline.md) ![image](image.png)\n[bare]: bare.md\n[angle]: <angle.md>\n",
+            ["inline.md", "image.png", "bare.md", "angle.md"],
+        ),
+        (
+            "balanced and escaped destinations",
+            r"[nested](docs/name(v1).md) [escaped](docs/name\(v2\).md) "
+            r"[closing](docs/name\).md) [even](docs/name\\(v3).md)"
+            + "\n",
+            [
+                "docs/name(v1).md",
+                "docs/name(v2).md",
+                "docs/name).md",
+                r"docs/name\(v3).md",
+            ],
+        ),
+        (
+            "escaped destination punctuation",
+            r"[punctuation](docs/file\!\#\[draft\].md) [backslash](docs/path\\leaf.md)" + "\n",
+            ["docs/file!#[draft].md", r"docs/path\leaf.md"],
+        ),
+    ]
+
+    fixture_failures = 0
+    for fixture_name, fixture_markdown, expected_targets in parser_cases:
+        masked_markdown = strip_markdown_code(fixture_markdown)
+        if len(masked_markdown) != len(fixture_markdown):
+            fail(f"parser fixture {fixture_name!r}: masking changed source offsets")
+            fixture_failures += 1
+        if [
+            character_index
+            for character_index, character in enumerate(masked_markdown)
+            if character == "\n"
+        ] != [
+            character_index
+            for character_index, character in enumerate(fixture_markdown)
+            if character == "\n"
+        ]:
+            fail(f"parser fixture {fixture_name!r}: masking changed line offsets")
+            fixture_failures += 1
+        actual_targets = [
+            normalize_markdown_target(target)
+            for _, _, target in markdown_targets(masked_markdown)
+        ]
+        if actual_targets != expected_targets:
+            fail(
+                f"parser fixture {fixture_name!r}: expected {expected_targets!r}, "
+                f"got {actual_targets!r}"
+            )
+            fixture_failures += 1
+
+    if fixture_failures:
+        raise SystemExit(1)
 
 
 def is_dynamic_target(target):
@@ -204,6 +447,7 @@ def validate_first_party_url(target, tracked_paths):
     return None
 
 
+run_parser_fixtures()
 modules = read_manifest()
 tracked_paths = {
     os.fsdecode(path_bytes)
@@ -241,7 +485,7 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
 
     for target_start, _, target in markdown_targets(markdown_text):
         line_number = markdown_text.count("\n", 0, target_start) + 1
-        target = target.replace("\\ ", " ")
+        target = normalize_markdown_target(target)
         if not target or target.startswith("#") or is_dynamic_target(target):
             continue
 

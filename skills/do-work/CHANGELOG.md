@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.6 — Shipped Markdown Parser Boundary Hardening (2026-08-09)
+
+Valid code examples, comments, and escaped destinations no longer trip the ordinary shipped-reference release checks. The guard now tests the same parser helpers its live four-module scan uses, so syntax fixes cannot pass only in a fixture-only path.
+
+- Preserves source offsets while masking fenced/indented code, HTML comments, and exact-delimiter inline code spans
+- Applies odd/even backslash parity to link and reference structure and normalizes standards-valid escaped destination punctuation
+- Adds exact-target positive/negative fixtures while retaining source/install topology, first-party URL, path-containment, and changelog-identity checks
+
 ## 0.186.5 — Modular Command Restatement Sweep (2026-08-08)
 
 Live board, knowledge, and toolbox guidance now names the skill that actually owns each command. Transition-era updater lessons have also been reduced to the permanent manifest, validation, marker, and recovery contracts.
