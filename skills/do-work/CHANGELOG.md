@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.7 — Exact Manual Stop-Hook Cleanup Path (2026-08-09)
+
+Projects without jq or Python now get an unambiguous nested-object cleanup instruction that cannot be read as deleting custom neighbors. The manual result is checked against both automated reconciliation paths.
+
+- Targets individual `hooks.Stop[*].hooks[*]` objects whose command contains the retired guard path
+- Preserves same-wrapper custom hooks and removes an enclosing wrapper only when targeted cleanup leaves it empty
+- Covers mixed and guard-only wrappers across jq, forced-Python, and byte-preserving manual fixtures
+
 ## 0.186.6 — Shipped Markdown Parser Boundary Hardening (2026-08-09)
 
 Valid code examples, comments, and escaped destinations no longer trip the ordinary shipped-reference release checks. The guard now tests the same parser helpers its live four-module scan uses, so syntax fixes cannot pass only in a fixture-only path.

@@ -197,6 +197,9 @@ cat > "$fresh_project/.claude/settings.json" <<'JSON'
         {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""},
         {"type": "command", "command": "echo custom-stop"}
       ]},
+      {"hooks": [
+        {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""}
+      ]},
       {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh\""}]}
     ]
   }
@@ -229,6 +232,10 @@ assert serialized.count("do-work/hooks/session-start.sh") == 1
 assert "do-work/hooks/pipeline-guard.sh" not in serialized
 assert serialized.count("echo custom-start") == 1
 assert serialized.count("echo custom-stop") == 1
+assert data["hooks"]["Stop"] == [
+    {"hooks": [{"type": "command", "command": "echo custom-stop"}]},
+    {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh\""}]},
+]
 PY
 cp "$fresh_project/justfile" "$workdir/reinstall.just.snapshot"
 cp "$fresh_project/.claude/settings.json" "$workdir/reinstall.settings.snapshot"
@@ -350,6 +357,9 @@ cat > "$python_project/.claude/settings.json" <<'JSON'
       {"hooks": [
         {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""},
         {"type": "command", "command": "echo python-custom-stop"}
+      ]},
+      {"hooks": [
+        {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""}
       ]}
     ]
   }
@@ -370,6 +380,9 @@ data = json.loads(pathlib.Path(sys.argv[1]).read_text())
 serialized = json.dumps(data)
 assert "do-work/hooks/pipeline-guard.sh" not in serialized
 assert serialized.count("echo python-custom-stop") == 1
+assert data["hooks"]["Stop"] == [
+    {"hooks": [{"type": "command", "command": "echo python-custom-stop"}]},
+]
 PY
 fi
 
@@ -395,6 +408,9 @@ cat > "$manual_project/.claude/settings.json" <<'JSON'
         {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""},
         {"type": "command", "command": "echo manual-custom-stop-same-wrapper"}
       ]},
+      {"hooks": [
+        {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""}
+      ]},
       {"hooks": [{"type": "command", "command": "echo manual-custom-stop-neighbor"}]}
     ]
   }
@@ -411,7 +427,11 @@ else
   assert_four_modules "$manual_project"
   cmp -s "$manual_project/.claude/settings.json" "$workdir/manual-settings.before" \
     || fail 'no-JSON-tool path changed mixed custom and retired Stop hooks instead of leaving settings exact'
-  assert_output_contains "$(cat "$manual_output")" '^MANUAL STEP: in \.claude/settings\.json, remove only hooks\.Stop\[\*\]\.hooks objects whose string command contains \.claude/skills/do-work/hooks/pipeline-guard\.sh; preserve every other entry, including custom hooks in the same Stop event; then merge \.claude/skills/do-work/hooks/hooks\.json\.$' 'no-JSON-tool path did not print the exact targeted retired-hook removal and custom-hook preservation instruction'
+  manual_instruction_pattern='^MANUAL STEP: in \.claude/settings\.json, remove only hooks\.Stop\[\*\]\.hooks\[\*\] objects whose string command contains \.claude/skills/do-work/hooks/pipeline-guard\.sh; remove an enclosing hooks\.Stop\[\*\] wrapper only when those removals leave its hooks array empty; preserve every other entry, including custom hooks in the same wrapper; then merge \.claude/skills/do-work/hooks/hooks\.json\.$'
+  assert_output_contains "$(cat "$manual_output")" "$manual_instruction_pattern" 'no-JSON-tool path did not print the exact nested-object removal, empty-wrapper cleanup, and same-wrapper preservation instruction'
+  if [ "$(grep -Ec -- "$manual_instruction_pattern" "$manual_output")" -ne 2 ]; then
+    fail 'no-JSON-tool path must print the exact manual settings instruction in both preview and success output'
+  fi
   if grep -Fq 'preserve every existing entry' "$manual_output"; then
     fail 'no-JSON-tool path still tells users to preserve the retired pipeline guard'
   fi
