@@ -113,13 +113,73 @@ def just_definition_name(line: bytes):
     return None
 
 
+def just_multiline_string_state(line: bytes, active_delimiter):
+    body = line_body(line)
+    if active_delimiter is None and (
+        not body or body[:1] in (b" ", b"\t", b"#")
+    ):
+        return None
+
+    index = 0
+    ordinary_quote = None
+    escaped = False
+    while index < len(body):
+        if active_delimiter is not None:
+            if body.startswith(active_delimiter, index):
+                if active_delimiter == b'"""':
+                    backslash_count = 0
+                    backslash_index = index - 1
+                    while backslash_index >= 0 and body[backslash_index] == 92:
+                        backslash_count += 1
+                        backslash_index -= 1
+                    if backslash_count % 2 == 1:
+                        index += 1
+                        continue
+                active_delimiter = None
+                index += 3
+                continue
+            index += 1
+            continue
+
+        character = body[index]
+        if ordinary_quote is not None:
+            if escaped:
+                escaped = False
+            elif character == 92 and ordinary_quote == 34:
+                escaped = True
+            elif character == ordinary_quote:
+                ordinary_quote = None
+            index += 1
+            continue
+        if character == 35:
+            break
+        if body.startswith(b"'''", index):
+            active_delimiter = b"'''"
+            index += 3
+        elif body.startswith(b'"""', index):
+            active_delimiter = b'"""'
+            index += 3
+        elif character in (34, 39, 96):
+            ordinary_quote = character
+            index += 1
+        else:
+            index += 1
+
+    return active_delimiter
+
+
 def just_definition_names(data: bytes):
-    return {
-        definition_name
-        for line in data.splitlines(keepends=True)
-        for definition_name in [just_definition_name(line)]
-        if definition_name is not None
-    }
+    definition_names = set()
+    active_delimiter = None
+    for line in data.splitlines(keepends=True):
+        line_starts_in_multiline_string = active_delimiter is not None
+        active_delimiter = just_multiline_string_state(line, active_delimiter)
+        if line_starts_in_multiline_string:
+            continue
+        definition_name = just_definition_name(line)
+        if definition_name is not None:
+            definition_names.add(definition_name)
+    return definition_names
 
 
 def atomic_replace(path: str, content: bytes, mode: int) -> None:

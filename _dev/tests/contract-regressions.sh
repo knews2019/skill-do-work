@@ -2237,6 +2237,96 @@ else
     fi
   done
 
+  raw_multiline_target="$section_workdir/raw-multiline-string.just"
+  {
+    printf '%s\n' \
+      'custom-before:' \
+      '    echo before' \
+      "raw_value := '''" \
+      'run-kanban:' \
+      'alias kanban-summary := ignored' \
+      "\\'''" \
+      'custom-after:' \
+      '    echo after'
+  } > "$raw_multiline_target"
+  if command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$raw_multiline_target" --list >/dev/null 2>&1; then
+    printf 'FAIL: raw multiline-string collision fixture is not valid Just syntax.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! "$replace_section_tool" --target "$raw_multiline_target" --section-file "$reserved_section_file" \
+    --reject-recipe-collisions; then
+    printf 'FAIL: replace-text-section treated reserved-looking raw multiline-string content as a collision.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$raw_multiline_target" --list >/dev/null 2>&1; then
+    printf 'FAIL: replace-text-section produced invalid Just after accepting a raw multiline string.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+
+  cooked_multiline_target="$section_workdir/cooked-multiline-string-crlf.just"
+  {
+    printf '%s\r\n' \
+      'custom-before:' \
+      '    echo before' \
+      'cooked_value := """' \
+      'run-kanban-cli:' \
+      'odd escaped delimiter remains: \"""' \
+      'alias kanban-summary := ignored' \
+      'even escaped delimiter closes: \\"""' \
+      'joined_value := """closed""" + """open' \
+      'run-do-work-update:' \
+      '"""' \
+      'custom-after:' \
+      '    echo after'
+  } > "$cooked_multiline_target"
+  if command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$cooked_multiline_target" --list >/dev/null 2>&1; then
+    printf 'FAIL: cooked multiline-string collision fixture is not valid Just syntax.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! "$replace_section_tool" --target "$cooked_multiline_target" --section-file "$reserved_section_file" \
+    --reject-recipe-collisions; then
+    printf 'FAIL: replace-text-section treated reserved-looking cooked multiline-string content as a collision.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$cooked_multiline_target" --list >/dev/null 2>&1; then
+    printf 'FAIL: replace-text-section produced invalid Just after accepting a cooked multiline string.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+
+  multiline_collision_target="$section_workdir/multiline-nearby-collisions.just"
+  {
+    printf '%s\n' \
+      '# delimiter-looking comment: """' \
+      "single_token := '\"\"\"'" \
+      "double_token := \"'''\"" \
+      'backtick_token := `printf "\"\"\""`' \
+      'custom-shell:' \
+      "    echo '\"\"\"'" \
+      'custom-summary:' \
+      '    echo custom' \
+      'alias kanban-summary := custom-summary' \
+      'payload := """' \
+      'run-kanban:' \
+      'alias run-kanban-cli := ignored' \
+      'even escaped delimiter closes: \\"""' \
+      'run-do-work-update:' \
+      '    echo real collision'
+  } > "$multiline_collision_target"
+  cp "$multiline_collision_target" "$multiline_collision_target.before"
+  multiline_collision_output="$section_workdir/multiline-nearby-collisions.out"
+  expected_multiline_collision='replace-text-section: target defines reserved Just recipe or alias outside managed section: kanban-summary, run-do-work-update'
+  if "$replace_section_tool" --target "$multiline_collision_target" --section-file "$reserved_section_file" \
+    --reject-recipe-collisions >"$multiline_collision_output" 2>&1; then
+    printf 'FAIL: replace-text-section ignored real reserved definitions around a multiline string.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif [ "$(cat "$multiline_collision_output")" != "$expected_multiline_collision" ]; then
+    printf 'FAIL: replace-text-section did not report only exact sorted real collisions around a multiline string.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! cmp -s "$multiline_collision_target" "$multiline_collision_target.before"; then
+    printf 'FAIL: replace-text-section changed the target after rejecting collisions around a multiline string.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+
   noncollision_target="$section_workdir/noncollisions.just"
   {
     printf '# run-kanban:\n'

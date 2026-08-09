@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.8 — Just Triple-String Collision Scanning (2026-08-09)
+
+Valid raw and cooked triple-quoted Just variables can now contain recipe- or alias-shaped payload without blocking suite installation. Real reserved definitions around those values still fail before mutation with the existing exact diagnostic.
+
+- Tracks triple-single and triple-double string state across physical lines, including raw closing, cooked escape parity, same-line close/reopen, and CRLF
+- Keeps reserved-name derivation, managed-span exclusion, sorted reporting, and byte-preserving rejection unchanged
+- Adds Just-parseable positive fixtures and nearby real-collision controls; adjacent multiline literal forms are captured as consent-gated REQ-159
+
 ## 0.186.7 — Exact Manual Stop-Hook Cleanup Path (2026-08-09)
 
 Projects without jq or Python now get an unambiguous nested-object cleanup instruction that cannot be read as deleting custom neighbors. The manual result is checked against both automated reconciliation paths.
