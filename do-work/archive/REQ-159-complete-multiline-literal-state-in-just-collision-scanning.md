@@ -3,6 +3,7 @@ id: REQ-159
 title: "Review fix: Complete multiline literal state in Just collision scanning"
 status: completed
 completed_at: 2026-08-10T10:15:38Z
+commit: 6ba3a27
 claimed_at: 2026-08-10T09:51:10Z
 route: C
 status_changed_at: 2026-08-10T09:20:51Z
