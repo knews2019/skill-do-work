@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.16 — UR Archive Lesson Link Repointing (2026-08-10)
+
+Closing UR-031 moved its completed history into one self-contained archive folder, and the updater prime's durable lessons now follow it. Shipped-reference validation no longer depends on stale loose-archive paths.
+
+- Repoints five canonical REQ-136/137/138/144/146 lesson URLs into `do-work/archive/UR-031/`
+- Preserves each lesson anchor and the updater prime's existing inline-only lesson format
+- Keeps the completed 27-REQ UR archive self-contained and the shipped Markdown reference contract green
+
 ## 0.186.15 — Complete Markdown Link and List-Fence Classification (2026-08-10)
 
 The shipped-reference guard now reaches the last known Markdown visibility edges: even-parity relative links stay discoverable, escaped brackets inside labels no longer hide live links, and fenced code inside list items stays unpublished. Target policy remains unchanged.
