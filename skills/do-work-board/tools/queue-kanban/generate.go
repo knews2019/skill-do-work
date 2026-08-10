@@ -93,23 +93,27 @@ type generatedColumns struct {
 // generatedRequest is one REQ card's full payload, including its pre-rendered
 // Markdown body so the detail drawer opens with zero network.
 type generatedRequest struct {
-	RequestId          string   `json:"id"`
-	Title              string   `json:"title"`
-	Status             string   `json:"status"`
-	OriginalStatus     string   `json:"originalStatus"`
-	StatusUnrecognized bool     `json:"statusUnrecognized,omitempty"`
-	Domain             string   `json:"domain"`
-	OriginalDomain     string   `json:"originalDomain,omitempty"`
-	DomainUnrecognized bool     `json:"domainUnrecognized,omitempty"`
-	UserRequestId      string   `json:"userRequestId"`
-	DependsOn          []string `json:"dependsOn"`
-	UnmetDependencies  []string `json:"unmetDependencies"`
-	Dependents         []string `json:"dependents"`
-	BlockedBy          []string `json:"blockedBy"`
-	BlockedAt          string   `json:"blockedAt,omitempty"`
-	BlockedCheck       string   `json:"blockedCheck,omitempty"`
-	Related            []string `json:"related"`
-	WriteSet           []string `json:"writeSet"`
+	RequestId             string   `json:"id"`
+	Title                 string   `json:"title"`
+	Status                string   `json:"status"`
+	OriginalStatus        string   `json:"originalStatus"`
+	StatusUnrecognized    bool     `json:"statusUnrecognized,omitempty"`
+	Error                 string   `json:"error,omitempty"`
+	ErrorType             string   `json:"errorType,omitempty"`
+	OriginalErrorType     string   `json:"originalErrorType,omitempty"`
+	ErrorTypeUnrecognized bool     `json:"errorTypeUnrecognized,omitempty"`
+	Domain                string   `json:"domain"`
+	OriginalDomain        string   `json:"originalDomain,omitempty"`
+	DomainUnrecognized    bool     `json:"domainUnrecognized,omitempty"`
+	UserRequestId         string   `json:"userRequestId"`
+	DependsOn             []string `json:"dependsOn"`
+	UnmetDependencies     []string `json:"unmetDependencies"`
+	Dependents            []string `json:"dependents"`
+	BlockedBy             []string `json:"blockedBy"`
+	BlockedAt             string   `json:"blockedAt,omitempty"`
+	BlockedCheck          string   `json:"blockedCheck,omitempty"`
+	Related               []string `json:"related"`
+	WriteSet              []string `json:"writeSet"`
 	// The session a pending REQ is earmarked for (see RequestTicket.AssignedTo).
 	// Verbatim and display only — a card badge and a drawer row, never column or
 	// dispatch meaning.
@@ -274,6 +278,10 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			Status:                     ticket.Status,
 			OriginalStatus:             ticket.OriginalStatus,
 			StatusUnrecognized:         ticket.StatusUnrecognized,
+			Error:                      ticket.Error,
+			ErrorType:                  ticket.ErrorType,
+			OriginalErrorType:          ticket.OriginalErrorType,
+			ErrorTypeUnrecognized:      ticket.ErrorTypeUnrecognized,
 			Domain:                     ticket.Domain,
 			OriginalDomain:             ticket.OriginalDomain,
 			DomainUnrecognized:         ticket.DomainUnrecognized,

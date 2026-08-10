@@ -49,20 +49,23 @@ const futureTimestampSkewAllowance = 2 * time.Minute
 // later HTML rendering, where it was found in the tree, and how its completion
 // instant was resolved.
 type RequestTicket struct {
-	RequestId      string // canonical "REQ-NNNN" (frontmatter id, else derived from the filename)
-	Title          string
-	Status         string // normalized status (complete/done/finished/closed → completed)
-	OriginalStatus string // verbatim frontmatter status before normalization
-	OriginalDomain string // verbatim frontmatter domain before normalization ("" when absent)
-	OriginalRoute  string // verbatim frontmatter route before normalization ("" when absent)
-	// Set when a PRESENT domain/route value survives normalization outside the
-	// canonical enum. Each ticket keeps rendering — domain with the contract's
-	// default (`general`), route with the case-folded input, since route has no
-	// documented default — and collectSchemaFieldWarnings raises the matching data
-	// warning. The value resolves; the footprint is not optional (Schema Read
-	// Contract item 3, "Never silently drop").
-	DomainUnrecognized bool
-	RouteUnrecognized  bool
+	RequestId         string // canonical "REQ-NNNN" (frontmatter id, else derived from the filename)
+	Title             string
+	Status            string // normalized status (complete/done/finished/closed → completed)
+	OriginalStatus    string // verbatim frontmatter status before normalization
+	OriginalDomain    string // verbatim frontmatter domain before normalization ("" when absent)
+	OriginalRoute     string // verbatim frontmatter route before normalization ("" when absent)
+	Error             string // verbatim failure summary; display only
+	ErrorType         string // normalized error_type; display only
+	OriginalErrorType string // verbatim error_type before normalization ("" when absent)
+	// Set when a PRESENT schema-backed display value is outside its canonical
+	// enum. Each ticket keeps rendering the field's documented read result while
+	// collectSchemaFieldWarnings raises the matching data warning. The value
+	// resolves; the footprint is not optional (Schema Read Contract item 3,
+	// "Never silently drop").
+	DomainUnrecognized    bool
+	RouteUnrecognized     bool
+	ErrorTypeUnrecognized bool
 
 	// Set by bucketColumns when the normalized status falls outside the Schema
 	// Read Contract vocabulary (actions/work-reference.md). The ticket is parked
@@ -686,12 +689,28 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		normalizedEffortEstimate, effortEstimateRecognized = resolveSchemaField("effort_estimate", originalEffortEstimate)
 		effortEstimateUnrecognized = !effortEstimateRecognized
 	}
+	// Failure details are display-only. `error` has no vocabulary and therefore
+	// stays verbatim. `error_type` follows the present-value-only schema rule:
+	// resolve a declared value (including the default for an invalid value), but
+	// never fabricate `code` when the field was absent.
+	originalErrorType := coerceScalarToString(fields["error_type"])
+	normalizedErrorType := ""
+	errorTypeUnrecognized := false
+	if strings.TrimSpace(originalErrorType) != "" {
+		var errorTypeRecognized bool
+		normalizedErrorType, errorTypeRecognized = resolveSchemaField("error_type", originalErrorType)
+		errorTypeUnrecognized = !errorTypeRecognized
+	}
 
 	ticket := &RequestTicket{
 		RequestId:                  requestId,
 		Title:                      coerceScalarToString(fields["title"]),
 		Status:                     normalizeStatus(originalStatus),
 		OriginalStatus:             originalStatus,
+		Error:                      coerceScalarToString(fields["error"]),
+		ErrorType:                  normalizedErrorType,
+		OriginalErrorType:          originalErrorType,
+		ErrorTypeUnrecognized:      errorTypeUnrecognized,
 		CreatedAt:                  coerceScalarToString(fields["created_at"]),
 		ClaimedAt:                  coerceScalarToString(fields["claimed_at"]),
 		CompletedAt:                coerceScalarToString(fields["completed_at"]),
@@ -1074,7 +1093,7 @@ func resolveSchemaField(fieldName string, rawValue string) (string, bool) {
 // the contract, and the same shape collectTestingWarnings (testing.go) holds for
 // testing_status. The wording always comes from schemaFieldWarningText so the
 // contract's exact phrasing lives in one place; that is also why this is one
-// collector over both fields rather than one function per field, which is how the
+// collector over all fields rather than one function per field, which is how the
 // second hand-typed copy of a warning gets introduced.
 //
 // Adding a field here means adding its unrecognized flag and Original* value at
@@ -1090,6 +1109,7 @@ func collectSchemaFieldWarnings(tickets []*RequestTicket) []string {
 			{"domain", ticket.DomainUnrecognized, ticket.OriginalDomain},
 			{"route", ticket.RouteUnrecognized, ticket.OriginalRoute},
 			{"effort_estimate", ticket.EffortEstimateUnrecognized, ticket.OriginalEffortEstimate},
+			{"error_type", ticket.ErrorTypeUnrecognized, ticket.OriginalErrorType},
 		} {
 			if unrecognizedField.isUnrecognized {
 				schemaFieldWarnings = append(schemaFieldWarnings, fmt.Sprintf("%s %s",

@@ -1756,6 +1756,24 @@ assert_block_contains \
   'Target ID Resolution' \
   'actions/abandon.md Input must cite the Target ID Resolution contract so it accepts UR-NNN targeting tokens (a UR cancels its cancellable members) rather than only REQ-NNN.'
 
+# A legacy failed REQ can already sit inside a closed archive/UR-NNN/ folder. The board still
+# treats that status as active, so explicitly targeting the REQ must reach abandon's existing
+# confirmed in-place failed->cancelled write without moving or reopening the closed UR.
+assert_contains \
+  "actions/abandon.md" \
+  'status: failed.*archive/UR-NNN/.*cancellable in place' \
+  'actions/abandon.md must let an explicitly targeted failed REQ inside archive/UR-NNN/ use the confirmed in-place cancellation path; refusing it leaves a permanent active board card.'
+
+assert_file_not_contains \
+  "actions/abandon.md" \
+  'status: failed.*archive/UR-NNN/.*refuse' \
+  'actions/abandon.md must not restore the legacy nested-failure refusal after the in-place resolution path was extended to that shape.'
+
+assert_contains \
+  "actions/forensics.md" \
+  'archive/UR-NNN/.*cancel.*in place' \
+  'actions/forensics.md must route a failed REQ already inside archive/UR-NNN/ to explicit in-place abandon instead of claiming no action is needed.'
+
 assert_contains \
   "actions/roadmap.md" \
   '^-[[:space:]]+\*\*Ready\*\*[[:space:]]+— normalized `status` is `pending`' \

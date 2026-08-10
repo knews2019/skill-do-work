@@ -1713,7 +1713,16 @@
   // Post-processes a drawer body after its rendered-Markdown innerHTML lands:
   // retargets the renderer's own autolinks to a new tab (a body link must not
   // navigate the board away), then wraps every linkable mention in text nodes.
-  function linkifyDetailBody(bodyRootElement) {
+  function linkifyDetailBody(bodyRootElement, recordTitle) {
+    var firstBodyElement = bodyRootElement.firstElementChild;
+    if (
+      recordTitle &&
+      firstBodyElement &&
+      firstBodyElement.tagName === "H1" &&
+      normalizeHeadingText(firstBodyElement.textContent) === normalizeHeadingText(recordTitle)
+    ) {
+      firstBodyElement.remove();
+    }
     bodyRootElement.querySelectorAll("a[href]").forEach(function (anchorElement) {
       if (/^https?:/i.test(anchorElement.getAttribute("href"))) {
         anchorElement.target = "_blank";
@@ -1836,6 +1845,15 @@
     } else {
       appendMetaRow("Status", request.originalStatus || request.status || "—");
     }
+    if (request.error) {
+      appendMetaRow("Error", request.error);
+    }
+    if (request.originalErrorType || request.errorType) {
+      appendMetaRow(
+        "Error type",
+        schemaFieldDetailValue(request.originalErrorType, request.errorType, request.errorTypeUnrecognized)
+      );
+    }
     if (request.domain || request.originalDomain) {
       appendMetaRow(
         "Domain",
@@ -1949,7 +1967,7 @@
     appendMetaRow("Tree", request.treeSection || "—");
 
     drawerBody.innerHTML = request.bodyHtml || "<p>(empty body)</p>";
-    linkifyDetailBody(drawerBody);
+    linkifyDetailBody(drawerBody, request.title);
     currentDetailKind = "req";
     currentDetailId = requestId;
     showDrawer();
@@ -1973,7 +1991,7 @@
     appendMetaRow("input.md", userRequest.inputFilePresent ? "present" : "synthesized from REQ pointers");
 
     drawerBody.innerHTML = userRequest.bodyHtml || "<p>(no input.md body)</p>";
-    linkifyDetailBody(drawerBody);
+    linkifyDetailBody(drawerBody, userRequest.title);
     currentDetailKind = "ur";
     currentDetailId = userRequestId;
     showDrawer();

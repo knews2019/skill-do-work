@@ -1331,3 +1331,102 @@ Body.
 			ticket.Route, "Z")
 	}
 }
+
+func TestParseRequestTicketCarriesFailureDetails(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-906-failed.md")
+	fixtureContent := `---
+id: REQ-906
+title: Failed request
+status: failed
+error: "  compiler exploded  "
+error_type: environment
+---
+
+Body.
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	ticket, parseError := parseRequestTicket(fixturePath, "archive")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.Error != "compiler exploded" {
+		t.Fatalf("Error = %q, want %q — failure text must use the row-less scalar read without schema normalization",
+			ticket.Error, "compiler exploded")
+	}
+	if ticket.ErrorType != "environment" || ticket.OriginalErrorType != "environment" || ticket.ErrorTypeUnrecognized {
+		t.Fatalf("error_type provenance = (%q, %q, %v), want (%q, %q, false)",
+			ticket.ErrorType, ticket.OriginalErrorType, ticket.ErrorTypeUnrecognized,
+			"environment", "environment")
+	}
+}
+
+func TestParseRequestTicketPreservesAbsentErrorType(t *testing.T) {
+	temporaryDirectory := t.TempDir()
+	fixturePath := filepath.Join(temporaryDirectory, "REQ-907-unclassified-failure.md")
+	fixtureContent := `---
+id: REQ-907
+title: Unclassified failure
+status: failed
+error: tests never reached green
+---
+
+Body.
+`
+	if writeError := os.WriteFile(fixturePath, []byte(fixtureContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+	ticket, parseError := parseRequestTicket(fixturePath, "archive")
+	if parseError != nil {
+		t.Fatalf("parseRequestTicket: %v", parseError)
+	}
+	if ticket.Error != "tests never reached green" {
+		t.Fatalf("Error = %q, want the recorded failure reason", ticket.Error)
+	}
+	if ticket.ErrorType != "" || ticket.OriginalErrorType != "" || ticket.ErrorTypeUnrecognized {
+		t.Fatalf("absent error_type became (%q, %q, %v) — absence must never fabricate the contract default 'code'",
+			ticket.ErrorType, ticket.OriginalErrorType, ticket.ErrorTypeUnrecognized)
+	}
+	for _, warningText := range collectSchemaFieldWarnings([]*RequestTicket{ticket}) {
+		if strings.Contains(warningText, "error_type") {
+			t.Fatalf("absent error_type emitted a warning: %q", warningText)
+		}
+	}
+}
+
+func TestUnrecognizedErrorTypeFlagsAndWarns(t *testing.T) {
+	repoRoot := t.TempDir()
+	archiveDirectory := filepath.Join(repoRoot, "do-work", "archive")
+	if mkdirError := os.MkdirAll(archiveDirectory, 0o755); mkdirError != nil {
+		t.Fatalf("mkdir: %v", mkdirError)
+	}
+	requestFileContent := "---\nid: REQ-0908\ntitle: Bad failure class\nstatus: failed\nerror: fixture failure\nerror_type: cosmic-ray\n---\nbody\n"
+	if writeError := os.WriteFile(filepath.Join(archiveDirectory, "REQ-0908-bad-error-type.md"), []byte(requestFileContent), 0o644); writeError != nil {
+		t.Fatalf("write fixture: %v", writeError)
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), 7*24*time.Hour, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard: %v", buildError)
+	}
+	ticket := board.RequestsById["REQ-0908"]
+	if ticket == nil {
+		t.Fatalf("REQ-0908 not parsed")
+	}
+	if ticket.ErrorType != "code" || ticket.OriginalErrorType != "cosmic-ray" || !ticket.ErrorTypeUnrecognized {
+		t.Fatalf("unrecognized error_type provenance = (%q, %q, %v), want (%q, %q, true)",
+			ticket.ErrorType, ticket.OriginalErrorType, ticket.ErrorTypeUnrecognized,
+			"code", "cosmic-ray")
+	}
+	warningFound := false
+	for _, warningText := range board.Warnings {
+		if strings.Contains(warningText, "error_type") && strings.Contains(warningText, "cosmic-ray") {
+			warningFound = true
+		}
+	}
+	if !warningFound {
+		t.Fatalf("no error_type warning naming the written value; warnings=%v", board.Warnings)
+	}
+}

@@ -352,6 +352,157 @@ func TestDomainAndRouteProvenanceRenderAtFieldLevel(t *testing.T) {
 	}
 }
 
+func TestBuildGeneratedBoardDataCarriesFailureDetails(t *testing.T) {
+	board := &Board{
+		AllRequests: []*RequestTicket{
+			{
+				RequestId:             "REQ-1",
+				Error:                 "compiler exploded",
+				ErrorType:             "code",
+				OriginalErrorType:     "cosmic-ray",
+				ErrorTypeUnrecognized: true,
+			},
+			{
+				RequestId: "REQ-2",
+				Error:     "unclassified failure",
+			},
+		},
+	}
+
+	generatedData, buildError := buildGeneratedBoardData(board)
+	if buildError != nil {
+		t.Fatalf("buildGeneratedBoardData: %v", buildError)
+	}
+	invalidRequest := generatedData.Requests["REQ-1"]
+	if invalidRequest.Error != "compiler exploded" || invalidRequest.ErrorType != "code" ||
+		invalidRequest.OriginalErrorType != "cosmic-ray" || !invalidRequest.ErrorTypeUnrecognized {
+		t.Fatalf("failure projection = (%q, %q, %q, %v), want (%q, %q, %q, true)",
+			invalidRequest.Error, invalidRequest.ErrorType, invalidRequest.OriginalErrorType,
+			invalidRequest.ErrorTypeUnrecognized, "compiler exploded", "code", "cosmic-ray")
+	}
+	unclassifiedRequest := generatedData.Requests["REQ-2"]
+	if unclassifiedRequest.Error != "unclassified failure" {
+		t.Fatalf("unclassified failure Error = %q, want recorded failure text", unclassifiedRequest.Error)
+	}
+	if unclassifiedRequest.ErrorType != "" || unclassifiedRequest.OriginalErrorType != "" || unclassifiedRequest.ErrorTypeUnrecognized {
+		t.Fatalf("absent error_type projection = (%q, %q, %v), want empty/empty/false",
+			unclassifiedRequest.ErrorType, unclassifiedRequest.OriginalErrorType,
+			unclassifiedRequest.ErrorTypeUnrecognized)
+	}
+	encodedRequest, encodeError := json.Marshal(unclassifiedRequest)
+	if encodeError != nil {
+		t.Fatalf("marshal unclassified request: %v", encodeError)
+	}
+	if strings.Contains(string(encodedRequest), `"errorType"`) ||
+		strings.Contains(string(encodedRequest), `"originalErrorType"`) ||
+		strings.Contains(string(encodedRequest), `"errorTypeUnrecognized"`) {
+		t.Fatalf("absent error_type leaked into JSON: %s", encodedRequest)
+	}
+}
+
+func TestFailureDetailsRenderInTheDrawer(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	for _, requiredToken := range []string{
+		`appendMetaRow("Error", request.error)`,
+		"request.originalErrorType || request.errorType",
+		"request.errorTypeUnrecognized",
+		"schemaFieldDetailValue(request.originalErrorType, request.errorType",
+	} {
+		if !strings.Contains(indexHtml, requiredToken) {
+			t.Fatalf("failure details are not rendered in the drawer: %q missing", requiredToken)
+		}
+	}
+}
+
+func TestDrawerDropsOnlyAMatchingLeadingHeading(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	for _, requiredToken := range []string{
+		"function linkifyDetailBody(bodyRootElement, recordTitle)",
+		"bodyRootElement.firstElementChild",
+		`firstBodyElement.tagName === "H1"`,
+		"normalizeHeadingText(firstBodyElement.textContent) === normalizeHeadingText(recordTitle)",
+		"linkifyDetailBody(drawerBody, request.title)",
+		"linkifyDetailBody(drawerBody, userRequest.title)",
+	} {
+		if !strings.Contains(indexHtml, requiredToken) {
+			t.Fatalf("matching leading drawer-heading de-dup is not wired for REQ and UR bodies: %q missing", requiredToken)
+		}
+	}
+}
+
+// Execute the drawer post-processor under Node so the title de-duplication is
+// pinned to behavior: matching leading H1s disappear for both record kinds,
+// while a meaningful nonmatching H1 survives.
+func TestDrawerHeadingDeduplicationBehavior(t *testing.T) {
+	nodePath, lookupError := exec.LookPath("node")
+	if lookupError != nil {
+		t.Skip("node is unavailable; skipping drawer heading behavior check")
+	}
+	indexHtml := generateLiveSite(t)
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function normalizeHeadingText("),
+		sliceBalancedBlockAfter(t, indexHtml, "function linkifyDetailBody("),
+	}
+	javascriptProbe := `
+var NodeFilter = { SHOW_TEXT: 4 };
+var document = {
+  createTreeWalker: function () {
+    return { nextNode: function () { return false; } };
+  }
+};
+function makeDrawerBody(headingText) {
+  var bodyRoot = {
+    firstElementChild: null,
+    querySelectorAll: function () { return []; }
+  };
+  var heading = {
+    tagName: "H1",
+    textContent: headingText,
+    removed: false,
+    remove: function () {
+      this.removed = true;
+      bodyRoot.firstElementChild = null;
+    }
+  };
+  bodyRoot.firstElementChild = heading;
+  return { root: bodyRoot, heading: heading };
+}
+` + strings.Join(functionBlocks, "\n") + `
+var requestMatch = makeDrawerBody("  Compile   assets ");
+var requestMismatch = makeDrawerBody("Implementation notes");
+var userRequestMatch = makeDrawerBody("Launch plan");
+var userRequestMismatch = makeDrawerBody("Background");
+linkifyDetailBody(requestMatch.root, "Compile assets");
+linkifyDetailBody(requestMismatch.root, "Compile assets");
+linkifyDetailBody(userRequestMatch.root, "LAUNCH PLAN");
+linkifyDetailBody(userRequestMismatch.root, "Launch plan");
+process.stdout.write(JSON.stringify([
+  requestMatch.heading.removed,
+  requestMismatch.heading.removed,
+  userRequestMatch.heading.removed,
+  userRequestMismatch.heading.removed
+]));`
+	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
+	probeOutput, probeError := probeCommand.CombinedOutput()
+	if probeError != nil {
+		t.Fatalf("execute drawer heading behavior: %v\n%s", probeError, probeOutput)
+	}
+	var removedResults []bool
+	if decodeError := json.Unmarshal(probeOutput, &removedResults); decodeError != nil {
+		t.Fatalf("decode drawer heading behavior: %v (output %q)", decodeError, probeOutput)
+	}
+	wantedResults := []bool{true, false, true, false}
+	if len(removedResults) != len(wantedResults) {
+		t.Fatalf("drawer heading result count = %d, want %d: %#v", len(removedResults), len(wantedResults), removedResults)
+	}
+	for resultIndex := range wantedResults {
+		if removedResults[resultIndex] != wantedResults[resultIndex] {
+			t.Fatalf("drawer heading result[%d] = %v, want %v; all results=%#v",
+				resultIndex, removedResults[resultIndex], wantedResults[resultIndex], removedResults)
+		}
+	}
+}
+
 // The Copy payload must be the ticket file exactly as it exists on disk —
 // frontmatter fence included — so a paste can be saved straight back as a valid
 // REQ or UR file. Parsed from real files rather than hand-built structs, because

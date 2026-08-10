@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.21 — Visible Failures and Resolvable Archived Attempts (2026-08-10)
+
+Failed work now carries its recorded diagnosis into the board drawer, and legacy failures already consolidated inside closed UR folders have an explicit resolution path. Detail drawers also stop repeating a record's matching leading title without changing the exact Markdown copied from disk.
+
+- Projects `error` and present-only normalized `error_type` values into failed REQ drawers, retaining invalid provenance and warnings without fabricating a missing type
+- Removes only a matching leading H1 from rendered REQ and UR drawer bodies while keeping nonmatching headings and verbatim Copy payloads intact
+- Lets an explicitly named failed REQ inside `archive/UR-NNN/` be confirmed and cancelled in place without bulk-discovering, moving, or reopening closed UR history
+
 ## 0.186.20 — Verified Screenshot Staging Cleanup (2026-08-10)
 
 Screenshot captures dispatched to subagents no longer leave their hidden staging copies behind after the permanent UR assets are safe. Failed copies remain recoverable and visible in the capture report.
