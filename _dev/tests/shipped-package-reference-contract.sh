@@ -52,21 +52,124 @@ def read_manifest():
     return modules
 
 
+def mask_text_range(character_list, range_start, range_end):
+    for character_index in range(range_start, range_end):
+        if character_list[character_index] != "\n":
+            character_list[character_index] = " "
+
+
+def leading_indentation(line):
+    indentation_columns = 0
+    content_start = 0
+    while content_start < len(line) and line[content_start] in " \t":
+        if line[content_start] == "\t":
+            indentation_columns += 4 - (indentation_columns % 4)
+        else:
+            indentation_columns += 1
+        content_start += 1
+    return content_start, indentation_columns
+
+
+def line_opens_paragraph(line, content_start):
+    content = line[content_start:].rstrip("\r\n")
+    if not content or content.startswith("<!--"):
+        return False
+    if re.match(
+        r"^(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|[0-9]{1,9}[.)])(?:[ \t]|$)|\[[^\]\n]+\]:)",
+        content,
+    ):
+        return False
+    if re.fullmatch(r"(?:\*[ \t]*){3,}|(?:_[ \t]*){3,}|(?:-[ \t]*){3,}", content):
+        return False
+    if re.fullmatch(r"(?:=+|-+)[ \t]*", content):
+        return False
+    return True
+
+
+def escaped_inline_link_end(markdown_text, label_start):
+    if not punctuation_is_escaped(markdown_text, label_start):
+        return None
+
+    label_end = label_start + 1
+    nested_labels = 0
+    while label_end < len(markdown_text):
+        if markdown_text[label_end] == "[" and not punctuation_is_escaped(markdown_text, label_end):
+            nested_labels += 1
+        elif markdown_text[label_end] == "]" and not punctuation_is_escaped(markdown_text, label_end):
+            if nested_labels == 0:
+                break
+            nested_labels -= 1
+        elif markdown_text[label_end] == "\n":
+            return None
+        label_end += 1
+    if label_end >= len(markdown_text):
+        return None
+
+    opening_parenthesis = label_end + 1
+    if (
+        opening_parenthesis >= len(markdown_text)
+        or markdown_text[opening_parenthesis] != "("
+        or punctuation_is_escaped(markdown_text, opening_parenthesis)
+    ):
+        return None
+
+    cursor = opening_parenthesis + 1
+    nested_parentheses = 0
+    while cursor < len(markdown_text):
+        character = markdown_text[cursor]
+        punctuation_escaped = punctuation_is_escaped(markdown_text, cursor)
+        if character == "(" and not punctuation_escaped:
+            nested_parentheses += 1
+        elif character == ")" and not punctuation_escaped:
+            if nested_parentheses == 0:
+                return cursor + 1
+            nested_parentheses -= 1
+        elif character == "\n":
+            return None
+        cursor += 1
+    return None
+
+
+def escaped_reference_definition_end(markdown_text, line_start, line_end):
+    line = markdown_text[line_start:line_end]
+    indentation_length = len(line) - len(line.lstrip(" "))
+    if indentation_length > 3:
+        return None
+
+    label_start = line_start + indentation_length
+    while label_start < line_end and markdown_text[label_start] == "\\":
+        label_start += 1
+    if label_start >= line_end or markdown_text[label_start] != "[":
+        return None
+
+    opening_bracket_escaped = punctuation_is_escaped(markdown_text, label_start)
+    label_end = label_start + 1
+    while label_end + 1 < line_end:
+        if markdown_text[label_end] == "]" and markdown_text[label_end + 1] == ":":
+            closing_bracket_escaped = punctuation_is_escaped(markdown_text, label_end)
+            if opening_bracket_escaped or closing_bracket_escaped:
+                return line_end
+            return None
+        label_end += 1
+    return None
+
+
 def strip_markdown_code(markdown_text):
     code_free_text = list(markdown_text)
     fence_character = None
     fence_length = 0
+    paragraph_active = False
     line_start = 0
 
     for line in markdown_text.splitlines(keepends=True):
         line_end = line_start + len(line)
         fence_match = re.match(r"^[ ]{0,3}(`{3,}|~{3,})", line)
-        indented_code = fence_character is None and (
-            line.startswith("\t") or line.startswith("    ")
-        )
-        if indented_code:
-            pass
-        elif fence_match:
+        content_start, indentation_columns = leading_indentation(line)
+        blank_line = not line[content_start:].strip("\r\n")
+        line_is_code = False
+
+        if fence_match:
+            line_is_code = True
             fence = fence_match.group(1)
             if fence_character is None:
                 fence_character = fence[0]
@@ -74,12 +177,22 @@ def strip_markdown_code(markdown_text):
             elif fence[0] == fence_character and len(fence) >= fence_length:
                 fence_character = None
                 fence_length = 0
-        elif fence_character is None:
-            line_start = line_end
-            continue
-        for code_index in range(line_start, line_end):
-            if code_free_text[code_index] != "\n":
-                code_free_text[code_index] = " "
+            paragraph_active = False
+        elif fence_character is not None:
+            line_is_code = True
+            paragraph_active = False
+        elif indentation_columns >= 4 and not paragraph_active:
+            line_is_code = True
+            paragraph_active = False
+        elif blank_line:
+            paragraph_active = False
+        elif indentation_columns >= 4:
+            paragraph_active = True
+        else:
+            paragraph_active = line_opens_paragraph(line, content_start)
+
+        if line_is_code:
+            mask_text_range(code_free_text, line_start, line_end)
         line_start = line_end
 
     rendered_text = "".join(code_free_text)
@@ -88,12 +201,10 @@ def strip_markdown_code(markdown_text):
         if rendered_text.startswith("<!--", index):
             comment_end = rendered_text.find("-->", index + 4)
             masked_end = len(rendered_text) if comment_end < 0 else comment_end + 3
-            for code_index in range(index, masked_end):
-                if code_free_text[code_index] != "\n":
-                    code_free_text[code_index] = " "
+            mask_text_range(code_free_text, index, masked_end)
             index = masked_end
             continue
-        if rendered_text[index] != "`":
+        if rendered_text[index] != "`" or punctuation_is_escaped(rendered_text, index):
             index += 1
             continue
         run_end = index
@@ -103,7 +214,10 @@ def strip_markdown_code(markdown_text):
         closing_start = None
         search_index = run_end
         while search_index < len(rendered_text):
-            if rendered_text[search_index] != "`":
+            if (
+                rendered_text[search_index] != "`"
+                or punctuation_is_escaped(rendered_text, search_index)
+            ):
                 search_index += 1
                 continue
             search_end = search_index
@@ -117,10 +231,32 @@ def strip_markdown_code(markdown_text):
             index = run_end
             continue
         masked_end = closing_start + marker_length
-        for code_index in range(index, masked_end):
-            if code_free_text[code_index] != "\n":
-                code_free_text[code_index] = " "
+        mask_text_range(code_free_text, index, masked_end)
         index = masked_end
+
+    rendered_text = "".join(code_free_text)
+    label_start = 0
+    while label_start < len(rendered_text):
+        label_start = rendered_text.find("[", label_start)
+        if label_start < 0:
+            break
+        masked_end = escaped_inline_link_end(rendered_text, label_start)
+        if masked_end is None:
+            label_start += 1
+            continue
+        mask_text_range(code_free_text, label_start, masked_end)
+        label_start = masked_end
+
+    rendered_text = "".join(code_free_text)
+    line_start = 0
+    for line in rendered_text.splitlines(keepends=True):
+        line_end = line_start + len(line)
+        masked_end = escaped_reference_definition_end(
+            rendered_text, line_start, line_end
+        )
+        if masked_end is not None:
+            mask_text_range(code_free_text, line_start, masked_end)
+        line_start = line_end
     return "".join(code_free_text)
 
 
@@ -310,6 +446,16 @@ def run_parser_fixtures():
             ["live.md"],
         ),
         (
+            "effective-column indented code and paragraph continuation",
+            " \t[hidden](missing-one-space-tab.md)\n"
+            "  \t[hidden](missing-two-space-tab.md)\n"
+            "   \t[hidden](missing-three-space-tab.md)\n\n"
+            "active paragraph\n"
+            "    [live](live-continuation.md)\n\n"
+            "    [hidden](missing-code-block.md)\n",
+            ["live-continuation.md"],
+        ),
+        (
             "HTML comments",
             "[before](before.md) <!-- [hidden](missing-inline-comment.md) -->\n<!--\n`comment backtick` [hidden](missing-block-comment.md)\n--> [after](after.md)\n",
             ["before.md", "after.md"],
@@ -325,6 +471,14 @@ def run_parser_fixtures():
             ["live.md"],
         ),
         (
+            "escaped inline code delimiters",
+            r"\`[live](live-escaped-backtick.md)\` "
+            r"\\`[hidden](missing-even-backslash.md)\\` "
+            "`[hidden](missing-ordinary-code.md)` "
+            "``[hidden](missing-exact-run-code.md)``\n",
+            ["live-escaped-backtick.md"],
+        ),
+        (
             "comment marker inside inline code",
             "`<!-- [hidden](missing-code-comment.md) -->` [live](live.md)\n",
             ["live.md"],
@@ -335,9 +489,37 @@ def run_parser_fixtures():
             ["even.md"],
         ),
         (
+            "escaped link regions",
+            r"\[hidden](missing-escaped-relative.md) "
+            r"\[hidden](https://raw.githubusercontent.com/knews2019/skill-do-work/main/missing-escaped-url.md) "
+            r"\\[live](live-even-relative.md) "
+            r"\\[live](https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION)"
+            + "\n",
+            [
+                "live-even-relative.md",
+                "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
+            ],
+        ),
+        (
             "escaped reference syntax",
             r"\[hidden]: missing-open.md" + "\n" + r"[hidden\]: missing-close.md" + "\n[live]: live.md\n",
             ["live.md"],
+        ),
+        (
+            "escaped reference-definition regions",
+            r"\[hidden]: https://raw.githubusercontent.com/knews2019/skill-do-work/main/missing-open-reference.md"
+            + "\n"
+            + r"[hidden\]: https://raw.githubusercontent.com/knews2019/skill-do-work/main/missing-close-reference.md"
+            + "\n"
+            + r"\\[live]: https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION"
+            + "\n"
+            + r"[live\\]: https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION"
+            + "\n[live]: https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION\n",
+            [
+                "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
+                "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
+                "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
+            ],
         ),
         (
             "published link forms",

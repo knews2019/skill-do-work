@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.10 — Shared Markdown Rendered-Region Classification (2026-08-10)
+
+Shipped-reference checks now make one length-preserving Markdown visibility decision before any target-discovery path runs, closing false positives and false negatives across the approved indentation, code-span, and escaped-link cases.
+
+- Classifies tab-expanded indented code by effective columns while preserving top-level four-space paragraph continuations
+- Keeps links between escaped backticks live and retains ordinary/even-parity exact-run code-span masking
+- Hides escaped inline-link and escaped reference-definition targets from both structural extraction and the bare first-party URL fallback
+- Adds exact production-helper RED/GREEN fixtures while retaining topology, raw/blob, containment, changelog-identity, and distribution contracts
+- Independent review captured the remaining delimiter and list-paragraph variants in consent-gated REQ-161
+
 ## 0.186.9 — Complete Retired Core Alias Inventory (2026-08-09)
 
 Retired core command drift can no longer return under an alias merely because it was absent from a hand-picked sample. The distribution guard now reads one test-only historical inventory without republishing compatibility routes or banning ordinary prose.

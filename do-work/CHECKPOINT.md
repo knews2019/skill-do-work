@@ -10,7 +10,6 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-None. The queue loop ended at a clean REQ boundary; no REQ is claimed.
 
 ## Completed This Session
 
