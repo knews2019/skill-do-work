@@ -400,8 +400,17 @@ if actual_install_heads != expected_install_heads or len(install_head_rows) != 3
     )
 
 sorted_triggers = sorted(legacy_triggers, key=lambda trigger: (-len(trigger), trigger))
+trigger_match_kinds = {
+    row["legacy_trigger"]: row["match_kind"] for row in trigger_rows
+}
 retired_command_head = re.compile(r"(?<![A-Za-z0-9_-])do-work ")
 forbidden_right_boundary = re.compile(r"[A-Za-z0-9_'-]")
+install_target = re.compile(r"[A-Za-z0-9_]+(?:-[A-Za-z0-9_]+)*")
+exempt_command_fragments = (
+    "PROJECT_NAME — do-work queue board",
+    '<title> text "do-work queue board"',
+    'strings.Contains(bodyText, "do-work queue board")',
+)
 
 def collect_live_files(root):
     live_files = [root / "justfile"]
@@ -413,77 +422,141 @@ def collect_live_files(root):
     return [path for path in live_files if path.is_file()]
 
 
+def find_exempt_occurrence_spans(text):
+    spans = set()
+    exempt_command = "do-work queue board"
+    for fragment in exempt_command_fragments:
+        command_offset = fragment.index(exempt_command)
+        search_start = 0
+        while True:
+            fragment_start = text.find(fragment, search_start)
+            if fragment_start < 0:
+                break
+            occurrence_start = fragment_start + command_offset
+            spans.add(
+                (occurrence_start, occurrence_start + len(exempt_command))
+            )
+            search_start = fragment_start + 1
+    return spans
+
+
 def find_retired_matches(text):
     matches = []
+    exempt_occurrence_spans = find_exempt_occurrence_spans(text)
     for command_match in retired_command_head.finditer(text):
         command_start = command_match.end()
         command_remainder = text[command_start:]
-        trigger = next(
-            (
-                candidate
-                for candidate in sorted_triggers
-                if command_remainder.startswith(candidate)
-            ),
-            None,
-        )
-        if trigger is None:
+        trigger = None
+        boundary_index = None
+        for candidate in sorted_triggers:
+            if not command_remainder.startswith(candidate):
+                continue
+            candidate_boundary = command_start + len(candidate)
+            if candidate == "install-" and candidate_boundary < len(text):
+                target_match = install_target.match(text, candidate_boundary)
+                if target_match:
+                    candidate_boundary = target_match.end()
+            if candidate_boundary < len(text) and forbidden_right_boundary.match(
+                text[candidate_boundary]
+            ):
+                if (
+                    text[candidate_boundary] == "'"
+                    or trigger_match_kinds[candidate]
+                    not in {"install-space", "install-prefix", "setup-space"}
+                ):
+                    break
+                continue
+            trigger = candidate
+            boundary_index = candidate_boundary
+            break
+        if trigger is None or boundary_index is None:
             continue
-        boundary_index = command_start + len(trigger)
-        if boundary_index < len(text) and forbidden_right_boundary.match(
-            text[boundary_index]
-        ):
+        occurrence_span = (command_match.start(), boundary_index)
+        if trigger == "queue board" and occurrence_span in exempt_occurrence_spans:
             continue
-        product_title_start = command_match.start() - len("PROJECT_NAME — ")
-        if (
-            trigger == "queue board"
-            and product_title_start >= 0
-            and text[product_title_start:boundary_index]
-            == "PROJECT_NAME — do-work queue board"
-        ):
-            continue
-        matches.append(trigger)
+        matches.append((trigger, *occurrence_span))
     return matches
+
+
+def matched_triggers(text):
+    return [trigger for trigger, _, _ in find_retired_matches(text)]
+
+
+adversarial_controls = {
+    '<title> text "do-work queue board"': [],
+    'strings.Contains(bodyText, "do-work queue board")': [],
+    "PROJECT_NAME — do-work queue board; do-work queue board": ["queue board"],
+    '<title> text "do-work queue board"; do-work queue board': ["queue board"],
+    'strings.Contains(bodyText, "do-work queue board"); do-work queue board': [
+        "queue board"
+    ],
+    "do-work install ui-design2": ["install"],
+    "do-work setup ui-design2": ["setup"],
+    "do-work install-custom-target": ["install-"],
+}
+adversarial_failures = []
+for adversarial_control, expected_triggers in adversarial_controls.items():
+    matches = matched_triggers(adversarial_control)
+    if matches != expected_triggers:
+        adversarial_failures.append(
+            f"{adversarial_control!r}: expected {expected_triggers!r}, found {matches!r}"
+        )
+if adversarial_failures:
+    raise SystemExit(
+        "retired-trigger matcher missed adversarial controls:\n"
+        + "\n".join(adversarial_failures)
+    )
 
 
 negative_controls = (
     "Do-Work Board Skill",
     "PROJECT_NAME — do-work queue board",
+    '<title> text "do-work queue board"',
+    'strings.Contains(bodyText, "do-work queue board")',
     "do-work board's testing view",
     "The board shows knowledge and toolbox status as ordinary nouns.",
     "This work pipeline runs after the CI pipeline and data pipeline.",
     "do-work run REQ-157",
     "do-work review code",
     "do-work help",
+    "do-work install-custom-target's",
     "do-work-board board",
     "do-work-knowledge memory recall",
     "do-work-toolbox code-review",
 )
 for negative_control in negative_controls:
-    if find_retired_matches(negative_control):
+    if matched_triggers(negative_control):
         raise SystemExit(
             f"retired-trigger matcher rejected negative control: {negative_control!r}"
         )
 
 positive_controls = {
-    "Deprecated — do-work kanban": "kanban",
+    "Deprecated — do-work kanban": ["kanban"],
 }
-for positive_control, expected_trigger in positive_controls.items():
-    matches = find_retired_matches(positive_control)
-    if matches != [expected_trigger]:
+for positive_control, expected_triggers in positive_controls.items():
+    matches = matched_triggers(positive_control)
+    if matches != expected_triggers:
         raise SystemExit(
             f"retired-trigger matcher missed positive control {positive_control!r}: "
-            f"expected {expected_trigger!r}, found {matches!r}"
+            f"expected {expected_triggers!r}, found {matches!r}"
         )
 
 for row in trigger_rows:
     trigger = row["legacy_trigger"]
-    for negative_form in (
+    negative_forms = [
         f"undo-work {trigger}",
-        f"do-work {trigger}-suffix",
-        f"do-work {trigger}suffix",
         f"do-work {trigger}'s",
-    ):
-        if find_retired_matches(negative_form):
+    ]
+    if row["match_kind"] == "direct" or trigger == "setup":
+        negative_forms.extend(
+            (f"do-work {trigger}-suffix", f"do-work {trigger}suffix")
+        )
+    elif trigger == "install":
+        negative_forms.append(f"do-work {trigger}suffix")
+    elif trigger == "install-":
+        negative_forms.append(f"do-work {trigger}-suffix")
+    for negative_form in negative_forms:
+        if matched_triggers(negative_form):
             raise SystemExit(
                 f"retired-trigger matcher crossed a command boundary for {row!r}: "
                 f"{negative_form!r}"
@@ -531,7 +604,7 @@ with tempfile.TemporaryDirectory(prefix="retired-trigger-contract-") as temp_dir
         if len(mutation_lines) != len(trigger_rows):
             raise SystemExit(f"incomplete mutation file: {mutation_file}")
         for row, mutation_line in zip(trigger_rows, mutation_lines):
-            matches = find_retired_matches(mutation_line)
+            matches = matched_triggers(mutation_line)
             if len(matches) != 1:
                 raise SystemExit(
                     f"expected exactly one retired match for {row!r} in "
@@ -546,12 +619,7 @@ with tempfile.TemporaryDirectory(prefix="retired-trigger-contract-") as temp_dir
 violations = []
 for live_file in collect_live_files(repository_root):
     for line_number, line in enumerate(live_file.read_text(errors="replace").splitlines(), 1):
-        for legacy_trigger in find_retired_matches(line):
-            if legacy_trigger == "queue board" and (
-                '<title> text "do-work queue board"' in line
-                or 'strings.Contains(bodyText, "do-work queue board")' in line
-            ):
-                continue
+        for legacy_trigger, _, _ in find_retired_matches(line):
             violations.append(
                 f"{live_file.relative_to(repository_root)}:{line_number}: "
                 f"do-work {legacy_trigger}"

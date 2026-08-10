@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.12 — Occurrence-Complete Retired Alias Matching (2026-08-10)
+
+The test-only retired-command guard now evaluates exact source occurrences and overlapping historical install/setup candidates completely, so approved queue-board references cannot hide another retired invocation and invalid longer candidates cannot suppress a valid former command head.
+
+- Applies queue-board branding and test-reference exemptions only to their exact source spans
+- Continues eligible install/setup candidate evaluation after a longer historical trigger fails its right boundary
+- Recognizes unknown former `install-<target>` routes through the test-only historical prefix without restoring runtime compatibility
+- Preserves all 186 inventory identities, 585 direct-boundary negatives, current sibling routes, prime fingerprints, and repaired live surfaces
+- Adds focused aggregate RED controls and passes a 34-case independent adversarial acceptance matrix plus full distribution contracts
+
 ## 0.186.11 — Just Ordinary-Quote and Triple-Backtick State (2026-08-10)
 
 Safe custom Justfiles no longer look like reserved-recipe collisions merely because ordinary quoted values or triple-backtick commands span physical lines. Real definitions around every form still fail before mutation with the same exact diagnostic.

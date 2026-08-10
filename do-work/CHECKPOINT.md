@@ -10,7 +10,6 @@ session_depth: light
 
 ## In Progress (interrupted)
 
-
 ## Completed This Session
 
 - REQ-157: complete test-only retired core alias inventory (Route C, 73%, Acceptance Partial) — v0.186.9, implementation `1f7a245`, metadata `6010d81`; review created consent-gated REQ-160.
