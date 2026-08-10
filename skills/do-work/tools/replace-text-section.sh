@@ -189,14 +189,25 @@ def just_multiline_string_state(line: bytes, active_delimiter):
 def just_definition_names(data: bytes):
     definition_names = set()
     active_delimiter = None
+    pending_definition_lines = []
     for line in data.splitlines(keepends=True):
         line_starts_in_multiline_string = active_delimiter is not None
-        active_delimiter = just_multiline_string_state(line, active_delimiter)
         if line_starts_in_multiline_string:
+            pending_definition_lines.append(line)
+        else:
+            pending_definition_lines = [line]
+        active_delimiter = just_multiline_string_state(line, active_delimiter)
+        if line_starts_in_multiline_string and active_delimiter is not None:
             continue
-        definition_name = just_definition_name(line)
+        if line_starts_in_multiline_string:
+            definition_source = b"".join(pending_definition_lines)
+        else:
+            definition_source = line
+        definition_name = just_definition_name(definition_source)
         if definition_name is not None:
             definition_names.add(definition_name)
+        if active_delimiter is None:
+            pending_definition_lines = []
     return definition_names
 
 

@@ -135,14 +135,16 @@ None
 **What worked:**
 - Relative targets beside first-party controls exposed structural extraction gaps that the bare-URL fallback had previously hidden.
 - Treating a complete live link as one region and tracking list fences at their content column fixed the context errors without altering downstream target policy.
+- Differential minimal reproductions against the CommonMark parser separated rendered references from link-shaped source text and exposed both directions of classifier drift: a live post-list link was hidden, while a literal backslash-separated pseudo-link was published.
 
 **What didn't:**
-- Earlier first-party-only parity fixtures could pass through the fallback while relative links remained broken, and scanning every bracket independently misread escaped label content as a new link.
-- Bare list-fence controls did not exercise attached info strings, ordered-marker width, or nested fence indentation.
+- The even-parity destination-opener premise in D-02 was incorrect. Backslash parity governs whether punctuation is escaped, but it does not remove source characters before structural parsing; any backslash between `]` and `(` breaks the adjacency required for an inline link.
+- List-fence state tracked delimiter and indentation but not the containing list item's lifetime. Closed-only fixtures missed the valid CommonMark path where an unclosed fence ends at container dedent, causing the checker to mask subsequent top-level links through EOF.
 
 **Worth knowing:**
-- Markdown classifier fixtures should pair relative and first-party targets for every delimiter form, and list-fence tests need the opener, matching content indentation, closer, and a live post-fence continuation in the same case.
+- Markdown classifiers need both lexical and container state. Inline targets require direct `](` adjacency; backslash-separated pseudo-links should remain masked from bare-URL fallback without being extracted structurally. A list fence ends on a compatible closer or a nonblank container-ending dedent, and the dedented line must be reprocessed as live Markdown.
+- Pair structural fixtures with an authoritative renderer, and cover zero through several escape characters plus explicit, missing, and over-indented fence closers. Self-consistent helper tests can otherwise ratify the same mistaken grammar assumption as the implementation.
 
 ## Orientation
 
-The shipped-reference release guard now classifies relative delimiter parity, escaped bracket content inside live labels, and nested list-item fences consistently; publication and target-resolution policy remain unchanged.
+The shipped-reference release guard now follows rendered Markdown boundaries: only adjacent inline-link openers publish targets, escaped pseudo-links stay out of the bare-URL fallback, and list-item fences stop at either a compatible closer or their container boundary before later top-level references are scanned.

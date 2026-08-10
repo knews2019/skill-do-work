@@ -97,6 +97,31 @@ chmod +x "$archive_root/tools/"*.sh
 archive_file="$workdir/do-work-suite.tar.gz"
 tar czf "$archive_file" -C "$archive_parent" skill-do-work-main
 
+# Reject a suite whose runtime-reported action version differs before creating any
+# managed path. Fresh installs have no backup to restore, so validation must precede
+# the first write rather than relying on the updater's later comparison.
+mismatched_archive_parent="$workdir/mismatched-archive-source"
+mismatched_archive_root="$mismatched_archive_parent/skill-do-work-main"
+mkdir -p "$mismatched_archive_parent"
+cp -R "$archive_root" "$mismatched_archive_root"
+sed 's/^\*\*Current version\*\*: .*/**Current version**: 9.9.9/' \
+  "$mismatched_archive_root/skills/do-work/actions/version.md" \
+  > "$mismatched_archive_root/skills/do-work/actions/version.md.next"
+mv "$mismatched_archive_root/skills/do-work/actions/version.md.next" \
+  "$mismatched_archive_root/skills/do-work/actions/version.md"
+mismatched_archive_file="$workdir/mismatched-suite.tar.gz"
+tar czf "$mismatched_archive_file" -C "$mismatched_archive_parent" skill-do-work-main
+mismatched_project="$workdir/mismatched-version-project"
+new_git_project "$mismatched_project"
+mismatched_status=0
+run_installer "$mismatched_project" "$mismatched_archive_file" \
+  "$workdir/mismatched-version.out" || mismatched_status=$?
+if [ "$mismatched_status" -eq 0 ]; then
+  fail 'installer accepted an archive whose actions/version.md disagreed with suite VERSION'
+elif [ -e "$mismatched_project/.claude" ] || [ -e "$mismatched_project/justfile" ]; then
+  fail 'version-mismatched archive created managed paths before rejection'
+fi
+
 # The exact printed bootstrap must need no installed skill and fetch only this one archive.
 bootstrap_command="$(bash "$installer" --print-bootstrap-command)"
 assert_output_contains "$bootstrap_command" 'main\.tar\.gz' 'canonical bootstrap must fetch the upstream source archive'

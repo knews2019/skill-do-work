@@ -35,6 +35,10 @@ make_valid_fixture() {
     mkdir -p "$archive_root/skills/$module_name"
     printf '# %s\n' "$module_name" > "$archive_root/skills/$module_name/SKILL.md"
   done
+  mkdir -p "$archive_root/skills/do-work/actions"
+  printf '0.184.0\n' > "$archive_root/skills/do-work/VERSION"
+  printf '# Version Action\n\n**Current version**: 0.184.0\n' \
+    > "$archive_root/skills/do-work/actions/version.md"
 }
 
 clone_valid_fixture() {
@@ -143,6 +147,17 @@ expect_fail "$case_root" 'symlink source escape'
 case_root="$(clone_valid_fixture invalid-version)"
 printf 'v1\n' > "$case_root/VERSION"
 expect_fail "$case_root" 'invalid suite version'
+
+case_root="$(clone_valid_fixture mismatched-core-version)"
+printf '0.184.1\n' > "$case_root/skills/do-work/VERSION"
+expect_fail "$case_root" 'core VERSION differs from suite VERSION'
+
+case_root="$(clone_valid_fixture mismatched-action-version)"
+sed 's/0\.184\.0/9.9.9/' "$case_root/skills/do-work/actions/version.md" \
+  > "$case_root/skills/do-work/actions/version.md.next"
+mv "$case_root/skills/do-work/actions/version.md.next" \
+  "$case_root/skills/do-work/actions/version.md"
+expect_fail "$case_root" 'runtime action version differs from suite VERSION'
 
 if [ "$fail_count" -gt 0 ]; then
   exit 1

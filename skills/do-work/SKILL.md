@@ -27,6 +27,7 @@ Check these patterns in order; first match wins.
 |---|---|
 | empty, `help` | `./actions/help.md` |
 | `run`, `go`, `start`, `work`, `process`, `continue`, `resume` | `./actions/work.md` |
+| `check for updates`, `check for update`, `is there a newer version` | `./actions/version.md` |
 | `verify`, `verify-requests`, `check`, `review requests` | `./actions/verify-requests.md` |
 | `review`, `review-work`, `review code`, `audit implementation` | `./actions/review-work.md` |
 | `clarify`, `questions`, `pending answers`, `blocked` | `./actions/clarify.md` |
@@ -35,7 +36,7 @@ Check these patterns in order; first match wins.
 | `commit`, `commit changes`, `save changes` | `./actions/commit.md` |
 | `forensics`, `diagnose`, `health check` | `./actions/forensics.md` |
 | `roadmap`, `queue-status`, `where are we`, `what's left` | `./actions/roadmap.md` |
-| `version`, `update`, `what's new`, `release notes`, `history`, `recap` | `./actions/version.md` |
+| `version`, `update`, `updates`, `what version`, `what's new`, `what's changed`, `release notes`, `history`, `recap` | `./actions/version.md` |
 | `capture-request:` / `capture request:` or unmatched descriptive multi-word input | `./actions/capture.md` |
 
 An unknown single word is ambiguous: ask whether the user wants it captured or meant another command.

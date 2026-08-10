@@ -24,7 +24,7 @@ do-work — core request and queue orchestration
 
 Extensions installed beside core — run <package> help for usage on any of these:
 
-  do-work-board      board · static · summary · cli
+  do-work-board      board [serve|static|summary|cli]
   do-work-knowledge  bkb · memory · dream · interview · prompts · setup-memory
   do-work-toolbox    validate-feedback · code-review · ui-review · present-work
                      ai-report · slop-check · quick-wins · scan-ideas

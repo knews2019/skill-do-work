@@ -139,10 +139,12 @@ def inline_link_region(markdown_text, label_start):
         label_end = escaped_label_end
 
     opening_parenthesis = label_end + 1
+    has_backslash_separator = False
     while (
         opening_parenthesis < len(markdown_text)
         and markdown_text[opening_parenthesis] == "\\"
     ):
+        has_backslash_separator = True
         opening_parenthesis += 1
     if (
         opening_parenthesis >= len(markdown_text)
@@ -152,6 +154,7 @@ def inline_link_region(markdown_text, label_start):
     structural_delimiter_escaped = (
         opening_bracket_escaped
         or punctuation_is_escaped(markdown_text, label_end)
+        or has_backslash_separator
         or punctuation_is_escaped(markdown_text, opening_parenthesis)
     )
 
@@ -224,6 +227,17 @@ def strip_markdown_code(markdown_text):
                 list_fence_match = None
         blank_line = not line[content_start:].strip("\r\n")
         line_is_code = False
+
+        if (
+            fence_character is not None
+            and list_fence_indentation is not None
+            and not blank_line
+            and indentation_columns < list_fence_indentation
+        ):
+            fence_character = None
+            fence_length = 0
+            list_fence_indentation = None
+            paragraph_active = False
 
         if fence_character is not None:
             line_is_code = True
@@ -388,11 +402,6 @@ def inline_link_targets(markdown_text):
             continue
 
         opening_parenthesis = label_end + 1
-        while (
-            opening_parenthesis < len(markdown_text)
-            and markdown_text[opening_parenthesis] == "\\"
-        ):
-            opening_parenthesis += 1
         if (
             opening_parenthesis >= len(markdown_text)
             or markdown_text[opening_parenthesis] != "("
@@ -624,6 +633,28 @@ def run_parser_fixtures():
             ],
         ),
         (
+            "unclosed list-item fences end at their container boundary",
+            "- ```markdown\n"
+            "  [hidden](missing-unclosed-bullet-fence.md)\n"
+            "[live](live-after-unclosed-bullet-fence.md)\n"
+            "1. ~~~text\n"
+            "   [hidden](missing-unclosed-ordered-fence.md)\n"
+            "[live](live-after-unclosed-ordered-fence.md)\n"
+            "  - ```nested\n"
+            "    [hidden](missing-unclosed-nested-fence.md)\n"
+            "[live](live-after-unclosed-nested-fence.md)\n"
+            "- ```markdown\n"
+            "  [hidden](missing-over-indented-closer-content.md)\n"
+            "      ```\n"
+            "[live](live-after-over-indented-closer.md)\n",
+            [
+                "live-after-unclosed-bullet-fence.md",
+                "live-after-unclosed-ordered-fence.md",
+                "live-after-unclosed-nested-fence.md",
+                "live-after-over-indented-closer.md",
+            ],
+        ),
+        (
             "HTML comments",
             "[before](before.md) <!-- [hidden](missing-inline-comment.md) -->\n<!--\n`comment backtick` [hidden](missing-block-comment.md)\n--> [after](after.md)\n",
             ["before.md", "after.md"],
@@ -685,27 +716,25 @@ def run_parser_fixtures():
             ],
         ),
         (
-            "odd-parity escaped opening-parenthesis inline links",
+            "backslash-separated destination openers are not inline links",
             r"[hidden]\(https://raw.githubusercontent.com/knews2019/skill-do-work/main/missing-escaped-opening-parenthesis.md) "
-            r"[live]\\(https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION) "
+            r"[hidden]\\(https://raw.githubusercontent.com/knews2019/skill-do-work/main/missing-even-opening-parenthesis.md) "
             r"[ordinary](https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION)"
             + "\n",
             [
                 "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
-                "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
             ],
         ),
         (
-            "zero and even-parity destination-opening parentheses",
+            "destination-opening parenthesis adjacency",
             r"[zero](zero-relative.md) "
-            r"[two]\\(two-backslash-relative.md) "
-            r"[four]\\\\(four-backslash-relative.md) "
-            r"[hidden]\(missing-odd-relative.md)"
+            r"[one]\(missing-one-backslash-relative.md) "
+            r"[two]\\(missing-two-backslash-relative.md) "
+            r"[three]\\\(missing-three-backslash-relative.md) "
+            r"[four]\\\\(missing-four-backslash-relative.md)"
             + "\n",
             [
                 "zero-relative.md",
-                "two-backslash-relative.md",
-                "four-backslash-relative.md",
             ],
         ),
         (

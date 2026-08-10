@@ -105,6 +105,67 @@ assert_file_not_contains() {
 skill_dispatch_block="$(sed -n '/^## Routing/,/^## Dispatch/p' "$core_root/SKILL.md")"
 work_archive_success_block="$(sed -n '/^### Step 8: Archive/,/^\*\*On failure:/p' "$core_root/actions/work.md")"
 
+# Every phrase the version action documents must be reachable from the always-loaded
+# router. Derive the phrase set from the action instead of maintaining a second alias
+# inventory, then check the one precedence edge that matters: the exact update-check
+# phrase must win before generic request verification's `check` alias.
+if ! python3 - "$core_root/SKILL.md" "$core_root/actions/version.md" <<'PY'
+import pathlib
+import re
+import sys
+
+router_file = pathlib.Path(sys.argv[1])
+version_action_file = pathlib.Path(sys.argv[2])
+router_text = router_file.read_text()
+version_action_text = version_action_file.read_text()
+
+routing_block = router_text.split("## Routing", 1)[1].split("## Dispatch", 1)[0]
+route_rows = []
+for line_number, line in enumerate(routing_block.splitlines(), start=1):
+    if not line.startswith("|") or "`./actions/" not in line:
+        continue
+    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+    if len(cells) != 2:
+        continue
+    aliases = re.findall(r"`([^`]+)`", cells[0])
+    route_rows.append((line_number, aliases, cells[1]))
+
+documented_phrases = []
+for mode_name in ("Version request", "Update check", "Recap"):
+    mode_match = re.search(
+        rf"^- \*\*{re.escape(mode_name)}\*\* — (.+)$",
+        version_action_text,
+        flags=re.MULTILINE,
+    )
+    if mode_match is None:
+        raise SystemExit(f"version action has no {mode_name} phrase declaration")
+    documented_phrases.extend(re.findall(r'"([^"]+)"', mode_match.group(1)))
+
+alias_routes = {}
+for row_number, aliases, route in route_rows:
+    for alias in aliases:
+        alias_routes.setdefault(alias, []).append((row_number, route))
+
+for phrase in dict.fromkeys(documented_phrases):
+    matches = alias_routes.get(phrase, [])
+    if len(matches) != 1 or "`./actions/version.md`" not in matches[0][1]:
+        raise SystemExit(
+            f"documented version phrase {phrase!r} must route exactly once to actions/version.md; "
+            f"found {matches or 'no route'}"
+        )
+
+update_check_row = alias_routes["check for updates"][0][0]
+generic_check_matches = alias_routes.get("check", [])
+if len(generic_check_matches) != 1:
+    raise SystemExit(f"generic check alias must route exactly once; found {generic_check_matches}")
+if update_check_row >= generic_check_matches[0][0]:
+    raise SystemExit("check for updates must route before the generic check alias")
+PY
+then
+  printf 'FAIL: core version/update phrases drifted from first-match routing.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 for retired_pipeline_path in \
   skills/do-work/actions/pipeline.md \
   skills/do-work/actions/pipeline-reference.md \
@@ -876,16 +937,18 @@ else
   done
 fi
 
-# The prescribed invocation's ARGUMENT ORDER, not just the subcommand name (REQ-081). next-version
-# takes the bump size as a positional and --repo-root/--version-file as flags. The parser now accepts
-# either order, but the documented form is the one every agent copies — and when the flags trailed the
-# positional, a single flag.FlagSet.Parse discarded them, so the command bumped whatever repo it was
-# launched from and exited 0. Asserting only that the subcommand name appears (below) is what let the
-# documented form stay broken through a release. Flags first is the form pinned here.
-assert_contains \
+# Project release instructions must never point next-version at the managed core
+# package. That action file is the suite runtime's version source, not the consumer
+# application's selected release source; bumping it poisons later update comparisons.
+assert_file_not_contains \
   "actions/work.md" \
-  'queue-kanban/queue-kanban next-version --repo-root <project-root> --version-file "<skill-root>/actions/version\.md" <patch\|minor\|major>' \
-  'actions/work.md must prescribe next-version with the flags BEFORE the positional bump size — a trailing --repo-root was silently discarded before REQ-081, and the documented form is what every agent copies even now that the parser tolerates both.'
+  'queue-kanban next-version|queue-kanban/queue-kanban next-version|--version-file.*<skill-root>/actions/version\.md' \
+  'actions/work.md must leave project version bumps to the Changelog Entry Procedure and never mutate the installed suite version.'
+
+assert_contains \
+  "actions/work-reference.md" \
+  'Exclude every installed skill, dependency, vendored package, and generated tree.*\.claude/skills/.*installed do-work suite.*VERSION.*actions/version\.md.*must never be selected or bumped' \
+  'The canonical project version-source procedure must exclude installed suite metadata, not only remove one unsafe accelerator call site.'
 
 assert_contains \
   "tools/queue-kanban/main.go" \
@@ -894,7 +957,6 @@ assert_contains \
 
 for release_subcommand_call_site in \
   'actions/capture.md:queue-kanban next-req' \
-  'actions/work.md:queue-kanban next-version' \
   'actions/forensics.md:queue-kanban verify'; do
   call_site_file="${release_subcommand_call_site%%:*}"
   call_site_pattern="${release_subcommand_call_site#*:}"
@@ -2233,6 +2295,50 @@ else
       fail_count=$((fail_count + 1))
     elif ! cmp -s "$collision_target" "$collision_target.before"; then
       printf 'FAIL: replace-text-section changed the target after rejecting collision %s.\n' "$reserved_recipe_name" >&2
+      fail_count=$((fail_count + 1))
+    fi
+  done
+
+  multiline_header_index=0
+  for multiline_header_kind in \
+    ordinary-single ordinary-double ordinary-backtick \
+    triple-single triple-double triple-backtick; do
+    multiline_header_index=$((multiline_header_index + 1))
+    case "$multiline_header_kind" in
+      ordinary-single) multiline_header_delimiter="'" ;;
+      ordinary-double) multiline_header_delimiter='"' ;;
+      ordinary-backtick) multiline_header_delimiter='`' ;;
+      triple-single) multiline_header_delimiter="'''" ;;
+      triple-double) multiline_header_delimiter='"""' ;;
+      triple-backtick) multiline_header_delimiter='```' ;;
+    esac
+    multiline_header_target="$section_workdir/multiline-header-$multiline_header_index.just"
+    printf 'run-kanban value=%s\npayload\n%s:\n    echo collision\n' \
+      "$multiline_header_delimiter" "$multiline_header_delimiter" \
+      > "$multiline_header_target"
+    if command -v just >/dev/null 2>&1 \
+      && ! just --justfile "$multiline_header_target" --list >/dev/null 2>&1; then
+      printf 'FAIL: %s multiline-default recipe-header fixture is not valid Just syntax.\n' \
+        "$multiline_header_kind" >&2
+      fail_count=$((fail_count + 1))
+      continue
+    fi
+    cp "$multiline_header_target" "$multiline_header_target.before"
+    multiline_header_output="$section_workdir/multiline-header-$multiline_header_index.out"
+    if "$replace_section_tool" --target "$multiline_header_target" --section-file "$reserved_section_file" \
+      --reject-recipe-collisions >"$multiline_header_output" 2>&1; then
+      printf 'FAIL: replace-text-section accepted reserved recipe with a %s multiline default.\n' \
+        "$multiline_header_kind" >&2
+      fail_count=$((fail_count + 1))
+    elif ! grep -Fq \
+      'reserved Just recipe or alias outside managed section: run-kanban' \
+      "$multiline_header_output"; then
+      printf 'FAIL: replace-text-section did not name the reserved recipe with a %s multiline default.\n' \
+        "$multiline_header_kind" >&2
+      fail_count=$((fail_count + 1))
+    elif ! cmp -s "$multiline_header_target" "$multiline_header_target.before"; then
+      printf 'FAIL: replace-text-section changed the target after rejecting a %s multiline-default collision.\n' \
+        "$multiline_header_kind" >&2
       fail_count=$((fail_count + 1))
     fi
   done

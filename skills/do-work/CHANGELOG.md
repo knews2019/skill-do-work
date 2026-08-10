@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.18 — Release, Parser, and Distribution Guard Fixes (2026-08-10)
+
+Consumer releases no longer risk rewriting the installed do-work version, and the update/install path now rejects version drift before it can escape recovery. The same review pass closes the remaining Just/CommonMark parsing gaps and turns helper/help alignment into enforced contracts.
+
+- Routes documented version/update phrases before generic `check`, removes the unsafe `next-version` accelerator, and excludes installed suite metadata from project version selection
+- Validates root, core, and runtime action versions before and after installation, preserving all-or-recover behavior
+- Detects reserved recipe headers with multiline defaults and honors CommonMark link adjacency and list-fence container boundaries
+- Enforces byte identity across installer, replacer, and validator mirrors and documents `board [serve|static|summary|cli]`
+
 ## 0.186.17 — Core Help Lists Every Sibling Subcommand (2026-08-10)
 
 `do-work help` used to name one sample command per extension package, which read like the whole menu and left the other sibling commands undiscoverable. It now names all 26, so knowing a command like `tidy-repo` is enough to find the package that owns it.

@@ -6,6 +6,7 @@
 
 - `tools/do-work-update.sh` — project-root gate, upstream fetch, confirmation, extraction, and audit.
 - `tools/install-do-work-suite.sh` — trusted installed module, Just section, hook composition, verification, and exact recovery transaction.
+- `tools/replace-text-section.sh` — byte-preserving managed-section replacement plus no-Just reserved-recipe collision validation.
 - `actions/version.md` — canonical safeguards the script must keep aligned with.
 
 ## Do not edit
@@ -28,3 +29,5 @@
 - [REQ-138: managed recipe markers preserve exterior client bytes and reject malformed ownership](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-138-add-managed-text-section-replacement.md#lessons-learned)
 - [REQ-144: every install must use one verified four-skill recovery transaction](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-144-activate-four-skill-distribution.md#lessons-learned)
 - [REQ-146: modular updates retain one installed all-or-recover transaction](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-146-remove-modular-migration-shims.md#lessons-learned)
+- [REQ-162: multiline literal state must carry recipe-header state too](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-162-handle-ordinary-multiline-backtick-commands.md#lessons-learned)
+- [REQ-163: Markdown reference classification must honor syntax adjacency and container scope](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-163-complete-remaining-inline-link-and-list-fence-classification.md#lessons-learned)

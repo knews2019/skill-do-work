@@ -121,4 +121,30 @@ done < <(sed '1d' "$manifest_file")
   && [ -n "$seen_knowledge" ] && [ -n "$seen_toolbox" ] \
   || fail 'manifest must contain all four required do-work modules'
 
+core_version_file="$archive_root/skills/do-work/VERSION"
+[ -f "$core_version_file" ] && [ ! -L "$core_version_file" ] \
+  || fail 'skills/do-work/VERSION must be a regular file'
+[ "$(wc -l < "$core_version_file" | tr -d ' ')" = '1' ] \
+  || fail 'skills/do-work/VERSION must contain exactly one newline-terminated line'
+core_version="$(sed -n '1p' "$core_version_file")"
+printf '%s\n' "$core_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+  || fail 'skills/do-work/VERSION must be a plain semantic version (X.Y.Z)'
+[ "$core_version" = "$suite_version" ] \
+  || fail "skills/do-work/VERSION mismatch (expected $suite_version, found $core_version)"
+
+action_directory="$archive_root/skills/do-work/actions"
+action_version_file="$action_directory/version.md"
+[ -d "$action_directory" ] && [ ! -L "$action_directory" ] \
+  || fail 'skills/do-work/actions must be a real directory'
+[ -f "$action_version_file" ] && [ ! -L "$action_version_file" ] \
+  || fail 'skills/do-work/actions/version.md must be a regular file'
+action_version_marker_count="$(grep -c '^\*\*Current version\*\*:' "$action_version_file" || true)"
+[ "$action_version_marker_count" -eq 1 ] \
+  || fail 'skills/do-work/actions/version.md must contain exactly one Current version line'
+action_version="$(sed -n 's/^\*\*Current version\*\*:[[:space:]]*//p' "$action_version_file")"
+printf '%s\n' "$action_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
+  || fail 'skills/do-work/actions/version.md Current version must be a plain semantic version (X.Y.Z)'
+[ "$action_version" = "$suite_version" ] \
+  || fail "skills/do-work/actions/version.md mismatch (expected $suite_version, found $action_version)"
+
 printf 'suite manifest valid: v%s (%s modules)\n' "$suite_version" "$row_count"

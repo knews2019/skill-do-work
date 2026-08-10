@@ -703,11 +703,25 @@ for router_behavior_contract in "${router_behavior_contracts[@]}"; do
   fi
 done
 
-if [ -f "$repo_root/skills/do-work/tools/install-do-work-suite.sh" ] \
-  && ! cmp -s "$repo_root/tools/install-do-work-suite.sh" \
-    "$repo_root/skills/do-work/tools/install-do-work-suite.sh"; then
-  fail 'staged core installer must be byte-identical to the canonical suite installer'
+board_help_contract="$(sed -n 's/^argument-hint: "\(board \[[^]]*\]\).*$/\1/p' \
+  "$repo_root/skills/do-work-board/SKILL.md")"
+if [ -z "$board_help_contract" ]; then
+  fail 'do-work-board argument-hint must expose its board modes for core help'
+elif ! grep -Fq "$board_help_contract" "$repo_root/skills/do-work/actions/help.md"; then
+  fail "core help must mirror the board command and modes: $board_help_contract"
 fi
+
+for mirrored_tool_name in \
+  install-do-work-suite.sh \
+  replace-text-section.sh \
+  validate-suite-manifest.sh; do
+  canonical_tool_path="$repo_root/tools/$mirrored_tool_name"
+  staged_tool_path="$repo_root/skills/do-work/tools/$mirrored_tool_name"
+  if [ -f "$staged_tool_path" ] \
+    && ! cmp -s "$canonical_tool_path" "$staged_tool_path"; then
+    fail "staged core $mirrored_tool_name must be byte-identical to canonical $mirrored_tool_name"
+  fi
+done
 
 for board_file in "${board_files[@]}"; do
   require_file "$board_file"
@@ -857,8 +871,8 @@ assert_core_sibling_reference actions/forensics.md do-work-board
 assert_core_sibling_reference actions/kb-lessons-handoff.md do-work-knowledge
 
 if [ -f "$repo_root/skills/do-work/actions/work.md" ] \
-  && ! grep -Fq -- '--version-file "<skill-root>/actions/version.md"' "$repo_root/skills/do-work/actions/work.md"; then
-  fail 'modular core next-version call must name the core version file explicitly instead of using the board tool default'
+  && grep -Eq -- 'queue-kanban(/queue-kanban)? next-version|--version-file.*<skill-root>/actions/version\.md' "$repo_root/skills/do-work/actions/work.md"; then
+  fail 'core work must not use the managed suite version file as a consumer-project release source'
 fi
 
 for staged_router in "$repo_root"/skills/do-work*/SKILL.md; do

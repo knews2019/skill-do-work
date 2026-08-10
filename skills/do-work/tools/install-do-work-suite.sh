@@ -501,6 +501,13 @@ fi
 installed_version="$(sed -n '1p' "$project_root/.claude/skills/do-work/VERSION")"
 [ "$installed_version" = "$suite_version" ] \
   || fail "installed version mismatch (expected $suite_version, found ${installed_version:-unknown})"
+installed_action_version_file="$project_root/.claude/skills/do-work/actions/version.md"
+installed_action_marker_count="$(grep -c '^\*\*Current version\*\*:' "$installed_action_version_file" || true)"
+[ "$installed_action_marker_count" -eq 1 ] \
+  || fail 'installed actions/version.md must contain exactly one Current version line'
+installed_action_version="$(sed -n 's/^\*\*Current version\*\*:[[:space:]]*//p' "$installed_action_version_file")"
+[ "$installed_action_version" = "$suite_version" ] \
+  || fail "installed action version mismatch (expected $suite_version, found ${installed_action_version:-unknown})"
 
 install_verified=1
 printf 'Installed do-work suite v%s with four verified modules.\n' "$suite_version"
