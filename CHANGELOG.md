@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.20 — Verified Screenshot Staging Cleanup (2026-08-10)
+
+Screenshot captures dispatched to subagents no longer leave their hidden staging copies behind after the permanent UR assets are safe. Failed copies remain recoverable and visible in the capture report.
+
+- Restores the modular dispatcher's `.pending-assets/` handoff and links it directly to capture Step 4 as the cleanup owner
+- Copies through a temporary destination, verifies byte equality, and renames before removing the exact staged source and empty staging directory
+- Preserves and reports staged screenshots on copy, verification, rename, or cleanup failure, with regression coverage for the lifecycle contract
+
 ## 0.186.19 — Exact Installer Recovery and Parser Guard Completion (2026-08-10)
 
 Failed suite installs now restore both managed filesystem bytes and the exact pre-install Git index, including staged/unstaged distinctions. The same release closes the remaining delimiter, Markdown-fence, and version-file validation gaps found in the distribution guards.

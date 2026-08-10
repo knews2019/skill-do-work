@@ -157,6 +157,53 @@ for core_file in "${core_files[@]}"; do
   require_file "$core_file"
 done
 
+screenshot_dispatch_block="$(sed -n '/^## Dispatch/,/^## Safety/p' "$repo_root/skills/do-work/SKILL.md")"
+if ! grep -Fq 'do-work/user-requests/.pending-assets/screenshot-{n}.png' <<<"$screenshot_dispatch_block"; then
+  fail 'core dispatch must stage capture screenshots at the documented pending-assets path'
+fi
+if ! grep -Eq 'actions/capture\.md.*Step 4' <<<"$screenshot_dispatch_block"; then
+  fail 'core dispatch must name capture Step 4 as the owner of staged screenshot cleanup'
+fi
+
+if ! python3 - "$repo_root/skills/do-work/actions/capture.md" <<'PY'
+import pathlib
+import sys
+
+capture_action_text = pathlib.Path(sys.argv[1]).read_text()
+try:
+    screenshot_step = capture_action_text.split(
+        "### Step 4: Handle Screenshots", 1
+    )[1].split("### Step 5: Write Files", 1)[0]
+except IndexError:
+    raise SystemExit("capture action has no bounded screenshot step")
+
+required_fragments = (
+    "do-work/user-requests/.pending-assets/screenshot-{n}.png",
+    'screenshot_copy_path="${screenshot_asset_path}.copying"',
+    'cmp -s "$staged_screenshot_path" "$screenshot_copy_path"',
+    'mv "$screenshot_copy_path" "$screenshot_asset_path"',
+    'rm "$staged_screenshot_path"',
+    'rmdir "$screenshot_staging_directory"',
+    "staged source preserved",
+)
+fragment_positions = []
+for required_fragment in required_fragments:
+    fragment_position = screenshot_step.find(required_fragment)
+    if fragment_position < 0:
+        raise SystemExit(
+            f"capture screenshot step is missing {required_fragment!r}"
+        )
+    fragment_positions.append(fragment_position)
+
+if fragment_positions != sorted(fragment_positions):
+    raise SystemExit(
+        "capture screenshot cleanup must follow copy, comparison, and permanent rename"
+    )
+PY
+then
+  fail 'capture Step 4 must preserve staged screenshots until the permanent copy verifies'
+fi
+
 for retired_pipeline_path in \
   skills/do-work/actions/pipeline.md \
   skills/do-work/actions/pipeline-reference.md \

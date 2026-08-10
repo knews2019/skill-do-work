@@ -45,6 +45,8 @@ An unknown single word is ambiguous: ask whether the user wants it captured or m
 
 Read the selected action file completely and pass through the user's arguments. If subagents are available, the action may be dispatched to one with the action file and complete target context; otherwise execute it inline. `work` and `cleanup` may run in the background when the harness supports that.
 
+For a screenshot-bearing capture, the subagent cannot see images from the main conversation. Before dispatching, save each screenshot to `do-work/user-requests/.pending-assets/screenshot-{n}.png`, write a text description of it, and include its exact path and description in the subagent prompt. [`actions/capture.md`](./actions/capture.md) Step 4 owns cleanup: it removes each staged file only after its permanent REQ-named copy verifies, preserves and reports the staged source on failure, and removes `.pending-assets/` only when empty.
+
 Per-command `help` reads the selected action and returns a compact usage summary without executing it.
 
 ## Safety
