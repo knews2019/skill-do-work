@@ -15,7 +15,7 @@ related:
   - page: adr-016-vendor-queue-kanban-into-the-skill
     rel: extends
 created: 2026-08-07
-updated: 2026-08-07
+updated: 2026-08-08
 confidence: high
 ---
 
@@ -45,7 +45,7 @@ Root `VERSION` is the suite version. The four modules never carry independent ve
 
 An update is **all-or-recover**, not a filesystem-atomic four-directory rename: every module validates in staging before the first managed write; success is reported only after all installed bytes verify; any later failure restores every changed managed module path and removes only newly created files inside validated destinations. A client must therefore observe either the previous complete suite or the new complete suite after recovery, never a reported partial success.
 
-The live archive stays monolithic for the bridge release. Temporary root-anchored `export-ignore` entries keep `VERSION`, `suite/`, and `skills/` out of that archive while the manifest, validator, staged packages, and installer land in the source repository. REQ-144 removes the three guards only after every known client reports the bridge capability `suite-layout-v2`.
+The live archive stays monolithic for the bridge release. Temporary root-anchored `export-ignore` entries keep `VERSION`, `suite/`, and `skills/` out of that archive while the manifest, validator, staged packages, and installer land in the source repository. REQ-144 removes the three guards only after the user attests that every known client reports the bridge capability `suite-layout-v2`; that attestation is sufficient evidence and no stored client-by-client inventory is required.
 
 ## Alternatives
 
