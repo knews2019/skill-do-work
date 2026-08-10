@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.15 — Complete Markdown Link and List-Fence Classification (2026-08-10)
+
+The shipped-reference guard now reaches the last known Markdown visibility edges: even-parity relative links stay discoverable, escaped brackets inside labels no longer hide live links, and fenced code inside list items stays unpublished. Target policy remains unchanged.
+
+- Extracts relative link targets behind zero, two, or four backslashes while retaining odd-parity masking
+- Treats complete live links as one region so escaped opening brackets inside labels are not mistaken for independent escaped links
+- Tracks backtick and tilde fences opened by bullet or one-to-nine-digit ordered list items, including attached info strings and nested indentation
+- Preserves live post-fence and list-paragraph continuations plus root-level indented-code masking
+- Adds exact RED/GREEN fixtures with normalized target order, source-length, newline-offset, full-contract, and distribution coverage
+
 ## 0.186.14 — Just Ordinary Multiline-Backtick State (2026-08-10)
 
 Safe custom Justfiles no longer look like reserved-recipe collisions when an ordinary single-backtick command spans physical lines. Real definitions around the command still fail before mutation with the same exact sorted diagnostic.

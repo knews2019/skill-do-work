@@ -70,6 +70,16 @@ def leading_indentation(line):
     return content_start, indentation_columns
 
 
+def markdown_column_width(text):
+    column_width = 0
+    for character in text:
+        if character == "\t":
+            column_width += 4 - (column_width % 4)
+        else:
+            column_width += 1
+    return column_width
+
+
 def line_opens_paragraph(line, content_start):
     content = line[content_start:].rstrip("\r\n")
     list_item_match = re.match(
@@ -79,7 +89,7 @@ def line_opens_paragraph(line, content_start):
         content = list_item_match.group(1)
     if not content or content.startswith("<!--"):
         return False
-    if re.match(r"^(?:`{3,}|~{3,})(?:[ \t]|$)", content):
+    if re.match(r"^(?:`{3,}|~{3,})", content):
         return False
     if re.match(
         r"^(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|[0-9]{1,9}[.)])(?:[ \t]|$)|\[[^\]\n]+\]:)",
@@ -93,7 +103,7 @@ def line_opens_paragraph(line, content_start):
     return True
 
 
-def escaped_inline_link_end(markdown_text, label_start):
+def inline_link_region(markdown_text, label_start):
     opening_bracket_escaped = punctuation_is_escaped(markdown_text, label_start)
     label_end = label_start + 1
     nested_labels = 0
@@ -139,12 +149,11 @@ def escaped_inline_link_end(markdown_text, label_start):
         or markdown_text[opening_parenthesis] != "("
     ):
         return None
-    if not (
+    structural_delimiter_escaped = (
         opening_bracket_escaped
         or punctuation_is_escaped(markdown_text, label_end)
         or punctuation_is_escaped(markdown_text, opening_parenthesis)
-    ):
-        return None
+    )
 
     cursor = opening_parenthesis + 1
     nested_parentheses = 0
@@ -155,7 +164,7 @@ def escaped_inline_link_end(markdown_text, label_start):
             nested_parentheses += 1
         elif character == ")" and not punctuation_escaped:
             if nested_parentheses == 0:
-                return cursor + 1
+                return cursor + 1, structural_delimiter_escaped
             nested_parentheses -= 1
         elif character == "\n":
             return None
@@ -191,6 +200,7 @@ def strip_markdown_code(markdown_text):
     code_free_text = list(markdown_text)
     fence_character = None
     fence_length = 0
+    list_fence_indentation = None
     paragraph_active = False
     line_start = 0
 
@@ -198,21 +208,69 @@ def strip_markdown_code(markdown_text):
         line_end = line_start + len(line)
         fence_match = re.match(r"^[ ]{0,3}(`{3,}|~{3,})", line)
         content_start, indentation_columns = leading_indentation(line)
+        list_fence_match = re.match(
+            r"^([ \t]*)(?:[-+*]|[0-9]{1,9}[.)])([ \t]+)(`{3,}|~{3,})",
+            line,
+        )
+        if list_fence_match:
+            list_fence_suffix = line[list_fence_match.end(3) :].rstrip("\r\n")
+            list_fence_is_indented_code = (
+                indentation_columns >= 4 and not paragraph_active
+            )
+            backtick_info_contains_marker = (
+                list_fence_match.group(3)[0] == "`" and "`" in list_fence_suffix
+            )
+            if list_fence_is_indented_code or backtick_info_contains_marker:
+                list_fence_match = None
         blank_line = not line[content_start:].strip("\r\n")
         line_is_code = False
 
-        if fence_match:
+        if fence_character is not None:
             line_is_code = True
-            fence = fence_match.group(1)
-            if fence_character is None:
-                fence_character = fence[0]
-                fence_length = len(fence)
-            elif fence[0] == fence_character and len(fence) >= fence_length:
+            closes_fence = False
+            if list_fence_indentation is None:
+                if fence_match:
+                    fence = fence_match.group(1)
+                    closes_fence = (
+                        fence[0] == fence_character and len(fence) >= fence_length
+                    )
+            else:
+                closing_fence_match = re.match(
+                    r"^([ \t]*)(`{3,}|~{3,})[ \t]*(?:\r?\n)?$", line
+                )
+                if closing_fence_match:
+                    closing_indentation = markdown_column_width(
+                        closing_fence_match.group(1)
+                    )
+                    closing_fence = closing_fence_match.group(2)
+                    closes_fence = (
+                        list_fence_indentation
+                        <= closing_indentation
+                        <= list_fence_indentation + 3
+                        and closing_fence[0] == fence_character
+                        and len(closing_fence) >= fence_length
+                    )
+            if closes_fence:
                 fence_character = None
                 fence_length = 0
-            paragraph_active = False
-        elif fence_character is not None:
+                paragraph_active = list_fence_indentation is not None
+                list_fence_indentation = None
+            else:
+                paragraph_active = False
+        elif fence_match:
             line_is_code = True
+            fence = fence_match.group(1)
+            fence_character = fence[0]
+            fence_length = len(fence)
+            paragraph_active = False
+        elif list_fence_match:
+            line_is_code = True
+            fence = list_fence_match.group(3)
+            fence_character = fence[0]
+            fence_length = len(fence)
+            list_fence_indentation = markdown_column_width(
+                line[: list_fence_match.start(3)]
+            )
             paragraph_active = False
         elif indentation_columns >= 4 and not paragraph_active:
             line_is_code = True
@@ -273,12 +331,14 @@ def strip_markdown_code(markdown_text):
         label_start = rendered_text.find("[", label_start)
         if label_start < 0:
             break
-        masked_end = escaped_inline_link_end(rendered_text, label_start)
-        if masked_end is None:
+        link_region = inline_link_region(rendered_text, label_start)
+        if link_region is None:
             label_start += 1
             continue
-        mask_text_range(code_free_text, label_start, masked_end)
-        label_start = masked_end
+        region_end, structural_delimiter_escaped = link_region
+        if structural_delimiter_escaped:
+            mask_text_range(code_free_text, label_start, region_end)
+        label_start = region_end
 
     rendered_text = "".join(code_free_text)
     line_start = 0
@@ -328,6 +388,11 @@ def inline_link_targets(markdown_text):
             continue
 
         opening_parenthesis = label_end + 1
+        while (
+            opening_parenthesis < len(markdown_text)
+            and markdown_text[opening_parenthesis] == "\\"
+        ):
+            opening_parenthesis += 1
         if (
             opening_parenthesis >= len(markdown_text)
             or markdown_text[opening_parenthesis] != "("
@@ -527,6 +592,38 @@ def run_parser_fixtures():
             ],
         ),
         (
+            "list-item fences with attached info strings",
+            "- ```markdown\n"
+            "  [hidden](missing-bullet-backtick-fence.md)\n"
+            "  ```\n"
+            "  [live](live-bullet-after-fence.md)\n"
+            "1. ~~~text\n"
+            "   [hidden](missing-ordered-tilde-fence.md)\n"
+            "   ~~~\n"
+            "   [live](live-ordered-after-fence.md)\n"
+            "123456789) ```text\n"
+            "           [hidden](missing-nine-digit-backtick-fence.md)\n"
+            "           ```\n"
+            "           [live](live-nine-digit-after-fence.md)\n"
+            "  - ~~~markdown\n"
+            "    [hidden](missing-nested-tilde-fence.md)\n"
+            "    ~~~\n"
+            "    [live](live-nested-after-fence.md)\n"
+            "- paragraph\n"
+            "    [live](live-list-paragraph-continuation.md)\n\n"
+            "    - ```not-a-list-fence\n"
+            "    [hidden](missing-indented-list-shaped-code.md)\n\n"
+            "[live](live-after-indented-code.md)\n",
+            [
+                "live-bullet-after-fence.md",
+                "live-ordered-after-fence.md",
+                "live-nine-digit-after-fence.md",
+                "live-nested-after-fence.md",
+                "live-list-paragraph-continuation.md",
+                "live-after-indented-code.md",
+            ],
+        ),
+        (
             "HTML comments",
             "[before](before.md) <!-- [hidden](missing-inline-comment.md) -->\n<!--\n`comment backtick` [hidden](missing-block-comment.md)\n--> [after](after.md)\n",
             ["before.md", "after.md"],
@@ -596,6 +693,30 @@ def run_parser_fixtures():
             [
                 "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
                 "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
+            ],
+        ),
+        (
+            "zero and even-parity destination-opening parentheses",
+            r"[zero](zero-relative.md) "
+            r"[two]\\(two-backslash-relative.md) "
+            r"[four]\\\\(four-backslash-relative.md) "
+            r"[hidden]\(missing-odd-relative.md)"
+            + "\n",
+            [
+                "zero-relative.md",
+                "two-backslash-relative.md",
+                "four-backslash-relative.md",
+            ],
+        ),
+        (
+            "escaped opening brackets inside live labels",
+            r"\[hidden](missing-escaped-outer.md) "
+            r"[\[live](live-escaped-opening-label.md) "
+            r"[prefix \[content](live-escaped-opening-content.md)"
+            + "\n",
+            [
+                "live-escaped-opening-label.md",
+                "live-escaped-opening-content.md",
             ],
         ),
         (
