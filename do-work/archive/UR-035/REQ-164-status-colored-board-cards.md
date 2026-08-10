@@ -4,6 +4,7 @@ title: "Status-colored board cards"
 status: completed
 claimed_at: 2026-08-10T21:41:17Z
 completed_at: 2026-08-10T21:58:15Z
+commit: 2905360
 route: A
 created_at: 2026-08-10T21:30:31Z
 user_request: UR-035
