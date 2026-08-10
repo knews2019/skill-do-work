@@ -639,13 +639,14 @@ body.is-resizing-detail {
 
 .req-card {
   --card-accent: var(--column-accent, var(--ink-faint));
+  --card-tint: var(--surface-3);
   position: relative;
   text-align: left;
   width: 100%;
   appearance: none;
   background-color: var(--surface-2);
   border: 1px solid var(--line-soft);
-  border-left: 2px solid var(--card-accent);
+  border-left: 3px solid var(--card-accent);
   border-radius: var(--radius-card);
   padding: 13px 15px 14px;
   cursor: pointer;
@@ -668,6 +669,38 @@ body.is-resizing-detail {
   outline-offset: 2px;
 }
 
+/* Status identity belongs to the card, not its current column or lens. The
+   body stays neutral while the rail, dot, and pill share these semantic tokens. */
+.req-card[data-status="pending"] {
+  --card-accent: var(--accent-pending);
+  --card-tint: var(--tint-pending);
+}
+.req-card[data-status="claimed"] {
+  --card-accent: var(--accent-claimed);
+  --card-tint: var(--tint-claimed);
+}
+.req-card[data-status="pending-answers"],
+.req-card[data-status="blocked"],
+.req-card[data-status="blocked-archive-collision"],
+.req-card[data-status="blocked-dependency-cycle"],
+.req-card[data-status="failed"] {
+  --card-accent: var(--accent-blocked);
+  --card-tint: var(--tint-blocked);
+}
+.req-card[data-status="completed"],
+.req-card[data-status="completed-with-issues"] {
+  --card-accent: var(--accent-done);
+  --card-tint: var(--tint-done);
+}
+.req-card[data-status="cancelled"] {
+  --card-accent: var(--ink-faint);
+  --card-tint: var(--surface-3);
+}
+.req-card.is-status-unrecognized {
+  --card-accent: var(--accent-blocked);
+  --card-tint: var(--tint-blocked);
+}
+
 .req-card-top {
   display: flex;
   align-items: center;
@@ -688,7 +721,11 @@ body.is-resizing-detail {
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: var(--ink-faint);
+  line-height: 1.35;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background-color: var(--card-tint);
+  color: var(--ink-soft);
   text-transform: lowercase;
   letter-spacing: 0.02em;
 }
@@ -704,11 +741,11 @@ body.is-resizing-detail {
    Needs input / Blocked by bucketColumns. Highlighted so it reads as a data
    defect to fix, not a normal blocked ticket; the drawer carries the fix prompt. */
 .req-card-status.is-status-unrecognized {
-  color: var(--accent-blocked);
+  color: var(--ink-soft);
   font-weight: 600;
 }
 .req-card-status.is-status-unrecognized .status-dot {
-  background-color: var(--accent-blocked);
+  background-color: var(--card-accent);
 }
 .status-invalid-flag {
   margin-left: 4px;
@@ -730,21 +767,11 @@ body.is-resizing-detail {
 }
 
 /* Cancelled (won't-do) — terminally resolved, so it shares the done column,
-   but visibly NOT a success: struck-through muted title, grey dot. */
+   but visibly NOT a success: struck-through muted title and grey status cues. */
 .req-card[data-status="cancelled"] .req-card-title {
   text-decoration: line-through;
   text-decoration-thickness: 1px;
   color: var(--ink-soft);
-}
-.req-card[data-status="cancelled"] .status-dot {
-  background-color: var(--ink-faint);
-}
-
-/* Blocked (waiting on an external condition) — shares the Needs-input/Blocked
-   column; the dot carries the blocked accent so it reads apart from a plain
-   pending-answers card at a glance. */
-.req-card[data-status="blocked"] .status-dot {
-  background-color: var(--accent-blocked);
 }
 .req-card-title {
   margin: 0;
@@ -1026,9 +1053,6 @@ body.is-resizing-detail {
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
   padding: 16px 18px 18px;
-}
-.ur-group-cards .req-card {
-  --column-accent: var(--ink-faint);
 }
 
 /* Empty state and the "n resolved URs hidden" footer for the by-UR lens. */

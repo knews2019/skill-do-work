@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.22 — Status-Colored Board Cards (2026-08-11)
+
+Board cards now separate workflow states at a glance without tinting the whole surface. Mixed-status By-UR groups use the same restrained cues as the column view.
+
+- Adds a 3px semantic status rail and softly tinted, written status pill to shared request cards
+- Maps pending, claimed, blocked/failed, completed, cancelled, and invalid states to the existing amber, blue, red, green, and gray palette
+- Preserves neutral card bodies, cancellation strike-through, hover/focus feedback, responsive wrapping, and light/dark themes
+
 ## 0.186.21 — Visible Failures and Resolvable Archived Attempts (2026-08-10)
 
 Failed work now carries its recorded diagnosis into the board drawer, and legacy failures already consolidated inside closed UR folders have an explicit resolution path. Detail drawers also stop repeating a record's matching leading title without changing the exact Markdown copied from disk.

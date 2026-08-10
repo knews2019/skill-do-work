@@ -514,7 +514,7 @@
     }
     card.setAttribute("aria-label", requestId + ": " + (request.title || "untitled"));
     if (request.status) {
-      card.dataset.status = request.status; // lets CSS restyle terminal-but-unsuccessful cards (cancelled)
+      card.dataset.status = request.status; // lets CSS apply the semantic rail and status-pill treatment
     }
 
     var top = createElement("div", "req-card-top");
@@ -523,6 +523,7 @@
     status.appendChild(createElement("span", "status-dot"));
     status.appendChild(document.createTextNode(request.status || "—"));
     if (request.statusUnrecognized) {
+      card.className += " is-status-unrecognized";
       status.className += " is-status-unrecognized";
       status.appendChild(createElement("span", "status-invalid-flag", "invalid"));
       status.title =

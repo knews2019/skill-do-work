@@ -767,6 +767,106 @@ func TestGenerateInlinesWriteSetOverlapBadgeRenderPath(t *testing.T) {
 	}
 }
 
+// TestGenerateInlinesSemanticStatusCardStyles pins the visual status contract
+// at the generated-site seam shared by static and live boards. The By-UR lens
+// renders the same request cards as the column lens, so card-level status
+// variables must win without a lens-specific neutral override.
+func TestGenerateInlinesSemanticStatusCardStyles(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	if strings.Contains(indexHtml, `.ur-group-cards .req-card`) {
+		t.Fatalf("By-UR still overrides request-card status styling with a neutral accent")
+	}
+	if strings.Contains(indexHtml, `border-left: 2px solid var(--card-accent)`) {
+		t.Fatalf("request-card status rail is still 2px instead of the required 3px")
+	}
+	if !strings.Contains(indexHtml, `border-left: 3px solid var(--card-accent)`) {
+		t.Fatalf("request-card 3px status rail is missing from the inlined stylesheet")
+	}
+
+	statusStyleCases := []struct {
+		name              string
+		selectorAnchor    string
+		requiredAccent    string
+		requiredTint      string
+		requiredSelectors []string
+	}{
+		{
+			name:           "pending",
+			selectorAnchor: `.req-card[data-status="pending"]`,
+			requiredAccent: `--card-accent: var(--accent-pending)`,
+			requiredTint:   `--card-tint: var(--tint-pending)`,
+		},
+		{
+			name:           "claimed",
+			selectorAnchor: `.req-card[data-status="claimed"]`,
+			requiredAccent: `--card-accent: var(--accent-claimed)`,
+			requiredTint:   `--card-tint: var(--tint-claimed)`,
+		},
+		{
+			name:           "blocked and failed",
+			selectorAnchor: `.req-card[data-status="pending-answers"]`,
+			requiredAccent: `--card-accent: var(--accent-blocked)`,
+			requiredTint:   `--card-tint: var(--tint-blocked)`,
+			requiredSelectors: []string{
+				`.req-card[data-status="blocked"]`,
+				`.req-card[data-status="blocked-archive-collision"]`,
+				`.req-card[data-status="blocked-dependency-cycle"]`,
+				`.req-card[data-status="failed"]`,
+			},
+		},
+		{
+			name:           "completed",
+			selectorAnchor: `.req-card[data-status="completed"]`,
+			requiredAccent: `--card-accent: var(--accent-done)`,
+			requiredTint:   `--card-tint: var(--tint-done)`,
+			requiredSelectors: []string{
+				`.req-card[data-status="completed-with-issues"]`,
+			},
+		},
+		{
+			name:           "cancelled",
+			selectorAnchor: `.req-card[data-status="cancelled"]`,
+			requiredAccent: `--card-accent: var(--ink-faint)`,
+			requiredTint:   `--card-tint: var(--surface-3)`,
+		},
+		{
+			name:           "unrecognized",
+			selectorAnchor: `.req-card.is-status-unrecognized`,
+			requiredAccent: `--card-accent: var(--accent-blocked)`,
+			requiredTint:   `--card-tint: var(--tint-blocked)`,
+		},
+	}
+	for _, styleCase := range statusStyleCases {
+		t.Run(styleCase.name, func(t *testing.T) {
+			styleRule := sliceBalancedBlockAfter(t, indexHtml, styleCase.selectorAnchor)
+			for _, requiredToken := range append(
+				[]string{styleCase.requiredAccent, styleCase.requiredTint},
+				styleCase.requiredSelectors...,
+			) {
+				if !strings.Contains(styleRule, requiredToken) {
+					t.Fatalf("status style rule %q is missing %q:\n%s", styleCase.selectorAnchor, requiredToken, styleRule)
+				}
+			}
+		})
+	}
+
+	statusPillRule := sliceBalancedBlockAfter(t, indexHtml, `.req-card-status {`)
+	for _, requiredToken := range []string{
+		`background-color: var(--card-tint)`,
+		`border-radius: var(--radius-pill)`,
+		`color: var(--ink-soft)`,
+	} {
+		if !strings.Contains(statusPillRule, requiredToken) {
+			t.Fatalf("status pill is missing %q:\n%s", requiredToken, statusPillRule)
+		}
+	}
+
+	if !strings.Contains(indexHtml, `card.className += " is-status-unrecognized"`) {
+		t.Fatalf("unrecognized status does not mark the request card for red rail and pill styling")
+	}
+}
+
 // sliceBalancedBlockAfter returns the source text of the first brace-balanced
 // block that starts at or after anchorToken, including the anchor itself. It
 // brace-matches rather than scanning to a blank line so the slice stays exact
