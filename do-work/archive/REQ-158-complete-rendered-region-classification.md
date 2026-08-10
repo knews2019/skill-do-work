@@ -3,6 +3,7 @@ id: REQ-158
 title: "Review fix: Complete rendered-region classification in shipped Markdown references"
 status: completed
 completed_at: 2026-08-10T09:48:42Z
+commit: 47b71fd
 claimed_at: 2026-08-10T09:24:04Z
 route: C
 status_changed_at: 2026-08-10T09:20:51Z
