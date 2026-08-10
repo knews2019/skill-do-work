@@ -33,6 +33,12 @@ Make the reserved-recipe collision scanner retain lexical state for every curren
 
 Found during review of REQ-156. That task correctly handles triple-single and triple-double strings, but Just 1.46 also accepts physical line breaks inside ordinary quoted strings and triple-backtick command literals; the scanner resets ordinary quote/backtick state at every line and rejects their payload.
 
+## AI Execution State (P-A-U Loop)
+
+- [x] **[PLAN]:** Loaded the required general, coding-guardrail, and bug-fix guidance; used fresh Plan and Explore contexts to map the three explicit literal families to the paired replacement helpers and their direct production-helper contract. Kept valid ordinary multiline single-backtick commands outside this task's stated acceptance boundary and recorded them as the consent-gated discovered follow-up REQ-162.
+- [x] **[APPLY]:** Added Just-parseable fixtures and captured RED: all five reserved-looking names inside multiline literal payload were reported, and the exact nearby control also included the hidden `kanban-static` payload. Implemented persistent raw-single, cooked-double, and triple-backtick delimiter state byte-identically in the root and shipped helpers, then confirmed the focused contract turned green.
+- [x] **[UNIFY]:** Verified paired-helper identity, Just parsing, exact sorted collision diagnostics, pre-mutation byte preservation, Bash syntax, warning-level ShellCheck, focused and full contract regressions, staged-skills and suite-manifest contracts, changelog identity, and diff hygiene. Review scored the implementation Partial at 84% because ordinary multiline single-backtick commands remained the explicitly recorded follow-up; no in-scope blocker remained.
+
 ## Requirements
 
 - Retain cross-line state for ordinary single-quoted and cooked double-quoted Just strings, using their actual closing and escape rules.
