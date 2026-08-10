@@ -2293,6 +2293,119 @@ else
     fail_count=$((fail_count + 1))
   fi
 
+  ordinary_and_command_multiline_target="$section_workdir/ordinary-and-command-multiline-literals.just"
+  {
+    printf '%s\n' \
+      'custom-before:' \
+      '    echo before' \
+      "raw_value := '" \
+      'run-kanban:' \
+      'alias kanban-summary := ignored' \
+      "raw backslash is literal: \\'" \
+      'cooked_value := "' \
+      'run-kanban-cli:' \
+      'escaped double quote remains: \"' \
+      'alias kanban-summary := ignored' \
+      'even backslashes close: \\"' \
+      'command_value := ```' \
+      '  printf "%s\n" safe' \
+      'run-do-work-update:' \
+      'alias kanban-static := ignored' \
+      '```' \
+      'custom-after:' \
+      '    echo after'
+  } > "$ordinary_and_command_multiline_target"
+  if command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$ordinary_and_command_multiline_target" --list >/dev/null 2>&1; then
+    printf 'FAIL: ordinary-quote and triple-backtick collision fixture is not valid Just syntax.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! "$replace_section_tool" --target "$ordinary_and_command_multiline_target" --section-file "$reserved_section_file" \
+    --reject-recipe-collisions; then
+    printf 'FAIL: replace-text-section treated reserved-looking ordinary-quote or triple-backtick content as a collision.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$ordinary_and_command_multiline_target" --list >/dev/null 2>&1; then
+    printf 'FAIL: replace-text-section produced invalid Just after accepting ordinary-quote and triple-backtick literals.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+
+  ordinary_and_command_collision_target="$section_workdir/ordinary-and-command-nearby-collisions.just"
+  {
+    printf '%s\n' \
+      'custom-summary:' \
+      '    echo custom' \
+      'run-kanban:' \
+      '    echo real collision before raw string' \
+      "raw_value := '" \
+      'alias kanban-static := ignored' \
+      "raw backslash is literal: \\'" \
+      'alias kanban-summary := custom-summary' \
+      'cooked_value := "' \
+      'kanban-static:' \
+      'escaped double quote remains: \"' \
+      'alias kanban-static := ignored' \
+      'even backslashes close: \\"' \
+      '@run-kanban-cli:' \
+      '    echo real collision before command literal' \
+      'command_value := ```' \
+      '  printf "%s\n" safe' \
+      'kanban-static:' \
+      '```' \
+      'run-do-work-update:' \
+      '    echo real collision after command literal'
+  } > "$ordinary_and_command_collision_target"
+  if command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$ordinary_and_command_collision_target" --list >/dev/null 2>&1; then
+    printf 'FAIL: ordinary-quote and triple-backtick nearby-collision control is not valid Just syntax.\n' >&2
+    fail_count=$((fail_count + 1))
+  else
+    cp "$ordinary_and_command_collision_target" "$ordinary_and_command_collision_target.before"
+    ordinary_and_command_collision_output="$section_workdir/ordinary-and-command-nearby-collisions.out"
+    expected_ordinary_and_command_collision='replace-text-section: target defines reserved Just recipe or alias outside managed section: kanban-summary, run-do-work-update, run-kanban, run-kanban-cli'
+    if "$replace_section_tool" --target "$ordinary_and_command_collision_target" --section-file "$reserved_section_file" \
+      --reject-recipe-collisions >"$ordinary_and_command_collision_output" 2>&1; then
+      printf 'FAIL: replace-text-section ignored real reserved definitions around ordinary-quote or triple-backtick literals.\n' >&2
+      fail_count=$((fail_count + 1))
+    elif [ "$(cat "$ordinary_and_command_collision_output")" != "$expected_ordinary_and_command_collision" ]; then
+      printf 'FAIL: replace-text-section did not report only exact sorted collisions around ordinary-quote and triple-backtick literals.\n' >&2
+      fail_count=$((fail_count + 1))
+    elif ! cmp -s "$ordinary_and_command_collision_target" "$ordinary_and_command_collision_target.before"; then
+      printf 'FAIL: replace-text-section changed the target after rejecting collisions around ordinary-quote or triple-backtick literals.\n' >&2
+      fail_count=$((fail_count + 1))
+    fi
+  fi
+
+  inactive_literal_forms_target="$section_workdir/inactive-literal-forms-nearby-collision.just"
+  {
+    printf '%s\n' \
+      '# delimiter-looking comment: ```' \
+      'one_line_command := `printf safe`' \
+      'custom-body:' \
+      "    printf '%s\\n' '\`\`\`'" \
+      'kanban-static:' \
+      '    echo real collision after inactive forms'
+  } > "$inactive_literal_forms_target"
+  if command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$inactive_literal_forms_target" --list >/dev/null 2>&1; then
+    printf 'FAIL: inactive multiline-literal opener control is not valid Just syntax.\n' >&2
+    fail_count=$((fail_count + 1))
+  else
+    cp "$inactive_literal_forms_target" "$inactive_literal_forms_target.before"
+    inactive_literal_forms_output="$section_workdir/inactive-literal-forms-nearby-collision.out"
+    expected_inactive_literal_forms_collision='replace-text-section: target defines reserved Just recipe or alias outside managed section: kanban-static'
+    if "$replace_section_tool" --target "$inactive_literal_forms_target" --section-file "$reserved_section_file" \
+      --reject-recipe-collisions >"$inactive_literal_forms_output" 2>&1; then
+      printf 'FAIL: replace-text-section let an inactive comment, recipe body, or one-line backtick hide a real collision.\n' >&2
+      fail_count=$((fail_count + 1))
+    elif [ "$(cat "$inactive_literal_forms_output")" != "$expected_inactive_literal_forms_collision" ]; then
+      printf 'FAIL: replace-text-section did not report the exact collision after inactive multiline-literal opener forms.\n' >&2
+      fail_count=$((fail_count + 1))
+    elif ! cmp -s "$inactive_literal_forms_target" "$inactive_literal_forms_target.before"; then
+      printf 'FAIL: replace-text-section changed the target after rejecting a collision after inactive literal forms.\n' >&2
+      fail_count=$((fail_count + 1))
+    fi
+  fi
+
   multiline_collision_target="$section_workdir/multiline-nearby-collisions.just"
   {
     printf '%s\n' \

@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.11 — Just Ordinary-Quote and Triple-Backtick State (2026-08-10)
+
+Safe custom Justfiles no longer look like reserved-recipe collisions merely because ordinary quoted values or triple-backtick commands span physical lines. Real definitions around every form still fail before mutation with the same exact diagnostic.
+
+- Retains raw single-quote and cooked double-quote state with their actual closing and backslash-parity rules
+- Recognizes exact triple-backtick command delimiters without letting comments, recipe bodies, or same-line backticks hide definitions
+- Adds Just-parseable acceptance fixtures, exact sorted nearby-collision controls, and byte-preserving rejection checks
+- Keeps root and shipped helpers byte-identical and preserves triple quotes, managed-span exclusion, reserved derivation, installer ordering, and full contracts
+- Records Just's additional ordinary single-backtick multiline form in consent-gated REQ-162
+
 ## 0.186.10 — Shared Markdown Rendered-Region Classification (2026-08-10)
 
 Shipped-reference checks now make one length-preserving Markdown visibility decision before any target-discovery path runs, closing false positives and false negatives across the approved indentation, code-span, and escaped-link cases.

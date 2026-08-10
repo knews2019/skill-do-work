@@ -125,8 +125,17 @@ def just_multiline_string_state(line: bytes, active_delimiter):
     escaped = False
     while index < len(body):
         if active_delimiter is not None:
-            if body.startswith(active_delimiter, index):
-                if active_delimiter == b'"""':
+            delimiter_matches = body.startswith(active_delimiter, index)
+            if active_delimiter == b"```" and delimiter_matches:
+                delimiter_matches = (
+                    (index == 0 or body[index - 1] != 96)
+                    and (
+                        index + len(active_delimiter) == len(body)
+                        or body[index + len(active_delimiter)] != 96
+                    )
+                )
+            if delimiter_matches:
+                if active_delimiter in (b'"', b'"""'):
                     backslash_count = 0
                     backslash_index = index - 1
                     while backslash_index >= 0 and body[backslash_index] == 92:
@@ -135,8 +144,9 @@ def just_multiline_string_state(line: bytes, active_delimiter):
                     if backslash_count % 2 == 1:
                         index += 1
                         continue
+                delimiter_length = len(active_delimiter)
                 active_delimiter = None
-                index += 3
+                index += delimiter_length
                 continue
             index += 1
             continue
@@ -159,12 +169,20 @@ def just_multiline_string_state(line: bytes, active_delimiter):
         elif body.startswith(b'"""', index):
             active_delimiter = b'"""'
             index += 3
+        elif body.startswith(b"```", index) and (
+            (index == 0 or body[index - 1] != 96)
+            and (index + 3 == len(body) or body[index + 3] != 96)
+        ):
+            active_delimiter = b"```"
+            index += 3
         elif character in (34, 39, 96):
             ordinary_quote = character
             index += 1
         else:
             index += 1
 
+    if ordinary_quote in (34, 39):
+        return bytes((ordinary_quote,))
     return active_delimiter
 
 
