@@ -1,8 +1,8 @@
 ---
-session_ended: 2026-08-10T12:04:18Z
-last_completed: REQ-162
-queue_state: 0 pending, 1 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 in-progress
-reqs_processed_this_session: 2
+session_ended: 2026-08-10T12:49:48Z
+last_completed: REQ-163
+queue_state: 0 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 in-progress
+reqs_processed_this_session: 1
 session_depth: light
 ---
 
@@ -10,8 +10,7 @@ session_depth: light
 
 ## Completed This Session
 
-- REQ-161: complete escaped-link and list-paragraph classification (Route C, 63%, Acceptance Partial) — v0.186.13, implementation `ad3f8bd`, metadata `a06f27f`; review created consent-gated REQ-163.
-- REQ-162: handle ordinary multiline backtick commands (Route C, 100%, Acceptance Pass) — v0.186.14, implementation `aff7c9c`, metadata `2a6e3a2`; no follow-up created.
+- REQ-163: complete remaining inline-link and list-fence classification (Route A, 100%, Acceptance Pass) — v0.186.15, implementation `c9d1acd`, metadata `8372728`; no follow-up created.
 
 ## In Progress (interrupted)
 
@@ -19,12 +18,12 @@ None.
 
 ## Still Queued
 
-- REQ-163: complete remaining inline-link and list-fence classification (`pending-answers` — 1 question). Do not claim until the user confirms it through clarification.
+None.
 
 ## Session Notes
 
-- Both approved follow-ups completed their full fresh Plan/Explore/Builder/Review lifecycles, RED/GREEN proof, owner qualification/testing, patch release, archive, implementation commit, and guarded provenance metadata commit.
-- UR-031 remains open with 26 completed members and REQ-163 as its sole unresolved member.
-- Full contract regressions, adjacent installer/staged/manifest suites, Bash syntax, warning-level ShellCheck, version/changelog mirrors, paired-helper identity, protected-file hashes, and diff hygiene pass at v0.186.14.
-- Cleanup passes 0–6 found no terminal queue/working item, misplaced request tree, consumed run scratch, orphan worktree/branch, or blanked request. No cleanup structural commit was needed.
-- ADR-019 and UR-031 input remain byte-identical at SHA-256 `2d5a54bc9435f8643f4d30e332c37426fbacb15442503eba338cb1f9ab11b282` and `ed156a18dc11f4f367e80d0e1cca8dbf676dffaae8030622df214e8070bab160`.
+- The approved final Markdown-classifier follow-up completed exact RED/GREEN proof, owner qualification/testing, independent review, patch release, archive, implementation commit, and guarded provenance metadata commit.
+- UR-031 is fully resolved and archived with its input and all 27 member REQs.
+- Cleanup passes 0–6 found no terminal queue/working item, loose archive entry, active UR, consumed run scratch, orphan worktree/branch, or blanked request; five updater-prime lesson links were repointed to the consolidated UR-031 archive in `cbed259`.
+- Focused and full contract regressions, installer, staged-skills, suite-manifest, updater, Bash syntax, warning-level ShellCheck, version/changelog mirrors, queue verification, and diff hygiene pass at v0.186.16.
+- Lessons remain `kb_status: pending`; nothing was written to the knowledge base without separate consent.
