@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.17 — Core Help Lists Every Sibling Subcommand (2026-08-10)
+
+`do-work help` used to name one sample command per extension package, which read like the whole menu and left the other sibling commands undiscoverable. It now names all 26, so knowing a command like `tidy-repo` is enough to find the package that owns it.
+
+- Replaces the sampled `board`/`bkb`/`code-review` lines with the full subcommand list for each sibling package
+- Points at `<package> help` for usage detail instead of restaging a sibling's menu in core
+- Adds a help Rules bullet requiring the list to move in the same commit as any sibling command change
+
 ## 0.186.16 — UR Archive Lesson Link Repointing (2026-08-10)
 
 Closing UR-031 moved its completed history into one self-contained archive folder, and the updater prime's durable lessons now follow it. Shipped-reference validation no longer depends on stale loose-archive paths.

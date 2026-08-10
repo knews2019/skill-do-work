@@ -22,10 +22,14 @@ do-work — core request and queue orchestration
   do-work recap                     Summarize recent URs and their REQs
   do-work help                      Show this menu
 
-Extensions installed beside core:
-  do-work-board board                 Kanban, Testing, calendar, summaries, and board CLI
-  do-work-knowledge bkb               BKB, memory, dream, interviews, and prompts
-  do-work-toolbox code-review         Reviews, reports, presentation, inspection, and repo utilities
+Extensions installed beside core — run <package> help for usage on any of these:
+
+  do-work-board      board · static · summary · cli
+  do-work-knowledge  bkb · memory · dream · interview · prompts · setup-memory
+  do-work-toolbox    validate-feedback · code-review · ui-review · present-work
+                     ai-report · slop-check · quick-wins · scan-ideas
+                     deep-explore · prime · inspect · note · stray-check
+                     tidy-repo · tutorial · install
 ```
 
 ## Full cycle without persistent state
@@ -50,5 +54,5 @@ For `<core-command> help`, read that action's Input and When to Use sections and
 ## Rules
 
 - Keep this menu aligned with the core router.
-- Do not duplicate extension menus; point to the named sibling skill.
+- Name every sibling subcommand so a user who knows a command name can find its package, but keep usage detail in that package's own `help` — never restage a sibling's menu here. When a sibling gains or drops a command, update this list in the same commit.
 - Help never mutates the queue, project, or Git state.
