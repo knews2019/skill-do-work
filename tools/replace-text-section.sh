@@ -181,7 +181,7 @@ def just_multiline_string_state(line: bytes, active_delimiter):
         else:
             index += 1
 
-    if ordinary_quote in (34, 39):
+    if ordinary_quote in (34, 39, 96):
         return bytes((ordinary_quote,))
     return active_delimiter
 

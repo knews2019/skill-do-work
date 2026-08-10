@@ -2329,6 +2329,85 @@ else
     fail_count=$((fail_count + 1))
   fi
 
+  ordinary_backtick_multiline_target="$section_workdir/ordinary-backtick-multiline-command.just"
+  {
+    printf '%s\n' \
+      'custom-before:' \
+      '    echo before' \
+      'command_value := `' \
+      'run-kanban:' \
+      'alias kanban-summary := ignored' \
+      'raw backslash closes: \` + `' \
+      'printf safe' \
+      '`' \
+      'custom-after:' \
+      '    echo after'
+  } > "$ordinary_backtick_multiline_target"
+  cp "$ordinary_backtick_multiline_target" "$ordinary_backtick_multiline_target.before"
+  ordinary_backtick_multiline_expected="$section_workdir/ordinary-backtick-multiline-command.expected"
+  cp "$ordinary_backtick_multiline_target" "$ordinary_backtick_multiline_expected"
+  printf '\n' >> "$ordinary_backtick_multiline_expected"
+  cat "$reserved_section_file" >> "$ordinary_backtick_multiline_expected"
+  if command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$ordinary_backtick_multiline_target" --list >/dev/null 2>&1; then
+    printf 'FAIL: ordinary multiline-backtick collision fixture is not valid Just syntax.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! "$replace_section_tool" --target "$ordinary_backtick_multiline_target" --section-file "$reserved_section_file" \
+    --reject-recipe-collisions; then
+    printf 'FAIL: replace-text-section treated reserved-looking ordinary multiline-backtick content as a collision.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif ! cmp -s "$ordinary_backtick_multiline_target" "$ordinary_backtick_multiline_expected"; then
+    printf 'FAIL: replace-text-section wrote unexpected bytes after accepting an ordinary multiline-backtick command.\n' >&2
+    fail_count=$((fail_count + 1))
+  elif command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$ordinary_backtick_multiline_target" --list >/dev/null 2>&1; then
+    printf 'FAIL: replace-text-section produced invalid Just after accepting an ordinary multiline-backtick command.\n' >&2
+    fail_count=$((fail_count + 1))
+  fi
+
+  ordinary_backtick_collision_target="$section_workdir/ordinary-backtick-nearby-collisions.just"
+  {
+    printf '%s\n' \
+      '# unmatched ordinary backtick in comment: `' \
+      'one_line_command := `printf safe`' \
+      'custom-body:' \
+      '    echo unmatched-backtick `' \
+      'custom-summary:' \
+      '    echo custom' \
+      'run-kanban:' \
+      '    echo real collision before command' \
+      'command_value := `' \
+      'kanban-static:' \
+      'raw backslash closes: \` + `' \
+      'alias kanban-static := ignored' \
+      '`' \
+      'alias kanban-summary := custom-summary' \
+      '@run-kanban-cli:' \
+      '    echo real collision after command' \
+      'run-do-work-update:' \
+      '    echo real collision after inactive forms'
+  } > "$ordinary_backtick_collision_target"
+  if command -v just >/dev/null 2>&1 \
+    && ! just --justfile "$ordinary_backtick_collision_target" --list >/dev/null 2>&1; then
+    printf 'FAIL: ordinary multiline-backtick nearby-collision control is not valid Just syntax.\n' >&2
+    fail_count=$((fail_count + 1))
+  else
+    cp "$ordinary_backtick_collision_target" "$ordinary_backtick_collision_target.before"
+    ordinary_backtick_collision_output="$section_workdir/ordinary-backtick-nearby-collisions.out"
+    expected_ordinary_backtick_collision='replace-text-section: target defines reserved Just recipe or alias outside managed section: kanban-summary, run-do-work-update, run-kanban, run-kanban-cli'
+    if "$replace_section_tool" --target "$ordinary_backtick_collision_target" --section-file "$reserved_section_file" \
+      --reject-recipe-collisions >"$ordinary_backtick_collision_output" 2>&1; then
+      printf 'FAIL: replace-text-section ignored real reserved definitions around an ordinary multiline-backtick command.\n' >&2
+      fail_count=$((fail_count + 1))
+    elif [ "$(cat "$ordinary_backtick_collision_output")" != "$expected_ordinary_backtick_collision" ]; then
+      printf 'FAIL: replace-text-section did not report only exact sorted collisions around an ordinary multiline-backtick command.\n' >&2
+      fail_count=$((fail_count + 1))
+    elif ! cmp -s "$ordinary_backtick_collision_target" "$ordinary_backtick_collision_target.before"; then
+      printf 'FAIL: replace-text-section changed the target after rejecting collisions around an ordinary multiline-backtick command.\n' >&2
+      fail_count=$((fail_count + 1))
+    fi
+  fi
+
   ordinary_and_command_collision_target="$section_workdir/ordinary-and-command-nearby-collisions.just"
   {
     printf '%s\n' \

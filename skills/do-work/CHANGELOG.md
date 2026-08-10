@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.14 — Just Ordinary Multiline-Backtick State (2026-08-10)
+
+Safe custom Justfiles no longer look like reserved-recipe collisions when an ordinary single-backtick command spans physical lines. Real definitions around the command still fail before mutation with the same exact sorted diagnostic.
+
+- Persists ordinary backtick state through the existing raw active-delimiter path
+- Closes on the next literal backtick without cooked-string escape parity and retains same-line close/reopen behavior
+- Keeps exact triple-backticks longest-first and prevents comments, recipe bodies, or closed same-line commands from hiding definitions
+- Adds Just-parseable acceptance, exact insertion-byte, sorted collision, and byte-preserving rejection fixtures
+- Preserves paired-helper identity and every triple-string, ordinary-quote, installer, staged-distribution, and suite-manifest contract
+
 ## 0.186.13 — Escaped-Link and List-Paragraph Classification (2026-08-10)
 
 The shipped-reference release guard no longer leaks first-party URLs through escaped closing delimiters or hides rendered four-column continuations inside ordinary list paragraphs. Publication and target-resolution policy remain unchanged.
