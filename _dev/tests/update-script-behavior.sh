@@ -406,8 +406,9 @@ chmod +x "$stub_bin/cp"
 CP_FAILURE_MARKER="$fixture_root/cp-failed-once" run_updater "$failure_project" y "$suite_tarball"
 rm -f "$stub_bin/cp"
 assert_status_nonzero 'partial failure: exits non-zero'
-assert_output_matches 'restored every managed path to its exact pre-install state' \
-  'partial failure: reports automatic recovery'
+assert_output_matches \
+  'restored every managed path and the Git index to their exact pre-install state' \
+  'partial failure: reports automatic filesystem and index recovery'
 assert_file_contains "$failure_project/.claude/skills/do-work/payload.txt" \
   'old do-work payload' 'partial failure: restores first changed module'
 assert_file_contains "$failure_project/.claude/skills/do-work-board/payload.txt" \

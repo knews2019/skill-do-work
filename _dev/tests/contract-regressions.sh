@@ -2304,17 +2304,27 @@ else
     ordinary-single ordinary-double ordinary-backtick \
     triple-single triple-double triple-backtick; do
     multiline_header_index=$((multiline_header_index + 1))
+    multiline_header_payload='payload'
     case "$multiline_header_kind" in
       ordinary-single) multiline_header_delimiter="'" ;;
       ordinary-double) multiline_header_delimiter='"' ;;
       ordinary-backtick) multiline_header_delimiter='`' ;;
-      triple-single) multiline_header_delimiter="'''" ;;
-      triple-double) multiline_header_delimiter='"""' ;;
-      triple-backtick) multiline_header_delimiter='```' ;;
+      triple-single)
+        multiline_header_delimiter="'''"
+        multiline_header_payload="payload's"
+        ;;
+      triple-double)
+        multiline_header_delimiter='"""'
+        multiline_header_payload='payload"s'
+        ;;
+      triple-backtick)
+        multiline_header_delimiter='```'
+        multiline_header_payload='payload`s'
+        ;;
     esac
     multiline_header_target="$section_workdir/multiline-header-$multiline_header_index.just"
-    printf 'run-kanban value=%s\npayload\n%s:\n    echo collision\n' \
-      "$multiline_header_delimiter" "$multiline_header_delimiter" \
+    printf 'run-kanban value=%s\n%s\n%s:\n    echo collision\n' \
+      "$multiline_header_delimiter" "$multiline_header_payload" "$multiline_header_delimiter" \
       > "$multiline_header_target"
     if command -v just >/dev/null 2>&1 \
       && ! just --justfile "$multiline_header_target" --list >/dev/null 2>&1; then

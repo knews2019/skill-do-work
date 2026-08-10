@@ -20,6 +20,64 @@ assert_output_contains() {
   grep -Eq -- "$pattern" <<<"$output" || fail "$message"
 }
 
+managed_state_paths=(
+  '.claude/skills/do-work'
+  '.claude/skills/do-work-board'
+  '.claude/skills/do-work-knowledge'
+  '.claude/skills/do-work-toolbox'
+  'justfile'
+  '.claude/settings.json'
+)
+
+snapshot_install_state() {
+  local project_root="$1" snapshot_root="$2" relative_path snapshot_path
+  mkdir -p "$snapshot_root/working-tree"
+  : > "$snapshot_root/existing-paths"
+  for relative_path in "${managed_state_paths[@]}"; do
+    if [ -e "$project_root/$relative_path" ] || [ -L "$project_root/$relative_path" ]; then
+      snapshot_path="$snapshot_root/working-tree/$relative_path"
+      mkdir -p "$(dirname "$snapshot_path")"
+      cp -Rp "$project_root/$relative_path" "$snapshot_path"
+      printf '%s\n' "$relative_path" >> "$snapshot_root/existing-paths"
+    fi
+  done
+  git -C "$project_root" diff --binary --no-ext-diff > "$snapshot_root/git.diff"
+  git -C "$project_root" diff --cached --binary --no-ext-diff > "$snapshot_root/git.cached.diff"
+  git -C "$project_root" status --porcelain=v1 --untracked-files=all -z \
+    > "$snapshot_root/git.status"
+}
+
+assert_install_state_unchanged() {
+  local project_root="$1" snapshot_root="$2" scenario_name="$3"
+  local relative_path snapshot_path existed_before=''
+  for relative_path in "${managed_state_paths[@]}"; do
+    snapshot_path="$snapshot_root/working-tree/$relative_path"
+    existed_before=''
+    grep -Fxq "$relative_path" "$snapshot_root/existing-paths" && existed_before=1
+    if [ -n "$existed_before" ]; then
+      if [ ! -e "$project_root/$relative_path" ] && [ ! -L "$project_root/$relative_path" ]; then
+        fail "$scenario_name removed managed working-tree path $relative_path"
+      elif ! diff -qr "$snapshot_path" "$project_root/$relative_path" >/dev/null; then
+        fail "$scenario_name changed managed working-tree bytes at $relative_path"
+      fi
+    elif [ -e "$project_root/$relative_path" ] || [ -L "$project_root/$relative_path" ]; then
+      fail "$scenario_name created managed working-tree path $relative_path"
+    fi
+  done
+
+  git -C "$project_root" diff --binary --no-ext-diff > "$snapshot_root/git.diff.after"
+  git -C "$project_root" diff --cached --binary --no-ext-diff \
+    > "$snapshot_root/git.cached.diff.after"
+  git -C "$project_root" status --porcelain=v1 --untracked-files=all -z \
+    > "$snapshot_root/git.status.after"
+  cmp -s "$snapshot_root/git.diff" "$snapshot_root/git.diff.after" \
+    || fail "$scenario_name changed git diff"
+  cmp -s "$snapshot_root/git.cached.diff" "$snapshot_root/git.cached.diff.after" \
+    || fail "$scenario_name changed git diff --cached"
+  cmp -s "$snapshot_root/git.status" "$snapshot_root/git.status.after" \
+    || fail "$scenario_name changed porcelain status"
+}
+
 new_git_project() {
   local project_root="$1"
   mkdir -p "$project_root"
@@ -326,6 +384,33 @@ else
   [ "$collision_status_after" = "$collision_status_before" ] || fail 'reserved recipe rejection changed Git status'
 fi
 
+# The fallback scanner must also retain a recipe header whose triple-quoted default
+# contains a quote of the same type. Without Just, this is the only parse boundary.
+multiline_collision_project="$workdir/multiline-reserved-recipe-collision"
+new_git_project "$multiline_collision_project"
+printf "run-kanban value='''\npayload's\n''':\n    echo custom collision\n" \
+  > "$multiline_collision_project/justfile"
+cp "$multiline_collision_project/justfile" "$workdir/multiline-collision.just.before"
+multiline_collision_output="$workdir/multiline-reserved-recipe-collision.out"
+multiline_collision_exit_status=0
+printf 'y\n' | PATH="$no_just_path" bash "$installer" \
+  --project-root "$multiline_collision_project" --archive "$archive_file" \
+  >"$multiline_collision_output" 2>&1 || multiline_collision_exit_status=$?
+if [ "$multiline_collision_exit_status" -eq 0 ]; then
+  fail 'installer accepted a delimiter-bearing reserved recipe when Just was unavailable'
+else
+  assert_file_contains "$multiline_collision_output" \
+    'reserved Just recipe or alias outside managed section: run-kanban' \
+    'installer did not name the delimiter-bearing reserved recipe collision'
+  if grep -Fq 'Install this complete four-skill suite?' "$multiline_collision_output"; then
+    fail 'installer asked for confirmation before rejecting the delimiter-bearing recipe collision'
+  fi
+  if ! cmp -s "$multiline_collision_project/justfile" "$workdir/multiline-collision.just.before" \
+    || [ -e "$multiline_collision_project/.claude" ]; then
+    fail 'delimiter-bearing reserved recipe rejection changed the Justfile or installed modules'
+  fi
+fi
+
 # Invalid Just ownership or invalid JSON is rejected before any module/configuration write.
 invalid_just_project="$workdir/invalid-just"
 new_git_project "$invalid_just_project"
@@ -470,6 +555,8 @@ mkdir -p "$rollback_snapshot/.claude/skills" "$rollback_snapshot/.claude"
 cp -R "$rollback_project/.claude/skills/." "$rollback_snapshot/.claude/skills/"
 cp "$rollback_project/justfile" "$rollback_snapshot/justfile"
 cp "$rollback_project/.claude/settings.json" "$rollback_snapshot/.claude/settings.json"
+rollback_state_snapshot="$workdir/rollback-state-before"
+snapshot_install_state "$rollback_project" "$rollback_state_snapshot"
 flaky_bin="$workdir/flaky-bin"
 mkdir -p "$flaky_bin"
 cat > "$flaky_bin/just" <<'SH'
@@ -493,6 +580,8 @@ elif ! diff -qr "$rollback_snapshot/.claude/skills" "$rollback_project/.claude/s
   || ! cmp -s "$rollback_snapshot/.claude/settings.json" "$rollback_project/.claude/settings.json"; then
   fail 'post-write Just failure did not restore exact managed originals'
 fi
+assert_install_state_unchanged "$rollback_project" "$rollback_state_snapshot" \
+  'post-write Just failure recovery'
 
 # A post-write settings validation failure restores the same exact originals.
 settings_rollback_project="$workdir/settings-rollback"
@@ -502,6 +591,8 @@ mkdir -p "$settings_rollback_snapshot/.claude/skills" "$settings_rollback_snapsh
 cp -R "$settings_rollback_project/.claude/skills/." "$settings_rollback_snapshot/.claude/skills/"
 cp "$settings_rollback_project/justfile" "$settings_rollback_snapshot/justfile"
 cp "$settings_rollback_project/.claude/settings.json" "$settings_rollback_snapshot/.claude/settings.json"
+settings_rollback_state_snapshot="$workdir/settings-rollback-state-before"
+snapshot_install_state "$settings_rollback_project" "$settings_rollback_state_snapshot"
 flaky_jq_bin="$workdir/flaky-jq-bin"
 mkdir -p "$flaky_jq_bin"
 cat > "$flaky_jq_bin/jq" <<'SH'
@@ -526,6 +617,8 @@ elif ! diff -qr "$settings_rollback_snapshot/.claude/skills" "$settings_rollback
   || ! cmp -s "$settings_rollback_snapshot/.claude/settings.json" "$settings_rollback_project/.claude/settings.json"; then
   fail 'post-write settings failure did not restore exact managed originals'
 fi
+assert_install_state_unchanged "$settings_rollback_project" \
+  "$settings_rollback_state_snapshot" 'post-write settings failure recovery'
 
 # TERM during the module write phase runs the same all-or-recover path.
 interrupt_project="$workdir/interruption-project"
@@ -535,6 +628,8 @@ mkdir -p "$interrupt_snapshot/.claude/skills" "$interrupt_snapshot/.claude"
 cp -R "$interrupt_project/.claude/skills/." "$interrupt_snapshot/.claude/skills/"
 cp "$interrupt_project/justfile" "$interrupt_snapshot/justfile"
 cp "$interrupt_project/.claude/settings.json" "$interrupt_snapshot/.claude/settings.json"
+interrupt_state_snapshot="$workdir/interruption-state-before"
+snapshot_install_state "$interrupt_project" "$interrupt_state_snapshot"
 interrupt_bin="$workdir/interrupt-bin"
 mkdir -p "$interrupt_bin"
 cat > "$interrupt_bin/cp" <<'SH'
@@ -558,8 +653,12 @@ elif ! diff -qr "$interrupt_snapshot/.claude/skills" "$interrupt_project/.claude
   || ! cmp -s "$interrupt_snapshot/.claude/settings.json" "$interrupt_project/.claude/settings.json"; then
   fail 'interrupted install did not recover the exact prior managed state'
 else
-  assert_file_contains "$workdir/interruption.out" 'restored every managed path to its exact pre-install state' 'interruption did not complete the recovery path'
+  assert_file_contains "$workdir/interruption.out" \
+    'restored every managed path and the Git index to their exact pre-install state' \
+    'interruption did not complete the filesystem and index recovery path'
 fi
+assert_install_state_unchanged "$interrupt_project" "$interrupt_state_snapshot" \
+  'interrupted install recovery'
 
 # --project-root must name the Git worktree root.
 non_git_project="$workdir/not-git"
@@ -575,6 +674,8 @@ fi
 # Declining the sole confirmation leaves a clean project untouched.
 cancel_project="$workdir/cancel-project"
 new_git_project "$cancel_project"
+cancel_state_snapshot="$workdir/cancel-state-before"
+snapshot_install_state "$cancel_project" "$cancel_state_snapshot"
 cancel_status=0
 printf 'n\n' | bash "$installer" --project-root "$cancel_project" --archive "$archive_file" >"$workdir/cancel.out" 2>&1 \
   || cancel_status=$?
@@ -582,6 +683,131 @@ if [ "$cancel_status" -ne 0 ]; then
   fail 'declining installation should be a successful no-op'
 elif [ -e "$cancel_project/.claude" ] || [ -e "$cancel_project/justfile" ]; then
   fail 'declining installation changed the project'
+fi
+assert_install_state_unchanged "$cancel_project" "$cancel_state_snapshot" \
+  'ordinary cancellation'
+
+# Recovery is exact for working-tree bytes and the Git index across every dirty-state shape.
+transaction_base_project="$workdir/transaction-base"
+new_git_project "$transaction_base_project"
+if ! run_installer "$transaction_base_project" "$archive_file" "$workdir/transaction-base.out"; then
+  fail 'could not build the transaction recovery fixture'
+fi
+git -C "$transaction_base_project" add .
+git -C "$transaction_base_project" commit -qm 'installed suite baseline'
+
+for dirty_state in staged-only unstaged-only partially-staged; do
+  state_project="$workdir/recovery-$dirty_state"
+  cp -R "$transaction_base_project" "$state_project"
+  state_managed_file="$state_project/.claude/skills/do-work/SKILL.md"
+  case "$dirty_state" in
+    staged-only)
+      printf '\nSTAGED-ONLY CUSTOMIZATION\n' >> "$state_managed_file"
+      git -C "$state_project" add .claude/skills/do-work/SKILL.md
+      ;;
+    unstaged-only)
+      printf '\nUNSTAGED-ONLY CUSTOMIZATION\n' >> "$state_managed_file"
+      ;;
+    partially-staged)
+      printf '\nSTAGED PARTIAL CUSTOMIZATION\n' >> "$state_managed_file"
+      git -C "$state_project" add .claude/skills/do-work/SKILL.md
+      printf 'UNSTAGED PARTIAL CUSTOMIZATION\n' >> "$state_managed_file"
+      ;;
+  esac
+  state_snapshot="$workdir/recovery-$dirty_state-before"
+  snapshot_install_state "$state_project" "$state_snapshot"
+  state_status=0
+  printf 'y\n' | DO_WORK_TEST_JUST_COUNT="$workdir/recovery-$dirty_state-just-count" \
+    PATH="$flaky_bin:$PATH" bash "$installer" --project-root "$state_project" \
+      --archive "$archive_file" > "$workdir/recovery-$dirty_state.out" 2>&1 \
+    || state_status=$?
+  if [ "$state_status" -eq 0 ]; then
+    fail "$dirty_state recovery fixture reported success after post-write verification failed"
+  else
+    assert_install_state_unchanged "$state_project" "$state_snapshot" "$dirty_state recovery"
+    assert_file_contains "$workdir/recovery-$dirty_state.out" \
+      'restored every managed path and the Git index to their exact pre-install state' \
+      "$dirty_state recovery did not report exact filesystem and index restoration"
+  fi
+done
+
+# A failure inside the unstage loop must recover the index mutation that already succeeded.
+unstage_failure_project="$workdir/unstage-failure"
+cp -R "$transaction_base_project" "$unstage_failure_project"
+printf '\nFIRST MODULE STAGED CUSTOMIZATION\n' \
+  >> "$unstage_failure_project/.claude/skills/do-work/SKILL.md"
+git -C "$unstage_failure_project" add .claude/skills/do-work/SKILL.md
+unstage_failure_snapshot="$workdir/unstage-failure-before"
+snapshot_install_state "$unstage_failure_project" "$unstage_failure_snapshot"
+unstage_failure_bin="$workdir/unstage-failure-bin"
+mkdir -p "$unstage_failure_bin"
+real_git_path="$(command -v git)"
+cat > "$unstage_failure_bin/git" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ " $* " == *" restore --staged "* ]]; then
+  restore_count=0
+  [ ! -f "$DO_WORK_TEST_GIT_COUNT" ] || restore_count="$(cat "$DO_WORK_TEST_GIT_COUNT")"
+  restore_count=$((restore_count + 1))
+  printf '%s\n' "$restore_count" > "$DO_WORK_TEST_GIT_COUNT"
+  [ "$restore_count" -lt 2 ] || exit 86
+fi
+exec "$DO_WORK_TEST_REAL_GIT" "$@"
+SH
+chmod +x "$unstage_failure_bin/git"
+unstage_failure_status=0
+printf 'y\n' | DO_WORK_TEST_GIT_COUNT="$workdir/unstage-git-count" \
+  DO_WORK_TEST_REAL_GIT="$real_git_path" PATH="$unstage_failure_bin:$PATH" \
+  bash "$installer" --project-root "$unstage_failure_project" --archive "$archive_file" \
+    > "$workdir/unstage-failure.out" 2>&1 || unstage_failure_status=$?
+if [ "$unstage_failure_status" -eq 0 ]; then
+  fail 'installer reported success after a failure inside the managed unstage loop'
+else
+  assert_install_state_unchanged "$unstage_failure_project" "$unstage_failure_snapshot" \
+    'unstage-loop failure recovery'
+  assert_file_contains "$workdir/unstage-failure.out" \
+    'restored every managed path and the Git index to their exact pre-install state' \
+    'unstage-loop failure did not run exact filesystem and index recovery'
+fi
+
+# Cancellation occurs before the transaction and preserves partial staging exactly.
+dirty_cancel_project="$workdir/dirty-cancel"
+cp -R "$transaction_base_project" "$dirty_cancel_project"
+printf '\nCANCELLED STAGED CUSTOMIZATION\n' \
+  >> "$dirty_cancel_project/.claude/skills/do-work/SKILL.md"
+git -C "$dirty_cancel_project" add .claude/skills/do-work/SKILL.md
+printf 'CANCELLED UNSTAGED CUSTOMIZATION\n' \
+  >> "$dirty_cancel_project/.claude/skills/do-work/SKILL.md"
+dirty_cancel_snapshot="$workdir/dirty-cancel-before"
+snapshot_install_state "$dirty_cancel_project" "$dirty_cancel_snapshot"
+dirty_cancel_status=0
+printf 'n\n' | bash "$installer" --project-root "$dirty_cancel_project" \
+  --archive "$archive_file" > "$workdir/dirty-cancel.out" 2>&1 || dirty_cancel_status=$?
+if [ "$dirty_cancel_status" -ne 0 ]; then
+  fail 'declining installation with a partially staged module should be a successful no-op'
+else
+  assert_install_state_unchanged "$dirty_cancel_project" "$dirty_cancel_snapshot" \
+    'dirty cancellation'
+fi
+
+# Success still removes both staged and unstaged customizations beneath installed bytes.
+successful_transaction_project="$workdir/successful-transaction"
+cp -R "$transaction_base_project" "$successful_transaction_project"
+printf '\nSUCCESS STAGED CUSTOMIZATION\n' \
+  >> "$successful_transaction_project/.claude/skills/do-work/SKILL.md"
+git -C "$successful_transaction_project" add .claude/skills/do-work/SKILL.md
+printf 'SUCCESS UNSTAGED CUSTOMIZATION\n' \
+  >> "$successful_transaction_project/.claude/skills/do-work/SKILL.md"
+if ! run_installer "$successful_transaction_project" "$archive_file" \
+  "$workdir/successful-transaction.out"; then
+  fail 'ordinary installation failed while discarding confirmed managed customizations'
+elif grep -q 'SUCCESS .* CUSTOMIZATION' \
+  "$successful_transaction_project/.claude/skills/do-work/SKILL.md"; then
+  fail 'successful installation retained a confirmed managed customization'
+elif [ -n "$(git -C "$successful_transaction_project" diff --cached --name-only -- .claude/skills)" ]; then
+  fail 'successful installation retained staged managed customizations in the index'
+else
+  assert_four_modules "$successful_transaction_project"
 fi
 
 if [ "$fail_count" -ne 0 ]; then

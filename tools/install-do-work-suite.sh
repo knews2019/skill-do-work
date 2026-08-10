@@ -64,6 +64,12 @@ git_root="$(git -C "$project_root" rev-parse --show-toplevel 2>/dev/null || true
 git_root="$(cd "$git_root" && pwd -P)"
 [ "$git_root" = "$project_root" ] \
   || fail "--project-root must name the Git worktree root ($git_root)"
+git_index_path="$(git -C "$project_root" rev-parse --git-path index 2>/dev/null)" \
+  || fail 'could not resolve the project Git index'
+case "$git_index_path" in
+  /*) ;;
+  *) git_index_path="$project_root/$git_index_path" ;;
+esac
 
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 manifest_validator="$script_dir/validate-suite-manifest.sh"
@@ -86,9 +92,10 @@ just_target=''
 just_existed=''
 settings_target="$project_root/.claude/settings.json"
 settings_existed=''
+git_index_existed=''
 
 recover_install() {
-  local recovery_failed='' module_index destination_path
+  local recovery_failed='' module_index destination_path index_restore_temporary=''
 
   set +e
   for module_index in "${!module_destinations[@]}"; do
@@ -113,14 +120,32 @@ recover_install() {
     mkdir -p "$(dirname "$settings_target")" || recovery_failed=1
     cp -p "$backup_root/settings.json" "$settings_target" || recovery_failed=1
   fi
+
+  if [ "$git_index_existed" = 1 ]; then
+    index_restore_temporary="$(mktemp "$(dirname "$git_index_path")/.do-work-index.restore.XXXXXX")" \
+      || recovery_failed=1
+    if [ -n "$index_restore_temporary" ]; then
+      if cp -p "$backup_root/git-index" "$index_restore_temporary"; then
+        if ! mv "$index_restore_temporary" "$git_index_path"; then
+          rm -f "$index_restore_temporary"
+          recovery_failed=1
+        fi
+      else
+        rm -f "$index_restore_temporary"
+        recovery_failed=1
+      fi
+    fi
+  else
+    rm -f -- "$git_index_path" || recovery_failed=1
+  fi
   set -e
 
   if [ -n "$recovery_failed" ]; then
-    printf 'do-work suite install: automatic recovery was incomplete; inspect the four skill directories, %s, and %s\n' \
-      "$just_target" "$settings_target" >&2
+    printf 'do-work suite install: automatic recovery was incomplete; inspect the four skill directories, %s, %s, and Git index %s\n' \
+      "$just_target" "$settings_target" "$git_index_path" >&2
     return 1
   fi
-  printf 'do-work suite install: restored every managed path to its exact pre-install state.\n' >&2
+  printf 'do-work suite install: restored every managed path and the Git index to their exact pre-install state.\n' >&2
 }
 
 cleanup() {
@@ -128,7 +153,7 @@ cleanup() {
   trap - EXIT
   trap '' HUP INT TERM
   if [ -n "$write_started" ] && [ -z "$install_verified" ]; then
-    printf 'do-work suite install: installation did not complete; recovering managed paths.\n' >&2
+    printf 'do-work suite install: installation did not complete; recovering managed paths and Git index.\n' >&2
     recover_install || exit_status=1
   fi
   rm -rf "$install_tmp"
@@ -448,16 +473,24 @@ if [ "$settings_existed" = 1 ]; then
   cp -p "$settings_target" "$backup_root/settings.json"
 fi
 
+git_index_existed=0
+if [ -e "$git_index_path" ] || [ -L "$git_index_path" ]; then
+  [ -f "$git_index_path" ] && [ ! -L "$git_index_path" ] \
+    || fail "Git index must be a regular file: $git_index_path"
+  git_index_existed=1
+  cp -p "$git_index_path" "$backup_root/git-index"
+fi
+
 # Confirmation authorizes discarding dirty managed module content. Clear only module paths
 # from the index so a previously staged customization cannot survive beneath installed bytes;
 # Just/settings remain project configuration and are never wholesale-reset in the index.
+write_started=1
 for relative_path in "${module_relatives[@]}"; do
   if [ -n "$(git -C "$project_root" ls-files -- "$relative_path")" ]; then
     git -C "$project_root" restore --staged -- "$relative_path"
   fi
 done
 
-write_started=1
 for module_index in "${!module_destinations[@]}"; do
   source_path="${module_sources[$module_index]}"
   destination_path="${module_destinations[$module_index]}"

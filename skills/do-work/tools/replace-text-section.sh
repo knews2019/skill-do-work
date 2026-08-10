@@ -78,6 +78,43 @@ def marker_span(data: bytes, label: str, require_section_only: bool = False):
     return span_start, span_end
 
 
+def just_delimiter_matches(body: bytes, index: int, active_delimiter: bytes) -> bool:
+    if not body.startswith(active_delimiter, index):
+        return False
+    if active_delimiter == b"```" and (
+        (index > 0 and body[index - 1] == 96)
+        or (
+            index + len(active_delimiter) < len(body)
+            and body[index + len(active_delimiter)] == 96
+        )
+    ):
+        return False
+    if active_delimiter in (b'"', b'"""'):
+        backslash_count = 0
+        backslash_index = index - 1
+        while backslash_index >= 0 and body[backslash_index] == 92:
+            backslash_count += 1
+            backslash_index -= 1
+        if backslash_count % 2 == 1:
+            return False
+    return True
+
+
+def just_opening_delimiter(body: bytes, index: int):
+    if body.startswith(b"'''", index):
+        return b"'''"
+    if body.startswith(b'"""', index):
+        return b'"""'
+    if body.startswith(b"```", index) and (
+        (index == 0 or body[index - 1] != 96)
+        and (index + 3 == len(body) or body[index + 3] != 96)
+    ):
+        return b"```"
+    if body[index] in (34, 39, 96):
+        return bytes((body[index],))
+    return None
+
+
 def just_definition_name(line: bytes):
     body = line_body(line)
     if not body or body[:1] in (b" ", b"\t", b"#"):
@@ -93,23 +130,27 @@ def just_definition_name(line: bytes):
         return None
 
     remainder = body[name_match.end() :]
-    quote = None
-    escaped = False
-    for index, character in enumerate(remainder):
-        if quote is not None:
-            if escaped:
-                escaped = False
-            elif character == 92 and quote == 34:
-                escaped = True
-            elif character == quote:
-                quote = None
+    active_delimiter = None
+    index = 0
+    while index < len(remainder):
+        if active_delimiter is not None:
+            if just_delimiter_matches(remainder, index, active_delimiter):
+                index += len(active_delimiter)
+                active_delimiter = None
+            else:
+                index += 1
             continue
-        if character in (34, 39, 96):
-            quote = character
-        elif character == 58:
+
+        opening_delimiter = just_opening_delimiter(remainder, index)
+        if opening_delimiter is not None:
+            active_delimiter = opening_delimiter
+            index += len(opening_delimiter)
+            continue
+        if remainder[index] == 58:
             if index + 1 < len(remainder) and remainder[index + 1] == 61:
                 return None
             return name_match.group(0)
+        index += 1
     return None
 
 
@@ -121,68 +162,24 @@ def just_multiline_string_state(line: bytes, active_delimiter):
         return None
 
     index = 0
-    ordinary_quote = None
-    escaped = False
     while index < len(body):
         if active_delimiter is not None:
-            delimiter_matches = body.startswith(active_delimiter, index)
-            if active_delimiter == b"```" and delimiter_matches:
-                delimiter_matches = (
-                    (index == 0 or body[index - 1] != 96)
-                    and (
-                        index + len(active_delimiter) == len(body)
-                        or body[index + len(active_delimiter)] != 96
-                    )
-                )
-            if delimiter_matches:
-                if active_delimiter in (b'"', b'"""'):
-                    backslash_count = 0
-                    backslash_index = index - 1
-                    while backslash_index >= 0 and body[backslash_index] == 92:
-                        backslash_count += 1
-                        backslash_index -= 1
-                    if backslash_count % 2 == 1:
-                        index += 1
-                        continue
-                delimiter_length = len(active_delimiter)
+            if just_delimiter_matches(body, index, active_delimiter):
+                index += len(active_delimiter)
                 active_delimiter = None
-                index += delimiter_length
-                continue
-            index += 1
+            else:
+                index += 1
             continue
 
-        character = body[index]
-        if ordinary_quote is not None:
-            if escaped:
-                escaped = False
-            elif character == 92 and ordinary_quote == 34:
-                escaped = True
-            elif character == ordinary_quote:
-                ordinary_quote = None
-            index += 1
-            continue
-        if character == 35:
+        if body[index] == 35:
             break
-        if body.startswith(b"'''", index):
-            active_delimiter = b"'''"
-            index += 3
-        elif body.startswith(b'"""', index):
-            active_delimiter = b'"""'
-            index += 3
-        elif body.startswith(b"```", index) and (
-            (index == 0 or body[index - 1] != 96)
-            and (index + 3 == len(body) or body[index + 3] != 96)
-        ):
-            active_delimiter = b"```"
-            index += 3
-        elif character in (34, 39, 96):
-            ordinary_quote = character
-            index += 1
+        opening_delimiter = just_opening_delimiter(body, index)
+        if opening_delimiter is not None:
+            active_delimiter = opening_delimiter
+            index += len(opening_delimiter)
         else:
             index += 1
 
-    if ordinary_quote in (34, 39, 96):
-        return bytes((ordinary_quote,))
     return active_delimiter
 
 

@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.19 — Exact Installer Recovery and Parser Guard Completion (2026-08-10)
+
+Failed suite installs now restore both managed filesystem bytes and the exact pre-install Git index, including staged/unstaged distinctions. The same release closes the remaining delimiter, Markdown-fence, and version-file validation gaps found in the distribution guards.
+
+- Snapshots the Git index before managed unstaging, arms recovery first, and restores the index atomically on failures and handled signals
+- Compares managed bytes, ordinary and cached diffs, and porcelain status across staged-only, unstaged-only, partially staged, interrupted, cancelled, and successful installer fixtures
+- Keeps embedded quote/backtick characters inside matching Just triple delimiters from terminating multiline defaults early
+- Rejects root fence lookalikes with trailing text and version files with any bytes beyond their single newline-terminated semantic version
+
 ## 0.186.18 — Release, Parser, and Distribution Guard Fixes (2026-08-10)
 
 Consumer releases no longer risk rewriting the installed do-work version, and the update/install path now rejects version drift before it can escape recovery. The same review pass closes the remaining Just/CommonMark parsing gaps and turns helper/help alignment into enforced contracts.

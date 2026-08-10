@@ -19,11 +19,11 @@ manifest_file="$archive_root/suite/modules.tsv"
 
 [ -f "$version_file" ] && [ ! -L "$version_file" ] \
   || fail 'VERSION must be a regular file in the suite root'
-[ "$(wc -l < "$version_file" | tr -d ' ')" = '1' ] \
-  || fail 'VERSION must contain exactly one newline-terminated line'
 suite_version="$(sed -n '1p' "$version_file")"
 printf '%s\n' "$suite_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
   || fail 'VERSION must be a plain semantic version (X.Y.Z)'
+printf '%s\n' "$suite_version" | cmp -s - "$version_file" \
+  || fail 'VERSION must contain exactly one newline-terminated line'
 
 [ -f "$manifest_file" ] && [ ! -L "$manifest_file" ] \
   || fail 'suite/modules.tsv must be a regular file in the suite root'
@@ -124,11 +124,11 @@ done < <(sed '1d' "$manifest_file")
 core_version_file="$archive_root/skills/do-work/VERSION"
 [ -f "$core_version_file" ] && [ ! -L "$core_version_file" ] \
   || fail 'skills/do-work/VERSION must be a regular file'
-[ "$(wc -l < "$core_version_file" | tr -d ' ')" = '1' ] \
-  || fail 'skills/do-work/VERSION must contain exactly one newline-terminated line'
 core_version="$(sed -n '1p' "$core_version_file")"
 printf '%s\n' "$core_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' \
   || fail 'skills/do-work/VERSION must be a plain semantic version (X.Y.Z)'
+printf '%s\n' "$core_version" | cmp -s - "$core_version_file" \
+  || fail 'skills/do-work/VERSION must contain exactly one newline-terminated line'
 [ "$core_version" = "$suite_version" ] \
   || fail "skills/do-work/VERSION mismatch (expected $suite_version, found $core_version)"
 

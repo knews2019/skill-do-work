@@ -243,8 +243,11 @@ def strip_markdown_code(markdown_text):
             line_is_code = True
             closes_fence = False
             if list_fence_indentation is None:
-                if fence_match:
-                    fence = fence_match.group(1)
+                root_closing_fence_match = re.match(
+                    r"^[ ]{0,3}(`{3,}|~{3,})[ \t]*(?:\r?\n)?$", line
+                )
+                if root_closing_fence_match:
+                    fence = root_closing_fence_match.group(1)
                     closes_fence = (
                         fence[0] == fence_character and len(fence) >= fence_length
                     )
@@ -546,6 +549,16 @@ def run_parser_fixtures():
             "tilde fenced code",
             "~~~\n[hidden](missing-tilde.md)\n~~~\n[live](live.md)\n",
             ["live.md"],
+        ),
+        (
+            "root fence lookalike lines",
+            "```markdown\n"
+            "[hidden](missing-before-lookalike.md)\n"
+            "``` trailing text\n"
+            "[hidden](missing-after-lookalike.md)\n"
+            "```\n"
+            "[live](live-after-root-fence.md)\n",
+            ["live-after-root-fence.md"],
         ),
         (
             "indented code",

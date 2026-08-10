@@ -148,9 +148,17 @@ case_root="$(clone_valid_fixture invalid-version)"
 printf 'v1\n' > "$case_root/VERSION"
 expect_fail "$case_root" 'invalid suite version'
 
+case_root="$(clone_valid_fixture trailing-suite-version-bytes)"
+printf '0.184.0\njunk' > "$case_root/VERSION"
+expect_fail "$case_root" 'suite VERSION has trailing bytes after its newline-terminated line'
+
 case_root="$(clone_valid_fixture mismatched-core-version)"
 printf '0.184.1\n' > "$case_root/skills/do-work/VERSION"
 expect_fail "$case_root" 'core VERSION differs from suite VERSION'
+
+case_root="$(clone_valid_fixture trailing-core-version-bytes)"
+printf '0.184.0\njunk' > "$case_root/skills/do-work/VERSION"
+expect_fail "$case_root" 'core VERSION has trailing bytes after its newline-terminated line'
 
 case_root="$(clone_valid_fixture mismatched-action-version)"
 sed 's/0\.184\.0/9.9.9/' "$case_root/skills/do-work/actions/version.md" \
