@@ -72,7 +72,14 @@ def leading_indentation(line):
 
 def line_opens_paragraph(line, content_start):
     content = line[content_start:].rstrip("\r\n")
+    list_item_match = re.match(
+        r"^(?:[-+*]|[0-9]{1,9}[.)])[ \t]+(.*)$", content
+    )
+    if list_item_match:
+        content = list_item_match.group(1)
     if not content or content.startswith("<!--"):
+        return False
+    if re.match(r"^(?:`{3,}|~{3,})(?:[ \t]|$)", content):
         return False
     if re.match(
         r"^(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|[0-9]{1,9}[.)])(?:[ \t]|$)|\[[^\]\n]+\]:)",
@@ -87,28 +94,54 @@ def line_opens_paragraph(line, content_start):
 
 
 def escaped_inline_link_end(markdown_text, label_start):
-    if not punctuation_is_escaped(markdown_text, label_start):
-        return None
-
+    opening_bracket_escaped = punctuation_is_escaped(markdown_text, label_start)
     label_end = label_start + 1
     nested_labels = 0
+    escaped_label_end = None
     while label_end < len(markdown_text):
         if markdown_text[label_end] == "[" and not punctuation_is_escaped(markdown_text, label_end):
             nested_labels += 1
-        elif markdown_text[label_end] == "]" and not punctuation_is_escaped(markdown_text, label_end):
+        elif markdown_text[label_end] == "]":
+            closing_bracket_escaped = punctuation_is_escaped(markdown_text, label_end)
             if nested_labels == 0:
-                break
-            nested_labels -= 1
+                if not closing_bracket_escaped:
+                    break
+                candidate_parenthesis = label_end + 1
+                while (
+                    candidate_parenthesis < len(markdown_text)
+                    and markdown_text[candidate_parenthesis] == "\\"
+                ):
+                    candidate_parenthesis += 1
+                if (
+                    escaped_label_end is None
+                    and candidate_parenthesis < len(markdown_text)
+                    and markdown_text[candidate_parenthesis] == "("
+                ):
+                    escaped_label_end = label_end
+            elif not closing_bracket_escaped:
+                nested_labels -= 1
         elif markdown_text[label_end] == "\n":
-            return None
+            break
         label_end += 1
-    if label_end >= len(markdown_text):
-        return None
+    if label_end >= len(markdown_text) or markdown_text[label_end] == "\n":
+        if escaped_label_end is None:
+            return None
+        label_end = escaped_label_end
 
     opening_parenthesis = label_end + 1
+    while (
+        opening_parenthesis < len(markdown_text)
+        and markdown_text[opening_parenthesis] == "\\"
+    ):
+        opening_parenthesis += 1
     if (
         opening_parenthesis >= len(markdown_text)
         or markdown_text[opening_parenthesis] != "("
+    ):
+        return None
+    if not (
+        opening_bracket_escaped
+        or punctuation_is_escaped(markdown_text, label_end)
         or punctuation_is_escaped(markdown_text, opening_parenthesis)
     ):
         return None
@@ -456,6 +489,44 @@ def run_parser_fixtures():
             ["live-continuation.md"],
         ),
         (
+            "bullet-list paragraph continuations",
+            "- dash paragraph\n"
+            "    [live](live-dash-continuation.md)\n"
+            "+ plus paragraph\n"
+            "    [live](live-plus-continuation.md)\n"
+            "* star paragraph\n"
+            "    [live](live-star-continuation.md)\n\n"
+            "-\n"
+            "    [hidden](missing-empty-bullet-code.md)\n\n"
+            "- ```\n"
+            "    [hidden](missing-list-fence-code.md)\n\n"
+            "- paragraph before blank\n\n"
+            "    [hidden](missing-blank-separated-bullet-code.md)\n",
+            [
+                "live-dash-continuation.md",
+                "live-plus-continuation.md",
+                "live-star-continuation.md",
+            ],
+        ),
+        (
+            "ordered-list paragraph continuations",
+            "1. period paragraph\n"
+            "    [live](live-period-continuation.md)\n"
+            "2) parenthesis paragraph\n"
+            "    [live](live-parenthesis-continuation.md)\n"
+            "123456789. nine-digit paragraph\n"
+            "    [live](live-nine-digit-continuation.md)\n\n"
+            "1.\n"
+            "    [hidden](missing-empty-ordered-code.md)\n\n"
+            "3) paragraph before blank\n\n"
+            "    [hidden](missing-blank-separated-ordered-code.md)\n",
+            [
+                "live-period-continuation.md",
+                "live-parenthesis-continuation.md",
+                "live-nine-digit-continuation.md",
+            ],
+        ),
+        (
             "HTML comments",
             "[before](before.md) <!-- [hidden](missing-inline-comment.md) -->\n<!--\n`comment backtick` [hidden](missing-block-comment.md)\n--> [after](after.md)\n",
             ["before.md", "after.md"],
@@ -497,6 +568,33 @@ def run_parser_fixtures():
             + "\n",
             [
                 "live-even-relative.md",
+                "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
+            ],
+        ),
+        (
+            "odd-parity escaped closing-bracket inline links",
+            r"[hidden\](https://raw.githubusercontent.com/knews2019/skill-do-work/main/missing-escaped-closing-bracket.md) "
+            r"[live\\](https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION) "
+            r"[live \] label](https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION) "
+            r"[live [nested]](https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION)"
+            + "\n"
+            + r"[incomplete\](https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION"
+            + "\n",
+            [
+                "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
+                "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
+                "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
+                "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
+            ],
+        ),
+        (
+            "odd-parity escaped opening-parenthesis inline links",
+            r"[hidden]\(https://raw.githubusercontent.com/knews2019/skill-do-work/main/missing-escaped-opening-parenthesis.md) "
+            r"[live]\\(https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION) "
+            r"[ordinary](https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION)"
+            + "\n",
+            [
+                "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
                 "https://raw.githubusercontent.com/knews2019/skill-do-work/main/VERSION",
             ],
         ),

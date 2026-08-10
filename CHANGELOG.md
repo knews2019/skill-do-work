@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.13 — Escaped-Link and List-Paragraph Classification (2026-08-10)
+
+The shipped-reference release guard no longer leaks first-party URLs through escaped closing delimiters or hides rendered four-column continuations inside ordinary list paragraphs. Publication and target-resolution policy remain unchanged.
+
+- Applies odd/even escape parity to closing brackets and destination-opening parentheses in the shared rendered-region mask
+- Preserves continuation links for nonempty bullet and one-to-nine-digit ordered list items
+- Keeps empty markers, blanks, fences, and genuine indented code outside published-reference discovery
+- Adds exact RED/GREEN production-helper fixtures with source-length and newline-offset invariants
+- Records remaining relative-parity, label-content, and list-fence-info variants in consent-gated REQ-163
+
 ## 0.186.12 — Occurrence-Complete Retired Alias Matching (2026-08-10)
 
 The test-only retired-command guard now evaluates exact source occurrences and overlapping historical install/setup candidates completely, so approved queue-board references cannot hide another retired invocation and invalid longer candidates cannot suppress a valid former command head.
