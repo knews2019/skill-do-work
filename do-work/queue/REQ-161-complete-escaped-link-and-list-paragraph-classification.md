@@ -1,7 +1,8 @@
 ---
 id: REQ-161
 title: "Review fix: Complete escaped-link and list-paragraph classification"
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-10T09:53:36Z
 domain: general
 created_at: 2026-08-10T09:46:11Z
 user_request: UR-031
@@ -37,6 +38,6 @@ Found during review of REQ-158. Its named regressions and full contracts pass, b
 
 ## Open Questions
 
-- [ ] REQ-158 fixes escaped opening brackets and top-level paragraph continuation, but escaped closing brackets or opening parentheses still let first-party URLs re-enter through the bare-URL scan, and four-space continuations inside bullet or ordered-list paragraphs are still hidden as code. This is another review of review-generated work, so the cascade-depth rule requires your consent before completing the already-approved rendered-region behavior. Should I process this as a new task?
+- [x] REQ-158 fixes escaped opening brackets and top-level paragraph continuation, but escaped closing brackets or opening parentheses still let first-party URLs re-enter through the bare-URL scan, and four-space continuations inside bullet or ordered-list paragraphs are still hidden as code. This is another review of review-generated work, so the cascade-depth rule requires your consent before completing the already-approved rendered-region behavior. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.

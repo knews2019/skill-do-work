@@ -1,7 +1,8 @@
 ---
 id: REQ-160
 title: "Review fix: Make retired core alias matching occurrence-complete"
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-10T09:20:51Z
 domain: general
 created_at: 2026-08-09T20:36:33Z
 user_request: UR-031
@@ -40,6 +41,6 @@ Found during review of REQ-157. Its 186-row historical inventory is complete, bu
 
 ## Open Questions
 
-- [ ] REQ-157 completes the historical alias inventory, but its guard still misses some former install-head commands and additional retired commands placed on exempt test-reference lines. Because REQ-157 was itself created by a review, the cascade-depth rule requires your approval before this non-critical follow-up can enter the claimable queue. Should I process this as a new task?
+- [x] REQ-157 completes the historical alias inventory, but its guard still misses some former install-head commands and additional retired commands placed on exempt test-reference lines. Because REQ-157 was itself created by a review, the cascade-depth rule requires your approval before this non-critical follow-up can enter the claimable queue. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
