@@ -3,6 +3,7 @@ id: REQ-161
 title: "Review fix: Complete escaped-link and list-paragraph classification"
 status: completed
 completed_at: 2026-08-10T11:31:29Z
+commit: ad3f8bd
 claimed_at: 2026-08-10T10:59:26Z
 status_changed_at: 2026-08-10T09:53:36Z
 domain: general
