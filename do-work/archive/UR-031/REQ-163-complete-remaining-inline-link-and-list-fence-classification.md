@@ -3,6 +3,7 @@ id: REQ-163
 title: "Review fix: Complete remaining inline-link and list-fence classification"
 status: completed
 completed_at: 2026-08-10T12:43:05Z
+commit: c9d1acd
 status_changed_at: 2026-08-10T12:34:02Z
 claimed_at: 2026-08-10T12:34:36Z
 route: A
