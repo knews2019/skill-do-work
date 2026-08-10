@@ -3,6 +3,7 @@ id: REQ-162
 title: "Review fix: Handle ordinary multiline backtick commands"
 status: completed
 completed_at: 2026-08-10T12:01:02Z
+commit: aff7c9c
 claimed_at: 2026-08-10T11:33:58Z
 status_changed_at: 2026-08-10T10:57:17Z
 route: C
