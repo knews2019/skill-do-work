@@ -12,6 +12,12 @@ word_count: 9
 
 Capture the approved, dependency-ordered program for separating the existing all-in-one do-work skill into four required skills in the same repository while preserving the current orchestrator and both update entry points.
 
+## Verification Confirmation
+
+The detailed planning context in this file is a synthesized record of the previously approved plan rather than part of the nine-word verbatim capture command below. On 2026-08-07, after reviewing the UR-031 verification findings, the user instructed `apply the UR-031 verification fixes`. That instruction confirms the Summary, Batch Constraints, Resolved Decisions From Planning, and Full-Cycle Prompt in this file as the authoritative implementation context for REQ-135 through REQ-146. The original Full Verbatim Input remains unchanged for provenance.
+
+On 2026-08-08, during `do-work clarify`, the user confirmed that every known client updater reports exactly `suite-layout-v2` and chose their attestation as sufficient evidence for cutover. No stored client-by-client inventory is required. The user also confirmed that one modular suite release has shipped and every client has completed the four-skill, managed Just section, and previously enabled memory-hook migration required before compatibility cleanup.
+
 ## Extracted Requests
 
 | REQ | Title | Role in the program |
@@ -32,14 +38,15 @@ Capture the approved, dependency-ordered program for separating the existing all
 ## Batch Constraints
 
 - The suite has four required skills: `do-work`, `do-work-board`, `do-work-knowledge`, and `do-work-toolbox`.
-- Fresh installs install the full suite. Modules share one repository version and update atomically.
+- Fresh installs install the full suite. Modules share one repository version and update as one all-or-recover suite transaction: validate every module before writing, report success only after every installed module verifies, and restore every changed managed path after failure so no partial suite remains. This is a transactional guarantee, not a claim that four sibling directories can be replaced by one filesystem-atomic rename.
 - Preserve the current feature-rich `do-work run` orchestrator. Remove only the separate stateful pipeline after modular cutover.
 - Preserve both public update paths: `do-work update` and `just run-do-work-update`; both must use the same update engine.
-- Use a bridge release before changing the live archive layout. Every existing client must report the `suite-layout-v2` updater capability before cutover.
+- Use a bridge release before changing the live archive layout. Before cutover, require user attestation that every known client updater's `--capabilities` command prints exactly `suite-layout-v2`; no stored client-by-client inventory is required.
 - Keep all toolbox functionality; this program separates it but does not prune it.
-- Fresh installation uses one bootstrap command, creates or updates a managed Justfile section, enables core hooks, and leaves memory capture disabled.
+- Fresh installation uses one documented, copy-paste bootstrap command, creates or updates a managed Justfile section, enables core hooks, and leaves memory capture disabled.
 - The exact managed Justfile sentinels are `# >>> do-work:recipes >>>` and `# <<< do-work:recipes <<<`.
 - Existing known memory-hook paths should migrate automatically to the knowledge skill without enabling hooks that were previously disabled.
+- `actions/kb-lessons-handoff.md` remains in core because the work and review orchestrators invoke it; knowledge storage and follow-on commands resolve through `do-work-knowledge`.
 - Client repositories use Git. Dirty managed skill changes may be overwritten only after an explicit warning and confirmation.
 - One-release command shims explain the new skill invocation and stop; they do not permanently forward or reimplement extension routing.
 
@@ -47,8 +54,8 @@ Capture the approved, dependency-ordered program for separating the existing all
 
 - **Default install:** full four-skill suite.
 - **Compatibility:** one-release shims.
-- **Versioning:** one atomic suite version, not per-module versions.
-- **Migration safety:** bridge release first; existing clients update to the bridge before modular cutover.
+- **Versioning:** one suite version, not per-module versions, installed through the all-or-recover transaction defined above.
+- **Migration safety:** bridge release first; existing clients update to the bridge before modular cutover, with user attestation serving as sufficient evidence that every known client reports `suite-layout-v2`.
 - **Justfile management:** deterministic managed sentinels; if no Justfile exists, install a complete configured one; otherwise preserve everything outside the managed block.
 - **Hooks:** enable core hooks on fresh install, but do not enable memory capture automatically.
 - **Core behavior:** retain current planning, testing, review, lessons, archival, and commit behavior.
