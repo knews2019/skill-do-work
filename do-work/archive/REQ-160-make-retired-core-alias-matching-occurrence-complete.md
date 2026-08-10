@@ -3,6 +3,7 @@ id: REQ-160
 title: "Review fix: Make retired core alias matching occurrence-complete"
 status: completed
 completed_at: 2026-08-10T10:41:11Z
+commit: 3d8613a
 claimed_at: 2026-08-10T10:18:22Z
 route: C
 status_changed_at: 2026-08-10T09:20:51Z
