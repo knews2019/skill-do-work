@@ -10,7 +10,7 @@ session_depth: moderate
 
 ## Completed This Session
 
-- REQ-165: Shipped shell lint harness (Route B, 99%, Acceptance Pass) — v0.186.24, implementation `a45d5c4`, metadata `45ccfe1`; one in-scope remediation, no follow-up created.
+- REQ-165: Shipped shell lint harness (Route C, 99%, Acceptance Pass) — v0.186.24, implementation `a45d5c4`, metadata `45ccfe1`; one in-scope remediation, no follow-up created.
 - REQ-166: Fail-soft SessionStart hook (Route A, 100%, Acceptance Pass) — v0.186.25, implementation `6538bdd`, metadata `c9e5a41`; no follow-up created.
 - REQ-167: Canonical prescribed shell primitives (Route C, 100%, Acceptance Pass) — v0.186.26, implementation `1a27c07`, metadata `d853f3b`; no follow-up created.
 - REQ-168: Defensive surface delete-or-test audit (Route C, 100%, Acceptance Pass) — v0.186.27, implementation `8703b66`, metadata `358b056`; no follow-up created.
