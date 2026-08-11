@@ -1,7 +1,10 @@
 ---
 id: REQ-170
 title: Finding-closure ratchet and canonical earned-defense rubric
-status: claimed
+status: completed
+completed_at: 2026-08-11T20:52:25Z
+kb_status: pending
+kb_entry: Review-generated producers must emit the closure proof consumed by the review gate
 created_at: 2026-08-11T13:55:58Z
 user_request: UR-038
 domain: general
@@ -12,7 +15,7 @@ depends_on: []
 maintenance: false
 related: [REQ-165, REQ-166, REQ-167, REQ-168, REQ-169]
 batch: stabilization-audit
-write_set: [skills/do-work/crew-members/coding-guardrails.md, skills/do-work/actions/work-reference.md, skills/do-work/actions/review-work.md, skills/do-work/actions/capture.md, skills/do-work-toolbox/actions/validate-feedback.md, _dev/tests/contract-regressions.sh]
+write_set: [skills/do-work/crew-members/coding-guardrails.md, skills/do-work/actions/work-reference.md, skills/do-work/actions/review-work.md, skills/do-work/actions/capture.md, skills/do-work-toolbox/actions/validate-feedback.md, skills/do-work-toolbox/actions/code-review.md, _dev/tests/contract-regressions.sh]
 claimed_at: 2026-08-11T19:56:32Z
 route: C
 ---
@@ -28,8 +31,8 @@ Two small, single-home rules that make the review loop converge instead of plate
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** Read the required core/toolbox instructions and existing REQ-169 contract assertions; selected one canonical home per rule and citation-sized caller hooks.
-- [x] **[APPLY]:** Added the ratchet, rubric, capture/review enforcement, and provenance-preserving toolbox citation in exactly the five declared files.
-- [x] **[UNIFY]:** Reviewed all five diffs, confirmed net +9 instruction lines, ran both contract suites and the focused canonical-home/caller check, audited changed paths/debug artifacts, and passed `git diff --check`.
+- [x] **[APPLY]:** Added the ratchet, rubric, capture/review enforcement, provenance-preserving triage citation, and producer-complete proof templates/ratchet in the final seven-file scope.
+- [x] **[UNIFY]:** Reviewed the exact seven-file branch range and three integration slices; ran producer RED/GREEN replay, full contracts, syntax/ShellCheck, restatement/scope/debug audits, and `git diff --check`.
 
 ## Why (if provided)
 
@@ -110,10 +113,13 @@ See `do-work/user-requests/UR-038/input.md` for complete verbatim input.
 - `skills/do-work/actions/capture.md` (modified) — finding-origin GREEN proof hook
 - `skills/do-work-toolbox/actions/validate-feedback.md` (modified) — triage-specific Surface-cost application and provenance handoff
 - `_dev/tests/contract-regressions.sh` (modified) — review-generated producer/closure-gate contract ratchet added during review remediation
+- `skills/do-work-toolbox/actions/code-review.md` (modified) — second shipped `review_generated` producer aligned during the second remediation
 
 **Files I will NOT touch:** test sources other than the narrow remediation ratchet below, `actions/work.md`, schemas/parsers/board code, metrics or trend logs, release metadata, or unrelated capture screenshot logic
 
 **Review remediation scope:** The independent review exposed a producer/consumer gap in `review-work.md`; `_dev/tests/contract-regressions.sh` is added narrowly to pin the review-generated follow-up template's named GREEN/deletion proof contract. Other test sources remain out of scope.
+
+**Second remediation scope:** The re-review found toolbox `code-review.md` is the only other shipped action template emitting `review_generated: true`; align it to the same proof contract and broaden the ratchet to cover every shipped action-template producer.
 
 **Acceptance criteria (restated from REQ):**
 - [ ] The finding-closure ratchet is normative only in work-reference and requires a named fail-before/pass-after regression test or deletion of the named finding surface.
@@ -145,14 +151,49 @@ See `do-work/user-requests/UR-038/input.md` for complete verbatim input.
 - `skills/do-work/actions/capture.md` (modified) — added the finding-origin GREEN proof hook.
 - `skills/do-work/actions/review-work.md` (modified) — added closure-gate and earned-defense citations.
 - `skills/do-work-toolbox/actions/validate-feedback.md` (modified) — preserved triage behavior while citing the canonical rubric and carrying provenance.
-- Builder commit: `84c1b81df6f7c34920e5285b63b121355cdfb03f`; integrated by merge commit `035613e` over exact range `bd5ecf6..035613e`.
+- `_dev/tests/contract-regressions.sh` (modified) — added a block-scoped review-follow-up producer/consumer regression ratchet after independent review.
+- `skills/do-work-toolbox/actions/code-review.md` (modified) — aligned the second shipped review-origin producer to the same canonical proof contract.
+- Builder commits: `84c1b81df6f7c34920e5285b63b121355cdfb03f`, `c90b964012d097178d4dc982d39c2c843033918e`, and `f351091`; integration merges: `035613e`, `f515f06`, and `cab5ba5`.
 - No integration seams or discovered follow-up tasks remain.
 
 ## Qualification
 
-- Exact diff range: `bd5ecf6..035613e`.
-- Changed paths match the five-file Route C scope exactly.
+- Exact branch implementation range: `59b3067..f351091`; exact serial integration slices: `bd5ecf6..035613e`, `aab4884..f515f06`, and `918ac31..cab5ba5`. Interrupted baseline/release reconciliation occurred between slices, so the branch range—not one contaminated first-to-latest main range—is the seven-file scope source.
 - Named RED/GREEN caller contract: 9 missing contracts before implementation, all 14 checks passing after implementation.
 - `_dev/tests/contract-regressions.sh`: pass on the builder branch.
 - `_dev/tests/shipped-package-reference-contract.sh`: pass on the builder branch.
 - `git diff --check`: pass; no debug or temporary artifacts found.
+
+## Review Remediation
+
+- Initial independent review scored 50% / Acceptance Fail because `review-work.md` enforced captured GREEN evidence but its own `review_generated` template emitted no Red-Green Proof.
+- The template now emits the canonical four-field proof shape and requires the same named fail-before/pass-after check or exact deletion surface consumed by the gate.
+- A block-scoped contract check failed with seven producer-seam errors before the template fix and passes afterward; both full contract suites, Bash syntax, warning-level ShellCheck, and diff checks pass.
+- **D-05 — Test the producer/consumer seam.** The ratchet extracts both the closure gate and review-generated template so either side cannot drift while a matching token elsewhere masks the defect.
+- The first re-review found toolbox `code-review.md` was the second shipped marker producer. Its template now emits matching proof, and the ratchet enumerates every fenced shipped action template containing the exact marker; a new producer cannot escape by filename or package.
+- **D-06 — Enumerate the semantic producer set.** The test counts exact marker fields and checked fenced producer blocks, then validates each block's full proof shape and package-safe citation instead of hard-coding two filenames.
+
+## Review
+
+**Final verdict:** Approve — 98%, Acceptance Pass.
+
+- The initial review correctly failed the core review-generated producer; the first remediation fixed and tested that seam.
+- The first re-review correctly found toolbox `code-review.md` as the second shipped producer; the second remediation aligned it and generalized the ratchet to every shipped exact-marker action template.
+- Final inventory is 2 marker fields / 2 fenced templates / 0 failures, with package-safe citations and matching RED/GREEN-or-deletion semantics.
+- Clean `cab5ba5` contracts, shipped-reference checks, shell-block lint, Bash syntax, warning-level ShellCheck, and all integration-slice diff checks pass.
+- Durable report, including both preserved failing reviews: `do-work/runs/work-2026-08-11-225637/REQ-170-review.md`.
+
+## Lessons Learned
+
+- A universal consumer gate is incomplete until every real producer is enumerated and shown to emit compatible data; testing the first named caller only can leave a second package silently broken.
+- Condition-driven inventory (exact marker fields matched to fenced templates) is safer than a filename list because it makes newly introduced producers fail closed.
+
+## Orientation
+
+- The canonical closure rule lives in `skills/do-work/actions/work-reference.md`; capture and review only enforce/cite it.
+- Producer compatibility is pinned in `_dev/tests/contract-regressions.sh` across core `review-work.md` and toolbox `code-review.md`.
+
+## Knowledge Handoff
+
+- `kb_status: pending`
+- `kb_entry: Review-generated producers must emit the closure proof consumed by the review gate`
