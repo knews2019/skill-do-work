@@ -16,7 +16,7 @@ batch: stabilization-audit
 claimed_at: 2026-08-11T12:30:27Z
 route: C
 completed_at: 2026-08-11T12:43:36Z
-commit:
+commit: 1a27c07
 kb_status: pending
 kb_entry:
 ---
