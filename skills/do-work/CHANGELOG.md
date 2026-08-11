@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.34 — Prescribed Shell Becomes Executable (2026-08-11)
+
+Reusable shell mechanics now ship as executable, fixture-tested scripts instead of copied multi-line Markdown. Callers keep local intent and policy while semantic traps have attributable runtime tests.
+
+- Promotes 17 multi-line blocks into 11 scripts across core, knowledge, and toolbox while retaining 21 inline-residue and 2 Go-owned blocks
+- Adds 11 named behavior cases for atomic publication, merge display, screenshot races, portable timeouts, protected inventory, literal exact deletion, memory hooks/recall, and toolbox installs
+- Shrinks shipped Markdown by 303 nonblank shell-body lines and ratchets executable homes, package paths, defensive evidence, and the full 34-path scope
+
+
 ## 0.186.33 — Findings Close with Proof (2026-08-11)
 
 Review and triage findings can no longer close on a bare patch or unrelated green tests. Finding-origin work must carry matching fail-before/pass-after evidence or delete the exact surface, while defensive fixes must justify the surface they add.
