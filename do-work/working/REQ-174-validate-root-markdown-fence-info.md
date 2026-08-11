@@ -1,7 +1,7 @@
 ---
 id: REQ-174
 title: Validate root Markdown fence info
-status: pending
+status: claimed
 created_at: 2026-08-11T17:00:04Z
 user_request: UR-039
 domain: testing
@@ -13,6 +13,8 @@ maintenance: false
 related: [REQ-172, REQ-173]
 batch: accepted-p2-fixes
 write_set: [_dev/tests/shipped-package-reference-contract.sh]
+claimed_at: 2026-08-11T19:56:32Z
+route: A
 ---
 
 # Validate Root Markdown Fence Info
@@ -55,3 +57,19 @@ See `do-work/user-requests/UR-039/input.md` and the preceding validated-feedback
 
 ---
 *Source: fix accepted*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** The REQ names the affected test surface, supplies an exact reproduction, and requires a focused classifier fix plus a regression fixture.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
