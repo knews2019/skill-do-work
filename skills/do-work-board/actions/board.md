@@ -80,7 +80,7 @@ From `<skill-root>/tools/queue-kanban`:
 
   ```bash
   REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"   # re-derive — shell state does not survive between blocks
-  cd "$REPO_ROOT"
+  cd "$REPO_ROOT" || exit 1
   if git rev-parse --git-dir >/dev/null 2>&1 && ! git check-ignore -q build/queue-kanban-board/index.html; then
     exclude_file="$(git rev-parse --git-path info/exclude)"
     mkdir -p "$(dirname "$exclude_file")"

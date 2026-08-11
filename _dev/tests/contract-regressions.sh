@@ -2153,6 +2153,21 @@ elif ! bash "$shipped_reference_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# Markdown-prescribed shell is shipped executable guidance, while hook scripts are shipped
+# executable code. Exercise both through one attributable syntax/lint probe, including its
+# negative fixture so a silently-neutered extractor cannot report a decorative green result.
+action_shell_probe="$repo_root/_dev/tests/action-shell-blocks.sh"
+if [ ! -x "$action_shell_probe" ]; then
+  printf 'FAIL: _dev/tests/action-shell-blocks.sh is missing or not executable — shipped shell guidance has no lint coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$action_shell_probe" --self-test; then
+  printf 'FAIL: action shell-block negative self-test failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$action_shell_probe"; then
+  printf 'FAIL: shipped shell-block lint failed (see the attributed FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # Behavioral probes for tools/checks/record-commit-hash.sh. Kept in their own file because
 # they build a throwaway git repo and run the real script rather than grepping prose — but
 # invoked from here, since nothing auto-discovers _dev/tests/*.sh and an uninvoked probe file

@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.24 — Shipped Shell Lint Harness (2026-08-11)
+
+Prescribed shell now fails in the contract suite instead of later in a consumer repository. A self-testing probe covers the full shipped shell surface while keeping diagnostics attributable and optional tooling optional.
+
+- Extracts Markdown `bash`/`sh` fences with valid indentation, narrowly neutralizes prose placeholders, and remaps Bash and ShellCheck diagnostics to their source file and line
+- Lints complete shipped shell sources without snippet exclusions and degrades to `bash -n` with a note when ShellCheck is unavailable
+- Proves the failure path with an indented malformed fixture and runs both negative and clean-tree checks from `_dev/tests/contract-regressions.sh`
+- Makes the board action's prescribed repository-root directory change fail fast, closing the real warning exposed by the complete scan
+
 ## 0.186.23 — Collision-Safe Screenshots and Lossless Suite Guards (2026-08-11)
 
 Screenshot capture now preserves every dispatch and every image without clobbering recovery evidence. Suite validation, configuration reconciliation, and preflight reporting also retain the exact file and path shapes they inspect.
