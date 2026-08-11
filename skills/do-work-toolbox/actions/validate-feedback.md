@@ -66,6 +66,7 @@ For every finding, before forming a verdict:
 2. **Check whether it's already addressed.** Inspect git — `git diff` (uncommitted), `git log`/`git show` (recent commits), staged changes — for evidence the issue was already handled.
 3. **Adversarially verify the claim.** Try to *refute* it before accepting it: is the premise actually true? Does the cited line do what the finding says? Is the impact real or theoretical? Is the scope right? When subagents are available, spawn an independent verifier per non-trivial finding and default to "refuted" when the evidence is ambiguous.
 4. **Maintain provenance.** Keep straight which statements come from the pasted finding versus the code you read, so the verdict's evidence is traceable.
+5. **Price added defensive surface.** When the proposed remedy would add a **guard, fallback, retry, validation layer, rule, or warning apparatus**, ask: **what incident earned this, and is the fix still cheaper than the surface it added?** Name the concrete failure or replay case, the long-lived surface the remedy adds, and the test that will keep it live. If no incident can be named, or deletion/narrowing/direct repair covers the risk more cheaply, flag the remedy instead of treating more defense as automatically safer. Direct bug fixes, deletions, and simplifications are outside this check and receive **Surface-cost: N/A**; verify their premise normally without adding a skepticism penalty.
 
 ### Step 5: Recommend a Verdict per Item
 
@@ -75,6 +76,8 @@ Assign exactly one verdict to each finding:
 - **Accept** — valid finding worth implementing. State the remedy in one line.
 - **Push back** — the current approach is better, or the finding is wrong/misguided. Give the technical rationale and evidence (a documented decision, a `file:line` that disproves the premise, a compensating control already present).
 - **Discuss** — has merit but the right path isn't clear-cut, or it's partially valid (e.g., a real concern already mitigated, where only an enhancement remains). Frame the trade-off.
+
+For a surface-adding remedy, **Accept** additionally requires a named incident/replay case, evidence that the added layer is cheaper than the risk it covers, and a test plan. A remedy that cannot clear that bar **must not receive a plain Accept**: use **Push back** when the defense is speculative or a simpler remedy wins, and **Discuss** when the incident is real but the surface-cost trade-off remains unresolved. State that rubric result as the verdict reasoning; this is cost discipline, not permission to push back merely to reduce work.
 
 Carry each item's original severity through to its verdict so the user can prioritize.
 
@@ -89,6 +92,7 @@ Lead with the framing line, then one block per finding, then the summary and a d
 - **Verdict:** Already done / Accept / Push back / Discuss
 - **Evidence:** [file:line, commit SHA, or documented decision]
 - **Reasoning:** [why — concrete, references real code]
+- **Surface-cost:** N/A / Earned / Flagged — [N/A for a direct fix/delete/simplify; otherwise name the earning incident, cost judgment, and test or the missing evidence]
 - **Remedy (if Accept):** [one-line fix]
 
 ### Finding 2: ...
@@ -119,6 +123,7 @@ Lead with the framing line, then one block per finding, then the summary and a d
 - **Be honest.** Don't push back to reduce work; don't accept filler to look agreeable. If a finding is right, accept it; if the codebase already handles it, say "Already done".
 - **Be specific.** Reference actual `file:line`, commits, or documented decisions — not abstract arguments.
 - **Keep every item.** One verdict per finding; never drop or merge away an item the user pasted.
+- **Added defense must earn itself.** Apply Step 4's surface-cost rubric only when the remedy adds long-lived defensive surface; show the result in every finding block and let it constrain Accept exactly as Step 5 defines.
 
 ## Common Rationalizations
 
@@ -144,4 +149,5 @@ Lead with the framing line, then one block per finding, then the summary and a d
 - [ ] Each verdict cites concrete evidence (`file:line`, commit, or documented decision).
 - [ ] The cited code was actually read for every finding (not judged from the claim alone).
 - [ ] Git history was checked for already-addressed findings.
+- [ ] Every finding includes a Surface-cost result; surface-adding remedies name the earning incident, cost judgment, and test, while direct fixes/deletions/simplifications say N/A.
 - [ ] No files were modified and no REQs were created; the report ends with the capture handoff.

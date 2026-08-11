@@ -1947,6 +1947,34 @@ if [ -n "$unallowed_maintainer_doc_mentions" ]; then
   fail_count=$((fail_count + 1))
 fi
 
+# Prospective half of the defensive-surface discipline (REQ-169). validate-feedback must
+# challenge only remedies that ADD long-lived defense, make the cost call affect the verdict,
+# and expose that call per finding; ordinary fixes/deletions/simplifications stay unchanged.
+assert_contains \
+  "actions/validate-feedback.md" \
+  'what incident earned this, and is the fix still cheaper than the surface it added\?' \
+  'validate-feedback must ask the user-supplied surface-cost rubric verbatim for remedies that add defense.'
+
+assert_contains \
+  "actions/validate-feedback.md" \
+  'guard, fallback, retry, validation layer, rule, or warning apparatus' \
+  'validate-feedback must define the surface-adding remedy boundary explicitly.'
+
+assert_contains \
+  "actions/validate-feedback.md" \
+  'Direct bug fixes, deletions, and simplifications.*N/A' \
+  'validate-feedback must leave non-surface-adding remedies outside the new skepticism pass.'
+
+assert_contains \
+  "actions/validate-feedback.md" \
+  'must not receive.*Accept.*Push back.*Discuss' \
+  'validate-feedback must prevent an unearned/net-costly added defense from receiving a plain Accept verdict.'
+
+assert_contains \
+  "actions/validate-feedback.md" \
+  '\*\*Surface-cost:\*\* N/A / Earned / Flagged' \
+  'validate-feedback per-finding output must expose the rubric result to the reader.'
+
 # Common Rationalizations regrowth ratchet (REQ-027). The four "earned" template
 # sections (Rules / Common Rationalizations / Red Flags / Verification Checklist)
 # drifted from "included when they'd help" to "included because the template listed

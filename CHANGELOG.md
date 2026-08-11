@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.28 — Feedback Prices Added Defense (2026-08-11)
+
+External feedback can no longer smuggle speculative guards and fallbacks through a valid finding. Triage now verifies whether proposed defensive surface earns its long-term cost before recommending Accept.
+
+- Applies the exact incident-and-surface-cost rubric to remedies that add guards, fallbacks, retries, validation, rules, or warning apparatus
+- Routes unearned defense to Push back and unresolved real trade-offs to Discuss while leaving direct fixes, deletions, and simplifications unchanged
+- Shows `Surface-cost: N/A / Earned / Flagged` per finding and pins scope, verdict impact, and output visibility in aggregate contracts
+
 ## 0.186.27 — Defensive Surface Earns Its Keep (2026-08-11)
 
 Shipped defenses now have an incident-and-test ledger instead of being accepted on instinct. Generic warning apparatus that duplicated existing action contracts has been removed and ratcheted out.
