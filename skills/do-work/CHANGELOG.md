@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.26 — Canonical Prescribed Shell Primitives (2026-08-11)
+
+Shell safety rationale now has one shipped home instead of drifting across copied action prose. Callers remain independently runnable while future corrections have a single place to land.
+
+- Adds a core guide covering eight recurring shell primitives plus a durable audit of canonical homes, former copies, and divergent variants
+- Replaces repeated cross-package explanations with package-safe pointers while preserving caller commands, policy gates, and fixed semantics
+- Ratchets the consolidation through focused pointer/stale-phrase checks, the shipped shell-fence harness, and the aggregate contract suite
+
 ## 0.186.25 — Fail-Soft SessionStart Hook (2026-08-11)
 
 Session start keeps its cross-session status signal even when installed version metadata or the queue directory is missing. The hook is shorter, and fixture coverage now pins every fallback that previously died before the banner.

@@ -65,7 +65,7 @@ If the REQ is a legacy file without `user_request`, use whatever context is avai
 
 **Orchestrated mode:** Run `git diff` to see uncommitted changes, or read the files the Implementation Summary lists as created/modified. If the working tree is clean (implementation agent already staged), use `git diff --staged`. **In worktree dispatch mode** the builder's work is already committed and merged, so the working tree is clean by design — read the diff from the merge range the orchestrator passes: `git diff <pre>..<merge_hash>` (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**).
 
-**Standalone mode:** Run `git show <commit>` using the hash from the REQ's `commit` frontmatter. This gives you the full diff of what was committed. **If that hash is a merge commit** — `git rev-parse --verify -q '<commit>^2'` succeeds (quoted — `^` is special in some shells), the normal case for work integrated by worktree dispatch mode's `--no-ff` merge (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**) — plain `git show` prints a combined diff that is usually empty, so diff against the first parent instead: `git show --first-parent -m <commit>`.
+**Standalone mode:** Read the commit using the canonical [Merge-aware commit diff](../docs/prescribed-shell-primitives.md#merge-aware-commit-diff) rule: detect a merge with `git rev-parse --verify -q '<commit>^2'`, then use `git show --first-parent -m <commit>` for a merge or `git show <commit>` otherwise. Work integrated by worktree dispatch mode's `--no-ff` merge is the normal merge case (`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**).
 
 Read the diff carefully. For large diffs, focus on:
 - New files created (read them fully)

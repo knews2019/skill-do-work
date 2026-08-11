@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Ratchet the single-home contract for prescribed shell primitive rationale.
+set -uo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+canonical_guide="$repo_root/skills/do-work/docs/prescribed-shell-primitives.md"
+failure_count=0
+
+if [[ ! -f "$canonical_guide" ]]; then
+  printf 'FAIL: core prescribed-shell guide is missing.\n' >&2
+  exit 1
+fi
+
+for required_heading in \
+  '## Per-file untracked inventory' \
+  '## Merge-aware commit diff' \
+  '## Commit file listing' \
+  '## Local Git ignore' \
+  '## Atomic download publication' \
+  '## Raw text before shell quoting' \
+  '## Diff output filtering' \
+  '## State across command blocks'
+do
+  if ! grep -Fqx "$required_heading" "$canonical_guide"; then
+    printf 'FAIL: prescribed-shell guide is missing heading: %s\n' "$required_heading" >&2
+    failure_count=$((failure_count + 1))
+  fi
+done
+
+core_pointer='../docs/prescribed-shell-primitives.md'
+sibling_pointer='../../do-work/docs/prescribed-shell-primitives.md'
+for core_site in \
+  skills/do-work/actions/commit.md \
+  skills/do-work/actions/review-work.md \
+  skills/do-work/actions/work.md \
+  skills/do-work/actions/work-reference.md \
+  skills/do-work/crew-members/background-agents.md
+do
+  if ! grep -Fq "$core_pointer" "$repo_root/$core_site"; then
+    printf 'FAIL: %s does not point at the core prescribed-shell guide.\n' "$core_site" >&2
+    failure_count=$((failure_count + 1))
+  fi
+done
+
+for sibling_site in \
+  skills/do-work-board/actions/board.md \
+  skills/do-work-knowledge/actions/memory-reference.md \
+  skills/do-work-knowledge/crew-members/background-agents.md \
+  skills/do-work-toolbox/actions/ai-report.md \
+  skills/do-work-toolbox/actions/inspect.md \
+  skills/do-work-toolbox/actions/install.md \
+  skills/do-work-toolbox/actions/present-work.md \
+  skills/do-work-toolbox/actions/stray-check.md \
+  skills/do-work-toolbox/crew-members/background-agents.md
+do
+  if ! grep -Fq "$sibling_pointer" "$repo_root/$sibling_site"; then
+    printf 'FAIL: %s does not point at the core prescribed-shell guide.\n' "$sibling_site" >&2
+    failure_count=$((failure_count + 1))
+  fi
+done
+
+stale_patterns_file="$(mktemp)" || exit 1
+trap 'rm -f "$stale_patterns_file"' EXIT
+printf '%s\n' \
+  'plain `git status --porcelain` collapses' \
+  'plain `git show` prints a combined diff that is usually empty' \
+  'pattern with an interior slash is root-anchored' \
+  'curl -o` writes the final path incrementally' \
+  'Shell state does not survive' \
+  'never interpolate raw user text inside shell quoting' \
+  '`diff -x PATTERN`' \
+  > "$stale_patterns_file"
+
+while IFS= read -r shipped_markdown; do
+  [[ "$shipped_markdown" == "$canonical_guide" ]] && continue
+  [[ "$(basename "$shipped_markdown")" == CHANGELOG.md ]] && continue
+  while IFS= read -r stale_pattern; do
+    if grep -Fq "$stale_pattern" "$shipped_markdown"; then
+      printf 'FAIL: %s restates canonical prescribed-shell rationale <%s>; keep local intent and point at the guide.\n' \
+        "${shipped_markdown#"$repo_root/"}" "$stale_pattern" >&2
+      failure_count=$((failure_count + 1))
+    fi
+  done < "$stale_patterns_file"
+done < <(find "$repo_root/skills" -type f -name '*.md' -print | LC_ALL=C sort)
+
+if [[ "$failure_count" -gt 0 ]]; then
+  exit 1
+fi
+
+printf 'Prescribed shell primitive canonicalization checks passed.\n'

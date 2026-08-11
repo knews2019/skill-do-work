@@ -88,7 +88,7 @@ From `<skill-root>/tools/queue-kanban`:
   fi
   ```
 
-  `.git/info/exclude` is git's local-only ignore list — no tracked file changes, so this stays inside the action's read-only contract for the project. The `check-ignore` guard makes the append idempotent, and the root-anchored pattern is checked from `$REPO_ROOT` so a subdirectory invocation can't mismatch (an ignore pattern with an interior slash is root-anchored, while `check-ignore` tests cwd-relative paths). In a non-git project the guard skips silently.
+  This generated snapshot uses the canonical [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) primitive with a project-root-specific pattern. The local exclude preserves the action's read-only contract for tracked project files, the guard is idempotent, and a non-git project skips it silently.
 - **summary** — `./queue-kanban summary --repo-root "$REPO_ROOT"` and relay the printed counts.
 - **open-work** — `./queue-kanban open-work --repo-root "$REPO_ROOT"` and relay the printed digest. Terminal-resolved REQs never appear in it (recently-done and the calendar are history, not open work), and parse warnings arrive as a count pointing at `summary` — if the user wants those details, that's the summary mode, not a second command here.
 

@@ -67,7 +67,7 @@ Also read the parent UR's `input.md` for the user's own words.
 1. `do-work/archive/UR-NNN/assets/` — archived user-supplied screenshots (the common case; completed URs live here after cleanup)
 2. `do-work/user-requests/UR-NNN/assets/` — live UR assets (target not yet archived)
 3. `do-work/working/` — screenshots taken during development (match by UR/REQ prefix or date proximity to commit)
-4. Git diff images: `git diff-tree --no-commit-id --name-only -r -m <commit> | grep -E '\.(png|jpg|gif)$' | sort -u` (emits only file paths — `git show --name-only` would let a commit-message line ending in `.png` through and lists nothing for merge commits)
+4. Git diff images: `git diff-tree --no-commit-id --name-only -r -m <commit> | grep -E '\.(png|jpg|gif)$' | sort -u` — this path-only consumer follows the canonical [Commit file listing](../../do-work/docs/prescribed-shell-primitives.md#commit-file-listing) rule.
 
 Do **not** treat a loose PNG at the project root as a source — a stray root PNG is junk that `actions/stray-check.md` flags, not an asset to pull in.
 
@@ -209,7 +209,7 @@ Ensure the report folder and its screenshots folder exist (`mkdir -p ai-reports/
 
 **What Changed** — Compact table of files modified, what each does. No code snippets. Pointers only (`src/components/AlignPanel.jsx — added Align checkbox + batch flag`).
 
-**Verify It Yourself** — Copy-pasteable shell commands from the REQ's Testing section. One `git show <sha>` block — for a merge-commit SHA (`git rev-parse --verify -q '<sha>^2'` succeeds) emit `git show --first-parent -m <sha>` instead, since plain `git show` on a merge prints a combined diff that is usually empty. One test-run command.
+**Verify It Yourself** — Copy-pasteable shell commands from the REQ's Testing section. Emit one commit-reading block using the canonical [Merge-aware commit diff](../../do-work/docs/prescribed-shell-primitives.md#merge-aware-commit-diff) rule: detect a merge with `git rev-parse --verify -q '<sha>^2'`, then use `git show --first-parent -m <sha>` for a merge or `git show <sha>` otherwise. Include one test-run command.
 
 **Open Questions / Lessons** — Only if the REQ has a non-empty Lessons Learned or unresolved Open Questions. If empty, omit this section entirely.
 

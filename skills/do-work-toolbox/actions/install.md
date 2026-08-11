@@ -47,7 +47,7 @@ In every command above, resolve `PROJECT_ROOT` first:
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
 
-Every skill-file download lands in a `SKILL.md.download` temp name and is renamed into place only on success, with the temp removed on failure. `curl -o` writes the final path incrementally, so a mid-transfer failure would otherwise leave a non-empty partial file that `test -s` cannot distinguish from a complete install — the same trap the zero-byte detect fix closed, one failure mode further along. (`curl --remove-on-error` also covers this but only exists in curl ≥ 7.83; the rename works everywhere.)
+Every skill-file download follows the canonical [Atomic download publication](../../do-work/docs/prescribed-shell-primitives.md#atomic-download-publication) contract: land in a `SKILL.md.download` sibling, rename into place only on success, and remove the temporary file while preserving a failure status. The table keeps each executable command inline because every target must remain independently runnable.
 
 ## Steps
 
@@ -252,7 +252,7 @@ fi
 
 If the block prints FAILED (offline, upstream repo moved), **stop here** — report the error and skip the ignore step below; a failed install must not leave stray side effects in the consuming repo. The `cp -R …/. ` form copies the *contents* into the destination, so re-running over a broken partial directory merges cleanly instead of nesting a second `last30days/` inside (Phase 1's skill-file gate keeps healthy installs from ever reaching this block).
 
-Then make the ignore claim true — the vendored engine is ~15 MB of upstream Python that must never become committable in the consuming repo. Add it to the enclosing repo's `.git/info/exclude` (machine-local — never committed, never shipped); do **not** touch the project's committable `.gitignore`. This is the exact snippet from `crew-members/background-agents.md` → **Local-ignore snippet (for genuinely-transient paths)**, substituting this path (see that file for why, including the linked-worktree caveat):
+Then make the ignore claim true — the vendored engine is ~15 MB of upstream Python that must never become committable in the consuming repo. Add it to the enclosing repo's `.git/info/exclude` (machine-local — never committed, never shipped); do **not** touch the project's committable `.gitignore`. Apply the canonical [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) primitive with this exact path:
 
 ```bash
 exclude=$(git rev-parse --git-path info/exclude 2>/dev/null) || exclude=""
@@ -359,7 +359,7 @@ do-work-toolbox install ideation-adhd  Parallel cognitive-frame ideation skill
 
 - The install command reported success but the verify step shows the file is empty — the URL may have changed; investigate before claiming success.
 - `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists but has zero size and Phase 1 still reported "already installed" — the detect command regressed to a bare existence check (`ls`); it must be `test -s` so a re-run repairs the failed download.
-- An install command writes `SKILL.md` directly instead of downloading to `SKILL.md.download` and renaming on success — a mid-transfer failure would leave a non-empty partial file the detect reads as installed; restore the temp-then-rename shape.
+- An install command writes `SKILL.md` directly instead of following the canonical [Atomic download publication](../../do-work/docs/prescribed-shell-primitives.md#atomic-download-publication) shape — restore the temporary sibling, rename-on-success, and failure-preserving cleanup.
 - A stray `SKILL.md.download` file sits next to an installed skill — a prior run's failure cleanup didn't run; delete it (the rename-on-success flow never leaves one behind).
 - You installed into `~/.claude/skills/` instead of the project — undo and re-install to the correct path.
 - `git rev-parse --show-toplevel` fails (not in a git repo) and you installed into `pwd` — acceptable, but warn the user the path may drift if they `cd` elsewhere.

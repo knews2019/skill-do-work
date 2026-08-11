@@ -64,7 +64,7 @@ Both halves are required. Dropping the sentinel makes legacy and current section
 
 ## Lexical Recall (Layer 1 — always runs)
 
-Design-for-the-floor: grep + arithmetic only. Sanitize the query FIRST as a text operation (never interpolate raw user text inside shell quoting — an apostrophe breaks the quoting and is an injection vector), then substitute the already-safe value:
+Design-for-the-floor: grep + arithmetic only. Apply the canonical [Raw text before shell quoting](../../do-work/docs/prescribed-shell-primitives.md#raw-text-before-shell-quoting) rule: sanitize the query first as a text operation, then substitute only the already-safe value:
 
 ```bash
 PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"

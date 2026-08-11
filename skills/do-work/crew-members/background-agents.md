@@ -84,43 +84,12 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
 
 ## Local-ignore snippet (for genuinely-transient paths — NOT run dirs)
 
-Run directories are committable (step 1) and must **never** be added to any ignore list.
-But some sibling paths *are* genuinely transient and must stay out of git regardless of
-install layout — for example, a vendored engine install or a `build/` artifact. The shipped
-`.gitignore` can't reach a project-root path from a nested
-`.claude/skills/do-work/` install, so those paths append to the enclosing repo's
-`.git/info/exclude` (local-only — never committed, never shipped). This is the canonical
-snippet they reference; substitute the path being ignored:
-
-```bash
-exclude=$(git rev-parse --git-path info/exclude 2>/dev/null) || exclude=""
-if [ -n "$exclude" ]; then
-  git check-ignore -q <path> 2>/dev/null || echo '**/<path>' >> "$exclude"
-fi
-```
-
-**This snippet makes a path ignorable; it does not make an already-committed path safe.**
-Ignore rules have no effect on files in the index, and plain `git check-ignore` consults the
-index and won't report a tracked path at all — so on a repair run over a store that was
-committed once, this appends the pattern, `check-ignore` reports success, and the file keeps
-getting staged by the next `git add -A`. Any caller whose reason for ignoring a path is
-"this must never be committed" (verbatim capture logs, live state, credentials-adjacent
-files) must ALSO run `git ls-files -- <path>` and treat a non-empty result as a failure with
-a `git rm --cached <path>` remedy for the user — never untrack on their behalf. Callers that
-merely want a build artifact out of `git status` can skip that second check.
-
-`git check-ignore -q` already succeeds when *any* ignore source covers the path, so the
-append only fires when genuinely needed and never duplicates. The appended pattern carries
-a `**/` prefix because a pattern with an interior slash is root-anchored, while
-`check-ignore` tests the cwd-relative path — without the prefix, a run from a repo
-subdirectory would never see its own append, re-appending on every run while the path
-stayed unignored; `**/` makes the pattern match at any depth, so the check and the pattern
-agree. The `|| exclude=""` fallback keeps the guard a clean no-op outside a git repo —
-without it the failed command substitution leaves the assignment nonzero, which aborts the
-script under `set -e`. Resolve the exclude file with `git rev-parse --git-path info/exclude`
-— **not** `$(git rev-parse --show-toplevel)/.git/info/exclude`, which breaks in linked
-worktrees and submodules where `.git` is a file, not a directory (the redirect fails with
-"Not a directory" and the path is left un-ignored).
+Run directories are committable (step 1) and must **never** be ignored. For a genuinely
+transient sibling path such as a vendored engine or build artifact, apply the canonical
+[Local Git ignore](../docs/prescribed-shell-primitives.md#local-git-ignore) primitive. The
+caller supplies the exact path and states whether it merely wants quiet status output or
+must also reject an already-tracked copy; the guide owns the worktree-safe exclude path,
+root-aligned pattern, tracked-file caveat, and fail-soft shell form.
 
 ## Known Failure Mode & Recovery
 
