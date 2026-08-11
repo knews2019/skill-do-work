@@ -2168,6 +2168,17 @@ elif ! bash "$action_shell_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# The SessionStart banner is deliberately fail-soft: malformed or missing runtime inputs must
+# produce its unknown/zero defaults, not let shell options terminate the hook before output.
+session_start_probe="$repo_root/_dev/tests/session-start-hook-behavior.sh"
+if [ ! -x "$session_start_probe" ]; then
+  printf 'FAIL: _dev/tests/session-start-hook-behavior.sh is missing or not executable — the startup banner fallback has no behavioral coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$session_start_probe"; then
+  printf 'FAIL: SessionStart hook behavior probes failed (see the fixture FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # Behavioral probes for tools/checks/record-commit-hash.sh. Kept in their own file because
 # they build a throwaway git repo and run the real script rather than grepping prose — but
 # invoked from here, since nothing auto-discovers _dev/tests/*.sh and an uninvoked probe file

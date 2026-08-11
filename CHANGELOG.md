@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.25 — Fail-Soft SessionStart Hook (2026-08-11)
+
+Session start keeps its cross-session status signal even when installed version metadata or the queue directory is missing. The hook is shorter, and fixture coverage now pins every fallback that previously died before the banner.
+
+- Replaces the strict-shell `grep | sed` failure path with minimal empty-value defaults while preserving the anchored hook command and exact stdout contract
+- Covers the happy path, missing version file, reformatted version label, and missing queue directory through the real copied hook
+- Invokes the new SessionStart behavioral probe from `_dev/tests/contract-regressions.sh`
+
 ## 0.186.24 — Shipped Shell Lint Harness (2026-08-11)
 
 Prescribed shell now fails in the contract suite instead of later in a consumer repository. A self-testing probe covers the full shipped shell surface while keeping diagnostics attributable and optional tooling optional.
