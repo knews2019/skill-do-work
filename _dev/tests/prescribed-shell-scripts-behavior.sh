@@ -132,6 +132,21 @@ printf 'changed\n' >> "$deletion_repo/other.txt"
 (cd "$deletion_repo" && "$core_scripts/stage-exact-deletion.sh" 'secret name.key') || fail_case 'stage-exact-deletion pathological-name case returned nonzero'
 [ "$(git -C "$deletion_repo" diff --cached --name-only)" = 'secret name.key' ] || fail_case 'stage-exact-deletion pathological-name case staged another path'
 
+# stage-exact-deletion: pathspec-looking filenames must remain literal and isolated.
+magic_deletion_repo="$fixture_root/magic-deletion-repo"
+fixture_repo_init "$magic_deletion_repo"
+magic_deleted_path=':(glob)*'
+printf 'magic\n' > "$magic_deletion_repo/$magic_deleted_path"
+printf 'other\n' > "$magic_deletion_repo/other.txt"
+fixture_repo_commit_all "$magic_deletion_repo" base
+rm "$magic_deletion_repo/$magic_deleted_path" "$magic_deletion_repo/other.txt"
+(cd "$magic_deletion_repo" && "$core_scripts/stage-exact-deletion.sh" "$magic_deleted_path")
+magic_deletion_status=$?
+[ "$magic_deletion_status" -eq 0 ] || fail_case "stage-exact-deletion literal-pathspec case returned $magic_deletion_status instead of 0"
+magic_cached_deletions="$(git -C "$magic_deletion_repo" diff --cached --name-status --no-renames)"
+expected_magic_deletion="$(printf 'D\t%s' "$magic_deleted_path")"
+[ "$magic_cached_deletions" = "$expected_magic_deletion" ] || fail_case 'stage-exact-deletion literal-pathspec case staged another path'
+
 # lexical-memory-recall: apostrophes and command syntax remain data while attribution is emitted.
 memory_root="$fixture_root/memory with space"
 mkdir -p "$memory_root/logs"
