@@ -183,7 +183,8 @@ required_fragments = (
     'staged_screenshot_path="<exact staged screenshot path supplied by the dispatcher>"',
     'screenshot_staging_directory="$(dirname "$staged_screenshot_path")"',
     'REQ-[num]-screenshot-{n}-[slug].png',
-    'screenshot_copy_path="${screenshot_asset_path}.copying"',
+    'screenshot_copy_path="$(mktemp "${screenshot_asset_path}.copying.XXXXXX")"',
+    'cp "$staged_screenshot_path" "$screenshot_copy_path"',
     'cmp -s "$staged_screenshot_path" "$screenshot_copy_path"',
     'ln "$screenshot_copy_path" "$screenshot_asset_path"',
     'rm -f "$screenshot_copy_path"',
@@ -294,6 +295,81 @@ with tempfile.TemporaryDirectory(prefix="screenshot-capture-contract.") as tempo
         raise SystemExit("second screenshot was not installed at its distinct asset path")
     if dispatch_directory.exists():
         raise SystemExit("empty per-dispatch staging directory was not removed")
+
+    race_a_directory = project_root / "do-work/user-requests/.pending-assets/capture.race-a"
+    race_b_directory = project_root / "do-work/user-requests/.pending-assets/capture.race-b"
+    race_a_directory.mkdir(parents=True)
+    race_b_directory.mkdir(parents=True)
+    race_a_source = race_a_directory / "screenshot-6.png"
+    race_b_source = race_b_directory / "screenshot-6.png"
+    race_a_bytes = b"verified-dispatch-a"
+    race_b_bytes = b"competing-dispatch-b"
+    race_a_source.write_bytes(race_a_bytes)
+    race_b_source.write_bytes(race_b_bytes)
+    race_destination = asset_directory / "REQ-042-screenshot-6-example.png"
+    race_a_verified = project_root / "race-a-verified"
+    race_b_copied = project_root / "race-b-copied"
+
+    race_a_prefix = f'''cmp() {{
+  command cmp "$@"
+  comparison_status=$?
+  if [ "$comparison_status" -eq 0 ]; then
+    : > "{race_a_verified}"
+    while [ ! -e "{race_b_copied}" ]; do sleep 0.01; done
+  fi
+  return "$comparison_status"
+}}
+'''
+    race_b_prefix = f'''cp() {{
+  while [ ! -e "{race_a_verified}" ]; do sleep 0.01; done
+  command cp "$@"
+  copy_status=$?
+  if [ "$copy_status" -eq 0 ]; then : > "{race_b_copied}"; fi
+  return "$copy_status"
+}}
+cmp() {{
+  command cmp "$@"
+  comparison_status=$?
+  while [ ! -e "{race_destination}" ]; do sleep 0.01; done
+  return "$comparison_status"
+}}
+'''
+    race_a_process = subprocess.Popen(
+        ["bash", "-c", race_a_prefix + rendered_shell("capture.race-a", 6)],
+        cwd=project_root,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    race_b_process = subprocess.Popen(
+        ["bash", "-c", race_b_prefix + rendered_shell("capture.race-b", 6)],
+        cwd=project_root,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    try:
+        race_a_stdout, race_a_stderr = race_a_process.communicate(timeout=10)
+        race_b_stdout, race_b_stderr = race_b_process.communicate(timeout=10)
+    except subprocess.TimeoutExpired:
+        race_a_process.terminate()
+        race_b_process.terminate()
+        raise SystemExit("coordinated screenshot collision timed out")
+
+    if race_a_process.returncode != 0 or race_b_process.returncode == 0:
+        raise SystemExit(
+            "coordinated collision did not install exactly one dispatch: "
+            f"A={race_a_process.returncode} ({race_a_stderr}), "
+            f"B={race_b_process.returncode} ({race_b_stderr})"
+        )
+    if race_destination.read_bytes() != race_a_bytes:
+        raise SystemExit("winning dispatch published bytes from another dispatch")
+    if race_a_source.exists():
+        raise SystemExit("winning dispatch retained its installed staged source")
+    if race_b_source.read_bytes() != race_b_bytes:
+        raise SystemExit("losing dispatch did not retain its staged source")
+    if list(asset_directory.glob(f"{race_destination.name}.copying*")):
+        raise SystemExit("coordinated collision left a screenshot temporary copy behind")
 
     collision_directory = project_root / "do-work/user-requests/.pending-assets/capture.collision"
     collision_directory.mkdir(parents=True)

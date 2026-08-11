@@ -208,17 +208,18 @@ If the user provides one or more screenshots:
 
 1. Resolve each source image. A subagent-dispatched capture receives exact staged paths from the dispatcher under its exclusive `do-work/user-requests/.pending-assets/capture.XXXXXX/` directory; never reconstruct or guess that directory from an ordinal. An inline capture may instead use the platform's attachment mechanism or cache. Never delete an attachment/cache source outside `.pending-assets/`.
 2. Assign each image a distinct permanent path: `do-work/user-requests/UR-NNN/assets/REQ-[num]-screenshot-{n}-[slug].png`. The stable screenshot ordinal is required even when the description is unique.
-3. For each staged source, substitute the already-resolved exact source and destination paths into this single block. Copy through a temporary file beside the destination, byte-verify it, install it with a no-clobber hard link, then remove the staged source. An existing destination is a capture failure, never an overwrite:
+3. For each staged source, substitute the already-resolved exact source and destination paths into this single block. Allocate a unique temporary file beside the destination, copy the staged source into it, byte-verify that exact copy, install it with a no-clobber hard link, then remove the staged source. An existing destination is a capture failure, never an overwrite:
 
    ```bash
    staged_screenshot_path="<exact staged screenshot path supplied by the dispatcher>"
    screenshot_staging_directory="$(dirname "$staged_screenshot_path")"
    screenshot_asset_directory="do-work/user-requests/UR-NNN/assets"
    screenshot_asset_path="$screenshot_asset_directory/REQ-[num]-screenshot-{n}-[slug].png"
-   screenshot_copy_path="${screenshot_asset_path}.copying"
+   screenshot_copy_path=""
 
    mkdir -p "$screenshot_asset_directory"
-   if cp "$staged_screenshot_path" "$screenshot_copy_path" \
+   if screenshot_copy_path="$(mktemp "${screenshot_asset_path}.copying.XXXXXX")" \
+     && cp "$staged_screenshot_path" "$screenshot_copy_path" \
      && cmp -s "$staged_screenshot_path" "$screenshot_copy_path" \
      && ln "$screenshot_copy_path" "$screenshot_asset_path"; then
      rm -f "$screenshot_copy_path" || {
@@ -238,14 +239,16 @@ If the user provides one or more screenshots:
          "$staged_screenshot_path" >&2
      fi
    else
-     rm -f "$screenshot_copy_path"
-     printf 'Screenshot copy failed verification or destination already exists; staged source preserved: %s\n' \
+     if [ -n "$screenshot_copy_path" ]; then
+       rm -f "$screenshot_copy_path"
+     fi
+     printf 'Screenshot temporary-copy allocation, copy, verification, or no-clobber install failed; staged source preserved: %s\n' \
        "$staged_screenshot_path" >&2
      false
    fi
    ```
 
-   A copy, verification, or no-clobber install failure returns nonzero, leaves the staged source in place, and must be reported; do not reference the destination or continue as though that screenshot was captured. Failure to remove the staged source, already-empty temporary copy, or exclusive dispatch directory is reported but does not invalidate a verified permanent asset. For an inline attachment/cache source, apply the same copy, byte-verification, and no-clobber requirement but leave the source untouched.
+   A temporary-file allocation, copy, verification, or no-clobber install failure returns nonzero, leaves the staged source in place, and must be reported; do not reference the destination or continue as though that screenshot was captured. Failure to remove the staged source, already-empty unique temporary copy, or exclusive dispatch directory is reported but does not invalidate a verified permanent asset. For an inline attachment/cache source, apply the same unique-copy, byte-verification, and no-clobber requirement but leave the source untouched.
 4. Reference every verified permanent path in its REQ's Assets section.
 5. Write a thorough text description (what it shows, visible text, layout, problems visible) — this is the primary record for searchability.
 

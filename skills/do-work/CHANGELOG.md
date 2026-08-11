@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.30 — Unique Screenshot Installation Copies (2026-08-11)
+
+Concurrent screenshot captures can no longer swap bytes between verification and publication. Each dispatch now verifies and installs its own adjacent temporary copy while retaining no-clobber and recovery semantics.
+
+- Allocates the permanent-copy staging file with `mktemp`, then compares and hard-links that exact unique path
+- Preserves the staged loser and existing permanent destination on collision while cleaning only the dispatch-owned temporary copy
+- Coordinates two different staged byte sequences around copy, verification, and install to prove winner ownership, loser recovery, cleanup, and ordinary capture behavior
+
 ## 0.186.29 — Retry-Safe Screenshot Source Cleanup (2026-08-11)
 
 A verified screenshot no longer becomes unusable just because its staged source could not be removed. Capture reports the leftover while keeping the installed asset valid and the no-clobber boundary strict.
