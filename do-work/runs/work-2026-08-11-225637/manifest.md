@@ -19,3 +19,6 @@ Status: in-progress
 | re-reviewer-170 | REQ-170 remediation re-review | `REQ-170-review.md` | done |
 | remediation2-170 | REQ-170 shipped-producer remediation | `REQ-170-handback.md` | done |
 | re-reviewer2-170 | REQ-170 producer-complete re-review | `REQ-170-review.md` | done |
+| reviewer-171 | REQ-171 independent review | `REQ-171-review.md` | done |
+| remediation-171 | REQ-171 literal-path deletion remediation | `REQ-171-handback.md` | done |
+| re-reviewer-171 | REQ-171 remediation re-review | `REQ-171-review.md` | done |
