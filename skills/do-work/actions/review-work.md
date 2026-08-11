@@ -377,6 +377,12 @@ Found during review of [REQ-id]. [1 sentence on what the review found.]
 
 ## Requirements
 - [Specific fix needed]
+
+## Red-Green Proof
+**RED prompt/case:** [Named regression test/check that fails before the fix, or the exact finding surface to delete]
+**Why RED now:** [Failure the named check demonstrates, or evidence that the named deletion surface exists]
+**GREEN when:** [The same named test/check passes after the fix, or the exact named finding surface is absent]
+**Validation:** Review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
 ```
 
 **When the root cause is ambiguous requirements** — not a code quality issue or missed implementation, but genuine ambiguity in what the user wanted — add an `## Open Questions` section to the follow-up REQ and set its status to `pending-answers`:
