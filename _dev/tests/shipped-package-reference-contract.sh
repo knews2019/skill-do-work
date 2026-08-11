@@ -80,6 +80,12 @@ def markdown_column_width(text):
     return column_width
 
 
+def fence_info_string_is_valid(line, fence_match, fence_group):
+    fence = fence_match.group(fence_group)
+    fence_info_string = line[fence_match.end(fence_group) :].rstrip("\r\n")
+    return fence[0] == "~" or "`" not in fence_info_string
+
+
 def line_opens_paragraph(line, content_start):
     content = line[content_start:].rstrip("\r\n")
     list_item_match = re.match(
@@ -89,7 +95,8 @@ def line_opens_paragraph(line, content_start):
         content = list_item_match.group(1)
     if not content or content.startswith("<!--"):
         return False
-    if re.match(r"^(?:`{3,}|~{3,})", content):
+    fence_match = re.match(r"^(?:`{3,}|~{3,})", content)
+    if fence_match and fence_info_string_is_valid(content, fence_match, 0):
         return False
     if re.match(
         r"^(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|[0-9]{1,9}[.)])(?:[ \t]|$)|\[[^\]\n]+\]:)",
@@ -210,20 +217,20 @@ def strip_markdown_code(markdown_text):
     for line in markdown_text.splitlines(keepends=True):
         line_end = line_start + len(line)
         fence_match = re.match(r"^[ ]{0,3}(`{3,}|~{3,})", line)
+        if fence_match and not fence_info_string_is_valid(line, fence_match, 1):
+            fence_match = None
         content_start, indentation_columns = leading_indentation(line)
         list_fence_match = re.match(
             r"^([ \t]*)(?:[-+*]|[0-9]{1,9}[.)])([ \t]+)(`{3,}|~{3,})",
             line,
         )
         if list_fence_match:
-            list_fence_suffix = line[list_fence_match.end(3) :].rstrip("\r\n")
             list_fence_is_indented_code = (
                 indentation_columns >= 4 and not paragraph_active
             )
-            backtick_info_contains_marker = (
-                list_fence_match.group(3)[0] == "`" and "`" in list_fence_suffix
-            )
-            if list_fence_is_indented_code or backtick_info_contains_marker:
+            if list_fence_is_indented_code or not fence_info_string_is_valid(
+                line, list_fence_match, 3
+            ):
                 list_fence_match = None
         blank_line = not line[content_start:].strip("\r\n")
         line_is_code = False
@@ -551,6 +558,24 @@ def run_parser_fixtures():
             ["live.md"],
         ),
         (
+            "root backtick info string Goldmark differential",
+            "```lang`invalid\n[live](visible.md)\n",
+            ["visible.md"],
+        ),
+        (
+            "invalid root backtick info string starts a paragraph",
+            "```lang`invalid\n    [live](live-invalid-root-continuation.md)\n",
+            ["live-invalid-root-continuation.md"],
+        ),
+        (
+            "root tilde info strings may contain backticks",
+            "~~~lang`valid\n"
+            "[hidden](missing-tilde-info.md)\n"
+            "~~~\n"
+            "[live](live-after-tilde-info.md)\n",
+            ["live-after-tilde-info.md"],
+        ),
+        (
             "root fence lookalike lines",
             "```markdown\n"
             "[hidden](missing-before-lookalike.md)\n"
@@ -631,6 +656,8 @@ def run_parser_fixtures():
             "    [hidden](missing-nested-tilde-fence.md)\n"
             "    ~~~\n"
             "    [live](live-nested-after-fence.md)\n"
+            "- ```lang`invalid\n"
+            "    [live](live-invalid-list-fence-info.md)\n"
             "- paragraph\n"
             "    [live](live-list-paragraph-continuation.md)\n\n"
             "    - ```not-a-list-fence\n"
@@ -641,6 +668,7 @@ def run_parser_fixtures():
                 "live-ordered-after-fence.md",
                 "live-nine-digit-after-fence.md",
                 "live-nested-after-fence.md",
+                "live-invalid-list-fence-info.md",
                 "live-list-paragraph-continuation.md",
                 "live-after-indented-code.md",
             ],
