@@ -180,22 +180,6 @@ Produce a markdown report with this structure:
 - **Respect project conventions.** If `prime-*.md` files describe deliberate patterns (e.g., "we use god files for route handlers"), don't flag those as problems.
 - **Removal findings on the skill's own instructions invoke the maintenance discipline.** Quick-wins only *surfaces* removable code and config; it never edits files itself. Two kinds of removal land differently when acted on (via capture → `do-work run`). Removing or narrowing **redundant rules or over-broad config in the skill's own operating instructions** (a drifting agent/action/crew/prime file) is a deliberate maintenance pass: capture sets `maintenance: true` on the REQ so `../do-work/actions/work.md` Step 6 loads `crew-members/maintenance.md` (delete-before-you-add — prefer removing/narrowing before adding; prove any addition against a replay case). Removing **ordinary dead code in application source** is *not* a maintenance pass — it runs under `coding-guardrails.md`'s implementation-time surgical-changes rule, with no `maintenance` marker. This is the maintenance-time complement to that rule.
 
-## Common Rationalizations
-
-Guard against these when producing the report:
-
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "No quick wins found" after scanning 3 files | Verify you scanned all source files in scope | Small scan = invisible problems |
-| "This looks like dead code" | Grep for dynamic references, re-exports, and framework conventions | Static analysis misses dynamic usage |
-
-## Red Flags
-
-- Zero findings in a codebase with 10,000+ lines of code (scan was likely too shallow)
-- All findings concentrated in a single category (missed other dimensions)
-- Security smell section missing or empty (should always be checked)
-- Findings reference files that don't exist or have wrong line numbers
-
 ## Verification Checklist
 
 - [ ] All pattern categories scanned (refactoring, duplication, complexity, dead code, security smells)

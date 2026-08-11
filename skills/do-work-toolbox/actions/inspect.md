@@ -482,21 +482,9 @@ No uncommitted changes.
 - **Safe to run anytime.** No side effects. Can be run mid-work, between sessions, or before deciding whether to commit.
 - **Explain, don't act.** The report tells the user what changed, why, and whether it's ready. The user decides what to do next.
 
-## Common Rationalizations
-
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "This looks ready to commit" | Verify every changed file has a clear purpose and traces to a REQ or intent | "Looks ready" is a feeling, not evidence |
-| "The changes are self-explanatory" | Still document what changed, why, and the REQ association | Future readers (including the user) need the trail of intent |
-| "I'll skip the REQ tracing — these are just small edits" | Attempt REQ association for every changed file | Even small edits may relate to queued or completed work |
-| "This debug artifact is probably intentional" | Flag it explicitly — let the user decide | Leftover console.log/debugger statements are the #1 commit contaminant |
-
 ## Red Flags
 
-- Report produced without a `git status` / `git diff` reading actually happening (hollow analysis)
-- Files listed with no REQ association attempt — even "unassociated" should be an explicit conclusion
 - "Ready" verdict given to an X path, or an XD verdict based on anything beyond its path, association, and deletion state
-- Debug artifacts (console.log, debugger, commented-out blocks) appear in added lines but aren't flagged
 - Committed files inspected under REQ/UR scope but given readiness verdicts instead of "Already Committed"
 
 ## Verification Checklist

@@ -342,28 +342,6 @@ Do NOT auto-create REQs without confirmation. The report itself is the primary o
 - **Be honest.** If the code is clean, say so. A short report with real findings beats a long report with filler. An "Excellent" rating with zero findings is a valid outcome.
 - **Stay in scope.** Only review files within the resolved scope. Don't wander into unrelated parts of the codebase. If you notice something outside scope that's concerning, mention it briefly in a "Notes" section but don't score it.
 
-## Common Rationalizations
-
-Guard against these when writing the review report:
-
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "This pattern is fine because it's used elsewhere in the codebase" | Check if the existing usage is itself an anti-pattern | Widespread problems are still problems |
-| "No security issues found" after a surface scan | Trace every user input to its sink | Surface scans miss injection, XSS, and SSRF |
-| "Performance is probably fine" | Check if the code is on a hot path before skipping | "Probably" is not profiling |
-| "Tests exist so the code is correct" | Read what the tests actually assert | `expect(true).toBe(true)` is a test that exists |
-| "The architecture is too big to evaluate in this review" | Evaluate the scoped slice; note what's out of scope | Partial evaluation beats no evaluation |
-| "I already noted enough findings" | Check coverage of all 6 review dimensions | Premature stopping misses entire categories |
-
-## Red Flags
-
-- Report missing one or more of the six review dimensions (Consistency, Architecture, Security, Performance, Test Coverage, Automated Checks) with no skip justification
-- Health rating inconsistent with evidence (Excellent alongside Critical findings, or Concerning with only Nits)
-- Findings without file:line references or without showing the concrete code pattern
-- Security section empty after a surface scan — inputs never traced to sinks
-- Strengths section missing, empty, or filled with generic filler ("clean code", "good naming")
-- Findings that a configured linter or type-checker would already catch
-
 ## Verification Checklist
 
 Before finalizing the report, verify:

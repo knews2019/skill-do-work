@@ -299,26 +299,6 @@ If the user declines or doesn't respond, skip this step. The report stands on it
 - **frontend-design skill is additive**: If not installed, still run the full review using `crew-members/ui-design.md`. The skill adds aesthetic depth but isn't required.
 - **Playwright CLI / Bowser skill are additive**: If not available, the code-level review (Steps 3–8) is still comprehensive. Visual verification adds rendered-page evidence but is not a prerequisite. Always recommend `do-work-toolbox install bowser` when missing — it's high-value and low-effort.
 
-## Common Rationalizations
-
-Guard against these when conducting the UI review:
-
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "The design looks fine to me" | Evaluate against each phase checklist systematically | Subjective approval skips objective criteria |
-| "Accessibility is someone else's job" | Check semantic HTML, contrast, focus indicators, keyboard nav | Accessibility is a baseline, not an add-on |
-| "This component is similar enough to the design system" | Measure: exact padding, radius, color values against the tokens | "Similar enough" accumulates into visual inconsistency |
-| "I can't check this without running the app" | The code-level review (Steps 3–8) catches most issues statically | Visual verification is additive, not a prerequisite |
-| "No findings in this category" | Verify you checked all items in the category's checklist | An empty category should be earned, not assumed |
-
-## Red Flags
-
-- Every finding is "Low" severity (the review likely stopped at surface polish)
-- Accessibility section empty with no explicit justification (WCAG AA checks skipped)
-- Zero findings across all categories for a 20+ file review (scan was likely too shallow)
-- Severity counts in Summary don't match the findings tables
-- No Strengths listed (either the code is genuinely broken, or the review skipped the acknowledgment step)
-
 ## Verification Checklist
 
 Before finalizing the report, verify:

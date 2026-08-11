@@ -178,22 +178,6 @@ For REQs created before the UR system:
 - Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
 - Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Verify already tried to ask the user; any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment.
 
-## Common Rationalizations
-
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "The REQs cover everything — quick pass is fine" | Compare the original input against each REQ word by word | Requirements drift is invisible at a glance |
-| "Close enough — I'll round the score up" | Apply the scoring rubric mechanically | Rounding up defeats the quality gate — verification should be honest, not generous |
-| "This gap is just a wording difference" | Check if the wording difference changes what gets built | Semantic drift in requirements is how features go missing |
-| "The original input was vague, so the REQ interpretation is fine" | Score it as Ambiguous and resolve it now while the user is present | Ambiguity unresolved at verification becomes wrong assumptions at build time |
-
-## Red Flags
-
-- All dimension scores are 100% on a complex multi-feature request (suspiciously perfect)
-- Gap count is 0 on a request with 5+ distinct requirements
-- Verification report doesn't directly reference or quote the original input
-- REQ has significantly more detail than the original input (embellishment, not capture)
-
 ## Verification Checklist
 
 - [ ] Every REQ scored on all applicable dimensions

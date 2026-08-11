@@ -319,19 +319,9 @@ Excluded:
 - **X and XD have different boundaries.** Never read, diff, stage, or commit X. For XD, stage only the verified deletion with the Step 5 procedure; never read, diff, or reconstruct its former contents.
 - **Never bypass a failing pre-commit hook** with `--no-verify` (or signing with `--no-gpg-sign`). Fix the underlying issue, re-stage, and retry as a **new** commit — never amend past a hook failure.
 
-## Common Rationalizations
-
-Guard against these when committing:
-
-| If you're thinking... | STOP. Instead... | Because... |
-|---|---|---|
-| "No REQ matches — just commit everything together" | Group unassociated files by semantic purpose (feature, fix, config, etc.) | Even outside the pipeline, commits should be atomic and meaningful |
-| "The commit message doesn't need a REQ reference" | Include REQ reference when REQs exist — it's the traceability link | Without REQ references, the trail of intent is broken |
-
 ## Red Flags
 
 - An X path staged for commit, or an XD path whose staged state is anything other than deletion
-- Single commit with >20 files (likely needs splitting)
 - Commit message has no REQ reference when matching REQs exist in the system
 - Files from multiple unrelated REQs grouped in a single commit
 - Uncommitted files belonging to a terminal-success REQ aren't associated to it — Step 3 is filtering on the literal `completed` instead of the full success set (`completed`, `completed-with-issues`, plus `complete`/`done`/`finished`/`closed` aliases; see `actions/work-reference.md`)

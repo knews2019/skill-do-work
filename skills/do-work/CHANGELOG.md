@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.27 — Defensive Surface Earns Its Keep (2026-08-11)
+
+Shipped defenses now have an incident-and-test ledger instead of being accepted on instinct. Generic warning apparatus that duplicated existing action contracts has been removed and ratcheted out.
+
+- Audits all shipped shell sources and explicit Rules/Rationalizations/Red Flags/Warnings/recovery surfaces, with keep/delete evidence and behavior-changing candidates called out
+- Removes 96 lines of decorative review guidance, duplicate rationale, generic inspect warnings, and an arbitrary commit-size heuristic without changing action steps or permissions
+- Adds a focused completeness/deletion probe to the aggregate suite while preserving every tested data-loss, recovery, secret, parser, hook, and install defense
+
 ## 0.186.26 — Canonical Prescribed Shell Primitives (2026-08-11)
 
 Shell safety rationale now has one shipped home instead of drifting across copied action prose. Callers remain independently runnable while future corrections have a single place to land.

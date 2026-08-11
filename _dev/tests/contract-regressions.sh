@@ -2190,6 +2190,18 @@ elif ! bash "$prescribed_shell_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# Defensive layers either keep an incident + test trail or stay deleted. The focused probe
+# also proves the audit continues to cover every shipped shell source and explicit prose
+# warning surface as those inventories evolve.
+defensive_surface_probe="$repo_root/_dev/tests/defensive-surface-audit.sh"
+if [ ! -x "$defensive_surface_probe" ]; then
+  printf 'FAIL: _dev/tests/defensive-surface-audit.sh is missing or not executable — delete-or-test dispositions have no ratchet.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$defensive_surface_probe"; then
+  printf 'FAIL: defensive-surface audit contract failed (see the attributed FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # Behavioral probes for tools/checks/record-commit-hash.sh. Kept in their own file because
 # they build a throwaway git repo and run the real script rather than grepping prose — but
 # invoked from here, since nothing auto-discovers _dev/tests/*.sh and an uninvoked probe file
