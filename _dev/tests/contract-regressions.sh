@@ -1975,6 +1975,44 @@ assert_contains \
   '\*\*Surface-cost:\*\* N/A / Earned / Flagged' \
   'validate-feedback per-finding output must expose the rubric result to the reader.'
 
+# Review finding-follow-up closure seam (REQ-170 remediation). The review consumer now
+# rejects a finding-origin REQ without matching closure evidence, so its own follow-up
+# producer must emit the canonical proof shape instead of creating work that cannot pass.
+review_finding_closure_gate_block="$(sed -n '/^6\. \*\*Enforce finding closure\*\*/,/^\*\*What NOT to do:\*\*/p' "$core_root/actions/review-work.md")"
+review_generated_followup_template_block="$(sed -n '/^For each finding that routes to its own REQ/,/^\*\*When the root cause is ambiguous requirements/p' "$core_root/actions/review-work.md")"
+
+assert_block_contains \
+  "$review_finding_closure_gate_block" \
+  'captured GREEN.*fails before/passes after.*exact named finding surface was deleted' \
+  'review-work finding-closure consumer must keep the matching captured-GREEN-or-deletion gate.'
+
+assert_block_contains \
+  "$review_generated_followup_template_block" \
+  '^review_generated: true$' \
+  'review-work review-follow-up template probe must stay scoped to the review_generated producer.'
+
+for proof_field in 'RED prompt/case' 'Why RED now' 'GREEN when' 'Validation'; do
+  assert_block_contains \
+    "$review_generated_followup_template_block" \
+    "^\\*\\*${proof_field}:\\*\\*" \
+    "review-work review-generated follow-up template must emit the canonical Red-Green Proof field: ${proof_field}."
+done
+
+assert_block_contains \
+  "$review_generated_followup_template_block" \
+  'RED prompt/case:.*Named regression test/check that fails before the fix.*exact finding surface to delete' \
+  'review-work review-generated follow-up template must name a fail-before regression check or exact deletion surface.'
+
+assert_block_contains \
+  "$review_generated_followup_template_block" \
+  'GREEN when:.*same named test/check passes after the fix.*exact named finding surface is absent' \
+  'review-work review-generated follow-up template must pair the producer RED with matching pass-after or deletion GREEN.'
+
+assert_block_contains \
+  "$review_generated_followup_template_block" \
+  'Validation:.*actions/work-reference\.md.*Finding-Closure Ratchet' \
+  'review-work review-generated follow-up template must cite the canonical Finding-Closure Ratchet from its proof block.'
+
 # Common Rationalizations regrowth ratchet (REQ-027). The four "earned" template
 # sections (Rules / Common Rationalizations / Red Flags / Verification Checklist)
 # drifted from "included when they'd help" to "included because the template listed
