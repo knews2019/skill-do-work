@@ -235,7 +235,6 @@ If the user provides one or more screenshots:
      else
        printf 'Permanent screenshot copy verified, but staged source could not be removed: %s\n' \
          "$staged_screenshot_path" >&2
-       false
      fi
    else
      rm -f "$screenshot_copy_path"
@@ -245,7 +244,7 @@ If the user provides one or more screenshots:
    fi
    ```
 
-   A copy, verification, no-clobber install, or staged-source removal failure returns nonzero, leaves the staged source in place, and must be reported; do not reference the destination or continue as though that screenshot was captured. Failure to remove the already-empty temporary copy or exclusive dispatch directory is reported but does not invalidate a verified permanent asset. For an inline attachment/cache source, apply the same copy, byte-verification, and no-clobber requirement but leave the source untouched.
+   A copy, verification, or no-clobber install failure returns nonzero, leaves the staged source in place, and must be reported; do not reference the destination or continue as though that screenshot was captured. Failure to remove the staged source, already-empty temporary copy, or exclusive dispatch directory is reported but does not invalidate a verified permanent asset. For an inline attachment/cache source, apply the same copy, byte-verification, and no-clobber requirement but leave the source untouched.
 4. Reference every verified permanent path in its REQ's Assets section.
 5. Write a thorough text description (what it shows, visible text, layout, problems visible) — this is the primary record for searchability.
 

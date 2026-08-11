@@ -18,8 +18,6 @@ session_depth: moderate
 
 ## In Progress (interrupted)
 
-None.
-
 ## Still Queued
 
 None.

@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.29 — Retry-Safe Screenshot Source Cleanup (2026-08-11)
+
+A verified screenshot no longer becomes unusable just because its staged source could not be removed. Capture reports the leftover while keeping the installed asset valid and the no-clobber boundary strict.
+
+- Makes staged-source deletion warned best-effort after byte verification and permanent installation
+- Replays the exact failed-removal path, including preserved bytes, temporary-copy cleanup, and a strict later collision
+
 ## 0.186.28 — Feedback Prices Added Defense (2026-08-11)
 
 External feedback can no longer smuggle speculative guards and fallbacks through a valid finding. Triage now verifies whether proposed defensive surface earns its long-term cost before recommending Accept.

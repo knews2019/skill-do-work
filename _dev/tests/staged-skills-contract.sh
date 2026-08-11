@@ -241,10 +241,29 @@ def rendered_shell(dispatch_name: str, screenshot_number: int) -> str:
     )
 
 
-def run_capture(project_root: pathlib.Path, dispatch_name: str, screenshot_number: int, *, fail_rmdir: bool = False):
+def run_capture(
+    project_root: pathlib.Path,
+    dispatch_name: str,
+    screenshot_number: int,
+    *,
+    fail_rmdir: bool = False,
+    fail_staged_source_removal: bool = False,
+):
     command = rendered_shell(dispatch_name, screenshot_number)
     if fail_rmdir:
         command = "rmdir() { return 1; }\n" + command
+    if fail_staged_source_removal:
+        staged_source = (
+            f"do-work/user-requests/.pending-assets/{dispatch_name}/"
+            f"screenshot-{screenshot_number}.png"
+        )
+        command = (
+            'rm() {\n'
+            f'  if [ "$#" -eq 1 ] && [ "$1" = "{staged_source}" ]; then return 1; fi\n'
+            '  command rm "$@"\n'
+            '}\n'
+            + command
+        )
     return subprocess.run(
         ["bash", "-c", command],
         cwd=project_root,
@@ -301,6 +320,38 @@ with tempfile.TemporaryDirectory(prefix="screenshot-capture-contract.") as tempo
         raise SystemExit("verified destination was not retained after rmdir failure")
     if "could not be removed" not in cleanup_result.stderr:
         raise SystemExit("best-effort rmdir failure was not reported")
+
+    source_cleanup_directory = (
+        project_root / "do-work/user-requests/.pending-assets/capture.source-cleanup"
+    )
+    source_cleanup_directory.mkdir(parents=True)
+    source_cleanup_source = source_cleanup_directory / "screenshot-5.png"
+    source_cleanup_source.write_bytes(b"source-cleanup")
+    source_cleanup_destination = asset_directory / "REQ-042-screenshot-5-example.png"
+    source_cleanup_result = run_capture(
+        project_root,
+        "capture.source-cleanup",
+        5,
+        fail_staged_source_removal=True,
+    )
+    if source_cleanup_result.returncode != 0:
+        raise SystemExit("staged-source cleanup failure invalidated a verified capture")
+    if source_cleanup_source.read_bytes() != b"source-cleanup":
+        raise SystemExit("failed staged-source cleanup did not preserve the source")
+    if source_cleanup_destination.read_bytes() != b"source-cleanup":
+        raise SystemExit("failed staged-source cleanup did not preserve the verified destination")
+    if pathlib.Path(f"{source_cleanup_destination}.copying").exists():
+        raise SystemExit("temporary screenshot copy remained after staged-source cleanup failure")
+    if "staged source could not be removed" not in source_cleanup_result.stderr:
+        raise SystemExit("best-effort staged-source cleanup failure was not reported")
+
+    later_collision_result = run_capture(project_root, "capture.source-cleanup", 5)
+    if later_collision_result.returncode == 0:
+        raise SystemExit("later destination collision did not retain no-clobber behavior")
+    if source_cleanup_source.read_bytes() != b"source-cleanup":
+        raise SystemExit("later collision did not preserve the staged source")
+    if source_cleanup_destination.read_bytes() != b"source-cleanup":
+        raise SystemExit("later collision changed the verified destination")
 PY
 then
   fail 'capture Step 4 executable screenshot lifecycle regressions failed'
