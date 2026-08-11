@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.31 — BOM-Aware Just Collision Scans (2026-08-11)
+
+Suite installation now recognizes a reserved Just recipe even when the file begins with a UTF-8 BOM and `just` is unavailable. Collision checks stay byte-preserving and still reject before confirmation or mutation.
+
+- Removes exactly one leading BOM only from the first line's classification view
+- Keeps both distributed managed-section helpers byte-identical without broader encoding normalization
+- Replays the no-Just installer path and verifies byte, mode, settings, module, and Git-state preservation
+
 ## 0.186.30 — Unique Screenshot Installation Copies (2026-08-11)
 
 Concurrent screenshot captures can no longer swap bytes between verification and publication. Each dispatch now verifies and installs its own adjacent temporary copy while retaining no-clobber and recovery semantics.
