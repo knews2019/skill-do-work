@@ -3,6 +3,7 @@ id: REQ-170
 title: Finding-closure ratchet and canonical earned-defense rubric
 status: completed
 completed_at: 2026-08-11T20:52:25Z
+commit: cab5ba5
 kb_status: pending
 kb_entry: Review-generated producers must emit the closure proof consumed by the review gate
 created_at: 2026-08-11T13:55:58Z
