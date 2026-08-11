@@ -3,6 +3,7 @@ id: REQ-171
 title: "Addendum: promote prescribed shell primitives to shipped, fixture-tested scripts"
 status: completed
 completed_at: 2026-08-11T21:17:02Z
+commit: 5a18faf
 kb_status: pending
 kb_entry: Shell quoting does not disable Git pathspec magic at exact-path boundaries
 created_at: 2026-08-11T13:58:25Z
