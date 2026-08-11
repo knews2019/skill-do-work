@@ -314,6 +314,12 @@ Found during code review of [scope]. [1 sentence on the specific finding.]
 
 ## Requirements
 - [Specific fix needed]
+
+## Red-Green Proof
+**RED prompt/case:** [Named regression test/check that fails before the fix, or the exact finding surface to delete]
+**Why RED now:** [Failure the named check demonstrates, or evidence that the named deletion surface exists]
+**GREEN when:** [The same named test/check passes after the fix, or the exact named finding surface is absent]
+**Validation:** Review finding; apply `../do-work/actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
 ```
 
 Do NOT auto-create REQs without confirmation. The report itself is the primary output.
