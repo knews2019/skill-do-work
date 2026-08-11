@@ -2013,6 +2013,88 @@ assert_block_contains \
   'Validation:.*actions/work-reference\.md.*Finding-Closure Ratchet' \
   'review-work review-generated follow-up template must cite the canonical Finding-Closure Ratchet from its proof block.'
 
+# Every shipped action template that emits the exact marker inherits the same consumer
+# gate. Enumerate fenced producer blocks from the shipped actions so a future package or
+# producer cannot appear outside this ratchet merely because its filename was not listed.
+review_generated_field_count="$(
+  find "$repo_root/skills" -type f -path '*/actions/*.md' -name '*.md' \
+    -exec grep -h '^review_generated: true$' {} + \
+    | wc -l \
+    | tr -d '[:space:]'
+)"
+review_generated_template_count=0
+
+while IFS=$'\t' read -r producer_file producer_line has_proof_shape has_named_red has_matching_green has_package_safe_citation; do
+  producer_relative_path="${producer_file#"$repo_root/"}"
+  review_generated_template_count=$((review_generated_template_count + 1))
+
+  if [ "$has_proof_shape" -ne 1 ]; then
+    printf 'FAIL: %s:%s review_generated template must emit the canonical four-field Red-Green Proof shape.\n' \
+      "$producer_relative_path" "$producer_line" >&2
+    fail_count=$((fail_count + 1))
+  fi
+  if [ "$has_named_red" -ne 1 ]; then
+    printf 'FAIL: %s:%s review_generated template must name a fail-before regression check or exact deletion surface.\n' \
+      "$producer_relative_path" "$producer_line" >&2
+    fail_count=$((fail_count + 1))
+  fi
+  if [ "$has_matching_green" -ne 1 ]; then
+    printf 'FAIL: %s:%s review_generated template must pair its RED with matching pass-after or deletion GREEN.\n' \
+      "$producer_relative_path" "$producer_line" >&2
+    fail_count=$((fail_count + 1))
+  fi
+  if [ "$has_package_safe_citation" -ne 1 ]; then
+    printf 'FAIL: %s:%s review_generated template must cite core Finding-Closure Ratchet with a package-safe path.\n' \
+      "$producer_relative_path" "$producer_line" >&2
+    fail_count=$((fail_count + 1))
+  fi
+done < <(
+  while IFS= read -r shipped_action_file; do
+    awk '
+      /^```/ {
+        if (!inside_fence) {
+          inside_fence = 1
+          fence_start = NR
+          fence_block = $0 ORS
+          next
+        }
+
+        fence_block = fence_block $0 ORS
+        if (fence_block ~ /(^|\n)review_generated: true(\n|$)/) {
+          has_proof_shape = \
+            fence_block ~ /## Red-Green Proof/ \
+            && fence_block ~ /\*\*RED prompt\/case:\*\*/ \
+            && fence_block ~ /\*\*Why RED now:\*\*/ \
+            && fence_block ~ /\*\*GREEN when:\*\*/ \
+            && fence_block ~ /\*\*Validation:\*\*/
+          has_named_red = fence_block ~ /RED prompt\/case:.*Named regression test\/check that fails before the fix.*exact finding surface to delete/
+          has_matching_green = fence_block ~ /GREEN when:.*same named test\/check passes after the fix.*exact named finding surface is absent/
+          if (FILENAME ~ /\/skills\/do-work\/actions\//) {
+            has_package_safe_citation = fence_block ~ /`actions\/work-reference\.md`.*Finding-Closure Ratchet/
+          } else {
+            has_package_safe_citation = fence_block ~ /`\.\.\/do-work\/actions\/work-reference\.md`.*Finding-Closure Ratchet/
+          }
+          printf "%s\t%d\t%d\t%d\t%d\t%d\n", FILENAME, fence_start, has_proof_shape, has_named_red, has_matching_green, has_package_safe_citation
+        }
+        inside_fence = 0
+        fence_block = ""
+        next
+      }
+
+      inside_fence { fence_block = fence_block $0 ORS }
+    ' "$shipped_action_file"
+  done < <(find "$repo_root/skills" -type f -path '*/actions/*.md' -name '*.md' -print | sort)
+)
+
+if [ "$review_generated_field_count" -eq 0 ]; then
+  printf 'FAIL: shipped actions must retain at least one exact review_generated: true producer for this closure seam probe.\n' >&2
+  fail_count=$((fail_count + 1))
+elif [ "$review_generated_template_count" -ne "$review_generated_field_count" ]; then
+  printf 'FAIL: found %s exact review_generated fields but only %s fenced producer templates; every exact field must live in a checked template.\n' \
+    "$review_generated_field_count" "$review_generated_template_count" >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # Common Rationalizations regrowth ratchet (REQ-027). The four "earned" template
 # sections (Rules / Common Rationalizations / Red Flags / Verification Checklist)
 # drifted from "included when they'd help" to "included because the template listed
