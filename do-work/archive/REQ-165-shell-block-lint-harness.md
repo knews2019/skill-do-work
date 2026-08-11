@@ -16,6 +16,7 @@ write_set: [_dev/tests/action-shell-blocks.sh, _dev/tests/contract-regressions.s
 claimed_at: 2026-08-11T11:59:35Z
 route: C
 completed_at: 2026-08-11T12:20:15Z
+commit: a45d5c4
 kb_status: pending
 kb_entry:
 ---
