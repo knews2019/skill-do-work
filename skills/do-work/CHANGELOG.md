@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.34 — Maintainer Doc Split Into Core Rules Plus Prime Files (2026-08-11)
+
+The root CLAUDE.md went from a 202-line everything-file to a short core in the maintainer's own vocabulary, with domain detail lazy-loaded from prime files. A session now reads the deep material only when working in that domain.
+
+- New `_dev/primes/` (export-ignored) holds three primes: action-file conventions, prescribed-shell traps, and Kanban board tool rules — each moved intact from CLAUDE.md
+- Core gains a plain-words glossary, personal coding preferences (YAGNI, focused tests, match ceremony to the task), a Verify section (exit code zero is the only proof), and push-back-then-continue communication rules
+- The Kanban board three-write-surfaces sentence stays in CLAUDE.md (lock-in test unchanged); live pointers in `_dev/tests/contract-regressions.sh` and `.gitattributes` now cite the primes
+
+
 ## 0.186.33 — Findings Close with Proof (2026-08-11)
 
 Review and triage findings can no longer close on a bare patch or unrelated green tests. Finding-origin work must carry matching fail-before/pass-after evidence or delete the exact surface, while defensive fixes must justify the surface they add.
