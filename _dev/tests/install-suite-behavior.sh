@@ -97,8 +97,9 @@ run_installer() {
 assert_four_modules() {
   local project_root="$1" module module_count
   for module in do-work do-work-board do-work-knowledge do-work-toolbox; do
-    if [ ! -s "$project_root/.claude/skills/$module/SKILL.md" ]; then
-      fail "installer did not install a non-empty $module/SKILL.md"
+    if [ ! -f "$project_root/.claude/skills/$module/SKILL.md" ] \
+      || [ ! -s "$project_root/.claude/skills/$module/SKILL.md" ]; then
+      fail "installer did not install a non-empty regular $module/SKILL.md"
     fi
   done
   module_count="$(find "$project_root/.claude/skills" -mindepth 1 -maxdepth 1 -type d -name 'do-work*' | wc -l | tr -d ' ')"
@@ -283,6 +284,7 @@ cat > "$fresh_project/.claude/settings.json" <<'JSON'
       {"hooks": [
         {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""}
       ]},
+      {"matcher": "preserve-empty", "hooks": []},
       {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh\""}]}
     ]
   }
@@ -317,6 +319,7 @@ assert serialized.count("echo custom-start") == 1
 assert serialized.count("echo custom-stop") == 1
 assert data["hooks"]["Stop"] == [
     {"hooks": [{"type": "command", "command": "echo custom-stop"}]},
+    {"matcher": "preserve-empty", "hooks": []},
     {"hooks": [{"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work-knowledge/hooks/memory-stop-capture.sh\""}]},
 ]
 PY
@@ -450,6 +453,24 @@ elif [ -e "$corrupt_project/.claude/skills" ] || [ -e "$corrupt_project/justfile
   fail 'suite validation failure wrote client files'
 fi
 
+# A directory named SKILL.md is not an executable skill and must fail validation
+# before the installer writes any managed path.
+directory_skill_parent="$workdir/directory-skill-source"
+cp -R "$archive_parent" "$directory_skill_parent"
+rm "$directory_skill_parent/skill-do-work-main/skills/do-work-toolbox/SKILL.md"
+mkdir "$directory_skill_parent/skill-do-work-main/skills/do-work-toolbox/SKILL.md"
+directory_skill_archive="$workdir/directory-skill-suite.tar.gz"
+tar czf "$directory_skill_archive" -C "$directory_skill_parent" skill-do-work-main
+directory_skill_project="$workdir/directory-skill-project"
+new_git_project "$directory_skill_project"
+if run_installer "$directory_skill_project" "$directory_skill_archive" \
+  "$workdir/directory-skill.out"; then
+  fail 'installer accepted a suite with a directory-shaped toolbox SKILL.md'
+elif [ -e "$directory_skill_project/.claude/skills" ] \
+  || [ -e "$directory_skill_project/justfile" ]; then
+  fail 'directory-shaped SKILL.md validation failure wrote client files'
+fi
+
 # Python is the JSON fallback when jq is absent.
 python_path="$workdir/python-path"
 mkdir -p "$python_path"
@@ -470,7 +491,8 @@ cat > "$python_project/.claude/settings.json" <<'JSON'
       ]},
       {"hooks": [
         {"type": "command", "command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.claude/skills/do-work/hooks/pipeline-guard.sh\""}
-      ]}
+      ]},
+      {"matcher": "preserve-empty", "hooks": []}
     ]
   }
 }
@@ -492,6 +514,7 @@ assert "do-work/hooks/pipeline-guard.sh" not in serialized
 assert serialized.count("echo python-custom-stop") == 1
 assert data["hooks"]["Stop"] == [
     {"hooks": [{"type": "command", "command": "echo python-custom-stop"}]},
+    {"matcher": "preserve-empty", "hooks": []},
 ]
 PY
 fi
@@ -569,6 +592,27 @@ printf '%s\n' "$count" > "$DO_WORK_TEST_JUST_COUNT"
 [ "$count" -eq 1 ]
 SH
 chmod +x "$flaky_bin/just"
+
+# On a case-insensitive filesystem, path probes must still record the real
+# directory-entry spelling so a failed install restores Justfile as Justfile.
+case_recovery_project="$workdir/case-recovery-project"
+new_git_project "$case_recovery_project"
+printf 'custom-case:\n    echo preserved\n' > "$case_recovery_project/Justfile"
+cp "$case_recovery_project/Justfile" "$workdir/case-recovery.before"
+case_recovery_status=0
+printf 'y\n' | DO_WORK_TEST_JUST_COUNT="$workdir/case-recovery-just-count" \
+  PATH="$flaky_bin:$PATH" bash "$installer" --project-root "$case_recovery_project" \
+    --archive "$archive_file" >"$workdir/case-recovery.out" 2>&1 \
+  || case_recovery_status=$?
+if [ "$case_recovery_status" -eq 0 ]; then
+  fail 'case-preserving recovery fixture reported success after post-write Just validation failed'
+elif ! cmp -s "$case_recovery_project/Justfile" "$workdir/case-recovery.before"; then
+  fail 'failed install did not restore the original Justfile bytes'
+elif ! find "$case_recovery_project" -mindepth 1 -maxdepth 1 -name 'Justfile' -print -quit | grep -q . \
+  || find "$case_recovery_project" -mindepth 1 -maxdepth 1 -name 'justfile' -print -quit | grep -q .; then
+  fail 'failed install did not restore the real Justfile directory-entry spelling'
+fi
+
 rollback_status=0
 printf 'y\n' | DO_WORK_TEST_JUST_COUNT="$workdir/just-count" PATH="$flaky_bin:$PATH" \
   bash "$installer" --project-root "$rollback_project" --archive "$archive_file" >"$workdir/rollback.out" 2>&1 \

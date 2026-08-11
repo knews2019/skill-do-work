@@ -137,6 +137,11 @@ case_root="$(clone_valid_fixture empty-skill)"
 : > "$case_root/skills/do-work-board/SKILL.md"
 expect_fail "$case_root" 'empty SKILL.md'
 
+case_root="$(clone_valid_fixture directory-skill)"
+rm "$case_root/skills/do-work-board/SKILL.md"
+mkdir "$case_root/skills/do-work-board/SKILL.md"
+expect_fail "$case_root" 'directory-shaped SKILL.md'
+
 case_root="$(clone_valid_fixture symlink-escape)"
 mkdir -p "$fixture_root/outside-skill"
 printf '# outside\n' > "$fixture_root/outside-skill/SKILL.md"

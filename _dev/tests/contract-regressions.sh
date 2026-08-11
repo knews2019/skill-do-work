@@ -1535,8 +1535,8 @@ rm -rf -- "$inventory_failure_probe_dir"
 
 assert_contains \
   "tools/checks/preflight.sh" \
-  'git status --porcelain --untracked-files=all' \
-  'tools/checks/preflight.sh must keep repository-wide dirty-file detection — serial qualification and review read the repository-wide working/staged diff.'
+  'git -c status\.renames=copies status --porcelain=v1 --untracked-files=all -z' \
+  'tools/checks/preflight.sh must keep NUL-safe repository-wide dirty-file detection — serial qualification and review read the repository-wide working/staged diff.'
 
 preflight_dirty_warning_line="$(grep -E '^[[:space:]]*echo "WARN: .*uncommitted changes' "$core_root/tools/checks/preflight.sh" || true)"
 

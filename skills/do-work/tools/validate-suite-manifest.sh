@@ -110,7 +110,8 @@ while IFS= read -r manifest_line || [ -n "$manifest_line" ]; do
     "$archive_root"/skills/*) ;;
     *) fail "$manifest_source resolves outside the suite root" ;;
   esac
-  [ -s "$module_root/SKILL.md" ] && [ ! -L "$module_root/SKILL.md" ] \
+  [ -f "$module_root/SKILL.md" ] && [ -s "$module_root/SKILL.md" ] \
+    && [ ! -L "$module_root/SKILL.md" ] \
     || fail "$manifest_source/SKILL.md must be a non-empty regular file"
 
   row_count=$((row_count + 1))

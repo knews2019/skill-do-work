@@ -224,8 +224,10 @@ core_hooks="$source_root/skills/do-work/hooks/hooks.json"
 [ -s "$core_hooks" ] && [ ! -L "$core_hooks" ] || fail 'core hook fragment is missing or unsafe'
 
 for justfile_name in justfile Justfile .justfile; do
-  candidate_path="$project_root/$justfile_name"
-  if [ -e "$candidate_path" ] || [ -L "$candidate_path" ]; then
+  candidate_path="$(find "$project_root" -mindepth 1 -maxdepth 1 \
+    -name "$justfile_name" -print -quit)" \
+    || fail "could not resolve the real Justfile directory entry in $project_root"
+  if [ -n "$candidate_path" ]; then
     [ -f "$candidate_path" ] && [ ! -L "$candidate_path" ] \
       || fail "Justfile target must be a regular file: $candidate_path"
     just_target="$candidate_path"
@@ -308,6 +310,9 @@ if [ "$settings_tool" != manual ]; then
     jq --slurpfile fragment "$core_hooks" '
       def append_unique($base; $extra):
         reduce $extra[] as $item ($base; if index($item) == null then . + [$item] else . end);
+      def is_retired_pipeline_guard:
+        (.command | type) == "string"
+          and (.command | contains(".claude/skills/do-work/hooks/pipeline-guard.sh"));
       if .hooks == null then .hooks = {}
         elif (.hooks | type) != "object" then error("settings hooks must be an object")
         else . end
@@ -316,16 +321,14 @@ if [ "$settings_tool" != manual ]; then
         else
           .hooks.Stop |= map(
             if type == "object" and (.hooks | type) == "array" then
-              .hooks |= map(select(
-                ((.command | type) == "string"
-                  and (.command | contains(".claude/skills/do-work/hooks/pipeline-guard.sh")))
-                | not
-              ))
+              (.hooks | map(select(is_retired_pipeline_guard))) as $removed_hooks
+              | .hooks |= map(select((is_retired_pipeline_guard) | not))
+              | if ($removed_hooks | length) > 0 and (.hooks | length) == 0
+                then empty
+                else .
+                end
             else . end
           )
-          | .hooks.Stop |= map(select(
-              (type != "object") or (.hooks | type) != "array" or (.hooks | length) > 0
-            ))
           | if (.hooks.Stop | length) == 0 then del(.hooks.Stop) else . end
         end
       | reduce ($fragment[0].hooks | keys[]) as $event (.;
@@ -372,10 +375,13 @@ if stop_entries is not None:
                     and ".claude/skills/do-work/hooks/pipeline-guard.sh" in hook["command"]
                 )
             ]
-            if retained_hooks:
+            removed_retired_guard = len(retained_hooks) != len(entry["hooks"])
+            if removed_retired_guard and not retained_hooks:
+                continue
+            if removed_retired_guard:
                 entry = dict(entry)
                 entry["hooks"] = retained_hooks
-                retained_stop_entries.append(entry)
+            retained_stop_entries.append(entry)
         else:
             retained_stop_entries.append(entry)
     if retained_stop_entries:

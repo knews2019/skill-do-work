@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.23 — Collision-Safe Screenshots and Lossless Suite Guards (2026-08-11)
+
+Screenshot capture now preserves every dispatch and every image without clobbering recovery evidence. Suite validation, configuration reconciliation, and preflight reporting also retain the exact file and path shapes they inspect.
+
+- Allocates an exclusive staging directory per screenshot dispatch, installs ordinal asset paths without overwriting, and treats empty-directory cleanup as best-effort after verification
+- Parses dirty Git paths through NUL-delimited porcelain so spaces, quotes, and glob characters survive preflight unchanged
+- Rejects directory-shaped `SKILL.md` entries before installation and verifies regular files in installed-module fixtures
+- Preserves unrelated empty Stop-hook wrappers in both jq and Python reconciliation paths
+- Resolves the real Justfile directory-entry spelling before backup, write, and failed-install recovery
+
 ## 0.186.22 — Status-Colored Board Cards (2026-08-11)
 
 Board cards now separate workflow states at a glance without tinting the whole surface. Mixed-status By-UR groups use the same restrained cues as the column view.

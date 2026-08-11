@@ -27,11 +27,53 @@ set -uo pipefail
 
 # --- 1. Repository state (pre-existing changes can contaminate diff-based evidence) ---
 if git rev-parse --git-dir >/dev/null 2>&1; then
-  dirty_files="$(git status --porcelain --untracked-files=all | awk '{print $2}' | grep -v '^do-work/' || true)"
-  if [ -n "$dirty_files" ]; then
-    echo "WARN: pre-existing uncommitted changes detected outside do-work/ — preserve them and, unless they prevent the active REQ, exclude them from its staging; account for them in repository-wide qualification/review evidence:"
-    printf '  %s\n' $dirty_files
+  dirty_files=()
+  dirty_file_count=0
+  status_check_failed=0
+  append_dirty_path() {
+    local candidate_path="$1" existing_path
+    case "$candidate_path" in
+      do-work|do-work/*) return ;;
+    esac
+    if [ "$dirty_file_count" -gt 0 ]; then
+      for existing_path in "${dirty_files[@]}"; do
+        [ "$existing_path" != "$candidate_path" ] || return
+      done
+    fi
+    dirty_files[dirty_file_count]="$candidate_path"
+    dirty_file_count=$((dirty_file_count + 1))
+  }
+
+  status_output_file="$(mktemp "${TMPDIR:-/tmp}/do-work-preflight-status.XXXXXX" 2>/dev/null || true)"
+  if [ -z "$status_output_file" ]; then
+    echo "WARN: could not allocate temporary storage for the clean-tree check"
+    status_check_failed=1
+  elif ! git -c status.renames=copies status --porcelain=v1 --untracked-files=all -z \
+    > "$status_output_file"; then
+    echo "WARN: git status could not read the working tree"
+    status_check_failed=1
+    rm -f "$status_output_file"
   else
+    while IFS= read -r -d '' status_record; do
+      index_status="${status_record:0:1}"
+      worktree_status="${status_record:1:1}"
+      changed_path="${status_record:3}"
+      append_dirty_path "$changed_path"
+      case "$index_status$worktree_status" in
+        R*|*R|C*|*C)
+          rename_origin_path=''
+          IFS= read -r -d '' rename_origin_path || true
+          [ -z "$rename_origin_path" ] || append_dirty_path "$rename_origin_path"
+          ;;
+      esac
+    done < "$status_output_file"
+    rm -f "$status_output_file"
+  fi
+
+  if [ "$dirty_file_count" -gt 0 ]; then
+    echo "WARN: pre-existing uncommitted changes detected outside do-work/ — preserve them and, unless they prevent the active REQ, exclude them from its staging; account for them in repository-wide qualification/review evidence:"
+    printf '  %s\n' "${dirty_files[@]}"
+  elif [ "$status_check_failed" -eq 0 ]; then
     echo "OK: working tree clean outside do-work/"
   fi
 else

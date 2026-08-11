@@ -158,8 +158,9 @@ for core_file in "${core_files[@]}"; do
 done
 
 screenshot_dispatch_block="$(sed -n '/^## Dispatch/,/^## Safety/p' "$repo_root/skills/do-work/SKILL.md")"
-if ! grep -Fq 'do-work/user-requests/.pending-assets/screenshot-{n}.png' <<<"$screenshot_dispatch_block"; then
-  fail 'core dispatch must stage capture screenshots at the documented pending-assets path'
+if ! grep -Fq 'mktemp -d do-work/user-requests/.pending-assets/capture.XXXXXX' <<<"$screenshot_dispatch_block" \
+  || ! grep -Fq '$screenshot_dispatch_directory/screenshot-{n}.png' <<<"$screenshot_dispatch_block"; then
+  fail 'core dispatch must allocate one exclusive staging directory per screenshot-bearing capture'
 fi
 if ! grep -Eq 'actions/capture\.md.*Step 4' <<<"$screenshot_dispatch_block"; then
   fail 'core dispatch must name capture Step 4 as the owner of staged screenshot cleanup'
@@ -176,19 +177,23 @@ try:
     )[1].split("### Step 5: Write Files", 1)[0]
 except IndexError:
     raise SystemExit("capture action has no bounded screenshot step")
+screenshot_shell = screenshot_step.split("```bash", 1)[1].split("```", 1)[0]
 
 required_fragments = (
-    "do-work/user-requests/.pending-assets/screenshot-{n}.png",
+    'staged_screenshot_path="<exact staged screenshot path supplied by the dispatcher>"',
+    'screenshot_staging_directory="$(dirname "$staged_screenshot_path")"',
+    'REQ-[num]-screenshot-{n}-[slug].png',
     'screenshot_copy_path="${screenshot_asset_path}.copying"',
     'cmp -s "$staged_screenshot_path" "$screenshot_copy_path"',
-    'mv "$screenshot_copy_path" "$screenshot_asset_path"',
+    'ln "$screenshot_copy_path" "$screenshot_asset_path"',
+    'rm -f "$screenshot_copy_path"',
     'rm "$staged_screenshot_path"',
     'rmdir "$screenshot_staging_directory"',
     "staged source preserved",
 )
 fragment_positions = []
 for required_fragment in required_fragments:
-    fragment_position = screenshot_step.find(required_fragment)
+    fragment_position = screenshot_shell.find(required_fragment)
     if fragment_position < 0:
         raise SystemExit(
             f"capture screenshot step is missing {required_fragment!r}"
@@ -197,11 +202,155 @@ for required_fragment in required_fragments:
 
 if fragment_positions != sorted(fragment_positions):
     raise SystemExit(
-        "capture screenshot cleanup must follow copy, comparison, and permanent rename"
+        "capture screenshot cleanup must follow copy, comparison, no-clobber install, and source removal"
     )
+
+directory_cleanup = screenshot_step.split(
+    'rmdir "$screenshot_staging_directory"', 1
+)[1].split("fi", 1)[0]
+if "false" in directory_cleanup:
+    raise SystemExit("empty per-dispatch directory cleanup must be best-effort")
 PY
 then
-  fail 'capture Step 4 must preserve staged screenshots until the permanent copy verifies'
+  fail 'capture Step 4 must isolate, no-clobber, and safely clean staged screenshots'
+fi
+
+if ! python3 - "$repo_root/skills/do-work/actions/capture.md" <<'PY'
+import pathlib
+import subprocess
+import sys
+import tempfile
+
+capture_action_text = pathlib.Path(sys.argv[1]).read_text()
+screenshot_step = capture_action_text.split(
+    "### Step 4: Handle Screenshots", 1
+)[1].split("### Step 5: Write Files", 1)[0]
+screenshot_shell = screenshot_step.split("```bash", 1)[1].split("```", 1)[0].strip()
+
+
+def rendered_shell(dispatch_name: str, screenshot_number: int) -> str:
+    return (
+        screenshot_shell.replace(
+            "<exact staged screenshot path supplied by the dispatcher>",
+            f"do-work/user-requests/.pending-assets/{dispatch_name}/screenshot-{{n}}.png",
+        )
+        .replace("UR-NNN", "UR-042")
+        .replace("[num]", "042")
+        .replace("[slug]", "example")
+        .replace("{n}", str(screenshot_number))
+    )
+
+
+def run_capture(project_root: pathlib.Path, dispatch_name: str, screenshot_number: int, *, fail_rmdir: bool = False):
+    command = rendered_shell(dispatch_name, screenshot_number)
+    if fail_rmdir:
+        command = "rmdir() { return 1; }\n" + command
+    return subprocess.run(
+        ["bash", "-c", command],
+        cwd=project_root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+with tempfile.TemporaryDirectory(prefix="screenshot-capture-contract.") as temporary_root:
+    project_root = pathlib.Path(temporary_root)
+    dispatch_directory = project_root / "do-work/user-requests/.pending-assets/capture.multi"
+    dispatch_directory.mkdir(parents=True)
+    (dispatch_directory / "screenshot-1.png").write_bytes(b"first")
+    (dispatch_directory / "screenshot-2.png").write_bytes(b"second")
+
+    for screenshot_number in (1, 2):
+        capture_result = run_capture(project_root, "capture.multi", screenshot_number)
+        if capture_result.returncode != 0:
+            raise SystemExit(
+                f"multi-screenshot capture {screenshot_number} failed: {capture_result.stderr}"
+            )
+
+    asset_directory = project_root / "do-work/user-requests/UR-042/assets"
+    if (asset_directory / "REQ-042-screenshot-1-example.png").read_bytes() != b"first":
+        raise SystemExit("first screenshot did not survive the second screenshot capture")
+    if (asset_directory / "REQ-042-screenshot-2-example.png").read_bytes() != b"second":
+        raise SystemExit("second screenshot was not installed at its distinct asset path")
+    if dispatch_directory.exists():
+        raise SystemExit("empty per-dispatch staging directory was not removed")
+
+    collision_directory = project_root / "do-work/user-requests/.pending-assets/capture.collision"
+    collision_directory.mkdir(parents=True)
+    collision_source = collision_directory / "screenshot-3.png"
+    collision_source.write_bytes(b"new")
+    collision_destination = asset_directory / "REQ-042-screenshot-3-example.png"
+    collision_destination.write_bytes(b"existing")
+    collision_result = run_capture(project_root, "capture.collision", 3)
+    if collision_result.returncode == 0:
+        raise SystemExit("capture overwrote an existing permanent screenshot destination")
+    if collision_source.read_bytes() != b"new" or collision_destination.read_bytes() != b"existing":
+        raise SystemExit("destination collision did not preserve both source and existing asset")
+
+    cleanup_directory = project_root / "do-work/user-requests/.pending-assets/capture.cleanup"
+    cleanup_directory.mkdir(parents=True)
+    cleanup_source = cleanup_directory / "screenshot-4.png"
+    cleanup_source.write_bytes(b"cleanup")
+    cleanup_result = run_capture(project_root, "capture.cleanup", 4, fail_rmdir=True)
+    if cleanup_result.returncode != 0:
+        raise SystemExit("best-effort staging-directory cleanup invalidated a verified capture")
+    if cleanup_source.exists():
+        raise SystemExit("verified staged source was not removed before best-effort directory cleanup")
+    if (asset_directory / "REQ-042-screenshot-4-example.png").read_bytes() != b"cleanup":
+        raise SystemExit("verified destination was not retained after rmdir failure")
+    if "could not be removed" not in cleanup_result.stderr:
+        raise SystemExit("best-effort rmdir failure was not reported")
+PY
+then
+  fail 'capture Step 4 executable screenshot lifecycle regressions failed'
+fi
+
+if ! python3 - "$repo_root/skills/do-work/tools/checks/preflight.sh" <<'PY'
+import pathlib
+import subprocess
+import sys
+import tempfile
+
+preflight_script = pathlib.Path(sys.argv[1])
+pathological_names = (
+    'space name.txt',
+    'quote"name.txt',
+    'star*.txt',
+    'starZZ.txt',
+    'bracket[ab].txt',
+    'bracketa.txt',
+)
+with tempfile.TemporaryDirectory(prefix="preflight-path-contract.") as temporary_root:
+    project_root = pathlib.Path(temporary_root)
+    subprocess.run(["git", "init", "-q", str(project_root)], check=True)
+    for pathological_name in pathological_names:
+        (project_root / pathological_name).write_text(pathological_name)
+    (project_root / "do-work").mkdir()
+    (project_root / "do-work/ignored file.txt").write_text("ignored")
+
+    preflight_result = subprocess.run(
+        ["bash", str(preflight_script)],
+        cwd=project_root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    if preflight_result.returncode != 0:
+        raise SystemExit(f"preflight exited nonzero: {preflight_result.stderr}")
+    output_lines = preflight_result.stdout.splitlines()
+    for pathological_name in pathological_names:
+        rendered_path = f"  {pathological_name}"
+        if output_lines.count(rendered_path) != 1:
+            raise SystemExit(
+                f"preflight did not preserve {pathological_name!r} exactly once:\n"
+                + preflight_result.stdout
+            )
+    if any("ignored file.txt" in output_line for output_line in output_lines):
+        raise SystemExit("preflight reported a dirty path inside do-work/")
+PY
+then
+  fail 'preflight must preserve spaces, quotes, and glob characters in dirty filenames'
 fi
 
 for retired_pipeline_path in \
