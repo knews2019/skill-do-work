@@ -79,13 +79,7 @@ From `<skill-root>/tools/queue-kanban`:
 - **static** — `./queue-kanban generate --out "$REPO_ROOT/build/queue-kanban-board" --repo-root "$REPO_ROOT"`, then point the user at `build/queue-kanban-board/index.html`. This artifact is a throwaway — mention it's safe to delete. After generating to the **default** `--out` (a user-chosen `--out` is theirs to manage), add a local git exclude so the snapshot never sits in `git status` as untracked noise:
 
   ```bash
-  REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"   # re-derive — shell state does not survive between blocks
-  cd "$REPO_ROOT" || exit 1
-  if git rev-parse --git-dir >/dev/null 2>&1 && ! git check-ignore -q build/queue-kanban-board/index.html; then
-    exclude_file="$(git rev-parse --git-path info/exclude)"
-    mkdir -p "$(dirname "$exclude_file")"
-    echo '/build/queue-kanban-board/' >> "$exclude_file"
-  fi
+  (cd "$(git rev-parse --show-toplevel 2>/dev/null || pwd)" && <skill-root>/../do-work/scripts/add-local-git-exclude.sh build/queue-kanban-board/index.html '/build/queue-kanban-board/')
   ```
 
   This generated snapshot uses the canonical [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) primitive with a project-root-specific pattern. The local exclude preserves the action's read-only contract for tracked project files, the guard is idempotent, and a non-git project skips it silently.

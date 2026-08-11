@@ -209,7 +209,7 @@ Ensure the report folder and its screenshots folder exist (`mkdir -p ai-reports/
 
 **What Changed** — Compact table of files modified, what each does. No code snippets. Pointers only (`src/components/AlignPanel.jsx — added Align checkbox + batch flag`).
 
-**Verify It Yourself** — Copy-pasteable shell commands from the REQ's Testing section. Emit one commit-reading block using the canonical [Merge-aware commit diff](../../do-work/docs/prescribed-shell-primitives.md#merge-aware-commit-diff) rule: detect a merge with `git rev-parse --verify -q '<sha>^2'`, then use `git show --first-parent -m <sha>` for a merge or `git show <sha>` otherwise. Include one test-run command.
+**Verify It Yourself** — Copy-pasteable shell commands from the REQ's Testing section. Emit `<skill-root>/../do-work/scripts/show-commit-diff.sh <sha>` as the commit-reading command under the canonical [Merge-aware commit diff](../../do-work/docs/prescribed-shell-primitives.md#merge-aware-commit-diff) contract. Include one test-run command.
 
 **Open Questions / Lessons** — Only if the REQ has a non-empty Lessons Learned or unresolved Open Questions. If empty, omit this section entirely.
 
