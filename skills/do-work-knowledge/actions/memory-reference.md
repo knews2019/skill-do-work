@@ -64,28 +64,13 @@ Both halves are required. Dropping the sentinel makes legacy and current section
 
 ## Lexical Recall (Layer 1 — always runs)
 
-Design-for-the-floor: grep + arithmetic only. Apply the canonical [Raw text before shell quoting](../../do-work/docs/prescribed-shell-primitives.md#raw-text-before-shell-quoting) rule: sanitize the query first as a text operation, then substitute only the already-safe value:
+The shipped lexical recall helper applies the canonical [Raw text before shell quoting](../../do-work/docs/prescribed-shell-primitives.md#raw-text-before-shell-quoting) contract, scores grep matches with the documented recency weights, and emits at most eight attributed results:
 
 ```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-MEMORY_DIR="$PROJECT_ROOT/memory"
-# 1. Derive a sanitized token list from the user's query: lowercase, strip everything
-#    but [a-z0-9 ], split on whitespace, drop tokens shorter than 3 chars.
-#    Do this as a text operation on the query BEFORE building any command.
-# 2. For each safe token:
-#      grep -inH -- "$token" "$MEMORY_DIR/working-memory.md" "$MEMORY_DIR"/logs/*.md 2>/dev/null
-# 3. Score each matching line: (number of distinct query tokens hitting that line) × recency weight.
-#    Recency weight by source file:
-#      working-memory.md                → 4 (curated beats raw)
-#      logs/<date>.md, date ≤ 7 days old  → 3
-#      logs/<date>.md, date ≤ 30 days old → 2
-#      logs/<date>.md, older              → 1
-#    (Log age comes from the filename's YYYY-MM-DD, not mtime.)
-# 4. Emit the top 8 lines by score. EVERY result must carry attribution:
-#    path:line, the log date (or "working memory"), and the nearest preceding ## heading.
+<skill-root>/scripts/lexical-memory-recall.sh "$(git rev-parse --show-toplevel 2>/dev/null || pwd)/memory" "<raw query text>"
 ```
 
-Steps 3–4 are scoring/formatting the agent performs on the grep output — they need no additional shell state, so nothing carries between command blocks (shell state does not survive between prescribed command blocks).
+The script owns tokenization, scoring, recency weighting, attribution, sorting, and the eight-result bound; the caller owns only query intent and how returned memories are used.
 
 ## Semantic Recall (Layer 2 — optional, detected)
 
@@ -160,28 +145,10 @@ The memory store is split by durability: the curated `working-memory.md` is **co
 
 ## Hook Install Internals (used by actions/setup-memory.md → memory-module)
 
-`hooks/memory-hooks.json` is a fragment shaped exactly like `../do-work/hooks/hooks.json`. The install target **appends** its entries into the consumer's `.claude/settings.json` — compose, never clobber:
+`hooks/memory-hooks.json` is a fragment shaped exactly like `../do-work/hooks/hooks.json`. The shipped installer appends only missing entries into the consumer's `.claude/settings.json` — compose, never clobber:
 
 ```bash
-settings_file="$PROJECT_ROOT/.claude/settings.json"
-[ -f "$settings_file" ] || printf '{}\n' > "$settings_file"
-# Gate EACH entry independently — a partial/manual prior install may hold one
-# hook but not the other, and a single-filename gate would either skip the
-# missing entry forever or duplicate the present one.
-append_session_start=1; append_stop=1
-grep -q 'memory-session-start.sh' "$settings_file" && append_session_start=0
-grep -q 'memory-stop-capture.sh'  "$settings_file" && append_stop=0
-if [ "$append_session_start" -eq 0 ] && [ "$append_stop" -eq 0 ]; then
-  echo "memory hooks already present — skipping merge"
-else
-  cp "$settings_file" "$settings_file.pre-memory-module"   # backup BEFORE touching anything
-  merged_settings="$settings_file.merge-tmp"
-  jq --slurpfile frag "<skill-root>/hooks/memory-hooks.json" \
-     --argjson add_start "$append_session_start" --argjson add_stop "$append_stop" \
-     '(if $add_start == 1 then .hooks.SessionStart = ((.hooks.SessionStart // []) + $frag[0].hooks.SessionStart) else . end)
-    | (if $add_stop  == 1 then .hooks.Stop        = ((.hooks.Stop        // []) + $frag[0].hooks.Stop)        else . end)' \
-     "$settings_file" > "$merged_settings" && mv "$merged_settings" "$settings_file"
-fi
+<skill-root>/scripts/install-memory-hooks.sh "$PROJECT_ROOT" "<skill-root>/hooks/memory-hooks.json"
 ```
 
 - Dedup gate = one grep per script filename, each appending only its own missing entry; append via `+`, never assign a whole new array over `.hooks.SessionStart`/`.hooks.Stop`.

@@ -31,13 +31,15 @@ Inspect `$PROJECT_ROOT/.claude/settings.json` when present. Invalid JSON is a ha
 
 Create missing directories and the empty ledger. Create `memory/working-memory.md` from `actions/memory-reference.md` → **working-memory.md Template**, with today's UTC date, only when the file is absent or empty. Never overwrite standing memory.
 
-Add these patterns independently to the repository's local Git exclude file only when not already ignored:
+Add these patterns independently with the core shipped [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) helper only when not already ignored:
 
 ```text
 **/memory/logs/
 **/memory/usage-ledger.jsonl
 **/memory/.bootstrap-imported
 ```
+
+Invoke `<skill-root>/../do-work/scripts/add-local-git-exclude.sh` once per path/pattern pair.
 
 Use `git rev-parse --git-path info/exclude`; do not edit the project's `.gitignore`. Outside Git, report that machine-local ignore protection is unavailable and continue with the portable hookless actions.
 

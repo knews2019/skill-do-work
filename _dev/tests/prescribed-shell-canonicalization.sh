@@ -6,6 +6,25 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 canonical_guide="$repo_root/skills/do-work/docs/prescribed-shell-primitives.md"
 failure_count=0
 
+for prescribed_script in \
+  skills/do-work/scripts/show-commit-diff.sh \
+  skills/do-work/scripts/add-local-git-exclude.sh \
+  skills/do-work/scripts/atomic-download.sh \
+  skills/do-work/scripts/capture-screenshot.sh \
+  skills/do-work/scripts/run-blocked-check.sh \
+  skills/do-work/scripts/protected-inventory.sh \
+  skills/do-work/scripts/stage-exact-deletion.sh \
+  skills/do-work-knowledge/scripts/lexical-memory-recall.sh \
+  skills/do-work-knowledge/scripts/install-memory-hooks.sh \
+  skills/do-work-toolbox/scripts/generate-report-image.sh \
+  skills/do-work-toolbox/scripts/install-last30days.sh
+do
+  if [ ! -x "$repo_root/$prescribed_script" ]; then
+    printf 'FAIL: prescribed shell script is missing or not executable: %s\n' "$prescribed_script" >&2
+    failure_count=$((failure_count + 1))
+  fi
+done
+
 if [[ ! -f "$canonical_guide" ]]; then
   printf 'FAIL: core prescribed-shell guide is missing.\n' >&2
   exit 1
@@ -31,6 +50,7 @@ core_pointer='../docs/prescribed-shell-primitives.md'
 sibling_pointer='../../do-work/docs/prescribed-shell-primitives.md'
 for core_site in \
   skills/do-work/actions/commit.md \
+  skills/do-work/actions/capture.md \
   skills/do-work/actions/review-work.md \
   skills/do-work/actions/work.md \
   skills/do-work/actions/work-reference.md \
@@ -45,6 +65,7 @@ done
 for sibling_site in \
   skills/do-work-board/actions/board.md \
   skills/do-work-knowledge/actions/memory-reference.md \
+  skills/do-work-knowledge/actions/setup-memory.md \
   skills/do-work-knowledge/crew-members/background-agents.md \
   skills/do-work-toolbox/actions/ai-report.md \
   skills/do-work-toolbox/actions/inspect.md \
@@ -71,6 +92,18 @@ printf '%s\n' \
   '`diff -x PATTERN`' \
   > "$stale_patterns_file"
 
+old_implementations_file="$(mktemp)" || exit 1
+trap 'rm -f "$stale_patterns_file" "$old_implementations_file"' EXIT
+printf '%s\n' \
+  'screenshot_copy_path=' \
+  'cached_deletion_file=' \
+  'gen_image()' \
+  'CLONE_DIR=' \
+  'append_session_start=1' \
+  'command -v gtimeout' \
+  'exclude_file="$(git rev-parse --git-path info/exclude' \
+  > "$old_implementations_file"
+
 while IFS= read -r shipped_markdown; do
   [[ "$shipped_markdown" == "$canonical_guide" ]] && continue
   [[ "$(basename "$shipped_markdown")" == CHANGELOG.md ]] && continue
@@ -81,6 +114,13 @@ while IFS= read -r shipped_markdown; do
       failure_count=$((failure_count + 1))
     fi
   done < "$stale_patterns_file"
+  while IFS= read -r old_implementation; do
+    if grep -Fq "$old_implementation" "$shipped_markdown"; then
+      printf 'FAIL: %s retains promoted shell implementation <%s>; keep intent plus the shipped script invocation.\n' \
+        "${shipped_markdown#"$repo_root/"}" "$old_implementation" >&2
+      failure_count=$((failure_count + 1))
+    fi
+  done < "$old_implementations_file"
 done < <(find "$repo_root/skills" -type f -name '*.md' -print | LC_ALL=C sort)
 
 if [[ "$failure_count" -gt 0 ]]; then

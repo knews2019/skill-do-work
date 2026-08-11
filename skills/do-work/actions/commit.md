@@ -42,28 +42,10 @@ commit action
 
 ### Step 1: Preflight
 
-Run the shipped check:
+Start the protected inventory wrapper; it owns the worktree-safe run quarantine and delegates low-level classification to the existing checks:
 
 ```bash
-repository_root="$(git rev-parse --show-toplevel)" || exit 2
-quarantine_paths_file="$(git rev-parse --git-path do-work-commit-secret-quarantine)" || exit 2
-inventory_file="$(mktemp)" || exit 2
-: > "$quarantine_paths_file" || { rm -f "$inventory_file"; exit 2; }
-
-if "<skill-root>/tools/checks/uncommitted-inventory.sh" "$repository_root" > "$inventory_file"; then
-  inventory_exit=0
-else
-  inventory_exit=$?
-fi
-case "$inventory_exit" in
-  0)
-    awk -F '\t' '$1 == "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" > "$quarantine_paths_file"
-    cat "$inventory_file"
-    rm -f "$inventory_file"
-    ;;
-  1) rm -f "$inventory_file" "$quarantine_paths_file"; exit 1 ;;
-  *) rm -f "$inventory_file" "$quarantine_paths_file"; exit 2 ;;
-esac
+<skill-root>/scripts/protected-inventory.sh start
 ```
 
 It gates on `git rev-parse --git-dir`, enumerates every uncommitted path, and prints one `<tag>\t<path>` row per file:
@@ -101,43 +83,13 @@ The goal is to understand each file well enough to group it with related changes
 
 ### Step 3: Associate with REQs
 
-Feed the M/A/D/XD paths from Step 1 into the shipped check, excluding only exact `X` rows:
+Feed the current protected M/A/D/XD paths into association, excluding every path quarantined as `X` during the run:
 
 ```bash
-repository_root="$(git rev-parse --show-toplevel)" || exit 2
-quarantine_paths_file="$(git rev-parse --git-path do-work-commit-secret-quarantine)" || exit 2
-inventory_file="$(mktemp)" || exit 2
-candidate_paths_file="$(mktemp)" || { rm -f "$inventory_file"; exit 2; }
-trap 'rm -f "$inventory_file" "$candidate_paths_file"' EXIT
-
-# Step 1 creates this deterministic run artifact. Never silently recreate an
-# empty file here: that would erase the only record of an earlier X path.
-test -f "$quarantine_paths_file" || exit 2
-
-if "<skill-root>/tools/checks/uncommitted-inventory.sh" "$repository_root" > "$inventory_file"; then
-  inventory_exit=0
-else
-  inventory_exit=$?
-fi
-case "$inventory_exit" in
-  0) ;;
-  1) exit 1 ;;
-  *) exit 2 ;;
-esac
-
-awk -F '\t' '$1 == "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" >> "$quarantine_paths_file"
-awk -F '\t' '
-  FILENAME == ARGV[1] { excluded[$0] = 1; next }
-  {
-    tag = $1
-    sub(/^[^\t]*\t/, "")
-    if (tag != "X" && !($0 in excluded)) print
-  }
-' "$quarantine_paths_file" "$inventory_file" > "$candidate_paths_file"
-"<skill-root>/tools/checks/associate-files.sh" --repo-root "$repository_root" < "$candidate_paths_file"
+<skill-root>/scripts/protected-inventory.sh associate
 ```
 
-This block re-derives the repository root and moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory; skip REQ tracing and send the remaining safe M/A/D/XD files to Step 4.
+The wrapper re-derives the repository root and moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The delegated check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory; skip REQ tracing and send the remaining safe M/A/D/XD files to Step 4.
 
 What the script settles, so this prose no longer has to:
 
@@ -173,45 +125,10 @@ Cluster the remaining files into semantic groups of 1-5 files each:
 
 Commit each group in order — REQ-associated groups first, then unassociated groups.
 
-For each XD path, re-run the inventory immediately before staging using Step 3's complete procedure: re-derive `do-work-commit-secret-quarantine` with `git rev-parse --git-path`, require it to exist, append the new X rows, and overlay it before checking the exact XD row. Proceed only while the exact row is still XD and the path has never been X. Check the cached name/status without reading content:
+For each XD path, re-run the protected association immediately before staging and proceed only while the exact row is still XD and the path has never been X. Then invoke the exact-deletion guard, which checks cached name/status without reading content:
 
 ```bash
-cached_deletion_file="$(mktemp)" || exit 2
-if ! git diff --cached --name-status --no-renames -z -- "$path" > "$cached_deletion_file"; then
-  rm -f "$cached_deletion_file"
-  exit 2
-fi
-cached_status=''
-cached_path=''
-cached_extra=''
-{
-  IFS= read -r -d '' cached_status || true
-  IFS= read -r -d '' cached_path || true
-  IFS= read -r -d '' cached_extra || true
-} < "$cached_deletion_file"
-
-if [ "$cached_status" = 'D' ] && [ "$cached_path" = "$path" ] && [ -z "$cached_extra" ]; then
-  : # Already staged as one exact deletion: skip git add -u.
-else
-  git add -u -- "$path" || { rm -f "$cached_deletion_file"; exit 2; }
-  git diff --cached --name-status --no-renames -z -- "$path" > "$cached_deletion_file" || {
-    rm -f "$cached_deletion_file"
-    exit 2
-  }
-  cached_status=''
-  cached_path=''
-  cached_extra=''
-  {
-    IFS= read -r -d '' cached_status || true
-    IFS= read -r -d '' cached_path || true
-    IFS= read -r -d '' cached_extra || true
-  } < "$cached_deletion_file"
-  if [ "$cached_status" != 'D' ] || [ "$cached_path" != "$path" ] || [ -n "$cached_extra" ]; then
-    rm -f "$cached_deletion_file"
-    exit 2
-  fi
-fi
-rm -f "$cached_deletion_file"
+<skill-root>/scripts/stage-exact-deletion.sh "$path"
 ```
 
 This accepts a path already staged as one exact deletion without `git add -u`; otherwise it stages the tracked deletion and verifies the same exact cached metadata afterward. Never inspect a staged diff. If the path is no longer XD, stop and reclassify it. X paths are never staged by any command, and no commit proceeds while an X path remains pre-staged.

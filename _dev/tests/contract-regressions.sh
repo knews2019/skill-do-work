@@ -9,6 +9,11 @@ board_root="$repo_root/skills/do-work-board"
 knowledge_root="$repo_root/skills/do-work-knowledge"
 toolbox_root="$repo_root/skills/do-work-toolbox"
 
+if ! bash "$repo_root/_dev/tests/prescribed-shell-scripts-behavior.sh"; then
+  printf 'FAIL: prescribed shell script behavior probes failed.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 resolve_runtime_file() {
   local relative_path="$1"
 
@@ -19,7 +24,7 @@ resolve_runtime_file() {
       printf '%s/%s\n' "$knowledge_root" "$relative_path" ;;
     actions/ai-report*|actions/code-review.md|actions/deep-explore*|actions/inspect.md|actions/install.md|actions/note.md|actions/present-work.md|actions/prime.md|actions/quick-wins.md|actions/scan-ideas.md|actions/slop-check.md|actions/stray-check.md|actions/tidy-repo.md|actions/tutorial.md|actions/ui-review.md|actions/validate-feedback.md|docs/ai-report-guide.md|docs/code-review-guide.md|docs/inspect-guide.md|docs/present-work-guide.md|docs/prime-guide.md|docs/quick-wins-guide.md|docs/slop-check-guide.md|docs/stray-check-guide.md|docs/ui-review-guide.md)
       printf '%s/%s\n' "$toolbox_root" "$relative_path" ;;
-    actions/*|crew-members/*|docs/*|hooks/*|specs/*|tools/checks/*|tools/do-work-update.sh|tools/prime-do-work-update.md)
+    actions/*|crew-members/*|docs/*|hooks/*|scripts/*|specs/*|tools/checks/*|tools/do-work-update.sh|tools/prime-do-work-update.md)
       printf '%s/%s\n' "$core_root" "$relative_path" ;;
     tools/queue-kanban/*) printf '%s/%s\n' "$board_root" "$relative_path" ;;
     *) printf '%s/%s\n' "$repo_root" "$relative_path" ;;
@@ -1054,10 +1059,8 @@ hardened_check_scripts=(
   "tools/checks/record-commit-hash.sh|actions/work.md"
   "tools/checks/blanked-req-scan.sh|actions/forensics.md"
   "tools/checks/blanked-req-scan.sh|actions/cleanup.md"
-  "tools/checks/uncommitted-inventory.sh|actions/commit.md"
-  "tools/checks/uncommitted-inventory.sh|actions/inspect.md"
-  "tools/checks/associate-files.sh|actions/commit.md"
-  "tools/checks/associate-files.sh|actions/inspect.md"
+  "scripts/protected-inventory.sh|actions/commit.md"
+  "scripts/protected-inventory.sh|actions/inspect.md"
 )
 
 for check_script_entry in "${hardened_check_scripts[@]}"; do
@@ -1071,6 +1074,13 @@ for check_script_entry in "${hardened_check_scripts[@]}"; do
     "$referencing_action_file" \
     "$(basename "$check_script")" \
     "$referencing_action_file must reference $check_script — the hardened step's pointer was removed without un-hardening."
+done
+
+for delegated_inventory_check in uncommitted-inventory.sh associate-files.sh; do
+  assert_contains \
+    "scripts/protected-inventory.sh" \
+    "$delegated_inventory_check" \
+    "protected-inventory.sh must continue delegating to $delegated_inventory_check."
 done
 
 # Pre-flight dirty-tree relevance (feedback 2026-08-04). The serial qualifier and
@@ -1250,10 +1260,7 @@ rm -rf -- "$ordinary_addition_probe_dir"
 # portable filename discriminator in every active bridge/modular copy, then
 # exercise both an empty quarantine and a populated once-X-always-X set.
 association_candidate_action_files=(
-  actions/commit.md
-  actions/inspect.md
-  skills/do-work/actions/commit.md
-  skills/do-work-toolbox/actions/inspect.md
+  scripts/protected-inventory.sh
 )
 for association_candidate_action_file in "${association_candidate_action_files[@]}"; do
   assert_contains \
@@ -1711,20 +1718,23 @@ assert_contains \
   'The installed suite transaction must automatically recover its validated managed paths after a destructive-region failure.'
 
 assert_file_not_contains \
-  "actions/work.md" \
+  "scripts/run-blocked-check.sh" \
   'else probe_wrapper=""' \
-  'actions/work.md must not drop the blocked-check time limit when timeout/gtimeout is unavailable.'
+  'run-blocked-check.sh must not drop the blocked-check time limit when timeout/gtimeout is unavailable.'
 
 assert_contains \
-  "actions/work.md" \
-  'probe_exit=124' \
-  'actions/work.md must preserve a bounded portable fallback and report a timed-out blocked check as exit 124.'
+  "scripts/run-blocked-check.sh" \
+  'exit 124' \
+  'run-blocked-check.sh must preserve a bounded portable fallback and report a timed-out blocked check as exit 124.'
 
-blocked_probe_shell_block="$(sed -n '/^# Re-derive paths deterministically/,/^rm -f "\$BLOCKED_CHECK_SCRIPT"/p' "$core_root/actions/work.md")"
-if ! bash -n <<<"$blocked_probe_shell_block"; then
-  printf 'FAIL: actions/work.md blocked-check shell block must remain syntactically valid.\n' >&2
+if ! bash -n "$core_root/scripts/run-blocked-check.sh"; then
+  printf 'FAIL: scripts/run-blocked-check.sh must remain syntactically valid.\n' >&2
   fail_count=$((fail_count + 1))
 fi
+assert_contains \
+  "actions/work.md" \
+  'run-blocked-check.sh' \
+  'actions/work.md must invoke the shipped blocked-check timeout runner.'
 
 # Target ID Resolution contract (REQ-067). The run tokenizer recognized exactly one token
 # shape (REQ- + digits); every other token was residue by construction, so a UR argument was

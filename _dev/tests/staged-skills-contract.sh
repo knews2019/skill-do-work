@@ -166,272 +166,33 @@ if ! grep -Eq 'actions/capture\.md.*Step 4' <<<"$screenshot_dispatch_block"; the
   fail 'core dispatch must name capture Step 4 as the owner of staged screenshot cleanup'
 fi
 
-if ! python3 - "$repo_root/skills/do-work/actions/capture.md" <<'PY'
-import pathlib
-import sys
-
-capture_action_text = pathlib.Path(sys.argv[1]).read_text()
-try:
-    screenshot_step = capture_action_text.split(
-        "### Step 4: Handle Screenshots", 1
-    )[1].split("### Step 5: Write Files", 1)[0]
-except IndexError:
-    raise SystemExit("capture action has no bounded screenshot step")
-screenshot_shell = screenshot_step.split("```bash", 1)[1].split("```", 1)[0]
-
-required_fragments = (
-    'staged_screenshot_path="<exact staged screenshot path supplied by the dispatcher>"',
-    'screenshot_staging_directory="$(dirname "$staged_screenshot_path")"',
-    'REQ-[num]-screenshot-{n}-[slug].png',
-    'screenshot_copy_path="$(mktemp "${screenshot_asset_path}.copying.XXXXXX")"',
-    'cp "$staged_screenshot_path" "$screenshot_copy_path"',
-    'cmp -s "$staged_screenshot_path" "$screenshot_copy_path"',
-    'ln "$screenshot_copy_path" "$screenshot_asset_path"',
-    'rm -f "$screenshot_copy_path"',
-    'rm "$staged_screenshot_path"',
-    'rmdir "$screenshot_staging_directory"',
-    "staged source preserved",
-)
-fragment_positions = []
-for required_fragment in required_fragments:
-    fragment_position = screenshot_shell.find(required_fragment)
-    if fragment_position < 0:
-        raise SystemExit(
-            f"capture screenshot step is missing {required_fragment!r}"
-        )
-    fragment_positions.append(fragment_position)
-
-if fragment_positions != sorted(fragment_positions):
-    raise SystemExit(
-        "capture screenshot cleanup must follow copy, comparison, no-clobber install, and source removal"
-    )
-
-directory_cleanup = screenshot_step.split(
-    'rmdir "$screenshot_staging_directory"', 1
-)[1].split("fi", 1)[0]
-if "false" in directory_cleanup:
-    raise SystemExit("empty per-dispatch directory cleanup must be best-effort")
-PY
-then
-  fail 'capture Step 4 must isolate, no-clobber, and safely clean staged screenshots'
+capture_script="$repo_root/skills/do-work/scripts/capture-screenshot.sh"
+if [ ! -x "$capture_script" ]; then
+  fail 'shipped capture-screenshot helper must exist and be executable'
+fi
+if ! grep -Fq '<skill-root>/scripts/capture-screenshot.sh --staged' \
+  "$repo_root/skills/do-work/actions/capture.md"; then
+  fail 'capture Step 4 must resolve the shipped sibling screenshot helper'
+fi
+if ! bash "$repo_root/_dev/tests/prescribed-shell-scripts-behavior.sh"; then
+  fail 'promoted prescribed-shell behavior probes failed from staged-skills contract'
 fi
 
-if ! python3 - "$repo_root/skills/do-work/actions/capture.md" <<'PY'
-import pathlib
-import subprocess
-import sys
-import tempfile
-
-capture_action_text = pathlib.Path(sys.argv[1]).read_text()
-screenshot_step = capture_action_text.split(
-    "### Step 4: Handle Screenshots", 1
-)[1].split("### Step 5: Write Files", 1)[0]
-screenshot_shell = screenshot_step.split("```bash", 1)[1].split("```", 1)[0].strip()
-
-
-def rendered_shell(dispatch_name: str, screenshot_number: int) -> str:
-    return (
-        screenshot_shell.replace(
-            "<exact staged screenshot path supplied by the dispatcher>",
-            f"do-work/user-requests/.pending-assets/{dispatch_name}/screenshot-{{n}}.png",
-        )
-        .replace("UR-NNN", "UR-042")
-        .replace("[num]", "042")
-        .replace("[slug]", "example")
-        .replace("{n}", str(screenshot_number))
-    )
-
-
-def run_capture(
-    project_root: pathlib.Path,
-    dispatch_name: str,
-    screenshot_number: int,
-    *,
-    fail_rmdir: bool = False,
-    fail_staged_source_removal: bool = False,
-):
-    command = rendered_shell(dispatch_name, screenshot_number)
-    if fail_rmdir:
-        command = "rmdir() { return 1; }\n" + command
-    if fail_staged_source_removal:
-        staged_source = (
-            f"do-work/user-requests/.pending-assets/{dispatch_name}/"
-            f"screenshot-{screenshot_number}.png"
-        )
-        command = (
-            'rm() {\n'
-            f'  if [ "$#" -eq 1 ] && [ "$1" = "{staged_source}" ]; then return 1; fi\n'
-            '  command rm "$@"\n'
-            '}\n'
-            + command
-        )
-    return subprocess.run(
-        ["bash", "-c", command],
-        cwd=project_root,
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-
-
-with tempfile.TemporaryDirectory(prefix="screenshot-capture-contract.") as temporary_root:
-    project_root = pathlib.Path(temporary_root)
-    dispatch_directory = project_root / "do-work/user-requests/.pending-assets/capture.multi"
-    dispatch_directory.mkdir(parents=True)
-    (dispatch_directory / "screenshot-1.png").write_bytes(b"first")
-    (dispatch_directory / "screenshot-2.png").write_bytes(b"second")
-
-    for screenshot_number in (1, 2):
-        capture_result = run_capture(project_root, "capture.multi", screenshot_number)
-        if capture_result.returncode != 0:
-            raise SystemExit(
-                f"multi-screenshot capture {screenshot_number} failed: {capture_result.stderr}"
-            )
-
-    asset_directory = project_root / "do-work/user-requests/UR-042/assets"
-    if (asset_directory / "REQ-042-screenshot-1-example.png").read_bytes() != b"first":
-        raise SystemExit("first screenshot did not survive the second screenshot capture")
-    if (asset_directory / "REQ-042-screenshot-2-example.png").read_bytes() != b"second":
-        raise SystemExit("second screenshot was not installed at its distinct asset path")
-    if dispatch_directory.exists():
-        raise SystemExit("empty per-dispatch staging directory was not removed")
-
-    race_a_directory = project_root / "do-work/user-requests/.pending-assets/capture.race-a"
-    race_b_directory = project_root / "do-work/user-requests/.pending-assets/capture.race-b"
-    race_a_directory.mkdir(parents=True)
-    race_b_directory.mkdir(parents=True)
-    race_a_source = race_a_directory / "screenshot-6.png"
-    race_b_source = race_b_directory / "screenshot-6.png"
-    race_a_bytes = b"verified-dispatch-a"
-    race_b_bytes = b"competing-dispatch-b"
-    race_a_source.write_bytes(race_a_bytes)
-    race_b_source.write_bytes(race_b_bytes)
-    race_destination = asset_directory / "REQ-042-screenshot-6-example.png"
-    race_a_verified = project_root / "race-a-verified"
-    race_b_copied = project_root / "race-b-copied"
-
-    race_a_prefix = f'''cmp() {{
-  command cmp "$@"
-  comparison_status=$?
-  if [ "$comparison_status" -eq 0 ]; then
-    : > "{race_a_verified}"
-    while [ ! -e "{race_b_copied}" ]; do sleep 0.01; done
+for sibling_script_contract in \
+  'skills/do-work-board/actions/board.md|<skill-root>/../do-work/scripts/add-local-git-exclude.sh|skills/do-work/scripts/add-local-git-exclude.sh' \
+  'skills/do-work-knowledge/actions/setup-memory.md|<skill-root>/../do-work/scripts/add-local-git-exclude.sh|skills/do-work/scripts/add-local-git-exclude.sh' \
+  'skills/do-work-toolbox/actions/install.md|<skill-root>/../do-work/scripts/atomic-download.sh|skills/do-work/scripts/atomic-download.sh' \
+  'skills/do-work-toolbox/actions/install.md|<skill-root>/scripts/install-last30days.sh|skills/do-work-toolbox/scripts/install-last30days.sh'
+do
+  caller_path="${sibling_script_contract%%|*}"
+  sibling_contract_rest="${sibling_script_contract#*|}"
+  invocation_text="${sibling_contract_rest%%|*}"
+  executable_path="${sibling_contract_rest#*|}"
+  if ! grep -Fq "$invocation_text" "$repo_root/$caller_path" \
+    || [ ! -x "$repo_root/$executable_path" ]; then
+    fail "staged package sibling script contract is unresolved: $caller_path -> $executable_path"
   fi
-  return "$comparison_status"
-}}
-'''
-    race_b_prefix = f'''cp() {{
-  while [ ! -e "{race_a_verified}" ]; do sleep 0.01; done
-  command cp "$@"
-  copy_status=$?
-  if [ "$copy_status" -eq 0 ]; then : > "{race_b_copied}"; fi
-  return "$copy_status"
-}}
-cmp() {{
-  command cmp "$@"
-  comparison_status=$?
-  while [ ! -e "{race_destination}" ]; do sleep 0.01; done
-  return "$comparison_status"
-}}
-'''
-    race_a_process = subprocess.Popen(
-        ["bash", "-c", race_a_prefix + rendered_shell("capture.race-a", 6)],
-        cwd=project_root,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    race_b_process = subprocess.Popen(
-        ["bash", "-c", race_b_prefix + rendered_shell("capture.race-b", 6)],
-        cwd=project_root,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-    try:
-        race_a_stdout, race_a_stderr = race_a_process.communicate(timeout=10)
-        race_b_stdout, race_b_stderr = race_b_process.communicate(timeout=10)
-    except subprocess.TimeoutExpired:
-        race_a_process.terminate()
-        race_b_process.terminate()
-        raise SystemExit("coordinated screenshot collision timed out")
-
-    if race_a_process.returncode != 0 or race_b_process.returncode == 0:
-        raise SystemExit(
-            "coordinated collision did not install exactly one dispatch: "
-            f"A={race_a_process.returncode} ({race_a_stderr}), "
-            f"B={race_b_process.returncode} ({race_b_stderr})"
-        )
-    if race_destination.read_bytes() != race_a_bytes:
-        raise SystemExit("winning dispatch published bytes from another dispatch")
-    if race_a_source.exists():
-        raise SystemExit("winning dispatch retained its installed staged source")
-    if race_b_source.read_bytes() != race_b_bytes:
-        raise SystemExit("losing dispatch did not retain its staged source")
-    if list(asset_directory.glob(f"{race_destination.name}.copying*")):
-        raise SystemExit("coordinated collision left a screenshot temporary copy behind")
-
-    collision_directory = project_root / "do-work/user-requests/.pending-assets/capture.collision"
-    collision_directory.mkdir(parents=True)
-    collision_source = collision_directory / "screenshot-3.png"
-    collision_source.write_bytes(b"new")
-    collision_destination = asset_directory / "REQ-042-screenshot-3-example.png"
-    collision_destination.write_bytes(b"existing")
-    collision_result = run_capture(project_root, "capture.collision", 3)
-    if collision_result.returncode == 0:
-        raise SystemExit("capture overwrote an existing permanent screenshot destination")
-    if collision_source.read_bytes() != b"new" or collision_destination.read_bytes() != b"existing":
-        raise SystemExit("destination collision did not preserve both source and existing asset")
-
-    cleanup_directory = project_root / "do-work/user-requests/.pending-assets/capture.cleanup"
-    cleanup_directory.mkdir(parents=True)
-    cleanup_source = cleanup_directory / "screenshot-4.png"
-    cleanup_source.write_bytes(b"cleanup")
-    cleanup_result = run_capture(project_root, "capture.cleanup", 4, fail_rmdir=True)
-    if cleanup_result.returncode != 0:
-        raise SystemExit("best-effort staging-directory cleanup invalidated a verified capture")
-    if cleanup_source.exists():
-        raise SystemExit("verified staged source was not removed before best-effort directory cleanup")
-    if (asset_directory / "REQ-042-screenshot-4-example.png").read_bytes() != b"cleanup":
-        raise SystemExit("verified destination was not retained after rmdir failure")
-    if "could not be removed" not in cleanup_result.stderr:
-        raise SystemExit("best-effort rmdir failure was not reported")
-
-    source_cleanup_directory = (
-        project_root / "do-work/user-requests/.pending-assets/capture.source-cleanup"
-    )
-    source_cleanup_directory.mkdir(parents=True)
-    source_cleanup_source = source_cleanup_directory / "screenshot-5.png"
-    source_cleanup_source.write_bytes(b"source-cleanup")
-    source_cleanup_destination = asset_directory / "REQ-042-screenshot-5-example.png"
-    source_cleanup_result = run_capture(
-        project_root,
-        "capture.source-cleanup",
-        5,
-        fail_staged_source_removal=True,
-    )
-    if source_cleanup_result.returncode != 0:
-        raise SystemExit("staged-source cleanup failure invalidated a verified capture")
-    if source_cleanup_source.read_bytes() != b"source-cleanup":
-        raise SystemExit("failed staged-source cleanup did not preserve the source")
-    if source_cleanup_destination.read_bytes() != b"source-cleanup":
-        raise SystemExit("failed staged-source cleanup did not preserve the verified destination")
-    if pathlib.Path(f"{source_cleanup_destination}.copying").exists():
-        raise SystemExit("temporary screenshot copy remained after staged-source cleanup failure")
-    if "staged source could not be removed" not in source_cleanup_result.stderr:
-        raise SystemExit("best-effort staged-source cleanup failure was not reported")
-
-    later_collision_result = run_capture(project_root, "capture.source-cleanup", 5)
-    if later_collision_result.returncode == 0:
-        raise SystemExit("later destination collision did not retain no-clobber behavior")
-    if source_cleanup_source.read_bytes() != b"source-cleanup":
-        raise SystemExit("later collision did not preserve the staged source")
-    if source_cleanup_destination.read_bytes() != b"source-cleanup":
-        raise SystemExit("later collision changed the verified destination")
-PY
-then
-  fail 'capture Step 4 executable screenshot lifecycle regressions failed'
-fi
+done
 
 if ! python3 - "$repo_root/skills/do-work/tools/checks/preflight.sh" <<'PY'
 import pathlib

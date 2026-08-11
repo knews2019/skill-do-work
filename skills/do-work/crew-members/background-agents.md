@@ -86,7 +86,8 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
 
 Run directories are committable (step 1) and must **never** be ignored. For a genuinely
 transient sibling path such as a vendored engine or build artifact, apply the canonical
-[Local Git ignore](../docs/prescribed-shell-primitives.md#local-git-ignore) primitive. The
+[Local Git ignore](../docs/prescribed-shell-primitives.md#local-git-ignore) primitive by invoking
+`scripts/add-local-git-exclude.sh <path> '**/<path>'`. The
 caller supplies the exact path and states whether it merely wants quiet status output or
 must also reject an already-tracked copy; the guide owns the worktree-safe exclude path,
 root-aligned pattern, tracked-file caveat, and fail-soft shell form.

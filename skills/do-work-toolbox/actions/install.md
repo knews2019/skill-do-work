@@ -36,10 +36,10 @@ Every target follows the same four-step shape (detect → install → verify →
 
 | target | detect_cmd | install_cmd | verify_cmd | blurb |
 |--------|------------|-------------|------------|-------|
-| `ui-design` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download" https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md && mv "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download" "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" || { rm -f "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md.download"; false; }` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
+| `ui-design` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/frontend-design" && <skill-root>/../do-work/scripts/atomic-download.sh https://raw.githubusercontent.com/anthropics/skills/main/skills/frontend-design/SKILL.md "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md"` | `test -s "$PROJECT_ROOT/.claude/skills/frontend-design/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | Anthropic's `frontend-design` Claude skill — production-grade UI design capabilities (typography, color, spacing, layout, component design, responsive/mobile-first, accessibility). |
 | `bowser` | `playwright-cli --help >/dev/null 2>&1 && test -s "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md"` | (multi-step — see `bowser` workflow below) | (multi-step — see `bowser` workflow below) | Playwright CLI + Bowser skill — headed/headless browser sessions with Chromium, screenshots at any viewport, DOM snapshots, parallel named sessions, persistent profiles. |
 | `last30days` | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | (multi-step — see `last30days` workflow below) | (multi-step — see `last30days` workflow below; gates on the full guarantee set) | Engagement-ranked social-research engine — Reddit/HN/Polymarket/GitHub/YouTube keyless out of the box; X/TikTok/Instagram unlock only via user-global API keys. |
-| `ideation-adhd` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/adhd" && curl -fsSL -o "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download" https://raw.githubusercontent.com/UditAkhourii/adhd/main/skills/adhd/SKILL.md && mv "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download" "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" || { rm -f "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md.download"; false; }` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | The `adhd` skill (MIT) — parallel divergent ideation: spawns isolated branches under distinct cognitive frames (regulator, biology, speedrunner, 10-year-old, $0 budget, …), scores on novelty/viability/fit, clusters, prunes traps, deepens the top survivors. Explicitly invoked (`/adhd`), never fires on its own. |
+| `ideation-adhd` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md"` | `mkdir -p "$PROJECT_ROOT/.claude/skills/adhd" && <skill-root>/../do-work/scripts/atomic-download.sh https://raw.githubusercontent.com/UditAkhourii/adhd/main/skills/adhd/SKILL.md "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md"` | `test -s "$PROJECT_ROOT/.claude/skills/adhd/SKILL.md" && echo "Installed successfully" || echo "Installation failed"` | The `adhd` skill (MIT) — parallel divergent ideation: spawns isolated branches under distinct cognitive frames (regulator, biology, speedrunner, 10-year-old, $0 budget, …), scores on novelty/viability/fit, clusters, prunes traps, deepens the top survivors. Explicitly invoked (`/adhd`), never fires on its own. |
 
 In every command above, resolve `PROJECT_ROOT` first:
 
@@ -177,17 +177,13 @@ npx playwright install chromium
 
 #### Phase 4: Install the Bowser skill
 
+Create `$PROJECT_ROOT/.claude/skills/playwright-bowser`, then invoke:
+
 ```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-mkdir -p "$PROJECT_ROOT/.claude/skills/playwright-bowser"
-curl -fsSL -o "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download" \
-  https://raw.githubusercontent.com/disler/bowser/main/.claude/skills/playwright-bowser/SKILL.md \
-  && mv "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download" \
-        "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md" \
-  || { rm -f "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md.download"; false; }
+<skill-root>/../do-work/scripts/atomic-download.sh https://raw.githubusercontent.com/disler/bowser/main/.claude/skills/playwright-bowser/SKILL.md "$PROJECT_ROOT/.claude/skills/playwright-bowser/SKILL.md"
 ```
 
-The trailing `false` is load-bearing: `rm -f` on an absent path exits 0, so a plain `|| rm -f …` would hand the block a success status after a failed download and the phase would report installed. Same form as the `ui-design` and `ideation-adhd` manifest rows.
+The helper preserves a failed download status and never publishes a partial final file. The `ui-design` and `ideation-adhd` manifest rows follow the same atomic-download contract.
 
 If the URL 404s (the repo may have restructured), report the error and direct the user to https://github.com/disler/bowser for manual install — the file lives somewhere under `.claude/skills/` in that repo.
 
@@ -227,7 +223,11 @@ The `last30days` target vendors the engagement-ranked social-research engine (ht
 
 #### Phase 1: Check if already installed
 
-Run the full guarantee check from Phase 3 (same commands — skill file, ignore rule, Python 3.12+). The install promises all three; detecting on the skill file alone would let a half-completed prior run masquerade as installed.
+Run the shipped full-guarantee check (skill file, ignore rule, Python 3.12+). The install promises all three; detecting on the skill file alone would let a half-completed prior run masquerade as installed.
+
+```bash
+<skill-root>/scripts/install-last30days.sh check "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
+```
 
 - **All checks pass** (the ignore rule counts as passing when the project isn't a git repo) → report "already installed" and stop.
 - **Skill file present but the ignore rule failed** → a prior run half-completed. Proceed to Phase 2 in *repair mode*: skip the clone/copy and run only the ignore step — it's guarded, so re-running is safe. (A missing Python 3.12+ interpreter isn't repairable by this action — report it per Phase 3.)
@@ -238,29 +238,12 @@ Run the full guarantee check from Phase 3 (same commands — skill file, ignore 
 The upstream repo keeps the actual skill at `skills/last30days/` (self-contained — `SKILL.md`, `scripts/`, and supporting directories). Shallow-clone to a temp dir, copy only that subdirectory's contents, discard the clone — skipped in repair mode, since the skill file already exists:
 
 ```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-if [ ! -s "$PROJECT_ROOT/.claude/skills/last30days/SKILL.md" ]; then
-  CLONE_DIR="$(mktemp -d)"
-  git clone --depth 1 https://github.com/mvanhorn/last30days-skill "$CLONE_DIR" \
-    && mkdir -p "$PROJECT_ROOT/.claude/skills/last30days" \
-    && cp -R "$CLONE_DIR/skills/last30days/." "$PROJECT_ROOT/.claude/skills/last30days/"
-  COPY_STATUS=$?
-  rm -rf "$CLONE_DIR"
-  [ "$COPY_STATUS" -eq 0 ] || echo "last30days: clone/copy FAILED"
-fi
+<skill-root>/scripts/install-last30days.sh install "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
 
 If the block prints FAILED (offline, upstream repo moved), **stop here** — report the error and skip the ignore step below; a failed install must not leave stray side effects in the consuming repo. The `cp -R …/. ` form copies the *contents* into the destination, so re-running over a broken partial directory merges cleanly instead of nesting a second `last30days/` inside (Phase 1's skill-file gate keeps healthy installs from ever reaching this block).
 
-Then make the ignore claim true — the vendored engine is ~15 MB of upstream Python that must never become committable in the consuming repo. Add it to the enclosing repo's `.git/info/exclude` (machine-local — never committed, never shipped); do **not** touch the project's committable `.gitignore`. Apply the canonical [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) primitive with this exact path:
-
-```bash
-exclude=$(git rev-parse --git-path info/exclude 2>/dev/null) || exclude=""
-if [ -n "$exclude" ]; then
-  git check-ignore -q .claude/skills/last30days/SKILL.md 2>/dev/null \
-    || echo '**/.claude/skills/last30days/' >> "$exclude"
-fi
-```
+The installer then makes the ignore claim true with the canonical [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) helper and rejects an already-tracked vendored copy. It never touches the project's committable `.gitignore`.
 
 Two hard constraints on this phase:
 
@@ -272,20 +255,7 @@ Two hard constraints on this phase:
 Check every guarantee the workflow promises, one line per component (this is also the Phase 1 detect check):
 
 ```bash
-PROJECT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-test -s "$PROJECT_ROOT/.claude/skills/last30days/SKILL.md" && echo "skill file: OK" || echo "skill file: FAILED"
-if git -C "$PROJECT_ROOT" rev-parse --git-dir >/dev/null 2>&1; then
-  git -C "$PROJECT_ROOT" check-ignore -q .claude/skills/last30days/SKILL.md && echo "ignore rule: OK" || echo "ignore rule: FAILED"
-else
-  echo "ignore rule: n/a (not a git repo)"
-fi
-FOUND_PYTHON=""
-for python_candidate in python3.13 python3.12 python3 python; do
-  command -v "$python_candidate" >/dev/null 2>&1 \
-    && "$python_candidate" -c 'import sys; raise SystemExit(0 if sys.version_info >= (3, 12) else 1)' 2>/dev/null \
-    && { FOUND_PYTHON="$python_candidate"; break; }
-done
-[ -n "$FOUND_PYTHON" ] && echo "python 3.12+: OK ($FOUND_PYTHON)" || echo "python 3.12+: FAILED"
+<skill-root>/scripts/install-last30days.sh check "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
 
 Report "Installed successfully" only when no line prints FAILED. The engine resolves a Python 3.12+ interpreter at run time (upstream keeps it in `LAST30DAYS_PYTHON`), so no qualifying interpreter is a real failure, not a warning — report the install as failed and name Python 3.12+ as the missing piece. A FAILED ignore line means the vendored ~15 MB is committable in the consuming repo — that's a broken install even though the engine itself would run.

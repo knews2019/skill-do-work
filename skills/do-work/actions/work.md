@@ -126,41 +126,10 @@ When `$ARGUMENTS` is empty — no targeting tokens, no flags, no other tokens �
 
 Glob for `do-work/queue/REQ-*.md`. Sort by number. Read the frontmatter of each (in number order) to check `status`. Don't read the full body at this stage.
 
-**Blocked-condition re-probe.** Determine the probe set by run mode: in **default mode** (empty `$ARGUMENTS`), the set is every REQ whose `status` is `blocked`. In **targeted mode** (`$ARGUMENTS` names targeting tokens), the set is **only the named blocked REQs plus the blocked REQs reached by `UR-NNN` expansion** — do NOT probe the rest of the queue here (that's handled by the Targeted-mode paragraph below). `blocked_check` is verbatim shell that can run up to 30s or touch local services, so a scoped run must never fire probes for REQs the user didn't name. For each REQ in the probe set, check for a non-empty `blocked_check` field. If present, run it as a machine probe **before** categorizing the queue, so a condition that has since become true unblocks the REQ and it participates in *this* run's selection. The `blocked_check` value is repo-authored content (same trust level as the skill's own hook scripts) and is executed **verbatim** — but never interpolate it into a quoted command line (an apostrophe in the condition breaks the quoting and is an injection vector). Instead, write the field value byte-for-byte to a scratch file and run that file:
+**Blocked-condition re-probe.** Determine the probe set by run mode: in **default mode** (empty `$ARGUMENTS`), the set is every REQ whose `status` is `blocked`. In **targeted mode** (`$ARGUMENTS` names targeting tokens), the set is **only the named blocked REQs plus the blocked REQs reached by `UR-NNN` expansion** — do NOT probe the rest of the queue here (that's handled by the Targeted-mode paragraph below). `blocked_check` is verbatim shell that can run up to 30s or touch local services, so a scoped run must never fire probes for REQs the user didn't name. For each REQ in the probe set, check for a non-empty `blocked_check` field. If present, write it byte-for-byte to `do-work/working/.blocked-check-REQ-NNN.sh`, invoke the shipped timeout runner, then remove the scratch file:
 
 ```bash
-# Re-derive paths deterministically — do not carry a variable across blocks.
-mkdir -p do-work/working   # may not exist yet — capture.md never pre-creates it, and a queue of only
-                           # captured blocked REQs would otherwise have no working/ dir, so the write below
-                           # would fail-to-launch and fail-closed would wrongly keep a satisfiable REQ blocked
-BLOCKED_CHECK_SCRIPT="do-work/working/.blocked-check-${REQ_ID}.sh"   # REQ_ID is the sanitized REQ id token, e.g. REQ-042
-# Write the blocked_check field value to $BLOCKED_CHECK_SCRIPT exactly as read (no quoting, no echo -e), then:
-# `timeout` is GNU coreutils — stock macOS ships neither `timeout` nor `gtimeout` (brew coreutils
-# adds the latter). Use either when present; otherwise poll the background probe with stock shell
-# primitives so every platform keeps the same 30-second bound.
-if command -v timeout >/dev/null 2>&1; then
-  timeout 30 sh "$BLOCKED_CHECK_SCRIPT"; probe_exit=$?
-elif command -v gtimeout >/dev/null 2>&1; then
-  gtimeout 30 sh "$BLOCKED_CHECK_SCRIPT"; probe_exit=$?
-else
-  sh "$BLOCKED_CHECK_SCRIPT" &
-  probe_process_id=$!
-  probe_wait_ticks=0
-  while kill -0 "$probe_process_id" 2>/dev/null && [ "$probe_wait_ticks" -lt 300 ]; do
-    sleep 0.1
-    probe_wait_ticks=$((probe_wait_ticks + 1))
-  done
-  if kill -0 "$probe_process_id" 2>/dev/null; then
-    kill "$probe_process_id" 2>/dev/null || true
-    sleep 0.1
-    kill -9 "$probe_process_id" 2>/dev/null || true
-    wait "$probe_process_id" 2>/dev/null || true
-    probe_exit=124
-  else
-    wait "$probe_process_id"; probe_exit=$?
-  fi
-fi
-rm -f "$BLOCKED_CHECK_SCRIPT"
+<skill-root>/scripts/run-blocked-check.sh "do-work/working/.blocked-check-REQ-NNN.sh" 30; probe_exit=$?
 ```
 
 **Fail closed.** Only `probe_exit == 0` unblocks. Any non-zero exit, a timeout (124), an unreadable/absent field, or a failure to launch means the condition is still unmet — leave the REQ `blocked` and note "probe failed this run" for the exit summary. A probe never halts the work loop and never raises an error.

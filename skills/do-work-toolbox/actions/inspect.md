@@ -58,28 +58,10 @@ inspect action
 
 ### Step 1: Preflight
 
-Run the shipped check:
+Start the core protected-inventory wrapper with inspect's own worktree-safe quarantine:
 
 ```bash
-repository_root="$(git rev-parse --show-toplevel)" || exit 2
-quarantine_paths_file="$(git rev-parse --git-path do-work-inspect-secret-quarantine)" || exit 2
-inventory_file="$(mktemp)" || exit 2
-: > "$quarantine_paths_file" || { rm -f "$inventory_file"; exit 2; }
-
-if "<skill-root>/../do-work/tools/checks/uncommitted-inventory.sh" "$repository_root" > "$inventory_file"; then
-  inventory_exit=0
-else
-  inventory_exit=$?
-fi
-case "$inventory_exit" in
-  0)
-    awk -F '\t' '$1 == "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" > "$quarantine_paths_file"
-    cat "$inventory_file"
-    rm -f "$inventory_file"
-    ;;
-  1) rm -f "$inventory_file" "$quarantine_paths_file"; exit 1 ;;
-  *) rm -f "$inventory_file" "$quarantine_paths_file"; exit 2 ;;
-esac
+<skill-root>/../do-work/scripts/protected-inventory.sh start "$(git rev-parse --show-toplevel)" do-work-inspect-secret-quarantine
 ```
 
 It gates on `git rev-parse --git-dir`, enumerates every uncommitted path, and prints one `<tag>\t<path>` row per file:
@@ -141,43 +123,13 @@ Uncommitted files that are **not** in the target REQ's Implementation Summary re
 
 #### Unscoped mode (default)
 
-Feed the M/A/D/XD paths from Step 1 into the shipped check, excluding only exact `X` rows:
+Feed the current protected M/A/D/XD paths into association, excluding every path quarantined as `X` during this inspect run:
 
 ```bash
-repository_root="$(git rev-parse --show-toplevel)" || exit 2
-quarantine_paths_file="$(git rev-parse --git-path do-work-inspect-secret-quarantine)" || exit 2
-inventory_file="$(mktemp)" || exit 2
-candidate_paths_file="$(mktemp)" || { rm -f "$inventory_file"; exit 2; }
-trap 'rm -f "$inventory_file" "$candidate_paths_file"' EXIT
-
-# Step 1 creates this deterministic run artifact. Never silently recreate an
-# empty file here: that would erase the only record of an earlier X path.
-test -f "$quarantine_paths_file" || exit 2
-
-if "<skill-root>/../do-work/tools/checks/uncommitted-inventory.sh" "$repository_root" > "$inventory_file"; then
-  inventory_exit=0
-else
-  inventory_exit=$?
-fi
-case "$inventory_exit" in
-  0) ;;
-  1) exit 1 ;;
-  *) exit 2 ;;
-esac
-
-awk -F '\t' '$1 == "X" { sub(/^[^\t]*\t/, ""); print }' "$inventory_file" >> "$quarantine_paths_file"
-awk -F '\t' '
-  FILENAME == ARGV[1] { excluded[$0] = 1; next }
-  {
-    tag = $1
-    sub(/^[^\t]*\t/, "")
-    if (tag != "X" && !($0 in excluded)) print
-  }
-' "$quarantine_paths_file" "$inventory_file" > "$candidate_paths_file"
-"<skill-root>/../do-work/tools/checks/associate-files.sh" --repo-root "$repository_root" < "$candidate_paths_file"
+<skill-root>/../do-work/scripts/protected-inventory.sh associate "$(git rev-parse --show-toplevel)" do-work-inspect-secret-quarantine
 ```
 
-This block re-derives the repository root and moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory, which is the skip condition already stated above.
+The wrapper re-derives the repository root and moves paths through files rather than interpolating them into shell source. It appends the new X rows to Step 1's quarantine before filtering, so both current X rows and paths excluded by an earlier inventory stay out. M/A/D/XD participate in association only when the path has never been X. The delegated check scans `do-work/archive/**/REQ-*.md` and `do-work/working/REQ-*.md`, reads each REQ's `## Implementation Summary` file list, and prints one `<owner>\t<path>` row per candidate — a `REQ-NNN` id, or `-` for unassociated. Exit 1 means there were no candidates other than X; continue with the reported X rows only. Exit 2 means a usage error or no `do-work/` directory, which is the skip condition already stated above.
 
 What the script settles, so this prose no longer has to:
 

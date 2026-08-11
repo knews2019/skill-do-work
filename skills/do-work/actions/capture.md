@@ -208,47 +208,13 @@ If the user provides one or more screenshots:
 
 1. Resolve each source image. A subagent-dispatched capture receives exact staged paths from the dispatcher under its exclusive `do-work/user-requests/.pending-assets/capture.XXXXXX/` directory; never reconstruct or guess that directory from an ordinal. An inline capture may instead use the platform's attachment mechanism or cache. Never delete an attachment/cache source outside `.pending-assets/`.
 2. Assign each image a distinct permanent path: `do-work/user-requests/UR-NNN/assets/REQ-[num]-screenshot-{n}-[slug].png`. The stable screenshot ordinal is required even when the description is unique.
-3. For each staged source, substitute the already-resolved exact source and destination paths into this single block. Allocate a unique temporary file beside the destination, copy the staged source into it, byte-verify that exact copy, install it with a no-clobber hard link, then remove the staged source. An existing destination is a capture failure, never an overwrite:
+3. For each staged source, invoke the shipped screenshot helper with the already-resolved exact source and destination under the canonical [Atomic publication](../docs/prescribed-shell-primitives.md#atomic-download-publication) mechanics. It allocates a unique adjacent private temporary file per dispatch, byte-verifies that exact copy, installs it with a no-clobber hard link, and preserves the staged loser or existing destination on collision:
 
    ```bash
-   staged_screenshot_path="<exact staged screenshot path supplied by the dispatcher>"
-   screenshot_staging_directory="$(dirname "$staged_screenshot_path")"
-   screenshot_asset_directory="do-work/user-requests/UR-NNN/assets"
-   screenshot_asset_path="$screenshot_asset_directory/REQ-[num]-screenshot-{n}-[slug].png"
-   screenshot_copy_path=""
-
-   mkdir -p "$screenshot_asset_directory"
-   if screenshot_copy_path="$(mktemp "${screenshot_asset_path}.copying.XXXXXX")" \
-     && cp "$staged_screenshot_path" "$screenshot_copy_path" \
-     && cmp -s "$staged_screenshot_path" "$screenshot_copy_path" \
-     && ln "$screenshot_copy_path" "$screenshot_asset_path"; then
-     rm -f "$screenshot_copy_path" || {
-       printf 'Permanent screenshot copy verified, but temporary copy could not be removed: %s\n' \
-         "$screenshot_copy_path" >&2
-     }
-     if rm "$staged_screenshot_path"; then
-       if [ -d "$screenshot_staging_directory" ] \
-         && [ -z "$(find "$screenshot_staging_directory" -mindepth 1 -maxdepth 1 -print -quit)" ]; then
-         rmdir "$screenshot_staging_directory" || {
-           printf 'Permanent screenshot copy verified, but empty staging directory could not be removed: %s\n' \
-             "$screenshot_staging_directory" >&2
-         }
-       fi
-     else
-       printf 'Permanent screenshot copy verified, but staged source could not be removed: %s\n' \
-         "$staged_screenshot_path" >&2
-     fi
-   else
-     if [ -n "$screenshot_copy_path" ]; then
-       rm -f "$screenshot_copy_path"
-     fi
-     printf 'Screenshot temporary-copy allocation, copy, verification, or no-clobber install failed; staged source preserved: %s\n' \
-       "$staged_screenshot_path" >&2
-     false
-   fi
+   <skill-root>/scripts/capture-screenshot.sh --staged "<exact staged screenshot path supplied by the dispatcher>" "do-work/user-requests/UR-NNN/assets/REQ-[num]-screenshot-{n}-[slug].png"
    ```
 
-   A temporary-file allocation, copy, verification, or no-clobber install failure returns nonzero, leaves the staged source in place, and must be reported; do not reference the destination or continue as though that screenshot was captured. Failure to remove the staged source, already-empty unique temporary copy, or exclusive dispatch directory is reported but does not invalidate a verified permanent asset. For an inline attachment/cache source, apply the same unique-copy, byte-verification, and no-clobber requirement but leave the source untouched.
+   Allocation, copy, verification, or no-clobber install failure returns nonzero, cleans only that dispatch's private temporary copy, leaves the staged source in place, and must be reported. Best-effort post-publication staged-source/directory cleanup does not invalidate a verified permanent asset. For an inline attachment/cache source invoke the helper with `--keep-source`.
 4. Reference every verified permanent path in its REQ's Assets section.
 5. Write a thorough text description (what it shows, visible text, layout, problems visible) — this is the primary record for searchability.
 
