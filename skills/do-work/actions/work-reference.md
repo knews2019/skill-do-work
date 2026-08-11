@@ -582,6 +582,10 @@ If **no section applies** (no REQs at all in `do-work/queue/`), report completio
 *Verified by work action*
 ```
 
+## Finding-Closure Ratchet (Step 6.5)
+
+**A review- or triage-finding-origin REQ closes only when its captured GREEN names a regression test/check that fails before the fix and passes after, or when the exact named finding surface is deleted.** Closure evidence must match that named check or deletion surface. A bare patch, unrelated green tests, `tdd: false`, and a high review score are not closure evidence.
+
 ## Deferred Prime-Link Path Computation (Step 7.5)
 
 **Path computation rule (for use in Step 8):** the link path must be relative to the prime file's location, not the repo root. Count how many directories deep the prime file sits (i.e., the number of path components before the filename). Prepend that many `../` steps to the REQ's repo-root-relative archive path. Examples:

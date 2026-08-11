@@ -147,7 +147,7 @@ The directive check is informational — it does not affect the overall score. I
 `crew-members/coding-guardrails.md` was always-loaded during implementation. Spot-check the diff against its five principles — these overlap with existing dimensions but frame them as observable behaviors:
 
 1. **Think Before Coding** — did Open Questions / Decisions get surfaced (`- [~]` marks, `## Decisions`), or were ambiguities silently resolved?
-2. **Simplicity First (YAGNI)** — does the code match the senior-engineer test? Flag speculative abstractions, unrequested configurability, and defensive handling for impossible inputs. (Remember: simplify ≠ strip — if removing it would need restoring next week, it's foundation.) See `crew-members/coding-guardrails.md` § Simplicity First for the canonical statement.
+2. **Simplicity First (YAGNI)** — does the code match the senior-engineer test? Flag speculative abstractions and unrequested configurability; apply the earned-defense rubric in `crew-members/coding-guardrails.md` § 2 when the diff adds defensive surface. (Remember: simplify ≠ strip — if removing it would need restoring next week, it's foundation.)
 3. **Surgical Changes** — every changed line should trace to the REQ. Adjacent-code "improvements", style-only edits, and unrelated refactors are drift.
 4. **Goal-Driven Execution** — does the Testing section show verification (red-green, targeted regression, or equivalent proof), or just "it compiles"?
 5. **Naming for Reach** — do names the diff *introduces* with reach (exported identifiers, struct fields, files, DB columns, CLI flags, env vars) read as two words and survive a plain-text grep? Idiomatic short locals are fine and are not a finding; neither are pre-existing short names the diff didn't touch. See `crew-members/coding-guardrails.md` § Naming for Reach for the canonical statement.
@@ -187,6 +187,7 @@ Actually verify the implementation works. Reading diffs catches logic errors; ru
    - For bug fixes, verify the fix doesn't break the feature's other behaviors
    - Try the most obvious related flow — if you changed checkout, make sure the cart still works
 5. **Verify cross-REQ test updates** — if the Testing section lists "Existing tests updated (cross-REQ impact)", verify: (a) the behavior change is genuinely intentional, (b) the updated tests still meaningfully validate their original REQ's requirements, and (c) the original REQ is referenced so the change is traceable. Flag undocumented test modifications as an Important finding.
+6. **Enforce finding closure** — for any review- or triage-finding-origin REQ, apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**: verify that the named regression test/check matches the captured GREEN and fails before/passes after, or that the exact named finding surface was deleted. A miss is an **Important** finding and forces **Acceptance: Fail**.
 
 **What NOT to do:**
 - Don't build an exhaustive test harness — this is a quick smoke test, not QA

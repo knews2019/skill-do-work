@@ -66,7 +66,7 @@ For every finding, before forming a verdict:
 2. **Check whether it's already addressed.** Inspect git — `git diff` (uncommitted), `git log`/`git show` (recent commits), staged changes — for evidence the issue was already handled.
 3. **Adversarially verify the claim.** Try to *refute* it before accepting it: is the premise actually true? Does the cited line do what the finding says? Is the impact real or theoretical? Is the scope right? When subagents are available, spawn an independent verifier per non-trivial finding and default to "refuted" when the evidence is ambiguous.
 4. **Maintain provenance.** Keep straight which statements come from the pasted finding versus the code you read, so the verdict's evidence is traceable.
-5. **Price added defensive surface.** When the proposed remedy would add a **guard, fallback, retry, validation layer, rule, or warning apparatus**, ask: **what incident earned this, and is the fix still cheaper than the surface it added?** Name the concrete failure or replay case, the long-lived surface the remedy adds, and the test that will keep it live. If no incident can be named, or deletion/narrowing/direct repair covers the risk more cheaply, flag the remedy instead of treating more defense as automatically safer. Direct bug fixes, deletions, and simplifications are outside this check and receive **Surface-cost: N/A**; verify their premise normally without adding a skepticism penalty.
+5. **Price added defensive surface.** Apply `../do-work/crew-members/coding-guardrails.md` § 2's earned-defense rubric when the proposed remedy would add a **guard, fallback, retry, validation layer, rule, or warning apparatus**. For this triage, ask: **what incident earned this, and is the fix still cheaper than the surface it added?** Record the incident/replay case, long-lived surface, cost call, and test as the finding's Surface-cost evidence; flag it when the rubric is not earned or a cheaper remedy wins. Direct bug fixes, deletions, and simplifications are outside this check and receive **Surface-cost: N/A**.
 
 ### Step 5: Recommend a Verdict per Item
 
@@ -111,7 +111,8 @@ Lead with the framing line, then one block per finding, then the summary and a d
 [Draft response to the feedback provider — acknowledges the accepts, explains the push-backs with rationale, flags the discuss items. Skip if no external provider.]
 
 ## To act on the accepted findings:
->   do-work capture-request: [paste an accepted finding]   Capture it as a request
+> Keep the accepted finding's **verbatim claim**, **original severity/source**, **Evidence**, and **Surface-cost** result together in the capture payload; this preserves finding provenance for `../do-work/actions/capture.md` and the closure contract in `../do-work/actions/work-reference.md`.
+>   do-work capture-request: [paste that provenance-preserving accepted-finding block]   Capture it as a request
 >   do-work run                                            Process the captured fixes
 >   do-work-toolbox note "[a discuss item]"                        Park a Discuss item for later
 ```
