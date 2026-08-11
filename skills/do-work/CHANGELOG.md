@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.32 — Root Markdown Fence Info Validity (2026-08-11)
+
+The shipped reference classifier now agrees with the pinned Markdown renderer when a root backtick-fence candidate contains a forbidden backtick in its info string. Invalid openers remain visible prose instead of masking later links.
+
+- Shares one marker-aware info-string predicate across root, list, and paragraph-state classification
+- Preserves valid tilde-fence behavior while consolidating the former list-only exception
+- Adds Goldmark-differential root/list/tilde fixtures and keeps the full shipped-reference contract green
+
+
 ## 0.186.31 — BOM-Aware Just Collision Scans (2026-08-11)
 
 Suite installation now recognizes a reserved Just recipe even when the file begins with a UTF-8 BOM and `just` is unavailable. Collision checks stay byte-preserving and still reject before confirmation or mutation.

@@ -32,3 +32,4 @@
 - [REQ-162: multiline literal state must carry recipe-header state too](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-162-handle-ordinary-multiline-backtick-commands.md#lessons-learned)
 - [REQ-163: Markdown reference classification must honor syntax adjacency and container scope](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/UR-031/REQ-163-complete-remaining-inline-link-and-list-fence-classification.md#lessons-learned)
 - [REQ-173: ignore a UTF-8 BOM only in the first-line Just classification view](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-173-handle-first-line-bom-in-just-collision-scan.md#lessons-learned)
+- [REQ-174: align Markdown fence marker, info-string, and paragraph state](https://github.com/knews2019/skill-do-work/blob/main/do-work/archive/REQ-174-validate-root-markdown-fence-info.md#lessons-learned)
