@@ -16,7 +16,7 @@ claimed_at: 2026-08-11T12:46:09Z
 route: C
 write_set: [decisions/audits/2026-08-11-defensive-surface.md, _dev/tests/defensive-surface-audit.sh, _dev/tests/contract-regressions.sh, skills/do-work/actions/commit.md, skills/do-work/actions/verify-requests.md, skills/do-work-toolbox/actions/code-review.md, skills/do-work-toolbox/actions/inspect.md, skills/do-work-toolbox/actions/quick-wins.md, skills/do-work-toolbox/actions/ui-review.md]
 completed_at: 2026-08-11T12:55:57Z
-commit:
+commit: 8703b66
 kb_status: pending
 kb_entry:
 ---
