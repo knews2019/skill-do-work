@@ -52,6 +52,8 @@ are DECIDE & STATE.
 configurability on the theory it might be useful later. Speculated future need is the opposite of
 minimum code. This is the canonical statement of the principle; other files point here.
 
+**Earned defense.** Before adding long-lived defensive surface — a guard, fallback, retry, validation layer, rule, or warning apparatus — ask: **what earned this, and is the fix still cheaper than the surface it added?** Name the concrete incident or replay case, the surface that will remain, and the regression test that keeps it live. If none exists, or direct repair, deletion, narrowing, or simplification covers the risk more cheaply, do not add the defense; those cheaper remedies do not need to earn themselves.
+
 **Minimum code that solves the problem. Nothing speculative.**
 
 - No features beyond what was asked.
