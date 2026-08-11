@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.33 — Findings Close with Proof (2026-08-11)
+
+Review and triage findings can no longer close on a bare patch or unrelated green tests. Finding-origin work must carry matching fail-before/pass-after evidence or delete the exact surface, while defensive fixes must justify the surface they add.
+
+- Establishes one canonical Finding-Closure Ratchet independent of `tdd`, review score, and unrelated test results
+- Adds the one-paragraph earned-defense question to the always-loaded simplicity guardrail and keeps triage behavior citation-sized
+- Makes every shipped review-generated REQ template emit compatible Red-Green Proof and dynamically ratchets future producers
+
+
 ## 0.186.32 — Root Markdown Fence Info Validity (2026-08-11)
 
 The shipped reference classifier now agrees with the pinned Markdown renderer when a root backtick-fence candidate contains a forbidden backtick in its info string. Invalid openers remain visible prose instead of masking later links.
