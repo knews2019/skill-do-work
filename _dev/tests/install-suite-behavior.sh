@@ -345,7 +345,7 @@ else
   fi
 fi
 
-# A reserved marker-free recipe is rejected without Just, before confirmation or client mutation.
+# A BOM-prefixed reserved recipe is rejected without Just, before confirmation or client mutation.
 no_just_path="$workdir/no-just-path"
 mkdir -p "$no_just_path"
 for command_name in awk bash cat chmod cmp cp diff dirname find git grep head mkdir mktemp mv python3 rm sed stat tar tr wc; do
@@ -355,7 +355,7 @@ done
 collision_project="$workdir/reserved-recipe-collision"
 new_git_project "$collision_project"
 mkdir -p "$collision_project/.claude"
-printf '@run-kanban $port="9000":\r\n    echo custom collision\r\n' > "$collision_project/justfile"
+printf '\357\273\277run-kanban:\r\n    echo custom collision\r\n' > "$collision_project/justfile"
 printf '{"custom":"unchanged"}\n' > "$collision_project/.claude/settings.json"
 chmod 640 "$collision_project/justfile"
 chmod 600 "$collision_project/.claude/settings.json"
@@ -370,7 +370,7 @@ collision_exit_status=0
 printf 'y\n' | PATH="$no_just_path" bash "$installer" --project-root "$collision_project" --archive "$archive_file" >"$collision_output" 2>&1 \
   || collision_exit_status=$?
 if [ "$collision_exit_status" -eq 0 ]; then
-  fail 'installer accepted a marker-free reserved recipe when Just was unavailable'
+  fail 'installer accepted a BOM-prefixed reserved recipe when Just was unavailable'
 else
   assert_file_contains "$collision_output" 'reserved Just recipe or alias outside managed section: run-kanban' 'installer collision error did not name the reserved recipe'
   if grep -Fq 'Install this complete four-skill suite?' "$collision_output"; then

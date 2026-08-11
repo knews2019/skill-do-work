@@ -187,19 +187,26 @@ def just_definition_names(data: bytes):
     definition_names = set()
     active_delimiter = None
     pending_definition_lines = []
-    for line in data.splitlines(keepends=True):
+    for line_index, line in enumerate(data.splitlines(keepends=True)):
+        classification_line = (
+            line[3:]
+            if line_index == 0 and line.startswith(b"\xef\xbb\xbf")
+            else line
+        )
         line_starts_in_multiline_string = active_delimiter is not None
         if line_starts_in_multiline_string:
-            pending_definition_lines.append(line)
+            pending_definition_lines.append(classification_line)
         else:
-            pending_definition_lines = [line]
-        active_delimiter = just_multiline_string_state(line, active_delimiter)
+            pending_definition_lines = [classification_line]
+        active_delimiter = just_multiline_string_state(
+            classification_line, active_delimiter
+        )
         if line_starts_in_multiline_string and active_delimiter is not None:
             continue
         if line_starts_in_multiline_string:
             definition_source = b"".join(pending_definition_lines)
         else:
-            definition_source = line
+            definition_source = classification_line
         definition_name = just_definition_name(definition_source)
         if definition_name is not None:
             definition_names.add(definition_name)
