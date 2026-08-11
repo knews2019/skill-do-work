@@ -12,7 +12,7 @@ depends_on: []
 maintenance: false
 related: [REQ-165, REQ-166, REQ-167, REQ-168, REQ-169]
 batch: stabilization-audit
-write_set: [skills/do-work/crew-members/coding-guardrails.md, skills/do-work/actions/work-reference.md, skills/do-work/actions/review-work.md, skills/do-work/actions/capture.md, skills/do-work-toolbox/actions/validate-feedback.md]
+write_set: [skills/do-work/crew-members/coding-guardrails.md, skills/do-work/actions/work-reference.md, skills/do-work/actions/review-work.md, skills/do-work/actions/capture.md, skills/do-work-toolbox/actions/validate-feedback.md, _dev/tests/contract-regressions.sh]
 claimed_at: 2026-08-11T19:56:32Z
 route: C
 ---
@@ -27,9 +27,9 @@ Two small, single-home rules that make the review loop converge instead of plate
 2. **Earned-defense rubric** — one canonical paragraph in `skills/do-work/crew-members/coding-guardrails.md`: defensive code must name the incident that earned it, and the fix must cost less surface than the risk it covers — user's wording preserved: *"what earned this, and is the fix still cheaper than the surface it added?"* The rubric already shipped inside `../do-work-toolbox/actions/validate-feedback.md` (REQ-169, commit 063bb88) — condense that to its triage-specific application (Surface-cost verdicts, Accept bar) plus a one-line citation of the canonical paragraph; review-work's gate cites it too. Toolbox citing core is the allowed reference direction (core is the required sibling).
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read the required core/toolbox instructions and existing REQ-169 contract assertions; selected one canonical home per rule and citation-sized caller hooks.
+- [x] **[APPLY]:** Added the ratchet, rubric, capture/review enforcement, and provenance-preserving toolbox citation in exactly the five declared files.
+- [x] **[UNIFY]:** Reviewed all five diffs, confirmed net +9 instruction lines, ran both contract suites and the focused canonical-home/caller check, audited changed paths/debug artifacts, and passed `git diff --check`.
 
 ## Why (if provided)
 
@@ -109,8 +109,11 @@ See `do-work/user-requests/UR-038/input.md` for complete verbatim input.
 - `skills/do-work/actions/review-work.md` (modified) — hard closure gate and rubric citation
 - `skills/do-work/actions/capture.md` (modified) — finding-origin GREEN proof hook
 - `skills/do-work-toolbox/actions/validate-feedback.md` (modified) — triage-specific Surface-cost application and provenance handoff
+- `_dev/tests/contract-regressions.sh` (modified) — review-generated producer/closure-gate contract ratchet added during review remediation
 
-**Files I will NOT touch:** test sources, `actions/work.md`, schemas/parsers/board code, metrics or trend logs, release metadata, or unrelated capture screenshot logic
+**Files I will NOT touch:** test sources other than the narrow remediation ratchet below, `actions/work.md`, schemas/parsers/board code, metrics or trend logs, release metadata, or unrelated capture screenshot logic
+
+**Review remediation scope:** The independent review exposed a producer/consumer gap in `review-work.md`; `_dev/tests/contract-regressions.sh` is added narrowly to pin the review-generated follow-up template's named GREEN/deletion proof contract. Other test sources remain out of scope.
 
 **Acceptance criteria (restated from REQ):**
 - [ ] The finding-closure ratchet is normative only in work-reference and requires a named fail-before/pass-after regression test or deletion of the named finding surface.
@@ -127,3 +130,29 @@ See `do-work/user-requests/UR-038/input.md` for complete verbatim input.
 **Dependencies:** ✓ No missing repository dependency directory detected.
 
 *Checked by work action*
+
+## Decisions
+
+- **D-01 — Canonicalize closure beside Step 6.5.** The testing-template seam gives capture and review one compact definition without adding schema.
+- **D-02 — Keep earned defense inside Simplicity First.** The exact user question fits in one paragraph without expanding the guardrail taxonomy.
+- **D-03 — Preserve REQ-169's triage vocabulary.** Toolbox keeps its Surface-cost boundary, N/A carve-out, Accept routing, and output token while citing core.
+- **D-04 — Carry accepted-finding provenance into capture.** Verbatim claim, severity/source, Evidence, and Surface-cost remain together so the closure proof can be named later.
+
+## Implementation Summary
+
+- `skills/do-work/actions/work-reference.md` (modified) — added the canonical Finding-Closure Ratchet.
+- `skills/do-work/crew-members/coding-guardrails.md` (modified) — added the one-paragraph earned-defense rubric.
+- `skills/do-work/actions/capture.md` (modified) — added the finding-origin GREEN proof hook.
+- `skills/do-work/actions/review-work.md` (modified) — added closure-gate and earned-defense citations.
+- `skills/do-work-toolbox/actions/validate-feedback.md` (modified) — preserved triage behavior while citing the canonical rubric and carrying provenance.
+- Builder commit: `84c1b81df6f7c34920e5285b63b121355cdfb03f`; integrated by merge commit `035613e` over exact range `bd5ecf6..035613e`.
+- No integration seams or discovered follow-up tasks remain.
+
+## Qualification
+
+- Exact diff range: `bd5ecf6..035613e`.
+- Changed paths match the five-file Route C scope exactly.
+- Named RED/GREEN caller contract: 9 missing contracts before implementation, all 14 checks passing after implementation.
+- `_dev/tests/contract-regressions.sh`: pass on the builder branch.
+- `_dev/tests/shipped-package-reference-contract.sh`: pass on the builder branch.
+- `git diff --check`: pass; no debug or temporary artifacts found.

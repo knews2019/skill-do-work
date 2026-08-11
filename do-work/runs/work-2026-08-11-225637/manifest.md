@@ -10,6 +10,9 @@ Status: in-progress
 | plan-171 | REQ-171 implementation plan | `REQ-171-plan.md` | done |
 | explore-170 | REQ-170 repository exploration | `REQ-170-exploration.md` | done |
 | explore-171 | REQ-171 repository exploration | `REQ-171-exploration.md` | done |
-| builder-170 | REQ-170 worktree implementation | `REQ-170-handback.md` | pending |
+| builder-170 | REQ-170 worktree implementation | `REQ-170-handback.md` | done |
 | builder-171 | REQ-171 worktree implementation | `REQ-171-handback.md` | pending |
 | builder-174 | REQ-174 worktree implementation | `REQ-174-handback.md` | done |
+| reviewer-174 | REQ-174 independent review | `REQ-174-review.md` | done |
+| reviewer-170 | REQ-170 independent review | `REQ-170-review.md` | done |
+| remediation-170 | REQ-170 review finding remediation | `REQ-170-handback.md` | pending |
