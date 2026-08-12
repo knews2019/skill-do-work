@@ -604,6 +604,96 @@ assert_block_contains \
   'absolute main-tree path' \
   'Fan-Out Dispatch must state the brief-delivery trap: a repo-relative path resolves inside the worktree against its own stale copy of do-work/.'
 
+# Overlapping parallel-writer isolation and hand-back (0.186.37). The shared guide's
+# former "reach for it" wording made worktrees optional and said nothing about bringing
+# completed branches home, so overlapping writers could interleave edits or strand
+# accepted work on side branches. Pin the trigger, its non-trigger cases, and the full
+# safe hand-back in every package-local copy that fan-out actions load.
+for background_agents_path in \
+  "$core_root/crew-members/background-agents.md" \
+  "$knowledge_root/crew-members/background-agents.md" \
+  "$toolbox_root/crew-members/background-agents.md"
+do
+  background_worktree_block="$(sed -n '/^\*\*Worktree isolation is a separate axis\./,/^## Manifest Format/p' "$background_agents_path")"
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'explicitly declared' \
+    "$background_agents_path must key worktree isolation to explicit ownership declarations, not guessed overlap."
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'file lists or globs overlap' \
+    "$background_agents_path must make declared file-list or glob overlap the worktree trigger."
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'worktree\*\* on a separate branch before it writes' \
+    "$background_agents_path must isolate every overlapping writer before the first write."
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'Read-only agents' \
+    "$background_agents_path must leave read-only fan-out outside the worktree trigger."
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'declarations are disjoint need no extra worktree' \
+    "$background_agents_path must leave declared-disjoint writers outside the worktree trigger."
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'missing declarations' \
+    "$background_agents_path must not infer overlap from a missing declaration."
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'remains display-only' \
+    "$background_agents_path must not promote write_set into a scheduling or isolation gate."
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'integrates one branch at a time' \
+    "$background_agents_path must serialize completed branch integration."
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'text conflicts, integration seams, and semantic composition' \
+    "$background_agents_path must reconcile both textual and semantic overlap during integration."
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'merged state before starting the next merge' \
+    "$background_agents_path must verify each integrated state before merging the next branch."
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'preserve and report the branch and worktree' \
+    "$background_agents_path must preserve unsafe work for recovery instead of stranding or deleting it."
+
+  assert_block_contains \
+    "$background_worktree_block" \
+    'never force-merge' \
+    "$background_agents_path must forbid force-merging or force-deleting an unsafe hand-back."
+done
+
+work_implementation_block="$(sed -n '/^### Step 6: Implementation/,/^### Step 6\.25:/p' "$core_root/actions/work.md")"
+
+assert_block_contains \
+  "$work_implementation_block" \
+  '^\*\*Overlapping parallel writers:\*\*' \
+  'actions/work.md Step 6 must surface the overlapping-writer worktree rule where implementation agents are dispatched.'
+
+assert_block_contains \
+  "$work_implementation_block" \
+  'hand every completed branch back for serial reconciliation and merged-state verification' \
+  'actions/work.md Step 6 must require completed parallel-writer branches to return through verified serial integration.'
+
+assert_block_contains \
+  "$work_implementation_block" \
+  'one worktree per builder regardless of overlap' \
+  'actions/work.md Step 6 must preserve auto-waves stronger worktree-per-builder rule.'
+
 three_attempt_count="$(grep -roh 'consecutive fix attempts' "$core_root/actions" | wc -l | tr -d ' ')"
 if [ "$three_attempt_count" != "1" ]; then
   printf 'FAIL: the three-attempt stop condition ("consecutive fix attempts ... in its current context only") must be stated exactly once across actions/ (found %s).\n' \
@@ -2285,6 +2375,164 @@ assert_contains \
   "actions/clarify.md" \
   'Canonical answered-question format' \
   'actions/clarify.md Step 4 must keep the named entry point declaring its - [x] form canonical for any caller that obtains a user answer — cited by name (not step number) from clear-questions.md Principle 8 and work.md Step 3.5.'
+
+# Decision revalidation (0.187.0). A reversed decision used to update its own ADR or
+# follow-up REQ while pending siblings stayed runnable against the dead assumption. The
+# v1 repair is intentionally report-only: one evidence-backed queue scan, automatically
+# composed by clarify only for real overrides, with a cost gate before large scans.
+verify_input_block="$(sed -n '/^## Input/,/^## Capture QA Workflow/p' "$core_root/actions/verify-requests.md")"
+verify_revalidation_block="$(sed -n '/^## Decision Revalidation Workflow/,/^## What NOT To Do/p' "$core_root/actions/verify-requests.md")"
+clarify_revalidation_block="$(sed -n '/^### Step 5\.25: Revalidate queued work after reversals/,/^### Step 5\.5:/p' "$core_root/actions/clarify.md")"
+
+assert_block_contains \
+  "$verify_input_block" \
+  'Repeating `--against` batches several reversals into one queue scan' \
+  'verify-requests decision mode must accept repeated --against sources and share one queue scan instead of multiplying semantic cost.'
+
+assert_block_contains \
+  "$verify_input_block" \
+  'Reject a capture-QA target mixed with any `--against`' \
+  'verify-requests must keep capture QA targets mutually exclusive with decision-revalidation sources.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'status: superseded.*exactly one.*rel: superseded-by' \
+  'decision-file sources must resolve one explicit superseded-by successor rather than guess a replacement from similar prose.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'reject a successor Decision that only confirms or restates the old choice without a semantic reversal' \
+  'a superseded relation whose Decision text did not actually reverse the choice is not a revalidation source.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'reject absolute paths, `\.\.` escapes, symlink escapes, missing files, and directories' \
+  'decision-file sources must stay inside the repository even through symlink resolution.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'builder_decided: true.*old `Recommended:` choice and new answer' \
+  'REQ sources must be answered builder-decision follow-ups that preserve both sides of the reversal.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'exact `do-work/queue/REQ-\*\.md` files' \
+  'decision revalidation must scan the canonical queue rather than a UR capture-time requests array or archive history.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'exclude every terminal status: `completed`, `completed-with-issues`, `failed`, and `cancelled`' \
+  'decision revalidation must exclude all terminal queue records, including failed REQs that are not terminally resolved for UR closure.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'Scan every other canonical state, including `blocked`' \
+  'decision revalidation must include blocked queued work because it remains unfinished.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'Exclude every source follow-up REQ by id' \
+  'decision revalidation must exclude answered follow-up sources from matching their own rejected recommendation.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'Do not scan `do-work/working/`, `do-work/archive/`, or legacy REQs' \
+  'decision revalidation v1 must exclude claimed and archived bodies from semantic cost.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'list every claimed REQ id as \*\*excluded from v1\*\*' \
+  'decision revalidation must disclose claimed work even though it does not semantically scan those living logs.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'complete file.*not only `## Scope`' \
+  'decision revalidation must inspect complete queued REQs because Scope normally does not exist before claim.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  '^\- \*\*Likely affected:\*\*' \
+  'decision revalidation must retain a high-evidence class for explicit citations and direct restatements.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  '^\- \*\*Possibly affected:\*\*' \
+  'decision revalidation must retain an evidence-backed semantic class for copied assumptions without citations.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'mentions the old decision only as history, a rejected alternative, superseded context' \
+  'decision revalidation must not flag historical or rejected mentions as live dependencies.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'a short exact excerpt from the REQ' \
+  'every decision-revalidation candidate must quote evidence from the queued REQ.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'old → replacement conflict in plain language' \
+  'every decision-revalidation candidate must explain the old-to-new conflict.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'copyable, provenance-preserving next step' \
+  'every decision-revalidation candidate must include a reconciliation command.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'changes no REQ body, frontmatter, status, or location' \
+  'decision revalidation must remain report-only and never turn a candidate into pending-answers.'
+
+assert_block_contains \
+  "$verify_revalidation_block" \
+  'explicit `--against` invocation always proceeds.*10,000-word confirmation threshold belongs only to clarify' \
+  'explicit decision scans must show cost and proceed; only the automatic clarify caller gets the 10,000-word gate.'
+
+assert_block_contains \
+  "$clarify_revalidation_block" \
+  'If `overturned_decision_sources` is empty, skip this step' \
+  'clarify must invoke decision revalidation only when a builder decision was actually overturned.'
+
+assert_contains \
+  "actions/clarify.md" \
+  'source enters it only when its REQ carries `builder_decided: true` and the user.s answer is semantically different' \
+  'clarify must recognize a reversal from the stored builder recommendation and the genuinely different user answer.'
+
+assert_contains \
+  "actions/clarify.md" \
+  'Confirmation, discard, discovery approval.*never enter the set' \
+  'clarify must not scan after confirmations, discards, or discovered-task approvals.'
+
+assert_block_contains \
+  "$clarify_revalidation_block" \
+  'once with every source id in the set' \
+  'clarify must batch all reversals into one queue scan.'
+
+assert_block_contains \
+  "$clarify_revalidation_block" \
+  '10,000 queued words or fewer.*automatically' \
+  'clarify must auto-scan ordinary queues through the approved 10,000-word threshold.'
+
+assert_block_contains \
+  "$clarify_revalidation_block" \
+  'Above \*\*10,000 queued words\*\*.*file count, word count, approximate 1\.3–1\.6-tokens-per-word input range.*Ask one choice' \
+  'clarify must show the large-queue estimate and ask before an automatic over-threshold semantic scan.'
+
+assert_block_contains \
+  "$clarify_revalidation_block" \
+  'combined command with repeated flags' \
+  'declining a large automatic scan must preserve every reversal in one copyable explicit command.'
+
+assert_contains \
+  "actions/verify-requests.md" \
+  'default mode is \*\*capture QA\*\*' \
+  'the existing verify-requests capture-QA path must remain the default after --against is added.'
+
+assert_contains \
+  "crew-members/prompt-injection.md" \
+  'verify-requests \(re-reads UR input\.md verbatim or compares decision sources with complete queued REQs\)' \
+  'the prompt-injection caller inventory must cover both verify-requests ingestion modes.'
 
 # The suite manifest is executable input to both update paths and the fresh installer. Keep
 # its path-safety and exact-module contract in one behavioral probe rather than duplicating

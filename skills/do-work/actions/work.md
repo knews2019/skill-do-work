@@ -342,6 +342,8 @@ It performs the three checks (pre-existing changes outside `do-work/` with `-ual
 
 **Durability (background builder):** When the builder runs as a background or detached sub-agent, follow the durability pattern in `crew-members/background-agents.md` (disk-durable run directory as source of truth; survives a dead orchestrator session).
 
+**Overlapping parallel writers:** If implementation is manually split among concurrent agents and their explicitly declared file lists or globs overlap, put each overlapping writer in its own worktree and branch before any write, then hand every completed branch back for serial reconciliation and merged-state verification. Follow `crew-members/background-agents.md` → **Worktree isolation is a separate axis** for the shared trigger and unsafe-branch policy, and `actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)** for this action's canonical hand-back sequence. The shared rule leaves read-only and declared-disjoint parallel work unisolated; `--fan-out` remains stronger and uses one worktree per builder regardless of overlap.
+
 Spawn a **general-purpose agent** with the loaded rules, any files listed in the `prime_files` array, and context appropriate to the route:
 
 - **Route A**: Request content only — "triaged as simple, aim for a focused minimal change"

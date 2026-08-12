@@ -97,19 +97,33 @@ Builder-marked `- [~]` decisions reflect the "Think Before Coding" guardrail (`c
 
 If your environment has a structured question prompt (multi-question UI), batch questions in groups of **at most 4 per prompt** — chunk by question count, not by REQ. A REQ with 6 questions needs 2 prompts.
 
+Before writing answers, initialize one deduplicated `overturned_decision_sources` set for this clarify session. A source enters it only when its REQ carries `builder_decided: true` and the user's answer is semantically different from the stored `Recommended:` builder choice. Preserve the recommendation before replacing the question line so the comparison and later decision-revalidation source both retain old → new provenance. Confirmation, discard, discovery approval, and an ambiguous same-choice paraphrase never enter the set.
+
 For each question, the user can:
 
-- **Answer it** → update to `- [x] [question] → [user's answer]`
+- **Answer it** → update to `- [x] [question] → [user's answer]`; when this is a `builder_decided: true` follow-up and the answer differs from `Recommended:`, add its REQ id to `overturned_decision_sources`
 - **Confirm builder's choice** → update to `- [x] [question] → Confirmed: [builder's choice]`. Then check the REQ type:
   - *Discovered-task REQ* (has a "Should I process this as a new task?" question with recommended "Yes, add to queue"): flip `status` to `pending` so the task enters the work queue — see "Approved Discovered Task" below
   - *All other REQs* (builder-decision follow-ups): mark `status: completed` (no implementation needed — see "Builder Was Right" below)
-- **Pick a different option** → update to `- [x] [question] → [user's chosen option]`
+- **Pick a different option** → update to `- [x] [question] → [user's chosen option]`; when this is a `builder_decided: true` follow-up, add its REQ id to `overturned_decision_sources`
 - **Skip for now** → leave as `- [ ]`, REQ stays `pending-answers`
 - **Discard it** → update to `- [x] [question] → Discarded`, then mark the REQ `status: cancelled`, `completed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`), and archive it directly (same fast-path as "Builder Was Right", but with the honest won't-do status — no work happened and none is wanted; see "Discarded" below)
 
 ### Step 5: Activate answered REQs
 
 For each REQ that wasn't already completed or discarded: if all questions are now `[x]` or `[~]`, flip `status` from `pending-answers` to `pending` and stamp `status_changed_at: <timestamp>` (current UTC instant — Timestamp rule, `actions/work-reference.md`; the board's state timer reads it, so the card shows time since the answers landed rather than time since capture). These enter the queue for the next `do-work run`.
+
+### Step 5.25: Revalidate queued work after reversals
+
+If `overturned_decision_sources` is empty, skip this step. Otherwise invoke the named **Decision Revalidation Workflow** in `actions/verify-requests.md` once with every source id in the set — equivalent to one `--against REQ-NNN` pair per source. The sources were activated in Step 5 and remain in `do-work/queue/`, but that workflow excludes source follow-ups from their own candidate scan.
+
+Use that workflow's inventory before reading queue bodies:
+
+- At **10,000 queued words or fewer**, run the full semantic scan automatically.
+- Above **10,000 queued words**, show the queued-file count, word count, approximate 1.3–1.6-tokens-per-word input range, and any claimed REQ ids excluded from v1. Ask one choice: `Run the decision-revalidation scan now?` The `crew-members/clear-questions.md` contract already loaded for this session governs that cost question too.
+- If the user declines, finish clarify without scanning and print one copyable combined command with repeated flags, preserving set order: `do-work verify-requests --against REQ-NNN --against REQ-MMM`.
+
+The threshold applies only to this automatic clarify trigger. An explicit `do-work verify-requests --against ...` invocation displays its estimate and proceeds. Revalidation itself is read-only: aside from clarify's answer/status writes already completed above, it changes no REQ body, frontmatter, status, or location.
 
 ### Step 5.5: Confirm blocked conditions
 
@@ -131,7 +145,7 @@ Note for the user which blocked REQs carry a `blocked_check` probe — those unb
 
 ### Step 6: Report
 
-Summary of what was resolved and what's still pending — include any `blocked` REQs unblocked (now `pending`) or left waiting, alongside the answered/confirmed/discarded questions.
+Summary of what was resolved and what's still pending — include any `blocked` REQs unblocked (now `pending`) or left waiting, alongside the answered/confirmed/discarded questions. When Step 5.25 ran, append its evidence-backed candidate report. When the user deferred an over-threshold scan, say it was not run and include the combined explicit command.
 
 ## Builder Was Right / Discarded
 
@@ -168,6 +182,7 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - Never block the user — if they skip all questions, exit gracefully
 - Always show the builder's recommended choice prominently so confirming is the fast path
 - The story exists to make the question answerable cold — it is not a summary of the work. If it adds no fact the question itself lacks, it's padding; cut it back
+- Batch every overturned builder decision into one revalidation scan; never reread the whole queue once per answer
 
 ## Red Flags
 
@@ -180,6 +195,8 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - A `pending-answers` REQ with no `## Open Questions` section — the marker and the body disagree; investigate before presenting nothing.
 - User confirms every builder choice without reading — they may be rubber-stamping; ask once if they want a summary first.
 - A discovered-task follow-up's `status` flipped to `completed` instead of `pending` after user confirmed "Yes, add to queue" — that's the wrong route (the task never gets built).
+- A confirmed, discarded, or discovered-task choice triggered decision revalidation — no decision was reversed.
+- Revalidation changed a candidate REQ or moved it to `pending-answers` — the sweep is evidence-only in v1.
 - `pending-answers` REQs pile up across multiple clarify runs without resolution — users are skipping; ask whether to discard the stale ones.
 
 ## Verification Checklist
@@ -196,5 +213,8 @@ This is distinct from "Builder Was Right" because confirming a discovered task m
 - [ ] Answered REQs with all questions resolved flipped to `status: pending` (or `completed` for builder-was-right, `cancelled` for discarded).
 - [ ] Approved discovered-task REQs flipped to `pending` and stayed in `do-work/queue/` — not archived.
 - [ ] Skipped REQs remained `pending-answers` — nothing lost.
+- [ ] Every genuinely different answer on a `builder_decided: true` follow-up entered one deduplicated reversal set; confirmations, discards, and discovered-task approvals did not.
+- [ ] Reversal sources shared one queue scan; a scan above 10,000 queued words required confirmation, and a declined scan emitted one combined explicit command.
+- [ ] Decision revalidation itself changed no candidate REQ or queue status.
 - [ ] `blocked` REQs the user confirmed satisfied flipped to `pending` with `blocked_by`/`blocked_at` removed and a `## Blocked` history line appended; unconfirmed ones stayed `blocked`.
 - [ ] The final report names each REQ by id and what happened to it.

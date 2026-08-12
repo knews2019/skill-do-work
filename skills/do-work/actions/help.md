@@ -9,7 +9,8 @@ do-work — core request and queue orchestration
 
   do-work capture-request: <task>   Preserve intent as a UR and linked REQs
   do-work run [REQ|UR ...]          Build, test, review, archive, and commit ready work
-  do-work verify-requests [REQ|UR]  Check captured requirements against their source request
+  do-work verify-requests [REQ|UR|--against source ...]
+                                      Check capture quality or revalidate queued work after a reversal
   do-work review-work [REQ|UR]      Review completed implementation and acceptance evidence
   do-work clarify                   Resolve pending questions in a batch
   do-work abandon [REQ|UR] [why]    Cancel and archive work that should not be done

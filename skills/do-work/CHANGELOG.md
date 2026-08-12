@@ -8,6 +8,22 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.187.0 — Decision Revalidation Across Queued Work (2026-08-13)
+
+Reversed decisions can now be checked once against every unfinished queued REQ, turning a changed premise into an evidence-backed reconciliation list without mutating queue state.
+
+- Adds read-only `verify-requests --against` scans for superseded ADRs and answered builder-decision follow-ups, including repeated sources in one queue pass
+- Ranks direct references and restatements as likely affected and defensible semantic dependencies as possibly affected, with quoted evidence and reconciliation commands
+- Batches genuine clarify overrides, auto-scans queues up to 10,000 words, asks before larger automatic scans, and explicitly excludes claimed or archived work
+
+## 0.186.37 — Parallel Writer Worktree Hand-Back (2026-08-13)
+
+Overlapping parallel writers now get isolated before they edit, and completed work comes back through one verified integration path instead of being left on side branches.
+
+- Makes explicitly overlapping declared write ownership the trigger for worktree-and-branch isolation across every package-local background-agent guide
+- Requires serial merge attempts, conflict and semantic reconciliation, merged-state verification, and preservation of unsafe branches without force
+- Adds the Step 6 reminder while leaving auto-wave's stronger one-worktree-per-builder contract and display-only `write_set` untouched
+
 ## 0.186.36 — Narrow Defensive Surface Ratchet (2026-08-12)
 
 Incident-backed guidance can return without fighting a blanket section ban, while the generic text removed by REQ-168 stays deleted. The dated defensive-surface audit is now historical evidence instead of a registry every future shell file must extend.

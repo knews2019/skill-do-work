@@ -166,12 +166,25 @@ invariant above carries down all three.
    are already on disk.
 
 **Worktree isolation is a separate axis.** The three rungs above measure one thing —
-how much orchestration the harness hands you. Whether each builder runs in its own
-**git worktree** (an isolated working directory + branch, so parallel builders can't
-interleave writes to the same file) is an orthogonal capability, available at any
-rung. `do-work run`'s optional worktree dispatch mode is documented in
-`actions/work-reference.md` → **Worktree Dispatch Mode (Step 1)**; reach for it when
-you fan builders out across overlapping files, not just to size concurrency.
+how much orchestration the harness hands you. That axis becomes mandatory only when
+two or more concurrent agents may write project files and their **explicitly declared
+file lists or globs overlap**. Put each overlapping writer in a separate **git
+worktree** on a separate branch before it writes. Read-only agents and concurrent
+writers whose declarations are disjoint need no extra worktree; missing declarations
+do not count as declared overlap. This rule does not turn `write_set` into a gate — it
+remains display-only; use the ownership assigned in the fan-out brief or manifest.
+`do-work run --fan-out` remains deliberately stronger: it gives every builder a
+worktree whether or not declarations overlap.
+
+Every isolated writer commits on its own branch and hands that branch back. The
+integrator attempts every completed hand-back and integrates one branch at a time,
+reconciling text conflicts, integration seams, and semantic composition, then verifies
+the merged state before starting the next merge. If a merge cannot be reconciled
+safely, abort it; if post-merge verification fails, revert that merge to the last
+verified state. In either case preserve and report the branch and worktree for
+recovery — never force-merge, `git branch -D`, or `git worktree remove --force`.
+For `do-work run`, follow `actions/work-reference.md` → **Worktree Dispatch Mode
+(Step 1)** for the canonical hand-back, merge-range, verification, and cleanup flow.
 
 ## Manifest Format
 
