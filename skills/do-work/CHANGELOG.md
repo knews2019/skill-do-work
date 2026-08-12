@@ -8,13 +8,22 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.186.34 — Maintainer Doc Split Into Core Rules Plus Prime Files (2026-08-11)
+## 0.186.35 — Maintainer Doc Split Into Core Rules Plus Prime Files (2026-08-12)
 
 The root CLAUDE.md went from a 202-line everything-file to a short core in the maintainer's own vocabulary, with domain detail lazy-loaded from prime files. A session now reads the deep material only when working in that domain.
 
 - New `_dev/primes/` (export-ignored) holds three primes: action-file conventions, prescribed-shell traps, and Kanban board tool rules — each moved intact from CLAUDE.md
 - Core gains a plain-words glossary, personal coding preferences (YAGNI, focused tests, match ceremony to the task), a Verify section (exit code zero is the only proof), and push-back-then-continue communication rules
 - The Kanban board three-write-surfaces sentence stays in CLAUDE.md (lock-in test unchanged); live pointers in `_dev/tests/contract-regressions.sh` and `.gitattributes` now cite the primes
+
+
+## 0.186.34 — Prescribed Shell Becomes Executable (2026-08-11)
+
+Reusable shell mechanics now ship as executable, fixture-tested scripts instead of copied multi-line Markdown. Callers keep local intent and policy while semantic traps have attributable runtime tests.
+
+- Promotes 17 multi-line blocks into 11 scripts across core, knowledge, and toolbox while retaining 21 inline-residue and 2 Go-owned blocks
+- Adds 11 named behavior cases for atomic publication, merge display, screenshot races, portable timeouts, protected inventory, literal exact deletion, memory hooks/recall, and toolbox installs
+- Shrinks shipped Markdown by 303 nonblank shell-body lines and ratchets executable homes, package paths, defensive evidence, and the full 34-path scope
 
 
 ## 0.186.33 — Findings Close with Proof (2026-08-11)

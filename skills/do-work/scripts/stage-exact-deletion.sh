@@ -22,14 +22,14 @@ read_cached_deletion() {
   } < "$cached_deletion_file"
 }
 
-git diff --cached --name-status --no-renames -z -- "$deleted_path" > "$cached_deletion_file" || exit 2
+git --literal-pathspecs diff --cached --name-status --no-renames -z -- "$deleted_path" > "$cached_deletion_file" || exit 2
 read_cached_deletion
 if [ "$cached_status" = 'D' ] && [ "$cached_path" = "$deleted_path" ] && [ -z "$cached_extra" ]; then
   exit 0
 fi
 
-git add -u -- "$deleted_path" || exit 2
-git diff --cached --name-status --no-renames -z -- "$deleted_path" > "$cached_deletion_file" || exit 2
+git --literal-pathspecs add -u -- "$deleted_path" || exit 2
+git --literal-pathspecs diff --cached --name-status --no-renames -z -- "$deleted_path" > "$cached_deletion_file" || exit 2
 read_cached_deletion
 if [ "$cached_status" != 'D' ] || [ "$cached_path" != "$deleted_path" ] || [ -n "$cached_extra" ]; then
   printf 'Cached state is not one exact deletion: %s\n' "$deleted_path" >&2
