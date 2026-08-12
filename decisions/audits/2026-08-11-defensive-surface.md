@@ -1,8 +1,8 @@
 # Shipped Defensive Surface: Delete-or-Test Audit
 
-**Ran:** 2026-08-11 · **Scope:** all shipped files under `skills/` · **Rubric:** what incident earned this, and is the fix still cheaper than the surface it added?
+**Started:** 2026-08-11 · **Frozen:** after REQ-171 on 2026-08-12 · **Scope:** shipped files under `skills/` at freeze time · **Rubric:** what incident earned this, and is the fix still cheaper than the surface it added?
 
-This inventory treats a defensive *layer* as an executable guard/fallback family or an explicit prose section (`Rules`, `Common Rationalizations`, `Red Flags`, `Warnings`, recovery). Repeated branches implementing one atomic transaction are one layer, not one row per `if`. The focused probe verifies that every current explicit prose surface and every shipped shell source remains represented here.
+This is a historical snapshot, not a living registry. It records the defensive surfaces reviewed through REQ-171; new shell files and prose sections do not update it. Repeated branches implementing one atomic transaction count as one layer, not one row per `if`. The focused probe retains only exact regressions for generic guidance deleted by REQ-168.
 
 ## Executable layers
 

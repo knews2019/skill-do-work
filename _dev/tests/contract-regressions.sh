@@ -2348,15 +2348,15 @@ elif ! bash "$prescribed_shell_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
-# Defensive layers either keep an incident + test trail or stay deleted. The focused probe
-# also proves the audit continues to cover every shipped shell source and explicit prose
-# warning surface as those inventories evolve.
+# REQ-168 removed specific generic guidance and an arbitrary commit-size heuristic. Keep
+# those exact deletions without turning its historical audit into a living registry or
+# banning future incident-backed defensive sections.
 defensive_surface_probe="$repo_root/_dev/tests/defensive-surface-audit.sh"
 if [ ! -x "$defensive_surface_probe" ]; then
-  printf 'FAIL: _dev/tests/defensive-surface-audit.sh is missing or not executable — delete-or-test dispositions have no ratchet.\n' >&2
+  printf 'FAIL: _dev/tests/defensive-surface-audit.sh is missing or not executable — REQ-168 exact deletion regressions have no ratchet.\n' >&2
   fail_count=$((fail_count + 1))
 elif ! bash "$defensive_surface_probe"; then
-  printf 'FAIL: defensive-surface audit contract failed (see the attributed FAIL lines above).\n' >&2
+  printf 'FAIL: defensive-surface exact deletion regression failed (see the attributed FAIL lines above).\n' >&2
   fail_count=$((fail_count + 1))
 fi
 

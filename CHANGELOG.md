@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.186.36 — Narrow Defensive Surface Ratchet (2026-08-12)
+
+Incident-backed guidance can return without fighting a blanket section ban, while the generic text removed by REQ-168 stays deleted. The dated defensive-surface audit is now historical evidence instead of a registry every future shell file must extend.
+
+- Replaces exhaustive shell/prose inventory enforcement with exact sentinels for the removed generic tables and arbitrary commit-size warning
+- Allows future `Red Flags` and `Common Rationalizations` sections when a concrete incident earns them
+- Freezes the audit after REQ-171 and removes 30 net lines of ongoing maintenance surface
+
 ## 0.186.35 — Maintainer Doc Split Into Core Rules Plus Prime Files (2026-08-12)
 
 The root CLAUDE.md went from a 202-line everything-file to a short core in the maintainer's own vocabulary, with domain detail lazy-loaded from prime files. A session now reads the deep material only when working in that domain.
