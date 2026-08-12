@@ -22,6 +22,8 @@ Action files are prose that prescribes shell behavior. When a step's logic itera
 
 When a review finds a bug in prescribed-command logic, **grep the same primitive across all actions before calling it fixed** — these patterns are usually copy-pasted, so the fix is rarely local. (The first trap above had been copy-pasted into four action files; the audit only flagged one of them.)
 
+The process-tree, complete-directory, current-invocation artifact, and opt-in authority boundaries are recorded together in [`../lessons/validated-runtime-boundaries.md`](../lessons/validated-runtime-boundaries.md). Read it when a shell helper launches descendants, publishes a directory or artifact, or gates a full-host backend.
+
 ## Closed Enumerations Go Stale
 
 When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep a guide in sync), state the trigger _condition_ in the rule's canonical home and mark any caller/value list as illustrative, not exhaustive. Hand-enumerated lists silently go stale the moment the set grows — one review traced four independent defects to this pattern (capture's stale domain enum, prompt-injection's five-caller list, the docs-exemption list, security.md's loader claims). When extending a set, grep for every other enumeration of it and update or generalize each one.

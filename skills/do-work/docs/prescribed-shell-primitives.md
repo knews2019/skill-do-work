@@ -10,13 +10,13 @@ This is the canonical shipped rationale and executable-home contract for shell u
 | `scripts/add-local-git-exclude.sh` | Worktree-safe local exclude resolution and idempotent append |
 | `scripts/atomic-download.sh` | Private adjacent download and rename-on-success publication |
 | `scripts/capture-screenshot.sh` | Unique verified copy, no-clobber link, dispatch-owned cleanup |
-| `scripts/run-blocked-check.sh` | GNU timeout selection and stock-shell bounded fallback |
+| `scripts/run-blocked-check.sh` | GNU timeout selection and isolated stock-Bash process-group timeout/cleanup |
 | `scripts/protected-inventory.sh` | Run-level secret quarantine around the existing inventory/association checks |
 | `scripts/stage-exact-deletion.sh` | Cached-metadata-only exact deletion staging |
 | `../do-work-knowledge/scripts/lexical-memory-recall.sh` | Query sanitization, lexical ranking, and attribution |
 | `../do-work-knowledge/scripts/install-memory-hooks.sh` | Independent hook merge, verification, and rollback |
-| `../do-work-toolbox/scripts/generate-report-image.sh` | Backend selection, private agentic scratch, and exact-output verification |
-| `../do-work-toolbox/scripts/install-last30days.sh` | Project-local install/repair/full-guarantee verification |
+| `../do-work-toolbox/scripts/generate-report-image.sh` | Backend selection, invocation-private adjacent publication, and exact opt-in agentic scratch |
+| `../do-work-toolbox/scripts/install-last30days.sh` | Complete-payload validation and transactional project-local publication/repair |
 
 `tools/install-do-work-suite.sh` remains self-contained because it is the bootstrap that installs these packages. Atomic REQ reservation remains owned only by the board package's Go tool; it has no shell twin.
 

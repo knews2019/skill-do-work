@@ -6,7 +6,16 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=_dev/tests/fixture-repo.sh
 source "$repo_root/_dev/tests/fixture-repo.sh"
 fixture_root="$(mktemp -d "${TMPDIR:-/tmp}/prescribed-shell-scripts.XXXXXX")" || exit 1
-trap 'chmod -R u+rwX "$fixture_root" 2>/dev/null || true; rm -rf "$fixture_root"' EXIT
+background_process_ids=""
+cleanup_prescribed_shell_fixture() {
+  for background_process_id in $background_process_ids; do
+    kill "$background_process_id" 2>/dev/null || true
+    wait "$background_process_id" 2>/dev/null || true
+  done
+  chmod -R u+rwX "$fixture_root" 2>/dev/null || true
+  rm -rf "$fixture_root"
+}
+trap cleanup_prescribed_shell_fixture EXIT
 failure_count=0
 
 fail_case() {
@@ -95,16 +104,41 @@ fi
 [ ! -e "$capture_root/a/source.png" ] && [ "$(cat "$capture_root/b/source.png")" = dispatch-b ] || fail_case 'capture-screenshot coordinated-race case did not preserve only the loser source'
 find "$capture_root/assets" -name 'result.png.copying.*' -print -quit | grep -q . && fail_case 'capture-screenshot coordinated-race case leaked private scratch'
 
-# run-blocked-check: remove GNU timeout tools from PATH and require fallback status 124.
+# run-blocked-check: force the stock-Bash fallback, then prove timeout owns the
+# isolated wrapper/descendant group without touching an unrelated group member.
 fallback_bin="$fixture_root/fallback-bin"
 mkdir -p "$fallback_bin"
 ln -s "$(command -v bash)" "$fallback_bin/bash"
 ln -s "$(command -v sh)" "$fallback_bin/sh"
 ln -s "$(command -v sleep)" "$fallback_bin/sleep"
-printf 'sleep 5\n' > "$fixture_root/blocked-probe.sh"
-PATH="$fallback_bin" "$core_scripts/run-blocked-check.sh" "$fixture_root/blocked-probe.sh" 1 >/dev/null 2>&1
+sleep 30 & unrelated_process_id=$!
+background_process_ids="$background_process_ids $unrelated_process_id"
+printf '%s\n' \
+  'trap "" TERM' \
+  'printf "%s\n" "$$" > "$BLOCKED_WRAPPER_PID_FILE"' \
+  '(trap "" TERM; sleep 30) &' \
+  'printf "%s\n" "$!" > "$BLOCKED_DESCENDANT_PID_FILE"' \
+  'wait' > "$fixture_root/blocked-probe.sh"
+PATH="$fallback_bin" \
+  BLOCKED_WRAPPER_PID_FILE="$fixture_root/blocked-wrapper.pid" \
+  BLOCKED_DESCENDANT_PID_FILE="$fixture_root/blocked-descendant.pid" \
+  "$core_scripts/run-blocked-check.sh" "$fixture_root/blocked-probe.sh" 1 >/dev/null 2>&1
 blocked_status=$?
 [ "$blocked_status" -eq 124 ] || fail_case "run-blocked-check portable-timeout case returned $blocked_status instead of 124"
+blocked_wrapper_pid="$(cat "$fixture_root/blocked-wrapper.pid")"
+blocked_descendant_pid="$(cat "$fixture_root/blocked-descendant.pid")"
+background_process_ids="$background_process_ids $blocked_wrapper_pid $blocked_descendant_pid"
+kill -0 "$blocked_wrapper_pid" 2>/dev/null && fail_case 'run-blocked-check process-tree case left the wrapper alive'
+kill -0 "$blocked_descendant_pid" 2>/dev/null && fail_case 'run-blocked-check process-tree case left the descendant alive'
+kill -0 "$unrelated_process_id" 2>/dev/null || fail_case 'run-blocked-check process-tree cleanup killed an unrelated process in the test runner group'
+: > "$fixture_root/test-runner-survived-timeout"
+[ -e "$fixture_root/test-runner-survived-timeout" ] || fail_case 'run-blocked-check process-tree cleanup killed the test runner group'
+
+# run-blocked-check: the fallback must preserve an ordinary probe status.
+printf 'exit 23\n' > "$fixture_root/blocked-status-probe.sh"
+PATH="$fallback_bin" "$core_scripts/run-blocked-check.sh" "$fixture_root/blocked-status-probe.sh" 2 >/dev/null 2>&1
+blocked_ordinary_status=$?
+[ "$blocked_ordinary_status" -eq 23 ] || fail_case "run-blocked-check ordinary-status case returned $blocked_ordinary_status instead of 23"
 
 # protected-inventory: once a secret path is quarantined it stays out of association.
 inventory_repo="$fixture_root/inventory-repo"
@@ -169,33 +203,239 @@ else
   printf '%s' "$manual_output" | grep -q 'MANUAL STEP' || fail_case 'install-memory-hooks no-jq case omitted manual status'
 fi
 
-# generate-report-image: a direct backend receives inert prompt text and must create a non-empty exact path.
+# generate-report-image: a direct backend receives inert prompt text and publishes
+# from a private adjacent path only after success.
 image_bin="$fixture_root/image-bin"
 mkdir -p "$image_bin"
-printf '%s\n' '#!/usr/bin/env bash' 'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) printf "%s" "$2" > "$IMAGE_PROMPT_LOG"; shift 2 ;; *) shift ;; esac; done' 'printf png > "$output_path"' > "$image_bin/imagegen"
+printf '%s\n' '#!/usr/bin/env bash' 'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) printf "%s" "$2" > "$IMAGE_PROMPT_LOG"; shift 2 ;; *) shift ;; esac; done' 'printf "%s" "$output_path" > "$IMAGE_STAGED_PATH_LOG"' 'printf new-png > "$output_path"' > "$image_bin/imagegen"
 chmod +x "$image_bin/imagegen"
 image_output="$fixture_root/report.png"
-PATH="$image_bin:$PATH" IMAGE_PROMPT_LOG="$fixture_root/image-prompt" "$toolbox_scripts/generate-report-image.sh" "$image_output" 'blue style' 'diagram $(touch injected-image)' || fail_case 'generate-report-image direct-backend case returned nonzero'
-[ -s "$image_output" ] && [ ! -e "$fixture_root/injected-image" ] || fail_case 'generate-report-image direct-backend case did not keep the prompt inert'
+printf old-png > "$image_output"
+PATH="$image_bin:$PATH" \
+  IMAGE_PROMPT_LOG="$fixture_root/image-prompt" \
+  IMAGE_STAGED_PATH_LOG="$fixture_root/image-staged-path" \
+  "$toolbox_scripts/generate-report-image.sh" "$image_output" 'blue style' 'diagram $(touch injected-image)' \
+  || fail_case 'generate-report-image direct-backend case returned nonzero'
+[ "$(cat "$image_output")" = new-png ] && [ ! -e "$fixture_root/injected-image" ] \
+  || fail_case 'generate-report-image direct-backend case did not atomically replace the target with inert-prompt output'
+[ "$(cat "$fixture_root/image-staged-path")" != "$image_output" ] \
+  || fail_case 'generate-report-image direct-backend case wrote directly to the final target'
+find "$fixture_root" -name '.report.png.generating.*' -print -quit | grep -q . \
+  && fail_case 'generate-report-image direct-backend case leaked private staging after success'
 
-# install-last30days: install from a fixture upstream, add the sibling-core ignore, and verify.
+# generate-report-image: a failed backend may leave an old target recoverable, but
+# the invocation must fail and clean its partial private output.
+image_failure_bin="$fixture_root/image-failure-bin"
+mkdir -p "$image_failure_bin"
+printf '%s\n' '#!/usr/bin/env bash' 'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; *) shift ;; esac; done' 'printf partial > "$output_path"' 'exit 7' > "$image_failure_bin/imagegen"
+chmod +x "$image_failure_bin/imagegen"
+printf stable-old-png > "$image_output"
+PATH="$image_failure_bin:$PATH" DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=0 \
+  "$toolbox_scripts/generate-report-image.sh" "$image_output" style failure >/dev/null 2>&1 \
+  && fail_case 'generate-report-image stale-target case accepted a failed backend'
+[ "$(cat "$image_output")" = stable-old-png ] \
+  || fail_case 'generate-report-image stale-target case changed the recoverable old target'
+find "$fixture_root" -name '.report.png.generating.*' -print -quit | grep -q . \
+  && fail_case 'generate-report-image stale-target case leaked private staging after failure'
+
+# generate-report-image caller contract: mixed results retain both PIDs/statuses and
+# wait for every job before evaluating current outputs.
+image_mixed_bin="$fixture_root/image-mixed-bin"
+mkdir -p "$image_mixed_bin"
+printf '%s\n' '#!/usr/bin/env bash' 'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) image_prompt="$2"; shift 2 ;; *) shift ;; esac; done' 'case "$image_prompt" in *mixed-success*) printf success > "$output_path"; : > "$MIXED_SUCCESS_DONE"; exit 0 ;; *) printf partial > "$output_path"; : > "$MIXED_FAILURE_DONE"; exit 9 ;; esac' > "$image_mixed_bin/imagegen"
+chmod +x "$image_mixed_bin/imagegen"
+mixed_success_target="$fixture_root/mixed-success.png"
+mixed_failure_target="$fixture_root/mixed-failure.png"
+printf stale > "$mixed_failure_target"
+PATH="$image_mixed_bin:$PATH" MIXED_SUCCESS_DONE="$fixture_root/mixed-success.done" MIXED_FAILURE_DONE="$fixture_root/mixed-failure.done" \
+  "$toolbox_scripts/generate-report-image.sh" "$mixed_success_target" style mixed-success &
+image_generation_pids[0]=$!
+PATH="$image_mixed_bin:$PATH" MIXED_SUCCESS_DONE="$fixture_root/mixed-success.done" MIXED_FAILURE_DONE="$fixture_root/mixed-failure.done" \
+  "$toolbox_scripts/generate-report-image.sh" "$mixed_failure_target" style mixed-failure &
+image_generation_pids[1]=$!
+image_generation_statuses=()
+image_index=0
+while [ "$image_index" -lt "${#image_generation_pids[@]}" ]; do
+  image_status=0
+  wait "${image_generation_pids[$image_index]}" || image_status=$?
+  image_generation_statuses[$image_index]="$image_status"
+  image_index=$((image_index + 1))
+done
+[ "${image_generation_statuses[0]}" -eq 0 ] && [ "${image_generation_statuses[1]}" -ne 0 ] \
+  || fail_case 'generate-report-image mixed-status case did not retain success and failure independently'
+[ -e "$fixture_root/mixed-success.done" ] && [ -e "$fixture_root/mixed-failure.done" ] \
+  || fail_case 'generate-report-image mixed-status case did not wait for every launched job'
+[ "$(cat "$mixed_success_target")" = success ] && [ "$(cat "$mixed_failure_target")" = stale ] \
+  || fail_case 'generate-report-image mixed-status case did not separate current output from a stale failed target'
+
+# generate-report-image: interruption cleans the invocation-private file and leaves
+# the old target untouched.
+image_interrupt_bin="$fixture_root/image-interrupt-bin"
+mkdir -p "$image_interrupt_bin"
+printf '%s\n' '#!/usr/bin/env bash' 'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; *) shift ;; esac; done' 'printf "%s" "$output_path" > "$IMAGE_INTERRUPT_PATH_LOG"' 'printf partial > "$output_path"' ': > "$IMAGE_INTERRUPT_READY"' 'trap "exit 143" TERM INT HUP' 'while :; do sleep 0.1; done' > "$image_interrupt_bin/imagegen"
+chmod +x "$image_interrupt_bin/imagegen"
+interrupt_target="$fixture_root/interrupted.png"
+printf stable-interrupt > "$interrupt_target"
+PATH="$image_interrupt_bin:$PATH" IMAGE_INTERRUPT_PATH_LOG="$fixture_root/interrupted-stage" IMAGE_INTERRUPT_READY="$fixture_root/interrupted-ready" \
+  "$toolbox_scripts/generate-report-image.sh" "$interrupt_target" style interruption >/dev/null 2>&1 &
+interrupt_helper_pid=$!
+background_process_ids="$background_process_ids $interrupt_helper_pid"
+interrupt_wait_ticks=0
+while [ ! -e "$fixture_root/interrupted-ready" ] && [ "$interrupt_wait_ticks" -lt 200 ]; do
+  sleep 0.01
+  interrupt_wait_ticks=$((interrupt_wait_ticks + 1))
+done
+if [ ! -e "$fixture_root/interrupted-ready" ]; then
+  fail_case 'generate-report-image interruption case never reached the backend wait'
+else
+  kill -TERM "$interrupt_helper_pid" 2>/dev/null || true
+  wait "$interrupt_helper_pid" 2>/dev/null
+  interrupt_status=$?
+  [ "$interrupt_status" -ne 0 ] || fail_case 'generate-report-image interruption case returned success'
+  interrupted_stage_path="$(cat "$fixture_root/interrupted-stage")"
+  [ ! -e "$interrupted_stage_path" ] || fail_case 'generate-report-image interruption case leaked private staging'
+  [ "$(cat "$interrupt_target")" = stable-interrupt ] || fail_case 'generate-report-image interruption case changed the old target'
+fi
+
+# generate-report-image: the sandbox-bypassed executable is unreachable without the
+# exact opt-in value, while exact 1 still exercises the explicitly authorized branch.
+agentic_bin="$fixture_root/agentic-bin"
+mkdir -p "$agentic_bin"
+for agentic_tool in bash chmod cp mktemp mv rm; do
+  ln -s "$(command -v "$agentic_tool")" "$agentic_bin/$agentic_tool"
+done
+printf '%s\n' '#!/usr/bin/env bash' ': > "$AGENTIC_INVOKED_MARKER"' 'printf agentic-png > generated.png' > "$agentic_bin/codex"
+chmod +x "$agentic_bin/codex"
+for agentic_opt_in in unset 0 true 01; do
+  agentic_marker="$fixture_root/agentic-$agentic_opt_in.invoked"
+  if [ "$agentic_opt_in" = unset ]; then
+    (unset DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND; PATH="$agentic_bin" AGENTIC_INVOKED_MARKER="$agentic_marker" TMPDIR="$fixture_root" \
+      "$toolbox_scripts/generate-report-image.sh" "$fixture_root/agentic-$agentic_opt_in.png" style description >/dev/null 2>&1)
+  else
+    PATH="$agentic_bin" AGENTIC_INVOKED_MARKER="$agentic_marker" TMPDIR="$fixture_root" DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND="$agentic_opt_in" \
+      "$toolbox_scripts/generate-report-image.sh" "$fixture_root/agentic-$agentic_opt_in.png" style description >/dev/null 2>&1
+  fi
+  agentic_status=$?
+  [ "$agentic_status" -ne 0 ] || fail_case "generate-report-image agentic opt-in case accepted non-exact value $agentic_opt_in"
+  [ ! -e "$agentic_marker" ] || fail_case "generate-report-image agentic opt-in case invoked codex for value $agentic_opt_in"
+done
+agentic_marker="$fixture_root/agentic-1.invoked"
+PATH="$agentic_bin" AGENTIC_INVOKED_MARKER="$agentic_marker" TMPDIR="$fixture_root" DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=1 \
+  "$toolbox_scripts/generate-report-image.sh" "$fixture_root/agentic-1.png" style description \
+  || fail_case 'generate-report-image agentic opt-in case rejected exact value 1'
+[ -e "$agentic_marker" ] && [ "$(cat "$fixture_root/agentic-1.png")" = agentic-png ] \
+  || fail_case 'generate-report-image agentic opt-in case did not publish the explicitly authorized output'
+find "$fixture_root" \( -name '.*.generating.*' -o -name 'do-work-ai-report-image.*' \) -print -quit | grep -q . \
+  && fail_case 'generate-report-image agentic opt-in case leaked private paths'
+
+# install-last30days: a SKILL.md-only tree fails check, is repaired from a
+# complete fixture, and receives the full subtree plus ignore/Python guarantees.
 upstream_repo="$fixture_root/last30days-upstream"
 fixture_repo_init "$upstream_repo"
-mkdir -p "$upstream_repo/skills/last30days/scripts"
+mkdir -p "$upstream_repo/skills/last30days/scripts" "$upstream_repo/skills/last30days/support"
 printf '# Last30Days\n' > "$upstream_repo/skills/last30days/SKILL.md"
-printf 'tool\n' > "$upstream_repo/skills/last30days/scripts/tool.py"
+printf 'runtime\n' > "$upstream_repo/skills/last30days/scripts/last30days.py"
+printf 'support\n' > "$upstream_repo/skills/last30days/support/data.txt"
 fixture_repo_commit_all "$upstream_repo" fixture
 last_project="$fixture_root/last-project"
 fixture_repo_init "$last_project"
+mkdir -p "$last_project/.claude/skills/last30days"
+printf '# Sentinel only\n' > "$last_project/.claude/skills/last30days/SKILL.md"
 python_bin="$fixture_root/python-bin"
 mkdir -p "$python_bin"
 printf '%s\n' '#!/usr/bin/env bash' 'exit 0' > "$python_bin/python3.12"
 chmod +x "$python_bin/python3.12"
-last_output="$(PATH="$python_bin:$PATH" "$toolbox_scripts/install-last30days.sh" install "$last_project" "$upstream_repo" 2>&1)" || fail_case "install-last30days fixture-source case returned nonzero: $last_output"
-[ -s "$last_project/.claude/skills/last30days/SKILL.md" ] || fail_case 'install-last30days fixture-source case omitted the skill file'
+PATH="$python_bin:$PATH" "$toolbox_scripts/install-last30days.sh" check "$last_project" >/dev/null 2>&1 \
+  && fail_case 'install-last30days sentinel-only check accepted a missing runtime script'
+last_output="$(TMPDIR="$fixture_root" PATH="$python_bin:$PATH" "$toolbox_scripts/install-last30days.sh" install "$last_project" "$upstream_repo" 2>&1)" \
+  || fail_case "install-last30days complete-source repair returned nonzero: $last_output"
+[ "$(cat "$last_project/.claude/skills/last30days/scripts/last30days.py")" = runtime ] \
+  && [ "$(cat "$last_project/.claude/skills/last30days/support/data.txt")" = support ] \
+  || fail_case 'install-last30days complete-source repair omitted part of the source subtree'
 git -C "$last_project" check-ignore -q .claude/skills/last30days/SKILL.md || fail_case 'install-last30days fixture-source case did not resolve the sibling exclude helper'
+PATH="$python_bin:$PATH" "$toolbox_scripts/install-last30days.sh" check "$last_project" >/dev/null 2>&1 \
+  || fail_case 'install-last30days repaired tree failed the complete runtime/ignore/Python check'
+
+# install-last30days: reject an incomplete source before publishing any final tree.
+incomplete_upstream_repo="$fixture_root/last30days-incomplete-upstream"
+fixture_repo_init "$incomplete_upstream_repo"
+mkdir -p "$incomplete_upstream_repo/skills/last30days"
+printf '# Incomplete\n' > "$incomplete_upstream_repo/skills/last30days/SKILL.md"
+fixture_repo_commit_all "$incomplete_upstream_repo" fixture
+incomplete_source_project="$fixture_root/last-incomplete-source-project"
+mkdir -p "$incomplete_source_project"
+TMPDIR="$fixture_root" PATH="$python_bin:$PATH" "$toolbox_scripts/install-last30days.sh" install "$incomplete_source_project" "$incomplete_upstream_repo" >/dev/null 2>&1 \
+  && fail_case 'install-last30days incomplete-source case returned success'
+[ ! -e "$incomplete_source_project/.claude/skills/last30days" ] \
+  || fail_case 'install-last30days incomplete-source case published a final tree'
+
+# install-last30days: a partial copy failure leaves no final tree or private path.
+copy_failure_bin="$fixture_root/copy-failure-bin"
+mkdir -p "$copy_failure_bin"
+printf '%s\n' '#!/usr/bin/env bash' 'while [ "$#" -gt 1 ]; do shift; done' 'copy_destination="$1"' 'mkdir -p "$copy_destination/scripts"' 'printf partial > "$copy_destination/SKILL.md"' 'exit 1' > "$copy_failure_bin/cp"
+chmod +x "$copy_failure_bin/cp"
+copy_failure_project="$fixture_root/last-copy-failure-project"
+mkdir -p "$copy_failure_project"
+TMPDIR="$fixture_root" PATH="$copy_failure_bin:$python_bin:$PATH" "$toolbox_scripts/install-last30days.sh" install "$copy_failure_project" "$upstream_repo" >/dev/null 2>&1 \
+  && fail_case 'install-last30days copy-failure case returned success'
+[ ! -e "$copy_failure_project/.claude/skills/last30days" ] \
+  || fail_case 'install-last30days copy-failure case left a final tree'
+find "$copy_failure_project/.claude/skills" -name '.last30days.*' -print -quit | grep -q . \
+  && fail_case 'install-last30days copy-failure case leaked private paths'
+
+# install-last30days: a publication failure with no prior destination removes any
+# simulated partial final tree.
+publication_failure_bin="$fixture_root/publication-failure-bin"
+mkdir -p "$publication_failure_bin"
+printf '%s\n' '#!/usr/bin/env bash' 'publication_source="$1"' 'publication_destination="$2"' 'case "$publication_source:$publication_destination" in *.last30days.staging.*:*/.claude/skills/last30days) mkdir -p "$publication_destination"; printf partial > "$publication_destination/SKILL.md"; exit 1 ;; esac' 'exec "$LAST30DAYS_REAL_MV" "$@"' > "$publication_failure_bin/mv"
+chmod +x "$publication_failure_bin/mv"
+publication_failure_project="$fixture_root/last-publication-failure-project"
+mkdir -p "$publication_failure_project"
+TMPDIR="$fixture_root" LAST30DAYS_REAL_MV="$(command -v mv)" PATH="$publication_failure_bin:$python_bin:$PATH" \
+  "$toolbox_scripts/install-last30days.sh" install "$publication_failure_project" "$upstream_repo" >/dev/null 2>&1 \
+  && fail_case 'install-last30days publication-failure case returned success'
+[ ! -e "$publication_failure_project/.claude/skills/last30days" ] \
+  || fail_case 'install-last30days publication-failure case left a new final tree'
+find "$publication_failure_project/.claude/skills" -name '.last30days.*' -print -quit | grep -q . \
+  && fail_case 'install-last30days publication-failure case leaked private paths'
+
+# install-last30days: a replacement publication failure restores an existing
+# incomplete tree byte-for-byte and removes private staging/backup paths.
+replacement_failure_project="$fixture_root/last-replacement-failure-project"
+mkdir -p "$replacement_failure_project/.claude/skills/last30days/legacy"
+printf original-sentinel > "$replacement_failure_project/.claude/skills/last30days/SKILL.md"
+printf original-byte > "$replacement_failure_project/.claude/skills/last30days/legacy/data.bin"
+cp -R "$replacement_failure_project/.claude/skills/last30days" "$fixture_root/last30days-original-snapshot"
+TMPDIR="$fixture_root" LAST30DAYS_REAL_MV="$(command -v mv)" PATH="$publication_failure_bin:$python_bin:$PATH" \
+  "$toolbox_scripts/install-last30days.sh" install "$replacement_failure_project" "$upstream_repo" >/dev/null 2>&1 \
+  && fail_case 'install-last30days replacement-failure case returned success'
+diff -r "$fixture_root/last30days-original-snapshot" "$replacement_failure_project/.claude/skills/last30days" >/dev/null 2>&1 \
+  || fail_case 'install-last30days replacement-failure case did not restore the prior tree byte-for-byte'
+find "$replacement_failure_project/.claude/skills" -name '.last30days.*' -print -quit | grep -q . \
+  && fail_case 'install-last30days replacement-failure case leaked private paths'
+
+# install-last30days: interruption after the prior tree moves to backup restores it
+# and removes both staging and backup paths.
+backup_interrupt_bin="$fixture_root/backup-interrupt-bin"
+mkdir -p "$backup_interrupt_bin"
+printf '%s\n' '#!/usr/bin/env bash' 'interrupt_destination="$2"' 'case "$interrupt_destination" in */.last30days.backup.*/previous) "$LAST30DAYS_REAL_MV" "$@" || exit $?; kill -TERM "$PPID"; exit 0 ;; esac' 'exec "$LAST30DAYS_REAL_MV" "$@"' > "$backup_interrupt_bin/mv"
+chmod +x "$backup_interrupt_bin/mv"
+backup_interrupt_project="$fixture_root/last-backup-interrupt-project"
+mkdir -p "$backup_interrupt_project/.claude/skills/last30days/legacy"
+printf interrupt-sentinel > "$backup_interrupt_project/.claude/skills/last30days/SKILL.md"
+printf interrupt-byte > "$backup_interrupt_project/.claude/skills/last30days/legacy/data.bin"
+cp -R "$backup_interrupt_project/.claude/skills/last30days" "$fixture_root/last30days-interrupt-snapshot"
+TMPDIR="$fixture_root" LAST30DAYS_REAL_MV="$(command -v mv)" PATH="$backup_interrupt_bin:$python_bin:$PATH" \
+  "$toolbox_scripts/install-last30days.sh" install "$backup_interrupt_project" "$upstream_repo" >/dev/null 2>&1
+backup_interrupt_status=$?
+[ "$backup_interrupt_status" -eq 143 ] \
+  || fail_case "install-last30days backup-interruption case returned $backup_interrupt_status instead of 143"
+diff -r "$fixture_root/last30days-interrupt-snapshot" "$backup_interrupt_project/.claude/skills/last30days" >/dev/null 2>&1 \
+  || fail_case 'install-last30days backup-interruption case did not restore the prior tree byte-for-byte'
+find "$backup_interrupt_project/.claude/skills" -name '.last30days.*' -print -quit | grep -q . \
+  && fail_case 'install-last30days backup-interruption case leaked private paths'
 
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
-printf 'Prescribed shell script behavior probes passed (11 named script cases).\n'
+printf 'Prescribed shell script behavior probes passed (22 named script cases).\n'

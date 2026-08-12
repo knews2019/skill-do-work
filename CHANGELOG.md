@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.187.1 — Validated Runtime Boundaries (2026-08-13)
+
+Timeouts now clean up the process trees they start, directory installs publish only complete payloads, and report images prove they came from the current invocation.
+
+- Gives the stock-macOS blocked-check fallback an isolated process group with verified, escalating group cleanup while preserving GNU timeout behavior and ordinary exit statuses
+- Publishes the complete `last30days` subtree as a validated adjacent rename transaction with restoration after copy, publication, or interruption failure
+- Stages every report image per invocation, retains every parallel status, and keeps the full-host agentic backend behind the exact explicit opt-in
+- Adds 22 runtime fixtures plus a durable linked lesson covering process ownership, directory transactions, artifact freshness, and authority boundaries
+
 ## 0.187.0 — Decision Revalidation Across Queued Work (2026-08-13)
 
 Reversed decisions can now be checked once against every unfinished queued REQ, turning a changed premise into an evidence-backed reconciliation list without mutating queue state.

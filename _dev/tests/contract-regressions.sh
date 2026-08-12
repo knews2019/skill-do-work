@@ -270,6 +270,28 @@ assert_contains \
   'DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND' \
   'actions/ai-report.md must keep sandbox-bypassed agentic image generation behind an explicit opt-in.'
 
+ai_image_backend_block="$(sed -n '/^## Image Generation Backend/,/^## SVG Data-Viz Rules/p' "$toolbox_root/actions/ai-report-reference.md")"
+assert_block_contains \
+  "$ai_image_backend_block" \
+  'image_generation_pids' \
+  'ai-report-reference.md must retain every parallel image helper PID.'
+assert_block_contains \
+  "$ai_image_backend_block" \
+  'wait "\${image_generation_pids\[\$image_index\]}".*image_status=\$\?' \
+  'ai-report-reference.md must wait each image PID and retain its individual status.'
+assert_block_contains \
+  "$ai_image_backend_block" \
+  'image_generation_statuses\[\$image_index\]' \
+  'ai-report-reference.md must evaluate invocation statuses rather than infer freshness from target presence.'
+assert_block_not_contains \
+  "$ai_image_backend_block" \
+  '^wait$' \
+  'ai-report-reference.md must not discard mixed background-job statuses with a bare wait.'
+assert_block_contains \
+  "$ai_image_backend_block" \
+  'repository, credentials, network, and external services' \
+  'ai-report-reference.md must describe exact agentic opt-in as full-host authority, not containment.'
+
 assert_contains \
   "actions/ai-report.md" \
   'mktemp -d' \
@@ -1816,6 +1838,30 @@ assert_contains \
   "scripts/run-blocked-check.sh" \
   'exit 124' \
   'run-blocked-check.sh must preserve a bounded portable fallback and report a timed-out blocked check as exit 124.'
+
+assert_contains \
+  "scripts/run-blocked-check.sh" \
+  'probe_group_is_safe' \
+  'run-blocked-check.sh must verify an isolated process group before executing fallback probe code.'
+assert_contains \
+  "scripts/run-blocked-check.sh" \
+  'kill -"\$probe_signal" -- "-\$probe_process_group_id"' \
+  'run-blocked-check.sh must signal the verified probe group rather than only its wrapper PID.'
+
+assert_contains \
+  "actions/install.md" \
+  'non-empty `SKILL.md` and `scripts/last30days.py`' \
+  'actions/install.md must define last30days health as a complete runnable payload.'
+assert_contains \
+  "actions/install.md" \
+  'never merges files from different upstream versions' \
+  'actions/install.md must document last30days publication as a validated directory transaction.'
+
+if [ ! -s "$repo_root/_dev/lessons/validated-runtime-boundaries.md" ] \
+  || ! grep -Fq '../lessons/validated-runtime-boundaries.md' "$repo_root/_dev/primes/prime-shell-commands.md"; then
+  printf 'FAIL: prime-shell-commands.md must link the durable validated-runtime-boundaries lesson.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
 
 if ! bash -n "$core_root/scripts/run-blocked-check.sh"; then
   printf 'FAIL: scripts/run-blocked-check.sh must remain syntactically valid.\n' >&2

@@ -223,25 +223,25 @@ The `last30days` target vendors the engagement-ranked social-research engine (ht
 
 #### Phase 1: Check if already installed
 
-Run the shipped full-guarantee check (skill file, ignore rule, Python 3.12+). The install promises all three; detecting on the skill file alone would let a half-completed prior run masquerade as installed.
+Run the shipped full-guarantee check (complete runtime payload, ignore rule, Python 3.12+). The runtime payload requires, at minimum, non-empty `SKILL.md` and `scripts/last30days.py`; the installer and checker share that predicate so a sentinel-only or half-copied tree cannot masquerade as installed.
 
 ```bash
 <skill-root>/scripts/install-last30days.sh check "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
 
 - **All checks pass** (the ignore rule counts as passing when the project isn't a git repo) → report "already installed" and stop.
-- **Skill file present but the ignore rule failed** → a prior run half-completed. Proceed to Phase 2 in *repair mode*: skip the clone/copy and run only the ignore step — it's guarded, so re-running is safe. (A missing Python 3.12+ interpreter isn't repairable by this action — report it per Phase 3.)
-- **Skill file missing** → run Phase 2 in full.
+- **Runtime payload complete but the ignore rule failed** → proceed to Phase 2 in *repair mode*: skip publication and run only the guarded ignore step. (A missing Python 3.12+ interpreter isn't repairable by this action — report it per Phase 3.)
+- **Runtime payload incomplete** → run Phase 2 in full, even when `SKILL.md` exists.
 
 #### Phase 2: Vendor the skill
 
-The upstream repo keeps the actual skill at `skills/last30days/` (self-contained — `SKILL.md`, `scripts/`, and supporting directories). Shallow-clone to a temp dir, copy only that subdirectory's contents, discard the clone — skipped in repair mode, since the skill file already exists:
+The upstream repo keeps the actual skill at `skills/last30days/` (self-contained — `SKILL.md`, `scripts/`, and supporting directories). The installer shallow-clones to temporary storage, rejects an incomplete source, copies the full subtree into a private staging directory adjacent to the destination, and validates the staged payload before a same-filesystem rename publishes it. When replacing an incomplete destination, it holds the prior tree in a private adjacent backup until the validated replacement is live; a publication failure restores the prior tree byte-for-byte. A complete destination keeps the existing no-op/ignore-repair behavior.
 
 ```bash
 <skill-root>/scripts/install-last30days.sh install "$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 ```
 
-If the block prints FAILED (offline, upstream repo moved), **stop here** — report the error and skip the ignore step below; a failed install must not leave stray side effects in the consuming repo. The `cp -R …/. ` form copies the *contents* into the destination, so re-running over a broken partial directory merges cleanly instead of nesting a second `last30days/` inside (Phase 1's skill-file gate keeps healthy installs from ever reaching this block).
+If the block prints FAILED (offline, incomplete upstream payload, copy failure, or publication failure), **stop here** and report the error. The final path remains either the prior incomplete tree or a fully validated replacement; the installer never merges files from different upstream versions and cleans private staging/backup paths on exit.
 
 The installer then makes the ignore claim true with the canonical [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore) helper and rejects an already-tracked vendored copy. It never touches the project's committable `.gitignore`.
 
@@ -336,6 +336,7 @@ do-work-toolbox install ideation-adhd  Parallel cognitive-frame ideation skill
 - (bowser) `playwright-cli --help` succeeds but `playwright-cli install` fails silently — browsers aren't actually installed; headless runs will error later.
 - (bowser) You installed `playwright-cli` into a project-local `node_modules` instead of globally — the CLI won't be on PATH for other sessions.
 - (last30days) `git check-ignore -q .claude/skills/last30days/SKILL.md` exits non-zero in a git repo — the exclude entry was skipped or mismatched; fix it before anything gets committed. (Don't eyeball `git status` for this: a wholly-untracked `.claude/` collapses to a single `?? .claude/` row that hides the path either way.)
+- (last30days) `SKILL.md` exists but `scripts/last30days.py` is absent or empty — the runtime payload is incomplete; re-run the transactional install instead of treating the sentinel as healthy.
 - (last30days) A project file (e.g. `.claude/last30days.env`) contains anything that looks like a credential — remove it and move the key to the user-global `~/.config/last30days/.env`.
 - (last30days) Verify found no Python 3.12+ interpreter — the engine can't run; treat it as a failed install, not a soft warning.
 
@@ -345,5 +346,5 @@ do-work-toolbox install ideation-adhd  Parallel cognitive-frame ideation skill
 - [ ] Phase 1 detected an existing install and stopped, OR Phase 2+ ran the fetch/install commands.
 - [ ] After the verify phase, `<project-root>/.claude/skills/<skill-name>/SKILL.md` exists and is non-empty (skill-file targets: `ui-design`, `bowser`, `last30days`, `ideation-adhd`).
 - [ ] (bowser only) `playwright-cli --help` runs without error and Chromium is installed.
-- [ ] (last30days only) a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
+- [ ] (last30days only) `scripts/last30days.py` is non-empty, a Python 3.12+ interpreter is on PATH, `git check-ignore` covers `.claude/skills/last30days/`, and no project file gained an API key.
 - [ ] The report names the destination path so the user can verify location.

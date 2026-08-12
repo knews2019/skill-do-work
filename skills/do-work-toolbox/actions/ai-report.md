@@ -158,11 +158,11 @@ flowchart LR
 </pre>
 ```
 
-Derive the diagram content from the REQ's Implementation Summary — trace the actual code path, not a generic placeholder. You may instead render this same flow as an AI-generated diagram (Step 4d); Mermaid remains the guaranteed fallback if generation yields no file.
+Derive the diagram content from the REQ's Implementation Summary — trace the actual code path, not a generic placeholder. You may instead render this same flow as an AI-generated diagram (Step 4d); Mermaid remains the guaranteed fallback if the generation invocation fails.
 
 **4c: SVG architecture diagram (component relationships).**
 
-When the feature touches multiple components, produce a hand-coded SVG that shows the component graph: boxes with names, arrows for data/event flow, brief labels on edges. Keep it to one viewport (no scrolling). Use the same color palette as the report. This hand-authored SVG is also the fallback whenever an AI-generated image (4d) fails to produce a file.
+When the feature touches multiple components, produce a hand-coded SVG that shows the component graph: boxes with names, arrows for data/event flow, brief labels on edges. Keep it to one viewport (no scrolling). Use the same color palette as the report. This hand-authored SVG is also the fallback whenever an AI-generated image invocation (4d) fails.
 
 **Data-viz rules for every hand-authored SVG** (architecture graphs, timelines, rings, stage diagrams, stat tiles) — see **SVG Data-Viz Rules (Step 4c)** in `actions/ai-report-reference.md` for the full specification (color-by-job ordinal ramps, ink-colored text tokens, label-collision handling, stat-tile spec).
 
@@ -171,8 +171,8 @@ When the feature touches multiple components, produce a hand-coded SVG that show
 For sections marked in Step 3c (concept/architecture/data-flow visuals, or a hero/title image), generate real images using the **Image Generation Backend** in `actions/ai-report-reference.md`. Do not hand-write the invocation logic here — follow that section. In short:
 
 1. Compose the **shared style brief** once and a short content prompt per section. Each content prompt must describe the *actual* structure/flow from the REQ's Implementation Summary — the same anti-generic rule as Mermaid (4b). A hero image should evoke the feature's domain, not generic "technology" stock art.
-2. `mkdir -p ai-reports/<report-slug>/generated`, canonicalize that path to an absolute `$GEN` (the helper's `$1` must be cwd-independent), then fire one `gen_image` background job per section and `wait` (parallel — generation is slow).
-3. **Verify each expected file** (`[ -s "$f" ]`). For any that is missing, fall back to the SVG (4c) or Mermaid (4b) diagram for that section. **Never reference a path that does not exist.**
+2. `mkdir -p ai-reports/<report-slug>/generated`, canonicalize that path to an absolute `$GEN` (the helper's `$1` must be cwd-independent), then fire one helper background job per section and retain every PID (parallel — generation is slow).
+3. **Wait every retained PID and record its status**, even after an earlier failure. Treat an expected file as current only when that invocation returned zero and the file is non-empty. A nonzero status falls back to SVG (4c) or Mermaid (4b) even when an old target remains on disk. **Never reference a path that the current invocation did not successfully publish.**
 4. Stay within the budget (≈6–8 generated images) and keep each one earning its place — an image that only decorates without informing or orienting the reader is slop; cut it.
 
 Generated images are embedded by **relative path** from the co-located `generated/` folder (Step 5), not base64. Every one gets a visible "AI-generated" caption.
@@ -304,7 +304,7 @@ See the **Output Format Template (Step 8)** in `actions/ai-report-reference.md` 
 - **Output goes to `ai-reports/<report-slug>/` in the project root** — never `do-work/deliverables/` (that's the present-work explainer's home), never `do-work/working/`, never a custom path.
 - **Self-contained folder.** `index.html` plus `screenshots/` (and `generated/`) referenced by relative `src` — move/copy the whole folder together. Tailwind and Mermaid load from a CDN; without network, styling is degraded and Mermaid diagrams won't render.
 - **Bowser is optional — the render-judge pass is not, when bowser is present.** If `playwright-cli` (or equivalent browser automation) is missing, fall back to SVG + Mermaid diagrams and ship with the "not render-verified" footer note — don't error, don't block, don't prompt to install. But when it IS available, Step 7's full-page light+dark screenshot review is mandatory, over HTTP, never `file://`.
-- **Image generation is optional and opportunistic.** Probe with `command -v`; if no image-gen CLI is found, use SVG/Mermaid for every section. Never prompt to install one, and never reference a generated path that wasn't verified non-empty.
+- **Image generation is optional and opportunistic.** Probe with `command -v`; if no image-gen CLI is found, use SVG/Mermaid for every section. Never prompt to install one, and never reference a generated path whose current helper invocation did not return success.
 - **No live screenshot if the dev server isn't running** — note the absence in the hero section and use the diagram fallback. Don't fabricate a "before" state from imagination.
 - **Anti-slop principles are loaded inline** (Step 1), not via a separate slop-check pass.
 - **Folder name uses the `yyyy-mm-dd_hhmm_` prefix** so reports sort chronologically — never just the UR/REQ ID.
@@ -364,7 +364,7 @@ See the **Output Format Template (Step 8)** in `actions/ai-report-reference.md` 
 - [ ] Anti-slop principles loaded (Step 1) and Step 6 self-check table completed (all ten rows — every anti-slop principle plus the two image checks) with no unresolved FLAGs.
 - [ ] All screenshots/user-supplied images saved in `screenshots/` and referenced via relative `src` — no `src="data:image/...;base64,..."` in the HTML; every linked image resolves on disk.
 - [ ] Each screenshot is click-to-open-full-res — wrapped in an anchor to its full-res file — and the overlay SVG (`pointer-events:none`) does not block the click.
-- [ ] AI-generated images (if any) saved in `ai-reports/<report-slug>/generated/` and referenced by relative path — every generated image is verified non-empty, disclosed with an "AI-generated" caption, and no `<img>` points at a missing file.
+- [ ] AI-generated images (if any) saved in `ai-reports/<report-slug>/generated/` and referenced by relative path — every generated image's helper returned zero this invocation, the file is non-empty, it is disclosed with an "AI-generated" caption, and no `<img>` points at a missing or stale file.
 - [ ] When no image-gen CLI is available (or a generation produced no file), the section falls back to SVG/Mermaid cleanly — no broken images.
 - [ ] Diagrams (and generated-image prompts) derived from actual REQ/code content, not generic placeholders.
 - [ ] Hero section leads with the conclusion (feature name + one-sentence verdict).
