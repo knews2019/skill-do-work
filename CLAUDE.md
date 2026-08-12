@@ -68,7 +68,7 @@ For action routing, read the `SKILL.md` in the owning directory under `skills/`.
 READ the matching prime before changing that area — they hold the detail this file no longer repeats:
 
 - `_dev/primes/prime-action-files.md` — adding or modifying any action file: the template, earned sections, accepted variants, cross-referencing, descriptions-as-triggers.
-- `_dev/primes/prime-shell-commands.md` — writing or reviewing shell blocks prescribed inside actions: the hard-won trap list, plus Closed Enumerations Go Stale.
+- `_dev/primes/prime-shell-commands.md` — writing or reviewing shell anywhere it ships: blocks prescribed inside actions, hooks, and tools. The hard-won trap list, plus Closed Enumerations Go Stale.
 - `_dev/primes/prime-kanban-board.md` — touching the Kanban board tool: versioning, parser lock-step, Go-toolchain fallback, build outputs.
 
 ## Kanban Board Write Surfaces
