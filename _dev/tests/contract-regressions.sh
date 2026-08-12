@@ -1901,7 +1901,7 @@ assert_contains \
   'The installed suite transaction must construct an explicit managed module plan; behavioral probes verify the project knowledge base is outside it.'
 
 # Shipped files must not cite the skill's own CLAUDE.md/AGENTS.md — those files are absent
-# downstream, so a citation dangles. The full rule lives in CLAUDE.md → Action File Conventions.
+# downstream, so a citation dangles. The full rule lives in _dev/primes/prime-action-files.md → Cross-Referencing.
 #
 # The check is INVERTED on purpose: it flags ANY mention of CLAUDE.md/AGENTS.md in a shipped
 # path, and exempts a short per-file allowlist. It used to enumerate citation idioms
@@ -2112,7 +2112,7 @@ fi
 # table at all), most filled with generic engineering
 # advice a capable model already follows. This check catches regrowth in Common
 # Rationalizations specifically: a table whose rows carry no do-work-specific noun is
-# exactly that generic filler (see CLAUDE.md → Action File Conventions for the full
+# exactly that generic filler (see _dev/primes/prime-action-files.md for the full
 # omission test). Scoped to files added after REQ-027 — the baseline below grandfathers
 # the existing tree (as of REQ-027) so this check lands green without a mass rewrite in
 # the same commit; REQ-025/028/029/030/031 clean up the backlog under the new rule.
@@ -2162,7 +2162,7 @@ for action_file_path in "$repo_root"/skills/do-work*/actions/*.md; do
   fi
   if ! grep -qE "$rationalization_noun_pattern_case_sensitive" <<<"$rationalization_rows" \
      && ! grep -qiE "$rationalization_noun_pattern_case_insensitive" <<<"$rationalization_rows"; then
-    printf 'FAIL: %s Common Rationalizations table has no do-work-specific noun (REQ, UR, queue, frontmatter, pipeline, archive, domain, blocked, kb/, prime, clarify, working/, crew-member, schema, status, working memory, daily log, ledger, bootstrap, stop hook — illustrative list) in any row — every row reads as generic engineering advice a capable model already follows. Add rows naming a specific do-work failure mode, or omit the section entirely (see CLAUDE.md -> Action File Conventions for the omission test).\n' \
+    printf 'FAIL: %s Common Rationalizations table has no do-work-specific noun (REQ, UR, queue, frontmatter, pipeline, archive, domain, blocked, kb/, prime, clarify, working/, crew-member, schema, status, working memory, daily log, ledger, bootstrap, stop hook — illustrative list) in any row — every row reads as generic engineering advice a capable model already follows. Add rows naming a specific do-work failure mode, or omit the section entirely (see _dev/primes/prime-action-files.md for the omission test).\n' \
       "$action_file_name" >&2
     fail_count=$((fail_count + 1))
   fi

@@ -40,7 +40,7 @@
 # depth (the same trap as `diff -x`), and update/install always pull a fresh
 # main-branch tarball, which honors export-ignore. Stale copies in existing installs
 # are deleted by the update flow (actions/version.md Step 5) instead. Shipped files
-# must never cite these two files — see CLAUDE.md → Action File Conventions.
+# must never cite these two files — see _dev/primes/prime-action-files.md → Cross-Referencing.
 /do-work         export-ignore
 /kb              export-ignore
 /CHANGELOG-20*.md export-ignore
