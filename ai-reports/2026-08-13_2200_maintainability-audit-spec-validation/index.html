@@ -198,6 +198,28 @@ What needed fixing before implementation: nine repo-fact corrections and seven d
 </table></div>
 <p class="note">Version bump + changelog entry belong to the integrating commit per the maintainer ritual, not to these REQs. The two capture-adopted defaults (lock-in limit enforcement model; <code>audit codebase</code> trigger takeover) are marked revisitable in REQ-176's Open Questions.</p>
 
+<h2>6 · Overlap: maintainability-audit vs code-review vs quick-wins</h2>
+
+<p><b>Verdict: code-review is not superseded — keep it. quick-wins is the retirement candidate: roughly three-quarters of its detection surface is subsumed by the audit + audit-metrics tool, but retire it on evidence, not prediction — run one real audit, diff the outputs, then delete.</b></p>
+
+<div class="scroll"><table>
+<tr><th>Capability</th><th>maintainability-audit (REQ-176/178)</th><th>code-review</th><th>quick-wins</th></tr>
+<tr><td>Measured metrics, calibrated bands, distributions</td><td>Core (mechanical, via audit-metrics)</td><td>—</td><td>Eyeballed thresholds only (~50-line functions, ~300-line files)</td></tr>
+<tr><td>Churn / hotspot scoping</td><td>Core</td><td>—</td><td>Change-frequency as a ranking tie-break</td></tr>
+<tr><td>Impact formula (churn × complexity × blast radius)</td><td>Formalized, with shown inputs</td><td>—</td><td>Same three inputs, informal (its own words incl. "blast radius")</td></tr>
+<tr><td>Effort/impact ranking of findings</td><td>Score field</td><td>—</td><td>Step 5's whole purpose</td></tr>
+<tr><td>Naming · abstraction · consistency · test-quality judgment</td><td>Hotspot-scoped (Phase 2)</td><td>Scope-wide, deep, sub-agent per dimension</td><td>Shallow pattern table</td></tr>
+<tr><td><b>Security</b> review</td><td>—</td><td>Full dimension</td><td>Thin smell scan that itself defers to code-review ("not a full audit")</td></tr>
+<tr><td><b>Performance</b> review</td><td>—</td><td>Full dimension</td><td>Two micro-patterns (sequential async I/O, unbounded loading)</td></tr>
+<tr><td>Low-hanging test suggestions</td><td>Test-quality dimension covers the gap-detection half</td><td>Test Coverage dimension</td><td>Step 4 — its most distinctive remainder</td></tr>
+<tr><td>Persistent report, cross-run deltas, lock-in limits, waivers</td><td>Core (<code>do-work/audits/</code>)</td><td>Run dir deleted after consumption</td><td>Prints, persists nothing</td></tr>
+<tr><td>Ceremony</td><td>Interactive calibration gate, multi-phase</td><td>Multi-agent fan-out, durable run dir</td><td>Single pass, zero conversation — its main virtue</td></tr>
+</table></div>
+
+<p><b>code-review — keep.</b> It does two whole jobs the audit deliberately doesn't: Security and Performance, reviewed deeply per sub-agent. It is one-shot and qualitative where the audit is longitudinal and measured — different questions ("is this code good?" vs "is this repo getting better?"). The overlap in the four shared judgment dimensions is bounded by scope: the audit only judges hotspots + public surface; code-review reads its whole target. Action needed is only the boundary hygiene already in REQ-176: the <code>audit codebase</code> trigger moves, and both When-to-Use sections name each other.</p>
+
+<p><b>quick-wins — retirement candidate, pending evidence.</b> Subsumed by the audit: every wc-measurable pattern in its table (long functions, god files, duplication via jscpd, dead code as zero-blast-radius findings), its impact formula, its effort/impact ranking (the audit's Score + WATCH appendix are the "quick wins list" with better evidence), and its convention-respect rules. Not subsumed: low-hanging <i>test suggestions</i> (fold into the audit's test-quality dimension or accept the loss), the security smell scan (already just a pointer at code-review), and its zero-ceremony speed — though REQ-178's <code>audit-metrics</code> run with default bands reproduces the mechanical scan in one command, no calibration conversation needed. <b>Recommended path:</b> after REQ-176/178 land, run the audit once on this repo, diff its findings + WATCH appendix against a quick-wins run; if nothing material is unique, capture a retirement REQ (delete quick-wins.md, redirect its SKILL.md triggers, fold the test-suggestion bullet into the audit) — delete-before-add applied with a receipt. Keeping all three permanently is the one wrong answer: two actions producing the same findings list under different names is exactly the consistency defect the audit exists to flag.</p>
+
 <p class="meta">Verification evidence: 8 agent reports in the session scratchpad; key spot-checks re-run by hand (routing tables, capture schema, decisions/audits/, .gitattributes). Sole side effect of validation: <code>git fetch --unshallow</code> (git objects only, working tree untouched).</p>
 
 </main>

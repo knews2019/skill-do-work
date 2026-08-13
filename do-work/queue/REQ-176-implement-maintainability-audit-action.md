@@ -86,7 +86,7 @@ Certainty: Firm on requirements 1–17 (validated + user-decided); Exploratory o
 ## Red-Green Proof
 **RED prompt/case:** `grep -n 'maintainability-audit' skills/do-work-toolbox/SKILL.md` returns nothing; `skills/do-work-toolbox/actions/maintainability-audit.md` does not exist.
 **Why RED now:** The capability exists only as a validated draft in UR-040; no action, routing, or help entry ships it.
-**GREEN when:** The action + reference files exist and encode requirements 1–21; SKILL.md routes `maintainability-audit` (and `audit codebase`); help lists it; `bash _dev/tests/contract-regressions.sh` and `bash _dev/tests/shipped-package-reference-contract.sh` exit 0.
+**GREEN when:** The action + reference files exist and encode requirements 1–22 — explicitly including requirement 22's tool integration (the measurement steps invoke `audit-metrics`, with the manual fallback in the reference); SKILL.md routes `maintainability-audit` (and `audit codebase`); help lists it; `bash _dev/tests/contract-regressions.sh` and `bash _dev/tests/shipped-package-reference-contract.sh` exit 0.
 **Validation:** Inferred during capture (user pre-authorized capture; decisions recorded above).
 
 ## Full Context

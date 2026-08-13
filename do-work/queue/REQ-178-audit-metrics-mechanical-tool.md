@@ -31,11 +31,11 @@ MVP scope — what wc/find/git can answer robustly; CCN and duplication stay wit
 1. **Inventory:** tracked-file counts and line/word totals by extension, honoring an exclude list (flag or config; defaults per REQ-176 requirement 14).
 2. **Distributions:** per metric — file lines, file words, folder file-counts — median / p90 / p95 / max, plus top-N largest offenders.
 3. **Band flags:** apply WATCH/FLAG thresholds passed as flags; output the flagged folders and files mechanically (path, value, band). Bands are inputs, never hardcoded — calibration happens in the action's conversation.
-4. **Churn:** `git log --since=<window> --name-only` aggregation with: shallow-clone detection (report it, never silently truncate), exclude patterns for release-ceremony files, and current-path filtering so dead pre-rename paths don't rank. Top-N output.
+4. **Churn:** `git log --since=<window>` aggregation with: shallow-clone detection (report it, never silently truncate), exclude patterns for release-ceremony files, and **rename normalization before any current-path filter** — detect renames (e.g. `git log -M --name-status`, or per-file `--follow`) and attribute pre-rename touches to the file's current path, so the 2026-08-08 skills/ restructure's history counts toward the live files instead of being discarded with the dead paths; only paths deleted outright are dropped. Top-N output.
 5. **Hotspot join:** churn × size (size as the MVP complexity proxy), top-N.
 6. **Output:** markdown tables suitable for pasting directly into the audit report; machine-readable TSV behind a flag if trivially cheap, else skip (YAGNI).
 7. **Pattern match with queue-kanban:** vendored source, built on demand (`go build` then run), invoked by the action as an accelerator with the manual-fallback contract — if `go` is absent or the build fails, the action falls back to the manual commands in its reference file; the tool is never a dependency.
-8. Go tests pin the contract: distribution math on a fixed fixture, band flagging edges (value == threshold is not flagged; > is), shallow-detection reporting, exclude-list honoring. Focused lock-in tests, not smoke slop.
+8. Go tests pin the contract: distribution math on a fixed fixture, band flagging edges (value == threshold is not flagged; > is), shallow-detection reporting, exclude-list honoring, and rename attribution (pre-rename touches count toward the current path, not a dead one). Focused lock-in tests, not smoke slop.
 
 ## Constraints
 
