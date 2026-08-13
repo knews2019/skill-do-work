@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maintainability-Audit Spec — Validation Report</title>
+<style>
+  :root {
+    --bg: #faf9f6; --panel: #ffffff; --ink: #1f2328; --muted: #59636e;
+    --line: #d8dee4; --accent: #0969da; --ok: #1a7f37; --warn: #9a6700; --bad: #cf222e;
+    --chip-ok: #dafbe1; --chip-warn: #fff8c5; --chip-bad: #ffebe9; --chip-info: #ddf4ff;
+    --code-bg: #f0f1f3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101418; --panel: #171c22; --ink: #e6edf3; --muted: #9198a1;
+      --line: #2f3742; --accent: #58a6ff; --ok: #3fb950; --warn: #d29922; --bad: #f85149;
+      --chip-ok: #12351c; --chip-warn: #3a2d00; --chip-bad: #4a1519; --chip-info: #0c2d4d;
+      --code-bg: #1f262e;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+    font: 16px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  main { max-width: 60rem; margin: 0 auto; padding: 2.5rem 1.25rem 5rem; }
+  h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 .4rem; }
+  h2 { font-size: 1.25rem; margin: 2.6rem 0 .8rem; border-bottom: 1px solid var(--line); padding-bottom: .35rem; }
+  h3 { font-size: 1.02rem; margin: 0 0 .35rem; }
+  p { margin: .5rem 0; }
+  .meta { color: var(--muted); font-size: .88rem; margin-bottom: 1.4rem; }
+  .meta code { font-size: .85rem; }
+  code { background: var(--code-bg); border-radius: 4px; padding: .1em .35em;
+    font: .88em ui-monospace, "SF Mono", Menlo, Consolas, monospace; overflow-wrap: anywhere; }
+  pre { background: var(--code-bg); border-radius: 8px; padding: .8rem 1rem; overflow-x: auto; }
+  pre code { background: none; padding: 0; }
+  .lead { font-size: 1.05rem; }
+  .strip { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1.1rem 0 0; }
+  .chip { border-radius: 999px; padding: .22rem .75rem; font-size: .82rem; font-weight: 600; }
+  .c-ok { background: var(--chip-ok); color: var(--ok); }
+  .c-warn { background: var(--chip-warn); color: var(--warn); }
+  .c-bad { background: var(--chip-bad); color: var(--bad); }
+  .c-info { background: var(--chip-info); color: var(--accent); }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 1rem 1.15rem; margin: .8rem 0; }
+  .card .tag { float: right; margin-left: .8rem; }
+  .field { margin: .45rem 0; }
+  .field b.lab { display: inline-block; min-width: 6.2rem; color: var(--muted);
+    font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
+  ul { margin: .5rem 0 .5rem 1.2rem; padding: 0; }
+  li { margin: .3rem 0; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { border: 1px solid var(--line); padding: .45rem .6rem; text-align: left; vertical-align: top; }
+  th { background: var(--code-bg); }
+  .scroll { overflow-x: auto; }
+  .decided { border-left: 4px solid var(--ok); }
+  .open { border-left: 4px solid var(--warn); }
+  .note { color: var(--muted); font-size: .9rem; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Maintainability-Audit Spec — Validation Report</h1>
+<p class="meta">
+  2026-08-13 · validated against commit <code>b1fad27</code> (clean tree) ·
+  method: <code>do-work-toolbox validate-feedback</code> — 8 read-only verification agents, every claim
+  adversarially checked against files, git history (unshallowed to the full 1,153 commits), and the decision store.
+</p>
+
+<p class="lead"><b>Verdict: the spec is worth implementing.</b> Its pipeline vocabulary is real — <code>gate</code> tokens,
+<code>sweep_key</code>, <code>## Instances</code>, Surface-cost, P1–P3 all check out against shipped files, and its
+VERIFIED/INFERRED evidence discipline was already used by this repo's own 2026-07-15 harness-bloat audit.
+No existing action covers the metrics-plus-calibration-plus-delta core, so it is a genuinely new capability.
+What needs fixing before implementation: nine repo-fact corrections, seven design seams, and two decisions still open below.</p>
+
+<div class="strip">
+  <span class="chip c-ok">Confirmed: 8 claim clusters</span>
+  <span class="chip c-bad">Corrections: 9</span>
+  <span class="chip c-warn">Design seams: 7</span>
+  <span class="chip c-info">Decided: 2 · Open: 2</span>
+</div>
+
+<h2>1 · What the spec gets right</h2>
+<ul>
+  <li><b>The validator contract is real.</b> <code>validate-feedback.md</code> adversarially refutes-first (line 67), loads the prompt-injection guardrail on the pasted body (line 38), and its capture handoff preserves verbatim claim, severity, evidence, and Surface-cost (line 114).</li>
+  <li><b><code>gate: user-visible | rule-change | trivial</code> is the repo's own vocabulary</b> — review-work.md's mandatory disposition token (lines 341, 347–355), which also stamps <code>effort_estimate</code>.</li>
+  <li><b><code>sweep_key</code> + <code>## Instances</code> checklists are the repo's sweep-REQ shape</b> (capture-reference.md:108, review-work.md:350).</li>
+  <li><b>P1/P2/P3 is an accepted severity form</b> (validate-feedback.md:20, 46) and <b>VERIFIED/INFERRED labels are precedented</b> — the 2026-07-15 audit used the identical legend.</li>
+  <li><b>The markdown-heavy premise holds:</b> 459 md files ≈ 66% of text lines; Go 13.6%, shell 12.5%, Python zero.</li>
+  <li><b>FINDINGS_MAX=12 does not fight the validator</b> — it caps what gets pasted; one class = one verdict matches Step 5 exactly.</li>
+  <li><b>The interactive Checkpoint is expressible on the agent floor</b> — it is exactly the gate <code>clear-questions.md</code> already generalizes.</li>
+  <li><b>Genuinely new capability.</b> Closest neighbor is code-review.md (4/5 judgment dimensions, same evidence discipline) but it has no metrics substrate, no calibration, no persisted report, no deltas. quick-wins.md already eyeballs the same impact formula (churn × complexity × blast radius — its own words).</li>
+</ul>
+
+<h2>2 · Corrections — where the spec misstates the repo</h2>
+
+<div class="card"><span class="chip c-bad tag">P1</span>
+<h3>C1 · Churn is broken out-of-the-box: shallow clones, ceremony files, renames</h3>
+<div class="field"><b class="lab">Reality</b> Remote sessions clone shallow — <code>git log --since="12 months ago"</code> saw 74 commits / 3 days here. <code>git fetch --unshallow</code> works (full history: 1,153 commits back to 2026-01-27, matching CHANGELOG 0.1.0 exactly). Even with full history, release-ceremony files are ranks 1–2 (CHANGELOG.md 611 touches, actions/version.md 563 — 24% of all file-touches), and the 2026-08-08 <code>skills/</code> restructure splits counts across dead paths (<code>actions/work.md</code> 209 vs <code>skills/do-work/actions/work.md</code> 8; <code>--follow</code> recovers 214).</div>
+<div class="field"><b class="lab">Proposal</b> Phase 0 gains a history-health check: detect shallowness (deepen or mark churn NOT-MEASURED), exclude ceremony files named by the project's commit ritual, normalize renames. Cross-check hotspots against the do-work record: 114/172 archived REQs carry <code>write_set:</code> — rename-immune, shallow-proof churn at unit-of-work granularity.</div></div>
+
+<div class="card"><span class="chip c-bad tag">P2</span>
+<h3>C2 · Wrong command name for the validator</h3>
+<div class="field"><b class="lab">Reality</b> The spec says <code>do-work validate-feedback</code>; the action routes as <code>do-work-toolbox validate-feedback</code> (do-work-toolbox SKILL.md:16).</div>
+<div class="field"><b class="lab">Proposal</b> Fix all three occurrences.</div></div>
+
+<div class="card"><span class="chip c-bad tag">P2</span>
+<h3>C3 · Naming dimension restates a rule whose canonical home forbids restatement</h3>
+<div class="field"><b class="lab">Reality</b> coding-guardrails.md §5 declares itself the canonical copy ("other files point here"); CLAUDE.md's naming section is deliberately a pointer "so the two can't drift." The spec's inline restatement has already drifted: it adds "endpoints," drops the conventional-vocabulary prong of the short-locals test, and — worst — <b>omits the single-word-by-design exemption</b>, the exact clause §5 ends with "don't let a conventions review flag them" (it protects <code>do-work run</code> and the Go tool's subcommands).</div>
+<div class="field"><b class="lab">Proposal</b> The action's naming dimension becomes a pointer to §5. The one genuine addition — names should match the project's own vocabulary (URs, primes, REQ titles) — stays, framed as audit-specific, additive.</div></div>
+
+<div class="card"><span class="chip c-bad tag">P2</span>
+<h3>C4 · <code>effort_estimate: large</code> is not in the schema; Score divides by a word</h3>
+<div class="field"><b class="lab">Reality</b> The repo enum is <code>trivial | normal</code> (capture-reference.md:24); review-work stamps only those. <code>Score = impact / effort</code> gives no numeric mapping for the enum, so two runs would rank differently.</div>
+<div class="field"><b class="lab">Proposal</b> Keep the two-value enum; rank by impact with effort as tie-break (drop the division), or define the mapping explicitly (trivial=1, normal=2) inside the action.</div></div>
+
+<div class="card"><span class="chip c-bad tag">P2</span>
+<h3>C5 · Severity formula double-matches and leaves gaps</h3>
+<div class="field"><b class="lab">Reality</b> "P1 (user-visible or impact ≥ 4) / P2 (impact 3, or rule-change) / P3 (trivial)": gate=trivial with impact 5 satisfies P1 and P3; impact 1–2 with no gate has no band; "trivial" is ambiguous between the gate token and effort_estimate — fields the pipeline maps between explicitly.</div>
+<div class="field"><b class="lab">Proposal</b> Severity from impact alone (its own doctrine, line 24); gate stays a separate routing field: impact ≥4 → P1, 3 → P2, ≤2 → P3.</div></div>
+
+<div class="card"><span class="chip c-bad tag">P3</span>
+<h3>C6 · Surface-cost rubric names the wrong fields</h3>
+<div class="field"><b class="lab">Reality</b> "incident / replay / cost call / test" mirrors validate-feedback's Step 4.5 enumeration, not §2's actual rubric — and both name an element the spec drops: <b>the surface that will remain</b>.</div>
+<div class="field"><b class="lab">Proposal</b> Align to §2's names and add the remaining-surface element to the pre-classification.</div></div>
+
+<div class="card"><span class="chip c-bad tag">P3</span>
+<h3>C7 · do-work record vocabulary is off in four places</h3>
+<div class="field"><b class="lab">Reality</b> The Lessons heading is <code>## Lessons Learned</code> (145 hits; bare "## Lessons": 0). "REQ Scope" appears nowhere — the greppables are frontmatter <code>write_set:</code> (114/172 archived REQs) and body <code>## Scope</code> / "Files I will touch" (100/172), with legacy REQs lacking both. "PRDs" is not a repo artifact (one hit repo-wide, as a word the user might say in capture.md:51). And <code>queue/</code> does not exist when the queue is empty.</div>
+<div class="field"><b class="lab">Proposal</b> Use the exact names; state the coverage caveat when counting REQ touches (the 2026-08-05 census lesson: an incomplete baseline "actively misdirects"); say "URs are the requirements history" instead of PRDs; treat a missing queue/ as empty.</div></div>
+
+<div class="card"><span class="chip c-bad tag">P3</span>
+<h3>C8 · Toolchain reality: the "Always" trio is entirely absent here</h3>
+<div class="field"><b class="lab">Reality</b> scc, lizard, jscpd, shellcheck, gocyclo, cloc, radon: none installed. Present: go 1.24.7, ruff 0.15.8 (moot — zero Python). Fallbacks exist only for scc; lizard/jscpd have none, and "brew/apt where unavoidable" contradicts the spec's own user-local rule.</div>
+<div class="field"><b class="lab">Proposal</b> Keep the honest NOT-MEASURED path; add wc/grep-approximation fallbacks where they exist (duplication has none — say so); drop brew/apt from the default install plan.</div></div>
+
+<div class="card"><span class="chip c-bad tag">P3</span>
+<h3>C9 · Default EXCLUDE misses what actually dominates a do-work repo</h3>
+<div class="field"><b class="lab">Reality</b> "vendored, generated, migrations, lockfiles, .git" excludes none of: the do-work record (172 archived REQs), kb/, ai-reports/, changelog archives. Measured: FLAG&gt;600 lines catches 8 md files — 6 are changelog-family or archive, only 3 live instruction files. Bands vs measured: md median 101 / p95 448 / max 2090, so the 600 floor stands per the spec's own max(floor, p95) rule; by words a 4,000 budget catches the live heavyweights (review-work.md 6,738 w, bkb.md 6,706 w, work-reference.md 19,372 w).</div>
+<div class="field"><b class="lab">Proposal</b> The do-work-aware default EXCLUDE adds: the do-work record, knowledge stores, report outputs, changelog archives. Confirmed at the calibration gate like everything else.</div></div>
+
+<h2>3 · Design seams — proposals</h2>
+
+<div class="card"><span class="chip c-warn tag">seam</span>
+<h3>S1 · Rule 8 has no first-run branch, and "Read-only in the repo" mislabels itself</h3>
+<p>The audits directory does not exist yet, so "read the most recent report first" cannot be satisfied on run one; the repeat-run path is the special case that got specified. And the rule's headline contradicts its own carve-out (writes inside the report directory). <b>Proposal:</b> "First run: no baseline — say so in the header, skip deltas, create the directory. Writes only under <code>do-work/audits/</code>; nothing else in the tree."</p></div>
+
+<div class="card"><span class="chip c-warn tag">seam</span>
+<h3>S2 · "Checkpoint" and "operator" collide with pipeline vocabulary</h3>
+<p><code>do-work/CHECKPOINT.md</code> is an existing crash-recovery artifact — that capitalized noun is taken in a do-work repo. "Operator" is not glossary vocabulary. <b>Proposal:</b> call the gate the <b>calibration gate</b>; the person is the <b>user</b>.</p></div>
+
+<div class="card"><span class="chip c-warn tag">seam</span>
+<h3>S3 · Instances pinned to <code>path:line</code> collide with a recorded lesson</h3>
+<p>The 2026-08-05 census recorded that a path:line evidence table over an active repo "started lying within hours," and the 2026-08-11 audit's lesson is "paths, not line numbers, are the durable coordinates." The spec partially pre-empts this (SHA-anchored header, instances "independently greppable"). <b>Proposal:</b> make the grep pattern the primary coordinate — <code>path — greppable pattern</code>, line number optional annotation valid only at the audited SHA.</p></div>
+
+<div class="card"><span class="chip c-warn tag">seam</span>
+<h3>S4 · Missing action-file apparatus</h3>
+<p>To ship it needs: the description blockquote, trigger-style description, When to Use (positioned against code-review / quick-wins / forensics), an Input contract, crew loads (<code>clear-questions.md</code> before the calibration gate, <code>anti-slop.md</code> before the report, <code>prompt-injection.md</code> before reading archived Lessons prose — the forensics precedent), SKILL.md routing + help entry, and the router word-budget lock-in limit honored (2,650). At 2,350 words before any of that, the established shape is <b>action + reference companion</b> (seven such pairs exist; nearest analog: deep-explore).</p></div>
+
+<div class="card"><span class="chip c-warn tag">seam</span>
+<h3>S5 · "Loop usage (for the operator, not the agent)" has no home in an action file</h3>
+<p>A floor agent reads everything as instructions; a section addressed to a different reader is a misfire. <b>Proposal:</b> loop steps 2–4 become the report's output footer (the validate-feedback handoff pattern); the full loop narrative goes to a <code>docs/</code> guide, the established home.</p></div>
+
+<div class="card"><span class="chip c-warn tag">seam</span>
+<h3>S6 · The three-question budget vs the approval flow</h3>
+<p>The calibration gate needs approvals on installs, bands, and scope <i>plus</i> up to three domain questions, and never says whether approvals count against the budget. <b>Proposal:</b> one bundled approval (installs + bands + scope as a single proposal the user edits) plus at most three domain questions.</p></div>
+
+<div class="card"><span class="chip c-warn tag">seam</span>
+<h3>S7 · Sweep markers won't survive capture</h3>
+<p>The audit emits root-cause classes shaped like sweep REQs, but <code>sweep: true</code>/<code>sweep_key</code> are review-flow-only markers capture never writes. <b>Proposal (YAGNI):</b> no schema change — <code>sweep_key</code> travels in the captured REQ body as provenance; cross-run dedupe is what waivers and the delta table are for.</p></div>
+
+<h2>4 · Decisions</h2>
+
+<div class="card decided">
+<h3>Decided: reports live in <code>do-work/audits/</code></h3>
+<p>Your call. Consequences folded into the plan: the audit's write surface becomes <code>do-work/audits/</code> (reports + <code>waivers.md</code>); it sits inside the already export-ignored do-work record in this repo, so nothing ships to consumers; capture's first-run bootstrap is untouched (the audit creates the directory itself); the EXCLUDE list must exclude it from its own metrics.</p></div>
+
+<div class="card decided">
+<h3>Decided: prime coverage is a judgment finding, not a machine-enforced lock-in limit</h3>
+<p>Missing-prime findings stay a judged Phase-2 dimension with REQ-touch counts as impact evidence. No structured scope field is added to primes. This uses the spec's own escape hatch (a limit "if none is possible, one sentence why") and avoids new prime-format surface.</p></div>
+
+<div class="card open">
+<h3>Open: lock-in limit enforcement — what a lock-in limit is (the draft spec's "ratchet")</h3>
+<p>A <b>band</b> says what <i>good</i> looks like (FLAG &gt; 600 lines) — aspirational, so a repo that's already worse fails day one and the check gets ignored. A <b>lock-in limit</b> is pinned at today's <i>worst observed</i> value instead: worst folder today is 46 files → the check says "no folder over 46." It passes immediately, blocks any regression, and when a fix brings the max to 30, the pin moves to 30 — improvement gets locked in one notch at a time. The repo already does this, under the glossary name <b>lock-in test</b>: the 2,650-word router budget (contract-regressions.sh:1145 — a pinned ceiling raised only with a decisions/ note) and the zero-hit phrase sentinels of defensive-surface-audit.sh. Two days ago (13f22c9) a broad registry-style check of that kind was deliberately narrowed to incident-anchored sentinels — the repo's taste is minimal, earned enforcement.</p>
+<p><b>Recommended:</b> the report only <i>proposes</i> each lock-in limit (with its red case); accepted ones flow through triage → capture and land as lock-in tests in <code>_dev/tests/</code> (or the user repo's CI). Alternatives: the audit self-checks stored limit values each run (no test-suite coupling, but enforcement only when the audit runs), or drop lock-in limits from v1 and rely on the delta table.</p></div>
+
+<div class="card open">
+<h3>Open: packaging and the <code>audit codebase</code> trigger</h3>
+<p><b>Recommended:</b> new action <code>skills/do-work-toolbox/actions/maintainability-audit.md</code> + reference companion + docs guide; the trigger phrase <code>audit codebase</code> (currently on code-review, SKILL.md:17) moves to it as the better semantic match, code-review keeps <code>code-review</code> / <code>review codebase</code>. Alternatives: leave the trigger alone; or extend code-review with a metrics mode instead of a new action (one fewer file, much heavier).</p></div>
+
+<h2>5 · Proposed capture</h2>
+<p>One UR (this validated spec, verbatim, plus the triage) producing:</p>
+<div class="scroll"><table>
+<tr><th>REQ</th><th>What</th><th>Write set</th></tr>
+<tr><td><b>REQ-A</b></td><td>Author the maintainability-audit action + reference companion embedding every correction (C1–C9) and seam resolution (S1–S7) above, with the two open decisions resolved per your answers; route it in SKILL.md + help within the router budget.</td><td><code>skills/do-work-toolbox/actions/maintainability-audit.md</code>, <code>…/maintainability-audit-reference.md</code>, <code>…/SKILL.md</code>, <code>…/actions/help.md</code></td></tr>
+<tr><td><b>REQ-B</b></td><td>User-facing loop guide (the operator-loop content, relocated): run → triage → capture → work → re-run.</td><td><code>skills/do-work-toolbox/docs/maintainability-audit-guide.md</code></td></tr>
+</table></div>
+<p class="note">Version bump + changelog entry belong to the integrating commit per the maintainer ritual, not to these REQs.</p>
+
+<p class="meta">Verification evidence: 8 agent reports in the session scratchpad; key spot-checks re-run by hand (routing tables, capture schema, decisions/audits/, .gitattributes). Sole side effect of validation: <code>git fetch --unshallow</code> (git objects only, working tree untouched).</p>
+
+</main>
+</body>
+</html>
