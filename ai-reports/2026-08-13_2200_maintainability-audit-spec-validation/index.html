@@ -71,13 +71,13 @@
 <code>sweep_key</code>, <code>## Instances</code>, Surface-cost, P1–P3 all check out against shipped files, and its
 VERIFIED/INFERRED evidence discipline was already used by this repo's own 2026-07-15 harness-bloat audit.
 No existing action covers the metrics-plus-calibration-plus-delta core, so it is a genuinely new capability.
-What needs fixing before implementation: nine repo-fact corrections, seven design seams, and two decisions still open below.</p>
+What needed fixing before implementation: nine repo-fact corrections and seven design seams, all encoded into the captured REQs below; all four decisions are resolved (two by the user, two adopted as defaults at capture and marked revisitable).</p>
 
 <div class="strip">
   <span class="chip c-ok">Confirmed: 8 claim clusters</span>
   <span class="chip c-bad">Corrections: 9</span>
   <span class="chip c-warn">Design seams: 7</span>
-  <span class="chip c-info">Decided: 2 · Open: 2</span>
+  <span class="chip c-info">Decided: 4 · Captured: UR-040 → REQ-176/177/178</span>
 </div>
 
 <h2>1 · What the spec gets right</h2>
@@ -179,23 +179,24 @@ What needs fixing before implementation: nine repo-fact corrections, seven desig
 <h3>Decided: prime coverage is a judgment finding, not a machine-enforced lock-in limit</h3>
 <p>Missing-prime findings stay a judged Phase-2 dimension with REQ-touch counts as impact evidence. No structured scope field is added to primes. This uses the spec's own escape hatch (a limit "if none is possible, one sentence why") and avoids new prime-format surface.</p></div>
 
-<div class="card open">
-<h3>Open: lock-in limit enforcement — what a lock-in limit is (the draft spec's "ratchet")</h3>
+<div class="card decided">
+<h3>Decided at capture (default adopted, revisitable): lock-in limit enforcement — what a lock-in limit is (the draft spec's "ratchet")</h3>
 <p>A <b>band</b> says what <i>good</i> looks like (FLAG &gt; 600 lines) — aspirational, so a repo that's already worse fails day one and the check gets ignored. A <b>lock-in limit</b> is pinned at today's <i>worst observed</i> value instead: worst folder today is 46 files → the check says "no folder over 46." It passes immediately, blocks any regression, and when a fix brings the max to 30, the pin moves to 30 — improvement gets locked in one notch at a time. The repo already does this, under the glossary name <b>lock-in test</b>: the 2,650-word router budget (contract-regressions.sh:1145 — a pinned ceiling raised only with a decisions/ note) and the zero-hit phrase sentinels of defensive-surface-audit.sh. Two days ago (13f22c9) a broad registry-style check of that kind was deliberately narrowed to incident-anchored sentinels — the repo's taste is minimal, earned enforcement.</p>
 <p><b>Recommended:</b> the report only <i>proposes</i> each lock-in limit (with its red case); accepted ones flow through triage → capture and land as lock-in tests in <code>_dev/tests/</code> (or the user repo's CI). Alternatives: the audit self-checks stored limit values each run (no test-suite coupling, but enforcement only when the audit runs), or drop lock-in limits from v1 and rely on the delta table.</p></div>
 
-<div class="card open">
-<h3>Open: packaging and the <code>audit codebase</code> trigger</h3>
-<p><b>Recommended:</b> new action <code>skills/do-work-toolbox/actions/maintainability-audit.md</code> + reference companion + docs guide; the trigger phrase <code>audit codebase</code> (currently on code-review, SKILL.md:17) moves to it as the better semantic match, code-review keeps <code>code-review</code> / <code>review codebase</code>. Alternatives: leave the trigger alone; or extend code-review with a metrics mode instead of a new action (one fewer file, much heavier).</p></div>
+<div class="card decided">
+<h3>Decided at capture (default adopted, revisitable): packaging and the <code>audit codebase</code> trigger</h3>
+<p><b>Adopted:</b> new action <code>skills/do-work-toolbox/actions/maintainability-audit.md</code> + reference companion + docs guide; the trigger phrase <code>audit codebase</code> (currently on code-review, SKILL.md:17) moves to it as the better semantic match, code-review keeps <code>code-review</code> / <code>review codebase</code>. Alternatives: leave the trigger alone; or extend code-review with a metrics mode instead of a new action (one fewer file, much heavier).</p></div>
 
-<h2>5 · Proposed capture</h2>
-<p>One UR (this validated spec, verbatim, plus the triage) producing:</p>
+<h2>5 · Captured</h2>
+<p>Captured as <b>UR-040</b> (<a href="../../do-work/user-requests/UR-040/input.md"><code>do-work/user-requests/UR-040/input.md</code></a> — the verbatim spec plus session decisions) producing three queued REQs:</p>
 <div class="scroll"><table>
 <tr><th>REQ</th><th>What</th><th>Write set</th></tr>
-<tr><td><b>REQ-A</b></td><td>Author the maintainability-audit action + reference companion embedding every correction (C1–C9) and seam resolution (S1–S7) above, with the two open decisions resolved per your answers; route it in SKILL.md + help within the router budget.</td><td><code>skills/do-work-toolbox/actions/maintainability-audit.md</code>, <code>…/maintainability-audit-reference.md</code>, <code>…/SKILL.md</code>, <code>…/actions/help.md</code></td></tr>
-<tr><td><b>REQ-B</b></td><td>User-facing loop guide (the operator-loop content, relocated): run → triage → capture → work → re-run.</td><td><code>skills/do-work-toolbox/docs/maintainability-audit-guide.md</code></td></tr>
+<tr><td><b><a href="../../do-work/queue/REQ-176-implement-maintainability-audit-action.md">REQ-176</a></b></td><td>Author the maintainability-audit action + reference companion embedding every correction (C1–C9) and seam resolution (S1–S7) above, decisions encoded (do-work/audits/, judgment-only coverage, lock-in limit terminology, proposals-only limits, trigger takeover); measurement steps invoke the audit-metrics tool. Depends on REQ-178.</td><td><code>skills/do-work-toolbox/actions/maintainability-audit.md</code>, <code>…/maintainability-audit-reference.md</code>, <code>…/SKILL.md</code>, <code>…/actions/help.md</code></td></tr>
+<tr><td><b><a href="../../do-work/queue/REQ-177-maintainability-audit-user-loop-guide.md">REQ-177</a></b></td><td>User-facing loop guide (the operator-loop content, relocated): run → triage → capture → work → re-run. Depends on REQ-176.</td><td><code>skills/do-work-toolbox/docs/maintainability-audit-guide.md</code></td></tr>
+<tr><td><b><a href="../../do-work/queue/REQ-178-audit-metrics-mechanical-tool.md">REQ-178</a></b></td><td>MVP <code>audit-metrics</code> Go tool (queue-kanban pattern: vendored, build-on-demand, manual fallback): inventory, distributions (median/p90/p95/max), mechanical WATCH/FLAG band output for folders and files, shallow-aware ceremony-excluded churn, hotspot join. Scripts over LLM calls for everything deterministic — cheaper and more robust.</td><td><code>skills/do-work-toolbox/tools/audit-metrics/</code></td></tr>
 </table></div>
-<p class="note">Version bump + changelog entry belong to the integrating commit per the maintainer ritual, not to these REQs.</p>
+<p class="note">Version bump + changelog entry belong to the integrating commit per the maintainer ritual, not to these REQs. The two capture-adopted defaults (lock-in limit enforcement model; <code>audit codebase</code> trigger takeover) are marked revisitable in REQ-176's Open Questions.</p>
 
 <p class="meta">Verification evidence: 8 agent reports in the session scratchpad; key spot-checks re-run by hand (routing tables, capture schema, decisions/audits/, .gitattributes). Sole side effect of validation: <code>git fetch --unshallow</code> (git objects only, working tree untouched).</p>
 
