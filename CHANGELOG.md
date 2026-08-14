@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.2 — Scope-Drift Check Parses Annotated Headers (2026-08-14)
+
+The Step 5.5 scope-drift check silently skipped any REQ whose touch-list header carried a parenthetical — the exact silent self-disable its own guard exists to prevent. Found live during REQ-178's review.
+
+- `tools/checks/scope-drift.sh` now tolerates trailing annotations before the colon at both match sites: an annotated header parses, or FAILs loudly when nothing parses — never SKIPs; absent Scope still SKIPs (Route A contract preserved)
+- Three lock-in probes pin the contract in the regression suite
+
 ## 0.189.1 — Maintainability-Audit User Guide (2026-08-14)
 
 The new audit shipped without a user-facing walkthrough of its loop. Now the guide exists and the stale trigger attribution is gone.

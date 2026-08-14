@@ -1686,6 +1686,100 @@ assert_file_not_contains \
   'unrelated dirty files get swept into the commit' \
   'actions/work.md must not teach that pre-existing dirty files are swept into the explicit per-REQ commit.'
 
+# Behavioral probes for tools/checks/scope-drift.sh. The Scope header may carry
+# trailing annotations before the colon (REQ-178 wrote "**Files I will touch
+# (all new, …):**"); both match sites — path extraction and the unparseable-header
+# guard — must recognize it, so an annotated header either parses into a real
+# comparison or FAILs loudly. It must never degrade to the Route A "no Scope
+# list" SKIP, which silently disables the check.
+scope_drift_probe_dir="$(mktemp -d)"
+cat > "$scope_drift_probe_dir/annotated-header.md" <<'EOF'
+---
+id: REQ-900
+status: working
+---
+
+## Scope
+
+**Files I will touch (all new):**
+
+- `tools/example-check.sh` (create)
+
+**Files I will NOT touch:**
+
+- `README.md` (out of scope)
+
+## Implementation Summary
+
+**Files changed:**
+
+- `tools/example-check.sh` (created)
+EOF
+if scope_drift_annotated_output="$("$core_root/tools/checks/scope-drift.sh" \
+    "$scope_drift_probe_dir/annotated-header.md" 2>&1)"; then
+  scope_drift_annotated_exit=0
+else
+  scope_drift_annotated_exit=$?
+fi
+if [ "$scope_drift_annotated_exit" -ne 0 ] || ! grep -qF 'OK:' <<<"$scope_drift_annotated_output"; then
+  printf 'FAIL: tools/checks/scope-drift.sh must run a real comparison on an annotated touch-list header (exit 0 on matching sets, never SKIP); got exit %s: %s\n' \
+    "$scope_drift_annotated_exit" "$scope_drift_annotated_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+cat > "$scope_drift_probe_dir/annotated-unparseable.md" <<'EOF'
+---
+id: REQ-901
+status: working
+---
+
+## Scope
+
+**Files I will touch (all new):** tools/example-check.sh without backticks
+
+## Implementation Summary
+
+**Files changed:**
+
+- `tools/example-check.sh` (created)
+EOF
+if scope_drift_unparseable_output="$("$core_root/tools/checks/scope-drift.sh" \
+    "$scope_drift_probe_dir/annotated-unparseable.md" 2>&1)"; then
+  scope_drift_unparseable_exit=0
+else
+  scope_drift_unparseable_exit=$?
+fi
+if [ "$scope_drift_unparseable_exit" -ne 1 ] || ! grep -qF 'FAIL:' <<<"$scope_drift_unparseable_output"; then
+  printf 'FAIL: tools/checks/scope-drift.sh must FAIL (exit 1) when an annotated touch-list header yields zero parseable paths, never SKIP; got exit %s: %s\n' \
+    "$scope_drift_unparseable_exit" "$scope_drift_unparseable_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+
+cat > "$scope_drift_probe_dir/no-scope-section.md" <<'EOF'
+---
+id: REQ-902
+status: working
+---
+
+## Implementation Summary
+
+**Files changed:**
+
+- `tools/example-check.sh` (created)
+EOF
+if scope_drift_absent_output="$("$core_root/tools/checks/scope-drift.sh" \
+    "$scope_drift_probe_dir/no-scope-section.md" 2>&1)"; then
+  scope_drift_absent_exit=0
+else
+  scope_drift_absent_exit=$?
+fi
+if [ "$scope_drift_absent_exit" -ne 2 ] || ! grep -qF 'SKIP:' <<<"$scope_drift_absent_output"; then
+  printf 'FAIL: tools/checks/scope-drift.sh must keep the SKIP exit 2 contract when no Scope touch-list exists (Route A REQs rely on it); got exit %s: %s\n' \
+    "$scope_drift_absent_exit" "$scope_drift_absent_output" >&2
+  fail_count=$((fail_count + 1))
+fi
+rm -rf -- "$scope_drift_probe_dir"
+
 # Review regressions: prescribed shell and roadmap classification are runtime
 # contracts even though they live in Markdown/just recipes rather than compiled code.
 extract_kanban_shutdown_line() {
