@@ -23,9 +23,9 @@ maintenance: false
 Author a new do-work-toolbox action, `maintainability-audit`, from the validated draft spec in UR-040: a grounded, interactive, read-only codebase maintainability audit (measured metrics with user-calibrated bands → hotspot-scoped judgment → root-cause classes → persistent report with cross-run deltas), whose findings feed `do-work-toolbox validate-feedback`. Ship it as an action + reference companion, routed in SKILL.md and listed in help.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read general.md, coding-guardrails.md, both primes, the REQ plan, UR-040 verbatim spec, audit-metrics CLI contract (main.go file-top comment + prime), and precedents (deep-explore split, validate-feedback footer/guardrail phrasing, capture.md accelerator block). Approach: (1) write the reference first (bands table w/ measured-by, calibration procedure, EXCLUDE defaults, command reference, manual fallbacks, lock-in-limit guidance, finding-class template, report template), (2) write the action (steps 1-8 per the plan skeleton, earned sections with do-work nouns), (3) routing edits in the four listed files, (4) add `maintainability-audit` to staged-skills-contract.sh toolbox_actions, (5) run the four suites + the ratchet/validator-name greps. Verified suite mechanics up front: route-count contract counts routed `./actions/*.md` paths against toolbox_actions; retired-trigger scanner bans `do-work <legacy-trigger>` text on live surfaces (so the validator is always written `do-work-toolbox validate-feedback`); action-shell-blocks lints every bash fence with `<placeholder>` neutralization matching capture.md's shape; Common Rationalizations noun check applies to the new action.
+- [x] **[APPLY]:** Written exactly as planned: two new action files (action 2,446 w; reference 2,378 w), four routing/help edits, one test-array edit. Scope held to the 7 declared files + this REQ.
+- [x] **[UNIFY]:** `git diff --stat`: 6 modified + 2 new files, 11 insertions / 8 deletions across the modified set — every path is in the declared write set (plus this REQ file). Suites: `action-shell-blocks.sh` exit 0 (67 fenced blocks; shellcheck unavailable in this sandbox — bash -n only, matching pre-flight); `shipped-package-reference-contract.sh` exit 0; `staged-skills-contract.sh` exit 1 and `contract-regressions.sh` exit 2 — in both, the ONLY failing lines are the recorded environmental probe (`run-blocked-check process-tree case left the descendant alive`, prescribed-shell-scripts-behavior.sh:132) plus its wrapper relay line; isolated re-run of `prescribed-shell-scripts-behavior.sh` confirms the probe is the sole root cause. No NEW failures. Per-file verification: `maintainability-audit.md` — steps 1-8 match the plan skeleton, crew loads at the right steps, blockquote is trigger-style with package justification, no "Loop usage" section, Common Rationalizations rows carry do-work nouns (queue, REQ, write_set, validator), both shell fences mirror capture.md's placeholder shape and pass lint; `maintainability-audit-reference.md` — bands table has measured-by column with the jscpd no-fallback statement, calibration/EXCLUDE/command-reference/fallback/lock-in/finding-template/report-template sections all present, manual churn block is shallow-check-first with the rename caveat and write_set cross-check; `SKILL.md` — code-review row dropped `audit codebase`, new row routes `./actions/maintainability-audit.md` exactly once, argument-hint gains the verb after code-review; toolbox `help.md` — entry after code-review, description column aligned at col 34; `code-review.md` — only the one Use-when phrase changed; core `help.md` — toolbox roster reflowed with the new verb, no other lines touched; `staged-skills-contract.sh` — one array element added matching format. Greps: `ratchet` → zero hits in both new files; bare `do-work validate-feedback` → 0 in both; `do-work-toolbox validate-feedback` → 4 each. No debug artifacts in the diff.
 
 ## Why (if provided)
 
@@ -143,11 +143,24 @@ Folded into planning: the Plan agent verified every target against the live tree
 **Files I will NOT touch:** the audit-metrics tool (REQ-178, done), capture/work pipeline files, `_dev/tests/fixtures/retired-core-moved-command-triggers.tsv` (stays green; stale owner attribution noted in hand-back), CHANGELOG/VERSION (integrator's).
 
 **Acceptance criteria (restated from REQ):**
-- [ ] Requirements 1-22 all encoded (traceability table in Plan); measurement steps invoke audit-metrics with the manual fallback in the reference
-- [ ] SKILL.md routes `maintainability-audit` + `audit codebase`; help lists it; code-review no longer claims `audit codebase`
-- [ ] `bash _dev/tests/contract-regressions.sh`, `shipped-package-reference-contract.sh`, `staged-skills-contract.sh`, `action-shell-blocks.sh` — no NEW failures vs the recorded environmental baseline
-- [ ] "lock-in limit" terminology throughout; never "ratchet"
-- [ ] Two capture-adopted defaults flagged in hand-back as revisitable
+- [x] Requirements 1-22 all encoded (traceability table in Plan); measurement steps invoke audit-metrics with the manual fallback in the reference
+- [x] SKILL.md routes `maintainability-audit` + `audit codebase`; help lists it; code-review no longer claims `audit codebase`
+- [x] `bash _dev/tests/contract-regressions.sh`, `shipped-package-reference-contract.sh`, `staged-skills-contract.sh`, `action-shell-blocks.sh` — no NEW failures vs the recorded environmental baseline
+- [x] "lock-in limit" terminology throughout; never "ratchet"
+- [x] Two capture-adopted defaults flagged in hand-back as revisitable (see Open Questions — lock-in enforcement model and the `audit codebase` trigger takeover)
+
+## Decisions
+
+- **D-01** (pre-assigned): Exploration folded into planning — Plan agent verified targets against live tree.
+- **D-02** — **FILE_WORDS band row added with no numeric default.** The tool measures per-file words (`--watch-words`/`--flag-words`) and the draft spec names word budgets for prose-heavy repos, but gives no number; inventing one would ship a fake default. The row says "no universal default — propose from the repo p95", which is exactly the calibration procedure. DECIDE & STATE — reversible, consistent with the gate's own rule.
+- **D-03** — **Instances heading is `#### Instances`, not the draft's `## Instances`.** A literal `##` heading inside a finding block would terminate the pasteable `## Findings` section at extraction time, breaking the self-contained handoff to the validator (the section "may be seen alone"). Heading demoted below `### Finding N`; the grep-pattern-first coordinate rule (requirement 15) kept verbatim, and the reference states the deviation and why. DECIDE & STATE.
+- **D-04** — **Lock-in-limit landing place phrased generically** ("the project's own test suite or CI"), not `_dev/tests/` — `_dev/` is export-ignored, so a shipped citation would dangle in every consumer install (same rule that bans citing the primes). Requirement 4's `_dev/tests/` mention describes this repo, not shippable text. DECIDE & STATE.
+- **D-05** — **Ceremony excludes prescribed as a condition, not a list.** Step 4's block carries a `--exclude-path <ceremony-file-prefix>` placeholder and the reference states the condition ("files the project's commit ritual touches") with the measured 24% figure as evidence — per Closed Enumerations Go Stale and the tool's caller-owns-the-list contract. DECIDE & STATE.
+
+## Discovered Tasks
+
+- `_dev/tests/fixtures/retired-core-moved-command-triggers.tsv` line for `audit codebase` attributes the retired trigger to `code-review` (`canonical_action`); after this REQ the live owner is `maintainability-audit`. Confirmed stale — the fixture is a pinned historical inventory and stays green untouched, but the attribution no longer matches live routing.
+- `skills/do-work-toolbox/docs/code-review-guide.md:80` shows `do-work-toolbox audit codebase` in code-review's alias example block; that trigger now routes to maintainability-audit. Outside this REQ's write set — natural home is REQ-177's docs work.
 
 ## Pre-Flight
 
@@ -156,3 +169,25 @@ Folded into planning: the Plan agent verified every target against the live tree
 **Dependencies:** ✓ Go 1.24.7 present (audit-metrics builds; toolchain auto-fetches 1.26)
 
 *Checked by work action*
+
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-toolbox/actions/maintainability-audit.md` (new, 2,446 words)
+- `skills/do-work-toolbox/actions/maintainability-audit-reference.md` (new, 2,378 words)
+- `skills/do-work-toolbox/SKILL.md` (modified — code-review row drops `audit codebase`; new maintainability-audit row; argument-hint)
+- `skills/do-work-toolbox/actions/help.md` (modified — menu entry)
+- `skills/do-work-toolbox/actions/code-review.md` (modified — Use-when phrase edit)
+- `skills/do-work/actions/help.md` (modified — toolbox roster line)
+- `_dev/tests/staged-skills-contract.sh` (modified — `maintainability-audit` in `toolbox_actions` route contract)
+
+**What was done:** Authored the maintainability-audit action + reference companion encoding all 22 validated requirements (grounding → calibration gate → measured metrics via audit-metrics with manual fallbacks → hotspot-scoped judgment → root-cause classes → persistent do-work/audits/ report with deltas → loop footer into do-work-toolbox validate-feedback), routed it in the toolbox with the `audit codebase` trigger takeover, and extended the route-count contract.
+
+## Testing
+
+**Tests run:** all four contract suites, orchestrator re-run
+**Result:** ✓ No new failures — `action-shell-blocks.sh` exit 0, `shipped-package-reference-contract.sh` exit 0; `staged-skills-contract.sh` exit 1 and `contract-regressions.sh` exit 2 solely on the pre-existing environmental process-tree probe recorded in Pre-Flight (filtered FAIL diff vs baseline: empty). Route-count contract green with the new `toolbox_actions` entry.
+
+**Red-green validation:** non-behavioral (instruction authoring, `tdd: false`) — regression evidence used instead: REQ's GREEN condition verified (routing grep hits SKILL.md:18, both help entries present, `audit codebase` absent from code-review.md, zero "ratchet" hits, validator name toolbox-prefixed 4×/file).
+
+*Verified by work action*
