@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.1 — Maintainability-Audit User Guide (2026-08-14)
+
+The new audit shipped without a user-facing walkthrough of its loop. Now the guide exists and the stale trigger attribution is gone.
+
+- New `docs/maintainability-audit-guide.md` in do-work-toolbox: run → calibrate → read → triage → capture → build → re-audit, plus lock-in limits and waivers, linked from the action's description
+- code-review's guide no longer shows `audit codebase` as its own invocation (that phrase now runs the maintainability audit)
+
 ## 0.189.0 — Maintainability-Audit Action (2026-08-14)
 
 The toolbox's findings family could produce reviews and receive triage, but nothing measured repo health repeatably. A new grounded, interactive, read-only audit closes the loop: measure with calibrated bands, judge only hotspots, emit refutable finding classes, track deltas across runs.

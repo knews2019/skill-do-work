@@ -1,6 +1,6 @@
 # Maintainability-Audit Action
 
-> **Part of the do-work-toolbox skill.** Use when the user asks to audit the codebase for maintainability, run a maintainability audit, or measure code health over time — measured metrics under user-calibrated bands, judgment scoped to hotspots, root-cause finding classes, and a persistent report with cross-run deltas. It lives in the toolbox because it completes the toolbox's review loop: its findings are built to be pasted into `actions/validate-feedback.md`, and its measurement runs through the toolbox's shipped `tools/audit-metrics/` tool.
+> **Part of the do-work-toolbox skill.** Use when the user asks to audit the codebase for maintainability, run a maintainability audit, or measure code health over time — measured metrics under user-calibrated bands, judgment scoped to hotspots, root-cause finding classes, and a persistent report with cross-run deltas. It lives in the toolbox because it completes the toolbox's review loop: its findings are built to be pasted into `actions/validate-feedback.md`, and its measurement runs through the toolbox's shipped `tools/audit-metrics/` tool. User-facing walkthrough: [`docs/maintainability-audit-guide.md`](../docs/maintainability-audit-guide.md).
 
 **Read-only outside `do-work/audits/`** — this action writes only under `do-work/audits/` (the report and, user-maintained, `waivers.md`). No fixes, no refactors, no "while I'm here." Tool installs (user-approved) go to user-local locations, never into the repo tree.
 
