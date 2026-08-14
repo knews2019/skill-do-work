@@ -1,8 +1,9 @@
 ---
 id: REQ-176
 title: Implement the maintainability-audit action in do-work-toolbox
-status: pending
+status: claimed
 created_at: 2026-08-13T22:35:10Z
+claimed_at: 2026-08-14T09:51:18Z
 user_request: UR-040
 domain: general
 prime_files: [_dev/primes/prime-action-files.md, _dev/primes/prime-shell-commands.md]
@@ -95,3 +96,13 @@ See `do-work/user-requests/UR-040/input.md` for complete verbatim input and `ai-
 
 ---
 *Source: UR-040 — pasted maintainability-audit spec, validated via do-work-toolbox validate-feedback*
+
+---
+
+## Triage
+
+**Route: C** - Complex
+
+**Reasoning:** Multiple coupled components (action + reference companion + SKILL.md routing + help entry), a 22-requirement spec, and a real architectural decision (the action/reference split point under the router word budget). The upstream tool (REQ-178) landed with a concrete CLI contract the prescribed shell blocks must match exactly.
+
+**Planning:** Required
