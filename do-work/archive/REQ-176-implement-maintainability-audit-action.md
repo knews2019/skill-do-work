@@ -1,9 +1,11 @@
 ---
 id: REQ-176
 title: Implement the maintainability-audit action in do-work-toolbox
-status: claimed
+status: completed
 created_at: 2026-08-13T22:35:10Z
 claimed_at: 2026-08-14T09:51:18Z
+completed_at: 2026-08-14T10:21:01Z
+kb_status: pending
 user_request: UR-040
 domain: general
 prime_files: [_dev/primes/prime-action-files.md, _dev/primes/prime-shell-commands.md]
@@ -191,3 +193,45 @@ Folded into planning: the Plan agent verified every target against the live tree
 **Red-green validation:** non-behavioral (instruction authoring, `tdd: false`) — regression evidence used instead: REQ's GREEN condition verified (routing grep hits SKILL.md:18, both help entries present, `audit codebase` absent from code-review.md, zero "ratchet" hits, validator name toolbox-prefixed 4×/file).
 
 *Verified by work action*
+
+## Review
+
+**Overall: 95%** | 2026-08-14
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 98% |
+| Code Quality | 92% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded gate disposition):**
+- `docs/code-review-guide.md:80` still shows `do-work-toolbox audit codebase` as a code-review invocation after the trigger takeover (restatement sweep; outside this REQ's write set) — gate: user-visible → folded into queued REQ-177 (docs guide), whose write_set now includes the file; builder pre-recorded it in Discovered Tasks.
+
+**Minor findings:** 3 — (1) Step 4 prescribed block lacked `--watch-words`/`--flag-words` placeholders (fixed by the integrator pre-commit; shell-block lint re-run green); (2) stale fixture attribution in `retired-core-moved-command-triggers.tsv:40` — pinned historical inventory, stays green untouched; (3) crew-citation form inconsistency (bare vs `../do-work/` prefixed) — cosmetic, both forms have sibling precedent.
+
+**Nit:** the reference's command table restates the tool's caller contract with citation to `prime-audit-metrics.md` — acceptable (consumer installs need the caller-facing copy) but a drift-watch pair for future tool changes.
+
+**Requirements: 22/22 delivered** (reviewer walked each against file content; §2 surface-cost elements verbatim-equivalent incl. "the surface that will remain"; severity-from-impact mapping in both files; zero "ratchet" hits; validator toolbox-prefixed 4×/file; template section order exact per prime-action-files).
+
+**Acceptance:** Pass — all four suites reproduce the Pre-Flight environmental baseline exactly (only the run-blocked-check process-tree probe fails); reviewer built the tool and executed both prescribed command shapes against this repo (1,165 commits scanned; ceremony-exclude condition empirically confirmed incl. the mirrored-copy clause); routing takeover verified by grep; word counts match the Implementation Summary exactly.
+
+**Scope drift:** None — diff is exactly the 7 declared files + the REQ file (hand comparison; scope-drift.sh gap is REQ-179).
+
+**Restatement sweep:** trigger-ownership grep complete; the builder's Discovered Tasks list is the complete stale set (docs guide line 80 → REQ-177; fixture line 40 → untouched by design).
+
+**Suggested testing:** one interactive end-to-end run (calibration gate + repeat-run branch); confirm FILE_WORDS bands appear when agreed; re-grep `audit codebase` in docs/ after REQ-177.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Plan-first with the traceability table — all 22 requirements landed on the first build pass and the reviewer confirmed 22/22 with zero remediation. Having the Plan agent pre-verify the contract suites' exact assertions (route-count array, noun checks, link parser) meant no suite surprises after authoring.
+**What didn't:** The capture-seeded write_set missed three files the plan surfaced (`code-review.md`, core `help.md`, `staged-skills-contract.sh`) — routing takeovers always touch the OLD owner's Use-when text and the route-count contract, not just the router. Prescribed blocks with per-metric band flags are easy to leave incomplete (words flags omitted where lines flags were present) — bands-only-from-flags means an omitted placeholder silently loses a whole metric's bands.
+**Worth knowing:** The `## Instances` heading in finding templates must ship demoted (`#### Instances`) or it terminates the pasteable `## Findings` section (D-03). The environmental process-tree probe failure (sandbox-only) is the recorded baseline for suite runs in this session — surfaces byte-identical to origin/main.
+
+## Orientation
+
+Now you can run a measured, calibrated, delta-tracked maintainability audit: `do-work-toolbox maintainability-audit` (also `audit codebase`, which moved here from code-review). [MAP CHANGED] — new action + reference pair in the toolbox's findings family (code-review/quick-wins produce, validate-feedback receives, the audit measures-then-judges); reports persist in `do-work/audits/`; measurement runs through the REQ-178 tool. Primes checked: `prime-action-files.md` and `prime-shell-commands.md` still accurate; `prime-audit-metrics.md` gains a caller (noted as drift-watch pair).

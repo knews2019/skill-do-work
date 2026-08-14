@@ -11,7 +11,7 @@ suggested_spec:
 related: [REQ-176]
 depends_on: [REQ-176]
 batch: maintainability-audit
-write_set: [skills/do-work-toolbox/docs/maintainability-audit-guide.md]
+write_set: [skills/do-work-toolbox/docs/maintainability-audit-guide.md, skills/do-work-toolbox/docs/code-review-guide.md]
 maintenance: false
 ---
 
@@ -20,6 +20,10 @@ maintenance: false
 ## What
 
 Relocate the draft spec's "Loop usage (for the operator, not the agent)" content into a user-facing guide at `skills/do-work-toolbox/docs/maintainability-audit-guide.md`, following the existing docs-guide pattern (e.g. `skills/do-work/docs/capture-guide.md`), and link it from the action's description blockquote as the other guides do.
+
+## Also (folded from REQ-176's review — gate: user-visible)
+
+`skills/do-work-toolbox/docs/code-review-guide.md:80` still shows `do-work-toolbox audit codebase` as a code-review invocation after REQ-176 moved that trigger to the new maintainability-audit action — a reader following the guide invokes a different action than the guide describes. Fix the stale invocation (point it at `code-review` / `review codebase`, and mention `audit codebase` now runs the maintainability audit). Provenance: Important finding in REQ-176's Review, restatement sweep; the retired-triggers fixture's stale attribution (`_dev/tests/fixtures/retired-core-moved-command-triggers.tsv:40`) stays untouched — pinned historical inventory, green as-is.
 
 ## Why (if provided)
 

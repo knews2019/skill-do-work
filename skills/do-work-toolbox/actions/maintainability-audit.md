@@ -85,6 +85,7 @@ Run the toolchain under the agreed config. **The tool output is the number** —
   && <suite-root>/do-work-toolbox/tools/audit-metrics/audit-metrics inventory --repo-root <project-root> \
        --exclude-path do-work/ --exclude-path kb/ --exclude-path ai-reports/ \
        --watch-lines <agreed-watch-lines> --flag-lines <agreed-flag-lines> \
+       --watch-words <agreed-watch-words> --flag-words <agreed-flag-words> \
   && <suite-root>/do-work-toolbox/tools/audit-metrics/audit-metrics folders --repo-root <project-root> \
        --exclude-path do-work/ --exclude-path kb/ --exclude-path ai-reports/ \
        --watch-files <agreed-watch-files> --flag-files <agreed-flag-files> \

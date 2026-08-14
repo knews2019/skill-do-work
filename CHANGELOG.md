@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.0 — Maintainability-Audit Action (2026-08-14)
+
+The toolbox's findings family could produce reviews and receive triage, but nothing measured repo health repeatably. A new grounded, interactive, read-only audit closes the loop: measure with calibrated bands, judge only hotspots, emit refutable finding classes, track deltas across runs.
+
+- New `maintainability-audit` action + reference companion in do-work-toolbox: grounding → calibration gate → metrics via the audit-metrics tool (manual fallbacks included) → hotspot-scoped judgment → root-cause classes → persistent `do-work/audits/` report whose Findings section pastes into `do-work-toolbox validate-feedback`
+- Lock-in limits (pinned-at-worst regression ceilings) are proposals only — accepted ones land as lock-in tests through the normal capture flow
+- The `audit codebase` trigger moves from code-review to the new action; code-review keeps `code-review` / `review codebase`
+
 ## 0.188.0 — Audit-Metrics Measurement Tool (2026-08-14)
 
 The upcoming maintainability audit needs numbers, and hand-run wc/find/git pipelines are fragile and expensive per run. A vendored Go tool now answers everything deterministic — the audit action will paste its tables instead of re-deriving them.
