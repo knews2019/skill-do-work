@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-08-13T22:35:10Z
 claimed_at: 2026-08-14T09:19:43Z
 completed_at: 2026-08-14T09:49:31Z
+commit: 1afe780
 kb_status: pending
 user_request: UR-040
 domain: general
