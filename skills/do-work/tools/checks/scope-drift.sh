@@ -37,15 +37,21 @@ extract_section_paths() {
 # ("**Files I will touch:** `a.js`, `b.js`") and as "- `path`" bullets below
 # it. An awk that only took lines AFTER the header silently dropped inline
 # lists, emptied declared_paths, and turned the whole check into a SKIP.
+# The header may carry a trailing annotation before the colon ("**Files I
+# will touch (all new):**") — recognize the header, not one literal spelling:
+# both this extraction and the FAIL guard below use the same tolerant match
+# ("Files I will touch" up to the first colon), so an annotated header either
+# parses or fails loudly. A bare-literal match here degraded annotated
+# headers to SKIP, silently disabling the comparison (REQ-179).
 declared_paths="$(awk '
     /^## Scope$/ {inside_scope=1; next}
     inside_scope && /^## / {inside_scope=0}
     inside_scope {print}
   ' "$request_file" | awk '
-    /\*\*Files I will touch:\*\*/ {
+    /\*\*Files I will touch[^:]*:/ {
       taking_list=1
       header_rest=$0
-      sub(/.*\*\*Files I will touch:\*\*/, "", header_rest)
+      sub(/.*\*\*Files I will touch[^:]*:/, "", header_rest)
       part_count=split(header_rest, backtick_parts, "`")
       for (part_index=2; part_index<=part_count; part_index+=2)
         if (backtick_parts[part_index] != "") print backtick_parts[part_index]
@@ -67,8 +73,8 @@ if [ -z "$declared_paths" ]; then
   # grep without -q: -q quits on first match and can SIGPIPE the awk upstream,
   # which pipefail then reads as "no match" — the same trap qualify.sh had.
   if awk '/^## Scope$/ {inside_scope=1; next} inside_scope && /^## / {inside_scope=0} inside_scope {print}' "$request_file" \
-      | grep '\*\*Files I will touch:\*\*' >/dev/null; then
-    echo "FAIL: '**Files I will touch:**' is present in ## Scope but no backticked paths parse from it — fix the list formatting (backtick every path)"
+      | grep '\*\*Files I will touch[^:]*:' >/dev/null; then
+    echo "FAIL: a '**Files I will touch**' header is present in ## Scope but no backticked paths parse from it — fix the list formatting (backtick every path)"
     exit 1
   fi
   echo "SKIP: no '## Scope' file list found (Route A REQs have none — skip the comparison)"

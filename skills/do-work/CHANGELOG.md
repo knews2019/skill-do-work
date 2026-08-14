@@ -8,6 +8,44 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.3 — Churn Exclude Fix and Calibration Fallback (2026-08-14)
+
+Two PR-review findings on the new audit machinery: an excluded-but-still-tracked file that git flags as a copy source was treated as dead, silently handing its whole history to the surviving copy and inflating its hotspot score; and the manual inventory fallback gave the calibration gate nothing to derive FLAG = max(floor, p95) from.
+
+- `audit-metrics` churn now judges copy-source aliveness against the unfiltered tracked set and applies excludes only to report output; lock-in test pins it (excluded-but-live source keeps its history)
+- The reference's manual fallbacks gain nearest-rank distribution blocks (lines and words: count/median/p90/p95/max), so calibration completes without the Go toolchain
+
+## 0.189.2 — Scope-Drift Check Parses Annotated Headers (2026-08-14)
+
+The Step 5.5 scope-drift check silently skipped any REQ whose touch-list header carried a parenthetical — the exact silent self-disable its own guard exists to prevent. Found live during REQ-178's review.
+
+- `tools/checks/scope-drift.sh` now tolerates trailing annotations before the colon at both match sites: an annotated header parses, or FAILs loudly when nothing parses — never SKIPs; absent Scope still SKIPs (Route A contract preserved)
+- Three lock-in probes pin the contract in the regression suite
+
+## 0.189.1 — Maintainability-Audit User Guide (2026-08-14)
+
+The new audit shipped without a user-facing walkthrough of its loop. Now the guide exists and the stale trigger attribution is gone.
+
+- New `docs/maintainability-audit-guide.md` in do-work-toolbox: run → calibrate → read → triage → capture → build → re-audit, plus lock-in limits and waivers, linked from the action's description
+- code-review's guide no longer shows `audit codebase` as its own invocation (that phrase now runs the maintainability audit)
+
+## 0.189.0 — Maintainability-Audit Action (2026-08-14)
+
+The toolbox's findings family could produce reviews and receive triage, but nothing measured repo health repeatably. A new grounded, interactive, read-only audit closes the loop: measure with calibrated bands, judge only hotspots, emit refutable finding classes, track deltas across runs.
+
+- New `maintainability-audit` action + reference companion in do-work-toolbox: grounding → calibration gate → metrics via the audit-metrics tool (manual fallbacks included) → hotspot-scoped judgment → root-cause classes → persistent `do-work/audits/` report whose Findings section pastes into `do-work-toolbox validate-feedback`
+- Lock-in limits (pinned-at-worst regression ceilings) are proposals only — accepted ones land as lock-in tests through the normal capture flow
+- The `audit codebase` trigger moves from code-review to the new action; code-review keeps `code-review` / `review codebase`
+
+## 0.188.0 — Audit-Metrics Measurement Tool (2026-08-14)
+
+The upcoming maintainability audit needs numbers, and hand-run wc/find/git pipelines are fragile and expensive per run. A vendored Go tool now answers everything deterministic — the audit action will paste its tables instead of re-deriving them.
+
+- New `skills/do-work-toolbox/tools/audit-metrics/` module (zero dependencies, queue-kanban conventions): `inventory`, `folders`, `churn`, `hotspots` subcommands emitting pasteable markdown
+- WATCH/FLAG bands come only from flags (strict-greater edges); exclude list is caller-supplied prefixes; output states what was excluded
+- Churn is rename- AND copy-normalized (`-M -C --find-copies-harder` with dead-copy-source reassignment) — reproduces `git log --follow` across the skills/ restructure, where plain aggregation splits history onto dead paths; shallow clones are reported, never silently truncated
+- 10 lock-in tests on real git and real `--depth 1` clone fixtures; in-dir `prime-audit-metrics.md` routing index
+
 ## 0.187.1 — Validated Runtime Boundaries (2026-08-13)
 
 Timeouts now clean up the process trees they start, directory installs publish only complete payloads, and report images prove they came from the current invocation.

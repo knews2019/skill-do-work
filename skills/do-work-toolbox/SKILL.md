@@ -1,7 +1,7 @@
 ---
 name: do-work-toolbox
 description: Optional reviews, discovery, presentation, reporting, repository utilities, and companion installers for the modular do-work suite
-argument-hint: "validate-feedback | code-review | ui-review | present-work | ai-report | slop-check | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | tidy-repo | tutorial | install | help"
+argument-hint: "validate-feedback | code-review | maintainability-audit | ui-review | present-work | ai-report | slop-check | quick-wins | scan-ideas | deep-explore | prime | inspect | note | stray-check | tidy-repo | tutorial | install | help"
 ---
 
 # Do-Work Toolbox Skill
@@ -14,7 +14,8 @@ This package holds useful but optional repository-facing capabilities outside th
 |---|---|
 | empty, `help` | `./actions/help.md` |
 | `validate-feedback`, `triage feedback`, `review feedback` | `./actions/validate-feedback.md` |
-| `code-review`, `review codebase`, `audit codebase` | `./actions/code-review.md` |
+| `code-review`, `review codebase` | `./actions/code-review.md` |
+| `maintainability-audit`, `audit codebase`, `audit maintainability` | `./actions/maintainability-audit.md` |
 | `ui-review`, `review ui`, `design audit` | `./actions/ui-review.md` |
 | `present-work`, `present`, `showcase`, `client brief` | `./actions/present-work.md` |
 | `ai-report`, `visual report`, `proof of work` | `./actions/ai-report.md` |

@@ -27,10 +27,10 @@ Extensions installed beside core — run <package> help for usage on any of thes
 
   do-work-board      board [serve|static|summary|cli]
   do-work-knowledge  bkb · memory · dream · interview · prompts · setup-memory
-  do-work-toolbox    validate-feedback · code-review · ui-review · present-work
-                     ai-report · slop-check · quick-wins · scan-ideas
-                     deep-explore · prime · inspect · note · stray-check
-                     tidy-repo · tutorial · install
+  do-work-toolbox    validate-feedback · code-review · maintainability-audit
+                     ui-review · present-work · ai-report · slop-check
+                     quick-wins · scan-ideas · deep-explore · prime · inspect
+                     note · stray-check · tidy-repo · tutorial · install
 ```
 
 ## Full cycle without persistent state

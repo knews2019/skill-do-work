@@ -7,6 +7,7 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
 
   validate-feedback [findings]   Validate external feedback before accepting it
   code-review [scope]            Standalone codebase review
+  maintainability-audit [scope]  Measured maintainability audit with calibrated bands
   ui-review [scope]              Read-only UI quality review
   present-work [REQ|UR]          Client-facing implementation brief
   ai-report [REQ|UR]             Screenshot-anchored visual report

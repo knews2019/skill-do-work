@@ -78,6 +78,7 @@ do-work-toolbox code-review
 do-work-toolbox code-review prime-auth
 do-work-toolbox code-review src/api/
 do-work-toolbox code-review prime-auth src/utils/
-do-work-toolbox audit codebase
 do-work-toolbox review codebase
 ```
+
+Note: `do-work-toolbox audit codebase` invokes the maintainability audit (see `maintainability-audit-guide.md`), not this review.
