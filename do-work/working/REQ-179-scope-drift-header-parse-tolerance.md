@@ -1,7 +1,8 @@
 ---
 id: REQ-179
 title: Make scope-drift.sh parse Scope headers with trailing annotations
-status: pending
+status: claimed
+claimed_at: 2026-08-14T10:27:30Z
 created_at: 2026-08-14T09:49:31Z
 user_request: UR-040
 addendum_to: REQ-178
@@ -43,3 +44,19 @@ Finding recorded in `REQ-178`'s Review section (gate token audit trail). See `do
 
 ---
 *Source: review of REQ-178 — review-generated follow-up (sweep)*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Single named file, two identified match sites, an exact RED case, and a defined done-state — a focused mechanical fix with a lock-in test. tdd: true.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
