@@ -1,8 +1,9 @@
 ---
 id: REQ-177
 title: Write the maintainability-audit user loop guide
-status: pending
+status: claimed
 created_at: 2026-08-13T22:35:10Z
+claimed_at: 2026-08-14T10:21:48Z
 user_request: UR-040
 domain: general
 prime_files: [_dev/primes/prime-action-files.md]
@@ -11,7 +12,7 @@ suggested_spec:
 related: [REQ-176]
 depends_on: [REQ-176]
 batch: maintainability-audit
-write_set: [skills/do-work-toolbox/docs/maintainability-audit-guide.md, skills/do-work-toolbox/docs/code-review-guide.md]
+write_set: [skills/do-work-toolbox/docs/maintainability-audit-guide.md, skills/do-work-toolbox/docs/code-review-guide.md, skills/do-work-toolbox/actions/maintainability-audit.md]
 maintenance: false
 ---
 
@@ -45,3 +46,25 @@ See `do-work/user-requests/UR-040/input.md` for complete verbatim input.
 
 ---
 *Source: UR-040 — pasted maintainability-audit spec, validated via do-work-toolbox validate-feedback*
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Two named files with fully specified changes: author one docs guide from content already written in this REQ's Context (following the existing docs-guide pattern), and fix one stale invocation line folded in from REQ-176's review. No discovery needed — the loop content, vocabulary, and file targets are all stated.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*
+
+## Decisions
+
+- **D-01 — write boundary extended to `skills/do-work-toolbox/actions/maintainability-audit.md` (one line).** The REQ's GREEN condition requires "the action's description blockquote links it", which the captured write_set omitted. Orchestrator decision at claim: the blockquote link is part of this REQ's deliverable (sibling precedent: capture.md's "User-facing walkthrough" link), so the file joins the boundary for exactly that edit. DECIDE & STATE — reversible, one line, required by the REQ's own text.
+- **D-02 — no markdown links inside the guide.** All nine sibling toolbox guides use backtick code spans exclusively (zero markdown links in `skills/do-work-toolbox/docs/`); the new guide matches, so the both-topologies link-resolution requirement is satisfied trivially. The one required markdown link (action blockquote → guide) uses the exact sibling form from quick-wins.md/code-review.md. DECIDE & STATE.
+- **D-03 — code-review-guide fix shape.** Removed the stale `do-work-toolbox audit codebase` line from the Usage block (kept `review codebase`) and added one note line after the block: "`do-work-toolbox audit codebase` invokes the maintainability audit (see `maintainability-audit-guide.md`), not this review." Smallest edit that both stops misdirecting readers and tells them where the phrase went, per the REQ's "Also" section. DECIDE & STATE.
