@@ -87,30 +87,40 @@ func computeChurnReport(repoRoot string, sinceWindow string, excludePrefixes []s
 		}
 	}
 
-	// Keep only paths that exist today, then apply the caller's excludes to
-	// those current paths.
+	// Two distinct sets, deliberately: livePathSet (every tracked path, no
+	// excludes) answers "is this path alive today?" for the reassignment
+	// below; reportPathSet (excludes applied) decides what the report shows.
+	// Building one excluded set for both jobs made an excluded-but-live copy
+	// source look dead, silently transferring its whole history to the
+	// surviving copy (PR #139 review finding).
 	trackedPaths, listError := listTrackedFiles(repoRoot)
 	if listError != nil {
 		return churnReport{}, listError
 	}
-	trackedSet := map[string]bool{}
+	livePathSet := map[string]bool{}
+	for _, trackedPath := range trackedPaths {
+		livePathSet[trackedPath] = true
+	}
+	reportPathSet := map[string]bool{}
 	for _, trackedPath := range applyPathExcludes(trackedPaths, excludePrefixes) {
-		trackedSet[trackedPath] = true
+		reportPathSet[trackedPath] = true
 	}
 	// Staged-migration reassignment: a path that is dead today but was
 	// copy-sourced to a surviving file hands its history to that survivor —
-	// the copy was the real "rename", just split across commits. Paths deleted
-	// outright with no surviving copy drop in the filter below.
+	// the copy was the real "rename", just split across commits. Aliveness is
+	// judged against livePathSet: an excluded-but-live path keeps its own
+	// history (and is then simply not reported). Paths deleted outright with
+	// no surviving copy drop in the filter below.
 	for touchedPath, touchCount := range report.TouchesByPath {
-		if trackedSet[touchedPath] {
+		if livePathSet[touchedPath] {
 			continue
 		}
-		if survivingPath, found := resolveSurvivingCopy(copySourceToTarget, trackedSet, touchedPath); found {
+		if survivingPath, found := resolveSurvivingCopy(copySourceToTarget, livePathSet, touchedPath); found {
 			report.TouchesByPath[survivingPath] += touchCount
 		}
 	}
 	for touchedPath := range report.TouchesByPath {
-		if !trackedSet[touchedPath] {
+		if !reportPathSet[touchedPath] {
 			delete(report.TouchesByPath, touchedPath)
 		}
 	}

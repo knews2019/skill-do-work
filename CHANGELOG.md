@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.3 — Churn Exclude Fix and Calibration Fallback (2026-08-14)
+
+Two PR-review findings on the new audit machinery: an excluded-but-still-tracked file that git flags as a copy source was treated as dead, silently handing its whole history to the surviving copy and inflating its hotspot score; and the manual inventory fallback gave the calibration gate nothing to derive FLAG = max(floor, p95) from.
+
+- `audit-metrics` churn now judges copy-source aliveness against the unfiltered tracked set and applies excludes only to report output; lock-in test pins it (excluded-but-live source keeps its history)
+- The reference's manual fallbacks gain nearest-rank distribution blocks (lines and words: count/median/p90/p95/max), so calibration completes without the Go toolchain
+
 ## 0.189.2 — Scope-Drift Check Parses Annotated Headers (2026-08-14)
 
 The Step 5.5 scope-drift check silently skipped any REQ whose touch-list header carried a parenthetical — the exact silent self-disable its own guard exists to prevent. Found live during REQ-178's review.

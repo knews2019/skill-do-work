@@ -170,3 +170,34 @@ func TestBandLabelForValueEdges(t *testing.T) {
 		})
 	}
 }
+
+// TestChurnExcludedLiveCopySourceKeepsOwnHistory pins the live-vs-excluded
+// distinction in staged-copy reassignment: a path that is excluded from the
+// REPORT but still tracked in the repo is alive, not a dead copy source — its
+// history must never transfer to a surviving copy target. Regression for the
+// trackedSet-built-after-excludes bug (PR #139 Codex review, 2026-08-14).
+func TestChurnExcludedLiveCopySourceKeepsOwnHistory(t *testing.T) {
+	repoRoot := newFixtureRepo(t)
+	writeFixtureFile(t, repoRoot, "ceremony.md", "identical body long enough for copy detection to bite\n")
+	commitFixtureAll(t, repoRoot, "add ceremony file")
+	writeFixtureFile(t, repoRoot, "ceremony.md", "identical body long enough for copy detection to bite\nedited once\n")
+	commitFixtureAll(t, repoRoot, "edit ceremony file")
+	writeFixtureFile(t, repoRoot, "ceremony.md", "identical body long enough for copy detection to bite\n")
+	commitFixtureAll(t, repoRoot, "revert ceremony file")
+	writeFixtureFile(t, repoRoot, "kept.md", "identical body long enough for copy detection to bite\n")
+	commitFixtureAll(t, repoRoot, "copy ceremony body into kept")
+
+	report, computeError := computeChurnReport(repoRoot, "10 years", []string{"ceremony.md"})
+	if computeError != nil {
+		t.Fatalf("computeChurnReport: %v", computeError)
+	}
+	// kept.md has exactly one touch of its own; ceremony.md is alive (still
+	// tracked), merely excluded from the report — none of its 3 touches may
+	// transfer.
+	if got := report.TouchesByPath["kept.md"]; got != 1 {
+		t.Fatalf("kept.md touches = %d, want 1 (excluded-but-live copy source must keep its history); full map: %v", got, report.TouchesByPath)
+	}
+	if _, excludedPresent := report.TouchesByPath["ceremony.md"]; excludedPresent {
+		t.Fatalf("excluded path ceremony.md present in report: %v", report.TouchesByPath)
+	}
+}

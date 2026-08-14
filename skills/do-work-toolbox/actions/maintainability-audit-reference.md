@@ -94,6 +94,26 @@ git ls-files -z -- . ':!do-work/' ':!kb/' ':!ai-reports/' \
   | xargs -0 wc -l 2>/dev/null | sort -rn | head -25
 ```
 
+**Distribution fallback** — the calibration gate derives FLAG from repo p95, so the manual path must produce the same nearest-rank distributions the tool prints. One file per `wc` invocation (`-n1`) so no `total` rows pollute the numbers; run once for lines and once with `wc -w` for words:
+
+```bash
+git ls-files -z -- . ':!do-work/' ':!kb/' ':!ai-reports/' \
+  | xargs -0 -n1 wc -l 2>/dev/null | awk '{print $1}' | sort -n \
+  | awk '{ v[NR] = $1 } END { if (NR == 0) exit 1;
+      printf "file lines: count %d  median %d  p90 %d  p95 %d  max %d\n", \
+        NR, v[int((NR*50+99)/100)], v[int((NR*90+99)/100)], v[int((NR*95+99)/100)], v[NR] }'
+```
+
+```bash
+git ls-files -z -- . ':!do-work/' ':!kb/' ':!ai-reports/' \
+  | xargs -0 -n1 wc -w 2>/dev/null | awk '{print $1}' | sort -n \
+  | awk '{ v[NR] = $1 } END { if (NR == 0) exit 1;
+      printf "file words: count %d  median %d  p90 %d  p95 %d  max %d\n", \
+        NR, v[int((NR*50+99)/100)], v[int((NR*90+99)/100)], v[int((NR*95+99)/100)], v[NR] }'
+```
+
+Binaries are included in these approximations (the tool's NUL-sniff exclusion has no cheap shell equivalent) — say so in the report when the fallback produced the numbers.
+
 **Folder-shape fallback** — files per folder (direct children), crowded first (root-level files count under `.`):
 
 ```bash
