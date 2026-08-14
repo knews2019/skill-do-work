@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.188.0 — Audit-Metrics Measurement Tool (2026-08-14)
+
+The upcoming maintainability audit needs numbers, and hand-run wc/find/git pipelines are fragile and expensive per run. A vendored Go tool now answers everything deterministic — the audit action will paste its tables instead of re-deriving them.
+
+- New `skills/do-work-toolbox/tools/audit-metrics/` module (zero dependencies, queue-kanban conventions): `inventory`, `folders`, `churn`, `hotspots` subcommands emitting pasteable markdown
+- WATCH/FLAG bands come only from flags (strict-greater edges); exclude list is caller-supplied prefixes; output states what was excluded
+- Churn is rename- AND copy-normalized (`-M -C --find-copies-harder` with dead-copy-source reassignment) — reproduces `git log --follow` across the skills/ restructure, where plain aggregation splits history onto dead paths; shallow clones are reported, never silently truncated
+- 10 lock-in tests on real git and real `--depth 1` clone fixtures; in-dir `prime-audit-metrics.md` routing index
+
 ## 0.187.1 — Validated Runtime Boundaries (2026-08-13)
 
 Timeouts now clean up the process trees they start, directory installs publish only complete payloads, and report images prove they came from the current invocation.

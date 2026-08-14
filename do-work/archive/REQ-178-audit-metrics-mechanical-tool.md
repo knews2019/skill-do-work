@@ -1,9 +1,11 @@
 ---
 id: REQ-178
 title: Build the audit-metrics tool for mechanical audit measurement
-status: claimed
+status: completed
 created_at: 2026-08-13T22:35:10Z
 claimed_at: 2026-08-14T09:19:43Z
+completed_at: 2026-08-14T09:49:31Z
+kb_status: pending
 user_request: UR-040
 domain: general
 prime_files: [_dev/primes/prime-shell-commands.md]
@@ -176,3 +178,47 @@ Passed — 11 files verified on disk (1,298 lines), 8/8 requirements traced (TSV
 **New tests added:** distribution_test.go, inventory_test.go, churn_test.go (10 lock-ins, real-git + real-shallow-clone fixtures)
 
 *Verified by work action*
+
+## Review
+
+**Overall: 96%** | 2026-08-14T09:55:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 95% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded gate disposition):**
+- `skills/do-work/tools/checks/scope-drift.sh:47` — the Step 5.5 mechanical check silently self-disabled for this REQ: the awk pattern requires the literal header `**Files I will touch:**`, but REQ-178's Scope header carried a parenthetical, so zero paths parsed AND the "header present but unparseable" FAIL guard (line 70, same literal) was bypassed — observed `SKIP ... exit 2` instead of a comparison or a FAIL. Any REQ phrasing the header with a parenthetical dodges the check; the script's own comment names "silently disable the check" as the defect this guard exists to prevent. Not this builder's scope drift (hand comparison ran clean; finding is in a pre-existing pipeline file, routed per Restatement Sweep rule 3) — gate: rule-change → follow-up REQ-179 (sweep).
+
+**Minor findings:** 2 (report only)
+- `prime-audit-metrics.md:9` — Read-first gloss said `-M --name-status` while the shipped command is `-M -C --find-copies-harder`; corrected by the integrator pre-commit (one-line gloss fix in this REQ's own new file).
+- Environment, NOT attributable to REQ-178: `bash _dev/tests/contract-regressions.sh` exits 2 in this sandbox on the run-blocked-check process-tree probe (`_dev/tests/prescribed-shell-scripts-behavior.sh:132`). Integrator verified `git diff origin/main -- skills/ _dev/` is EMPTY — the failing surface is byte-identical to main, so the failure is environmental (sandbox process-tree semantics), pre-existing relative to this REQ. `shipped-package-reference-contract.sh` exits 0 here.
+
+**Nit:** `folders` reuses `computeInventoryReport` and reads file contents it only needs paths from — negligible for a per-audit tool; deliberate reuse.
+
+**Acceptance:** Pass — reviewer independently built the binary, ran all four subcommands with and without band flags; output contract held on every probe: bands only with flags, strict-greater edges live-confirmed (1756 == flag threshold stayed WATCH), churn top row 214 for work.md matching an independent `git log --follow` count, ceremony excludes honored, shallow warning correctly absent on the full clone, leftover-token and non-git-root error paths exit 2/1 cleanly. Read-only guarantee verified.
+
+**Scope drift:** `scope-drift.sh` → SKIP exit 2 (the Important finding). Hand comparison: 3 file additions vs Scope, all inside the declared directory and its explicit builder's-choice clause; zero outside touches; zero declared-untouched. No drift.
+
+**Restatement sweep:** No stale external restatements — new contracts' canonical home is the new files; quick-wins.md/tidy-repo.md heuristics predate and do not restate this tool's contract. One internal gloss inconsistency (fixed, above).
+
+**TDD gate:** Credible — verbatim RED capture matches distribution_test.go:30's Fatalf format; GREEN reproduced uncached by both reviewer and orchestrator.
+
+**Suggested testing:** re-run contract-regressions.sh on a non-sandboxed machine; exercise accelerator-with-fallback end-to-end when REQ-176 lands; someday pin the renamed-then-recreated-old-path edge.
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Mirroring queue-kanban's conventions wholesale (renderer/io.Writer split, per-subcommand FlagSets, real-git fixtures in t.TempDir()) meant zero design churn; the real-repo spot-check during build caught the biggest correctness bug (staged-copy migration) before review.
+**What didn't:** `-M` rename detection alone missed the 2026-08-08 skills/ restructure entirely (8 vs 214 touches) — it was a staged copy-then-delete, invisible to rename detection; only `-C --find-copies-harder` plus dead-copy-source reassignment reproduces `git log --follow`. Also: phrasing the Scope header with a parenthetical silently disabled scope-drift.sh (→ REQ-179).
+**Worth knowing:** Churn numbers from this tool are only trustworthy because of copy detection — anyone replacing it with a plain `git log --name-only | sort | uniq -c` resurrects the dead-path split. Shallow clones are detected and reported, never silently truncated. The tool is a separate Go module — a repo-root `go build ./...` never reaches it.
+
+## Orientation
+
+Now you can measure a repo mechanically for the maintainability audit: `audit-metrics` (new vendored Go module in the do-work-toolbox skill, beside queue-kanban in shape) prints inventory, size distributions, WATCH/FLAG band tables, rename-normalized churn, and hotspot joins as pasteable markdown. [MAP CHANGED] — new module; REQ-176's action will consume it as an accelerator-with-fallback. In-dir `prime-audit-metrics.md` is its routing index; `_dev/primes/prime-shell-commands.md` spot-checked — still accurate, not stale.
