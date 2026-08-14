@@ -24,8 +24,8 @@ maintenance: false
   3. Renderer functions take `io.Writer` + computed data; `runXCommand` wrappers own FlagSet + `os.Exit` via `exitOnLeftoverArguments` (mirrored from queue-kanban). All git via `os/exec` with `git -C <repoRoot>`, three-valued exit handling.
   4. TDD: RED = distribution-math test against a stubbed percentile function → capture failing `go test ./...`; GREEN = implement; then lock-in tests for band edges, exclude honoring, shallow reporting, and rename attribution on a real `t.TempDir()` git fixture (commit A → rename A→B + touch → assert A-era touches land on B).
   5. Verify: `go build`, `go vet ./...`, `gofmt -l` empty, `go test ./...` green, spot-check `inventory` + `churn` against this repo (12-month window, five ceremony excludes).
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[APPLY]:** Code written per plan, all inside `skills/do-work-toolbox/tools/audit-metrics/`: go.mod, .gitignore, main.go, distribution.go(+test), git_support.go, inventory.go(+test), churn.go(+test), prime-audit-metrics.md (25 lines). TDD honored: distribution-math test written first against a stub, RED captured (`nearestRankPercentile(...) = 0, want 50` etc.), then implemented to GREEN; lock-in tests added for band edges (== not flagged, > flagged), exclude honoring (inventory + churn), binary sniff, shallow-clone reporting (real `--depth 1` file:// clone fixture), rename attribution, and staged copy-migration attribution — all on real `git init` fixtures in `t.TempDir()` with pinned identity/default-branch. One requirement-driven addition beyond the plan (D-06): `-C --find-copies-harder` copy detection, because the skills/ restructure was a staged copy-then-delete that `-M` alone cannot see — requirement 4 names that restructure's history as the thing that must survive.
+- [x] **[UNIFY]:** All files are new (untracked dir); `git ls-files --others --exclude-standard` lists exactly the 11 source files — the built binary is correctly ignored by the nested .gitignore, and `git diff --stat` is empty (no tracked file touched; do-work/ is git-excluded). Verified per file: main.go (dispatch comment matches the actual flag surface; every wrapper rejects leftovers and resolves --repo-root before computing), distribution.go (nearest-rank + band-edge rules match their tests), git_support.go (`git -C` on every call; non-zero exits reported, never folded), inventory.go / churn.go (renderers take io.Writer only; no writes anywhere in the tool), tests (no skips except git-absent, no debug prints), prime-audit-metrics.md (15-30 line budget: 25; sections Read first / Do not edit / Must build / Traps). Checks: `go build` OK, `go vet ./...` clean, `gofmt -l .` prints nothing, `go test ./...` green (uncached). Spot-checked against this repo: inventory totals (608 files / 108,612 lines), churn with the five ceremony excludes over 12 months — `skills/do-work/actions/work.md` = 214 commits, exactly matching a hand-run `git log --follow` count; hotspots and folders render with band flags as specified. No debug artifacts.
 
 ## What
 
@@ -125,5 +125,54 @@ Exact .go file split within the directory is the builder's choice (write_set is 
 - [ ] Output is pasteable markdown tables; tool writes nothing (prints only)
 - [ ] Naming per coding-guardrails §5 (two-word reach names; single-word subcommands exempt by design)
 
+## Implementation Summary
+
+**Files changed:**
+- `skills/do-work-toolbox/tools/audit-metrics/go.mod` (new)
+- `skills/do-work-toolbox/tools/audit-metrics/.gitignore` (new)
+- `skills/do-work-toolbox/tools/audit-metrics/main.go` (new)
+- `skills/do-work-toolbox/tools/audit-metrics/distribution.go` (new)
+- `skills/do-work-toolbox/tools/audit-metrics/distribution_test.go` (new)
+- `skills/do-work-toolbox/tools/audit-metrics/git_support.go` (new)
+- `skills/do-work-toolbox/tools/audit-metrics/inventory.go` (new)
+- `skills/do-work-toolbox/tools/audit-metrics/inventory_test.go` (new)
+- `skills/do-work-toolbox/tools/audit-metrics/churn.go` (new)
+- `skills/do-work-toolbox/tools/audit-metrics/churn_test.go` (new)
+- `skills/do-work-toolbox/tools/audit-metrics/prime-audit-metrics.md` (new)
+
+**What was done:** Built the vendored audit-metrics Go CLI (zero dependencies, queue-kanban conventions): four subcommands — `inventory`, `folders`, `churn`, `hotspots` — emitting pasteable markdown tables with flag-supplied WATCH/FLAG bands, exclude-prefix filtering, shallow-clone reporting, and rename+copy-normalized churn (`-M -C --find-copies-harder` with dead copy-source reassignment; verified to reproduce `git log --follow`'s 214-touch count for work.md across the 2026-08-08 restructure). 10 lock-in tests including real-git and real-shallow-clone fixtures.
+
+## Decisions
+
+- **D-01 — Four single-word subcommands: `inventory` | `folders` | `churn` | `hotspots`.** Folders stays separate from inventory rather than folded in: the file-band flags (`--watch-lines/--flag-lines/--watch-words/--flag-words`) and the folder-band flags (`--watch-files/--flag-files`) would otherwise share one FlagSet and invite passing a file threshold to a folder metric. Single-word subcommand names are exempt by design (coding-guardrails § 5); every flag is two-word kebab. DECIDE & STATE.
+- **D-02 — `--exclude-path` is a repeatable plain prefix match** on the repo-relative slash path, default EMPTY. The caller owns the list (a built-in ceremony list would go stale — prime-shell-commands § Closed Enumerations Go Stale); prefix semantics cover both a file (`CHANGELOG.md`) and a tree (`skills/`). DECIDE & STATE.
+- **D-03 — Binary handling: NUL-byte sniff in the first 8 KiB.** Binaries count as files in the extension table but contribute zero lines/words and are excluded from the distributions; the output states how many were excluded. Word counts on binaries are noise, not data. DECIDE & STATE (the REQ pre-approved the sniff).
+- **D-04 — Tracked-but-unreadable files are skipped and counted**, with a visible WARNING line when any exist — not a fatal error (a file deleted from the worktree mid-work would otherwise kill the whole run) and not silence.
+- **D-05 — "Deleted outright" is implemented as a final filter against `git ls-files`** rather than parsing D entries into a death registry: only paths that exist today can carry churn, which is the same predicate with far less machinery.
+- **D-06 — Copy detection added: `git log -M -C --find-copies-harder`, with dead copy-sources reassigned to their surviving copy.** The spot-check exposed that the 2026-08-08 skills/ restructure was a *staged* migration (copy in REQ-139, original deleted at cutover), which `-M` alone cannot see — `skills/do-work/actions/work.md` measured 8 touches vs 214 from `git log --follow`. Requirement 4 names that restructure's history as the thing rename normalization must preserve, so this is the REQ's own intent, not scope creep. After the change the tool's count is exactly 214 (matches `--follow`). Cost: ~5s on this repo, accepted for a tool that runs per audit, not per keystroke. DECIDE & STATE.
+- **D-07 — `--since-window` defaults to "12 months"** (passed verbatim to `git log --since`); the rendered header always names the window in use, so a defaulted run is never ambiguous. The TSV flag from requirement 6 was skipped: with band sections and multiple tables per subcommand it is not "trivially cheap", so YAGNI as the requirement itself instructs.
+- **D-08 — `folders` counts direct children only, not recursive** — the audit asks "which folder is crowded", and recursive counts would charge every ancestor for its whole subtree, drowning the signal in `skills/`-level totals.
+- **D-09 — `--repo-root` (default `.`) is canonicalized via `git rev-parse --show-toplevel`** before any measuring. Load-bearing, not cosmetic: `git log` prints toplevel-relative paths while `git ls-files` prints cwd-relative ones, so a root pointing inside the repo would make the churn join silently empty — the silently-wrong-answer class this repo's lessons exist to prevent. Also turns "not a git repo" into one clean reported error.
+
 ---
 *Source: UR-040 — user follow-up during capture*
+
+## Qualification
+
+Passed — 11 files verified on disk (1,298 lines), 8/8 requirements traced (TSV skipped under requirement 6's own YAGNI clause, logged as D-07), P-A-U audit confirmed (3/3 ticked, [UNIFY] evidence in Decisions), no debug artifacts in diff. qualify.sh mechanical checks OK; its 5 unreferenced-file WARNs are all Step 6.3 exceptions (test files, same-package Go compilation units, in-dir prime doc). Orchestrator independently re-ran build/vet/gofmt/tests and hand-verified the churn spot-check (tool: 214 touches for work.md == `git log --follow` count).
+
+## Testing
+
+**Tests run:** `go test -count=1 ./...` (orchestrator re-run, uncached)
+**Result:** ✓ All passing (10 tests, 2.1s)
+
+**Red-green validation:**
+- `TestNearestRankPercentile` (distribution_test.go): ✗ before implementation (7 subtests failing, verbatim RED output captured in builder hand-back) → ✓ after — anchors the REQ's Red-Green Proof (`ls` of the tool dir failed before; distribution-math test written first)
+- `TestChurnRenameAttribution` + `TestChurnStagedCopyMigrationAttribution`: pin requirement 4's rename normalization (pre-rename touches attributed to current path; staged copy-then-delete migrations reassigned)
+- `TestChurnShallowCloneReported`: pins shallow detection on a real `--depth 1` clone fixture
+- `TestBandLabelForValueEdges`: pins value == threshold NOT flagged, > flagged
+- `TestChurnExcludePathHonored` + exclude/binary-sniff/no-flag-no-band inventory tests
+
+**New tests added:** distribution_test.go, inventory_test.go, churn_test.go (10 lock-ins, real-git + real-shallow-clone fixtures)
+
+*Verified by work action*
