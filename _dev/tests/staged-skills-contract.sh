@@ -127,6 +127,7 @@ knowledge_files=(
 toolbox_actions=(
   validate-feedback
   code-review
+  maintainability-audit
   ui-review
   present-work
   ai-report

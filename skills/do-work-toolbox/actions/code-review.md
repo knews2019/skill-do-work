@@ -8,7 +8,7 @@
 
 **Use when:**
 - User wants a standalone codebase review not tied to any specific REQ or UR
-- User says "code-review", "code review", "audit codebase", "review codebase", or "codebase review"
+- User says "code-review", "code review", "review codebase", or "codebase review"
 - Reviewing architectural health, consistency, security, or patterns across a directory or prime file scope
 
 **Do NOT use when:**
