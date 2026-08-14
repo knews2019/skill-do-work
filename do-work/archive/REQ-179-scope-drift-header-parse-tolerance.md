@@ -4,6 +4,7 @@ title: Make scope-drift.sh parse Scope headers with trailing annotations
 status: completed
 claimed_at: 2026-08-14T10:27:30Z
 completed_at: 2026-08-14T10:33:56Z
+commit: e530dde
 kb_status: pending
 created_at: 2026-08-14T09:49:31Z
 user_request: UR-040
