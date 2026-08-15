@@ -5,6 +5,7 @@ status: completed
 status_changed_at: 2026-08-15T07:41:57Z
 claimed_at: 2026-08-15T09:09:38Z
 completed_at: 2026-08-15T09:24:43Z
+commit: 17e1ea0
 created_at: 2026-08-11T20:22:26Z
 user_request: UR-039
 addendum_to: REQ-174
