@@ -69,7 +69,7 @@ None. Hosted Linux CI is explicitly out of scope pending a separate maintainer d
 **RED prompt/case:** Follow the current hand-back instructions and inspect the root recipes; neither path proves vet/test in both Go modules, and there is no one local command for the complete set.
 **Why RED now:** Native health requires manually coordinating strict ShellCheck, the aggregate, and four Go invocations.
 **GREEN when:** One local script runs every required family exactly once, one documented command invokes it, any thin root recipe delegates to it, and a deliberate failure in each family makes the canonical command exit nonzero.
-**Validation:** Inferred during capture from the audit's verified command inventory and lock-in proposal.
+**Validation:** Confirmed by the user during verification on 2026-08-15.
 
 ## Assets
 

@@ -36,7 +36,7 @@ Keep unreadable or otherwise unavailable tracked paths visible in hotspot output
 - Audit priority: P3; impact 2; effort normal.
 - Root-cause key: `hotspot-unavailable-evidence-visible`.
 - Evidence source: `do-work/audits/audit-2026-08-14.md`, Finding 8.
-- The canonical audit contains the complete real-Git broken-symlink fixture command.
+- Reproduce: `cd skills/do-work-toolbox/tools/audit-metrics && probe_dir="$(mktemp -d /tmp/audit-metrics-unreadable.XXXXXX)" && git -C "$probe_dir" init -q --initial-branch=main && git -C "$probe_dir" config user.email probe@example.test && git -C "$probe_dir" config user.name Probe && ln -s missing-target "$probe_dir/unreadable.md" && git -C "$probe_dir" add unreadable.md && git -C "$probe_dir" commit -qm seed && go run . inventory --repo-root "$probe_dir" --top-count 20 && go run . hotspots --repo-root "$probe_dir" --since-window '10 years' --top-count 20`
 
 ## Detailed Requirements
 
@@ -68,7 +68,7 @@ None.
 **RED prompt/case:** In a temporary Git repository, commit a symlink to a missing target, then run `audit-metrics inventory` and `audit-metrics hotspots`.
 **Why RED now:** Inventory exposes the unreadable tracked path, while hotspot output succeeds and silently omits it.
 **GREEN when:** Valid hotspot rows still render, the missing-worktree path appears in a sorted `NOT-MEASURED` section with lines/score unavailable, and the output warns that ranking is incomplete.
-**Validation:** Inferred during capture from the audit's real-Git reproduction and REQ-178 contract comparison.
+**Validation:** Confirmed by the user during verification on 2026-08-15.
 
 ## Assets
 
@@ -78,7 +78,7 @@ The screenshot shows this request as row 08, labeled P3, impact 2, normal effort
 
 ## Full Context
 
-See `do-work/user-requests/UR-041/input.md` and Finding 8 in the canonical audit for the exact real-Git fixture command.
+See `do-work/user-requests/UR-041/input.md` and Finding 8 in the canonical audit for the complete batch constraints and validated evidence record.
 
 ---
 *Source: "do-work capture-request for these" — expanded from attached validated audit evidence.*

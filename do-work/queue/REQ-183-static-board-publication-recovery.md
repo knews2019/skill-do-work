@@ -36,7 +36,7 @@ Make static board publication all-or-recover across `board-data.js`, `board-mark
 - Audit priority: P2; impact 3; effort normal.
 - Root-cause key: `static-board-all-or-recover-publication`.
 - Evidence source: `do-work/audits/audit-2026-08-14.md`, Finding 3.
-- The canonical audit contains the complete temporary-fixture reproduction command and the observed new-card/old-copy result.
+- Reproduce: `cd skills/do-work-board/tools/queue-kanban && probe_root="$(mktemp -d /tmp/queue-kanban-audit.XXXXXX)" && fixture_repo="$probe_root/repo" && probe_out="$probe_root/out" && mkdir -p "$fixture_repo/do-work/queue" && printf '%s\n' '---' 'id: REQ-001' 'title: Old title' 'status: pending' '---' '' '# Old body' > "$fixture_repo/do-work/queue/REQ-001-fixture.md" && go run . generate --repo-root "$fixture_repo" --out "$probe_out" && printf '%s\n' '---' 'id: REQ-001' 'title: New title' 'status: pending' '---' '' '# New body' > "$fixture_repo/do-work/queue/REQ-001-fixture.md" && chmod 0444 "$probe_out/board-markdown.js" && go run . generate --repo-root "$fixture_repo" --out "$probe_out"; status=$?; printf 'status=%s\n' "$status"; grep -F 'New title' "$probe_out/board-data.js"; grep -F 'Old body' "$probe_out/board-markdown.js"`
 
 ## Detailed Requirements
 
@@ -69,7 +69,7 @@ None.
 **RED prompt/case:** Generate an initial fixture, change the ticket, make the second target unwritable, and generate again.
 **Why RED now:** The command exits 1 after `board-data.js` contains the new title while `board-markdown.js` still contains the old body.
 **GREEN when:** The seeded second-write failure returns nonzero while all three public targets remain byte-identical to their pre-invocation state, unrelated output entries remain, and no staging or backup residue survives; first-generation and success paths also pass.
-**Validation:** Inferred during capture from the audit's executed failure replay and closure ratchet.
+**Validation:** Confirmed by the user during verification on 2026-08-15.
 
 ## Assets
 
@@ -79,7 +79,7 @@ The screenshot shows this request as row 03, labeled P2, impact 3, normal effort
 
 ## Full Context
 
-See `do-work/user-requests/UR-041/input.md` and Finding 3 in the canonical audit for the exact shell reproduction.
+See `do-work/user-requests/UR-041/input.md` and Finding 3 in the canonical audit for the complete batch constraints and validated evidence record.
 
 ---
 *Source: "do-work capture-request for these" — expanded from attached validated audit evidence.*

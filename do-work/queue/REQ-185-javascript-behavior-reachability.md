@@ -36,7 +36,7 @@ Four incident-sensitive board JavaScript tests independently call `t.Skip` when 
 - Audit priority: P2; impact 3; effort normal.
 - Root-cause key: `maintainer-js-behavior-reachability`.
 - Evidence source: `do-work/audits/audit-2026-08-14.md`, Finding 5.
-- Reproduce: run the four named behavior tests with a PATH containing Go but no Node, as recorded in the audit; all four skip and the command exits zero.
+- Reproduce: `cd skills/do-work-board/tools/queue-kanban && probe_bin="$(mktemp -d /tmp/go-without-node.XXXXXX)" && ln -s "$(command -v go)" "$probe_bin/go" && PATH="$probe_bin:/usr/bin:/bin" "$probe_bin/go" test -v -run 'TestDrawerHeadingDeduplicationBehavior|TestByUserRequestLensEmptyStateBehavior|TestByUserRequestLensDefaultScopeUsesScopeOnlyEmptyState|TestTestingDoneWindowIsViewSpecific' .`
 
 ## Detailed Requirements
 
@@ -69,7 +69,7 @@ None.
 **RED prompt/case:** Put only the Go binary plus `/usr/bin:/bin` on PATH and run `TestDrawerHeadingDeduplicationBehavior`, both user-request-lens empty-state tests, and `TestTestingDoneWindowIsViewSpecific`.
 **Why RED now:** All four tests skip when Node is absent, but the selected `go test` command exits zero after running no JavaScript behavior.
 **GREEN when:** The same no-Node replay exits nonzero in maintainer-strict mode, ordinary package tests retain documented skip behavior, and state transitions run as executable Node probes when Node is present.
-**Validation:** Inferred during capture from the audit's executed replay and closure ratchet.
+**Validation:** Confirmed by the user during verification on 2026-08-15.
 
 ## Assets
 
@@ -79,7 +79,7 @@ The screenshot shows this request as row 05, labeled P2, impact 3, normal effort
 
 ## Full Context
 
-See `do-work/user-requests/UR-041/input.md` and Finding 5 in the canonical audit for the exact four-test command.
+See `do-work/user-requests/UR-041/input.md` and Finding 5 in the canonical audit for the complete batch constraints and validated evidence record.
 
 ---
 *Source: "do-work capture-request for these" — expanded from attached validated audit evidence.*

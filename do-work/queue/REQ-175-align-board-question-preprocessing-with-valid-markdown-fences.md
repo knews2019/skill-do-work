@@ -1,7 +1,8 @@
 ---
 id: REQ-175
 title: Align board question preprocessing with valid Markdown fences
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-15T07:41:57Z
 created_at: 2026-08-11T20:22:26Z
 user_request: UR-039
 addendum_to: REQ-174
@@ -39,13 +40,13 @@ REQ-174 fixed the shipped reference classifier, but independent review found the
 **RED prompt/case:** Render Open Questions prose containing an invalid backtick-fence opener followed by `Recommended:` and `Also:` option lines.
 **Why RED now:** `insertQuestionOptionHardBreaks` toggles its `insideFence` state on a prefix alone, so Goldmark-visible option prose is skipped by preprocessing.
 **GREEN when:** The invalid opener remains ordinary prose, the option lines receive hard breaks, valid fenced content stays byte-verbatim, and board tests pass.
-**Validation:** Review-generated follow-up awaiting user confirmation.
+**Validation:** User approved this review-generated follow-up via `do-work clarify` on 2026-08-15.
 
 ## Open Questions
 
-- [ ] The board currently mistakes an invalid backtick-info opener for a real code fence, which can merge later question options in the rendered card. Should I queue the focused renderer fix and regression test?
-  Recommended: Yes, add to queue — the board will match Goldmark and preserve question-option line breaks.
-  Also: No, discard it — REQ-174 remains complete, but this adjacent board edge case stays open.
+- [x] I discovered this out-of-scope task while working on REQ-174: the board can mistake invalid backtick-info prose for a real fence and merge later question options. Should I process this as a new task? → Confirmed: Yes, add to queue
+  Recommended: Yes, add to queue (will flip to `pending`).
+  Also: No, discard it.
 
 ---
 *Source: Important adjacent finding from independent review of REQ-174*

@@ -70,7 +70,7 @@ None.
 **RED prompt/case:** Read `README.md:24-31` and `:156-159`, then compare those claims with the Builder Scope Fence and ADR-019.
 **Why RED now:** The README makes an absolute `do-work/`-only claim that omits managed suite installation and request-scoped project writes.
 **GREEN when:** The README visibly distinguishes all three real boundaries and no longer makes the contradicted absolute claim; the exact old sentence is absent.
-**Validation:** Inferred during capture from the independently validated audit finding. No runnable test is justified for this prose-only correction.
+**Validation:** Confirmed by the user during verification on 2026-08-15. No runnable test is justified for this prose-only correction.
 
 ## Assets
 

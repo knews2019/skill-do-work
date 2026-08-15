@@ -1,0 +1,949 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:,">
+  <title>Repository review — skill-do-work2</title>
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --surface: #fffdf8;
+      --surface-2: #e9e2d5;
+      --text: #172433;
+      --muted: #5e6a72;
+      --line: #c8c0b1;
+      --accent: #0b7285;
+      --accent-soft: #d8edf0;
+      --p1: #a13b3e;
+      --p1-soft: #f4dedc;
+      --p2: #a9560d;
+      --p2-soft: #f4e3cf;
+      --p3: #1d6577;
+      --p3-soft: #dcebed;
+      --good: #3f6f55;
+      --shadow: 0 18px 48px rgba(31, 42, 51, .10);
+      --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #111820;
+        --surface: #19232d;
+        --surface-2: #26333d;
+        --text: #edf1eb;
+        --muted: #aebac0;
+        --line: #46545d;
+        --accent: #72c7d3;
+        --accent-soft: #173c45;
+        --p1: #ef9b9c;
+        --p1-soft: #4b292d;
+        --p2: #f1b36f;
+        --p2-soft: #493420;
+        --p3: #83c7d2;
+        --p3-soft: #1c3e46;
+        --good: #91c5a5;
+        --shadow: 0 20px 54px rgba(0, 0, 0, .28);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 9% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 26rem),
+        var(--bg);
+      font: 16px/1.55 var(--sans);
+      text-rendering: optimizeLegibility;
+    }
+    a { color: var(--accent); text-underline-offset: 3px; }
+    button, summary { font: inherit; }
+    button { color: inherit; }
+    code, pre { font-family: var(--mono); }
+    code { font-size: .88em; }
+    :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+    .page { width: 100%; padding: 0 clamp(20px, 3.2vw, 64px) 96px; }
+    .measure { max-width: 74ch; }
+    .kicker {
+      margin: 0 0 12px;
+      color: var(--accent);
+      font: 700 .73rem/1.2 var(--mono);
+      letter-spacing: .13em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { font-family: var(--display); font-weight: 600; line-height: 1.05; text-wrap: balance; }
+    h1 { margin: 0; font-size: clamp(2.7rem, 7.3vw, 7.2rem); letter-spacing: -.045em; max-width: 12ch; }
+    h2 { margin: 0 0 16px; font-size: clamp(2rem, 3.4vw, 3.7rem); letter-spacing: -.03em; }
+    h3 { margin: 0; font-size: clamp(1.35rem, 2vw, 2rem); letter-spacing: -.015em; }
+    p { margin: 0 0 16px; }
+
+    .masthead {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px 28px;
+      min-height: 74px;
+      border-bottom: 1px solid var(--line);
+      font-size: .8rem;
+    }
+    .masthead strong { font-family: var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .masthead nav { display: flex; flex-wrap: wrap; gap: 12px 22px; }
+    .masthead a { color: var(--muted); text-decoration: none; }
+    .masthead a:hover { color: var(--text); }
+
+    .hero {
+      min-height: min(760px, calc(100vh - 74px));
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: 42px 7vw;
+      padding: clamp(64px, 10vw, 132px) 0 70px;
+      border-bottom: 1px solid var(--line);
+    }
+    .hero-copy { flex: 3 1 640px; }
+    .verdict {
+      margin: 34px 0 0;
+      max-width: 68ch;
+      font-size: clamp(1.14rem, 1.7vw, 1.48rem);
+      line-height: 1.5;
+    }
+    .hero-rail {
+      flex: 1 1 280px;
+      min-width: min(100%, 280px);
+      border-top: 4px solid var(--p1);
+      padding-top: 18px;
+    }
+    .hero-number { font: 600 clamp(4.8rem, 9vw, 8.5rem)/.8 var(--display); letter-spacing: -.06em; }
+    .hero-label { margin: 18px 0 0; max-width: 25ch; color: var(--muted); }
+    .source-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 24px;
+      margin-top: 32px;
+      color: var(--muted);
+      font: .78rem/1.55 var(--mono);
+    }
+    .source-strip span { overflow-wrap: anywhere; }
+
+    section { padding: clamp(58px, 7vw, 108px) 0; border-bottom: 1px solid var(--line); }
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 18px 6vw;
+      align-items: end;
+      justify-content: space-between;
+      margin-bottom: 34px;
+    }
+    .section-head > div:first-child { flex: 2 1 520px; }
+    .section-note { flex: 1 1 280px; max-width: 48ch; color: var(--muted); }
+    .row { display: flex; flex-wrap: wrap; gap: 24px; }
+
+    .decision-card {
+      flex: 1 1 300px;
+      min-height: 260px;
+      padding: 26px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+    .decision-card.lead { border-top: 5px solid var(--p1); }
+    .decision-card:nth-child(2) { border-top: 5px solid var(--p2); }
+    .decision-card:nth-child(3) { border-top: 5px solid var(--accent); }
+    .decision-card p { color: var(--muted); }
+    .step-number { font: 700 .78rem/1 var(--mono); color: var(--accent); letter-spacing: .08em; }
+    .decision-card h3 { margin: 42px 0 16px; }
+    .decision-card .route { margin: 10px 0 0; color: var(--text); font: 700 .75rem/1.3 var(--mono); text-transform: uppercase; }
+
+    .stats-band { margin-top: 26px; }
+    .stat {
+      flex: 1 1 190px;
+      padding: 22px 0;
+      border-top: 1px solid var(--line);
+    }
+    .stat-value { display: block; font-size: clamp(2rem, 3.2vw, 3rem); font-weight: 650; letter-spacing: -.045em; }
+    .stat-label { color: var(--muted); font-size: .87rem; }
+
+    .review-flow { align-items: stretch; }
+    .flow-stage {
+      flex: 1 1 190px;
+      position: relative;
+      padding: 24px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      min-height: 170px;
+    }
+    .flow-stage:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      top: 50%; right: -25px;
+      width: 25px; border-top: 1px solid var(--line);
+    }
+    .flow-stage strong { display: block; margin: 28px 0 8px; font: 600 1.3rem/1.15 var(--display); }
+    .flow-stage span:last-child { color: var(--muted); font-size: .9rem; }
+    .flow-stage .stage-id { color: var(--accent); font: 700 .73rem/1 var(--mono); }
+
+    .chart-layout { align-items: stretch; }
+    .chart-card {
+      flex: 3 1 680px;
+      min-width: 0;
+      padding: 24px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .chart-card svg { display: block; width: 100%; height: auto; min-height: 340px; }
+    .chart-key {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px;
+      color: var(--muted); font-size: .8rem;
+    }
+    .key-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 7px; }
+    .hotspot-side { flex: 1 1 300px; display: flex; flex-direction: column; gap: 14px; }
+    .hotspot-line {
+      padding: 18px;
+      background: color-mix(in srgb, var(--surface) 82%, transparent);
+      border-left: 3px solid var(--line);
+    }
+    .hotspot-line[data-p="P1"] { border-color: var(--p1); }
+    .hotspot-line[data-p="P2"] { border-color: var(--p2); }
+    .hotspot-line[data-p="P3"] { border-color: var(--p3); }
+    .hotspot-line strong { display: block; font-size: .93rem; overflow-wrap: anywhere; }
+    .hotspot-line span { color: var(--muted); font: .76rem/1.5 var(--mono); }
+    .tooltip {
+      position: fixed; z-index: 10; pointer-events: none; opacity: 0;
+      max-width: 300px; padding: 11px 13px;
+      color: var(--text); background: var(--surface); border: 1px solid var(--line);
+      box-shadow: var(--shadow); font-size: .78rem;
+    }
+    .tooltip.visible { opacity: 1; }
+
+    .finding-toolbar {
+      display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+      gap: 14px; margin: 0 0 20px;
+    }
+    .filters, .expanders { display: flex; flex-wrap: wrap; gap: 8px; }
+    .filter, .text-button {
+      border: 1px solid var(--line); background: var(--surface); padding: 9px 13px;
+      cursor: pointer; font: 700 .74rem/1 var(--mono); letter-spacing: .03em;
+    }
+    .filter[aria-pressed="true"] { color: var(--surface); background: var(--text); border-color: var(--text); }
+    .text-button { background: transparent; color: var(--accent); }
+    .finding-list { display: flex; flex-direction: column; gap: 12px; }
+    .finding {
+      --priority: var(--p3);
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-left: 6px solid var(--priority);
+    }
+    .finding[data-priority="P1"] { --priority: var(--p1); }
+    .finding[data-priority="P2"] { --priority: var(--p2); }
+    .finding[hidden] { display: none; }
+    .finding > summary {
+      list-style: none; cursor: pointer;
+      display: flex; flex-wrap: wrap; align-items: center;
+      gap: 14px 22px; padding: 22px 24px;
+    }
+    .finding > summary::-webkit-details-marker { display: none; }
+    .finding-rank { min-width: 40px; color: var(--muted); font: 600 1.1rem/1 var(--mono); }
+    .priority {
+      min-width: 40px; padding: 5px 8px; text-align: center;
+      color: var(--priority); background: color-mix(in srgb, var(--priority) 15%, transparent);
+      font: 800 .72rem/1 var(--mono);
+    }
+    .finding-title { flex: 5 1 430px; font: 600 clamp(1.12rem, 1.8vw, 1.45rem)/1.25 var(--display); }
+    .finding-meta { display: flex; gap: 14px; color: var(--muted); font: .72rem/1.3 var(--mono); }
+    .chevron { width: 18px; height: 18px; border-right: 2px solid var(--muted); border-bottom: 2px solid var(--muted); transform: rotate(45deg); margin: -6px 4px 0 auto; }
+    .finding[open] .chevron { transform: rotate(225deg); margin-top: 8px; }
+    .finding-body { border-top: 1px solid var(--line); padding: 26px 24px 30px; }
+    .finding-body .row > div { flex: 1 1 320px; }
+    .finding-body h4 { margin: 0 0 8px; font: 700 .72rem/1.2 var(--mono); color: var(--accent); letter-spacing: .09em; text-transform: uppercase; }
+    .finding-body ul { margin: 8px 0 18px; padding-left: 20px; }
+    .finding-body li { margin: 5px 0; }
+    .claim { font-size: 1.03rem; }
+    .remedy { padding: 18px; background: var(--accent-soft); border-left: 3px solid var(--accent); }
+    .evidence-pocket { margin-top: 18px; border-top: 1px solid var(--line); }
+    .evidence-pocket summary { cursor: pointer; padding: 16px 0 8px; color: var(--accent); font-weight: 700; }
+    pre {
+      position: relative; margin: 10px 0 0; padding: 18px 52px 18px 18px;
+      white-space: pre-wrap; overflow-wrap: anywhere;
+      color: var(--text); background: var(--bg); border: 1px solid var(--line);
+      font-size: .76rem; line-height: 1.58;
+    }
+    .copy {
+      position: absolute; top: 8px; right: 8px;
+      border: 1px solid var(--line); background: var(--surface); padding: 6px 8px;
+      cursor: pointer; color: var(--muted); font: 700 .65rem/1 var(--mono);
+    }
+
+    .discussion-card {
+      flex: 1 1 390px; padding: 28px; background: var(--surface); border: 1px solid var(--line);
+    }
+    .discussion-card h3 { margin-bottom: 16px; }
+    .default-line { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line); }
+    .default-line strong { color: var(--accent); }
+
+    .ledger { display: flex; flex-wrap: wrap; gap: 16px; }
+    .ledger details { flex: 1 1 340px; background: var(--surface); border: 1px solid var(--line); }
+    .ledger summary { cursor: pointer; padding: 20px; font: 600 1.13rem/1.3 var(--display); }
+    .ledger .inside { padding: 0 20px 20px; color: var(--muted); }
+    .ledger ul { margin: 0; padding-left: 19px; }
+    .ledger li { margin: 9px 0; }
+
+    .verify-card { flex: 1 1 440px; min-width: 0; }
+    .verify-card h3 { margin-bottom: 14px; }
+    .verify-card p { color: var(--muted); }
+
+    footer { padding: 42px 0 0; color: var(--muted); font-size: .82rem; }
+    footer .row { align-items: flex-start; }
+    footer .row > div { flex: 1 1 300px; }
+    .mono { font-family: var(--mono); overflow-wrap: anywhere; }
+    .no-score { color: var(--muted); font-style: italic; }
+    .screen-reader-only {
+      position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+      overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+    }
+
+    @media (max-width: 760px) {
+      .page { padding-left: 18px; padding-right: 18px; }
+      .hero { min-height: auto; padding-top: 72px; }
+      .flow-stage:not(:last-child)::after { display: none; }
+      .chart-card { padding: 12px 8px; }
+      .chart-card svg { min-height: 260px; }
+      .point-label { display: none; }
+      .finding > summary { padding: 18px 16px; }
+      .finding-rank { display: none; }
+      .finding-meta { width: 100%; }
+      .finding-body { padding: 22px 16px 26px; }
+      pre { padding-right: 18px; padding-top: 46px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <strong>Repository review / 14 Aug 2026</strong>
+      <nav aria-label="Report sections">
+        <a href="#start">Start here</a>
+        <a href="#hotspots">Hotspots</a>
+        <a href="#findings">Findings</a>
+        <a href="#decisions">Decisions</a>
+        <a href="#evidence">Evidence</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="report-title">
+        <div class="hero-copy">
+          <p class="kicker">Validated maintainability audit</p>
+          <h1 id="report-title">Fix the trust boundary first.</h1>
+          <p class="verdict">Eight improvement classes survived independent validation. The immediate issue is public documentation that understates where the suite can write; the next tier protects schema/runtime seams, static publication, local origin checks, and JavaScript test reachability.</p>
+          <div class="source-strip" aria-label="Audit identity">
+            <span>BASELINE SHA 58eb4f84f408dce1ec9828a07aef0b174930ce34</span>
+            <span>FIRST CANONICAL AUDIT / NO DELTA</span>
+            <span>12-MONTH CHURN WINDOW</span>
+          </div>
+        </div>
+        <aside class="hero-rail" aria-label="Finding count">
+          <div class="hero-number">08</div>
+          <p class="hero-label">validated improvement classes: 1 P1, 4 P2, and 3 P3.</p>
+        </aside>
+      </section>
+
+      <section id="start" aria-labelledby="start-title">
+        <div class="section-head">
+          <div>
+            <p class="kicker">Read this in one minute</p>
+            <h2 id="start-title">Three moves explain the review.</h2>
+          </div>
+          <p class="section-note">Severity is the audit’s impact label, not a health score. Open the evidence pockets only when you need to challenge or implement a class.</p>
+        </div>
+
+        <div class="row">
+          <article class="decision-card lead">
+            <span class="step-number">01 / CORRECT</span>
+            <div>
+              <h3>Tell adopters where writes can occur.</h3>
+              <p>The README says the skill only creates files under <code>do-work/</code>. Install/update and scoped implementation have wider, consented boundaries.</p>
+            </div>
+            <p class="route">P1 · trivial effort</p>
+          </article>
+          <article class="decision-card">
+            <span class="step-number">02 / PROTECT</span>
+            <div>
+              <h3>Lock the four false-green seams.</h3>
+              <p>Public aliases, bundle publication, live-board authority, and JavaScript behavior checks can drift or fail while ordinary suites remain green.</p>
+            </div>
+            <p class="route">4 × P2 · normal effort</p>
+          </article>
+          <article class="decision-card">
+            <span class="step-number">03 / SIMPLIFY</span>
+            <div>
+              <h3>Make maintenance evidence cheaper and visible.</h3>
+              <p>Remove duplicate child-suite execution, add one local maintainer gate, and expose tracked hotspot paths that could not be measured.</p>
+            </div>
+            <p class="route">3 × P3 · staged after P2</p>
+          </article>
+        </div>
+
+        <div class="row stats-band" aria-label="Audit summary statistics">
+          <div class="stat"><span class="stat-value">301</span><span class="stat-label">maintained files measured</span></div>
+          <div class="stat"><span class="stat-value">60,171</span><span class="stat-label">tracked lines in scope</span></div>
+          <div class="stat"><span class="stat-value">2.74%</span><span class="stat-label">overall duplicated lines, below WATCH</span></div>
+          <div class="stat"><span class="stat-value">20</span><span class="stat-label">churn × size hotspots sampled</span></div>
+        </div>
+      </section>
+
+      <section id="method" aria-labelledby="method-title">
+        <div class="section-head">
+          <div>
+            <p class="kicker">How the conclusions were made</p>
+            <h2 id="method-title">Measure, challenge, then keep only what survives.</h2>
+          </div>
+          <p class="section-note">The audit used mechanical metrics to choose where to look, six qualitative dimensions to test the code, and a separate read-only validation pass to refute duplicates or weak claims.</p>
+        </div>
+        <div class="row review-flow" aria-label="Review flow">
+          <div class="flow-stage"><span class="stage-id">STAGE 01</span><strong>Measure</strong><span>Size, complexity, duplication, churn, references, archived touches.</span></div>
+          <div class="flow-stage"><span class="stage-id">STAGE 02</span><strong>Review</strong><span>Consistency, architecture, security, performance, tests, automated checks.</span></div>
+          <div class="flow-stage"><span class="stage-id">STAGE 03</span><strong>Replay</strong><span>Historical defects, harness reachability, prose/runtime and schema routing drift.</span></div>
+          <div class="flow-stage"><span class="stage-id">STAGE 04</span><strong>Validate</strong><span>Keep eight findings; move choices to Discuss and covered work to Pre-empted.</span></div>
+        </div>
+      </section>
+
+      <section id="hotspots" aria-labelledby="hotspots-title">
+        <div class="section-head">
+          <div>
+            <p class="kicker">Where review attention concentrated</p>
+            <h2 id="hotspots-title">Churn and size point to risk; they do not prove a defect.</h2>
+          </div>
+          <p class="section-note">Each circle is a top-20 file. Position is 12-month commits versus current lines; circle size reflects basename-reference blast radius. Color shows the highest validated finding touching that file.</p>
+        </div>
+        <div class="row chart-layout">
+          <div class="chart-card">
+            <div class="chart-key" aria-hidden="true">
+              <span><i class="key-dot" style="background:var(--p1)"></i>P1 touch</span>
+              <span><i class="key-dot" style="background:var(--p2)"></i>P2 touch</span>
+              <span><i class="key-dot" style="background:var(--p3)"></i>P3 touch</span>
+              <span><i class="key-dot" style="background:var(--muted)"></i>WATCH / no accepted class</span>
+            </div>
+            <svg id="hotspot-chart" viewBox="0 0 1080 620" role="img" aria-labelledby="chart-title chart-desc">
+              <title id="chart-title">Top twenty repository hotspots by churn and file size</title>
+              <desc id="chart-desc">Horizontal position shows commits in the last twelve months, vertical position shows current lines, and circle size shows basename reference files. Points associated with accepted findings are colored by priority.</desc>
+            </svg>
+          </div>
+          <aside class="hotspot-side" aria-label="Highest hotspot scores">
+            <div class="hotspot-line" data-p="P3"><strong>contract-regressions.sh</strong><span>92 commits × 3,352 lines = 308,384</span></div>
+            <div class="hotspot-line" data-p="P2"><strong>work.md</strong><span>214 commits × 739 lines = 158,146</span></div>
+            <div class="hotspot-line" data-p="P2"><strong>board.js</strong><span>44 commits × 2,524 lines = 111,056</span></div>
+            <div class="hotspot-line" data-p="P2"><strong>work-reference.md</strong><span>99 commits × 963 lines = 95,337</span></div>
+            <div class="hotspot-line"><strong>model.go</strong><span>46 commits × 1,771 lines = 81,466 · WATCH</span></div>
+            <div class="hotspot-line" data-p="P1"><strong>README.md</strong><span>77 commits × 205 lines = 15,785 · highest severity touch</span></div>
+          </aside>
+        </div>
+      </section>
+
+      <section id="findings" aria-labelledby="findings-title">
+        <div class="section-head">
+          <div>
+            <p class="kicker">Validated improvement classes</p>
+            <h2 id="findings-title">Open a finding when you need the proof.</h2>
+          </div>
+          <p class="section-note">The summaries carry the decision. Expanded cards add exact instances, remedy boundaries, reproduction commands, and any earned lock-in proposal.</p>
+        </div>
+
+        <div class="finding-toolbar">
+          <div class="filters" role="group" aria-label="Filter by priority">
+            <button class="filter" type="button" data-filter="all" aria-pressed="true">All 8</button>
+            <button class="filter" type="button" data-filter="P1" aria-pressed="false">P1 · 1</button>
+            <button class="filter" type="button" data-filter="P2" aria-pressed="false">P2 · 4</button>
+            <button class="filter" type="button" data-filter="P3" aria-pressed="false">P3 · 3</button>
+          </div>
+          <div class="expanders">
+            <button class="text-button" type="button" id="expand-all">Expand visible</button>
+            <button class="text-button" type="button" id="collapse-all">Collapse all</button>
+          </div>
+        </div>
+
+        <div class="finding-list">
+          <details class="finding" data-priority="P1" open>
+            <summary>
+              <span class="finding-rank">01</span><span class="priority">P1</span>
+              <span class="finding-title">README understates install and implementation write boundaries</span>
+              <span class="finding-meta"><span>impact 4</span><span>trivial effort</span></span><i class="chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="finding-body">
+              <div class="row">
+                <div>
+                  <h4>Claim</h4>
+                  <p class="claim">The public README says the skill only creates files inside <code>do-work/</code>, while install/update also manage four <code>.claude/skills/</code> trees and consented Just/settings sections; active REQs may write project paths declared in Scope.</p>
+                  <h4>Exact instances</h4>
+                  <ul>
+                    <li><code>README.md</code> lines 24–31 and 158 at the audited SHA</li>
+                    <li><code>skills/do-work/actions/work.md</code> lines 357–365</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Why it matters</h4>
+                  <p>Adopters make a trust decision before installation. An absolute safety claim that excludes legitimate managed and scoped writes is user-visible, even though the underlying writes are consented.</p>
+                  <div class="remedy"><strong>Remedy.</strong> State three boundaries: reviewed managed install paths, durable queue state under <code>do-work/</code>, and project-source writes only during explicitly invoked REQ work within declared Scope. No new checker is justified.</div>
+                </div>
+              </div>
+              <details class="evidence-pocket"><summary>Reproduce and challenge this class</summary><pre><button class="copy" type="button">Copy</button>sed -n '24,35p;156,159p' README.md &amp;&amp; sed -n '347,365p' skills/do-work/actions/work.md &amp;&amp; sed -n '35,61p' decisions/records/adr-019-four-skill-suite-contract.md</pre></details>
+            </div>
+          </details>
+
+          <details class="finding" data-priority="P2">
+            <summary>
+              <span class="finding-rank">02</span><span class="priority">P2</span>
+              <span class="finding-title">Public work and schema vocabularies drift while suites stay green</span>
+              <span class="finding-meta"><span>impact 3</span><span>normal effort</span></span><i class="chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="finding-body">
+              <div class="row">
+                <div>
+                  <h4>Claim</h4>
+                  <p class="claim">The work guide advertises three aliases the first-match router cannot dispatch; short workflow glosses omit canonical fields/statuses; the board accepts two testing-status aliases absent from the schema table.</p>
+                  <h4>Exact instances</h4>
+                  <ul>
+                    <li><code>work-guide.md</code>: <code>begin</code>, <code>execute</code>, <code>build</code></li>
+                    <li><code>SKILL.md</code>: the actual route alias list</li>
+                    <li><code>work.md</code> and <code>work-reference.md</code>: stale schema glosses</li>
+                    <li><code>testing.go</code>: two runtime-only aliases</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Why it matters</h4>
+                  <p>These are green-suite mismatches at public vocabulary seams. Users can follow documented words that route elsewhere, and maintainers can evolve the schema table independently of accepted runtime values.</p>
+                  <div class="remedy"><strong>Remedy.</strong> Restore the three aliases, keep one public list compared with the router, correct the schema summaries, and enforce bidirectional parity at the work-guide/router and testing-schema/normalizer seams.</div>
+                </div>
+              </div>
+              <details class="evidence-pocket"><summary>Reproduce and challenge this class</summary><pre><button class="copy" type="button">Copy</button>rg -n 'do-work (begin|execute|build)|Other trigger words|enum/boolean fields|Queue: N pending|blocked-dependency-cycle|selected for testing|returned with feedback' README.md skills/do-work/SKILL.md skills/do-work/docs/work-guide.md skills/do-work/actions/work.md skills/do-work/actions/work-reference.md skills/do-work-board/tools/queue-kanban/testing.go</pre></details>
+            </div>
+          </details>
+
+          <details class="finding" data-priority="P2">
+            <summary>
+              <span class="finding-rank">03</span><span class="priority">P2</span>
+              <span class="finding-title">Static board generation can publish a mixed three-file bundle</span>
+              <span class="finding-meta"><span>impact 3</span><span>normal effort</span></span><i class="chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="finding-body">
+              <div class="row">
+                <div>
+                  <h4>Claim</h4>
+                  <p class="claim"><code>generateStaticSite</code> writes <code>board-data.js</code>, <code>board-markdown.js</code>, and <code>index.html</code> directly in sequence. A forced second-write failure leaves new rendered data beside old copy payload and shell.</p>
+                  <h4>Exact instances</h4>
+                  <ul>
+                    <li><code>generate.go</code>: three sequential <code>os.WriteFile</code> calls</li>
+                    <li><code>generate_test.go</code>: success-only publication call</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Why it matters</h4>
+                  <p>The output is a shareable static artifact. Mixed-generation files can present internally inconsistent queue data after the generator correctly exits non-zero.</p>
+                  <div class="remedy"><strong>Remedy.</strong> Build privately, then publish only the three known files with bounded backups/restoration. Preserve unrelated output entries. Lock in zero changed public target bytes and no private residue after handled failure.</div>
+                </div>
+              </div>
+              <details class="evidence-pocket"><summary>Run the forced-failure replay</summary><pre><button class="copy" type="button">Copy</button>cd skills/do-work-board/tools/queue-kanban &amp;&amp; probe_root="$(mktemp -d /tmp/queue-kanban-audit.XXXXXX)" &amp;&amp; fixture_repo="$probe_root/repo" &amp;&amp; probe_out="$probe_root/out" &amp;&amp; mkdir -p "$fixture_repo/do-work/queue" &amp;&amp; printf '%s\n' '---' 'id: REQ-001' 'title: Old title' 'status: pending' '---' '' '# Old body' &gt; "$fixture_repo/do-work/queue/REQ-001-fixture.md" &amp;&amp; go run . generate --repo-root "$fixture_repo" --out "$probe_out" &amp;&amp; printf '%s\n' '---' 'id: REQ-001' 'title: New title' 'status: pending' '---' '' '# New body' &gt; "$fixture_repo/do-work/queue/REQ-001-fixture.md" &amp;&amp; chmod 0444 "$probe_out/board-markdown.js" &amp;&amp; go run . generate --repo-root "$fixture_repo" --out "$probe_out"; status=$?; printf 'status=%s\n' "$status"; grep -F 'New title' "$probe_out/board-data.js"; grep -F 'Old body' "$probe_out/board-markdown.js"</pre></details>
+            </div>
+          </details>
+
+          <details class="finding" data-priority="P2">
+            <summary>
+              <span class="finding-rank">04</span><span class="priority">P2</span>
+              <span class="finding-title">Live board origin checks have no trusted Host anchor</span>
+              <span class="finding-meta"><span>impact 3</span><span>normal effort</span></span><i class="chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="finding-body">
+              <div class="row">
+                <div>
+                  <h4>Claim</h4>
+                  <p class="claim">The live board compares <code>Origin.Host</code> only with request <code>Host</code>, but validates neither against the actual listener. An unconfigured matching Host reaches all six routes under a loopback peer.</p>
+                  <h4>Exact instances</h4>
+                  <ul>
+                    <li><code>testing_api.go</code>: <code>parsedOrigin.Host != httpRequest.Host</code></li>
+                    <li><code>serve.go</code>: production handler assembly</li>
+                    <li><code>testing_test.go</code>: matching request-controlled Origin and Host</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Why it matters</h4>
+                  <p>The documented hostile-page defense is anchored only to request-controlled authority values. Peer, content-type, path, and write-scope controls remain valuable, but do not establish the configured listener identity.</p>
+                  <div class="remedy"><strong>Remedy.</strong> After bind, wrap the handler with one normalized authority validator derived from the listener/port. Define loopback, IPv6, wildcard, and LAN behavior explicitly; retain existing controls.</div>
+                </div>
+              </div>
+              <details class="evidence-pocket"><summary>Inspect the authority path and current tests</summary><pre><button class="copy" type="button">Copy</button>sed -n '75,107p' skills/do-work-board/tools/queue-kanban/testing_api.go &amp;&amp; sed -n '66,90p;492,545p' skills/do-work-board/tools/queue-kanban/serve.go &amp;&amp; sed -n '625,633p' skills/do-work-board/tools/queue-kanban/testing_test.go &amp;&amp; sed -n '163,169p' skills/do-work-board/tools/queue-kanban/filementions_test.go</pre></details>
+            </div>
+          </details>
+
+          <details class="finding" data-priority="P2">
+            <summary>
+              <span class="finding-rank">05</span><span class="priority">P2</span>
+              <span class="finding-title">JavaScript behavior probes can all skip while the board suite passes</span>
+              <span class="finding-meta"><span>impact 3</span><span>normal effort</span></span><i class="chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="finding-body">
+              <div class="row">
+                <div>
+                  <h4>Claim</h4>
+                  <p class="claim">Four incident-sensitive behavior tests independently call <code>t.Skip</code> when Node is absent. <code>go test</code> can therefore pass after executing zero JavaScript behavior probes; some transitions remain source-token checks.</p>
+                  <h4>Exact instances</h4>
+                  <ul>
+                    <li><code>generate_test.go</code>: <code>exec.LookPath("node")</code> and <code>t.Skip</code></li>
+                    <li><code>sliceBalancedBlockAfter</code> and string-token assertions</li>
+                  </ul>
+                </div>
+                <div>
+                  <h4>Why it matters</h4>
+                  <p><code>board.js</code> is the third-ranked hotspot: 2,524 lines, 183 functions, file CCN 631. A maintainer lane can be false-green exactly where historical behavior regressions are concentrated.</p>
+                  <div class="remedy"><strong>Remedy.</strong> Centralize Node detection, add a strict maintainer mode that fails if zero behavior probes run, and make state-transition claims executable. Ordinary consumer tests may retain documented skipping.</div>
+                </div>
+              </div>
+              <details class="evidence-pocket"><summary>Run the no-Node replay</summary><pre><button class="copy" type="button">Copy</button>cd skills/do-work-board/tools/queue-kanban &amp;&amp; probe_bin="$(mktemp -d /tmp/go-without-node.XXXXXX)" &amp;&amp; ln -s "$(command -v go)" "$probe_bin/go" &amp;&amp; PATH="$probe_bin:/usr/bin:/bin" "$probe_bin/go" test -v -run 'TestDrawerHeadingDeduplicationBehavior|TestByUserRequestLensEmptyStateBehavior|TestByUserRequestLensDefaultScopeUsesScopeOnlyEmptyState|TestTestingDoneWindowIsViewSpecific' .</pre></details>
+            </div>
+          </details>
+
+          <details class="finding" data-priority="P3">
+            <summary>
+              <span class="finding-rank">06</span><span class="priority">P3</span>
+              <span class="finding-title">Required baseline verification executes two child suites twice</span>
+              <span class="finding-meta"><span>impact 2</span><span>trivial effort</span></span><i class="chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="finding-body">
+              <div class="row">
+                <div>
+                  <h4>Claim</h4>
+                  <p class="claim"><code>prescribed-shell-scripts-behavior.sh</code> runs directly and through the staged suite; <code>shipped-package-reference-contract.sh</code> runs inside the aggregate and again in the required hand-back baseline without a distinct mode.</p>
+                  <h4>Evidence</h4>
+                  <p>The aggregate is the top hotspot at 92 commits and 3,352 lines. This class is narrower than the pre-existing harness-bloat decision.</p>
+                </div>
+                <div>
+                  <h4>Remedy boundary</h4>
+                  <div class="remedy">Delete the aggregate’s direct prescribed-shell edge, retain the staged suite’s delegated edge, and keep shipped-reference inside the aggregate. No graph registry or parser is earned.</div>
+                </div>
+              </div>
+              <details class="evidence-pocket"><summary>Trace duplicate ownership edges</summary><pre><button class="copy" type="button">Copy</button>rg -n 'prescribed-shell-scripts-behavior|staged-skills-contract|shipped-package-reference-contract' CLAUDE.md _dev/tests/contract-regressions.sh _dev/tests/staged-skills-contract.sh</pre></details>
+            </div>
+          </details>
+
+          <details class="finding" data-priority="P3">
+            <summary>
+              <span class="finding-rank">07</span><span class="priority">P3</span>
+              <span class="finding-title">No single local maintainer command proves shell plus both Go modules</span>
+              <span class="finding-meta"><span>impact 2</span><span>normal effort</span></span><i class="chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="finding-body">
+              <div class="row">
+                <div>
+                  <h4>Claim</h4>
+                  <p class="claim">The required hand-back baseline runs shell contracts but neither Go module’s vet/tests. Current native health requires coordinating the shell gate plus four Go command families.</p>
+                  <h4>Exact instances</h4>
+                  <ul><li><code>CLAUDE.md</code>: hand-back contract</li><li><code>justfile</code>: no maintainer verify entry</li><li>Both module <code>go.mod</code> files</li></ul>
+                </div>
+                <div>
+                  <h4>Why it matters</h4>
+                  <p>The audit proved the commands all pass; it also proved that “repository healthy” is currently a manually assembled result that can drift between maintainers.</p>
+                  <div class="remedy"><strong>Remedy.</strong> Add one export-ignored maintainer script as source of truth for versions, strict ShellCheck, the aggregate once, and vet/test in both modules. Keep any root recipe a thin repository-only delegate.</div>
+                </div>
+              </div>
+              <details class="evidence-pocket"><summary>Inspect the current verification surface</summary><pre><button class="copy" type="button">Copy</button>rg -n 'contract-regressions|shipped-package-reference' CLAUDE.md &amp;&amp; rg -n 'go (test|vet)' _dev/tests/contract-regressions.sh _dev/tests/shipped-package-reference-contract.sh || true &amp;&amp; find skills -name go.mod -print &amp;&amp; sed -n '1,40p' justfile</pre></details>
+            </div>
+          </details>
+
+          <details class="finding" data-priority="P3">
+            <summary>
+              <span class="finding-rank">08</span><span class="priority">P3</span>
+              <span class="finding-title">Hotspot output silently drops unavailable tracked paths</span>
+              <span class="finding-meta"><span>impact 2</span><span>normal effort</span></span><i class="chevron" aria-hidden="true"></i>
+            </summary>
+            <div class="finding-body">
+              <div class="row">
+                <div>
+                  <h4>Claim</h4>
+                  <p class="claim"><code>computeHotspotEntries</code> continues after a tracked-path measurement error and returns a successful numeric table with neither a row nor a <code>NOT-MEASURED</code> marker.</p>
+                  <h4>Exact instances</h4>
+                  <ul><li><code>audit-metrics/churn.go</code>: measurement error followed by <code>continue</code></li><li>REQ-178’s recorded visible-warning contract</li></ul>
+                </div>
+                <div>
+                  <h4>Why it matters</h4>
+                  <p>A missing row looks like low risk. This audit’s own standard requires unavailable evidence to remain visibly unavailable, not silently disappear from a ranked result.</p>
+                  <div class="remedy"><strong>Remedy.</strong> Carry sorted unavailable paths through the join, render current lines/score as <code>NOT-MEASURED</code>, warn that ranking is incomplete, and retain valid rows.</div>
+                </div>
+              </div>
+              <details class="evidence-pocket"><summary>Run the missing-worktree-path fixture</summary><pre><button class="copy" type="button">Copy</button>cd skills/do-work-toolbox/tools/audit-metrics &amp;&amp; probe_dir="$(mktemp -d /tmp/audit-metrics-unreadable.XXXXXX)" &amp;&amp; git -C "$probe_dir" init -q --initial-branch=main &amp;&amp; git -C "$probe_dir" config user.email probe@example.test &amp;&amp; git -C "$probe_dir" config user.name Probe &amp;&amp; ln -s missing-target "$probe_dir/unreadable.md" &amp;&amp; git -C "$probe_dir" add unreadable.md &amp;&amp; git -C "$probe_dir" commit -qm seed &amp;&amp; go run . inventory --repo-root "$probe_dir" --top-count 20 &amp;&amp; go run . hotspots --repo-root "$probe_dir" --since-window '10 years' --top-count 20</pre></details>
+            </div>
+          </details>
+        </div>
+      </section>
+
+      <section id="decisions" aria-labelledby="decisions-title">
+        <div class="section-head">
+          <div>
+            <p class="kicker">Decisions before implementation</p>
+            <h2 id="decisions-title">Two ideas need a choice, not a ticket yet.</h2>
+          </div>
+          <p class="section-note">The validation pass preserved these trade-offs under Discuss. Capturing them now would pretend the evidence already chose a direction.</p>
+        </div>
+        <div class="row">
+          <article class="discussion-card">
+            <h3>Extract frontend state only after the behavior gate.</h3>
+            <p>A separate <code>board-state.js</code> might reduce brace scraping and fake-DOM setup, but it would not simplify the two highest-CCN DOM functions and could add more assembly surface.</p>
+            <p class="default-line"><strong>Default:</strong> improve executable probes in place. Spike extraction only on a relevant change and only if zero-network <code>file://</code> output is preserved while net surface falls.</p>
+          </article>
+          <article class="discussion-card">
+            <h3>Adopt hosted Linux CI only as an explicit ownership decision.</h3>
+            <p>A Linux lane would exercise case-sensitive portability, but also introduces action versions, runner images, permissions, tool installation, and workflow maintenance.</p>
+            <p class="default-line"><strong>Default:</strong> land the canonical local gate first. If CI is chosen, use one least-privilege Ubuntu lane that invokes only that script—no matrix or duplicate command list.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="evidence" aria-labelledby="evidence-title">
+        <div class="section-head">
+          <div>
+            <p class="kicker">Evidence ledger</p>
+            <h2 id="evidence-title">What was ruled out, and what remains unknown.</h2>
+          </div>
+          <p class="section-note">These sections are collapsed because they calibrate the findings; they should not compete with the actions unless you are reviewing completeness.</p>
+        </div>
+        <div class="ledger">
+          <details>
+            <summary>Pre-empted: already owned, accepted, or refuted</summary>
+            <div class="inside"><ul>
+              <li>The <code>Justfile</code>/<code>justfile</code> case mismatch is already REQ-180.</li>
+              <li>Board Open Questions fence/rendering drift is already REQ-175.</li>
+              <li>Four-skill boundaries are accepted by ADR-019; the work/reference split by ADR-001; the embedded board by ADR-016.</li>
+              <li>Broad contract-harness bloat is covered by the 2026-07-15 decision audit.</li>
+              <li>Package-local crew consolidation was refuted: current copies preserve caller-relative policy.</li>
+              <li>Installer/updater recovery and other defensive helpers are incident-earned KEEP surfaces.</li>
+            </ul></div>
+          </details>
+          <details>
+            <summary>NOT-MEASURED: do not generalize past this host</summary>
+            <div class="inside"><ul>
+              <li>Case-sensitive runtime replay; static tracked-casing verification only.</li>
+              <li>Large browser trees with thousands of queue/calendar entries.</li>
+              <li>Hundreds or thousands of simultaneous active writes.</li>
+              <li>Sustained live-server invalidation and cache-miss contention.</li>
+              <li>Instruction token/runtime cost beyond descriptive word counts.</li>
+              <li>Windows or Linux behavior beyond the current macOS host.</li>
+            </ul></div>
+          </details>
+          <details>
+            <summary>WATCH: large does not automatically mean broken</summary>
+            <div class="inside"><ul>
+              <li><code>model.go</code>: coherent parse → annotate → bucket pipeline; navigation cost, no proven boundary defect.</li>
+              <li><code>board.css</code>: 1,756 lines, but 0.80% duplication and no surviving visual/runtime defect.</li>
+              <li><code>verify.go</code>: next-change extraction trigger already lives in the board prime.</li>
+              <li><code>computeChurnReport</code>: cohesive rename/copy normalization with real-Git tests; Finding 8 targets a separate silent branch.</li>
+              <li>Overall duplication is 2.74%, below the locked 3% WATCH band.</li>
+            </ul></div>
+          </details>
+          <details>
+            <summary>Checks that passed at the audited SHA</summary>
+            <div class="inside"><ul>
+              <li>Both baseline contract suites, including late defensive/staged/installer markers.</li>
+              <li>ShellCheck 0.11.0 at warning severity over all 42 tracked shell files.</li>
+              <li><code>go vet ./...</code> and <code>go test ./...</code> in both Go modules.</li>
+              <li><code>gofmt -l</code> in both modules with no paths printed.</li>
+              <li>Representative CRLF, version-flag, bind failure, drawer, lens, and testing-window replays.</li>
+            </ul></div>
+          </details>
+        </div>
+      </section>
+
+      <section id="verify" aria-labelledby="verify-title">
+        <div class="section-head">
+          <div>
+            <p class="kicker">Verify it yourself</p>
+            <h2 id="verify-title">Re-run the baseline or read the exact commit.</h2>
+          </div>
+          <p class="section-note">Finding-specific commands live inside each expanded card. These commands verify the audit anchor and the clean baseline checks.</p>
+        </div>
+        <div class="row">
+          <div class="verify-card">
+            <h3>Read the audited baseline</h3>
+            <p>The canonical merge-aware primitive shows the baseline commit; the audit Markdown contains every pasted metric table and finding class.</p>
+            <pre><button class="copy" type="button">Copy</button>skills/do-work-toolbox/../do-work/scripts/show-commit-diff.sh 58eb4f84f408dce1ec9828a07aef0b174930ce34
+sed -n '1,220p' do-work/audits/audit-2026-08-14.md</pre>
+          </div>
+          <div class="verify-card">
+            <h3>Re-run the contract baseline</h3>
+            <p>The audit ran both suites without truncation; the aggregate’s final marker proves late checks executed.</p>
+            <pre><button class="copy" type="button">Copy</button>_dev/tests/contract-regressions.sh
+_dev/tests/shipped-package-reference-contract.sh</pre>
+          </div>
+          <div class="verify-card">
+            <h3>Re-run native checks</h3>
+            <p>This is the manually coordinated surface that Finding 7 proposes consolidating.</p>
+            <pre><button class="copy" type="button">Copy</button>shellcheck -S warning $(git ls-files '*.sh')
+(cd skills/do-work-board/tools/queue-kanban &amp;&amp; go vet ./... &amp;&amp; go test ./...)
+(cd skills/do-work-toolbox/tools/audit-metrics &amp;&amp; go vet ./... &amp;&amp; go test ./...)</pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="row">
+        <div><strong>Source.</strong> <span class="mono">do-work/audits/audit-2026-08-14.md</span><br>Audited SHA <span class="mono">58eb4f84f408dce1ec9828a07aef0b174930ce34</span>.</div>
+        <div><strong>Visual evidence.</strong> Hand-authored, audit-derived SVG and HTML only. No screenshots were available; no synthetic images were used.</div>
+        <div><strong>Render verification.</strong> Light and dark, two judge passes minimum; desktop, tablet, and mobile widths. Completed 14 Aug 2026.</div>
+      </div>
+    </footer>
+  </div>
+
+  <div id="chart-tooltip" class="tooltip" role="status" aria-live="polite"></div>
+
+  <!--
+    Anti-slop self-review — completed before publication:
+    1 Would read: PASS — a one-minute route precedes detail.
+    2 Claims verified: PASS — all values and classes trace to the canonical audit.
+    3 Compressed: PASS — WATCH, Pre-empted, limits, and commands are collapsed.
+    4 Conclusion first: PASS — the action is the hero sentence.
+    5 AI honesty: PASS — no AI-generated image is present; footer says so.
+    6 Needs to exist: PASS — the user explicitly requested an understandable visual report.
+    7 Medium matches stakes: PASS — HTML supports comparison and progressive evidence.
+    8 Decision before self-grade: PASS — no score; ordered action leads.
+    9 Generated images earn place: N/A — none used.
+    10 Generated image disclosure: N/A — none used.
+  -->
+
+  <script>
+    const hotspots = [
+      {name:'contract-regressions.sh', path:'_dev/tests/contract-regressions.sh', commits:92, lines:3352, score:308384, refs:14, priority:'P3', label:true, dx:15, dy:28},
+      {name:'work.md', path:'skills/do-work/actions/work.md', commits:214, lines:739, score:158146, refs:68, priority:'P2', label:true, dx:-12, dy:-22, anchor:'end'},
+      {name:'board.js', path:'skills/do-work-board/tools/queue-kanban/web/board.js', commits:44, lines:2524, score:111056, refs:17, priority:'P2', label:true, dx:18, dy:-18},
+      {name:'work-reference.md', path:'skills/do-work/actions/work-reference.md', commits:99, lines:963, score:95337, refs:71, priority:'P2', label:true, dx:18, dy:26},
+      {name:'model.go', path:'skills/do-work-board/tools/queue-kanban/model.go', commits:46, lines:1771, score:81466, refs:18, priority:'', label:true, dx:18, dy:-18},
+      {name:'board.css', path:'skills/do-work-board/tools/queue-kanban/web/board.css', commits:26, lines:1756, score:45656, refs:8, priority:'', label:true, dx:-18, dy:26, anchor:'end'},
+      {name:'review-work.md', path:'skills/do-work/actions/review-work.md', commits:72, lines:539, score:38808, refs:30, priority:'', label:false},
+      {name:'model_test.go', path:'skills/do-work-board/tools/queue-kanban/model_test.go', commits:23, lines:1432, score:32936, refs:1, priority:'', label:false},
+      {name:'capture.md', path:'skills/do-work/actions/capture.md', commits:93, lines:322, score:29946, refs:34, priority:'', label:false},
+      {name:'generate_test.go', path:'skills/do-work-board/tools/queue-kanban/generate_test.go', commits:20, lines:1243, score:24860, refs:3, priority:'P2', label:false},
+      {name:'bkb.md', path:'skills/do-work-knowledge/actions/bkb.md', commits:32, lines:747, score:23904, refs:20, priority:'', label:false},
+      {name:'staged-skills-contract.sh', path:'_dev/tests/staged-skills-contract.sh', commits:19, lines:1087, score:20653, refs:2, priority:'P3', label:false},
+      {name:'README.md', path:'README.md', commits:77, lines:205, score:15785, refs:26, priority:'P1', label:true, dx:18, dy:27},
+      {name:'present-work.md', path:'skills/do-work-toolbox/actions/present-work.md', commits:27, lines:536, score:14472, refs:17, priority:'', label:false},
+      {name:'CLAUDE.md', path:'CLAUDE.md', commits:110, lines:126, score:13860, refs:34, priority:'P3', label:false},
+      {name:'cleanup.md', path:'skills/do-work/actions/cleanup.md', commits:42, lines:324, score:13608, refs:33, priority:'', label:false},
+      {name:'interview.md', path:'skills/do-work-knowledge/actions/interview.md', commits:27, lines:485, score:13095, refs:14, priority:'', label:false},
+      {name:'generate.go', path:'skills/do-work-board/tools/queue-kanban/generate.go', commits:27, lines:474, score:12798, refs:5, priority:'P2', label:false},
+      {name:'inspect.md', path:'skills/do-work-toolbox/actions/inspect.md', commits:27, lines:448, score:12096, refs:18, priority:'', label:false},
+      {name:'verify_test.go', path:'skills/do-work-board/tools/queue-kanban/verify_test.go', commits:11, lines:1045, score:11495, refs:3, priority:'', label:false}
+    ];
+
+    const svg = document.getElementById('hotspot-chart');
+    const NS = 'http://www.w3.org/2000/svg';
+    const plot = {left:76, top:42, width:948, height:500};
+    const css = getComputedStyle(document.documentElement);
+    const colors = {
+      P1: css.getPropertyValue('--p1').trim(),
+      P2: css.getPropertyValue('--p2').trim(),
+      P3: css.getPropertyValue('--p3').trim(),
+      none: css.getPropertyValue('--muted').trim(),
+      line: css.getPropertyValue('--line').trim(),
+      text: css.getPropertyValue('--text').trim(),
+      surface: css.getPropertyValue('--surface').trim()
+    };
+    const make = (name, attrs = {}, text = '') => {
+      const node = document.createElementNS(NS, name);
+      Object.entries(attrs).forEach(([key, value]) => node.setAttribute(key, value));
+      if (text) node.textContent = text;
+      return node;
+    };
+    const x = value => plot.left + (value / 220) * plot.width;
+    const y = value => plot.top + plot.height - (value / 3500) * plot.height;
+    const radius = refs => 6 + 14 * Math.sqrt(refs / 71);
+
+    for (let value = 0; value <= 3500; value += 500) {
+      const py = y(value);
+      svg.appendChild(make('line', {x1:plot.left, y1:py, x2:plot.left + plot.width, y2:py, stroke:colors.line, 'stroke-width':1, opacity:.62}));
+      svg.appendChild(make('text', {x:plot.left - 14, y:py + 4, fill:colors.text, 'text-anchor':'end', 'font-size':12, 'font-family':'ui-monospace, monospace'}, value.toLocaleString()));
+    }
+    for (let value = 0; value <= 220; value += 20) {
+      const px = x(value);
+      svg.appendChild(make('line', {x1:px, y1:plot.top, x2:px, y2:plot.top + plot.height, stroke:colors.line, 'stroke-width':1, opacity:.25}));
+      svg.appendChild(make('text', {x:px, y:plot.top + plot.height + 25, fill:colors.text, 'text-anchor':'middle', 'font-size':12, 'font-family':'ui-monospace, monospace'}, String(value)));
+    }
+    svg.appendChild(make('text', {x:plot.left + plot.width / 2, y:605, fill:colors.text, 'text-anchor':'middle', 'font-size':13, 'font-family':'ui-monospace, monospace'}, '12-month commits →'));
+    svg.appendChild(make('text', {x:18, y:plot.top + plot.height / 2, fill:colors.text, 'text-anchor':'middle', 'font-size':13, 'font-family':'ui-monospace, monospace', transform:`rotate(-90 18 ${plot.top + plot.height / 2})`}, 'current lines →'));
+
+    const tooltip = document.getElementById('chart-tooltip');
+    const showTooltip = (event, item) => {
+      tooltip.innerHTML = `<strong>${item.name}</strong><br>${item.commits} commits · ${item.lines.toLocaleString()} lines<br>score ${item.score.toLocaleString()} · ${item.refs} reference files${item.priority ? ` · ${item.priority} touch` : ' · no accepted class'}`;
+      tooltip.classList.add('visible');
+      const left = Math.min(window.innerWidth - 318, Math.max(10, (event.clientX || window.innerWidth / 2) + 14));
+      const top = Math.min(window.innerHeight - 110, Math.max(10, (event.clientY || window.innerHeight / 2) + 14));
+      tooltip.style.left = `${left}px`;
+      tooltip.style.top = `${top}px`;
+    };
+    const hideTooltip = () => tooltip.classList.remove('visible');
+
+    [...hotspots].sort((a, b) => b.refs - a.refs).forEach(item => {
+      const group = make('g');
+      const color = colors[item.priority] || colors.none;
+      const circle = make('circle', {
+        cx:x(item.commits), cy:y(item.lines), r:radius(item.refs),
+        fill:color, 'fill-opacity':item.priority ? .72 : .42,
+        stroke:colors.surface, 'stroke-width':2,
+        tabindex:0, role:'img',
+        'aria-label':`${item.path}: ${item.commits} commits, ${item.lines} lines, ${item.refs} reference files${item.priority ? `, ${item.priority}` : ''}`
+      });
+      circle.appendChild(make('title', {}, `${item.path} — ${item.commits} commits, ${item.lines} lines, score ${item.score}, ${item.refs} references${item.priority ? `, ${item.priority}` : ''}`));
+      circle.addEventListener('pointerenter', event => showTooltip(event, item));
+      circle.addEventListener('pointermove', event => showTooltip(event, item));
+      circle.addEventListener('pointerleave', hideTooltip);
+      circle.addEventListener('focus', event => showTooltip(event, item));
+      circle.addEventListener('blur', hideTooltip);
+      group.appendChild(circle);
+      if (item.label) {
+        group.appendChild(make('text', {
+          class:'point-label', x:x(item.commits) + item.dx, y:y(item.lines) + item.dy,
+          fill:colors.text, 'text-anchor':item.anchor || 'start',
+          'font-size':13, 'font-weight':650, 'font-family':'ui-sans-serif, system-ui'
+        }, item.name));
+      }
+      svg.appendChild(group);
+    });
+
+    const findingNodes = [...document.querySelectorAll('.finding')];
+    document.querySelectorAll('.filter').forEach(button => {
+      button.addEventListener('click', () => {
+        const filter = button.dataset.filter;
+        document.querySelectorAll('.filter').forEach(item => item.setAttribute('aria-pressed', String(item === button)));
+        findingNodes.forEach(finding => finding.hidden = filter !== 'all' && finding.dataset.priority !== filter);
+      });
+    });
+    document.getElementById('expand-all').addEventListener('click', () => findingNodes.forEach(finding => { if (!finding.hidden) finding.open = true; }));
+    document.getElementById('collapse-all').addEventListener('click', () => findingNodes.forEach(finding => finding.open = false));
+
+    document.querySelectorAll('.copy').forEach(button => {
+      button.addEventListener('click', async () => {
+        const text = button.parentElement.textContent.replace(/^Copy/, '').trim();
+        try {
+          await navigator.clipboard.writeText(text);
+          button.textContent = 'Copied';
+          window.setTimeout(() => button.textContent = 'Copy', 1300);
+        } catch {
+          button.textContent = 'Select text';
+        }
+      });
+    });
+  </script>
+</body>
+</html>

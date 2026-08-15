@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:,">
+  <title>When Green Tests Prove Too Little — REQ-176</title>
+  <style>
+    :root {
+      --paper: #f3efe4;
+      --paper-2: #e9e2d1;
+      --surface: #fffdf7;
+      --surface-strong: #ffffff;
+      --ink: #17222b;
+      --muted: #59646b;
+      --faint: #7b8488;
+      --line: #cfc6b4;
+      --line-strong: #a99d87;
+      --cobalt: #2454c6;
+      --cobalt-soft: #dce7ff;
+      --cobalt-ink: #14347f;
+      --warning: #a24a2a;
+      --warning-soft: #f6e1d7;
+      --warning-ink: #752f19;
+      --good: #276b50;
+      --good-soft: #dceee5;
+      --good-ink: #174b37;
+      --shadow: 0 18px 50px rgba(55, 42, 22, .09);
+      --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      --sans: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #11171b;
+        --paper-2: #182127;
+        --surface: #1a2329;
+        --surface-strong: #202b32;
+        --ink: #edf1ed;
+        --muted: #adb8bc;
+        --faint: #879499;
+        --line: #3a474d;
+        --line-strong: #596970;
+        --cobalt: #8eafff;
+        --cobalt-soft: #23375f;
+        --cobalt-ink: #c8d7ff;
+        --warning: #ef9b76;
+        --warning-soft: #4b2d25;
+        --warning-ink: #ffd7c4;
+        --good: #7fcaaa;
+        --good-soft: #203d33;
+        --good-ink: #c4f0dd;
+        --shadow: 0 20px 65px rgba(0, 0, 0, .28);
+      }
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-width: 300px;
+      background:
+        linear-gradient(rgba(86, 69, 37, .035) 1px, transparent 1px),
+        var(--paper);
+      background-size: 100% 32px;
+      color: var(--ink);
+      font: 16px/1.62 var(--sans);
+    }
+    button, summary { font: inherit; }
+    a { color: var(--cobalt); text-underline-offset: 3px; }
+    a:hover { text-decoration-thickness: 2px; }
+    :focus-visible { outline: 3px solid var(--cobalt); outline-offset: 3px; }
+    .skip-link {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 100;
+      transform: translateY(-160%);
+      padding: 10px 14px;
+      border-radius: 8px;
+      background: var(--ink);
+      color: var(--paper);
+      font-weight: 700;
+    }
+    .skip-link:focus { transform: translateY(0); }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px 28px;
+      padding: 13px clamp(20px, 2.6vw, 60px);
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--paper) 90%, transparent);
+      backdrop-filter: blur(14px);
+    }
+    .brand, .topbar nav { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; }
+    .brand-mark {
+      width: 10px;
+      height: 10px;
+      border: 2px solid var(--cobalt);
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 2px var(--paper);
+      background: var(--cobalt);
+    }
+    .brand strong, .topbar a {
+      font: 700 12px/1.2 var(--mono);
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    .topbar a { color: var(--muted); text-decoration: none; }
+    .topbar a:hover { color: var(--cobalt); }
+
+    .page {
+      width: 100%;
+      padding: 0 clamp(20px, 2.6vw, 60px) 88px;
+    }
+    .measure { max-width: 74ch; }
+    .kicker {
+      margin: 0 0 14px;
+      color: var(--cobalt);
+      font: 750 12px/1.3 var(--mono);
+      letter-spacing: .11em;
+      text-transform: uppercase;
+    }
+    h1, h2, h3 { text-wrap: balance; }
+    h1 {
+      max-width: 14ch;
+      margin: 0;
+      font: 600 clamp(48px, 6.4vw, 96px)/.95 var(--display);
+      letter-spacing: -.045em;
+    }
+    h2 {
+      margin: 0;
+      font: 600 clamp(32px, 4vw, 54px)/1.02 var(--display);
+      letter-spacing: -.025em;
+    }
+    h3 { margin: 0; font-size: 20px; line-height: 1.25; }
+    p { margin: 0; }
+    code, pre { font-family: var(--mono); }
+    code {
+      padding: .12em .34em;
+      border-radius: 5px;
+      background: var(--paper-2);
+      color: var(--ink);
+      font-size: .88em;
+      overflow-wrap: anywhere;
+    }
+
+    .hero {
+      min-height: calc(100vh - 50px);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: clamp(44px, 6vw, 110px);
+      padding: clamp(70px, 9vw, 130px) 0 72px;
+      border-bottom: 1px solid var(--line-strong);
+    }
+    .hero-copy { flex: 1.45 1 620px; }
+    .hero-side { flex: .8 1 340px; display: grid; gap: 14px; }
+    .verdict {
+      max-width: 54ch;
+      margin-top: 34px;
+      padding-left: 22px;
+      border-left: 4px solid var(--warning);
+      font-size: clamp(19px, 1.65vw, 25px);
+      line-height: 1.48;
+    }
+    .verdict strong { color: var(--warning); }
+    .hero-meta {
+      max-width: 86ch;
+      margin-top: 28px;
+      color: var(--muted);
+      font: 12px/1.65 var(--mono);
+    }
+    .signal {
+      position: relative;
+      overflow: hidden;
+      min-height: 135px;
+      padding: 20px 22px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--surface) 95%, transparent);
+      box-shadow: var(--shadow);
+    }
+    .signal::after {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 5px;
+      background: var(--signal-color, var(--cobalt));
+    }
+    .signal .label {
+      color: var(--muted);
+      font: 750 11px/1.3 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .signal .value {
+      display: block;
+      margin: 9px 0 2px;
+      font: 650 34px/1 var(--display);
+      letter-spacing: -.02em;
+    }
+    .signal p { color: var(--muted); font-size: 14px; }
+    .signal.exists { --signal-color: var(--good); }
+    .signal.gap { --signal-color: var(--warning); }
+    .signal.proposal { --signal-color: var(--cobalt); }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 9px;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      font: 750 10px/1 var(--mono);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+    .status-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .shipped { color: var(--good); background: var(--good-soft); }
+    .verified { color: var(--warning); background: var(--warning-soft); }
+    .proposed { color: var(--cobalt); background: var(--cobalt-soft); }
+
+    section {
+      padding: clamp(66px, 8vw, 112px) 0;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px 50px;
+      margin-bottom: 42px;
+    }
+    .section-head .lede {
+      flex: 0 1 54ch;
+      color: var(--muted);
+      font-size: 18px;
+    }
+    .section-number {
+      color: var(--faint);
+      font: 700 12px/1 var(--mono);
+      letter-spacing: .12em;
+    }
+
+    .comparison {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 26px;
+    }
+    .path-card {
+      flex: 1 1 440px;
+      padding: clamp(25px, 3vw, 40px);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .path-card.contract { border-top: 6px solid var(--good); }
+    .path-card.shell { border-top: 6px solid var(--warning); }
+    .path-card header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 26px;
+    }
+    .path {
+      display: grid;
+      gap: 10px;
+      margin: 0 0 24px;
+      padding: 0;
+      list-style: none;
+      counter-reset: path;
+    }
+    .path li {
+      position: relative;
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 13px;
+      align-items: start;
+      min-height: 58px;
+      padding: 13px 16px 13px 12px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: var(--surface-strong);
+      counter-increment: path;
+    }
+    .path li::before {
+      content: counter(path, decimal-leading-zero);
+      color: var(--cobalt);
+      font: 750 12px/1.6 var(--mono);
+    }
+    .path li:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      bottom: -11px;
+      left: 28px;
+      height: 10px;
+      border-left: 2px solid var(--line-strong);
+    }
+    .path b { display: block; margin-bottom: 2px; }
+    .path span { color: var(--muted); font-size: 14px; }
+    .outcome {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px 17px;
+      border-radius: 12px;
+      color: var(--good-ink);
+      background: var(--good-soft);
+      font-weight: 650;
+    }
+    .shell .outcome { color: var(--warning-ink); background: var(--warning-soft); }
+    .outcome-mark { font: 850 12px/1.7 var(--mono); letter-spacing: .05em; }
+    .bridge-note {
+      margin-top: 28px;
+      padding: 22px clamp(22px, 3vw, 38px);
+      border: 1px dashed var(--line-strong);
+      border-radius: 16px;
+      background: color-mix(in srgb, var(--cobalt-soft) 42%, var(--surface));
+      font-size: 18px;
+    }
+    .bridge-note strong { color: var(--cobalt); }
+
+    .diagram-wrap {
+      overflow-x: auto;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .diagram-wrap svg { display: block; width: 100%; min-width: 930px; height: auto; }
+    .mobile-proof { display: none; }
+    .svg-lane { fill: var(--paper-2); stroke: var(--line); stroke-width: 1.5; }
+    .svg-node { fill: var(--surface-strong); stroke: var(--line-strong); stroke-width: 1.5; }
+    .svg-node-strong { fill: var(--cobalt-soft); stroke: var(--cobalt); stroke-width: 2; }
+    .svg-node-warn { fill: var(--warning-soft); stroke: var(--warning); stroke-width: 2; }
+    .svg-text { fill: var(--ink); font-family: var(--sans); font-size: 15px; }
+    .svg-small { fill: var(--muted); font-family: var(--mono); font-size: 11px; letter-spacing: .05em; }
+    .svg-label { fill: var(--ink); font-family: var(--display); font-size: 23px; font-weight: 650; }
+    .svg-arrow { stroke: var(--line-strong); stroke-width: 2.4; fill: none; }
+    .svg-arrow-strong { stroke: var(--cobalt); stroke-width: 3; fill: none; }
+    .diagram-caption { margin: 16px 8px 4px; color: var(--muted); font-size: 14px; }
+
+    .evidence-toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin: 42px 0 14px;
+    }
+    .evidence-toolbar h3 { font-family: var(--display); font-size: 27px; }
+    .quiet-button, .copy-button {
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      font: 700 11px/1 var(--mono);
+      letter-spacing: .04em;
+    }
+    .quiet-button { padding: 10px 13px; }
+    .quiet-button:hover, .copy-button:hover { border-color: var(--cobalt); color: var(--cobalt); }
+    .evidence-stack { display: grid; gap: 12px; }
+    details {
+      overflow: clip;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: var(--surface);
+    }
+    summary {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 18px;
+      align-items: center;
+      padding: 20px 56px 20px 22px;
+      cursor: pointer;
+      list-style: none;
+      font-weight: 750;
+    }
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: "+";
+      position: absolute;
+      right: 22px;
+      color: var(--cobalt);
+      font: 400 28px/1 var(--display);
+    }
+    details[open] summary::after { content: "−"; }
+    details[open] summary { border-bottom: 1px solid var(--line); }
+    .summary-note { color: var(--muted); font: 600 11px/1.35 var(--mono); text-align: right; }
+    .detail-body { padding: 22px; }
+    .detail-body p + p { margin-top: 13px; }
+    .evidence-quote {
+      margin: 18px 0 0;
+      padding: 16px 18px;
+      border-left: 4px solid var(--cobalt);
+      background: var(--paper-2);
+      color: var(--ink);
+    }
+    .source {
+      display: block;
+      margin-top: 12px;
+      color: var(--muted);
+      font: 11px/1.55 var(--mono);
+      overflow-wrap: anywhere;
+    }
+
+    .truth-table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 16px; }
+    table { width: 100%; border-collapse: collapse; min-width: 850px; background: var(--surface); }
+    th, td { padding: 17px 18px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th {
+      color: var(--muted);
+      background: var(--paper-2);
+      font: 750 11px/1.3 var(--mono);
+      letter-spacing: .07em;
+      text-transform: uppercase;
+    }
+    tr:last-child td { border-bottom: 0; }
+    td:first-child { width: 18%; font-weight: 750; }
+    td:nth-child(2) { width: 29%; }
+    td:nth-child(3) { width: 24%; color: var(--warning-ink); }
+    td:nth-child(4) { width: 29%; color: var(--cobalt-ink); }
+    .table-status { display: inline-flex; margin-top: 8px; }
+
+    .command-grid { display: grid; gap: 13px; }
+    .command-card {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: start;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 13px;
+      background: var(--surface);
+    }
+    .command-card .command-label {
+      margin-bottom: 8px;
+      color: var(--muted);
+      font: 700 11px/1.3 var(--mono);
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    pre {
+      margin: 0;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      color: var(--ink);
+      font: 13px/1.55 var(--mono);
+    }
+    .copy-button { padding: 8px 10px; }
+
+    .decision {
+      display: flex;
+      flex-wrap: wrap;
+      gap: clamp(28px, 5vw, 76px);
+      padding: clamp(32px, 4vw, 56px);
+      border: 2px solid var(--cobalt);
+      border-radius: 24px;
+      background: color-mix(in srgb, var(--cobalt-soft) 36%, var(--surface));
+      box-shadow: var(--shadow);
+    }
+    .decision-main { flex: 1.2 1 520px; }
+    .decision-side { flex: .75 1 330px; }
+    .decision h2 { max-width: 14ch; margin: 14px 0 24px; }
+    .decision .lead { max-width: 56ch; font-size: 20px; }
+    .scope-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .scope-list li {
+      display: grid;
+      grid-template-columns: 18px 1fr;
+      gap: 10px;
+      align-items: start;
+    }
+    .scope-list li::before { content: ""; width: 9px; height: 9px; margin-top: 8px; border-radius: 50%; background: var(--cobalt); }
+    .scope-list.out li::before { background: transparent; border: 2px solid var(--warning); }
+    .scope-label { margin: 0 0 13px; color: var(--muted); font: 750 11px/1.2 var(--mono); letter-spacing: .08em; text-transform: uppercase; }
+    .scope-label:not(:first-child) { margin-top: 26px; }
+
+    footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 20px 50px;
+      padding: 34px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    footer p { max-width: 75ch; }
+    .render-status { font-family: var(--mono); }
+
+    @media (max-width: 720px) {
+      .topbar nav { display: none; }
+      .hero { min-height: auto; }
+      h1 { font-size: clamp(48px, 15vw, 70px); }
+      .hero-side { grid-template-columns: 1fr; }
+      .signal { min-height: 118px; }
+      summary { grid-template-columns: 1fr; padding-right: 50px; }
+      .summary-note { text-align: left; }
+      .command-card { grid-template-columns: 1fr; }
+      .copy-button { justify-self: start; }
+      .diagram-wrap { overflow: visible; padding: 14px; }
+      .diagram-wrap svg { display: none; }
+      .mobile-proof { display: grid; gap: 16px; }
+      .mobile-lane {
+        display: grid;
+        gap: 9px;
+        padding: 16px;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: var(--paper-2);
+      }
+      .mobile-lane h3 { font-family: var(--display); }
+      .mobile-step {
+        position: relative;
+        padding: 12px 13px;
+        border: 1px solid var(--line-strong);
+        border-radius: 9px;
+        background: var(--surface-strong);
+      }
+      .mobile-step:not(:last-child)::after {
+        content: "↓";
+        display: block;
+        position: absolute;
+        left: 50%;
+        bottom: -17px;
+        z-index: 2;
+        transform: translateX(-50%);
+        color: var(--cobalt);
+        font-weight: 800;
+      }
+      .mobile-step b { display: block; }
+      .mobile-step span { color: var(--muted); font: 10px/1.4 var(--mono); letter-spacing: .04em; }
+      .mobile-lane.current .mobile-step:last-child { border-color: var(--warning); background: var(--warning-soft); }
+      .truth-table-wrap { overflow: visible; border: 0; }
+      table, tbody, tr, td { display: block; width: 100%; min-width: 0; }
+      thead { display: none; }
+      tbody { display: grid; gap: 14px; }
+      tr {
+        overflow: hidden;
+        border: 1px solid var(--line);
+        border-radius: 13px;
+        background: var(--surface);
+      }
+      td, td:first-child, td:nth-child(2), td:nth-child(3), td:nth-child(4) {
+        width: 100%;
+        padding: 15px 16px;
+        border-bottom: 1px solid var(--line);
+      }
+      td:last-child { border-bottom: 0; }
+      td::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 6px;
+        color: var(--muted);
+        font: 750 10px/1.3 var(--mono);
+        letter-spacing: .07em;
+        text-transform: uppercase;
+      }
+    }
+
+    @media print {
+      .topbar, .evidence-toolbar button, .copy-button { display: none; }
+      body { background: white; color: #17222b; }
+      details { break-inside: avoid; }
+      details > .detail-body { display: block; }
+      section { break-inside: avoid-page; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to report</a>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span><strong>Testing dossier · REQ-176</strong></div>
+    <nav aria-label="Report sections">
+      <a href="#gap">The gap</a>
+      <a href="#proof">Proof model</a>
+      <a href="#surfaces">Surfaces</a>
+      <a href="#verify">Verify</a>
+      <a href="#decision">Decision</a>
+    </nav>
+  </header>
+
+  <main id="main" class="page">
+    <section class="hero" aria-labelledby="report-title">
+      <div class="hero-copy">
+        <p class="kicker">Maintainability audit · current-state analysis</p>
+        <h1 id="report-title">When green tests prove too little.</h1>
+        <p class="verdict"><strong>Verdict:</strong> the maintainability audit recognizes mock-heavy, implementation-coupled tests, but does not yet require enough evidence to prove that those tests protect behavior.</p>
+        <p class="hero-meta">Anchored to completed <strong>REQ-176</strong> · original implementation <strong>f845e1c</strong> · inspected at HEAD <strong>58eb4f84f408dce1ec9828a07aef0b174930ce34</strong> on 2026-08-14. Existing unrelated untracked state at inspection: <code>.playwright-cli/</code>, <code>do-work/audits/</code>, and <code>do-work/runs/</code>.</p>
+      </div>
+      <aside class="hero-side" aria-label="Status at a glance">
+        <article class="signal exists">
+          <span class="label">What exists</span>
+          <span class="value">1 judgment rule</span>
+          <p>The audit names mock internals, refactor brittleness, and public-contract gaps.</p>
+        </article>
+        <article class="signal gap">
+          <span class="label">What is missing</span>
+          <span class="value">0 required replays</span>
+          <p>No caller-seam, fixture-fidelity, or behavior-mutation evidence is required.</p>
+        </article>
+        <article class="signal proposal">
+          <span class="label">Recommendation</span>
+          <span class="value">Guidance, not counting</span>
+          <p>Strengthen the evidence protocol. Do not turn mock density into a verdict.</p>
+        </article>
+      </aside>
+    </section>
+
+    <section id="gap" aria-labelledby="gap-title">
+      <div class="section-head">
+        <div>
+          <p class="kicker">Layer 2 · the visual model</p>
+          <h2 id="gap-title">Two small tests. Very different guarantees.</h2>
+        </div>
+        <p class="lede">“Small” describes the test’s surface area, not the weakness of its claim. A compact contract test can govern a large implementation when it watches the behavior callers actually depend on.</p>
+      </div>
+
+      <div class="comparison">
+        <article class="path-card contract">
+          <header>
+            <h3>Behavioral contract</h3>
+            <span class="status-pill shipped">Protects behavior</span>
+          </header>
+          <ol class="path">
+            <li><div><b>Enter through the real seam</b><span>Public API, route handler, CLI entry point, or another production caller.</span></div></li>
+            <li><div><b>Use production-faithful input</b><span>Fields, nesting, and enum values match the schema the application receives.</span></div></li>
+            <li><div><b>Assert an observable promise</b><span>Output, side effect, error condition, or state transition—not internal wiring.</span></div></li>
+            <li><div><b>Change the inside freely</b><span>A behavior-preserving refactor stays green; wrong behavior turns red.</span></div></li>
+          </ol>
+          <div class="outcome"><span class="outcome-mark">RESULT</span><span>A small test constrains the contract while leaving the implementation room to grow or simplify.</span></div>
+        </article>
+
+        <article class="path-card shell">
+          <header>
+            <h3>Mock-heavy shell</h3>
+            <span class="status-pill verified">Can prove wiring only</span>
+          </header>
+          <ol class="path">
+            <li><div><b>Replace every collaborator</b><span>The test builds a world of scripted responses that production never inhabits.</span></div></li>
+            <li><div><b>Call the isolated line</b><span>The subject returns the value the mock was told to return.</span></div></li>
+            <li><div><b>Assert the mock was called</b><span>Internal interactions become the test’s main evidence.</span></div></li>
+            <li><div><b>Break the user outcome</b><span>The suite may remain green because it never observed the public promise.</span></div></li>
+          </ol>
+          <div class="outcome"><span class="outcome-mark">RISK</span><span>The test can certify that a line and its wiring exist without proving that useful behavior survives.</span></div>
+        </article>
+      </div>
+
+      <p class="bridge-note"><strong>Mocks are not the defect.</strong> They are legitimate at slow, unsafe, or external boundaries. The defect is calling a test “protective” when no observable contract or meaningful failure replay supports that claim.</p>
+    </section>
+
+    <section id="proof" aria-labelledby="proof-title">
+      <div class="section-head">
+        <div>
+          <p class="kicker">How it should work</p>
+          <h2 id="proof-title">Move from smell to evidence.</h2>
+        </div>
+        <p class="lede">The current rule notices suspicious test shape. The proposed protocol asks increasingly stronger questions before the audit calls the problem verified.</p>
+      </div>
+
+      <div class="diagram-wrap" aria-label="Test-effectiveness evidence ladder">
+        <svg viewBox="0 0 1160 430" role="img" aria-labelledby="proof-diagram-title proof-diagram-desc">
+          <title id="proof-diagram-title">From test smell to verified evidence</title>
+          <desc id="proof-diagram-desc">A lower lane shows the current audit moving from hotspot to a judgment based on test-shape signals. An upper lane shows the proposed guidance moving through caller seam, observable outcome, faithful fixture, and mutation or replay before assigning verified or inferred.</desc>
+          <defs>
+            <marker id="arrow-muted" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="var(--line-strong)"></path>
+            </marker>
+            <marker id="arrow-cobalt" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+              <path d="M0,0 L0,6 L9,3 z" fill="var(--cobalt)"></path>
+            </marker>
+          </defs>
+
+          <rect class="svg-lane" x="14" y="24" width="1132" height="190" rx="18"></rect>
+          <text class="svg-small" x="38" y="55">PROPOSED GUIDANCE</text>
+          <text class="svg-label" x="38" y="86">Evidence protocol</text>
+
+          <rect class="svg-node" x="38" y="115" width="178" height="72" rx="11"></rect>
+          <text class="svg-text" x="127" y="143" text-anchor="middle">Caller seam</text>
+          <text class="svg-small" x="127" y="166" text-anchor="middle">REAL ENTRY POINT</text>
+
+          <path class="svg-arrow-strong" d="M216 151 H264" marker-end="url(#arrow-cobalt)"></path>
+          <rect class="svg-node" x="272" y="115" width="178" height="72" rx="11"></rect>
+          <text class="svg-text" x="361" y="143" text-anchor="middle">Observable promise</text>
+          <text class="svg-small" x="361" y="166" text-anchor="middle">OUTPUT · EFFECT · ERROR</text>
+
+          <path class="svg-arrow-strong" d="M450 151 H498" marker-end="url(#arrow-cobalt)"></path>
+          <rect class="svg-node" x="506" y="115" width="178" height="72" rx="11"></rect>
+          <text class="svg-text" x="595" y="143" text-anchor="middle">Faithful fixture</text>
+          <text class="svg-small" x="595" y="166" text-anchor="middle">PRODUCTION SHAPE</text>
+
+          <path class="svg-arrow-strong" d="M684 151 H732" marker-end="url(#arrow-cobalt)"></path>
+          <rect class="svg-node-strong" x="740" y="115" width="178" height="72" rx="11"></rect>
+          <text class="svg-text" x="829" y="143" text-anchor="middle">Mutation or replay</text>
+          <text class="svg-small" x="829" y="166" text-anchor="middle">DOES WRONG STAY GREEN?</text>
+
+          <path class="svg-arrow-strong" d="M918 151 H966" marker-end="url(#arrow-cobalt)"></path>
+          <rect class="svg-node-strong" x="974" y="115" width="148" height="72" rx="11"></rect>
+          <text class="svg-text" x="1048" y="143" text-anchor="middle">Verdict</text>
+          <text class="svg-small" x="1048" y="166" text-anchor="middle">VERIFIED / INFERRED</text>
+
+          <rect class="svg-lane" x="14" y="234" width="1132" height="170" rx="18"></rect>
+          <text class="svg-small" x="38" y="265">SHIPPED TODAY</text>
+          <text class="svg-label" x="38" y="296">Shape signals</text>
+
+          <rect class="svg-node" x="38" y="320" width="225" height="60" rx="11"></rect>
+          <text class="svg-text" x="150" y="346" text-anchor="middle">Hotspot tests</text>
+          <text class="svg-small" x="150" y="366" text-anchor="middle">READ BY JUDGMENT</text>
+
+          <path class="svg-arrow" d="M263 350 H330" marker-end="url(#arrow-muted)"></path>
+          <rect class="svg-node-warn" x="338" y="310" width="448" height="80" rx="11"></rect>
+          <text class="svg-text" x="562" y="340" text-anchor="middle">Mock internals · refactor brittleness · mock ratio</text>
+          <text class="svg-small" x="562" y="365" text-anchor="middle">USEFUL SMELLS, NO REQUIRED BEHAVIOR REPLAY</text>
+
+          <path class="svg-arrow" d="M786 350 H854" marker-end="url(#arrow-muted)"></path>
+          <rect class="svg-node-warn" x="862" y="320" width="260" height="60" rx="11"></rect>
+          <text class="svg-text" x="992" y="346" text-anchor="middle">Judgment finding</text>
+          <text class="svg-small" x="992" y="366" text-anchor="middle">EVIDENCE DEPTH UNSPECIFIED</text>
+        </svg>
+        <div class="mobile-proof" aria-label="Mobile test-effectiveness evidence ladder">
+          <div class="mobile-lane">
+            <p class="kicker">Proposed guidance</p>
+            <h3>Evidence protocol</h3>
+            <div class="mobile-step"><b>Caller seam</b><span>REAL ENTRY POINT</span></div>
+            <div class="mobile-step"><b>Observable promise</b><span>OUTPUT · EFFECT · ERROR</span></div>
+            <div class="mobile-step"><b>Faithful fixture</b><span>PRODUCTION SHAPE</span></div>
+            <div class="mobile-step"><b>Mutation or replay</b><span>DOES WRONG STAY GREEN?</span></div>
+            <div class="mobile-step"><b>Verdict</b><span>VERIFIED / INFERRED</span></div>
+          </div>
+          <div class="mobile-lane current">
+            <p class="kicker">Shipped today</p>
+            <h3>Shape signals</h3>
+            <div class="mobile-step"><b>Hotspot tests</b><span>READ BY JUDGMENT</span></div>
+            <div class="mobile-step"><b>Mock internals · refactor brittleness · mock ratio</b><span>USEFUL SMELLS</span></div>
+            <div class="mobile-step"><b>Judgment finding</b><span>EVIDENCE DEPTH UNSPECIFIED</span></div>
+          </div>
+        </div>
+        <p class="diagram-caption">The proposal does not require mutation tooling everywhere. It defines what stronger evidence looks like and keeps unavailable measurement honest.</p>
+      </div>
+
+      <div class="evidence-toolbar">
+        <h3>Open the evidence only when you want it</h3>
+        <button class="quiet-button" id="toggle-evidence" type="button" aria-expanded="false">Open all evidence</button>
+      </div>
+
+      <div class="evidence-stack" id="evidence-stack">
+        <details>
+          <summary><span>What the audit already catches</span><span class="summary-note">SHIPPED · DIRECT SOURCE</span></summary>
+          <div class="detail-body">
+            <p>The current action asks whether tests assert behavior and contract or merely restate implementation. It explicitly names assertions against mock internals, behavior-preserving refactor failures, high mock-to-assertion ratios, and missing public-contract coverage.</p>
+            <p class="evidence-quote">That is the right diagnostic direction. The gap is not awareness; it is the absence of a repeatable evidence protocol for deciding when the smell becomes a verified finding.</p>
+            <span class="source">skills/do-work-toolbox/actions/maintainability-audit.md — Test quality, line 112 at the inspected HEAD</span>
+          </div>
+        </details>
+
+        <details>
+          <summary><span>What the testing guidance already knows</span><span class="summary-note">SHIPPED · NOT LOADED BY AUDIT</span></summary>
+          <div class="detail-body">
+            <p>The testing crew says tests prove behavior, not implementation; at least one test per behavior should enter through the real caller seam; fixtures should match production; and more than three mocks is a design-smell signal rather than an automatic refactor order.</p>
+            <p>The maintainability-audit action loads prompt-injection, clear-questions, coding-guardrails, and anti-slop guidance. It does not load the toolbox testing crew during hotspot judgment.</p>
+            <span class="source">skills/do-work-toolbox/crew-members/testing.md — lines 5–7 and 28–31 · maintainability-audit.md crew-load sites at lines 47, 72, 109, and 121</span>
+          </div>
+        </details>
+
+        <details>
+          <summary><span>Why a green suite and line coverage are weak evidence</span><span class="summary-note">EXPLANATION · BEHAVIORAL LOGIC</span></summary>
+          <div class="detail-body">
+            <p>Line coverage answers whether code executed. A green suite answers whether its existing assertions passed. Neither answer tells you whether the assertions would detect the wrong outcome.</p>
+            <p>A stronger replay changes meaningful behavior: reverse a permission decision, remove a required side effect, return the wrong value, or violate an error contract. If the test remains green, the behavior was not protected—even if every line ran.</p>
+            <p class="evidence-quote">The useful question is not “did the test touch the implementation?” It is “what wrong behavior would make this test fail?”</p>
+          </div>
+        </details>
+
+        <details>
+          <summary><span>How VERIFIED should differ from INFERRED here</span><span class="summary-note">PROPOSED · GUIDANCE ONLY</span></summary>
+          <div class="detail-body">
+            <p>The reference currently defines <code>VERIFIED</code> broadly as tool output or a grep hit, and <code>INFERRED</code> as judgment after reading code. For test effectiveness, a grep hit can verify that mocks exist, but not that the tests fail to protect behavior.</p>
+            <p><strong>Proposed:</strong> call test ineffectiveness <code>VERIFIED</code> only when a concrete mutation or wrong-behavior replay stays green. Use <code>INFERRED</code> when static review shows interaction assertions, absent caller-seam coverage, simplified fixtures, or high mock pressure without a replay.</p>
+            <span class="source">skills/do-work-toolbox/actions/maintainability-audit-reference.md — Label rule, line 180 at the inspected HEAD</span>
+          </div>
+        </details>
+
+        <details>
+          <summary><span>Why audit-metrics should stay out of this</span><span class="summary-note">VERIFIED BOUNDARY</span></summary>
+          <div class="detail-body">
+            <p>The mechanical tool has four subcommands: inventory, folders, churn, and hotspots. Those are deterministic repository measurements. Cross-language “mock density” would be syntactic, framework-specific, and easy to game.</p>
+            <p>The right boundary is: scripts measure what is mechanically stable; the audit uses explicit evidence rules for judgment. Optional language-native mutation tools can corroborate a hotspot when approved at calibration, but their absence must not be disguised as a score.</p>
+            <span class="source">skills/do-work-toolbox/tools/audit-metrics/prime-audit-metrics.md — capability summary, line 3</span>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section id="surfaces" aria-labelledby="surfaces-title">
+      <div class="section-head">
+        <div>
+          <p class="kicker">What exists · what is proposed</p>
+          <h2 id="surfaces-title">Three guidance surfaces. No new analyzer.</h2>
+        </div>
+        <p class="lede">This is a recommendation, not a shipped diff. The table keeps the current state and proposed state visually separate.</p>
+      </div>
+
+      <div class="truth-table-wrap">
+        <table>
+          <thead>
+            <tr><th>Surface</th><th>Shipped today</th><th>Verified gap</th><th>Proposed guidance</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td data-label="Surface">Audit action<br><span class="status-pill shipped table-status">Current</span></td>
+              <td data-label="Shipped today">One hotspot test-quality rule names behavior, mock internals, refactor sensitivity, mock ratio, and public coverage.</td>
+              <td data-label="Verified gap">No required caller-seam, fixture-fidelity, observable-outcome, or behavior-replay sequence.</td>
+              <td data-label="Proposed guidance">Load testing guidance conditionally and require the evidence sequence before promoting a smell.</td>
+            </tr>
+            <tr>
+              <td data-label="Surface">Audit reference<br><span class="status-pill shipped table-status">Current</span></td>
+              <td data-label="Shipped today">Findings carry <code>VERIFIED</code> or <code>INFERRED</code>; lock-in limits carry a red case.</td>
+              <td data-label="Verified gap">A grep hit can verify mock syntax but cannot prove that wrong behavior remains green.</td>
+              <td data-label="Proposed guidance">Define test-effectiveness evidence: replay-backed findings are verified; static shape remains inferred.</td>
+            </tr>
+            <tr>
+              <td data-label="Surface">User guide<br><span class="status-pill shipped table-status">Current</span></td>
+              <td data-label="Shipped today">Explains calibration, reports, triage, lock-in limits, waivers, and re-auditing.</td>
+              <td data-label="Verified gap">Does not explain why green tests or line coverage can still leave behavior unprotected.</td>
+              <td data-label="Proposed guidance">Add one compact explanation of contract tests, mutation/replay evidence, and honest NOT-MEASURED handling.</td>
+            </tr>
+            <tr>
+              <td data-label="Surface">audit-metrics<br><span class="status-pill verified table-status">No change</span></td>
+              <td data-label="Shipped today">Measures inventory, folder shape, churn, and hotspots deterministically.</td>
+              <td data-label="Verified gap">A universal mock counter would confuse framework syntax with behavioral evidence.</td>
+              <td data-label="Proposed guidance">Keep the tool unchanged. Optional mutation measurement remains language-native and calibration-gated.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="verify" aria-labelledby="verify-title">
+      <div class="section-head">
+        <div>
+          <p class="kicker">Verify it yourself</p>
+          <h2 id="verify-title">The report is an argument with receipts.</h2>
+        </div>
+        <p class="lede">Run these commands from the repository root. They inspect the shipped surfaces and original implementation without modifying them.</p>
+      </div>
+
+      <div class="command-grid">
+        <article class="command-card">
+          <div><p class="command-label">Locate the current test-quality rule</p><pre>rg -n -C 2 'Test quality|mock-to-assertion|behavior-preserving' skills/do-work-toolbox/actions/maintainability-audit.md</pre></div>
+          <button class="copy-button" type="button" data-copy="rg -n -C 2 'Test quality|mock-to-assertion|behavior-preserving' skills/do-work-toolbox/actions/maintainability-audit.md">Copy</button>
+        </article>
+        <article class="command-card">
+          <div><p class="command-label">Locate caller-seam, fixture, and mock-pressure guidance</p><pre>rg -n 'caller seam|production-faithful|More than 3 mocks' skills/do-work-toolbox/crew-members/testing.md</pre></div>
+          <button class="copy-button" type="button" data-copy="rg -n 'caller seam|production-faithful|More than 3 mocks' skills/do-work-toolbox/crew-members/testing.md">Copy</button>
+        </article>
+        <article class="command-card">
+          <div><p class="command-label">Confirm the mechanical tool’s four capabilities</p><pre>rg -n 'Subcommands:' skills/do-work-toolbox/tools/audit-metrics/prime-audit-metrics.md</pre></div>
+          <button class="copy-button" type="button" data-copy="rg -n 'Subcommands:' skills/do-work-toolbox/tools/audit-metrics/prime-audit-metrics.md">Copy</button>
+        </article>
+        <article class="command-card">
+          <div><p class="command-label">Inspect the original REQ-176 implementation commit</p><pre>skills/do-work-toolbox/../do-work/scripts/show-commit-diff.sh f845e1c</pre></div>
+          <button class="copy-button" type="button" data-copy="skills/do-work-toolbox/../do-work/scripts/show-commit-diff.sh f845e1c">Copy</button>
+        </article>
+        <article class="command-card">
+          <div><p class="command-label">Run the relevant shipped-reference checks</p><pre>bash _dev/tests/shipped-package-reference-contract.sh
+bash _dev/tests/action-shell-blocks.sh</pre></div>
+          <button class="copy-button" type="button" data-copy="bash _dev/tests/shipped-package-reference-contract.sh&#10;bash _dev/tests/action-shell-blocks.sh">Copy</button>
+        </article>
+      </div>
+    </section>
+
+    <section id="decision" aria-labelledby="decision-title">
+      <div class="decision">
+        <div class="decision-main">
+          <span class="status-pill proposed">Recommendation · not shipped</span>
+          <h2 id="decision-title">Strengthen the audit’s proof standard.</h2>
+          <p class="lead">Add a guidance-only evidence protocol across the maintainability-audit action, reference, and guide. Mock count stays a smell. A meaningful behavior mutation or replay is what earns a verified ineffectiveness finding.</p>
+          <p style="margin-top:22px;color:var(--muted)">This report creates no request and changes no source. The previously considered capture is cancelled.</p>
+        </div>
+        <aside class="decision-side">
+          <p class="scope-label">Inside the recommendation</p>
+          <ul class="scope-list">
+            <li>Conditional use of existing testing guidance</li>
+            <li>Caller-seam and observable-contract checks</li>
+            <li>Production-faithful fixture checks</li>
+            <li>Replay-backed VERIFIED versus static INFERRED</li>
+            <li>Optional calibration-gated mutation corroboration</li>
+          </ul>
+          <p class="scope-label">Explicitly outside</p>
+          <ul class="scope-list out">
+            <li>Request capture or source edits</li>
+            <li>Synthetic acceptance fixture</li>
+            <li>Cross-language mock analyzer</li>
+            <li>Changes to audit-metrics</li>
+          </ul>
+        </aside>
+      </div>
+    </section>
+
+    <footer>
+      <p>Historical context: <a href="../2026-08-13_2200_maintainability-audit-spec-validation/index.html">the original maintainability-audit spec validation</a>. This report narrows to the test-effectiveness gap discovered after the feature shipped.</p>
+      <p class="render-status">Render review: yes · 2 judge passes · full-page light/dark · wide/narrow · keyboard controls checked · no screenshots or AI-generated images used</p>
+    </footer>
+  </main>
+
+  <script>
+    const evidenceDetails = [...document.querySelectorAll('#evidence-stack details')];
+    const toggleEvidence = document.getElementById('toggle-evidence');
+
+    toggleEvidence.addEventListener('click', () => {
+      const shouldOpen = evidenceDetails.some(item => !item.open);
+      evidenceDetails.forEach(item => { item.open = shouldOpen; });
+      toggleEvidence.textContent = shouldOpen ? 'Close all evidence' : 'Open all evidence';
+      toggleEvidence.setAttribute('aria-expanded', String(shouldOpen));
+    });
+
+    document.querySelectorAll('[data-copy]').forEach(button => {
+      button.addEventListener('click', async () => {
+        const original = button.textContent;
+        try {
+          await navigator.clipboard.writeText(button.dataset.copy);
+          button.textContent = 'Copied';
+        } catch (_) {
+          button.textContent = 'Select text';
+        }
+        window.setTimeout(() => { button.textContent = original; }, 1400);
+      });
+    });
+  </script>
+</body>
+</html>

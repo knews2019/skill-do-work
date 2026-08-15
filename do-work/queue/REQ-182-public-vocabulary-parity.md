@@ -40,7 +40,7 @@ The public work guide advertises three aliases the first-match router cannot dis
 
 ## Detailed Requirements
 
-- Restore the pre-modular `do-work begin`, `do-work execute`, and `do-work build` aliases advertised by `skills/do-work/docs/work-guide.md`, or otherwise make the advertised list and first-match router exactly agree.
+- Restore the pre-modular `do-work begin`, `do-work execute`, and `do-work build` aliases advertised by `skills/do-work/docs/work-guide.md`.
 - Keep one public work-alias list and compare it with the router so additions or removals cannot occur on one side only.
 - Delete or generalize the stale `enum/boolean fields` gloss in `skills/do-work/actions/work.md`.
 - Make queue summaries include dependency-cycle holds rather than implying only `N pending`.
@@ -69,7 +69,7 @@ None.
 **RED prompt/case:** Mutate either the work guide or router by one alias, and mutate either the testing schema table or normalizer by one alias; current baseline checks remain green and the two sides disagree.
 **Why RED now:** Three documented work aliases are absent from the router, two runtime testing aliases are absent from the schema table, and two workflow summaries omit canonical states.
 **GREEN when:** Seam-local tests fail for either one-sided addition or removal; all six current alias mismatches and both stale summary glosses are corrected.
-**Validation:** Inferred during capture from the audit's exact instances and lock-in proposal.
+**Validation:** Confirmed by the user during verification on 2026-08-15.
 
 ## Assets
 

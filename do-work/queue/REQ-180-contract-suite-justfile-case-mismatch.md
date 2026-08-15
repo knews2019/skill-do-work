@@ -1,7 +1,8 @@
 ---
 id: REQ-180
 title: Fix contract-regressions.sh Justfile case mismatch aborting late checks
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-15T07:41:57Z
 created_at: 2026-08-14T10:33:56Z
 user_request: UR-040
 addendum_to: REQ-179
@@ -21,7 +22,7 @@ write_set: [_dev/tests/contract-regressions.sh]
 
 ## Open Questions
 
-- [ ] Fix by lowercasing the two references to `justfile`, or by resolving the file case-insensitively?
+- [x] Fix by lowercasing the two references to `justfile`, or by resolving the file case-insensitively? → Lowercase the two literals to match the tracked filename.
   Recommended: lowercase the two literals to match the tracked filename — smallest fix, matches the repo's actual file.
   Also: a glob/`find -iname` resolution (tolerant but adds machinery), rename the tracked file to `Justfile` (breaks `just` conventions).
 
@@ -29,7 +30,7 @@ write_set: [_dev/tests/contract-regressions.sh]
 **RED prompt/case:** On a case-sensitive filesystem, `bash _dev/tests/contract-regressions.sh` prints `awk: cannot open ".../Justfile"` and exits 2 at `extract_kanban_shutdown_line`, before the late-suite checks run.
 **Why RED now:** Two hardcoded `Justfile` literals vs the tracked lowercase `justfile`; observed at baseline during REQ-179 (2026-08-14, Linux sandbox).
 **GREEN when:** The suite runs past line ~1797 on a case-sensitive filesystem (the kanban-shutdown-line check actually executes against `justfile`), and the only remaining sandbox failure is the known environmental process-tree probe.
-**Validation:** Discovered during REQ-179's build; classification [normal] → pending-answers per the discovered-tasks consent flow.
+**Validation:** User chose the recommended lowercase-literal repair via `do-work clarify` on 2026-08-15.
 
 ## Full Context
 

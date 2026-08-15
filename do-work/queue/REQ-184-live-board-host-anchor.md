@@ -68,7 +68,7 @@ None. Listener cases must be made explicit during the PLAN phase using current C
 **RED prompt/case:** Under a safe loopback peer, send a request with both `Host` and `Origin` set to `example.com` to every live-board route.
 **Why RED now:** Matching request-controlled values pass the current check, and the actual listener authority is never consulted.
 **GREEN when:** Every read and testing-write route rejects the unconfigured `example.com` replay before the inner handler; configured concrete, loopback, IPv6, wildcard/LAN cases behave according to explicit tests.
-**Validation:** Inferred during capture from the independently validated audit reproduction and lock-in proposal.
+**Validation:** Confirmed by the user during verification on 2026-08-15.
 
 ## Assets
 

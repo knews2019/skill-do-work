@@ -68,7 +68,7 @@ None.
 **RED prompt/case:** Trace the three child-suite names across `CLAUDE.md`, the aggregate, and the staged suite.
 **Why RED now:** Two child suites each have two required ownership edges with no distinct mode or fixture.
 **GREEN when:** The aggregate executes each required behavior once through its intended owner, the hand-back instructions do not re-run an identical child, and all distinct late checks still execute and pass.
-**Validation:** Inferred during capture from the audit's exact deletion surface. TDD is false because the finding explicitly rejects new generic graph machinery for two direct deletions.
+**Validation:** Confirmed by the user during verification on 2026-08-15. TDD is false because the finding explicitly rejects new generic graph machinery for two direct deletions.
 
 ## Assets
 
