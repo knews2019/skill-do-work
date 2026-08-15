@@ -602,7 +602,7 @@ for predicate in (
         failures.append(f"{target_id_reference}: canonical Target ID Resolution source seam missing /{predicate}/")
 require(completed_work_reference, r"ai-report.*present-video", "shared reference must name both current item-level consumers")
 reject(completed_work_reference, r"future completed-work video", "shared reference still describes present-video as future")
-for predicate in (r"completed-with-issues", r"Reject `cancelled`, `failed`", r"prompt-injection\.md", r"never delete, truncate, merge into, or overwrite"):
+for predicate in (r"completed-with-issues", r"Reject `cancelled`, `failed`", r"prompt-injection\.md"):
     require(completed_work_reference, predicate, f"shared reader missing /{predicate}/")
 require(
     completed_work_reference,
@@ -634,7 +634,29 @@ for semantic_negation in (
 ):
     reject(completed_work_reference, semantic_negation, f"shared presentation resolver semantically negates its inherited grammar /{semantic_negation}/")
 
-require("skills/do-work-toolbox/actions/ai-report.md", r"only action that produces detailed stakeholder-facing HTML", "ai-report must retain detailed HTML ownership")
+collision_match = re.search(
+    r"^## Collision-Safe Publication\s*$[\s\S]*?(?=^## |\Z)",
+    text(completed_work_reference),
+    re.MULTILINE,
+)
+collision_contract = collision_match.group(0) if collision_match else ""
+if not collision_match:
+    failures.append(f"{completed_work_reference}: canonical Collision-Safe Publication section is missing")
+for predicate in (
+    r"Before creating any output directory or file[^\n]*complete final path[^\n]*already exists",
+    r"first available numeric suffix",
+    r"use that one path consistently for the whole artifact",
+    r"failed or partial run",
+    r"never delete, truncate, merge into, rename, migrate, or overwrite",
+    r"Each consumer defines its own preferred path and output shape",
+):
+    if not re.search(predicate, collision_contract, re.IGNORECASE | re.MULTILINE):
+        failures.append(f"{completed_work_reference}: canonical publication source seam missing /{predicate}/")
+if re.search(r"\btimestamped\b", collision_contract, re.IGNORECASE):
+    failures.append(f"{completed_work_reference}: canonical publication contract must be consumer-neutral, not timestamp-specific")
+
+ai_report = "skills/do-work-toolbox/actions/ai-report.md"
+require(ai_report, r"only action that produces detailed stakeholder-facing HTML", "ai-report must retain detailed HTML ownership")
 for predicate in (
     r"real screenshots",
     r"SVG callouts",
@@ -643,14 +665,14 @@ for predicate in (
     r"UI captures were not expected for this work",
     r"Never fabricate a screenshot",
 ):
-    require("skills/do-work-toolbox/actions/ai-report.md", predicate, f"detailed report evidence contract missing /{predicate}/")
+    require(ai_report, predicate, f"detailed report evidence contract missing /{predicate}/")
 require(
-    "skills/do-work-toolbox/actions/ai-report.md",
+    ai_report,
     r"must not create[^\n]*\ba video\b[^\n]*automatic video behavior",
     "ai-report must forbid both video output and automatic video behavior",
 )
 require_order(
-    "skills/do-work-toolbox/actions/ai-report.md",
+    ai_report,
     r"Read and follow \[`completed-work-presentation-reference\.md`\].*in full \*\*before opening archived user content\*\*",
     r"Build the reference's provenance ledger",
     "ai-report must load the shared completed-work reference before using archived evidence",
@@ -761,6 +783,20 @@ require_order(
     r"Build the reference's provenance ledger",
     "present-video must load the shared completed-work reference before using archived evidence",
 )
+for consumer, preferred_path_pattern in (
+    (ai_report, r"ai-reports/<report-slug>/"),
+    (present_video, r"do-work/deliverables/<canonical-ID>-video/"),
+):
+    require(consumer, preferred_path_pattern, "presentation consumer must retain its preferred output path")
+    require(consumer, r"Collision-Safe Publication", "presentation consumer must actively name the shared publication section")
+    for local_restatement in (
+        r"(?i)if the preferred[^\n]*exists",
+        r"(?i)numeric suffix|suffixed sibling",
+        r"(?i)existing (?:artifacts|deliverables) are immutable",
+        r"(?i)never (?:delete|truncate|merge|overwrite|rename|migrate)[^\n]*(?:delete|truncate|merge|overwrite|rename|migrate)[^\n]*(?:delete|truncate|merge|overwrite|rename|migrate)",
+        r"(?i)no pre-existing path|no existing output was changed",
+    ):
+        reject(consumer, local_restatement, f"presentation consumer duplicates shared publication mechanics /{local_restatement}/")
 for video_surface in (
     present_video,
     "skills/do-work-toolbox/docs/present-video-guide.md",

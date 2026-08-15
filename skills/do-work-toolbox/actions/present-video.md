@@ -103,7 +103,7 @@ Use the resolved target's canonical archive ID for the preferred directory:
 do-work/deliverables/<canonical-ID>-video/
 ```
 
-Apply the shared reference's collision-safe publication rule to the entire directory before writing any file. If the preferred directory already exists, preserve it and select the reference's fresh suffixed sibling. Do not migrate, rename, delete, merge into, or overwrite any prior deliverable.
+Use that directory as this consumer's preferred path and apply the shared reference's **Collision-Safe Publication** section to the entire source project before writing any file. Use the one final path selected by that contract for every source file and for the result report.
 
 Write only the source tree from Step 4. Do not install dependencies, start Studio, add a media-rendering script, invoke a renderer, or create MP4 or other rendered media.
 
@@ -123,21 +123,19 @@ Print a compact result containing the output path, canonical target and status, 
 
 ## Output Format
 
-An eligible target creates one fresh, self-contained Remotion source project at `do-work/deliverables/<canonical-ID>-video/`, or a collision-safe suffixed sibling. A successful skip creates nothing and explains why animation would not improve the evidence.
+An eligible target creates one fresh, self-contained Remotion source project using `do-work/deliverables/<canonical-ID>-video/` as its preferred path. A successful skip creates nothing and explains why animation would not improve the evidence.
 
 ## Rules
 
 - This action is explicit-only and source-only. It never runs as a completion side effect and never renders media.
 - The shared completed-work presentation reference owns archive ingestion and publication mechanics; this action owns only walkthrough eligibility, narrative, and Remotion source shape.
-- Existing deliverables are immutable, including reports, briefs, `.single.html` files, snapshots, and video directories.
 
 ## Verification Checklist
 
 - [ ] Invocation was an explicit request for this action; no other action or completion flow delegated automatically.
-- [ ] The shared reference was loaded before archived content and its target, evidence, issue, and collision contracts were followed.
+- [ ] The shared reference was loaded before archived content and its target, evidence, issue, and **Collision-Safe Publication** contracts were followed.
 - [ ] Trivial or genuinely non-visual work skipped before output creation; eligible architecture or data flow was not rejected merely for lacking UI.
 - [ ] The project contains the complete declared tree, four ordered scenes, proportional consistent frame math, and module-level `registerRoot`.
 - [ ] Claims and qualitative value are evidence-backed, with no invented before state or metric.
 - [ ] Visuals use only React/CSS-in-JS/system fonts/inline SVG and no external or imported media assets.
 - [ ] The only package script is exactly `remotion studio src/Root.tsx`; the action did not install, launch, render, or create media.
-- [ ] No pre-existing path or artifact changed.

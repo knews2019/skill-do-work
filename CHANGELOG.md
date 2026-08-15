@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.193.5 — One Presentation Publication Contract (2026-08-15)
+
+Detailed reports and source walkthroughs now delegate generic final-path collision, suffix, immutability, and partial-run behavior to one consumer-neutral completed-work presentation contract.
+
+- Keeps report and video actions focused on their preferred paths, content shape, and result reporting
+- Expands the shared rule to cover rename/migration and whole-artifact path consistency for every consumer
+- Adds canonical source-seam and narrow no-restatement contracts; one active-pointer paraphrase hardening remains consent-gated
+
 ## 0.193.4 — Folder-Aware HTML Previews (2026-08-15)
 
 Repository HTML opened from the live board now renders as an actual page with its local resources intact, without placing active content on the board's write-capable origin.

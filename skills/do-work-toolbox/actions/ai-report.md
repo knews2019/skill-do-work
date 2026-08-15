@@ -48,7 +48,7 @@ Choose the mode from the work, not from the tools installed:
 
 A multi-REQ UR may use the appropriate mode per section, but it remains one report. Never force a non-visual change into screenshot-shaped cards, and never downgrade visual work to generic diagrams when authentic captures are available.
 
-Derive `<report-slug>` as `yyyy-mm-dd_hhmm_<description>`, where the description contains the UR/REQ ID and a short kebab-case summary. Apply the shared reference's collision-safe publication rule to `ai-reports/<report-slug>/` before creating it. Create `screenshots/` only when authentic captures will be included and `generated/` only when current-run generated images succeed.
+Derive `<report-slug>` as `yyyy-mm-dd_hhmm_<description>`, where the description contains the UR/REQ ID and a short kebab-case summary. Use `ai-reports/<report-slug>/` as this consumer's preferred bundle path and apply the shared reference's **Collision-Safe Publication** section before creating it. Create `screenshots/` only when authentic captures will be included and `generated/` only when current-run generated images succeed.
 
 ### Step 3: Collect Mode-Appropriate Evidence
 
@@ -116,7 +116,7 @@ Judge width usage, table shape, diagram informativeness, emphasis hierarchy, lig
 
 ### Step 8: Verify and Report the Result
 
-Confirm `index.html` exists, every relative asset resolves, screenshots open at full resolution, synthetic assets are disclosed, and no pre-existing path changed. Remove temporary judge captures and stop the temporary HTTP server without deleting any report artifact.
+Confirm `index.html` exists, every relative asset resolves, screenshots open at full resolution, synthetic assets are disclosed, and the final bundle satisfies the shared **Collision-Safe Publication** section. Remove temporary judge captures and stop the temporary HTTP server.
 
 Print a compact summary containing the report path, target and verdict, evidence mode, evidence used, recorded issues, and light/dark render status.
 
@@ -129,13 +129,12 @@ A fresh self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing
 - Screenshots are authentic evidence; generated images and diagrams are explanation. Never blur their provenance.
 - Browser and image generation tooling are optional. Missing optional tooling changes the evidence presentation, not whether a valid report can be produced.
 - Tailwind CSS and Mermaid.js are the only allowed CDN dependencies; everything else is inline or co-located.
-- Preserve every prior report bundle. Publication obeys the shared no-overwrite contract.
 
 ## Verification Checklist
 
-- [ ] Shared completed-work reference loaded before archive content; target and evidence ledger satisfy it.
+- [ ] Shared completed-work reference loaded before archive content; target, evidence ledger, and **Collision-Safe Publication** contracts satisfy it.
 - [ ] Visual evidence uses authentic captures, SVG annotations, responsive before/after where available, and distinct synthetic provenance.
 - [ ] Non-visual evidence states UI captures were not expected and uses commit, current-code, architecture/data-flow, test, and operational receipts without fabricated screenshots.
 - [ ] Stakeholder narrative includes verdict, shipped change, problem/change, operation, qualitative value, files/commits, verification, and available lessons/questions.
 - [ ] Report is responsive, self-contained at the folder level, and render-judged in full-page light and dark when browser automation exists.
-- [ ] No existing output was changed and no brief, separate explainer, video, publishing, hosting, or search artifact was created.
+- [ ] No brief, separate explainer, video, publishing, hosting, or search artifact was created.

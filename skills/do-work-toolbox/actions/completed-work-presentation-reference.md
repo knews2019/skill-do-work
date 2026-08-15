@@ -66,8 +66,8 @@ For path-only image or asset discovery from a commit, follow the canonical [Comm
 
 ## Collision-Safe Publication
 
-Before creating any output directory or file, derive the complete final path and test whether it already exists. Existing artifacts are immutable: never delete, truncate, merge into, or overwrite them.
+Before creating any output directory or file, derive the complete final path and test whether it already exists. Existing artifacts are immutable: never delete, truncate, merge into, rename, migrate, or overwrite them.
 
-If the preferred timestamped path exists, choose a fresh sibling by appending the first available numeric suffix (`-2`, `-3`, and so on), then use that one path consistently for the whole artifact. Create directories only after the collision check. A failed or partial run never grants permission to reuse an existing path; report the partial path so the user can inspect it.
+If the preferred path exists, choose a fresh sibling by appending the first available numeric suffix (`-2`, `-3`, and so on), then use that one path consistently for the whole artifact. Create directories only after the collision check. A failed or partial run never grants permission to reuse an existing path; report the partial path so the user can inspect it.
 
-Each consumer defines its own output shape, but this no-overwrite rule applies to every file and directory it publishes.
+Each consumer defines its own preferred path and output shape, but this no-overwrite rule applies to every file and directory it publishes. Consumer verification applies this section rather than restating its checks.
