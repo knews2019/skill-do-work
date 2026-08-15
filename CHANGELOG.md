@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.193.6 — Complete Remotion Preview Safety Mutations (2026-08-15)
+
+Presentation contracts now reject the full executable fixed-port Studio and macOS opener families without treating safe foreground commands or explanatory prohibition examples as workflows.
+
+- Covers separated, equals, quoted, indented, chained, and explicitly continued command forms
+- Shares one source-text detector between live presentation files and replayable in-memory mutations
+- Preserves foreground preview commands plus same-line and structured multi-line prohibition prose
+
 ## 0.193.5 — One Presentation Publication Contract (2026-08-15)
 
 Detailed reports and source walkthroughs now delegate generic final-path collision, suffix, immutability, and partial-run behavior to one consumer-neutral completed-work presentation contract.

@@ -442,20 +442,23 @@ def require_order(relative_path, earlier_pattern, later_pattern, message):
     elif earlier.start() >= later.start():
         failures.append(f"{relative_path}: {message}; required load appears after the guarded read")
 
-def executable_markdown_segments(relative_path):
+def executable_markdown_segments(source):
     """Return fenced/inline/command-like text, excluding negative prose outside fences."""
-    source = text(relative_path)
     segments = []
     in_fence = False
     fence_marker = ""
     fence_start = 0
     fence_lines = []
+    prohibition_example_context = False
     prohibition = re.compile(r"\b(?:do not|don't|never|must not|does not|without|forbid|reject|avoid)\b", re.IGNORECASE)
+    prohibition_example = re.compile(r"^\s*(?:[-*+]|\d+[.)])\s+")
+    prohibition_continuation = re.compile(r"^[ \t]+.*`[^`\n]+`")
     command_signal = re.compile(
         r"--no-open|\bremotion\b|\bnpm\s+run\b|\bsleep\b|"
         r"https?://(?:localhost|127\.0\.0\.1):\d+|\bopen\s+https?://|[\"']render[\"']\s*:",
         re.IGNORECASE,
     )
+    platform_opener_signal = re.compile(r"(?:^[ \t]*|[;&|][ \t]*)open(?:[ \t]+|$)")
 
     for line_number, line in enumerate(source.splitlines(), start=1):
         fence = re.match(r"^\s*(```|~~~)", line)
@@ -466,6 +469,7 @@ def executable_markdown_segments(relative_path):
                 fence_marker = marker
                 fence_start = line_number + 1
                 fence_lines = []
+                prohibition_example_context = False
             elif marker == fence_marker:
                 segments.append((f"fenced code lines {fence_start}-{line_number - 1}", "\n".join(fence_lines)))
                 in_fence = False
@@ -476,29 +480,129 @@ def executable_markdown_segments(relative_path):
             fence_lines.append(line)
             continue
         if prohibition.search(line):
+            prohibition_example_context = True
             continue
+        if prohibition_example_context:
+            if not line.strip() or prohibition_example.match(line) or prohibition_continuation.match(line):
+                continue
+            prohibition_example_context = False
         for inline_number, inline in enumerate(re.findall(r"`([^`\n]+)`", line), start=1):
             segments.append((f"line {line_number} inline code {inline_number}", inline))
-        if command_signal.search(line):
+        if command_signal.search(line) or platform_opener_signal.search(line):
             segments.append((f"line {line_number} command-like prose", line))
 
     return segments
 
-def reject_executable_video_forms(relative_path):
+def unsafe_executable_video_findings(source):
     unsafe_forms = (
         ("--no-open option", r"(?<![\w-])--no-open(?![\w-])"),
         ("backgrounded Studio/preview command", r"(?:\bremotion\s+studio\b|\bnpm\s+run\s+preview\b)[^\n]*(?<!&)&(?!&)"),
         ("background operator chained to sleep", r"(?<!&)&(?!&)[ \t]*(?:;|\n)?[ \t]*sleep\b"),
         ("numeric readiness sleep", r"(?m)(?:^|[;&|]\s*)sleep\s+\d+(?:\.\d+)?s?\b"),
+        (
+            "fixed-port Studio command",
+            r"\b(?:npx\s+)?remotion\s+studio\b(?:[^\n]*\\\n[ \t]*)*[^\n]*(?<![\w-])--port(?:[ \t]+|=)(?:[\"']\d+[\"']|\d+)(?![\w-])",
+        ),
         ("fixed localhost preview URL", r"https?://(?:localhost|127\.0\.0\.1):\d+"),
-        ("platform shell opener", r"(?m)(?:^|[;&|]\s*)open\s+https?://"),
+        ("platform shell opener", r"(?m)(?:^[ \t]*|[;&|][ \t]*)(?-i:open)(?:[ \t]+|$)"),
         ("Remotion render command", r"\b(?:npx\s+)?remotion\s+render\b"),
         ("package render script", r"[\"']render[\"']\s*:"),
     )
-    for location, segment in executable_markdown_segments(relative_path):
+    findings = []
+    for location, segment in executable_markdown_segments(source):
         for label, pattern in unsafe_forms:
             if re.search(pattern, segment, re.IGNORECASE):
-                failures.append(f"{relative_path}: executable {label} remains in {location}: {segment!r}")
+                findings.append((label, location, segment))
+    return findings
+
+def reject_executable_video_forms(relative_path):
+    for label, location, segment in unsafe_executable_video_findings(text(relative_path)):
+        failures.append(f"{relative_path}: executable {label} remains in {location}: {segment!r}")
+
+unsafe_video_mutations = (
+    (
+        "separated numeric Studio port",
+        "```bash\nremotion studio src/Root.tsx --port 3000\n```",
+        "fixed-port Studio command",
+    ),
+    (
+        "equals numeric Studio port",
+        "```bash\nremotion studio src/Root.tsx --port=3000\n```",
+        "fixed-port Studio command",
+    ),
+    (
+        "quoted numeric Studio port",
+        "```bash\nremotion studio src/Root.tsx --port \"4311\"\n```",
+        "fixed-port Studio command",
+    ),
+    (
+        "equals quoted numeric Studio port",
+        "```bash\nremotion studio src/Root.tsx --port='4312'\n```",
+        "fixed-port Studio command",
+    ),
+    (
+        "variable platform opener",
+        "```bash\nopen \"$REMOTION_PREVIEW_URL\"\n```",
+        "platform shell opener",
+    ),
+    (
+        "chained parameter-expansion platform opener",
+        "```bash\nnpm run preview && open \"${REMOTION_PREVIEW_URL}\"\n```",
+        "platform shell opener",
+    ),
+    (
+        "two-space-indented platform opener",
+        "```bash\n  open \"$REMOTION_PREVIEW_URL\"\n```",
+        "platform shell opener",
+    ),
+    (
+        "tab-indented platform opener",
+        "```bash\n\topen \"${REMOTION_PREVIEW_URL}\"\n```",
+        "platform shell opener",
+    ),
+    (
+        "continued separated numeric Studio port",
+        "```bash\nremotion studio src/Root.tsx \\\n  --port 4511\n```",
+        "fixed-port Studio command",
+    ),
+    (
+        "continued equals numeric Studio port",
+        "```bash\nremotion studio src/Root.tsx \\\n  --port=4512\n```",
+        "fixed-port Studio command",
+    ),
+)
+for mutation_name, mutation_source, expected_family in unsafe_video_mutations:
+    mutation_families = {
+        label for label, _location, _segment in unsafe_executable_video_findings(mutation_source)
+    }
+    if expected_family not in mutation_families:
+        failures.append(
+            f"unsafe video detector mutation {mutation_name!r} escaped expected family "
+            f"{expected_family!r}; found {sorted(mutation_families)!r}"
+        )
+
+safe_video_mutations = (
+    ("foreground Studio", "```bash\nremotion studio src/Root.tsx\n```"),
+    ("package preview", "```bash\nnpm run preview\n```"),
+    (
+        "negative prohibition prose",
+        "Do not add `remotion studio src/Root.tsx --port 3000` or run `open \"$url\"`.",
+    ),
+    (
+        "multiline prohibition examples",
+        "Do not use these preview shortcuts:\n\n"
+        "- `remotion studio src/Root.tsx --port 3000`\n"
+        "- `open \"$REMOTION_PREVIEW_URL\"`",
+    ),
+    ("ordinary opener prose", "Open the reported preview path in a browser if useful."),
+)
+for mutation_name, mutation_source in safe_video_mutations:
+    mutation_findings = unsafe_executable_video_findings(mutation_source)
+    if mutation_findings:
+        failures.append(
+            f"unsafe video detector rejected safe mutation {mutation_name!r}: "
+            f"{mutation_findings!r}"
+        )
 
 toolbox_skill = text("skills/do-work-toolbox/SKILL.md")
 routing = toolbox_skill.split("## Routing", 1)[1].split("## Dispatch", 1)[0]
