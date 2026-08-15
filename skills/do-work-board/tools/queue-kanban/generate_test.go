@@ -3,13 +3,102 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"flag"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
+
+const (
+	strictJavaScriptBehaviorDiagnostic = "queue-kanban: strict JavaScript behavior lane executed zero probes"
+	strictJavaScriptBehaviorMarker     = "QUEUE_KANBAN_STRICT_JAVASCRIPT_BEHAVIOR"
+	strictJavaScriptBehaviorRunPattern = "^TestMaintainerStrictJavaScriptBehaviorLane$"
+)
+
+var javaScriptBehaviorProbeCount atomic.Int64
+
+func TestMain(testMain *testing.M) {
+	exitCode := testMain.Run()
+	if exitCode == 0 && os.Getenv(strictJavaScriptBehaviorMarker) == "1" && javaScriptBehaviorProbeCount.Load() == 0 {
+		fmt.Fprintln(os.Stderr, strictJavaScriptBehaviorDiagnostic)
+		exitCode = 1
+	}
+	os.Exit(exitCode)
+}
+
+func testEnvironmentWithOverrides(baseEnvironment []string, overrides ...string) []string {
+	overriddenKeys := make(map[string]bool, len(overrides))
+	for _, override := range overrides {
+		overrideKey, _, hasValue := strings.Cut(override, "=")
+		if hasValue {
+			overriddenKeys[overrideKey] = true
+		}
+	}
+
+	cleanEnvironment := make([]string, 0, len(baseEnvironment)+len(overrides))
+	for _, environmentEntry := range baseEnvironment {
+		environmentKey, _, hasValue := strings.Cut(environmentEntry, "=")
+		if hasValue && overriddenKeys[environmentKey] {
+			continue
+		}
+		cleanEnvironment = append(cleanEnvironment, environmentEntry)
+	}
+	return append(cleanEnvironment, overrides...)
+}
+
+func TestMaintainerStrictJavaScriptBehaviorLaneRejectsZeroProbes(t *testing.T) {
+	strictCommand := exec.Command(os.Args[0], "-test.run=^TestJavaScriptBehavior", "-test.count=1")
+	strictCommand.Env = testEnvironmentWithOverrides(
+		os.Environ(),
+		"PATH="+t.TempDir(),
+		strictJavaScriptBehaviorMarker+"=1",
+	)
+	strictOutput, strictError := strictCommand.CombinedOutput()
+	if strictError == nil {
+		t.Fatalf("strict JavaScript behavior lane exited zero without Node; output:\n%s", strictOutput)
+	}
+	if !strings.Contains(string(strictOutput), strictJavaScriptBehaviorDiagnostic) {
+		t.Fatalf("strict JavaScript behavior lane output = %q, want %q", strictOutput, strictJavaScriptBehaviorDiagnostic)
+	}
+}
+
+func TestMaintainerStrictJavaScriptBehaviorLane(t *testing.T) {
+	testRunFlag := flag.Lookup("test.run")
+	if testRunFlag == nil || testRunFlag.Value.String() != strictJavaScriptBehaviorRunPattern {
+		t.Skip("maintainer strict JavaScript behavior lane runs only when selected directly")
+	}
+
+	strictCommand := exec.Command(os.Args[0], "-test.run=^TestJavaScriptBehavior", "-test.count=1")
+	strictCommand.Env = testEnvironmentWithOverrides(
+		os.Environ(),
+		strictJavaScriptBehaviorMarker+"=1",
+	)
+	strictOutput, strictError := strictCommand.CombinedOutput()
+	if strictError != nil {
+		t.Fatalf("strict JavaScript behavior lane failed: %v\n%s", strictError, strictOutput)
+	}
+}
+
+func runJavaScriptBehaviorProbe(t *testing.T, probeName string, javascriptProbe string) []byte {
+	t.Helper()
+	nodePath, lookupError := exec.LookPath("node")
+	if lookupError != nil {
+		t.Skip("node is unavailable; skipping JavaScript behavior probe")
+	}
+
+	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
+	javaScriptBehaviorProbeCount.Add(1)
+	probeOutput, probeError := probeCommand.CombinedOutput()
+	if probeError != nil {
+		t.Fatalf("execute %s JavaScript behavior: %v\n%s", probeName, probeError, probeOutput)
+	}
+	return probeOutput
+}
 
 func publicationTestBoard(title string, bodyMarkdown string, projectName string, generatedAt time.Time) *Board {
 	ticket := &RequestTicket{
@@ -599,11 +688,7 @@ func TestDrawerDropsOnlyAMatchingLeadingHeading(t *testing.T) {
 // Execute the drawer post-processor under Node so the title de-duplication is
 // pinned to behavior: matching leading H1s disappear for both record kinds,
 // while a meaningful nonmatching H1 survives.
-func TestDrawerHeadingDeduplicationBehavior(t *testing.T) {
-	nodePath, lookupError := exec.LookPath("node")
-	if lookupError != nil {
-		t.Skip("node is unavailable; skipping drawer heading behavior check")
-	}
+func TestJavaScriptBehaviorDrawerHeadingDeduplication(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	functionBlocks := []string{
 		sliceBalancedBlockAfter(t, indexHtml, "function normalizeHeadingText("),
@@ -648,11 +733,7 @@ process.stdout.write(JSON.stringify([
   userRequestMatch.heading.removed,
   userRequestMismatch.heading.removed
 ]));`
-	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
-	probeOutput, probeError := probeCommand.CombinedOutput()
-	if probeError != nil {
-		t.Fatalf("execute drawer heading behavior: %v\n%s", probeError, probeOutput)
-	}
+	probeOutput := runJavaScriptBehaviorProbe(t, "drawer heading", javascriptProbe)
 	var removedResults []bool
 	if decodeError := json.Unmarshal(probeOutput, &removedResults); decodeError != nil {
 		t.Fatalf("decode drawer heading behavior: %v (output %q)", decodeError, probeOutput)
@@ -1087,180 +1168,178 @@ func sliceBalancedBlockAfter(t *testing.T, sourceText string, anchorToken string
 	return ""
 }
 
-// TestByUserRequestLensCountsRecentlyDoneAsActive pins the widened Active rule
-// for the by-UR lens. The old predicate (userRequestIsActive) passed only for a
-// UR holding a non-terminal REQ, so on a fully-shipped queue — every REQ
-// completed / completed-with-issues / cancelled — it was unsatisfiable and the
-// lens rendered nothing while the Columns lens showed those same REQs as
-// recently done.
-//
-// Both the definition AND the call site are asserted: a half-finished rename
-// would leave the lens filtering on the old rule, and that has no symptom at all
-// until the queue next hits zero, which is exactly when nobody is testing.
-func TestByUserRequestLensCountsRecentlyDoneAsActive(t *testing.T) {
+// The Active by-UR lens and Recently done column share one wall-clock window.
+// Execute both production predicates so terminal work crosses the scope boundary
+// when it ages out, while non-terminal work remains active.
+func TestJavaScriptBehaviorByUserRequestLensCountsRecentlyDoneAsActive(t *testing.T) {
 	indexHtml := generateLiveSite(t)
-
-	// The superseded predicate must be gone entirely, not merely unused.
-	if strings.Contains(indexHtml, "userRequestIsActive") {
-		t.Fatalf("superseded predicate userRequestIsActive is still present in the inlined board.js")
-	}
-
 	for _, requiredToken := range []string{
-		// The definition.
-		"function userRequestHasOpenOrRecentWork(",
-		// The call site inside the lens gate.
 		"userRequestHasOpenOrRecentWork(userRequest, recentlyDoneIdSet)",
-		// The set is built from the shared recentlyDoneIds() so the two lenses
-		// can never disagree about what "recent" means.
 		"recentlyDoneIds(viewState.windowHours)",
 	} {
 		if !strings.Contains(indexHtml, requiredToken) {
-			t.Fatalf("widened by-UR Active rule is missing from the inlined board.js: %q not found", requiredToken)
+			t.Fatalf("by-UR recent-work behavior is not wired into the generated asset: %q missing", requiredToken)
 		}
 	}
 
-	// The id set must be built once per render, in renderUserRequestLens — not
-	// once per UR inside the predicate, which would rescan the calendar 390 times
-	// on a real tree.
-	lensSource := sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens(")
-	if !strings.Contains(lensSource, "recentlyDoneIds(viewState.windowHours)") {
-		t.Fatalf("renderUserRequestLens does not build the recently-done id set; the window cannot reach the lens")
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function isTerminalResolvedStatus("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestHasOpenOrRecentWork("),
+		sliceBalancedBlockAfter(t, indexHtml, "function recentlyDoneIds("),
+	}
+	javascriptProbe := `
+Date.now = function () { return Date.parse("2026-08-15T12:00:00Z"); };
+var boardData = { calendar: [
+  { id: "REQ-recent", completionTime: "2026-08-15T06:00:00Z" },
+  { id: "REQ-old", completionTime: "2026-08-13T06:00:00Z" }
+] };
+var requestsById = {
+  "REQ-recent": { status: "completed" },
+  "REQ-old": { status: "completed" },
+  "REQ-open": { status: "pending" }
+};
+` + strings.Join(functionBlocks, "\n") + `
+var recentIds = recentlyDoneIds(24);
+var recentlyDoneIdSet = {};
+recentIds.forEach(function (requestId) { recentlyDoneIdSet[requestId] = true; });
+process.stdout.write(JSON.stringify({
+  recentIds: recentIds,
+  recentActive: userRequestHasOpenOrRecentWork({ requestIds: ["REQ-recent"] }, recentlyDoneIdSet),
+  oldActive: userRequestHasOpenOrRecentWork({ requestIds: ["REQ-old"] }, recentlyDoneIdSet),
+  openActive: userRequestHasOpenOrRecentWork({ requestIds: ["REQ-open"] }, recentlyDoneIdSet)
+}));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "by-UR recent-work predicate", javascriptProbe)
+	var result struct {
+		RecentIds    []string `json:"recentIds"`
+		RecentActive bool     `json:"recentActive"`
+		OldActive    bool     `json:"oldActive"`
+		OpenActive   bool     `json:"openActive"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode by-UR recent-work result: %v (output %q)", decodeError, probeOutput)
+	}
+	if len(result.RecentIds) != 1 || result.RecentIds[0] != "REQ-recent" {
+		t.Fatalf("recentlyDoneIds(24) = %#v, want only REQ-recent", result.RecentIds)
+	}
+	if !result.RecentActive || result.OldActive || !result.OpenActive {
+		t.Fatalf("Active predicate result = recent:%v old:%v open:%v, want true, false, true",
+			result.RecentActive, result.OldActive, result.OpenActive)
 	}
 }
 
-// TestRecentlyDoneWindowHandlerRefreshesUserRequestLens pins that the RECENTLY
-// DONE chips drive the by-UR lens too. The handler used to hardcode
-// renderColumns() and never invalidate renderedOnce.userRequestLens, so the
-// chips were a dead knob in that lens: visible, repainting hidden columns, and
-// changing nothing on screen.
-//
-// The assertion slices the handler body rather than searching the whole page —
-// renderUserRequestLens appears elsewhere in board.js, so a page-wide
-// strings.Contains would pass on the buggy version and prove nothing.
-func TestRecentlyDoneWindowHandlerRefreshesUserRequestLens(t *testing.T) {
+func TestJavaScriptBehaviorRecentlyDoneWindowRefreshesVisibleLens(t *testing.T) {
 	indexHtml := generateLiveSite(t)
-
-	handlerSource := sliceBalancedBlockAfter(t, indexHtml, `document.querySelectorAll("[data-window-hours]")`)
-
-	for _, requiredToken := range []string{
-		// The by-UR lens is re-rendered when it is the visible one...
-		"renderUserRequestLens()",
-		// ...and the cache is dropped so the hidden lens re-renders on switch-back.
-		"renderedOnce.userRequestLens = false",
-		// Columns stay refreshed — they have no renderedOnce guard, so nothing
-		// else would bring them up to date when the lens switches back.
-		"renderColumns()",
-	} {
-		if !strings.Contains(handlerSource, requiredToken) {
-			t.Fatalf("the [data-window-hours] handler does not reach the by-UR lens: %q missing from its body, which was:\n%s", requiredToken, handlerSource)
-		}
-	}
-}
-
-// TestByUserRequestLensEmptyStateNamesWindow pins the reworked empty/hidden
-// block. Two things were wrong: the empty branch early-returned before the
-// hidden-count note, so the reader was never told how many URs sat behind the
-// toggle in the one case where all of them did; and the copy hardcoded a "every
-// UR is fully resolved" claim that no longer describes the widened rule.
-func TestByUserRequestLensEmptyStateNamesWindow(t *testing.T) {
-	indexHtml := generateLiveSite(t)
-
-	// The superseded copy asserted a rule the lens no longer applies.
-	if strings.Contains(indexHtml, "every UR is fully resolved") {
-		t.Fatalf("stale by-UR empty-state copy is still present in the inlined board.js")
+	const wiringToken = `applyRecentWindowSelection(parseInt(button.getAttribute("data-window-hours"), 10))`
+	if !strings.Contains(indexHtml, wiringToken) {
+		t.Fatalf("recent-window click handler is not wired to the transition helper: %q missing", wiringToken)
 	}
 
-	for _, requiredToken := range []string{
-		// The window phrase is derived, so the copy tracks the selected chip
-		// instead of baking in a span.
-		"function recentWindowPhrase(",
-		"recentWindowPhrase(viewState.windowHours)",
-		// Escape one: widen the window. Escape two: switch the scope to All.
-		"widen the RECENTLY DONE window",
-		"switch URs to All",
-		// The three empty branches.
-		"No user requests match the current filters.",
-		"No user requests with open work or activity in ",
-		"No user requests in this tree yet.",
-		// The hidden-count note now names the window rather than claiming the
-		// hidden URs are "fully resolved".
-		" with no open work or activity in ",
-	} {
-		if !strings.Contains(indexHtml, requiredToken) {
-			t.Fatalf("by-UR empty-state copy is missing from the inlined board.js: %q not found", requiredToken)
-		}
+	recentWindowFunction := sliceBalancedBlockAfter(t, indexHtml, "function applyRecentWindowSelection(")
+	javascriptProbe := `
+var viewState = { windowHours: 24, view: "board", lens: "user-request" };
+var renderedOnce = { userRequestLens: true };
+var selectedWindow = "";
+var columnRenderCount = 0;
+var lensRenderCount = 0;
+function setActiveButton(selector, attributeName, attributeValue) { selectedWindow = attributeValue; }
+function renderColumns() { columnRenderCount += 1; }
+function renderUserRequestLens() { lensRenderCount += 1; }
+` + recentWindowFunction + `
+applyRecentWindowSelection(168);
+var visibleLensState = {
+  windowHours: viewState.windowHours,
+  selectedWindow: selectedWindow,
+  columnRenderCount: columnRenderCount,
+  lensRenderCount: lensRenderCount,
+  lensFresh: renderedOnce.userRequestLens
+};
+viewState.lens = "columns";
+applyRecentWindowSelection(48);
+process.stdout.write(JSON.stringify({
+  visibleLensState: visibleLensState,
+  hiddenLensState: {
+    windowHours: viewState.windowHours,
+    columnRenderCount: columnRenderCount,
+    lensRenderCount: lensRenderCount,
+    lensFresh: renderedOnce.userRequestLens
+  }
+}));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "recent-window transition", javascriptProbe)
+	var result struct {
+		VisibleLensState struct {
+			WindowHours       int    `json:"windowHours"`
+			SelectedWindow    string `json:"selectedWindow"`
+			ColumnRenderCount int    `json:"columnRenderCount"`
+			LensRenderCount   int    `json:"lensRenderCount"`
+			LensFresh         bool   `json:"lensFresh"`
+		} `json:"visibleLensState"`
+		HiddenLensState struct {
+			WindowHours       int  `json:"windowHours"`
+			ColumnRenderCount int  `json:"columnRenderCount"`
+			LensRenderCount   int  `json:"lensRenderCount"`
+			LensFresh         bool `json:"lensFresh"`
+		} `json:"hiddenLensState"`
 	}
-
-	// The hidden note must be reachable from the empty branch: the old code
-	// returned before it. Pin the absence of that early return by requiring the
-	// note's guard to be a condition rather than dead code below a return.
-	lensSource := sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens(")
-	emptyBranchIndex := strings.Index(lensSource, "userRequestLensEmptyText(")
-	hiddenNoteIndex := strings.Index(lensSource, " with no open work or activity in ")
-	if emptyBranchIndex == -1 || hiddenNoteIndex == -1 {
-		t.Fatalf("empty-state decision and hidden note are not both inside renderUserRequestLens")
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode recent-window transition: %v (output %q)", decodeError, probeOutput)
 	}
-	if hiddenNoteIndex < emptyBranchIndex {
-		t.Fatalf("hidden-count note renders before the empty branch; it must render under it")
+	visibleState := result.VisibleLensState
+	if visibleState.WindowHours != 168 || visibleState.SelectedWindow != "168" || visibleState.ColumnRenderCount != 1 || visibleState.LensRenderCount != 1 || !visibleState.LensFresh {
+		t.Fatalf("visible by-UR transition = %#v, want selected window 168 with both lenses refreshed", visibleState)
 	}
-	betweenBranchAndNote := lensSource[emptyBranchIndex:hiddenNoteIndex]
-	if strings.Contains(betweenBranchAndNote, "return;") {
-		t.Fatalf("an early return still separates the empty branch from the hidden-count note, making the note unreachable when every UR is hidden")
+	hiddenState := result.HiddenLensState
+	if hiddenState.WindowHours != 48 || hiddenState.ColumnRenderCount != 2 || hiddenState.LensRenderCount != 1 || hiddenState.LensFresh {
+		t.Fatalf("hidden by-UR transition = %#v, want columns refreshed and by-UR marked stale", hiddenState)
 	}
 }
 
 // Execute the pure empty-state decision under Node so the regression is pinned
 // to state transitions rather than the presence of reassuring source strings.
-func TestByUserRequestLensEmptyStateBehavior(t *testing.T) {
-	nodePath, lookupError := exec.LookPath("node")
-	if lookupError != nil {
-		t.Skip("node is unavailable; skipping board.js state-behavior check")
-	}
+func TestJavaScriptBehaviorByUserRequestLensEmptyState(t *testing.T) {
 	indexHtml := generateLiveSite(t)
-	emptyStateFunction := sliceBalancedBlockAfter(t, indexHtml, "function userRequestLensEmptyText(")
-	javascriptProbe := emptyStateFunction + `
+	functionBlocks := []string{
+		sliceBalancedBlockAfter(t, indexHtml, "function recentWindowPhrase("),
+		sliceBalancedBlockAfter(t, indexHtml, "function userRequestLensEmptyText("),
+	}
+	javascriptProbe := strings.Join(functionBlocks, "\n") + `
 const results = [
+  recentWindowPhrase(1),
+  recentWindowPhrase(168),
   userRequestLensEmptyText(true, 4, 2, "the last 24 hours"),
   userRequestLensEmptyText(true, 4, 0, "the last 24 hours"),
   userRequestLensEmptyText(false, 4, 0, "the last 24 hours"),
   userRequestLensEmptyText(false, 0, 0, "the last 24 hours")
 ];
 process.stdout.write(JSON.stringify(results));`
-	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
-	probeOutput, probeError := probeCommand.CombinedOutput()
-	if probeError != nil {
-		t.Fatalf("execute board.js empty-state decision: %v\n%s", probeError, probeOutput)
-	}
+	probeOutput := runJavaScriptBehaviorProbe(t, "by-UR empty-state decision", javascriptProbe)
 	var results []string
 	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
 		t.Fatalf("decode board.js empty-state results: %v (output %q)", decodeError, probeOutput)
 	}
-	if len(results) != 4 {
-		t.Fatalf("empty-state result count = %d, want 4", len(results))
+	if len(results) != 6 {
+		t.Fatalf("empty-state result count = %d, want 6", len(results))
 	}
-	if !strings.Contains(results[0], "switch URs to All") || !strings.Contains(results[0], "2 resolved matches") {
-		t.Fatalf("scope-hidden search result = %q, want an All-scope escape with the match count", results[0])
+	if results[0] != "the last 1 hour" || results[1] != "the last 7 days" {
+		t.Fatalf("recent-window phrases = %q, %q, want singular hour and seven-day copy", results[0], results[1])
 	}
-	if results[1] != "No user requests match the current filters." {
-		t.Fatalf("genuine filter miss = %q, want the generic no-match message", results[1])
+	if !strings.Contains(results[2], "switch URs to All") || !strings.Contains(results[2], "2 resolved matches") {
+		t.Fatalf("scope-hidden search result = %q, want an All-scope escape with the match count", results[2])
 	}
-	if !strings.Contains(results[2], "widen the RECENTLY DONE window") || !strings.Contains(results[2], "switch URs to All") {
-		t.Fatalf("scope-only empty state = %q, want both scope escapes", results[2])
+	if results[3] != "No user requests match the current filters." {
+		t.Fatalf("genuine filter miss = %q, want the generic no-match message", results[3])
 	}
-	if results[3] != "No user requests in this tree yet." {
-		t.Fatalf("empty tree state = %q, want the empty-tree message", results[3])
+	if !strings.Contains(results[4], "widen the RECENTLY DONE window") || !strings.Contains(results[4], "switch URs to All") {
+		t.Fatalf("scope-only empty state = %q, want both scope escapes", results[4])
+	}
+	if results[5] != "No user requests in this tree yet." {
+		t.Fatalf("empty tree state = %q, want the empty-tree message", results[5])
 	}
 }
 
-// TestByUserRequestLensDefaultScopeUsesScopeOnlyEmptyState exercises the lens
-// caller, not only its pure copy helper. With no filters, every request matches
-// by definition, so a resolved UR hidden by the Active scope must offer the
-// scope/window escape instead of claiming filters matched it.
-func TestByUserRequestLensDefaultScopeUsesScopeOnlyEmptyState(t *testing.T) {
-	nodePath, lookupError := exec.LookPath("node")
-	if lookupError != nil {
-		t.Skip("node is unavailable; skipping board.js by-UR caller behavior check")
-	}
+// Exercise the production lens caller, not only its pure predicate: a terminal
+// REQ inside the selected window renders while an older terminal REQ stays
+// hidden and is counted in the scope note.
+func TestJavaScriptBehaviorByUserRequestLensUsesRecentWindowAtCaller(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	functionBlocks := []string{
 		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
@@ -1276,11 +1355,21 @@ func TestByUserRequestLensDefaultScopeUsesScopeOnlyEmptyState(t *testing.T) {
 		sliceBalancedBlockAfter(t, indexHtml, "function renderUserRequestLens("),
 	}
 	javascriptProbe := `
+Date.now = function () { return Date.parse("2026-08-15T12:00:00Z"); };
 var boardData = {
-  requests: { "REQ-501": { status: "completed", title: "old work" } },
-  userRequests: { "UR-301": { requestIds: ["REQ-501"], title: "old request", inputFilePresent: true } },
-  userRequestOrder: ["UR-301"],
-  calendar: []
+  requests: {
+    "REQ-501": { status: "completed", title: "old work" },
+    "REQ-502": { status: "completed", title: "recent work" }
+  },
+  userRequests: {
+    "UR-301": { requestIds: ["REQ-501"], title: "old request", inputFilePresent: true },
+    "UR-302": { requestIds: ["REQ-502"], title: "recent request", inputFilePresent: true }
+  },
+  userRequestOrder: ["UR-301", "UR-302"],
+  calendar: [
+    { id: "REQ-502", completionTime: "2026-08-15T06:00:00Z" },
+    { id: "REQ-501", completionTime: "2026-08-13T06:00:00Z" }
+  ]
 };
 var requestsById = boardData.requests;
 var userRequestsById = boardData.userRequests;
@@ -1298,32 +1387,34 @@ var document = {
   getElementById: function (nodeId) { return nodeId === "user-request-lens" ? userRequestLensNode : null; },
   createElement: function () { return makeNode(); }
 };
+function makeRequestCard(requestId) { return { requestId: requestId }; }
 ` + strings.Join(functionBlocks, "\n") + `
 renderUserRequestLens();
-process.stdout.write(JSON.stringify(userRequestLensNode.childNodes.map(function (node) { return node.textContent; })));
+var renderedUserRequestIds = userRequestLensNode.childNodes
+  .filter(function (node) { return node.className === "ur-group"; })
+  .map(function (groupNode) { return groupNode.childNodes[0].dataset.detailId; });
+var scopeNotes = userRequestLensNode.childNodes
+  .filter(function (node) { return node.className === "ur-lens-hidden-note"; })
+  .map(function (node) { return node.textContent; });
+process.stdout.write(JSON.stringify({ renderedUserRequestIds: renderedUserRequestIds, scopeNotes: scopeNotes }));
 `
-	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
-	probeOutput, probeError := probeCommand.CombinedOutput()
-	if probeError != nil {
-		t.Fatalf("execute board.js by-UR caller behavior: %v\n%s", probeError, probeOutput)
+	probeOutput := runJavaScriptBehaviorProbe(t, "by-UR caller", javascriptProbe)
+	var result struct {
+		RenderedUserRequestIds []string `json:"renderedUserRequestIds"`
+		ScopeNotes             []string `json:"scopeNotes"`
 	}
-	var renderedText []string
-	if decodeError := json.Unmarshal(probeOutput, &renderedText); decodeError != nil {
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
 		t.Fatalf("decode board.js by-UR caller output: %v (output %q)", decodeError, probeOutput)
 	}
-	if len(renderedText) != 2 {
-		t.Fatalf("default Active lens rendered %d nodes, want empty-state plus hidden-note: %q", len(renderedText), renderedText)
+	if len(result.RenderedUserRequestIds) != 1 || result.RenderedUserRequestIds[0] != "UR-302" {
+		t.Fatalf("Active by-UR caller rendered %#v, want only recent terminal UR-302", result.RenderedUserRequestIds)
 	}
-	if !strings.Contains(renderedText[0], "No user requests with open work or activity") {
-		t.Fatalf("default Active lens empty state = %q, want the scope-only message", renderedText[0])
+	if len(result.ScopeNotes) != 1 || !strings.Contains(result.ScopeNotes[0], "1 UR with no open work or activity in the last 24 hours") {
+		t.Fatalf("Active by-UR caller scope notes = %#v, want one old hidden UR and the selected window", result.ScopeNotes)
 	}
 }
 
-func TestTestingDoneWindowIsViewSpecific(t *testing.T) {
-	nodePath, lookupError := exec.LookPath("node")
-	if lookupError != nil {
-		t.Skip("node is unavailable; skipping board.js empty-copy check")
-	}
+func TestJavaScriptBehaviorTestingDoneWindowIsViewSpecific(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	functionBlocks := []string{
 		sliceBalancedBlockAfter(t, indexHtml, "function createElement("),
@@ -1363,11 +1454,7 @@ var hiddenBoardCopy = nodesBySelector['[data-cards="hidden-board"]'].childNodes[
 fillTestingColumn("testing-ready", [], 1);
 var testingCopy = nodesBySelector['[data-cards="testing-ready"]'].childNodes[0].textContent;
 process.stdout.write(JSON.stringify([boardCopy, hiddenBoardCopy, testingCopy]));`
-	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
-	probeOutput, probeError := probeCommand.CombinedOutput()
-	if probeError != nil {
-		t.Fatalf("execute board.js empty-copy decision: %v\n%s", probeError, probeOutput)
-	}
+	probeOutput := runJavaScriptBehaviorProbe(t, "testing empty-copy decision", javascriptProbe)
 	var results []string
 	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
 		t.Fatalf("decode board.js empty-copy results: %v (output %q)", decodeError, probeOutput)
@@ -1386,19 +1473,107 @@ process.stdout.write(JSON.stringify([boardCopy, hiddenBoardCopy, testingCopy]));
 	}
 }
 
-func TestTestingStatusUpdateInvalidatesUserRequestLens(t *testing.T) {
+func TestJavaScriptBehaviorTestingStatusUpdateInvalidatesUserRequestLens(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 	postTestingSource := sliceBalancedBlockAfter(t, indexHtml, "function postTestingStatus(")
 	updateCallback := sliceBalancedBlockAfter(t, postTestingSource, ".then(function (payload) {")
-	for _, requiredToken := range []string{
-		"renderedOnce.userRequestLens = false",
-		`viewState.view === "board" && viewState.lens === "user-request"`,
-		"renderUserRequestLens()",
-		"renderedOnce.userRequestLens = true",
-	} {
-		if !strings.Contains(updateCallback, requiredToken) {
-			t.Fatalf("testing-status success callback does not refresh the By-UR lens: %q missing", requiredToken)
-		}
+	const wiringToken = "applyConfirmedTestingTransition(requestId, testingState, feedbackText, payload)"
+	if !strings.Contains(updateCallback, wiringToken) {
+		t.Fatalf("testing-status success callback is not wired to its confirmed transition: %q missing", wiringToken)
+	}
+
+	transitionFunction := sliceBalancedBlockAfter(t, indexHtml, "function applyConfirmedTestingTransition(")
+	javascriptProbe := `
+var requestsById = {
+  "REQ-1": {
+    testingStatus: "",
+    testedBy: "",
+    testingUpdatedAt: "",
+    testingFeedback: "",
+    testingStatusUnrecognized: true,
+    originalTestingStatus: "invalid"
+  }
+};
+var feedbackFormRequestId = "REQ-1";
+var feedbackDraftText = "draft";
+var renderedOnce = { userRequestLens: true };
+var viewState = { view: "board", lens: "user-request" };
+var testingRenderCount = 0;
+var columnRenderCount = 0;
+var lensRenderCount = 0;
+function renderTestingView() { testingRenderCount += 1; }
+function renderColumns() { columnRenderCount += 1; }
+function renderUserRequestLens() { lensRenderCount += 1; }
+` + transitionFunction + `
+applyConfirmedTestingTransition("REQ-1", "returned", "needs revision", {
+  testingStatus: "returned",
+  testedBy: "Alex",
+  testingUpdatedAt: "2026-08-15T12:00:00Z"
+});
+var visibleTransition = {
+  request: Object.assign({}, requestsById["REQ-1"]),
+  feedbackFormRequestId: feedbackFormRequestId,
+  feedbackDraftText: feedbackDraftText,
+  testingRenderCount: testingRenderCount,
+  columnRenderCount: columnRenderCount,
+  lensRenderCount: lensRenderCount,
+  lensFresh: renderedOnce.userRequestLens
+};
+viewState.lens = "columns";
+renderedOnce.userRequestLens = true;
+applyConfirmedTestingTransition("REQ-1", "tested", "", {
+  testingStatus: "tested",
+  testedBy: "Alex",
+  testingUpdatedAt: "2026-08-15T12:05:00Z"
+});
+process.stdout.write(JSON.stringify({
+  visibleTransition: visibleTransition,
+  hiddenLensFresh: renderedOnce.userRequestLens,
+  hiddenLensRenderCount: lensRenderCount,
+  hiddenTestingRenderCount: testingRenderCount,
+  hiddenColumnRenderCount: columnRenderCount
+}));`
+	probeOutput := runJavaScriptBehaviorProbe(t, "confirmed testing transition", javascriptProbe)
+	var result struct {
+		VisibleTransition struct {
+			Request struct {
+				TestingStatus             string `json:"testingStatus"`
+				TestedBy                  string `json:"testedBy"`
+				TestingUpdatedAt          string `json:"testingUpdatedAt"`
+				TestingFeedback           string `json:"testingFeedback"`
+				TestingStatusUnrecognized bool   `json:"testingStatusUnrecognized"`
+				OriginalTestingStatus     string `json:"originalTestingStatus"`
+			} `json:"request"`
+			FeedbackFormRequestId *string `json:"feedbackFormRequestId"`
+			FeedbackDraftText     string  `json:"feedbackDraftText"`
+			TestingRenderCount    int     `json:"testingRenderCount"`
+			ColumnRenderCount     int     `json:"columnRenderCount"`
+			LensRenderCount       int     `json:"lensRenderCount"`
+			LensFresh             bool    `json:"lensFresh"`
+		} `json:"visibleTransition"`
+		HiddenLensFresh          bool `json:"hiddenLensFresh"`
+		HiddenLensRenderCount    int  `json:"hiddenLensRenderCount"`
+		HiddenTestingRenderCount int  `json:"hiddenTestingRenderCount"`
+		HiddenColumnRenderCount  int  `json:"hiddenColumnRenderCount"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
+		t.Fatalf("decode confirmed testing transition: %v (output %q)", decodeError, probeOutput)
+	}
+	visibleTransition := result.VisibleTransition
+	request := visibleTransition.Request
+	if request.TestingStatus != "returned" || request.TestedBy != "Alex" || request.TestingUpdatedAt != "2026-08-15T12:00:00Z" || request.TestingFeedback != "needs revision" || request.TestingStatusUnrecognized || request.OriginalTestingStatus != "returned" {
+		t.Fatalf("confirmed testing request state = %#v, want server-confirmed returned state", request)
+	}
+	if visibleTransition.FeedbackFormRequestId != nil || visibleTransition.FeedbackDraftText != "" {
+		t.Fatalf("confirmed testing feedback form state = id:%v draft:%q, want cleared", visibleTransition.FeedbackFormRequestId, visibleTransition.FeedbackDraftText)
+	}
+	if visibleTransition.TestingRenderCount != 1 || visibleTransition.ColumnRenderCount != 1 || visibleTransition.LensRenderCount != 1 || !visibleTransition.LensFresh {
+		t.Fatalf("confirmed testing render state = testing:%d columns:%d lens:%d fresh:%v, want one refresh for each visible surface",
+			visibleTransition.TestingRenderCount, visibleTransition.ColumnRenderCount, visibleTransition.LensRenderCount, visibleTransition.LensFresh)
+	}
+	if result.HiddenLensFresh || result.HiddenLensRenderCount != 1 || result.HiddenTestingRenderCount != 2 || result.HiddenColumnRenderCount != 2 {
+		t.Fatalf("hidden by-UR render state = testing:%d columns:%d lens:%d fresh:%v, want lens uncalled and marked stale",
+			result.HiddenTestingRenderCount, result.HiddenColumnRenderCount, result.HiddenLensRenderCount, result.HiddenLensFresh)
 	}
 }
 

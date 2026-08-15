@@ -814,6 +814,19 @@
     return ids; // calendar is already most-recent-first
   }
 
+  function applyRecentWindowSelection(selectedWindowHours) {
+    viewState.windowHours = selectedWindowHours || 24;
+    setActiveButton("#recent-window-group", "data-window-hours", String(viewState.windowHours));
+    // The window scopes both lenses. Columns have no renderedOnce guard, while
+    // the by-UR lens must either re-render now or stay stale until selected.
+    renderColumns();
+    renderedOnce.userRequestLens = false;
+    if (viewState.view === "board" && viewState.lens === "user-request") {
+      renderUserRequestLens();
+      renderedOnce.userRequestLens = true;
+    }
+  }
+
   function filterRequestIds(requestIds) {
     return requestIds.filter(function (requestId) {
       return requestMatchesFilters(requestId);
@@ -1419,6 +1432,29 @@
       });
   }
 
+  function applyConfirmedTestingTransition(requestId, testingState, feedbackText, payload) {
+    var request = requestsById[requestId];
+    if (request) {
+      request.testingStatus = payload.testingStatus || "";
+      request.testedBy = payload.testedBy || "";
+      request.testingUpdatedAt = payload.testingUpdatedAt || "";
+      request.testingFeedback = testingState === "returned" ? feedbackText || "" : "";
+      request.testingStatusUnrecognized = false;
+      request.originalTestingStatus = payload.testingStatus || "";
+    }
+    if (feedbackFormRequestId === requestId) {
+      feedbackFormRequestId = null;
+      feedbackDraftText = "";
+    }
+    renderTestingView();
+    renderColumns(); // the main board's testing badge tracks the same record
+    renderedOnce.userRequestLens = false;
+    if (viewState.view === "board" && viewState.lens === "user-request") {
+      renderUserRequestLens();
+      renderedOnce.userRequestLens = true;
+    }
+  }
+
   // On success the server's confirmed transition is applied to the local data
   // island and the view re-renders — no page reload, so the active view and
   // filters survive. The next full reload re-reads the files themselves.
@@ -1435,26 +1471,7 @@
     })
       .then(decodeTestingApiResponse)
       .then(function (payload) {
-        var request = requestsById[requestId];
-        if (request) {
-          request.testingStatus = payload.testingStatus || "";
-          request.testedBy = payload.testedBy || "";
-          request.testingUpdatedAt = payload.testingUpdatedAt || "";
-          request.testingFeedback = testingState === "returned" ? feedbackText || "" : "";
-          request.testingStatusUnrecognized = false;
-          request.originalTestingStatus = payload.testingStatus || "";
-        }
-        if (feedbackFormRequestId === requestId) {
-          feedbackFormRequestId = null;
-          feedbackDraftText = "";
-        }
-        renderTestingView();
-        renderColumns(); // the main board's testing badge tracks the same record
-        renderedOnce.userRequestLens = false;
-        if (viewState.view === "board" && viewState.lens === "user-request") {
-          renderUserRequestLens();
-          renderedOnce.userRequestLens = true;
-        }
+        applyConfirmedTestingTransition(requestId, testingState, feedbackText, payload);
       })
       .catch(function (postError) {
         showTestingError("Update failed: " + postError.message);
@@ -2236,17 +2253,7 @@
 
     document.querySelectorAll("[data-window-hours]").forEach(function (button) {
       button.addEventListener("click", function () {
-        viewState.windowHours = parseInt(button.getAttribute("data-window-hours"), 10) || 24;
-        setActiveButton("#recent-window-group", "data-window-hours", String(viewState.windowHours));
-        // The window now scopes both lenses. Columns have no renderedOnce guard,
-        // so they are refreshed unconditionally; the by-UR lens has one, so drop
-        // it and re-render only when it is the lens actually on screen.
-        renderColumns();
-        renderedOnce.userRequestLens = false;
-        if (viewState.view === "board" && viewState.lens === "user-request") {
-          renderUserRequestLens();
-          renderedOnce.userRequestLens = true;
-        }
+        applyRecentWindowSelection(parseInt(button.getAttribute("data-window-hours"), 10));
       });
     });
 

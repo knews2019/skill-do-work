@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.12 — Strict JavaScript Behavior Lane (2026-08-15)
+
+The board's incident-sensitive JavaScript probes could all skip when Node was unavailable while the Go suite still reported success. A maintainer-only lane now distinguishes an intentional consumer skip from a false-green zero-probe verification run.
+
+- Centralized all seven Node behavior probes behind one counted runner and stable test prefix
+- Added a canonical strict entrypoint that fails after an otherwise green run when no JavaScript probe started, while ordinary package tests still skip cleanly without Node
+- Replaced state source-shape claims with executable production behavior for recent-window, By-UR, empty-state, and confirmed testing transitions
+
 ## 0.189.11 — Listener-Anchored Live Board Authority (2026-08-15)
 
 The live board trusted a matching Host and Origin even though both values came from the request. Every production route now sits behind a post-bind authority gate derived from the actual listener and assigned port.
