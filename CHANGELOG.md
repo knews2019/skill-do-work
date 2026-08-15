@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.193.2 — Success-Gated Report Images (2026-08-15)
+
+Optional AI-report images now remain in invocation-private staging until at least one helper returns a current non-empty result. An all-failed batch falls back cleanly without publishing an empty `generated/` directory.
+
+- Retains every parallel PID and status while filtering failed or stale targets before publication
+- Publishes mixed-success batches with only verified current images and leaves SVG/Mermaid fallback for missing sections
+- Replays the exact prescribed block for all-failed and mixed-success outcomes; deeper signal/collision lifecycle hardening remains consent-gated
+
 ## 0.193.1 — Normalized Presentation Target IDs (2026-08-15)
 
 Completed-work reports, source walkthroughs, and item-specific portfolio guidance now inherit one target-ID contract, so case and zero-padding variants resolve consistently without widening archive or write boundaries.

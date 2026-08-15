@@ -34,10 +34,24 @@ clean sans-serif labels, no photorealism, no 3D, no stock-photo people, max ~10 
 <skill-root>/scripts/generate-report-image.sh "<absolute output PNG>" "$STYLE" "<Claude-authored sanitized visual description>"
 ```
 
-**Fire in parallel, retain every status, then verify.** Image generation is slow (tens of seconds each), so launch every section's job as a background job, retain every PID, and wait each PID even after an earlier failure. An image is current only when its own helper status is zero and its target is non-empty; a stale target with a failed status falls back to SVG/Mermaid (Step 4):
+**Fire in parallel, retain every status, then verify.** Image generation is slow (tens of seconds each), so launch every section's job as a background job, retain every PID, and wait each PID even after an earlier failure. Stage the whole batch in one hidden invocation-private directory adjacent to the final `generated/` directory. An image is current only when its own helper status is zero and its staged target is non-empty; remove every failed target, then publish the complete verified batch with one same-filesystem rename only when at least one image succeeded. The report bundle is already invocation-private under the shared no-overwrite rule, but still fail closed if `generated/` exists before staging or appears before publication. An all-failed batch removes its exact private directory and falls back to SVG/Mermaid (Step 4) without publishing `generated/`:
 
 ```bash
-GEN="ai-reports/<report-slug>/generated"; mkdir -p "$GEN"; GEN="$(cd "$GEN" && pwd)"   # canonicalize to an ABSOLUTE path: the helper's $1 must be cwd-independent (a backend may run from another cwd). HTML still embeds the relative generated/… path.
+report_directory="ai-reports/<report-slug>"
+report_directory="$(cd "$report_directory" && pwd)" || exit 1
+generated_directory="$report_directory/generated"
+[ ! -e "$generated_directory" ] || { echo "REFUSING: generated/ already exists" >&2; exit 1; }
+image_generation_stage="$(umask 077; mktemp -d "$report_directory/.generated.staging.XXXXXX")" || exit 1
+cleanup_report_image_stage() {
+  if [ -n "${image_generation_stage:-}" ]; then
+    rm -rf -- "$image_generation_stage"
+  fi
+}
+trap cleanup_report_image_stage EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 image_generation_pids=()
 image_generation_targets=()
 launch_report_image() {
@@ -47,8 +61,8 @@ launch_report_image() {
   image_generation_pids[${#image_generation_pids[@]}]=$!
   image_generation_targets[${#image_generation_targets[@]}]="$image_target"
 }
-launch_report_image "$GEN/01-architecture.png" "<prompt 1>"
-launch_report_image "$GEN/02-dataflow.png" "<prompt 2>"
+launch_report_image "$image_generation_stage/01-architecture.png" "<prompt 1>"
+launch_report_image "$image_generation_stage/02-dataflow.png" "<prompt 2>"
 
 image_generation_statuses=()
 image_index=0
@@ -59,14 +73,30 @@ while [ "$image_index" -lt "${#image_generation_pids[@]}" ]; do
   image_index=$((image_index + 1))
 done
 
+image_generation_success_count=0
 image_index=0
 while [ "$image_index" -lt "${#image_generation_targets[@]}" ]; do
   image_target="${image_generation_targets[$image_index]}"
   if [ "${image_generation_statuses[$image_index]}" -ne 0 ] || [ ! -s "$image_target" ]; then
+    rm -f -- "$image_target"
     echo "MISSING: $image_target → fall back to SVG/Mermaid for that section"
+  else
+    image_generation_success_count=$((image_generation_success_count + 1))
   fi
   image_index=$((image_index + 1))
 done
+
+if [ "$image_generation_success_count" -gt 0 ]; then
+  [ ! -e "$generated_directory" ] || { echo "REFUSING: generated/ appeared before publication" >&2; exit 1; }
+  mv "$image_generation_stage" "$generated_directory" || exit 1
+  image_generation_stage=""
+  GEN="$generated_directory"   # absolute helper outputs were published here; HTML still embeds relative generated/… paths.
+else
+  cleanup_report_image_stage
+  image_generation_stage=""
+  GEN=""
+fi
+trap - EXIT HUP INT TERM
 ```
 
 **Rules for generated images:**

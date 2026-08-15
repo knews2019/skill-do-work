@@ -268,6 +268,73 @@ done
 [ "$(cat "$mixed_success_target")" = success ] && [ "$(cat "$mixed_failure_target")" = stale ] \
   || fail_case 'generate-report-image mixed-status case did not separate current output from a stale failed target'
 
+# ai-report caller block: replay the prescribed batch commands themselves. An
+# all-failed batch must leave no public or private directory; a mixed batch must
+# publish only the status-zero, non-empty current image after waiting every job.
+ai_report_batch_snippet="$fixture_root/ai-report-image-batch.sh"
+awk '
+  /^\*\*Fire in parallel, retain every status, then verify\.\*\*/ { found_section = 1 }
+  found_section && /^```bash$/ { in_block = 1; next }
+  in_block && /^```$/ { exit }
+  in_block { print }
+' "$repo_root/skills/do-work-toolbox/actions/ai-report-reference.md" \
+  | sed "s|<skill-root>|$repo_root/skills/do-work-toolbox|g" \
+  > "$ai_report_batch_snippet"
+[ -s "$ai_report_batch_snippet" ] \
+  || fail_case 'ai-report image batch replay could not extract the prescribed shell block'
+
+run_ai_report_batch_replay() {
+  replay_name="$1"
+  replay_bin="$2"
+  replay_root="$fixture_root/$replay_name"
+  mkdir -p "$replay_root/ai-reports/<report-slug>"
+  (
+    cd "$replay_root" || exit 2
+    PATH="$replay_bin:$PATH" \
+      STYLE='replay style' \
+      REPLAY_FIRST_DONE="$replay_root/first.done" \
+      REPLAY_SECOND_DONE="$replay_root/second.done" \
+      bash "$ai_report_batch_snippet"
+  )
+}
+
+image_all_failed_bin="$fixture_root/image-all-failed-bin"
+mkdir -p "$image_all_failed_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) image_prompt="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'case "$image_prompt" in *"<prompt 1>"*) : > "$REPLAY_FIRST_DONE" ;; *) : > "$REPLAY_SECOND_DONE" ;; esac' \
+  'printf partial > "$output_path"' \
+  'exit 9' \
+  > "$image_all_failed_bin/imagegen"
+chmod +x "$image_all_failed_bin/imagegen"
+run_ai_report_batch_replay image-all-failed "$image_all_failed_bin" \
+  || fail_case 'ai-report all-failed batch replay returned nonzero instead of falling back'
+[ ! -e "$fixture_root/image-all-failed/ai-reports/<report-slug>/generated" ] \
+  || fail_case 'ai-report all-failed batch replay published an empty generated/ directory'
+find "$fixture_root/image-all-failed/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
+  && fail_case 'ai-report all-failed batch replay leaked invocation-private staging'
+[ -e "$fixture_root/image-all-failed/first.done" ] && [ -e "$fixture_root/image-all-failed/second.done" ] \
+  || fail_case 'ai-report all-failed batch replay did not wait for every launched job'
+
+image_batch_mixed_bin="$fixture_root/image-batch-mixed-bin"
+mkdir -p "$image_batch_mixed_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) image_prompt="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'case "$image_prompt" in *"<prompt 1>"*) printf current-success > "$output_path"; : > "$REPLAY_FIRST_DONE"; exit 0 ;; *) printf partial > "$output_path"; : > "$REPLAY_SECOND_DONE"; exit 9 ;; esac' \
+  > "$image_batch_mixed_bin/imagegen"
+chmod +x "$image_batch_mixed_bin/imagegen"
+run_ai_report_batch_replay image-batch-mixed "$image_batch_mixed_bin" \
+  || fail_case 'ai-report mixed batch replay returned nonzero'
+[ "$(cat "$fixture_root/image-batch-mixed/ai-reports/<report-slug>/generated/01-architecture.png" 2>/dev/null)" = current-success ] \
+  && [ ! -e "$fixture_root/image-batch-mixed/ai-reports/<report-slug>/generated/02-dataflow.png" ] \
+  || fail_case 'ai-report mixed batch replay did not publish only the status-backed successful image'
+find "$fixture_root/image-batch-mixed/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
+  && fail_case 'ai-report mixed batch replay leaked invocation-private staging'
+[ -e "$fixture_root/image-batch-mixed/first.done" ] && [ -e "$fixture_root/image-batch-mixed/second.done" ] \
+  || fail_case 'ai-report mixed batch replay did not wait for every launched job'
+
 # generate-report-image: interruption cleans the invocation-private file and leaves
 # the old target untouched.
 image_interrupt_bin="$fixture_root/image-interrupt-bin"

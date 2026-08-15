@@ -898,6 +898,34 @@ assert_block_not_contains \
   "$ai_image_backend_block" \
   '^wait$' \
   'ai-report-reference.md must not discard mixed background-job statuses with a bare wait.'
+assert_block_not_contains \
+  "$ai_image_backend_block" \
+  'GEN="ai-reports/<report-slug>/generated"; mkdir -p "\$GEN"' \
+  'ai-report-reference.md must not publish generated/ before a current image succeeds.'
+assert_block_contains \
+  "$ai_image_backend_block" \
+  'mktemp -d "\$report_directory/\.generated\.staging\.XXXXXX"' \
+  'ai-report-reference.md must allocate one invocation-private staging directory adjacent to generated/.'
+assert_block_contains \
+  "$ai_image_backend_block" \
+  '\[ ! -e "\$generated_directory" \].*exit 1' \
+  'ai-report-reference.md must fail closed instead of clobbering an existing generated/ directory.'
+assert_block_contains \
+  "$ai_image_backend_block" \
+  'image_generation_success_count=0' \
+  'ai-report-reference.md must count only status-backed successful images before publication.'
+assert_block_contains \
+  "$ai_image_backend_block" \
+  '\[ "\$image_generation_success_count" -gt 0 \]' \
+  'ai-report-reference.md must make publication conditional on at least one status-backed successful image.'
+assert_block_contains \
+  "$ai_image_backend_block" \
+  'mv "\$image_generation_stage" "\$generated_directory"' \
+  'ai-report-reference.md must publish the complete verified batch with one adjacent same-filesystem rename.'
+assert_block_contains \
+  "$ai_image_backend_block" \
+  'cleanup_report_image_stage' \
+  'ai-report-reference.md must clean the exact invocation-private directory on all-failed and interrupted runs.'
 assert_block_contains \
   "$ai_image_backend_block" \
   'repository, credentials, network, and external services' \
