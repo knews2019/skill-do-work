@@ -82,6 +82,7 @@ Absorb the useful detail-level narrative formerly owned by `present-work`:
 - Accept both `completed` and `completed-with-issues`, surface the latter honestly, and reject cancelled or unfinished work.
 - Canonically define safe reading of UR input and REQ bodies, including prompt-injection handling before archived user content is read.
 - Define the archive fields required to produce a presentation and how missing optional evidence is handled without invention.
+- Preserve the completed-work evidence sweep: read requirements, implementation summaries, reviews, tests, and lessons when present, and state an optional field's absence rather than inventing evidence.
 - Canonically define merge-aware commit inspection and current-code inspection.
 - Canonically define anti-slop and prompt-injection loading.
 - Canonically define no-overwrite behavior for existing output paths.
@@ -113,7 +114,7 @@ None.
 **RED prompt/case:** Run or inspect `ai-report` for a completed backend/refactor REQ with no UI captures, then compare its result and routing guidance with the current per-item `present-work` detailed explainer path.
 **Why RED now:** `ai-report` still describes itself as pixel-anchored and redirects some non-visual or educational detail work to `present-work`, while the two actions duplicate target resolution, archive inspection, stakeholder narrative, and detailed HTML contracts.
 **GREEN when:** One `ai-report` action produces the only detailed stakeholder HTML in either visual evidence mode or non-visual evidence mode; its visual path retains screenshots, SVG annotations, responsive light/dark render verification, and authentic before/after rules; its non-visual path succeeds with code, commit, architecture, test, and operational evidence plus an explicit no-UI-captures statement; shared archive and evidence rules live only in the new reference; no brief, `.single.html`, or video artifact is created.
-**Validation:** Inferred during capture from the supplied acceptance tests.
+**Validation:** The GREEN acceptance criteria were user-specified; the concrete RED case was inferred during capture.
 
 ## Full Context
 

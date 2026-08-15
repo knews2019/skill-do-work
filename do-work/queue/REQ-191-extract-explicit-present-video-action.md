@@ -33,7 +33,7 @@ Video source generation is currently embedded in `present-work` and can run as p
 
 ## Context
 
-REQ-189 creates `actions/completed-work-presentation-reference.md`; this action must consume that reference rather than restating its archive and evidence rules. REQ-192 owns public routing and command discovery after the action and guide exist.
+REQ-189 creates `actions/completed-work-presentation-reference.md`; this action must consume that reference rather than restating its archive and evidence rules. REQ-192 owns public routing and command discovery after the action and guide exist. REQ-190 may remove the embedded Remotion instructions first; Git history remains an acceptable source for extracting the existing specification.
 
 ## Detailed Requirements
 
@@ -73,7 +73,7 @@ REQ-189 creates `actions/completed-work-presentation-reference.md`; this action 
 
 ## Dependencies
 
-Depends on REQ-189, which creates the shared completed-work presentation reference this action must use.
+Depends on REQ-189, which creates the shared completed-work presentation reference this action must use. It has no hard dependency on REQ-190; if the old embedded specification has already been removed, recover it from Git history.
 
 ## Builder Guidance
 
@@ -87,7 +87,7 @@ None.
 **RED prompt/case:** Request a video walkthrough for a completed visual REQ and inspect the generated package, then request one for trivial or genuinely non-visual work; also search the command for backgrounding, sleeps, fixed port 3000, macOS `open`, and MP4 rendering.
 **Why RED now:** Remotion generation exists only inside `present-work`, its preview script backgrounds Studio, sleeps, assumes port 3000, and invokes `open`, and there is no explicit standalone routing boundary.
 **GREEN when:** Explicit `present-video`, `remotion`, or `video walkthrough` routing can generate a valid `<ID>-video` Remotion source tree with module-level `registerRoot`, real archived content, no external assets, and a foreground `remotion studio src/Root.tsx` preview; no MP4 exists or can be produced by the action; trivial/non-visual work is skipped concisely; no other action invokes it automatically.
-**Validation:** Inferred during capture from the supplied acceptance tests.
+**Validation:** The GREEN acceptance criteria were user-specified; the concrete RED case was inferred during capture. The independent REQ-190/REQ-191 ordering was user-confirmed during verification.
 
 ## Full Context
 

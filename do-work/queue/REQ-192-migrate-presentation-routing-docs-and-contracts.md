@@ -50,6 +50,9 @@ REQ-189 establishes canonical detailed reporting, REQ-190 narrows `present-work`
 - Update toolbox help, tutorials, action guides, next-step recommendations, caller lists, and current cross-references for the new ownership.
 - Replace completion-flow recommendations that currently suggest `present-work UR-NNN` with `ai-report UR-NNN`.
 - Keep cross-project portfolio examples on `present-work all|portfolio`.
+- Explain that every valid portfolio run guides the user through an optional timestamped snapshot after disclosing that the canonical summary will be refreshed. Do not introduce a snapshot flag or require a secondary command the user must remember.
+- Document the safe fallback: if no snapshot answer can be collected, preserve a timestamped snapshot by default.
+- Document that snapshots are never deleted automatically and may be cited by future REQs or Lessons Learned without back-editing archived records.
 - Add explicit animated walkthrough examples using `present-video <ID>` only.
 - Present one unambiguous choice everywhere current behavior is documented:
   - detailed report → `ai-report`;
@@ -64,7 +67,9 @@ REQ-189 establishes canonical detailed reporting, REQ-190 narrows `present-work`
 - Lock in that `ai-report` is the only action capable of producing stakeholder-facing detailed HTML.
 - Lock in that UI work retains screenshots, SVG callout annotations, responsive layout, authentic before/after evidence, and full-page light/dark render verification.
 - Lock in that backend and refactor work succeeds in non-visual evidence mode without fabricated screenshots and states that UI captures were not expected.
-- Prove that `present-work all` and `present-work portfolio` produce only `do-work/deliverables/portfolio-summary.md`.
+- Prove that `present-work all` and `present-work portfolio` always refresh `do-work/deliverables/portfolio-summary.md`, produce no per-item artifact, and create no conditional output other than the guided timestamped portfolio snapshot.
+- Prove all snapshot prompt branches: no creates only the canonical summary; yes creates the canonical summary plus one timestamped snapshot; no available answer uses the yes branch as the safe default.
+- Prove that snapshot publication never overwrites an existing snapshot and that no presentation path automatically deletes one.
 - Prove that bare `present-work` writes nothing and prints compact usage.
 - Prove that item-specific `present-work` writes nothing and prints the exact `ai-report <ID>` and `present-video <ID>` replacement commands.
 - Prove that `present-video` creates a valid Remotion source tree with `registerRoot` and no MP4.
@@ -86,6 +91,7 @@ REQ-189 establishes canonical detailed reporting, REQ-190 narrows `present-work`
 - Do not change UR/REQ schemas, archive formats, `review-work`, or implementation behavior.
 - Do not add publishing, hosting, search, MP4 rendering, or automatic video generation.
 - Preserve all existing generated artifacts.
+- Treat the canonical portfolio summary as the sole intentional in-place refresh; preserve all timestamped snapshots until an explicit user-approved cleanup.
 - Keep tests focused on the real ownership and archive-safety failures; do not add decorative snapshots of prose.
 
 ## Dependencies
@@ -103,8 +109,8 @@ None.
 ## Red-Green Proof
 **RED prompt/case:** Search current routers, argument hints, help, tutorials, completion-flow examples, guides, caller lists, shipped inventories, and contract fixtures for the three command families and the retired `present-work` detail/video workflows, then run the baseline contract suites.
 **Why RED now:** `showcase` still routes to `present-work`; completion guidance still recommends `present-work UR-NNN`; no `present-video` action is discoverable; live docs and contracts still endorse Client Brief, Interactive Explainer, detail-depth, and embedded Remotion behavior while baseline checks pass.
-**GREEN when:** Every live surface presents the same three-way command ownership; exact routing aliases dispatch correctly; focused contract tests fail if detailed HTML or video regrows under `present-work`, if non-visual work redirects away from `ai-report`, if unsafe Remotion preview commands or MP4 rendering return, or if terminal-success/prompt-injection rules drift; inventories and baseline suites pass; the changelog records the migration without modifying old generated artifacts.
-**Validation:** Inferred during capture from the supplied acceptance tests.
+**GREEN when:** Every live surface presents the same three-way command ownership and guides portfolio users through snapshot retention without a memorized flag; exact routing aliases dispatch correctly; tests cover no/yes/unanswered snapshot prompts, canonical refresh, snapshot no-clobber, and explicit-only cleanup; focused contract tests fail if detailed HTML or video regrows under `present-work`, if non-visual work redirects away from `ai-report`, if unsafe Remotion preview commands or MP4 rendering return, or if terminal-success/prompt-injection rules drift; inventories and baseline suites pass; the changelog records the migration without modifying old generated artifacts.
+**Validation:** User-adjusted during verification for guided snapshot behavior and its safe default; the remaining GREEN acceptance criteria were user-specified and the concrete RED case was inferred during capture.
 
 ## Full Context
 

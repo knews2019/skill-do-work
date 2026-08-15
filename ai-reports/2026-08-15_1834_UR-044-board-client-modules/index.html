@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:,">
+  <title>Deployment dossier — do-work 0.189.19</title>
+  <style>
+    :root {
+      --bg:#f3efe5;--surface:#fffdf8;--surface-2:#e9e4d8;--text:#20241f;--muted:#626a60;
+      --accent:#1e5e50;--accent-soft:#d9ebe5;--line:#cfc7b8;--warn:#9a5b18;
+      --warn-soft:#f4e3cb;--good:#246a48;--shadow:0 16px 40px rgba(44,40,30,.09)
+    }
+    @media (prefers-color-scheme:dark) {
+      :root {
+        --bg:#171b18;--surface:#202622;--surface-2:#2b332e;--text:#edf0e8;--muted:#b4bcb2;
+        --accent:#7fc9b5;--accent-soft:#243f37;--line:#465049;--warn:#f2b56a;
+        --warn-soft:#4b3824;--good:#84d1a8;--shadow:0 18px 44px rgba(0,0,0,.28)
+      }
+    }
+    *{box-sizing:border-box} html{scroll-behavior:smooth}
+    body{margin:0;background:var(--bg);color:var(--text);font:17px/1.55 Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .page{width:100%;padding:0 clamp(20px,2.6vw,60px) 96px}
+    .hero{margin:0 calc(clamp(20px,2.6vw,60px)*-1);padding:64px clamp(20px,4.6vw,86px) 58px;background:var(--surface);border-bottom:1px solid var(--line)}
+    .kicker,.eyebrow,.mono{font:12px ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+    h1,h2,h3{margin:0;font-family:"Iowan Old Style",Palatino,Georgia,serif;line-height:1.08;letter-spacing:-.02em}
+    h1{max-width:1100px;margin-top:12px;font-size:clamp(42px,5.8vw,82px)}
+    h2{font-size:clamp(30px,3vw,46px)} h3{font-size:24px} p{margin:0}
+    .verdict{max-width:78ch;margin-top:24px;font-size:clamp(20px,2vw,28px);line-height:1.35}
+    .decision{display:inline-block;margin-top:28px;padding:12px 16px;border-left:4px solid var(--accent);background:var(--accent-soft);font-weight:650}
+    section{padding:52px 0;border-bottom:1px solid var(--line)} section:last-of-type{border-bottom:0}
+    .section-head{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:18px;margin-bottom:28px}
+    .measure{max-width:74ch}.lede{margin-top:12px;color:var(--muted);font-size:18px}
+    .row{display:flex;flex-wrap:wrap;gap:28px;align-items:stretch}
+    .card{flex:1 1 330px;min-width:0;padding:26px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+    .card h3{margin-bottom:12px}.stat-band{display:flex;flex-wrap:wrap;gap:14px;margin-top:34px}
+    .stat{flex:1 1 180px;padding:20px;background:var(--surface);border-top:3px solid var(--accent);border-radius:8px;box-shadow:var(--shadow)}
+    .stat strong{display:block;margin-top:3px;font-size:38px;line-height:1;font-variant-numeric:proportional-nums}
+    .stat span{color:var(--muted);font-size:14px}
+    .shot{position:relative;width:100%;max-width:1440px;margin:0 auto;border-radius:12px;overflow:hidden;border:1px solid var(--line);background:var(--surface);box-shadow:var(--shadow)}
+    .shot img{display:block;width:100%;height:auto}.shot svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+    .legend{display:flex;flex-wrap:wrap;gap:14px;margin:18px 0 0;padding:0;list-style:none}
+    .legend li{flex:1 1 320px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+    .legend b{display:inline-grid;place-items:center;width:24px;height:24px;margin-right:8px;border-radius:50%;background:var(--accent);color:#fff}
+    .caption{margin-top:12px;color:var(--muted);font-size:14px}
+    .before,.after{padding:26px;border:1px solid var(--line);border-radius:10px}
+    .before{flex:1 1 320px;border-left:5px solid var(--warn);background:var(--warn-soft)}
+    .after{flex:1 1 520px;border-left:5px solid var(--accent);background:var(--surface)}
+    .before h3,.after h3{margin-bottom:12px}.compact-list{margin:12px 0 0;padding-left:20px}.compact-list li+li{margin-top:8px}
+    .architecture{flex:2 1 760px;padding:20px;background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow)}
+    .architecture svg{display:block;width:100%;height:auto}.arch-note{flex:1 1 300px}.arch-note p+p{margin-top:16px}
+    table{width:100%;border-collapse:collapse;background:var(--surface);border:1px solid var(--line);font-size:15px}
+    th,td{padding:15px 16px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+    th{background:var(--surface-2);font:12px ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.06em;text-transform:uppercase}
+    tr:last-child td{border-bottom:0} code,pre{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+    code{padding:.1em .35em;border-radius:4px;background:var(--surface-2);font-size:.92em}
+    .version{white-space:nowrap;font-variant-numeric:tabular-nums}.good{color:var(--good);font-weight:700}.cost{color:var(--warn);font-weight:700}
+    .protocol{counter-reset:protocol;display:flex;flex-wrap:wrap;gap:18px}
+    .protocol article{counter-increment:protocol;flex:1 1 280px;min-width:0;padding:22px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+    .protocol article::before{content:counter(protocol,decimal-leading-zero);display:block;margin-bottom:14px;font:800 13px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--accent)}
+    .protocol h3{font-size:21px}.protocol p{margin-top:10px;color:var(--muted)}
+    .gate{margin-top:26px;padding:24px;border:2px solid var(--accent);border-radius:10px;background:var(--accent-soft)}
+    .gate strong{display:block;margin-bottom:10px;font:24px "Iowan Old Style",Palatino,Georgia,serif}
+    .reference-band>*{flex:1 1 380px}
+    pre{margin:12px 0 0;padding:18px;overflow-x:auto;white-space:pre-wrap;background:#171b18;color:#eff3ea;border-radius:8px;font-size:14px;line-height:1.55}
+    details{margin-top:22px;padding:18px;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+    summary{cursor:pointer;font-weight:700}.check-table{margin-top:16px}
+    footer{padding:36px 0 0;color:var(--muted);font-size:14px}a{color:var(--accent)}
+    @media(max-width:720px){h1{font-size:42px}th:nth-child(3),td:nth-child(3){display:none}.card,.before,.after,.protocol article{flex-basis:100%}}
+  </style>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <div class="kicker">Deployment dossier · do-work 0.189.19 · UR-044 / REQ-195</div>
+    <h1>The skill is harder to fool and easier to maintain.</h1>
+    <p class="verdict">Five requests shipped in the final deployment window. The board now has smaller source ownership boundaries, verification exposes more false-green states, and archive/forensics rules agree. The cost is more structural contract surface and a slower, more deliberate maintainer path.</p>
+    <p class="decision">Decision: keep the architecture, but require every future guard to name one owner, one replay incident, and one mutation that would otherwise survive.</p>
+    <div class="stat-band" aria-label="Deployment facts">
+      <div class="stat"><span>Requests deployed</span><strong>5</strong><span>REQ-188, 193–196</span></div>
+      <div class="stat"><span>Board fragments</span><strong>8</strong><span>plus one private shell</span></div>
+      <div class="stat"><span>Runtime parity</span><strong>105,549</strong><span>assembled bytes, exact match</span></div>
+      <div class="stat"><span>Release</span><strong>0.189.19</strong><span>canonical gate passed</span></div>
+    </div>
+  </header>
+
+  <section id="evidence">
+    <div class="section-head"><div>
+      <div class="eyebrow">The change · live evidence</div>
+      <h2>The deployed board still behaves like the same board.</h2>
+      <p class="lede measure">REQ-195 was a source-architecture change with an explicit no-pixel-change requirement. This live screenshot shows the current runtime and the exact five completed requests from the deployment window.</p>
+    </div></div>
+    <div class="shot">
+      <a href="screenshots/live-board.png" target="_blank" rel="noopener" title="Open the live board screenshot at full resolution">
+        <img src="screenshots/live-board.png" width="1440" height="1600" alt="Live do-work queue board after version 0.189.19, showing five recently completed requests and four pending requests">
+      </a>
+      <svg viewBox="0 0 1440 1600" aria-hidden="true">
+        <defs><marker id="shot-arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#1e5e50"/></marker></defs>
+        <circle cx="1128" cy="176" r="18" fill="#1e5e50" fill-opacity=".94"/><text x="1128" y="182" text-anchor="middle" fill="#fff" font-family="ui-monospace" font-size="16" font-weight="800">1</text><line x1="1128" y1="196" x2="1128" y2="222" stroke="#1e5e50" stroke-width="3" marker-end="url(#shot-arrow)"/>
+        <circle cx="92" cy="176" r="18" fill="#1e5e50" fill-opacity=".94"/><text x="92" y="182" text-anchor="middle" fill="#fff" font-family="ui-monospace" font-size="16" font-weight="800">2</text><line x1="92" y1="196" x2="92" y2="222" stroke="#1e5e50" stroke-width="3" marker-end="url(#shot-arrow)"/>
+      </svg>
+    </div>
+    <ol class="legend">
+      <li><b>1</b><strong>Deployment proof.</strong> REQ-188, REQ-193, REQ-194, REQ-195, and REQ-196 appear in Recently done.</li>
+      <li><b>2</b><strong>Work not smuggled through.</strong> REQ-189–192 remain pending because their files contain pre-existing user edits; dependencies remain visible.</li>
+    </ol>
+    <p class="caption">Captured from the live queue-kanban server after deployment. It is evidence of runtime continuity, not a claimed visual redesign.</p>
+  </section>
+
+  <section id="before-after">
+    <div class="section-head"><div><div class="eyebrow">Before and after · source shape</div><h2>One runtime, smaller places to reason.</h2></div></div>
+    <div class="row">
+      <article class="before"><h3>Before</h3><p><code>web/board.js</code> held core helpers, filters, cards, calendar, testing, detail, controls, clipboard, state, and boot in one 2,531-line authored unit.</p>
+        <ul class="compact-list"><li>Reviewing one behavior meant navigating unrelated regions.</li><li>Source-owner comments could point only at the monolith.</li><li>A green Go suite could still skip every JavaScript behavior probe.</li></ul>
+      </article>
+      <article class="after"><h3>After</h3><p><code>board.js</code> is a 68-line private IIFE/state/bootstrap shell. Eight raw closure fragments own cohesive responsibilities. A fixed Go manifest assembles them for both static and live pages.</p>
+        <ul class="compact-list"><li>Authored inventory is wildcard-visible; execution order is literal and reviewable.</li><li>The first production assembly matched the old runtime byte-for-byte.</li><li>Syntax, behavior reachability, marker shape, and static/live parity have separate tests.</li></ul>
+      </article>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <div class="section-head"><div>
+      <div class="eyebrow">How it works</div><h2>The wildcard observes; the manifest decides.</h2>
+      <p class="lede measure">That separation is the central drift boundary. Adding a file changes inventory evidence, but never silently changes browser execution order.</p>
+    </div></div>
+    <div class="row">
+      <div class="architecture">
+        <svg viewBox="0 0 1250 430" role="img" aria-labelledby="arch-title arch-desc">
+          <title id="arch-title">Board client assembly flow</title><desc id="arch-desc">The shell and eight fragments are observed by embedded inventory, ordered by a fixed manifest, assembled once, and delivered identically to static and live pages as one private classic script.</desc>
+          <defs>
+            <marker id="arch-arrow" markerWidth="11" markerHeight="11" refX="9" refY="4" orient="auto"><path d="M0,0 L0,8 L10,4 z" fill="var(--accent)"/></marker>
+            <style>.abox{fill:var(--surface-2);stroke:var(--line);stroke-width:2;rx:12}.aout{fill:var(--accent-soft);stroke:var(--accent);stroke-width:2;rx:12}.aline{stroke:var(--accent);stroke-width:3;fill:none;marker-end:url(#arch-arrow)}.atitle{fill:var(--text);font:700 20px ui-sans-serif,sans-serif}.abody{fill:var(--muted);font:15px ui-monospace,monospace}.alabel{fill:var(--muted);font:12px ui-monospace,monospace;letter-spacing:.04em}</style>
+          </defs>
+          <rect class="abox" x="22" y="120" width="232" height="178"/><text class="atitle" x="44" y="154">Authored JavaScript</text><text class="abody" x="44" y="188">board.js shell</text><text class="abody" x="44" y="216">8 closure fragments</text><text class="abody" x="44" y="244">web/*.js inventory</text><text class="alabel" x="44" y="278">exact-set test</text>
+          <path class="aline" d="M254 209 H318"/><text class="alabel" x="268" y="194">observed</text>
+          <rect class="abox" x="320" y="120" width="196" height="178"/><text class="atitle" x="342" y="154">Fixed manifest</text><text class="abody" x="342" y="190">core → filters</text><text class="abody" x="342" y="218">cards → calendar</text><text class="abody" x="342" y="246">testing → detail</text><text class="abody" x="342" y="274">controls → clipboard</text>
+          <path class="aline" d="M516 209 H580"/><text class="alabel" x="530" y="194">orders</text>
+          <rect class="abox" x="582" y="120" width="198" height="178"/><text class="atitle" x="604" y="154">Go assembler</text><text class="abody" x="604" y="190">1 raw marker</text><text class="abody" x="604" y="218">1 canonical line</text><text class="abody" x="604" y="246">exact LF boundaries</text><text class="alabel" x="604" y="278">no retained marker</text>
+          <path class="aline" d="M780 180 H850 V111 H896"/><path class="aline" d="M780 238 H850 V307 H896"/>
+          <rect class="aout" x="898" y="52" width="190" height="118"/><text class="atitle" x="920" y="88">Static page</text><text class="abody" x="920" y="119">generated HTML</text><text class="alabel" x="920" y="146">same bytes</text>
+          <rect class="aout" x="898" y="248" width="190" height="118"/><text class="atitle" x="920" y="284">Live GET /</text><text class="abody" x="920" y="315">served HTML</text><text class="alabel" x="920" y="342">same bytes</text>
+          <path class="aline" d="M1088 111 H1130 V209 H1164"/><path class="aline" d="M1088 307 H1130 V209 H1164"/>
+          <rect class="aout" x="1166" y="141" width="68" height="136"/><text class="atitle" transform="translate(1191 253) rotate(-90)">One private IIFE</text>
+        </svg>
+      </div>
+      <aside class="card arch-note"><h3>What cannot drift silently</h3><p>A missing, extra, or duplicated fragment fails the authored-inventory test.</p><p>A manifest reorder fails literal order and monotonic-offset assertions.</p><p>A malformed or surviving placeholder fails raw-token, canonical-line, and post-assembly checks.</p><p>Static and live caller divergence fails exact assembled-byte parity.</p></aside>
+    </div>
+  </section>
+
+  <section id="release-context">
+    <div class="section-head"><div><div class="eyebrow">What changed · deployment window</div><h2>Five repairs moved the skill toward honest evidence.</h2><p class="lede measure">The ai-report target is UR-044 / REQ-195. The adjacent rows are verified release context from the same completed work session.</p></div></div>
+    <table><thead><tr><th>Release / commit</th><th>Change</th><th>Operational effect</th></tr></thead><tbody>
+      <tr><td class="version">0.189.15<br><code>8d63070</code></td><td>Unavailable hotspot evidence</td><td>Churn-bearing paths that cannot be measured remain visible as uncapped <code>NOT-MEASURED</code> evidence.</td></tr>
+      <tr><td class="version">0.189.16<br><code>6fcc433</code></td><td>Closed-UR review lifecycle</td><td>Archived User Requests stay closed; review-generated follow-ups return to the existing archive folder.</td></tr>
+      <tr><td class="version">0.189.17<br><code>ca34ef2</code></td><td>Structured stray verification</td><td>Forensics consumes the board walker’s structured stray records without parsing warnings or walking twice.</td></tr>
+      <tr><td class="version">0.189.18<br><code>675a7b7</code></td><td>Modular board client</td><td>One private runtime is maintained through a shell and eight ordered fragments with exact static/live parity.</td></tr>
+      <tr><td class="version">0.189.19<br><code>5f15929</code></td><td>Case-exact contract paths</td><td>Every live root assertion opens tracked lowercase <code>justfile</code>, including on case-sensitive filesystems.</td></tr>
+    </tbody></table>
+  </section>
+
+  <section id="better-worse">
+    <div class="section-head"><div><div class="eyebrow">Better or worse</div><h2>Net better, with real maintenance rent.</h2></div></div>
+    <div class="row">
+      <article class="card"><div class="good">BETTER</div><h3>Failures are less likely to look green.</h3><p>JavaScript probes have a counted strict lane; case-sensitive path mistakes are source-ratcheted; missing filesystem evidence is reported instead of dropped; static and live browser clients are compared at their caller seam.</p></article>
+      <article class="card"><div class="good">BETTER</div><h3>Ownership is narrower and more explicit.</h3><p>Cards, filters, calendar, testing, detail, controls, clipboard, and core helpers now have distinct source owners. The board walker owns stray discovery; verification consumes structured evidence rather than recreating it.</p></article>
+      <article class="card"><div class="good">BETTER</div><h3>Lifecycle advice matches behavior.</h3><p>Review, work archival, verify, and forensics now agree that a closed UR stays closed and only the exact review-generated shape is legitimate beneath it.</p></article>
+      <article class="card"><div class="cost">WORSE / COST</div><h3>There is more structural surface.</h3><p>One authored JavaScript file became nine. The assembler, fixed manifest, placeholder contract, and structural tests are permanent obligations even though browser behavior did not change.</p></article>
+      <article class="card"><div class="cost">WORSE / COST</div><h3>Some tests couple to source shape.</h3><p>Exact marker lines, assertion forms, and literal manifests catch real drift, but careless accumulation can turn the suite into a brittle policy museum. Keep them incident-backed and mutation-proven.</p></article>
+      <article class="card"><div class="cost">WORSE / COST</div><h3>The maintainer path is slower.</h3><p>The canonical gate took about 70 seconds on this machine. That is acceptable for release handoff, not every edit loop; touched-area tests should remain the fast inner loop.</p></article>
+    </div>
+  </section>
+
+  <section id="drift-protocol">
+    <div class="section-head"><div><div class="eyebrow">Prevent drift and useless work</div><h2>Adopt a six-part admission test for every new rule.</h2><p class="lede measure">The goal is not more tests. It is fewer independent truths and stronger evidence at the seams that matter.</p></div></div>
+    <div class="protocol">
+      <article><h3>Name one owner</h3><p>Every alias list, status vocabulary, command inventory, fragment order, or filesystem detector gets one canonical owner. Other files point to or compare against it; they do not restate it.</p></article>
+      <article><h3>Test the consumer seam</h3><p>Exercise the path production uses: caller, route, assembled page, structured handoff, or full predicate. A helper-only test is insufficient when a wrong caller can bypass it.</p></article>
+      <article><h3>Demand a surviving mutation</h3><p>Before adding a guard, show the wrong implementation that currently passes. Then replay deletion, negation, duplication, wrong casing, or alternate data-source mutations.</p></article>
+      <article><h3>Charge surface cost</h3><p>A new file, parser, fallback, warning, or contract must name the incident that earned it. Prefer deletion, narrowing, or extending an owner over a new framework or scan.</p></article>
+      <article><h3>Keep one release gate</h3><p>Use focused tests while editing, then run <code>maintainer-verify.sh</code> once at handoff. New recipes and docs delegate to it; they do not copy its inventory or execute children twice.</p></article>
+      <article><h3>Stop at dirty boundaries</h3><p>Do not claim or archive a request whose pre-existing user edits would be folded into the implementation commit. Dependency and dirty-state visibility prevents progress that destroys provenance.</p></article>
+    </div>
+    <div class="gate"><strong>Useless-work rejection rule</strong><p>Do not queue the work unless all four answers are yes: Is there a reproduced failure or accepted finding? Is the proposed owner canonical? Does a focused mutation prove the repair? Is the lasting surface cheaper than the failure it prevents? If not, keep it as watch evidence or delete/narrow an existing rule.</p></div>
+  </section>
+
+  <section id="files">
+    <div class="section-head"><div><div class="eyebrow">What changed · UR-044 file map</div><h2>Pointers, not a code dump.</h2></div></div>
+    <table><thead><tr><th>Owner</th><th>Responsibility after deployment</th><th>Risk controlled</th></tr></thead><tbody>
+      <tr><td><code>web/board.js</code></td><td>Private IIFE, shared state, bootstrap, one canonical marker line</td><td>New globals or runtime wrappers</td></tr>
+      <tr><td><code>web/board-*.js</code></td><td>Eight raw closure fragments with cohesive UI responsibilities</td><td>Monolith review coupling</td></tr>
+      <tr><td><code>generate.go</code></td><td>Authored inventory, fixed manifest, exact assembly boundaries</td><td>Missing, duplicate, reordered, or malformed fragments</td></tr>
+      <tr><td><code>generate_test.go</code></td><td>Inventory/order/marker/syntax/strict-lane contracts</td><td>False-green structural or optional-Node verification</td></tr>
+      <tr><td><code>serve_test.go</code></td><td>Static/live exact-byte and no-fragment-request proof</td><td>Caller divergence or new browser loading seams</td></tr>
+      <tr><td><code>prime-do-kanban.md</code> + comments</td><td>Exact source-owner map</td><td>Documentation pointing back at the retired monolith</td></tr>
+      <tr><td><code>contract-regressions.sh</code></td><td>Cards-owned tooltip assertions and case-exact root inputs</td><td>Contracts reading the wrong owner or wrong filename</td></tr>
+    </tbody></table>
+  </section>
+
+  <section id="verify">
+    <div class="section-head"><div><div class="eyebrow">Verify it yourself</div><h2>Three commands cover provenance, focused behavior, and release health.</h2></div></div>
+    <div class="row reference-band">
+      <article class="card"><h3>Inspect the implementation</h3><pre>bash skills/do-work/scripts/show-commit-diff.sh 675a7b7</pre></article>
+      <article class="card"><h3>Run the board module</h3><pre>cd skills/do-work-board/tools/queue-kanban
+go test -count=1 ./...
+go vet ./...</pre></article>
+      <article class="card"><h3>Run the one release gate</h3><pre>bash _dev/tests/maintainer-verify.sh</pre></article>
+    </div>
+  </section>
+
+  <section id="lessons">
+    <div class="section-head"><div><div class="eyebrow">Lessons</div><h2>The dangerous bugs were disagreements between two plausible truths.</h2></div></div>
+    <div class="row">
+      <article class="card"><h3>Line shape is not token uniqueness.</h3><p>A second raw placeholder at EOF survived when tests counted only marker-plus-newline. Raw uniqueness, canonical placement, and post-assembly absence are separate invariants.</p></article>
+      <article class="card"><h3>Warnings are not structured evidence.</h3><p>Verification could have parsed a human warning and stayed green. A direct test with only structured stray records forced the intended handoff.</p></article>
+      <article class="card"><h3>A green local filesystem can lie.</h3><p>macOS accepted capitalized <code>Justfile</code> paths. The lasting proof had to be source-case exact and deletion-resistant, not another local run.</p></article>
+      <article class="card"><h3>Completeness needs its own channel.</h3><p>Unavailable hotspot paths should not corrupt numeric ranking, but dropping them made an incomplete report look complete. Separate measured rank from missing evidence.</p></article>
+    </div>
+    <details><summary>Artifact quality check</summary>
+      <table class="check-table"><thead><tr><th>Principle</th><th>Status</th><th>Evidence</th></tr></thead><tbody>
+        <tr><td>Would I read this?</td><td>PASS</td><td>Decision, proof, tradeoff, and prevention protocol are visible without implementation prose.</td></tr>
+        <tr><td>Every claim verified</td><td>PASS</td><td>Claims trace to archived REQs, changelog, live board pixels, commit stats, or tests.</td></tr>
+        <tr><td>Compressed</td><td>PASS</td><td>Files are grouped by ownership; repeated logs and the 22-path inventory are omitted.</td></tr>
+        <tr><td>Conclusion first</td><td>PASS</td><td>The hero states the verdict and decision before evidence.</td></tr>
+        <tr><td>AI honesty</td><td>PASS</td><td>No AI-generated images; the only raster is a real live screenshot.</td></tr>
+        <tr><td>Artifact earns existence</td><td>PASS</td><td>The user explicitly requested a visual deployment and drift report.</td></tr>
+        <tr><td>Medium matches stakes</td><td>PASS</td><td>One deployment-spanning visual dossier, not multiple documents.</td></tr>
+        <tr><td>Decision before self-grade</td><td>PASS</td><td>The prevention rule leads; review scores are excluded.</td></tr>
+        <tr><td>Generated images earn place</td><td>PASS</td><td>No generated images were added.</td></tr>
+        <tr><td>Generated images disclosed</td><td>PASS</td><td>Not applicable; the architecture visual is hand-authored SVG.</td></tr>
+      </tbody></table>
+    </details>
+  </section>
+
+  <footer><p>Target: UR-044 / REQ-195. Release context: verified REQ-188, REQ-193, REQ-194, and REQ-196 from the same final deployment window. Layout render-verified in light and dark with two browser judge passes.</p></footer>
+</main>
+</body>
+</html>
