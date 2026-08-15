@@ -34,13 +34,15 @@
 
 Dispatch before loading artifact guidance or inspecting the archive:
 
+Before classifying the input, read and apply `../../do-work/actions/work-reference.md` → **Target ID Resolution**. Use its token-shape recognition to enter the migration-only branch. This action has no item lookup or UR expansion surface: an item shape prints guidance and stops. Preserve the supplied token unchanged in both replacement commands.
+
 - **Blank input:** print compact usage and stop:
 
   ```text
   Usage: do-work-toolbox present-work all|portfolio
   ```
 
-- **One `UR-NNN` or `REQ-NNN` token:** preserve the supplied ID exactly, print both replacements, and stop:
+- **One `UR-NNN` or `REQ-NNN` token recognized by the shared grammar:** preserve the supplied ID exactly, print both replacements, and stop:
 
   ```text
   detailed report → do-work-toolbox ai-report <ID>

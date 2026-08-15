@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.193.1 — Normalized Presentation Target IDs (2026-08-15)
+
+Completed-work reports, source walkthroughs, and item-specific portfolio guidance now inherit one target-ID contract, so case and zero-padding variants resolve consistently without widening archive or write boundaries.
+
+- Applies canonical Target ID Resolution before shared presentation archive lookup and portfolio migration dispatch
+- Preserves the user's supplied item spelling in both non-writing replacement commands
+- Adds source-seam, copied-grammar, ordering, and semantic-negation regression coverage; one deeper mutation-hardening follow-up remains consent-gated
+
 ## 0.193.0 — Explicit Presentation Command Ownership (2026-08-15)
 
 Completed-work presentation now has one discoverable command per outcome: detailed evidence in `ai-report`, cross-project portfolios in `present-work`, and explicit source-only walkthroughs in `present-video`.

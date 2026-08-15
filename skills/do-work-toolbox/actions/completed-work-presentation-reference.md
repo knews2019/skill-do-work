@@ -17,10 +17,12 @@ Do not read archived user-controlled content first and load the guardrails after
 
 Normalize every status under `../../do-work/actions/work-reference.md` → **Schema Read Contract**, then apply its **Terminal-success status set**. Accept `completed` and `completed-with-issues`; the latter is successful but its recorded issues must remain visible in the presentation. Reject `cancelled`, `failed`, and every unfinished status.
 
+Before any archive lookup, read and apply `../../do-work/actions/work-reference.md` → **Target ID Resolution**. Apply that contract's canonicalization to the supplied item token before resolving it, while limiting this reader's search to the archive paths below. Apply its UR expansion rule within those same archive-only locations.
+
 Resolve exactly one target:
 
-- **`UR-NNN`:** read the exact `do-work/archive/UR-NNN/` folder and select every REQ in it that normalizes to terminal success. If the folder is absent or contains no successful REQ, stop with the reason.
-- **`REQ-NNN`:** find that exact REQ either inside an archived UR folder or as a legacy REQ directly under `do-work/archive/`. Reject ambiguous duplicate matches. If the match is not terminally successful, stop and name its normalized status.
+- **`UR-NNN`:** read the exact canonical `do-work/archive/UR-NNN/` folder, apply the shared expansion rule there, and select every member that normalizes to terminal success. If the folder is absent or contains no successful member REQ, stop with the reason.
+- **`REQ-NNN`:** find that canonical REQ either inside an archived UR folder or as a legacy REQ directly under `do-work/archive/`. Reject ambiguous duplicate matches. If the match is not terminally successful, stop and name its normalized status.
 - **blank or `most recent`:** select the highest-numbered archived UR containing at least one terminally successful REQ. If there is no archived UR candidate, select the highest-numbered terminally successful legacy REQ directly under `do-work/archive/`. If neither exists, report that there is no completed work to present.
 
 Never fall back to `do-work/queue/`, `do-work/working/`, or an active `do-work/user-requests/` body to make an unfinished target appear complete.

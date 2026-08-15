@@ -581,10 +581,58 @@ for relative_path in (
         require(relative_path, rf"\b{action}\b", f"anti-slop examples omit {action}")
     reject(relative_path, r"client briefs, video scripts, and HTML explainers in present-work", "retired presentation artifact family remains")
 
-require("skills/do-work-toolbox/actions/completed-work-presentation-reference.md", r"ai-report.*present-video", "shared reference must name both current item-level consumers")
-reject("skills/do-work-toolbox/actions/completed-work-presentation-reference.md", r"future completed-work video", "shared reference still describes present-video as future")
+completed_work_reference = "skills/do-work-toolbox/actions/completed-work-presentation-reference.md"
+target_id_reference = "skills/do-work/actions/work-reference.md"
+target_id_match = re.search(
+    r"^### Target ID Resolution\s*$[\s\S]*?(?=^## |\Z)",
+    text(target_id_reference),
+    re.MULTILINE,
+)
+target_id_contract = target_id_match.group(0) if target_id_match else ""
+if not target_id_match:
+    failures.append(f"{target_id_reference}: canonical Target ID Resolution section is missing")
+for predicate in (
+    r"`REQ-` \+ digits and `UR-` \+ digits, \*\*case-insensitive\*\*",
+    r"match the digits by \*\*numeric value\*\*",
+    r"`req-42`, `REQ-42`, and `REQ-042` all resolve to `REQ-042`",
+    r"`Ur-11`/`UR-011` both resolve to `UR-011`",
+    r"`user_request:` frontmatter",
+):
+    if not re.search(predicate, target_id_contract, re.IGNORECASE | re.MULTILINE):
+        failures.append(f"{target_id_reference}: canonical Target ID Resolution source seam missing /{predicate}/")
+require(completed_work_reference, r"ai-report.*present-video", "shared reference must name both current item-level consumers")
+reject(completed_work_reference, r"future completed-work video", "shared reference still describes present-video as future")
 for predicate in (r"completed-with-issues", r"Reject `cancelled`, `failed`", r"prompt-injection\.md", r"never delete, truncate, merge into, or overwrite"):
-    require("skills/do-work-toolbox/actions/completed-work-presentation-reference.md", predicate, f"shared reader missing /{predicate}/")
+    require(completed_work_reference, predicate, f"shared reader missing /{predicate}/")
+require(
+    completed_work_reference,
+    r"work-reference\.md[^\n]*Target ID Resolution",
+    "shared presentation resolver must inherit the canonical Target ID Resolution grammar",
+)
+require(
+    completed_work_reference,
+    r"apply[^\n]*Target ID Resolution",
+    "shared presentation resolver must actively apply, not merely cite, Target ID Resolution",
+)
+require_order(
+    completed_work_reference,
+    r"Target ID Resolution",
+    r"Resolve exactly one target",
+    "shared presentation resolver must canonicalize the target token before archive lookup",
+)
+for copied_grammar in (
+    r"case-insensitive",
+    r"numeric[- ]value",
+    r"`req-42`|`REQ-42`|`REQ-042`|`Ur-11`|`UR-011`",
+    r"`user_request:`|`requests:` array",
+):
+    reject(completed_work_reference, copied_grammar, f"shared presentation resolver duplicates canonical Target ID grammar /{copied_grammar}/")
+for semantic_negation in (
+    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+(?:read(?: and)?\s+)?apply\b[^\n]*Target ID Resolution",
+    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+canonicali[sz]e\b",
+    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+recognize\b",
+):
+    reject(completed_work_reference, semantic_negation, f"shared presentation resolver semantically negates its inherited grammar /{semantic_negation}/")
 
 require("skills/do-work-toolbox/actions/ai-report.md", r"only action that produces detailed stakeholder-facing HTML", "ai-report must retain detailed HTML ownership")
 for predicate in (
@@ -622,6 +670,33 @@ for predicate in (
     r"never truncate or replace",
 ):
     require(present_work, predicate, f"portfolio contract missing /{predicate}/")
+require(
+    present_work,
+    r"work-reference\.md[^\n]*Target ID Resolution",
+    "present-work item dispatch must inherit the canonical Target ID Resolution grammar",
+)
+require(
+    present_work,
+    r"apply[^\n]*Target ID Resolution",
+    "present-work item dispatch must actively apply, not merely cite, Target ID Resolution",
+)
+require(
+    present_work,
+    r"preserve the supplied (?:ID|token|spelling)[^\n]*both replacement commands",
+    "present-work item dispatch must preserve the user's token in both printed commands",
+)
+for copied_grammar in (
+    r"case-insensitive",
+    r"numeric[- ]value",
+    r"`req-42`|`REQ-42`|`REQ-042`|`Ur-11`|`UR-011`",
+):
+    reject(present_work, copied_grammar, f"present-work item dispatch duplicates canonical Target ID grammar /{copied_grammar}/")
+for semantic_negation in (
+    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+(?:read(?: and)?\s+)?apply\b[^\n]*Target ID Resolution",
+    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+canonicali[sz]e\b",
+    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+recognize\b",
+):
+    reject(present_work, semantic_negation, f"present-work item dispatch semantically negates its inherited grammar /{semantic_negation}/")
 require_order(
     present_work,
     r"read `\.\./\.\./do-work/crew-members/prompt-injection\.md`",
