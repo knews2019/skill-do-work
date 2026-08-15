@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.7 — Accurate Public Write Boundaries (2026-08-15)
+
+The existing-project README claimed do-work only wrote beneath its queue directory, hiding both managed installation paths and request-authorized implementation edits. The public guidance now states the real boundaries before adopters trust the suite.
+
+- Distinguishes reviewed four-skill/Just/settings install paths from durable `do-work/` queue state
+- Makes project-source writes explicit: only invoked REQ implementation, bounded by that REQ's declared Scope
+
 ## 0.189.6 — Case-Exact Contract Suite Paths (2026-08-15)
 
 Case-insensitive development filesystems hid that the late contract checks opened a nonexistent `Justfile` on Linux. The suite now names the tracked lowercase file exactly and reaches its final checks everywhere.
