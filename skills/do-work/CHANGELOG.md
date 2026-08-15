@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.193.4 — Folder-Aware HTML Previews (2026-08-15)
+
+Repository HTML opened from the live board now renders as an actual page with its local resources intact, without placing active content on the board's write-capable origin.
+
+- Redirects `.html` and `.htm` file mentions to a lazily created loopback origin rooted at the file's containing folder
+- Preserves authored CSS, JavaScript, images, media, same-folder fetches, CDN resources, and browser storage while keeping text and PNG behavior unchanged
+- Reuses one origin per folder and locks down methods, peer address, authority, traversal, symlink escapes, directory listings, and graceful shutdown
+
 ## 0.193.3 — Snapshot-First Portfolio Publication (2026-08-15)
 
 Portfolio preservation now publishes its no-clobber snapshot before refreshing the mutable canonical summary, so snapshot failure leaves the previous canonical bytes untouched.

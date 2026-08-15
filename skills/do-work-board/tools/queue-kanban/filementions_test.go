@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -102,6 +103,57 @@ func TestServeFileEndpointServesRepoFileReadOnly(t *testing.T) {
 	}
 	if bodyText := readTestResponseBody(t, resp); bodyText != fileContent {
 		t.Errorf("GET /file body = %q, want %q", bodyText, fileContent)
+	}
+}
+
+// TestServeFileEndpointRedirectsHtmlToFolderPreview verifies that active HTML
+// never executes on the live board origin. The target is an ephemeral preview
+// origin rooted at the HTML file's containing folder, which is what lets local
+// relative assets resolve without exposing the board's testing APIs.
+func TestServeFileEndpointRedirectsHtmlToFolderPreview(t *testing.T) {
+	repoRoot := createFixtureDoWorkTree(t)
+	writeFixtureRepoFile(t, repoRoot, "reports/example/index.html", "<!doctype html><title>Example</title>")
+
+	liveServer := newLiveBoardServer(repoRoot, 7*24*time.Hour)
+	defer shutdownHtmlPreviewManagerForTest(t, liveServer.htmlPreviews)
+	testServer := httptest.NewServer(liveServer)
+	defer testServer.Close()
+
+	noRedirectClient := testServer.Client()
+	noRedirectClient.CheckRedirect = func(*http.Request, []*http.Request) error {
+		return http.ErrUseLastResponse
+	}
+	resp, httpErr := noRedirectClient.Get(testServer.URL + "/file?path=reports%2Fexample%2Findex.html")
+	if httpErr != nil {
+		t.Fatalf("GET HTML /file: %v", httpErr)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusTemporaryRedirect {
+		t.Fatalf("GET HTML /file status = %d, want 307", resp.StatusCode)
+	}
+	previewUrl, parseErr := url.Parse(resp.Header.Get("Location"))
+	if parseErr != nil {
+		t.Fatalf("parse HTML preview Location: %v", parseErr)
+	}
+	boardUrl, parseErr := url.Parse(testServer.URL)
+	if parseErr != nil {
+		t.Fatalf("parse board URL: %v", parseErr)
+	}
+	if previewUrl.Scheme != "http" || previewUrl.Host == "" {
+		t.Errorf("HTML preview Location = %q, want an absolute HTTP URL", previewUrl.String())
+	}
+	if previewUrl.Host == boardUrl.Host {
+		t.Errorf("HTML preview shares board origin %q", boardUrl.Host)
+	}
+
+	writeFixtureRepoFile(t, repoRoot, "reports/example/not-html.txt", "<!doctype html><title>Still text</title>")
+	textResponse, textError := testServer.Client().Get(testServer.URL + "/file?path=reports%2Fexample%2Fnot-html.txt")
+	if textError != nil {
+		t.Fatalf("GET HTML-like text /file: %v", textError)
+	}
+	defer textResponse.Body.Close()
+	if contentType := textResponse.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "text/plain") {
+		t.Errorf("HTML-like .txt Content-Type = %q, want inert text/plain", contentType)
 	}
 }
 

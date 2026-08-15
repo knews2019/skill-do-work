@@ -15,6 +15,7 @@
 - **`verify` is the mechanical half of "Before Every Commit."** It is wired into `skills/do-work/actions/forensics.md`; it reports and routes, while repairs belong to `skills/do-work/actions/cleanup.md`.
 - **Toolchain exception to "design for the floor."** The board is the one capability that needs Go (`skills/do-work-board/tools/queue-kanban/go.mod`); `skills/do-work-board/actions/board.md` degrades gracefully when it is absent. Core may use an already-built sibling binary only where a shell-portable fallback remains documented.
 - **Never commit build outputs.** The compiled `queue-kanban` binary is gitignored by `skills/do-work-board/tools/queue-kanban/.gitignore`; the `do-work-board static` artifact lands in `build/` at the repo root.
+- **Active repository HTML gets a folder origin, never the board origin.** The live `/file` route may render `.html` / `.htm` only by redirecting to a lazily bound loopback preview server rooted at that file's containing directory. Keep the preview read-only, authority-guarded, traversal-safe, and shut down with the board; ordinary text and active formats such as SVG stay inert on `/file`.
 
 ## Lessons
 
@@ -22,3 +23,4 @@
 - [REQ-194: retain canonical structured detector evidence and test the source seam directly](../../do-work/archive/UR-043/REQ-194-forward-stray-reqs-through-forensics.md#lessons-learned)
 - [REQ-195: separate raw-marker uniqueness, canonical placement, and post-assembly absence](../../do-work/archive/UR-044/REQ-195-modularize-framework-free-board-client.md#lessons-learned)
 - [REQ-200: allowlist byte-detected inline formats without weakening the inert-text fallback](../../do-work/archive/UR-045/REQ-200-render-png-file-mentions-as-images.md#lessons-learned)
+- [REQ-207: isolate active HTML by folder origin and capture requirement addenda before implementation](../../do-work/archive/UR-046/REQ-207-render-html-file-mentions-as-folder-aware-previews.md#lessons-learned)

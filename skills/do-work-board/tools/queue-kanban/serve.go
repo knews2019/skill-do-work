@@ -36,6 +36,7 @@ const kanbanServeDefaultListenAddress = "127.0.0.1:8090"
 type liveBoardServer struct {
 	repoRoot     string
 	recentWindow time.Duration
+	htmlPreviews *htmlFolderPreviewManager
 
 	cacheMu             sync.Mutex
 	cachedFileMtimes    map[string]time.Time        // absPath → last-seen mtime
@@ -50,6 +51,7 @@ func newLiveBoardServer(repoRoot string, recentWindow time.Duration) *liveBoardS
 	return &liveBoardServer{
 		repoRoot:         repoRoot,
 		recentWindow:     recentWindow,
+		htmlPreviews:     newHtmlFolderPreviewManager(),
 		cachedFileMtimes: map[string]time.Time{},
 	}
 }
@@ -192,10 +194,11 @@ const repoFileViewMaxBytes = 2 << 20
 // REQ/UR bodies can be real links. Guards, in order: loopback
 // callers only (a LAN-exposed board must not turn into a whole-repo file
 // reader — the exposure warning promises REQ bodies, nothing more), then repo
-// containment via resolveRepoFilePath, then a regular-file + size check.
+// containment via resolveRepoFilePath, then a regular-file check. HTML files
+// redirect to an ephemeral origin rooted at their containing folder, so their
+// authored assets and scripts work without executing on the board origin.
 // Byte-detected PNGs render inline; every other file remains text/plain (with
-// the global nosniff header), so crafted HTML/SVG cannot execute in the board
-// origin and a misleading extension cannot opt into active content.
+// the global nosniff header), so SVG and misleading extensions stay inert.
 func (liveServer *liveBoardServer) serveRepoFileView(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	if httpRequest.Method != http.MethodGet && httpRequest.Method != http.MethodHead {
 		http.Error(responseWriter, "Method not allowed", http.StatusMethodNotAllowed)
@@ -222,6 +225,18 @@ func (liveServer *liveBoardServer) serveRepoFileView(responseWriter http.Respons
 	fileInfo, statErr := os.Stat(resolvedFilePath)
 	if statErr != nil || !fileInfo.Mode().IsRegular() {
 		http.Error(responseWriter, "File not found in this repository: "+requestedPath, http.StatusNotFound)
+		return
+	}
+	requestedExtension := strings.ToLower(filepath.Ext(resolvedFilePath))
+	if requestedExtension == ".html" || requestedExtension == ".htm" {
+		previewUrl, previewError := liveServer.htmlPreviews.previewUrlForHtmlFile(resolvedFilePath)
+		if previewError != nil {
+			log.Printf("queue-kanban serve: preparing HTML preview for %s: %v", resolvedFilePath, previewError)
+			http.Error(responseWriter, "Internal error preparing HTML preview", http.StatusInternalServerError)
+			return
+		}
+		responseWriter.Header().Set("Cache-Control", "no-cache")
+		http.Redirect(responseWriter, httpRequest, previewUrl, http.StatusTemporaryRedirect)
 		return
 	}
 	if fileInfo.Size() > repoFileViewMaxBytes {
@@ -782,6 +797,9 @@ func runServeCommand(args []string) {
 		defer cancelShutdown()
 		if shutdownErr := httpServer.Shutdown(shutdownContext); shutdownErr != nil {
 			log.Printf("queue-kanban serve: graceful shutdown error: %v", shutdownErr)
+		}
+		if previewShutdownError := liveServer.htmlPreviews.shutdown(shutdownContext); previewShutdownError != nil {
+			log.Printf("queue-kanban serve: HTML preview shutdown error: %v", previewShutdownError)
 		}
 		close(shutdownComplete)
 	}()
