@@ -5,7 +5,7 @@ status: completed
 claimed_at: 2026-08-15T19:22:38Z
 route: B
 completed_at: 2026-08-15T19:39:11Z
-commit:
+commit: 00db46c
 kb_status: pending
 kb_entry:
 domain: general
