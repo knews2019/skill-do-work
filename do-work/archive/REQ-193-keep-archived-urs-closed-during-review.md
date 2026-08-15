@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-08-15T09:12:04Z
 claimed_at: 2026-08-15T12:37:36Z
 completed_at: 2026-08-15T13:07:45Z
+commit: 6fcc433
 user_request: UR-043
 domain: general
 prime_files: [_dev/primes/prime-action-files.md, _dev/primes/prime-shell-commands.md]
