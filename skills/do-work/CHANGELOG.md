@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.14 — Canonical Maintainer Verification Gate (2026-08-15)
+
+Repository health no longer depends on remembering separate shell and Go commands. One local, export-ignored gate now owns the complete maintainer verification path and its failure contract.
+
+- Pins the audited Go and ShellCheck versions, lints every tracked shell file at warning severity, and runs the aggregate once
+- Vets and tests both Go modules, plus the strict board JavaScript lane whenever Node is available
+- Proves exact-once execution and nonzero propagation with recursion-safe fixture shims; CLAUDE and Just remain thin delegates
+
 ## 0.189.13 — Single-Owner Baseline Suites (2026-08-15)
 
 Two baseline child suites ran twice through identical paths, adding hand-back time without adding evidence. Each child now has one required owner while every distinct late aggregate check remains intact.

@@ -24,3 +24,7 @@ kanban-summary:
 run-do-work-update:
     project_root="{{justfile_directory()}}"; skill_root="$project_root/.claude/skills/do-work"; [ -f "$skill_root/SKILL.md" ] || skill_root="$project_root/skills/do-work"; bash "$skill_root/tools/do-work-update.sh" --project-root "$project_root"
 # <<< do-work:recipes <<<
+
+# Repository-only verification; the script owns the command inventory.
+maintainer-verify:
+    bash "{{justfile_directory()}}/_dev/tests/maintainer-verify.sh"

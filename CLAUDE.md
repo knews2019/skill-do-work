@@ -97,7 +97,7 @@ Keep it brief, newest on top, lead with value not implementation. Every version 
 
 ## Verify
 
-`bash _dev/tests/contract-regressions.sh` is the baseline pass/fail check before any hand-back; run the other `_dev/tests/*.sh` suites when you touched what they cover. Exit code zero is the only proof — never accept a summary or a builder's report as evidence that a check passed. Never pipe a check through `| tail` or similar: the pipeline's exit status hides the failure.
+`bash _dev/tests/maintainer-verify.sh` is the canonical baseline pass/fail check before any hand-back. Exit code zero is the only proof — never accept a summary or a builder's report as evidence that a check passed. Never pipe a check through `| tail` or similar: the pipeline's exit status hides the failure.
 
 ## Crew Members
 

@@ -2829,6 +2829,18 @@ assert_contains \
   'verify-requests \(re-reads UR input\.md verbatim or compares decision sources with complete queued REQs\)' \
   'the prompt-injection caller inventory must cover both verify-requests ingestion modes.'
 
+# The canonical repository-maintainer gate owns its production command inventory.
+# Exercise only its recursion-safe focused contract here; invoking normal mode would
+# recursively run this aggregate.
+maintainer_verify_probe="$repo_root/_dev/tests/maintainer-verify.sh"
+if [ ! -x "$maintainer_verify_probe" ]; then
+  printf 'FAIL: _dev/tests/maintainer-verify.sh is missing or not executable — repository-native verification has no canonical gate.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$maintainer_verify_probe" --self-test; then
+  printf 'FAIL: canonical maintainer verification self-test failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # The suite manifest is executable input to both update paths and the fresh installer. Keep
 # its path-safety and exact-module contract in one behavioral probe rather than duplicating
 # grep assertions for each caller.
