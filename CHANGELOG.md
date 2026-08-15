@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.190.0 — Canonical Detailed Work Reports (2026-08-15)
+
+Completed-work reporting now has one detailed HTML path for visual and non-visual changes. `ai-report` adapts its evidence to the work while shared archive rules keep every presentation honest and collision-safe.
+
+- Adds one completed-work presentation reference for terminal-success resolution, safe archive reading, evidence provenance, merge/current-code inspection, and no-overwrite publication
+- Preserves authentic screenshots, SVG annotations, real before/after comparison, generated-image provenance, responsive layout, and light/dark rendered verification for visual work
+- Adds architecture, commit, current-code, test, and operational evidence for backend, refactor, infrastructure, and other work where UI captures are not expected
+
 ## 0.189.19 — Case-Exact Late Root Justfile Contracts (2026-08-15)
 
 Four late aggregate assertions still opened `Justfile`, passing on common macOS filesystems but failing against the tracked lowercase root file on case-sensitive systems.

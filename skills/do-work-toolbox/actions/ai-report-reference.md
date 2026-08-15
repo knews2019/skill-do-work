@@ -1,14 +1,14 @@
 # AI Report Action — Reference
 
-> Companion file to `ai-report.md`. Holds the heavy specifications and reference implementations that `actions/ai-report.md` points at by name — extracted to keep that file focused on the eight-step skeleton. Each section below names the step(s) that consume it. Loading this file is only necessary when you reach the step that references it — and read only the named section. If this file is already in context from an earlier step this session, reuse it; don't re-read it at every reference site.
+> Companion file to `ai-report.md`. Holds the visual-generation, SVG, layout, and interaction machinery that the eight-step action points at by name. Completed-work resolution and archive evidence belong to `completed-work-presentation-reference.md`, not here. Load only the named section when the action reaches it; if it is already in context, reuse it.
 
 ---
 
-## Image Generation Backend (Steps 3c, 4d, 5)
+## Image Generation Backend (Steps 3–5)
 
-This skill can illustrate sections with **real generated images** (architecture diagrams, concept visuals, a hero/title image). **Claude cannot generate raster images itself** — it is vision-input only (it reads and reasons about images, and authors SVG/HTML/Mermaid, but produces no pixels). So image generation is **delegated to an image-gen CLI** when one is available; Claude stays the orchestrator: it writes the prompts, places the results, builds the HTML, and falls back to its own SVG/Mermaid when no generator is present.
+The action can illustrate sections with generated raster images (architecture diagrams, concept visuals, or a hero/title image) when an image backend is available. The reporting agent remains the orchestrator: it writes sanitized prompts, places the results, builds the HTML, and falls back to its own SVG/Mermaid when no generator is present.
 
-**This is strictly opportunistic.** Probe with `command -v` and use whatever image-gen CLI is on PATH; never prompt the user to install one. If none is found, the SVG/Mermaid fallback (Step 4b/4c) carries every section — the report is no worse off than a normal run.
+**This is strictly opportunistic.** Probe with `command -v` and use whatever image-gen CLI is on PATH; never prompt the user to install one. If none is found, the SVG/Mermaid fallback (Step 4) carries every section — the report is no worse off than a normal run.
 
 **Backend fallback chain (probe in order, fall through to SVG/Mermaid).** Prefer a non-agentic image backend: a direct image API/CLI that accepts a prompt + output path and does not interpret the prompt as shell-capable agent instructions. The exact binary is environment-specific, but the contract is fixed: *invocation-private output path → headless invocation → successful status + non-empty staged file → atomic publication*. If no non-agentic backend is available, skip raster generation and use SVG/Mermaid.
 
@@ -34,7 +34,7 @@ clean sans-serif labels, no photorealism, no 3D, no stock-photo people, max ~10 
 <skill-root>/scripts/generate-report-image.sh "<absolute output PNG>" "$STYLE" "<Claude-authored sanitized visual description>"
 ```
 
-**Fire in parallel, retain every status, then verify.** Image generation is slow (tens of seconds each), so launch every section's job as a background job, retain every PID, and wait each PID even after an earlier failure. An image is current only when its own helper status is zero and its target is non-empty; a stale target with a failed status falls back to SVG/Mermaid (Step 4b/4c):
+**Fire in parallel, retain every status, then verify.** Image generation is slow (tens of seconds each), so launch every section's job as a background job, retain every PID, and wait each PID even after an earlier failure. An image is current only when its own helper status is zero and its target is non-empty; a stale target with a failed status falls back to SVG/Mermaid (Step 4):
 
 ```bash
 GEN="ai-reports/<report-slug>/generated"; mkdir -p "$GEN"; GEN="$(cd "$GEN" && pwd)"   # canonicalize to an ABSOLUTE path: the helper's $1 must be cwd-independent (a backend may run from another cwd). HTML still embeds the relative generated/… path.
@@ -81,7 +81,7 @@ done
 - **Agentic fallback stays off unless explicitly enabled.** If `DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND` is unset, missing non-agentic generation means SVG/Mermaid fallback — not a sandbox-bypassed agent run.
 - **Status proves freshness.** A non-empty path counts only when that path's helper invocation returned zero; never infer current output from target presence alone.
 
-## SVG Data-Viz Rules (Step 4c)
+## SVG Data-Viz Rules (Step 4)
 
 **Data-viz rules for every hand-authored SVG** (architecture graphs, timelines, rings, stage diagrams, stat tiles):
 
@@ -92,7 +92,7 @@ done
 
 ## Report Design Rules (Step 5)
 
-- Single `index.html` inside the report folder; images linked from `screenshots/` (and `generated/`) beside it. Zero build steps. No npm installs.
+- Single `index.html` inside the report folder; images linked from `screenshots/` and/or `generated/` beside it when those evidence types are used. Zero build steps. No npm installs.
 - External CDN allowed only for: Tailwind CSS, Mermaid.js. Everything else inline.
 - Light theme by default; dark via `@media (prefers-color-scheme: dark)`.
 - CSS custom properties at `:root` for `--bg`, `--surface`, `--text`, `--accent`, `--muted`. Light: white/slate-50 bg, slate-800 text, blue-600 accent. Dark: slate-900 bg, slate-100 text, blue-400 accent. These values are the fallback palette, not a mandate — restyle them to the chosen aesthetic direction (next rule), keeping the light/dark pair.
@@ -112,7 +112,7 @@ done
 - **Click-to-full-res screenshots:** wrap each screenshot `<img>` in an anchor to its own file (`<a href="screenshots/after.png" target="_blank" rel="noopener">`) so a click opens the capture at native resolution; give any overlay `<svg>` `pointer-events:none` so it does not swallow the click.
 - **Disclose generated images:** each carries a small visible caption/badge reading "AI-generated" (or "AI-generated diagram"). Never style a synthetic image to look like a captured screenshot.
 
-## Before/After Toggle Reference Implementation (Step 5)
+## Before/After Toggle Reference Implementation (Step 4)
 
 Fallback only — side-by-side (a wrapping flex row) is the default; reach for this toggle only when the two frames genuinely cannot fit side by side even after wrapping.
 
@@ -139,4 +139,4 @@ document.querySelectorAll('input[name="view"]').forEach(radio => {
 
 ## Output Format Template (Step 8)
 
-A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `index.html`, a `screenshots/` folder of referenced PNG/JPG binaries (descriptive names like `before.png`, `after.png`, `live.png`), and a `generated/` folder of AI-generated images when any were produced. The HTML references every image via relative `src`. Plus a one-paragraph stdout summary as shown in Step 8.
+A self-contained folder at `ai-reports/yyyy-mm-dd_hhmm_<slug>/` containing `index.html`, a `screenshots/` folder when authentic PNG/JPG captures are used, and a `generated/` folder when generated images were produced successfully. A non-visual report needs neither image folder when diagrams are inline. The HTML references every local image via relative `src`, and Step 8 prints a compact stdout summary.
