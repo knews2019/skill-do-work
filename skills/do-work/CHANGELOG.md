@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.13 — Single-Owner Baseline Suites (2026-08-15)
+
+Two baseline child suites ran twice through identical paths, adding hand-back time without adding evidence. Each child now has one required owner while every distinct late aggregate check remains intact.
+
+- Prescribed-shell behavior runs through the staged-skills contract instead of also running directly from the aggregate
+- Shipped-package references remain aggregate-owned without a second mandatory standalone hand-back invocation
+- Failure propagation, the late installer suite, and the aggregate's final pass marker remain covered
+
 ## 0.189.12 — Strict JavaScript Behavior Lane (2026-08-15)
 
 The board's incident-sensitive JavaScript probes could all skip when Node was unavailable while the Go suite still reported success. A maintainer-only lane now distinguishes an intentional consumer skip from a false-green zero-probe verification run.

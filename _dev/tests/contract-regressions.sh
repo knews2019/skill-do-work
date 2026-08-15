@@ -9,11 +9,6 @@ board_root="$repo_root/skills/do-work-board"
 knowledge_root="$repo_root/skills/do-work-knowledge"
 toolbox_root="$repo_root/skills/do-work-toolbox"
 
-if ! bash "$repo_root/_dev/tests/prescribed-shell-scripts-behavior.sh"; then
-  printf 'FAIL: prescribed shell script behavior probes failed.\n' >&2
-  fail_count=$((fail_count + 1))
-fi
-
 resolve_runtime_file() {
   local relative_path="$1"
 
