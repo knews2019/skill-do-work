@@ -7,9 +7,11 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -480,6 +482,217 @@ func isLoopbackBindHost(bindHost string) bool {
 	return parsedBindIp != nil && parsedBindIp.IsLoopback()
 }
 
+// normalizedHttpAuthority is the comparison form for an HTTP Host or Origin
+// authority. Hostnames are lower-cased without their optional trailing dot,
+// IP literals use netip's canonical spelling, and a missing port means HTTP's
+// default port 80. It deliberately carries no resolver-derived aliases.
+type normalizedHttpAuthority struct {
+	hostText       string
+	portText       string
+	hostIsIP       bool
+	hostIsLoopback bool
+	hostIsWildcard bool
+}
+
+// normalizeHttpAuthority parses one request authority without resolving DNS.
+// IPv6 literals must use brackets, explicit ports must be numeric and in the
+// TCP range, and malformed DNS labels fail closed.
+func normalizeHttpAuthority(rawAuthority string) (normalizedHttpAuthority, error) {
+	if rawAuthority == "" || rawAuthority != strings.TrimSpace(rawAuthority) {
+		return normalizedHttpAuthority{}, fmt.Errorf("empty or whitespace-padded authority")
+	}
+
+	hostText := rawAuthority
+	portText := "80"
+	bracketedHost := false
+	if strings.HasPrefix(rawAuthority, "[") {
+		bracketedHost = true
+		closingBracket := strings.IndexByte(rawAuthority, ']')
+		if closingBracket < 0 {
+			return normalizedHttpAuthority{}, fmt.Errorf("unterminated bracketed host")
+		}
+		hostText = rawAuthority[1:closingBracket]
+		remainder := rawAuthority[closingBracket+1:]
+		if remainder != "" {
+			if !strings.HasPrefix(remainder, ":") || len(remainder) == 1 || strings.Contains(remainder[1:], ":") {
+				return normalizedHttpAuthority{}, fmt.Errorf("malformed bracketed authority")
+			}
+			portText = remainder[1:]
+		}
+	} else {
+		switch strings.Count(rawAuthority, ":") {
+		case 0:
+		case 1:
+			var separatorFound bool
+			hostText, portText, separatorFound = strings.Cut(rawAuthority, ":")
+			if !separatorFound || portText == "" {
+				return normalizedHttpAuthority{}, fmt.Errorf("missing authority port")
+			}
+		default:
+			return normalizedHttpAuthority{}, fmt.Errorf("IPv6 authority must be bracketed")
+		}
+	}
+
+	normalizedHost, hostIsIP, hostIsLoopback, hostIsWildcard, hostError := normalizeAuthorityHost(hostText)
+	if hostError != nil {
+		return normalizedHttpAuthority{}, hostError
+	}
+	if bracketedHost && !hostIsIP {
+		return normalizedHttpAuthority{}, fmt.Errorf("brackets require an IP literal")
+	}
+	normalizedPort, portError := normalizeAuthorityPort(portText)
+	if portError != nil {
+		return normalizedHttpAuthority{}, portError
+	}
+	return normalizedHttpAuthority{
+		hostText:       normalizedHost,
+		portText:       normalizedPort,
+		hostIsIP:       hostIsIP,
+		hostIsLoopback: hostIsLoopback,
+		hostIsWildcard: hostIsWildcard,
+	}, nil
+}
+
+// normalizeAuthorityHost canonicalizes an IP literal or DNS hostname without
+// performing a DNS lookup. A single trailing DNS root dot is equivalent to
+// its undotted spelling; empty labels and non-host punctuation are rejected.
+func normalizeAuthorityHost(rawHost string) (string, bool, bool, bool, error) {
+	if rawHost == "" {
+		return "", false, false, false, fmt.Errorf("empty authority host")
+	}
+	if parsedAddress, parseError := netip.ParseAddr(rawHost); parseError == nil {
+		parsedAddress = parsedAddress.Unmap()
+		return parsedAddress.String(), true, parsedAddress.IsLoopback(), parsedAddress.IsUnspecified(), nil
+	}
+
+	normalizedHost := strings.ToLower(rawHost)
+	if strings.HasSuffix(normalizedHost, ".") {
+		normalizedHost = strings.TrimSuffix(normalizedHost, ".")
+	}
+	if normalizedHost == "" || strings.HasSuffix(normalizedHost, ".") || len(normalizedHost) > 253 {
+		return "", false, false, false, fmt.Errorf("malformed DNS host")
+	}
+	for _, hostLabel := range strings.Split(normalizedHost, ".") {
+		if len(hostLabel) == 0 || len(hostLabel) > 63 || hostLabel[0] == '-' || hostLabel[len(hostLabel)-1] == '-' {
+			return "", false, false, false, fmt.Errorf("malformed DNS host")
+		}
+		for _, labelCharacter := range hostLabel {
+			if (labelCharacter < 'a' || labelCharacter > 'z') &&
+				(labelCharacter < '0' || labelCharacter > '9') && labelCharacter != '-' {
+				return "", false, false, false, fmt.Errorf("malformed DNS host")
+			}
+		}
+	}
+	return normalizedHost, false, normalizedHost == "localhost", false, nil
+}
+
+// normalizeAuthorityPort validates and canonicalizes a TCP port. Port zero is
+// only a bind-time request; listener-derived and request authorities must name
+// the actual assigned port.
+func normalizeAuthorityPort(rawPort string) (string, error) {
+	if rawPort == "" {
+		return "", fmt.Errorf("empty authority port")
+	}
+	for _, portCharacter := range rawPort {
+		if portCharacter < '0' || portCharacter > '9' {
+			return "", fmt.Errorf("non-numeric authority port")
+		}
+	}
+	portNumber, parseError := strconv.Atoi(rawPort)
+	if parseError != nil || portNumber < 1 || portNumber > 65535 {
+		return "", fmt.Errorf("authority port outside TCP range")
+	}
+	return strconv.Itoa(portNumber), nil
+}
+
+// liveBoardAuthorityHandler rejects request-controlled Host values that are
+// not anchored to the listener used by the production server. Concrete binds
+// have a fixed allowlist; wildcard binds derive the numeric destination from
+// the accepted connection's LocalAddr.
+type liveBoardAuthorityHandler struct {
+	configuredHost string
+	actualHost     string
+	actualPort     string
+	wildcardBind   bool
+	loopbackBind   bool
+	innerHandler   http.Handler
+}
+
+// newLiveBoardProductionHandler constructs the production-only authority
+// boundary after bind, so :0 uses the listener's assigned port. The configured
+// spelling remains an accepted concrete hostname/address, while listener Addr
+// supplies the actual numeric address. No request-time name resolution occurs.
+func newLiveBoardProductionHandler(configuredListenAddress string, actualListenerAddress net.Addr, innerHandler http.Handler) (http.Handler, error) {
+	if innerHandler == nil || actualListenerAddress == nil {
+		return nil, fmt.Errorf("live board authority handler requires a listener and inner handler")
+	}
+	configuredHostText, _, configuredSplitError := net.SplitHostPort(configuredListenAddress)
+	if configuredSplitError != nil {
+		return nil, fmt.Errorf("parsing configured listen address: %w", configuredSplitError)
+	}
+	actualAuthority, actualError := normalizeHttpAuthority(actualListenerAddress.String())
+	if actualError != nil || !actualAuthority.hostIsIP {
+		return nil, fmt.Errorf("parsing actual listener address %q", actualListenerAddress.String())
+	}
+
+	wildcardBind := configuredHostText == ""
+	configuredHost := ""
+	if !wildcardBind {
+		var configuredIsWildcard bool
+		var configuredError error
+		configuredHost, _, _, configuredIsWildcard, configuredError = normalizeAuthorityHost(configuredHostText)
+		if configuredError != nil {
+			return nil, fmt.Errorf("parsing configured listen host: %w", configuredError)
+		}
+		wildcardBind = configuredIsWildcard
+	}
+
+	return &liveBoardAuthorityHandler{
+		configuredHost: configuredHost,
+		actualHost:     actualAuthority.hostText,
+		actualPort:     actualAuthority.portText,
+		wildcardBind:   wildcardBind,
+		loopbackBind:   actualAuthority.hostIsLoopback,
+		innerHandler:   innerHandler,
+	}, nil
+}
+
+func (authorityHandler *liveBoardAuthorityHandler) ServeHTTP(responseWriter http.ResponseWriter, httpRequest *http.Request) {
+	setKanbanSecurityHeaders(responseWriter.Header())
+	requestAuthority, authorityError := normalizeHttpAuthority(httpRequest.Host)
+	if authorityError != nil {
+		http.Error(responseWriter, "Malformed request Host", http.StatusBadRequest)
+		return
+	}
+	if requestAuthority.portText != authorityHandler.actualPort || !authorityHandler.acceptsRequestHost(httpRequest, requestAuthority) {
+		http.Error(responseWriter, "Request Host is not accepted by this live board listener", http.StatusForbidden)
+		return
+	}
+	authorityHandler.innerHandler.ServeHTTP(responseWriter, httpRequest)
+}
+
+func (authorityHandler *liveBoardAuthorityHandler) acceptsRequestHost(httpRequest *http.Request, requestAuthority normalizedHttpAuthority) bool {
+	if !authorityHandler.wildcardBind {
+		if requestAuthority.hostText == authorityHandler.configuredHost || requestAuthority.hostText == authorityHandler.actualHost {
+			return true
+		}
+		return authorityHandler.loopbackBind && requestAuthority.hostIsLoopback
+	}
+
+	localAddress, localAddressExists := httpRequest.Context().Value(http.LocalAddrContextKey).(net.Addr)
+	if !localAddressExists || localAddress == nil {
+		return false
+	}
+	localAuthority, localError := normalizeHttpAuthority(localAddress.String())
+	if localError != nil || !localAuthority.hostIsIP || localAuthority.hostIsWildcard || localAuthority.portText != authorityHandler.actualPort {
+		return false
+	}
+	if requestAuthority.hostText == localAuthority.hostText {
+		return true
+	}
+	return localAuthority.hostIsLoopback && requestAuthority.hostIsLoopback
+}
+
 // bindServeListenerAndAnnounce binds listenAddress via TCP and, ONLY on a
 // successful bind, prints the startup banner (and the non-loopback exposure warning,
 // when applicable) and — if openAfterBind is true — invokes browserOpener
@@ -539,10 +752,16 @@ func runServeCommand(args []string) {
 		fmt.Fprintln(os.Stderr, "queue-kanban serve:", listenErr)
 		os.Exit(1)
 	}
+	productionHandler, handlerError := newLiveBoardProductionHandler(listenAddress, listener.Addr(), liveServer)
+	if handlerError != nil {
+		_ = listener.Close()
+		fmt.Fprintln(os.Stderr, "queue-kanban serve:", handlerError)
+		os.Exit(1)
+	}
 
 	httpServer := &http.Server{
 		Addr:         listenAddress,
-		Handler:      liveServer,
+		Handler:      productionHandler,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 60 * time.Second,
 		IdleTimeout:  120 * time.Second,

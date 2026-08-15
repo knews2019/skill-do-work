@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.11 — Listener-Anchored Live Board Authority (2026-08-15)
+
+The live board trusted a matching Host and Origin even though both values came from the request. Every production route now sits behind a post-bind authority gate derived from the actual listener and assigned port.
+
+- Concrete, loopback, LAN, IPv6, and wildcard binds have explicit normalized Host policies with no request-time DNS lookup
+- Wildcard listeners accept only the connection's concrete numeric local destination, preserving intentional LAN access without trusting arbitrary DNS
+- Testing writes retain their existing guards and now compare normalized HTTP Origin and request authorities
+
 ## 0.189.10 — Recoverable Static Board Publication (2026-08-15)
 
 A failed static-board refresh could leave new card data beside old Markdown and HTML, producing a plausible but internally mixed bundle. The three public files now publish through one bounded all-or-recover operation.

@@ -79,7 +79,9 @@ func writeTestingApiError(responseWriter http.ResponseWriter, httpStatus int, er
 // /file's read guard in serve.go), POST only, a JSON content type (a
 // cross-origin page cannot send application/json without a CORS preflight,
 // which this server never grants), and — when the browser attaches an Origin
-// header — an origin whose host matches the Host the request arrived on.
+// header — a normalized HTTP origin whose authority matches the Host the
+// request arrived on. This uses the same no-DNS authority normalization as the
+// production listener boundary in serve.go.
 // Returns false after writing the error response when the request must be
 // rejected.
 func guardTestingApiWrite(responseWriter http.ResponseWriter, httpRequest *http.Request) bool {
@@ -99,7 +101,15 @@ func guardTestingApiWrite(responseWriter http.ResponseWriter, httpRequest *http.
 	originHeader := httpRequest.Header.Get("Origin")
 	if originHeader != "" && originHeader != "null" {
 		parsedOrigin, parseError := url.Parse(originHeader)
-		if parseError != nil || parsedOrigin.Host != httpRequest.Host {
+		if parseError != nil || parsedOrigin == nil || !strings.EqualFold(parsedOrigin.Scheme, "http") ||
+			parsedOrigin.User != nil || parsedOrigin.Host == "" || parsedOrigin.Path != "" ||
+			parsedOrigin.ForceQuery || parsedOrigin.RawQuery != "" || parsedOrigin.Fragment != "" {
+			writeTestingApiError(responseWriter, http.StatusForbidden, "cross-origin writes are not allowed")
+			return false
+		}
+		originAuthority, originAuthorityError := normalizeHttpAuthority(parsedOrigin.Host)
+		requestAuthority, requestAuthorityError := normalizeHttpAuthority(httpRequest.Host)
+		if originAuthorityError != nil || requestAuthorityError != nil || originAuthority != requestAuthority {
 			writeTestingApiError(responseWriter, http.StatusForbidden, "cross-origin writes are not allowed")
 			return false
 		}

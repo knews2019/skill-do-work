@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -97,6 +99,43 @@ func TestServeFileEndpointServesRepoFileReadOnly(t *testing.T) {
 	}
 	if bodyText := readTestResponseBody(t, resp); bodyText != fileContent {
 		t.Errorf("GET /file body = %q, want %q", bodyText, fileContent)
+	}
+}
+
+// TestProductionServeFileEndpointUsesListenerAuthority exercises /file through
+// the post-bind production wrapper: the listener's assigned :0 port works,
+// while a matching hostile Host/Origin pair with that same port is rejected
+// before the repo-file route can run.
+func TestProductionServeFileEndpointUsesListenerAuthority(t *testing.T) {
+	repoRoot := createFixtureDoWorkTree(t)
+	writeFixtureRepoFile(t, repoRoot, "docs/example-guide.md", "# guide\n")
+	testServer := productionLiveBoardTestServer(t, repoRoot, "127.0.0.1:0")
+
+	acceptedResponse, acceptedError := http.Get(testServer.URL + "/file?path=docs%2Fexample-guide.md")
+	if acceptedError != nil {
+		t.Fatalf("accepted production GET /file: %v", acceptedError)
+	}
+	acceptedResponse.Body.Close()
+	if acceptedResponse.StatusCode != http.StatusOK {
+		t.Fatalf("accepted production GET /file status = %d, want 200", acceptedResponse.StatusCode)
+	}
+
+	listenerPort := testServer.Listener.Addr().(*net.TCPAddr).Port
+	hostileAuthority := fmt.Sprintf("example.com:%d", listenerPort)
+	hostileRequest, requestError := http.NewRequest(http.MethodGet,
+		testServer.URL+"/file?path=docs%2Fexample-guide.md", nil)
+	if requestError != nil {
+		t.Fatalf("build hostile /file request: %v", requestError)
+	}
+	hostileRequest.Host = hostileAuthority
+	hostileRequest.Header.Set("Origin", "http://"+hostileAuthority)
+	hostileResponse, hostileError := testServer.Client().Do(hostileRequest)
+	if hostileError != nil {
+		t.Fatalf("hostile production GET /file: %v", hostileError)
+	}
+	hostileResponse.Body.Close()
+	if hostileResponse.StatusCode != http.StatusForbidden {
+		t.Errorf("hostile production GET /file status = %d, want 403", hostileResponse.StatusCode)
 	}
 }
 

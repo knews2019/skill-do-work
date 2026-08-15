@@ -2,7 +2,10 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -398,6 +401,24 @@ func testServerFor(t *testing.T, repoRoot string) string {
 	return testServer.URL
 }
 
+// productionLiveBoardTestServer mirrors runServeCommand's post-bind handler
+// composition. Existing direct liveBoardServer tests intentionally keep
+// exercising the inner route unit in isolation.
+func productionLiveBoardTestServer(t *testing.T, repoRoot string, configuredListenAddress string) *httptest.Server {
+	t.Helper()
+	testServer := httptest.NewUnstartedServer(newLiveBoardServer(repoRoot, 7*24*time.Hour))
+	productionHandler, handlerError := newLiveBoardProductionHandler(
+		configuredListenAddress, testServer.Listener.Addr(), testServer.Config.Handler)
+	if handlerError != nil {
+		testServer.Close()
+		t.Fatalf("newLiveBoardProductionHandler: %v", handlerError)
+	}
+	testServer.Config.Handler = productionHandler
+	testServer.Start()
+	t.Cleanup(testServer.Close)
+	return testServer
+}
+
 // TestUpsertFrontmatterFieldsRejectsFencelessFile asserts a file without
 // frontmatter is an error, never a guessed edit.
 func TestUpsertFrontmatterFieldsRejectsFencelessFile(t *testing.T) {
@@ -631,6 +652,157 @@ func TestTestingApiWritesAreLoopbackOnly(t *testing.T) {
 	liveServer.ServeHTTP(sameOriginRecorder, sameOriginRequest)
 	if sameOriginRecorder.Code != http.StatusOK {
 		t.Errorf("loopback same-origin POST = %d, want 200; body=%s", sameOriginRecorder.Code, sameOriginRecorder.Body.String())
+	}
+}
+
+// TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute locks the
+// listener-authority boundary around all live-board routes. Matching hostile
+// Host and Origin values are still request-controlled, so neither value may
+// authorize the request unless the production listener policy accepts it.
+func TestProductionLiveBoardRejectsUnacceptedHostBeforeEveryRoute(t *testing.T) {
+	repoRoot := createFixtureDoWorkTree(t)
+	writeFixtureRepoFile(t, repoRoot, "docs/example-guide.md", "# guide\n")
+	testServer := productionLiveBoardTestServer(t, repoRoot, "127.0.0.1:0")
+
+	routeCases := []struct {
+		caseName    string
+		method      string
+		requestPath string
+		requestBody string
+	}{
+		{"board HTML", http.MethodGet, "/", ""},
+		{"board data", http.MethodGet, "/board-data.js", ""},
+		{"board Markdown", http.MethodGet, "/board-markdown.js", ""},
+		{"repo file", http.MethodGet, "/file?path=docs%2Fexample-guide.md", ""},
+		{"testing profile", http.MethodPost, "/api/testing/profile", `{"name":"Alice"}`},
+		{"testing status", http.MethodPost, "/api/testing/status", `{"requestId":"REQ-0001","testingStatus":"clear"}`},
+	}
+	listenerPort := testServer.Listener.Addr().(*net.TCPAddr).Port
+	hostileAuthorities := []string{"example.com", fmt.Sprintf("example.com:%d", listenerPort)}
+	for _, routeCase := range routeCases {
+		for _, hostileAuthority := range hostileAuthorities {
+			t.Run(routeCase.caseName+"/"+hostileAuthority, func(t *testing.T) {
+				request, requestError := http.NewRequest(routeCase.method, testServer.URL+routeCase.requestPath, strings.NewReader(routeCase.requestBody))
+				if requestError != nil {
+					t.Fatalf("build hostile request: %v", requestError)
+				}
+				request.Host = hostileAuthority
+				request.Header.Set("Origin", "http://"+hostileAuthority)
+				if routeCase.requestBody != "" {
+					request.Header.Set("Content-Type", "application/json")
+				}
+				response, responseError := testServer.Client().Do(request)
+				if responseError != nil {
+					t.Fatalf("send hostile request: %v", responseError)
+				}
+				response.Body.Close()
+				if response.StatusCode != http.StatusForbidden {
+					t.Errorf("matching hostile Host/Origin reached %s: status = %d, want 403", routeCase.requestPath, response.StatusCode)
+				}
+			})
+		}
+	}
+}
+
+// TestLiveBoardAuthorityPolicy makes the post-bind listener policy explicit
+// across concrete, loopback, LAN, IPv6, wildcard, and default-port cases.
+func TestLiveBoardAuthorityPolicy(t *testing.T) {
+	const assignedPort = 45100
+	authorityCases := []struct {
+		caseName          string
+		configuredAddress string
+		actualAddress     *net.TCPAddr
+		requestHost       string
+		localAddress      *net.TCPAddr
+		wantStatus        int
+	}{
+		{"port zero trusts assigned port", "127.0.0.1:0", &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: assignedPort}, "127.0.0.1:45100", nil, http.StatusNoContent},
+		{"port zero rejects configured zero", "127.0.0.1:0", &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: assignedPort}, "127.0.0.1:0", nil, http.StatusBadRequest},
+		{"concrete loopback configured name normalized", "LOCALHOST.:0", &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: assignedPort}, "localhost:45100", nil, http.StatusNoContent},
+		{"concrete loopback numeric alias", "localhost:0", &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: assignedPort}, "[::1]:45100", nil, http.StatusNoContent},
+		{"concrete loopback rejects arbitrary DNS", "localhost:0", &net.TCPAddr{IP: net.ParseIP("127.0.0.1"), Port: assignedPort}, "example.com:45100", nil, http.StatusForbidden},
+		{"concrete LAN configured name normalized", "Board.Example.:0", &net.TCPAddr{IP: net.ParseIP("192.0.2.10"), Port: assignedPort}, "board.example:45100", nil, http.StatusNoContent},
+		{"concrete LAN actual address", "board.example:0", &net.TCPAddr{IP: net.ParseIP("192.0.2.10"), Port: assignedPort}, "192.0.2.10:45100", nil, http.StatusNoContent},
+		{"concrete LAN rejects loopback alias", "board.example:0", &net.TCPAddr{IP: net.ParseIP("192.0.2.10"), Port: assignedPort}, "localhost:45100", nil, http.StatusForbidden},
+		{"concrete IPv6 canonicalized", "[2001:db8::1]:0", &net.TCPAddr{IP: net.ParseIP("2001:db8::1"), Port: assignedPort}, "[2001:0db8:0:0:0:0:0:1]:45100", nil, http.StatusNoContent},
+		{"wrong assigned port", "board.example:0", &net.TCPAddr{IP: net.ParseIP("192.0.2.10"), Port: assignedPort}, "board.example:45101", nil, http.StatusForbidden},
+		{"missing port means 80 only rejected on high port", "board.example:0", &net.TCPAddr{IP: net.ParseIP("192.0.2.10"), Port: assignedPort}, "board.example", nil, http.StatusForbidden},
+		{"missing port means 80 accepted on port 80", "board.example:0", &net.TCPAddr{IP: net.ParseIP("192.0.2.10"), Port: 80}, "BOARD.EXAMPLE.", nil, http.StatusNoContent},
+		{"wildcard accepts numeric connection destination", ":0", &net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: assignedPort}, "192.0.2.25:45100", &net.TCPAddr{IP: net.ParseIP("192.0.2.25"), Port: assignedPort}, http.StatusNoContent},
+		{"wildcard rejects arbitrary DNS", ":0", &net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: assignedPort}, "board.example:45100", &net.TCPAddr{IP: net.ParseIP("192.0.2.25"), Port: assignedPort}, http.StatusForbidden},
+		{"wildcard rejects wildcard literal", "0.0.0.0:0", &net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: assignedPort}, "0.0.0.0:45100", &net.TCPAddr{IP: net.ParseIP("192.0.2.25"), Port: assignedPort}, http.StatusForbidden},
+		{"wildcard accepts localhost on loopback connection", "[::]:0", &net.TCPAddr{IP: net.ParseIP("::"), Port: assignedPort}, "LOCALHOST.:45100", &net.TCPAddr{IP: net.ParseIP("::1"), Port: assignedPort}, http.StatusNoContent},
+		{"wildcard rejects localhost on LAN connection", "[::]:0", &net.TCPAddr{IP: net.ParseIP("::"), Port: assignedPort}, "localhost:45100", &net.TCPAddr{IP: net.ParseIP("2001:db8::25"), Port: assignedPort}, http.StatusForbidden},
+		{"wildcard requires connection local address", ":0", &net.TCPAddr{IP: net.ParseIP("0.0.0.0"), Port: assignedPort}, "192.0.2.25:45100", nil, http.StatusForbidden},
+		{"malformed user info", "board.example:0", &net.TCPAddr{IP: net.ParseIP("192.0.2.10"), Port: assignedPort}, "user@board.example:45100", nil, http.StatusBadRequest},
+		{"malformed unbracketed IPv6", "[2001:db8::1]:0", &net.TCPAddr{IP: net.ParseIP("2001:db8::1"), Port: assignedPort}, "2001:db8::1", nil, http.StatusBadRequest},
+		{"malformed bracketed DNS", "board.example:0", &net.TCPAddr{IP: net.ParseIP("192.0.2.10"), Port: assignedPort}, "[board.example]:45100", nil, http.StatusBadRequest},
+		{"malformed empty port", "board.example:0", &net.TCPAddr{IP: net.ParseIP("192.0.2.10"), Port: assignedPort}, "board.example:", nil, http.StatusBadRequest},
+		{"malformed nonnumeric port", "board.example:0", &net.TCPAddr{IP: net.ParseIP("192.0.2.10"), Port: assignedPort}, "board.example:http", nil, http.StatusBadRequest},
+	}
+
+	for _, authorityCase := range authorityCases {
+		t.Run(authorityCase.caseName, func(t *testing.T) {
+			innerReached := false
+			innerHandler := http.HandlerFunc(func(responseWriter http.ResponseWriter, _ *http.Request) {
+				innerReached = true
+				responseWriter.WriteHeader(http.StatusNoContent)
+			})
+			productionHandler, handlerError := newLiveBoardProductionHandler(
+				authorityCase.configuredAddress, authorityCase.actualAddress, innerHandler)
+			if handlerError != nil {
+				t.Fatalf("newLiveBoardProductionHandler: %v", handlerError)
+			}
+			request := httptest.NewRequest(http.MethodGet, "/", nil)
+			request.Host = authorityCase.requestHost
+			if authorityCase.localAddress != nil {
+				request = request.WithContext(context.WithValue(
+					request.Context(), http.LocalAddrContextKey, net.Addr(authorityCase.localAddress)))
+			}
+			responseRecorder := httptest.NewRecorder()
+			productionHandler.ServeHTTP(responseRecorder, request)
+			if responseRecorder.Code != authorityCase.wantStatus {
+				t.Errorf("status = %d, want %d; body=%q", responseRecorder.Code, authorityCase.wantStatus, responseRecorder.Body.String())
+			}
+			wantInnerReached := authorityCase.wantStatus == http.StatusNoContent
+			if innerReached != wantInnerReached {
+				t.Errorf("inner reached = %v, want %v", innerReached, wantInnerReached)
+			}
+		})
+	}
+}
+
+// TestTestingApiOriginUsesNormalizedHttpAuthority locks the testing write's
+// scheme and same-origin comparison while preserving its direct-handler unit
+// fixture (the production Host wrapper is tested separately above).
+func TestTestingApiOriginUsesNormalizedHttpAuthority(t *testing.T) {
+	originCases := []struct {
+		caseName     string
+		requestHost  string
+		originHeader string
+		wantStatus   int
+	}{
+		{"DNS case and trailing dot", "LOCALHOST.:80", "http://localhost", http.StatusOK},
+		{"IPv6 canonical spelling", "[0:0:0:0:0:0:0:1]:80", "http://[::1]", http.StatusOK},
+		{"HTTPS is not board same-origin", "localhost:80", "https://localhost", http.StatusForbidden},
+		{"wrong port", "localhost:80", "http://localhost:81", http.StatusForbidden},
+		{"origin path", "localhost:80", "http://localhost/path", http.StatusForbidden},
+		{"malformed origin authority", "localhost:80", "http://localhost:", http.StatusForbidden},
+	}
+	for _, originCase := range originCases {
+		t.Run(originCase.caseName, func(t *testing.T) {
+			repoRoot := createFixtureDoWorkTree(t)
+			request := httptest.NewRequest(http.MethodPost, "/api/testing/profile", strings.NewReader(`{"name":"Alice"}`))
+			request.Host = originCase.requestHost
+			request.RemoteAddr = "127.0.0.1:41234"
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("Origin", originCase.originHeader)
+			responseRecorder := httptest.NewRecorder()
+			newLiveBoardServer(repoRoot, 7*24*time.Hour).ServeHTTP(responseRecorder, request)
+			if responseRecorder.Code != originCase.wantStatus {
+				t.Errorf("status = %d, want %d; body=%q", responseRecorder.Code, originCase.wantStatus, responseRecorder.Body.String())
+			}
+		})
 	}
 }
 
