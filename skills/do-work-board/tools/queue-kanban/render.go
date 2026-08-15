@@ -53,7 +53,10 @@ func insertQuestionOptionHardBreaks(markdownBody string) string {
 	insideCodeFence := false
 	for lineIndex, currentLine := range bodyLines {
 		trimmedLine := strings.TrimSpace(currentLine)
-		if strings.HasPrefix(trimmedLine, "```") || strings.HasPrefix(trimmedLine, "~~~") {
+		backtickFenceCandidate := strings.HasPrefix(trimmedLine, "```")
+		backtickFenceInfo := strings.TrimLeft(trimmedLine, "`")
+		validBacktickFence := backtickFenceCandidate && !strings.Contains(backtickFenceInfo, "`")
+		if validBacktickFence || strings.HasPrefix(trimmedLine, "~~~") {
 			insideCodeFence = !insideCodeFence
 			continue
 		}

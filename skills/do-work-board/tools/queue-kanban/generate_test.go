@@ -630,16 +630,41 @@ func TestRenderMarkdownQuestionOptionsKeepTheirOwnLines(t *testing.T) {
 	}
 }
 
-func TestRenderMarkdownLeavesCodeFencesVerbatim(t *testing.T) {
-	// A fenced block whose content happens to start with an option keyword must
-	// not have hard-break backslashes injected into its verbatim content.
-	body := "```\nsome output\nRecommended: not a question option\n```\n"
+func TestRenderMarkdownInvalidBacktickInfoRemainsQuestionProse(t *testing.T) {
+	body := "## Open Questions\n\n" +
+		"- [ ] Should I process this as a new task?\n" +
+		"  ```lang`invalid\n" +
+		"  Recommended: Yes, add to queue.\n" +
+		"  Also: No, discard it.\n"
 	rendered, renderError := renderMarkdownBodyToHtml(body)
 	if renderError != nil {
 		t.Fatalf("renderMarkdownBodyToHtml: %v", renderError)
 	}
-	if strings.Contains(rendered, "\\") || strings.Contains(rendered, "<br") {
-		t.Fatalf("code fence content must stay verbatim, got: %s", rendered)
+	if strings.Count(rendered, "<br") != 2 {
+		t.Fatalf("invalid backtick-info prose must keep 2 hard breaks (before Recommended: and Also:), got: %s", rendered)
+	}
+}
+
+func TestRenderMarkdownLeavesValidCodeFencesVerbatim(t *testing.T) {
+	// A fenced block whose content happens to start with an option keyword must
+	// not have hard-break backslashes injected into its verbatim content.
+	testCases := map[string]string{
+		"backtick fence": "```go\nsome output\nRecommended: not a question option\n```\n",
+		"tilde fence":    "~~~lang`valid\nsome output\nRecommended: not a question option\n~~~\n",
+	}
+	for testName, body := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			if preprocessedBody := insertQuestionOptionHardBreaks(body); preprocessedBody != body {
+				t.Fatalf("valid fence changed during preprocessing:\n got: %q\nwant: %q", preprocessedBody, body)
+			}
+			rendered, renderError := renderMarkdownBodyToHtml(body)
+			if renderError != nil {
+				t.Fatalf("renderMarkdownBodyToHtml: %v", renderError)
+			}
+			if strings.Contains(rendered, "\\") || strings.Contains(rendered, "<br") {
+				t.Fatalf("code fence content must stay verbatim, got: %s", rendered)
+			}
+		})
 	}
 }
 

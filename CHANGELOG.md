@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.4 — Goldmark-Aligned Board Question Fences (2026-08-15)
+
+Open Questions could lose their visual breaks after prose that merely looked like a code fence. The board preprocessor now follows Goldmark's marker-specific info rule, so guidance stays readable without changing real code blocks.
+
+- Invalid backtick-info lookalikes remain ordinary prose, allowing `Recommended:` and `Also:` lines to receive their intended hard breaks
+- Focused renderer tests preserve byte-verbatim handling for valid backtick and tilde fences
+
 ## 0.189.3 — Churn Exclude Fix and Calibration Fallback (2026-08-14)
 
 Two PR-review findings on the new audit machinery: an excluded-but-still-tracked file that git flags as a copy source was treated as dead, silently handing its whole history to the surviving copy and inflating its hotspot score; and the manual inventory fallback gave the calibration gate nothing to derive FLAG = max(floor, p95) from.
