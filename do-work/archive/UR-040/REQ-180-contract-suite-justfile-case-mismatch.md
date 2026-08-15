@@ -5,6 +5,7 @@ status: completed
 status_changed_at: 2026-08-15T07:41:57Z
 claimed_at: 2026-08-15T09:26:47Z
 completed_at: 2026-08-15T09:40:13Z
+commit: 2e5a5c4
 created_at: 2026-08-14T10:33:56Z
 user_request: UR-040
 addendum_to: REQ-179
