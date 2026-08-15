@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-08-15T07:13:20Z
 claimed_at: 2026-08-15T10:14:36Z
 completed_at: 2026-08-15T10:27:19Z
+commit: 803e4e7
 user_request: UR-041
 domain: backend
 prime_files: [_dev/primes/prime-kanban-board.md]
