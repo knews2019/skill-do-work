@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-08-15T07:13:20Z
 claimed_at: 2026-08-15T11:37:24Z
 completed_at: 2026-08-15T12:11:43Z
+commit: c20110d
 user_request: UR-041
 domain: testing
 prime_files: [_dev/primes/prime-shell-commands.md]
