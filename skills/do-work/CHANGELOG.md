@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.6 — Case-Exact Contract Suite Paths (2026-08-15)
+
+Case-insensitive development filesystems hid that the late contract checks opened a nonexistent `Justfile` on Linux. The suite now names the tracked lowercase file exactly and reaches its final checks everywhere.
+
+- Changed both Kanban shutdown-check inputs in `_dev/tests/contract-regressions.sh` from `Justfile` to `justfile`
+- Full contract regression suite now completes at exit 0 after the repaired block
+
 ## 0.189.5 — Consolidated Archive Lesson Links (2026-08-15)
 
 Closing UR-039 moved its completed requests into their durable UR archive, but two shipped lesson links kept pointing at the old root paths. The links now follow the consolidated archive so reference verification stays green.

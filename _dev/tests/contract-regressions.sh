@@ -1794,14 +1794,14 @@ extract_kanban_shutdown_line() {
   ' "$repo_root/$1"
 }
 
-root_kanban_shutdown_line="$(extract_kanban_shutdown_line Justfile)"
+root_kanban_shutdown_line="$(extract_kanban_shutdown_line justfile)"
 installer_kanban_shutdown_line="$(extract_kanban_shutdown_line skills/do-work-board/justfile.template)"
 if [ "$root_kanban_shutdown_line" != "$installer_kanban_shutdown_line" ]; then
   printf 'FAIL: Justfile and the board-owned template must carry one identical run-kanban shutdown line.\n' >&2
   fail_count=$((fail_count + 1))
 fi
 
-for kanban_recipe_file in "skills/do-work-board/justfile.template" "Justfile"; do
+for kanban_recipe_file in "skills/do-work-board/justfile.template" "justfile"; do
   assert_file_not_contains \
     "$kanban_recipe_file" \
     'case "\$listener_command" in \*queue-kanban\*' \

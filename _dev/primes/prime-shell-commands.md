@@ -27,3 +27,7 @@ The process-tree, complete-directory, current-invocation artifact, and opt-in au
 ## Closed Enumerations Go Stale
 
 When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep a guide in sync), state the trigger _condition_ in the rule's canonical home and mark any caller/value list as illustrative, not exhaustive. Hand-enumerated lists silently go stale the moment the set grows — one review traced four independent defects to this pattern (capture's stale domain enum, prompt-injection's five-caller list, the docs-exemption list, security.md's loader claims). When extending a set, grep for every other enumeration of it and update or generalize each one.
+
+## Lessons
+
+- [REQ-180: use the tracked filename's exact case in shell test paths](../../do-work/archive/UR-040/REQ-180-contract-suite-justfile-case-mismatch.md#lessons-learned)
