@@ -100,4 +100,5 @@ A skill or action description is loaded whether or not the thing gets used, so i
 
 ## Lessons
 
-- [REQ-193: key closed-state authority to the archived-fallback condition and return review-generated completions in place](../../do-work/archive/REQ-193-keep-archived-urs-closed-during-review.md#lessons-learned)
+- [REQ-193: key closed-state authority to the archived-fallback condition and return review-generated completions in place](../../do-work/archive/UR-043/REQ-193-keep-archived-urs-closed-during-review.md#lessons-learned)
+- [REQ-194: retain canonical structured detector evidence and test the source seam directly](../../do-work/archive/UR-043/REQ-194-forward-stray-reqs-through-forensics.md#lessons-learned)

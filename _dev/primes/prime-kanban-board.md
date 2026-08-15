@@ -19,3 +19,4 @@
 ## Lessons
 
 - [REQ-185: separate ordinary optional-tool skips from a counted maintainer-strict behavior lane](../../do-work/archive/REQ-185-javascript-behavior-reachability.md#lessons-learned)
+- [REQ-194: retain canonical structured detector evidence and test the source seam directly](../../do-work/archive/UR-043/REQ-194-forward-stray-reqs-through-forensics.md#lessons-learned)

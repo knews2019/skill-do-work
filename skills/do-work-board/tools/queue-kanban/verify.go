@@ -26,6 +26,7 @@ const (
 	verifyCategoryCheckpointGhostRequest        = "checkpoint-names-missing-req"
 	verifyCategoryClaimNeedsAttention           = "claim-needs-attention"
 	verifyCategoryStrandedFinishedRequest       = "stranded-finished-req"
+	verifyCategoryStrayRequestFile              = "stray-req-file"
 	verifyCategoryAssignedElsewhereClaimedHere  = "assigned-elsewhere-claimed-here"
 	verifyCategoryArchivedUserRequestLiveMember = "ur-archived-with-live-member"
 )
@@ -117,11 +118,28 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 	appendCheckpointGhostFindings(&report, repoRoot, board)
 	appendClaimFindings(&report, board, now)
 	appendStrandedFinishedFindings(&report, board)
+	appendStrayRequestFileFindings(&report, board)
 	appendAssignedElsewhereFindings(&report, board)
 	appendArchivedUserRequestLiveMemberFindings(&report, board)
 	appendWorktreeFindings(&report, repoRoot)
 
 	return report, nil
+}
+
+// appendStrayRequestFileFindings forwards the board walker's structured
+// evidence for REQ files outside queue/working/archive. Strays remain outside
+// AllRequests and every normal request probe; verify neither parses warning prose
+// nor performs a second filesystem walk.
+func appendStrayRequestFileFindings(report *VerifyReport, board *Board) {
+	for _, strayRequest := range board.StrayRequestFiles {
+		relativePath := filepath.ToSlash(strayRequest.RelativePath)
+		report.Findings = append(report.Findings, VerifyFinding{
+			Category: verifyCategoryStrayRequestFile,
+			Detail: fmt.Sprintf("REQ file at do-work/%s is outside queue/, working/, and archive/ and is invisible to normal request/card probes",
+				relativePath),
+			Remedy: "inspect the REQ, then move it to do-work/archive/ if resolved or do-work/queue/ if it still needs work; verify is read-only and relocation is a human decision",
+		})
+	}
 }
 
 // appendReleaseFindings covers the two release invariants the commit ritual asks a
@@ -405,8 +423,12 @@ func appendAssignedElsewhereFindings(report *VerifyReport, board *Board) {
 // mechanically fixable, and this probe's remedy would tell the user to run or
 // abandon a REQ that is already resolved.
 //
-// Read-only and not fixable: un-archiving a UR and force-resolving a live REQ are
-// both human decisions with different consequences.
+// After that ownership carve-out, an exact review_generated: true marker exempts
+// a non-terminal queue/working member: REQ-193 keeps that follow-up on the same
+// already-closed UR without reopening it. Ordinary siblings remain anomalies.
+//
+// Read-only and not fixable: the archived UR stays closed while a human resolves
+// or abandons the ordinary live REQ, or corrects its user_request association.
 func appendArchivedUserRequestLiveMemberFindings(report *VerifyReport, board *Board) {
 	for _, userRequestTicket := range board.UserRequests {
 		if !isArchivedUserRequestPath(userRequestTicket.FilePath) {
@@ -422,9 +444,13 @@ func appendArchivedUserRequestLiveMemberFindings(report *VerifyReport, board *Bo
 			if isTerminalResolvedStatus(memberTicket.Status) {
 				continue
 			}
-			if memberTicket.TreeSection == "queue" || memberTicket.TreeSection == "working" {
-				liveMemberIds = append(liveMemberIds, memberRequestId)
+			if memberTicket.TreeSection != "queue" && memberTicket.TreeSection != "working" {
+				continue
 			}
+			if memberTicket.ReviewGenerated {
+				continue
+			}
+			liveMemberIds = append(liveMemberIds, memberRequestId)
 		}
 		if len(liveMemberIds) == 0 {
 			continue
@@ -433,7 +459,7 @@ func appendArchivedUserRequestLiveMemberFindings(report *VerifyReport, board *Bo
 			Category: verifyCategoryArchivedUserRequestLiveMember,
 			Detail: fmt.Sprintf("%s is archived but still has live member(s) %s in do-work/queue/ or do-work/working/",
 				userRequestTicket.UserRequestId, strings.Join(liveMemberIds, ", ")),
-			Remedy: "cleanup asks before moving anything: bring the UR folder back to do-work/user-requests/ until the member resolves, or resolve the member (do-work run / do-work abandon) and re-close the UR",
+			Remedy: "keep the UR archived; resolve or abandon each ordinary live member, or correct its user_request association if it does not belong to this UR",
 		})
 	}
 }

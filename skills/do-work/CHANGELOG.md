@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.17 — Structured Stray Request Verification (2026-08-15)
+
+Misplaced request files could trigger a board warning yet disappear from the forensics report. Verify now forwards the board's canonical structured evidence while recognizing legitimate review follow-ups under closed User Requests.
+
+- Emits one read-only, non-fixable verify finding for every retained off-section REQ path, regardless of status
+- Keeps strays out of cards and ordinary probes, with direct tests rejecting warning parsing or a second filesystem walk
+- Exempts only exact review-generated live members from the archived-UR anomaly and replaces reopen advice with a stays-closed remedy
+
 ## 0.189.16 — Closed-UR Review Follow-up Lifecycle (2026-08-15)
 
 Standalone review could read a closed User Request and leave later work without a safe return path. Closed URs now stay stationary from review context through completed follow-up placement.

@@ -87,6 +87,7 @@ type RequestTicket struct {
 	CommitHash      string // resolved from commit / commit_hash / green_commit / commit_green / impl_commit
 	CommitHashField string // the frontmatter key CommitHash came from, "" when absent
 	UserRequestId   string // "UR-NNN" upward pointer (the reliable REQ→UR link), "" when absent
+	ReviewGenerated bool   // exact review_generated: true marker; verify-only, with no display or scheduling role
 	Domain          string
 
 	// Testing-track placeholders written by the board's testing view (see
@@ -300,7 +301,8 @@ type Board struct {
 
 	TestingProfiles []string // do-work/testers.md bullet lines in file order (nil when the file is absent or empty)
 
-	Warnings []string // data-shape warnings (e.g. duplicate ids, unrecognized statuses, future-dated stamps) — surfaced, never silently dropped
+	StrayRequestFiles []strayRequestFile // walker-owned REQ paths outside queue/working/archive; never parsed as cards
+	Warnings          []string           // data-shape warnings (e.g. duplicate ids, unrecognized statuses, future-dated stamps) — surfaced, never silently dropped
 }
 
 // gitCommitDateLookup resolves a commit hash to its committer date. It is an
@@ -328,12 +330,13 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	}
 
 	board := &Board{
-		GeneratedAt:      now,
-		RecentWindow:     recentWindow,
-		ProjectName:      deriveProjectName(repoRoot),
-		RepoRoot:         repoRoot,
-		RequestsById:     map[string]*RequestTicket{},
-		UserRequestsById: map[string]*UserRequestTicket{},
+		GeneratedAt:       now,
+		RecentWindow:      recentWindow,
+		ProjectName:       deriveProjectName(repoRoot),
+		RepoRoot:          repoRoot,
+		RequestsById:      map[string]*RequestTicket{},
+		UserRequestsById:  map[string]*UserRequestTicket{},
+		StrayRequestFiles: discovered.StrayRequestFiles,
 	}
 
 	var parsedTickets []*RequestTicket
@@ -354,7 +357,7 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 	// card — bucketing only ever sees discovered.RequestFiles — so without this
 	// warning a misplaced REQ (e.g. archived to do-work/user-requests/UR-NNN/
 	// instead of do-work/archive/) goes silently invisible on the board.
-	for _, stray := range discovered.StrayRequestFiles {
+	for _, stray := range board.StrayRequestFiles {
 		requestIdLabel := strings.TrimSuffix(filepath.Base(stray.RelativePath), ".md")
 		board.Warnings = append(board.Warnings, fmt.Sprintf(
 			"%s file at do-work/%s is outside the scanned sections (queue/, working/, archive/) — it has no card and is invisible on the board; move it into do-work/archive/ (if resolved) or do-work/queue/ (if still pending) to surface it",
@@ -718,6 +721,7 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		CommitHash:                 commitHashValue,
 		CommitHashField:            commitHashField,
 		UserRequestId:              coerceScalarToString(fields["user_request"]),
+		ReviewGenerated:            coerceScalarToString(fields["review_generated"]) == "true",
 		Domain:                     normalizedDomain,
 		OriginalDomain:             originalDomain,
 		DomainUnrecognized:         domainUnrecognized,

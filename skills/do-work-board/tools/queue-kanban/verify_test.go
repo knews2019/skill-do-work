@@ -317,6 +317,81 @@ func TestVerifyFlagsStrandedFinishedRequests(t *testing.T) {
 	}
 }
 
+func TestVerifyFlagsStrayRequestFiles(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/user-requests/UR-095/input.md", "---\nid: UR-095\ntitle: open UR with misplaced REQs\nrequests: []\n---\n"},
+		{"do-work/user-requests/UR-095/REQ-090-pending-stray.md",
+			"---\nid: REQ-090\nstatus: pending\ntitle: pending stray\nuser_request: UR-095\n---\n"},
+		{"do-work/user-requests/UR-095/REQ-091-completed-stray.md",
+			"---\nid: REQ-091\nstatus: completed\ntitle: completed stray\nuser_request: UR-095\ncompleted_at: 2026-08-01T10:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	strayFindings := findingsMentioning(report, "stray-req-file")
+	if len(strayFindings) != 2 {
+		t.Fatalf("got %d stray-REQ findings, want 2 (pending and completed):\n%s",
+			len(strayFindings), renderVerifyReport(report))
+	}
+	for _, expectedPath := range []string{
+		"do-work/user-requests/UR-095/REQ-090-pending-stray.md",
+		"do-work/user-requests/UR-095/REQ-091-completed-stray.md",
+	} {
+		matchingCount := 0
+		for _, finding := range strayFindings {
+			if strings.Contains(finding.Detail, expectedPath) {
+				matchingCount++
+			}
+			if finding.Fixable {
+				t.Errorf("stray relocation is a human decision and must not be cleanup-fixable: %+v", finding)
+			}
+		}
+		if matchingCount != 1 {
+			t.Errorf("path %s appeared in %d stray findings, want exactly 1", expectedPath, matchingCount)
+		}
+	}
+	if strandedFindings := findingsMentioning(report, verifyCategoryStrandedFinishedRequest); len(strandedFindings) != 0 {
+		t.Fatalf("a completed stray must remain outside normal request probes, got %d stranded findings:\n%s",
+			len(strandedFindings), renderVerifyReport(report))
+	}
+}
+
+func TestAppendStrayRequestFileFindingsUsesStructuredEvidence(t *testing.T) {
+	structuredPath := "user-requests/UR-096/REQ-095-structured-only.md"
+	board := &Board{
+		RepoRoot: filepath.Join(t.TempDir(), "missing-repo"),
+		StrayRequestFiles: []strayRequestFile{
+			{RelativePath: structuredPath},
+		},
+		Warnings: nil,
+	}
+	var report VerifyReport
+	if _, statError := os.Stat(board.RepoRoot); !os.IsNotExist(statError) {
+		t.Fatalf("fixture repo root must remain absent so a filesystem re-walk has no evidence; stat error = %v", statError)
+	}
+
+	appendStrayRequestFileFindings(&report, board)
+
+	if len(report.Findings) != 1 {
+		t.Fatalf("got %d findings from structured stray evidence, want exactly 1: %+v",
+			len(report.Findings), report.Findings)
+	}
+	finding := report.Findings[0]
+	if finding.Category != verifyCategoryStrayRequestFile {
+		t.Errorf("category = %q, want %q", finding.Category, verifyCategoryStrayRequestFile)
+	}
+	if !strings.Contains(finding.Detail, structuredPath) {
+		t.Errorf("detail %q does not name structured path %q", finding.Detail, structuredPath)
+	}
+	if finding.Fixable {
+		t.Errorf("structured stray finding must remain non-fixable: %+v", finding)
+	}
+}
+
 // A terminally-resolved member stranded in queue/ under an ARCHIVED UR used to
 // trip both probes, and the archived-UR remedy then told the user to run or
 // abandon a REQ that was already resolved. The stranded-finished probe owns that
@@ -887,6 +962,61 @@ func TestVerifyStrandedFinishedAssignedRequestFiresOnlyTheStrandedProbe(t *testi
 	if found := findingsMentioning(report, verifyCategoryAssignedElsewhereClaimedHere); len(found) != 0 {
 		t.Fatalf("a terminally-resolved REQ is not being built here — the assigned-elsewhere probe must not double-fire, got %d findings:\n%s",
 			len(found), renderVerifyReport(report))
+	}
+}
+
+func TestVerifyAllowsReviewGeneratedMemberUnderClosedUserRequest(t *testing.T) {
+	repoRoot := writeVerifyFixture(t, []verifyFixtureFile{
+		{"actions/version.md", cleanVersionFile},
+		{"CHANGELOG.md", cleanChangelog},
+		{"do-work/archive/UR-095/input.md", "---\nid: UR-095\ntitle: closed UR with review follow-ups\nrequests: [REQ-090]\n---\n"},
+		{"do-work/queue/REQ-090-review-generated.md",
+			"---\nid: REQ-090\nstatus: pending\ntitle: legitimate queued review follow-up\nuser_request: UR-095\nreview_generated: true\n---\n"},
+		{"do-work/working/REQ-091-review-generated.md",
+			"---\nid: REQ-091\nstatus: claimed\ntitle: legitimate working review follow-up\nuser_request: UR-095\nreview_generated: true\nclaimed_at: " + time.Now().UTC().Format(time.RFC3339) + "\n---\n"},
+		{"do-work/queue/REQ-092-ordinary.md",
+			"---\nid: REQ-092\nstatus: pending\ntitle: ordinary live member\nuser_request: UR-095\nreview_generated: false\n---\n"},
+		{"do-work/working/REQ-093-noncanonical-marker.md",
+			"---\nid: REQ-093\nstatus: claimed\ntitle: noncanonical marker is ordinary\nuser_request: UR-095\nreview_generated: \"TRUE\"\nclaimed_at: " + time.Now().UTC().Format(time.RFC3339) + "\n---\n"},
+		{"do-work/queue/REQ-094-finished-review-generated.md",
+			"---\nid: REQ-094\nstatus: completed\ntitle: stranded finished review follow-up\nuser_request: UR-095\nreview_generated: true\ncompleted_at: 2026-08-01T10:00:00Z\n---\n"},
+	})
+
+	report, verifyError := runVerifyProbes(repoRoot, time.Now())
+	if verifyError != nil {
+		t.Fatalf("runVerifyProbes: %v", verifyError)
+	}
+	liveMemberFindings := findingsMentioning(report, verifyCategoryArchivedUserRequestLiveMember)
+	if len(liveMemberFindings) != 1 {
+		t.Fatalf("got %d archived-UR-live-member findings, want 1 for the ordinary siblings:\n%s",
+			len(liveMemberFindings), renderVerifyReport(report))
+	}
+	detail := liveMemberFindings[0].Detail
+	for _, ordinaryRequestId := range []string{"REQ-092", "REQ-093"} {
+		if !strings.Contains(detail, ordinaryRequestId) {
+			t.Errorf("ordinary member %s must remain reported, got %q", ordinaryRequestId, detail)
+		}
+	}
+	for _, exemptRequestId := range []string{"REQ-090", "REQ-091", "REQ-094"} {
+		if strings.Contains(detail, exemptRequestId) {
+			t.Errorf("review-generated or terminal member %s must not be reported as an ordinary live anomaly, got %q", exemptRequestId, detail)
+		}
+	}
+	if liveMemberFindings[0].Fixable {
+		t.Error("resolving an ordinary live member under a closed UR is a human decision — not mechanical")
+	}
+	if strings.Contains(liveMemberFindings[0].Remedy, "user-requests/") ||
+		strings.Contains(strings.ToLower(liveMemberFindings[0].Remedy), "bring the ur folder back") {
+		t.Errorf("remedy must keep the archived UR closed, got %q", liveMemberFindings[0].Remedy)
+	}
+	if !strings.Contains(strings.ToLower(liveMemberFindings[0].Remedy), "archived") {
+		t.Errorf("remedy must explicitly preserve the UR's archived state, got %q", liveMemberFindings[0].Remedy)
+	}
+
+	strandedFindings := findingsMentioning(report, verifyCategoryStrandedFinishedRequest)
+	if len(strandedFindings) != 1 || !strings.Contains(strandedFindings[0].Detail, "REQ-094") {
+		t.Fatalf("terminal review-generated member must remain owned by stranded-finished, got %d findings:\n%s",
+			len(strandedFindings), renderVerifyReport(report))
 	}
 }
 
