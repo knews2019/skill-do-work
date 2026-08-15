@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.15 — Visible Unavailable Hotspot Evidence (2026-08-15)
+
+Hotspot rankings could look complete while silently omitting tracked paths unavailable in the current worktree. Those paths now remain visible without distorting the numeric ranking.
+
+- Separates measured hotspots from sorted unavailable churn-bearing paths
+- Keeps numeric ordering and `topCount` behavior while rendering every unavailable path uncapped
+- Shows known commit counts with `NOT-MEASURED` lines and scores, plus a visible incomplete-ranking warning
+
 ## 0.189.14 — Canonical Maintainer Verification Gate (2026-08-15)
 
 Repository health no longer depends on remembering separate shell and Go commands. One local, export-ignored gate now owns the complete maintainer verification path and its failure contract.

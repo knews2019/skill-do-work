@@ -224,41 +224,62 @@ type hotspotEntry struct {
 	HotspotScore int
 }
 
+// hotspotResult keeps numeric measurements separate from churn-bearing paths
+// whose current worktree contents are unavailable. The latter remain evidence
+// even though they cannot participate in score ordering.
+type hotspotResult struct {
+	MeasuredEntries  []hotspotEntry
+	UnavailablePaths []string
+}
+
 // computeHotspotEntries joins churn touches with current line counts. Size is
 // the MVP complexity proxy; binary files measure zero lines and so score zero.
-func computeHotspotEntries(repoRoot string, report churnReport) ([]hotspotEntry, error) {
-	var hotspotEntries []hotspotEntry
+func computeHotspotEntries(repoRoot string, report churnReport) (hotspotResult, error) {
+	result := hotspotResult{}
 	for touchedPath, touchCount := range report.TouchesByPath {
 		measurement, measureError := measureTrackedFile(repoRoot, touchedPath)
 		if measureError != nil {
-			continue // tracked but unreadable in this worktree — no size, no score
+			result.UnavailablePaths = append(result.UnavailablePaths, touchedPath)
+			continue
 		}
-		hotspotEntries = append(hotspotEntries, hotspotEntry{
+		result.MeasuredEntries = append(result.MeasuredEntries, hotspotEntry{
 			Path:         touchedPath,
 			Touches:      touchCount,
 			Lines:        measurement.Lines,
 			HotspotScore: touchCount * measurement.Lines,
 		})
 	}
-	sort.Slice(hotspotEntries, func(left, right int) bool {
-		if hotspotEntries[left].HotspotScore != hotspotEntries[right].HotspotScore {
-			return hotspotEntries[left].HotspotScore > hotspotEntries[right].HotspotScore
+	sort.Slice(result.MeasuredEntries, func(left, right int) bool {
+		if result.MeasuredEntries[left].HotspotScore != result.MeasuredEntries[right].HotspotScore {
+			return result.MeasuredEntries[left].HotspotScore > result.MeasuredEntries[right].HotspotScore
 		}
-		return hotspotEntries[left].Path < hotspotEntries[right].Path
+		return result.MeasuredEntries[left].Path < result.MeasuredEntries[right].Path
 	})
-	return hotspotEntries, nil
+	sort.Strings(result.UnavailablePaths)
+	return result, nil
 }
 
 // writeHotspotsReport renders the top-N churn × size table.
-func writeHotspotsReport(outputWriter io.Writer, report churnReport, hotspotEntries []hotspotEntry, topCount int) {
+func writeHotspotsReport(outputWriter io.Writer, report churnReport, hotspots hotspotResult, topCount int) {
 	fmt.Fprintf(outputWriter, "## Hotspots — churn × size (since %s)\n\n", report.SinceWindow)
 	writeShallowWarning(outputWriter, report.ShallowClone)
+	if len(hotspots.UnavailablePaths) > 0 {
+		fmt.Fprintf(outputWriter, "> WARNING: numeric hotspot ranking is incomplete — %d churn-bearing tracked path(s) could not be measured.\n\n", len(hotspots.UnavailablePaths))
+	}
 	fmt.Fprintf(outputWriter, "Commits scanned: %d. Score = commits × current lines.\n\n", report.CommitCount)
 	fmt.Fprintf(outputWriter, "| path | commits | lines | score |\n|---|---:|---:|---:|\n")
-	for index, entry := range hotspotEntries {
+	for index, entry := range hotspots.MeasuredEntries {
 		if index >= topCount {
 			break
 		}
 		fmt.Fprintf(outputWriter, "| %s | %d | %d | %d |\n", entry.Path, entry.Touches, entry.Lines, entry.HotspotScore)
+	}
+	if len(hotspots.UnavailablePaths) > 0 {
+		fmt.Fprintf(outputWriter, "\n## NOT-MEASURED — unavailable tracked paths\n\n")
+		fmt.Fprintf(outputWriter, "| path | commits | current lines | score |\n|---|---:|---:|---:|\n")
+		for _, unavailablePath := range hotspots.UnavailablePaths {
+			fmt.Fprintf(outputWriter, "| %s | %d | NOT-MEASURED | NOT-MEASURED |\n",
+				unavailablePath, report.TouchesByPath[unavailablePath])
+		}
 	}
 }

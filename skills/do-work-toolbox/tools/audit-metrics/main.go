@@ -192,9 +192,9 @@ func runHotspotsCommand(args []string) {
 	if computeError != nil {
 		exitOnCommandError("hotspots", computeError)
 	}
-	hotspotEntries, joinError := computeHotspotEntries(resolvedRoot, report)
+	hotspots, joinError := computeHotspotEntries(resolvedRoot, report)
 	if joinError != nil {
 		exitOnCommandError("hotspots", joinError)
 	}
-	writeHotspotsReport(os.Stdout, report, hotspotEntries, *topCount)
+	writeHotspotsReport(os.Stdout, report, hotspots, *topCount)
 }

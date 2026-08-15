@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -199,5 +200,54 @@ func TestChurnExcludedLiveCopySourceKeepsOwnHistory(t *testing.T) {
 	}
 	if _, excludedPresent := report.TouchesByPath["ceremony.md"]; excludedPresent {
 		t.Fatalf("excluded path ceremony.md present in report: %v", report.TouchesByPath)
+	}
+}
+
+// TestHotspotsReportKeepsUnavailableTrackedPathsVisible reproduces the
+// missing-worktree gap through the production compute/render sequence. Numeric
+// rows remain ranked and capped, while every churn-bearing path that cannot be
+// measured stays visible, sorted, and explicitly outside the numeric ranking.
+func TestHotspotsReportKeepsUnavailableTrackedPathsVisible(t *testing.T) {
+	repoRoot := newFixtureRepo(t)
+	writeFixtureFile(t, repoRoot, "measured.md", "one\ntwo\nthree\n")
+	writeFixtureFile(t, repoRoot, "z-missing.md", "zeta\n")
+	writeFixtureFile(t, repoRoot, "a-missing.md", "alpha\n")
+	commitFixtureAll(t, repoRoot, "seed measured and unavailable paths")
+	for _, missingPath := range []string{"z-missing.md", "a-missing.md"} {
+		if removeError := os.Remove(filepath.Join(repoRoot, missingPath)); removeError != nil {
+			t.Fatalf("remove tracked fixture %s: %v", missingPath, removeError)
+		}
+	}
+
+	report, churnError := computeChurnReport(repoRoot, "10 years", nil)
+	if churnError != nil {
+		t.Fatalf("computeChurnReport: %v", churnError)
+	}
+	hotspots, hotspotError := computeHotspotEntries(repoRoot, report)
+	if hotspotError != nil {
+		t.Fatalf("computeHotspotEntries: %v", hotspotError)
+	}
+	var renderedOutput strings.Builder
+	writeHotspotsReport(&renderedOutput, report, hotspots, 1)
+	outputText := renderedOutput.String()
+
+	if !strings.Contains(outputText, "| measured.md | 1 | 3 | 3 |") {
+		t.Fatalf("valid measured hotspot row was lost:\n%s", outputText)
+	}
+	if !strings.Contains(outputText, "numeric hotspot ranking is incomplete") {
+		t.Fatalf("missing incomplete-ranking warning:\n%s", outputText)
+	}
+	aMissingRow := "| a-missing.md | 1 | NOT-MEASURED | NOT-MEASURED |"
+	zMissingRow := "| z-missing.md | 1 | NOT-MEASURED | NOT-MEASURED |"
+	aMissingIndex := strings.Index(outputText, aMissingRow)
+	zMissingIndex := strings.Index(outputText, zMissingRow)
+	if aMissingIndex < 0 || zMissingIndex < 0 {
+		t.Fatalf("unavailable tracked paths missing from NOT-MEASURED rows:\n%s", outputText)
+	}
+	if aMissingIndex >= zMissingIndex {
+		t.Fatalf("unavailable paths are not sorted a→z:\n%s", outputText)
+	}
+	if strings.Contains(outputText, "no such file") {
+		t.Fatalf("hotspot output leaked an OS error instead of stable evidence:\n%s", outputText)
 	}
 }
