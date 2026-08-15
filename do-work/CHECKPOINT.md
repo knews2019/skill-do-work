@@ -1,30 +1,48 @@
 ---
-session_ended: 2026-08-15T14:44:49Z
-last_completed: REQ-196
-queue_state: 4 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
-reqs_processed_this_session: 5
-session_depth: moderate
+session_ended: 2026-08-15T20:57:05Z
+last_completed: REQ-202
+queue_state: 0 pending, 4 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
+reqs_processed_this_session: 11
+session_depth: heavy
 ---
 
 # Session Checkpoint
 
 ## Completed This Session
-- REQ-188: Hotspot output silently drops unavailable tracked paths (Route B, 96%)
-- REQ-193: Keep archived URs closed during standalone review (Route B, 99%)
-- REQ-194: Forward stray REQs through verify and forensics (Route C, 99%)
-- REQ-195: Modularize the framework-free queue board client (Route C, 99%)
-- REQ-196: Remaining late contract assertions use capitalized root Justfile (Route A, 99%)
+
+- REQ-189: Canonicalize ai-report and the shared completed-work evidence contract (Route C, 0.190.0)
+- REQ-190: Reduce present-work to portfolio-only behavior (Route C, 0.191.0)
+- REQ-191: Extract an explicit standalone present-video action (Route C, 0.192.0)
+- REQ-200: Render PNG file mentions as images (Route A, 0.192.1)
+- REQ-192: Migrate completed-work presentation routing documentation and contracts (Route C, 0.193.0)
+- REQ-197: Normalize completed-work presentation target IDs (Route B, 0.193.1; completed-with-issues)
+- REQ-198: Publish generated images only after success (Route B, 0.193.2)
+- REQ-199: Publish the portfolio snapshot before canonical refresh (Route B, 0.193.3)
+- REQ-207: Render HTML file mentions as folder-aware previews (Route B, 0.193.4)
+- REQ-201: Deduplicate completed-work publication mechanics (Route B, 0.193.5)
+- REQ-202: Complete unsafe Remotion preview mutation detection (Route B, 0.193.6)
 
 ## In Progress (interrupted)
 
 ## Still Queued
-- REQ-189: Canonicalize ai-report and the shared completed-work evidence contract (pending)
-- REQ-190: Reduce present-work to portfolio-only behavior (pending)
-- REQ-191: Extract an explicit standalone present-video action (pending; depends on REQ-189)
-- REQ-192: Migrate completed-work presentation routing documentation and contracts (pending; depends on REQ-189, REQ-190, REQ-191)
+
+- REQ-203: Harden presentation target-ID source-seam tests (pending-answers)
+- REQ-204: Harden ai-report generated-batch lifecycle (pending-answers)
+- REQ-205: Make portfolio publication independent and exact (pending-answers)
+- REQ-206: Finish active publication delegation (pending-answers)
 
 ## Session Notes
 
-- REQ-195 established one byte-preserving assembled browser client from a private shell and eight manifest-ordered raw closure fragments; static and live browser characterization remained behaviorally identical.
-- REQ-196 completed UR-041, so its eight earlier audit REQs, input, and captured asset were consolidated under `do-work/archive/UR-041/`; affected prime lesson links were repaired.
-- REQ-189 through REQ-192 each carry pre-existing uncommitted user edits. This run left those bytes untouched and did not claim them because normal completion would fold them into a request commit without clear authorization.
+- Completed-work presentation now has three explicit owners: `ai-report` for detailed visual/non-visual HTML, `present-work` for the cross-project portfolio, and `present-video` for source-only Remotion walkthroughs.
+- Shared target resolution, archive/evidence ingestion, merge-aware current-code proof, collision-safe publication, and optional-image success gating are centralized and regression-tested.
+- The board now previews byte-detected PNGs and folder-scoped active HTML without putting repository scripts on the board's write-capable origin.
+- Canonical maintainer verification passed after the final REQ-202 remediation and release at version 0.193.6.
+- UR-042 remains open because REQ-203 through REQ-206 require explicit consent. Run `do-work clarify` to answer them as a batch.
+
+## Context Summary
+
+- The presentation consolidation's durable map is report → `ai-report`, portfolio → `present-work`, source walkthrough → `present-video`; do not reintroduce broad `present-work` delegation or automatic video behavior.
+- Consumer actions define their preferred output paths and artifact-specific checks, while `completed-work-presentation-reference.md` owns archive/evidence safety and generic collision-safe publication. REQ-206 asks whether to remove the last active consumer paraphrase.
+- Portfolio snapshots publish before the mutable canonical refresh, and optional report images remain private until at least one current non-empty output succeeds. REQ-204 and REQ-205 hold deeper lifecycle and exactness hardening for consent.
+- Review-generated generation-2 findings were not auto-built: REQ-203 through REQ-206 remain `pending-answers` by design.
+- Re-read `_dev/primes/prime-action-files.md`, `_dev/primes/prime-shell-commands.md`, and `_dev/primes/prime-kanban-board.md` before continuing; this heavy session changed all three domains.
