@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.192.0 — Explicit Source-Only Video Walkthroughs (2026-08-15)
+
+Completed work can now be expressed as a deliberate Remotion source walkthrough without making video a hidden side effect of reports, portfolios, or completion. The new action scales its four-scene story to verified evidence and leaves previewing entirely in the user's foreground terminal.
+
+- Adds an explicit-only `present-video` action and guide for completed URs and REQs, with concise successful skips for trivial or genuinely non-visual work
+- Defines a complete Problem → Solution → Architecture → Value React/TypeScript source tree with proportional frame math, module-level registration, and evidence-backed claims
+- Uses a package-local foreground Studio preview command while prohibiting automatic installs, external assets, fixed ports, readiness sleeps, browser launchers, and rendered media
+
 ## 0.191.0 — Portfolio-Only Present Work (2026-08-15)
 
 `present-work` now does one job: turn the successful archive into a cross-project portfolio. Item-specific calls stay non-writing and point directly to the detailed report and video commands instead of quietly generating competing artifacts.
