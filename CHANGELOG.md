@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.5 — Consolidated Archive Lesson Links (2026-08-15)
+
+Closing UR-039 moved its completed requests into their durable UR archive, but two shipped lesson links kept pointing at the old root paths. The links now follow the consolidated archive so reference verification stays green.
+
+- Updated the REQ-173 and REQ-174 lesson URLs in the do-work update prime to include `archive/UR-039/`
+- Restored the shipped-package reference contract after the UR-039 lifecycle move
+
 ## 0.189.4 — Goldmark-Aligned Board Question Fences (2026-08-15)
 
 Open Questions could lose their visual breaks after prose that merely looked like a code fence. The board preprocessor now follows Goldmark's marker-specific info rule, so guidance stays readable without changing real code blocks.
