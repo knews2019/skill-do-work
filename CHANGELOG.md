@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.193.3 — Snapshot-First Portfolio Publication (2026-08-15)
+
+Portfolio preservation now publishes its no-clobber snapshot before refreshing the mutable canonical summary, so snapshot failure leaves the previous canonical bytes untouched.
+
+- Adds one shipped publication helper with canonical-only and snapshot-preserving modes
+- Advances occupied snapshot names with numeric suffixes and retains a published snapshot if the later canonical refresh fails
+- Adds executable branch/failure replay, staged inventory, and canonical primitive contracts; independent-file hardening remains consent-gated
+
 ## 0.193.2 — Success-Gated Report Images (2026-08-15)
 
 Optional AI-report images now remain in invocation-private staging until at least one helper returns a current non-empty result. An all-failed batch falls back cleanly without publishing an empty `generated/` directory.

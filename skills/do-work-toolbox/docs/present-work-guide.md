@@ -54,7 +54,7 @@ Before writing, the workflow explains that the canonical summary will be refresh
 - **Yes** refreshes the canonical file and creates one byte-identical snapshot under `do-work/deliverables/portfolio-snapshots/`.
 - If the question cannot be asked or answered, the workflow uses the safer preservation branch: canonical refresh plus one snapshot.
 
-Snapshot names use a UTC timestamp. A collision selects a new unused suffix; an existing snapshot is never overwritten. The workflow never deletes snapshots automatically.
+Snapshot names use a UTC timestamp. A collision selects a new unused suffix; an existing snapshot is never overwritten. In the preservation branch, the snapshot is published before the canonical refresh. If snapshot publication fails, the prior canonical remains unchanged. If the later canonical refresh fails, the successfully published snapshot is retained and reported. The workflow never deletes snapshots automatically.
 
 A future REQ or Lessons Learned entry may cite a snapshot as durable evidence. That later citation does not authorize this workflow to back-edit archived REQs or lessons; archive records remain immutable.
 

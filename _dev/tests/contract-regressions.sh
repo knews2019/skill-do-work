@@ -668,6 +668,9 @@ for predicate in (
     r"byte-identical",
     r"never delete a snapshot automatically",
     r"never truncate or replace",
+    r"<skill-root>/scripts/publish-portfolio-summary\.sh",
+    r"--canonical-only",
+    r"--with-snapshot",
 ):
     require(present_work, predicate, f"portfolio contract missing /{predicate}/")
 require(
@@ -703,6 +706,17 @@ require_order(
     r"Scan archived UR folders and legacy REQs",
     "present-work must load prompt-injection guidance before scanning archive records",
 )
+require_order(
+    present_work,
+    r"snapshot[^\n]*success",
+    r"atomically refresh[^\n]*canonical[^\n]*same bytes",
+    "present-work snapshot branch must publish successfully before canonical refresh",
+)
+reject(
+    present_work,
+    r"(?i)(?:write|refresh)[^\n]{0,100}canonical[^\n]{0,180}(?:then|before)[^\n]{0,100}(?:publish|create)[^\n]{0,80}snapshot",
+    "present-work must not prescribe canonical-first snapshot publication",
+)
 for retired_workflow_token in (
     r"\bDetail Mode\b",
     r"\bInteractive Explainer\b",
@@ -724,6 +738,9 @@ for predicate in (
     r"never deletes snapshots automatically",
     r"future REQ.*Lessons Learned.*cite a snapshot",
     r"does not authorize.*back-edit archived REQs or lessons",
+    r"snapshot[^\n]*before[^\n]*canonical",
+    r"snapshot publication fails[^\n]*prior canonical[^\n]*unchanged",
+    r"canonical refresh fails[^\n]*snapshot[^\n]*retained",
 ):
     require("skills/do-work-toolbox/docs/present-work-guide.md", predicate, f"portfolio guide missing /{predicate}/")
 

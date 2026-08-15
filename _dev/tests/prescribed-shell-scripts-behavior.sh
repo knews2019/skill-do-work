@@ -203,6 +203,97 @@ else
   printf '%s' "$manual_output" | grep -q 'MANUAL STEP' || fail_case 'install-memory-hooks no-jq case omitted manual status'
 fi
 
+portfolio_root="$fixture_root/portfolio"
+mkdir -p "$portfolio_root/deliverables/portfolio-snapshots"
+portfolio_source="$portfolio_root/retained-summary.md"
+portfolio_canonical="$portfolio_root/deliverables/portfolio-summary.md"
+portfolio_candidate="$portfolio_root/deliverables/portfolio-snapshots/portfolio-summary-20260815T120000Z.md"
+printf 'new portfolio bytes\n' > "$portfolio_source"
+
+# publish-portfolio-summary: canonical-only publication atomically refreshes only
+# the canonical path and retains the source used for publication.
+printf 'old canonical\n' > "$portfolio_canonical"
+portfolio_canonical_output="$($toolbox_scripts/publish-portfolio-summary.sh --canonical-only "$portfolio_source" "$portfolio_canonical" 2>/dev/null)" \
+  || fail_case 'publish-portfolio-summary canonical-only case returned nonzero'
+cmp -s "$portfolio_source" "$portfolio_canonical" \
+  || fail_case 'publish-portfolio-summary canonical-only case changed the retained bytes'
+[ -f "$portfolio_source" ] \
+  || fail_case 'publish-portfolio-summary canonical-only case consumed the retained source'
+[ "$portfolio_canonical_output" = "$portfolio_canonical" ] \
+  || fail_case 'publish-portfolio-summary canonical-only case did not report the canonical path'
+find "$portfolio_root/deliverables/portfolio-snapshots" -type f -print -quit | grep -q . \
+  && fail_case 'publish-portfolio-summary canonical-only case created a snapshot'
+
+# publish-portfolio-summary: the preservation branch publishes a snapshot first,
+# then refreshes canonical from the same private verified inode.
+printf 'prior canonical\n' > "$portfolio_canonical"
+portfolio_snapshot_output="$($toolbox_scripts/publish-portfolio-summary.sh --with-snapshot "$portfolio_source" "$portfolio_canonical" "$portfolio_candidate" 2>/dev/null)" \
+  || fail_case 'publish-portfolio-summary snapshot-success case returned nonzero'
+[ "$portfolio_snapshot_output" = "$(printf '%s\n%s' "$portfolio_canonical" "$portfolio_candidate")" ] \
+  || fail_case 'publish-portfolio-summary snapshot-success case did not report both published paths'
+cmp -s "$portfolio_source" "$portfolio_candidate" && cmp -s "$portfolio_source" "$portfolio_canonical" \
+  || fail_case 'publish-portfolio-summary snapshot-success case did not preserve byte identity'
+[ "$portfolio_candidate" -ef "$portfolio_canonical" ] \
+  || fail_case 'publish-portfolio-summary snapshot-success case did not publish both paths from the same private bytes'
+
+# publish-portfolio-summary: an occupied candidate remains immutable and advances
+# to the first numeric suffix without cleaning any prior snapshot.
+portfolio_collision_candidate="$portfolio_root/deliverables/portfolio-snapshots/portfolio-summary-20260815T130000Z.md"
+portfolio_collision_suffix="$portfolio_root/deliverables/portfolio-snapshots/portfolio-summary-20260815T130000Z-2.md"
+printf 'occupied collision\n' > "$portfolio_collision_candidate"
+portfolio_collision_output="$($toolbox_scripts/publish-portfolio-summary.sh --with-snapshot "$portfolio_source" "$portfolio_canonical" "$portfolio_collision_candidate" 2>/dev/null)" \
+  || fail_case 'publish-portfolio-summary collision case returned nonzero'
+[ "$(cat "$portfolio_collision_candidate")" = 'occupied collision' ] \
+  || fail_case 'publish-portfolio-summary collision case changed the occupant'
+cmp -s "$portfolio_source" "$portfolio_collision_suffix" \
+  || fail_case 'publish-portfolio-summary collision case did not publish the numeric suffix'
+[ "$portfolio_collision_output" = "$(printf '%s\n%s' "$portfolio_canonical" "$portfolio_collision_suffix")" ] \
+  || fail_case 'publish-portfolio-summary collision case reported the wrong suffix'
+[ "$(cat "$portfolio_candidate")" = 'new portfolio bytes' ] \
+  || fail_case 'publish-portfolio-summary collision case cleaned an unrelated prior snapshot'
+
+# publish-portfolio-summary: exclusive snapshot failure leaves the prior canonical
+# unchanged and never leaks the private verified copy.
+portfolio_ln_failure_bin="$fixture_root/portfolio-ln-failure-bin"
+mkdir -p "$portfolio_ln_failure_bin"
+printf '%s\n' '#!/usr/bin/env bash' 'exit 1' > "$portfolio_ln_failure_bin/ln"
+chmod +x "$portfolio_ln_failure_bin/ln"
+portfolio_failure_candidate="$portfolio_root/deliverables/portfolio-snapshots/portfolio-summary-20260815T140000Z.md"
+printf 'stable before snapshot failure\n' > "$portfolio_canonical"
+PATH="$portfolio_ln_failure_bin:$PATH" \
+  "$toolbox_scripts/publish-portfolio-summary.sh" --with-snapshot "$portfolio_source" "$portfolio_canonical" "$portfolio_failure_candidate" >/dev/null 2>&1 \
+  && fail_case 'publish-portfolio-summary snapshot-failure case returned success'
+[ "$(cat "$portfolio_canonical")" = 'stable before snapshot failure' ] \
+  || fail_case 'publish-portfolio-summary snapshot-failure case changed the prior canonical'
+[ ! -e "$portfolio_failure_candidate" ] \
+  || fail_case 'publish-portfolio-summary snapshot-failure case left a published snapshot'
+find "$portfolio_root/deliverables" -name '.portfolio-summary.md.publishing.*' -print -quit | grep -q . \
+  && fail_case 'publish-portfolio-summary snapshot-failure case leaked private bytes'
+
+# publish-portfolio-summary: a later canonical replacement failure retains the
+# already-published snapshot while preserving the prior canonical.
+portfolio_mv_failure_bin="$fixture_root/portfolio-mv-failure-bin"
+mkdir -p "$portfolio_mv_failure_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'if [ "$2" = "$PORTFOLIO_FAIL_CANONICAL" ]; then exit 1; fi' \
+  'exec "$PORTFOLIO_REAL_MV" "$@"' \
+  > "$portfolio_mv_failure_bin/mv"
+chmod +x "$portfolio_mv_failure_bin/mv"
+portfolio_late_failure_candidate="$portfolio_root/deliverables/portfolio-snapshots/portfolio-summary-20260815T150000Z.md"
+printf 'stable before canonical failure\n' > "$portfolio_canonical"
+PORTFOLIO_FAIL_CANONICAL="$portfolio_canonical" \
+PORTFOLIO_REAL_MV="$(command -v mv)" \
+PATH="$portfolio_mv_failure_bin:$PATH" \
+  "$toolbox_scripts/publish-portfolio-summary.sh" --with-snapshot "$portfolio_source" "$portfolio_canonical" "$portfolio_late_failure_candidate" >/dev/null 2>&1 \
+  && fail_case 'publish-portfolio-summary canonical-failure case returned success'
+[ "$(cat "$portfolio_canonical")" = 'stable before canonical failure' ] \
+  || fail_case 'publish-portfolio-summary canonical-failure case changed the prior canonical'
+cmp -s "$portfolio_source" "$portfolio_late_failure_candidate" \
+  || fail_case 'publish-portfolio-summary canonical-failure case did not retain the published snapshot'
+find "$portfolio_root/deliverables" -name '.portfolio-summary.md.publishing.*' -print -quit | grep -q . \
+  && fail_case 'publish-portfolio-summary canonical-failure case leaked private bytes'
+
 # generate-report-image: a direct backend receives inert prompt text and publishes
 # from a private adjacent path only after success.
 image_bin="$fixture_root/image-bin"
@@ -505,4 +596,4 @@ find "$backup_interrupt_project/.claude/skills" -name '.last30days.*' -print -qu
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
-printf 'Prescribed shell script behavior probes passed (22 named script cases).\n'
+printf 'Prescribed shell script behavior probes passed (27 named script cases).\n'

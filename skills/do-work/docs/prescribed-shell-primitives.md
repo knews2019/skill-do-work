@@ -16,6 +16,7 @@ This is the canonical shipped rationale and executable-home contract for shell u
 | `../do-work-knowledge/scripts/lexical-memory-recall.sh` | Query sanitization, lexical ranking, and attribution |
 | `../do-work-knowledge/scripts/install-memory-hooks.sh` | Independent hook merge, verification, and rollback |
 | `../do-work-toolbox/scripts/generate-report-image.sh` | Backend selection, invocation-private adjacent publication, and exact opt-in agentic scratch |
+| `../do-work-toolbox/scripts/publish-portfolio-summary.sh` | Verified single-source canonical refresh and snapshot-first exclusive publication |
 | `../do-work-toolbox/scripts/install-last30days.sh` | Complete-payload validation and transactional project-local publication/repair |
 
 `tools/install-do-work-suite.sh` remains self-contained because it is the bootstrap that installs these packages. Atomic REQ reservation remains owned only by the board package's Go tool; it has no shell twin.
@@ -66,6 +67,12 @@ scripts/atomic-download.sh "$source_url" "$target_path"
 ```
 
 Cleanup never converts a failed download into success. When review occurs between download and publication, later command blocks must re-derive the deterministic reviewed path and verify it exists; they must not silently download again.
+
+## Portfolio summary publication
+
+Invoke `../do-work-toolbox/scripts/publish-portfolio-summary.sh` with one retained source and the action-selected mode. The helper copies and verifies that source into a private file adjacent to the canonical target. `--canonical-only` atomically replaces only the canonical file. `--with-snapshot` first hard-links that private verified file to an exclusive snapshot candidate, advances occupied candidates with numeric suffixes, and only then atomically replaces the canonical file from the same bytes.
+
+An exclusive snapshot failure leaves the prior canonical unchanged. A later canonical replacement failure leaves the new snapshot published and reports that partial outcome. Existing snapshots are never truncated, replaced, or automatically removed.
 
 ## Raw text before shell quoting
 
