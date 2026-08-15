@@ -1,6 +1,6 @@
 # Completed-Work Presentation Reference
 
-> **Part of the do-work-toolbox skill.** Shared contract for actions that present one completed UR or REQ. It belongs in toolbox because `ai-report` owns detailed stakeholder reports here and the future completed-work video action consumes the same archive evidence without reimplementing its safety and resolution rules.
+> **Part of the do-work-toolbox skill.** Shared contract for actions that present one completed UR or REQ. It belongs in toolbox because `ai-report` owns detailed stakeholder reports and `present-video` owns source-only animated walkthroughs while both consume the same archive evidence without reimplementing safety and resolution rules.
 
 This file owns completed-work target resolution, safe archive ingestion, evidence provenance, and collision-safe publication. Presentation actions point here instead of copying these mechanics.
 

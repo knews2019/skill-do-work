@@ -70,7 +70,7 @@ For each confirmed REQ:
    - **Previously:** failed[ (`error_type: <type>`)][ — failed at <original completed_at>] — resolved by decision not to retry
    ```
 
-   Include the **Previously** line **only** when the prior status was `failed`; omit it entirely for an ordinary cancellation. Fill the bracketed clauses by presence: include `(`error_type: <type>`)` only if that field was set (never invent one); and for the failure instant, if `completed_at` was set write `— failed at <original completed_at>`, otherwise write the literal `— failure instant unrecorded` (one treatment, not a choice — never guess a timestamp). The line, together with whatever `error`/`error_type` frontmatter is retained, preserves the failure signal for body-reading tools (review, ai-report, present-work) that don't surface frontmatter.
+   Include the **Previously** line **only** when the prior status was `failed`; omit it entirely for an ordinary cancellation. Fill the bracketed clauses by presence: include `(`error_type: <type>`)` only if that field was set (never invent one); and for the failure instant, if `completed_at` was set write `— failed at <original completed_at>`, otherwise write the literal `— failure instant unrecorded` (one treatment, not a choice — never guess a timestamp). The line, together with whatever `error`/`error_type` frontmatter is retained, preserves the failure signal for body-reading tools such as review and completed-work presentation actions that do not surface frontmatter.
 
 Always write the canonical value `cancelled` — never `canceled`, `abandoned`, or `wont-do` (those are read-side aliases only; write paths emit canonical values per the Schema Read Contract).
 

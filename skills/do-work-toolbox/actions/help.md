@@ -9,8 +9,9 @@ do-work-toolbox — reviews, reports, discovery, and repository utilities
   code-review [scope]            Standalone codebase review
   maintainability-audit [scope]  Measured maintainability audit with calibrated bands
   ui-review [scope]              Read-only UI quality review
-  present-work [REQ|UR]          Client-facing implementation brief
-  ai-report [REQ|UR]             Screenshot-anchored visual report
+  ai-report [REQ|UR]             Detailed stakeholder HTML for one completed item
+  present-work all|portfolio     Refresh the cross-project portfolio
+  present-video [REQ|UR]         Source-only Remotion video walkthrough
   slop-check [target]            Validate a draft against anti-slop principles
   quick-wins [dir]               Grounded refactor/test opportunities
   scan-ideas [focus]             Ideas for what to build next

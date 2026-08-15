@@ -56,6 +56,8 @@ Before writing, the workflow explains that the canonical summary will be refresh
 
 Snapshot names use a UTC timestamp. A collision selects a new unused suffix; an existing snapshot is never overwritten. The workflow never deletes snapshots automatically.
 
+A future REQ or Lessons Learned entry may cite a snapshot as durable evidence. That later citation does not authorize this workflow to back-edit archived REQs or lessons; archive records remain immutable.
+
 ## Preservation Boundary
 
 The canonical portfolio summary is the only existing artifact this action intentionally refreshes. Prior snapshots and every other generated artifact remain unchanged. `present-work` does not create per-item briefs, stakeholder-facing HTML, `.single.html` explainers, video directories, or video artifacts. Removal of prior artifacts requires a later explicit user-approved cleanup.

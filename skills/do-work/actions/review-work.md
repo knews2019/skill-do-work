@@ -233,7 +233,7 @@ Nit findings carry zero weight on the overall score — they're stylistic sugges
 
 ### Step 9: Report
 
-Load `crew-members/anti-slop.md` before composing the report — the review output is a human-facing artifact and falls under those principles, especially **§ 8: lead with the decision/verdict in words, demote the self-grade**. Shape the report as the **Decision Brief** (`actions/work-reference.md` → **Decision Brief (hand-back format)**): the worded verdict and what's-built first; the score table on the record, below. **This restructures only the human-facing report** — the persisted `## Review` block (see **Append to REQ File**) keeps `Overall: [X]%` first, because `../do-work-toolbox/actions/present-work.md` parses it for the score.
+Load `crew-members/anti-slop.md` before composing the report — the review output is a human-facing artifact and falls under those principles, especially **§ 8: lead with the decision/verdict in words, demote the self-grade**. Shape the report as the **Decision Brief** (`actions/work-reference.md` → **Decision Brief (hand-back format)**): the worded verdict and what's-built first; the score table on the record, below. **This restructures only the human-facing report** — the persisted `## Review` block (see **Append to REQ File**) keeps `Overall: [X]%` first as the stable review record. Presentation actions consume archive evidence under their own contracts; this review format does not delegate artifact ownership to them.
 
 **Orchestrated mode:** Report to actions/work.md orchestrator (which reports to the user).
 **Standalone mode:** Report directly to the user.

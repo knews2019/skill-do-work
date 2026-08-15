@@ -131,6 +131,7 @@ toolbox_actions=(
   ui-review
   present-work
   ai-report
+  present-video
   slop-check
   quick-wins
   scan-ideas
@@ -147,10 +148,12 @@ toolbox_actions=(
 toolbox_files=(
   skills/do-work-toolbox/SKILL.md
   skills/do-work-toolbox/actions/help.md
+  skills/do-work-toolbox/actions/completed-work-presentation-reference.md
   skills/do-work-toolbox/actions/ai-report-reference.md
   skills/do-work-toolbox/actions/deep-explore-reference.md
   skills/do-work-toolbox/docs/code-review-guide.md
   skills/do-work-toolbox/docs/present-work-guide.md
+  skills/do-work-toolbox/docs/present-video-guide.md
   skills/do-work-toolbox/crew-members/ui-design.md
 )
 
@@ -275,7 +278,7 @@ approved_prompt = """Use the installed do-work suite to complete this request en
 1. Use do-work to capture the request below and record the resulting UR ID.
 2. Run do-work verify-requests for that UR. Stop and report if verification fails.
 3. Run the UR's REQs through do-work run. Require its built-in tests and review to pass.
-4. Use do-work-toolbox present-work for the same UR.
+4. Use do-work-toolbox ai-report for the same UR.
 5. Report the implementation, tests, decisions, and deliverable paths.
 
 Request:

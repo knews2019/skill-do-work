@@ -17,7 +17,7 @@ resolve_runtime_file() {
     actions/board.md|docs/board-guide.md) printf '%s/%s\n' "$board_root" "$relative_path" ;;
     actions/bkb*|actions/dream.md|actions/interview*|actions/memory*|actions/prompts.md|actions/setup-memory.md|docs/bkb-guide.md|docs/dream-guide.md|docs/interview-guide.md|docs/prompts-guide.md|prompts/*|interviews/*|hooks/memory-*)
       printf '%s/%s\n' "$knowledge_root" "$relative_path" ;;
-    actions/ai-report*|actions/code-review.md|actions/deep-explore*|actions/inspect.md|actions/install.md|actions/note.md|actions/present-work.md|actions/prime.md|actions/quick-wins.md|actions/scan-ideas.md|actions/slop-check.md|actions/stray-check.md|actions/tidy-repo.md|actions/tutorial.md|actions/ui-review.md|actions/validate-feedback.md|docs/ai-report-guide.md|docs/code-review-guide.md|docs/inspect-guide.md|docs/present-work-guide.md|docs/prime-guide.md|docs/quick-wins-guide.md|docs/slop-check-guide.md|docs/stray-check-guide.md|docs/ui-review-guide.md)
+    actions/ai-report*|actions/code-review.md|actions/completed-work-presentation-reference.md|actions/deep-explore*|actions/inspect.md|actions/install.md|actions/note.md|actions/present-video.md|actions/present-work.md|actions/prime.md|actions/quick-wins.md|actions/scan-ideas.md|actions/slop-check.md|actions/stray-check.md|actions/tidy-repo.md|actions/tutorial.md|actions/ui-review.md|actions/validate-feedback.md|docs/ai-report-guide.md|docs/code-review-guide.md|docs/inspect-guide.md|docs/present-video-guide.md|docs/present-work-guide.md|docs/prime-guide.md|docs/quick-wins-guide.md|docs/slop-check-guide.md|docs/stray-check-guide.md|docs/ui-review-guide.md)
       printf '%s/%s\n' "$toolbox_root" "$relative_path" ;;
     actions/*|crew-members/*|docs/*|hooks/*|scripts/*|specs/*|tools/checks/*|tools/do-work-update.sh|tools/prime-do-work-update.md)
       printf '%s/%s\n' "$core_root" "$relative_path" ;;
@@ -392,7 +392,7 @@ approved_prompt = """Use the installed do-work suite to complete this request en
 1. Use do-work to capture the request below and record the resulting UR ID.
 2. Run do-work verify-requests for that UR. Stop and report if verification fails.
 3. Run the UR's REQs through do-work run. Require its built-in tests and review to pass.
-4. Use do-work-toolbox present-work for the same UR.
+4. Use do-work-toolbox ai-report for the same UR.
 5. Report the implementation, tests, decisions, and deliverable paths.
 
 Request:
@@ -403,6 +403,321 @@ if missing:
 PY
 then
   printf 'FAIL: README and core help must carry the approved UR-031 full-cycle prompt byte-for-byte.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
+# Presentation routing has three non-overlapping owners. Keep the public router,
+# discovery surfaces, caller guidance, shared mechanics, and the three action
+# contracts aligned without snapshotting decorative prose (REQ-192).
+if ! python3 - "$repo_root" <<'PY'
+import pathlib
+import re
+import sys
+
+root = pathlib.Path(sys.argv[1])
+failures = []
+
+def text(relative_path):
+    return (root / relative_path).read_text()
+
+def require(relative_path, pattern, message, flags=re.IGNORECASE | re.MULTILINE):
+    if not re.search(pattern, text(relative_path), flags):
+        failures.append(f"{relative_path}: {message}")
+
+def reject(relative_path, pattern, message, flags=re.IGNORECASE | re.MULTILINE):
+    if re.search(pattern, text(relative_path), flags):
+        failures.append(f"{relative_path}: {message}")
+
+def require_order(relative_path, earlier_pattern, later_pattern, message):
+    source = text(relative_path)
+    earlier = re.search(earlier_pattern, source, re.IGNORECASE | re.MULTILINE)
+    later = re.search(later_pattern, source, re.IGNORECASE | re.MULTILINE)
+    if not earlier or not later:
+        missing = []
+        if not earlier:
+            missing.append(f"earlier predicate /{earlier_pattern}/")
+        if not later:
+            missing.append(f"later predicate /{later_pattern}/")
+        failures.append(f"{relative_path}: {message}; missing " + " and ".join(missing))
+    elif earlier.start() >= later.start():
+        failures.append(f"{relative_path}: {message}; required load appears after the guarded read")
+
+def executable_markdown_segments(relative_path):
+    """Return fenced/inline/command-like text, excluding negative prose outside fences."""
+    source = text(relative_path)
+    segments = []
+    in_fence = False
+    fence_marker = ""
+    fence_start = 0
+    fence_lines = []
+    prohibition = re.compile(r"\b(?:do not|don't|never|must not|does not|without|forbid|reject|avoid)\b", re.IGNORECASE)
+    command_signal = re.compile(
+        r"--no-open|\bremotion\b|\bnpm\s+run\b|\bsleep\b|"
+        r"https?://(?:localhost|127\.0\.0\.1):\d+|\bopen\s+https?://|[\"']render[\"']\s*:",
+        re.IGNORECASE,
+    )
+
+    for line_number, line in enumerate(source.splitlines(), start=1):
+        fence = re.match(r"^\s*(```|~~~)", line)
+        if fence:
+            marker = fence.group(1)
+            if not in_fence:
+                in_fence = True
+                fence_marker = marker
+                fence_start = line_number + 1
+                fence_lines = []
+            elif marker == fence_marker:
+                segments.append((f"fenced code lines {fence_start}-{line_number - 1}", "\n".join(fence_lines)))
+                in_fence = False
+                fence_marker = ""
+                fence_lines = []
+            continue
+        if in_fence:
+            fence_lines.append(line)
+            continue
+        if prohibition.search(line):
+            continue
+        for inline_number, inline in enumerate(re.findall(r"`([^`\n]+)`", line), start=1):
+            segments.append((f"line {line_number} inline code {inline_number}", inline))
+        if command_signal.search(line):
+            segments.append((f"line {line_number} command-like prose", line))
+
+    return segments
+
+def reject_executable_video_forms(relative_path):
+    unsafe_forms = (
+        ("--no-open option", r"(?<![\w-])--no-open(?![\w-])"),
+        ("backgrounded Studio/preview command", r"(?:\bremotion\s+studio\b|\bnpm\s+run\s+preview\b)[^\n]*(?<!&)&(?!&)"),
+        ("background operator chained to sleep", r"(?<!&)&(?!&)[ \t]*(?:;|\n)?[ \t]*sleep\b"),
+        ("numeric readiness sleep", r"(?m)(?:^|[;&|]\s*)sleep\s+\d+(?:\.\d+)?s?\b"),
+        ("fixed localhost preview URL", r"https?://(?:localhost|127\.0\.0\.1):\d+"),
+        ("platform shell opener", r"(?m)(?:^|[;&|]\s*)open\s+https?://"),
+        ("Remotion render command", r"\b(?:npx\s+)?remotion\s+render\b"),
+        ("package render script", r"[\"']render[\"']\s*:"),
+    )
+    for location, segment in executable_markdown_segments(relative_path):
+        for label, pattern in unsafe_forms:
+            if re.search(pattern, segment, re.IGNORECASE):
+                failures.append(f"{relative_path}: executable {label} remains in {location}: {segment!r}")
+
+toolbox_skill = text("skills/do-work-toolbox/SKILL.md")
+routing = toolbox_skill.split("## Routing", 1)[1].split("## Dispatch", 1)[0]
+route_rows = {}
+for line in routing.splitlines():
+    match = re.match(r"^\|\s*(.*?)\s*\|\s*`(\./actions/[^`]+)`\s*\|$", line)
+    if not match:
+        continue
+    triggers = tuple(re.findall(r"`([^`]+)`", match.group(1)))
+    route_rows[match.group(2)] = triggers
+
+expected_routes = {
+    "./actions/ai-report.md": ("ai-report", "showcase", "visual report", "proof of work"),
+    "./actions/present-work.md": ("present-work", "portfolio", "work portfolio"),
+    "./actions/present-video.md": ("present-video", "remotion", "video walkthrough"),
+}
+for route, triggers in expected_routes.items():
+    if route_rows.get(route) != triggers:
+        failures.append(f"skills/do-work-toolbox/SKILL.md: {route} owns {route_rows.get(route)!r}, expected {triggers!r}")
+
+retired_triggers = {
+    trigger.casefold()
+    for triggers in route_rows.values()
+    for trigger in triggers
+    if trigger.casefold() in {"present", "client brief"}
+}
+if retired_triggers:
+    failures.append("skills/do-work-toolbox/SKILL.md: broad presentation triggers remain: " + ", ".join(sorted(retired_triggers)))
+
+hint = re.search(r'^argument-hint:\s*"([^"]+)"', toolbox_skill, re.MULTILINE)
+hint_commands = {part.strip() for part in hint.group(1).split("|")} if hint else set()
+for command in ("ai-report", "present-work", "present-video"):
+    if command not in hint_commands:
+        failures.append(f"skills/do-work-toolbox/SKILL.md: argument-hint omits {command}")
+
+public_contracts = {
+    "skills/do-work-toolbox/actions/help.md": (
+        r"ai-report\s+\[REQ\|UR\].*detailed.*stakeholder.*HTML",
+        r"present-work\s+(?:all\|portfolio|\[all\|portfolio\]).*portfolio",
+        r"present-video\s+\[REQ\|UR\].*(?:source-only|Remotion).*walkthrough",
+    ),
+    "README.md": (
+        r"do-work-toolbox ai-report for the same UR",
+        r"do-work-toolbox ai-report",
+        r"do-work-toolbox present-work (?:all|portfolio)",
+        r"do-work-toolbox present-video",
+    ),
+    "skills/do-work/actions/help.md": (
+        r"do-work-toolbox[\s\S]{0,350}present-video",
+        r"do-work-toolbox ai-report for the same UR",
+    ),
+    "skills/do-work-toolbox/actions/tutorial.md": (
+        r"full cycle[\s\S]{0,500}do-work-toolbox ai-report UR-NNN",
+        r"Work is done.*[\s\S]{0,250}do-work-toolbox ai-report",
+        r"portfolio[\s\S]{0,180}do-work-toolbox present-work (?:all|portfolio)",
+        r"video walkthrough[\s\S]{0,180}do-work-toolbox present-video (?:REQ|UR)-NNN",
+    ),
+}
+for relative_path, patterns in public_contracts.items():
+    for pattern in patterns:
+        require(relative_path, pattern, f"missing presentation discovery predicate /{pattern}/")
+
+for relative_path in (
+    "skills/do-work/crew-members/prompt-injection.md",
+    "skills/do-work-knowledge/crew-members/prompt-injection.md",
+    "skills/do-work-toolbox/crew-members/prompt-injection.md",
+):
+    require(relative_path, r"condition.*(?:contract|boundary)", "JIT caller rule must lead with the ingestion condition")
+    require(relative_path, r"illustrative|not exhaustive", "JIT caller examples must be explicitly illustrative")
+    require(relative_path, r"completed-work-presentation-reference\.md", "completed-work presentation readers must point to the shared safety reader")
+
+for relative_path in (
+    "skills/do-work/crew-members/anti-slop.md",
+    "skills/do-work-knowledge/crew-members/anti-slop.md",
+    "skills/do-work-toolbox/crew-members/anti-slop.md",
+):
+    require(relative_path, r"condition.*contract", "human-facing artifact condition must remain the JIT trigger")
+    require(relative_path, r"illustrative", "anti-slop callers must remain illustrative")
+    for action in ("ai-report", "present-work", "present-video"):
+        require(relative_path, rf"\b{action}\b", f"anti-slop examples omit {action}")
+    reject(relative_path, r"client briefs, video scripts, and HTML explainers in present-work", "retired presentation artifact family remains")
+
+require("skills/do-work-toolbox/actions/completed-work-presentation-reference.md", r"ai-report.*present-video", "shared reference must name both current item-level consumers")
+reject("skills/do-work-toolbox/actions/completed-work-presentation-reference.md", r"future completed-work video", "shared reference still describes present-video as future")
+for predicate in (r"completed-with-issues", r"Reject `cancelled`, `failed`", r"prompt-injection\.md", r"never delete, truncate, merge into, or overwrite"):
+    require("skills/do-work-toolbox/actions/completed-work-presentation-reference.md", predicate, f"shared reader missing /{predicate}/")
+
+require("skills/do-work-toolbox/actions/ai-report.md", r"only action that produces detailed stakeholder-facing HTML", "ai-report must retain detailed HTML ownership")
+for predicate in (
+    r"real screenshots",
+    r"SVG callouts",
+    r"authentic before/after",
+    r"full-page screenshots in both light and dark",
+    r"UI captures were not expected for this work",
+    r"Never fabricate a screenshot",
+):
+    require("skills/do-work-toolbox/actions/ai-report.md", predicate, f"detailed report evidence contract missing /{predicate}/")
+require(
+    "skills/do-work-toolbox/actions/ai-report.md",
+    r"must not create[^\n]*\ba video\b[^\n]*automatic video behavior",
+    "ai-report must forbid both video output and automatic video behavior",
+)
+require_order(
+    "skills/do-work-toolbox/actions/ai-report.md",
+    r"Read and follow \[`completed-work-presentation-reference\.md`\].*in full \*\*before opening archived user content\*\*",
+    r"Build the reference's provenance ledger",
+    "ai-report must load the shared completed-work reference before using archived evidence",
+)
+
+present_work = "skills/do-work-toolbox/actions/present-work.md"
+for predicate in (
+    r"Only the exact writing arguments `all` and `portfolio`",
+    r"Blank input:[\s\S]{0,180}Usage: do-work-toolbox present-work all\|portfolio",
+    r"One `UR-NNN` or `REQ-NNN` token[\s\S]{0,260}ai-report <ID>[\s\S]{0,160}present-video <ID>",
+    r"Do not delegate them to another action",
+    r"No.*canonical-only",
+    r"Yes.*canonical-plus-snapshot",
+    r"unavailable.*canonical-plus-snapshot",
+    r"byte-identical",
+    r"never delete a snapshot automatically",
+    r"never truncate or replace",
+):
+    require(present_work, predicate, f"portfolio contract missing /{predicate}/")
+require_order(
+    present_work,
+    r"read `\.\./\.\./do-work/crew-members/prompt-injection\.md`",
+    r"Scan archived UR folders and legacy REQs",
+    "present-work must load prompt-injection guidance before scanning archive records",
+)
+for retired_workflow_token in (
+    r"\bDetail Mode\b",
+    r"\bInteractive Explainer\b",
+    r"\bclient brief\b",
+    r"\bsibling-link\b",
+    r"\bdetail-depth\b",
+    r"--with-video",
+):
+    reject(present_work, retired_workflow_token, f"retired present-work workflow token remains /{retired_workflow_token}/")
+
+for predicate in (
+    r"only writing forms are `all` and `portfolio`",
+    r"bare invocation.*writes nothing",
+    r"item-specific invocation.*writes nothing",
+    r"does not silently delegate",
+    r"No.*only",
+    r"Yes.*byte-identical snapshot",
+    r"cannot be asked or answered.*safer preservation branch",
+    r"never deletes snapshots automatically",
+    r"future REQ.*Lessons Learned.*cite a snapshot",
+    r"does not authorize.*back-edit archived REQs or lessons",
+):
+    require("skills/do-work-toolbox/docs/present-work-guide.md", predicate, f"portfolio guide missing /{predicate}/")
+
+present_video = "skills/do-work-toolbox/actions/present-video.md"
+for predicate in (
+    r"source-only",
+    r"explicit.*present-video.*Remotion.*video walkthrough",
+    r"package\.json[\s\S]{0,220}tsconfig\.json[\s\S]{0,220}Root\.tsx[\s\S]{0,220}Video\.tsx[\s\S]{0,300}ProblemScene\.tsx[\s\S]{0,220}ValueScene\.tsx",
+    r"registerRoot\(RemotionRoot\)",
+    r'"preview": "remotion studio src/Root\.tsx"',
+    r"Do not install dependencies",
+    r"never renders media",
+):
+    require(present_video, predicate, f"source-only video contract missing /{predicate}/")
+require_order(
+    present_video,
+    r"Read and follow \[`completed-work-presentation-reference\.md`\].*in full \*\*before opening archived user content\*\*",
+    r"Build the reference's provenance ledger",
+    "present-video must load the shared completed-work reference before using archived evidence",
+)
+for video_surface in (
+    present_video,
+    "skills/do-work-toolbox/docs/present-video-guide.md",
+):
+    reject_executable_video_forms(video_surface)
+require(present_video, r"Never invoke it from `ai-report`, `present-work`, a completion flow", "video action must remain explicit rather than automatic")
+require(present_work, r"does not produce per-item briefs.*stakeholder HTML.*video", "portfolio action must reject item-level report and video artifacts")
+
+reject("skills/do-work/actions/review-work.md", r"present-work\.md` parses it for the score", "review still claims portfolio parses a persisted score")
+for relative_path in (
+    "skills/do-work/actions/capture.md",
+    "skills/do-work/actions/work.md",
+    "skills/do-work/actions/work-reference.md",
+    "skills/do-work/actions/abandon.md",
+):
+    require(relative_path, r"presentation action|completed-work-presentation-reference", "terminal-success caller guidance must cover the shared presentation family")
+
+retired_patterns = (
+    r"Detail Mode",
+    r"(?<!non-)Interactive Explainer",
+    r"client brief",
+    r"--with-video",
+    r"--no-open\s*&",
+    r"localhost:3000",
+    r"remotion render",
+)
+live_presentation_surfaces = (
+    "README.md",
+    "skills/do-work-toolbox/SKILL.md",
+    "skills/do-work-toolbox/actions/help.md",
+    "skills/do-work-toolbox/actions/tutorial.md",
+    "skills/do-work-toolbox/actions/completed-work-presentation-reference.md",
+    "skills/do-work-toolbox/docs/present-work-guide.md",
+    "skills/do-work/actions/help.md",
+    "skills/do-work/actions/capture.md",
+    "skills/do-work/actions/review-work.md",
+    "skills/do-work/actions/work.md",
+    "skills/do-work/actions/work-reference.md",
+    "skills/do-work/actions/abandon.md",
+)
+for relative_path in live_presentation_surfaces:
+    for pattern in retired_patterns:
+        reject(relative_path, pattern, f"retired or unsafe presentation contract remains /{pattern}/")
+
+if failures:
+    raise SystemExit("presentation contract failures:\n- " + "\n- ".join(failures))
+PY
+then
+  printf 'FAIL: presentation routing, evidence, portfolio, video, or caller contracts drifted.\n' >&2
   fail_count=$((fail_count + 1))
 fi
 

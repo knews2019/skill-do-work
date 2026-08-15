@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.193.0 — Explicit Presentation Command Ownership (2026-08-15)
+
+Completed-work presentation now has one discoverable command per outcome: detailed evidence in `ai-report`, cross-project portfolios in `present-work`, and explicit source-only walkthroughs in `present-video`.
+
+- Aligns router aliases, argument hints, help, tutorials, README examples, and completion guidance on the same three-command map
+- Makes archive and human-artifact guardrails condition-based so future readers and presentation producers inherit them without stale caller lists
+- Adds durable ownership, evidence, portfolio-branch, source-video, safety-order, and shipped-inventory contracts while retiring ambiguous detail/video routes
+
 ## 0.192.1 — Inline PNG File Views (2026-08-15)
 
 Captured screenshots opened from the live board no longer spill binary bytes across the browser. Byte-detected PNGs render inline while every other file keeps the inert text response that protects the board origin.

@@ -96,7 +96,7 @@ Use the installed do-work suite to complete this request end to end:
 1. Use do-work to capture the request below and record the resulting UR ID.
 2. Run do-work verify-requests for that UR. Stop and report if verification fails.
 3. Run the UR's REQs through do-work run. Require its built-in tests and review to pass.
-4. Use do-work-toolbox present-work for the same UR.
+4. Use do-work-toolbox ai-report for the same UR.
 5. Report the implementation, tests, decisions, and deliverable paths.
 
 Request:
@@ -107,7 +107,9 @@ Request:
 
 Run each sibling's `help` command for its menu. Core guides live in [`skills/do-work/docs/`](./skills/do-work/docs/); extension guides live with their owning skill.
 
-Common extension calls include `do-work-board board`, `do-work-knowledge bkb`, `do-work-knowledge memory`, `do-work-toolbox code-review`, `do-work-toolbox present-work`, and `do-work-toolbox inspect`.
+For presentation, choose the artifact explicitly: `do-work-toolbox ai-report REQ-NNN` creates detailed stakeholder HTML for one completed item, `do-work-toolbox present-work all` refreshes the cross-project portfolio, and `do-work-toolbox present-video REQ-NNN` creates a source-only Remotion walkthrough. `showcase`, `visual report`, and `proof of work` are aliases for `ai-report`; `portfolio` and `work portfolio` are aliases for `present-work`; `remotion` and `video walkthrough` are aliases for `present-video`.
+
+Common extension calls also include `do-work-board board`, `do-work-knowledge bkb`, `do-work-knowledge memory`, `do-work-toolbox code-review`, and `do-work-toolbox inspect`.
 
 ### Queue board (`do-work-board board`)
 

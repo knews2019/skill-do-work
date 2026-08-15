@@ -242,14 +242,20 @@ WORKFLOW RECIPES — common scenarios → exact commands
     do-work capture-request: [describe what you want]
     do-work verify-requests UR-NNN
     do-work run UR-NNN
-    do-work-toolbox present-work UR-NNN
+    do-work-toolbox ai-report UR-NNN
 
   "I want to check what was captured before building"
     do-work verify-requests
 
   "Work is done — now what?"
     do-work review-work
-    do-work-toolbox present-work
+    do-work-toolbox ai-report
+
+  "I want a cross-project portfolio"
+    do-work-toolbox present-work all
+
+  "I want a video walkthrough"
+    do-work-toolbox present-video REQ-NNN
 
   "Something seems stuck"
     do-work forensics
@@ -309,7 +315,7 @@ Explain triage routes (A/B/C), autonomous build cycle, test-first approach, self
 Explain requirements checking, code review, acceptance testing, pass/fail, and what happens on failure (re-queue). Key commands: `review-work`, `review-work REQ-NNN`.
 
 **Topic 4 — The full cycle:**
-Explain the capture → verify → run → present sequence, that `do-work run` already includes testing and review, and how the UR ID ties the commands together. Key commands: `capture-request:`, `verify-requests UR-NNN`, `run UR-NNN`, `do-work-toolbox present-work UR-NNN`.
+Explain the capture → verify → run → report sequence, that `do-work run` already includes testing and review, and how the UR ID ties the commands together. Key commands: `capture-request:`, `verify-requests UR-NNN`, `run UR-NNN`, `do-work-toolbox ai-report UR-NNN`. Distinguish this item-level report from the cross-project portfolio (`do-work-toolbox present-work all`) and an explicit source-only video walkthrough (`do-work-toolbox present-video REQ-NNN`).
 
 **Topic 5 — Knowledge base:**
 Explain what a BKB is (Markdown wiki compiled from raw sources), the init → triage → ingest cycle, querying, and maintenance. Key commands: `bkb init`, `bkb ingest`, `bkb query [question]`.

@@ -28,7 +28,7 @@ Extensions installed beside core — run <package> help for usage on any of thes
   do-work-board      board [serve|static|summary|cli]
   do-work-knowledge  bkb · memory · dream · interview · prompts · setup-memory
   do-work-toolbox    validate-feedback · code-review · maintainability-audit
-                     ui-review · present-work · ai-report · slop-check
+                     ui-review · ai-report · present-work · present-video · slop-check
                      quick-wins · scan-ideas · deep-explore · prime · inspect
                      note · stray-check · tidy-repo · tutorial · install
 ```
@@ -43,7 +43,7 @@ Use the installed do-work suite to complete this request end to end:
 1. Use do-work to capture the request below and record the resulting UR ID.
 2. Run do-work verify-requests for that UR. Stop and report if verification fails.
 3. Run the UR's REQs through do-work run. Require its built-in tests and review to pass.
-4. Use do-work-toolbox present-work for the same UR.
+4. Use do-work-toolbox ai-report for the same UR.
 5. Report the implementation, tests, decisions, and deliverable paths.
 
 Request:

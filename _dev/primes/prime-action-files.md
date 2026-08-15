@@ -105,3 +105,4 @@ A skill or action description is loaded whether or not the thing gets used, so i
 - [REQ-189: shared instruction contracts must inherit upstream token grammars and align prescribed shell publication timing](../../do-work/archive/REQ-189-canonical-ai-report-and-shared-evidence-contract.md#lessons-learned)
 - [REQ-190: delete obsolete action modes before rebuilding dispatch, and publish immutable outputs before mutable canonical files](../../do-work/archive/REQ-190-reduce-present-work-to-portfolio-only.md#lessons-learned)
 - [REQ-191: recover useful source contracts from history without restoring unsafe wrappers, and keep shared mechanics canonical](../../do-work/archive/REQ-191-extract-explicit-present-video-action.md#lessons-learned)
+- [REQ-192: keep presentation aliases exact, make guardrail callers condition-based, and test live command ownership at canonical seams](../../do-work/archive/REQ-192-migrate-presentation-routing-docs-and-contracts.md#lessons-learned)
