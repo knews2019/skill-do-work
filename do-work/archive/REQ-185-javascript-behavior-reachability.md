@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-08-15T07:13:20Z
 claimed_at: 2026-08-15T10:53:45Z
 completed_at: 2026-08-15T11:22:22Z
+commit: a7beda7
 user_request: UR-041
 domain: testing
 prime_files: [_dev/primes/prime-kanban-board.md]
