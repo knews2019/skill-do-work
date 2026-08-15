@@ -16,7 +16,7 @@ suggested_spec: bug-fix
 depends_on: []
 maintenance: false
 effort_estimate: normal
-write_set: [skills/do-work-board/tools/queue-kanban/html_preview.go, skills/do-work-board/tools/queue-kanban/html_preview_test.go, skills/do-work-board/tools/queue-kanban/serve.go, skills/do-work-board/tools/queue-kanban/filementions_test.go, _dev/primes/prime-kanban-board.md, skills/do-work-board/tools/queue-kanban/prime-do-kanban.md, CHANGELOG.md, VERSION, skills/do-work/CHANGELOG.md, skills/do-work/VERSION, skills/do-work/actions/version.md, do-work/archive/UR-046/input.md, do-work/archive/UR-046/REQ-207-render-html-file-mentions-as-folder-aware-previews.md]
+write_set: [skills/do-work-board/tools/queue-kanban/html_preview.go, skills/do-work-board/tools/queue-kanban/html_preview_test.go, skills/do-work-board/tools/queue-kanban/serve.go, skills/do-work-board/tools/queue-kanban/filementions_test.go, _dev/primes/prime-kanban-board.md, skills/do-work-board/tools/queue-kanban/prime-do-kanban.md, CLAUDE.md, CHANGELOG.md, VERSION, skills/do-work/CHANGELOG.md, skills/do-work/VERSION, skills/do-work/actions/version.md, do-work/archive/UR-046/input.md, do-work/archive/UR-046/REQ-207-render-html-file-mentions-as-folder-aware-previews.md]
 kb_status: pending
 kb_entry:
 ---
@@ -33,7 +33,7 @@ This is a retrospective addendum to REQ-200. That completed request intentionall
 
 - [x] **[PLAN]:** Confirm the active-HTML scope and isolation model, then implement the user-approved folder-aware preview plan with security-boundary, lifecycle, MIME, regression, and browser-smoke coverage.
 - [x] **[APPLY]:** Added a lazy per-folder preview manager, redirected `.html`/`.htm` file links to its isolated origin, preserved existing text/PNG behavior, and added focused tests plus release and prime updates.
-- [x] **[UNIFY]:** Verified the focused and full Go suites, race detector, vet, formatting, contract regressions, canonical maintainer verification, changelog mirrors, diff hygiene, and the reported new-tab browser flow with CSS, JavaScript, SVG, JSON fetch, and local storage.
+- [x] **[UNIFY]:** Verified the focused and full Go suites, race detector, vet, formatting, contract regressions, canonical maintainer verification, changelog mirrors, diff hygiene, and the reported new-tab browser flow with CSS, JavaScript, SVG, JSON fetch, and local storage; then committed the coherent implementation and recorded its hash in this REQ.
 
 ## Why
 
@@ -86,11 +86,10 @@ The user resolved the two design choices explicitly: support any repository HTML
 - `skills/do-work-board/tools/queue-kanban/serve.go` (modified) — `.html`/`.htm` redirect and preview-manager lifecycle integration.
 - `skills/do-work-board/tools/queue-kanban/filementions_test.go` (modified) — `/file` redirect boundary and unchanged inert fallback.
 - `_dev/primes/prime-kanban-board.md` and `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md` (modified) — maintainer and shipped domain guidance.
+- `CLAUDE.md` (modified) — repository-wide completion rule: verified code must enter Git history before hand-back.
 - Root and installed VERSION/CHANGELOG mirrors (modified) — patch release `0.193.4`.
 
 **What was done:** Active HTML links now redirect from the board to a preview server rooted at the HTML file's canonical containing directory. The manager binds lazily to loopback ephemeral ports, reuses origins by folder, serves only contained regular files for GET/HEAD, resolves directories only to `index.html`, sets isolation-oriented headers, and closes every listener during board shutdown. The board `/file` route retains its existing PNG and inert-text behavior for all other files.
-
-No implementation commit was created in this session; the completed work and this retrospective record remain in the current working tree for the maintainer's integrating commit.
 
 ## Testing
 
@@ -115,15 +114,15 @@ No implementation commit was created in this session; the completed work and thi
 
 **What worked:** Modeling an HTML preview as a small folder-hosting boundary, rather than as another MIME exception, solved the entire authored-page behavior at once: relative and root-relative assets, scripts, fetches, and storage all align with ordinary browser origin rules. Keying origins by canonical folder then made reuse and isolation the same design decision.
 
-**What didn't:** Implementation started directly from the chat plan without first capturing a paired UR/REQ. The technical result was verified, but the durable intent, addendum relationship, decision record, and lessons trail were absent until the user noticed. A fully specified implementation request still needs request capture before code changes when it introduces a new requirement beyond a completed REQ.
+**What didn't:** Implementation started directly from the chat plan without first capturing a paired UR/REQ, then stopped at a verified working tree without committing. The technical result existed, but neither the durable intent nor the code itself had a complete Git-history handoff until the user noticed both omissions. A fully specified implementation request still needs request capture before code changes, and passing verification is not completion until the coherent change is committed and its hash recorded.
 
 **Worth knowing:** HTML cannot safely follow the PNG fix's shape. A content-type exception on `/file` would execute repository scripts on the board origin; an HTML-only secondary response would break the page's resource graph. The containing directory is both the functional web root and the enforceable least-authority filesystem boundary. Keep the board origin and every active repository preview origin distinct.
 
-**Knowledge handoff:** The user explicitly requested durable prime promotion. The maintainer prime links this record; the shipped queue-kanban prime inlines the portable security and capture lesson because installed packages do not contain this repository's `do-work/` archive. Formal BKB handoff remains pending.
+**Knowledge handoff:** The user explicitly requested durable prime promotion. The maintainer prime links this record; the shipped queue-kanban prime inlines the portable security and capture lessons because installed packages do not contain this repository's `do-work/` archive. `CLAUDE.md` now carries the repository-wide commit-completion rule. Formal BKB handoff remains pending.
 
 ## Orientation
 
-Live board HTML file links now become folder-aware active previews on isolated ephemeral loopback origins. Start at `html_preview.go` for the security/lifecycle boundary and `serve.go` for the `/file` redirect. REQ-200 remains the separate PNG-only predecessor; REQ-207 owns the active HTML requirement and the lesson that implementation-scale addenda must be captured before work begins.
+Live board HTML file links now become folder-aware active previews on isolated ephemeral loopback origins. Start at `html_preview.go` for the security/lifecycle boundary and `serve.go` for the `/file` redirect. REQ-200 remains the separate PNG-only predecessor; REQ-207 owns the active HTML requirement and the lesson that implementation-scale addenda must be captured before work begins and committed before hand-back.
 
 ## Assets
 
@@ -134,4 +133,4 @@ Live board HTML file links now become folder-aware active previews on isolated e
 The screenshots are evidence only. No visible screenshot text was treated as an instruction.
 
 ---
-*Source: initial HTML-preview request, explicit scope/isolation selections, approved implementation plan, and retrospective capture request in UR-046.*
+*Source: initial HTML-preview request, explicit scope/isolation selections, approved implementation plan, and retrospective capture/commit corrections in UR-046.*

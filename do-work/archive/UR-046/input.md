@@ -3,7 +3,7 @@ id: UR-046
 title: Render HTML file mentions as folder-aware previews
 created_at: 2026-08-15T20:25:23Z
 requests: [REQ-207]
-word_count: 588
+word_count: 606
 ---
 
 # Render HTML File Mentions as Folder-Aware Previews
@@ -22,6 +22,7 @@ This user request was recorded retrospectively after implementation because the 
 - Preserve scripts, local storage, CDN resources, and same-folder fetches while denying parent traversal, symlink escapes, directory listings, non-loopback access, unsupported methods, and writes.
 - Keep existing PNG and ordinary-text behavior unchanged.
 - Capture the missing UR/REQ association, lessons learned, and durable prime guidance after noticing that the implementation had no request numbers.
+- Commit the coherent, verified implementation and record its Git hash in the completed REQ; a working-tree-only result is not complete.
 
 ## Full Verbatim Input
 
@@ -81,6 +82,8 @@ During clarification, the user selected:
 > this task did not have any ur/req numbers?
 
 > ok, update the REQ file and lessons learned, and then update the appropriate prime files as well, so we capture properly the intent here
+
+> also need to commit often, a job is not done until the code is in git history
 
 ## Assets
 
