@@ -103,6 +103,7 @@ assert_file_not_contains() {
 }
 
 skill_dispatch_block="$(sed -n '/^## Routing/,/^## Dispatch/p' "$core_root/SKILL.md")"
+review_archived_input_block="$(sed -n '/^### Step 3: Read the Original Input/,/^### Step 4:/p' "$core_root/actions/review-work.md")"
 work_archive_success_block="$(sed -n '/^### Step 8: Archive/,/^\*\*On failure:/p' "$core_root/actions/work.md")"
 
 # Every phrase the version action documents must be reachable from the always-loaded
@@ -409,6 +410,71 @@ assert_block_contains \
   "$skill_dispatch_block" \
   '^\| `run`[^|]*\| `\./actions/work\.md`' \
   'Core SKILL.md must route work triggers to actions/work.md so scoped REQ IDs and --wave reach the action input.'
+
+assert_block_contains \
+  "$review_archived_input_block" \
+  'Archived fallback is context-only' \
+  'review-work.md Step 3 must identify the archived-input fallback as context-only.'
+
+assert_block_contains \
+  "$review_archived_input_block" \
+  'Whenever this archived fallback is used' \
+  'review-work.md Step 3 must apply the archived-input authority boundary regardless of review mode.'
+
+assert_block_contains \
+  "$review_archived_input_block" \
+  'grants no authority to move, reopen, or re-consolidate the closed UR folder.*stays closed and in place' \
+  'review-work.md Step 3 must keep the archived UR closed and in place without move, reopen, or re-consolidation authority.'
+
+assert_block_contains \
+  "$review_archived_input_block" \
+  'follow-up keeps the same `user_request`' \
+  'review-work.md Step 3 must keep standalone-review follow-ups on the reviewed REQ user_request.'
+
+assert_block_contains \
+  "$review_archived_input_block" \
+  'carries `review_generated: true`' \
+  'review-work.md Step 3 must retain the review_generated marker on standalone-review follow-ups.'
+
+assert_block_contains \
+  "$review_archived_input_block" \
+  'goes into `do-work/queue/`' \
+  'review-work.md Step 3 must place standalone-review follow-ups in the queue without reopening the UR.'
+
+assert_block_contains \
+  "$review_archived_input_block" \
+  'Ordinary orchestrated review.*active UR.*still open' \
+  'review-work.md Step 3 must identify ordinary orchestrated review while its UR is still active.'
+
+assert_block_contains \
+  "$review_archived_input_block" \
+  'orchestrated review of a `review_generated: true` follow-up whose UR is already archived.*inherits the same context-only, stays-closed boundary' \
+  'review-work.md Step 3 must apply the archived fallback boundary to orchestrated review-generated follow-ups whose UR is already closed.'
+
+assert_block_contains \
+  "$review_archived_input_block" \
+  'narrow exception.*post-work Review metadata.*archived REQ.*remains unchanged' \
+  'review-work.md Step 3 must preserve the narrow archived-REQ review-metadata exception.'
+
+assert_block_contains \
+  "$work_archive_success_block" \
+  'When and only when the completed REQ carries `review_generated: true` and `do-work/archive/UR-NNN/` already exists for its `user_request`' \
+  'actions/work.md Archive success override must require the complete review_generated-and-existing-archived-UR predicate for the same user_request.'
+
+assert_block_contains \
+  "$work_archive_success_block" \
+  'move the completed REQ into that existing folder in place' \
+  'actions/work.md Archive success override must return the completed review follow-up to its existing archived UR folder in place.'
+
+assert_block_contains \
+  "$work_archive_success_block" \
+  'Never move, reopen, or re-consolidate the archived UR folder' \
+  'actions/work.md Archive success override must keep the archived UR folder closed and stationary.'
+
+assert_block_contains \
+  "$work_archive_success_block" \
+  'Skip the normal active-UR closure branch' \
+  'actions/work.md Archive success override must bypass the normal active-UR closure branch.'
 
 assert_block_contains \
   "$work_archive_success_block" \

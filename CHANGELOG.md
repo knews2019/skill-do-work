@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.16 — Closed-UR Review Follow-up Lifecycle (2026-08-15)
+
+Standalone review could read a closed User Request and leave later work without a safe return path. Closed URs now stay stationary from review context through completed follow-up placement.
+
+- Makes archived input context-only in every review mode while preserving same-UR queued follow-ups
+- Returns successful review-generated REQs to an already-archived UR folder in place
+- Mutation-locks the review marker, same-UR archived-folder existence, stationary-folder rule, and active-UR branch bypass
+
 ## 0.189.15 — Visible Unavailable Hotspot Evidence (2026-08-15)
 
 Hotspot rankings could look complete while silently omitting tracked paths unavailable in the current worktree. Those paths now remain visible without distorting the numeric ranking.

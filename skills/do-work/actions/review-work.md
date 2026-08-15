@@ -59,6 +59,8 @@ Read the full REQ file. Extract:
 
 Find the UR via the REQ's `user_request` frontmatter field. Read `do-work/user-requests/UR-NNN/input.md`. If not found there (UR already archived), check `do-work/archive/UR-NNN/input.md`. This is the source of truth for what the user actually wanted.
 
+**Archived fallback is context-only.** Whenever this archived fallback is used, reading the archived input grants no authority to move, reopen, or re-consolidate the closed UR folder; it stays closed and in place. A follow-up keeps the same `user_request`, carries `review_generated: true`, and goes into `do-work/queue/`. Ordinary orchestrated review reads the active UR while it is still open; an orchestrated review of a `review_generated: true` follow-up whose UR is already archived inherits the same context-only, stays-closed boundary. The existing narrow exception for appending post-work Review metadata to the archived REQ remains unchanged.
+
 If the REQ is a legacy file without `user_request`, use whatever context is available (the REQ content itself, any `context_ref` file).
 
 ### Step 4: Get the Diff

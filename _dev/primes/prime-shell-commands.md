@@ -33,3 +33,4 @@ When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep 
 - [REQ-180: use the tracked filename's exact case in shell test paths](../../do-work/archive/UR-040/REQ-180-contract-suite-justfile-case-mismatch.md#lessons-learned)
 - [REQ-186: give identical baseline child invocations one required owner](../../do-work/archive/REQ-186-baseline-suite-single-ownership.md#lessons-learned)
 - [REQ-187: keep one maintainer command inventory and close aggregate self-test recursion with a fixture-only mode](../../do-work/archive/REQ-187-canonical-local-maintainer-gate.md#lessons-learned)
+- [REQ-193: lock complete shell-contract predicates so deletion or negation cannot survive a broad regex](../../do-work/archive/REQ-193-keep-archived-urs-closed-during-review.md#lessons-learned)

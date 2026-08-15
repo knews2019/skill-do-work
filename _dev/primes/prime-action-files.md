@@ -97,3 +97,7 @@ A skill or action description is loaded whether or not the thing gets used, so i
 **Bad:** "Monitors a pull request through review and CI, rebasing as needed and addressing reviewer comments until checks pass."
 
 **Good:** "Use when the user asks to monitor, watch, or babysit a PR."
+
+## Lessons
+
+- [REQ-193: key closed-state authority to the archived-fallback condition and return review-generated completions in place](../../do-work/archive/REQ-193-keep-archived-urs-closed-during-review.md#lessons-learned)
