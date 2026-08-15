@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.9 — Public Vocabulary Parity (2026-08-15)
+
+Public work aliases and testing-status aliases could drift from their runtime mirrors while every suite stayed green. The documented owners and executable readers now agree, with mutation-sensitive seam checks to keep them together.
+
+- The work guide is the sole public alias inventory, exactly matched by the core router; README points to it instead of maintaining a third list
+- The testing-status schema now includes both spaced aliases already accepted by the board normalizer
+- Queue summaries surface dependency-cycle holds, and the schema gloss no longer freezes a stale field list
+
 ## 0.189.8 — Route-A Public Write Boundary (2026-08-15)
 
 The new README boundary still implied every implementation had a declared Scope section, but simple Route A work deliberately does not. Public guidance now names both valid boundaries instead of flattening them into one.

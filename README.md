@@ -82,9 +82,7 @@ do-work run
 
 Each completed request gets archived with implementation notes and a git commit. A built-in review runs after each item. The build phase always loads behavioral guardrails (`skills/do-work/crew-members/coding-guardrails.md`) — minimal, surgical changes with verifiable success criteria and names that stay findable by plain-text search, not "it compiles" handwaves.
 
-Other trigger words: `go`, `start`, `begin`, `process`, `execute`, `build`, `continue`, `resume`.
-
-See the [Work Guide](skills/do-work/docs/work-guide.md) for the full work loop, triage routes, and clarify mode.
+The [Work Guide's trigger aliases](skills/do-work/docs/work-guide.md#trigger-aliases) are the canonical public list. The guide also covers the full work loop, triage routes, and clarify mode.
 
 ### Full cycle without persistent state
 

@@ -137,6 +137,7 @@ All of these do the same thing — process the queue:
 do-work run
 do-work go
 do-work start
+do-work work
 do-work begin
 do-work process
 do-work execute

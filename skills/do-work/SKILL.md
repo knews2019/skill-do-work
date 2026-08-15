@@ -26,7 +26,7 @@ Check these patterns in order; first match wins.
 | Trigger | Route |
 |---|---|
 | empty, `help` | `./actions/help.md` |
-| `run`, `go`, `start`, `work`, `process`, `continue`, `resume` | `./actions/work.md` |
+| `run`, `go`, `start`, `work`, `begin`, `process`, `execute`, `build`, `continue`, `resume` | `./actions/work.md` |
 | `check for updates`, `check for update`, `is there a newer version` | `./actions/version.md` |
 | `verify`, `verify-requests`, `check`, `review requests` | `./actions/verify-requests.md` |
 | `review`, `review-work`, `review code`, `audit implementation` | `./actions/review-work.md` |

@@ -171,6 +171,166 @@ then
   fail_count=$((fail_count + 1))
 fi
 
+# Public work aliases have one enumerated home in the work guide; the router is
+# the executable mirror. The testing-status schema and Go normalizer likewise
+# own two representations of one alias map. Compare both seams exactly, then
+# mutate either side in memory to prove additions and removals cannot hide.
+if ! python3 - \
+  "$repo_root/README.md" \
+  "$core_root/docs/work-guide.md" \
+  "$core_root/SKILL.md" \
+  "$core_root/actions/work-reference.md" \
+  "$board_root/tools/queue-kanban/testing.go" <<'PY'
+import pathlib
+import re
+import sys
+
+
+def require_exact(left, right, seam):
+    if left == right:
+        return
+    left_keys = set(left)
+    right_keys = set(right)
+    details = []
+    if left_keys - right_keys:
+        details.append(f"left-only={sorted(left_keys - right_keys)!r}")
+    if right_keys - left_keys:
+        details.append(f"right-only={sorted(right_keys - left_keys)!r}")
+    if isinstance(left, dict):
+        remapped = sorted(
+            key for key in left_keys & right_keys if left[key] != right[key]
+        )
+        if remapped:
+            details.append(
+                "remapped="
+                + repr([(key, left[key], right[key]) for key in remapped])
+            )
+    raise AssertionError(f"{seam} drifted: {', '.join(details)}")
+
+
+def prove_one_sided_mutations(left, right, seam, added_value=None):
+    require_exact(left, right, seam)
+    existing_key = sorted(left)[0]
+    added_key = "contract-only-mutation"
+
+    if isinstance(left, dict):
+        additions = (
+            ({**left, added_key: added_value}, right),
+            (left, {**right, added_key: added_value}),
+        )
+        removals = (
+            ({key: value for key, value in left.items() if key != existing_key}, right),
+            (left, {key: value for key, value in right.items() if key != existing_key}),
+        )
+    else:
+        additions = ((left | {added_key}, right), (left, right | {added_key}))
+        removals = ((left - {existing_key}, right), (left, right - {existing_key}))
+
+    for mutation_number, mutated_pair in enumerate(additions + removals, start=1):
+        try:
+            require_exact(*mutated_pair, f"{seam} mutation {mutation_number}")
+        except AssertionError:
+            continue
+        raise AssertionError(
+            f"{seam} comparison accepted one-sided mutation {mutation_number}"
+        )
+
+
+readme_text = pathlib.Path(sys.argv[1]).read_text()
+guide_text = pathlib.Path(sys.argv[2]).read_text()
+router_text = pathlib.Path(sys.argv[3]).read_text()
+schema_text = pathlib.Path(sys.argv[4]).read_text()
+normalizer_text = pathlib.Path(sys.argv[5]).read_text()
+seam_failures = []
+
+if "skills/do-work/docs/work-guide.md#trigger-aliases" not in readme_text:
+    raise AssertionError("README must point to the work guide's canonical alias list")
+if "Other trigger words:" in readme_text:
+    raise AssertionError("README must not carry a second public work-alias inventory")
+
+guide_alias_block = guide_text.split("## Trigger aliases", 1)[1].split("## Tips", 1)[0]
+guide_aliases = set(
+    re.findall(r"^do-work ([a-z][a-z-]*)$", guide_alias_block, flags=re.MULTILINE)
+)
+
+router_block = router_text.split("## Routing", 1)[1].split("## Dispatch", 1)[0]
+work_route_rows = []
+for line in router_block.splitlines():
+    if not line.startswith("|") or "`./actions/work.md`" not in line:
+        continue
+    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+    if len(cells) == 2:
+        work_route_rows.append(set(re.findall(r"`([^`]+)`", cells[0])))
+if len(work_route_rows) != 1:
+    raise AssertionError(
+        f"work router must have exactly one actions/work.md row; found {len(work_route_rows)}"
+    )
+router_aliases = work_route_rows[0]
+try:
+    prove_one_sided_mutations(guide_aliases, router_aliases, "work guide/router aliases")
+except AssertionError as error:
+    seam_failures.append(str(error))
+
+testing_schema_row = next(
+    (
+        line
+        for line in schema_text.splitlines()
+        if line.startswith("|") and line.split("|", 2)[1].strip().startswith("`testing_status`")
+    ),
+    None,
+)
+if testing_schema_row is None:
+    raise AssertionError("schema table has no testing_status row")
+schema_cells = [cell.strip() for cell in testing_schema_row.strip().strip("|").split("|")]
+schema_alias_map = {}
+for mapping_clause in schema_cells[2].split(";"):
+    target_match = re.search(r"→ `([^`]+)`", mapping_clause)
+    if target_match is None:
+        continue
+    for alias in re.findall(r"`([^`]+)`", mapping_clause[: target_match.start()]):
+        if alias in schema_alias_map:
+            raise AssertionError(f"testing_status schema repeats alias {alias!r}")
+        schema_alias_map[alias] = target_match.group(1)
+
+status_constants = dict(
+    re.findall(r'^\s*(testingStatus\w+)\s*=\s*"([^"]+)"', normalizer_text, flags=re.MULTILINE)
+)
+normalizer_function = re.search(
+    r"func normalizeTestingStatus\([^)]*\) string \{(.*?)\n\}",
+    normalizer_text,
+    flags=re.DOTALL,
+)
+if normalizer_function is None:
+    raise AssertionError("testing.go has no normalizeTestingStatus function")
+normalizer_alias_map = {}
+for aliases_text, target_constant in re.findall(
+    r"case ([^:]+):\s*return (testingStatus\w+)", normalizer_function.group(1)
+):
+    if target_constant not in status_constants:
+        raise AssertionError(f"normalizer returns unknown constant {target_constant}")
+    for alias in re.findall(r'"([^"]+)"', aliases_text):
+        if alias in normalizer_alias_map:
+            raise AssertionError(f"normalizeTestingStatus repeats alias {alias!r}")
+        normalizer_alias_map[alias] = status_constants[target_constant]
+
+try:
+    prove_one_sided_mutations(
+        schema_alias_map,
+        normalizer_alias_map,
+        "testing_status schema/normalizer aliases",
+        added_value="in-testing",
+    )
+except AssertionError as error:
+    seam_failures.append(str(error))
+
+if seam_failures:
+    raise AssertionError("; ".join(seam_failures))
+PY
+then
+  printf 'FAIL: public work or testing-status alias vocabularies drifted.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 for retired_pipeline_path in \
   skills/do-work/actions/pipeline.md \
   skills/do-work/actions/pipeline-reference.md \

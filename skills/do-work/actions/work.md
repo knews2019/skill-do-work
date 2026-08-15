@@ -84,7 +84,7 @@ The `do-work/` folder layout is described in `actions/work-reference.md` → **F
 
 ## Request File Schema
 
-The full annotated frontmatter schema and the **Schema Read Contract** — the normalize-and-warn rules every read site honors for the enum/boolean fields `domain`, `status`, `route`, `caveman`, `tdd`, `error_type`, `kb_status` — live in `actions/work-reference.md` → **Request File Schema — Full Frontmatter** and **Schema Read Contract**. Every reference below to "the Schema Read Contract" points there.
+The full annotated frontmatter schema and the **Schema Read Contract** — the normalize-and-warn rules every read site honors for fields with a documented canonical vocabulary — live in `actions/work-reference.md` → **Request File Schema — Full Frontmatter** and **Schema Read Contract**. Every reference below to "the Schema Read Contract" points there.
 
 **Status flow (frontmatter values):** `pending` → `claimed` → `completed` / `completed-with-issues` / `failed`
 
@@ -157,10 +157,10 @@ Filter the pending list to REQs whose depth equals N, then apply the dependency-
 **Queue status summary:** After reading all REQ frontmatter, categorize every REQ by status and print a summary before proceeding:
 
 ```
-Queue: N pending | N finished (awaiting archive) | N pending-answers | N blocked | N blocked-archive-collision
+Queue: N pending | N finished (awaiting archive) | N pending-answers | N blocked | N blocked-archive-collision | N blocked-dependency-cycle
 ```
 
-Count every REQ that normalizes under the Schema Read Contract to a terminally resolved status together as "finished (awaiting archive)." Count `blocked` (external-condition holds) and `blocked-archive-collision` separately so held REQs don't disappear into the silence between "no pending" and "no REQs at all." When the Blocked-condition re-probe unblocked any REQs this run, append `(M probed, K unblocked)` to the `N blocked` figure. If any finished REQs exist in `do-work/queue/`, add:
+Count every REQ that normalizes under the Schema Read Contract to a terminally resolved status together as "finished (awaiting archive)." Count `blocked` (external-condition holds), `blocked-archive-collision`, and `blocked-dependency-cycle` separately so held REQs don't disappear into the silence between "no pending" and "no REQs at all." When the Blocked-condition re-probe unblocked any REQs this run, append `(M probed, K unblocked)` to the `N blocked` figure. If any finished REQs exist in `do-work/queue/`, add:
 
 ```
 ⚠ N completed REQs across M URs awaiting archive. Run `do-work cleanup` after this session.

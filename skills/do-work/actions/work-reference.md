@@ -212,7 +212,7 @@ The enum-or-boolean-valued fields above (one table row each, below) are covered 
 | `error_type` (Step 8 failure classification, Step 8 upstream-failure short-circuit, forensics) | `intent`, `spec`, `code`, `environment` | (no common typo aliases identified) | `code` |
 | `kb_status` (kb-lessons handoff — work.md's Lessons-Capture Phase / review-work.md's Self-Validation & Lessons Learned step; roadmap lessons rollup) | `promoted`, `pending`, `declined`, `skipped` | `skip` → `skipped`; `rejected` → `declined` | `pending` |
 | `effort_estimate` (stamped by automatic follow-up creation — review-work.md Step 10, work.md Step 8's Discovered Tasks flow; board display — `../do-work-board/tools/queue-kanban` parser; capture MAY emit) | `trivial`, `normal` | (no aliases — closed two-value enum, deliberately) | `normal` |
-| `testing_status` (board Testing view — `../do-work-board/tools/queue-kanban` parser + `/api/testing/status` writes; no work-pipeline read sites) | `in-testing`, `tested`, `returned` | `in_testing`/`in testing`/`testing`/`selected-for-testing` → `in-testing`; `returned-with-feedback`/`returned_with_feedback` → `returned` | treat as not-tested (Ready to test) with an invalid flag + data warning |
+| `testing_status` (board Testing view — `../do-work-board/tools/queue-kanban` parser + `/api/testing/status` writes; no work-pipeline read sites) | `in-testing`, `tested`, `returned` | `in_testing`/`in testing`/`testing`/`selected-for-testing`/`selected for testing` → `in-testing`; `returned-with-feedback`/`returned_with_feedback`/`returned with feedback` → `returned` | treat as not-tested (Ready to test) with an invalid flag + data warning |
 
 **Write paths are unaffected.** Step 2 claim, Step 8 archive, Step 8 follow-up generation, the kb-lessons handoff, and capture emission always write the canonical key and canonical enum value — never an alias, never the typo'd input. The normalize-and-warn contract is read-only.
 
@@ -870,7 +870,7 @@ This ensures the `commit:` field in the archived REQ contains the real implement
 ---
 session_ended: [timestamp]
 last_completed: REQ-NNN
-queue_state: [N pending, N pending-answers, N blocked, N blocked-archive-collision, N in-progress]
+queue_state: [N pending, N pending-answers, N blocked, N blocked-archive-collision, N blocked-dependency-cycle, N in-progress]
 reqs_processed_this_session: N
 session_depth: light | moderate | heavy
 ---
