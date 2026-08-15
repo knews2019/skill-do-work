@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,6 +10,38 @@ import (
 	"testing"
 	"time"
 )
+
+func publicationTestBoard(title string, bodyMarkdown string, projectName string, generatedAt time.Time) *Board {
+	ticket := &RequestTicket{
+		RequestId:      "REQ-1",
+		Title:          title,
+		Status:         "pending",
+		OriginalStatus: "pending",
+		BodyMarkdown:   bodyMarkdown,
+	}
+	return &Board{
+		GeneratedAt: generatedAt,
+		ProjectName: projectName,
+		AllRequests: []*RequestTicket{ticket},
+		Columns: BoardColumns{
+			Pending:      []*RequestTicket{ticket},
+			PendingReady: []*RequestTicket{ticket},
+		},
+	}
+}
+
+func readStaticSiteTargets(t *testing.T, outputDirectory string) map[string]string {
+	t.Helper()
+	targetContents := make(map[string]string, 3)
+	for _, targetName := range []string{boardDataJsFilename, boardMarkdownJsFilename, "index.html"} {
+		targetBytes, readError := os.ReadFile(filepath.Join(outputDirectory, targetName))
+		if readError != nil {
+			t.Fatalf("read %s: %v", targetName, readError)
+		}
+		targetContents[targetName] = string(targetBytes)
+	}
+	return targetContents
+}
 
 // generateLiveSiteInDir builds the board against the REAL do-work tree and writes
 // the static site into a temp dir, returning the output directory path. The git
@@ -77,6 +110,139 @@ func TestGenerateWritesSelfContainedIndex(t *testing.T) {
 	// The display placeholder must have been resolved.
 	if strings.Contains(indexHtml, "GENERATED_AT_DISPLAY") {
 		t.Fatalf("GENERATED_AT_DISPLAY placeholder was not substituted")
+	}
+}
+
+func TestGenerateFirstPublicationAndSuccessfulReplacement(t *testing.T) {
+	outputDirectory := filepath.Join(t.TempDir(), "static-board")
+	oldBoard := publicationTestBoard(
+		"Old title",
+		"## What\n\nOld body.\n",
+		"old-project",
+		time.Date(2026, 8, 14, 9, 0, 0, 0, time.UTC),
+	)
+	if generateError := generateStaticSite(outputDirectory, oldBoard); generateError != nil {
+		t.Fatalf("first generation: %v", generateError)
+	}
+	oldTargets := readStaticSiteTargets(t, outputDirectory)
+
+	unrelatedPath := filepath.Join(outputDirectory, "keep-me.txt")
+	const unrelatedContents = "unrelated output stays untouched\n"
+	if writeError := os.WriteFile(unrelatedPath, []byte(unrelatedContents), 0o644); writeError != nil {
+		t.Fatalf("write unrelated output fixture: %v", writeError)
+	}
+
+	newBoard := publicationTestBoard(
+		"New title",
+		"## What\n\nNew body.\n",
+		"new-project",
+		time.Date(2026, 8, 15, 10, 0, 0, 0, time.UTC),
+	)
+	if generateError := generateStaticSite(outputDirectory, newBoard); generateError != nil {
+		t.Fatalf("replacement generation: %v", generateError)
+	}
+	newTargets := readStaticSiteTargets(t, outputDirectory)
+	for targetName, oldContents := range oldTargets {
+		if newTargets[targetName] == oldContents {
+			t.Errorf("%s was not replaced", targetName)
+		}
+	}
+	if !strings.Contains(newTargets[boardDataJsFilename], "New title") {
+		t.Errorf("replacement %s is missing the new title", boardDataJsFilename)
+	}
+	if !strings.Contains(newTargets[boardMarkdownJsFilename], "New body.") {
+		t.Errorf("replacement %s is missing the new body", boardMarkdownJsFilename)
+	}
+	if !strings.Contains(newTargets["index.html"], "new-project") {
+		t.Errorf("replacement index.html is missing the new project name")
+	}
+	unrelatedBytes, unrelatedReadError := os.ReadFile(unrelatedPath)
+	if unrelatedReadError != nil {
+		t.Errorf("read unrelated output: %v", unrelatedReadError)
+	} else if string(unrelatedBytes) != unrelatedContents {
+		t.Errorf("unrelated output changed: got %q, want %q", unrelatedBytes, unrelatedContents)
+	}
+	outputEntries, readDirectoryError := os.ReadDir(outputDirectory)
+	if readDirectoryError != nil {
+		t.Fatalf("read output directory: %v", readDirectoryError)
+	}
+	if len(outputEntries) != 4 {
+		entryNames := make([]string, 0, len(outputEntries))
+		for _, entry := range outputEntries {
+			entryNames = append(entryNames, entry.Name())
+		}
+		t.Errorf("private publication residue remains: entries = %v", entryNames)
+	}
+}
+
+func TestGeneratePublicationFailureRestoresThePreviousBundle(t *testing.T) {
+	outputDirectory := t.TempDir()
+	oldBoard := publicationTestBoard(
+		"Old title",
+		"## What\n\nOld body.\n",
+		"old-project",
+		time.Date(2026, 8, 14, 9, 0, 0, 0, time.UTC),
+	)
+	if generateError := generateStaticSite(outputDirectory, oldBoard); generateError != nil {
+		t.Fatalf("generate initial static site: %v", generateError)
+	}
+
+	unrelatedPath := filepath.Join(outputDirectory, "keep-me.txt")
+	const unrelatedContents = "unrelated output stays untouched\n"
+	if writeError := os.WriteFile(unrelatedPath, []byte(unrelatedContents), 0o644); writeError != nil {
+		t.Fatalf("write unrelated output fixture: %v", writeError)
+	}
+	oldTargets := readStaticSiteTargets(t, outputDirectory)
+
+	newBoard := publicationTestBoard(
+		"New title",
+		"## What\n\nNew body.\n",
+		"new-project",
+		time.Date(2026, 8, 15, 10, 0, 0, 0, time.UTC),
+	)
+	seededPublicationFailure := errors.New("seeded static publication failure")
+	publishCalls := 0
+	failSecondPublication := func(stagedPath string, targetPath string) error {
+		publishCalls++
+		if publishCalls == 2 {
+			return seededPublicationFailure
+		}
+		return os.Rename(stagedPath, targetPath)
+	}
+	generationError := generateStaticSiteWithPublisher(outputDirectory, newBoard, failSecondPublication)
+	if !errors.Is(generationError, seededPublicationFailure) {
+		t.Errorf("generation error = %v, want seeded publication failure", generationError)
+	}
+	if publishCalls != 2 {
+		t.Errorf("publication calls = %d, want 2", publishCalls)
+	}
+
+	for targetName, oldContents := range oldTargets {
+		currentBytes, readError := os.ReadFile(filepath.Join(outputDirectory, targetName))
+		if readError != nil {
+			t.Errorf("read restored %s: %v", targetName, readError)
+			continue
+		}
+		if string(currentBytes) != oldContents {
+			t.Errorf("%s differs after failed publication", targetName)
+		}
+	}
+	unrelatedBytes, unrelatedReadError := os.ReadFile(unrelatedPath)
+	if unrelatedReadError != nil {
+		t.Errorf("read unrelated output: %v", unrelatedReadError)
+	} else if string(unrelatedBytes) != unrelatedContents {
+		t.Errorf("unrelated output changed: got %q, want %q", unrelatedBytes, unrelatedContents)
+	}
+	outputEntries, readDirectoryError := os.ReadDir(outputDirectory)
+	if readDirectoryError != nil {
+		t.Fatalf("read output directory: %v", readDirectoryError)
+	}
+	if len(outputEntries) != 4 {
+		entryNames := make([]string, 0, len(outputEntries))
+		for _, entry := range outputEntries {
+			entryNames = append(entryNames, entry.Name())
+		}
+		t.Errorf("private publication residue remains: entries = %v", entryNames)
 	}
 }
 

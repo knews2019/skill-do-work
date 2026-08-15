@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.10 — Recoverable Static Board Publication (2026-08-15)
+
+A failed static-board refresh could leave new card data beside old Markdown and HTML, producing a plausible but internally mixed bundle. The three public files now publish through one bounded all-or-recover operation.
+
+- Builds and stages all three payloads privately before touching public targets
+- Holds unique backups until publication succeeds, restoring exact pre-invocation bytes after a handled failure
+- Preserves unrelated output entries and removes private staging/backup residue after success or completed rollback
+
 ## 0.189.9 — Public Vocabulary Parity (2026-08-15)
 
 Public work aliases and testing-status aliases could drift from their runtime mirrors while every suite stayed green. The documented owners and executable readers now agree, with mutation-sensitive seam checks to keep them together.

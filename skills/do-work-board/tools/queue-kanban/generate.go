@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"os"
@@ -194,6 +195,16 @@ type generatedCalendarEntry struct {
 	TimeSource     string `json:"timeSource"`
 }
 
+type staticSiteOutput struct {
+	TargetName   string
+	PayloadBytes []byte
+}
+
+type staticSiteBackup struct {
+	TargetPath string
+	BackupPath string
+}
+
 // generateStaticSite writes a three-file static board into outputDirectory:
 //   - index.html — the page shell with CSS + board.js inlined; references board-data.js
 //   - board-data.js — the initial board payload (including pre-rendered body HTML)
@@ -202,6 +213,12 @@ type generatedCalendarEntry struct {
 // All three files together are self-contained and open directly from disk (file://) or
 // any static server with zero build steps.
 func generateStaticSite(outputDirectory string, board *Board) error {
+	return generateStaticSiteWithPublisher(outputDirectory, board, os.Rename)
+}
+
+// generateStaticSiteWithPublisher keeps the real generate path intact while
+// allowing tests to seed a publication rename failure deterministically.
+func generateStaticSiteWithPublisher(outputDirectory string, board *Board, publishFile func(string, string) error) error {
 	if strings.TrimSpace(outputDirectory) == "" {
 		return fmt.Errorf("queue-kanban: generate requires a non-empty --out directory")
 	}
@@ -212,37 +229,127 @@ func generateStaticSite(outputDirectory string, board *Board) error {
 	}
 	boardMarkdownData := buildGeneratedBoardMarkdownData(board)
 
-	if mkdirError := os.MkdirAll(outputDirectory, 0o755); mkdirError != nil {
-		return fmt.Errorf("queue-kanban: cannot create --out directory %s: %w", outputDirectory, mkdirError)
-	}
-
 	boardDataJs, encodeError := encodeBoardDataForJsAssignment(boardData)
 	if encodeError != nil {
 		return encodeError
-	}
-	boardDataPath := filepath.Join(outputDirectory, boardDataJsFilename)
-	if writeError := os.WriteFile(boardDataPath, []byte(boardDataJs), 0o644); writeError != nil {
-		return fmt.Errorf("queue-kanban: cannot write %s: %w", boardDataPath, writeError)
 	}
 
 	boardMarkdownJs, markdownEncodeError := encodeBoardMarkdownForJsAssignment(boardMarkdownData)
 	if markdownEncodeError != nil {
 		return markdownEncodeError
 	}
-	boardMarkdownPath := filepath.Join(outputDirectory, boardMarkdownJsFilename)
-	if writeError := os.WriteFile(boardMarkdownPath, []byte(boardMarkdownJs), 0o644); writeError != nil {
-		return fmt.Errorf("queue-kanban: cannot write %s: %w", boardMarkdownPath, writeError)
-	}
 
 	pageHtml, assembleError := assembleStaticPage(board.GeneratedAt, board.ProjectName)
 	if assembleError != nil {
 		return assembleError
 	}
-	indexPath := filepath.Join(outputDirectory, "index.html")
-	if writeError := os.WriteFile(indexPath, []byte(pageHtml), 0o644); writeError != nil {
-		return fmt.Errorf("queue-kanban: cannot write %s: %w", indexPath, writeError)
+
+	if mkdirError := os.MkdirAll(outputDirectory, 0o755); mkdirError != nil {
+		return fmt.Errorf("queue-kanban: cannot create --out directory %s: %w", outputDirectory, mkdirError)
 	}
+
+	staticOutputs := [3]staticSiteOutput{
+		{TargetName: boardDataJsFilename, PayloadBytes: []byte(boardDataJs)},
+		{TargetName: boardMarkdownJsFilename, PayloadBytes: []byte(boardMarkdownJs)},
+		{TargetName: "index.html", PayloadBytes: []byte(pageHtml)},
+	}
+	return publishStaticSiteOutputs(outputDirectory, staticOutputs, publishFile)
+}
+
+// publishStaticSiteOutputs publishes exactly the static board's three files.
+// The renames are not cross-file atomic, but a handled failure restores every
+// target to its pre-invocation bytes before returning.
+func publishStaticSiteOutputs(outputDirectory string, staticOutputs [3]staticSiteOutput, publishFile func(string, string) error) (returnError error) {
+	privateDirectory, temporaryDirectoryError := os.MkdirTemp(outputDirectory, ".queue-kanban-static-")
+	if temporaryDirectoryError != nil {
+		return fmt.Errorf("queue-kanban: cannot create private static-site directory: %w", temporaryDirectoryError)
+	}
+	removePrivateDirectory := true
+	defer func() {
+		if !removePrivateDirectory {
+			return
+		}
+		if cleanupError := os.RemoveAll(privateDirectory); cleanupError != nil {
+			returnError = errors.Join(returnError, fmt.Errorf("queue-kanban: cannot remove private static-site directory %s: %w", privateDirectory, cleanupError))
+		}
+	}()
+
+	stagedPaths := make([]string, 0, len(staticOutputs))
+	for outputIndex, staticOutput := range staticOutputs {
+		stagedPath := filepath.Join(privateDirectory, fmt.Sprintf("staged-%d-%s", outputIndex, staticOutput.TargetName))
+		if writeError := os.WriteFile(stagedPath, staticOutput.PayloadBytes, 0o644); writeError != nil {
+			return fmt.Errorf("queue-kanban: cannot stage %s: %w", staticOutput.TargetName, writeError)
+		}
+		stagedPaths = append(stagedPaths, stagedPath)
+	}
+
+	backups := make([]staticSiteBackup, 0, len(staticOutputs))
+	for outputIndex, staticOutput := range staticOutputs {
+		targetPath := filepath.Join(outputDirectory, staticOutput.TargetName)
+		if _, statError := os.Lstat(targetPath); statError != nil {
+			if os.IsNotExist(statError) {
+				continue
+			}
+			restoreError := restoreStaticSiteTargets(nil, backups)
+			if restoreError != nil {
+				removePrivateDirectory = false
+			}
+			return errors.Join(
+				fmt.Errorf("queue-kanban: cannot inspect %s before publication: %w", targetPath, statError),
+				restoreError,
+			)
+		}
+
+		backupPath := filepath.Join(privateDirectory, fmt.Sprintf("backup-%d-%s", outputIndex, staticOutput.TargetName))
+		if backupError := os.Rename(targetPath, backupPath); backupError != nil {
+			restoreError := restoreStaticSiteTargets(nil, backups)
+			if restoreError != nil {
+				removePrivateDirectory = false
+			}
+			return errors.Join(
+				fmt.Errorf("queue-kanban: cannot back up %s: %w", targetPath, backupError),
+				restoreError,
+			)
+		}
+		backups = append(backups, staticSiteBackup{TargetPath: targetPath, BackupPath: backupPath})
+	}
+
+	publishedTargets := make([]string, 0, len(staticOutputs))
+	for outputIndex, staticOutput := range staticOutputs {
+		targetPath := filepath.Join(outputDirectory, staticOutput.TargetName)
+		if publicationError := publishFile(stagedPaths[outputIndex], targetPath); publicationError != nil {
+			targetsToRemove := append(publishedTargets, targetPath)
+			restoreError := restoreStaticSiteTargets(targetsToRemove, backups)
+			if restoreError != nil {
+				removePrivateDirectory = false
+			}
+			return errors.Join(
+				fmt.Errorf("queue-kanban: cannot publish %s: %w", targetPath, publicationError),
+				restoreError,
+			)
+		}
+		publishedTargets = append(publishedTargets, targetPath)
+	}
+
 	return nil
+}
+
+func restoreStaticSiteTargets(publishedTargets []string, backups []staticSiteBackup) error {
+	var restoreErrors []error
+	for _, targetPath := range publishedTargets {
+		if removeError := os.Remove(targetPath); removeError != nil && !os.IsNotExist(removeError) {
+			restoreErrors = append(restoreErrors, fmt.Errorf("remove replacement %s: %w", targetPath, removeError))
+		}
+	}
+	for _, backup := range backups {
+		if restoreError := os.Rename(backup.BackupPath, backup.TargetPath); restoreError != nil {
+			restoreErrors = append(restoreErrors, fmt.Errorf("restore %s: %w", backup.TargetPath, restoreError))
+		}
+	}
+	if len(restoreErrors) == 0 {
+		return nil
+	}
+	return fmt.Errorf("queue-kanban: static-site rollback failed: %w", errors.Join(restoreErrors...))
 }
 
 // buildGeneratedBoardData projects the parsed Board into the JSON data island,
