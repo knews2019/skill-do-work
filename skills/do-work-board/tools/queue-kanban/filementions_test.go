@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"image"
+	"image/png"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -71,7 +74,7 @@ func TestCollectRepoFileMentionsClassifiesExistence(t *testing.T) {
 
 // TestServeFileEndpointServesRepoFileReadOnly exercises GET /file end-to-end
 // over a real loopback listener: the served board data advertises liveFileApi,
-// and a repo-relative path comes back verbatim as text/plain.
+// and a repo-relative text file comes back verbatim as text/plain.
 func TestServeFileEndpointServesRepoFileReadOnly(t *testing.T) {
 	repoRoot := createFixtureDoWorkTree(t)
 	fileContent := "# guide\n\nline two\n"
@@ -95,10 +98,58 @@ func TestServeFileEndpointServesRepoFileReadOnly(t *testing.T) {
 		t.Fatalf("GET /file status = %d, want 200", resp.StatusCode)
 	}
 	if contentType := resp.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "text/plain") {
-		t.Errorf("GET /file Content-Type = %q, want text/plain (never the file's own type)", contentType)
+		t.Errorf("GET /file Content-Type = %q, want text/plain for non-PNG content", contentType)
 	}
 	if bodyText := readTestResponseBody(t, resp); bodyText != fileContent {
 		t.Errorf("GET /file body = %q, want %q", bodyText, fileContent)
+	}
+}
+
+// TestServeFileEndpointRendersPng verifies that a captured screenshot opened
+// through the live file endpoint carries an image content type instead of
+// exposing its binary bytes as page text.
+func TestServeFileEndpointRendersPng(t *testing.T) {
+	repoRoot := createFixtureDoWorkTree(t)
+	imagePath := filepath.Join(repoRoot, "do-work/user-requests/UR-001/assets/REQ-001-screenshot.png")
+	if mkdirErr := os.MkdirAll(filepath.Dir(imagePath), 0o755); mkdirErr != nil {
+		t.Fatalf("mkdir for PNG: %v", mkdirErr)
+	}
+	var imageBytes bytes.Buffer
+	if encodeErr := png.Encode(&imageBytes, image.NewNRGBA(image.Rect(0, 0, 1, 1))); encodeErr != nil {
+		t.Fatalf("encode PNG fixture: %v", encodeErr)
+	}
+	if writeErr := os.WriteFile(imagePath, imageBytes.Bytes(), 0o644); writeErr != nil {
+		t.Fatalf("write PNG fixture: %v", writeErr)
+	}
+
+	liveServer := newLiveBoardServer(repoRoot, 7*24*time.Hour)
+	testServer := httptest.NewServer(liveServer)
+	defer testServer.Close()
+
+	resp, httpErr := http.Get(testServer.URL +
+		"/file?path=do-work%2Fuser-requests%2FUR-001%2Fassets%2FREQ-001-screenshot.png")
+	if httpErr != nil {
+		t.Fatalf("GET PNG /file: %v", httpErr)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("GET PNG /file status = %d, want 200", resp.StatusCode)
+	}
+	if contentType := resp.Header.Get("Content-Type"); contentType != "image/png" {
+		t.Errorf("GET PNG /file Content-Type = %q, want image/png", contentType)
+	}
+	if responseBytes := []byte(readTestResponseBody(t, resp)); !bytes.Equal(responseBytes, imageBytes.Bytes()) {
+		t.Errorf("GET PNG /file body changed: got %d bytes, want %d", len(responseBytes), imageBytes.Len())
+	}
+
+	writeFixtureRepoFile(t, repoRoot, "docs/not-an-image.png", "<svg onload='alert(1)'></svg>")
+	spoofedResponse, spoofedError := http.Get(testServer.URL + "/file?path=docs%2Fnot-an-image.png")
+	if spoofedError != nil {
+		t.Fatalf("GET mislabeled PNG /file: %v", spoofedError)
+	}
+	defer spoofedResponse.Body.Close()
+	if contentType := spoofedResponse.Header.Get("Content-Type"); !strings.HasPrefix(contentType, "text/plain") {
+		t.Errorf("GET mislabeled PNG /file Content-Type = %q, want inert text/plain", contentType)
 	}
 }
 

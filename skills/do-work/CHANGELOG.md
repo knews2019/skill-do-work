@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.192.1 — Inline PNG File Views (2026-08-15)
+
+Captured screenshots opened from the live board no longer spill binary bytes across the browser. Byte-detected PNGs render inline while every other file keeps the inert text response that protects the board origin.
+
+- Returns `image/png` only for PNG bytes, never from a filename extension alone
+- Keeps HTML, SVG, misleading `.png` files, and ordinary documents on `text/plain` with the existing loopback, containment, size, and `nosniff` guards
+- Adds end-to-end RED/GREEN coverage for a real encoded PNG, byte preservation, and the safe fallback
+
 ## 0.192.0 — Explicit Source-Only Video Walkthroughs (2026-08-15)
 
 Completed work can now be expressed as a deliberate Remotion source walkthrough without making video a hidden side effect of reports, portfolios, or completion. The new action scales its four-scene story to verified evidence and leaves previewing entirely in the user's foreground terminal.

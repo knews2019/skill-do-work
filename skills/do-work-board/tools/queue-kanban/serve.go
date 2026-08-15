@@ -188,13 +188,14 @@ func (liveServer *liveBoardServer) serveLiveBoardMarkdownJs(responseWriter http.
 // those are small text files; anything larger is not what the link is for.
 const repoFileViewMaxBytes = 2 << 20
 
-// serveRepoFileView serves one repo file as read-only plain text so file-path
-// mentions in REQ/UR bodies can be real links. Guards, in order: loopback
+// serveRepoFileView serves one repo file read-only so file-path mentions in
+// REQ/UR bodies can be real links. Guards, in order: loopback
 // callers only (a LAN-exposed board must not turn into a whole-repo file
 // reader — the exposure warning promises REQ bodies, nothing more), then repo
 // containment via resolveRepoFilePath, then a regular-file + size check.
-// Always text/plain (with the global nosniff header), never the file's own
-// content type, so a crafted HTML/SVG file cannot execute in the board origin.
+// Byte-detected PNGs render inline; every other file remains text/plain (with
+// the global nosniff header), so crafted HTML/SVG cannot execute in the board
+// origin and a misleading extension cannot opt into active content.
 func (liveServer *liveBoardServer) serveRepoFileView(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	if httpRequest.Method != http.MethodGet && httpRequest.Method != http.MethodHead {
 		http.Error(responseWriter, "Method not allowed", http.StatusMethodNotAllowed)
@@ -233,7 +234,11 @@ func (liveServer *liveBoardServer) serveRepoFileView(responseWriter http.Respons
 		http.Error(responseWriter, "Internal error reading file", http.StatusInternalServerError)
 		return
 	}
-	responseWriter.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	responseContentType := "text/plain; charset=utf-8"
+	if http.DetectContentType(fileBytes) == "image/png" {
+		responseContentType = "image/png"
+	}
+	responseWriter.Header().Set("Content-Type", responseContentType)
 	responseWriter.Header().Set("Cache-Control", "no-cache")
 	responseWriter.WriteHeader(http.StatusOK)
 	_, _ = responseWriter.Write(fileBytes)
