@@ -3549,12 +3549,60 @@ else
   rm -rf "$section_workdir"
 fi
 
+# Root assertion inputs must use the tracked lowercase justfile spelling. This
+# source-level replay stays case-sensitive even on developer filesystems that
+# resolve Justfile and justfile to the same inode, and it pins the four late
+# assertions so deleting one cannot make the casing check vacuously green.
+if ! python3 - "$repo_root/_dev/tests/contract-regressions.sh" <<'PY'
+import pathlib
+import re
+import sys
+
+contract_source = pathlib.Path(sys.argv[1]).read_text()
+file_assertion_pattern = re.compile(
+    r'^assert_(?:contains|file_not_contains) \\\n  "([^"]+)" \\\n  \'([^\']*)\' \\',
+    flags=re.MULTILINE,
+)
+file_assertions = file_assertion_pattern.findall(contract_source)
+expected_root_patterns = (
+    r'^# >>> do-work:recipes >>>$',
+    r'^# <<< do-work:recipes <<<$',
+    r'skills/do-work-board/tools/queue-kanban',
+    r'skill_root="\$project_root/skills/do-work".*\$skill_root/tools/do-work-update\.sh',
+)
+
+problems = []
+for expected_pattern in expected_root_patterns:
+    matching_paths = [
+        file_path
+        for file_path, pattern_text in file_assertions
+        if pattern_text == expected_pattern
+    ]
+    if matching_paths != ["justfile"]:
+        problems.append(f"{expected_pattern!r} uses {matching_paths!r}, want ['justfile']")
+
+wrong_case_inputs = sorted({
+    file_path
+    for file_path, _ in file_assertions
+    if file_path.casefold() == "justfile" and file_path != "justfile"
+})
+if wrong_case_inputs:
+    problems.append(f"live root-file inputs use non-tracked casing: {wrong_case_inputs!r}")
+
+if problems:
+    raise SystemExit("; ".join(problems))
+PY
+then
+  printf 'FAIL: late root-justfile assertions must exist and use the tracked lowercase path.\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 assert_contains \
-  "Justfile" \
+  "justfile" \
   '^# >>> do-work:recipes >>>$' \
   'root justfile must open the exact managed do-work recipe section.'
 assert_contains \
-  "Justfile" \
+  "justfile" \
   '^# <<< do-work:recipes <<<$' \
   'root justfile must close the exact managed do-work recipe section.'
 assert_contains \
@@ -3562,11 +3610,11 @@ assert_contains \
   'tools/replace-text-section\.sh|replace-text-section\.sh' \
   'suite installer must reconcile recipes through the managed-section utility.'
 assert_contains \
-  "Justfile" \
+  "justfile" \
   'skills/do-work-board/tools/queue-kanban' \
   'root Justfile must build the canonical board sibling source.'
 assert_contains \
-  "Justfile" \
+  "justfile" \
   'skill_root="\$project_root/skills/do-work".*\$skill_root/tools/do-work-update\.sh' \
   'root Justfile fallback must invoke the canonical modular core updater.'
 assert_contains \

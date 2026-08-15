@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.19 — Case-Exact Late Root Justfile Contracts (2026-08-15)
+
+Four late aggregate assertions still opened `Justfile`, passing on common macOS filesystems but failing against the tracked lowercase root file on case-sensitive systems.
+
+- Changes every remaining live root assertion input to exact tracked `justfile` casing
+- Adds a filesystem-independent ratchet that requires all four exact assertion patterns and rejects wrong-case, missing, or duplicate inputs
+- Preserves intentional prose and filename-variant fixtures while keeping the aggregate final marker and canonical maintainer gate green
+
 ## 0.189.18 — Modular Framework-Free Board Client (2026-08-15)
 
 The queue board's single large browser source now has explicit responsibility boundaries while preserving the exact framework-free runtime. One private shell assembles eight ordered closure fragments for both static and live pages.
