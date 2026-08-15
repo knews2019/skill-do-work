@@ -103,3 +103,4 @@ A skill or action description is loaded whether or not the thing gets used, so i
 - [REQ-193: key closed-state authority to the archived-fallback condition and return review-generated completions in place](../../do-work/archive/UR-043/REQ-193-keep-archived-urs-closed-during-review.md#lessons-learned)
 - [REQ-194: retain canonical structured detector evidence and test the source seam directly](../../do-work/archive/UR-043/REQ-194-forward-stray-reqs-through-forensics.md#lessons-learned)
 - [REQ-189: shared instruction contracts must inherit upstream token grammars and align prescribed shell publication timing](../../do-work/archive/REQ-189-canonical-ai-report-and-shared-evidence-contract.md#lessons-learned)
+- [REQ-190: delete obsolete action modes before rebuilding dispatch, and publish immutable outputs before mutable canonical files](../../do-work/archive/REQ-190-reduce-present-work-to-portfolio-only.md#lessons-learned)

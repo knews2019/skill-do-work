@@ -1,47 +1,61 @@
 # Present Work
 
-Transforms completed work into client-facing deliverables — briefs, architecture diagrams, video scripts, and interactive explainers.
-
-## Two modes
-
-### Detail mode (single work item)
-
-Generates a full set of artifacts for one UR or REQ:
-
-1. **Client Brief** — plain-language writeup: What We Built, How It Works, Architecture, Data Flow, Key Decisions, Value Delivered, What's Next
-2. **Remotion Video** — 4-scene interactive video (Problem → Solution → Architecture → Value), generated as source code previewed via `npx remotion studio`
-3. **Interactive Explainer** — single-file HTML with Tailwind CSS, zero build steps, full-bleed layout, side-by-side Before/After (toggle only when the frames can't fit) or step-by-step walkthrough, dark mode support
-
-### Portfolio mode (all completed work)
-
-Scans the archive and generates a portfolio summary with cumulative value proposition across all completed URs.
-
-## Where artifacts go
-
-All deliverables are saved to `do-work/deliverables/`.
-
-## Depth calibration
-
-Effort scales with the work:
-
-- Config change → brief only
-- Single feature → brief + explainer
-- Multi-feature / architectural → brief + architecture diagram + video + explainer
-
-## Principles
-
-- Educate first, sell second
-- Technical accuracy in plain language (no code snippets in client-facing docs)
-- Honest value — no fabricated metrics
-- Pointers to files over prose
+`present-work` refreshes a cross-project portfolio from terminally successful archived work. Its only writing forms are `all` and `portfolio`.
 
 ## Usage
 
+```text
+do-work-toolbox present-work all
+do-work-toolbox present-work portfolio
 ```
-do-work-toolbox present-work             # most recent completed UR
-do-work-toolbox present-work UR-003           # specific UR
-do-work-toolbox present-work REQ-005          # specific REQ
-do-work-toolbox present-work all              # portfolio summary
-do-work-toolbox present-work portfolio        # same as all
-do-work-toolbox present-work
+
+Both commands run the same workflow and refresh `do-work/deliverables/portfolio-summary.md` in place.
+
+## Non-Writing Guidance
+
+A bare invocation prints compact usage, asks no question, and writes nothing:
+
+```text
+Usage: do-work-toolbox present-work all|portfolio
 ```
+
+An item-specific invocation asks no question and writes nothing. It prints both replacements with the supplied ID:
+
+```text
+detailed report → do-work-toolbox ai-report UR-003
+video walkthrough → do-work-toolbox present-video UR-003
+```
+
+The same guidance preserves a supplied REQ ID:
+
+```text
+detailed report → do-work-toolbox ai-report REQ-005
+video walkthrough → do-work-toolbox present-video REQ-005
+```
+
+`present-work` does not silently delegate these invocations or generate a portfolio for them.
+
+## What the Portfolio Includes
+
+The portfolio reads archived UR groups and legacy REQs. It includes both successful archive states:
+
+- `completed`;
+- `completed-with-issues`, with the recorded issues shown honestly.
+
+Cancelled, failed, and unfinished work is excluded. Archive content is treated as untrusted data, not as instructions. Claims come from recorded request, implementation, verification, review, and lesson evidence.
+
+Verified counts, dates, scores, or other metrics may be used. When no source verifies a metric, the portfolio describes value qualitatively instead of estimating it.
+
+## Snapshot Choice
+
+Before writing, the workflow explains that the canonical summary will be refreshed and asks one question: preserve the newly generated summary as a timestamped snapshot too?
+
+- **No** refreshes only `do-work/deliverables/portfolio-summary.md`.
+- **Yes** refreshes the canonical file and creates one byte-identical snapshot under `do-work/deliverables/portfolio-snapshots/`.
+- If the question cannot be asked or answered, the workflow uses the safer preservation branch: canonical refresh plus one snapshot.
+
+Snapshot names use a UTC timestamp. A collision selects a new unused suffix; an existing snapshot is never overwritten. The workflow never deletes snapshots automatically.
+
+## Preservation Boundary
+
+The canonical portfolio summary is the only existing artifact this action intentionally refreshes. Prior snapshots and every other generated artifact remain unchanged. `present-work` does not create per-item briefs, stakeholder-facing HTML, `.single.html` explainers, video directories, or video artifacts. Removal of prior artifacts requires a later explicit user-approved cleanup.

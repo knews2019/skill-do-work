@@ -35,3 +35,4 @@ When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep 
 - [REQ-187: keep one maintainer command inventory and close aggregate self-test recursion with a fixture-only mode](../../do-work/archive/UR-041/REQ-187-canonical-local-maintainer-gate.md#lessons-learned)
 - [REQ-193: lock complete shell-contract predicates so deletion or negation cannot survive a broad regex](../../do-work/archive/UR-043/REQ-193-keep-archived-urs-closed-during-review.md#lessons-learned)
 - [REQ-196: distinguish live root-file inputs from intentional filename variants when enforcing tracked casing](../../do-work/archive/UR-041/REQ-196-lowercase-remaining-root-justfile-contract-paths.md#lessons-learned)
+- [REQ-190: publish exclusive immutable snapshots before atomically refreshing mutable canonical output](../../do-work/archive/REQ-190-reduce-present-work-to-portfolio-only.md#lessons-learned)

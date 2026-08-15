@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.191.0 — Portfolio-Only Present Work (2026-08-15)
+
+`present-work` now does one job: turn the successful archive into a cross-project portfolio. Item-specific calls stay non-writing and point directly to the detailed report and video commands instead of quietly generating competing artifacts.
+
+- Restricts writing to `present-work all|portfolio`, with archive safety, terminal-success issue disclosure, and evidence-backed value language
+- Makes bare and UR/REQ invocations non-writing guidance paths with exact `ai-report` and `present-video` replacements
+- Refreshes one canonical portfolio summary and guides optional byte-identical, timestamped, no-clobber snapshot preservation without deleting prior artifacts
+
 ## 0.190.0 — Canonical Detailed Work Reports (2026-08-15)
 
 Completed-work reporting now has one detailed HTML path for visual and non-visual changes. `ai-report` adapts its evidence to the work while shared archive rules keep every presentation honest and collision-safe.

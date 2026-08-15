@@ -17,7 +17,7 @@ maintenance: true
 
 ## What
 
-Make the shared completed-work presentation resolver inherit `actions/work-reference.md` → **Target ID Resolution** before archive lookup, so case-insensitive prefixes and numeric-value matching resolve canonical stored IDs such as `REQ-042` and `UR-011`.
+Make every completed-work presentation ID path touched by UR-042 inherit `actions/work-reference.md` → **Target ID Resolution** before dispatch or archive lookup, so case-insensitive prefixes and numeric-value matching resolve canonical stored IDs such as `REQ-042` and `UR-011`.
 
 This is a standalone user-visible input contract and cannot fold into a sweep: its fix is unrelated to output-directory publication and has one canonical resolver surface.
 
@@ -25,15 +25,18 @@ This is a standalone user-visible input contract and cannot fold into a sweep: i
 
 Found during review of REQ-189. The new shared reference says to find an exact archived folder or REQ match but does not first normalize equivalent input spellings such as `req-42`, `REQ-42`, and `REQ-042`.
 
+Review of REQ-190 found the same root cause in `present-work` item-specific migration guidance: its dispatcher recognizes canonical-looking `UR-NNN`/`REQ-NNN` text but does not explicitly accept case-insensitive, numeric-equivalent forms before printing both replacement commands.
+
 ## Requirements
 
-- Cite and apply the shared Target ID Resolution contract before UR or REQ archive lookup.
+- Cite and apply the shared Target ID Resolution contract before UR or REQ archive lookup in the completed-work presentation reference.
+- Apply the same token grammar to `present-work` item-specific migration dispatch while preserving the supplied token in the two printed replacement commands.
 - Preserve the presentation action's archive-only search locations and terminal-success gates.
-- Add or identify a replayable contract assertion covering case-insensitive and zero-padding equivalents.
+- Add or identify replayable contract assertions covering case-insensitive and zero-padding equivalents at both presentation entry paths.
 
 ## Red-Green Proof
 
-**RED prompt/case:** Inspect the shared resolver for a presentation request using `req-42` or `REQ-42` when the archived file stores `REQ-042`; no canonicalization step exists before exact lookup.
-**Why RED now:** Raw case-sensitive or zero-padding-sensitive lookup can reject a valid equivalent ID token.
-**GREEN when:** The shared resolver cites Target ID Resolution, canonicalizes the token before lookup, and a replayable assertion accepts equivalent spellings while preserving archive-only and success-status gates.
+**RED prompt/case:** Inspect the shared resolver and `present-work` migration dispatcher for a presentation request using `req-42` or `REQ-42` when canonical storage uses `REQ-042`; neither path currently applies the shared input-token grammar before lookup or routing.
+**Why RED now:** Raw case-sensitive or zero-padding-sensitive matching can reject a valid equivalent ID token or print generic usage instead of migration guidance.
+**GREEN when:** Both presentation entry paths cite Target ID Resolution, accept equivalent spellings, preserve their own lookup/write gates, and replayable assertions cover the shared grammar.
 **Validation:** Review finding; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
