@@ -181,7 +181,7 @@ func TestEnumerateFindsOnlyTopLevelNotes(t *testing.T) {
 
 // TestBoardCarriesNotesIntoGeneratedData walks the whole path a note travels —
 // tree walk → board model → JSON data island — and asserts the note text lands
-// in board-data.js, where board.js reads it.
+// in board-data.js, where board-cards.js reads it.
 func TestBoardCarriesNotesIntoGeneratedData(t *testing.T) {
 	repoRoot := writeNotesTree(t, "- [2026-07-09] check the retry budget\n")
 	board, buildError := buildBoard(repoRoot, time.Date(2026, 7, 9, 0, 0, 0, 0, time.UTC), defaultRecentWindow, nil)
@@ -206,7 +206,7 @@ func TestBoardCarriesNotesIntoGeneratedData(t *testing.T) {
 }
 
 // TestNotesOmittedFromDataWhenAbsent asserts a repo with no notes.md emits no
-// `notes` key at all, so board.js leaves the strip hidden.
+// `notes` key at all, so board-cards.js leaves the strip hidden.
 func TestNotesOmittedFromDataWhenAbsent(t *testing.T) {
 	repoRoot := writeNotesTree(t, "")
 	board, buildError := buildBoard(repoRoot, time.Now(), defaultRecentWindow, nil)

@@ -41,7 +41,7 @@ const undatedCalendarDayKey = "undated"
 // ordinary clock skew between machines; anything beyond it is almost always a
 // session that stamped local wall-clock time with a `Z` suffix (the Timestamp
 // rule in actions/work-reference.md requires the current UTC instant). Mirrored
-// by futureInstantSkewAllowanceMs in web/board.js — keep the two in lock-step.
+// by futureInstantSkewAllowanceMs in web/board-core.js — keep the two in lock-step.
 const futureTimestampSkewAllowance = 2 * time.Minute
 
 // RequestTicket is one parsed REQ-*.md file: its frontmatter fields (with status
@@ -643,8 +643,8 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 	// domain was read verbatim until REQ-111, so `domain: back-end` reached the
 	// card unchanged. Normalize only a PRESENT value: resolveSchemaField maps an
 	// absent field to the contract's default, which is correct for a reader that
-	// must pick a crew file (work.md Step 6) and wrong here — board.js gates the
-	// domain badge and the filter dropdown on `if (request.domain)`, so
+	// must pick a crew file (work.md Step 6) and wrong here — board-cards.js and
+	// board-filters.js gate on `if (request.domain)`, so
 	// defaulting absence to "general" would give every domain-less card a badge
 	// and a filter entry it never had. An absent field is not a contract
 	// violation either, so it is never flagged.
@@ -664,8 +664,8 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 	}
 	// route was left reading verbatim by REQ-111, which wired only `domain` — so a
 	// lowercase letter reached the badge and the drawer row in a field the contract
-	// spells uppercase. Same present-value-only guard as domain: board.js gates
-	// both on `if (request.route)`.
+	// spells uppercase. Same present-value-only guard as domain: board-cards.js
+	// and board-detail.js both gate on `if (request.route)`.
 	//
 	// normalizeSchemaField, NOT resolveSchemaField: route's documented default is
 	// the empty string ("treat as needing re-triage"), so resolving would turn an
@@ -679,7 +679,7 @@ func parseRequestTicket(filePath string, treeSection string) (*RequestTicket, er
 		routeUnrecognized = !isKnownSchemaFieldValue("route", normalizedRoute)
 	}
 	// effort_estimate follows the domain pattern: present-value-only guard, so
-	// absence stays "" and board.js's gates don't chip a card that never carried
+	// absence stays "" and board-cards.js's gates don't chip a card that never carried
 	// the field (absent reads as `normal` semantically, and `normal` renders no
 	// chip anyway). resolveSchemaField substitutes the contract default (normal)
 	// for an unrecognized PRESENT value; the flag raises the data warning — the
@@ -1577,7 +1577,7 @@ func writeSetsIntersect(leftWriteSet []string, rightWriteSet []string) bool {
 // same files. It follows annotateDependencyState's shape (compute the cross-card
 // relationship once in Go, ship a derived id list, let the frontend render it) so
 // the pairwise logic is covered by `go test` instead of living untested in
-// board.js.
+// board-cards.js and board-detail.js.
 //
 // This is a DISPLAY annotation. It shows declared file contention for a human
 // reading the board; it never places a card in a column, never blocks anything,
@@ -1617,7 +1617,7 @@ func annotateWriteSetOverlap(tickets []*RequestTicket) {
 // resolved (completed*/cancelled) ticket, sorted most-recent-first. Tickets
 // whose completion instant could not be resolved are kept — never silently
 // dropped — under the trailing "undated" day bucket (the zero CompletionTime
-// sorts them after every dated entry, and board.js falls back to rendering the
+// sorts them after every dated entry, and board-calendar.js falls back to rendering the
 // raw day key as the group label).
 func buildCalendar(tickets []*RequestTicket) []CalendarEntry {
 	var entries []CalendarEntry

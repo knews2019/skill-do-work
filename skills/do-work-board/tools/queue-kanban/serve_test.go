@@ -80,6 +80,63 @@ func TestServeHandlerRootReturnsBoardHtml(t *testing.T) {
 	}
 }
 
+func TestStaticAndLivePagesUseIdenticalAssembledClient(t *testing.T) {
+	repoRoot := createFixtureDoWorkTree(t)
+	assembledClient, assembleError := assembleBoardJavaScript(embeddedWebAssets)
+	if assembleError != nil {
+		t.Fatalf("assembleBoardJavaScript: %v", assembleError)
+	}
+
+	board, buildError := buildBoard(repoRoot, time.Now(), defaultRecentWindow, nil)
+	if buildError != nil {
+		t.Fatalf("buildBoard for static page: %v", buildError)
+	}
+	staticDirectory := t.TempDir()
+	if generateError := generateStaticSite(staticDirectory, board); generateError != nil {
+		t.Fatalf("generateStaticSite: %v", generateError)
+	}
+	staticPageBytes, readError := os.ReadFile(filepath.Join(staticDirectory, "index.html"))
+	if readError != nil {
+		t.Fatalf("read static index.html: %v", readError)
+	}
+
+	liveServer := httptest.NewServer(newLiveBoardServer(repoRoot, defaultRecentWindow))
+	defer liveServer.Close()
+	liveResponse, requestError := http.Get(liveServer.URL + "/")
+	if requestError != nil {
+		t.Fatalf("GET live /: %v", requestError)
+	}
+	defer liveResponse.Body.Close()
+	livePage := readTestResponseBody(t, liveResponse)
+
+	assembledClientText := string(assembledClient)
+	extractAssembledClient := func(surfaceName string, pageText string) string {
+		t.Helper()
+		if inlineScriptCount := strings.Count(pageText, "<script>"); inlineScriptCount != 1 {
+			t.Fatalf("%s page has %d classic inline scripts, want exactly 1", surfaceName, inlineScriptCount)
+		}
+		if strings.Contains(pageText, `type="module"`) {
+			t.Fatalf("%s page changed the private classic client into a module", surfaceName)
+		}
+		for _, fragmentPath := range boardJavaScriptFragmentPaths {
+			fragmentRequest := `src="` + filepath.Base(fragmentPath) + `"`
+			if strings.Contains(pageText, fragmentRequest) {
+				t.Fatalf("%s page requests fragment %s instead of inlining the assembled client", surfaceName, fragmentPath)
+			}
+		}
+		if occurrenceCount := strings.Count(pageText, assembledClientText); occurrenceCount != 1 {
+			t.Fatalf("%s page contains assembled client %d times, want exactly 1", surfaceName, occurrenceCount)
+		}
+		clientStart := strings.Index(pageText, assembledClientText)
+		return pageText[clientStart : clientStart+len(assembledClientText)]
+	}
+	staticClient := extractAssembledClient("static", string(staticPageBytes))
+	liveClient := extractAssembledClient("live", livePage)
+	if staticClient != liveClient {
+		t.Fatal("static and live pages embedded different assembled client bytes")
+	}
+}
+
 // TestServeMtimeCacheInvalidatesOnStatusChange verifies the mtime cache:
 //
 //  1. A first /board-data.js request reflects the initial fixture state

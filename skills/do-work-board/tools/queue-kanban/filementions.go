@@ -11,7 +11,7 @@ import (
 // dot extension starts with a letter — so "and/or", bare directories, numeric
 // ratios ("2.0/5.75"), and placeholder paths containing <angle-bracket> tokens
 // never match. MUST stay in lock-step with the file-path alternative of
-// bodyMentionPattern in web/board.js: the frontend only decorates paths this
+// bodyMentionPattern in web/board-detail.js: the frontend only decorates paths this
 // scanner has classified, so a drift makes mentions silently fall back to
 // plain text.
 var repoFileMentionPattern = regexp.MustCompile(

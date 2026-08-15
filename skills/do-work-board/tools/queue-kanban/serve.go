@@ -157,7 +157,7 @@ func (liveServer *liveBoardServer) serveLiveBoardDataJs(responseWriter http.Resp
 }
 
 // serveLiveBoardMarkdownJs emits the raw REQ/UR bodies used by the Copy button.
-// The main page does not request this route; board.js loads it on the first copy.
+// The main page does not request this route; board-clipboard.js loads it on the first copy.
 func (liveServer *liveBoardServer) serveLiveBoardMarkdownJs(responseWriter http.ResponseWriter, httpRequest *http.Request) {
 	if httpRequest.Method != http.MethodGet && httpRequest.Method != http.MethodHead {
 		http.Error(responseWriter, "Method not allowed", http.StatusMethodNotAllowed)

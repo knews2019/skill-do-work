@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"html"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,11 +15,11 @@ import (
 )
 
 // embeddedWebAssets holds the hand-authored static frontend (HTML shell + CSS +
-// JS) that `generate` inlines into a single self-contained index.html. REQ-1209
+// JS fragments) that `generate` inlines into a single self-contained index.html. REQ-1209
 // (`serve`) embeds and re-serves the SAME web/ directory unchanged, so the shape
 // here is the shared contract.
 //
-//go:embed web/template.html web/board.css web/board.js
+//go:embed web/template.html web/board.css web/*.js
 var embeddedWebAssets embed.FS
 
 // Inline placeholder tokens in web/template.html. They are deliberately
@@ -26,20 +27,37 @@ var embeddedWebAssets embed.FS
 // opened during development without the inlining step). generate replaces each
 // exactly once.
 const (
-	inlineStylePlaceholder        = "/* INLINE_BOARD_STYLES */"
-	inlineScriptPlaceholder       = "/* INLINE_BOARD_SCRIPT */"
-	generatedAtDisplayPlaceholder = "GENERATED_AT_DISPLAY"
-	projectNamePlaceholder        = "PROJECT_NAME"
+	inlineStylePlaceholder         = "/* INLINE_BOARD_STYLES */"
+	inlineScriptPlaceholder        = "/* INLINE_BOARD_SCRIPT */"
+	boardJavaScriptPlaceholder     = "/* INLINE_BOARD_FRAGMENTS */"
+	boardJavaScriptPlaceholderLine = boardJavaScriptPlaceholder + "\n"
+	boardJavaScriptShellPath       = "web/board.js"
+	generatedAtDisplayPlaceholder  = "GENERATED_AT_DISPLAY"
+	projectNamePlaceholder         = "PROJECT_NAME"
 )
+
+// boardJavaScriptFragmentPaths is the sole execution-order manifest for the
+// private classic-script client. The wildcard embed makes authored inventory
+// testable; it never decides runtime order.
+var boardJavaScriptFragmentPaths = [...]string{
+	"web/board-core.js",
+	"web/board-filters.js",
+	"web/board-cards.js",
+	"web/board-calendar.js",
+	"web/board-testing.js",
+	"web/board-detail.js",
+	"web/board-controls.js",
+	"web/board-clipboard.js",
+}
 
 // boardDataJsFilename is the sibling file written next to index.html that assigns
 // the board JSON to window.queueKanbanBoardData. A <script src="board-data.js">
-// in index.html loads it before board.js so the board renders offline from file://.
+// in index.html loads it before the assembled client so the board renders offline from file://.
 const boardDataJsFilename = "board-data.js"
 
 // boardMarkdownJsFilename carries raw REQ/UR Markdown for the drawer Copy button.
-// It is deliberately NOT referenced by index.html: board.js injects it on the
-// first copy, keeping duplicate raw bodies out of the initial board payload while
+// It is deliberately NOT referenced by index.html: board-clipboard.js injects it
+// on the first copy, keeping duplicate raw bodies out of the initial board payload while
 // preserving file:// support (a dynamically-added script works without fetch/CORS).
 const boardMarkdownJsFilename = "board-markdown.js"
 
@@ -206,7 +224,7 @@ type staticSiteBackup struct {
 }
 
 // generateStaticSite writes a three-file static board into outputDirectory:
-//   - index.html — the page shell with CSS + board.js inlined; references board-data.js
+//   - index.html — the page shell with CSS + the assembled client inlined; references board-data.js
 //   - board-data.js — the initial board payload (including pre-rendered body HTML)
 //   - board-markdown.js — raw REQ/UR bodies, loaded lazily on the first Copy click
 //
@@ -498,9 +516,55 @@ func buildGeneratedBoardMarkdownData(board *Board) generatedBoardMarkdownData {
 	return markdownData
 }
 
-// assembleStaticPage inlines the CSS and board.js into the HTML template,
-// producing the index.html string. The JSON data island is NOT inlined here —
-// it lives in the sibling board-data.js file (written by generateStaticSite)
+// assembleBoardJavaScript replaces the private shell's single placeholder with
+// the eight manifest-ordered closure fragments. Each fragment owns exactly one
+// trailing LF; this seam owns the blank line between fragments and before boot.
+func assembleBoardJavaScript(webAssets fs.FS) ([]byte, error) {
+	shellText, shellError := fs.ReadFile(webAssets, boardJavaScriptShellPath)
+	if shellError != nil {
+		return nil, fmt.Errorf("queue-kanban: reading embedded JavaScript shell: %w", shellError)
+	}
+	placeholderBytes := []byte(boardJavaScriptPlaceholder)
+	if placeholderCount := bytes.Count(shellText, placeholderBytes); placeholderCount != 1 {
+		return nil, fmt.Errorf("queue-kanban: JavaScript shell has %d fragment placeholders, want exactly 1", placeholderCount)
+	}
+	placeholderLineBytes := []byte(boardJavaScriptPlaceholderLine)
+	if placeholderLineCount := bytes.Count(shellText, placeholderLineBytes); placeholderLineCount != 1 {
+		return nil, fmt.Errorf("queue-kanban: JavaScript shell has %d canonical fragment placeholder lines, want exactly 1", placeholderLineCount)
+	}
+
+	fragmentTexts := make([][]byte, 0, len(boardJavaScriptFragmentPaths))
+	seenFragmentPaths := make(map[string]bool, len(boardJavaScriptFragmentPaths))
+	for _, fragmentPath := range boardJavaScriptFragmentPaths {
+		if seenFragmentPaths[fragmentPath] {
+			return nil, fmt.Errorf("queue-kanban: duplicate JavaScript fragment path %s", fragmentPath)
+		}
+		seenFragmentPaths[fragmentPath] = true
+
+		fragmentText, fragmentError := fs.ReadFile(webAssets, fragmentPath)
+		if fragmentError != nil {
+			return nil, fmt.Errorf("queue-kanban: reading embedded JavaScript fragment %s: %w", fragmentPath, fragmentError)
+		}
+		if !bytes.HasSuffix(fragmentText, []byte("\n")) ||
+			bytes.HasSuffix(fragmentText, []byte("\n\n")) ||
+			bytes.HasSuffix(fragmentText, []byte("\r\n")) {
+			return nil, fmt.Errorf("queue-kanban: JavaScript fragment %s must end with exactly one LF", fragmentPath)
+		}
+		fragmentTexts = append(fragmentTexts, fragmentText)
+	}
+
+	assembledFragments := bytes.Join(fragmentTexts, []byte("\n"))
+	assembledFragments = append(assembledFragments, '\n')
+	assembledClient := bytes.Replace(shellText, placeholderLineBytes, assembledFragments, 1)
+	if bytes.Contains(assembledClient, placeholderBytes) {
+		return nil, fmt.Errorf("queue-kanban: assembled JavaScript retained a fragment placeholder")
+	}
+	return assembledClient, nil
+}
+
+// assembleStaticPage inlines the CSS and assembled classic client into the HTML
+// template, producing the index.html string. The JSON data island is NOT inlined
+// here — it lives in the sibling board-data.js file (written by generateStaticSite)
 // and is loaded via <script src="board-data.js"> already present in the template.
 // projectName labels which repo this board belongs to (the parent folder name);
 // it is HTML-escaped before substitution so an exotic folder name can never break
@@ -514,9 +578,9 @@ func assembleStaticPage(generatedAt time.Time, projectName string) (string, erro
 	if styleError != nil {
 		return "", fmt.Errorf("queue-kanban: reading embedded stylesheet: %w", styleError)
 	}
-	scriptText, scriptError := embeddedWebAssets.ReadFile("web/board.js")
+	scriptText, scriptError := assembleBoardJavaScript(embeddedWebAssets)
 	if scriptError != nil {
-		return "", fmt.Errorf("queue-kanban: reading embedded script: %w", scriptError)
+		return "", scriptError
 	}
 
 	page := string(templateText)

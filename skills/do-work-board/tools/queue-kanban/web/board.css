@@ -69,7 +69,7 @@
 
   --topbar-height: 68px;
 
-  /* Width of the docked detail panel. board.js updates this custom property as
+  /* Width of the docked detail panel. board-detail.js updates this custom property as
      the user drags the resizer (and restores a persisted value on load); the
      clamp() in .detail-drawer keeps any value sane for the current viewport. */
   --detail-panel-width: 620px;
@@ -157,7 +157,7 @@ body {
 }
 
 /* While the divider is being dragged: keep the col-resize cursor everywhere and
-   stop the drag from selecting board text. board.js toggles this class. */
+   stop the drag from selecting board text. board-detail.js toggles this class. */
 body.is-resizing-detail {
   cursor: col-resize;
   user-select: none;
@@ -353,7 +353,7 @@ body.is-resizing-detail {
 }
 
 /* Data warnings banner (duplicate REQ ids, unrecognized statuses) — rendered
-   by board.js only when the data island carries warnings. */
+   by board-cards.js only when the data island carries warnings. */
 .board-warnings {
   margin: 0 0 20px;
   padding: 12px 16px;
@@ -1227,7 +1227,7 @@ body.is-resizing-detail .detail-resizer::before {
   min-height: 0;
   /* The custom property is set by the resizer drag; the clamp keeps any stored
      or dragged value inside [minimum panel, viewport minus visible board]. The
-     360px/340px bounds mirror the constants in board.js. */
+     360px/340px bounds mirror the constants in board-detail.js. */
   width: clamp(360px, var(--detail-panel-width), calc(100vw - 340px));
   background-color: var(--surface-1);
   border-left: 1px solid var(--line-firm);
@@ -1300,7 +1300,7 @@ body.is-resizing-detail .detail-resizer::before {
   outline: 2px solid var(--accent-claimed);
   outline-offset: 2px;
 }
-/* Transient feedback states set by board.js after a copy attempt. */
+/* Transient feedback states set by board-clipboard.js after a copy attempt. */
 .detail-copy.is-copied {
   color: var(--accent-done);
   border-color: currentColor;

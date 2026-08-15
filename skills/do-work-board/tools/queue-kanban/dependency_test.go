@@ -152,7 +152,7 @@ func TestDependentsRecordTheReverseEdge(t *testing.T) {
 }
 
 // TestDependencyStateReachesGeneratedData asserts the annotations survive the
-// projection into board-data.js, where board.js styles chips and badges from them.
+// projection into board-data.js, where board-cards.js styles chips and badges from them.
 func TestDependencyStateReachesGeneratedData(t *testing.T) {
 	board := buildDependencyBoard(t, []dependencyFixture{
 		{RequestId: "REQ-1", Status: "pending"},

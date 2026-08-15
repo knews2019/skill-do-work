@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -11,6 +12,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/fstest"
 	"time"
 )
 
@@ -21,6 +23,168 @@ const (
 )
 
 var javaScriptBehaviorProbeCount atomic.Int64
+
+func TestEmbeddedAuthoredJavaScriptInventory(t *testing.T) {
+	webEntries, readError := embeddedWebAssets.ReadDir("web")
+	if readError != nil {
+		t.Fatalf("read embedded web assets: %v", readError)
+	}
+	var authoredJavaScriptPaths []string
+	for _, webEntry := range webEntries {
+		if !webEntry.IsDir() && strings.HasSuffix(webEntry.Name(), ".js") {
+			authoredJavaScriptPaths = append(authoredJavaScriptPaths, "web/"+webEntry.Name())
+		}
+	}
+	wantAuthoredJavaScriptPaths := []string{
+		"web/board-calendar.js",
+		"web/board-cards.js",
+		"web/board-clipboard.js",
+		"web/board-controls.js",
+		"web/board-core.js",
+		"web/board-detail.js",
+		"web/board-filters.js",
+		"web/board-testing.js",
+		"web/board.js",
+	}
+	if strings.Join(authoredJavaScriptPaths, "\n") != strings.Join(wantAuthoredJavaScriptPaths, "\n") {
+		t.Fatalf("embedded authored JavaScript paths = %q, want exact shell-plus-fragment inventory %q",
+			authoredJavaScriptPaths, wantAuthoredJavaScriptPaths)
+	}
+}
+
+func TestBoardJavaScriptAssemblyStructure(t *testing.T) {
+	wantFragmentPaths := []string{
+		"web/board-core.js",
+		"web/board-filters.js",
+		"web/board-cards.js",
+		"web/board-calendar.js",
+		"web/board-testing.js",
+		"web/board-detail.js",
+		"web/board-controls.js",
+		"web/board-clipboard.js",
+	}
+	if strings.Join(boardJavaScriptFragmentPaths[:], "\n") != strings.Join(wantFragmentPaths, "\n") {
+		t.Fatalf("JavaScript fragment manifest = %q, want literal execution order %q",
+			boardJavaScriptFragmentPaths, wantFragmentPaths)
+	}
+
+	shellText, shellError := embeddedWebAssets.ReadFile(boardJavaScriptShellPath)
+	if shellError != nil {
+		t.Fatalf("read JavaScript shell: %v", shellError)
+	}
+	placeholderBytes := []byte(boardJavaScriptPlaceholder)
+	if placeholderCount := bytes.Count(shellText, placeholderBytes); placeholderCount != 1 {
+		t.Fatalf("shell placeholder count = %d, want exactly 1", placeholderCount)
+	}
+	placeholderLineBytes := []byte(boardJavaScriptPlaceholderLine)
+	if placeholderLineCount := bytes.Count(shellText, placeholderLineBytes); placeholderLineCount != 1 {
+		t.Fatalf("canonical shell placeholder line count = %d, want exactly 1", placeholderLineCount)
+	}
+
+	assembledClient, assembleError := assembleBoardJavaScript(embeddedWebAssets)
+	if assembleError != nil {
+		t.Fatalf("assembleBoardJavaScript: %v", assembleError)
+	}
+	assembledAgain, secondAssembleError := assembleBoardJavaScript(embeddedWebAssets)
+	if secondAssembleError != nil {
+		t.Fatalf("second assembleBoardJavaScript: %v", secondAssembleError)
+	}
+	if !bytes.Equal(assembledClient, assembledAgain) {
+		t.Fatal("JavaScript assembly is not deterministic")
+	}
+	if bytes.Contains(assembledClient, placeholderBytes) {
+		t.Fatal("assembled JavaScript retained the private fragment placeholder")
+	}
+
+	fragmentTexts := make([][]byte, 0, len(wantFragmentPaths))
+	previousFragmentIndex := -1
+	for _, fragmentPath := range wantFragmentPaths {
+		fragmentText, readError := embeddedWebAssets.ReadFile(fragmentPath)
+		if readError != nil {
+			t.Fatalf("read %s: %v", fragmentPath, readError)
+		}
+		if !bytes.HasSuffix(fragmentText, []byte("\n")) ||
+			bytes.HasSuffix(fragmentText, []byte("\n\n")) ||
+			bytes.HasSuffix(fragmentText, []byte("\r\n")) {
+			t.Fatalf("%s must end with exactly one LF", fragmentPath)
+		}
+		if occurrenceCount := bytes.Count(assembledClient, fragmentText); occurrenceCount != 1 {
+			t.Fatalf("%s occurs %d times in assembled client, want exactly 1", fragmentPath, occurrenceCount)
+		}
+		fragmentIndex := bytes.Index(assembledClient, fragmentText)
+		if fragmentIndex <= previousFragmentIndex {
+			t.Fatalf("%s starts at byte %d after previous fragment byte %d; manifest order was not preserved",
+				fragmentPath, fragmentIndex, previousFragmentIndex)
+		}
+		previousFragmentIndex = fragmentIndex
+		fragmentTexts = append(fragmentTexts, fragmentText)
+	}
+
+	wantFragmentBlock := bytes.Join(fragmentTexts, []byte("\n"))
+	wantFragmentBlock = append(wantFragmentBlock, '\n')
+	wantAssembledClient := bytes.Replace(shellText, placeholderLineBytes, wantFragmentBlock, 1)
+	if !bytes.Equal(assembledClient, wantAssembledClient) {
+		t.Fatal("assembled client does not use the deterministic one-blank-line fragment boundaries")
+	}
+}
+
+func TestBoardJavaScriptAssemblerRejectsInvalidStructure(t *testing.T) {
+	newFixtureAssets := func(shellText string) fstest.MapFS {
+		fixtureAssets := fstest.MapFS{
+			boardJavaScriptShellPath: &fstest.MapFile{Data: []byte(shellText)},
+		}
+		for _, fragmentPath := range boardJavaScriptFragmentPaths {
+			fixtureAssets[fragmentPath] = &fstest.MapFile{Data: []byte("// " + fragmentPath + "\n")}
+		}
+		return fixtureAssets
+	}
+
+	t.Run("missing placeholder", func(t *testing.T) {
+		fixtureAssets := newFixtureAssets("(function () {\n})();\n")
+		if _, assembleError := assembleBoardJavaScript(fixtureAssets); assembleError == nil {
+			t.Fatal("assembler accepted a shell with no fragment placeholder")
+		}
+	})
+	t.Run("duplicate placeholder", func(t *testing.T) {
+		fixtureAssets := newFixtureAssets(boardJavaScriptPlaceholderLine + boardJavaScriptPlaceholderLine)
+		if _, assembleError := assembleBoardJavaScript(fixtureAssets); assembleError == nil {
+			t.Fatal("assembler accepted a shell with duplicate fragment placeholders")
+		}
+	})
+	t.Run("duplicate noncanonical placeholder", func(t *testing.T) {
+		fixtureAssets := newFixtureAssets(boardJavaScriptPlaceholderLine + boardJavaScriptPlaceholder)
+		if _, assembleError := assembleBoardJavaScript(fixtureAssets); assembleError == nil {
+			t.Fatal("assembler accepted a second fragment placeholder without a trailing LF")
+		}
+	})
+	t.Run("lone noncanonical placeholder", func(t *testing.T) {
+		fixtureAssets := newFixtureAssets(boardJavaScriptPlaceholder)
+		if _, assembleError := assembleBoardJavaScript(fixtureAssets); assembleError == nil {
+			t.Fatal("assembler accepted a fragment placeholder without its canonical trailing LF")
+		}
+	})
+	t.Run("missing fragment", func(t *testing.T) {
+		fixtureAssets := newFixtureAssets(boardJavaScriptPlaceholderLine)
+		delete(fixtureAssets, boardJavaScriptFragmentPaths[0])
+		if _, assembleError := assembleBoardJavaScript(fixtureAssets); assembleError == nil {
+			t.Fatal("assembler accepted an omitted manifest fragment")
+		}
+	})
+	t.Run("noncanonical fragment ending", func(t *testing.T) {
+		fixtureAssets := newFixtureAssets(boardJavaScriptPlaceholderLine)
+		fixtureAssets[boardJavaScriptFragmentPaths[0]] = &fstest.MapFile{Data: []byte("no trailing LF")}
+		if _, assembleError := assembleBoardJavaScript(fixtureAssets); assembleError == nil {
+			t.Fatal("assembler accepted a fragment without exactly one trailing LF")
+		}
+	})
+	t.Run("double fragment ending", func(t *testing.T) {
+		fixtureAssets := newFixtureAssets(boardJavaScriptPlaceholderLine)
+		fixtureAssets[boardJavaScriptFragmentPaths[0]] = &fstest.MapFile{Data: []byte("extra blank line\n\n")}
+		if _, assembleError := assembleBoardJavaScript(fixtureAssets); assembleError == nil {
+			t.Fatal("assembler accepted a fragment with two trailing LFs")
+		}
+	})
+}
 
 func TestMain(testMain *testing.M) {
 	exitCode := testMain.Run()
@@ -84,12 +248,18 @@ func TestMaintainerStrictJavaScriptBehaviorLane(t *testing.T) {
 	}
 }
 
-func runJavaScriptBehaviorProbe(t *testing.T, probeName string, javascriptProbe string) []byte {
+func lookupNodeForJavaScriptProbe(t *testing.T) string {
 	t.Helper()
 	nodePath, lookupError := exec.LookPath("node")
 	if lookupError != nil {
 		t.Skip("node is unavailable; skipping JavaScript behavior probe")
 	}
+	return nodePath
+}
+
+func runJavaScriptBehaviorProbe(t *testing.T, probeName string, javascriptProbe string) []byte {
+	t.Helper()
+	nodePath := lookupNodeForJavaScriptProbe(t)
 
 	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
 	javaScriptBehaviorProbeCount.Add(1)
@@ -98,6 +268,30 @@ func runJavaScriptBehaviorProbe(t *testing.T, probeName string, javascriptProbe 
 		t.Fatalf("execute %s JavaScript behavior: %v\n%s", probeName, probeError, probeOutput)
 	}
 	return probeOutput
+}
+
+// Syntax participates in the maintainer-strict test selection but deliberately
+// does not increment javaScriptBehaviorProbeCount: a parse-only check cannot
+// satisfy the lane's requirement for executable behavior coverage.
+func TestJavaScriptBehaviorAssembledClientSyntax(t *testing.T) {
+	behaviorProbeCountBefore := javaScriptBehaviorProbeCount.Load()
+	defer func() {
+		if behaviorProbeCountAfter := javaScriptBehaviorProbeCount.Load(); behaviorProbeCountAfter != behaviorProbeCountBefore {
+			t.Errorf("assembled syntax changed behavior-probe count from %d to %d",
+				behaviorProbeCountBefore, behaviorProbeCountAfter)
+		}
+	}()
+	assembledClient, assembleError := assembleBoardJavaScript(embeddedWebAssets)
+	if assembleError != nil {
+		t.Fatalf("assembleBoardJavaScript: %v", assembleError)
+	}
+	nodePath := lookupNodeForJavaScriptProbe(t)
+	syntaxCommand := exec.Command(nodePath, "--check", "-")
+	syntaxCommand.Stdin = bytes.NewReader(assembledClient)
+	syntaxOutput, syntaxError := syntaxCommand.CombinedOutput()
+	if syntaxError != nil {
+		t.Fatalf("node --check assembled client: %v\n%s", syntaxError, syntaxOutput)
+	}
 }
 
 func publicationTestBoard(title string, bodyMarkdown string, projectName string, generatedAt time.Time) *Board {
@@ -192,9 +386,9 @@ func TestGenerateWritesSelfContainedIndex(t *testing.T) {
 			t.Fatalf("generated page is not self-contained: found external reference %q", externalMarker)
 		}
 	}
-	// The inlined behaviour script must be present (a known function name).
+	// The inlined assembled client must be present (a known function name).
 	if !strings.Contains(indexHtml, "renderColumns") {
-		t.Fatalf("inlined board.js behaviour is missing from the page")
+		t.Fatalf("inlined assembled-client behaviour is missing from the page")
 	}
 	// The display placeholder must have been resolved.
 	if strings.Contains(indexHtml, "GENERATED_AT_DISPLAY") {
@@ -510,17 +704,17 @@ func TestGenerateSeparatesRawMarkdownForLazyCopy(t *testing.T) {
 		t.Fatalf("index.html eagerly loads board-markdown.js; raw source must load only after Copy")
 	}
 	if !strings.Contains(string(indexBytes), `markdownScript.src = "board-markdown.js"`) {
-		t.Fatalf("inlined board.js has no lazy board-markdown.js loader")
+		t.Fatalf("inlined board-clipboard.js has no lazy board-markdown.js loader")
 	}
 	// Since REQ-089 the lazy payload holds whole FILES (frontmatter fence + body),
 	// so the primary Copy path writes them verbatim — no synthesized heading, or the
 	// paste stops round-tripping back into a valid REQ file. The identifying heading
 	// belongs to the rendered-text fallback alone, which has no frontmatter to carry.
 	if !strings.Contains(string(indexBytes), "copyTextWithHeading(requestedKind, requestedId, renderedTextFallback)") {
-		t.Fatalf("inlined board.js does not prepend the id/title heading on the rendered-text fallback path")
+		t.Fatalf("inlined board-clipboard.js does not prepend the id/title heading on the rendered-text fallback path")
 	}
 	if strings.Contains(string(indexBytes), "copyTextWithHeading(requestedKind, requestedId, bodyText)") {
-		t.Fatalf("inlined board.js still routes the lazy payload through the heading builder — the primary path must copy the file verbatim")
+		t.Fatalf("inlined board-clipboard.js still routes the lazy payload through the heading builder — the primary path must copy the file verbatim")
 	}
 }
 
@@ -983,7 +1177,7 @@ func TestEncodeBoardMarkdownJsAssignmentRoundTripsRawSource(t *testing.T) {
 // TestRecentlyDoneWindowDefaultsTo24h asserts that a fresh board load defaults
 // the RECENTLY DONE column to the 24h window: the 24h toggle button must carry
 // aria-pressed="true" and the 7d (168h) button must NOT be the default-active one.
-// The assertion also verifies that the inlined board.js initialises windowHours to
+// The assertion also verifies that the inlined board.js shell initialises windowHours to
 // 24, not 168, so the JS runtime agrees with the HTML button state on load.
 func TestRecentlyDoneWindowDefaultsTo24h(t *testing.T) {
 	indexHtml := generateLiveSite(t)
@@ -1000,7 +1194,7 @@ func TestRecentlyDoneWindowDefaultsTo24h(t *testing.T) {
 		t.Fatalf("7d window button is still marked as the default-active toggle: %q must not appear in the generated page", staleActive7d)
 	}
 
-	// The inlined board.js JS default must match the HTML button state.
+	// The inlined board.js shell default must match the HTML button state.
 	jsDefaultWindow24h := "windowHours: 24"
 	if !strings.Contains(indexHtml, jsDefaultWindow24h) {
 		t.Fatalf("board.js windowHours default is not 24: expected %q in the inlined script", jsDefaultWindow24h)
@@ -1014,16 +1208,16 @@ func TestRecentlyDoneWindowDefaultsTo24h(t *testing.T) {
 // TestGenerateInlinesWriteSetOverlapBadgeRenderPath guards the frontend half of
 // the write_set overlap annotation. The Go tests cover annotateWriteSetOverlap
 // (model_test.go), but nothing proved the derived list still gets *rendered*:
-// a refactor that dropped the badge renderer from web/board.js would ship a
+// a refactor that dropped the badge renderer from web/board-cards.js would ship a
 // silent regression, since the badge only appears when the live tree happens to
-// have overlapping REQs. These are code tokens from the inlined board.js/board.css,
+// have overlapping REQs. These are code tokens from the assembled client/board.css,
 // so the assertion holds regardless of what the queue currently contains.
 func TestGenerateInlinesWriteSetOverlapBadgeRenderPath(t *testing.T) {
 	indexHtml := generateLiveSite(t)
 
 	for _, renderToken := range []string{
 		// The makeBadge() call that emits the card badge. The quoted form only
-		// occurs in board.js — the bare class name would also match the CSS rule.
+		// occurs in board-cards.js — the bare class name would also match the CSS rule.
 		`"badge-write-overlap"`,
 		// The generated payload field (generate.go's writeSetOverlaps key) that
 		// the badge gates on.
@@ -1034,7 +1228,7 @@ func TestGenerateInlinesWriteSetOverlapBadgeRenderPath(t *testing.T) {
 		".badge-write-overlap",
 	} {
 		if !strings.Contains(indexHtml, renderToken) {
-			t.Fatalf("write_set overlap badge render path is missing from the generated page: %q not found in the inlined board.js/board.css", renderToken)
+			t.Fatalf("write_set overlap badge render path is missing from the generated page: %q not found in the assembled client/board.css", renderToken)
 		}
 	}
 }
@@ -1314,7 +1508,7 @@ process.stdout.write(JSON.stringify(results));`
 	probeOutput := runJavaScriptBehaviorProbe(t, "by-UR empty-state decision", javascriptProbe)
 	var results []string
 	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
-		t.Fatalf("decode board.js empty-state results: %v (output %q)", decodeError, probeOutput)
+		t.Fatalf("decode assembled-client empty-state results: %v (output %q)", decodeError, probeOutput)
 	}
 	if len(results) != 6 {
 		t.Fatalf("empty-state result count = %d, want 6", len(results))
@@ -1404,7 +1598,7 @@ process.stdout.write(JSON.stringify({ renderedUserRequestIds: renderedUserReques
 		ScopeNotes             []string `json:"scopeNotes"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &result); decodeError != nil {
-		t.Fatalf("decode board.js by-UR caller output: %v (output %q)", decodeError, probeOutput)
+		t.Fatalf("decode assembled-client by-UR caller output: %v (output %q)", decodeError, probeOutput)
 	}
 	if len(result.RenderedUserRequestIds) != 1 || result.RenderedUserRequestIds[0] != "UR-302" {
 		t.Fatalf("Active by-UR caller rendered %#v, want only recent terminal UR-302", result.RenderedUserRequestIds)
@@ -1457,7 +1651,7 @@ process.stdout.write(JSON.stringify([boardCopy, hiddenBoardCopy, testingCopy]));
 	probeOutput := runJavaScriptBehaviorProbe(t, "testing empty-copy decision", javascriptProbe)
 	var results []string
 	if decodeError := json.Unmarshal(probeOutput, &results); decodeError != nil {
-		t.Fatalf("decode board.js empty-copy results: %v (output %q)", decodeError, probeOutput)
+		t.Fatalf("decode assembled-client empty-copy results: %v (output %q)", decodeError, probeOutput)
 	}
 	if len(results) != 3 {
 		t.Fatalf("empty-copy result count = %d, want 3: %#v", len(results), results)

@@ -654,7 +654,7 @@ if [ -n "$stale_write_set_weak_premise_lines" ]; then
 fi
 
 # The wrapped-comment half of the same rule (REQ-075, weak form added by REQ-079). model.go and
-# board.js explain write_set in comments and tooltip text that wrap across lines, so the line sweeps
+# board-cards.js explains write_set in comments and tooltip text that wrap across lines, so the line sweeps
 # above cannot see them. Neither file has any business asserting how many REQs run at once, nor any
 # business invoking the exclusive-session model at all — so file-level negatives are exact and stable.
 assert_file_not_contains \
@@ -663,9 +663,9 @@ assert_file_not_contains \
   'tools/queue-kanban/model.go must not explain write_set with a one-REQ-at-a-time premise — it is advisory input to a human pick and the merge is the non-interference proof, at any builder count (REQ-075).'
 
 assert_file_not_contains \
-  "tools/queue-kanban/web/board.js" \
+  "tools/queue-kanban/web/board-cards.js" \
   "$builder_count_premise_pattern" \
-  'tools/queue-kanban/web/board.js overlaps-badge tooltip must not explain write_set with a one-REQ-at-a-time premise — that reason is false since fan-out dispatch (REQ-075).'
+  'tools/queue-kanban/web/board-cards.js overlaps-badge tooltip must not explain write_set with a one-REQ-at-a-time premise — that reason is false since fan-out dispatch (REQ-075).'
 
 assert_file_not_contains \
   "tools/queue-kanban/model.go" \
@@ -673,9 +673,9 @@ assert_file_not_contains \
   'tools/queue-kanban/model.go must not invoke the exclusive-session model — it is the weak fingerprint of the retired write_set premise, and the file has no other reason to name it (REQ-079).'
 
 assert_file_not_contains \
-  "tools/queue-kanban/web/board.js" \
+  "tools/queue-kanban/web/board-cards.js" \
   "$exclusive_session_premise_pattern" \
-  'tools/queue-kanban/web/board.js must not invoke the exclusive-session model — it is the weak fingerprint of the retired write_set premise, and the file has no other reason to name it (REQ-079).'
+  'tools/queue-kanban/web/board-cards.js must not invoke the exclusive-session model — it is the weak fingerprint of the retired write_set premise, and the file has no other reason to name it (REQ-079).'
 
 # write_set parser lock-step (REQ-032, updated by REQ-069). write_set does not gate dispatch; it
 # survives as a display-only field the board parser reads for the overlaps badge, so the parser must

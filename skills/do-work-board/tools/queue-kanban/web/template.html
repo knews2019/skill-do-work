@@ -21,7 +21,7 @@
 
       <nav class="board-controls" aria-label="Board views and lenses">
         <!-- Shared filter bar — applies to whichever view is active (columns,
-             by-UR, calendar). Selects are populated by board.js from the data
+             by-UR, calendar). Selects are populated by board-filters.js from the data
              island; the clear button appears only while a filter is set. -->
         <div class="control-group control-group-filters" role="group" aria-label="Filters" id="filter-group">
           <input
@@ -37,7 +37,7 @@
           <select class="filter-select" id="filter-status" aria-label="Filter by status">
             <option value="">All statuses</option>
           </select>
-          <!-- Testing view only (board.js toggles visibility): windows the
+          <!-- Testing view only (board-controls.js toggles visibility): windows the
                testing columns by each card's last activity instant. -->
           <select class="filter-select" id="filter-done-window" aria-label="Filter by completion date" hidden>
             <option value="">Any date</option>
@@ -52,7 +52,7 @@
         <!-- By-UR lens only: Active hides user requests with no open REQ and no
              REQ completed inside the RECENTLY DONE window, so a just-shipped
              queue still shows the session's work instead of going blank.
-             board.js toggles this group's visibility with the lens. -->
+             board-controls.js toggles this group's visibility with the lens. -->
         <div class="control-group" role="group" aria-label="User-request activity" id="ur-activity-group" hidden>
           <span class="control-label">URs</span>
           <button
@@ -100,7 +100,7 @@
 
     <main id="board-main" class="board-main" tabindex="-1">
       <!-- do-work/notes.md — lightweight dated hints, not REQs. Filled by
-           board.js and left hidden when the file is absent or empty. It sits
+           board-cards.js and left hidden when the file is absent or empty. It sits
            outside the view panels so notes stay visible on the calendar too. -->
       <details class="board-notes" id="board-notes" hidden open>
         <summary class="board-notes-summary">
@@ -116,7 +116,7 @@
            hash). These are bookkeeping bugs to fix, not recent completions:
            the strip sits outside the view panels so it stays visible in every
            view, ignores the recently-done window and the filters, and is
-           hidden only when there are none. Filled by board.js. -->
+           hidden only when there are none. Filled by board-cards.js. -->
       <section class="board-anomalies" id="board-anomalies" aria-label="Completion anomalies" hidden>
         <header class="board-anomalies-head">
           <strong class="board-anomalies-title">Completion anomalies</strong>
@@ -245,7 +245,7 @@
 
     <!-- Divider between the board and the docked detail panel. Drag it (or use
          arrow keys while it has focus) to resize the panel; double-click resets
-         the width. Width limits live in board.js next to the drag logic. -->
+         the width. Width limits live in board-detail.js next to the drag logic. -->
     <div
       class="detail-resizer"
       id="detail-resizer"

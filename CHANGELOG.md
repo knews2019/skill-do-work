@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.18 — Modular Framework-Free Board Client (2026-08-15)
+
+The queue board's single large browser source now has explicit responsibility boundaries while preserving the exact framework-free runtime. One private shell assembles eight ordered closure fragments for both static and live pages.
+
+- Preserves the pre-change client byte-for-byte through a fixed Go manifest with no fragment requests, modules, globals, frameworks, or dependencies
+- Mutation-locks authored inventory, execution order, exact boundaries, raw/canonical marker invariants, assembled syntax, and static/live byte parity
+- Retargets source ownership and contract checks to the exact fragment owners while keeping the strict JavaScript behavior lane intact
+
 ## 0.189.17 — Structured Stray Request Verification (2026-08-15)
 
 Misplaced request files could trigger a board warning yet disappear from the forensics report. Verify now forwards the board's canonical structured evidence while recognizing legitimate review follow-ups under closed User Requests.

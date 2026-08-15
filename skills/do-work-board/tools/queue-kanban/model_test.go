@@ -873,8 +873,8 @@ Body.
 // TestParseRequestTicketPreservesAbsentDomain guards the regression the REQ-111
 // wiring nearly shipped: resolveSchemaField maps an ABSENT field to the
 // contract's default, which is right for a reader that must pick a crew file
-// (work.md Step 6) and wrong for the renderer. board.js gates both the domain
-// badge and the filter dropdown on `if (request.domain)`, so defaulting absence
+// (work.md Step 6) and wrong for the renderer. board-cards.js and
+// board-filters.js gate on `if (request.domain)`, so defaulting absence
 // to "general" would give every domain-less card a badge and a filter entry it
 // never had.
 func TestParseRequestTicketPreservesAbsentDomain(t *testing.T) {
@@ -1092,7 +1092,7 @@ func TestUnrecognizedEffortEstimateFlagsAndWarns(t *testing.T) {
 
 // TestRecognizedEffortEstimateRaisesNoWarning is the silence half: a case-folded
 // canonical value and an absent field must both stay quiet, and the absent field
-// must stay empty at the parse layer (board.js chips only on the literal
+// must stay empty at the parse layer (board-cards.js chips only on the literal
 // "trivial", so defaulting absence would be invisible today — the guard is what
 // keeps that true if the frontend gate ever loosens).
 func TestRecognizedEffortEstimateRaisesNoWarning(t *testing.T) {
@@ -1277,7 +1277,7 @@ Body.
 // wiring, and the reason the read site must not call resolveSchemaField: that
 // helper substitutes the field's documented default, and route's default is the
 // empty string, so absence and an unrecognized letter would become the same
-// value. board.js gates the route badge and the drawer row on `if (request.route)`.
+// value. board-cards.js and board-detail.js gate their route surfaces on `if (request.route)`.
 func TestParseRequestTicketPreservesAbsentRoute(t *testing.T) {
 	temporaryDirectory := t.TempDir()
 	fixturePath := filepath.Join(temporaryDirectory, "REQ-904-no-route.md")
