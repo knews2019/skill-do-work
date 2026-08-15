@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.189.8 — Route-A Public Write Boundary (2026-08-15)
+
+The new README boundary still implied every implementation had a declared Scope section, but simple Route A work deliberately does not. Public guidance now names both valid boundaries instead of flattening them into one.
+
+- Routes B/C source writes are bounded by their declared `## Scope`
+- Route A source writes are bounded by the focused REQ text
+
 ## 0.189.7 — Accurate Public Write Boundaries (2026-08-15)
 
 The existing-project README claimed do-work only wrote beneath its queue directory, hiding both managed installation paths and request-authorized implementation edits. The public guidance now states the real boundaries before adopters trust the suite.

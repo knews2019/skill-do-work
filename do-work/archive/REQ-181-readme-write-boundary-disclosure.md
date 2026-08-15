@@ -141,14 +141,18 @@ No runnable test is justified for this public-prose correction; the captured RED
 | Acceptance | Pass |
 
 **Important findings (each with its recorded gate disposition — this is the durable audit record the gate mandates):**
-- None
+- Initial wording incorrectly required a declared `## Scope` for Route A, which deliberately derives its boundary from the focused REQ text — gate: user-visible → remediated in this REQ
 
 **Minor findings:** 0 (report only)
-**Acceptance:** Pass — the public README now states all three real write boundaries and no longer makes the contradicted absolute claim.
+**Acceptance:** Pass — after one remediation, the public README states all three real write boundaries, including the distinct Route A versus Routes B/C implementation boundary.
 **Suggested testing:** 0 items
 **Follow-ups created:** None; **sweeps appended to:** None
 
-*Reviewed inline by review-work action after the delegated reviewer timed out*
+*Final re-review by review-work action after one remediation*
+
+## Remediation
+
+The delayed independent review found that the first replacement still said every REQ had a declared `## Scope`; Route A intentionally has no Scope section and derives its write boundary from the focused REQ text. The single remediation distinguished declared Scope for Routes B/C from focused REQ text for Route A. The stale absolute remains absent, all three boundaries now match the canonical work contract, and `git diff --check` passes.
 
 ## Orientation
 

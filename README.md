@@ -155,7 +155,7 @@ No. The skill works with any agentic coding tool that can read/write files and r
 
 ### Can I use this with an existing project?
 
-Yes. Install it in your project root. Installation and updates write only the managed paths you review and confirm: the four sibling skill trees plus the managed Just/settings surfaces. Durable queue state — requests, working records, and archives — lives under `do-work/`. Project source is written only during explicitly invoked REQ implementation, and then only within that REQ's declared `## Scope`.
+Yes. Install it in your project root. Installation and updates write only the managed paths you review and confirm: the four sibling skill trees plus the managed Just/settings surfaces. Durable queue state — requests, working records, and archives — lives under `do-work/`. Project source is written only during explicitly invoked REQ implementation, bounded by the declared `## Scope` for Routes B and C or the focused REQ text for Route A.
 
 ### What happens if something goes wrong during processing?
 
