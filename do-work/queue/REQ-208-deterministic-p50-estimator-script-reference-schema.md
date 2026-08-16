@@ -14,11 +14,12 @@ related: [REQ-209, REQ-210]
 batch: p50-estimation
 write_set: [skills/do-work/tools/estimate-p50.sh, skills/do-work/actions/estimate-reference.md, skills/do-work/actions/work-reference.md, _dev/tests/p50-estimator-determinism.sh]
 estimate:
-  p50_active_minutes: 75
+  p50_active_minutes: 85
   confidence: medium
-  calculated_at: 2026-08-16T23:52:07Z
+  calculated_at: 2026-08-17T00:04:00Z
   basis:
     - new shipped shell script with lock-in tests
+    - critical-path graph mode added by verify-requests repair
     - new lazy-loaded reference action-companion file
     - schema amendment in work-reference.md incl. effort_estimate bridge
     - full-suite maintainer-verify qualification
@@ -57,6 +58,7 @@ Resolved during the capture session:
 - Enforces a reasonable minimum (the floor — also the `effort_estimate: trivial` short-circuit value).
 - Deterministic: identical flags → identical output, always.
 - Do not add P80 or other percentile outputs.
+- **Critical-path mode** (added by verify-requests repair — spec acceptance requires automated dependency-graph coverage): a mode that takes per-REQ minutes plus `depends_on` edges (e.g. `REQ-209:60:REQ-208` triples) and prints total estimated effort and critical-path active minutes computed over the dependency graph (longest path, never a sum of parallel branches), both labeled. Deterministic and covered by the lock-in tests; REQ-209's multi-REQ presentation consumes this mode.
 
 **The reference file** (`skills/do-work/actions/estimate-reference.md` or equivalent action companion):
 - Signal-extraction guidance: how the estimating agent reads a REQ (route from triage, `write_set`, acceptance criteria, Red-Green Proof, Constraints) into the script's flags.
@@ -71,6 +73,8 @@ Resolved during the capture session:
 
 **Tests** (`_dev/tests/`):
 - Lock-in tests covering: deterministic output (same flags twice → byte-identical), rounding to 5, floor enforcement, and representative signal sets for a small Route A, a focused Route B, an integrated Route C, and a browser-heavy QA REQ.
+- Dependency-graph coverage (verify-requests repair): critical-path mode tests — a chain (critical path = sum along the chain) and a diamond/parallel graph (critical path = longest branch, not the total).
+- Backwards-compatibility coverage (verify-requests repair): a legacy REQ without an `estimate:` block remains valid — the estimator and every reader treat the field as strictly additive/optional; asserted by a fixture without the block passing untouched plus the full existing suite staying green.
 - `bash _dev/tests/maintainer-verify.sh` exits 0.
 
 ## Constraints
