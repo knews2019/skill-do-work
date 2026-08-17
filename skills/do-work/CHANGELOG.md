@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.197.0 — Estimates Learn From Every Archive (2026-08-17)
+
+Archiving an estimated REQ now appends its estimate-vs-actual pair to `do-work/calibration-log.tsv`, so the next estimator re-fit reads a log instead of mining git history.
+
+- One TSV line per archived REQ with an estimate: id, route, estimated minutes, raw wall minutes, completion stamp
+- Raw spans on purpose — the >4h pause/outlier rule is applied when reading, never when writing
+- Missing estimates or broken stamps just skip the line; archiving never blocks
+- Log seeded with this session's first five estimated REQs
+
 ## 0.196.0 — Estimator Calibrated to Measured History (2026-08-17)
 
 P50 estimates now come from data instead of inherited priors: the scoring table was re-fit to 188 archived REQs' actual claimed-to-completed spans (outliers over 4 hours excluded as paused sessions). A signal-free estimate per route is now that route's true empirical median.

@@ -16,6 +16,7 @@ session_depth: moderate
 
 ## In Progress (interrupted)
 
+
 - REQ-211 — Calibrate estimator scoring table to archive actuals — claimed 2026-08-17T08:07:47Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued

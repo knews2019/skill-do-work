@@ -91,6 +91,8 @@ Estimated critical path: 145 active minutes
 
 The scoring table is **calibrated to the archive's measured history** (2026-08-17): of 190 archived REQs carrying both `claimed_at` and `completed_at`, 188 were kept after excluding spans over 4 hours or negative (assumed user pauses / broken stamps). Route bases equal the measured per-route medians — A 4.7 → 5, B 9.2 → 10, C 21.4 → 20 minutes (n = 50/53/45) — which makes a signal-free estimate a true empirical P50; signal weights stretch heavy REQs toward the per-route p80 (A 8.7, B 17.8, C 37.5). Known bias, accepted: the corpus is mostly autonomous runs where wall ≈ active, and any un-filtered short pause inflates actuals slightly — so the table errs conservative.
 
+**The recalibration input is `do-work/calibration-log.tsv`** — appended by the work action's archive step (one line per archived REQ that carried an estimate: `req_id`, `route`, `estimated_p50_minutes`, `wall_minutes`, `completed_at`). The log records raw wall spans; the outlier rule is applied when reading, never when writing.
+
 Two rules keep future calibration honest:
 
 - **`claimed_at` − `completed_at` must never be recorded as `actual_active_minutes`** — it is wall-clock time. It may be *analyzed* as a proxy under the outlier rule above (exclude spans > 4h or negative as assumed pauses), which is exactly how this table was fit and how the next re-fit should read the calibration log.
