@@ -74,6 +74,9 @@
           <button type="button" class="control-button" data-view-target="calendar" aria-pressed="false">
             Calendar
           </button>
+          <button type="button" class="control-button" data-view-target="durations" aria-pressed="false">
+            Durations
+          </button>
           <button type="button" class="control-button" data-view-target="testing" aria-pressed="false">
             Testing
           </button>
@@ -176,6 +179,43 @@
           <p class="calendar-subhead" id="calendar-summary"></p>
         </div>
         <div class="calendar-scroll" id="calendar-scroll"></div>
+      </section>
+
+      <!-- Durations — how long archived REQs actually take and how often they
+           run. Three panels on one shared linear calendar axis: duration per
+           REQ, median minutes per active day, and REQs completed per day. Read
+           only: this view adds no write surface. -->
+      <section id="view-durations" class="view-panel" aria-label="Durations" hidden>
+        <div class="durations-intro">
+          <h2 class="durations-heading">How long work takes, and how often it runs</h2>
+          <p class="durations-subhead" id="durations-summary"></p>
+        </div>
+        <div class="durations-legend" role="group" aria-label="Route colour key">
+          <span class="durations-legend-item"><span class="durations-swatch" data-route="a"></span>Route A</span>
+          <span class="durations-legend-item"><span class="durations-swatch" data-route="b"></span>Route B</span>
+          <span class="durations-legend-item"><span class="durations-swatch" data-route="c"></span>Route C</span>
+          <span class="durations-legend-item"><span class="durations-swatch" data-route="none"></span>No route recorded</span>
+          <span class="durations-legend-item"><span class="durations-swatch" data-route="critical"></span>Reversed stamp</span>
+        </div>
+        <div class="durations-chart" id="durations-chart"></div>
+        <p class="durations-readout" id="durations-readout" role="status" aria-live="polite"></p>
+        <details class="durations-table">
+          <summary>Every sample, as a table</summary>
+          <div class="durations-table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">REQ</th>
+                  <th scope="col">Route</th>
+                  <th scope="col">Completed</th>
+                  <th scope="col">Duration</th>
+                  <th scope="col">Note</th>
+                </tr>
+              </thead>
+              <tbody id="durations-table-body"></tbody>
+            </table>
+          </div>
+        </details>
       </section>
 
       <!-- Testing tracking — who tested which finished REQ, and where it

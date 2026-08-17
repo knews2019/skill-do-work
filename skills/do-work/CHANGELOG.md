@@ -8,6 +8,17 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.203.0 — Durations View on the Board (2026-08-17)
+
+The board could tell you what is queued and what finished, but not how long any of it took. A new Durations view answers the three questions that actually come up: is response time degrading, which REQs are outliers, and how often does this run at all. Three panels share one calendar axis — duration per REQ, median minutes per active day, and REQs completed per day — all built from the archive scan the board already performs.
+
+- Duration per REQ, coloured by route, with long spans in an overflow lane above a scale break so three outliers cannot squash the 90% under 35 minutes
+- Median minutes per active day, applying the estimator calibration's own read-time rule so one paused session cannot invent a five-hour day; the raw spans stay visible in the first panel
+- REQs completed per day, counting everything — the axis is linear real time, so idle stretches show as gaps rather than being compressed away
+- A reversed completion stamp keeps its raw negative value and renders below the zero line instead of being rounded up
+- Hover readout across all three panels, plus a table listing every sample, so no value is reachable only by pointing
+- Read-only: the board still has exactly three write surfaces, and none of them is this
+
 ## 0.202.0 — Mechanical REQ Reservation Cleanup (2026-08-17)
 
 Reservation markers under `do-work/.req-reservations/` used to be kept forever; the directory only ever grew. A new script now reaps them mechanically — no agent involved — and the SessionStart hook runs it every session.

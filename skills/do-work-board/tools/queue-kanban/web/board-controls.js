@@ -13,6 +13,7 @@
     var viewPanels = {
       board: document.getElementById("view-board"),
       calendar: document.getElementById("view-calendar"),
+      durations: document.getElementById("view-durations"),
       testing: document.getElementById("view-testing")
     };
     Object.keys(viewPanels).forEach(function (viewName) {
@@ -32,6 +33,10 @@
     if (viewState.view === "calendar" && !renderedOnce.calendar) {
       renderCalendar();
       renderedOnce.calendar = true;
+    }
+    if (viewState.view === "durations" && !renderedOnce.durations) {
+      renderDurationsView();
+      renderedOnce.durations = true;
     }
     if (viewState.view === "testing" && !renderedOnce.testing) {
       renderTestingView();
