@@ -3,7 +3,7 @@ id: REQ-217
 title: Add the upstream archive fetcher with a git fallback
 status: completed
 completed_at: 2026-08-17T19:13:20Z
-commit:
+commit: 0e8cf0d
 claimed_at: 2026-08-17T19:05:40Z
 created_at: 2026-08-17T17:16:28Z
 route: B
