@@ -105,7 +105,7 @@ Keep it brief, newest on top, lead with value not implementation. Every version 
 
 ## Crew Members
 
-Just-in-time work rules live in `skills/do-work/crew-members/[name].md`; each file's `JIT_CONTEXT` comment is the canonical statement of when it loads, and the loading order is `skills/do-work/actions/work.md` Step 6. `general.md` and `coding-guardrails.md` always load during implementation; everything else is conditional. Four contracts worth knowing without opening files: `clear-questions.md` loads before an interactive question, `anti-slop.md` before a human-facing artifact, `prompt-injection.md` before untrusted-content ingestion, `maintenance.md` for a `maintenance: true` instruction-maintenance REQ. If a rules file is missing, proceed without it — never block on a missing rules file.
+Just-in-time work rules live in `skills/do-work/crew-members/[name].md`; each file's `JIT_CONTEXT` comment is the canonical statement of when it loads, and the loading order is `skills/do-work/actions/work.md` Step 6. `general.md`, `coding-guardrails.md`, and `communication-style.md` always load during implementation; everything else is conditional. `communication-style.md` doubles as the always-on communication contract the installer links from a consumer project's agent instructions. Four contracts worth knowing without opening files: `clear-questions.md` loads before an interactive question, `anti-slop.md` before a human-facing artifact, `prompt-injection.md` before untrusted-content ingestion, `maintenance.md` for a `maintenance: true` instruction-maintenance REQ. If a rules file is missing, proceed without it — never block on a missing rules file.
 
 ## Agent Compatibility
 

@@ -163,6 +163,8 @@ build_suite_tree() {
     "$tree_root/skills/do-work/tools/replace-text-section.sh"
   chmod +x "$tree_root/skills/do-work/tools/"*.sh
   cp "$repo_root/skills/do-work/hooks/hooks.json" "$tree_root/skills/do-work/hooks/hooks.json"
+  cp "$repo_root/skills/do-work/agent-instructions.template.md" \
+    "$tree_root/skills/do-work/agent-instructions.template.md"
   cp "$repo_root/skills/do-work-board/justfile.template" \
     "$tree_root/skills/do-work-board/justfile.template"
   printf 'created during update\n' > "$tree_root/skills/do-work/new-core.txt"

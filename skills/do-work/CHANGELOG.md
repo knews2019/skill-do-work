@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.201.0 — Always-On Communication Style Crew Member (2026-08-17)
+
+Every install now talks like a concise senior engineer. A new crew member carries the communication contract (plain specific language, answer-first replies, reference codes, banned filler, `scr`/`eli`/`foc`/`ref` aliases), and the installer links it from the project's `CLAUDE.md` so it applies to every session, not just pipeline work. Adapted from [disler/fixing-smartass-opus-5](https://github.com/disler/fixing-smartass-opus-5).
+
+- New `crew-members/communication-style.md`, always loaded during implementation (work.md Step 6) alongside `general.md` and `coding-guardrails.md`.
+- The suite installer gains one managed surface: an HTML-comment-delimited section in the consumer project's `CLAUDE.md` linking the crew member — created, refreshed, diff-reviewed, backed up, and recovered like the Just section; bytes outside the markers are never touched.
+- `replace-text-section.sh` accepts `--begin-marker`/`--end-marker` so the atomic section replacer can own non-Justfile sections.
+- Fixed a Linux-only installer failure: the settings mode probe ran the BSD `stat -f` form first, which poisons the captured mode under GNU stat and broke every re-install/update with an existing `.claude/settings.json`.
+
 ## 0.200.1 — AI-Report and Presentation Fixes Reach 0.200.0 Installs (2026-08-17)
 
 0.200.0 reached main and was then reverted, so the 0.199.3 and 0.199.4 fixes landed afterwards and never reached anyone already carrying 0.200.0. Their updater saw an equal version and reported "You're up to date", so this release republishes the reconciled tree under a higher number.

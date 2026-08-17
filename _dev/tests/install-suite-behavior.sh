@@ -27,6 +27,7 @@ managed_state_paths=(
   '.claude/skills/do-work-toolbox'
   'justfile'
   '.claude/settings.json'
+  'CLAUDE.md'
 )
 
 snapshot_install_state() {
@@ -252,6 +253,11 @@ assert_output_contains "$(cat "$bootstrap_output")" 'Installed do-work suite v[0
 if [ "$(grep -c '^Install this complete four-skill suite?' "$bootstrap_output")" -ne 1 ]; then
   fail 'fresh bootstrap must present exactly one confirmation boundary'
 fi
+if ! cmp -s "$fresh_project/CLAUDE.md" "$archive_root/skills/do-work/agent-instructions.template.md"; then
+  fail 'fresh install did not create agent instructions from the core-owned template'
+fi
+assert_output_contains "$(cat "$bootstrap_output")" '--- managed configuration: CLAUDE\.md ---' \
+  'install review must present the agent instructions surface'
 
 # Reinstall preserves custom Just bytes and composes current modular hooks.
 cat > "$fresh_project/justfile" <<'JUST'
@@ -291,6 +297,17 @@ cat > "$fresh_project/.claude/settings.json" <<'JSON'
 }
 JSON
 chmod 600 "$fresh_project/.claude/settings.json"
+cat > "$fresh_project/CLAUDE.md" <<'MD'
+# Consumer Project
+
+Custom guidance before the managed section.
+
+<!-- >>> do-work:communication-style >>> -->
+stale managed link
+<!-- <<< do-work:communication-style <<< -->
+
+Custom guidance after the managed section.
+MD
 reinstall_output="$workdir/reinstall.out"
 if ! run_installer "$fresh_project" "$archive_file" "$reinstall_output"; then
   fail "reinstall failed: $(tail -n 5 "$reinstall_output")"
@@ -302,10 +319,22 @@ assert_file_contains "$fresh_project/justfile" '^custom-after:$' 'reinstall chan
 if grep -q '^old-managed:' "$fresh_project/justfile"; then
   fail 'reinstall retained stale content inside the managed Just section'
 fi
-just_mode="$(stat -f '%Lp' "$fresh_project/justfile" 2>/dev/null || stat -c '%a' "$fresh_project/justfile")"
+just_mode="$(stat -c '%a' "$fresh_project/justfile" 2>/dev/null || stat -f '%Lp' "$fresh_project/justfile")"
 [ "$just_mode" = 640 ] || fail "reinstall changed Justfile mode (got $just_mode, want 640)"
-settings_mode="$(stat -f '%Lp' "$fresh_project/.claude/settings.json" 2>/dev/null || stat -c '%a' "$fresh_project/.claude/settings.json")"
+settings_mode="$(stat -c '%a' "$fresh_project/.claude/settings.json" 2>/dev/null || stat -f '%Lp' "$fresh_project/.claude/settings.json")"
 [ "$settings_mode" = 600 ] || fail "reinstall changed settings mode (got $settings_mode, want 600)"
+assert_file_contains "$fresh_project/CLAUDE.md" '^Custom guidance before the managed section\.$' \
+  'reinstall changed agent-instructions content before the managed section'
+assert_file_contains "$fresh_project/CLAUDE.md" '^Custom guidance after the managed section\.$' \
+  'reinstall changed agent-instructions content after the managed section'
+if grep -q '^stale managed link$' "$fresh_project/CLAUDE.md"; then
+  fail 'reinstall retained stale content inside the managed agent-instructions section'
+fi
+assert_file_contains "$fresh_project/CLAUDE.md" 'crew-members/communication-style\.md' \
+  'reinstall did not link the communication-style crew member from agent instructions'
+if [ "$(grep -cF '<!-- >>> do-work:communication-style >>> -->' "$fresh_project/CLAUDE.md")" -ne 1 ]; then
+  fail 'reinstall must leave exactly one managed agent-instructions section'
+fi
 python3 - "$fresh_project/.claude/settings.json" <<'PY' || fail 'reinstall did not preserve and compose current hook settings'
 import json, pathlib, sys
 data = json.loads(pathlib.Path(sys.argv[1]).read_text())
@@ -348,7 +377,7 @@ fi
 # A BOM-prefixed reserved recipe is rejected without Just, before confirmation or client mutation.
 no_just_path="$workdir/no-just-path"
 mkdir -p "$no_just_path"
-for command_name in awk bash cat chmod cmp cp diff dirname find git grep head mkdir mktemp mv python3 rm sed stat tar tr wc; do
+for command_name in awk bash cat chmod cmp cp diff dirname find git grep gzip head mkdir mktemp mv python3 rm sed stat tar tr wc; do
   command_path="$(command -v "$command_name" 2>/dev/null || true)"
   [ -z "$command_path" ] || ln -s "$command_path" "$no_just_path/$command_name"
 done
@@ -363,7 +392,7 @@ git -C "$collision_project" add justfile .claude/settings.json
 git -C "$collision_project" commit -qm 'collision fixture'
 cp "$collision_project/justfile" "$workdir/collision.just.before"
 cp "$collision_project/.claude/settings.json" "$workdir/collision.settings.before"
-collision_mode="$(stat -f '%Lp' "$collision_project/justfile" 2>/dev/null || stat -c '%a' "$collision_project/justfile")"
+collision_mode="$(stat -c '%a' "$collision_project/justfile" 2>/dev/null || stat -f '%Lp' "$collision_project/justfile")"
 collision_status_before="$(git -C "$collision_project" status --porcelain --untracked-files=all)"
 collision_output="$workdir/reserved-recipe-collision.out"
 collision_exit_status=0
@@ -381,7 +410,7 @@ else
     || [ -e "$collision_project/.claude/skills/do-work" ]; then
     fail 'reserved recipe rejection changed Justfile, settings, or modules'
   fi
-  collision_mode_after="$(stat -f '%Lp' "$collision_project/justfile" 2>/dev/null || stat -c '%a' "$collision_project/justfile")"
+  collision_mode_after="$(stat -c '%a' "$collision_project/justfile" 2>/dev/null || stat -f '%Lp' "$collision_project/justfile")"
   [ "$collision_mode_after" = "$collision_mode" ] || fail "reserved recipe rejection changed Justfile mode (got $collision_mode_after, want $collision_mode)"
   collision_status_after="$(git -C "$collision_project" status --porcelain --untracked-files=all)"
   [ "$collision_status_after" = "$collision_status_before" ] || fail 'reserved recipe rejection changed Git status'
@@ -474,7 +503,7 @@ fi
 # Python is the JSON fallback when jq is absent.
 python_path="$workdir/python-path"
 mkdir -p "$python_path"
-for command_name in awk bash cat chmod cmp cp diff dirname find git grep head mkdir mktemp mv python3 rm sed stat tar tr wc; do
+for command_name in awk bash cat chmod cmp cp diff dirname find git grep gzip head mkdir mktemp mv python3 rm sed stat tar tr wc; do
   command_path="$(command -v "$command_name" 2>/dev/null || true)"
   [ -z "$command_path" ] || ln -s "$command_path" "$python_path/$command_name"
 done
@@ -522,7 +551,7 @@ fi
 # With neither jq nor Python, a fresh project still gets modules/Justfile while settings stay exact and a precise manual step is printed.
 no_json_path="$workdir/no-json-path"
 mkdir -p "$no_json_path"
-for command_name in awk bash cat chmod cmp cp diff dirname find git grep head mkdir mktemp mv rm sed stat tar tr wc; do
+for command_name in awk bash cat chmod cmp cp diff dirname find git grep gzip head mkdir mktemp mv rm sed stat tar tr wc; do
   command_path="$(command -v "$command_name" 2>/dev/null || true)"
   [ -z "$command_path" ] || ln -s "$command_path" "$no_json_path/$command_name"
 done
