@@ -8,6 +8,93 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.199.2 — Estimate Summary and Verify Feedback Fixes (2026-08-17)
+
+Four review findings from PR #140, all accepted: three tighten the multi-REQ estimate summary's contract, one keeps verify honest in git-less environments.
+
+- The default-run summary counts the pending set the loop will drain, not just the initially claimable roots of a dependency chain
+- Graph entries resolve the legacy `dependencies:` alias with the same precedence as the selection scan
+- Unestimated members enter the graph as zero-minute vertices so transitive dependency edges survive (A → unestimated B → C still reports the serialized path)
+- verify routes hash-only completion anomalies to skipped probes when git or the repository is unavailable — an undatable valid hash is not a data defect; all other classes still fail the check
+
+## 0.199.1 — Anomaly Prose Tells the Truth for Every Class (2026-08-17)
+
+Every description of completion anomalies — board guide, chip legend, the never-silent warning, the web strip comment — now reads true for all four classes, including the new reversed-span one whose completion instant resolves fine.
+
+- The warning line no longer tells you to re-stamp a completed_at that is already valid; it routes to the per-class reason, which names the actual broken field
+- Guide and legend broadened from "unresolvable instant" to "broken completion bookkeeping"
+- A stale test pin of the removed self-contradiction was updated with the change
+
+## 0.199.0 — Verify Fails on Broken Completion Bookkeeping (2026-08-17)
+
+`queue-kanban verify` was blind to completion anomalies — it reported "OK: no findings" while the board's strip showed ten flagged tickets. It now lifts every anomaly into a finding and exits non-zero, so a broken archive fails the mechanical check instead of passing silently.
+
+- One finding per anomalous ticket, forwarding the board's structured evidence (id, status, reason)
+- The per-ticket reason already names the broken field and its fix; the remedy routes you there
+- Found by REQ-213's independent review; this repo's own verify now honestly reports its ten pre-existing anomalies
+
+## 0.198.0 — Board Flags Impossible Negative Durations (2026-08-17)
+
+A completed REQ whose `completed_at` lands before its `claimed_at` — a span that cannot be real — now shows up in the board's completion-anomaly strip and summary instead of rendering as a normal card. Found while mining the archive for estimator calibration: one real REQ carried a reversed span.
+
+- Fires only when both stamps parse and the span is strictly reversed; broken or missing stamps stay with the existing checks
+- The reason names both raw stamps and the usual cause (a local wall-clock time written with a Z suffix) plus the fix
+- Joins the existing anomaly plumbing — summary strip, generated payload, and the never-silent warning — with no new fields
+
+## 0.197.0 — Estimates Learn From Every Archive (2026-08-17)
+
+Archiving an estimated REQ now appends its estimate-vs-actual pair to `do-work/calibration-log.tsv`, so the next estimator re-fit reads a log instead of mining git history.
+
+- One TSV line per archived REQ with an estimate: id, route, estimated minutes, raw wall minutes, completion stamp
+- Raw spans on purpose — the >4h pause/outlier rule is applied when reading, never when writing
+- Missing estimates or broken stamps just skip the line; archiving never blocks
+- Log seeded with this session's first five estimated REQs
+
+## 0.196.0 — Estimator Calibrated to Measured History (2026-08-17)
+
+P50 estimates now come from data instead of inherited priors: the scoring table was re-fit to 188 archived REQs' actual claimed-to-completed spans (outliers over 4 hours excluded as paused sessions). A signal-free estimate per route is now that route's true empirical median.
+
+- Route bases become the measured medians: A 5 min, B 10, C 20 (were 10/25/45); floor drops to 5
+- Signal weights divided by ~2.5 so heavy REQs land near the measured p80 instead of far beyond it
+- Confidence rubric re-anchored to the new scale
+- Full calibration provenance (sample counts, outlier rule, medians, bias direction) recorded in the estimation reference for the next re-fit
+- Frozen estimates on already-archived REQs are untouched
+
+## 0.195.2 — Estimate Step Restatement Sync (2026-08-17)
+
+Closes the three minor findings from REQ-209's independent review: every restatement of the work pipeline's shape now includes the Estimate step, and the Route A fast path no longer loads the reference file it exists to avoid.
+
+- Architecture diagram, header gloss, and the work-guide walkthrough all show triage → estimate → build
+- Route A REQs without heavy-evidence indicators take the trivial short-circuit directly
+
+## 0.195.1 — Verify Repairs Refresh Estimates (2026-08-17)
+
+When verify-requests materially changes a REQ while applying fixes, it now recalculates that REQ's P50 estimate in the same pass — so a repaired scope never carries a stale price. Untouched REQs keep their estimates byte-identical.
+
+- Repaired REQs without an estimate get one derived on the spot
+- Only pending queue REQs are ever recalculated — claimed and archived estimates stay frozen
+- Read-only decision revalidation explicitly never touches estimates
+- The verify wiring is contract-locked to the shipped estimator, like the work wiring
+
+## 0.195.0 — Work Runs Print P50 Estimates (2026-08-17)
+
+Every work run now prices the REQ before building it: right after triage — when the route is known — the pipeline ensures an `estimate:` block exists and prints the P50 active-duration forecast before planning starts. REQs captured before estimates existed get one automatically at first selection.
+
+- New Step 3.6 in the work pipeline: reuse a frozen estimate, take the `effort_estimate: trivial` short-circuit, or lazily load the extraction guide and run the estimator — never blocking, never asking
+- Multi-REQ runs print per-REQ estimates plus two labeled figures: total effort and dependency-graph critical path
+- Estimates freeze once execution begins — implementation knowledge never rewrites the forecast
+- The wiring is contract-locked: deleting the estimator or its work-action pointer fails the test suite
+- Work guide explains P50 (roughly a 50% chance of finishing within the estimated active minutes)
+
+## 0.194.0 — Deterministic P50 Estimator (2026-08-17)
+
+REQs can now carry a P50 active-duration forecast — a deterministic estimate of active agent minutes, computed by a shipped script so the same signals always price the same. Informational only: it never blocks execution.
+
+- New `tools/estimate-p50.sh`: route/signal scoring, nearest-5 rounding, 10-minute floor, low/medium/high confidence, and a `critical-path` graph mode that separates total effort from longest-path duration
+- New lazy-loaded `actions/estimate-reference.md`: signal extraction, the `estimate:` frontmatter block template, and presentation formats
+- Schema gains the optional backwards-compatible `estimate:` block; `effort_estimate` stays a two-value chip, bridged only by the trivial short-circuit
+- Lock-in suite pins determinism, rounding, floor, dependency-graph math, and the print-only backwards-compatibility guarantee
+
 ## 0.193.6 — Complete Remotion Preview Safety Mutations (2026-08-15)
 
 Presentation contracts now reject the full executable fixed-port Studio and macOS opener families without treating safe foreground commands or explanatory prohibition examples as workflows.

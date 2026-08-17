@@ -1,26 +1,20 @@
 ---
-session_ended: 2026-08-15T20:57:05Z
-last_completed: REQ-202
+session_ended: 2026-08-17T08:35:00Z
+last_completed: REQ-215
 queue_state: 0 pending, 4 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
-reqs_processed_this_session: 11
-session_depth: heavy
+reqs_processed_this_session: 5
+session_depth: moderate
 ---
 
 # Session Checkpoint
 
 ## Completed This Session
 
-- REQ-189: Canonicalize ai-report and the shared completed-work evidence contract (Route C, 0.190.0)
-- REQ-190: Reduce present-work to portfolio-only behavior (Route C, 0.191.0)
-- REQ-191: Extract an explicit standalone present-video action (Route C, 0.192.0)
-- REQ-200: Render PNG file mentions as images (Route A, 0.192.1)
-- REQ-192: Migrate completed-work presentation routing documentation and contracts (Route C, 0.193.0)
-- REQ-197: Normalize completed-work presentation target IDs (Route B, 0.193.1; completed-with-issues)
-- REQ-198: Publish generated images only after success (Route B, 0.193.2)
-- REQ-199: Publish the portfolio snapshot before canonical refresh (Route B, 0.193.3)
-- REQ-207: Render HTML file mentions as folder-aware previews (Route B, 0.193.4)
-- REQ-201: Deduplicate completed-work publication mechanics (Route B, 0.193.5)
-- REQ-202: Complete unsafe Remotion preview mutation detection (Route B, 0.193.6)
+- REQ-211: Calibrate estimator scoring table to archive actuals (Route B, 0.196.0)
+- REQ-212: Record estimate-vs-wall calibration log at archive time (Route B, 0.197.0)
+- REQ-213: Board surfaces negative claimed→completed duration anomaly (Route B, 0.198.0; review 94% Pass, 2 important → REQ-214/215)
+- REQ-214: verify surfaces completion anomalies as findings (Route B, 0.199.0)
+- REQ-215: Sync completion-anomaly prose with the reversed-span class (Route A sweep, 0.199.1)
 
 ## In Progress (interrupted)
 
@@ -33,16 +27,8 @@ session_depth: heavy
 
 ## Session Notes
 
-- Completed-work presentation now has three explicit owners: `ai-report` for detailed visual/non-visual HTML, `present-work` for the cross-project portfolio, and `present-video` for source-only Remotion walkthroughs.
-- Shared target resolution, archive/evidence ingestion, merge-aware current-code proof, collision-safe publication, and optional-image success gating are centralized and regression-tested.
-- The board now previews byte-detected PNGs and folder-scoped active HTML without putting repository scripts on the board's write-capable origin.
-- Canonical maintainer verification passed after the final REQ-202 remediation and release at version 0.193.6.
-- UR-042 remains open because REQ-203 through REQ-206 require explicit consent. Run `do-work clarify` to answer them as a batch.
-
-## Context Summary
-
-- The presentation consolidation's durable map is report → `ai-report`, portfolio → `present-work`, source walkthrough → `present-video`; do not reintroduce broad `present-work` delegation or automatic video behavior.
-- Consumer actions define their preferred output paths and artifact-specific checks, while `completed-work-presentation-reference.md` owns archive/evidence safety and generic collision-safe publication. REQ-206 asks whether to remove the last active consumer paraphrase.
-- Portfolio snapshots publish before the mutable canonical refresh, and optional report images remain private until at least one current non-empty output succeeds. REQ-204 and REQ-205 hold deeper lifecycle and exactness hardening for consent.
-- Review-generated generation-2 findings were not auto-built: REQ-203 through REQ-206 remain `pending-answers` by design.
-- Re-read `_dev/primes/prime-action-files.md`, `_dev/primes/prime-shell-commands.md`, and `_dev/primes/prime-kanban-board.md` before continuing; this heavy session changed all three domains.
+- UR-048 archived: the estimator now prices from measured history (bases = archive route medians 5/10/20, floor 5, weights ÷2.5; provenance in `estimate-reference.md` → Calibration), every archived estimated REQ self-records into `do-work/calibration-log.tsv` (7 lines seeded), and the board flags reversed claimed→completed spans.
+- **`queue-kanban verify` now exits 1 on this tree by design**: it surfaces 10 pre-existing completion anomalies — REQ-091's reversed span (repairable stamp) and 9 archived REQs whose `commit:` hashes git cannot date (likely pre-rewrite history). Repairing archived frontmatter is an owner decision; until then forensics/verify consumers will see these findings.
+- Anomaly prose now reads true for all four classes; the never-silent warning routes to per-class fix text.
+- UR-042's REQ-203–206 remain `pending-answers` (run `do-work clarify`).
+- maintainer-verify still carries the 41 container-environment FAILs (missing `just`, tar/gzip exec, stat probes); FAIL-set-vs-baseline was the regression gate all session.

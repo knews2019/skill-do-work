@@ -29,6 +29,7 @@ const (
 	verifyCategoryStrayRequestFile              = "stray-req-file"
 	verifyCategoryAssignedElsewhereClaimedHere  = "assigned-elsewhere-claimed-here"
 	verifyCategoryArchivedUserRequestLiveMember = "ur-archived-with-live-member"
+	verifyCategoryCompletionAnomaly             = "completion-anomaly"
 )
 
 // staleClaimThreshold is how long a `claimed` REQ may sit before verify reports
@@ -115,6 +116,7 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 
 	appendReleaseFindings(&report, repoRoot)
 	appendDuplicateRequestIdFindings(&report, board)
+	appendCompletionAnomalyFindings(&report, repoRoot, board)
 	appendCheckpointGhostFindings(&report, repoRoot, board)
 	appendClaimFindings(&report, board, now)
 	appendStrandedFinishedFindings(&report, board)
@@ -247,6 +249,44 @@ func appendDuplicateRequestIdFindings(report *VerifyReport, board *Board) {
 				Remedy:   "renumber one of the two files (its title is in the filename, so the pair is easy to tell apart)",
 			})
 		}
+	}
+}
+
+// appendCompletionAnomalyFindings lifts the board's completion-anomaly tickets
+// into findings, so a broken terminal record fails the mechanical check instead
+// of passing an `OK: no findings` while the summary shows a flagged strip
+// (REQ-214 — verify was blind to every anomaly class until then). It forwards
+// buildBoard's structured evidence, exactly like the stray-file probe: no
+// warning-prose parsing, no second walk. The per-ticket reason already names
+// the broken field(s) and the fix, so the remedy stays generic routing.
+//
+// One class is environment-sensitive: a ticket whose ONLY problem is a commit
+// hash git could not date (completed_at absent) is indistinguishable from a
+// healthy record when git itself is missing or the tree is not a repository —
+// the same dating probe would fail for every valid hash. Per the ExitCode
+// contract, availability gaps are skipped probes, never findings; every other
+// class (unparseable completed_at, reversed span, neither field) is a genuine
+// on-disk defect regardless of git and still fails the check.
+func appendCompletionAnomalyFindings(report *VerifyReport, repoRoot string, board *Board) {
+	commitDatingUsable := gitBinaryAvailable()
+	if commitDatingUsable {
+		if _, gitDirProbeError := exec.Command("git", "-C", repoRoot, "rev-parse", "--git-dir").Output(); gitDirProbeError != nil {
+			commitDatingUsable = false
+		}
+	}
+	for _, anomalousTicket := range board.Columns.CompletionAnomalies {
+		if !commitDatingUsable && anomalousTicket.CompletedAt == "" && anomalousTicket.CommitHash != "" {
+			report.SkippedProbes = append(report.SkippedProbes, fmt.Sprintf(
+				"completion-anomaly probe: %s carries only a commit hash and git/the repository is unavailable — cannot distinguish a bad hash from an undatable valid one",
+				anomalousTicket.RequestId))
+			continue
+		}
+		report.Findings = append(report.Findings, VerifyFinding{
+			Category: verifyCategoryCompletionAnomaly,
+			Detail: fmt.Sprintf("%s (status %s): %s",
+				anomalousTicket.RequestId, anomalousTicket.Status, anomalousTicket.CompletionAnomalyReason),
+			Remedy: "repair the named frontmatter field(s) in the archived REQ — the reason states which stamp or hash is wrong and what to write instead",
+		})
 	}
 }
 

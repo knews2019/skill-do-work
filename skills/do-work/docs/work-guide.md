@@ -20,21 +20,35 @@ When uncertain, the system defaults to Route B (under-planning is recoverable; o
 1. Find next pending REQ
 2. Claim it (move to working/, status: claimed)
 3. Triage (route A/B/C)
-4. Plan (Route C only — architecture, file list, testing approach)
-5. Explore (Routes B & C — find relevant files and patterns)
-6. Implement (all routes — build the thing)
-7. Test (run tests, validate red-green if TDD)
-8. Review (requirements check, code quality, acceptance testing)
-9. Archive (move to archive/, create follow-ups if needed)
-10. Commit (one commit per REQ, explicit file staging)
-11. Loop or exit (context wipe, pick next REQ)
+4. Estimate (P50 active minutes — printed before planning starts)
+5. Plan (Route C only — architecture, file list, testing approach)
+6. Explore (Routes B & C — find relevant files and patterns)
+7. Implement (all routes — build the thing)
+8. Test (run tests, validate red-green if TDD)
+9. Review (requirements check, code quality, acceptance testing)
+10. Archive (move to archive/, create follow-ups if needed)
+11. Commit (one commit per REQ, explicit file staging)
+12. Loop or exit (context wipe, pick next REQ)
 ```
+
+### The estimate line
+
+Right after triage, before any planning, the run prints something like:
+
+```
+Starting REQ-1459 — Add SD-39 review links and QA gates
+Estimated active duration: approximately 125 minutes (P50, medium confidence)
+Dominant factors: Route C, browser evidence matrix, performance gate, storage auditing
+```
+
+**P50 means roughly a 50% chance of completing within the estimated active minutes** — half of similar REQs finish faster, half slower. "Active" counts only time the agents are actually working (planning, building, testing, review, remediation); waiting on your input, paused sessions, and queue wait are excluded. It is an informational forecast, never a deadline: nothing in the pipeline gates on it, and estimation failures never stop a run. Multi-REQ runs also print per-REQ estimates plus two labeled totals — total effort (everything summed) and critical path (the longest dependency chain, which is what wall-clock time actually follows when work runs in parallel).
 
 ## What accumulates in the REQ file
 
 As the request moves through the pipeline, sections are appended:
 
 - `## Triage` — route decision and reasoning
+- `estimate:` frontmatter block — P50 active-minutes forecast, frozen once execution begins
 - `## Plan` — implementation plan (Route C)
 - `## Exploration` — key files, patterns, gotchas (Routes B & C)
 - `## Scope` — declared files to touch and acceptance criteria (Routes B & C)
@@ -74,12 +88,13 @@ A typical `do-work run` session:
 1. **Queue scan** — finds the next `pending` REQ file in `do-work/queue/`
 2. **Claim** — moves it to `working/` and sets `status: claimed` so no other agent grabs it
 3. **Triage** — reads the REQ, assesses complexity, picks Route A/B/C
-4. **Build** — implements the request (planning and exploration for B/C routes)
-5. **Test** — runs the project's test suite, validates red-green if TDD targets exist
-6. **Review** — scores the work against requirements, code quality, and acceptance criteria
-7. **Archive** — moves the REQ to `archive/`, creates follow-up REQs if the review flagged issues
-8. **Commit** — one atomic commit per REQ with explicit file staging
-9. **Loop** — wipes context and picks the next REQ (or exits if the queue is empty)
+4. **Estimate** — ensures a P50 forecast exists and prints the estimate line before planning
+5. **Build** — implements the request (planning and exploration for B/C routes)
+6. **Test** — runs the project's test suite, validates red-green if TDD targets exist
+7. **Review** — scores the work against requirements, code quality, and acceptance criteria
+8. **Archive** — moves the REQ to `archive/`, creates follow-up REQs if the review flagged issues
+9. **Commit** — one atomic commit per REQ with explicit file staging
+10. **Loop** — wipes context and picks the next REQ (or exits if the queue is empty)
 
 Each REQ is fully processed before the next one starts. If context limits are hit mid-REQ, a checkpoint is written so the next session can resume.
 

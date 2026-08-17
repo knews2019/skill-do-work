@@ -40,3 +40,4 @@ When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep 
 - [REQ-192: separate executable command detection from explanatory prohibition prose and mutation-test the complete unsafe family](../../do-work/archive/REQ-192-migrate-presentation-routing-docs-and-contracts.md#lessons-learned)
 - [REQ-198: treat directory publication as both a process-tree and filesystem-transaction boundary](../../do-work/archive/REQ-198-publish-generated-directory-only-after-image-success.md#lessons-learned)
 - [REQ-199: verify exact destination semantics and independent immutable bytes, not only command success or inode identity](../../do-work/archive/REQ-199-publish-portfolio-snapshot-before-canonical-refresh.md#lessons-learned)
+- [REQ-208: pass data needles to grep with `--` — a pattern starting with `-` parses as options](../../do-work/archive/UR-047/REQ-208-deterministic-p50-estimator-script-reference-schema.md#lessons-learned)
