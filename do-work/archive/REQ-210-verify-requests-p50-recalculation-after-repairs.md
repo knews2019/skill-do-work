@@ -6,6 +6,7 @@ created_at: 2026-08-16T23:52:07Z
 claimed_at: 2026-08-17T00:24:18Z
 route: A
 completed_at: 2026-08-17T00:26:46Z
+commit: 71db35e
 user_request: UR-047
 domain: general
 prime_files: [_dev/primes/prime-action-files.md]
