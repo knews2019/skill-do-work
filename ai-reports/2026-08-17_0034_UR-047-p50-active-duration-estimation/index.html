@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UR-047 — P50 Active-Duration Estimation</title>
+<style>
+  :root {
+    --bg: #faf7f2; --surface: #ffffff; --text: #2d2a24; --muted: #6f6a5e;
+    --accent: #1d4ed8; --line: #e5dfd2; --good: #15803d; --chip: #f0ebe0;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "Iowan Old Style", Palatino, Georgia, serif;
+    --sans: ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16140f; --surface: #201d16; --text: #ece7db; --muted: #a39b8a;
+      --accent: #7ba3f7; --line: #38332a; --good: #4ade80; --chip: #2a261d;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 16px/1.6 var(--sans); }
+  .page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
+  .kicker { font: 600 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  h1 { font: 700 clamp(30px, 3.4vw, 42px)/1.15 var(--serif); margin: 10px 0 6px; }
+  h2 { font: 700 26px/1.2 var(--serif); margin: 0 0 14px; }
+  h3 { font: 650 17px/1.3 var(--sans); margin: 0 0 8px; }
+  .measure { max-width: 74ch; }
+  .band { padding: 44px 0 8px; border-top: 1px solid var(--line); margin-top: 36px; }
+  .row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 22px 24px; }
+  .lede { font-size: 18px; color: var(--text); }
+  .muted { color: var(--muted); }
+  .verdict-chip { display: inline-block; font: 650 13px/1 var(--sans); color: var(--good); border: 1.5px solid var(--good); border-radius: 999px; padding: 7px 14px; margin: 14px 12px 0 0; }
+  .stat { flex: 1 1 150px; }
+  .stat .num { font: 600 38px/1.1 var(--sans); font-feature-settings: normal; }
+  .stat .lbl { font: 500 13px/1.35 var(--sans); color: var(--muted); margin-top: 4px; }
+  .stat .sub { font: 400 12px/1.4 var(--mono); color: var(--muted); margin-top: 2px; }
+  pre { background: var(--chip); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; font: 13px/1.55 var(--mono); overflow-x: auto; }
+  code { font: .92em var(--mono); background: var(--chip); border-radius: 4px; padding: 1px 5px; }
+  pre code { background: none; padding: 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th { text-align: left; font: 600 12px/1.3 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 14px 8px 0; border-bottom: 1.5px solid var(--line); }
+  td { padding: 9px 14px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.mono, .mono { font: 13px/1.5 var(--mono); }
+  ul { padding-left: 1.2em; }
+  li { margin: 5px 0; }
+  .flow-frame { max-width: 1080px; }
+  .flow-frame svg { width: 100%; height: auto; display: block; }
+  .footer { margin-top: 56px; padding-top: 18px; border-top: 1px solid var(--line); font: 12.5px/1.6 var(--mono); color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header style="padding-top:52px">
+    <div class="kicker">do-work suite · ai report · UR-047</div>
+    <h1>P50 Active-Duration Estimation</h1>
+    <p class="lede measure">do-work now prices every REQ before building it: a deterministic P50 forecast of active agent minutes, printed right after triage, with dependency-aware totals for multi-REQ runs.</p>
+    <span class="verdict-chip">Shipped &amp; verified — all 3 REQs completed</span>
+    <span class="verdict-chip">Reviews: 96% · 95% · 94%, zero important findings</span>
+    <span class="verdict-chip">v0.193.6 → v0.195.2</span>
+  </header>
+
+  <section class="band">
+    <h2>What shipped</h2>
+    <div class="row">
+      <div class="card" style="flex:2 1 340px">
+        <h3>REQ-208 — The estimator</h3>
+        <p><code>tools/estimate-p50.sh</code>: an agent extracts a REQ's sizing signals (route, write-set size, browser/persistence/async work, …) and this script does the arithmetic — so identical signals always produce identical estimates. Rounds to 5 minutes, floors at 10, attaches low/medium/high confidence, echoes the dominant factors. A <code>critical-path</code> mode computes dependency-graph totals. A lazy-loaded companion, <code>actions/estimate-reference.md</code>, tells the estimating agent how to extract signals; the optional <code>estimate:</code> frontmatter block is documented in the schema, fully backwards-compatible.</p>
+      </div>
+      <div class="card" style="flex:2 1 340px">
+        <h3>REQ-209 — Work pipeline wiring</h3>
+        <p>New Step 3.6 in the work action: right after triage — the first moment the route is real — the run ensures an estimate exists and prints it before planning starts. Estimates freeze once execution begins. REQs captured before estimates existed get one automatically at first selection. Multi-REQ runs print per-REQ minutes plus two labeled figures: total effort and critical path. Estimation never blocks and never asks.</p>
+      </div>
+      <div class="card" style="flex:2 1 340px">
+        <h3>REQ-210 — Verify recalculation</h3>
+        <p>When <code>verify-requests</code> materially changes a REQ while applying fixes, it refreshes that REQ's estimate in the same pass — a repaired scope never carries a stale price. Untouched REQs keep their estimates byte-identical; claimed and archived estimates stay frozen; read-only revalidation mode never touches them.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <h2>Problem and change</h2>
+    <div class="row">
+      <p class="measure" style="flex: 1 1 420px">Before this work, the queue's only sizing signal was <code>effort_estimate: trivial | normal</code> — a deliberate two-value triage chip with a schema comment explicitly fencing off "an estimation system." There was no way to answer "how long will this batch take?" before committing to it. The change keeps that fence honest instead of quietly breaking it: the chip stays two-valued, the new <code>estimate:</code> block is a separate field, and the amended schema comment states the one bridge between them (<code>trivial</code> ⇒ floor estimate, no signal extraction). The core design split makes forecasts trustworthy: <strong>judgment stays with the agent, arithmetic goes to a shipped script</strong> — so estimates are explainable (the <code>basis</code> list), reproducible, and regression-testable.</p>
+      <div class="card" style="flex: 1 1 340px">
+        <h3>Deliberately excluded</h3>
+        <ul>
+          <li>No P80 or other percentile fields — fenced in the script header, reference, and schema</li>
+          <li>No calendar-time promises — active agent minutes only; user wait, pauses, and queue time are excluded by definition</li>
+          <li>No <code>actual_active_minutes</code> — no pause-aware timing exists, and <code>claimed_at</code>−<code>completed_at</code> subtraction is forbidden as wall-clock contamination; v1 is documented as a pure-prior estimator</li>
+          <li>No board changes — verified the board's YAML parser tolerates the nested block as-is</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <h2>How it works</h2>
+    <div class="card flow-frame">
+      <svg viewBox="0 0 1040 190" role="img" aria-label="Estimation flow: REQ signals to agent extraction to deterministic script to frontmatter block to printed line">
+        <defs>
+          <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0 L8 4 L0 8 z" fill="var(--muted)"/></marker>
+        </defs>
+        <g font-family="ui-sans-serif, system-ui" font-size="14">
+          <rect x="8" y="52" width="168" height="66" rx="9" fill="none" stroke="var(--line-strong, #b3a98f)" stroke-width="1.6"/>
+          <text x="92" y="79" text-anchor="middle" fill="currentColor" font-weight="600">REQ + route</text>
+          <text x="92" y="99" text-anchor="middle" fill="var(--muted)" font-size="12">after triage</text>
+
+          <line x1="176" y1="85" x2="218" y2="85" stroke="var(--line-strong, #8a8375)" stroke-width="1.6" marker-end="url(#arr)"/>
+
+          <rect x="222" y="52" width="192" height="66" rx="9" fill="none" stroke="var(--line-strong, #b3a98f)" stroke-width="1.6"/>
+          <text x="318" y="79" text-anchor="middle" fill="currentColor" font-weight="600">Agent extracts</text>
+          <text x="318" y="99" text-anchor="middle" fill="var(--muted)" font-size="12">signals → flags (judgment)</text>
+
+          <line x1="414" y1="85" x2="456" y2="85" stroke="var(--line-strong, #8a8375)" stroke-width="1.6" marker-end="url(#arr)"/>
+
+          <rect x="460" y="52" width="200" height="66" rx="9" fill="none" stroke="var(--accent)" stroke-width="2"/>
+          <text x="560" y="79" text-anchor="middle" fill="currentColor" font-weight="600">estimate-p50.sh</text>
+          <text x="560" y="99" text-anchor="middle" fill="var(--muted)" font-size="12">arithmetic (deterministic)</text>
+
+          <line x1="660" y1="85" x2="702" y2="85" stroke="var(--line-strong, #8a8375)" stroke-width="1.6" marker-end="url(#arr)"/>
+
+          <rect x="706" y="52" width="160" height="66" rx="9" fill="none" stroke="var(--line-strong, #b3a98f)" stroke-width="1.6"/>
+          <text x="786" y="79" text-anchor="middle" fill="currentColor" font-weight="600">estimate: block</text>
+          <text x="786" y="99" text-anchor="middle" fill="var(--muted)" font-size="12">frozen at execution</text>
+
+          <line x1="866" y1="85" x2="908" y2="85" stroke="var(--line-strong, #8a8375)" stroke-width="1.6" marker-end="url(#arr)"/>
+
+          <rect x="912" y="52" width="120" height="66" rx="9" fill="none" stroke="var(--line-strong, #b3a98f)" stroke-width="1.6"/>
+          <text x="972" y="79" text-anchor="middle" fill="currentColor" font-weight="600">Printed line</text>
+          <text x="972" y="99" text-anchor="middle" fill="var(--muted)" font-size="12">before planning</text>
+
+          <text x="560" y="33" text-anchor="middle" fill="var(--muted)" font-size="12" font-family="ui-monospace, monospace">effort_estimate: trivial / plain Route A → floor estimate, skips extraction entirely</text>
+          <text x="560" y="160" text-anchor="middle" fill="var(--muted)" font-size="12" font-family="ui-monospace, monospace">same normalized signals → same estimate, always (locked in by _dev/tests/p50-estimator-determinism.sh)</text>
+        </g>
+      </svg>
+      <p class="muted" style="margin-top:10px; font-size:13px">Hand-authored diagram, derived from the shipped implementation.</p>
+    </div>
+    <div class="row" style="margin-top:26px">
+      <div style="flex:1 1 380px">
+        <h3>The spec's own worked example, run live</h3>
+        <pre><code>$ tools/estimate-p50.sh --route C --write-set 12 \
+    --browser --persistence --full-suite
+p50_active_minutes: 125
+confidence: medium
+basis:
+- Route C
+- 12-file write set
+- browser evidence
+- persistence changes
+- full-suite verification</code></pre>
+        <p class="muted" style="font-size:13.5px">The scoring table was calibrated so the spec's presentation example prices at exactly 125 — the spec is literally one of the lock-in tests.</p>
+      </div>
+      <div style="flex:1 1 380px">
+        <h3>Dependency graph: total vs critical path</h3>
+        <pre><code>$ tools/estimate-p50.sh critical-path \
+    REQ-208:85 REQ-209:60:REQ-208 REQ-210:25:REQ-208
+total_estimated_effort_minutes: 170
+critical_path_minutes: 145</code></pre>
+        <p class="muted" style="font-size:13.5px">Total sums every branch; critical path follows the longest dependency chain (REQ-209 and REQ-210 both wait on REQ-208 but run in parallel with each other). Cycles are rejected, unknown (archived) dependencies cost zero.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <h2>Value delivered</h2>
+    <div class="row">
+      <div class="card" style="flex:1 1 260px"><h3>Plan before committing</h3><p>A queue or UR now answers "how big is this batch?" up front — per-REQ prices plus the two numbers that matter: total agent effort and the critical path your wall-clock actually follows.</p></div>
+      <div class="card" style="flex:1 1 260px"><h3>Honest by construction</h3><p>P50 means roughly a 50% chance of finishing within the estimate — documented everywhere it appears. Active minutes only; forecasts never become deadlines, never gate execution, and freeze once building starts.</p></div>
+      <div class="card" style="flex:1 1 260px"><h3>Auditable and testable</h3><p>Every estimate carries its <code>basis</code>. The arithmetic lives in a script with a registered lock-in suite, and both action wirings are contract-pinned — deleting the estimator or its pointers fails the test suite.</p></div>
+      <div class="card" style="flex:1 1 260px"><h3>Near-zero cost where it's worthless</h3><p>Trivial and plain Route A REQs take a short-circuit to the floor estimate without loading the reference file — overhead lands only where estimates carry information.</p></div>
+    </div>
+  </section>
+
+  <section class="band">
+    <h2>Evidence</h2>
+    <p class="measure">UI captures were not expected for this work.</p>
+    <div class="row" style="margin-top:18px">
+      <div class="stat card"><div class="num">17/17</div><div class="lbl">lock-in probes green</div><div class="sub">p50-estimator-determinism.sh</div></div>
+      <div class="stat card"><div class="num">3</div><div class="lbl">independent reviews, all Pass</div><div class="sub">96% · 95% · 94%</div></div>
+      <div class="stat card"><div class="num">0</div><div class="lbl">important findings</div><div class="sub">7 minors: 3 fixed inline, 4 report-only</div></div>
+      <div class="stat card"><div class="num">0</div><div class="lbl">new test failures</div><div class="sub">FAIL-set diff vs recorded baseline</div></div>
+    </div>
+    <div class="row" style="margin-top:26px">
+      <div style="flex:1 1 420px" class="measure">
+        <h3>Verification method</h3>
+        <p>This container carries 41 pre-existing environment failures in the full maintainer suite (missing <code>just</code>, tar/gzip exec, stat-mode probes — all in installer/updater behavior tests untouched by this work). The regression gate used throughout: record the FAIL set before any change, then require the post-change FAIL set to be byte-identical. It was, after every REQ. The new estimator suite runs inside the aggregate contract suite and passes; ShellCheck 0.11.0 at warning severity is clean across all tracked shell files. The estimator's determinism, rounding, floor, graph math, error paths, and print-only guarantee were exercised hands-on by the independent reviewers, not just by the suite.</p>
+      </div>
+      <div style="flex:1 1 420px" class="measure">
+        <h3>Dogfooded on its own build</h3>
+        <p>The three REQs carried hand-derived estimate blocks from capture (85 / 60 / 25 minutes — 170 total, 145 critical path), the work run printed each estimate before building, and REQ-208's estimate was recalculated (75 → 85) when a verify-requests repair materially grew its scope — exercising the exact lifecycle the feature defines. Honest gap, by design: actual active minutes were not recorded, because pause-aware timing doesn't exist yet and deriving actuals from wall-clock timestamps is exactly what the spec forbids.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <h2>Key files and commits</h2>
+    <div class="row">
+      <div style="flex: 3 1 480px">
+        <table>
+          <tr><th>File</th><th>Role</th></tr>
+          <tr><td class="mono">skills/do-work/tools/estimate-p50.sh</td><td>Deterministic estimator + critical-path graph mode (new)</td></tr>
+          <tr><td class="mono">skills/do-work/actions/estimate-reference.md</td><td>Lazy-loaded signal-extraction guide, block template, rubrics (new)</td></tr>
+          <tr><td class="mono">skills/do-work/actions/work.md</td><td>Step 3.6 ensure-estimate + print; multi-REQ estimate summary</td></tr>
+          <tr><td class="mono">skills/do-work/actions/verify-requests.md</td><td>Step 7 item 4: recalculate after material repair</td></tr>
+          <tr><td class="mono">skills/do-work/actions/work-reference.md</td><td><code>estimate:</code> schema block; <code>effort_estimate</code> bridge comment</td></tr>
+          <tr><td class="mono">skills/do-work/docs/work-guide.md</td><td>The estimate line + what P50 means</td></tr>
+          <tr><td class="mono">_dev/tests/p50-estimator-determinism.sh</td><td>Lock-in suite, registered in contract-regressions.sh (new)</td></tr>
+        </table>
+      </div>
+      <div style="flex: 2 1 340px">
+        <table>
+          <tr><th>Commit</th><th>Content</th></tr>
+          <tr><td class="mono">3955f92</td><td>UR-047 captured (3 REQs, estimates included)</td></tr>
+          <tr><td class="mono">c260281</td><td>verify-requests repairs (graph + backcompat coverage)</td></tr>
+          <tr><td class="mono">837e01b</td><td>REQ-208 implementation · v0.194.0</td></tr>
+          <tr><td class="mono">13ca636</td><td>REQ-209 implementation · v0.195.0</td></tr>
+          <tr><td class="mono">71db35e</td><td>REQ-210 implementation · v0.195.1</td></tr>
+          <tr><td class="mono">3e74113</td><td>Review remediation + UR archive · v0.195.2</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <h2>Verify it yourself</h2>
+    <div class="row">
+      <div style="flex:1 1 420px">
+        <h3>Run in this session — all passed</h3>
+        <pre><code># lock-in suite (exit 0)
+bash _dev/tests/p50-estimator-determinism.sh
+
+# spec example → 125 medium
+skills/do-work/tools/estimate-p50.sh --route C \
+  --write-set 12 --browser --persistence --full-suite
+
+# this UR's own graph → 170 / 145
+skills/do-work/tools/estimate-p50.sh critical-path \
+  REQ-208:85 REQ-209:60:REQ-208 REQ-210:25:REQ-208</code></pre>
+      </div>
+      <div style="flex:1 1 420px">
+        <h3>Instructions — not run here</h3>
+        <pre><code># commit inspection (merge-aware)
+skills/do-work/scripts/show-commit-diff.sh 837e01b
+
+# full gate on a machine with just/gzip/stat
+GOTOOLCHAIN=go1.26.1 bash _dev/tests/maintainer-verify.sh
+# (here: exit 1 with the 41 recorded pre-existing
+#  environment FAILs, zero mentioning this work)</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section class="band">
+    <h2>Lessons and open questions</h2>
+    <div class="row">
+      <div style="flex:1 1 420px" class="measure">
+        <h3>Lessons recorded in the archive</h3>
+        <ul>
+          <li>Calibrating the scoring table to the spec's own worked example turned the spec into a lock-in test.</li>
+          <li>The new contract pin caught a real bug before shipping: the test-suite path resolver sent bare <code>tools/</code> paths to the repo root.</li>
+          <li>Restatement sweeps must follow the <em>shape</em> you changed, not the file you changed — the pipeline's step list was restated in three other places.</li>
+          <li><code>grep</code> needs <code>--</code> before data needles; a pattern starting with <code>-</code> parses as options (now linked from the shell prime).</li>
+        </ul>
+      </div>
+      <div style="flex:1 1 420px" class="measure">
+        <h3>Deferred to first real use</h3>
+        <ul>
+          <li>Live prose exercise: a real <code>do-work run</code> persisting a fresh block into frontmatter (agent transcription is the one seam no shipped test covers).</li>
+          <li>A mixed estimated/unestimated UR run rendering the <code>not yet estimated</code> lines.</li>
+          <li>Calibration ordering spot-check against archived REQs' relative sizes.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer">
+    do-work suite · UR-047 · versions 0.194.0–0.195.2 · report generated 2026-08-17 · non-visual evidence mode · layout render-verified in light and dark
+  </div>
+
+</div>
+</body>
+</html>
