@@ -35,14 +35,3 @@ PENDING="$(find "${CLAUDE_PROJECT_DIR:-.}/do-work/queue" \
 PENDING="${PENDING:-0}"
 
 echo "do-work v${VERSION} loaded. ${PENDING} pending REQ(s). Say 'do-work help' for commands."
-
-# Mechanical housekeeping: reap stale REQ reservation markers (redundant once the
-# REQ file exists; abandoned after two days). Guarded so a partial install or a
-# cleanup failure can never break the status banner above.
-CLEANUP_SCRIPT="$SKILL_ROOT/scripts/cleanup-req-reservations.sh"
-if [ -f "$CLEANUP_SCRIPT" ]; then
-  CLEANUP_SUMMARY="$(bash "$CLEANUP_SCRIPT" "${CLAUDE_PROJECT_DIR:-.}" 2>/dev/null)" || CLEANUP_SUMMARY=''
-  if [ -n "$CLEANUP_SUMMARY" ]; then
-    echo "$CLEANUP_SUMMARY"
-  fi
-fi
