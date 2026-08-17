@@ -1,8 +1,8 @@
 ---
 id: REQ-225
 title: State verified-exact-publication once as a condition in the shipped shell guide
-status: pending-answers
-status_changed_at: 2026-08-17T21:02:00Z
+status: pending
+status_changed_at: 2026-08-17T21:09:46Z
 domain: general
 created_at: 2026-08-17T21:02:00Z
 user_request: UR-042
@@ -37,7 +37,8 @@ Found while implementing REQ-220. The same defect has now been fixed in four sep
 
 ## Open Questions
 
-- [ ] Should the shared shell guide state the publication-nesting rule once as a general condition, instead of describing it inside one script's section? → 
+- [x] Should the shared shell guide state the publication-nesting rule once as a general condition, instead of describing it inside one script's section? → Confirmed: Yes, add to queue
+  *[2026-08-17] User confirmed via `do-work clarify`. Consent given for this cascade-depth-two follow-up to run another autonomous cycle. Scope stays documentation-only: no script behavior changes, and the portfolio-summary section's script-specific policy stays where it is.*
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it — leave the rule stated per script.
   Why this is yours: nothing is broken. All four affected scripts already verify their publications, so this changes no behavior and fixes no defect — it is a judgment call about how the shipped guide is organized, and reorganizing a canonical shipped document is a taste decision rather than a repair. It is also worth knowing that REQ-220 was itself a review follow-up two generations deep, so the cascade-depth rule requires your consent before another autonomous cycle. The argument for doing it: this defect class has been found four times by review sweep and zero times by someone reading the guide, which is the concrete cost of the rule living inside one script's section. The argument against: the guide is deliberately organized by executable home, and a cross-cutting section cuts against that organizing principle.
