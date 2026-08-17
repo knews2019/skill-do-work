@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.199.4 — AI-Report Image Batch Owns Its Processes and Its Publication (2026-08-17)
+
+Interrupting a report run used to delete the staging directory and walk away while the image backends kept running against it. And because `mv` treats an existing directory as a container rather than a collision, a `generated/` folder that appeared at the last moment would silently swallow the finished batch while the run reported success. Both are closed, and both failure paths are now replayed in the test suite.
+
+- An interrupted batch terminates and reaps exactly the helpers it started, including their descendants, before staging is removed
+- Each helper leads its own verified process group; when isolation can't be proven the caller signals the bare PID and never a group
+- Publication verifies the rename afterwards: a destination that appeared in the check-then-rename window fails closed, keeps the colliding directory byte-for-byte, and leaves no nested stage
+- Two new named replays cover both adversarial paths (27 → 29 named script cases)
+
 ## 0.199.3 — Target ID Contract Tests Now Replay Their Own Mutations (2026-08-17)
 
 The tests that keep the presentation actions honest about the shared target-ID contract could be fooled by wording. "Read without applying Target ID Resolution" contains the letters `apply`, so it passed the old check; now both callers are replayed through a mutation matrix that has to catch every way the seam can break.

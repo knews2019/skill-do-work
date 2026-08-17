@@ -426,6 +426,107 @@ find "$fixture_root/image-batch-mixed/ai-reports/<report-slug>" -name '.generate
 [ -e "$fixture_root/image-batch-mixed/first.done" ] && [ -e "$fixture_root/image-batch-mixed/second.done" ] \
   || fail_case 'ai-report mixed batch replay did not wait for every launched job'
 
+# ai-report caller block, interrupted: the batch owns the process tree it started, so
+# signalling the caller must leave no helper — and no helper's descendant — alive, and
+# must reap them before staging is removed. A file-only cleanup passes the directory
+# assertions below while backends keep running against the deleted stage.
+image_interrupt_batch_bin="$fixture_root/image-interrupt-batch-bin"
+mkdir -p "$image_interrupt_batch_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) image_prompt="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'printf partial > "$output_path"' \
+  '( while :; do sleep 0.2; done ) &' \
+  'helper_descendant_pid=$!' \
+  'case "$image_prompt" in' \
+  '  *"<prompt 1>"*) printf "%s\n" "$$" > "$REPLAY_FIRST_PID"; printf "%s\n" "$helper_descendant_pid" > "$REPLAY_FIRST_CHILD_PID"; : > "$REPLAY_FIRST_DONE" ;;' \
+  '  *) printf "%s\n" "$$" > "$REPLAY_SECOND_PID"; printf "%s\n" "$helper_descendant_pid" > "$REPLAY_SECOND_CHILD_PID"; : > "$REPLAY_SECOND_DONE" ;;' \
+  'esac' \
+  'while :; do sleep 0.2; done' \
+  > "$image_interrupt_batch_bin/imagegen"
+chmod +x "$image_interrupt_batch_bin/imagegen"
+
+interrupt_batch_root="$fixture_root/image-interrupt-batch"
+mkdir -p "$interrupt_batch_root/ai-reports/<report-slug>"
+(
+  cd "$interrupt_batch_root" \
+    && exec env PATH="$image_interrupt_batch_bin:$PATH" \
+      STYLE='replay style' \
+      REPLAY_FIRST_DONE="$interrupt_batch_root/first.done" \
+      REPLAY_SECOND_DONE="$interrupt_batch_root/second.done" \
+      REPLAY_FIRST_PID="$interrupt_batch_root/first.pid" \
+      REPLAY_SECOND_PID="$interrupt_batch_root/second.pid" \
+      REPLAY_FIRST_CHILD_PID="$interrupt_batch_root/first.child.pid" \
+      REPLAY_SECOND_CHILD_PID="$interrupt_batch_root/second.child.pid" \
+      bash "$ai_report_batch_snippet"
+) &
+interrupt_batch_pid=$!
+interrupt_ready_ticks=0
+while [ "$interrupt_ready_ticks" -lt 200 ]; do
+  [ -s "$interrupt_batch_root/first.child.pid" ] && [ -s "$interrupt_batch_root/second.child.pid" ] && break
+  sleep 0.05
+  interrupt_ready_ticks=$((interrupt_ready_ticks + 1))
+done
+[ -s "$interrupt_batch_root/first.child.pid" ] && [ -s "$interrupt_batch_root/second.child.pid" ] \
+  || fail_case 'ai-report interrupted batch replay never reached both running helpers'
+for interrupt_pid_file in first.pid second.pid first.child.pid second.child.pid; do
+  background_process_ids="$background_process_ids $(cat "$interrupt_batch_root/$interrupt_pid_file" 2>/dev/null || true)"
+done
+kill -TERM "$interrupt_batch_pid" 2>/dev/null || true
+interrupt_batch_status=0
+wait "$interrupt_batch_pid" || interrupt_batch_status=$?
+[ "$interrupt_batch_status" -eq 143 ] \
+  || fail_case "ai-report interrupted batch replay exited $interrupt_batch_status instead of the TERM status 143"
+interrupt_survivor_ticks=0
+while [ "$interrupt_survivor_ticks" -lt 40 ]; do
+  interrupt_survivors=0
+  for interrupt_pid_file in first.pid second.pid first.child.pid second.child.pid; do
+    interrupt_recorded_pid="$(cat "$interrupt_batch_root/$interrupt_pid_file" 2>/dev/null || true)"
+    [ -n "$interrupt_recorded_pid" ] || continue
+    kill -0 "$interrupt_recorded_pid" 2>/dev/null && interrupt_survivors=$((interrupt_survivors + 1))
+  done
+  [ "$interrupt_survivors" -eq 0 ] && break
+  sleep 0.05
+  interrupt_survivor_ticks=$((interrupt_survivor_ticks + 1))
+done
+[ "$interrupt_survivors" -eq 0 ] \
+  || fail_case "ai-report interrupted batch replay left $interrupt_survivors helper process(es) or descendant(s) alive"
+find "$interrupt_batch_root/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
+  && fail_case 'ai-report interrupted batch replay leaked invocation-private staging'
+[ ! -e "$interrupt_batch_root/ai-reports/<report-slug>/generated" ] \
+  || fail_case 'ai-report interrupted batch replay published generated/'
+
+# ai-report caller block, destination appears at the final boundary: `mv` treats an
+# existing directory as a container, so the check-then-rename window can nest the
+# private stage inside a colliding generated/ and still exit zero. The mv shim below
+# creates the destination in exactly that window.
+image_publish_collision_bin="$fixture_root/image-publish-collision-bin"
+mkdir -p "$image_publish_collision_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; --prompt) image_prompt="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'case "$image_prompt" in *"<prompt 1>"*) : > "$REPLAY_FIRST_DONE" ;; *) : > "$REPLAY_SECOND_DONE" ;; esac' \
+  'printf current-success > "$output_path"' \
+  > "$image_publish_collision_bin/imagegen"
+chmod +x "$image_publish_collision_bin/imagegen"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'if [ "$#" -eq 2 ]; then' \
+  '  case "$2" in */generated) mkdir -p "$2"; printf owned-by-someone-else > "$2/keep.txt" ;; esac' \
+  'fi' \
+  'exec /bin/mv "$@"' \
+  > "$image_publish_collision_bin/mv"
+chmod +x "$image_publish_collision_bin/mv"
+run_ai_report_batch_replay image-publish-collision "$image_publish_collision_bin" \
+  && fail_case 'ai-report publish-collision replay reported success after the destination appeared'
+publish_collision_generated="$fixture_root/image-publish-collision/ai-reports/<report-slug>/generated"
+[ "$(cat "$publish_collision_generated/keep.txt" 2>/dev/null)" = owned-by-someone-else ] \
+  || fail_case 'ai-report publish-collision replay did not preserve the colliding destination byte-for-byte'
+[ "$(ls -A "$publish_collision_generated" 2>/dev/null)" = keep.txt ] \
+  || fail_case 'ai-report publish-collision replay left its staged batch nested inside the colliding destination'
+find "$fixture_root/image-publish-collision/ai-reports/<report-slug>" -name '.generated.staging.*' -print -quit | grep -q . \
+  && fail_case 'ai-report publish-collision replay leaked invocation-private staging'
+
 # generate-report-image: interruption cleans the invocation-private file and leaves
 # the old target untouched.
 image_interrupt_bin="$fixture_root/image-interrupt-bin"
@@ -596,4 +697,4 @@ find "$backup_interrupt_project/.claude/skills" -name '.last30days.*' -print -qu
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
-printf 'Prescribed shell script behavior probes passed (27 named script cases).\n'
+printf 'Prescribed shell script behavior probes passed (29 named script cases).\n'
