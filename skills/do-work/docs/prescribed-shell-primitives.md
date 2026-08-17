@@ -66,6 +66,10 @@ Never download incrementally into the final path when presence or size is later 
 scripts/atomic-download.sh "$source_url" "$target_path"
 ```
 
+The helper retries transient failures itself (`--retry 3 --retry-delay 2 --retry-max-time 60`), so a rate-limited host — a sustained codeload 429, for instance — does not fail a caller that would have succeeded a moment later. Plain `--retry` has treated 429 as transient since curl 7.51.0; `--retry-all-errors` is deliberately not used because it would raise the required curl version to 7.71 without adding anything here.
+
+Credentials are opt-in. When `GH_TOKEN` or `GITHUB_TOKEN` is non-empty the helper sends `Authorization: Bearer <token>`; absent or empty, the request goes out exactly as it would without them. Callers get both behaviors by using the helper rather than writing their own `curl`.
+
 Cleanup never converts a failed download into success. When review occurs between download and publication, later command blocks must re-derive the deterministic reviewed path and verify it exists; they must not silently download again.
 
 ## Portfolio summary publication

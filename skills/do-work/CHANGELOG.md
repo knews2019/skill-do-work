@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.200.0 — Downloads Retry Rate Limits and Can Authenticate (2026-08-17)
+
+A sustained 429 from GitHub's codeload host was enough to fail `do-work update` outright, because every download was a single `curl` attempt with no retry and no way to send a token. The shipped download primitive now handles both, so every caller inherits it instead of each one growing its own copy.
+
+- Transient failures retry three times with a two-second delay, bounded at sixty seconds
+- `GH_TOKEN` or `GITHUB_TOKEN`, when set, becomes an opt-in bearer credential; absent or empty changes nothing
+- Deliberately avoids `--retry-all-errors`, which would raise the required curl version for no benefit — plain `--retry` has treated 429 as transient since curl 7.51
+- Three new named replays, including a fake host that answers 429 once and then succeeds
+
 ## 0.199.7 — Shell Primitives Guide Matches the New Snapshot Behavior (2026-08-17)
 
 The canonical shell-primitives guide still described portfolio snapshots as a hard link to the canonical file, which stopped being true one release ago. Corrected, along with the directory-destination behavior both publication steps now enforce.

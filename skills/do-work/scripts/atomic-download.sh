@@ -23,7 +23,19 @@ download_path="$(mktemp "${target_path}.download.XXXXXX")" || {
   exit 2
 }
 
-curl -fsSL -o "$download_path" "$source_url"
+# Opt-in credentials: absent or empty leaves the request exactly as it was.
+# `set --` rebuilds the optional argument list; the two real arguments were
+# already captured above, and "$@" is safe to expand empty under `set -u`.
+download_token="${GH_TOKEN:-${GITHUB_TOKEN:-}}"
+if [ -n "$download_token" ]; then
+  set -- -H "Authorization: Bearer $download_token"
+else
+  set --
+fi
+
+# `--retry` alone treats HTTP 429 as transient from curl 7.51.0; `--retry-all-errors`
+# would raise the floor to 7.71 for no gain here.
+curl -fsSL --retry 3 --retry-delay 2 --retry-max-time 60 "$@" -o "$download_path" "$source_url"
 download_status=$?
 if [ "$download_status" -ne 0 ]; then
   printf 'Download failed; target was not published: %s\n' "$target_path" >&2

@@ -61,6 +61,74 @@ PATH="$atomic_bin:$PATH" "$core_scripts/atomic-download.sh" https://example.inva
 [ "$(cat "$fixture_root/atomic-target")" = stable ] || fail_case 'atomic-download partial-publication case changed the final target'
 find "$fixture_root" -name 'atomic-target.download.*' -print -quit | grep -q . && fail_case 'atomic-download partial-publication case leaked private scratch'
 
+# atomic-download: a rate-limited host answers 429 once and then succeeds. The fake curl
+# below models curl's own internal retry loop, so it survives that 429 only if the caller
+# allowed a retry — which is the whole point of the flag set. It also records the
+# Authorization header it was handed, so the opt-in credential path is observable.
+atomic_retry_bin="$fixture_root/atomic-retry-bin"
+mkdir -p "$atomic_retry_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'output_path=""' \
+  'retry_limit=0' \
+  'authorization_header=""' \
+  'while [ "$#" -gt 0 ]; do' \
+  '  case "$1" in' \
+  '    -o) output_path="$2"; shift 2 ;;' \
+  '    --retry) retry_limit="$2"; shift 2 ;;' \
+  '    -H) authorization_header="$2"; shift 2 ;;' \
+  '    *) shift ;;' \
+  '  esac' \
+  'done' \
+  'printf "%s" "$authorization_header" > "$ATOMIC_HEADER_LOG"' \
+  'transfer_attempt=0' \
+  'while :; do' \
+  '  transfer_attempt=$((transfer_attempt + 1))' \
+  '  printf "%s" "$transfer_attempt" > "$ATOMIC_ATTEMPT_LOG"' \
+  '  if [ "$transfer_attempt" -gt 1 ]; then' \
+  '    printf complete-payload > "$output_path"' \
+  '    exit 0' \
+  '  fi' \
+  '  if [ "$transfer_attempt" -gt "$retry_limit" ]; then' \
+  '    exit 22' \
+  '  fi' \
+  'done' \
+  > "$atomic_retry_bin/curl"
+chmod +x "$atomic_retry_bin/curl"
+
+printf 'stale before retry\n' > "$fixture_root/atomic-retry-target"
+GH_TOKEN='' GITHUB_TOKEN='' PATH="$atomic_retry_bin:$PATH" \
+  ATOMIC_ATTEMPT_LOG="$fixture_root/atomic-attempts" \
+  ATOMIC_HEADER_LOG="$fixture_root/atomic-header" \
+  "$core_scripts/atomic-download.sh" https://example.invalid/rate-limited "$fixture_root/atomic-retry-target" >/dev/null 2>&1 \
+  || fail_case 'atomic-download retry case did not survive a transient 429'
+[ "$(cat "$fixture_root/atomic-retry-target")" = complete-payload ] \
+  || fail_case 'atomic-download retry case did not publish the successful attempt'
+[ "$(cat "$fixture_root/atomic-attempts")" = 2 ] \
+  || fail_case 'atomic-download retry case did not let curl retry the rate-limited transfer'
+[ -z "$(cat "$fixture_root/atomic-header")" ] \
+  || fail_case 'atomic-download retry case sent an Authorization header with no token configured'
+find "$fixture_root" -name 'atomic-retry-target.download.*' -print -quit | grep -q . \
+  && fail_case 'atomic-download retry case leaked private scratch'
+
+# atomic-download: an opt-in token becomes a bearer credential; GH_TOKEN wins over GITHUB_TOKEN.
+printf 'stale before credential\n' > "$fixture_root/atomic-credential-target"
+GH_TOKEN=primary-token GITHUB_TOKEN=fallback-token PATH="$atomic_retry_bin:$PATH" \
+  ATOMIC_ATTEMPT_LOG="$fixture_root/atomic-credential-attempts" \
+  ATOMIC_HEADER_LOG="$fixture_root/atomic-credential-header" \
+  "$core_scripts/atomic-download.sh" https://example.invalid/private "$fixture_root/atomic-credential-target" >/dev/null 2>&1 \
+  || fail_case 'atomic-download credential case returned nonzero'
+[ "$(cat "$fixture_root/atomic-credential-header")" = 'Authorization: Bearer primary-token' ] \
+  || fail_case 'atomic-download credential case did not send GH_TOKEN as a bearer credential'
+printf 'stale before fallback credential\n' > "$fixture_root/atomic-fallback-target"
+GH_TOKEN='' GITHUB_TOKEN=fallback-token PATH="$atomic_retry_bin:$PATH" \
+  ATOMIC_ATTEMPT_LOG="$fixture_root/atomic-fallback-attempts" \
+  ATOMIC_HEADER_LOG="$fixture_root/atomic-fallback-header" \
+  "$core_scripts/atomic-download.sh" https://example.invalid/private "$fixture_root/atomic-fallback-target" >/dev/null 2>&1 \
+  || fail_case 'atomic-download fallback-credential case returned nonzero'
+[ "$(cat "$fixture_root/atomic-fallback-header")" = 'Authorization: Bearer fallback-token' ] \
+  || fail_case 'atomic-download fallback-credential case did not fall back to GITHUB_TOKEN'
+
 # capture-screenshot: coordinate two writers so the loser cannot publish the winner's private copy.
 capture_root="$fixture_root/capture"
 mkdir -p "$capture_root/a" "$capture_root/b" "$capture_root/assets"
@@ -736,4 +804,4 @@ find "$backup_interrupt_project/.claude/skills" -name '.last30days.*' -print -qu
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
-printf 'Prescribed shell script behavior probes passed (31 named script cases).\n'
+printf 'Prescribed shell script behavior probes passed (34 named script cases).\n'
