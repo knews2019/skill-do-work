@@ -1,7 +1,8 @@
 ---
 id: REQ-205
 title: Make portfolio publication independent and exact
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-17T18:10:49Z
 domain: general
 created_at: 2026-08-15T20:01:55Z
 user_request: UR-042
@@ -48,7 +49,7 @@ REQ-199 closes canonical-first publication on ordinary paths, but review proved 
 
 ## Open Questions
 
-- [ ] Snapshot-first ordering is fixed, but durable immutability and directory-destination safety need another focused change. Should I process this as a new task?
+- [x] Snapshot-first ordering is fixed, but durable immutability and directory-destination safety need another focused change. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
   Why this is yours: this is a generation-two review follow-up, so the cascade-depth rule requires your consent before another autonomous repair cycle.
