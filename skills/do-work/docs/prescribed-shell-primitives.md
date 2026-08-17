@@ -70,7 +70,9 @@ Cleanup never converts a failed download into success. When review occurs betwee
 
 ## Portfolio summary publication
 
-Invoke `../do-work-toolbox/scripts/publish-portfolio-summary.sh` with one retained source and the action-selected mode. The helper copies and verifies that source into a private file adjacent to the canonical target. `--canonical-only` atomically replaces only the canonical file. `--with-snapshot` first hard-links that private verified file to an exclusive snapshot candidate, advances occupied candidates with numeric suffixes, and only then atomically replaces the canonical file from the same bytes.
+Invoke `../do-work-toolbox/scripts/publish-portfolio-summary.sh` with one retained source and the action-selected mode. The helper copies and verifies that source into a private file adjacent to the canonical target, once per output. `--canonical-only` atomically replaces only the canonical file. `--with-snapshot` first publishes an exclusive snapshot from its own verified copy, advances occupied candidates with numeric suffixes, and only then atomically replaces the canonical file from the same bytes.
+
+The two outputs carry identical bytes but never share storage: a snapshot linked to the canonical file would follow every later in-place edit of it. Each publication also verifies the path it actually wrote, because `ln` and `mv` treat a directory in the destination's place as a container rather than a collision — a snapshot candidate occupied by a directory advances to the next suffix, a canonical path occupied by a directory fails closed, and neither leaves a private file nested inside it.
 
 An exclusive snapshot failure leaves the prior canonical unchanged. A later canonical replacement failure leaves the new snapshot published and reports that partial outcome. Existing snapshots are never truncated, replaced, or automatically removed.
 

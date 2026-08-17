@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.199.7 — Shell Primitives Guide Matches the New Snapshot Behavior (2026-08-17)
+
+The canonical shell-primitives guide still described portfolio snapshots as a hard link to the canonical file, which stopped being true one release ago. Corrected, along with the directory-destination behavior both publication steps now enforce.
+
+- The snapshot is published from its own verified copy, not linked to canonical's
+- Documented that each publication verifies the path it actually wrote, and what happens when a directory occupies either destination
+
 ## 0.199.6 — Publication Delegation Is Now Tested as Delegation (2026-08-17)
 
 `present-video` still described the whole output-path algorithm in its own words, and the test meant to stop that was satisfied by any mention of the shared contract anywhere in the file — including the checklist line that merely claims the contract was followed. The paraphrase is gone and the test now looks for an active directive at the step that actually creates output.
