@@ -20,6 +20,17 @@
     --rule: #ded4c2;
     --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
     --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    /* Route A/B/C are ordered difficulty tiers, so they take a single-hue
+       ordinal ramp (light -> dark), not unrelated categorical hues. Validated
+       with the dataviz validator (--ordinal) against this report's surfaces:
+       all checks PASS in both modes. Unrouted legacy REQs are absence of data,
+       so they get muted ink rather than a step on the ramp. */
+    --route-a: #86b6ef;
+    --route-b: #2a78d6;
+    --route-c: #104281;
+    --route-none: #898781;
+    --viz-trend: #9c4318;
+    --viz-critical: #d03b3b;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -34,6 +45,19 @@
       --good: #86c08f;
       --warn: #d9b45c;
       --rule: #362f25;
+      /* Same hue, re-stepped for the dark surface — not an automatic flip, and
+         deliberately not the light ramp's direction. The invariant is "heavier
+         route sits further from the surface": on paper that means C darkest, on
+         a dark surface it means C brightest. Flipping the light steps directly
+         put C at 2.6:1 where 8px dots simply disappeared — caught by looking at
+         the render, not by the numbers. Validated with --ordinal against
+         #1d1a15 (dimmest step 3.21:1): all checks PASS. */
+      --route-a: #256abf;
+      --route-b: #5598e7;
+      --route-c: #cde2fb;
+      --route-none: #898781;
+      --viz-trend: #e09462;
+      --viz-critical: #e66767;
     }
   }
   * { box-sizing: border-box; }
@@ -157,6 +181,43 @@
   dl.idmap div { display: flex; flex-wrap: wrap; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--rule); }
   dl.idmap dt { font-family: var(--mono); font-size: 13px; flex: 0 0 108px; color: var(--accent); }
   dl.idmap dd { margin: 0; flex: 1 1 320px; }
+
+  /* ---- duration + cadence charts ---------------------------------------- */
+  .viz-card { background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; padding: 20px 22px 14px; position: relative; }
+  .viz-frame { position: relative; width: 100%; }
+  .viz-frame svg { display: block; width: 100%; height: auto; }
+  .viz-frame text { font-family: var(--mono); fill: var(--muted); }
+  .viz-frame .viz-tick { font-size: 10px; font-variant-numeric: tabular-nums; }
+  .viz-frame .viz-axis-title { font-size: 10px; letter-spacing: .09em; text-transform: uppercase; }
+  .viz-frame .viz-point-label { font-size: 10px; fill: var(--text); }
+  .viz-grid-line { stroke: var(--rule); stroke-width: 1; }
+  .viz-axis-line { stroke: var(--muted); stroke-width: 1; opacity: .55; }
+  .viz-dot { stroke: var(--surface); stroke-width: 2; }
+  .viz-dot.is-hot { stroke: var(--text); stroke-width: 2; }
+  .viz-trend-line { fill: none; stroke: var(--viz-trend); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .viz-bar { fill: var(--route-b); }
+  .viz-bar.is-hot { fill: var(--route-c); }
+  .viz-lane { fill: var(--surface-2); }
+  .viz-legend { display: flex; flex-wrap: wrap; gap: 6px 20px; font-family: var(--mono); font-size: 12px; color: var(--muted); margin: 4px 0 0; }
+  .viz-legend span { display: inline-flex; align-items: center; gap: 7px; }
+  .viz-key { width: 11px; height: 11px; border-radius: 50%; flex: none; }
+  .viz-key.line { width: 16px; height: 2px; border-radius: 0; }
+  .viz-tip {
+    position: absolute; pointer-events: none; opacity: 0; transition: opacity .09s;
+    background: var(--surface); border: 1px solid var(--rule);
+    box-shadow: 0 3px 14px rgba(0,0,0,.16);
+    padding: 8px 11px; border-radius: 3px; font-family: var(--mono); font-size: 12px;
+    color: var(--muted); white-space: nowrap; z-index: 5; line-height: 1.5;
+  }
+  .viz-tip strong { display: block; font-size: 15px; color: var(--text); font-weight: 600; }
+  .tile-row { display: flex; flex-wrap: wrap; gap: 2px; background: var(--rule); border: 1px solid var(--rule); border-radius: 3px; overflow: hidden; }
+  .tile { flex: 1 1 150px; background: var(--surface); padding: 14px 16px 16px; }
+  .tile .tile-label { font-family: var(--mono); font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .tile .tile-value { font-family: var(--display); font-size: 30px; font-weight: 600; line-height: 1.18; margin-top: 4px; }
+  .tile .tile-sub { font-size: 13.5px; color: var(--muted); }
+  details.tableview { margin-top: 18px; border-top: 1px solid var(--rule); padding-top: 14px; }
+  details.tableview summary { font-family: var(--mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--accent); cursor: pointer; }
+  details.tableview .tv-scroll { max-height: 340px; overflow: auto; margin-top: 12px; }
 </style>
 </head>
 <body>
@@ -194,7 +255,7 @@
           <tr><td>Estimator scale change</td><td class="num">bases <strong>10/25/45 → 5/10/20</strong> min</td></tr>
           <tr><td>Review scores</td><td class="num">93–95%, all Pass</td></tr>
           <tr><td>Important findings</td><td class="num">2, both shipped as follow-ups</td></tr>
-          <tr><td>Open decisions for you</td><td class="num"><strong>2</strong> — <a href="#decisions">section 10</a></td></tr>
+          <tr><td>Open decisions for you</td><td class="num"><strong>2</strong> — <a href="#decisions">section 11</a></td></tr>
         </tbody>
       </table>
     </div>
@@ -231,7 +292,7 @@
     <h3>Listening notes</h3>
     <p>Roughly nine minutes read aloud. Nine paragraphs, in order: headline, background, the estimator re-fit, the calibration log, the board's reversed-span detection, what the review caught, the pull-request remediation, the one honest wrinkle, and what it is all worth.</p>
     <p>Nothing here needs a screen. Every identifier is defined in place, and the one decision that needs you is in the last paragraph.</p>
-    <p style="margin-bottom:0">The appendix in section 12 is the part to skip — it is paths, line numbers, and commands, which do not survive being spoken.</p>
+    <p style="margin-bottom:0">The appendix in section 13 is the part to skip — it is paths, line numbers, and commands, which do not survive being spoken.</p>
   </div>
   </div>
 </section>
@@ -432,8 +493,65 @@ p50 estimator suite: all probes passed.   EXIT=0</code></pre>
   </div>
 </section>
 
+<section id="durations">
+  <p class="kicker">8 · Duration and cadence</p>
+  <h2>How long REQs actually take, and how often they run</h2>
+  <p class="measure">Every archived REQ that carries both a claim and a completion stamp — 195 of them, spanning 2026-05-29 to 2026-08-17 — plotted against the calendar. That is the 190 REQ-211 measured plus the five this batch produced itself. Same corpus the estimator was calibrated from, now visible: the spread, the trend, the outliers, and the gaps between working sessions. Every figure below applies the calibration's own read-time rule unless it says otherwise.</p>
+
+  <div class="tile-row" style="margin: 22px 0 26px">
+    <div class="tile"><div class="tile-label">Samples</div><div class="tile-value">195</div><div class="tile-sub">archived, both stamps parse</div></div>
+    <div class="tile"><div class="tile-label">Median duration</div><div class="tile-value">9.5 min</div><div class="tile-sub">p75 20.7 · p90 33.5</div></div>
+    <div class="tile"><div class="tile-label">Slowest</div><div class="tile-value">10h 55m</div><div class="tile-sub">REQ-064 — the paused-session outlier</div></div>
+    <div class="tile"><div class="tile-label">Active days</div><div class="tile-value">23</div><div class="tile-sub">of 81 calendar days</div></div>
+    <div class="tile"><div class="tile-label">Busiest day</div><div class="tile-value">25</div><div class="tile-sub">REQs completed 2026-08-15</div></div>
+    <div class="tile"><div class="tile-label">Impossible spans</div><div class="tile-value">1</div><div class="tile-sub">REQ-091, finished before claimed</div></div>
+  </div>
+
+  <div class="viz-card">
+    <h3 style="margin-bottom:2px">Spread, trend, and cadence</h3>
+    <p style="font-size:14.5px;color:var(--muted);margin-bottom:12px">Three panels on one shared calendar axis — one measure and one scale each, never two y-scales on a plot. <strong>A</strong> is the spread and the outliers, <strong>B</strong> is whether it is getting slower, <strong>C</strong> is how often it runs at all. Hover any mark for its values; the full table is below.</p>
+    <div class="viz-frame" id="viz-frame">
+      <svg id="viz-svg" viewBox="0 0 1200 566" role="img"
+           aria-label="Three stacked panels sharing a calendar axis from 29 May to 17 August 2026. Panel A: duration in minutes for each of 195 archived REQs, coloured by route, with four labelled outliers in an overflow lane above a scale break. Panel B: median minutes per active day, highest at 42 minutes on 28 July, falling through August. Panel C: count of REQs completed per day across 23 active days, peaking at 25 on 15 August."></svg>
+      <div class="viz-tip" id="viz-tip" aria-hidden="true"></div>
+    </div>
+    <p class="viz-legend">
+      <span><i class="viz-key" style="background:var(--route-a)"></i>Route A — light</span>
+      <span><i class="viz-key" style="background:var(--route-b)"></i>Route B — medium</span>
+      <span><i class="viz-key" style="background:var(--route-c)"></i>Route C — heavy</span>
+      <span><i class="viz-key" style="background:var(--route-none)"></i>No route recorded (legacy)</span>
+      <span><i class="viz-key" style="background:var(--viz-critical)"></i>Impossible span</span>
+    </p>
+    <p style="font-size:13.5px;color:var(--muted);margin:8px 0 0">Panel A is coloured by route, so the legend above applies to it. Panels B and C each plot a single measure named by its own title, so neither needs a key. Panel B applies the calibration's documented read-time rule — spans over four hours are an assumed pause, a negative span is a broken stamp — so one paused session cannot invent a five-hour day; panel A still shows both raw and labelled. Days carrying only two or three REQs give a noisy median; the hover readout names the sample count.</p>
+    <details class="tableview">
+      <summary>Table view — every sample, no hovering required</summary>
+      <div class="tv-scroll">
+        <table id="viz-table">
+          <thead><tr><th>REQ</th><th>Route</th><th>Completed (UTC)</th><th class="num">Duration</th><th>Note</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </details>
+  </div>
+
+  <div class="row" style="margin-top:26px">
+    <div class="card" style="flex:2 1 460px">
+      <h3>What the shape says</h3>
+      <p><strong>No sustained degradation — the opposite, once the work became comparable.</strong> Taken naively, the first 97 samples have a median of 7.5 minutes and the last 96 have 12.9, which looks like slowdown. It is composition, not decay: the May and June REQs were near-instant bookkeeping items, with monthly medians of 1.0 and 0.0 minutes. From July, when routed work with real write sets begins, the monthly median falls from <strong>14.7 minutes in July to 9.6 in August</strong> while volume more than triples. Panel B shows the same thing day by day: the peak is 42 minutes on 2026-07-28, and nothing in August comes close to it.</p>
+      <p><strong>The route ordering is real, and it validates the calibration independently.</strong> Route A's median is 4.6 minutes, B's is 9.0, C's is 21.4. REQ-211 set the calibrated bases to 5, 10, and 20 — derived from this same corpus, and panel A shows the separation holding rather than the three tiers blurring into each other.</p>
+      <p style="margin-bottom:0"><strong>Cadence is bursty, not steady.</strong> 195 REQs landed on 23 days out of 81. The gaps between 2026-06-01 and 2026-06-28, and again through early July, are idle stretches — so any per-day or per-week rate averaged over the calendar understates what a working session actually does. On an active day the median is eight REQs; the peak is 25. Panel B's mid-August bump is route mix, not slowdown: 2026-08-05 and 08-06 were almost entirely Route A and sit at 4.7 and 4.0 minutes, while 08-09 and 08-10 were mostly Route C and sit at 26.1 and 24.5. That confound is exactly what a single overall average hides, and it is the reason the estimator prices by route in the first place.</p>
+    </div>
+    <div class="sidenote" style="flex:1 1 320px">
+      <h3>Reading the outliers</h3>
+      <p>Four marks are labelled because they are the only ones that matter individually. <strong>REQ-064 at 10h 55m</strong> is the span the calibration's four-hour rule exists to discard — an assumed pause, not eleven hours of work. <strong>REQ-043 at 2h 29m</strong> and <strong>REQ-171 at 1h 21m</strong> sit under that threshold, so they are inside the calibration and legitimately stretch the heavy route's tail.</p>
+      <p><strong>REQ-091 at minus six seconds</strong> is not a duration at all — it is the impossible span this batch taught the board to flag, drawn in the critical colour just below the zero line with its own label rather than silently rounded up to zero.</p>
+      <p style="margin-bottom:0">Eight further samples sit at exactly zero seconds — REQ-001, 006, 012, 067 through 070, and 207 — same-second stamps on bookkeeping REQs. They are honest data, not defects, and they are why the estimator carries a five-minute floor rather than trusting the raw minimum.</p>
+    </div>
+  </div>
+</section>
+
 <section id="files">
-  <p class="kicker">8 · Key files and commits</p>
+  <p class="kicker">9 · Key files and commits</p>
   <h2>Where the change lives</h2>
   <div class="scroll-x">
   <table>
@@ -483,7 +601,7 @@ p50 estimator suite: all probes passed.   EXIT=0</code></pre>
 </section>
 
 <section id="verify">
-  <p class="kicker">9 · Verify it yourself</p>
+  <p class="kicker">10 · Verify it yourself</p>
   <h2>Commands</h2>
   <p class="measure">Run from the repository root. The first four were executed while writing this report; the last two are instructions, not results.</p>
   <div class="row">
@@ -522,7 +640,7 @@ bash _dev/tests/maintainer-verify.sh</code></pre>
 </section>
 
 <section id="decisions">
-  <p class="kicker">10 · Decisions for you</p>
+  <p class="kicker">11 · Decisions for you</p>
   <h2>Two open decisions, with recommendations</h2>
   <div class="row equal">
     <div class="qbox" style="flex:1 1 440px">
@@ -547,7 +665,7 @@ bash _dev/tests/maintainer-verify.sh</code></pre>
 </section>
 
 <section id="lessons">
-  <p class="kicker">11 · Lessons and open questions</p>
+  <p class="kicker">12 · Lessons and open questions</p>
   <h2>What the session learned</h2>
   <div class="row">
     <div style="flex:2 1 500px">
@@ -568,7 +686,7 @@ bash _dev/tests/maintainer-verify.sh</code></pre>
 </section>
 
 <section id="appendix">
-  <p class="kicker">12 · Reference appendix</p>
+  <p class="kicker">13 · Reference appendix</p>
   <h2>Appendix — skip when listening</h2>
   <div class="skip-banner">
     This section is exact paths, line numbers, paste-ready commands, and an identifier map. It is deliberately unreadable aloud. Stop the audio here.
@@ -678,6 +796,331 @@ bash _dev/tests/maintainer-verify.sh</code></pre>
 
 </div>
 <script>
+/* ---------------------------------------------------------------------------
+   Duration + cadence panels.
+   Data: every archived REQ carrying a parseable claimed_at and completed_at,
+   mined from do-work/archive/ at report time and sorted by completion.
+   Row shape: [reqNumber, route, completedEpochSeconds, wallSeconds].
+   Wall seconds are RAW and signed — REQ-091's negative span is present as
+   data, not smoothed away, because hiding it is the defect this batch fixed.
+--------------------------------------------------------------------------- */
+const DURATION_SAMPLES = [
+  [5,"A",1780080180,159],[2,"A",1780080285,15],[10,"B",1780080360,60],[3,"A",1780080450,30],[7,"B",1780080570,60],[8,"B",1780080840,120],
+  [11,"C",1780081110,150],[9,"C",1780081380,180],[4,"B",1780081560,60],[1,"B",1780335511,0],[6,"A",1780335511,0],[12,"B",1780335511,0],
+  [13,"B",1782651308,659],[14,"B",1782652013,519],[15,"A",1782941131,507],[16,"A",1782941641,321],[17,"B",1782944382,1271],[21,"B",1784137920,720],
+  [22,"A",1784138520,420],[23,"A",1784139120,420],[24,"B",1784140500,1200],[19,"B",1784141220,540],[20,"A",1784141760,360],[26,"-",1785139519,1492],
+  [27,"-",1785139617,1590],[28,"-",1785139617,1590],[25,"-",1785139769,1742],[31,"-",1785140985,1207],[29,"-",1785141091,1462],[30,"-",1785141156,1527],
+  [18,"-",1785144369,3157],[32,"-",1785275841,2741],[33,"-",1785278447,2504],[34,"-",1785280704,2111],[35,"C",1785311474,3130],[36,"B",1785312428,736],
+  [37,"C",1785314798,2247],[38,"A",1785315060,164],[39,"A",1785315195,57],[40,"B",1785315622,360],[43,"C",1785328582,8965],[44,"C",1785329349,661],
+  [45,"C",1785330282,882],[46,"B",1785330869,569],[47,"A",1785331394,510],[48,"B",1785332067,636],[49,"B",1785332640,429],[50,"B",1785333105,379],
+  [60,"-",1785350527,3508],[61,"B",1785358659,608],[62,"C",1785450185,1287],[63,"B",1785450700,1067],[64,"B",1785490103,39313],[66,"A",1785490471,151],
+  [67,"B",1785589557,0],[68,"B",1785590209,0],[69,"C",1785592392,0],[70,"B",1785592629,0],[71,"B",1785768481,642],[72,"C",1785769688,1085],
+  [73,"C",1785770336,546],[74,"A",1785772578,226],[75,"B",1785773240,555],[76,"C",1785773666,320],[77,"C",1785793448,882],[78,"C",1785794095,552],
+  [79,"B",1785794654,371],[80,"A",1785794807,112],[81,"B",1785795208,368],[82,"B",1785795443,195],[83,"-",1785801130,670],[84,"-",1785801652,360],
+  [86,"-",1785802188,338],[87,"-",1785802297,447],[85,"-",1785802458,684],[89,"-",1785802983,333],[91,"-",1785803154,-6],[92,"-",1785803264,44],
+  [88,"-",1785817683,373],[93,"B",1785834583,387],[94,"B",1785874139,1223],[102,"A",1785874526,277],[97,"-",1785877920,482],[95,"-",1785878400,2469],
+  [98,"-",1785878400,452],[99,"-",1785879000,789],[100,"-",1785879120,540],[96,"-",1785879300,2351],[101,"-",1785879360,434],[106,"A",1785926319,89],
+  [105,"A",1785926340,258],[107,"A",1785926404,56],[104,"-",1785929860,1090],[108,"-",1785930267,333],[109,"A",1785931144,426],[110,"A",1785943884,801],
+  [111,"A",1785957547,363],[112,"A",1785957897,280],[115,"A",1785958890,139],[113,"A",1785960090,134],[116,"A",1786014180,365],[117,"A",1786014540,235],
+  [118,"A",1786014840,222],[119,"A",1786015920,240],[120,"A",1786016280,240],[121,"B",1786023300,840],[122,"A",1786031476,436],[125,"B",1786034170,900],
+  [126,"A",1786034424,139],[127,"A",1786034602,102],[114,"A",1786087764,239],[128,"B",1786091357,1343],[129,"B",1786100204,280],[130,"B",1786100410,122],
+  [131,"B",1786100622,142],[132,"B",1786100978,276],[133,"A",1786114551,523],[135,"A",1786134814,121],[136,"C",1786135351,395],[137,"C",1786136591,977],
+  [138,"C",1786137493,624],[139,"C",1786138293,666],[140,"C",1786138734,369],[141,"C",1786139173,307],[142,"C",1786139798,527],[143,"C",1786140842,591],
+  [134,"B",1786142335,413],[147,"B",1786142995,509],[148,"A",1786143324,247],[144,"-",1786203589,3172],[145,"C",1786211303,2667],[146,"C",1786213990,2463],
+  [149,"-",1786215175,1012],[150,"-",1786216648,1424],[151,"-",1786217420,725],[152,"-",1786219008,1513],[153,"-",1786220073,993],[154,"C",1786300834,1548],
+  [155,"B",1786301717,737],[156,"C",1786303411,1584],[157,"C",1786307930,2009],[158,"C",1786355322,1478],[159,"C",1786356938,1468],[160,"C",1786358471,1369],
+  [161,"-",1786361489,1923],[162,"C",1786363262,1624],[163,"A",1786365785,509],[164,"A",1786399095,1018],[165,"C",1786450815,1240],[166,"A",1786451287,293],
+  [167,"C",1786452216,789],[168,"C",1786452957,588],[169,"B",1786453396,318],[172,"A",1786468082,353],[173,"A",1786468773,622],[174,"A",1786479780,1588],
+  [170,"C",1786481545,3353],[171,"C",1786483022,4830],[178,"-",1786700971,1788],[176,"-",1786702861,1783],[177,"-",1786703156,248],[179,"-",1786703636,386],
+  [175,"B",1786785883,905],[180,"A",1786786813,806],[181,"A",1786787324,414],[182,"C",1786788737,1175],[183,"A",1786789639,763],[184,"C",1786791111,1361],
+  [185,"B",1786792942,1717],[186,"A",1786793707,567],[187,"C",1786795903,2059],[188,"B",1786797229,1153],[193,"B",1786799265,1809],[194,"C",1786801363,1920],
+  [195,"C",1786803878,2318],[196,"A",1786804823,618],[189,"C",1786811704,2034],[190,"C",1786813821,1909],[191,"C",1786815864,1869],[200,"A",1786816729,923],
+  [192,"C",1786819560,3438],[197,"B",1786821609,1867],[198,"B",1786822751,993],[199,"B",1786824115,1206],[201,"B",1786824907,629],[207,"B",1786825523,0],
+  [202,"B",1786827206,1179],[208,"B",1786925811,862],[210,"A",1786926406,148],[209,"B",1786926728,825],[211,"B",1786954254,187],[212,"B",1786954454,143],
+  [213,"B",1786955124,618],[214,"B",1786955350,135],[215,"A",1786955562,148]
+];
+
+(function drawDurationPanels() {
+  const svg = document.getElementById('viz-svg');
+  const tip = document.getElementById('viz-tip');
+  const frame = document.getElementById('viz-frame');
+  if (!svg) return;
+
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const VIEW_WIDTH = 1200, MARGIN_LEFT = 54, MARGIN_RIGHT = 18;
+  const PLOT_WIDTH = VIEW_WIDTH - MARGIN_LEFT - MARGIN_RIGHT;
+
+  /* Three panels, one shared calendar axis, one measure and one scale each —
+     never two y-scales on a single plot. Panel A answers "what is the spread
+     and where are the outliers", B answers "is it getting slower", C answers
+     "how often does this run at all". */
+  // Panel A — duration per REQ, with an overflow lane above a scale break so
+  // three long outliers cannot squash the 90% that live under 35 minutes.
+  const LANE_TOP = 22, LANE_MARK_Y = 40, BREAK_Y = 62;
+  const MAIN_TOP = 70, MAIN_BOTTOM = 272, CEILING_MINUTES = 60;
+  const BELOW_ZERO_Y = 284;
+  // Panel B — median minutes per active day.
+  const MED_TITLE_Y = 316, MED_TOP = 334, MED_BOTTOM = 414, MED_CEILING = 45;
+  // Panel C — REQs completed per day.
+  const BARS_TITLE_Y = 450, BARS_TOP = 468, BARS_BOTTOM = 538;
+  const X_AXIS_LABEL_Y = 556;
+
+  const timeStart = DURATION_SAMPLES[0][2];
+  const timeEnd = DURATION_SAMPLES[DURATION_SAMPLES.length - 1][2];
+  const timeSpan = timeEnd - timeStart;
+  const xOf = (epoch) => MARGIN_LEFT + ((epoch - timeStart) / timeSpan) * PLOT_WIDTH;
+  const yOfMinutes = (minutes) =>
+    MAIN_BOTTOM - (Math.min(minutes, CEILING_MINUTES) / CEILING_MINUTES) * (MAIN_BOTTOM - MAIN_TOP);
+  const yOfDayMedian = (minutes) =>
+    MED_BOTTOM - (Math.min(minutes, MED_CEILING) / MED_CEILING) * (MED_BOTTOM - MED_TOP);
+
+  const routeColor = { A: 'var(--route-a)', B: 'var(--route-b)', C: 'var(--route-c)', '-': 'var(--route-none)' };
+  const routeName = { A: 'Route A', B: 'Route B', C: 'Route C', '-': 'No route recorded' };
+  // The calibration's documented read-time rule: spans over four hours are an
+  // assumed paused session, and a negative span is a broken stamp. Panel A
+  // still plots both raw, labelled; the day medians exclude them so one paused
+  // session cannot invent a 5-hour "day".
+  const OUTLIER_SECONDS = 4 * 3600;
+  const isAnalysisOutlier = (wallSeconds) => wallSeconds > OUTLIER_SECONDS || wallSeconds < 0;
+
+  function el(name, attrs, textContent) {
+    const node = document.createElementNS(SVG_NS, name);
+    for (const key in attrs) node.setAttribute(key, attrs[key]);
+    if (textContent !== undefined) node.appendChild(document.createTextNode(textContent));
+    svg.appendChild(node);
+    return node;
+  }
+  function formatDuration(seconds) {
+    if (seconds < 0) return '-' + Math.abs(seconds) + 's';
+    if (seconds < 60) return seconds + 's';
+    const totalMinutes = seconds / 60;
+    if (totalMinutes < 60) return totalMinutes.toFixed(1) + ' min';
+    return Math.floor(totalMinutes / 60) + 'h ' + Math.round(totalMinutes % 60) + 'm';
+  }
+  const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const formatDay = (epoch) => {
+    const d = new Date(epoch * 1000);
+    return d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()];
+  };
+  const utcDayKey = (epoch) => new Date(epoch * 1000).toISOString().slice(0, 10);
+  const utcStamp = (epoch) => new Date(epoch * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC';
+  function gridRow(y, isBaseline, label, labelY) {
+    el('line', { x1: MARGIN_LEFT, y1: y, x2: VIEW_WIDTH - MARGIN_RIGHT, y2: y,
+                 class: isBaseline ? 'viz-axis-line' : 'viz-grid-line' });
+    el('text', { x: MARGIN_LEFT - 8, y: (labelY === undefined ? y + 4 : labelY), class: 'viz-tick',
+                 'text-anchor': 'end' }, label);
+  }
+
+  /* ---- day groups: shared by panels B and C ---- */
+  const dayGroups = new Map();
+  DURATION_SAMPLES.forEach((row) => {
+    const key = utcDayKey(row[2]);
+    if (!dayGroups.has(key)) dayGroups.set(key, { key, epoch: row[2], count: 0, kept: [] });
+    const group = dayGroups.get(key);
+    group.count++;
+    if (!isAnalysisOutlier(row[3])) group.kept.push(row[3] / 60);
+  });
+  const days = [...dayGroups.values()].map((group) => {
+    const sorted = group.kept.slice().sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return Object.assign(group, {
+      keptCount: sorted.length,
+      median: sorted.length === 0 ? null
+        : (sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2)
+    });
+  });
+
+  /* ---- panel A: one dot per REQ ---- */
+  el('text', { x: MARGIN_LEFT, y: 12, class: 'viz-axis-title' }, 'A · Duration per REQ · minutes');
+  el('rect', { x: MARGIN_LEFT, y: LANE_TOP, width: PLOT_WIDTH, height: BREAK_Y - LANE_TOP - 4, class: 'viz-lane', rx: 2 });
+  el('text', { x: MARGIN_LEFT - 8, y: LANE_MARK_Y + 4, class: 'viz-tick', 'text-anchor': 'end' }, '60+');
+  el('line', { x1: MARGIN_LEFT, y1: BREAK_Y, x2: VIEW_WIDTH - MARGIN_RIGHT, y2: BREAK_Y, class: 'viz-grid-line' });
+  [0, 15, 30, 45, 60].forEach((minutes) => gridRow(yOfMinutes(minutes), minutes === 0, String(minutes)));
+
+  const dotIndex = [];
+  DURATION_SAMPLES.forEach((row) => {
+    const [reqNumber, route, epoch, wallSeconds] = row;
+    const minutes = wallSeconds / 60;
+    const x = xOf(epoch);
+    const isOverflow = minutes > CEILING_MINUTES;
+    const isImpossible = wallSeconds < 0;
+    const y = isOverflow ? LANE_MARK_Y : (isImpossible ? BELOW_ZERO_Y : yOfMinutes(minutes));
+    const dot = el('circle', { cx: x.toFixed(1), cy: y.toFixed(1), r: isOverflow || isImpossible ? 5 : 4,
+                               fill: isImpossible ? 'var(--viz-critical)' : routeColor[route], class: 'viz-dot' });
+    dotIndex.push({ x, y, dot, reqNumber, route, epoch, wallSeconds });
+  });
+
+  /* ---- selective direct labels: the four marks that matter individually ---- */
+  [{ reqNumber: 43, text: 'REQ-043 2h 29m', anchor: 'end', dx: -9, dy: 4 },
+   { reqNumber: 64, text: 'REQ-064 10h 55m', anchor: 'start', dx: 9, dy: 18 },
+   { reqNumber: 171, text: 'REQ-171 1h 21m', anchor: 'end', dx: -9, dy: 4 },
+   { reqNumber: 91, text: 'REQ-091 -6s, impossible', anchor: 'start', dx: 10, dy: 4 }
+  ].forEach((entry) => {
+    const point = dotIndex.find((d) => d.reqNumber === entry.reqNumber);
+    if (!point) return;
+    el('text', { x: (point.x + entry.dx).toFixed(1), y: (point.y + entry.dy).toFixed(1),
+                 class: 'viz-point-label', 'text-anchor': entry.anchor }, entry.text);
+  });
+
+  /* ---- panel B: median minutes per active day ---- */
+  el('text', { x: MARGIN_LEFT, y: MED_TITLE_Y, class: 'viz-axis-title' },
+     'B · Median minutes per active day · paused and broken spans excluded');
+  [0, 15, 30, 45].forEach((minutes) => gridRow(yOfDayMedian(minutes), minutes === 0, String(minutes)));
+
+  const dayWidth = (PLOT_WIDTH * 86400) / timeSpan;
+  const barWidth = Math.max(4, Math.min(24, dayWidth - 2));
+  const medianIndex = [];
+  days.forEach((day) => {
+    if (day.median === null) return;
+    const y = yOfDayMedian(day.median);
+    const x = xOf(day.epoch) - barWidth / 2;
+    el('rect', { x: x.toFixed(1), y: y.toFixed(1), width: barWidth.toFixed(1),
+                 height: Math.max(2, MED_BOTTOM - y).toFixed(1), rx: 4, fill: 'var(--viz-trend)' });
+    if (MED_BOTTOM - y > 8) {
+      el('rect', { x: x.toFixed(1), y: (MED_BOTTOM - 5).toFixed(1), width: barWidth.toFixed(1),
+                   height: 5, fill: 'var(--viz-trend)' });
+    }
+    medianIndex.push({ x: x + barWidth / 2, y, day });
+  });
+  const slowestDay = days.reduce((a, b) => (b.median !== null && (a === null || b.median > a.median) ? b : a), null);
+  if (slowestDay) {
+    el('text', { x: xOf(slowestDay.epoch).toFixed(1), y: (yOfDayMedian(slowestDay.median) - 7).toFixed(1),
+                 class: 'viz-point-label', 'text-anchor': 'middle' }, slowestDay.median.toFixed(0) + ' min');
+  }
+
+  /* ---- panel C: REQs completed per day ---- */
+  const busiestCount = Math.max(...days.map((d) => d.count));
+  const yOfCount = (count) => BARS_BOTTOM - (count / busiestCount) * (BARS_BOTTOM - BARS_TOP);
+  el('text', { x: MARGIN_LEFT, y: BARS_TITLE_Y, class: 'viz-axis-title' }, 'C · REQs completed per day');
+  [0, 10, 20].forEach((count) => gridRow(yOfCount(count), count === 0, String(count)));
+
+  const barIndex = [];
+  days.forEach((day) => {
+    const x = xOf(day.epoch) - barWidth / 2;
+    const y = yOfCount(day.count);
+    const bar = el('rect', { x: x.toFixed(1), y: y.toFixed(1), width: barWidth.toFixed(1),
+                             height: Math.max(2, BARS_BOTTOM - y).toFixed(1), rx: 4, class: 'viz-bar' });
+    if (BARS_BOTTOM - y > 8) {
+      el('rect', { x: x.toFixed(1), y: (BARS_BOTTOM - 5).toFixed(1), width: barWidth.toFixed(1),
+                   height: 5, class: 'viz-bar' });
+    }
+    barIndex.push({ x: x + barWidth / 2, y, bar, day });
+  });
+  const busiest = barIndex.find((b) => b.day.count === busiestCount);
+  if (busiest) {
+    el('text', { x: busiest.x.toFixed(1), y: (busiest.y - 7).toFixed(1),
+                 class: 'viz-point-label', 'text-anchor': 'middle' }, String(busiestCount));
+  }
+
+  /* ---- shared x axis: month starts, plus the first and last sample ---- */
+  const MIN_TICK_GAP = 58;
+  const xTicks = [{ epoch: timeStart, anchor: 'start' }];
+  [[2026, 5], [2026, 6], [2026, 7]].forEach(([year, monthIndex]) => {
+    const epoch = Date.UTC(year, monthIndex, 1) / 1000;
+    if (epoch <= timeStart || epoch >= timeEnd) return;
+    const x = xOf(epoch);
+    // A month tick that lands on the first or last label reads as neither date.
+    if (x - xOf(timeStart) < MIN_TICK_GAP || xOf(timeEnd) - x < MIN_TICK_GAP) return;
+    xTicks.push({ epoch, anchor: 'middle' });
+  });
+  xTicks.push({ epoch: timeEnd, anchor: 'end' });
+  xTicks.forEach((tick) => {
+    const x = xOf(tick.epoch);
+    el('line', { x1: x.toFixed(1), y1: BARS_BOTTOM, x2: x.toFixed(1), y2: BARS_BOTTOM + 5, class: 'viz-axis-line' });
+    el('text', { x: x.toFixed(1), y: X_AXIS_LABEL_Y, class: 'viz-tick', 'text-anchor': tick.anchor },
+       formatDay(tick.epoch) + ' 2026');
+  });
+
+  /* ---- hover: nearest-mark layer, so the pointer only has to be closest ---- */
+  let hotMark = null;
+  function clearHot() {
+    if (hotMark) { hotMark.classList.remove('is-hot'); hotMark = null; }
+    tip.style.opacity = '0';
+  }
+  function tipLines(headline, rest) {
+    tip.textContent = '';
+    const strong = document.createElement('strong');
+    strong.textContent = headline;
+    tip.appendChild(strong);
+    rest.forEach((line, index) => {
+      if (index) tip.appendChild(document.createElement('br'));
+      tip.appendChild(document.createTextNode(line));
+    });
+  }
+  frame.addEventListener('pointerleave', clearHot);
+  frame.addEventListener('pointermove', (event) => {
+    const box = svg.getBoundingClientRect();
+    const scale = VIEW_WIDTH / box.width;
+    const vx = (event.clientX - box.left) * scale;
+    const vy = (event.clientY - box.top) * scale;
+
+    let best = null, bestDistance = Infinity, kind = null;
+    if (vy < MED_TITLE_Y - 8) {
+      dotIndex.forEach((point) => {
+        const distance = Math.hypot(point.x - vx, point.y - vy);
+        if (distance < bestDistance) { bestDistance = distance; best = point; kind = 'req'; }
+      });
+      if (bestDistance > 26) best = null;
+    } else {
+      const column = vy < BARS_TITLE_Y - 8 ? medianIndex : barIndex;
+      kind = vy < BARS_TITLE_Y - 8 ? 'median' : 'count';
+      column.forEach((entry) => {
+        const distance = Math.abs(entry.x - vx);
+        if (distance < bestDistance) { bestDistance = distance; best = entry; }
+      });
+      if (bestDistance > Math.max(12, dayWidth)) best = null;
+    }
+    if (!best) { clearHot(); return; }
+
+    const mark = kind === 'req' ? best.dot : (kind === 'count' ? best.bar : null);
+    if (hotMark !== mark) {
+      if (hotMark) hotMark.classList.remove('is-hot');
+      if (mark) mark.classList.add('is-hot');
+      hotMark = mark;
+    }
+    if (kind === 'req') {
+      tipLines(formatDuration(best.wallSeconds), [
+        'REQ-' + String(best.reqNumber).padStart(3, '0') + ' · ' + routeName[best.route],
+        'completed ' + utcStamp(best.epoch)
+      ]);
+    } else if (kind === 'median') {
+      tipLines(best.day.median.toFixed(1) + ' min median', [
+        best.day.key,
+        'over ' + best.day.keptCount + ' of ' + best.day.count + ' REQs that day'
+      ]);
+    } else {
+      tipLines(best.day.count + (best.day.count === 1 ? ' REQ' : ' REQs'), ['completed on ' + best.day.key]);
+    }
+    tip.style.opacity = '1';
+    const tipBox = tip.getBoundingClientRect();
+    let left = (best.x / scale) + 14;
+    if (left + tipBox.width > box.width) left = (best.x / scale) - tipBox.width - 14;
+    tip.style.left = Math.max(0, left) + 'px';
+    tip.style.top = Math.max(0, (best.y / scale) - tipBox.height / 2) + 'px';
+  });
+
+  /* ---- table view: the same values without hovering (and for AT) ---- */
+  const tbody = document.querySelector('#viz-table tbody');
+  if (tbody) {
+    DURATION_SAMPLES.slice().reverse().forEach((row) => {
+      const [reqNumber, route, epoch, wallSeconds] = row;
+      const tr = document.createElement('tr');
+      [['REQ-' + String(reqNumber).padStart(3, '0'), false],
+       [route === '-' ? '—' : route, false],
+       [new Date(epoch * 1000).toISOString().replace('T', ' ').slice(0, 19) + 'Z', false],
+       [formatDuration(wallSeconds), true],
+       [isAnalysisOutlier(wallSeconds) ? 'excluded from day medians' : '', false]
+      ].forEach(([value, isNumeric]) => {
+        const td = document.createElement('td');
+        if (isNumeric) td.className = 'num';
+        td.textContent = value;
+        tr.appendChild(td);
+      });
+      tbody.appendChild(tr);
+    });
+  }
+})();
+
   mermaid.initialize({
     startOnLoad: true,
     theme: 'base',
