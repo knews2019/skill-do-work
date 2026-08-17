@@ -1,8 +1,8 @@
 ---
-session_ended: 2026-08-17T00:45:00Z
-last_completed: REQ-209
+session_ended: 2026-08-17T08:35:00Z
+last_completed: REQ-215
 queue_state: 0 pending, 4 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
-reqs_processed_this_session: 3
+reqs_processed_this_session: 5
 session_depth: moderate
 ---
 
@@ -10,17 +10,13 @@ session_depth: moderate
 
 ## Completed This Session
 
-- REQ-208: Deterministic P50 estimator script, reference file, and schema (Route B, 0.194.0; review 96% Pass)
-- REQ-210: Recalculate P50 estimates in verify-requests after material repairs (Route A, 0.195.1; review 94% Pass)
-- REQ-209: Wire P50 estimation into the work action (Route B, 0.195.0 + 0.195.2 remediation; review 95% Pass)
+- REQ-211: Calibrate estimator scoring table to archive actuals (Route B, 0.196.0)
+- REQ-212: Record estimate-vs-wall calibration log at archive time (Route B, 0.197.0)
+- REQ-213: Board surfaces negative claimed→completed duration anomaly (Route B, 0.198.0; review 94% Pass, 2 important → REQ-214/215)
+- REQ-214: verify surfaces completion anomalies as findings (Route B, 0.199.0)
+- REQ-215: Sync completion-anomaly prose with the reversed-span class (Route A sweep, 0.199.1)
 
 ## In Progress (interrupted)
-
-
-
-
-
-- REQ-211 — Calibrate estimator scoring table to archive actuals — claimed 2026-08-17T08:07:47Z — writer: vm:/home/user/skill-do-work
 
 ## Still Queued
 
@@ -31,9 +27,8 @@ session_depth: moderate
 
 ## Session Notes
 
-- UR-047 (P50 active-duration estimation) captured, verified, built, reviewed, and archived end-to-end in one session; the feature was dogfooded on its own build (capture-time estimates, a verify-triggered recalculation on REQ-208, estimate lines printed at each claim).
-- The estimation subsystem's durable map: `tools/estimate-p50.sh` (deterministic arithmetic + critical-path graph mode), `actions/estimate-reference.md` (lazy-loaded extraction guide), the optional `estimate:` schema block (frozen once execution begins), work.md Step 3.6 (primary wire point), verify-requests Step 7 item 4 (recalc after material repair). Both wirings are contract-pinned in `hardened_check_scripts`.
-- `maintainer-verify.sh` in this container: 41 pre-existing environment FAILs (missing `just`, tar/gzip exec, stat-mode probes). The regression gate used all session: FAIL-set diff against the recorded baseline log. Full exit-0 verification needs a machine with those tools.
-- ShellCheck 0.11.0 was installed to /usr/local/bin; Go pinned per-invocation via `GOTOOLCHAIN=go1.26.1`.
-- AI report published at `ai-reports/2026-08-17_0034_UR-047-p50-active-duration-estimation/` (render-judged light + dark).
-- UR-042's REQ-203–206 remain `pending-answers` by design (generation-2 review follow-ups awaiting consent). Run `do-work clarify` to answer them as a batch.
+- UR-048 archived: the estimator now prices from measured history (bases = archive route medians 5/10/20, floor 5, weights ÷2.5; provenance in `estimate-reference.md` → Calibration), every archived estimated REQ self-records into `do-work/calibration-log.tsv` (7 lines seeded), and the board flags reversed claimed→completed spans.
+- **`queue-kanban verify` now exits 1 on this tree by design**: it surfaces 10 pre-existing completion anomalies — REQ-091's reversed span (repairable stamp) and 9 archived REQs whose `commit:` hashes git cannot date (likely pre-rewrite history). Repairing archived frontmatter is an owner decision; until then forensics/verify consumers will see these findings.
+- Anomaly prose now reads true for all four classes; the never-silent warning routes to per-class fix text.
+- UR-042's REQ-203–206 remain `pending-answers` (run `do-work clarify`).
+- maintainer-verify still carries the 41 container-environment FAILs (missing `just`, tar/gzip exec, stat probes); FAIL-set-vs-baseline was the regression gate all session.
