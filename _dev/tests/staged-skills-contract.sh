@@ -801,11 +801,12 @@ elif ! grep -Fq "$board_help_contract" "$repo_root/skills/do-work/actions/help.m
   fail "core help must mirror the board command and modes: $board_help_contract"
 fi
 
-for mirrored_tool_name in \
-  install-do-work-suite.sh \
-  replace-text-section.sh \
-  validate-suite-manifest.sh; do
-  canonical_tool_path="$repo_root/tools/$mirrored_tool_name"
+# Derive the mirrored set from what is actually on disk: any canonical tools/*.sh
+# that is also staged must match byte-for-byte. A hand-maintained list here went
+# stale the moment a fourth mirrored tool shipped (REQ-217).
+for canonical_tool_path in "$repo_root"/tools/*.sh; do
+  [ -f "$canonical_tool_path" ] || continue
+  mirrored_tool_name="${canonical_tool_path##*/}"
   staged_tool_path="$repo_root/skills/do-work/tools/$mirrored_tool_name"
   if [ -f "$staged_tool_path" ] \
     && ! cmp -s "$canonical_tool_path" "$staged_tool_path"; then

@@ -3,7 +3,7 @@ id: REQ-203
 title: Harden presentation target-ID source-seam tests
 status: completed
 completed_at: 2026-08-17T18:27:39Z
-commit: dea5f7a
+commit: 2c9e07e
 claimed_at: 2026-08-17T18:12:52Z
 status_changed_at: 2026-08-17T18:10:49Z
 domain: general

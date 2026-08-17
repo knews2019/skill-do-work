@@ -44,6 +44,7 @@ var boardJavaScriptFragmentPaths = [...]string{
 	"web/board-filters.js",
 	"web/board-cards.js",
 	"web/board-calendar.js",
+	"web/board-durations.js",
 	"web/board-testing.js",
 	"web/board-detail.js",
 	"web/board-controls.js",
@@ -72,6 +73,7 @@ type generatedBoardData struct {
 	UserRequestOrder []string                        `json:"userRequestOrder"`
 	UserRequests     map[string]generatedUserRequest `json:"userRequests"`
 	Calendar         []generatedCalendarEntry        `json:"calendar"`
+	Durations        generatedDurations              `json:"durations"`
 	Notes            []generatedNote                 `json:"notes,omitempty"`    // do-work/notes.md lines — rendered as a strip above the queue
 	Warnings         []string                        `json:"warnings,omitempty"` // data-shape warnings (e.g. duplicate ids, unrecognized statuses, future-dated stamps) — rendered as a banner
 
@@ -211,6 +213,38 @@ type generatedCalendarEntry struct {
 	CompletionTime string `json:"completionTime"`
 	DayKey         string `json:"dayKey"`
 	TimeSource     string `json:"timeSource"`
+}
+
+// generatedDurations is the Durations view's data: one measured sample per
+// archived REQ that carries both stamps, and one entry per active day. Panels A
+// and B disagree about which samples count on purpose — see durations.go.
+type generatedDurations struct {
+	Samples []generatedDurationSample `json:"samples"`
+	Days    []generatedDurationDay    `json:"days"`
+}
+
+// generatedDurationSample is one REQ's raw, signed wall span. `excludedReason`
+// is "paused" or "reversed" when the calibration's read-time rule holds it out
+// of the day medians, and empty when it counts — panel A plots it either way.
+type generatedDurationSample struct {
+	RequestId      string  `json:"id"`
+	Route          string  `json:"route"`
+	CompletionTime string  `json:"completionTime"`
+	DayKey         string  `json:"dayKey"`
+	WallMinutes    float64 `json:"wallMinutes"`
+	ExcludedReason string  `json:"excludedReason,omitempty"`
+}
+
+// generatedDurationDay carries both figures a day needs: the ruled median (with
+// its sample size) and the unruled completion count. `hasMedian` false is a real
+// state — every sample that day was rule-excluded — and is not a median of zero.
+type generatedDurationDay struct {
+	DayKey         string  `json:"dayKey"`
+	DayTime        string  `json:"dayTime"`
+	MedianMinutes  float64 `json:"medianMinutes"`
+	HasMedian      bool    `json:"hasMedian"`
+	KeptCount      int     `json:"keptCount"`
+	CompletedCount int     `json:"completedCount"`
 }
 
 type staticSiteOutput struct {
@@ -481,6 +515,28 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			CompletionTime: formatTimestamp(entry.CompletionTime),
 			DayKey:         entry.DayKey,
 			TimeSource:     string(entry.TimeSource),
+		})
+	}
+
+	durationAggregate := buildDurationAggregate(board.AllRequests)
+	for _, sample := range durationAggregate.Samples {
+		data.Durations.Samples = append(data.Durations.Samples, generatedDurationSample{
+			RequestId:      sample.RequestId,
+			Route:          sample.Route,
+			CompletionTime: formatTimestamp(sample.CompletionTime),
+			DayKey:         sample.DayKey,
+			WallMinutes:    sample.WallMinutes,
+			ExcludedReason: sample.DayMedianExclusion,
+		})
+	}
+	for _, day := range durationAggregate.Days {
+		data.Durations.Days = append(data.Durations.Days, generatedDurationDay{
+			DayKey:         day.DayKey,
+			DayTime:        formatTimestamp(day.DayTime),
+			MedianMinutes:  day.MedianMinutes,
+			HasMedian:      day.HasMedian,
+			KeptCount:      day.KeptCount,
+			CompletedCount: day.CompletedCount,
 		})
 	}
 

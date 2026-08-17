@@ -23,7 +23,7 @@
   }
 
   var viewState = {
-    view: "board", // "board" | "calendar" | "testing"
+    view: "board", // "board" | "calendar" | "durations" | "testing"
     lens: "flat", // "flat" | "user-request"
     windowHours: 24
   };
@@ -41,7 +41,7 @@
     userRequestActivity: "active" // "active" | "all"
   };
 
-  var renderedOnce = { userRequestLens: false, calendar: false, testing: false };
+  var renderedOnce = { userRequestLens: false, calendar: false, durations: false, testing: false };
 
 /* INLINE_BOARD_FRAGMENTS */
   // ---- boot ---------------------------------------------------------------

@@ -8,7 +8,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.201.0 — Always-On Communication Style Crew Member (2026-08-17)
+## 0.204.0 — Always-On Communication Style Crew Member (2026-08-17)
 
 Every install now talks like a concise senior engineer. A new crew member carries the communication contract (plain specific language, answer-first replies, reference codes, banned filler, `scr`/`eli`/`foc`/`ref` aliases), and the installer links it from the project's `CLAUDE.md` so it applies to every session, not just pipeline work. Adapted from [disler/fixing-smartass-opus-5](https://github.com/disler/fixing-smartass-opus-5).
 
@@ -17,14 +17,27 @@ Every install now talks like a concise senior engineer. A new crew member carrie
 - `replace-text-section.sh` accepts `--begin-marker`/`--end-marker` so the atomic section replacer can own non-Justfile sections.
 - Fixed a Linux-only installer failure: the settings mode probe ran the BSD `stat -f` form first, which poisons the captured mode under GNU stat and broke every re-install/update with an existing `.claude/settings.json`.
 
-## 0.200.1 — AI-Report and Presentation Fixes Reach 0.200.0 Installs (2026-08-17)
+## 0.203.1 — Publication Helpers Own Their Process Trees and Verify Their Renames (2026-08-17)
 
-0.200.0 reached main and was then reverted, so the 0.199.3 and 0.199.4 fixes landed afterwards and never reached anyone already carrying 0.200.0. Their updater saw an equal version and reported "You're up to date", so this release republishes the reconciled tree under a higher number.
+Two shipped helpers could report success for work that never landed. Interrupting report-image generation directly used to leave its backend — and on the opt-in agentic path, the sandbox-bypassed process behind it — still running, and the last30days installer could slide a whole staging tree inside a directory that reappeared mid-install and still call the install complete.
 
-- Carries the presentation target-ID mutation matrix (0.199.3) and the ai-report batch process-tree and publication hardening (0.199.4) alongside the mechanical REQ reservation cleanup from 0.200.0
-- REQ-203 and REQ-204 archive records now cite the commits that actually implemented them (`dea5f7a`, `4665ad2`); the previously recorded hashes resolved to nothing, so neither record could supply its diff
+- `generate-report-image.sh` now launches each backend under job control and owns the resulting process tree: it terminates, escalates, and reaps everything it started before removing its private files. Where that isolation can't be proven, it signals only the bare process, never a group.
+- Both helpers now verify the rename actually published. A destination that turns out to be a directory swallows a rename and still exits zero, so each one now checks for that, discards only its own nested stage, leaves the destination byte-for-byte, and fails closed.
+- The last30days installer keeps your previous tree recoverable when it hits that case — it no longer rolls back over the directory that appeared, and no longer deletes its own backup.
+- Three new fixture replays pin all of it (41 → 44 named script cases).
 
-## 0.200.0 — Mechanical REQ Reservation Cleanup (2026-08-17)
+## 0.203.0 — Durations View on the Board (2026-08-17)
+
+The board could tell you what is queued and what finished, but not how long any of it took. A new Durations view answers the three questions that actually come up: is response time degrading, which REQs are outliers, and how often does this run at all. Three panels share one calendar axis — duration per REQ, median minutes per active day, and REQs completed per day — all built from the archive scan the board already performs.
+
+- Duration per REQ, coloured by route, with long spans in an overflow lane above a scale break so three outliers cannot squash the 90% under 35 minutes
+- Median minutes per active day, applying the estimator calibration's own read-time rule so one paused session cannot invent a five-hour day; the raw spans stay visible in the first panel
+- REQs completed per day, counting everything — the axis is linear real time, so idle stretches show as gaps rather than being compressed away
+- A reversed completion stamp keeps its raw negative value and renders below the zero line instead of being rounded up
+- Hover readout across all three panels, plus a table listing every sample, so no value is reachable only by pointing
+- Read-only: the board still has exactly three write surfaces, and none of them is this
+
+## 0.202.0 — Mechanical REQ Reservation Cleanup (2026-08-17)
 
 Reservation markers under `do-work/.req-reservations/` used to be kept forever; the directory only ever grew. A new script now reaps them mechanically — no agent involved — and the SessionStart hook runs it every session.
 
@@ -32,6 +45,60 @@ Reservation markers under `do-work/.req-reservations/` used to be kept forever; 
 - The script refuses a symlinked `do-work/` or reservation directory outright — matching the allocator — so the automatic hook can never delete through a link pointing outside the project.
 - The two-day timeout revisits REQ-147's keep-forever decision: an abandoned number may now be reissued after the timeout, the accepted trade for a directory that stays clean.
 - The core SessionStart hook invokes the cleanup fail-soft and appends a one-line summary when anything was removed, so deletions get committed with normal housekeeping.
+
+## 0.201.1 — Tool Scripts Can No Longer Hand-Roll a Download (2026-08-17)
+
+The canonicalization campaign that stopped shell primitives being copy-pasted swept `actions/` and `scripts/` and never named `tools/` — which is how the same download ended up written four times. The ratchet now covers tool scripts too. Separately, the archive-exclusion header claimed a `tar --exclude` safety net that has not existed for some time; it now says plainly that `export-ignore` is the only thing holding that line.
+
+- Any direct `curl` under a skill's `tools/` directory now fails the canonicalization check
+- The one exemption is keyed on a condition, not a filename: text a script emits inside a quoted heredoc for someone else to run
+- The archive-exclusion comment no longer promises a fallback that isn't there, in any of the three places it said so
+
+## 0.201.0 — Updates Fall Back to Git When the Download Host Is Blocked (2026-08-17)
+
+Retrying a 429 helps with a blip. The reported incident lasted two minutes across three attempts, and `git clone` was the only thing that got through — the git transport sits behind a different limiter than the tarball host. `do-work update` and the suite installer now try the tarball first and fall back to a shallow clone repacked with `git archive`, and they tell you which route they used.
+
+- New shared fetcher sits between both callers and the network, so neither carries its own download logic
+- The fallback uses `git archive`, never a copy of the clone — only `git archive` honors `export-ignore`, which is what keeps maintainer-only files out of your install
+- `DO_WORK_UPSTREAM_URL` is now a supported override for both the updater and the installer, and the failure message names it
+- A total failure reports the outcome of both routes and leaves any previously downloaded archive untouched
+- The one-line bootstrap command gains the retry flags; installing from a supplied `--archive` still needs no fetcher at all
+
+## 0.200.0 — Downloads Retry Rate Limits and Can Authenticate (2026-08-17)
+
+A sustained 429 from GitHub's codeload host was enough to fail `do-work update` outright, because every download was a single `curl` attempt with no retry and no way to send a token. The shipped download primitive now handles both, so every caller inherits it instead of each one growing its own copy.
+
+- Transient failures retry three times with a two-second delay, bounded at sixty seconds
+- `GH_TOKEN` or `GITHUB_TOKEN`, when set, becomes an opt-in bearer credential; absent or empty changes nothing
+- Deliberately avoids `--retry-all-errors`, which would raise the required curl version for no benefit — plain `--retry` has treated 429 as transient since curl 7.51
+- Three new named replays, including a fake host that answers 429 once and then succeeds
+
+## 0.199.7 — Shell Primitives Guide Matches the New Snapshot Behavior (2026-08-17)
+
+The canonical shell-primitives guide still described portfolio snapshots as a hard link to the canonical file, which stopped being true one release ago. Corrected, along with the directory-destination behavior both publication steps now enforce.
+
+- The snapshot is published from its own verified copy, not linked to canonical's
+- Documented that each publication verifies the path it actually wrote, and what happens when a directory occupies either destination
+
+## 0.199.6 — Publication Delegation Is Now Tested as Delegation (2026-08-17)
+
+`present-video` still described the whole output-path algorithm in its own words, and the test meant to stop that was satisfied by any mention of the shared contract anywhere in the file — including the checklist line that merely claims the contract was followed. The paraphrase is gone and the test now looks for an active directive at the step that actually creates output.
+
+- Deleted the last locally restated publication algorithm from `present-video` Step 5; the preferred directory and result reporting stay
+- Delegation now requires a word-bounded application directive that precedes output creation, in both live consumers
+- A Verification Checklist or Rules mention no longer satisfies the assertion on its own
+- Local wording equivalent to "one final path for every file" is rejected in either word order
+- Both consumers are replayed through the two mutations, so a vacuous assertion fails loudly
+
+## 0.199.5 — Portfolio Snapshots Are Now Genuinely Immutable (2026-08-17)
+
+A timestamped portfolio snapshot and the canonical summary were the same file under two names, so editing the canonical summary afterwards silently rewrote the snapshot you asked to preserve. They are now independent files published from the same verified bytes. Both publication steps also check where they actually landed, because `ln` and `mv` treat a directory in the destination's place as a container rather than a collision.
+
+- Snapshot and canonical get their own verified copies; a later in-place edit of one cannot reach the other
+- A snapshot candidate occupied by a directory advances to the next numeric suffix instead of hiding a private file inside it
+- A canonical path occupied by a directory fails closed and leaves that directory untouched
+- Every reported path is confirmed to be a regular file before it is printed
+- Two new named replays, plus one older assertion corrected: it had been locking in the shared inode
 ## 0.199.4 — AI-Report Image Batch Owns Its Processes and Its Publication (2026-08-17)
 
 Interrupting a report run used to delete the staging directory and walk away while the image backends kept running against it. And because `mv` treats an existing directory as a container rather than a collision, a `generated/` folder that appeared at the last moment would silently swallow the finished batch while the run reported success. Both are closed, and both failure paths are now replayed in the test suite.

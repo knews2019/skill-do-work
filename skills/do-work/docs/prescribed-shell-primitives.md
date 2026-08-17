@@ -15,9 +15,9 @@ This is the canonical shipped rationale and executable-home contract for shell u
 | `scripts/stage-exact-deletion.sh` | Cached-metadata-only exact deletion staging |
 | `../do-work-knowledge/scripts/lexical-memory-recall.sh` | Query sanitization, lexical ranking, and attribution |
 | `../do-work-knowledge/scripts/install-memory-hooks.sh` | Independent hook merge, verification, and rollback |
-| `../do-work-toolbox/scripts/generate-report-image.sh` | Backend selection, invocation-private adjacent publication, and exact opt-in agentic scratch |
+| `../do-work-toolbox/scripts/generate-report-image.sh` | Backend selection, launched-process-tree ownership, verified exact invocation-private publication, and exact opt-in agentic scratch |
 | `../do-work-toolbox/scripts/publish-portfolio-summary.sh` | Verified single-source canonical refresh and snapshot-first exclusive publication |
-| `../do-work-toolbox/scripts/install-last30days.sh` | Complete-payload validation and transactional project-local publication/repair |
+| `../do-work-toolbox/scripts/install-last30days.sh` | Complete-payload validation and verified exact transactional project-local publication/repair |
 
 `tools/install-do-work-suite.sh` remains self-contained because it is the bootstrap that installs these packages. Atomic REQ reservation remains owned only by the board package's Go tool; it has no shell twin.
 
@@ -66,11 +66,17 @@ Never download incrementally into the final path when presence or size is later 
 scripts/atomic-download.sh "$source_url" "$target_path"
 ```
 
+The helper retries transient failures itself (`--retry 3 --retry-delay 2 --retry-max-time 60`), so a rate-limited host — a sustained codeload 429, for instance — does not fail a caller that would have succeeded a moment later. Plain `--retry` has treated 429 as transient since curl 7.51.0; `--retry-all-errors` is deliberately not used because it would raise the required curl version to 7.71 without adding anything here.
+
+Credentials are opt-in. When `GH_TOKEN` or `GITHUB_TOKEN` is non-empty the helper sends `Authorization: Bearer <token>`; absent or empty, the request goes out exactly as it would without them. Callers get both behaviors by using the helper rather than writing their own `curl`.
+
 Cleanup never converts a failed download into success. When review occurs between download and publication, later command blocks must re-derive the deterministic reviewed path and verify it exists; they must not silently download again.
 
 ## Portfolio summary publication
 
-Invoke `../do-work-toolbox/scripts/publish-portfolio-summary.sh` with one retained source and the action-selected mode. The helper copies and verifies that source into a private file adjacent to the canonical target. `--canonical-only` atomically replaces only the canonical file. `--with-snapshot` first hard-links that private verified file to an exclusive snapshot candidate, advances occupied candidates with numeric suffixes, and only then atomically replaces the canonical file from the same bytes.
+Invoke `../do-work-toolbox/scripts/publish-portfolio-summary.sh` with one retained source and the action-selected mode. The helper copies and verifies that source into a private file adjacent to the canonical target, once per output. `--canonical-only` atomically replaces only the canonical file. `--with-snapshot` first publishes an exclusive snapshot from its own verified copy, advances occupied candidates with numeric suffixes, and only then atomically replaces the canonical file from the same bytes.
+
+The two outputs carry identical bytes but never share storage: a snapshot linked to the canonical file would follow every later in-place edit of it. Each publication also verifies the path it actually wrote, because `ln` and `mv` treat a directory in the destination's place as a container rather than a collision — a snapshot candidate occupied by a directory advances to the next suffix, a canonical path occupied by a directory fails closed, and neither leaves a private file nested inside it.
 
 An exclusive snapshot failure leaves the prior canonical unchanged. A later canonical replacement failure leaves the new snapshot published and reports that partial outcome. Existing snapshots are never truncated, replaced, or automatically removed.
 

@@ -13,7 +13,7 @@ Run this exact command from the root of the Git repository where you want the su
   bootstrap_tmp="$(mktemp -d "${TMPDIR:-/tmp}/do-work-suite-bootstrap.XXXXXX")"
   trap 'rm -rf "$bootstrap_tmp"' EXIT
   archive_file="$bootstrap_tmp/do-work-suite.tar.gz"
-  curl -fsSL -o "$archive_file.download" https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz
+  curl -fsSL --retry 3 --retry-delay 2 --retry-max-time 60 -o "$archive_file.download" https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz
   mv "$archive_file.download" "$archive_file"
   mkdir -p "$bootstrap_tmp/source"
   tar xzf "$archive_file" -C "$bootstrap_tmp/source" --strip-components=1

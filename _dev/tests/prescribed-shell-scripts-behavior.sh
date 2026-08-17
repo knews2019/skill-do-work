@@ -61,6 +61,74 @@ PATH="$atomic_bin:$PATH" "$core_scripts/atomic-download.sh" https://example.inva
 [ "$(cat "$fixture_root/atomic-target")" = stable ] || fail_case 'atomic-download partial-publication case changed the final target'
 find "$fixture_root" -name 'atomic-target.download.*' -print -quit | grep -q . && fail_case 'atomic-download partial-publication case leaked private scratch'
 
+# atomic-download: a rate-limited host answers 429 once and then succeeds. The fake curl
+# below models curl's own internal retry loop, so it survives that 429 only if the caller
+# allowed a retry — which is the whole point of the flag set. It also records the
+# Authorization header it was handed, so the opt-in credential path is observable.
+atomic_retry_bin="$fixture_root/atomic-retry-bin"
+mkdir -p "$atomic_retry_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'output_path=""' \
+  'retry_limit=0' \
+  'authorization_header=""' \
+  'while [ "$#" -gt 0 ]; do' \
+  '  case "$1" in' \
+  '    -o) output_path="$2"; shift 2 ;;' \
+  '    --retry) retry_limit="$2"; shift 2 ;;' \
+  '    -H) authorization_header="$2"; shift 2 ;;' \
+  '    *) shift ;;' \
+  '  esac' \
+  'done' \
+  'printf "%s" "$authorization_header" > "$ATOMIC_HEADER_LOG"' \
+  'transfer_attempt=0' \
+  'while :; do' \
+  '  transfer_attempt=$((transfer_attempt + 1))' \
+  '  printf "%s" "$transfer_attempt" > "$ATOMIC_ATTEMPT_LOG"' \
+  '  if [ "$transfer_attempt" -gt 1 ]; then' \
+  '    printf complete-payload > "$output_path"' \
+  '    exit 0' \
+  '  fi' \
+  '  if [ "$transfer_attempt" -gt "$retry_limit" ]; then' \
+  '    exit 22' \
+  '  fi' \
+  'done' \
+  > "$atomic_retry_bin/curl"
+chmod +x "$atomic_retry_bin/curl"
+
+printf 'stale before retry\n' > "$fixture_root/atomic-retry-target"
+GH_TOKEN='' GITHUB_TOKEN='' PATH="$atomic_retry_bin:$PATH" \
+  ATOMIC_ATTEMPT_LOG="$fixture_root/atomic-attempts" \
+  ATOMIC_HEADER_LOG="$fixture_root/atomic-header" \
+  "$core_scripts/atomic-download.sh" https://example.invalid/rate-limited "$fixture_root/atomic-retry-target" >/dev/null 2>&1 \
+  || fail_case 'atomic-download retry case did not survive a transient 429'
+[ "$(cat "$fixture_root/atomic-retry-target")" = complete-payload ] \
+  || fail_case 'atomic-download retry case did not publish the successful attempt'
+[ "$(cat "$fixture_root/atomic-attempts")" = 2 ] \
+  || fail_case 'atomic-download retry case did not let curl retry the rate-limited transfer'
+[ -z "$(cat "$fixture_root/atomic-header")" ] \
+  || fail_case 'atomic-download retry case sent an Authorization header with no token configured'
+find "$fixture_root" -name 'atomic-retry-target.download.*' -print -quit | grep -q . \
+  && fail_case 'atomic-download retry case leaked private scratch'
+
+# atomic-download: an opt-in token becomes a bearer credential; GH_TOKEN wins over GITHUB_TOKEN.
+printf 'stale before credential\n' > "$fixture_root/atomic-credential-target"
+GH_TOKEN=primary-token GITHUB_TOKEN=fallback-token PATH="$atomic_retry_bin:$PATH" \
+  ATOMIC_ATTEMPT_LOG="$fixture_root/atomic-credential-attempts" \
+  ATOMIC_HEADER_LOG="$fixture_root/atomic-credential-header" \
+  "$core_scripts/atomic-download.sh" https://example.invalid/private "$fixture_root/atomic-credential-target" >/dev/null 2>&1 \
+  || fail_case 'atomic-download credential case returned nonzero'
+[ "$(cat "$fixture_root/atomic-credential-header")" = 'Authorization: Bearer primary-token' ] \
+  || fail_case 'atomic-download credential case did not send GH_TOKEN as a bearer credential'
+printf 'stale before fallback credential\n' > "$fixture_root/atomic-fallback-target"
+GH_TOKEN='' GITHUB_TOKEN=fallback-token PATH="$atomic_retry_bin:$PATH" \
+  ATOMIC_ATTEMPT_LOG="$fixture_root/atomic-fallback-attempts" \
+  ATOMIC_HEADER_LOG="$fixture_root/atomic-fallback-header" \
+  "$core_scripts/atomic-download.sh" https://example.invalid/private "$fixture_root/atomic-fallback-target" >/dev/null 2>&1 \
+  || fail_case 'atomic-download fallback-credential case returned nonzero'
+[ "$(cat "$fixture_root/atomic-fallback-header")" = 'Authorization: Bearer fallback-token' ] \
+  || fail_case 'atomic-download fallback-credential case did not fall back to GITHUB_TOKEN'
+
 # capture-screenshot: coordinate two writers so the loser cannot publish the winner's private copy.
 capture_root="$fixture_root/capture"
 mkdir -p "$capture_root/a" "$capture_root/b" "$capture_root/assets"
@@ -233,8 +301,11 @@ cmp -s "$portfolio_source" "$portfolio_canonical" \
 find "$portfolio_root/deliverables/portfolio-snapshots" -type f -print -quit | grep -q . \
   && fail_case 'publish-portfolio-summary canonical-only case created a snapshot'
 
-# publish-portfolio-summary: the preservation branch publishes a snapshot first,
-# then refreshes canonical from the same private verified inode.
+# publish-portfolio-summary: the preservation branch publishes a snapshot first, then
+# refreshes canonical from the same verified bytes — but as an independent file. Same
+# bytes is the requirement; same inode is the defect, because a shared inode makes the
+# immutable snapshot follow every later in-place edit of canonical (REQ-205, was asserted
+# the other way round by REQ-199 before durable immutability was tested).
 printf 'prior canonical\n' > "$portfolio_canonical"
 portfolio_snapshot_output="$($toolbox_scripts/publish-portfolio-summary.sh --with-snapshot "$portfolio_source" "$portfolio_canonical" "$portfolio_candidate" 2>/dev/null)" \
   || fail_case 'publish-portfolio-summary snapshot-success case returned nonzero'
@@ -242,8 +313,14 @@ portfolio_snapshot_output="$($toolbox_scripts/publish-portfolio-summary.sh --wit
   || fail_case 'publish-portfolio-summary snapshot-success case did not report both published paths'
 cmp -s "$portfolio_source" "$portfolio_candidate" && cmp -s "$portfolio_source" "$portfolio_canonical" \
   || fail_case 'publish-portfolio-summary snapshot-success case did not preserve byte identity'
+[ -f "$portfolio_candidate" ] && [ -f "$portfolio_canonical" ] \
+  || fail_case 'publish-portfolio-summary snapshot-success case did not publish two regular files'
 [ "$portfolio_candidate" -ef "$portfolio_canonical" ] \
-  || fail_case 'publish-portfolio-summary snapshot-success case did not publish both paths from the same private bytes'
+  && fail_case 'publish-portfolio-summary snapshot-success case aliased the snapshot to the canonical inode'
+printf 'canonical mutated after publication\n' > "$portfolio_canonical"
+[ "$(cat "$portfolio_candidate")" = 'new portfolio bytes' ] \
+  || fail_case 'publish-portfolio-summary snapshot-success case let a later canonical edit rewrite the snapshot'
+cp "$portfolio_source" "$portfolio_canonical"
 
 # publish-portfolio-summary: an occupied candidate remains immutable and advances
 # to the first numeric suffix without cleaning any prior snapshot.
@@ -302,6 +379,36 @@ cmp -s "$portfolio_source" "$portfolio_late_failure_candidate" \
   || fail_case 'publish-portfolio-summary canonical-failure case did not retain the published snapshot'
 find "$portfolio_root/deliverables" -name '.portfolio-summary.md.publishing.*' -print -quit | grep -q . \
   && fail_case 'publish-portfolio-summary canonical-failure case leaked private bytes'
+
+# publish-portfolio-summary: `ln` links *into* a directory operand instead of colliding
+# with it, so a snapshot candidate occupied by a directory must advance to the numeric
+# suffix and leave no private file nested inside the directory.
+portfolio_directory_candidate="$portfolio_root/deliverables/portfolio-snapshots/portfolio-summary-20260815T160000Z.md"
+portfolio_directory_suffix="$portfolio_root/deliverables/portfolio-snapshots/portfolio-summary-20260815T160000Z-2.md"
+mkdir -p "$portfolio_directory_candidate"
+printf 'occupant\n' > "$portfolio_directory_candidate/occupant.txt"
+printf 'stable before directory candidate\n' > "$portfolio_canonical"
+portfolio_directory_output="$($toolbox_scripts/publish-portfolio-summary.sh --with-snapshot "$portfolio_source" "$portfolio_canonical" "$portfolio_directory_candidate" 2>/dev/null)" \
+  || fail_case 'publish-portfolio-summary snapshot-directory case returned nonzero instead of advancing'
+[ -d "$portfolio_directory_candidate" ] && [ "$(ls -A "$portfolio_directory_candidate")" = occupant.txt ] \
+  || fail_case 'publish-portfolio-summary snapshot-directory case nested a private file inside the occupying directory'
+cmp -s "$portfolio_source" "$portfolio_directory_suffix" \
+  || fail_case 'publish-portfolio-summary snapshot-directory case did not advance to the numeric suffix'
+[ "$portfolio_directory_output" = "$(printf '%s\n%s' "$portfolio_canonical" "$portfolio_directory_suffix")" ] \
+  || fail_case 'publish-portfolio-summary snapshot-directory case reported the wrong published paths'
+
+# publish-portfolio-summary: `mv` moves *into* a directory operand, so a canonical path
+# occupied by a directory must fail closed — never advance, never publish inside it, and
+# never leave the private copy nested there.
+portfolio_directory_canonical="$portfolio_root/deliverables/canonical-as-directory.md"
+mkdir -p "$portfolio_directory_canonical"
+printf 'canonical occupant\n' > "$portfolio_directory_canonical/occupant.txt"
+"$toolbox_scripts/publish-portfolio-summary.sh" --canonical-only "$portfolio_source" "$portfolio_directory_canonical" >/dev/null 2>&1 \
+  && fail_case 'publish-portfolio-summary canonical-directory case reported success'
+[ -d "$portfolio_directory_canonical" ] && [ "$(ls -A "$portfolio_directory_canonical")" = occupant.txt ] \
+  || fail_case 'publish-portfolio-summary canonical-directory case did not leave the occupying directory unchanged'
+find "$portfolio_root/deliverables" -name '.canonical-as-directory.md.publishing.*' -print -quit | grep -q . \
+  && fail_case 'publish-portfolio-summary canonical-directory case leaked private bytes'
 
 # generate-report-image: a direct backend receives inert prompt text and publishes
 # from a private adjacent path only after success.
@@ -596,6 +703,95 @@ PATH="$agentic_bin" AGENTIC_INVOKED_MARKER="$agentic_marker" TMPDIR="$fixture_ro
 find "$fixture_root" \( -name '.*.generating.*' -o -name 'do-work-ai-report-image.*' \) -print -quit | grep -q . \
   && fail_case 'generate-report-image agentic opt-in case leaked private paths'
 
+# generate-report-image, interrupted directly: the helper owns the process tree it
+# started, so signalling it must leave neither the backend nor the backend's own
+# descendant alive, and must reap them before the private stage is removed. A
+# bare-PID kill passes the file assertions below while the descendant keeps running.
+image_tree_bin="$fixture_root/image-tree-bin"
+mkdir -p "$image_tree_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'printf "%s" "$output_path" > "$IMAGE_TREE_STAGE_LOG"' \
+  'printf partial > "$output_path"' \
+  '( while :; do sleep 0.2; done ) &' \
+  'printf "%s\n" "$!" > "$IMAGE_TREE_DESCENDANT_PID"' \
+  'printf "%s\n" "$$" > "$IMAGE_TREE_BACKEND_PID"' \
+  ': > "$IMAGE_TREE_READY"' \
+  'while :; do sleep 0.2; done' \
+  > "$image_tree_bin/imagegen"
+chmod +x "$image_tree_bin/imagegen"
+image_tree_target="$fixture_root/process-tree.png"
+printf stable-tree > "$image_tree_target"
+PATH="$image_tree_bin:$PATH" \
+  IMAGE_TREE_STAGE_LOG="$fixture_root/process-tree-stage" \
+  IMAGE_TREE_BACKEND_PID="$fixture_root/process-tree-backend.pid" \
+  IMAGE_TREE_DESCENDANT_PID="$fixture_root/process-tree-descendant.pid" \
+  IMAGE_TREE_READY="$fixture_root/process-tree-ready" \
+  "$toolbox_scripts/generate-report-image.sh" "$image_tree_target" style process-tree >/dev/null 2>&1 &
+image_tree_helper_pid=$!
+background_process_ids="$background_process_ids $image_tree_helper_pid"
+image_tree_ready_ticks=0
+while [ "$image_tree_ready_ticks" -lt 200 ]; do
+  [ -e "$fixture_root/process-tree-ready" ] \
+    && [ -s "$fixture_root/process-tree-backend.pid" ] \
+    && [ -s "$fixture_root/process-tree-descendant.pid" ] && break
+  sleep 0.05
+  image_tree_ready_ticks=$((image_tree_ready_ticks + 1))
+done
+if [ ! -s "$fixture_root/process-tree-backend.pid" ] || [ ! -s "$fixture_root/process-tree-descendant.pid" ]; then
+  fail_case 'generate-report-image process-tree case never reached a running backend and descendant'
+else
+  image_tree_backend_pid="$(cat "$fixture_root/process-tree-backend.pid")"
+  image_tree_descendant_pid="$(cat "$fixture_root/process-tree-descendant.pid")"
+  background_process_ids="$background_process_ids $image_tree_backend_pid $image_tree_descendant_pid"
+  kill -TERM "$image_tree_helper_pid" 2>/dev/null || true
+  wait "$image_tree_helper_pid" 2>/dev/null
+  image_tree_status=$?
+  [ "$image_tree_status" -eq 143 ] \
+    || fail_case "generate-report-image process-tree case returned $image_tree_status instead of the TERM status 143"
+  image_tree_survivor_ticks=0
+  while [ "$image_tree_survivor_ticks" -lt 40 ]; do
+    image_tree_survivors=0
+    for image_tree_recorded_pid in "$image_tree_backend_pid" "$image_tree_descendant_pid"; do
+      kill -0 "$image_tree_recorded_pid" 2>/dev/null && image_tree_survivors=$((image_tree_survivors + 1))
+    done
+    [ "$image_tree_survivors" -eq 0 ] && break
+    sleep 0.05
+    image_tree_survivor_ticks=$((image_tree_survivor_ticks + 1))
+  done
+  [ "$image_tree_survivors" -eq 0 ] \
+    || fail_case "generate-report-image process-tree case left $image_tree_survivors backend process(es) or descendant(s) alive"
+  image_tree_stage_path="$(cat "$fixture_root/process-tree-stage")"
+  [ ! -e "$image_tree_stage_path" ] || fail_case 'generate-report-image process-tree case leaked private staging'
+  [ "$(cat "$image_tree_target")" = stable-tree ] || fail_case 'generate-report-image process-tree case changed the old target'
+fi
+
+# generate-report-image: `mv` treats an existing destination directory as a container,
+# so an output path occupied by a directory nests the staged image inside it and still
+# exits zero. Publication must fail closed and leave that directory untouched.
+image_directory_bin="$fixture_root/image-directory-bin"
+mkdir -p "$image_directory_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'printf new-png > "$output_path"' \
+  > "$image_directory_bin/imagegen"
+chmod +x "$image_directory_bin/imagegen"
+image_directory_parent="$fixture_root/directory-target"
+image_directory_target="$image_directory_parent/report.png"
+mkdir -p "$image_directory_target"
+printf owned-by-someone-else > "$image_directory_target/keep.txt"
+PATH="$image_directory_bin:$PATH" DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=0 \
+  "$toolbox_scripts/generate-report-image.sh" "$image_directory_target" style directory-collision >/dev/null 2>&1 \
+  && fail_case 'generate-report-image output-is-a-directory case reported success'
+[ "$(cat "$image_directory_target/keep.txt" 2>/dev/null)" = owned-by-someone-else ] \
+  || fail_case 'generate-report-image output-is-a-directory case did not preserve the occupying directory byte-for-byte'
+[ "$(ls -A "$image_directory_target" 2>/dev/null)" = keep.txt ] \
+  || fail_case 'generate-report-image output-is-a-directory case left its staged image nested inside the occupying directory'
+find "$image_directory_parent" -name '.report.png.generating.*' -print -quit | grep -q . \
+  && fail_case 'generate-report-image output-is-a-directory case leaked private staging'
+
 # install-last30days: a SKILL.md-only tree fails check, is repaired from a
 # complete fixture, and receives the full subtree plus ignore/Python guarantees.
 upstream_repo="$fixture_root/last30days-upstream"
@@ -703,6 +899,35 @@ diff -r "$fixture_root/last30days-interrupt-snapshot" "$backup_interrupt_project
 find "$backup_interrupt_project/.claude/skills" -name '.last30days.*' -print -quit | grep -q . \
   && fail_case 'install-last30days backup-interruption case leaked private paths'
 
+# install-last30days: the target can reappear between the backup `mv` and the
+# publication `mv`, and `mv` then nests the staging tree inside it and exits zero. The
+# mv shim below recreates the target in exactly that window; publication must fail
+# closed, leave the reappeared tree byte-for-byte, and keep the prior tree recoverable.
+publication_collision_bin="$fixture_root/publication-collision-bin"
+mkdir -p "$publication_collision_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'case "${2:-}" in */.claude/skills/last30days) mkdir -p "$2"; printf owned-by-someone-else > "$2/keep.txt" ;; esac' \
+  'exec /bin/mv "$@"' \
+  > "$publication_collision_bin/mv"
+chmod +x "$publication_collision_bin/mv"
+publication_collision_project="$fixture_root/last-publication-collision-project"
+publication_collision_target="$publication_collision_project/.claude/skills/last30days"
+mkdir -p "$publication_collision_target/legacy"
+printf collision-sentinel > "$publication_collision_target/SKILL.md"
+printf collision-byte > "$publication_collision_target/legacy/data.bin"
+TMPDIR="$fixture_root" PATH="$publication_collision_bin:$python_bin:$PATH" \
+  "$toolbox_scripts/install-last30days.sh" install "$publication_collision_project" "$upstream_repo" >/dev/null 2>&1 \
+  && fail_case 'install-last30days publication-collision case returned success'
+[ "$(cat "$publication_collision_target/keep.txt" 2>/dev/null)" = owned-by-someone-else ] \
+  || fail_case 'install-last30days publication-collision case did not preserve the reappeared target byte-for-byte'
+[ "$(ls -A "$publication_collision_target" 2>/dev/null)" = keep.txt ] \
+  || fail_case 'install-last30days publication-collision case left its staging tree nested inside the reappeared target'
+find "$publication_collision_project/.claude/skills" -name '.last30days.staging.*' -print -quit | grep -q . \
+  && fail_case 'install-last30days publication-collision case leaked private staging'
+[ -s "$(find "$publication_collision_project/.claude/skills" -path '*/.last30days.backup.*/previous/SKILL.md' -print -quit)" ] \
+  || fail_case 'install-last30days publication-collision case did not leave the prior tree recoverable at its backup path'
+
 # cleanup-req-reservations: a marker whose REQ file is committed is removed at
 # any zero-padding width and archive depth; non-marker entries stay untouched.
 reservation_project="$fixture_root/reservation-project"
@@ -798,4 +1023,4 @@ reservation_symlink_output="$("$core_scripts/cleanup-req-reservations.sh" "$rese
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
-printf 'Prescribed shell script behavior probes passed (36 named script cases).\n'
+printf 'Prescribed shell script behavior probes passed (44 named script cases).\n'

@@ -1017,20 +1017,86 @@ require_order(
     r"Build the reference's provenance ledger",
     "present-video must load the shared completed-work reference before using archived evidence",
 )
-for consumer, preferred_path_pattern in (
-    (ai_report, r"ai-reports/<report-slug>/"),
-    (present_video, r"do-work/deliverables/<canonical-ID>-video/"),
-):
+# --- Publication delegation (REQ-206) -----------------------------------
+# Naming the shared section is not delegating to it. A consumer satisfied the
+# assertion this block replaces with a passive mention in its Verification
+# Checklist, while its execution step carried a paraphrase of the algorithm.
+# Delegation now means an active directive *at the step that creates output*,
+# with no local restatement of the mechanics anywhere in the file.
+publication_application_directive = re.compile(
+    r"(?<![\w-])appl(?:y|ies)(?![\w-])[^\n]*Collision-Safe Publication", re.IGNORECASE
+)
+publication_local_algorithm = (
+    r"one final path[^\n]*(?:every|each)[^\n]*file",
+    r"(?:every|each)[^\n]*file[^\n]*one final path",
+    r"if the preferred[^\n]*exists",
+    r"numeric suffix|suffixed sibling",
+    r"existing (?:artifacts|deliverables) are immutable",
+    r"never (?:delete|truncate|merge|overwrite|rename|migrate)[^\n]*(?:delete|truncate|merge|overwrite|rename|migrate)[^\n]*(?:delete|truncate|merge|overwrite|rename|migrate)",
+    r"no pre-existing path|no existing output was changed",
+)
+
+def publication_delegation_findings(source, output_creation_pattern):
+    """Defect families in one consumer of the shared Collision-Safe Publication section."""
+    findings = []
+    directive = publication_application_directive.search(source)
+    if not directive:
+        findings.append("missing active application directive")
+    if any(re.search(restatement, source, re.IGNORECASE) for restatement in publication_local_algorithm):
+        findings.append("local publication algorithm restated")
+    output_creation = re.search(output_creation_pattern, source, re.IGNORECASE | re.MULTILINE)
+    if not output_creation:
+        findings.append("missing output-creation step")
+    elif directive and directive.start() >= output_creation.start():
+        findings.append("application ordered after output creation")
+    return findings
+
+publication_consumers = (
+    (ai_report, "ai-report", r"ai-reports/<report-slug>/", r"Create `screenshots/` only when"),
+    (
+        present_video,
+        "present-video",
+        r"do-work/deliverables/<canonical-ID>-video/",
+        r"Write only the source tree from Step 4",
+    ),
+)
+
+publication_delegation_mutations = (
+    (
+        "active directive removed, passive checklist mention left standing",
+        lambda source: publication_application_directive.sub("follow", source, count=1),
+        "missing active application directive",
+    ),
+    (
+        "algorithm paraphrased locally",
+        lambda source: source
+        + "\n\nUse the one final path selected by that contract for every source file.\n",
+        "local publication algorithm restated",
+    ),
+)
+
+for consumer, consumer_name, preferred_path_pattern, output_creation_pattern in publication_consumers:
     require(consumer, preferred_path_pattern, "presentation consumer must retain its preferred output path")
-    require(consumer, r"Collision-Safe Publication", "presentation consumer must actively name the shared publication section")
-    for local_restatement in (
-        r"(?i)if the preferred[^\n]*exists",
-        r"(?i)numeric suffix|suffixed sibling",
-        r"(?i)existing (?:artifacts|deliverables) are immutable",
-        r"(?i)never (?:delete|truncate|merge|overwrite|rename|migrate)[^\n]*(?:delete|truncate|merge|overwrite|rename|migrate)[^\n]*(?:delete|truncate|merge|overwrite|rename|migrate)",
-        r"(?i)no pre-existing path|no existing output was changed",
-    ):
-        reject(consumer, local_restatement, f"presentation consumer duplicates shared publication mechanics /{local_restatement}/")
+    consumer_source = text(consumer)
+    shipped_findings = publication_delegation_findings(consumer_source, output_creation_pattern)
+    for finding in shipped_findings:
+        failures.append(f"{consumer}: {consumer_name} publication delegation — {finding}")
+    if shipped_findings:
+        continue
+    for mutation_name, mutate, expected_family in publication_delegation_mutations:
+        mutated_source = mutate(consumer_source)
+        if mutated_source == consumer_source:
+            failures.append(
+                f"{consumer}: {consumer_name} delegation mutation {mutation_name!r} changed nothing — "
+                "the replay no longer matches the shipped text"
+            )
+            continue
+        mutated_families = publication_delegation_findings(mutated_source, output_creation_pattern)
+        if expected_family not in mutated_families:
+            failures.append(
+                f"{consumer}: {consumer_name} delegation mutation {mutation_name!r} escaped expected family "
+                f"{expected_family!r}; found {mutated_families!r}"
+            )
 for video_surface in (
     present_video,
     "skills/do-work-toolbox/docs/present-video-guide.md",

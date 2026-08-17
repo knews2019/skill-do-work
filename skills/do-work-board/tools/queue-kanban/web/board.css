@@ -73,6 +73,25 @@
      the user drags the resizer (and restores a persisted value on load); the
      clamp() in .detail-drawer keeps any value sane for the current viewport. */
   --detail-panel-width: 620px;
+
+  /* Durations view — Route A/B/C are ORDERED difficulty tiers, so they take a
+     single-hue ordinal ramp, never unrelated categorical hues. The invariant is
+     "heavier route sits further from the surface": this is the dark palette, so
+     C is the brightest step. Measured against --surface-1 (#131720): A 3.32:1,
+     B 6.00:1, C 13.55:1 — every step clears the 3:1 floor for a graphical
+     object, and adjacent steps stay 1.8:1+ apart from each other. Reusing these
+     steps unchanged on the light surface fails A, which is why the light block
+     re-steps rather than flipping. An unrouted legacy REQ is absence of data,
+     so it gets muted ink rather than a step on the ramp. */
+  --route-a: #256abf;
+  --route-b: #5598e7;
+  --route-c: #cde2fb;
+  --route-none: #8a929e;
+  /* Day columns in panels B and C — one measure each, so a single accent. */
+  --durations-bar: #e09462;
+  /* A reversed span is a broken stamp, not a fast REQ: it renders below the
+     zero line in the critical colour rather than being clamped to zero. */
+  --durations-critical: #e66767;
 }
 
 /* ---------------------------------------------------------------------------
@@ -114,6 +133,19 @@
     --accent-blocked: #bd5138;
     --accent-done: #3c875e;
     --accent-ur: #7a59bd;
+
+    /* Durations ramp, re-stepped for the light surface rather than flipped.
+       Same invariant — heavier route further from the surface — which on white
+       means C is the darkest step. Measured against #ffffff: A 3.50:1,
+       B 6.26:1, C 13.25:1, with adjacent steps 1.79:1+ apart; all three also
+       clear 3:1 against --surface-2 (#f1f4f8), which is what the chart card
+       sits on. */
+    --route-a: #4f8bd6;
+    --route-b: #1f5fb4;
+    --route-c: #0d2f5e;
+    --route-none: #6c7480;
+    --durations-bar: #a4522a;
+    --durations-critical: #c0392b;
 
     /* Tints behind badges/dots — accent hues, low alpha, visible on white. */
     --tint-pending: rgba(143, 94, 16, 0.12);
@@ -1753,4 +1785,171 @@ body.is-resizing-detail .detail-resizer::before {
   color: var(--accent-blocked);
   background-color: var(--tint-blocked);
   border-color: rgba(217, 122, 89, 0.28);
+}
+
+/* ---------------------------------------------------------------------------
+   Durations view — three panels on one shared linear calendar axis. Gridlines
+   and axes are solid hairlines one step off the surface, never dashed. Text
+   wears text tokens; a series colour never carries a label.
+   --------------------------------------------------------------------------- */
+.durations-intro {
+  padding: 20px 24px 4px;
+}
+
+.durations-heading {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+.durations-subhead {
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  max-width: 78ch;
+}
+
+.durations-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 12px 24px 0;
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+
+.durations-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.durations-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--route-none);
+}
+
+.durations-swatch[data-route="a"] { background: var(--route-a); }
+.durations-swatch[data-route="b"] { background: var(--route-b); }
+.durations-swatch[data-route="c"] { background: var(--route-c); }
+.durations-swatch[data-route="critical"] { background: var(--durations-critical); }
+
+.durations-chart {
+  padding: 8px 24px 0;
+  overflow-x: auto;
+}
+
+.durations-svg {
+  display: block;
+  width: 100%;
+  min-width: 720px;
+  height: auto;
+}
+
+.durations-axis-title {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ink-base);
+}
+
+.durations-tick {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  fill: var(--ink-faint);
+}
+
+.durations-mark-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  fill: var(--ink-soft);
+}
+
+.durations-grid-line {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+
+.durations-axis-line {
+  stroke: var(--line-firm);
+  stroke-width: 1;
+}
+
+.durations-month-line {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+
+.durations-overflow-lane {
+  fill: var(--surface-2);
+}
+
+.durations-mark {
+  stroke: none;
+}
+
+.durations-bar {
+  fill: var(--durations-bar);
+}
+
+.durations-bar-count {
+  fill: var(--accent-done);
+}
+
+.durations-hover-surface {
+  cursor: crosshair;
+}
+
+.durations-readout {
+  min-height: 20px;
+  margin: 4px 0 0;
+  padding: 0 24px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-base);
+}
+
+.durations-table {
+  margin: 12px 24px 28px;
+}
+
+.durations-table > summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.durations-table-scroll {
+  max-height: 340px;
+  overflow: auto;
+  margin-top: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius-chip);
+}
+
+.durations-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.durations-table th,
+.durations-table td {
+  padding: 6px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--ink-base);
+  white-space: nowrap;
+}
+
+.durations-table th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  color: var(--ink-soft);
+  font-weight: 600;
 }

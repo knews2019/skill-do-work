@@ -2,7 +2,7 @@
 # Install and reconcile the complete four-skill do-work suite in one recoverable transaction.
 set -euo pipefail
 
-upstream_url='https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz'
+upstream_url="${DO_WORK_UPSTREAM_URL:-https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz}"
 manual_settings_instruction='MANUAL STEP: in .claude/settings.json, remove only hooks.Stop[*].hooks[*] objects whose string command contains .claude/skills/do-work/hooks/pipeline-guard.sh; remove an enclosing hooks.Stop[*] wrapper only when those removals leave its hooks array empty; preserve every other entry, including custom hooks in the same wrapper; then merge .claude/skills/do-work/hooks/hooks.json.'
 cancel_exit_status="${DO_WORK_INSTALL_CANCEL_EXIT_STATUS:-0}"
 case "$cancel_exit_status" in
@@ -22,7 +22,7 @@ print_bootstrap_command() {
   bootstrap_tmp="$(mktemp -d "${TMPDIR:-/tmp}/do-work-suite-bootstrap.XXXXXX")"
   trap 'rm -rf "$bootstrap_tmp"' EXIT
   archive_file="$bootstrap_tmp/do-work-suite.tar.gz"
-  curl -fsSL -o "$archive_file.download" https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz
+  curl -fsSL --retry 3 --retry-delay 2 --retry-max-time 60 -o "$archive_file.download" https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz
   mv "$archive_file.download" "$archive_file"
   mkdir -p "$bootstrap_tmp/source"
   tar xzf "$archive_file" -C "$bootstrap_tmp/source" --strip-components=1
@@ -74,6 +74,7 @@ esac
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 manifest_validator="$script_dir/validate-suite-manifest.sh"
 section_replacer="$script_dir/replace-text-section.sh"
+archive_fetcher="$script_dir/fetch-upstream-archive.sh"
 [ -f "$manifest_validator" ] || fail 'validate-suite-manifest.sh is missing beside the installer'
 [ -f "$section_replacer" ] || fail 'replace-text-section.sh is missing beside the installer'
 
@@ -179,9 +180,11 @@ if [ -n "$supplied_archive" ]; then
   archive_file="$archive_directory/${supplied_archive##*/}"
 else
   archive_file="$install_tmp/upstream.tar.gz"
-  curl -fsSL -o "$archive_file.download" "$upstream_url" \
-    || fail 'upstream archive download failed; no client files were changed'
-  mv "$archive_file.download" "$archive_file"
+  # Only the fetching branch needs the fetcher; an install from a supplied --archive
+  # must still work from an archive that predates it.
+  [ -f "$archive_fetcher" ] || fail 'fetch-upstream-archive.sh is missing beside the installer'
+  bash "$archive_fetcher" "$archive_file" "$upstream_url" \
+    || fail 'upstream archive could not be fetched by any route; no client files were changed'
 fi
 
 tar xzf "$archive_file" -C "$source_root" --strip-components=1 \

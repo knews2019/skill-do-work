@@ -1,7 +1,8 @@
 ---
 id: REQ-221
 title: Extract the ai-report image batch into a shipped script
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-17T19:58:23Z
 domain: general
 created_at: 2026-08-17T18:37:31Z
 user_request: UR-042
@@ -42,7 +43,7 @@ The test suite already treats it as a program: `_dev/tests/prescribed-shell-scri
 
 ## Open Questions
 
-- [ ] The image-batch mechanics are now ~110 lines of shell embedded in a markdown action file, and the tests already have to extract them to run them. Should I process this as a new task?
+- [x] The image-batch mechanics are now ~110 lines of shell embedded in a markdown action file, and the tests already have to extract them to run them. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
   Why this is yours: this is a structural move, not a defect fix — nothing is broken today, so it is a judgment call about where the mechanics should live rather than something the builder should decide alone. It also touches the shipped package inventory, which is a user-visible surface.
