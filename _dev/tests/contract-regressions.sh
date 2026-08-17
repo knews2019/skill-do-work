@@ -708,35 +708,8 @@ require(completed_work_reference, r"ai-report.*present-video", "shared reference
 reject(completed_work_reference, r"future completed-work video", "shared reference still describes present-video as future")
 for predicate in (r"completed-with-issues", r"Reject `cancelled`, `failed`", r"prompt-injection\.md"):
     require(completed_work_reference, predicate, f"shared reader missing /{predicate}/")
-require(
-    completed_work_reference,
-    r"work-reference\.md[^\n]*Target ID Resolution",
-    "shared presentation resolver must inherit the canonical Target ID Resolution grammar",
-)
-require(
-    completed_work_reference,
-    r"apply[^\n]*Target ID Resolution",
-    "shared presentation resolver must actively apply, not merely cite, Target ID Resolution",
-)
-require_order(
-    completed_work_reference,
-    r"Target ID Resolution",
-    r"Resolve exactly one target",
-    "shared presentation resolver must canonicalize the target token before archive lookup",
-)
-for copied_grammar in (
-    r"case-insensitive",
-    r"numeric[- ]value",
-    r"`req-42`|`REQ-42`|`REQ-042`|`Ur-11`|`UR-011`",
-    r"`user_request:`|`requests:` array",
-):
-    reject(completed_work_reference, copied_grammar, f"shared presentation resolver duplicates canonical Target ID grammar /{copied_grammar}/")
-for semantic_negation in (
-    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+(?:read(?: and)?\s+)?apply\b[^\n]*Target ID Resolution",
-    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+canonicali[sz]e\b",
-    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+recognize\b",
-):
-    reject(completed_work_reference, semantic_negation, f"shared presentation resolver semantically negates its inherited grammar /{semantic_negation}/")
+# The shared resolver's own Target ID source-seam assertions live with
+# present-work's in the single detector below ("Target ID source-seam").
 
 collision_match = re.search(
     r"^## Collision-Safe Publication\s*$[\s\S]*?(?=^## |\Z)",
@@ -801,31 +774,188 @@ for predicate in (
     require(present_work, predicate, f"portfolio contract missing /{predicate}/")
 require(
     present_work,
-    r"work-reference\.md[^\n]*Target ID Resolution",
-    "present-work item dispatch must inherit the canonical Target ID Resolution grammar",
-)
-require(
-    present_work,
-    r"apply[^\n]*Target ID Resolution",
-    "present-work item dispatch must actively apply, not merely cite, Target ID Resolution",
-)
-require(
-    present_work,
     r"preserve the supplied (?:ID|token|spelling)[^\n]*both replacement commands",
     "present-work item dispatch must preserve the user's token in both printed commands",
 )
-for copied_grammar in (
+
+# --- Target ID source-seam (REQ-203) ------------------------------------
+# Every caller of the canonical Target ID Resolution contract must *inherit*
+# it: name the source, actively apply it before its own resolution boundary,
+# and never restate or negate the grammar locally. Keyword presence cannot
+# express that — "read without applying Target ID Resolution" contains the
+# letters `apply` and satisfied the assertion this block replaces — so the
+# rules live in one detector, and the mutation matrix below replays the whole
+# defect class against the real callers instead of spot-checking one spelling.
+target_id_inheritance = re.compile(r"work-reference\.md[^\n]*Target ID Resolution", re.IGNORECASE)
+target_id_application = re.compile(r"(?<![\w-])appl(?:y|ies)(?![\w-])[^\n]*Target ID Resolution", re.IGNORECASE)
+target_id_negations = (
+    r"(?:do not|don't|never|must not|cannot|without|instead of|rather than)\s+"
+    r"(?:read(?:ing)?(?:\s+and)?\s+)?appl(?:y|ies|ying)(?![\w-])[^\n]*Target ID Resolution",
+    r"(?:do not|don't|never|must not|cannot|without|instead of|rather than)\s+canonicali[sz](?:e|es|ing)(?![\w-])",
+    r"(?:do not|don't|never|must not|cannot|without|instead of|rather than)\s+recogni[sz](?:e|es|ing)(?![\w-])",
+)
+target_id_copied_token_grammar = (
     r"case-insensitive",
     r"numeric[- ]value",
     r"`req-42`|`REQ-42`|`REQ-042`|`Ur-11`|`UR-011`",
-):
-    reject(present_work, copied_grammar, f"present-work item dispatch duplicates canonical Target ID grammar /{copied_grammar}/")
-for semantic_negation in (
-    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+(?:read(?: and)?\s+)?apply\b[^\n]*Target ID Resolution",
-    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+canonicali[sz]e\b",
-    r"(?i)\b(?:do not|don't|never|must not|cannot)\s+recognize\b",
-):
-    reject(present_work, semantic_negation, f"present-work item dispatch semantically negates its inherited grammar /{semantic_negation}/")
+)
+target_id_copied_membership_grammar = (
+    r"`user_request:`|`requests:` array",
+)
+
+def target_id_seam_findings(source, boundary_pattern):
+    """Defect families in one caller of the canonical Target ID Resolution contract."""
+    findings = []
+    application = target_id_application.search(source)
+    if not target_id_inheritance.search(source):
+        findings.append("missing named inheritance")
+    if not application:
+        findings.append("missing active application directive")
+    if any(re.search(negation, source, re.IGNORECASE) for negation in target_id_negations):
+        findings.append("semantic negation of the inherited grammar")
+    if any(re.search(copied, source, re.IGNORECASE) for copied in target_id_copied_token_grammar):
+        findings.append("copied token grammar")
+    if any(re.search(copied, source, re.IGNORECASE) for copied in target_id_copied_membership_grammar):
+        findings.append("copied UR-membership grammar")
+    boundary = re.search(boundary_pattern, source, re.IGNORECASE | re.MULTILINE)
+    if not boundary:
+        findings.append("missing resolution boundary")
+    elif application and application.start() >= boundary.start():
+        findings.append("application ordered after the resolution boundary")
+    return findings
+
+target_id_active_directive = "read and apply `../../do-work/actions/work-reference.md` → **Target ID Resolution**"
+
+def demote_target_id_directive(demotion_anchor):
+    """Move the caller's whole directive paragraph below its resolution boundary."""
+    def mutate(source):
+        paragraph = next(
+            (block for block in source.split("\n\n") if target_id_active_directive in block),
+            None,
+        )
+        if paragraph is None:
+            return source  # caught by the "changed nothing" guard, never a traceback
+        return source.replace(paragraph + "\n\n", "", 1).replace(
+            demotion_anchor, paragraph + "\n\n" + demotion_anchor, 1
+        )
+    return mutate
+
+target_id_callers = (
+    (
+        completed_work_reference,
+        "shared presentation resolver",
+        r"Resolve exactly one target",
+        "Never fall back to `do-work/queue/`",
+    ),
+    (
+        present_work,
+        "present-work item dispatch",
+        r"One `UR-NNN` or `REQ-NNN` token",
+        "- **`all` or `portfolio`:** continue.",
+    ),
+)
+
+target_id_defect_mutations = (
+    (
+        "semantic negation retaining an apply substring",
+        lambda source: source.replace(
+            target_id_active_directive,
+            target_id_active_directive.replace("read and apply", "read without applying"),
+            1,
+        ),
+        "semantic negation of the inherited grammar",
+    ),
+    (
+        "explicit prohibition of the shared contract",
+        lambda source: source.replace(
+            target_id_active_directive,
+            target_id_active_directive.replace("read and apply", "do not apply"),
+            1,
+        ),
+        "semantic negation of the inherited grammar",
+    ),
+    (
+        "passive citation with no application directive",
+        lambda source: source.replace(
+            target_id_active_directive,
+            "see `../../do-work/actions/work-reference.md` → **Target ID Resolution**",
+            1,
+        ),
+        "missing active application directive",
+    ),
+    (
+        "canonical source no longer named",
+        lambda source: source.replace(
+            target_id_active_directive, "resolve the supplied token locally", 1
+        ),
+        "missing named inheritance",
+    ),
+    (
+        "caller-local token grammar",
+        lambda source: source + "\n\nSupplied tokens are case-insensitive.\n",
+        "copied token grammar",
+    ),
+    (
+        "caller-local UR-membership grammar",
+        lambda source: source + "\n\nA REQ belongs to a UR when its `user_request:` frontmatter names it.\n",
+        "copied UR-membership grammar",
+    ),
+)
+
+target_id_safe_mutations = (
+    ("unmodified caller", lambda source: source),
+    (
+        "reworded affirmative directive",
+        lambda source: source.replace("read and apply", "read, then apply", 1),
+    ),
+    (
+        "unrelated prohibition prose",
+        lambda source: source + "\n\nStop without writing files when the target is unfinished.\n",
+    ),
+    (
+        "caller-specific behavior added",
+        lambda source: source + "\n\nReport the resolved archive path in the run summary.\n",
+    ),
+)
+
+for relative_path, seam_name, boundary_pattern, demotion_anchor in target_id_callers:
+    caller_source = text(relative_path)
+    # Positive control: the shipped caller is clean under every rule at once.
+    shipped_findings = target_id_seam_findings(caller_source, boundary_pattern)
+    for finding in shipped_findings:
+        failures.append(f"{relative_path}: {seam_name} — {finding}")
+    if shipped_findings:
+        # Replaying mutations on an already-defective caller only produces
+        # derived noise; the findings above are the ones to fix.
+        continue
+    caller_mutations = target_id_defect_mutations + (
+        (
+            "directive demoted below the resolution boundary",
+            demote_target_id_directive(demotion_anchor),
+            "application ordered after the resolution boundary",
+        ),
+    )
+    for mutation_name, mutate, expected_family in caller_mutations:
+        mutated_source = mutate(caller_source)
+        if mutated_source == caller_source:
+            failures.append(
+                f"{relative_path}: {seam_name} mutation {mutation_name!r} changed nothing — "
+                "the replay no longer matches the shipped text"
+            )
+            continue
+        mutated_families = target_id_seam_findings(mutated_source, boundary_pattern)
+        if expected_family not in mutated_families:
+            failures.append(
+                f"{relative_path}: {seam_name} mutation {mutation_name!r} escaped expected family "
+                f"{expected_family!r}; found {mutated_families!r}"
+            )
+    for mutation_name, mutate in target_id_safe_mutations:
+        safe_families = target_id_seam_findings(mutate(caller_source), boundary_pattern)
+        if safe_families:
+            failures.append(
+                f"{relative_path}: {seam_name} rejected safe mutation {mutation_name!r}: "
+                f"{safe_families!r}"
+            )
 require_order(
     present_work,
     r"read `\.\./\.\./do-work/crew-members/prompt-injection\.md`",
