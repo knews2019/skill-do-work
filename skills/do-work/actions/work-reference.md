@@ -132,7 +132,26 @@ assigned_to: "cloud-alpha"     # OPTIONAL advisory claim marker: the session thi
 review_generated: true          # OPTIONAL exact marker written on review-created follow-ups (`actions/review-work.md` Step 10). The board's parser reads true only when the scalar coercion result is exactly `true`; absent, false, and non-canonical values remain false, with no aliases or normalize-and-warn behavior. The value has no display or scheduling role. Its one board consumer is the read-only archived-UR diagnostic: after terminal queue/working members are left to the stranded-finished probe, a non-terminal exact-true member under its already-archived UR is the legitimate same-UR follow-up shape and does not reopen or move that UR.
 sweep: true                    # OPTIONAL marker: this REQ is a review-created consolidation sweep — ONE REQ per root cause, carrying an `## Instances` checklist of every occurrence (`actions/review-work.md` Step 10 → Sweep consolidation, the marker's canonical home). Boolean; absent reads as false. Written by the review flow at sweep creation, greppable by design (`grep -rl "^sweep: true" do-work/queue/`) so reviews find the existing sweep instead of judging titles. Appends add checklist lines only — nothing ever edits a sweep's frontmatter after creation; a `pending` or `pending-answers` sweep is appendable, a claimed one never is. Not parsed by the board and not in the normalize-and-warn table (marker class; unlike `review_generated`, it has no board consumer).
 sweep_key: hardcoded-colors-untokenized   # REQUIRED on sweep REQs (meaningless elsewhere): short kebab-case name for the ROOT CAUSE — the deterministic append discriminator. A review appends to the candidate whose key matches its finding's root cause; when no key matches literally, it compares root-cause statements (same rule = same sweep), never titles (`actions/review-work.md` Step 10). Free slug, no canonical vocabulary — verbatim-read class.
-effort_estimate: normal        # OPTIONAL triage bit: trivial | normal — separates small mechanical fixes from real work so the user can tell at a glance which queued REQs are cheap to approve or batch. Closed two-value enum, deliberately — a triage bit, not an estimation system; do not grow it toward t-shirt sizes. Absent or unrecognized reads as `normal` (Schema Read Contract row below), so every REQ predating the field is valid unchanged. Automatic follow-up creation MUST stamp it from the review gate's recorded disposition (`gate: trivial` → `trivial`, else `normal` — `actions/review-work.md` Step 10; Discovered Tasks follow-ups per **Discovered Tasks Classification (Step 8)** below); capture MAY set it. Display only: parsed by `../do-work-board/tools/queue-kanban/model.go` into a card chip (rendered only when `trivial` — `normal` is the default and would be noise) and a drawer row, with no column logic and no scheduling — keep that parser in lock-step with this line, both changing in the same commit.
+effort_estimate: normal        # OPTIONAL triage bit: trivial | normal — separates small mechanical fixes from real work so the user can tell at a glance which queued REQs are cheap to approve or batch. Closed two-value enum, deliberately — a triage bit, not an estimation system; do not grow it toward t-shirt sizes (the estimation system lives in the separate `estimate:` block below, and the only bridge between the two is the trivial short-circuit: `trivial` ⇒ the floor estimate, no signal extraction — `actions/estimate-reference.md`). Absent or unrecognized reads as `normal` (Schema Read Contract row below), so every REQ predating the field is valid unchanged. Automatic follow-up creation MUST stamp it from the review gate's recorded disposition (`gate: trivial` → `trivial`, else `normal` — `actions/review-work.md` Step 10; Discovered Tasks follow-ups per **Discovered Tasks Classification (Step 8)** below); capture MAY set it. Display only: parsed by `../do-work-board/tools/queue-kanban/model.go` into a card chip (rendered only when `trivial` — `normal` is the default and would be noise) and a drawer row, with no column logic and no scheduling — keep that parser in lock-step with this line, both changing in the same commit.
+
+# OPTIONAL informational forecast — backwards-compatible: a REQ without it is fully
+# valid, and no scheduling, gating, or pipeline logic ever reads it. Written by the
+# work action's ensure-estimate step (post-triage) or by verify-requests after a
+# material repair, then FROZEN once execution begins — never rewritten with knowledge
+# gained during implementation. p50_active_minutes is a multiple of 5, never below 10;
+# it means roughly a 50% chance of completing within that many ACTIVE agent minutes
+# (user wait, paused/suspended sessions, and queue wait are excluded by definition).
+# Produced deterministically by tools/estimate-p50.sh from extracted signals; the
+# extraction guide, confidence rubric, and presentation formats live in
+# actions/estimate-reference.md. No P80 or other percentile fields — by design.
+estimate:
+  p50_active_minutes: 75
+  confidence: medium            # low | medium | high
+  calculated_at: 2026-08-16T12:00:00Z   # current UTC instant (Timestamp rule above)
+  basis:
+    - Route C
+    - 12-file write set
+    - browser evidence
 
 # Set by work action when claimed
 claimed_at: 2025-01-26T10:30:00Z

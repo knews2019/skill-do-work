@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.194.0 — Deterministic P50 Estimator (2026-08-17)
+
+REQs can now carry a P50 active-duration forecast — a deterministic estimate of active agent minutes, computed by a shipped script so the same signals always price the same. Informational only: it never blocks execution.
+
+- New `tools/estimate-p50.sh`: route/signal scoring, nearest-5 rounding, 10-minute floor, low/medium/high confidence, and a `critical-path` graph mode that separates total effort from longest-path duration
+- New lazy-loaded `actions/estimate-reference.md`: signal extraction, the `estimate:` frontmatter block template, and presentation formats
+- Schema gains the optional backwards-compatible `estimate:` block; `effort_estimate` stays a two-value chip, bridged only by the trivial short-circuit
+- Lock-in suite pins determinism, rounding, floor, dependency-graph math, and the print-only backwards-compatibility guarantee
+
 ## 0.193.6 — Complete Remotion Preview Safety Mutations (2026-08-15)
 
 Presentation contracts now reject the full executable fixed-port Studio and macOS opener families without treating safe foreground commands or explanatory prohibition examples as workflows.

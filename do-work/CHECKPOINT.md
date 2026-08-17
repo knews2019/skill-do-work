@@ -24,6 +24,8 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
+- REQ-208 — Deterministic P50 estimator script, reference file, and schema — claimed 2026-08-17T00:02:29Z — writer: vm:/home/user/skill-do-work
+
 ## Still Queued
 
 - REQ-203: Harden presentation target-ID source-seam tests (pending-answers)

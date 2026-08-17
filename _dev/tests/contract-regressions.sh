@@ -3609,6 +3609,18 @@ elif ! bash "$suite_installer_probe"; then
   fail_count=$((fail_count + 1))
 fi
 
+# The P50 estimator's contracts — deterministic output, nearest-5 rounding, the
+# 10-minute floor, dependency-graph critical-path math, and the print-only
+# backwards-compatibility guarantee — are runtime properties no grep can assert.
+p50_estimator_probe="$repo_root/_dev/tests/p50-estimator-determinism.sh"
+if [ ! -f "$p50_estimator_probe" ]; then
+  printf 'FAIL: _dev/tests/p50-estimator-determinism.sh is missing — the P50 estimator has no lock-in coverage.\n' >&2
+  fail_count=$((fail_count + 1))
+elif ! bash "$p50_estimator_probe"; then
+  printf 'FAIL: P50 estimator probes failed (see the FAIL lines above).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 # Managed Just sections are a byte-preserving ownership boundary, not a prose convention.
 # Exercise the real utility across replacement, append, creation, malformed
 # markers, filename variants, spaces, modes, idempotence, and Just parsing.

@@ -1,0 +1,92 @@
+# P50 Estimation — Reference
+
+> **Companion file to `actions/work.md` (ensure-estimate step) and `actions/verify-requests.md` (post-repair recalculation).** Holds the signal-extraction guide, the `estimate:` frontmatter block template, the confidence rubric, and the presentation formats. Load it only at an estimation moment — never during ordinary claiming, building, or review. If it is already in context this session, reuse it. The `effort_estimate: trivial` short-circuit below deliberately skips this file entirely.
+
+## What the Estimate Means
+
+`p50_active_minutes` is the median estimate of **active agent wall-clock minutes** — roughly a **50% chance of completing within the estimated minutes** while do-work and its agents are actually working: planning, exploration, implementation, tests and builds, independent review, and ordinary remediation.
+
+It **excludes**: time waiting for user input or approval, paused/suspended/stopped sessions, overnight or user-controlled gaps, queue wait time, and calendar completion dates. It is an **informational forecast, never a deadline or execution budget** — estimation must never block execution or require user clarification. If estimation fails for any reason, note it and proceed without an estimate.
+
+**No P80 or other percentile fields exist, by design.** Do not add them.
+
+## The `estimate:` Frontmatter Block
+
+Optional and backwards-compatible — a REQ without it is fully valid, and every reader treats the field as absent-is-fine. Written once, then **frozen when execution begins**: never rewrite it with knowledge gained during implementation.
+
+```yaml
+estimate:
+  p50_active_minutes: 75        # multiple of 5, never below 10
+  confidence: medium            # low | medium | high — rubric below
+  calculated_at: 2026-08-16T12:00:00Z   # current UTC instant (Timestamp rule, actions/work-reference.md)
+  basis:                        # dominant sizing factors, echoed by the estimator
+    - Route C
+    - 12-file write set
+    - browser evidence
+```
+
+## Extracting Signals from a REQ
+
+The agent supplies judgment; the shipped script does the arithmetic — same normalized signals, same estimate, always. Read the REQ and map what you find onto the estimator's flags:
+
+| REQ evidence | Flag |
+|---|---|
+| `route:` frontmatter (post-triage), or your route-equivalent read of the Decision Flow criteria when estimating pre-triage | `--route A\|B\|C` |
+| `write_set:` length, or the Scope/requirements' implied file count | `--write-set N` |
+| Files/assets/dependencies the REQ says to create | `--new-files N` |
+| Distinct runtime subsystems the requirements touch | `--subsystems N` |
+| Acceptance-criteria / checklist item count | `--acceptance N` |
+| Depth of this REQ's `depends_on` chain (serialization cost) | `--deps-depth N` |
+| Browser, responsive, visual, accessibility, or screenshot requirements | `--browser` |
+| Persistence, migration, API, or schema changes | `--persistence` |
+| Async lifecycle, teardown, race, or retry behavior | `--async-behavior` |
+| Performance instrumentation | `--performance` |
+| Lint, deploy, asset-integrity, or cross-route regression requirements | `--regression` |
+| Full-suite (rather than focused) verification | `--full-suite` |
+
+Independent review and ordinary remediation cost are folded into the route base — no flag. Missing signals never prevent estimation: omit the flag and the estimator still answers.
+
+```bash
+<skill-root>/tools/estimate-p50.sh --route C --write-set 12 --browser --persistence --full-suite
+```
+
+The output lines map directly onto the block: `p50_active_minutes`, `confidence`, and the `basis` list. Stamp `calculated_at` with the current UTC instant (Timestamp rule, `actions/work-reference.md`).
+
+## Confidence Rubric (deterministic — computed by the script)
+
+- **high** — trivial short-circuit, or Route A with a raw score ≤ 20 minutes.
+- **low** — Route C with a write set ≥ 15 files, ≥ 3 subsystems, or a raw score ≥ 180 minutes: wide scope, wide error bars.
+- **medium** — everything else.
+
+## The Trivial Short-Circuit
+
+A REQ with `effort_estimate: trivial` (or obvious Route A indicators) gets the floor estimate without loading this file or extracting signals:
+
+```bash
+<skill-root>/tools/estimate-p50.sh --trivial
+```
+
+That keeps estimation overhead near zero exactly where the estimate is worth the least. `effort_estimate` itself stays the closed two-value triage chip (`actions/work-reference.md` → Request File Schema); this short-circuit is the only bridge between the two fields.
+
+## Multi-REQ Totals and Critical Path
+
+For a selected set of more than one REQ, compute both figures with the estimator's graph mode — per-REQ minutes plus `depends_on` edges as `ID:MINUTES[:DEP,...]` triples:
+
+```bash
+<skill-root>/tools/estimate-p50.sh critical-path REQ-208:85 REQ-209:60:REQ-208 REQ-210:25:REQ-208
+```
+
+`total_estimated_effort_minutes` is the plain sum; `critical_path_minutes` is the longest path through the dependency graph — never the sum of parallel branches. A dependency id outside the set contributes zero (an archived dependency is already done). Present both, clearly labeled:
+
+```
+REQ-208  85 min
+REQ-209  60 min  depends on REQ-208
+REQ-210  25 min  depends on REQ-208
+
+Total estimated effort: 170 active minutes
+Estimated critical path: 145 active minutes
+```
+
+## Calibration Honesty
+
+There is **no historical actives data**: `claimed_at` → `completed_at` is wall-clock time including user pauses and suspended sessions, and **must never be subtracted to derive actual active time**. Until pause-aware execution timing exists, this estimator is pure prior — the scoring table encodes judgment, not measured history — and `actual_active_minutes` is not recorded. When such timing exists, actuals may calibrate *future* estimates; historical estimates are never modified.
