@@ -75,6 +75,39 @@ run_hook_case \
   missing-queue-directory valid 0 \
   "do-work v9.8.7 loaded. 0 pending REQ(s). Say 'do-work help' for commands."
 
+# With the cleanup script installed, a marker made redundant by its landed REQ file
+# is reaped at session start and the hook appends the cleanup summary to the banner.
+# The four cases above run without scripts/ present, pinning that a partial install
+# still emits the plain banner.
+cleanup_case_root="$fixture_root/reservation-cleanup"
+cleanup_skill_root="$cleanup_case_root/skill"
+cleanup_project_root="$cleanup_case_root/project"
+mkdir -p "$cleanup_skill_root/hooks" "$cleanup_skill_root/actions" "$cleanup_skill_root/scripts" \
+  "$cleanup_project_root/do-work/queue" "$cleanup_project_root/do-work/.req-reservations"
+cp "$hook_source" "$cleanup_skill_root/hooks/session-start.sh"
+cp "$repo_root/skills/do-work/scripts/cleanup-req-reservations.sh" "$cleanup_skill_root/scripts/"
+printf '**Current version**: 9.8.7\n' > "$cleanup_skill_root/actions/version.md"
+printf -- '---\nid: REQ-001\nstatus: pending\n---\n' \
+  > "$cleanup_project_root/do-work/queue/REQ-001-fixture.md"
+: > "$cleanup_project_root/do-work/.req-reservations/REQ-000001"
+cleanup_expected_output="do-work v9.8.7 loaded. 1 pending REQ(s). Say 'do-work help' for commands.
+do-work: removed 1 stale REQ reservation marker(s) from do-work/.req-reservations/ — stage and commit the deletion(s)."
+cleanup_actual_output="$(CLAUDE_PROJECT_DIR="$cleanup_project_root" \
+  bash "$cleanup_skill_root/hooks/session-start.sh" 2> "$cleanup_case_root/stderr.txt")" || {
+  printf 'FAIL: reservation-cleanup: hook exited nonzero; stderr: %s\n' \
+    "$(tr '\n' ' ' < "$cleanup_case_root/stderr.txt")" >&2
+  failure_count=$((failure_count + 1))
+}
+if [[ "$cleanup_actual_output" != "$cleanup_expected_output" ]]; then
+  printf 'FAIL: reservation-cleanup: expected <%s>, got <%s>.\n' \
+    "$cleanup_expected_output" "$cleanup_actual_output" >&2
+  failure_count=$((failure_count + 1))
+fi
+if [[ -e "$cleanup_project_root/do-work/.req-reservations/REQ-000001" ]]; then
+  printf 'FAIL: reservation-cleanup: the redundant marker survived the session start.\n' >&2
+  failure_count=$((failure_count + 1))
+fi
+
 if [[ "$failure_count" -gt 0 ]]; then
   exit 1
 fi
