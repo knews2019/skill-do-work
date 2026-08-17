@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.200.0 — Mechanical REQ Reservation Cleanup (2026-08-17)
+
+Reservation markers under `do-work/.req-reservations/` used to be kept forever; the directory only ever grew. A new script now reaps them mechanically — no agent involved — and the SessionStart hook runs it every session.
+
+- New `scripts/cleanup-req-reservations.sh`: removes a marker once its REQ file exists anywhere in queue/working/archive (the file itself then holds the number), or after a two-day timeout for a capture that never landed. Younger unmatched markers — captures in flight — are kept.
+- The two-day timeout revisits REQ-147's keep-forever decision: an abandoned number may now be reissued after the timeout, the accepted trade for a directory that stays clean.
+- The core SessionStart hook invokes the cleanup fail-soft and appends a one-line summary when anything was removed, so deletions get committed with normal housekeeping.
+
 ## 0.199.2 — Estimate Summary and Verify Feedback Fixes (2026-08-17)
 
 Four review findings from PR #140, all accepted: three tighten the multi-REQ estimate summary's contract, one keeps verify honest in git-less environments.

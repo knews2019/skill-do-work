@@ -593,7 +593,60 @@ diff -r "$fixture_root/last30days-interrupt-snapshot" "$backup_interrupt_project
 find "$backup_interrupt_project/.claude/skills" -name '.last30days.*' -print -quit | grep -q . \
   && fail_case 'install-last30days backup-interruption case leaked private paths'
 
+# cleanup-req-reservations: a marker whose REQ file landed is removed at any
+# zero-padding width and archive depth; non-marker entries stay untouched.
+reservation_project="$fixture_root/reservation-project"
+mkdir -p "$reservation_project/do-work/.req-reservations" \
+  "$reservation_project/do-work/queue" \
+  "$reservation_project/do-work/archive/UR-001"
+printf 'req\n' > "$reservation_project/do-work/queue/REQ-203-fixture.md"
+printf 'req\n' > "$reservation_project/do-work/archive/UR-001/REQ-7-archived-fixture.md"
+: > "$reservation_project/do-work/.req-reservations/REQ-000203"
+: > "$reservation_project/do-work/.req-reservations/REQ-000007"
+: > "$reservation_project/do-work/.req-reservations/README"
+ln -s REQ-000203 "$reservation_project/do-work/.req-reservations/REQ-000777"
+reservation_output="$("$core_scripts/cleanup-req-reservations.sh" "$reservation_project")" \
+  || fail_case 'cleanup-req-reservations redundant-marker case returned nonzero'
+printf '%s' "$reservation_output" | grep -q 'removed 2 stale REQ reservation marker' \
+  || fail_case 'cleanup-req-reservations redundant-marker case did not report exactly two removals'
+[ ! -e "$reservation_project/do-work/.req-reservations/REQ-000203" ] \
+  || fail_case 'cleanup-req-reservations redundant-marker case kept the queue-claimed marker'
+[ ! -e "$reservation_project/do-work/.req-reservations/REQ-000007" ] \
+  || fail_case 'cleanup-req-reservations redundant-marker case kept the archive-claimed marker'
+[ -e "$reservation_project/do-work/.req-reservations/README" ] \
+  || fail_case 'cleanup-req-reservations redundant-marker case deleted a non-marker file'
+[ -L "$reservation_project/do-work/.req-reservations/REQ-000777" ] \
+  || fail_case 'cleanup-req-reservations redundant-marker case deleted a symlinked marker'
+
+# cleanup-req-reservations: a young marker with no REQ file is a capture still in
+# flight — it must survive, and a run that removes nothing must print nothing.
+: > "$reservation_project/do-work/.req-reservations/REQ-000999"
+reservation_inflight_output="$("$core_scripts/cleanup-req-reservations.sh" "$reservation_project")" \
+  || fail_case 'cleanup-req-reservations in-flight-marker case returned nonzero'
+[ -z "$reservation_inflight_output" ] \
+  || fail_case 'cleanup-req-reservations in-flight-marker case printed output for a no-op run'
+[ -f "$reservation_project/do-work/.req-reservations/REQ-000999" ] \
+  || fail_case 'cleanup-req-reservations in-flight-marker case deleted a young unmatched marker'
+
+# cleanup-req-reservations: the same unmatched marker aged past two days is an
+# abandoned capture and is removed.
+touch -m -t 202001010000 "$reservation_project/do-work/.req-reservations/REQ-000999"
+reservation_timeout_output="$("$core_scripts/cleanup-req-reservations.sh" "$reservation_project")" \
+  || fail_case 'cleanup-req-reservations timeout-marker case returned nonzero'
+printf '%s' "$reservation_timeout_output" | grep -q 'removed 1 stale REQ reservation marker' \
+  || fail_case 'cleanup-req-reservations timeout-marker case did not report the timeout removal'
+[ ! -e "$reservation_project/do-work/.req-reservations/REQ-000999" ] \
+  || fail_case 'cleanup-req-reservations timeout-marker case kept the abandoned marker'
+
+# cleanup-req-reservations: a repo without a reservation directory is a silent no-op.
+reservation_absent_project="$fixture_root/reservation-absent-project"
+mkdir -p "$reservation_absent_project/do-work/queue"
+reservation_absent_output="$("$core_scripts/cleanup-req-reservations.sh" "$reservation_absent_project")" \
+  || fail_case 'cleanup-req-reservations missing-directory case returned nonzero'
+[ -z "$reservation_absent_output" ] \
+  || fail_case 'cleanup-req-reservations missing-directory case printed output with nothing to clean'
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
-printf 'Prescribed shell script behavior probes passed (27 named script cases).\n'
+printf 'Prescribed shell script behavior probes passed (31 named script cases).\n'
