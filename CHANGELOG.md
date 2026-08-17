@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.199.5 — Portfolio Snapshots Are Now Genuinely Immutable (2026-08-17)
+
+A timestamped portfolio snapshot and the canonical summary were the same file under two names, so editing the canonical summary afterwards silently rewrote the snapshot you asked to preserve. They are now independent files published from the same verified bytes. Both publication steps also check where they actually landed, because `ln` and `mv` treat a directory in the destination's place as a container rather than a collision.
+
+- Snapshot and canonical get their own verified copies; a later in-place edit of one cannot reach the other
+- A snapshot candidate occupied by a directory advances to the next numeric suffix instead of hiding a private file inside it
+- A canonical path occupied by a directory fails closed and leaves that directory untouched
+- Every reported path is confirmed to be a regular file before it is printed
+- Two new named replays, plus one older assertion corrected: it had been locking in the shared inode
+
 ## 0.199.4 — AI-Report Image Batch Owns Its Processes and Its Publication (2026-08-17)
 
 Interrupting a report run used to delete the staging directory and walk away while the image backends kept running against it. And because `mv` treats an existing directory as a container rather than a collision, a `generated/` folder that appeared at the last moment would silently swallow the finished batch while the run reported success. Both are closed, and both failure paths are now replayed in the test suite.
