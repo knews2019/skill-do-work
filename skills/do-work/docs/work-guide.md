@@ -88,12 +88,13 @@ A typical `do-work run` session:
 1. **Queue scan** — finds the next `pending` REQ file in `do-work/queue/`
 2. **Claim** — moves it to `working/` and sets `status: claimed` so no other agent grabs it
 3. **Triage** — reads the REQ, assesses complexity, picks Route A/B/C
-4. **Build** — implements the request (planning and exploration for B/C routes)
-5. **Test** — runs the project's test suite, validates red-green if TDD targets exist
-6. **Review** — scores the work against requirements, code quality, and acceptance criteria
-7. **Archive** — moves the REQ to `archive/`, creates follow-up REQs if the review flagged issues
-8. **Commit** — one atomic commit per REQ with explicit file staging
-9. **Loop** — wipes context and picks the next REQ (or exits if the queue is empty)
+4. **Estimate** — ensures a P50 forecast exists and prints the estimate line before planning
+5. **Build** — implements the request (planning and exploration for B/C routes)
+6. **Test** — runs the project's test suite, validates red-green if TDD targets exist
+7. **Review** — scores the work against requirements, code quality, and acceptance criteria
+8. **Archive** — moves the REQ to `archive/`, creates follow-up REQs if the review flagged issues
+9. **Commit** — one atomic commit per REQ with explicit file staging
+10. **Loop** — wipes context and picks the next REQ (or exits if the queue is empty)
 
 Each REQ is fully processed before the next one starts. If context limits are hit mid-REQ, a checkpoint is written so the next session can resume.
 

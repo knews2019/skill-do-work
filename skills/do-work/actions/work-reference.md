@@ -17,6 +17,8 @@ work action (orchestrator - lightweight, stays in loop)
   │     │
   │     ├── OPEN QUESTIONS? ── - [ ] items exist ──► Mark - [~], builder decides
   │     │                      (none / all resolved) ──► continue
+  │     │
+  │     ├── ESTIMATE: Ensure estimate: block exists, print P50 line (never blocks)
   │     │     │
   │     │     ├── Route A (Simple) ──────────────────┐
   │     │     │   Skip plan/explore, direct to build │

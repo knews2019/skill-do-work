@@ -1,10 +1,11 @@
 ---
 id: REQ-209
 title: Wire P50 estimation into the work action
-status: claimed
+status: completed
 created_at: 2026-08-16T23:52:07Z
 claimed_at: 2026-08-17T00:18:23Z
 route: B
+completed_at: 2026-08-17T00:32:08Z
 user_request: UR-047
 domain: general
 prime_files: [_dev/primes/prime-action-files.md]
@@ -138,6 +139,7 @@ See `do-work/user-requests/UR-047/input.md` for complete verbatim input.
 - **D-01** (DECIDE & STATE): Step number 3.6 (between Open Questions and Spec Loading) rather than 3.9/4-renumber — printing lands before planning per the spec while leaving every existing step number stable for cross-references.
 - **D-02** (DECIDE & STATE): The multi-REQ summary excludes unestimated members from both aggregates and says so, rather than force-estimating the whole set at scan time — keeps Step 1 cheap and honest; Step 3.6 fills the gaps as each REQ is claimed.
 - **D-03** (DECIDE & STATE): Added the estimator to `resolve_runtime_file`'s core-root case — first verify run FAILed the new pin because bare `tools/` paths fall through to repo root (the resolver is a hand-maintained enumeration; Closed Enumerations Go Stale in action).
+- **D-04** (DECIDE & STATE): All three review Minors (gated trivial) remediated inline by the integrator in the bookkeeping commit rather than spawning follow-up REQs — each was a one-line restatement sync or clause wiring in files this REQ already owned; the review gate mandates follow-ups only for Important findings.
 
 ## Qualification
 
@@ -153,6 +155,43 @@ Passed — `tools/checks/qualify.sh` exit 0; `tools/checks/scope-drift.sh` exit 
 - The REQ's captured RED (work run derives/prints no estimate) is prose behavior — verified by inspection: Step 3.6 sits before Step 4, prints the spec's exact format, and the checklist enumerates it.
 
 *Verified by work action*
+
+## Review
+
+**Overall: 95%** | 2026-08-17T01:05:00Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 95% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Findings:** 0 important, 3 minor, 2 nit
+**Acceptance:** Pass — determinism suite green; the work.md pin present and passing; estimator exercised in all three modes with outputs matching the documented examples exactly (graph mode on work.md's own example prints 170/145); Step 3.6 verified between 3.5 and 3.7 with the spec's verbatim print format; agent-floor walk confirmed the block template reachable even on the trivial path.
+**Minor findings and their disposition (all gated trivial by the reviewer; remediated inline by the integrator before the bookkeeping commit — D-04):**
+- M1: work-guide.md "What happens when you run it" walkthrough missed the Estimate step → fixed (renumbered, step 4 added)
+- M2: work-reference.md Architecture diagram + work.md header gloss omitted estimate → fixed (ESTIMATE node + gloss updated)
+- M3: Route A short-circuit clause unwired (rubric only lived inside the file the short-circuit avoids) → fixed (Route A + no-heavy-indicators clause inlined in Step 3.6 item 2, followable without the reference file)
+**Nit findings (report only):** tutorial.md five-word gloss below restatement altitude; estimate-summary paragraph precedes targeted-mode set definition (floor agent naturally defers — no impact).
+**Suggested testing:** 3 items (live run persisting a block; mixed estimated/unestimated UR run; trivial end-to-end without reference load) — deferred to first real use.
+**Follow-ups created:** None
+
+*Reviewed by review-work action*
+
+## Lessons Learned
+
+**What worked:** Committing the implementation first and pointing the reviewer at the commit hash let REQ-210 proceed in parallel without polluting the review's diff scope. The contract pin fired a genuine FAIL on its first run (resolver path fallthrough) — the lock-in proved itself before it ever shipped.
+**What didn't:** The restatement sweep is wider than the files you touch — the pipeline's step sequence is restated in a doc walkthrough, an architecture diagram, and a header gloss, and I updated only the list nearest my edit. Sweep for the *shape* you changed, not the file you changed.
+**Worth knowing:** `resolve_runtime_file` in contract-regressions.sh is a hand-maintained path→package map; any new shipped file outside the existing patterns needs an entry or its pin resolves against the repo root and FAILs.
+
+## Orientation
+
+**Now you can** see a REQ's price before work starts: every `do-work run` prints "Estimated active duration: approximately N minutes (P50, confidence)" with dominant factors right after triage, and multi-REQ runs show total effort vs dependency-graph critical path. Lives in the work-action orchestration layer.
+
+**[MAP CHANGED]** The work pipeline gained a step: triage → **estimate** → plan/explore → implement → … — enumerated in the checklist, the architecture diagram, and both guide walkthroughs.
 
 ---
 *Source: UR-047 — "Add P50 active-duration estimation to do-work REQs" (lifecycle rules 3–6 and Presentation sections)*

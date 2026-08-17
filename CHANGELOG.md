@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.195.2 — Estimate Step Restatement Sync (2026-08-17)
+
+Closes the three minor findings from REQ-209's independent review: every restatement of the work pipeline's shape now includes the Estimate step, and the Route A fast path no longer loads the reference file it exists to avoid.
+
+- Architecture diagram, header gloss, and the work-guide walkthrough all show triage → estimate → build
+- Route A REQs without heavy-evidence indicators take the trivial short-circuit directly
+
 ## 0.195.1 — Verify Repairs Refresh Estimates (2026-08-17)
 
 When verify-requests materially changes a REQ while applying fixes, it now recalculates that REQ's P50 estimate in the same pass — so a repaired scope never carries a stale price. Untouched REQs keep their estimates byte-identical.

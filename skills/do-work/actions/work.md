@@ -24,7 +24,7 @@ This living log is also the **trail of intent**. The REQ starts as a validated s
 
 ## Architecture
 
-The per-REQ orchestration pipeline (triage → plan/explore → implement → qualify → test → review → archive → commit, with the orchestrator handling all file management) is diagrammed in `actions/work-reference.md` → **Architecture**.
+The per-REQ orchestration pipeline (triage → estimate → plan/explore → implement → qualify → test → review → archive → commit, with the orchestrator handling all file management) is diagrammed in `actions/work-reference.md` → **Architecture**.
 
 > **Remember:** Every completed request gets a git commit (Step 9) before looping to the next request.
 
@@ -260,7 +260,7 @@ If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section ex
 Ensure the REQ carries an `estimate:` frontmatter block (`actions/work-reference.md` → Request File Schema), then print it — before any planning or exploration, so the forecast lands ahead of the work. This is also how REQs captured before the block existed get one: they are estimated here, at first selection.
 
 1. **A valid existing block is reused as-is** — written by a verify pass, an earlier claim, or capture. Do not recalculate. **The estimate is frozen once execution begins:** no later step in this pipeline rewrites it, and knowledge gained during implementation never revises it.
-2. **Trivial short-circuit:** if the REQ's `effort_estimate` normalizes to `trivial` (Schema Read Contract), skip signal extraction and the reference file entirely — run `<skill-root>/tools/estimate-p50.sh --trivial`, persist its output as the block, and stamp `calculated_at` (Timestamp rule, `actions/work-reference.md`).
+2. **Trivial short-circuit:** if the REQ's `effort_estimate` normalizes to `trivial` (Schema Read Contract), **or** triage just assigned Route A and the REQ's text shows no heavy-evidence indicators (browser/visual requirements, persistence or schema changes, async lifecycle behavior, performance work, cross-route regression gates, full-suite verification), skip signal extraction and the reference file entirely — run `<skill-root>/tools/estimate-p50.sh --trivial`, persist its output as the block, and stamp `calculated_at` (Timestamp rule, `actions/work-reference.md`).
 3. **Otherwise**, read `actions/estimate-reference.md` (the signal-extraction guide — load it only now, not earlier), map the REQ's signals onto the estimator's flags (the just-assigned `route` is the strongest input), run `<skill-root>/tools/estimate-p50.sh`, and persist the resulting block with a fresh `calculated_at`.
 4. **Print the estimate:**
 
