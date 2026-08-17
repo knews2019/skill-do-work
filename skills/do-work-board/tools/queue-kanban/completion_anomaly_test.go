@@ -95,9 +95,13 @@ func TestCompletionAnomaliesFlaggedInBoardModel(t *testing.T) {
 	for requestId := range expectedReasonFragments {
 		sawWarning := false
 		for _, warningText := range board.Warnings {
+			// REQ-215 note: the warning's suffix now routes to the per-class
+			// reason instead of restating a completed_at fix — the old
+			// "completed_at" assertion forced a commit-hash-class warning to
+			// carry an inapplicable fix, the exact self-contradiction removed.
 			if strings.Contains(warningText, requestId) &&
 				strings.Contains(warningText, "completion anomaly") &&
-				strings.Contains(warningText, "completed_at") {
+				strings.Contains(warningText, "names the broken frontmatter field(s)") {
 				sawWarning = true
 			}
 		}

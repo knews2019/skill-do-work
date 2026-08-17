@@ -1419,7 +1419,7 @@ func bucketColumns(tickets []*RequestTicket, now time.Time, recentWindow time.Du
 			if ticket.CompletionAnomaly {
 				columns.CompletionAnomalies = append(columns.CompletionAnomalies, ticket)
 				statusWarnings = append(statusWarnings, fmt.Sprintf(
-					"%s (status %s) has a completion anomaly: %s — shown under Completion anomalies; fix: stamp completed_at: with a UTC ISO instant and/or a commit: field with a valid implementation commit hash in its frontmatter",
+					"%s (status %s) has a completion anomaly: %s — shown under Completion anomalies; the reason above names the broken frontmatter field(s) and what to write instead",
 					ticket.RequestId, ticket.Status, ticket.CompletionAnomalyReason))
 			}
 			if isWithinRecentWindow(ticket.CompletionTime, now, recentWindow) {

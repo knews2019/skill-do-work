@@ -399,9 +399,11 @@
   // ---- completion anomalies strip -----------------------------------------
   // Terminal REQs whose completion bookkeeping is broken (columns
   // .completionAnomalies, flagged by detectCompletionAnomaly in model.go).
-  // They carry no honest completion instant, so they are listed here as data
-  // bugs to fix — never sorted into Recently done as if completed "now",
-  // never aged out by the 24h/48h/7d window, and visible from every view.
+  // Some classes carry no honest completion instant; a reversed span carries
+  // one that cannot be real. Either way they are listed here as data bugs to
+  // fix — this strip is never aged out by the 24h/48h/7d window and stays
+  // visible from every view (a ticket with a resolvable in-window instant may
+  // additionally appear under Recently done).
   // Deliberately exempt from the shared filters: an anomaly must not be
   // hideable by a filter combination.
 

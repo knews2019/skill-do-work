@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.199.1 — Anomaly Prose Tells the Truth for Every Class (2026-08-17)
+
+Every description of completion anomalies — board guide, chip legend, the never-silent warning, the web strip comment — now reads true for all four classes, including the new reversed-span one whose completion instant resolves fine.
+
+- The warning line no longer tells you to re-stamp a completed_at that is already valid; it routes to the per-class reason, which names the actual broken field
+- Guide and legend broadened from "unresolvable instant" to "broken completion bookkeeping"
+- A stale test pin of the removed self-contradiction was updated with the change
+
 ## 0.199.0 — Verify Fails on Broken Completion Bookkeeping (2026-08-17)
 
 `queue-kanban verify` was blind to completion anomalies — it reported "OK: no findings" while the board's strip showed ten flagged tickets. It now lifts every anomaly into a finding and exits non-zero, so a broken archive fails the mechanical check instead of passing silently.
