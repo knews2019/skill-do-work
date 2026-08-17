@@ -6,6 +6,7 @@ created_at: 2026-08-17T08:05:43Z
 claimed_at: 2026-08-17T08:07:47Z
 route: B
 completed_at: 2026-08-17T08:10:54Z
+commit: fcef829
 user_request: UR-048
 domain: general
 prime_files: [_dev/primes/prime-shell-commands.md]
