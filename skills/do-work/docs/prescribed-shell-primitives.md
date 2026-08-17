@@ -16,6 +16,7 @@ This is the canonical shipped rationale and executable-home contract for shell u
 | `../do-work-knowledge/scripts/lexical-memory-recall.sh` | Query sanitization, lexical ranking, and attribution |
 | `../do-work-knowledge/scripts/install-memory-hooks.sh` | Independent hook merge, verification, and rollback |
 | `../do-work-toolbox/scripts/generate-report-image.sh` | Backend selection, launched-process-tree ownership, verified exact invocation-private publication, and exact opt-in agentic scratch |
+| `../do-work-toolbox/scripts/generate-report-image-batch.sh` | Parallel batch launch, retained per-image statuses, launched-process-tree ownership, and verified all-or-nothing directory publication |
 | `../do-work-toolbox/scripts/publish-portfolio-summary.sh` | Verified single-source canonical refresh and snapshot-first exclusive publication |
 | `../do-work-toolbox/scripts/install-last30days.sh` | Complete-payload validation and verified exact transactional project-local publication/repair |
 
@@ -79,6 +80,16 @@ Invoke `../do-work-toolbox/scripts/publish-portfolio-summary.sh` with one retain
 The two outputs carry identical bytes but never share storage: a snapshot linked to the canonical file would follow every later in-place edit of it. Each publication also verifies the path it actually wrote, because `ln` and `mv` treat a directory in the destination's place as a container rather than a collision — a snapshot candidate occupied by a directory advances to the next suffix, a canonical path occupied by a directory fails closed, and neither leaves a private file nested inside it.
 
 An exclusive snapshot failure leaves the prior canonical unchanged. A later canonical replacement failure leaves the new snapshot published and reports that partial outcome. Existing snapshots are never truncated, replaced, or automatically removed.
+
+## Report image batch publication
+
+Generate a report's images through `../do-work-toolbox/scripts/generate-report-image-batch.sh <report-directory> <style-brief> <target-name>:<prompt> …` rather than orchestrating the per-image helper yourself. Each pair splits on its first colon, and a target name must be a bare filename because the batch joins it to its own invocation-private staging directory adjacent to `generated/`.
+
+The batch launches one helper per image, retains every PID and status, and waits each one even after an earlier failure — a bare `wait` would discard the mixed statuses that decide which images are current. An image is current only when its own helper status is zero and its staged target is non-empty; failed targets are removed. Publication happens once, as a single same-filesystem rename of the complete verified batch, and only when at least one image is current. `generated/` must be absent both before staging and immediately before the rename, and the rename is verified afterwards because `mv` treats an existing destination directory as a container rather than a collision: a nested stage means someone else owns `generated/`, so the batch discards only its own stage, leaves that directory untouched, and exits nonzero.
+
+An all-failed batch is not an error. It removes its exact private directory, prints nothing, and exits zero so the caller falls back to hand-authored diagrams. Success prints the published directory on stdout; every diagnostic goes to stderr so the caller can read the path directly.
+
+The batch owns the process tree it starts. Each helper is launched under job control so it leads its own process group, and that group is signalled only when it verifies as the helper's own and not the batch's — an unverified group degrades to bare-PID signalling, because the only group it could otherwise hit is its own. An interrupted batch terminates, escalates, and reaps everything it launched *before* staging is removed; nothing it started may keep writing into a directory it is about to delete.
 
 ## Raw text before shell quoting
 

@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.204.0 — The AI-Report Image Batch Gets Its Own Shipped Script (2026-08-17)
+
+The parallel image-generation machinery for AI reports lived as ~110 lines of shell inside a Markdown reference file — so the test suite had to `awk` it back out of the prose just to run it. It now ships as a real script, and the reference file keeps what's actually per-report: the style brief and the prompts.
+
+- New `generate-report-image-batch.sh` takes the report folder, the shared style brief, and one `<target-name>:<prompt>` pair per section. Prompts may contain colons; the pair splits on the first one.
+- It prints the published `generated/` directory on stdout, so the caller reads a value instead of inheriting a variable. Per-image `MISSING:` and `REFUSING:` notes moved to stderr where they can't contaminate that path.
+- Every guarantee the batch already had is intact: retained per-image statuses, wait-all, status-backed freshness, fail-closed publication with rename verification, rollback, and ownership of the process tree it starts.
+- The action file now points at the script instead of restating it, and the shipped shell guide documents the batch primitive alongside the others.
+
 ## 0.203.1 — Publication Helpers Own Their Process Trees and Verify Their Renames (2026-08-17)
 
 Two shipped helpers could report success for work that never landed. Interrupting report-image generation directly used to leave its backend — and on the opt-in agentic path, the sandbox-bypassed process behind it — still running, and the last30days installer could slide a whole staging tree inside a directory that reappeared mid-install and still call the install complete.
