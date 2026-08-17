@@ -166,6 +166,19 @@ Count every REQ that normalizes under the Schema Read Contract to a terminally r
 ⚠ N completed REQs across M URs awaiting archive. Run `do-work cleanup` after this session.
 ```
 
+**Estimate summary (multi-REQ runs).** When this run's selected set contains more than one REQ — a targeted `UR-NNN` expansion, a multi-token run, or a default run with several claimable pending REQs — print each selected REQ's recorded `estimate:` minutes with its `depends_on` suffix, then both aggregate figures computed with the estimator's graph mode over the estimated members (`actions/estimate-reference.md` → Multi-REQ Totals and Critical Path):
+
+```
+REQ-208  85 min
+REQ-209  60 min  depends on REQ-208
+REQ-210  25 min  depends on REQ-208
+
+Total estimated effort: 170 active minutes
+Estimated critical path: 145 active minutes
+```
+
+Label both figures exactly as shown — total effort sums every REQ, critical path is the longest `depends_on` chain, never the sum of parallel branches. A member without an `estimate:` block prints `not yet estimated` (Step 3.6 fills it at claim) and both aggregates append `(N REQs not yet estimated — excluded from both figures)`. The summary is informational only: it never gates or reorders selection, and a failure to compute it is one progress line, never a stop.
+
 **Targeted mode:** If `$ARGUMENTS` contains targeting tokens, first **resolve them per the Target ID Resolution contract** (`actions/work-reference.md`): expand each `UR-NNN` to its member REQs in `do-work/queue/` by scanning `user_request:` frontmatter (never the UR's `requests:` array), dedupe the union with any explicitly-named `REQ-NNN`, and tag each resolved REQ with its provenance — *named* or *UR-expanded*. **A REQ reached both ways — explicitly named *and* a member of a named UR (e.g. `do-work run UR-011 REQ-068`) — is tagged *named*: explicit naming wins.** It is the stronger signal, so the REQ takes the named branch below (bypasses `depends_on`); the more-permissive disposition is the correct one because the user named it outright. **Announce the expansion before the first claim:** a UR argument is the one case where the user cannot see what the run claimed from what they typed, so name the UR and list its resolved REQs in execution order — e.g. `UR-011 → REQ-067, REQ-068 (dependency-ordered).` Without it, a silently-skipped member is indistinguishable from one that was never in the UR. A UR (or a whole argument list) that resolves to zero runnable REQs reports and exits — e.g. `UR-011: no runnable REQs (2 completed, 0 pending).` — and must never fall through to a full-queue run.
 
 Then handle each resolved REQ by its provenance, applying every per-REQ gate exactly as if it had been named directly:
@@ -241,6 +254,23 @@ The follow-up REQs for builder-decided questions are created during **Step 8 (Ar
 **`pending-answers` REQs:** These accumulate in the queue. When the user returns, they run `do-work clarify` to review all `pending-answers` REQs at once, answer the questions, and flip the status to `pending` so the next work run picks them up. The work loop skips `pending-answers` REQs — it only processes `pending` ones.
 
 If all `- [ ]` items are already `[x]` or `[~]`, or no Open Questions section exists, skip this step entirely.
+
+### Step 3.6: Estimate Active Duration
+
+Ensure the REQ carries an `estimate:` frontmatter block (`actions/work-reference.md` → Request File Schema), then print it — before any planning or exploration, so the forecast lands ahead of the work. This is also how REQs captured before the block existed get one: they are estimated here, at first selection.
+
+1. **A valid existing block is reused as-is** — written by a verify pass, an earlier claim, or capture. Do not recalculate. **The estimate is frozen once execution begins:** no later step in this pipeline rewrites it, and knowledge gained during implementation never revises it.
+2. **Trivial short-circuit:** if the REQ's `effort_estimate` normalizes to `trivial` (Schema Read Contract), skip signal extraction and the reference file entirely — run `<skill-root>/tools/estimate-p50.sh --trivial`, persist its output as the block, and stamp `calculated_at` (Timestamp rule, `actions/work-reference.md`).
+3. **Otherwise**, read `actions/estimate-reference.md` (the signal-extraction guide — load it only now, not earlier), map the REQ's signals onto the estimator's flags (the just-assigned `route` is the strongest input), run `<skill-root>/tools/estimate-p50.sh`, and persist the resulting block with a fresh `calculated_at`.
+4. **Print the estimate:**
+
+   ```
+   Starting REQ-NNN — [title]
+   Estimated active duration: approximately [N] minutes (P50, [confidence] confidence)
+   Dominant factors: [basis entries, comma-separated]
+   ```
+
+**Estimation never blocks and never asks.** A missing estimator script, unparseable output, or any other estimation failure gets one line in the progress output and the pipeline proceeds without an estimate — never stop the claim, never require user clarification. The figure is an informational forecast — roughly a 50% chance of completing within that many *active* agent minutes ([`docs/work-guide.md`](../docs/work-guide.md)) — never a deadline or execution budget, so nothing downstream may gate on it.
 
 ### Step 3.7: Spec Loading (optional)
 
@@ -633,6 +663,7 @@ The clarify workflow has its own action. Run `do-work clarify` — it handles ba
 □ Step 2: Claim request (mkdir -p working/ + move, update status & claimed_at, append the claim + writer label to CHECKPOINT.md's In Progress list)
 □ Step 3: Triage (decide route, append ## Triage, read original if addendum)
 □ Step 3.5: Handle Open Questions (mark - [~] with D-XX numbered decisions; a user answer obtained mid-run is written in as - [x] before dispatch — never - [~], no D-XX)
+□ Step 3.6: Estimate (ensure estimate: block — reuse frozen block, trivial short-circuit, or extract signals + run tools/estimate-p50.sh; print before planning; never block on estimation)
 □ Step 4: Plan (Route C: spawn Plan agent + validate plan / Routes A & B: note skipped)
 □ Step 5: Explore (Routes B & C: spawn Explore agent, include prime file lessons)
 □ Step 5.5: Scope Declaration (Routes B & C: declare files + acceptance criteria in REQ)

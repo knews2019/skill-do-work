@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.195.0 — Work Runs Print P50 Estimates (2026-08-17)
+
+Every work run now prices the REQ before building it: right after triage — when the route is known — the pipeline ensures an `estimate:` block exists and prints the P50 active-duration forecast before planning starts. REQs captured before estimates existed get one automatically at first selection.
+
+- New Step 3.6 in the work pipeline: reuse a frozen estimate, take the `effort_estimate: trivial` short-circuit, or lazily load the extraction guide and run the estimator — never blocking, never asking
+- Multi-REQ runs print per-REQ estimates plus two labeled figures: total effort and dependency-graph critical path
+- Estimates freeze once execution begins — implementation knowledge never rewrites the forecast
+- The wiring is contract-locked: deleting the estimator or its work-action pointer fails the test suite
+- Work guide explains P50 (roughly a 50% chance of finishing within the estimated active minutes)
+
 ## 0.194.0 — Deterministic P50 Estimator (2026-08-17)
 
 REQs can now carry a P50 active-duration forecast — a deterministic estimate of active agent minutes, computed by a shipped script so the same signals always price the same. Informational only: it never blocks execution.

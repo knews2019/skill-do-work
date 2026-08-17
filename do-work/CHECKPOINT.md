@@ -24,6 +24,8 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
+- REQ-209 — Wire P50 estimation into the work action — claimed 2026-08-17T00:18:23Z — writer: vm:/home/user/skill-do-work
+
 ## Still Queued
 
 - REQ-203: Harden presentation target-ID source-seam tests (pending-answers)

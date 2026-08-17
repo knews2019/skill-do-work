@@ -19,7 +19,7 @@ resolve_runtime_file() {
       printf '%s/%s\n' "$knowledge_root" "$relative_path" ;;
     actions/ai-report*|actions/code-review.md|actions/completed-work-presentation-reference.md|actions/deep-explore*|actions/inspect.md|actions/install.md|actions/note.md|actions/present-video.md|actions/present-work.md|actions/prime.md|actions/quick-wins.md|actions/scan-ideas.md|actions/slop-check.md|actions/stray-check.md|actions/tidy-repo.md|actions/tutorial.md|actions/ui-review.md|actions/validate-feedback.md|docs/ai-report-guide.md|docs/code-review-guide.md|docs/inspect-guide.md|docs/present-video-guide.md|docs/present-work-guide.md|docs/prime-guide.md|docs/quick-wins-guide.md|docs/slop-check-guide.md|docs/stray-check-guide.md|docs/ui-review-guide.md)
       printf '%s/%s\n' "$toolbox_root" "$relative_path" ;;
-    actions/*|crew-members/*|docs/*|hooks/*|scripts/*|specs/*|tools/checks/*|tools/do-work-update.sh|tools/prime-do-work-update.md)
+    actions/*|crew-members/*|docs/*|hooks/*|scripts/*|specs/*|tools/checks/*|tools/estimate-p50.sh|tools/do-work-update.sh|tools/prime-do-work-update.md)
       printf '%s/%s\n' "$core_root" "$relative_path" ;;
     tools/queue-kanban/*) printf '%s/%s\n' "$board_root" "$relative_path" ;;
     *) printf '%s/%s\n' "$repo_root" "$relative_path" ;;
@@ -1969,6 +1969,7 @@ hardened_check_scripts=(
   "tools/checks/blanked-req-scan.sh|actions/cleanup.md"
   "scripts/protected-inventory.sh|actions/commit.md"
   "scripts/protected-inventory.sh|actions/inspect.md"
+  "tools/estimate-p50.sh|actions/work.md"
 )
 
 for check_script_entry in "${hardened_check_scripts[@]}"; do

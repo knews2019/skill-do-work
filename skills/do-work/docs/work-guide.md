@@ -20,21 +20,35 @@ When uncertain, the system defaults to Route B (under-planning is recoverable; o
 1. Find next pending REQ
 2. Claim it (move to working/, status: claimed)
 3. Triage (route A/B/C)
-4. Plan (Route C only — architecture, file list, testing approach)
-5. Explore (Routes B & C — find relevant files and patterns)
-6. Implement (all routes — build the thing)
-7. Test (run tests, validate red-green if TDD)
-8. Review (requirements check, code quality, acceptance testing)
-9. Archive (move to archive/, create follow-ups if needed)
-10. Commit (one commit per REQ, explicit file staging)
-11. Loop or exit (context wipe, pick next REQ)
+4. Estimate (P50 active minutes — printed before planning starts)
+5. Plan (Route C only — architecture, file list, testing approach)
+6. Explore (Routes B & C — find relevant files and patterns)
+7. Implement (all routes — build the thing)
+8. Test (run tests, validate red-green if TDD)
+9. Review (requirements check, code quality, acceptance testing)
+10. Archive (move to archive/, create follow-ups if needed)
+11. Commit (one commit per REQ, explicit file staging)
+12. Loop or exit (context wipe, pick next REQ)
 ```
+
+### The estimate line
+
+Right after triage, before any planning, the run prints something like:
+
+```
+Starting REQ-1459 — Add SD-39 review links and QA gates
+Estimated active duration: approximately 125 minutes (P50, medium confidence)
+Dominant factors: Route C, browser evidence matrix, performance gate, storage auditing
+```
+
+**P50 means roughly a 50% chance of completing within the estimated active minutes** — half of similar REQs finish faster, half slower. "Active" counts only time the agents are actually working (planning, building, testing, review, remediation); waiting on your input, paused sessions, and queue wait are excluded. It is an informational forecast, never a deadline: nothing in the pipeline gates on it, and estimation failures never stop a run. Multi-REQ runs also print per-REQ estimates plus two labeled totals — total effort (everything summed) and critical path (the longest dependency chain, which is what wall-clock time actually follows when work runs in parallel).
 
 ## What accumulates in the REQ file
 
 As the request moves through the pipeline, sections are appended:
 
 - `## Triage` — route decision and reasoning
+- `estimate:` frontmatter block — P50 active-minutes forecast, frozen once execution begins
 - `## Plan` — implementation plan (Route C)
 - `## Exploration` — key files, patterns, gotchas (Routes B & C)
 - `## Scope` — declared files to touch and acceptance criteria (Routes B & C)
