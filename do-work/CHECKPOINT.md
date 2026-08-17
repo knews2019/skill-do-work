@@ -1,26 +1,18 @@
 ---
-session_ended: 2026-08-15T20:57:05Z
-last_completed: REQ-202
+session_ended: 2026-08-17T00:45:00Z
+last_completed: REQ-209
 queue_state: 0 pending, 4 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
-reqs_processed_this_session: 11
-session_depth: heavy
+reqs_processed_this_session: 3
+session_depth: moderate
 ---
 
 # Session Checkpoint
 
 ## Completed This Session
 
-- REQ-189: Canonicalize ai-report and the shared completed-work evidence contract (Route C, 0.190.0)
-- REQ-190: Reduce present-work to portfolio-only behavior (Route C, 0.191.0)
-- REQ-191: Extract an explicit standalone present-video action (Route C, 0.192.0)
-- REQ-200: Render PNG file mentions as images (Route A, 0.192.1)
-- REQ-192: Migrate completed-work presentation routing documentation and contracts (Route C, 0.193.0)
-- REQ-197: Normalize completed-work presentation target IDs (Route B, 0.193.1; completed-with-issues)
-- REQ-198: Publish generated images only after success (Route B, 0.193.2)
-- REQ-199: Publish the portfolio snapshot before canonical refresh (Route B, 0.193.3)
-- REQ-207: Render HTML file mentions as folder-aware previews (Route B, 0.193.4)
-- REQ-201: Deduplicate completed-work publication mechanics (Route B, 0.193.5)
-- REQ-202: Complete unsafe Remotion preview mutation detection (Route B, 0.193.6)
+- REQ-208: Deterministic P50 estimator script, reference file, and schema (Route B, 0.194.0; review 96% Pass)
+- REQ-210: Recalculate P50 estimates in verify-requests after material repairs (Route A, 0.195.1; review 94% Pass)
+- REQ-209: Wire P50 estimation into the work action (Route B, 0.195.0 + 0.195.2 remediation; review 95% Pass)
 
 ## In Progress (interrupted)
 
@@ -33,16 +25,9 @@ session_depth: heavy
 
 ## Session Notes
 
-- Completed-work presentation now has three explicit owners: `ai-report` for detailed visual/non-visual HTML, `present-work` for the cross-project portfolio, and `present-video` for source-only Remotion walkthroughs.
-- Shared target resolution, archive/evidence ingestion, merge-aware current-code proof, collision-safe publication, and optional-image success gating are centralized and regression-tested.
-- The board now previews byte-detected PNGs and folder-scoped active HTML without putting repository scripts on the board's write-capable origin.
-- Canonical maintainer verification passed after the final REQ-202 remediation and release at version 0.193.6.
-- UR-042 remains open because REQ-203 through REQ-206 require explicit consent. Run `do-work clarify` to answer them as a batch.
-
-## Context Summary
-
-- The presentation consolidation's durable map is report → `ai-report`, portfolio → `present-work`, source walkthrough → `present-video`; do not reintroduce broad `present-work` delegation or automatic video behavior.
-- Consumer actions define their preferred output paths and artifact-specific checks, while `completed-work-presentation-reference.md` owns archive/evidence safety and generic collision-safe publication. REQ-206 asks whether to remove the last active consumer paraphrase.
-- Portfolio snapshots publish before the mutable canonical refresh, and optional report images remain private until at least one current non-empty output succeeds. REQ-204 and REQ-205 hold deeper lifecycle and exactness hardening for consent.
-- Review-generated generation-2 findings were not auto-built: REQ-203 through REQ-206 remain `pending-answers` by design.
-- Re-read `_dev/primes/prime-action-files.md`, `_dev/primes/prime-shell-commands.md`, and `_dev/primes/prime-kanban-board.md` before continuing; this heavy session changed all three domains.
+- UR-047 (P50 active-duration estimation) captured, verified, built, reviewed, and archived end-to-end in one session; the feature was dogfooded on its own build (capture-time estimates, a verify-triggered recalculation on REQ-208, estimate lines printed at each claim).
+- The estimation subsystem's durable map: `tools/estimate-p50.sh` (deterministic arithmetic + critical-path graph mode), `actions/estimate-reference.md` (lazy-loaded extraction guide), the optional `estimate:` schema block (frozen once execution begins), work.md Step 3.6 (primary wire point), verify-requests Step 7 item 4 (recalc after material repair). Both wirings are contract-pinned in `hardened_check_scripts`.
+- `maintainer-verify.sh` in this container: 41 pre-existing environment FAILs (missing `just`, tar/gzip exec, stat-mode probes). The regression gate used all session: FAIL-set diff against the recorded baseline log. Full exit-0 verification needs a machine with those tools.
+- ShellCheck 0.11.0 was installed to /usr/local/bin; Go pinned per-invocation via `GOTOOLCHAIN=go1.26.1`.
+- AI report published at `ai-reports/2026-08-17_0034_UR-047-p50-active-duration-estimation/` (render-judged light + dark).
+- UR-042's REQ-203–206 remain `pending-answers` by design (generation-2 review follow-ups awaiting consent). Run `do-work clarify` to answer them as a batch.
