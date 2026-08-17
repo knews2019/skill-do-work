@@ -1,7 +1,8 @@
 ---
 id: REQ-206
 title: Finish active publication delegation
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-17T18:10:49Z
 domain: frontend
 created_at: 2026-08-15T20:15:07Z
 user_request: UR-042
@@ -47,7 +48,7 @@ REQ-201 centralized the generic mechanics, but review showed that one local “o
 
 ## Open Questions
 
-- [ ] Publication mechanics are centralized, but one paraphrase and one passive-pointer test escape remain. Should I process this as a new task?
+- [x] Publication mechanics are centralized, but one paraphrase and one passive-pointer test escape remain. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
   Why this is yours: this is a generation-two review follow-up, so the cascade-depth rule requires your consent before another autonomous repair cycle.

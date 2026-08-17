@@ -1,7 +1,8 @@
 ---
 id: REQ-203
 title: Harden presentation target-ID source-seam tests
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-17T18:10:49Z
 domain: general
 created_at: 2026-08-15T19:20:09Z
 user_request: UR-042
@@ -48,7 +49,7 @@ REQ-197's product instructions now cite and apply the right shared contract, but
 
 ## Open Questions
 
-- [ ] The current product instructions are correct, but their regression test still misses one semantic mutation family. Should I process this as a new task?
+- [x] The current product instructions are correct, but their regression test still misses one semantic mutation family. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
   Why this is yours: this is a generation-two review follow-up, so the cascade-depth rule requires your consent before another autonomous repair cycle.

@@ -1,7 +1,8 @@
 ---
 id: REQ-204
 title: Harden ai-report generated-batch lifecycle
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-17T18:10:49Z
 domain: general
 created_at: 2026-08-15T19:39:11Z
 user_request: UR-042
@@ -47,7 +48,7 @@ REQ-198 fixed the original all-failed directory shape, but review showed that si
 
 ## Open Questions
 
-- [ ] The original empty-directory bug is fixed, but review found two deeper lifecycle edges in the same shell batch. Should I process this as a new task?
+- [x] The original empty-directory bug is fixed, but review found two deeper lifecycle edges in the same shell batch. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
   Why this is yours: this is a generation-two review follow-up, so the cascade-depth rule requires your consent before another autonomous repair cycle.
