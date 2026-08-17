@@ -8,7 +8,7 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
-## 0.204.0 — Always-On Communication Style Crew Member (2026-08-17)
+## 0.205.0 — Always-On Communication Style Crew Member (2026-08-17)
 
 Every install now talks like a concise senior engineer. A new crew member carries the communication contract (plain specific language, answer-first replies, reference codes, banned filler, `scr`/`eli`/`foc`/`ref` aliases), and the installer links it from the project's `CLAUDE.md` so it applies to every session, not just pipeline work. Adapted from [disler/fixing-smartass-opus-5](https://github.com/disler/fixing-smartass-opus-5).
 
@@ -16,6 +16,14 @@ Every install now talks like a concise senior engineer. A new crew member carrie
 - The suite installer gains one managed surface: an HTML-comment-delimited section in the consumer project's `CLAUDE.md` linking the crew member — created, refreshed, diff-reviewed, backed up, and recovered like the Just section; bytes outside the markers are never touched.
 - `replace-text-section.sh` accepts `--begin-marker`/`--end-marker` so the atomic section replacer can own non-Justfile sections.
 - Fixed a Linux-only installer failure: the settings mode probe ran the BSD `stat -f` form first, which poisons the captured mode under GNU stat and broke every re-install/update with an existing `.claude/settings.json`.
+## 0.204.0 — The AI-Report Image Batch Gets Its Own Shipped Script (2026-08-17)
+
+The parallel image-generation machinery for AI reports lived as ~110 lines of shell inside a Markdown reference file — so the test suite had to `awk` it back out of the prose just to run it. It now ships as a real script, and the reference file keeps what's actually per-report: the style brief and the prompts.
+
+- New `generate-report-image-batch.sh` takes the report folder, the shared style brief, and one `<target-name>:<prompt>` pair per section. Prompts may contain colons; the pair splits on the first one.
+- It prints the published `generated/` directory on stdout, so the caller reads a value instead of inheriting a variable. Per-image `MISSING:` and `REFUSING:` notes moved to stderr where they can't contaminate that path.
+- Every guarantee the batch already had is intact: retained per-image statuses, wait-all, status-backed freshness, fail-closed publication with rename verification, rollback, and ownership of the process tree it starts.
+- The action file now points at the script instead of restating it, and the shipped shell guide documents the batch primitive alongside the others.
 
 ## 0.203.1 — Publication Helpers Own Their Process Trees and Verify Their Renames (2026-08-17)
 

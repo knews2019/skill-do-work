@@ -475,21 +475,30 @@ done
 [ "$(cat "$mixed_success_target")" = success ] && [ "$(cat "$mixed_failure_target")" = stale ] \
   || fail_case 'generate-report-image mixed-status case did not separate current output from a stale failed target'
 
-# ai-report caller block: replay the prescribed batch commands themselves. An
-# all-failed batch must leave no public or private directory; a mixed batch must
-# publish only the status-zero, non-empty current image after waiting every job.
-ai_report_batch_snippet="$fixture_root/ai-report-image-batch.sh"
-awk '
-  /^\*\*Fire in parallel, retain every status, then verify\.\*\*/ { found_section = 1 }
-  found_section && /^```bash$/ { in_block = 1; next }
-  in_block && /^```$/ { exit }
-  in_block { print }
-' "$repo_root/skills/do-work-toolbox/actions/ai-report-reference.md" \
-  | sed "s|<skill-root>|$repo_root/skills/do-work-toolbox|g" \
-  > "$ai_report_batch_snippet"
-[ -s "$ai_report_batch_snippet" ] \
-  || fail_case 'ai-report image batch replay could not extract the prescribed shell block'
+# generate-report-image-batch: the batch joins each target name to its own private
+# staging directory, so a target carrying a path separator would write outside that
+# boundary, and a pair with no colon would silently make the prompt the filename. Both
+# are usage errors that must be refused before any staging directory exists.
+batch_arguments_root="$fixture_root/batch-arguments"
+mkdir -p "$batch_arguments_root/ai-reports/report"
+"$toolbox_scripts/generate-report-image-batch.sh" "$batch_arguments_root/ai-reports/report" style \
+  '../escaped.png:<prompt 1>' >/dev/null 2>&1
+batch_escape_status=$?
+[ "$batch_escape_status" -eq 2 ] \
+  || fail_case "generate-report-image-batch path-separator target case returned $batch_escape_status instead of the usage status 2"
+"$toolbox_scripts/generate-report-image-batch.sh" "$batch_arguments_root/ai-reports/report" style \
+  '01-architecture.png' >/dev/null 2>&1
+batch_unpaired_status=$?
+[ "$batch_unpaired_status" -eq 2 ] \
+  || fail_case "generate-report-image-batch unpaired-argument case returned $batch_unpaired_status instead of the usage status 2"
+find "$batch_arguments_root/ai-reports/report" -name '.generated.staging.*' -print -quit | grep -q . \
+  && fail_case 'generate-report-image-batch usage-error cases allocated invocation-private staging'
 
+# generate-report-image-batch: the shipped batch owns staging, launch, wait-all,
+# freshness, and publication. An all-failed batch must leave no public or private
+# directory and still return zero so the caller falls back to SVG/Mermaid; a mixed
+# batch must publish only the status-zero, non-empty current image after waiting
+# every job, and report the published directory on stdout.
 run_ai_report_batch_replay() {
   replay_name="$1"
   replay_bin="$2"
@@ -498,11 +507,14 @@ run_ai_report_batch_replay() {
   (
     cd "$replay_root" || exit 2
     PATH="$replay_bin:$PATH" \
-      STYLE='replay style' \
       REPLAY_FIRST_DONE="$replay_root/first.done" \
       REPLAY_SECOND_DONE="$replay_root/second.done" \
-      bash "$ai_report_batch_snippet"
-  )
+      "$toolbox_scripts/generate-report-image-batch.sh" \
+        'ai-reports/<report-slug>' \
+        'replay style' \
+        '01-architecture.png:<prompt 1>' \
+        '02-dataflow.png:<prompt 2>'
+  ) > "$fixture_root/$replay_name.stdout" 2> "$fixture_root/$replay_name.stderr"
 }
 
 image_all_failed_bin="$fixture_root/image-all-failed-bin"
@@ -523,6 +535,8 @@ find "$fixture_root/image-all-failed/ai-reports/<report-slug>" -name '.generated
   && fail_case 'ai-report all-failed batch replay leaked invocation-private staging'
 [ -e "$fixture_root/image-all-failed/first.done" ] && [ -e "$fixture_root/image-all-failed/second.done" ] \
   || fail_case 'ai-report all-failed batch replay did not wait for every launched job'
+[ ! -s "$fixture_root/image-all-failed.stdout" ] \
+  || fail_case 'ai-report all-failed batch replay reported a published directory on stdout'
 
 image_batch_mixed_bin="$fixture_root/image-batch-mixed-bin"
 mkdir -p "$image_batch_mixed_bin"
@@ -541,8 +555,14 @@ find "$fixture_root/image-batch-mixed/ai-reports/<report-slug>" -name '.generate
   && fail_case 'ai-report mixed batch replay leaked invocation-private staging'
 [ -e "$fixture_root/image-batch-mixed/first.done" ] && [ -e "$fixture_root/image-batch-mixed/second.done" ] \
   || fail_case 'ai-report mixed batch replay did not wait for every launched job'
+# The caller learns that generated/ was published from stdout — a script cannot set the
+# caller's own GEN variable, so the published path is the batch's success signal.
+mixed_published_directory="$(cat "$fixture_root/image-batch-mixed.stdout" 2>/dev/null)"
+[ -n "$mixed_published_directory" ] \
+  && [ "$mixed_published_directory" -ef "$fixture_root/image-batch-mixed/ai-reports/<report-slug>/generated" ] \
+  || fail_case 'ai-report mixed batch replay did not report the published generated/ directory on stdout'
 
-# ai-report caller block, interrupted: the batch owns the process tree it started, so
+# generate-report-image-batch, interrupted: the batch owns the process tree it started, so
 # signalling the caller must leave no helper — and no helper's descendant — alive, and
 # must reap them before staging is removed. A file-only cleanup passes the directory
 # assertions below while backends keep running against the deleted stage.
@@ -567,14 +587,17 @@ mkdir -p "$interrupt_batch_root/ai-reports/<report-slug>"
 (
   cd "$interrupt_batch_root" \
     && exec env PATH="$image_interrupt_batch_bin:$PATH" \
-      STYLE='replay style' \
       REPLAY_FIRST_DONE="$interrupt_batch_root/first.done" \
       REPLAY_SECOND_DONE="$interrupt_batch_root/second.done" \
       REPLAY_FIRST_PID="$interrupt_batch_root/first.pid" \
       REPLAY_SECOND_PID="$interrupt_batch_root/second.pid" \
       REPLAY_FIRST_CHILD_PID="$interrupt_batch_root/first.child.pid" \
       REPLAY_SECOND_CHILD_PID="$interrupt_batch_root/second.child.pid" \
-      bash "$ai_report_batch_snippet"
+      "$toolbox_scripts/generate-report-image-batch.sh" \
+        'ai-reports/<report-slug>' \
+        'replay style' \
+        '01-architecture.png:<prompt 1>' \
+        '02-dataflow.png:<prompt 2>'
 ) &
 interrupt_batch_pid=$!
 interrupt_ready_ticks=0
@@ -612,7 +635,7 @@ find "$interrupt_batch_root/ai-reports/<report-slug>" -name '.generated.staging.
 [ ! -e "$interrupt_batch_root/ai-reports/<report-slug>/generated" ] \
   || fail_case 'ai-report interrupted batch replay published generated/'
 
-# ai-report caller block, destination appears at the final boundary: `mv` treats an
+# generate-report-image-batch, destination appears at the final boundary: `mv` treats an
 # existing directory as a container, so the check-then-rename window can nest the
 # private stage inside a colliding generated/ and still exit zero. The mv shim below
 # creates the destination in exactly that window.
@@ -1023,4 +1046,4 @@ reservation_symlink_output="$("$core_scripts/cleanup-req-reservations.sh" "$rese
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
-printf 'Prescribed shell script behavior probes passed (44 named script cases).\n'
+printf 'Prescribed shell script behavior probes passed (45 named script cases).\n'

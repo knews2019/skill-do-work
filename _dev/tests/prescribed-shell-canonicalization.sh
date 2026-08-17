@@ -17,6 +17,7 @@ for prescribed_script in \
   skills/do-work-knowledge/scripts/lexical-memory-recall.sh \
   skills/do-work-knowledge/scripts/install-memory-hooks.sh \
   skills/do-work-toolbox/scripts/generate-report-image.sh \
+  skills/do-work-toolbox/scripts/generate-report-image-batch.sh \
   skills/do-work-toolbox/scripts/publish-portfolio-summary.sh \
   skills/do-work-toolbox/scripts/install-last30days.sh \
   skills/do-work/tools/fetch-upstream-archive.sh
@@ -73,6 +74,7 @@ for required_heading in \
   '## Local Git ignore' \
   '## Atomic download publication' \
   '## Portfolio summary publication' \
+  '## Report image batch publication' \
   '## Raw text before shell quoting' \
   '## Diff output filtering' \
   '## State across command blocks'

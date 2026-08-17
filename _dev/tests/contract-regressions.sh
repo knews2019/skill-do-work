@@ -1237,52 +1237,71 @@ assert_contains \
 ai_image_backend_block="$(sed -n '/^## Image Generation Backend/,/^## SVG Data-Viz Rules/p' "$toolbox_root/actions/ai-report-reference.md")"
 assert_block_contains \
   "$ai_image_backend_block" \
-  'image_generation_pids' \
-  'ai-report-reference.md must retain every parallel image helper PID.'
-assert_block_contains \
-  "$ai_image_backend_block" \
-  'wait "\${image_generation_pids\[\$image_index\]}".*image_status=\$\?' \
-  'ai-report-reference.md must wait each image PID and retain its individual status.'
-assert_block_contains \
-  "$ai_image_backend_block" \
-  'image_generation_statuses\[\$image_index\]' \
-  'ai-report-reference.md must evaluate invocation statuses rather than infer freshness from target presence.'
+  '<skill-root>/scripts/generate-report-image-batch\.sh' \
+  'ai-report-reference.md must delegate the image batch to the shipped batch script.'
 assert_block_not_contains \
   "$ai_image_backend_block" \
-  '^wait$' \
-  'ai-report-reference.md must not discard mixed background-job statuses with a bare wait.'
+  'launch_report_image|image_generation_pids|terminate_report_image_batch' \
+  'ai-report-reference.md must not restate the batch mechanics it delegates; keep the prompts and the invocation.'
+# REQ-198's lock-in survives the move to a script: delegation is not what stops the action
+# file from pre-creating generated/, so this guard stays pointed at the action file.
 assert_block_not_contains \
   "$ai_image_backend_block" \
   'GEN="ai-reports/<report-slug>/generated"; mkdir -p "\$GEN"' \
   'ai-report-reference.md must not publish generated/ before a current image succeeds.'
 assert_block_contains \
   "$ai_image_backend_block" \
-  'mktemp -d "\$report_directory/\.generated\.staging\.XXXXXX"' \
-  'ai-report-reference.md must allocate one invocation-private staging directory adjacent to generated/.'
-assert_block_contains \
-  "$ai_image_backend_block" \
-  '\[ ! -e "\$generated_directory" \].*exit 1' \
-  'ai-report-reference.md must fail closed instead of clobbering an existing generated/ directory.'
-assert_block_contains \
-  "$ai_image_backend_block" \
-  'image_generation_success_count=0' \
-  'ai-report-reference.md must count only status-backed successful images before publication.'
-assert_block_contains \
-  "$ai_image_backend_block" \
-  '\[ "\$image_generation_success_count" -gt 0 \]' \
-  'ai-report-reference.md must make publication conditional on at least one status-backed successful image.'
-assert_block_contains \
-  "$ai_image_backend_block" \
-  'mv "\$image_generation_stage" "\$generated_directory"' \
-  'ai-report-reference.md must publish the complete verified batch with one adjacent same-filesystem rename.'
-assert_block_contains \
-  "$ai_image_backend_block" \
-  'cleanup_report_image_stage' \
-  'ai-report-reference.md must clean the exact invocation-private directory on all-failed and interrupted runs.'
-assert_block_contains \
-  "$ai_image_backend_block" \
   'repository, credentials, network, and external services' \
   'ai-report-reference.md must describe exact agentic opt-in as full-host authority, not containment.'
+
+# REQ-221 moved these mechanics out of the action file into their executable home, so the
+# guarantees REQ-198 and REQ-204 locked in are replayed against the script. Deleting one
+# must fail here rather than pass because the code changed address.
+ai_image_batch_source="$(cat "$toolbox_root/scripts/generate-report-image-batch.sh")"
+assert_block_contains \
+  "$ai_image_batch_source" \
+  'image_generation_pids' \
+  'generate-report-image-batch.sh must retain every parallel image helper PID.'
+assert_block_contains \
+  "$ai_image_batch_source" \
+  'wait "\${image_generation_pids\[\$image_index\]}".*image_status=\$\?' \
+  'generate-report-image-batch.sh must wait each image PID and retain its individual status.'
+assert_block_contains \
+  "$ai_image_batch_source" \
+  'image_generation_statuses\[\$image_index\]' \
+  'generate-report-image-batch.sh must evaluate invocation statuses rather than infer freshness from target presence.'
+assert_block_not_contains \
+  "$ai_image_batch_source" \
+  '^wait$' \
+  'generate-report-image-batch.sh must not discard mixed background-job statuses with a bare wait.'
+assert_block_contains \
+  "$ai_image_batch_source" \
+  'mktemp -d "\$report_directory/\.generated\.staging\.XXXXXX"' \
+  'generate-report-image-batch.sh must allocate one invocation-private staging directory adjacent to generated/.'
+assert_block_contains \
+  "$ai_image_batch_source" \
+  '\[ ! -e "\$generated_directory" \].*exit 1' \
+  'generate-report-image-batch.sh must fail closed instead of clobbering an existing generated/ directory.'
+assert_block_contains \
+  "$ai_image_batch_source" \
+  'image_generation_success_count=0' \
+  'generate-report-image-batch.sh must count only status-backed successful images before publication.'
+assert_block_contains \
+  "$ai_image_batch_source" \
+  '\[ "\$image_generation_success_count" -gt 0 \]' \
+  'generate-report-image-batch.sh must make publication conditional on at least one status-backed successful image.'
+assert_block_contains \
+  "$ai_image_batch_source" \
+  'mv "\$image_generation_stage" "\$generated_directory"' \
+  'generate-report-image-batch.sh must publish the complete verified batch with one adjacent same-filesystem rename.'
+assert_block_contains \
+  "$ai_image_batch_source" \
+  'cleanup_report_image_stage' \
+  'generate-report-image-batch.sh must clean the exact invocation-private directory on all-failed and interrupted runs.'
+assert_block_contains \
+  "$ai_image_batch_source" \
+  'nested_image_generation_stage' \
+  'generate-report-image-batch.sh must verify the publishing rename instead of trusting a zero-exit mv onto a directory.'
 
 assert_contains \
   "actions/ai-report.md" \
