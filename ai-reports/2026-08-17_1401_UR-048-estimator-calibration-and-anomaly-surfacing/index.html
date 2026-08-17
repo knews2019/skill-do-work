@@ -233,7 +233,8 @@
       <span class="chip">status <strong>completed</strong> ×5</span>
       <span class="chip">versions <strong>0.196.0 → 0.199.2</strong></span>
       <span class="chip">latest commit <strong>e4c9510</strong></span>
-      <span class="chip">report generated <strong>2026-08-17 14:01 UTC</strong></span>
+      <span class="chip">generated <strong>2026-08-17 14:01 UTC</strong></span>
+      <span class="chip">refreshed <strong>18:00 UTC</strong></span>
       <span class="chip">evidence mode <strong>non-visual</strong></span>
     </div>
   </div>
@@ -243,7 +244,7 @@
   <p class="kicker">1 · Verdict</p>
   <div class="row equal">
     <div class="verdict" style="flex: 3 1 560px;">
-      <p><strong>Shipped and verified.</strong> All five requests in UR-048 are recorded <code>completed</code> with no <em>completed-with-issues</em> qualification, and every verification claim in the archive still holds when re-run today: the Go module for the board passes <code>go vet</code> and its tests, the estimator's determinism suite passes, and the board's <code>verify</code> command now exits non-zero on this very repository — exactly the behaviour the work was built to produce.</p>
+      <p><strong>Shipped and verified.</strong> All five requests in UR-048 are recorded <code>completed</code> with no <em>completed-with-issues</em> qualification, and every verification claim in the archive still holds when re-run today: the Go module for the board passes <code>go vet</code> and its tests, and the estimator's determinism suite passes. The board's <code>verify</code> command did what it was built to do — it failed this very repository on a real defect, and that defect has since been repaired, so it now reports <code>OK: no findings</code>. Both readings are the feature working.</p>
       <p>Two review findings raised during the work were not swept under the rug; they became REQ-214 and REQ-215 and both shipped in the same session. A later pull-request review (#140) produced four more accepted findings, fixed in commit <code>80103c0</code> and merged as <code>e4c9510</code>. One number in the archive record no longer matches reality, for a benign and verified reason — see <a href="#drift">the drift note</a>.</p>
     </div>
     <div class="sidenote" style="flex: 2 1 340px;">
@@ -255,7 +256,7 @@
           <tr><td>Estimator scale change</td><td class="num">bases <strong>10/25/45 → 5/10/20</strong> min</td></tr>
           <tr><td>Review scores</td><td class="num">93–95%, all Pass</td></tr>
           <tr><td>Important findings</td><td class="num">2, both shipped as follow-ups</td></tr>
-          <tr><td>Open decisions for you</td><td class="num"><strong>2</strong> — <a href="#decisions">section 11</a></td></tr>
+          <tr><td>Open decisions for you</td><td class="num"><strong>1</strong> of 2 — <a href="#decisions">section 11</a></td></tr>
         </tbody>
       </table>
     </div>
@@ -283,15 +284,17 @@
 
     <p>After the batch was archived, a pull-request review on the branch — pull request one hundred and forty — produced four more findings, all accepted and fixed in one commit that also carried the version to 0.199.2. Three tightened the multi-request estimate summary so that dependency chains and unestimated members no longer distort it, and the fourth made verify honest in environments without version-control access: an anomaly that consists only of a commit hash the system cannot date is a missing tool, not a broken record, so it is reported as a skipped check rather than a failure. Genuine on-disk defects still fail.</p>
 
-    <p>There is one honest wrinkle worth stating plainly. During the work, the archive appeared to carry ten anomalies. Today the same commands report one. That is not a regression and not a silenced check: nine of the ten were requests whose recorded commit hashes the working copy could not resolve at the time, because those commits lived only on a branch that had not yet been merged. All two hundred and four recorded hashes resolve now, so those nine were never archive defects at all. The one that remains is the genuinely reversed span, REQ 91, and repairing an archived timestamp is the maintainer's call rather than something a tool should rewrite on its own.</p>
+    <p>There is one honest wrinkle worth stating plainly. During the work, the archive appeared to carry ten anomalies. A few hours later the same commands reported one. That is not a regression and not a silenced check: nine of the ten were requests whose recorded commit hashes the working copy could not resolve at the time, because those commits lived only on a branch that had not yet been merged. All two hundred and four recorded hashes resolve now, so those nine were never archive defects at all.</p>
 
-    <p>What all of this is worth, in plain terms: estimates are now defensible rather than decorative, they will keep improving without anyone doing archaeology, and a class of bookkeeping corruption that used to be invisible now fails a check instead of rotting quietly in the archive. The one decision waiting on the maintainer is whether to repair REQ 91's timestamp, because until it is repaired, the board's mechanical check will keep exiting with a failure on this repository — which is the check working as designed, but it does mean any automation that treats that command as a gate is currently red.</p>
+    <p>The tenth was real, and it has since been fixed. REQ 91, an unrelated archived request from early August, recorded a finish six seconds before its start. The maintainer repaired it the same day in a deliberate, owner-authored commit, substituting the timestamp of the implementation commit that the request itself records — the only value in evidence rather than in estimate. The commit message keeps two caveats a future reader needs: the true instant is unrecoverable, so the substitute is a reconstruction; and the start timestamp is actually the more suspicious of the two, but it was left untouched because nothing survives to correct it against. The board's mechanical check now reports no findings, and it reports that because the archive is genuinely clean rather than because anything was silenced.</p>
+
+    <p>What all of this is worth, in plain terms: estimates are now defensible rather than decorative, they will keep improving without anyone doing archaeology, and a class of bookkeeping corruption that used to be invisible now fails a check instead of rotting quietly in the archive. That last point is not theoretical — the check found a real defect on its first day and the defect got fixed. The one decision still waiting on the maintainer is whether to re-fit the estimator again, and the recommendation there is to wait until the calibration log has collected roughly thirty entries across more than one working session.</p>
    </div>
   </div>
   <div class="sidenote" style="flex: 1 1 280px;">
     <h3>Listening notes</h3>
-    <p>Roughly nine minutes read aloud. Nine paragraphs, in order: headline, background, the estimator re-fit, the calibration log, the board's reversed-span detection, what the review caught, the pull-request remediation, the one honest wrinkle, and what it is all worth.</p>
-    <p>Nothing here needs a screen. Every identifier is defined in place, and the one decision that needs you is in the last paragraph.</p>
+    <p>Roughly ten minutes read aloud. Ten paragraphs, in order: headline, background, the estimator re-fit, the calibration log, the board's reversed-span detection, what the review caught, the pull-request remediation, the anomaly-count wrinkle, the repair that closed it, and what it is all worth.</p>
+    <p>Nothing here needs a screen. Every identifier is defined in place, and the one decision still open is in the last paragraph.</p>
     <p style="margin-bottom:0">The appendix in section 13 is the part to skip — it is paths, line numbers, and commands, which do not survive being spoken.</p>
   </div>
   </div>
@@ -444,9 +447,8 @@ basis:
     </div>
 
     <div style="flex: 1 1 420px;">
-      <h3>The board's verify, run now</h3>
-      <pre><code>$ ./skills/do-work-board/tools/queue-kanban/queue-kanban verify
-queue-kanban verify — /Users/…/skill-do-work2
+      <h3>The board's verify — the defect, and the repair</h3>
+      <pre><code># 14:01 UTC — the finding REQ-214 made possible
   ! completion-anomaly: REQ-091 (status completed):
     completed_at "2026-08-04T00:25:54Z" is earlier than
     claimed_at "2026-08-04T00:26:00Z" — a reversed span
@@ -454,9 +456,14 @@ queue-kanban verify — /Users/…/skill-do-work2
     time written with a Z suffix; rewrite the wrong stamp
     with the true UTC instant
       → repair the named frontmatter field(s) …
+VERIFY_EXIT=1
+
+# 18:00 UTC — after the owner repair in 24915a8
+queue-kanban verify — /Users/…/skill-do-work2
+  OK: no findings
   - skipped version-vs-changelog probes: no version file …
-VERIFY_EXIT=1</code></pre>
-      <p style="font-size:15px;color:var(--muted)">Before REQ-214 this printed <code>OK: no findings</code> and exit 0. <span class="tag ran">run 2026-08-17</span></p>
+VERIFY_EXIT=0</code></pre>
+      <p style="font-size:15px;color:var(--muted)">Before REQ-214, the first run printed <code>OK: no findings</code> and exit 0 <em>while the defect was there</em> — that silence is what this batch removed. Both transcripts <span class="tag ran">run 2026-08-17</span></p>
     </div>
 
     <div style="flex: 1 1 420px;">
@@ -504,7 +511,7 @@ p50 estimator suite: all probes passed.   EXIT=0</code></pre>
     <div class="tile"><div class="tile-label">Slowest</div><div class="tile-value">10h 55m</div><div class="tile-sub">REQ-064 — the paused-session outlier</div></div>
     <div class="tile"><div class="tile-label">Active days</div><div class="tile-value">23</div><div class="tile-sub">of 81 calendar days</div></div>
     <div class="tile"><div class="tile-label">Busiest day</div><div class="tile-value">25</div><div class="tile-sub">REQs completed 2026-08-15</div></div>
-    <div class="tile"><div class="tile-label">Impossible spans</div><div class="tile-value">1</div><div class="tile-sub">REQ-091, finished before claimed</div></div>
+    <div class="tile"><div class="tile-label">Impossible spans</div><div class="tile-value">0</div><div class="tile-sub">REQ-091 repaired in <code>24915a8</code></div></div>
   </div>
 
   <div class="viz-card">
@@ -512,7 +519,7 @@ p50 estimator suite: all probes passed.   EXIT=0</code></pre>
     <p style="font-size:14.5px;color:var(--muted);margin-bottom:12px">Three panels on one shared calendar axis — one measure and one scale each, never two y-scales on a plot. <strong>A</strong> is the spread and the outliers, <strong>B</strong> is whether it is getting slower, <strong>C</strong> is how often it runs at all. Hover any mark for its values; the full table is below.</p>
     <div class="viz-frame" id="viz-frame">
       <svg id="viz-svg" viewBox="0 0 1200 566" role="img"
-           aria-label="Three stacked panels sharing a calendar axis from 29 May to 17 August 2026. Panel A: duration in minutes for each of 195 archived REQs, coloured by route, with four labelled outliers in an overflow lane above a scale break. Panel B: median minutes per active day, highest at 42 minutes on 28 July, falling through August. Panel C: count of REQs completed per day across 23 active days, peaking at 25 on 15 August."></svg>
+           aria-label="Three stacked panels sharing a calendar axis from 29 May to 17 August 2026. Panel A: duration in minutes for each of 195 archived REQs, coloured by route, with three labelled outliers in an overflow lane above a scale break. Panel B: median minutes per active day, highest at 42 minutes on 28 July, falling through August. Panel C: count of REQs completed per day across 23 active days, peaking at 25 on 15 August."></svg>
       <div class="viz-tip" id="viz-tip" aria-hidden="true"></div>
     </div>
     <p class="viz-legend">
@@ -520,7 +527,6 @@ p50 estimator suite: all probes passed.   EXIT=0</code></pre>
       <span><i class="viz-key" style="background:var(--route-b)"></i>Route B — medium</span>
       <span><i class="viz-key" style="background:var(--route-c)"></i>Route C — heavy</span>
       <span><i class="viz-key" style="background:var(--route-none)"></i>No route recorded (legacy)</span>
-      <span><i class="viz-key" style="background:var(--viz-critical)"></i>Impossible span</span>
     </p>
     <p style="font-size:13.5px;color:var(--muted);margin:8px 0 0">Panel A is coloured by route, so the legend above applies to it. Panels B and C each plot a single measure named by its own title, so neither needs a key. Panel B applies the calibration's documented read-time rule — spans over four hours are an assumed pause, a negative span is a broken stamp — so one paused session cannot invent a five-hour day; panel A still shows both raw and labelled. Days carrying only two or three REQs give a noisy median; the hover readout names the sample count.</p>
     <details class="tableview">
@@ -543,8 +549,8 @@ p50 estimator suite: all probes passed.   EXIT=0</code></pre>
     </div>
     <div class="sidenote" style="flex:1 1 320px">
       <h3>Reading the outliers</h3>
-      <p>Four marks are labelled because they are the only ones that matter individually. <strong>REQ-064 at 10h 55m</strong> is the span the calibration's four-hour rule exists to discard — an assumed pause, not eleven hours of work. <strong>REQ-043 at 2h 29m</strong> and <strong>REQ-171 at 1h 21m</strong> sit under that threshold, so they are inside the calibration and legitimately stretch the heavy route's tail.</p>
-      <p><strong>REQ-091 at minus six seconds</strong> is not a duration at all — it is the impossible span this batch taught the board to flag, drawn in the critical colour just below the zero line with its own label rather than silently rounded up to zero.</p>
+      <p>Three marks are labelled because they are the only ones that matter individually. <strong>REQ-064 at 10h 55m</strong> is the span the calibration's four-hour rule exists to discard — an assumed pause, not eleven hours of work. <strong>REQ-043 at 2h 29m</strong> and <strong>REQ-171 at 1h 21m</strong> sit under that threshold, so they are inside the calibration and legitimately stretch the heavy route's tail.</p>
+      <p><strong>There was a fourth.</strong> When this report was first written, REQ-091 sat below the zero line at minus six seconds — the impossible span this batch taught the board to flag. It was repaired hours later in commit <code>24915a8</code>, which substituted the author instant of the implementation commit the REQ itself records, and it now reads a plausible ten seconds. The chart carries the repaired value. The below-zero branch and the signed arithmetic stay in the code, because REQ-213 and REQ-214 exist precisely so the next one surfaces instead of rendering as a normal card.</p>
       <p style="margin-bottom:0">Eight further samples sit at exactly zero seconds — REQ-001, 006, 012, 067 through 070, and 207 — same-second stamps on bookkeeping REQs. They are honest data, not defects, and they are why the estimator carries a five-minute floor rather than trusting the raw minimum.</p>
     </div>
   </div>
@@ -595,7 +601,7 @@ p50 estimator suite: all probes passed.   EXIT=0</code></pre>
     <h3>Current-code drift from the archive record</h3>
     <div class="row" style="gap:36px">
     <p style="flex:1 1 420px"><strong>REQ-214's <code>verify.go</code> has changed since its commit.</strong> Commit <code>80103c0</code> added a branch that routes hash-only completion anomalies to <em>skipped probes</em> when git or the repository is unavailable, on the reasoning that an undatable-but-valid hash is a missing tool rather than a data defect. Every other anomaly class still fails the check. REQ-214's recorded behaviour is therefore a subset of what ships today.</p>
-    <p style="flex:1 1 420px;margin-bottom:0"><strong>The "ten anomalies" figure no longer reproduces, and that is benign.</strong> REQ-214's record and the 0.199.0 changelog entry both cite ten flagged tickets. Today <code>verify</code> and the board summary each report one. Verified cause: nine of the ten were archived REQs whose recorded <code>commit:</code> hashes the working copy could not resolve at the time, because those commits existed only on the unmerged branch. A sweep of all 204 archived <code>commit:</code> hashes today resolves every one, so those nine were never archive defects. The remaining anomaly is REQ-091's genuinely reversed span. No skip branch fired in today's run — the only skipped probe reported is the unrelated version-file probe.</p>
+    <p style="flex:1 1 420px;margin-bottom:0"><strong>The "ten anomalies" figure no longer reproduces, and that is benign.</strong> REQ-214's record and the 0.199.0 changelog entry both cite ten flagged tickets. Today <code>verify</code> and the board summary each report one. Verified cause: nine of the ten were archived REQs whose recorded <code>commit:</code> hashes the working copy could not resolve at the time, because those commits existed only on the unmerged branch. A sweep of all 204 archived <code>commit:</code> hashes today resolves every one, so those nine were never archive defects. The tenth was REQ-091's genuinely reversed span, and that one was real — it has since been repaired in commit <code>24915a8</code>, so the count is now zero and <code>verify</code> exits 0. No skip branch fired in either run; the only skipped probe reported is the unrelated version-file probe.</p>
     </div>
   </div>
 </section>
@@ -613,7 +619,7 @@ bash _dev/tests/p50-estimator-determinism.sh</code></pre>
       <p><span class="tag ran">run · exit 0</span></p>
       <pre><code>cd skills/do-work-board/tools/queue-kanban \
   &amp;&amp; go vet ./... &amp;&amp; go test -count=1 ./...</code></pre>
-      <p><span class="tag ran">run · exit 1 by design</span></p>
+      <p><span class="tag ran">run · exit 0 since the repair</span></p>
       <pre><code>go build -o skills/do-work-board/tools/queue-kanban/queue-kanban \
   ./skills/do-work-board/tools/queue-kanban
 ./skills/do-work-board/tools/queue-kanban/queue-kanban verify
@@ -641,14 +647,14 @@ bash _dev/tests/maintainer-verify.sh</code></pre>
 
 <section id="decisions">
   <p class="kicker">11 · Decisions for you</p>
-  <h2>Two open decisions, with recommendations</h2>
+  <h2>One resolved the same day, one still open</h2>
   <div class="row equal">
-    <div class="qbox" style="flex:1 1 440px">
-      <h3>Should REQ-091's reversed timestamp be repaired, and if so, by whom?</h3>
-      <p><strong>Context.</strong> One archived request, REQ-091, records a completion instant six seconds before its claim instant — almost certainly a local wall-clock time written with a UTC <code>Z</code> suffix. Since REQ-214 shipped, <code>queue-kanban verify</code> exits non-zero on this repository because of it. Repairing archived frontmatter is deliberately outside every tool's write surface, so it needs a human decision.</p>
-      <p><strong>Why it matters.</strong> The mechanical gate is currently red on a clean tree. If any automation, hook, or habit treats a green <code>verify</code> as the precondition for committing or releasing, that signal is now permanently red until the stamp is fixed — which trains people to ignore it. Ignoring a check is worse than not having one.</p>
-      <p><strong>Trade-off.</strong> Editing an archived record rewrites history and sets a precedent that archive frontmatter is mutable; the wrong true instant is also unknowable now, so any repair is a best estimate. Leaving it alone preserves the record exactly but keeps the gate red and normalises a failing check.</p>
-      <div class="rec"><strong>Recommendation:</strong> repair it, as an explicit owner-authored commit that states in its message that the stamp was corrected and why — one honest edit with visible provenance beats an indefinitely red gate. Set <code>completed_at</code> to the claim instant plus the observed work duration if that is recoverable, otherwise to the claim instant itself, and note the estimate in the commit message.</div>
+    <div class="qbox" style="flex:1 1 440px;border-top-color:var(--good)">
+      <h3>Resolved — REQ-091's reversed timestamp was repaired</h3>
+      <p><strong>The question.</strong> REQ-091 recorded a completion instant six seconds before its claim instant, and since REQ-214 shipped that made <code>queue-kanban verify</code> exit non-zero on a clean tree. Repairing archived frontmatter sits outside every tool's write surface, so it needed a human decision: repair it and accept that archive frontmatter is mutable, or preserve the record exactly and live with a permanently red gate that trains people to ignore it.</p>
+      <p><strong>Decided the same day, in commit <code>24915a8</code>.</strong> The owner repaired it, and picked a better substitute than this report had recommended. Rather than the claim instant plus a guess, <code>completed_at</code> became <code>2026-08-04T00:26:10Z</code> — the author instant of <code>ecf1966</code>, the implementation hash the REQ itself records. That is the only stamp here backed by git rather than by estimate.</p>
+      <p style="margin-bottom:0"><strong>Two things the commit message preserves</strong>, and they are the reason this reads as an honest repair rather than a cover-up: the true instant to the second is unrecoverable, so 00:26:10Z is evidence-based but still a reconstruction; and <code>claimed_at</code> (00:26:00Z, a suspiciously round <code>:00</code>) is the more likely originally-mis-stamped field, since it implies the whole implementation took ten seconds. It was left exactly as recorded because no evidence survives for its true value. Only the field the probe named was touched.</p>
+      <div class="rec"><strong>Outcome:</strong> <code>verify</code> reports <code>OK: no findings</code>, the board's anomaly count is 0, and the mechanical gate is green on a clean tree again — this time because the tree is actually clean.</div>
     </div>
     <div class="qbox" style="flex:1 1 440px">
       <h3>Should the estimator be re-fit now that the log shows the calibration still runs high?</h3>
@@ -779,7 +785,8 @@ bash _dev/tests/maintainer-verify.sh</code></pre>
         <div><dt>REQ-213</dt><dd>Board surfaces negative claimed→completed duration as a completion anomaly. Commit <code>c3a0a6d</code>. Review 94%, 2 important findings promoted to follow-ups.</dd></div>
         <div><dt>REQ-214</dt><dd>verify surfaces completion anomalies as findings. Review-generated from REQ-213 Important 1. Commit <code>594be62</code>. Review 94%.</dd></div>
         <div><dt>REQ-215</dt><dd>Sync completion-anomaly prose with the reversed-span class. Review-generated sweep from REQ-213 Important 2. Commit <code>4be0ed4</code>. Review 93%.</dd></div>
-        <div><dt>REQ-091</dt><dd>Unrelated archived request that carries the one genuine reversed span — the live example this work surfaces.</dd></div>
+        <div><dt>REQ-091</dt><dd>Unrelated archived request that carried the one genuine reversed span — the live example this work surfaced. Repaired 2026-08-17 in commit <code>24915a8</code>.</dd></div>
+        <div><dt>24915a8</dt><dd>Owner-authored archive edit correcting REQ-091's <code>completed_at</code> to the author instant of <code>ecf1966</code>.</dd></div>
         <div><dt>REQ-208/209/210</dt><dd>UR-047's members: the estimator script, its wiring into the work action, and recalculation after repairs.</dd></div>
         <div><dt>PR #140</dt><dd>Pull request carrying the estimation branch; its review produced four accepted findings fixed in <code>80103c0</code>.</dd></div>
         <div><dt>Route A/B/C</dt><dd>The pipeline's difficulty tiers — light, medium, heavy. Now priced at 5, 10, and 20 minutes with no signals.</dd></div>
@@ -791,7 +798,7 @@ bash _dev/tests/maintainer-verify.sh</code></pre>
 </section>
 
 <footer>
-  <p>Report generated 2026-08-17 14:01 UTC from <code>do-work/archive/UR-048/</code>, the merge-aware commit record, and live inspection of the current code at <code>e4c9510</code>. Non-visual evidence mode: UI captures were not expected for this work. Terminal transcripts are real captured output; the two flow diagrams are hand-authored explanation, not evidence. Values quoted from <code>maintainer-verify.sh</code> are reported as recorded in the archive, not re-verified for this report.</p>
+  <p>Report generated 2026-08-17 14:01 UTC from <code>do-work/archive/UR-048/</code>, the merge-aware commit record, and live inspection of the current code at <code>e4c9510</code>. <strong>Partially refreshed 18:00 UTC</strong> after the owner repaired REQ-091's reversed stamp in <code>24915a8</code> — a change this report's own section 11 had recommended. Refreshed: the duration data and its stat tile, the <code>verify</code> transcripts and their run labels, the verdict, the drift note, the identifier map, the spoken briefing, and section 11's first decision, which is now recorded as resolved rather than deleted. The historical narrative is unchanged and still reads as of 14:01 UTC. Non-visual evidence mode: UI captures were not expected for this work. Terminal transcripts are real captured output; the two flow diagrams are hand-authored explanation, not evidence. Values quoted from <code>maintainer-verify.sh</code> are reported as recorded in the archive, not re-verified for this report.</p>
 </footer>
 
 </div>
@@ -801,8 +808,13 @@ bash _dev/tests/maintainer-verify.sh</code></pre>
    Data: every archived REQ carrying a parseable claimed_at and completed_at,
    mined from do-work/archive/ at report time and sorted by completion.
    Row shape: [reqNumber, route, completedEpochSeconds, wallSeconds].
-   Wall seconds are RAW and signed — REQ-091's negative span is present as
-   data, not smoothed away, because hiding it is the defect this batch fixed.
+   Wall seconds are RAW and signed. The archive carried one negative span when
+   this report was first written — REQ-091, six seconds backwards — and it was
+   plotted as data rather than smoothed away, because hiding it is the defect
+   this batch fixed. It was repaired in commit 24915a8 and now reads +10s; the
+   signed handling and the below-zero branch stay, because the whole point of
+   REQ-213 and REQ-214 is that another one can appear.
+   Refreshed 2026-08-17 18:00 UTC for that repair.
 --------------------------------------------------------------------------- */
 const DURATION_SAMPLES = [
   [5,"A",1780080180,159],[2,"A",1780080285,15],[10,"B",1780080360,60],[3,"A",1780080450,30],[7,"B",1780080570,60],[8,"B",1780080840,120],
@@ -817,7 +829,7 @@ const DURATION_SAMPLES = [
   [67,"B",1785589557,0],[68,"B",1785590209,0],[69,"C",1785592392,0],[70,"B",1785592629,0],[71,"B",1785768481,642],[72,"C",1785769688,1085],
   [73,"C",1785770336,546],[74,"A",1785772578,226],[75,"B",1785773240,555],[76,"C",1785773666,320],[77,"C",1785793448,882],[78,"C",1785794095,552],
   [79,"B",1785794654,371],[80,"A",1785794807,112],[81,"B",1785795208,368],[82,"B",1785795443,195],[83,"-",1785801130,670],[84,"-",1785801652,360],
-  [86,"-",1785802188,338],[87,"-",1785802297,447],[85,"-",1785802458,684],[89,"-",1785802983,333],[91,"-",1785803154,-6],[92,"-",1785803264,44],
+  [86,"-",1785802188,338],[87,"-",1785802297,447],[85,"-",1785802458,684],[89,"-",1785802983,333],[91,"-",1785803170,10],[92,"-",1785803264,44],
   [88,"-",1785817683,373],[93,"B",1785834583,387],[94,"B",1785874139,1223],[102,"A",1785874526,277],[97,"-",1785877920,482],[95,"-",1785878400,2469],
   [98,"-",1785878400,452],[99,"-",1785879000,789],[100,"-",1785879120,540],[96,"-",1785879300,2351],[101,"-",1785879360,434],[106,"A",1785926319,89],
   [105,"A",1785926340,258],[107,"A",1785926404,56],[104,"-",1785929860,1090],[108,"-",1785930267,333],[109,"A",1785931144,426],[110,"A",1785943884,801],
@@ -950,11 +962,10 @@ const DURATION_SAMPLES = [
     dotIndex.push({ x, y, dot, reqNumber, route, epoch, wallSeconds });
   });
 
-  /* ---- selective direct labels: the four marks that matter individually ---- */
+  /* ---- selective direct labels: the marks that matter individually ---- */
   [{ reqNumber: 43, text: 'REQ-043 2h 29m', anchor: 'end', dx: -9, dy: 4 },
    { reqNumber: 64, text: 'REQ-064 10h 55m', anchor: 'start', dx: 9, dy: 18 },
-   { reqNumber: 171, text: 'REQ-171 1h 21m', anchor: 'end', dx: -9, dy: 4 },
-   { reqNumber: 91, text: 'REQ-091 -6s, impossible', anchor: 'start', dx: 10, dy: 4 }
+   { reqNumber: 171, text: 'REQ-171 1h 21m', anchor: 'end', dx: -9, dy: 4 }
   ].forEach((entry) => {
     const point = dotIndex.find((d) => d.reqNumber === entry.reqNumber);
     if (!point) return;
