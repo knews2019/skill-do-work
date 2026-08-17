@@ -3,7 +3,7 @@ id: REQ-219
 title: Durations view on the Kanban board
 status: completed
 completed_at: 2026-08-17T19:36:37Z
-commit:
+commit: cfffd90
 claimed_at: 2026-08-17T19:25:51Z
 created_at: 2026-08-17T17:17:22Z
 route: C
