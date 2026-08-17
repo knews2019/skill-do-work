@@ -2,7 +2,7 @@
 # Update a project-local four-module do-work suite.
 set -euo pipefail
 
-upstream_url='https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz'
+upstream_url="${DO_WORK_UPSTREAM_URL:-https://github.com/knews2019/skill-do-work/archive/refs/heads/main.tar.gz}"
 
 fail() {
   printf 'do-work update: %s\n' "$*" >&2
@@ -42,6 +42,7 @@ script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 skill_root="$(cd "$script_dir/.." && pwd -P)"
 installed_manifest_validator="$script_dir/validate-suite-manifest.sh"
 installed_suite_installer="$script_dir/install-do-work-suite.sh"
+installed_archive_fetcher="$script_dir/fetch-upstream-archive.sh"
 
 case "$skill_root" in
   "$project_root"/*) ;;
@@ -69,9 +70,10 @@ remote_version='unknown'
 trap 'rm -rf "$update_tmp"' EXIT
 
 printf 'Checking do-work updates…\n'
-curl -fsSL -o "$upstream_tarball.download" "$upstream_url" \
-  || fail 'upstream tarball download failed; no files were changed'
-mv "$upstream_tarball.download" "$upstream_tarball"
+[ -f "$installed_archive_fetcher" ] \
+  || fail 'the installed upstream archive fetcher is missing'
+bash "$installed_archive_fetcher" "$upstream_tarball" "$upstream_url" \
+  || fail 'upstream archive could not be fetched by any route; no files were changed'
 tar xzf "$upstream_tarball" -C "$fresh_upstream" --strip-components=1 \
   || fail 'upstream archive could not be extracted; no files were changed'
 

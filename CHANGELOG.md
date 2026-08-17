@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.201.0 — Updates Fall Back to Git When the Download Host Is Blocked (2026-08-17)
+
+Retrying a 429 helps with a blip. The reported incident lasted two minutes across three attempts, and `git clone` was the only thing that got through — the git transport sits behind a different limiter than the tarball host. `do-work update` and the suite installer now try the tarball first and fall back to a shallow clone repacked with `git archive`, and they tell you which route they used.
+
+- New shared fetcher sits between both callers and the network, so neither carries its own download logic
+- The fallback uses `git archive`, never a copy of the clone — only `git archive` honors `export-ignore`, which is what keeps maintainer-only files out of your install
+- `DO_WORK_UPSTREAM_URL` is now a supported override for both the updater and the installer, and the failure message names it
+- A total failure reports the outcome of both routes and leaves any previously downloaded archive untouched
+- The one-line bootstrap command gains the retry flags; installing from a supplied `--archive` still needs no fetcher at all
+
 ## 0.200.0 — Downloads Retry Rate Limits and Can Authenticate (2026-08-17)
 
 A sustained 429 from GitHub's codeload host was enough to fail `do-work update` outright, because every download was a single `curl` attempt with no retry and no way to send a token. The shipped download primitive now handles both, so every caller inherits it instead of each one growing its own copy.

@@ -2,7 +2,7 @@
 
 > **Part of the do-work skill.** Handles version reporting, update checks, and work recaps. User-facing walkthrough: [`docs/version-guide.md`](../docs/version-guide.md).
 
-**Current version**: 0.200.0
+**Current version**: 0.201.0
 
 **Upstream**: https://raw.githubusercontent.com/knews2019/skill-do-work/main/skills/do-work/actions/version.md
 
@@ -46,6 +46,14 @@ All update discovery, review, confirmation, mutation, byte verification, and rec
    bash "<skill-root>/tools/do-work-update.sh" --project-root "$PROJECT_ROOT"
    ```
 4. Do not download a second archive, perform a second diff, add another confirmation, or fall back to a direct `curl | tar` mutation. If the engine refuses or fails, report that exact failure; it is the authoritative safety boundary.
+
+The engine already tries two routes before giving up: the anonymous tarball over HTTP, then a shallow git clone repacked with `git archive`. Its failure message names the outcome of both. When it reports that neither route reached the host — a corporate proxy, a blocked domain, a rate limiter that outlasts the retries — the supported escape hatch is `DO_WORK_UPSTREAM_URL`, which points both the updater and the installer at a different archive URL for that invocation:
+
+```bash
+DO_WORK_UPSTREAM_URL=https://example.internal/do-work/main.tar.gz bash "<skill-root>/tools/do-work-update.sh" --project-root "$PROJECT_ROOT"
+```
+
+Relay that suggestion when the engine reports a total fetch failure. Editing a vendored file is never the answer.
 
 The installed manifest validator approves all four modules first, then the updater delegates that same downloaded archive to its installed full-suite installer. The installer owns the reviewed confirmation, refreshes the managed Just section, composes core hook settings, verifies every installed byte, and restores every changed managed path on failure. The update does not mutate `do-work/`, `kb/`, application files, bytes outside the marked Just section, unrelated settings entries, or any other project configuration.
 

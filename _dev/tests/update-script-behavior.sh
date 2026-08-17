@@ -3,10 +3,14 @@
 set -uo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+# shellcheck source=_dev/tests/fixture-repo.sh
+source "$repo_root/_dev/tests/fixture-repo.sh"
 update_script="$repo_root/skills/do-work/tools/do-work-update.sh"
 manifest_validator="$repo_root/tools/validate-suite-manifest.sh"
 suite_installer="$repo_root/tools/install-do-work-suite.sh"
 section_replacer="$repo_root/tools/replace-text-section.sh"
+upstream_fetcher_source="$repo_root/tools/fetch-upstream-archive.sh"
+atomic_download_source="$repo_root/skills/do-work/scripts/atomic-download.sh"
 fail_count=0
 
 for required_command in bash git tar diff; do
@@ -127,6 +131,12 @@ build_suite_install() {
     "$project_path/.claude/skills/do-work/tools/install-do-work-suite.sh"
   cp "$section_replacer" \
     "$project_path/.claude/skills/do-work/tools/replace-text-section.sh"
+  cp "$upstream_fetcher_source" \
+    "$project_path/.claude/skills/do-work/tools/fetch-upstream-archive.sh"
+  mkdir -p "$project_path/.claude/skills/do-work/scripts"
+  cp "$atomic_download_source" \
+    "$project_path/.claude/skills/do-work/scripts/atomic-download.sh"
+  chmod +x "$project_path/.claude/skills/do-work/scripts/"*.sh
   chmod +x "$project_path/.claude/skills/do-work/tools/"*.sh
   printf 'queue sentinel\n' > "$project_path/do-work/queue/sentinel.txt"
   printf 'kb sentinel\n' > "$project_path/kb/sentinel.txt"
@@ -142,6 +152,7 @@ build_suite_tree() {
   cp "$manifest_validator" "$tree_root/tools/validate-suite-manifest.sh"
   cp "$suite_installer" "$tree_root/tools/install-do-work-suite.sh"
   cp "$section_replacer" "$tree_root/tools/replace-text-section.sh"
+  cp "$upstream_fetcher_source" "$tree_root/tools/fetch-upstream-archive.sh"
   chmod +x "$tree_root/tools/"*.sh
   for module_name in do-work do-work-board do-work-knowledge do-work-toolbox; do
     module_path="$tree_root/skills/$module_name"
@@ -161,6 +172,11 @@ build_suite_tree() {
     "$tree_root/skills/do-work/tools/install-do-work-suite.sh"
   cp "$section_replacer" \
     "$tree_root/skills/do-work/tools/replace-text-section.sh"
+  cp "$upstream_fetcher_source" \
+    "$tree_root/skills/do-work/tools/fetch-upstream-archive.sh"
+  mkdir -p "$tree_root/skills/do-work/scripts"
+  cp "$atomic_download_source" "$tree_root/skills/do-work/scripts/atomic-download.sh"
+  chmod +x "$tree_root/skills/do-work/scripts/"*.sh
   chmod +x "$tree_root/skills/do-work/tools/"*.sh
   cp "$repo_root/skills/do-work/hooks/hooks.json" "$tree_root/skills/do-work/hooks/hooks.json"
   cp "$repo_root/skills/do-work-board/justfile.template" \
@@ -426,6 +442,108 @@ assert_file_contains "$failure_project/.claude/settings.json" 'hooks' \
 if [ -n "$(git -C "$failure_project" status --porcelain)" ]; then
   record_failure "partial failure: recovery did not return the managed worktree to HEAD: $(git -C "$failure_project" status --porcelain)"
 fi
+
+# --- Upstream archive fetcher (REQ-217) ---------------------------------
+# The reported incident was a sustained 429 across ~2 minutes: retry alone does not
+# close it, and `git clone` was the only probe that succeeded. These three cases pin
+# the fallback, the export-ignore guarantee, and the preserved-target failure path.
+archive_fetcher="$repo_root/tools/fetch-upstream-archive.sh"
+if [ ! -x "$archive_fetcher" ]; then
+  record_failure 'upstream fetcher: tools/fetch-upstream-archive.sh must exist and be executable'
+else
+  fetch_root="$fixture_root/upstream-fetch"
+  mkdir -p "$fetch_root"
+
+  # A local repository standing in for the upstream remote, carrying one path that
+  # .gitattributes marks export-ignore.
+  upstream_fixture_repo="$fetch_root/upstream-repo"
+  fixture_repo_init "$upstream_fixture_repo"
+  mkdir -p "$upstream_fixture_repo/private-path"
+  printf 'maintainer only\n' > "$upstream_fixture_repo/private-path/notes.md"
+  printf 'shipped\n' > "$upstream_fixture_repo/VERSION"
+  printf '/private-path export-ignore\n' > "$upstream_fixture_repo/.gitattributes"
+  fixture_repo_commit_all "$upstream_fixture_repo" 'upstream fixture'
+
+  # Case 1: a host that answers 429 forever must not stop the fetch — the git route wins.
+  rate_limited_bin="$fetch_root/rate-limited-bin"
+  mkdir -p "$rate_limited_bin"
+  printf '%s\n' \
+    '#!/usr/bin/env bash' \
+    'output_path=""' \
+    'while [ "$#" -gt 0 ]; do case "$1" in -o) output_path="$2"; shift 2 ;; *) shift ;; esac; done' \
+    'exit 22' \
+    > "$rate_limited_bin/curl"
+  chmod +x "$rate_limited_bin/curl"
+
+  fallback_archive="$fetch_root/fallback.tar.gz"
+  fallback_report="$(PATH="$rate_limited_bin:$PATH" \
+    bash "$archive_fetcher" "$fallback_archive" \
+    'https://example.invalid/archive/refs/heads/main.tar.gz' "$upstream_fixture_repo" 2>/dev/null)" \
+    || record_failure 'upstream fetcher: sustained rate limiting was not survived by the git route'
+  if ! tar tzf "$fallback_archive" >/dev/null 2>&1; then
+    record_failure 'upstream fetcher: the git route did not produce a readable archive'
+  fi
+  case "$fallback_report" in
+    *git*) ;;
+    *) record_failure "upstream fetcher: the succeeding route was not reported (got: $fallback_report)" ;;
+  esac
+
+  # Case 2: the git route must honor export-ignore. A cp -R / rsync / tar-the-clone
+  # implementation passes cases 1 and 3 and fails only here.
+  if tar tzf "$fallback_archive" 2>/dev/null | grep -q 'private-path'; then
+    record_failure 'upstream fetcher: the git route shipped an export-ignore path into the archive'
+  fi
+  if ! tar tzf "$fallback_archive" 2>/dev/null | grep -q 'VERSION'; then
+    record_failure 'upstream fetcher: the git route omitted tracked, shipped content'
+  fi
+  fallback_top_level="$(tar tzf "$fallback_archive" 2>/dev/null | sed -n '1s|/.*||p')"
+  if [ -z "$fallback_top_level" ] \
+    || tar tzf "$fallback_archive" 2>/dev/null | grep -qv "^$fallback_top_level/"; then
+    record_failure 'upstream fetcher: the git route did not produce a single top-level directory'
+  fi
+
+  # Case 3: when every route fails, the pre-existing target survives untouched and no
+  # private scratch is left behind.
+  preserved_target="$fetch_root/preserved.tar.gz"
+  printf 'previously downloaded archive\n' > "$preserved_target"
+  PATH="$rate_limited_bin:$PATH" \
+    bash "$archive_fetcher" "$preserved_target" \
+    'https://example.invalid/archive/refs/heads/main.tar.gz' "$fetch_root/no-such-repo" >/dev/null 2>&1 \
+    && record_failure 'upstream fetcher: total failure reported success'
+  if [ "$(cat "$preserved_target")" != 'previously downloaded archive' ]; then
+    record_failure 'upstream fetcher: total failure changed the pre-existing target'
+  fi
+  if find "$fetch_root" -name 'preserved.tar.gz.download.*' -print -quit | grep -q .; then
+    record_failure 'upstream fetcher: total failure leaked atomic-download scratch'
+  fi
+  if find "$fetch_root" -name 'preserved.tar.gz.fetching.*' -print -quit | grep -q .; then
+    record_failure 'upstream fetcher: total failure leaked git-route scratch'
+  fi
+  total_failure_report="$(PATH="$rate_limited_bin:$PATH" \
+    bash "$archive_fetcher" "$preserved_target" \
+    'https://example.invalid/archive/refs/heads/main.tar.gz' "$fetch_root/no-such-repo" 2>&1 >/dev/null || true)"
+  case "$total_failure_report" in
+    *'HTTP route'*'Git route'*) ;;
+    *) record_failure 'upstream fetcher: total failure did not name both route outcomes' ;;
+  esac
+  case "$total_failure_report" in
+    *DO_WORK_UPSTREAM_URL*) ;;
+    *) record_failure 'upstream fetcher: total failure did not name the DO_WORK_UPSTREAM_URL escape hatch' ;;
+  esac
+fi
+
+# Both callers must route their no-archive fetch through the shared fetcher rather
+# than a bare curl, and honor the DO_WORK_UPSTREAM_URL override.
+for upstream_caller in \
+  "$repo_root/skills/do-work/tools/do-work-update.sh" \
+  "$repo_root/tools/install-do-work-suite.sh"; do
+  if ! grep -q 'fetch-upstream-archive\.sh' "$upstream_caller"; then
+    record_failure "upstream fetcher: ${upstream_caller##*/} does not delegate its fetch to the shared fetcher"
+  fi
+  if ! grep -q 'DO_WORK_UPSTREAM_URL' "$upstream_caller"; then
+    record_failure "upstream fetcher: ${upstream_caller##*/} does not honor DO_WORK_UPSTREAM_URL"
+  fi
+done
 
 # The agent-facing path must delegate mutation to the same tested engine.
 if ! grep -q 'tools/do-work-update\.sh.*--project-root' "$repo_root/skills/do-work/actions/version.md"; then
