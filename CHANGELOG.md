@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.200.1 — AI-Report and Presentation Fixes Reach 0.200.0 Installs (2026-08-17)
+
+0.200.0 reached main and was then reverted, so the 0.199.3 and 0.199.4 fixes landed afterwards and never reached anyone already carrying 0.200.0. Their updater saw an equal version and reported "You're up to date", so this release republishes the reconciled tree under a higher number.
+
+- Carries the presentation target-ID mutation matrix (0.199.3) and the ai-report batch process-tree and publication hardening (0.199.4) alongside the mechanical REQ reservation cleanup from 0.200.0
+- REQ-203 and REQ-204 archive records now cite the commits that actually implemented them (`dea5f7a`, `4665ad2`); the previously recorded hashes resolved to nothing, so neither record could supply its diff
+
 ## 0.200.0 — Mechanical REQ Reservation Cleanup (2026-08-17)
 
 Reservation markers under `do-work/.req-reservations/` used to be kept forever; the directory only ever grew. A new script now reaps them mechanically — no agent involved — and the SessionStart hook runs it every session.

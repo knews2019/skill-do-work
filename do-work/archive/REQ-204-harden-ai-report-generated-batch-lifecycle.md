@@ -3,7 +3,7 @@ id: REQ-204
 title: Harden ai-report generated-batch lifecycle
 status: completed
 completed_at: 2026-08-17T18:37:31Z
-commit: 7f7a5ca
+commit: 4665ad2
 claimed_at: 2026-08-17T18:30:39Z
 status_changed_at: 2026-08-17T18:10:49Z
 route: B
