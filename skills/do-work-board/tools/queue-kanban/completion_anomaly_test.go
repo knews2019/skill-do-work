@@ -217,3 +217,52 @@ func TestCleanSyntheticTreeHasNoCompletionAnomalies(t *testing.T) {
 		t.Fatalf("clean tree CompletionAnomalies = %d, want 0", got)
 	}
 }
+
+// A parsed completed_at strictly before a parsed claimed_at is a reversed
+// span — impossible for stamps written in order (REQ-213; archived REQ-091 is
+// the real-data case: one stamp was local wall-clock written with a Z suffix).
+// The frontmatter-parsed path previously short-circuited as never-anomalous,
+// which let the reversal render as a normal card.
+func TestNegativeClaimedToCompletedSpanFlagged(t *testing.T) {
+	ticket := &RequestTicket{
+		RequestId:            "REQ-9320",
+		Status:               "completed",
+		ClaimedAt:            "2026-01-02T10:00:00Z",
+		CompletedAt:          "2026-01-01T10:00:00Z",
+		CompletionTime:       time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC),
+		CompletionTimeSource: CompletionFromFrontmatter,
+	}
+	flagged, reason := detectCompletionAnomaly(ticket)
+	if !flagged {
+		t.Fatalf("reversed claimed→completed span should be flagged CompletionAnomaly")
+	}
+	if !strings.Contains(reason, `completed_at "2026-01-01T10:00:00Z" is earlier than claimed_at "2026-01-02T10:00:00Z"`) {
+		t.Fatalf("reason = %q, want it to name both raw stamps", reason)
+	}
+}
+
+// The negative-span check fires ONLY when both stamps parse and the span is
+// reversed: an ordered span stays unflagged, and an absent or unparseable
+// claimed_at stays other checks' territory rather than double-reporting here.
+func TestOrderedOrClaimlessSpansNotFlaggedByNegativeSpanCheck(t *testing.T) {
+	for _, testCase := range []struct {
+		name      string
+		claimedAt string
+	}{
+		{"ordered span", "2026-01-01T09:00:00Z"},
+		{"absent claimed_at", ""},
+		{"unparseable claimed_at", "yesterday-ish"},
+	} {
+		ticket := &RequestTicket{
+			RequestId:            "REQ-9321",
+			Status:               "completed",
+			ClaimedAt:            testCase.claimedAt,
+			CompletedAt:          "2026-01-01T10:00:00Z",
+			CompletionTime:       time.Date(2026, 1, 1, 10, 0, 0, 0, time.UTC),
+			CompletionTimeSource: CompletionFromFrontmatter,
+		}
+		if flagged, reason := detectCompletionAnomaly(ticket); flagged {
+			t.Fatalf("%s: must not be flagged (reason %q)", testCase.name, reason)
+		}
+	}
+}

@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.198.0 — Board Flags Impossible Negative Durations (2026-08-17)
+
+A completed REQ whose `completed_at` lands before its `claimed_at` — a span that cannot be real — now shows up in the board's completion-anomaly strip and summary instead of rendering as a normal card. Found while mining the archive for estimator calibration: one real REQ carried a reversed span.
+
+- Fires only when both stamps parse and the span is strictly reversed; broken or missing stamps stay with the existing checks
+- The reason names both raw stamps and the usual cause (a local wall-clock time written with a Z suffix) plus the fix
+- Joins the existing anomaly plumbing — summary strip, generated payload, and the never-silent warning — with no new fields
+
 ## 0.197.0 — Estimates Learn From Every Archive (2026-08-17)
 
 Archiving an estimated REQ now appends its estimate-vs-actual pair to `do-work/calibration-log.tsv`, so the next estimator re-fit reads a log instead of mining git history.

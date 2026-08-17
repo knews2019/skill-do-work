@@ -1210,11 +1210,28 @@ func resolveCompletionTime(ticket *RequestTicket, repoRoot string, gitLookup git
 //     unparseable) but that git could not resolve;
 //   - neither field present at all — a done-flip that forgot to stamp.
 //
-// A ticket whose completed_at parsed is never anomalous: the commit hash is not
-// consulted on that path, so it is not re-validated here — doing so would cost
-// one git subprocess per archived ticket for no board-behavior change.
+// A ticket whose completed_at parsed is anomalous only when the parsed span is
+// reversed — completed_at strictly earlier than a parseable claimed_at — since
+// stamps written in order cannot produce a negative duration (the usual cause
+// is one stamp written as local wall-clock time with a Z suffix). The commit
+// hash is still not consulted on that path, so it is not re-validated here —
+// doing so would cost one git subprocess per archived ticket for no
+// board-behavior change.
 func detectCompletionAnomaly(ticket *RequestTicket) (bool, string) {
-	if !isTerminalResolvedStatus(ticket.Status) || ticket.CompletionTimeSource == CompletionFromFrontmatter {
+	if !isTerminalResolvedStatus(ticket.Status) {
+		return false, ""
+	}
+	if ticket.CompletionTimeSource == CompletionFromFrontmatter {
+		claimedInstant, claimedParsed := parseTimestamp(ticket.ClaimedAt)
+		if !claimedParsed {
+			return false, "" // absent/unparseable claimed_at is other checks' territory
+		}
+		completedInstant, completedParsed := parseTimestamp(ticket.CompletedAt)
+		if completedParsed && completedInstant.Before(claimedInstant) {
+			return true, fmt.Sprintf(
+				"completed_at %q is earlier than claimed_at %q — a reversed span cannot be real; one stamp is usually local wall-clock time written with a Z suffix; rewrite the wrong stamp with the true UTC instant",
+				ticket.CompletedAt, ticket.ClaimedAt)
+		}
 		return false, ""
 	}
 	var brokenFieldReasons []string

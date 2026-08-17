@@ -16,6 +16,8 @@ session_depth: moderate
 
 ## In Progress (interrupted)
 
+- REQ-213 — Board surfaces negative claimed→completed duration as a completion anomaly — claimed 2026-08-17T08:15:06Z — writer: vm:/home/user/skill-do-work
+
 
 - REQ-211 — Calibrate estimator scoring table to archive actuals — claimed 2026-08-17T08:07:47Z — writer: vm:/home/user/skill-do-work
 
