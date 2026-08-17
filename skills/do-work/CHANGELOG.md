@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.202.0 — Mechanical REQ Reservation Cleanup (2026-08-17)
+
+Reservation markers under `do-work/.req-reservations/` used to be kept forever; the directory only ever grew. A new script now reaps them mechanically — no agent involved — and the SessionStart hook runs it every session.
+
+- New `scripts/cleanup-req-reservations.sh`: removes a marker once its REQ file is committed anywhere in queue/working/archive (the file itself then holds the number), or after a two-day timeout for a capture that never landed. Younger unmatched markers — captures in flight — are kept, and committed-not-just-present is the trigger so a concurrent session can never delete a marker a capture is still staging.
+- The script refuses a symlinked `do-work/` or reservation directory outright — matching the allocator — so the automatic hook can never delete through a link pointing outside the project.
+- The two-day timeout revisits REQ-147's keep-forever decision: an abandoned number may now be reissued after the timeout, the accepted trade for a directory that stays clean.
+- The core SessionStart hook invokes the cleanup fail-soft and appends a one-line summary when anything was removed, so deletions get committed with normal housekeeping.
+
 ## 0.201.1 — Tool Scripts Can No Longer Hand-Roll a Download (2026-08-17)
 
 The canonicalization campaign that stopped shell primitives being copy-pasted swept `actions/` and `scripts/` and never named `tools/` — which is how the same download ended up written four times. The ratchet now covers tool scripts too. Separately, the archive-exclusion header claimed a `tar --exclude` safety net that has not existed for some time; it now says plainly that `export-ignore` is the only thing holding that line.
@@ -61,7 +70,6 @@ A timestamped portfolio snapshot and the canonical summary were the same file un
 - A canonical path occupied by a directory fails closed and leaves that directory untouched
 - Every reported path is confirmed to be a regular file before it is printed
 - Two new named replays, plus one older assertion corrected: it had been locking in the shared inode
-
 ## 0.199.4 — AI-Report Image Batch Owns Its Processes and Its Publication (2026-08-17)
 
 Interrupting a report run used to delete the staging directory and walk away while the image backends kept running against it. And because `mv` treats an existing directory as a container rather than a collision, a `generated/` folder that appeared at the last moment would silently swallow the finished batch while the run reported success. Both are closed, and both failure paths are now replayed in the test suite.
