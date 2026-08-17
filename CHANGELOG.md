@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.203.1 — Publication Helpers Own Their Process Trees and Verify Their Renames (2026-08-17)
+
+Two shipped helpers could report success for work that never landed. Interrupting report-image generation directly used to leave its backend — and on the opt-in agentic path, the sandbox-bypassed process behind it — still running, and the last30days installer could slide a whole staging tree inside a directory that reappeared mid-install and still call the install complete.
+
+- `generate-report-image.sh` now launches each backend under job control and owns the resulting process tree: it terminates, escalates, and reaps everything it started before removing its private files. Where that isolation can't be proven, it signals only the bare process, never a group.
+- Both helpers now verify the rename actually published. A destination that turns out to be a directory swallows a rename and still exits zero, so each one now checks for that, discards only its own nested stage, leaves the destination byte-for-byte, and fails closed.
+- The last30days installer keeps your previous tree recoverable when it hits that case — it no longer rolls back over the directory that appeared, and no longer deletes its own backup.
+- Three new fixture replays pin all of it (41 → 44 named script cases).
+
 ## 0.203.0 — Durations View on the Board (2026-08-17)
 
 The board could tell you what is queued and what finished, but not how long any of it took. A new Durations view answers the three questions that actually come up: is response time degrading, which REQs are outliers, and how often does this run at all. Three panels share one calendar axis — duration per REQ, median minutes per active day, and REQs completed per day — all built from the archive scan the board already performs.

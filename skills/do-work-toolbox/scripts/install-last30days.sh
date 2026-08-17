@@ -92,6 +92,25 @@ if [ "$install_mode" = "install" ] && ! last30days_tree_is_complete "$target_dir
 
   publication_started=1
   if mv "$staging_directory" "$target_directory"; then
+    # `mv` treats an existing destination directory as a container, so a target that
+    # reappeared inside the check-then-backup-then-rename window swallows the staging
+    # tree and still exits zero. Verify the rename actually published, and fail closed
+    # if it nested — clearing backup_parent is what stops cleanup from restoring over
+    # (`restore_previous_tree` opens with an unconditional `rm -rf`) or deleting the
+    # prior tree, leaving it recoverable at its backup path.
+    nested_staging_directory="$target_directory/${staging_directory##*/}"
+    if [ -e "$nested_staging_directory" ]; then
+      rm -rf -- "$nested_staging_directory"
+      staging_directory=""
+      publication_started=0
+      if [ -n "$backup_parent" ] && [ -e "$backup_parent/previous" ]; then
+        printf 'last30days: publication FAILED; %s reappeared — prior tree remains at %s\n' "$target_directory" "$backup_parent/previous" >&2
+        backup_parent=""
+      else
+        printf 'last30days: publication FAILED; %s reappeared\n' "$target_directory" >&2
+      fi
+      exit 1
+    fi
     publication_complete=1
     staging_directory=""
   else

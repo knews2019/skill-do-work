@@ -694,6 +694,95 @@ PATH="$agentic_bin" AGENTIC_INVOKED_MARKER="$agentic_marker" TMPDIR="$fixture_ro
 find "$fixture_root" \( -name '.*.generating.*' -o -name 'do-work-ai-report-image.*' \) -print -quit | grep -q . \
   && fail_case 'generate-report-image agentic opt-in case leaked private paths'
 
+# generate-report-image, interrupted directly: the helper owns the process tree it
+# started, so signalling it must leave neither the backend nor the backend's own
+# descendant alive, and must reap them before the private stage is removed. A
+# bare-PID kill passes the file assertions below while the descendant keeps running.
+image_tree_bin="$fixture_root/image-tree-bin"
+mkdir -p "$image_tree_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'printf "%s" "$output_path" > "$IMAGE_TREE_STAGE_LOG"' \
+  'printf partial > "$output_path"' \
+  '( while :; do sleep 0.2; done ) &' \
+  'printf "%s\n" "$!" > "$IMAGE_TREE_DESCENDANT_PID"' \
+  'printf "%s\n" "$$" > "$IMAGE_TREE_BACKEND_PID"' \
+  ': > "$IMAGE_TREE_READY"' \
+  'while :; do sleep 0.2; done' \
+  > "$image_tree_bin/imagegen"
+chmod +x "$image_tree_bin/imagegen"
+image_tree_target="$fixture_root/process-tree.png"
+printf stable-tree > "$image_tree_target"
+PATH="$image_tree_bin:$PATH" \
+  IMAGE_TREE_STAGE_LOG="$fixture_root/process-tree-stage" \
+  IMAGE_TREE_BACKEND_PID="$fixture_root/process-tree-backend.pid" \
+  IMAGE_TREE_DESCENDANT_PID="$fixture_root/process-tree-descendant.pid" \
+  IMAGE_TREE_READY="$fixture_root/process-tree-ready" \
+  "$toolbox_scripts/generate-report-image.sh" "$image_tree_target" style process-tree >/dev/null 2>&1 &
+image_tree_helper_pid=$!
+background_process_ids="$background_process_ids $image_tree_helper_pid"
+image_tree_ready_ticks=0
+while [ "$image_tree_ready_ticks" -lt 200 ]; do
+  [ -e "$fixture_root/process-tree-ready" ] \
+    && [ -s "$fixture_root/process-tree-backend.pid" ] \
+    && [ -s "$fixture_root/process-tree-descendant.pid" ] && break
+  sleep 0.05
+  image_tree_ready_ticks=$((image_tree_ready_ticks + 1))
+done
+if [ ! -s "$fixture_root/process-tree-backend.pid" ] || [ ! -s "$fixture_root/process-tree-descendant.pid" ]; then
+  fail_case 'generate-report-image process-tree case never reached a running backend and descendant'
+else
+  image_tree_backend_pid="$(cat "$fixture_root/process-tree-backend.pid")"
+  image_tree_descendant_pid="$(cat "$fixture_root/process-tree-descendant.pid")"
+  background_process_ids="$background_process_ids $image_tree_backend_pid $image_tree_descendant_pid"
+  kill -TERM "$image_tree_helper_pid" 2>/dev/null || true
+  wait "$image_tree_helper_pid" 2>/dev/null
+  image_tree_status=$?
+  [ "$image_tree_status" -eq 143 ] \
+    || fail_case "generate-report-image process-tree case returned $image_tree_status instead of the TERM status 143"
+  image_tree_survivor_ticks=0
+  while [ "$image_tree_survivor_ticks" -lt 40 ]; do
+    image_tree_survivors=0
+    for image_tree_recorded_pid in "$image_tree_backend_pid" "$image_tree_descendant_pid"; do
+      kill -0 "$image_tree_recorded_pid" 2>/dev/null && image_tree_survivors=$((image_tree_survivors + 1))
+    done
+    [ "$image_tree_survivors" -eq 0 ] && break
+    sleep 0.05
+    image_tree_survivor_ticks=$((image_tree_survivor_ticks + 1))
+  done
+  [ "$image_tree_survivors" -eq 0 ] \
+    || fail_case "generate-report-image process-tree case left $image_tree_survivors backend process(es) or descendant(s) alive"
+  image_tree_stage_path="$(cat "$fixture_root/process-tree-stage")"
+  [ ! -e "$image_tree_stage_path" ] || fail_case 'generate-report-image process-tree case leaked private staging'
+  [ "$(cat "$image_tree_target")" = stable-tree ] || fail_case 'generate-report-image process-tree case changed the old target'
+fi
+
+# generate-report-image: `mv` treats an existing destination directory as a container,
+# so an output path occupied by a directory nests the staged image inside it and still
+# exits zero. Publication must fail closed and leave that directory untouched.
+image_directory_bin="$fixture_root/image-directory-bin"
+mkdir -p "$image_directory_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'while [ "$#" -gt 0 ]; do case "$1" in --output) output_path="$2"; shift 2 ;; *) shift ;; esac; done' \
+  'printf new-png > "$output_path"' \
+  > "$image_directory_bin/imagegen"
+chmod +x "$image_directory_bin/imagegen"
+image_directory_parent="$fixture_root/directory-target"
+image_directory_target="$image_directory_parent/report.png"
+mkdir -p "$image_directory_target"
+printf owned-by-someone-else > "$image_directory_target/keep.txt"
+PATH="$image_directory_bin:$PATH" DO_WORK_AI_REPORT_ALLOW_AGENTIC_BACKEND=0 \
+  "$toolbox_scripts/generate-report-image.sh" "$image_directory_target" style directory-collision >/dev/null 2>&1 \
+  && fail_case 'generate-report-image output-is-a-directory case reported success'
+[ "$(cat "$image_directory_target/keep.txt" 2>/dev/null)" = owned-by-someone-else ] \
+  || fail_case 'generate-report-image output-is-a-directory case did not preserve the occupying directory byte-for-byte'
+[ "$(ls -A "$image_directory_target" 2>/dev/null)" = keep.txt ] \
+  || fail_case 'generate-report-image output-is-a-directory case left its staged image nested inside the occupying directory'
+find "$image_directory_parent" -name '.report.png.generating.*' -print -quit | grep -q . \
+  && fail_case 'generate-report-image output-is-a-directory case leaked private staging'
+
 # install-last30days: a SKILL.md-only tree fails check, is repaired from a
 # complete fixture, and receives the full subtree plus ignore/Python guarantees.
 upstream_repo="$fixture_root/last30days-upstream"
@@ -801,6 +890,35 @@ diff -r "$fixture_root/last30days-interrupt-snapshot" "$backup_interrupt_project
 find "$backup_interrupt_project/.claude/skills" -name '.last30days.*' -print -quit | grep -q . \
   && fail_case 'install-last30days backup-interruption case leaked private paths'
 
+# install-last30days: the target can reappear between the backup `mv` and the
+# publication `mv`, and `mv` then nests the staging tree inside it and exits zero. The
+# mv shim below recreates the target in exactly that window; publication must fail
+# closed, leave the reappeared tree byte-for-byte, and keep the prior tree recoverable.
+publication_collision_bin="$fixture_root/publication-collision-bin"
+mkdir -p "$publication_collision_bin"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'case "${2:-}" in */.claude/skills/last30days) mkdir -p "$2"; printf owned-by-someone-else > "$2/keep.txt" ;; esac' \
+  'exec /bin/mv "$@"' \
+  > "$publication_collision_bin/mv"
+chmod +x "$publication_collision_bin/mv"
+publication_collision_project="$fixture_root/last-publication-collision-project"
+publication_collision_target="$publication_collision_project/.claude/skills/last30days"
+mkdir -p "$publication_collision_target/legacy"
+printf collision-sentinel > "$publication_collision_target/SKILL.md"
+printf collision-byte > "$publication_collision_target/legacy/data.bin"
+TMPDIR="$fixture_root" PATH="$publication_collision_bin:$python_bin:$PATH" \
+  "$toolbox_scripts/install-last30days.sh" install "$publication_collision_project" "$upstream_repo" >/dev/null 2>&1 \
+  && fail_case 'install-last30days publication-collision case returned success'
+[ "$(cat "$publication_collision_target/keep.txt" 2>/dev/null)" = owned-by-someone-else ] \
+  || fail_case 'install-last30days publication-collision case did not preserve the reappeared target byte-for-byte'
+[ "$(ls -A "$publication_collision_target" 2>/dev/null)" = keep.txt ] \
+  || fail_case 'install-last30days publication-collision case left its staging tree nested inside the reappeared target'
+find "$publication_collision_project/.claude/skills" -name '.last30days.staging.*' -print -quit | grep -q . \
+  && fail_case 'install-last30days publication-collision case leaked private staging'
+[ -s "$(find "$publication_collision_project/.claude/skills" -path '*/.last30days.backup.*/previous/SKILL.md' -print -quit)" ] \
+  || fail_case 'install-last30days publication-collision case did not leave the prior tree recoverable at its backup path'
+
 # cleanup-req-reservations: a marker whose REQ file is committed is removed at
 # any zero-padding width and archive depth; non-marker entries stay untouched.
 reservation_project="$fixture_root/reservation-project"
@@ -896,4 +1014,4 @@ reservation_symlink_output="$("$core_scripts/cleanup-req-reservations.sh" "$rese
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
-printf 'Prescribed shell script behavior probes passed (41 named script cases).\n'
+printf 'Prescribed shell script behavior probes passed (44 named script cases).\n'
