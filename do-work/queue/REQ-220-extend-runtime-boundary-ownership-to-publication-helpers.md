@@ -1,7 +1,8 @@
 ---
 id: REQ-220
 title: Extend runtime-boundary ownership to the remaining publication helpers
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-17T19:58:23Z
 domain: general
 created_at: 2026-08-17T18:37:31Z
 user_request: UR-042
@@ -48,7 +49,7 @@ REQ-204 fixed both boundaries in the `ai-report` prescribed batch block. `_dev/p
 
 ## Open Questions
 
-- [ ] REQ-204 fixed both runtime boundaries in the ai-report batch, and the required copy-paste sweep found the same root cause in two more shipped scripts. Should I process this as a new task?
+- [x] REQ-204 fixed both runtime boundaries in the ai-report batch, and the required copy-paste sweep found the same root cause in two more shipped scripts. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
   Why this is yours: REQ-204 was itself a generation-two review follow-up, so the cascade-depth rule requires your consent before another autonomous repair cycle. Worth knowing before you decide: these two scripts ship to users, and neither defect is reachable from the path REQ-204 already fixed — the first only bites a direct invocation, the second only a reappearing target.
