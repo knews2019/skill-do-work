@@ -1173,3 +1173,34 @@ func TestIsArchivedUserRequestPathRejectsLookalikeDirectories(t *testing.T) {
 		}
 	}
 }
+
+// verify was blind to completion anomalies until REQ-214: it reported
+// "OK: no findings" on a tree whose summary showed a flagged anomaly strip.
+// The probe forwards buildBoard's structured evidence, one finding per ticket.
+func TestVerifyLiftsCompletionAnomaliesIntoFindings(t *testing.T) {
+	board := &Board{}
+	board.Columns.CompletionAnomalies = []*RequestTicket{{
+		RequestId:               "REQ-9330",
+		Status:                  "completed",
+		CompletionAnomaly:       true,
+		CompletionAnomalyReason: `completed_at "2026-01-01T10:00:00Z" is earlier than claimed_at "2026-01-02T10:00:00Z" — a reversed span cannot be real; one stamp is usually local wall-clock time written with a Z suffix; rewrite the wrong stamp with the true UTC instant`,
+	}}
+	report := VerifyReport{}
+	appendCompletionAnomalyFindings(&report, board)
+	if len(report.Findings) != 1 {
+		t.Fatalf("findings = %d, want 1", len(report.Findings))
+	}
+	finding := report.Findings[0]
+	if finding.Category != verifyCategoryCompletionAnomaly {
+		t.Fatalf("category = %q, want %q", finding.Category, verifyCategoryCompletionAnomaly)
+	}
+	if !strings.Contains(finding.Detail, "REQ-9330") || !strings.Contains(finding.Detail, "is earlier than claimed_at") {
+		t.Fatalf("detail = %q, want the ticket id and its reason forwarded", finding.Detail)
+	}
+
+	cleanReport := VerifyReport{}
+	appendCompletionAnomalyFindings(&cleanReport, &Board{})
+	if len(cleanReport.Findings) != 0 {
+		t.Fatalf("clean board produced %d findings, want 0", len(cleanReport.Findings))
+	}
+}

@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.199.0 — Verify Fails on Broken Completion Bookkeeping (2026-08-17)
+
+`queue-kanban verify` was blind to completion anomalies — it reported "OK: no findings" while the board's strip showed ten flagged tickets. It now lifts every anomaly into a finding and exits non-zero, so a broken archive fails the mechanical check instead of passing silently.
+
+- One finding per anomalous ticket, forwarding the board's structured evidence (id, status, reason)
+- The per-ticket reason already names the broken field and its fix; the remedy routes you there
+- Found by REQ-213's independent review; this repo's own verify now honestly reports its ten pre-existing anomalies
+
 ## 0.198.0 — Board Flags Impossible Negative Durations (2026-08-17)
 
 A completed REQ whose `completed_at` lands before its `claimed_at` — a span that cannot be real — now shows up in the board's completion-anomaly strip and summary instead of rendering as a normal card. Found while mining the archive for estimator calibration: one real REQ carried a reversed span.
