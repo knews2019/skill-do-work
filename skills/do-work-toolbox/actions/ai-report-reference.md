@@ -34,7 +34,9 @@ clean sans-serif labels, no photorealism, no 3D, no stock-photo people, max ~10 
 <skill-root>/scripts/generate-report-image.sh "<absolute output PNG>" "$STYLE" "<Claude-authored sanitized visual description>"
 ```
 
-**Fire in parallel, retain every status, then verify.** Image generation is slow (tens of seconds each), so launch every section's job as a background job, retain every PID, and wait each PID even after an earlier failure. Stage the whole batch in one hidden invocation-private directory adjacent to the final `generated/` directory. An image is current only when its own helper status is zero and its staged target is non-empty; remove every failed target, then publish the complete verified batch with one same-filesystem rename only when at least one image succeeded. The report bundle is already invocation-private under the shared no-overwrite rule, but still fail closed if `generated/` exists before staging or appears before publication. An all-failed batch removes its exact private directory and falls back to SVG/Mermaid (Step 4) without publishing `generated/`:
+**Fire in parallel, retain every status, then verify.** Image generation is slow (tens of seconds each), so launch every section's job as a background job, retain every PID, and wait each PID even after an earlier failure. Stage the whole batch in one hidden invocation-private directory adjacent to the final `generated/` directory. An image is current only when its own helper status is zero and its staged target is non-empty; remove every failed target, then publish the complete verified batch with one same-filesystem rename only when at least one image succeeded. The report bundle is already invocation-private under the shared no-overwrite rule, but still fail closed if `generated/` exists before staging or appears before publication. An all-failed batch removes its exact private directory and falls back to SVG/Mermaid (Step 4) without publishing `generated/`.
+
+**The batch is a process boundary as well as a filesystem one.** The caller owns every helper it starts, so an interrupted run terminates and reaps exactly this batch's recorded process tree *before* staging is removed — nothing it launched may outlive it, and no helper may keep writing into a directory the caller is about to delete. Each helper is launched under job control so it leads its own process group; when that isolation cannot be proved the caller signals the bare PID and never a group, because the only group it could otherwise hit is its own. And because `mv` treats an existing destination directory as a container rather than a collision, publication is verified after the rename: a `generated/` that appeared after the final absence check leaves the stage nested inside it and `mv` still exits zero, so the caller checks for that nesting, discards its own staged batch, leaves the colliding directory untouched, and exits nonzero.
 
 ```bash
 report_directory="ai-reports/<report-slug>"
@@ -48,19 +50,75 @@ cleanup_report_image_stage() {
   fi
 }
 trap cleanup_report_image_stage EXIT
-trap 'exit 129' HUP
-trap 'exit 130' INT
-trap 'exit 143' TERM
 
 image_generation_pids=()
+image_generation_groups=()
 image_generation_targets=()
+caller_process_group_id="$(ps -o pgid= -p "$$" 2>/dev/null | tr -d '[:space:]')"
 launch_report_image() {
   image_target="$1"
   image_description="$2"
+  set -m   # job control gives each helper its own process group, so its descendants are reachable
   <skill-root>/scripts/generate-report-image.sh "$image_target" "$STYLE" "$image_description" &
-  image_generation_pids[${#image_generation_pids[@]}]=$!
+  image_helper_pid=$!
+  set +m
+  image_helper_group="$(ps -o pgid= -p "$image_helper_pid" 2>/dev/null | tr -d '[:space:]')"
+  case "$image_helper_group" in ''|*[!0-9]*) image_helper_group="" ;; esac
+  # Signal a group only when this helper leads one of its own; otherwise fall back to
+  # the bare PID. Never signal the caller's group — that would kill the report run.
+  if [ "$image_helper_group" != "$image_helper_pid" ] || [ "$image_helper_group" = "$caller_process_group_id" ]; then
+    image_helper_group=""
+  fi
+  image_generation_pids[${#image_generation_pids[@]}]="$image_helper_pid"
+  image_generation_groups[${#image_generation_groups[@]}]="$image_helper_group"
   image_generation_targets[${#image_generation_targets[@]}]="$image_target"
 }
+report_image_batch_is_alive() {
+  batch_index=0
+  while [ "$batch_index" -lt "${#image_generation_pids[@]}" ]; do
+    if [ -n "${image_generation_groups[$batch_index]}" ]; then
+      kill -0 -- "-${image_generation_groups[$batch_index]}" 2>/dev/null && return 0
+    else
+      kill -0 "${image_generation_pids[$batch_index]}" 2>/dev/null && return 0
+    fi
+    batch_index=$((batch_index + 1))
+  done
+  return 1
+}
+signal_report_image_batch() {
+  batch_signal="$1"
+  batch_index=0
+  while [ "$batch_index" -lt "${#image_generation_pids[@]}" ]; do
+    if [ -n "${image_generation_groups[$batch_index]}" ]; then
+      kill -"$batch_signal" -- "-${image_generation_groups[$batch_index]}" 2>/dev/null || true
+    else
+      kill -"$batch_signal" "${image_generation_pids[$batch_index]}" 2>/dev/null || true
+    fi
+    batch_index=$((batch_index + 1))
+  done
+}
+terminate_report_image_batch() {
+  signal_report_image_batch TERM
+  batch_grace_ticks=0
+  while report_image_batch_is_alive && [ "$batch_grace_ticks" -lt 10 ]; do
+    sleep 0.1
+    batch_grace_ticks=$((batch_grace_ticks + 1))
+  done
+  if report_image_batch_is_alive; then
+    signal_report_image_batch KILL
+  fi
+  batch_index=0
+  while [ "$batch_index" -lt "${#image_generation_pids[@]}" ]; do
+    wait "${image_generation_pids[$batch_index]}" 2>/dev/null || true
+    batch_index=$((batch_index + 1))
+  done
+}
+# Reap the batch first, then let the EXIT trap remove staging: an interrupted caller
+# must not leave helpers writing into a directory it is about to delete.
+trap 'terminate_report_image_batch; exit 129' HUP
+trap 'terminate_report_image_batch; exit 130' INT
+trap 'terminate_report_image_batch; exit 143' TERM
+
 launch_report_image "$image_generation_stage/01-architecture.png" "<prompt 1>"
 launch_report_image "$image_generation_stage/02-dataflow.png" "<prompt 2>"
 
@@ -89,6 +147,16 @@ done
 if [ "$image_generation_success_count" -gt 0 ]; then
   [ ! -e "$generated_directory" ] || { echo "REFUSING: generated/ appeared before publication" >&2; exit 1; }
   mv "$image_generation_stage" "$generated_directory" || exit 1
+  # `mv` treats an existing destination directory as a container, so a generated/ that
+  # appeared after the check above would leave the stage nested inside it and still
+  # report success. Verify the rename actually published, and fail closed if it nested.
+  nested_image_generation_stage="$generated_directory/${image_generation_stage##*/}"
+  if [ -e "$nested_image_generation_stage" ]; then
+    rm -rf -- "$nested_image_generation_stage"
+    image_generation_stage=""
+    echo "REFUSING: generated/ appeared during publication — staged batch discarded, existing generated/ left unchanged" >&2
+    exit 1
+  fi
   image_generation_stage=""
   GEN="$generated_directory"   # absolute helper outputs were published here; HTML still embeds relative generated/… paths.
 else
