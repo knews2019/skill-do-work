@@ -2,22 +2,21 @@
 # excluded from the distributed archive. GitHub's tarball download and `git archive`
 # honor export-ignore, so these never ship to a consuming repo.
 #
-# Without this, `do-work update` (curl | tar of the main-branch tarball) would extract
-# the maintainer's own queue/archive/KB and sample reports into a consumer's skill
-# directory. They land in the wrong place (nested under the skill dir, not the
-# consumer's project root) so they don't corrupt anything, but they're shipped clutter.
-# The install/update tar command also passes --exclude for do-work/kb/ai-reports/_dev plus
-# .vscode/decisions as a belt-and-suspenders fallback for tarballs built before this file
-# existed.
+# Without this, `do-work update` (which fetches the main-branch tarball, or falls back to
+# `git archive` of a shallow clone, then untars it) would extract the maintainer's own
+# queue/archive/KB and sample reports into a consumer's skill directory. They land in the
+# wrong place (nested under the skill dir, not the consumer's project root) so they don't
+# corrupt anything, but they're shipped clutter. Both fetch routes honor export-ignore;
+# a worktree copy would not, which is why the git fallback repacks with `git archive`.
 #
 # /do-work and /kb are LOAD-BEARING, not housekeeping. This repo tracks both (they are the
 # same Trail of Intent the skill tells consumers to commit, and the tracked-path-only guards
 # — record-commit-hash.sh's size-floor/numstat checks, cleanup Pass 6 blanked-REQ recovery —
-# only work on tracked REQs). These two lines plus the tar --exclude fallbacks are therefore
-# the ONLY thing keeping the maintainer's queue and knowledge base out of consumer installs.
-# _dev/tests/contract-regressions.sh asserts both lines exist; do not remove them. The dev dotfiles (.gitignore/.gitattributes) are export-ignore-only — excluding
-# them via tar is awkward and a stale vendored copy leaks nothing (export-ignore is inert
-# once the skill is a subdirectory of a consumer's repo).
+# only work on tracked REQs). These two lines are therefore the ONLY thing keeping the
+# maintainer's queue and knowledge base out of consumer installs.
+# _dev/tests/contract-regressions.sh asserts both lines exist; do not remove them. The dev
+# dotfiles (.gitignore/.gitattributes) are export-ignore-only too, and a stale vendored copy
+# leaks nothing (export-ignore is inert once the skill is a subdirectory of a consumer's repo).
 #
 # decisions/ holds the maintainer's own ADRs about this skill — design history, never
 # loaded at runtime by any action — so consumers don't need it. The dev dotfiles
@@ -36,9 +35,9 @@
 # Shipped nested inside a consumer's repo, Claude Code auto-loads CLAUDE.md into context
 # on every read of a skill file — a ~2.5k-word tax whose commit protocol (bump
 # actions/version.md, add a CHANGELOG entry) is actively wrong advice downstream. They
-# get NO tar --exclude fallback on purpose: tar --exclude matches basenames at any
-# depth (the same trap as `diff -x`), and update/install always pull a fresh
-# main-branch tarball, which honors export-ignore. Stale copies in existing installs
+# get no tar --exclude fallback, and nothing else here does either: tar --exclude matches
+# basenames at any depth (the same trap as `diff -x`), and every fetch route — tarball or
+# `git archive` — already honors export-ignore. Stale copies in existing installs
 # are deleted by the update flow (actions/version.md Step 5) instead. Shipped files
 # must never cite these two files — see _dev/primes/prime-action-files.md → Cross-Referencing.
 /do-work         export-ignore

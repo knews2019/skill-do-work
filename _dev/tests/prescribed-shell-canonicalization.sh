@@ -18,13 +18,48 @@ for prescribed_script in \
   skills/do-work-knowledge/scripts/install-memory-hooks.sh \
   skills/do-work-toolbox/scripts/generate-report-image.sh \
   skills/do-work-toolbox/scripts/publish-portfolio-summary.sh \
-  skills/do-work-toolbox/scripts/install-last30days.sh
+  skills/do-work-toolbox/scripts/install-last30days.sh \
+  skills/do-work/tools/fetch-upstream-archive.sh
 do
   if [ ! -x "$repo_root/$prescribed_script" ]; then
     printf 'FAIL: prescribed shell script is missing or not executable: %s\n' "$prescribed_script" >&2
     failure_count=$((failure_count + 1))
   fi
 done
+
+# A tool script must delegate its downloads to the shared primitives rather than
+# hand-rolling one — the canonicalization campaign swept actions/ and scripts/ and
+# never named tools/, which is how the same curl ended up written four times.
+#
+# One exemption, and it is keyed on a condition rather than a filename: text inside a
+# *quoted heredoc* is emitted for someone else to run, not executed by this script.
+# That is what makes the installer's BOOTSTRAP block legitimate — nothing is installed
+# when it runs, so it cannot call a helper that does not exist yet.
+#
+# fetch-upstream-archive.sh is deliberately NOT exempt. It is the primitive's tool-side
+# home, but it delegates to scripts/atomic-download.sh rather than calling curl itself,
+# so it needs no exemption today — and pre-granting one would authorize in advance the
+# exact duplication this check exists to prevent.
+while IFS= read -r tool_script_path; do
+  direct_download_lines="$(awk '
+    match($0, /<<-?\047[A-Za-z_][A-Za-z0-9_]*\047/) {
+      heredoc_delimiter = substr($0, RSTART, RLENGTH)
+      gsub(/^<<-?\047|\047$/, "", heredoc_delimiter)
+      inside_quoted_heredoc = 1
+      next
+    }
+    inside_quoted_heredoc && $0 == heredoc_delimiter { inside_quoted_heredoc = 0; next }
+    inside_quoted_heredoc { next }
+    /^[[:space:]]*#/ { next }
+    /(^|[;&|(]|\$\()[[:space:]]*curl[[:space:]]/ { printf "%d:%s\n", NR, $0 }
+  ' "$tool_script_path")"
+  if [ -n "$direct_download_lines" ]; then
+    printf 'FAIL: tool script downloads directly instead of delegating to the shared fetcher: %s\n' \
+      "${tool_script_path#"$repo_root/"}" >&2
+    printf '%s\n' "$direct_download_lines" >&2
+    failure_count=$((failure_count + 1))
+  fi
+done < <(find "$repo_root"/skills/*/tools -type f -name '*.sh' | sort)
 
 if [[ ! -f "$canonical_guide" ]]; then
   printf 'FAIL: core prescribed-shell guide is missing.\n' >&2

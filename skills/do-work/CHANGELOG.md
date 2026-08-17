@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.201.1 — Tool Scripts Can No Longer Hand-Roll a Download (2026-08-17)
+
+The canonicalization campaign that stopped shell primitives being copy-pasted swept `actions/` and `scripts/` and never named `tools/` — which is how the same download ended up written four times. The ratchet now covers tool scripts too. Separately, the archive-exclusion header claimed a `tar --exclude` safety net that has not existed for some time; it now says plainly that `export-ignore` is the only thing holding that line.
+
+- Any direct `curl` under a skill's `tools/` directory now fails the canonicalization check
+- The one exemption is keyed on a condition, not a filename: text a script emits inside a quoted heredoc for someone else to run
+- The archive-exclusion comment no longer promises a fallback that isn't there, in any of the three places it said so
+
 ## 0.201.0 — Updates Fall Back to Git When the Download Host Is Blocked (2026-08-17)
 
 Retrying a 429 helps with a blip. The reported incident lasted two minutes across three attempts, and `git clone` was the only thing that got through — the git transport sits behind a different limiter than the tarball host. `do-work update` and the suite installer now try the tarball first and fall back to a shallow clone repacked with `git archive`, and they tell you which route they used.
