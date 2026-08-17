@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.199.3 — Target ID Contract Tests Now Replay Their Own Mutations (2026-08-17)
+
+The tests that keep the presentation actions honest about the shared target-ID contract could be fooled by wording. "Read without applying Target ID Resolution" contains the letters `apply`, so it passed the old check; now both callers are replayed through a mutation matrix that has to catch every way the seam can break.
+
+- Word-bounded application directive — the letters inside "applying" no longer satisfy the check
+- Semantic negations now cover `without` / `instead of` / `rather than`, not just `do not` / `never`
+- `present-work` gained the ordering rule it never had: the directive must precede its item-dispatch branch
+- Caller-local copies of UR-membership grammar are rejected for `present-work` too, not only the shared reference
+- Each caller is replayed through seven defect mutations and four safe controls, so a vacuous assertion fails loudly instead of passing quietly
+
 ## 0.199.2 — Estimate Summary and Verify Feedback Fixes (2026-08-17)
 
 Four review findings from PR #140, all accepted: three tighten the multi-REQ estimate summary's contract, one keeps verify honest in git-less environments.
