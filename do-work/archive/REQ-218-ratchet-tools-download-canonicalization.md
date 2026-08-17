@@ -3,7 +3,7 @@ id: REQ-218
 title: Ratchet the tools download and correct the stale gitattributes claim
 status: completed
 completed_at: 2026-08-17T19:21:16Z
-commit:
+commit: 052d384
 claimed_at: 2026-08-17T19:16:51Z
 created_at: 2026-08-17T17:16:28Z
 route: A
