@@ -116,7 +116,7 @@ func runVerifyProbes(repoRootOverride string, now time.Time) (VerifyReport, erro
 
 	appendReleaseFindings(&report, repoRoot)
 	appendDuplicateRequestIdFindings(&report, board)
-	appendCompletionAnomalyFindings(&report, board)
+	appendCompletionAnomalyFindings(&report, repoRoot, board)
 	appendCheckpointGhostFindings(&report, repoRoot, board)
 	appendClaimFindings(&report, board, now)
 	appendStrandedFinishedFindings(&report, board)
@@ -259,8 +259,28 @@ func appendDuplicateRequestIdFindings(report *VerifyReport, board *Board) {
 // buildBoard's structured evidence, exactly like the stray-file probe: no
 // warning-prose parsing, no second walk. The per-ticket reason already names
 // the broken field(s) and the fix, so the remedy stays generic routing.
-func appendCompletionAnomalyFindings(report *VerifyReport, board *Board) {
+//
+// One class is environment-sensitive: a ticket whose ONLY problem is a commit
+// hash git could not date (completed_at absent) is indistinguishable from a
+// healthy record when git itself is missing or the tree is not a repository —
+// the same dating probe would fail for every valid hash. Per the ExitCode
+// contract, availability gaps are skipped probes, never findings; every other
+// class (unparseable completed_at, reversed span, neither field) is a genuine
+// on-disk defect regardless of git and still fails the check.
+func appendCompletionAnomalyFindings(report *VerifyReport, repoRoot string, board *Board) {
+	commitDatingUsable := gitBinaryAvailable()
+	if commitDatingUsable {
+		if _, gitDirProbeError := exec.Command("git", "-C", repoRoot, "rev-parse", "--git-dir").Output(); gitDirProbeError != nil {
+			commitDatingUsable = false
+		}
+	}
 	for _, anomalousTicket := range board.Columns.CompletionAnomalies {
+		if !commitDatingUsable && anomalousTicket.CompletedAt == "" && anomalousTicket.CommitHash != "" {
+			report.SkippedProbes = append(report.SkippedProbes, fmt.Sprintf(
+				"completion-anomaly probe: %s carries only a commit hash and git/the repository is unavailable — cannot distinguish a bad hash from an undatable valid one",
+				anomalousTicket.RequestId))
+			continue
+		}
 		report.Findings = append(report.Findings, VerifyFinding{
 			Category: verifyCategoryCompletionAnomaly,
 			Detail: fmt.Sprintf("%s (status %s): %s",

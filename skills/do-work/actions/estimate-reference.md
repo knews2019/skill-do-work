@@ -76,7 +76,7 @@ For a selected set of more than one REQ, compute both figures with the estimator
 <skill-root>/tools/estimate-p50.sh critical-path REQ-208:85 REQ-209:60:REQ-208 REQ-210:25:REQ-208
 ```
 
-`total_estimated_effort_minutes` is the plain sum; `critical_path_minutes` is the longest path through the dependency graph — never the sum of parallel branches. A dependency id outside the set contributes zero (an archived dependency is already done). Present both, clearly labeled:
+`total_estimated_effort_minutes` is the plain sum; `critical_path_minutes` is the longest path through the dependency graph — never the sum of parallel branches. A dependency id outside the set contributes zero (an archived dependency is already done). A **selected member without an estimate enters as a zero-minute vertex** (`REQ-NNN:0:deps`) so the edges through it survive — dropping it would break the transitive chain and understate the critical path. Build each member's dependency list by resolving the legacy `dependencies:` alias exactly as the work action's selection scan does (canonical `depends_on` wins when both are present). Present both figures, clearly labeled:
 
 ```
 REQ-208  85 min

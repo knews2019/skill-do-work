@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.199.2 — Estimate Summary and Verify Feedback Fixes (2026-08-17)
+
+Four review findings from PR #140, all accepted: three tighten the multi-REQ estimate summary's contract, one keeps verify honest in git-less environments.
+
+- The default-run summary counts the pending set the loop will drain, not just the initially claimable roots of a dependency chain
+- Graph entries resolve the legacy `dependencies:` alias with the same precedence as the selection scan
+- Unestimated members enter the graph as zero-minute vertices so transitive dependency edges survive (A → unestimated B → C still reports the serialized path)
+- verify routes hash-only completion anomalies to skipped probes when git or the repository is unavailable — an undatable valid hash is not a data defect; all other classes still fail the check
+
 ## 0.199.1 — Anomaly Prose Tells the Truth for Every Class (2026-08-17)
 
 Every description of completion anomalies — board guide, chip legend, the never-silent warning, the web strip comment — now reads true for all four classes, including the new reversed-span one whose completion instant resolves fine.
