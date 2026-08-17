@@ -30,7 +30,12 @@
 # Exit 0: estimate printed. Exit 1: invalid graph. Exit 2: usage error.
 set -euo pipefail
 
-floor_minutes=10
+# Scoring scale calibrated 2026-08-17 to the archive's measured actuals: route
+# bases equal the per-route medians of 188 claimed_at→completed_at spans (>4h
+# and negative spans excluded as assumed pauses/broken stamps); signal weights
+# stretch heavy REQs toward the per-route p80. Provenance and re-fit method:
+# actions/estimate-reference.md → Calibration.
+floor_minutes=5
 
 usage_error() {
   printf 'usage: %s --route A|B|C [signal flags] | --trivial | critical-path ID:MIN[:DEP,...] ...\n' "$0" >&2
@@ -159,23 +164,23 @@ fi
 [ -n "$route_class" ] || usage_error "--route is required (or use --trivial)"
 
 case "$route_class" in
-  A) raw_minutes=10 ;;
-  B) raw_minutes=25 ;;
-  C) raw_minutes=45 ;;
+  A) raw_minutes=5 ;;
+  B) raw_minutes=10 ;;
+  C) raw_minutes=20 ;;
 esac
-raw_minutes=$(( raw_minutes + write_set_count * 3 ))
-raw_minutes=$(( raw_minutes + new_file_count * 4 ))
+raw_minutes=$(( raw_minutes + write_set_count * 1 ))
+raw_minutes=$(( raw_minutes + new_file_count * 2 ))
 if [ "$subsystem_count" -gt 1 ]; then
-  raw_minutes=$(( raw_minutes + (subsystem_count - 1) * 8 ))
+  raw_minutes=$(( raw_minutes + (subsystem_count - 1) * 3 ))
 fi
-raw_minutes=$(( raw_minutes + acceptance_count * 2 ))
-raw_minutes=$(( raw_minutes + dependency_depth * 5 ))
-[ "$browser_evidence" -eq 0 ]        || raw_minutes=$(( raw_minutes + 20 ))
-[ "$persistence_changes" -eq 0 ]     || raw_minutes=$(( raw_minutes + 15 ))
-[ "$async_behavior" -eq 0 ]          || raw_minutes=$(( raw_minutes + 15 ))
-[ "$performance_work" -eq 0 ]        || raw_minutes=$(( raw_minutes + 10 ))
-[ "$regression_gates" -eq 0 ]        || raw_minutes=$(( raw_minutes + 10 ))
-[ "$full_suite_verification" -eq 0 ] || raw_minutes=$(( raw_minutes + 10 ))
+raw_minutes=$(( raw_minutes + acceptance_count * 1 ))
+raw_minutes=$(( raw_minutes + dependency_depth * 2 ))
+[ "$browser_evidence" -eq 0 ]        || raw_minutes=$(( raw_minutes + 8 ))
+[ "$persistence_changes" -eq 0 ]     || raw_minutes=$(( raw_minutes + 6 ))
+[ "$async_behavior" -eq 0 ]          || raw_minutes=$(( raw_minutes + 6 ))
+[ "$performance_work" -eq 0 ]        || raw_minutes=$(( raw_minutes + 4 ))
+[ "$regression_gates" -eq 0 ]        || raw_minutes=$(( raw_minutes + 4 ))
+[ "$full_suite_verification" -eq 0 ] || raw_minutes=$(( raw_minutes + 4 ))
 
 rounded_minutes="$(round_to_nearest_five "$raw_minutes")"
 if [ "$rounded_minutes" -lt "$floor_minutes" ]; then
@@ -184,11 +189,11 @@ fi
 
 # Deterministic confidence rubric — same inputs, same answer, always.
 confidence_level="medium"
-if [ "$route_class" = "A" ] && [ "$raw_minutes" -le 20 ]; then
+if [ "$route_class" = "A" ] && [ "$raw_minutes" -le 10 ]; then
   confidence_level="high"
 fi
 if [ "$route_class" = "C" ]; then
-  if [ "$write_set_count" -ge 15 ] || [ "$subsystem_count" -ge 3 ] || [ "$raw_minutes" -ge 180 ]; then
+  if [ "$write_set_count" -ge 15 ] || [ "$subsystem_count" -ge 3 ] || [ "$raw_minutes" -ge 75 ]; then
     confidence_level="low"
   fi
 fi

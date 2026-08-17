@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.196.0 — Estimator Calibrated to Measured History (2026-08-17)
+
+P50 estimates now come from data instead of inherited priors: the scoring table was re-fit to 188 archived REQs' actual claimed-to-completed spans (outliers over 4 hours excluded as paused sessions). A signal-free estimate per route is now that route's true empirical median.
+
+- Route bases become the measured medians: A 5 min, B 10, C 20 (were 10/25/45); floor drops to 5
+- Signal weights divided by ~2.5 so heavy REQs land near the measured p80 instead of far beyond it
+- Confidence rubric re-anchored to the new scale
+- Full calibration provenance (sample counts, outlier rule, medians, bias direction) recorded in the estimation reference for the next re-fit
+- Frozen estimates on already-archived REQs are untouched
+
 ## 0.195.2 — Estimate Step Restatement Sync (2026-08-17)
 
 Closes the three minor findings from REQ-209's independent review: every restatement of the work pipeline's shape now includes the Estimate step, and the Route A fast path no longer loads the reference file it exists to avoid.

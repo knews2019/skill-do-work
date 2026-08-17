@@ -16,7 +16,7 @@ Optional and backwards-compatible — a REQ without it is fully valid, and every
 
 ```yaml
 estimate:
-  p50_active_minutes: 75        # multiple of 5, never below 10
+  p50_active_minutes: 75        # multiple of 5, never below 5
   confidence: medium            # low | medium | high — rubric below
   calculated_at: 2026-08-16T12:00:00Z   # current UTC instant (Timestamp rule, actions/work-reference.md)
   basis:                        # dominant sizing factors, echoed by the estimator
@@ -54,8 +54,8 @@ The output lines map directly onto the block: `p50_active_minutes`, `confidence`
 
 ## Confidence Rubric (deterministic — computed by the script)
 
-- **high** — trivial short-circuit, or Route A with a raw score ≤ 20 minutes.
-- **low** — Route C with a write set ≥ 15 files, ≥ 3 subsystems, or a raw score ≥ 180 minutes: wide scope, wide error bars.
+- **high** — trivial short-circuit, or Route A with a raw score ≤ 10 minutes.
+- **low** — Route C with a write set ≥ 15 files, ≥ 3 subsystems, or a raw score ≥ 75 minutes: wide scope, wide error bars.
 - **medium** — everything else.
 
 ## The Trivial Short-Circuit
@@ -87,6 +87,11 @@ Total estimated effort: 170 active minutes
 Estimated critical path: 145 active minutes
 ```
 
-## Calibration Honesty
+## Calibration
 
-There is **no historical actives data**: `claimed_at` → `completed_at` is wall-clock time including user pauses and suspended sessions, and **must never be subtracted to derive actual active time**. Until pause-aware execution timing exists, this estimator is pure prior — the scoring table encodes judgment, not measured history — and `actual_active_minutes` is not recorded. When such timing exists, actuals may calibrate *future* estimates; historical estimates are never modified.
+The scoring table is **calibrated to the archive's measured history** (2026-08-17): of 190 archived REQs carrying both `claimed_at` and `completed_at`, 188 were kept after excluding spans over 4 hours or negative (assumed user pauses / broken stamps). Route bases equal the measured per-route medians — A 4.7 → 5, B 9.2 → 10, C 21.4 → 20 minutes (n = 50/53/45) — which makes a signal-free estimate a true empirical P50; signal weights stretch heavy REQs toward the per-route p80 (A 8.7, B 17.8, C 37.5). Known bias, accepted: the corpus is mostly autonomous runs where wall ≈ active, and any un-filtered short pause inflates actuals slightly — so the table errs conservative.
+
+Two rules keep future calibration honest:
+
+- **`claimed_at` − `completed_at` must never be recorded as `actual_active_minutes`** — it is wall-clock time. It may be *analyzed* as a proxy under the outlier rule above (exclude spans > 4h or negative as assumed pauses), which is exactly how this table was fit and how the next re-fit should read the calibration log.
+- **Recalibration changes future estimates only.** Frozen estimates on claimed or archived REQs are never rewritten to match a new table.

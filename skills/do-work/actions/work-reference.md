@@ -140,7 +140,7 @@ effort_estimate: normal        # OPTIONAL triage bit: trivial | normal — separ
 # valid, and no scheduling, gating, or pipeline logic ever reads it. Written by the
 # work action's ensure-estimate step (post-triage) or by verify-requests after a
 # material repair, then FROZEN once execution begins — never rewritten with knowledge
-# gained during implementation. p50_active_minutes is a multiple of 5, never below 10;
+# gained during implementation. p50_active_minutes is a multiple of 5, never below 5;
 # it means roughly a 50% chance of completing within that many ACTIVE agent minutes
 # (user wait, paused/suspended sessions, and queue wait are excluded by definition).
 # Produced deterministically by tools/estimate-p50.sh from extracted signals; the
