@@ -593,9 +593,10 @@ diff -r "$fixture_root/last30days-interrupt-snapshot" "$backup_interrupt_project
 find "$backup_interrupt_project/.claude/skills" -name '.last30days.*' -print -quit | grep -q . \
   && fail_case 'install-last30days backup-interruption case leaked private paths'
 
-# cleanup-req-reservations: a marker whose REQ file landed is removed at any
-# zero-padding width and archive depth; non-marker entries stay untouched.
+# cleanup-req-reservations: a marker whose REQ file is committed is removed at
+# any zero-padding width and archive depth; non-marker entries stay untouched.
 reservation_project="$fixture_root/reservation-project"
+fixture_repo_init "$reservation_project"
 mkdir -p "$reservation_project/do-work/.req-reservations" \
   "$reservation_project/do-work/queue" \
   "$reservation_project/do-work/archive/UR-001"
@@ -604,6 +605,7 @@ printf 'req\n' > "$reservation_project/do-work/archive/UR-001/REQ-7-archived-fix
 : > "$reservation_project/do-work/.req-reservations/REQ-000203"
 : > "$reservation_project/do-work/.req-reservations/REQ-000007"
 : > "$reservation_project/do-work/.req-reservations/README"
+fixture_repo_commit_all "$reservation_project" 'captured fixtures'
 ln -s REQ-000203 "$reservation_project/do-work/.req-reservations/REQ-000777"
 reservation_output="$("$core_scripts/cleanup-req-reservations.sh" "$reservation_project")" \
   || fail_case 'cleanup-req-reservations redundant-marker case returned nonzero'
@@ -617,6 +619,26 @@ printf '%s' "$reservation_output" | grep -q 'removed 2 stale REQ reservation mar
   || fail_case 'cleanup-req-reservations redundant-marker case deleted a non-marker file'
 [ -L "$reservation_project/do-work/.req-reservations/REQ-000777" ] \
   || fail_case 'cleanup-req-reservations redundant-marker case deleted a symlinked marker'
+
+# cleanup-req-reservations: in a git work tree, a REQ file merely present on
+# disk is a capture still staging — its marker must survive until the capture
+# commits, then be reaped. Deleting early breaks capture's prescribed
+# `git add do-work/.req-reservations/REQ-NNNNNN`.
+printf 'req\n' > "$reservation_project/do-work/queue/REQ-500-inflight-fixture.md"
+: > "$reservation_project/do-work/.req-reservations/REQ-000500"
+reservation_uncommitted_output="$("$core_scripts/cleanup-req-reservations.sh" "$reservation_project")" \
+  || fail_case 'cleanup-req-reservations uncommitted-capture case returned nonzero'
+[ -z "$reservation_uncommitted_output" ] \
+  || fail_case 'cleanup-req-reservations uncommitted-capture case printed output while the capture was mid-flight'
+[ -f "$reservation_project/do-work/.req-reservations/REQ-000500" ] \
+  || fail_case 'cleanup-req-reservations uncommitted-capture case deleted a mid-capture marker'
+fixture_repo_commit_all "$reservation_project" 'captured REQ-500'
+reservation_committed_output="$("$core_scripts/cleanup-req-reservations.sh" "$reservation_project")" \
+  || fail_case 'cleanup-req-reservations committed-capture case returned nonzero'
+printf '%s' "$reservation_committed_output" | grep -q 'removed 1 stale REQ reservation marker' \
+  || fail_case 'cleanup-req-reservations committed-capture case did not reap the landed marker'
+[ ! -e "$reservation_project/do-work/.req-reservations/REQ-000500" ] \
+  || fail_case 'cleanup-req-reservations committed-capture case kept the landed marker'
 
 # cleanup-req-reservations: a young marker with no REQ file is a capture still in
 # flight — it must survive, and a run that removes nothing must print nothing.
@@ -646,7 +668,24 @@ reservation_absent_output="$("$core_scripts/cleanup-req-reservations.sh" "$reser
 [ -z "$reservation_absent_output" ] \
   || fail_case 'cleanup-req-reservations missing-directory case printed output with nothing to clean'
 
+# cleanup-req-reservations: a symlinked reservation directory is refused, so the
+# automatic hook can never delete files outside the project through the link —
+# a regular child reached through a symlinked parent passes a per-file -L check.
+reservation_symlink_project="$fixture_root/reservation-symlink-project"
+reservation_external_store="$fixture_root/reservation-external-store"
+mkdir -p "$reservation_symlink_project/do-work/queue" "$reservation_external_store"
+printf 'req\n' > "$reservation_symlink_project/do-work/queue/REQ-42-fixture.md"
+: > "$reservation_external_store/REQ-000042"
+touch -m -t 202001010000 "$reservation_external_store/REQ-000042"
+ln -s "$reservation_external_store" "$reservation_symlink_project/do-work/.req-reservations"
+reservation_symlink_output="$("$core_scripts/cleanup-req-reservations.sh" "$reservation_symlink_project")" \
+  || fail_case 'cleanup-req-reservations symlinked-directory case returned nonzero'
+[ -z "$reservation_symlink_output" ] \
+  || fail_case 'cleanup-req-reservations symlinked-directory case printed output for a refused store'
+[ -f "$reservation_external_store/REQ-000042" ] \
+  || fail_case 'cleanup-req-reservations symlinked-directory case deleted through the symlinked store'
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
-printf 'Prescribed shell script behavior probes passed (31 named script cases).\n'
+printf 'Prescribed shell script behavior probes passed (34 named script cases).\n'

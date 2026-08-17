@@ -12,7 +12,8 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 Reservation markers under `do-work/.req-reservations/` used to be kept forever; the directory only ever grew. A new script now reaps them mechanically — no agent involved — and the SessionStart hook runs it every session.
 
-- New `scripts/cleanup-req-reservations.sh`: removes a marker once its REQ file exists anywhere in queue/working/archive (the file itself then holds the number), or after a two-day timeout for a capture that never landed. Younger unmatched markers — captures in flight — are kept.
+- New `scripts/cleanup-req-reservations.sh`: removes a marker once its REQ file is committed anywhere in queue/working/archive (the file itself then holds the number), or after a two-day timeout for a capture that never landed. Younger unmatched markers — captures in flight — are kept, and committed-not-just-present is the trigger so a concurrent session can never delete a marker a capture is still staging.
+- The script refuses a symlinked `do-work/` or reservation directory outright — matching the allocator — so the automatic hook can never delete through a link pointing outside the project.
 - The two-day timeout revisits REQ-147's keep-forever decision: an abandoned number may now be reissued after the timeout, the accepted trade for a directory that stays clean.
 - The core SessionStart hook invokes the cleanup fail-soft and appends a one-line summary when anything was removed, so deletions get committed with normal housekeeping.
 
