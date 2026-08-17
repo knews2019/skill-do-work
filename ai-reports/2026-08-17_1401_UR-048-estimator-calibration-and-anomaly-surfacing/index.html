@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>UR-048 — Estimator Calibration and Anomaly Surfacing</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #faf7f1;
+    --surface: #fffdf8;
+    --surface-2: #f3ede2;
+    --text: #2b2721;
+    --muted: #6b6355;
+    --accent: #1f4b8f;
+    --accent-soft: #e3ebf7;
+    --rust: #9c4318;
+    --good: #2f6b3a;
+    --warn: #8a6100;
+    --rule: #ded4c2;
+    --display: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14120f;
+      --surface: #1d1a15;
+      --surface-2: #262119;
+      --text: #ece5d8;
+      --muted: #a79d8c;
+      --accent: #8fb4e8;
+      --accent-soft: #22303f;
+      --rust: #e09462;
+      --good: #86c08f;
+      --warn: #d9b45c;
+      --rule: #362f25;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+    font-size: 17px;
+    line-height: 1.62;
+  }
+  .page { width: 100%; padding: 0 clamp(20px, 2.6vw, 60px) 96px; }
+  .measure { max-width: 74ch; }
+  .kicker {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 10px;
+  }
+  header.masthead { padding: 56px 0 28px; border-bottom: 2px solid var(--text); }
+  h1 { font-size: clamp(32px, 3.6vw, 46px); line-height: 1.12; margin: 0 0 14px; font-weight: 600; letter-spacing: -.01em; }
+  h2 { font-size: clamp(24px, 2.2vw, 31px); line-height: 1.2; margin: 0 0 8px; font-weight: 600; }
+  h3 { font-size: 20px; margin: 0 0 6px; font-weight: 600; }
+  p { margin: 0 0 15px; }
+  a { color: var(--accent); }
+  section { padding: 44px 0; border-bottom: 1px solid var(--rule); }
+  section:last-of-type { border-bottom: 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; }
+  .row.equal { align-items: stretch; }
+  .row.equal > * { display: flex; flex-direction: column; }
+  .row.equal > * > :last-child { margin-bottom: 0; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 22px 24px;
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; font-family: var(--mono); font-size: 12px; }
+  .chip {
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    border-radius: 999px;
+    padding: 4px 11px;
+    color: var(--muted);
+  }
+  .chip strong { color: var(--text); font-weight: 600; }
+  .verdict {
+    background: var(--surface);
+    border-left: 5px solid var(--good);
+    border-top: 1px solid var(--rule);
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+    padding: 26px 28px;
+  }
+  .verdict p:first-of-type { font-size: 21px; line-height: 1.45; }
+  .lede { font-size: 19px; color: var(--text); }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { font-family: var(--mono); font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  td.num, th.num { font-variant-numeric: tabular-nums; }
+  code, kbd { font-family: var(--mono); font-size: .88em; background: var(--surface-2); padding: 1px 5px; border-radius: 2px; }
+  pre {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.55;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 2px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 0 0 14px;
+  }
+  pre code { background: none; padding: 0; }
+  .scroll-x { overflow-x: auto; }
+  figure { margin: 0 0 10px; }
+  figcaption { font-family: var(--mono); font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .mermaid { background: var(--surface); border: 1px solid var(--rule); border-radius: 3px; padding: 18px; }
+  .tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 2px;
+    background: var(--accent-soft);
+    color: var(--accent);
+    white-space: nowrap;
+  }
+  .tag.ran { background: transparent; border: 1px solid var(--good); color: var(--good); }
+  .tag.note { background: transparent; border: 1px solid var(--warn); color: var(--warn); }
+  .qbox { border-top: 3px solid var(--rust); background: var(--surface); padding: 22px 24px; }
+  .qbox h3 { font-family: var(--display); }
+  .qbox .rec { border-left: 3px solid var(--accent); padding-left: 14px; margin-top: 12px; }
+  .skip-banner {
+    background: var(--surface-2);
+    border: 1px dashed var(--muted);
+    padding: 16px 20px;
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+  .briefing { background: var(--surface); border: 1px solid var(--rule); border-top: 4px solid var(--accent); padding: 30px clamp(22px, 2.4vw, 40px); }
+  .briefing p { font-size: 18px; line-height: 1.68; margin-bottom: 17px; }
+  .briefing p:last-child { margin-bottom: 0; }
+  /* Two balanced text columns on wide screens keep the read-aloud script at a
+     sane measure without leaving half the band empty; one column when narrow. */
+  .briefing-body { columns: 2; column-gap: 44px; column-rule: 1px solid var(--rule); }
+  @media (max-width: 1180px) { .briefing-body { columns: 1; } }
+  .sidenote { background: var(--surface-2); border: 1px solid var(--rule); border-radius: 3px; padding: 20px 22px; font-size: 15px; }
+  .sidenote h3 { font-size: 17px; }
+  .sidenote p:last-child { margin-bottom: 0; }
+  footer { padding: 40px 0 0; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+  ul.tight { margin: 0 0 14px; padding-left: 20px; }
+  ul.tight li { margin-bottom: 6px; }
+  dl.idmap { margin: 0; font-size: 15px; }
+  dl.idmap div { display: flex; flex-wrap: wrap; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--rule); }
+  dl.idmap dt { font-family: var(--mono); font-size: 13px; flex: 0 0 108px; color: var(--accent); }
+  dl.idmap dd { margin: 0; flex: 1 1 320px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header class="masthead">
+  <p class="kicker">do-work suite · AI report · non-visual evidence mode</p>
+  <h1>Estimates learn from history; the board stops hiding impossible timestamps</h1>
+  <div class="row" style="margin-top:6px">
+    <p class="lede" style="flex: 3 1 44ch; max-width: 66ch; margin-bottom: 0;">Five requests under user request UR-048, delivered 17 August 2026, plus one round of pull-request review remediation merged on top. This report explains what changed, why it was worth doing, and how to check every claim yourself.</p>
+    <div class="chips" style="flex: 2 1 340px; align-content: flex-start;">
+      <span class="chip"><strong>UR-048</strong> · 5 REQs</span>
+      <span class="chip">status <strong>completed</strong> ×5</span>
+      <span class="chip">versions <strong>0.196.0 → 0.199.2</strong></span>
+      <span class="chip">latest commit <strong>e4c9510</strong></span>
+      <span class="chip">report generated <strong>2026-08-17 14:01 UTC</strong></span>
+      <span class="chip">evidence mode <strong>non-visual</strong></span>
+    </div>
+  </div>
+</header>
+
+<section id="verdict">
+  <p class="kicker">1 · Verdict</p>
+  <div class="row equal">
+    <div class="verdict" style="flex: 3 1 560px;">
+      <p><strong>Shipped and verified.</strong> All five requests in UR-048 are recorded <code>completed</code> with no <em>completed-with-issues</em> qualification, and every verification claim in the archive still holds when re-run today: the Go module for the board passes <code>go vet</code> and its tests, the estimator's determinism suite passes, and the board's <code>verify</code> command now exits non-zero on this very repository — exactly the behaviour the work was built to produce.</p>
+      <p>Two review findings raised during the work were not swept under the rug; they became REQ-214 and REQ-215 and both shipped in the same session. A later pull-request review (#140) produced four more accepted findings, fixed in commit <code>80103c0</code> and merged as <code>e4c9510</code>. One number in the archive record no longer matches reality, for a benign and verified reason — see <a href="#drift">the drift note</a>.</p>
+    </div>
+    <div class="sidenote" style="flex: 2 1 340px;">
+      <h3>At a glance</h3>
+      <table style="font-size:14.5px">
+        <tbody>
+          <tr><td>REQs delivered</td><td class="num"><strong>5</strong> (3 captured, 2 review-generated)</td></tr>
+          <tr><td>Calibration samples</td><td class="num"><strong>188</strong> of 190 spans</td></tr>
+          <tr><td>Estimator scale change</td><td class="num">bases <strong>10/25/45 → 5/10/20</strong> min</td></tr>
+          <tr><td>Review scores</td><td class="num">93–95%, all Pass</td></tr>
+          <tr><td>Important findings</td><td class="num">2, both shipped as follow-ups</td></tr>
+          <tr><td>Open decisions for you</td><td class="num"><strong>2</strong> — <a href="#decisions">section 10</a></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section id="briefing">
+  <p class="kicker">2 · Spoken briefing — read this aloud</p>
+  <h2>Briefing</h2>
+  <p class="measure" style="color:var(--muted);font-size:15px;">Written to be listened to: continuous prose, no shorthand, no file paths, nothing you need prior context to follow. Every identifier is explained the first time it appears.</p>
+  <div class="row">
+  <div class="briefing" style="flex: 5 1 620px;">
+   <div class="briefing-body">
+    <p>The headline is that the project's time estimator now predicts from measured history instead of from a guess, and the project's task board can no longer quietly render a finished task whose completion timestamp sits before its start timestamp. Five units of work delivered that on 17 August 2026, and all five verified clean.</p>
+
+    <p>Some background, because none of this makes sense without it. This repository builds do-work, a task-queue skill that coding agents install into their own projects. Work arrives as what the project calls a user request, meaning a durable written statement of what the maintainer wants, and it is then split into numbered requests, each of which is one implementable slice that runs through the pipeline on its own. The batch this report covers is UR 48, the user request titled calibrate the estimator from archive actuals and surface negative-duration anomalies. It came straight after UR 47, the user request that had built the estimator in the first place — a small script that prints a fifty-percent-confidence figure for how many active minutes a piece of work will take, before anyone starts on it.</p>
+
+    <p>The trouble with that estimator was that its numbers were never measured. Its starting figures had been lifted from a worked example in the design document, so it was guessing with the confidence of arithmetic. REQ 211, the re-fit of the estimator's scoring table to archive actuals, replaced those guesses with the record. One hundred and ninety completed requests in the archive carried both a claim timestamp and a completion timestamp. Two were discarded under a rule the maintainer set, namely that any span longer than four hours is assumed to be a paused session rather than four solid hours of work. That left one hundred and eighty-eight real measurements. Their medians, grouped by the three difficulty routes the pipeline uses, came out at 4.7 minutes for the light route, 9.2 minutes for the medium route, and 21.4 minutes for the heavy route — against the old starting figures of ten, twenty-five, and forty-five minutes. The estimator was between two and a half and five times too pessimistic. So the starting figures became five, ten, and twenty minutes, the minimum possible estimate dropped from ten minutes to five, and every add-on weight for things like a wide set of files or browser testing was divided by roughly two and a half. The provenance of that arithmetic — the sample counts, the outlier rule, the medians, and an honest note that wall-clock time is a slightly generous proxy for active time — was written into the estimator's reference document so the next person re-fitting it does not have to guess where the numbers came from.</p>
+
+    <p>Then came the obvious follow-on. Re-fitting the table required mining the version history by hand, which is exactly the kind of archaeology nobody wants to repeat. REQ 212, the archive-time calibration log, makes the system record its own accuracy from now on. Every time a completed request is archived, if it carried an estimate, the pipeline appends one line to a small tab-separated log holding the request identifier, its route, the minutes that were estimated, the raw minutes it actually took, and its completion timestamp. The log deliberately stores the raw span with no judgement applied, and the four-hour outlier rule is applied later, when the log is read. That split matters: it means a future maintainer can change the outlier rule without having lost the underlying data. The log already holds eight lines, seeded with this session's own work, and it makes a quietly uncomfortable point — REQ 208 was estimated at eighty-five minutes and took fourteen, and REQ 211 was estimated at thirty-five minutes and took three. The calibration was needed, and the log now proves it continuously.</p>
+
+    <p>The second half of the batch came out of the same archive mining. While measuring those spans, one archived request turned out to have finished six seconds before it was claimed, which is not physically possible for timestamps written in order. The usual cause is that one of the two stamps was written using local wall-clock time but labelled as universal time. The board, which is the human-readable view of the queue, had a check for suspicious completion data, but that check gave up as soon as the completion timestamp parsed successfully, so a reversed span sailed through and rendered as a perfectly normal card. REQ 213, the board's negative-duration anomaly detection, closed that hole. It fires only when both timestamps parse and the finish is strictly earlier than the start, it reuses the anomaly reporting channel that already existed rather than inventing a second one, and its message names both raw timestamps along with the likely cause and the fix.</p>
+
+    <p>That change was reviewed, and the review found two things worth its fee. The first was a genuine gap between what the work promised and what the code did: the board's mechanical checking command, called verify, was reporting no findings at all on a tree that the board's own summary said carried flagged anomalies, because verify only ever lifted duplicate-identifier warnings into findings. So REQ 214, verify surfaces completion anomalies as findings, added that probe — verify now reports each anomalous request and exits with a failure code, which means broken completion bookkeeping fails the mechanical gate instead of passing silently. The second finding was that all the shipped prose describing this family of anomalies still defined them as cases where the completion instant cannot be resolved, which is simply untrue for a reversed span whose completion instant resolves perfectly well. Worse, the warning line was telling people to re-stamp a timestamp that was already valid. REQ 215, the anomaly-class prose sync, fixed that in four places, and it also updated a test that had been pinning the self-contradictory wording in place.</p>
+
+    <p>After the batch was archived, a pull-request review on the branch — pull request one hundred and forty — produced four more findings, all accepted and fixed in one commit that also carried the version to 0.199.2. Three tightened the multi-request estimate summary so that dependency chains and unestimated members no longer distort it, and the fourth made verify honest in environments without version-control access: an anomaly that consists only of a commit hash the system cannot date is a missing tool, not a broken record, so it is reported as a skipped check rather than a failure. Genuine on-disk defects still fail.</p>
+
+    <p>There is one honest wrinkle worth stating plainly. During the work, the archive appeared to carry ten anomalies. Today the same commands report one. That is not a regression and not a silenced check: nine of the ten were requests whose recorded commit hashes the working copy could not resolve at the time, because those commits lived only on a branch that had not yet been merged. All two hundred and four recorded hashes resolve now, so those nine were never archive defects at all. The one that remains is the genuinely reversed span, REQ 91, and repairing an archived timestamp is the maintainer's call rather than something a tool should rewrite on its own.</p>
+
+    <p>What all of this is worth, in plain terms: estimates are now defensible rather than decorative, they will keep improving without anyone doing archaeology, and a class of bookkeeping corruption that used to be invisible now fails a check instead of rotting quietly in the archive. The one decision waiting on the maintainer is whether to repair REQ 91's timestamp, because until it is repaired, the board's mechanical check will keep exiting with a failure on this repository — which is the check working as designed, but it does mean any automation that treats that command as a gate is currently red.</p>
+   </div>
+  </div>
+  <div class="sidenote" style="flex: 1 1 280px;">
+    <h3>Listening notes</h3>
+    <p>Roughly nine minutes read aloud. Nine paragraphs, in order: headline, background, the estimator re-fit, the calibration log, the board's reversed-span detection, what the review caught, the pull-request remediation, the one honest wrinkle, and what it is all worth.</p>
+    <p>Nothing here needs a screen. Every identifier is defined in place, and the one decision that needs you is in the last paragraph.</p>
+    <p style="margin-bottom:0">The appendix in section 12 is the part to skip — it is paths, line numbers, and commands, which do not survive being spoken.</p>
+  </div>
+  </div>
+</section>
+
+<section id="shipped">
+  <p class="kicker">3 · What shipped</p>
+  <h2>Five requests, two themes</h2>
+  <div class="row equal">
+    <div class="card" style="flex: 3 1 460px;">
+      <h3>Theme one — the estimator learns</h3>
+      <p><strong>REQ-211</strong> re-fit the P50 estimator's scoring table to 188 measured archive spans. Route bases moved from 10/25/45 minutes to 5/10/20, the floor from 10 to 5, and all twelve signal weights were divided by ≈2.5. The confidence rubric was re-anchored to the new scale. Calibration provenance is recorded where the next re-fit will look for it.</p>
+      <p><strong>REQ-212</strong> made archiving self-recording: every archived REQ carrying an <code>estimate:</code> block appends one line to <code>do-work/calibration-log.tsv</code> with its estimate, its raw wall span, and its completion stamp. Raw on write, filtered on read.</p>
+    </div>
+    <div class="card" style="flex: 3 1 460px;">
+      <h3>Theme two — the board tells the truth</h3>
+      <p><strong>REQ-213</strong> taught <code>detectCompletionAnomaly</code> to flag a reversed span (<code>completed_at</code> strictly before <code>claimed_at</code>), reusing the existing anomaly channel with no new fields.</p>
+      <p><strong>REQ-214</strong> — generated by REQ-213's review — made <code>queue-kanban verify</code> lift those anomalies into findings and exit non-zero, closing a gap where verify reported <em>OK: no findings</em> while the board's own strip showed flagged tickets.</p>
+      <p><strong>REQ-215</strong> — also review-generated — swept four places whose prose still defined an anomaly as an unresolvable completion instant, including a warning line that told users to re-stamp an already-valid timestamp.</p>
+    </div>
+  </div>
+</section>
+
+<section id="problem">
+  <p class="kicker">4 · Problem and change</p>
+  <h2>What was wrong before</h2>
+  <div class="row">
+    <div style="flex: 2 1 520px;">
+      <table>
+        <thead><tr><th>Before</th><th>After</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Route bases 10 / 25 / 45 min, inherited from a spec worked example. The worked example printed <span class="num">125</span> minutes; <code>--trivial</code> printed <span class="num">10</span>.</td>
+            <td>Bases 5 / 10 / 20 min — the measured medians. Same worked example prints <span class="num">50</span>; <code>--trivial</code> prints <span class="num">5</span>. <span class="tag ran">re-run today</span></td>
+          </tr>
+          <tr>
+            <td>Comparing an estimate to reality required mining git history by hand.</td>
+            <td>Every archived estimated REQ appends its own estimate-vs-actual line to a five-column TSV log.</td>
+          </tr>
+          <tr>
+            <td><code>detectCompletionAnomaly</code> returned early as soon as <code>completed_at</code> parsed, so a reversed span rendered as a normal card.</td>
+            <td>A parsed-but-reversed span is flagged with both raw stamps, the likely cause, and the fix.</td>
+          </tr>
+          <tr>
+            <td><code>queue-kanban verify</code> printed <em>OK: no findings</em>, exit 0, on a tree the board's own summary flagged.</td>
+            <td>verify emits one finding per anomalous ticket and exits 1. <span class="tag ran">re-run today</span></td>
+          </tr>
+          <tr>
+            <td>Guide, chip legend, warning line, and a web comment all defined an anomaly as "completion instant can't be resolved".</td>
+            <td>All four read true for every anomaly class; the warning routes to the per-class reason instead of restating a fix that self-contradicted.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card" style="flex: 1 1 300px;">
+      <h3>Why the estimator was wrong, not just imprecise</h3>
+      <p>An estimate derived from a design document's illustration is a prior dressed as a measurement. Measured against 188 real spans it ran 2.5–5× high. The fix was not to nudge it but to replace its scale with the distribution it was supposed to be describing.</p>
+      <p style="margin-bottom:0"><strong>Acknowledged bias:</strong> wall-clock span is used as a proxy for active time. For this corpus the runs were autonomous, so the proxy is close; where it errs it errs upward, keeping estimates mildly conservative. That caveat is recorded in the reference file, not just in a commit message.</p>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <p class="kicker">5 · How it works</p>
+  <h2>Two flows, both now closed loops</h2>
+  <div class="row">
+    <figure style="flex: 1 1 100%;">
+      <div class="mermaid">
+flowchart LR
+  A["REQ captured<br/>route A / B / C"] --> B["estimate-p50.sh<br/>base + signal weights"]
+  B --> C["estimate: block<br/>frozen at claim"]
+  C --> D["work runs"]
+  D --> E["archive substep 7.5<br/>append one TSV line"]
+  E --> F["calibration-log.tsv<br/>raw wall spans"]
+  F -. "&gt;4h excluded" .-> G["next re-fit"]
+  G -. "new constants" .-> B
+      </div>
+      <figcaption>Diagram, hand-authored from the current code — not a capture. The dashed edges are the loop REQ-211 and REQ-212 closed: the estimator now feeds a log that feeds the next calibration. The log stores raw spans; the read-time rule that excludes spans over four hours as paused sessions is applied by whoever re-fits, never at write time.</figcaption>
+    </figure>
+    <figure style="flex: 3 1 620px; min-width: 300px;">
+      <div class="mermaid">
+flowchart TD
+  A["archived REQ frontmatter<br/>claimed_at, completed_at, commit"] --> B["detectCompletionAnomaly"]
+  B -->|"completed &lt; claimed<br/>(both parse)"| C["CompletionAnomaly<br/>+ reason naming both stamps"]
+  B -->|"ordered / absent / unparseable"| D["other checks' territory"]
+  C --> E["summary strip"]
+  C --> F["generated board payload"]
+  C --> G["never-silent warning"]
+  C --> H["verify findings<br/>exit 1"]
+      </div>
+      <figcaption>Diagram, hand-authored from the current code — not a capture. REQ-213 added the reversed-span branch; REQ-214 added the fourth consumer, which had never existed despite being promised.</figcaption>
+    </figure>
+    <div class="sidenote" style="flex: 2 1 320px;">
+      <h3>Why the gate had a hole</h3>
+      <p>Three of the four consumers on the right already existed. The board's summary strip, the generated payload the web view reads, and the "never-silent" warning line all consumed the anomaly flag — so a human looking at the board would see the problem.</p>
+      <p>The fourth, <code>verify</code>, is the one a script or a pre-commit habit calls. It had never been wired in: it lifted only duplicate-identifier warnings into findings. So the anomaly was visible to a person and invisible to automation, which is the wrong way round.</p>
+      <p style="margin-bottom:0">REQ-213's requirement text asserted <code>verify</code> already surfaced the class. The review checked the consumer instead of trusting the claim, which is how the gap was found rather than shipped.</p>
+    </div>
+  </div>
+</section>
+
+<section id="value">
+  <p class="kicker">6 · Value delivered</p>
+  <h2>What the maintainer gets</h2>
+  <div class="row equal">
+    <div class="card" style="flex:1 1 300px;">
+      <h3>Estimates you can defend</h3>
+      <p style="margin-bottom:0">A signal-free estimate for a route is now that route's empirical median from 188 samples, with the sample count, outlier rule, and bias direction recorded next to the number. When an estimate is questioned, the answer is a measurement rather than a rationale.</p>
+    </div>
+    <div class="card" style="flex:1 1 300px;">
+      <h3>Calibration without archaeology</h3>
+      <p style="margin-bottom:0">The next re-fit reads a log instead of reconstructing history from commits. Because raw spans are stored and filtering happens at read time, the outlier rule can be changed later without the underlying data having been thrown away.</p>
+    </div>
+    <div class="card" style="flex:1 1 300px;">
+      <h3>Corruption that fails loudly</h3>
+      <p style="margin-bottom:0">Impossible completion bookkeeping now fails a mechanical check rather than rendering as a normal card. The check reports and routes; it never rewrites archived frontmatter, so repair stays a deliberate human act.</p>
+    </div>
+    <div class="card" style="flex:1 1 300px;">
+      <h3>Documentation that matches the code</h3>
+      <p style="margin-bottom:0">Every surface describing an anomaly now reads true for all four classes, and each class states its own fix where it is detected — so a new class cannot inherit a stale, self-contradicting instruction.</p>
+    </div>
+  </div>
+  <p class="measure" style="margin-top:22px;color:var(--muted)">No throughput, cost, or adoption figures are claimed. The measurable figures in this report are the calibration samples and the estimator's own outputs, both reproducible from the commands below.</p>
+</section>
+
+<section id="evidence">
+  <p class="kicker">7 · Evidence</p>
+  <h2>Receipts</h2>
+  <p class="measure"><strong>UI captures were not expected for this work.</strong> The change set is a shell estimator, a Go command-line tool's detection and verification logic, and action prose. The receipts below are real terminal output captured while writing this report on 2026-08-17, plus the archive's own recorded test results.</p>
+
+  <div class="row">
+    <div style="flex: 1 1 420px;">
+      <h3>The calibrated estimator, run now</h3>
+      <pre><code>$ skills/do-work/tools/estimate-p50.sh --trivial
+p50_active_minutes: 5
+$ ... --route A   → 5      ... --route B   → 10
+... --route C   → 20
+
+$ ... --route C --write-set 12 --browser \
+      --persistence --full-suite
+p50_active_minutes: 50
+confidence: medium
+basis:
+- Route C
+- 12-file write set
+- browser evidence
+- persistence changes
+- full-suite verification</code></pre>
+      <p style="font-size:15px;color:var(--muted)">The archive's recorded RED state for these same invocations was 125 and 10. <span class="tag ran">run 2026-08-17</span></p>
+    </div>
+
+    <div style="flex: 1 1 420px;">
+      <h3>The board's verify, run now</h3>
+      <pre><code>$ ./skills/do-work-board/tools/queue-kanban/queue-kanban verify
+queue-kanban verify — /Users/…/skill-do-work2
+  ! completion-anomaly: REQ-091 (status completed):
+    completed_at "2026-08-04T00:25:54Z" is earlier than
+    claimed_at "2026-08-04T00:26:00Z" — a reversed span
+    cannot be real; one stamp is usually local wall-clock
+    time written with a Z suffix; rewrite the wrong stamp
+    with the true UTC instant
+      → repair the named frontmatter field(s) …
+  - skipped version-vs-changelog probes: no version file …
+VERIFY_EXIT=1</code></pre>
+      <p style="font-size:15px;color:var(--muted)">Before REQ-214 this printed <code>OK: no findings</code> and exit 0. <span class="tag ran">run 2026-08-17</span></p>
+    </div>
+
+    <div style="flex: 1 1 420px;">
+      <h3>The calibration log, as it stands</h3>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th>REQ</th><th>Route</th><th class="num">Estimated</th><th class="num">Actual</th></tr></thead>
+        <tbody>
+          <tr><td>REQ-208</td><td>B</td><td class="num">85</td><td class="num">14</td></tr>
+          <tr><td>REQ-209</td><td>B</td><td class="num">60</td><td class="num">14</td></tr>
+          <tr><td>REQ-210</td><td>A</td><td class="num">25</td><td class="num">2</td></tr>
+          <tr><td>REQ-211</td><td>B</td><td class="num">35</td><td class="num">3</td></tr>
+          <tr><td>REQ-212</td><td>B</td><td class="num">30</td><td class="num">2</td></tr>
+          <tr><td>REQ-213</td><td>B</td><td class="num">35</td><td class="num">10</td></tr>
+          <tr><td>REQ-214</td><td>B</td><td class="num">10</td><td class="num">2</td></tr>
+          <tr><td>REQ-215</td><td>A</td><td class="num">10</td><td class="num">2</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p style="font-size:15px;color:var(--muted);margin-top:10px">Minutes. The first five lines were priced with the pre-calibration table; REQ-214 and REQ-215 are the first two priced by the calibrated one, and they land far closer.</p>
+    </div>
+
+    <div style="flex: 1 1 420px;">
+      <h3>Tests, re-run today</h3>
+      <pre><code>$ go vet ./...            # queue-kanban module
+exit 0
+$ go test -count=1 ./...
+ok  …/queue-kanban   8.238s   exit 0
+
+$ bash _dev/tests/p50-estimator-determinism.sh
+p50 estimator suite: all probes passed.   EXIT=0</code></pre>
+      <p style="font-size:15px;color:var(--muted)">The archive additionally records a full <code>maintainer-verify.sh</code> pass per REQ with a FAIL set identical to a known 41-failure environment baseline. <span class="tag note">not re-run for this report</span> — that gate's baseline is environment-specific and its result is reported as recorded, not as re-verified.</p>
+    </div>
+  </div>
+</section>
+
+<section id="files">
+  <p class="kicker">8 · Key files and commits</p>
+  <h2>Where the change lives</h2>
+  <div class="scroll-x">
+  <table>
+    <thead><tr><th>REQ</th><th>Commit</th><th>Route</th><th>Files and role</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong>REQ-211</strong><br><span style="color:var(--muted)">Calibrate scoring table</span></td>
+        <td><code>fcef829</code></td><td>B</td>
+        <td><code>skills/do-work/tools/estimate-p50.sh</code> — 17 constants plus a provenance comment · <code>_dev/tests/p50-estimator-determinism.sh</code> — 9 re-pinned anchors · <code>actions/estimate-reference.md</code> — floor, rubric, Calibration section · <code>actions/work-reference.md</code> — schema comment sync</td>
+      </tr>
+      <tr>
+        <td><strong>REQ-212</strong><br><span style="color:var(--muted)">Calibration log</span></td>
+        <td><code>2a93e0e</code></td><td>B</td>
+        <td><code>actions/work.md</code> — archive substep 7.5 and both Step 9 staging lists · <code>actions/estimate-reference.md</code> — names the log as the re-fit input · <code>do-work/calibration-log.tsv</code> — new, header plus backfill</td>
+      </tr>
+      <tr>
+        <td><strong>REQ-213</strong><br><span style="color:var(--muted)">Reversed-span detection</span></td>
+        <td><code>c3a0a6d</code></td><td>B</td>
+        <td><code>queue-kanban/model.go</code> — reversed-span branch in <code>detectCompletionAnomaly</code> · <code>completion_anomaly_test.go</code> — flagged and not-flagged tables</td>
+      </tr>
+      <tr>
+        <td><strong>REQ-214</strong><br><span style="color:var(--muted)">verify lifts anomalies</span></td>
+        <td><code>594be62</code></td><td>B</td>
+        <td><code>queue-kanban/verify.go</code> — category constant, <code>appendCompletionAnomalyFindings</code>, wiring · <code>verify_test.go</code> — one probe test</td>
+      </tr>
+      <tr>
+        <td><strong>REQ-215</strong><br><span style="color:var(--muted)">Anomaly prose sweep</span></td>
+        <td><code>4be0ed4</code></td><td>A</td>
+        <td><code>do-work-board/docs/board-guide.md</code> — strip definition and chip legend · <code>model.go</code> — warning suffix defers to the per-class reason · <code>web/board-cards.js</code> — corrected comment · <code>completion_anomaly_test.go</code> — stale pin updated</td>
+      </tr>
+      <tr>
+        <td><strong>PR #140</strong><br><span style="color:var(--muted)">Review remediation</span></td>
+        <td><code>80103c0</code><br><code>e4c9510</code> <span class="tag">merge</span></td><td>—</td>
+        <td>Four accepted findings: <code>actions/work.md</code> and <code>estimate-reference.md</code> — estimate-summary counting, legacy <code>dependencies:</code> alias, unestimated members as zero-minute vertices · <code>verify.go</code> / <code>verify_test.go</code> — hash-only anomalies route to skipped probes when git is unavailable</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+
+  <div class="card" id="drift" style="margin-top:24px;border-left:4px solid var(--warn)">
+    <h3>Current-code drift from the archive record</h3>
+    <div class="row" style="gap:36px">
+    <p style="flex:1 1 420px"><strong>REQ-214's <code>verify.go</code> has changed since its commit.</strong> Commit <code>80103c0</code> added a branch that routes hash-only completion anomalies to <em>skipped probes</em> when git or the repository is unavailable, on the reasoning that an undatable-but-valid hash is a missing tool rather than a data defect. Every other anomaly class still fails the check. REQ-214's recorded behaviour is therefore a subset of what ships today.</p>
+    <p style="flex:1 1 420px;margin-bottom:0"><strong>The "ten anomalies" figure no longer reproduces, and that is benign.</strong> REQ-214's record and the 0.199.0 changelog entry both cite ten flagged tickets. Today <code>verify</code> and the board summary each report one. Verified cause: nine of the ten were archived REQs whose recorded <code>commit:</code> hashes the working copy could not resolve at the time, because those commits existed only on the unmerged branch. A sweep of all 204 archived <code>commit:</code> hashes today resolves every one, so those nine were never archive defects. The remaining anomaly is REQ-091's genuinely reversed span. No skip branch fired in today's run — the only skipped probe reported is the unrelated version-file probe.</p>
+    </div>
+  </div>
+</section>
+
+<section id="verify">
+  <p class="kicker">9 · Verify it yourself</p>
+  <h2>Commands</h2>
+  <p class="measure">Run from the repository root. The first four were executed while writing this report; the last two are instructions, not results.</p>
+  <div class="row">
+    <div style="flex:1 1 440px">
+      <p><span class="tag ran">run · exit 0</span></p>
+      <pre><code>skills/do-work/tools/estimate-p50.sh --route B
+skills/do-work/tools/estimate-p50.sh --trivial
+bash _dev/tests/p50-estimator-determinism.sh</code></pre>
+      <p><span class="tag ran">run · exit 0</span></p>
+      <pre><code>cd skills/do-work-board/tools/queue-kanban \
+  &amp;&amp; go vet ./... &amp;&amp; go test -count=1 ./...</code></pre>
+      <p><span class="tag ran">run · exit 1 by design</span></p>
+      <pre><code>go build -o skills/do-work-board/tools/queue-kanban/queue-kanban \
+  ./skills/do-work-board/tools/queue-kanban
+./skills/do-work-board/tools/queue-kanban/queue-kanban verify
+./skills/do-work-board/tools/queue-kanban/queue-kanban summary</code></pre>
+    </div>
+    <div style="flex:1 1 440px">
+      <p><span class="tag ran">run · 204 hashes, 0 unresolvable</span></p>
+      <pre><code>for f in $(grep -rl '^commit: [0-9a-f]' do-work/archive \
+             --include='*.md'); do
+  h=$(grep -m1 '^commit: ' "$f" | awk '{print $2}')
+  git show -s --format=%cI "$h" >/dev/null 2>&amp;1 \
+    || echo "UNDATABLE $f $h"
+done</code></pre>
+      <p><span class="tag note">instruction · not run for this report</span></p>
+      <pre><code># Canonical merge-aware commit inspection
+skills/do-work/scripts/show-commit-diff.sh fcef829
+skills/do-work/scripts/show-commit-diff.sh e4c9510
+
+# The project's canonical baseline gate
+bash _dev/tests/maintainer-verify.sh</code></pre>
+      <p style="font-size:15px;color:var(--muted);margin-bottom:0">Use <code>show-commit-diff.sh</code> rather than plain <code>git show</code>: <code>e4c9510</code> is a merge commit, and a plain combined diff can read as empty.</p>
+    </div>
+  </div>
+</section>
+
+<section id="decisions">
+  <p class="kicker">10 · Decisions for you</p>
+  <h2>Two open decisions, with recommendations</h2>
+  <div class="row equal">
+    <div class="qbox" style="flex:1 1 440px">
+      <h3>Should REQ-091's reversed timestamp be repaired, and if so, by whom?</h3>
+      <p><strong>Context.</strong> One archived request, REQ-091, records a completion instant six seconds before its claim instant — almost certainly a local wall-clock time written with a UTC <code>Z</code> suffix. Since REQ-214 shipped, <code>queue-kanban verify</code> exits non-zero on this repository because of it. Repairing archived frontmatter is deliberately outside every tool's write surface, so it needs a human decision.</p>
+      <p><strong>Why it matters.</strong> The mechanical gate is currently red on a clean tree. If any automation, hook, or habit treats a green <code>verify</code> as the precondition for committing or releasing, that signal is now permanently red until the stamp is fixed — which trains people to ignore it. Ignoring a check is worse than not having one.</p>
+      <p><strong>Trade-off.</strong> Editing an archived record rewrites history and sets a precedent that archive frontmatter is mutable; the wrong true instant is also unknowable now, so any repair is a best estimate. Leaving it alone preserves the record exactly but keeps the gate red and normalises a failing check.</p>
+      <div class="rec"><strong>Recommendation:</strong> repair it, as an explicit owner-authored commit that states in its message that the stamp was corrected and why — one honest edit with visible provenance beats an indefinitely red gate. Set <code>completed_at</code> to the claim instant plus the observed work duration if that is recoverable, otherwise to the claim instant itself, and note the estimate in the commit message.</div>
+    </div>
+    <div class="qbox" style="flex:1 1 440px">
+      <h3>Should the estimator be re-fit now that the log shows the calibration still runs high?</h3>
+      <p><strong>Context.</strong> The calibration log's first eight lines show every estimate exceeding its actual — REQ-208 at 85 estimated against 14 actual, REQ-213 at 35 against 10. The first two REQs priced by the calibrated table, REQ-214 and REQ-215, were estimated at 10 minutes and took 2. The re-fit reduced the error substantially but did not remove it.</p>
+      <p><strong>Why it matters.</strong> An estimator that is consistently 3–5× high on the signal-bearing cases will be silently discounted by whoever reads it, which is functionally the same as not having one. But the eight samples are all from two autonomous sessions on one machine, which is a thin and possibly unrepresentative basis.</p>
+      <p><strong>Trade-off.</strong> Re-fitting now risks chasing noise and locking in a bias from a single fast session; churn also costs a re-pin of nine lock-in tests each time. Waiting collects a broader sample but leaves the known upward bias in place, and the bias is in the direction the calibration record already declared acceptable.</p>
+      <div class="rec"><strong>Recommendation:</strong> wait. Do not re-fit until the log holds roughly 30 lines spanning more than one session, then re-fit the <em>signal weights</em> rather than the route bases — the eight samples show the bases landing reasonably and the per-signal surcharges overshooting. This is a deliberate defer, not an oversight; the log now accumulates the evidence without further effort.</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:24px">
+    <h3>Reported, no decision needed</h3>
+    <p style="margin-bottom:0">Three minor findings were recorded as report-only and remain open by choice: the confidence rubric's constants are restated in reference prose and pinned only by tests; the calibration log's wall-minutes lack an explicit rounding rule in prose, so two agents could differ by one minute; and an anomalous ticket inside the recent window appears in both the anomaly strip and <em>Recently done</em>. The third was flagged as wanting a deliberate policy decision eventually, but nothing depends on it today.</p>
+  </div>
+</section>
+
+<section id="lessons">
+  <p class="kicker">11 · Lessons and open questions</p>
+  <h2>What the session learned</h2>
+  <div class="row">
+    <div style="flex:2 1 500px">
+      <h3>Worth keeping</h3>
+      <p><strong>Running the stale test pins as the RED phase</strong> turned a 17-constant recalibration into a real red-green cycle: nine probes failed naming the exact old values, then went green on the re-pin. Arithmetic was never trusted on its own.</p>
+      <p><strong>Constraining the reviewer to hands-on execution</strong> — run the binary, probe the edges — found the gap that mattered. No static read would have noticed that a never-silent warning existed while nothing consumed it.</p>
+      <p><strong>Uniqueness-asserted anchor rewrites</strong> (assert exactly one match before replacing) made a seventeen-constant edit safe in one pass.</p>
+      <h3 style="margin-top:20px">Worth not repeating</h3>
+      <p>REQ-213's requirements named "verify's never-silent line" from a capture-time assumption nobody re-checked against <code>verify.go</code>. The builder noticed the mismatch and quietly dropped the word "verify" from its summary instead of surfacing the discrepancy — the false premise survived into a shipped contract and cost a follow-up REQ. The lesson recorded: <em>verify the consumer, not just the producer, when naming a reporting contract.</em></p>
+      <p>A first insert was numbered 8.5 while physically placed before substep 8; and the baseline gate was once invoked from the Go module's working directory, exiting 127 with an empty log. Anchor placement and label must be decided together, and relative-path gates run from the repository root.</p>
+    </div>
+    <div class="card" style="flex:1 1 320px">
+      <h3>Open questions in the archive</h3>
+      <p>None of the five REQs left an unresolved <code>## Open Questions</code> section. All decisions were recorded as decided-and-stated, including two that a future re-fit will want to know about: the confidence low-threshold was set to a raw score of 75 (about twice the heavy route's p80) rather than the arithmetically scaled 72, purely for a rounder number; and a zero-length span with identical stamps stays legal, because only a strictly reversed span is impossible.</p>
+      <p style="margin-bottom:0"><strong>Absent optional evidence:</strong> no screenshots or assets exist for any of the five REQs, which is expected for this change set. Every REQ carries a recorded commit hash, testing record, and review verdict; nothing required was missing.</p>
+    </div>
+  </div>
+</section>
+
+<section id="appendix">
+  <p class="kicker">12 · Reference appendix</p>
+  <h2>Appendix — skip when listening</h2>
+  <div class="skip-banner">
+    This section is exact paths, line numbers, paste-ready commands, and an identifier map. It is deliberately unreadable aloud. Stop the audio here.
+  </div>
+
+  <div class="row">
+    <div style="flex:1 1 460px">
+      <h3>Exact locations</h3>
+      <div class="scroll-x">
+      <table>
+        <thead><tr><th>Path : line</th><th>What is there</th></tr></thead>
+        <tbody>
+          <tr><td><code>skills/do-work/tools/estimate-p50.sh:33-38</code></td><td>Calibration provenance comment; <code>floor_minutes=5</code></td></tr>
+          <tr><td><code>skills/do-work/tools/estimate-p50.sh:167-170</code></td><td>Route bases: A=5, B=10, C=20</td></tr>
+          <tr><td><code>skills/do-work/actions/estimate-reference.md:90</code></td><td><code>## Calibration</code> — sample counts, outlier rule, medians, bias direction</td></tr>
+          <tr><td><code>skills/do-work/actions/estimate-reference.md:94</code></td><td>Names <code>do-work/calibration-log.tsv</code> as the re-fit input</td></tr>
+          <tr><td><code>skills/do-work/actions/work.md:590</code></td><td>Archive substep 7.5 — the calibration-log append</td></tr>
+          <tr><td><code>skills/do-work/actions/work.md:617,619</code></td><td>Both Step 9 staging enumerations naming the log</td></tr>
+          <tr><td><code>…/queue-kanban/model.go:1220</code></td><td><code>detectCompletionAnomaly</code> entry point</td></tr>
+          <tr><td><code>…/queue-kanban/model.go:1229-1232</code></td><td>Reversed-span branch and its reason string</td></tr>
+          <tr><td><code>…/queue-kanban/model.go:372</code></td><td>Call site inside <code>buildBoard</code></td></tr>
+          <tr><td><code>…/queue-kanban/verify.go:32</code></td><td><code>verifyCategoryCompletionAnomaly</code> constant</td></tr>
+          <tr><td><code>…/queue-kanban/verify.go:119</code></td><td>Probe wired into <code>runVerifyProbes</code></td></tr>
+          <tr><td><code>…/queue-kanban/verify.go:270-288</code></td><td><code>appendCompletionAnomalyFindings</code>, including the git-unavailable skip added by <code>80103c0</code></td></tr>
+          <tr><td><code>skills/do-work-board/docs/board-guide.md:35</code></td><td>Chip legend — "broken completion bookkeeping (unresolvable or reversed span)"</td></tr>
+          <tr><td><code>…/queue-kanban/web/board-cards.js:399-412</code></td><td>Anomalies-strip rendering and the corrected comment</td></tr>
+          <tr><td><code>do-work/calibration-log.tsv</code></td><td>Header plus 8 rows</td></tr>
+          <tr><td><code>do-work/archive/UR-048/</code></td><td><code>input.md</code> plus the five archived REQ files</td></tr>
+        </tbody>
+      </table>
+      </div>
+      <p style="font-size:14px;color:var(--muted)">Board paths abbreviated as <code>…/queue-kanban/</code> = <code>skills/do-work-board/tools/queue-kanban/</code>. Line numbers are as of commit <code>e4c9510</code>.</p>
+    </div>
+
+    <div style="flex:1 1 400px">
+      <h3>Paste-ready</h3>
+      <pre><code># Estimator: measured medians per route
+skills/do-work/tools/estimate-p50.sh --route A
+skills/do-work/tools/estimate-p50.sh --route B
+skills/do-work/tools/estimate-p50.sh --route C
+skills/do-work/tools/estimate-p50.sh --trivial
+
+# The spec's worked example (was 125, now 50)
+skills/do-work/tools/estimate-p50.sh --route C \
+  --write-set 12 --browser --persistence --full-suite
+
+# Estimator lock-in suite
+bash _dev/tests/p50-estimator-determinism.sh
+
+# Board module: vet + tests
+cd skills/do-work-board/tools/queue-kanban
+go vet ./... &amp;&amp; go test -count=1 ./...
+
+# Rebuild and run the board's checks (from repo root)
+go build -o skills/do-work-board/tools/queue-kanban/queue-kanban \
+  ./skills/do-work-board/tools/queue-kanban
+./skills/do-work-board/tools/queue-kanban/queue-kanban verify
+./skills/do-work-board/tools/queue-kanban/queue-kanban summary
+
+# Merge-aware commit inspection (never plain git show)
+skills/do-work/scripts/show-commit-diff.sh fcef829   # REQ-211
+skills/do-work/scripts/show-commit-diff.sh 2a93e0e   # REQ-212
+skills/do-work/scripts/show-commit-diff.sh c3a0a6d   # REQ-213
+skills/do-work/scripts/show-commit-diff.sh 594be62   # REQ-214
+skills/do-work/scripts/show-commit-diff.sh 4be0ed4   # REQ-215
+skills/do-work/scripts/show-commit-diff.sh 80103c0   # PR #140 fixes
+skills/do-work/scripts/show-commit-diff.sh e4c9510   # merge
+
+# The full range these commits span
+git log --oneline b8baa17..e4c9510
+
+# Canonical baseline gate (not re-run for this report)
+bash _dev/tests/maintainer-verify.sh</code></pre>
+
+      <h3>URLs</h3>
+      <ul class="tight" style="font-size:15px">
+        <li>Pull request 140: <code>https://github.com/knews2019/skill-do-work/pull/140</code></li>
+        <li>Repository: <code>https://github.com/knews2019/skill-do-work</code></li>
+        <li>Changelog entries 0.196.0 – 0.199.2: <code>CHANGELOG.md</code> (mirrored byte-identical at <code>skills/do-work/CHANGELOG.md</code>)</li>
+      </ul>
+    </div>
+
+    <div style="flex:1 1 380px">
+      <h3>Identifier map</h3>
+      <dl class="idmap">
+        <div><dt>UR-048</dt><dd>User request: calibrate the estimator from archive actuals; surface negative-duration anomalies. Captured 2026-08-17T08:05:43Z.</dd></div>
+        <div><dt>UR-047</dt><dd>Predecessor user request that built the P50 estimator (REQ-208, REQ-209, REQ-210).</dd></div>
+        <div><dt>REQ-211</dt><dd>Calibrate the estimator scoring table to archive actuals. Commit <code>fcef829</code>. Review 95%.</dd></div>
+        <div><dt>REQ-212</dt><dd>Record estimate-vs-wall calibration log at archive time. Commit <code>2a93e0e</code>. Review 94%.</dd></div>
+        <div><dt>REQ-213</dt><dd>Board surfaces negative claimed→completed duration as a completion anomaly. Commit <code>c3a0a6d</code>. Review 94%, 2 important findings promoted to follow-ups.</dd></div>
+        <div><dt>REQ-214</dt><dd>verify surfaces completion anomalies as findings. Review-generated from REQ-213 Important 1. Commit <code>594be62</code>. Review 94%.</dd></div>
+        <div><dt>REQ-215</dt><dd>Sync completion-anomaly prose with the reversed-span class. Review-generated sweep from REQ-213 Important 2. Commit <code>4be0ed4</code>. Review 93%.</dd></div>
+        <div><dt>REQ-091</dt><dd>Unrelated archived request that carries the one genuine reversed span — the live example this work surfaces.</dd></div>
+        <div><dt>REQ-208/209/210</dt><dd>UR-047's members: the estimator script, its wiring into the work action, and recalculation after repairs.</dd></div>
+        <div><dt>PR #140</dt><dd>Pull request carrying the estimation branch; its review produced four accepted findings fixed in <code>80103c0</code>.</dd></div>
+        <div><dt>Route A/B/C</dt><dd>The pipeline's difficulty tiers — light, medium, heavy. Now priced at 5, 10, and 20 minutes with no signals.</dd></div>
+        <div><dt>P50</dt><dd>The median: the estimate half of comparable work finishes within. No P80 is published, by design.</dd></div>
+        <div><dt>0.196.0 – 0.199.2</dt><dd>The suite versions this work shipped under, one per REQ plus 0.199.2 for the PR remediation.</dd></div>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Report generated 2026-08-17 14:01 UTC from <code>do-work/archive/UR-048/</code>, the merge-aware commit record, and live inspection of the current code at <code>e4c9510</code>. Non-visual evidence mode: UI captures were not expected for this work. Terminal transcripts are real captured output; the two flow diagrams are hand-authored explanation, not evidence. Values quoted from <code>maintainer-verify.sh</code> are reported as recorded in the archive, not re-verified for this report.</p>
+</footer>
+
+</div>
+<script>
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+      fontSize: '13px',
+      primaryColor: getComputedStyle(document.documentElement).getPropertyValue('--surface-2').trim(),
+      primaryTextColor: getComputedStyle(document.documentElement).getPropertyValue('--text').trim(),
+      primaryBorderColor: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
+      lineColor: getComputedStyle(document.documentElement).getPropertyValue('--muted').trim(),
+      secondaryColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim(),
+      tertiaryColor: getComputedStyle(document.documentElement).getPropertyValue('--surface').trim()
+    },
+    flowchart: { useMaxWidth: true, htmlLabels: true, padding: 12 }
+  });
+</script>
+</body>
+</html>
