@@ -6,6 +6,7 @@ created_at: 2026-08-17T08:25:24Z
 claimed_at: 2026-08-17T08:30:14Z
 route: A
 completed_at: 2026-08-17T08:32:42Z
+commit: 4be0ed4
 user_request: UR-048
 addendum_to: REQ-213
 review_generated: true
