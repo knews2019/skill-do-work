@@ -3,7 +3,7 @@ id: REQ-205
 title: Make portfolio publication independent and exact
 status: completed
 completed_at: 2026-08-17T18:45:53Z
-commit:
+commit: 4a0b90e
 claimed_at: 2026-08-17T18:41:41Z
 status_changed_at: 2026-08-17T18:10:49Z
 route: B
