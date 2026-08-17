@@ -103,7 +103,7 @@ Use the resolved target's canonical archive ID for the preferred directory:
 do-work/deliverables/<canonical-ID>-video/
 ```
 
-Use that directory as this consumer's preferred path and apply the shared reference's **Collision-Safe Publication** section to the entire source project before writing any file. Use the one final path selected by that contract for every source file and for the result report.
+Use that directory as this consumer's preferred path and apply the shared reference's **Collision-Safe Publication** section to the entire source project before writing any file. Report the path that contract resolved.
 
 Write only the source tree from Step 4. Do not install dependencies, start Studio, add a media-rendering script, invoke a renderer, or create MP4 or other rendered media.
 

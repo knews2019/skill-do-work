@@ -111,4 +111,5 @@ A skill or action description is loaded whether or not the thing gets used, so i
 - [REQ-199: promote portfolio publication into one executable owner and publish immutable output before mutable canonical state](../../do-work/archive/REQ-199-publish-portfolio-snapshot-before-canonical-refresh.md#lessons-learned)
 - [REQ-201: test active canonical delegation at execution boundaries and reject semantic restatements, not only copied keywords](../../do-work/archive/REQ-201-deduplicate-completed-work-publication-mechanics.md#lessons-learned)
 - [REQ-204: state both runtime boundaries in the prose beside the block so contract and code cannot drift](../../do-work/archive/REQ-204-harden-ai-report-generated-batch-lifecycle.md#lessons-learned)
+- [REQ-206: `require(file, token)` tests vocabulary, not behavior — anchor an active directive to its step](../../do-work/archive/REQ-206-finish-active-publication-delegation.md#lessons-learned)
 - [REQ-203: a substring match on a verb is not an assertion about meaning — police active directives with a replayed mutation matrix](../../do-work/archive/REQ-203-harden-presentation-target-id-source-seam.md#lessons-learned)

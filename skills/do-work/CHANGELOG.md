@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.199.6 — Publication Delegation Is Now Tested as Delegation (2026-08-17)
+
+`present-video` still described the whole output-path algorithm in its own words, and the test meant to stop that was satisfied by any mention of the shared contract anywhere in the file — including the checklist line that merely claims the contract was followed. The paraphrase is gone and the test now looks for an active directive at the step that actually creates output.
+
+- Deleted the last locally restated publication algorithm from `present-video` Step 5; the preferred directory and result reporting stay
+- Delegation now requires a word-bounded application directive that precedes output creation, in both live consumers
+- A Verification Checklist or Rules mention no longer satisfies the assertion on its own
+- Local wording equivalent to "one final path for every file" is rejected in either word order
+- Both consumers are replayed through the two mutations, so a vacuous assertion fails loudly
+
 ## 0.199.5 — Portfolio Snapshots Are Now Genuinely Immutable (2026-08-17)
 
 A timestamped portfolio snapshot and the canonical summary were the same file under two names, so editing the canonical summary afterwards silently rewrote the snapshot you asked to preserve. They are now independent files published from the same verified bytes. Both publication steps also check where they actually landed, because `ln` and `mv` treat a directory in the destination's place as a container rather than a collision.
