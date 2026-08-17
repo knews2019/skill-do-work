@@ -3,7 +3,7 @@ id: REQ-216
 title: Teach atomic-download retry and optional credentials
 status: completed
 completed_at: 2026-08-17T19:04:40Z
-commit:
+commit: 27e8ff9
 claimed_at: 2026-08-17T18:57:52Z
 created_at: 2026-08-17T17:16:28Z
 route: A
