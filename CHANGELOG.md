@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.195.1 — Verify Repairs Refresh Estimates (2026-08-17)
+
+When verify-requests materially changes a REQ while applying fixes, it now recalculates that REQ's P50 estimate in the same pass — so a repaired scope never carries a stale price. Untouched REQs keep their estimates byte-identical.
+
+- Repaired REQs without an estimate get one derived on the spot
+- Only pending queue REQs are ever recalculated — claimed and archived estimates stay frozen
+- Read-only decision revalidation explicitly never touches estimates
+- The verify wiring is contract-locked to the shipped estimator, like the work wiring
+
 ## 0.195.0 — Work Runs Print P50 Estimates (2026-08-17)
 
 Every work run now prices the REQ before building it: right after triage — when the route is known — the pipeline ensures an `estimate:` block exists and prints the P50 active-duration forecast before planning starts. REQs captured before estimates existed get one automatically at first selection.

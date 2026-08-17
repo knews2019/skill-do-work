@@ -1970,6 +1970,7 @@ hardened_check_scripts=(
   "scripts/protected-inventory.sh|actions/commit.md"
   "scripts/protected-inventory.sh|actions/inspect.md"
   "tools/estimate-p50.sh|actions/work.md"
+  "tools/estimate-p50.sh|actions/verify-requests.md"
 )
 
 for check_script_entry in "${hardened_check_scripts[@]}"; do

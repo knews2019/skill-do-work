@@ -167,6 +167,7 @@ After presenting the report:
      3. If the user defers ("let the builder decide") → add as `- [~] [question] → Builder decides`
      4. If the user can't answer now → add as unresolved `- [ ]` with choices. The builder will use best judgment when it picks up the REQ.
 3. Re-score after fixes to confirm improvement (Resolved Ambiguous items that resulted in new requirements being added DO affect the re-score. Items left as `- [ ]` or `- [~]` don't.)
+4. **Recalculate the estimate after a material repair.** If the applied fixes materially changed a REQ's scope — added or changed requirements, constraints, acceptance criteria, or the Red-Green Proof, not cosmetic rewording — refresh that REQ's `estimate:` frontmatter block: follow `actions/estimate-reference.md` (extract the REQ's signals, run `<skill-root>/tools/estimate-p50.sh`), replace the block with the new result, stamp a fresh `calculated_at` (Timestamp rule, `actions/work-reference.md`), and update `basis` to reflect the changed scope. A repaired REQ with **no** prior estimate gets one the same way. REQs this step did not modify keep their estimates byte-untouched, and only `pending`/`pending-answers` queue REQs are ever recalculated — a claimed or archived REQ's estimate is frozen (`actions/work.md` Step 3.6). Mention the refreshed figure alongside the re-score. Estimation never blocks: on any failure, note it and finish the verify flow normally.
 
 ## Scoring Guidelines
 
@@ -267,7 +268,7 @@ Omit an empty candidate section. If there are no candidates, say so and still re
 - Don't classify something as Ambiguous when the answer is in the original input — that's an Important gap. Ambiguous means the *user's input itself* doesn't contain the answer.
 - Don't block on verification — it's advisory, not a gate (unless the user wants it as a gate)
 - Don't set `status: pending-answers` on REQs after verify — that status is for follow-ups from the work/review pipeline. Verify already tried to ask the user; any remaining `- [ ]` items stay on a `pending` REQ and the builder will use best judgment.
-- In decision-revalidation mode, don't offer capture-QA Step 7 edits, change any queue status, or scan claimed/archive content — report candidates and stop.
+- In decision-revalidation mode, don't offer capture-QA Step 7 edits, change any queue status, recalculate any `estimate:` block, or scan claimed/archive content — report candidates and stop.
 
 ## Verification Checklist
 
