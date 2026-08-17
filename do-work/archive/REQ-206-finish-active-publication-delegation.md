@@ -3,7 +3,7 @@ id: REQ-206
 title: Finish active publication delegation
 status: completed
 completed_at: 2026-08-17T18:55:01Z
-commit:
+commit: af2a4d7
 claimed_at: 2026-08-17T18:49:31Z
 status_changed_at: 2026-08-17T18:10:49Z
 route: B
