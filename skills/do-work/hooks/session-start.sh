@@ -46,3 +46,18 @@ if [ -f "$CLEANUP_SCRIPT" ]; then
     echo "$CLEANUP_SUMMARY"
   fi
 fi
+
+# Mechanical housekeeping: repair detectably wrong queue/working timestamps
+# (future beyond the 2-minute skew allowance, impossible orderings) before any
+# agent or board render reads them — see scripts/repair-req-timestamps.sh for
+# the detection and derivation rules. Guarded like the cleanup above so a
+# partial install can never break the status banner; `|| true` instead of
+# discarding, because on a tripped guard the script's failure lines ARE the
+# audit trail and must reach the banner.
+REPAIR_SCRIPT="$SKILL_ROOT/scripts/repair-req-timestamps.sh"
+if [ -f "$REPAIR_SCRIPT" ]; then
+  REPAIR_SUMMARY="$(bash "$REPAIR_SCRIPT" "${CLAUDE_PROJECT_DIR:-.}" 2>/dev/null)" || true
+  if [ -n "$REPAIR_SUMMARY" ]; then
+    echo "$REPAIR_SUMMARY"
+  fi
+fi
