@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.7 — Every Timestamp Template Points at the Rule (2026-08-18)
+
+An agent filling in a template rarely goes looking for the rule behind it, so a template that just says "put a timestamp here" invites a guessed one — which is exactly how three fabricated stamps got written. Every one of those spots now points at the rule, and a check keeps it that way.
+
+- 24 uncited timestamp sites across all four skills now carry an inline pointer to the Timestamp rule, including the `session.json` templates an agent copies verbatim
+- The check recognizes sites by shape rather than by spelling, so `<ISO 8601 timestamp>`, `{timestamp}` and a bare `"<iso>"` under an `*_at` key are all caught — an earlier version keyed on the word in square brackets and was blind to every spelling it had not already seen
+- Date-only stamps and directory names are excluded by shape too, so nothing needs a list of exempt files
+- No site got a copy of the clock command: the rule's own paragraph stays the only place in `actions/` that spells one
+
 ## 0.212.6 — Panel B's Slowest-Day Figure Stops Printing Through Its Own Heading (2026-08-18)
 
 On a board whose slowest day happened to fall under the heading, the little "209 min" note printed straight through "Median minutes per active day". It only stayed hidden here by luck of where that day landed — so the fix removes the luck rather than widening the gap.

@@ -10,7 +10,6 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-- REQ-244: Cite the Timestamp rule at every timestamp write site — claimed 2026-08-18T13:05:12Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Completed This Session
 

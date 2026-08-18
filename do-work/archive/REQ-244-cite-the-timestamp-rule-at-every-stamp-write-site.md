@@ -1,7 +1,7 @@
 ---
 id: REQ-244
 title: Cite the Timestamp rule at every timestamp write site
-status: claimed
+status: completed
 created_at: 2026-08-18T12:28:33Z
 user_request: UR-055
 domain: general
@@ -26,6 +26,9 @@ write_set:
 - skills/do-work-toolbox/actions/deep-explore-reference.md
 - skills/do-work-knowledge/actions/interview.md
 - skills/do-work-knowledge/actions/interview-reference.md
+- skills/do-work-knowledge/actions/dream.md
+- skills/do-work-toolbox/actions/stray-check.md
+- skills/do-work-toolbox/actions/inspect.md
 estimate:
   p50_active_minutes: 55
   confidence: low
@@ -40,6 +43,8 @@ estimate:
     - full-suite verification
 claimed_at: 2026-08-18T13:05:12Z
 route: C
+completed_at: 2026-08-18T14:04:36Z
+commit:
 ---
 
 # Cite the Timestamp Rule at Every Timestamp Write Site
@@ -330,3 +335,55 @@ Nothing shipped is broken and `maintainer-verify.sh` exits 0 under the reviewer'
 - Scope exact: the 13 declared files, nothing under `do-work/`, no version or changelog file, no board path.
 
 *Reviewed by work action*
+
+## Review Remediation
+
+All five findings closed on the builder's own branch and re-merged; the cumulative merge range for this REQ is `37d7729..f733365`.
+
+**F2 was the root cause, and it is fixed at the root.** The check keyed on a literal `[…]` span containing the word "timestamp" — an enumeration of *spellings*, one level up from where D-03 had checked for one. Recognition is now keyed on **shape**: a placeholder short enough to name a value rather than be prose (≤30 characters of inner text, or wrapping a nested placeholder), assigned to something, that either denotes a clock value by name **or is the value of an `*_at` key**. That last clause quotes the rule's own stated trigger — *"every `*_at` field in this schema, and any timestamp a future field adds"* — rather than inventing a predicate.
+
+**The decisive design point: recognition went broad while the requirement stayed narrow.** A new spelling is *recognized*, so it gets normalized rather than silently accepted; only `<timestamp>` and `<now>` satisfy the spelling requirement. Names are excluded by **shape, not by exception** — a `/` inside the placeholder, or a `-`/`/` glued to its outside, means it names a path, so `work-<YYYY-MM-DD-HHMMSS>` and `v<N>-<date>/` are skipped with no path list anywhere. Date-only placeholders are recognized and counted but not required to cite, which is what keeps `[today]` and `note.md`'s `[YYYY-MM-DD]` out of scope without a file list doing it.
+
+Every spelling the reviewer showed escaping is now caught **for a named reason**, verified against probe files each carrying an already-cited baseline site so the zero-site guard cannot be what fires: `[timestamp]`, `<ISO 8601 timestamp>`, `{timestamp}`, `"<iso>"`, `<YYYY-MM-DDTHH:MM:SSZ>`, and one the reviewer did not list — `blocked_at: <the moment it blocked>`, a placeholder with no clock word in its name, caught by the key it is assigned to.
+
+Six controls confirm it does not over-reach, three of which were real false positives designed out during the build: a quoted prose sentence containing "now", the PowerShell format string in the rule's own home (`Get-Date` matches `\bdate\b` and `HH:mm` nearly matches the time shape), and a long bracketed descriptor. `**Date**: [today]` is *recognized* — the date-only count goes to 1 — and not required to cite, which proves recognition and requirement are genuinely separate rather than a detector that cannot see it.
+
+**F1 — all 12 sites swept**, reproduced against a pre-remediation tree taken with `git archive`, each failing both clauses. The 42 sites already cited stayed green, so nothing regressed into the widened net. GREEN reports **54 instant write sites cited, 17 date-only recognized** — up from 43, being the 12 newly recognized less one the name-shape rule correctly reclassified as a directory name.
+
+**F3 — `dream.md` reclassified.** `dream.md:59` writes a real instant (the `.lock` file, compared against a 5-minute mtime window), so filing it under date-only was wrong even though the file also holds genuine date-only sites. Fixed, and the builder stated plainly that **the check cannot see this site** — it is a prose instruction with no placeholder — rather than leaving the gap implied.
+
+**F5 — the four in-fence YAML comments moved to prose above their fences**, removing the `lenientFrontmatterFields` hazard the first commit introduced. This deletes a mechanism rather than adding one, and brings those four templates onto the same pattern as the six report templates.
+
+**F4 — the record is corrected, and the correction is the point.** The original hand-back's GREEN, `OK: 43 stamp sites, all cited`, came from `check.py`, a prototype written before the check existed — not from the committed checker, which printed nothing on success and could not have produced that line. The run happened and the count was right, but a prototype's output was presented under a sentence claiming provenance it did not have. In a REQ about agents writing values they did not read, that is the REQ's own failure mode appearing in its hand-back. The committed check now prints its counts on success, so there is a real success line to quote and this class of confusion cannot recur.
+
+**Reported, not fixed:** `capture-reference.md:16,29,142,168`, `work-reference.md:152,165,187,198,207` and `estimate-reference.md:21` carry the same trailing-`#`-comment shape on `*_at` lines inside fences. They predate this REQ and mostly carry literal example values as a documentation schema rather than a copy-template — but `capture-reference.md:16` sits inside the template capture actually copies, and is the same shape F5 objects to.
+
+**Verification:** `bash _dev/tests/maintainer-verify.sh` exit 0, unpiped, on the builder's branch and again on the integrated tree.
+
+*Remediation verified by work action*
+
+### Qualification override — `qualify.sh` false positive, judged not silenced
+
+`tools/checks/qualify.sh` FAILs this REQ's remediation range with:
+
+```
+FAIL: [UNIFY] is checked but the diff adds debug artifacts — un-check it and flag:
+  155:+print(
+```
+
+**Read rather than rationalized** (Qualification Anti-Rationalization Table, row 3: "The builder checked the UNIFY box → Read the actual diff for debug artifacts"). The flagged line is `_dev/tests/contract-regressions.sh`'s new **success output**, and it is the fix F4 required:
+
+```python
+if failures:
+    raise SystemExit("timestamp citation failures:\n- " + "\n- ".join(failures))
+print(
+    f"Timestamp rule citation contract: {instant_site_count} instant write sites cited, "
+    f"{date_only_site_count} date-only sites recognized."
+)
+```
+
+It sits after the failure raise, is the check's only success line, and exists specifically so that a future hand-back has a real transcript to quote instead of a prototype's — which is the defect F4 named. It also gives the zero-site guard a visible counterpart. Removing it would reintroduce F4's failure mode.
+
+`maintainer-verify.sh` exits 0 and prints that very line, so the output is a checked contract rather than stray instrumentation.
+
+**Overridden by the orchestrator, deliberately and on the record.** The heuristic is right to be suspicious of a bare `print(` appearing in a diff; it cannot distinguish a check's own reporting from leftover instrumentation. That limitation is captured as its own follow-up rather than worked around silently — see REQ-254.
