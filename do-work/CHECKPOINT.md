@@ -11,7 +11,6 @@ session_depth: heavy
 ## In Progress (interrupted)
 
 - REQ-255: Give the timestamp repairer shape parity with the read-side detectors — claimed 2026-08-18T20:08:45Z — writer: vm:/home/user/skill-do-work
-- REQ-256: Disclose the session hook's queue write surface in the docs — claimed 2026-08-18T20:08:45Z — writer: vm:/home/user/skill-do-work
 
 ## Completed This Session
 

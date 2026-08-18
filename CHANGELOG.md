@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.18 — The Docs Disclose the Session Hook's Write Surface (2026-08-18)
+
+A consumer auditing "what writes to my repo at session start" now gets a straight answer.
+
+- README's hook description says session-start.sh also writes to queue files: reaping stale REQ-number reservations and mechanically repairing detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/`.
+- `actions/capture.md` documents the session-start stamp repair beside the Immutability Rule's archive-audit exception — the same metadata-correction class, never the archive.
+
 ## 0.212.17 — Measured Board Constants Name Their Browser (2026-08-18)
 
 A browser-measured number that names no build cannot be re-derived or argued with — two sessions proved it by measuring the same face on different Chromium builds and colliding at integration.
