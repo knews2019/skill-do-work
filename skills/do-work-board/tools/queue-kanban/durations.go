@@ -1,7 +1,9 @@
 package main
 
 import (
+	"math"
 	"sort"
+	"strconv"
 	"time"
 )
 
@@ -40,6 +42,21 @@ type DurationSample struct {
 	// Why the read-time rule excluded this sample from the day medians:
 	// "paused" (over the ceiling), "reversed" (negative), or "" when it counts.
 	DayMedianExclusion string
+
+	// The REQ's effort_estimate bucket, normalized ("trivial" or "normal";
+	// absent reads as normal, per the closed two-value enum in model.go). Panel
+	// A and the medians ignore it; the Timeline's forward projection splits its
+	// medians by it, and carrying it here is what lets that projection read the
+	// bucket off a sample the read-time rule has ALREADY classified rather than
+	// re-walking the tickets and re-deciding what counts.
+	EffortEstimate string
+
+	// Direct-label verdict, decided by planDurationLabels. LabelRow is the text
+	// row inside this sample's band, or durationsLabelRowUnplaced when the
+	// collision rule could not fit a label. LabelAnchor is the SVG text-anchor
+	// the placement assumed, "" when unplaced.
+	LabelRow    int
+	LabelAnchor string
 }
 
 // ExcludedFromDayMedian reports whether the read-time rule holds this sample out
@@ -68,6 +85,11 @@ type DurationDay struct {
 type DurationAggregate struct {
 	Samples []DurationSample
 	Days    []DurationDay
+
+	// One verdict per direct-label band. The placed labels carry their row on
+	// the sample; these carry what could not be placed.
+	OverflowLabels DurationLabelBand
+	ReversedLabels DurationLabelBand
 }
 
 // buildDurationAggregate derives the Durations view's data from tickets the
@@ -92,6 +114,7 @@ func buildDurationAggregate(tickets []*RequestTicket) DurationAggregate {
 			DayKey:             completedInstant.UTC().Format("2006-01-02"),
 			WallMinutes:        wallSpan.Minutes(),
 			DayMedianExclusion: dayMedianExclusionReason(wallSpan),
+			EffortEstimate:     ticket.EffortEstimate,
 		})
 	}
 
@@ -99,6 +122,7 @@ func buildDurationAggregate(tickets []*RequestTicket) DurationAggregate {
 		return aggregate.Samples[earlier].CompletionTime.Before(aggregate.Samples[later].CompletionTime)
 	})
 	aggregate.Days = buildDurationDays(aggregate.Samples)
+	aggregate.OverflowLabels, aggregate.ReversedLabels = planDurationLabels(aggregate.Samples)
 	return aggregate
 }
 
@@ -167,4 +191,239 @@ func medianOf(values []float64) (float64, bool) {
 		return sorted[middle], true
 	}
 	return (sorted[middle-1] + sorted[middle]) / 2, true
+}
+
+// ---- direct-label placement -------------------------------------------------
+//
+// Panel A draws a direct label beside a mark only where the mark carries a value
+// its y cannot: the overflow lane, where every mark sits at one y so the text is
+// the only carrier of magnitude, and the reversed band. WHICH of those marks get
+// a label is decided here rather than in the renderer, so the rule has one
+// reader — the lesson REQ-219 recorded about this very view.
+//
+// The geometry below is the SVG's own user-unit space, the space its viewBox
+// defines. The chart is width:100% over a fixed viewBox, so a label's share of
+// the plot is identical at every browser zoom and window width; user units are
+// the only frame in which the question has a stable answer.
+
+const (
+	// durationsPlotWidthUnits mirrors the renderer's DURATIONS_VIEW_WIDTH minus
+	// its two margins, and durationsOverflowCeilingMinutes its
+	// DURATIONS_CEILING_MINUTES. TestDurationLabelGeometryMatchesTheRenderer
+	// pins both against web/board-durations.js so they cannot drift apart.
+	durationsPlotWidthUnits         = 1128.0
+	durationsOverflowCeilingMinutes = 60.0
+
+	// A label's width is estimated per character rather than measured. The exact
+	// answer needs getComputedTextLength, which exists only after render and
+	// would move this decision back into the client. The estimate is deliberately
+	// generous for the 11px sans face: over-estimating drops a label, which is
+	// visible and counted, while under-estimating overprints one, which is the
+	// defect this rule exists to fix.
+	durationsLabelCharacterWidthUnits = 6.2
+
+	// Mark centre to the near edge of its text, matching the renderer's offset.
+	durationsLabelGapUnits = 9.0
+
+	// Minimum clear space between two labels sharing a row.
+	durationsLabelSeparationUnits = 6.0
+
+	// Text rows available in each band. Each band packs its own rows; they have
+	// unrelated local densities and never share a counter.
+	durationsLabelRowCount = 2
+
+	// Width held back at the right edge of each band's LAST row for the remainder
+	// sentence, sized from the widest sentence the renderer can compose rather
+	// than from the composed string: the count is not known until placement has
+	// finished. The last row rather than the first because the marks themselves
+	// sit level with the first, so a sentence there is legible only while the
+	// band is sparse — which is exactly when there is no remainder to print.
+	durationsLabelRemainderReserveUnits = 24 * durationsLabelCharacterWidthUnits
+
+	// LabelRow for a sample the collision rule could not place.
+	durationsLabelRowUnplaced = -1
+)
+
+// DurationLabelBand is one direct-label band's verdict: how many of its samples
+// could not be placed. A nonzero count is drawn on the chart as a remainder, so
+// a reader can never mistake the visible labels for all of them.
+type DurationLabelBand struct {
+	HiddenCount int
+}
+
+// durationLabelWidthUnits estimates the space a sample's label text occupies.
+func durationLabelWidthUnits(sample DurationSample) float64 {
+	return float64(len(durationLabelText(sample))) * durationsLabelCharacterWidthUnits
+}
+
+// durationLabelText is the label the renderer draws for one sample. It exists
+// here because the placement rule has to size the text it is placing.
+func durationLabelText(sample DurationSample) string {
+	return sample.RequestId + " " + formatDurationLabelMinutes(sample.WallMinutes)
+}
+
+// formatDurationLabelMinutes mirrors the renderer's formatDurationMinutes. Only
+// the character count matters to placement, so this stays a width model rather
+// than becoming a second definition of the view's copy.
+func formatDurationLabelMinutes(minutes float64) string {
+	magnitude := math.Abs(minutes)
+	sign := ""
+	if minutes < 0 {
+		sign = "-"
+	}
+	if magnitude < 60 {
+		return sign + strconv.FormatFloat(magnitude, 'f', 1, 64) + " min"
+	}
+	hours := int(magnitude) / 60
+	remainder := int(math.Round(magnitude - float64(hours*60)))
+	return sign + strconv.Itoa(hours) + "h " + strconv.Itoa(remainder) + "m"
+}
+
+// durationLabelTimeRange is the x-axis domain the renderer uses: first to last
+// completion instant across every sample, overflow and ordinary alike. Placement
+// has to share that domain or a label would be sized against a different plot
+// than the one it lands on.
+func durationLabelTimeRange(samples []DurationSample) (time.Time, time.Time, bool) {
+	if len(samples) == 0 {
+		return time.Time{}, time.Time{}, false
+	}
+	rangeStart := samples[0].CompletionTime
+	rangeEnd := samples[0].CompletionTime
+	for _, sample := range samples {
+		if sample.CompletionTime.Before(rangeStart) {
+			rangeStart = sample.CompletionTime
+		}
+		if sample.CompletionTime.After(rangeEnd) {
+			rangeEnd = sample.CompletionTime
+		}
+	}
+	return rangeStart, rangeEnd, true
+}
+
+// durationLabelPlotX places one completion instant in plot-local user units,
+// 0 at the plot's left edge and durationsPlotWidthUnits at its right. A
+// zero-width domain collapses to a single column, exactly as the renderer's
+// `timeSpan || 1` guard does.
+func durationLabelPlotX(completionTime time.Time, rangeStart time.Time, rangeEnd time.Time) float64 {
+	domainSeconds := rangeEnd.Sub(rangeStart).Seconds()
+	if domainSeconds <= 0 {
+		return 0
+	}
+	return (completionTime.Sub(rangeStart).Seconds() / domainSeconds) * durationsPlotWidthUnits
+}
+
+// durationLabelBandOf reports which direct-label band a sample belongs to, or ""
+// when it carries no direct label at all. The two bands sit at different heights
+// with unrelated local densities, so they are packed independently.
+func durationLabelBandOf(sample DurationSample) string {
+	switch {
+	case sample.WallMinutes < 0:
+		return "reversed"
+	case sample.WallMinutes > durationsOverflowCeilingMinutes:
+		return "overflow"
+	default:
+		return ""
+	}
+}
+
+// planDurationLabels decides which samples get a direct label. Each band packs
+// its own rows: walk that band's samples left to right and give each the first
+// row where its text touches nothing already placed there. A sample that fits
+// nowhere is counted rather than drawn, and the renderer prints that count, so
+// a reader can never mistake the visible labels for all of them.
+func planDurationLabels(samples []DurationSample) (DurationLabelBand, DurationLabelBand) {
+	for index := range samples {
+		samples[index].LabelRow = durationsLabelRowUnplaced
+		samples[index].LabelAnchor = ""
+	}
+	rangeStart, rangeEnd, hasRange := durationLabelTimeRange(samples)
+	if !hasRange {
+		return DurationLabelBand{}, DurationLabelBand{}
+	}
+	return packDurationLabelBand(samples, "overflow", rangeStart, rangeEnd),
+		packDurationLabelBand(samples, "reversed", rangeStart, rangeEnd)
+}
+
+// packDurationLabelBand runs the greedy pass, at most twice. The remainder
+// sentence needs room at row 0's right edge, but whether there IS a remainder is
+// only known once placement has finished — so the first pass uses the full
+// width, and only a pass that actually dropped something is redone with the
+// reservation held back. A board with no remainder pays nothing for one.
+func packDurationLabelBand(samples []DurationSample, bandName string, rangeStart time.Time, rangeEnd time.Time) DurationLabelBand {
+	band := placeDurationLabelBand(samples, bandName, rangeStart, rangeEnd, false)
+	if band.HiddenCount == 0 {
+		return band
+	}
+	return placeDurationLabelBand(samples, bandName, rangeStart, rangeEnd, true)
+}
+
+// placeDurationLabelBand is one greedy left-to-right pass over a single band.
+// Samples arrive in completion order, so their x positions are non-decreasing
+// and a row's occupancy is fully described by how far right it already reaches.
+func placeDurationLabelBand(
+	samples []DurationSample,
+	bandName string,
+	rangeStart time.Time,
+	rangeEnd time.Time,
+	reserveRemainder bool,
+) DurationLabelBand {
+	occupiedTo := make([]float64, durationsLabelRowCount)
+	for rowIndex := range occupiedTo {
+		occupiedTo[rowIndex] = math.Inf(-1)
+	}
+
+	band := DurationLabelBand{}
+	for index := range samples {
+		if durationLabelBandOf(samples[index]) != bandName {
+			continue
+		}
+		samples[index].LabelRow = durationsLabelRowUnplaced
+		samples[index].LabelAnchor = ""
+
+		markX := durationLabelPlotX(samples[index].CompletionTime, rangeStart, rangeEnd)
+		textWidth := durationLabelWidthUnits(samples[index])
+		for rowIndex := 0; rowIndex < durationsLabelRowCount; rowIndex++ {
+			rowRightEdge := durationsPlotWidthUnits
+			if reserveRemainder && rowIndex == durationsLabelRowCount-1 {
+				rowRightEdge -= durationsLabelRemainderReserveUnits
+			}
+			// Anchoring BEFORE the mark is tried first, and the preference is a
+			// packing decision rather than a stylistic one: this walk moves left
+			// to right, so a label drawn to the mark's left reuses space the walk
+			// has already passed, while one drawn to its right consumes space the
+			// next mark still needs. Anchoring after the mark is the fallback that
+			// keeps the leftmost sample labellable, since its own label would
+			// otherwise start off-plot. Neither is an alternation: both are
+			// geometric decisions about one specific label.
+			spanLeft, spanRight, anchorFits := durationLabelSpan(markX, textWidth, "end", rowRightEdge)
+			anchor := "end"
+			if !anchorFits || spanLeft < occupiedTo[rowIndex]+durationsLabelSeparationUnits {
+				spanLeft, spanRight, anchorFits = durationLabelSpan(markX, textWidth, "start", rowRightEdge)
+				anchor = "start"
+			}
+			if !anchorFits || spanLeft < occupiedTo[rowIndex]+durationsLabelSeparationUnits {
+				continue
+			}
+			samples[index].LabelRow = rowIndex
+			samples[index].LabelAnchor = anchor
+			occupiedTo[rowIndex] = spanRight
+			break
+		}
+		if samples[index].LabelRow == durationsLabelRowUnplaced {
+			band.HiddenCount++
+		}
+	}
+	return band
+}
+
+// durationLabelSpan is the x-interval one label would occupy at one anchor, and
+// whether that interval stays inside the plot.
+func durationLabelSpan(markX float64, textWidth float64, anchor string, rowRightEdge float64) (float64, float64, bool) {
+	spanLeft := markX + durationsLabelGapUnits
+	spanRight := spanLeft + textWidth
+	if anchor == "end" {
+		spanRight = markX - durationsLabelGapUnits
+		spanLeft = spanRight - textWidth
+	}
+	return spanLeft, spanRight, spanLeft >= 0 && spanRight <= rowRightEdge
 }

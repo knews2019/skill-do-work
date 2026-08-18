@@ -45,6 +45,7 @@ func TestEmbeddedAuthoredJavaScriptInventory(t *testing.T) {
 		"web/board-durations.js",
 		"web/board-filters.js",
 		"web/board-testing.js",
+		"web/board-timeline.js",
 		"web/board.js",
 	}
 	if strings.Join(authoredJavaScriptPaths, "\n") != strings.Join(wantAuthoredJavaScriptPaths, "\n") {
@@ -60,6 +61,7 @@ func TestBoardJavaScriptAssemblyStructure(t *testing.T) {
 		"web/board-cards.js",
 		"web/board-calendar.js",
 		"web/board-durations.js",
+		"web/board-timeline.js",
 		"web/board-testing.js",
 		"web/board-detail.js",
 		"web/board-controls.js",
@@ -1801,5 +1803,503 @@ func TestUserRequestActivityToggleDocumentsWidenedRule(t *testing.T) {
 	// canonical statement rather than to re-copy the widened rule a third time.
 	if strings.Contains(indexHtml, "whose REQs are all resolved") {
 		t.Fatalf("a stale prose restatement of the by-UR Active rule is still present in the generated page")
+	}
+}
+
+// The renderer must DRAW the placement verdict, not re-derive it: a label
+// appears exactly where the payload says `labelRow >= 0`, on that sample's own
+// band, and a band whose remainder is zero prints nothing while a nonzero one
+// states the count. Both were the defect — the old pass labelled every overflow
+// sample from an index cycle and had no concept of a remainder at all.
+func TestJavaScriptBehaviorDurationsLabelsFollowTheShippedVerdict(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	constantPreamble := ""
+	for _, constantName := range []string{
+		"DURATIONS_LABEL_ROW_COUNT",
+		"DURATIONS_LABEL_ROW_HEIGHT",
+		"DURATIONS_LANE_LABEL_ROW_Y",
+		"DURATIONS_REVERSED_LABEL_ROW_Y",
+		"DURATIONS_VIEW_WIDTH",
+		"DURATIONS_MARGIN_RIGHT",
+	} {
+		constantPreamble += fmt.Sprintf("var %s = %v;\n", constantName, durationsRendererConstant(t, constantName))
+	}
+
+	javascriptProbe := constantPreamble +
+		"var svg = null;\n" +
+		"var drawnRemainders = [];\n" +
+		"function makeDurationsSvgNode(svg, name, attributes, textContent) { drawnRemainders.push(textContent); }\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function durationsLabelBaselineY(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function durationsRemainderBaselineY(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function drawDurationsRemainder(") + `
+drawDurationsRemainder(0, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
+drawDurationsRemainder(23, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
+drawDurationsRemainder(2, durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y), "reversed");
+process.stdout.write(JSON.stringify({
+  remainderBaselines: [
+    durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y),
+    durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y)
+  ],
+  baselines: [
+    durationsLabelBaselineY({ wallMinutes: 95, labelRow: 0 }),
+    durationsLabelBaselineY({ wallMinutes: 95, labelRow: 1 }),
+    durationsLabelBaselineY({ wallMinutes: 95, labelRow: -1 }),
+    durationsLabelBaselineY({ wallMinutes: -20, labelRow: 0 }),
+    durationsLabelBaselineY({ wallMinutes: -20, labelRow: 1 }),
+    durationsLabelBaselineY({ wallMinutes: -20, labelRow: -1 }),
+    durationsLabelBaselineY({ wallMinutes: 95 })
+  ],
+  remainders: drawnRemainders
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations label verdict", javascriptProbe)
+	var probeResult struct {
+		Baselines          []*float64 `json:"baselines"`
+		RemainderBaselines []float64  `json:"remainderBaselines"`
+		Remainders         []string   `json:"remainders"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &probeResult); decodeError != nil {
+		t.Fatalf("decode durations label behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	laneRowY := durationsRendererConstant(t, "DURATIONS_LANE_LABEL_ROW_Y")
+	reversedRowY := durationsRendererConstant(t, "DURATIONS_REVERSED_LABEL_ROW_Y")
+	rowHeight := durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
+	wantBaselines := []*float64{
+		&laneRowY,
+		floatPointer(laneRowY + rowHeight),
+		nil,
+		&reversedRowY,
+		floatPointer(reversedRowY + rowHeight),
+		nil,
+		nil,
+	}
+	if len(probeResult.Baselines) != len(wantBaselines) {
+		t.Fatalf("baseline count = %d, want %d", len(probeResult.Baselines), len(wantBaselines))
+	}
+	for baselineIndex := range wantBaselines {
+		got := probeResult.Baselines[baselineIndex]
+		want := wantBaselines[baselineIndex]
+		if (got == nil) != (want == nil) || (got != nil && *got != *want) {
+			t.Fatalf("baseline[%d] = %v, want %v (nil means the sample carries no direct label)",
+				baselineIndex, formatOptionalFloat(got), formatOptionalFloat(want))
+		}
+	}
+
+	// The remainder must land on the band's LAST row. On the first row it sits at
+	// the marks' own height, and the dense render showed it overprinted by the
+	// very blob it was describing — the defect reproduced inside its own fix.
+	lastRowOffset := (durationsRendererConstant(t, "DURATIONS_LABEL_ROW_COUNT") - 1) *
+		durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
+	wantRemainderBaselines := []float64{laneRowY + lastRowOffset, reversedRowY + lastRowOffset}
+	if len(probeResult.RemainderBaselines) != len(wantRemainderBaselines) {
+		t.Fatalf("remainder baseline count = %d, want %d",
+			len(probeResult.RemainderBaselines), len(wantRemainderBaselines))
+	}
+	for baselineIndex, wantBaseline := range wantRemainderBaselines {
+		if probeResult.RemainderBaselines[baselineIndex] != wantBaseline {
+			t.Fatalf("remainder baseline[%d] = %v, want %v — the sentence must clear the mark row",
+				baselineIndex, probeResult.RemainderBaselines[baselineIndex], wantBaseline)
+		}
+	}
+
+	wantRemainders := []string{"+23 more over 60 min", "+2 more reversed"}
+	if strings.Join(probeResult.Remainders, "|") != strings.Join(wantRemainders, "|") {
+		t.Fatalf("drawn remainders = %q, want %q — a zero remainder must draw nothing and a nonzero one must state its count",
+			probeResult.Remainders, wantRemainders)
+	}
+}
+
+// durationLabelWidthSampleMinutes spans the renderer's formatting branches: sub-hour
+// with a decimal, negative, exactly on the hour, and multi-hour.
+var durationLabelWidthSampleMinutes = []float64{7.5, -25, 60, 95.4, 655.2, 1440}
+
+// Placement sizes a label from the text the renderer will draw, so it carries its
+// own width model of that text. The renderer stays the definition of the copy —
+// this pins the model to it. Without this the two agree today and drift the first
+// time the renderer's formatting gains a character, and the only symptom would be
+// labels overlapping again at exactly the densities this REQ was about.
+func TestJavaScriptBehaviorDurationsLabelWidthModelMatchesTheRendererFormatter(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	probeValues, encodeError := json.Marshal(durationLabelWidthSampleMinutes)
+	if encodeError != nil {
+		t.Fatalf("encode probe values: %v", encodeError)
+	}
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function formatDurationMinutes(") + `
+process.stdout.write(JSON.stringify(` + string(probeValues) + `.map(formatDurationMinutes)));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations label width model", javascriptProbe)
+	var rendererTexts []string
+	if decodeError := json.Unmarshal(probeOutput, &rendererTexts); decodeError != nil {
+		t.Fatalf("decode renderer formatting: %v (output %q)", decodeError, probeOutput)
+	}
+	if len(rendererTexts) != len(durationLabelWidthSampleMinutes) {
+		t.Fatalf("renderer produced %d strings, want %d", len(rendererTexts), len(durationLabelWidthSampleMinutes))
+	}
+	for valueIndex, minutes := range durationLabelWidthSampleMinutes {
+		// The renderer writes U+2212 for a negative sign; only the character
+		// COUNT reaches the width model, so compare lengths in runes.
+		rendererLength := len([]rune(rendererTexts[valueIndex]))
+		modelLength := len([]rune(formatDurationLabelMinutes(minutes)))
+		if rendererLength != modelLength {
+			t.Fatalf("%.1f min: renderer draws %q (%d chars) but the width model assumes %q (%d chars)",
+				minutes, rendererTexts[valueIndex], rendererLength,
+				formatDurationLabelMinutes(minutes), modelLength)
+		}
+	}
+}
+
+func floatPointer(value float64) *float64 {
+	return &value
+}
+
+func formatOptionalFloat(value *float64) string {
+	if value == nil {
+		return "null"
+	}
+	return fmt.Sprintf("%v", *value)
+}
+
+// timelineProbePreamble declares the renderer's own constants, read from the
+// fragment rather than copied, so a probe cannot pass against numbers the
+// shipped view does not use.
+func timelineProbePreamble(t *testing.T, constantNames ...string) string {
+	t.Helper()
+	preamble := ""
+	for _, constantName := range constantNames {
+		preamble += fmt.Sprintf("var %s = %v;\n",
+			constantName, rendererNumericConstant(t, "web/board-timeline.js", constantName))
+	}
+	return preamble
+}
+
+// Zoom is the one piece of this view that can be wrong in a way no screenshot
+// shows: the instant under the pointer has to stay under the pointer, or every
+// zoom drifts the chart sideways a little and the reader loses their place. It
+// is a pure transform precisely so this can be asserted.
+func TestJavaScriptBehaviorTimelineZoomHoldsTheAnchorInstant(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineZoomedWindow(") + `
+var boundStart = 0;
+var boundEnd = 30 * 24 * 3600 * 1000;   // a 30-day board
+var startWindow = { windowStartMs: boundStart, windowEndMs: boundEnd };
+
+function anchorInstant(window, fraction) {
+  return window.windowStartMs + (window.windowEndMs - window.windowStartMs) * fraction;
+}
+
+// Zoom in three times at the same off-centre anchor; the instant under it must
+// not move.
+var anchorFraction = 0.25;
+var wantAnchor = anchorInstant(startWindow, anchorFraction);
+var zoomed = startWindow;
+for (var step = 0; step < 3; step++) {
+  zoomed = timelineZoomedWindow(zoomed.windowStartMs, zoomed.windowEndMs, 1.6, anchorFraction, boundStart, boundEnd);
+}
+var anchorDriftMs = Math.abs(anchorInstant(zoomed, anchorFraction) - wantAnchor);
+
+// Zooming all the way back out clamps to the bounds rather than overshooting.
+var wideOpen = zoomed;
+for (var back = 0; back < 12; back++) {
+  wideOpen = timelineZoomedWindow(wideOpen.windowStartMs, wideOpen.windowEndMs, 1 / 1.6, 0.5, boundStart, boundEnd);
+}
+
+// Zooming all the way in stops at the floor rather than collapsing to zero.
+var deep = startWindow;
+for (var deeper = 0; deeper < 40; deeper++) {
+  deep = timelineZoomedWindow(deep.windowStartMs, deep.windowEndMs, 1.6, 0.5, boundStart, boundEnd);
+}
+
+process.stdout.write(JSON.stringify({
+  anchorDriftMs: anchorDriftMs,
+  widestSpanMs: wideOpen.windowEndMs - wideOpen.windowStartMs,
+  boundSpanMs: boundEnd - boundStart,
+  deepestSpanMs: deep.windowEndMs - deep.windowStartMs,
+  minSpanMs: TIMELINE_MIN_SPAN_MS,
+  withinBounds: wideOpen.windowStartMs >= boundStart && wideOpen.windowEndMs <= boundEnd
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline zoom", javascriptProbe)
+	var zoomResult struct {
+		AnchorDriftMs float64 `json:"anchorDriftMs"`
+		WidestSpanMs  float64 `json:"widestSpanMs"`
+		BoundSpanMs   float64 `json:"boundSpanMs"`
+		DeepestSpanMs float64 `json:"deepestSpanMs"`
+		MinSpanMs     float64 `json:"minSpanMs"`
+		WithinBounds  bool    `json:"withinBounds"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &zoomResult); decodeError != nil {
+		t.Fatalf("decode timeline zoom behavior: %v (output %q)", decodeError, probeOutput)
+	}
+	if zoomResult.AnchorDriftMs > 1 {
+		t.Fatalf("the anchored instant drifted %.0f ms over three zoom steps; it must stay put",
+			zoomResult.AnchorDriftMs)
+	}
+	if zoomResult.WidestSpanMs != zoomResult.BoundSpanMs {
+		t.Fatalf("zooming out settled at %.0f ms, want the full bound span %.0f ms",
+			zoomResult.WidestSpanMs, zoomResult.BoundSpanMs)
+	}
+	if !zoomResult.WithinBounds {
+		t.Fatal("the zoomed-out window escaped its bounds")
+	}
+	if zoomResult.DeepestSpanMs != zoomResult.MinSpanMs {
+		t.Fatalf("zooming in settled at %.0f ms, want the %.0f ms floor",
+			zoomResult.DeepestSpanMs, zoomResult.MinSpanMs)
+	}
+}
+
+// Virtualization is what makes 560 rows cost the same as 40, and it is invisible
+// in a screenshot: a wrong slice shows blank strips only while scrolling fast.
+func TestJavaScriptBehaviorTimelineVirtualizesRowsAtScale(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_ROW_HEIGHT", "TIMELINE_OVERSCAN_ROWS") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineVisibleRowRange(") + `
+var rowCount = 560;
+var viewportHeight = 600;
+var atTop = timelineVisibleRowRange(0, viewportHeight, rowCount);
+var midway = timelineVisibleRowRange(rowCount * TIMELINE_ROW_HEIGHT / 2, viewportHeight, rowCount);
+var atBottom = timelineVisibleRowRange(rowCount * TIMELINE_ROW_HEIGHT, viewportHeight, rowCount);
+process.stdout.write(JSON.stringify({
+  atTopCount: atTop.lastRow - atTop.firstRow,
+  midwayCount: midway.lastRow - midway.firstRow,
+  midwayCoversScrollPosition:
+    midway.firstRow <= rowCount / 2 && midway.lastRow > rowCount / 2,
+  atBottomLastRow: atBottom.lastRow,
+  rowCount: rowCount
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline virtualization", javascriptProbe)
+	var sliceResult struct {
+		AtTopCount                 int  `json:"atTopCount"`
+		MidwayCount                int  `json:"midwayCount"`
+		MidwayCoversScrollPosition bool `json:"midwayCoversScrollPosition"`
+		AtBottomLastRow            int  `json:"atBottomLastRow"`
+		RowCount                   int  `json:"rowCount"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &sliceResult); decodeError != nil {
+		t.Fatalf("decode timeline virtualization behavior: %v (output %q)", decodeError, probeOutput)
+	}
+	// A 600px viewport at the shipped row height holds well under 60 rows; the
+	// point of the assertion is that the slice is bounded by the VIEWPORT and
+	// never by the row count, which is what a non-virtualized render would do.
+	if sliceResult.AtTopCount >= sliceResult.RowCount/4 {
+		t.Fatalf("a 600px viewport rendered %d of %d rows; the slice must be viewport-bounded",
+			sliceResult.AtTopCount, sliceResult.RowCount)
+	}
+	if sliceResult.MidwayCount != sliceResult.AtTopCount {
+		t.Fatalf("slice size changed with scroll position (%d at top, %d midway); it must not",
+			sliceResult.AtTopCount, sliceResult.MidwayCount)
+	}
+	if !sliceResult.MidwayCoversScrollPosition {
+		t.Fatal("the midway slice does not contain the row at the scroll position")
+	}
+	if sliceResult.AtBottomLastRow != sliceResult.RowCount {
+		t.Fatalf("scrolled past the end the slice reached row %d, want it clamped to %d",
+			sliceResult.AtBottomLastRow, sliceResult.RowCount)
+	}
+}
+
+// timelineForecastDomStub is the smallest DOM renderTimelineForecast touches. It
+// is a stub rather than a headless browser because what is being pinned is the
+// SENTENCE — which figures reach the reader — not the layout.
+const timelineForecastDomStub = `
+function makeStubNode() {
+  var node = {
+    storedText: "",
+    className: "",
+    children: [],
+    classList: { add: function () {}, remove: function () {} },
+    setAttribute: function () {},
+    appendChild: function (child) { this.children.push(child); return child; }
+  };
+  // Assigning textContent replaces ALL children, exactly as the DOM does. A
+  // plain data property would leave the old children in place and make "was it
+  // cleared?" unanswerable — which is how the first version of this probe
+  // passed against code that cleared nothing.
+  Object.defineProperty(node, "textContent", {
+    get: function () { return this.storedText; },
+    set: function (value) { this.storedText = value; this.children = []; }
+  });
+  return node;
+}
+var stubNodes = { "timeline-forecast": makeStubNode(), "timeline-excluded": makeStubNode() };
+var document = {
+  getElementById: function (id) { return stubNodes[id] || null; },
+  createElement: function () { return makeStubNode(); },
+  createTextNode: function (text) { return { textContent: text }; }
+};
+function collectText(node) {
+  var text = node.textContent || "";
+  (node.children || []).forEach(function (child) { text += " " + collectText(child); });
+  return text;
+}
+`
+
+// The REQ calls the honesty requirements load-bearing rather than decoration: a
+// forecast that states a date without stating what it assumed is exactly the
+// artifact people screenshot and quote. These pin that the sentence carries its
+// own assumptions, and that thin history declines instead of guessing.
+func TestJavaScriptBehaviorTimelineForecastStatesItsAssumptions(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineForecastDomStub +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineFormatSpanMinutes(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineFormatStamp(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function clearTimelineForecast(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function renderTimelineForecast(") + `
+var confidentProjection = {
+  confident: true,
+  chainStart: "2026-06-20T12:00:00Z",
+  queueEnd: "2026-06-20T14:30:00Z",
+  windowSamples: 60, windowSize: 60, minimumSamples: 5,
+  normalSamples: 55, normalMinutes: 40,
+  trivialSamples: 5, trivialMinutes: 10,
+  rows: [{ id: "REQ-401" }, { id: "REQ-402" }],
+  excluded: [{ id: "REQ-404", reason: "waiting on an external condition" }]
+};
+renderTimelineForecast(confidentProjection, []);
+var confidentText = collectText(stubNodes["timeline-forecast"]);
+var confidentExcludedText = collectText(stubNodes["timeline-excluded"]);
+
+stubNodes["timeline-forecast"] = makeStubNode();
+stubNodes["timeline-excluded"] = makeStubNode();
+renderTimelineForecast({
+  confident: false,
+  declinedReason: "only 2 completed REQs inside the read-time rule; 5 are needed before a median means anything",
+  rows: [], excluded: [], windowSamples: 2, minimumSamples: 5
+}, []);
+var declinedText = collectText(stubNodes["timeline-forecast"]);
+
+// The no-rows path clears both nodes without rendering anything: a forecast left
+// standing beside "no REQ matches" describes rows that are not on screen.
+clearTimelineForecast();
+var clearedText = collectText(stubNodes["timeline-forecast"]);
+var clearedExcludedText = collectText(stubNodes["timeline-excluded"]);
+
+process.stdout.write(JSON.stringify({
+  confidentText: confidentText,
+  confidentExcludedText: confidentExcludedText,
+  declinedText: declinedText,
+  clearedText: clearedText,
+  clearedExcludedText: clearedExcludedText
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline forecast", javascriptProbe)
+	var forecastResult struct {
+		ConfidentText         string `json:"confidentText"`
+		ConfidentExcludedText string `json:"confidentExcludedText"`
+		DeclinedText          string `json:"declinedText"`
+		ClearedText           string `json:"clearedText"`
+		ClearedExcludedText   string `json:"clearedExcludedText"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &forecastResult); decodeError != nil {
+		t.Fatalf("decode timeline forecast behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// Each of these is a separate requirement, so each is asserted separately —
+	// a single "contains everything" check would report one failure for any of
+	// four different regressions.
+	for _, wantFragment := range []struct {
+		requirement string
+		fragment    string
+	}{
+		{"the end instant itself", "2026-06-20 14:30 UTC"},
+		{"the window's sample size", "last 60 completed REQs"},
+		{"each bucket's sample count and median", "55 normal at 40 min"},
+		{"the serial assumption", "one REQ at a time"},
+		{"the no-parallelism assumption", "no parallel builders"},
+		{"the static-queue assumption", "queue that stops growing"},
+		{"the read-time rule's exclusions", "Paused and reversed spans are excluded"},
+	} {
+		if !strings.Contains(forecastResult.ConfidentText, wantFragment.fragment) {
+			t.Fatalf("the forecast sentence does not state %s (wanted %q in %q)",
+				wantFragment.requirement, wantFragment.fragment, forecastResult.ConfidentText)
+		}
+	}
+	if !strings.Contains(forecastResult.ConfidentExcludedText, "REQ-404") ||
+		!strings.Contains(forecastResult.ConfidentExcludedText, "waiting on an external condition") {
+		t.Fatalf("the excluded list must name every unschedulable REQ and its reason; got %q",
+			forecastResult.ConfidentExcludedText)
+	}
+
+	if strings.TrimSpace(forecastResult.ClearedText) != "" ||
+		strings.TrimSpace(forecastResult.ClearedExcludedText) != "" {
+		t.Fatalf("clearing left forecast %q and excluded %q; a filter matching no rows must leave neither standing beside \"no REQ matches\"",
+			forecastResult.ClearedText, forecastResult.ClearedExcludedText)
+	}
+
+	if strings.Contains(forecastResult.DeclinedText, "Queue empties") {
+		t.Fatalf("thin history produced an end date: %q", forecastResult.DeclinedText)
+	}
+	if !strings.Contains(forecastResult.DeclinedText, "No end estimate") ||
+		!strings.Contains(forecastResult.DeclinedText, "5 are needed") {
+		t.Fatalf("declining must say so and carry the reason; got %q", forecastResult.DeclinedText)
+	}
+}
+
+// Rows advertise role="button" and take focus, but a <g> is not a native button:
+// Enter and Space never synthesize the click the drawer listens for. The role is
+// a promise, and this is the code that keeps it.
+func TestJavaScriptBehaviorTimelineRowsActivateFromTheKeyboard(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function timelineKeyboardActivationTarget(") + `
+function rowEvent(key, detailId) {
+  var trigger = detailId === null ? null : {
+    getAttribute: function (name) {
+      return name === "data-detail-kind" ? "request" : detailId;
+    }
+  };
+  return { key: key, target: { closest: function () { return trigger; } } };
+}
+process.stdout.write(JSON.stringify({
+  enter: timelineKeyboardActivationTarget(rowEvent("Enter", "REQ-401")),
+  space: timelineKeyboardActivationTarget(rowEvent(" ", "REQ-402")),
+  legacySpace: timelineKeyboardActivationTarget(rowEvent("Spacebar", "REQ-403")),
+  tab: timelineKeyboardActivationTarget(rowEvent("Tab", "REQ-404")),
+  arrow: timelineKeyboardActivationTarget(rowEvent("ArrowDown", "REQ-405")),
+  offRow: timelineKeyboardActivationTarget(rowEvent("Enter", null))
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline keyboard activation", javascriptProbe)
+	var activationResult struct {
+		Enter       *struct{ DetailKind, DetailId string } `json:"enter"`
+		Space       *struct{ DetailKind, DetailId string } `json:"space"`
+		LegacySpace *struct{ DetailKind, DetailId string } `json:"legacySpace"`
+		Tab         *struct{ DetailKind, DetailId string } `json:"tab"`
+		Arrow       *struct{ DetailKind, DetailId string } `json:"arrow"`
+		OffRow      *struct{ DetailKind, DetailId string } `json:"offRow"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &activationResult); decodeError != nil {
+		t.Fatalf("decode timeline keyboard activation: %v (output %q)", decodeError, probeOutput)
+	}
+	for _, activated := range []struct {
+		keyName string
+		result  *struct{ DetailKind, DetailId string }
+		wantId  string
+	}{
+		{"Enter", activationResult.Enter, "REQ-401"},
+		{"Space", activationResult.Space, "REQ-402"},
+		{"Spacebar (legacy)", activationResult.LegacySpace, "REQ-403"},
+	} {
+		if activated.result == nil {
+			t.Fatalf("%s on a focused row activated nothing; the row advertises role=button", activated.keyName)
+		}
+		if activated.result.DetailId != activated.wantId || activated.result.DetailKind != "request" {
+			t.Fatalf("%s activated %+v, want request/%s", activated.keyName, *activated.result, activated.wantId)
+		}
+	}
+	// Navigation keys and keys pressed off a row must not open anything.
+	for _, ignored := range []struct {
+		keyName string
+		result  *struct{ DetailKind, DetailId string }
+	}{
+		{"Tab", activationResult.Tab},
+		{"ArrowDown", activationResult.Arrow},
+		{"Enter off a row", activationResult.OffRow},
+	} {
+		if ignored.result != nil {
+			t.Fatalf("%s activated %+v; it must open nothing", ignored.keyName, *ignored.result)
+		}
 	}
 }

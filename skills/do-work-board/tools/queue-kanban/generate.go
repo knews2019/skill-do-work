@@ -45,6 +45,7 @@ var boardJavaScriptFragmentPaths = [...]string{
 	"web/board-cards.js",
 	"web/board-calendar.js",
 	"web/board-durations.js",
+	"web/board-timeline.js",
 	"web/board-testing.js",
 	"web/board-detail.js",
 	"web/board-controls.js",
@@ -74,6 +75,7 @@ type generatedBoardData struct {
 	UserRequests     map[string]generatedUserRequest `json:"userRequests"`
 	Calendar         []generatedCalendarEntry        `json:"calendar"`
 	Durations        generatedDurations              `json:"durations"`
+	Timeline         generatedTimeline               `json:"timeline"`
 	Notes            []generatedNote                 `json:"notes,omitempty"`    // do-work/notes.md lines — rendered as a strip above the queue
 	Warnings         []string                        `json:"warnings,omitempty"` // data-shape warnings (e.g. duplicate ids, unrecognized statuses, future-dated stamps) — rendered as a banner
 
@@ -221,11 +223,24 @@ type generatedCalendarEntry struct {
 type generatedDurations struct {
 	Samples []generatedDurationSample `json:"samples"`
 	Days    []generatedDurationDay    `json:"days"`
+	Labels  generatedDurationLabels   `json:"labels"`
+}
+
+// generatedDurationLabels carries what the direct-label placement could not fit,
+// one count per band. The renderer turns each nonzero count into a remainder
+// sentence at that band's edge; it never re-derives which labels were dropped.
+type generatedDurationLabels struct {
+	OverflowHiddenCount int `json:"overflowHiddenCount"`
+	ReversedHiddenCount int `json:"reversedHiddenCount"`
 }
 
 // generatedDurationSample is one REQ's raw, signed wall span. `excludedReason`
 // is "paused" or "reversed" when the calibration's read-time rule holds it out
 // of the day medians, and empty when it counts — panel A plots it either way.
+// `labelRow` is the direct-label verdict: the text row this sample's label takes
+// inside its band, or -1 when the collision rule could not place one. `labelAnchor`
+// is the SVG text-anchor that verdict assumed. Both are decided in durations.go so
+// the renderer reads one answer instead of becoming a second definition of the rule.
 type generatedDurationSample struct {
 	RequestId      string  `json:"id"`
 	Route          string  `json:"route"`
@@ -233,6 +248,8 @@ type generatedDurationSample struct {
 	DayKey         string  `json:"dayKey"`
 	WallMinutes    float64 `json:"wallMinutes"`
 	ExcludedReason string  `json:"excludedReason,omitempty"`
+	LabelRow       int     `json:"labelRow"`
+	LabelAnchor    string  `json:"labelAnchor,omitempty"`
 }
 
 // generatedDurationDay carries both figures a day needs: the ruled median (with
@@ -245,6 +262,77 @@ type generatedDurationDay struct {
 	HasMedian      bool    `json:"hasMedian"`
 	KeptCount      int     `json:"keptCount"`
 	CompletedCount int     `json:"completedCount"`
+}
+
+// generatedTimeline is the Timeline view's data: one row per REQ that carries a
+// parseable created_at, plus the range those rows span and the single instant
+// every open span was measured against.
+type generatedTimeline struct {
+	Rows       []generatedTimelineRow      `json:"rows"`
+	RangeStart string                      `json:"rangeStart"`
+	RangeEnd   string                      `json:"rangeEnd"`
+	Now        string                      `json:"now"`
+	Projection generatedTimelineProjection `json:"projection"`
+}
+
+// generatedTimelineProjection is the forward half of the view: where each
+// unstarted REQ lands in a serial chain, which REQs cannot be scheduled at all,
+// and every figure the forecast rests on so the view can state its assumptions
+// rather than imply them. `confident` false means the history was too thin —
+// `rows` and `queueEnd` are then empty and `declinedReason` says why.
+type generatedTimelineProjection struct {
+	Rows           []generatedTimelineProjectedRow `json:"rows"`
+	Excluded       []generatedTimelineExclusion    `json:"excluded"`
+	QueueEnd       string                          `json:"queueEnd,omitempty"`
+	ChainStart     string                          `json:"chainStart"`
+	WindowSize     int                             `json:"windowSize"`
+	WindowSamples  int                             `json:"windowSamples"`
+	TrivialSamples int                             `json:"trivialSamples"`
+	NormalSamples  int                             `json:"normalSamples"`
+	TrivialMinutes float64                         `json:"trivialMinutes"`
+	NormalMinutes  float64                         `json:"normalMinutes"`
+	MinimumSamples int                             `json:"minimumSamples"`
+	Confident      bool                            `json:"confident"`
+	DeclinedReason string                          `json:"declinedReason,omitempty"`
+}
+
+// generatedTimelineProjectedRow is one unstarted REQ's forecast slot, keyed by id
+// onto the measured row it belongs to.
+type generatedTimelineProjectedRow struct {
+	RequestId string `json:"id"`
+	StartTime string `json:"startTime"`
+	EndTime   string `json:"endTime"`
+	Bucket    string `json:"bucket"`
+	Position  int    `json:"position"`
+}
+
+// generatedTimelineExclusion names a REQ the projection refuses to schedule and
+// why, in plain words rather than by echoing its status.
+type generatedTimelineExclusion struct {
+	RequestId string `json:"id"`
+	Reason    string `json:"reason"`
+}
+
+// generatedTimelineRow carries timing only. Title, route, status and domain stay
+// in `requests` where every other view already reads them — a second copy here
+// would be a second thing to keep in step, and the client holds both.
+//
+// `waitMinutes` and `workMinutes` are SIGNED: a negative span is the board's
+// reversed-stamp anomaly, reported through `anomaly`/`anomalyReason` copied from
+// the ticket, and clamping it here would erase the very thing the reader needs
+// to see.
+type generatedTimelineRow struct {
+	RequestId     string  `json:"id"`
+	CreatedTime   string  `json:"createdTime"`
+	ClaimedTime   string  `json:"claimedTime,omitempty"`
+	CompletedTime string  `json:"completedTime,omitempty"`
+	WaitMinutes   float64 `json:"waitMinutes"`
+	WaitOpen      bool    `json:"waitOpen,omitempty"`
+	HasWork       bool    `json:"hasWork"`
+	WorkMinutes   float64 `json:"workMinutes"`
+	WorkOpen      bool    `json:"workOpen,omitempty"`
+	Anomaly       bool    `json:"anomaly,omitempty"`
+	AnomalyReason string  `json:"anomalyReason,omitempty"`
 }
 
 type staticSiteOutput struct {
@@ -527,8 +615,65 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			DayKey:         sample.DayKey,
 			WallMinutes:    sample.WallMinutes,
 			ExcludedReason: sample.DayMedianExclusion,
+			LabelRow:       sample.LabelRow,
+			LabelAnchor:    sample.LabelAnchor,
 		})
 	}
+	data.Durations.Labels = generatedDurationLabels{
+		OverflowHiddenCount: durationAggregate.OverflowLabels.HiddenCount,
+		ReversedHiddenCount: durationAggregate.ReversedLabels.HiddenCount,
+	}
+
+	// The board's generation instant is the view's one now: it measures every
+	// open span here and positions the client's now-line, so the two cannot
+	// disagree about where "still running" ends.
+	timelineAggregate := buildTimelineAggregate(board.AllRequests, board.GeneratedAt)
+	for _, row := range timelineAggregate.Rows {
+		data.Timeline.Rows = append(data.Timeline.Rows, generatedTimelineRow{
+			RequestId:     row.RequestId,
+			CreatedTime:   formatTimestamp(row.CreatedTime),
+			ClaimedTime:   formatTimestamp(row.ClaimedTime),
+			CompletedTime: formatTimestamp(row.CompletedTime),
+			WaitMinutes:   row.WaitMinutes,
+			WaitOpen:      row.WaitOpen,
+			HasWork:       row.HasWork,
+			WorkMinutes:   row.WorkMinutes,
+			WorkOpen:      row.WorkOpen,
+			Anomaly:       row.Anomaly,
+			AnomalyReason: row.AnomalyReason,
+		})
+	}
+	data.Timeline.RangeStart = formatTimestamp(timelineAggregate.RangeStart)
+	data.Timeline.RangeEnd = formatTimestamp(timelineAggregate.RangeEnd)
+	data.Timeline.Now = formatTimestamp(timelineAggregate.Now)
+
+	timelineProjection := buildTimelineProjection(board.AllRequests, durationAggregate, board.GeneratedAt)
+	for _, row := range timelineProjection.Rows {
+		data.Timeline.Projection.Rows = append(data.Timeline.Projection.Rows, generatedTimelineProjectedRow{
+			RequestId: row.RequestId,
+			StartTime: formatTimestamp(row.StartTime),
+			EndTime:   formatTimestamp(row.EndTime),
+			Bucket:    row.Bucket,
+			Position:  row.Position,
+		})
+	}
+	for _, exclusion := range timelineProjection.Excluded {
+		data.Timeline.Projection.Excluded = append(data.Timeline.Projection.Excluded, generatedTimelineExclusion{
+			RequestId: exclusion.RequestId,
+			Reason:    exclusion.Reason,
+		})
+	}
+	data.Timeline.Projection.QueueEnd = formatTimestamp(timelineProjection.QueueEnd)
+	data.Timeline.Projection.ChainStart = formatTimestamp(timelineProjection.ChainStart)
+	data.Timeline.Projection.WindowSize = timelineProjection.WindowSize
+	data.Timeline.Projection.WindowSamples = timelineProjection.WindowSampleCount
+	data.Timeline.Projection.TrivialSamples = timelineProjection.TrivialSampleCount
+	data.Timeline.Projection.NormalSamples = timelineProjection.NormalSampleCount
+	data.Timeline.Projection.TrivialMinutes = timelineProjection.TrivialMedianMinutes
+	data.Timeline.Projection.NormalMinutes = timelineProjection.NormalMedianMinutes
+	data.Timeline.Projection.MinimumSamples = timelineProjection.MinimumSamples
+	data.Timeline.Projection.Confident = timelineProjection.Confident
+	data.Timeline.Projection.DeclinedReason = timelineProjection.DeclinedReason
 	for _, day := range durationAggregate.Days {
 		data.Durations.Days = append(data.Durations.Days, generatedDurationDay{
 			DayKey:         day.DayKey,

@@ -1,0 +1,735 @@
+  // ---- timeline -----------------------------------------------------------
+  //
+  // A Gantt of the whole queue: one row per REQ, one bar, two segments. The
+  // first spans created_at→claimed_at (waiting), the second
+  // claimed_at→completed_at (working). A REQ still running draws an open
+  // segment to the now-line; a REQ nobody has claimed yet draws an open wait and
+  // no work segment at all.
+  //
+  // Two deliberate departures from the other chart views:
+  //
+  // 1. NO viewBox. Durations draws into a fixed user-unit space and converts
+  //    pointer coordinates by DURATIONS_VIEW_WIDTH / bounds.width — an
+  //    assumption a zoom invalidates the moment it exists. This view draws in
+  //    CSS pixels, so a pointer's x IS a plot x at every zoom level and there is
+  //    no conversion to keep correct.
+  //
+  // 2. Rows are virtualized. The reporting board carries 560 archived REQs and
+  //    the queue only grows; at a readable row height that is thousands of
+  //    pixels of extent. Only the rows inside the scrolled window get SVG nodes,
+  //    so node count is bounded by the viewport rather than by the archive.
+  //
+  // The payload decides the numbers. Both spans arrive already measured against
+  // one now, signed, with the board's own reversed-stamp verdict attached; this
+  // file positions them and never re-measures.
+
+  var TIMELINE_SVG_NS = "http://www.w3.org/2000/svg";
+  var TIMELINE_ROW_HEIGHT = 18;
+  var TIMELINE_BAR_HEIGHT = 10;
+  var TIMELINE_AXIS_HEIGHT = 26;
+  var TIMELINE_LABEL_WIDTH = 104;
+  var TIMELINE_OVERSCAN_ROWS = 4;
+  var TIMELINE_MIN_SPAN_MS = 3600000; // one hour in ms — as far in as zoom goes
+  var TIMELINE_ZOOM_STEP = 1.6;
+  var TIMELINE_HATCH_PATTERN_ID = "timeline-projected-hatch";
+  var TIMELINE_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+  // The visible time window, held OUTSIDE renderedOnce so switching tabs and
+  // coming back preserves the reader's zoom instead of snapping back to fit.
+  var timelineViewState = { windowStartMs: 0, windowEndMs: 0, fitted: false };
+
+  // Durations can attach its listeners and forget them: it binds to nodes it
+  // rebuilds every render, so the old handlers die with the old DOM. This view
+  // binds to the scroll container and to window, which BOTH outlive a render —
+  // and a filter change re-renders it. Without an explicit teardown each filter
+  // change would leave another live scroll handler behind, and every later
+  // scroll would re-render the rows once per stacked handler.
+  var timelineListenerTeardowns = [];
+
+  function addTimelineListener(target, eventName, handler, options) {
+    target.addEventListener(eventName, handler, options);
+    timelineListenerTeardowns.push(function () {
+      target.removeEventListener(eventName, handler, options);
+    });
+  }
+
+  function releaseTimelineListeners() {
+    timelineListenerTeardowns.forEach(function (teardown) {
+      teardown();
+    });
+    timelineListenerTeardowns = [];
+  }
+
+  function timelineFormatSpanMinutes(minutes) {
+    var sign = minutes < 0 ? "−" : "";
+    var magnitude = Math.abs(minutes);
+    if (magnitude < 60) {
+      return sign + magnitude.toFixed(0) + " min";
+    }
+    if (magnitude < 60 * 24) {
+      return sign + Math.floor(magnitude / 60) + "h " + Math.round(magnitude % 60) + "m";
+    }
+    return sign + Math.floor(magnitude / (60 * 24)) + "d " + Math.round((magnitude % (60 * 24)) / 60) + "h";
+  }
+
+  function timelineFormatAxisTick(epochMs, spanMs) {
+    var instant = new Date(epochMs);
+    if (spanMs <= 3 * 24 * 60 * 60 * 1000) {
+      return (
+        instant.getUTCDate() +
+        " " +
+        TIMELINE_MONTHS[instant.getUTCMonth()] +
+        " " +
+        String(instant.getUTCHours()).padStart(2, "0") +
+        ":00"
+      );
+    }
+    return instant.getUTCDate() + " " + TIMELINE_MONTHS[instant.getUTCMonth()];
+  }
+
+  function timelineFormatStamp(epochMs) {
+    return new Date(epochMs).toISOString().replace("T", " ").slice(0, 16) + " UTC";
+  }
+
+  // Zoom is a pure transform on the visible window, anchored at a fraction of
+  // the plot so the instant under the pointer stays under it. Written as its own
+  // function because that invariant is the thing worth testing, and testing it
+  // through the DOM would test the DOM instead.
+  function timelineZoomedWindow(windowStartMs, windowEndMs, zoomFactor, anchorFraction, boundStartMs, boundEndMs) {
+    var anchorMs = windowStartMs + (windowEndMs - windowStartMs) * anchorFraction;
+    var zoomedSpanMs = (windowEndMs - windowStartMs) / zoomFactor;
+    var boundSpanMs = Math.max(boundEndMs - boundStartMs, TIMELINE_MIN_SPAN_MS);
+    zoomedSpanMs = Math.min(Math.max(zoomedSpanMs, TIMELINE_MIN_SPAN_MS), boundSpanMs);
+
+    var nextStartMs = anchorMs - zoomedSpanMs * anchorFraction;
+    var nextEndMs = nextStartMs + zoomedSpanMs;
+    if (nextStartMs < boundStartMs) {
+      nextStartMs = boundStartMs;
+      nextEndMs = nextStartMs + zoomedSpanMs;
+    }
+    if (nextEndMs > boundEndMs) {
+      nextEndMs = boundEndMs;
+      nextStartMs = nextEndMs - zoomedSpanMs;
+    }
+    return { windowStartMs: nextStartMs, windowEndMs: nextEndMs };
+  }
+
+  // Which rows have SVG nodes. Everything above and below the scrolled window is
+  // absent from the DOM, which is what keeps 560 rows and 5600 rows the same
+  // cost. The overscan is what stops a fast scroll showing blank strips.
+  function timelineVisibleRowRange(scrollTop, viewportHeight, rowCount) {
+    var firstRow = Math.max(0, Math.floor(scrollTop / TIMELINE_ROW_HEIGHT) - TIMELINE_OVERSCAN_ROWS);
+    var visibleCount = Math.ceil(viewportHeight / TIMELINE_ROW_HEIGHT) + TIMELINE_OVERSCAN_ROWS * 2;
+    return { firstRow: firstRow, lastRow: Math.min(rowCount, firstRow + visibleCount) };
+  }
+
+  // A projected bar must never read as a measured one, so it is hatched rather
+  // than merely tinted: opacity alone is what a disabled control looks like, and
+  // the dashed outline is already spoken for by an OPEN measured bar. The hatch
+  // lines carry a class instead of a literal stroke so both themes style them.
+  function appendTimelineHatchPattern(svg) {
+    var defs = document.createElementNS(TIMELINE_SVG_NS, "defs");
+    var pattern = document.createElementNS(TIMELINE_SVG_NS, "pattern");
+    pattern.setAttribute("id", TIMELINE_HATCH_PATTERN_ID);
+    pattern.setAttribute("width", "6");
+    pattern.setAttribute("height", "6");
+    pattern.setAttribute("patternUnits", "userSpaceOnUse");
+    pattern.setAttribute("patternTransform", "rotate(45)");
+    var hatchLine = document.createElementNS(TIMELINE_SVG_NS, "line");
+    hatchLine.setAttribute("x1", "0");
+    hatchLine.setAttribute("y1", "0");
+    hatchLine.setAttribute("x2", "0");
+    hatchLine.setAttribute("y2", "6");
+    hatchLine.setAttribute("class", "timeline-hatch-line");
+    pattern.appendChild(hatchLine);
+    defs.appendChild(pattern);
+    svg.appendChild(defs);
+  }
+
+  // A <g role="button"> takes focus but is not a native button, so Enter and
+  // Space never reach the delegated click handler that opens the drawer. Rows
+  // advertise the role, so they owe the behavior. Returns the id it activated,
+  // or null when the event was not an activation on a detail trigger.
+  function timelineKeyboardActivationTarget(keyEvent) {
+    if (keyEvent.key !== "Enter" && keyEvent.key !== " " && keyEvent.key !== "Spacebar") {
+      return null;
+    }
+    var trigger = keyEvent.target && keyEvent.target.closest
+      ? keyEvent.target.closest("[data-detail-kind]")
+      : null;
+    if (!trigger) {
+      return null;
+    }
+    return {
+      detailKind: trigger.getAttribute("data-detail-kind"),
+      detailId: trigger.getAttribute("data-detail-id")
+    };
+  }
+
+  function makeTimelineSvgNode(parent, name, attributes, textContent) {
+    var node = document.createElementNS(TIMELINE_SVG_NS, name);
+    Object.keys(attributes).forEach(function (key) {
+      node.setAttribute(key, attributes[key]);
+    });
+    if (textContent !== undefined) {
+      node.appendChild(document.createTextNode(textContent));
+    }
+    parent.appendChild(node);
+    return node;
+  }
+
+  // The queue-end line and its assumptions, side by side. A forecast that states
+  // a date without stating what it assumed is the artifact people screenshot and
+  // quote; the assumptions are not a footnote here, they are the other half of
+  // the sentence.
+  // Emptying both nodes is its own function because the no-rows path has to do
+  // it without rendering anything: a forecast left standing beside "no REQ
+  // matches" describes rows that are not on screen.
+  function clearTimelineForecast() {
+    var forecastNode = document.getElementById("timeline-forecast");
+    var excludedNode = document.getElementById("timeline-excluded");
+    if (forecastNode) {
+      forecastNode.textContent = "";
+      forecastNode.classList.remove("is-declined");
+    }
+    if (excludedNode) {
+      excludedNode.textContent = "";
+    }
+    return { forecastNode: forecastNode, excludedNode: excludedNode };
+  }
+
+  function renderTimelineForecast(projection, rows) {
+    var forecastNodes = clearTimelineForecast();
+    var forecastNode = forecastNodes.forecastNode;
+    var excludedNode = forecastNodes.excludedNode;
+    if (!forecastNode || !excludedNode) {
+      return;
+    }
+
+    if (!projection.confident) {
+      forecastNode.textContent =
+        "No end estimate: " + (projection.declinedReason || "not enough completed work to forecast from") + ".";
+      forecastNode.classList.add("is-declined");
+    } else {
+      forecastNode.classList.remove("is-declined");
+      var chainCount = (projection.rows || []).length;
+      if (chainCount === 0) {
+        forecastNode.textContent = "Nothing left to schedule — every remaining REQ is listed below.";
+      } else {
+        forecastNode.textContent =
+          "Queue empties around " +
+          timelineFormatStamp(Date.parse(projection.queueEnd)) +
+          " — " +
+          chainCount +
+          " REQ" +
+          (chainCount === 1 ? "" : "s") +
+          " run one at a time from " +
+          timelineFormatStamp(Date.parse(projection.chainStart)) +
+          ". Assumes the median of the last " +
+          projection.windowSamples +
+          " completed REQs (" +
+          projection.normalSamples +
+          " normal at " +
+          timelineFormatSpanMinutes(projection.normalMinutes) +
+          ", " +
+          projection.trivialSamples +
+          " trivial at " +
+          timelineFormatSpanMinutes(projection.trivialMinutes) +
+          "), one REQ at a time, no parallel builders, and a queue that stops growing. Paused and reversed spans are excluded from both medians." +
+          (projection.trivialSamples < projection.minimumSamples ||
+          projection.normalSamples < projection.minimumSamples
+            ? " A bucket with fewer than " +
+              projection.minimumSamples +
+              " samples of its own borrows the overall median."
+            : "");
+      }
+    }
+
+    var excluded = projection.excluded || [];
+    if (excluded.length === 0) {
+      return;
+    }
+    var excludedHeading = document.createElement("p");
+    excludedHeading.className = "timeline-excluded-heading";
+    excludedHeading.textContent =
+      excluded.length +
+      " REQ" +
+      (excluded.length === 1 ? " is" : "s are") +
+      " not in that estimate, because " +
+      (excluded.length === 1 ? "it cannot" : "they cannot") +
+      " be given an honest start time:";
+    excludedNode.appendChild(excludedHeading);
+    var excludedList = document.createElement("ul");
+    excludedList.className = "timeline-excluded-list";
+    excluded.forEach(function (exclusion) {
+      var item = document.createElement("li");
+      var trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "timeline-excluded-id";
+      trigger.setAttribute("data-detail-kind", "request");
+      trigger.setAttribute("data-detail-id", exclusion.id);
+      trigger.textContent = exclusion.id;
+      item.appendChild(trigger);
+      item.appendChild(document.createTextNode(" — " + exclusion.reason));
+      excludedList.appendChild(item);
+    });
+    excludedNode.appendChild(excludedList);
+  }
+
+  function renderTimelineView() {
+    var summaryNode = document.getElementById("timeline-summary");
+    var axisHost = document.getElementById("timeline-axis");
+    var scrollHost = document.getElementById("timeline-scroll");
+    var readoutNode = document.getElementById("timeline-readout");
+    var tableBody = document.getElementById("timeline-table-body");
+    if (!summaryNode || !axisHost || !scrollHost || !tableBody) {
+      return;
+    }
+
+    releaseTimelineListeners();
+
+    var timeline = boardData.timeline || {};
+    // Filters apply here, unlike Durations. A Gantt filtered to one domain is a
+    // straightforward question to ask of a queue; a durations distribution
+    // filtered to one domain is a different statistic wearing the same axes.
+    var rows = (timeline.rows || []).filter(function (row) {
+      return requestMatchesFilters(row.id);
+    });
+    var nowMs = Date.parse(timeline.now);
+    if (isNaN(nowMs)) {
+      nowMs = generatedAtMs;
+    }
+
+    // The forward half. Keyed by id onto the rows above: a pending REQ already
+    // has a row carrying its open wait, and its projected work attaches there
+    // rather than becoming a second row for the same REQ.
+    var projection = timeline.projection || {};
+    var projectedById = {};
+    (projection.rows || []).forEach(function (projectedRow) {
+      projectedById[projectedRow.id] = projectedRow;
+    });
+
+    axisHost.textContent = "";
+    scrollHost.textContent = "";
+    tableBody.textContent = "";
+
+    if (rows.length === 0) {
+      // The forecast describes the rows; with none on screen it must go too.
+      clearTimelineForecast();
+      summaryNode.textContent = (timeline.rows || []).length
+        ? "No REQ matches the current filters."
+        : "No REQ carries a readable created_at yet, so there is nothing to place on a timeline.";
+      return;
+    }
+
+    var boundStartMs = Date.parse(timeline.rangeStart);
+    var boundEndMs = Date.parse(timeline.rangeEnd);
+    if (isNaN(boundStartMs) || isNaN(boundEndMs) || boundEndMs <= boundStartMs) {
+      boundStartMs = Date.parse(rows[0].createdTime);
+      boundEndMs = boundStartMs + TIMELINE_MIN_SPAN_MS;
+    }
+    var queueEndMs = Date.parse(projection.queueEnd);
+    if (!isNaN(queueEndMs) && queueEndMs > boundEndMs) {
+      boundEndMs = queueEndMs;
+    }
+    // A little breathing room so a bar that ends exactly at the range edge is
+    // not drawn flush against the frame.
+    var boundPaddingMs = Math.max((boundEndMs - boundStartMs) * 0.02, 60 * 1000);
+    boundStartMs -= boundPaddingMs;
+    boundEndMs += boundPaddingMs;
+
+    if (!timelineViewState.fitted || timelineViewState.windowEndMs <= timelineViewState.windowStartMs) {
+      timelineViewState.windowStartMs = boundStartMs;
+      timelineViewState.windowEndMs = boundEndMs;
+      timelineViewState.fitted = true;
+    }
+
+    var openCount = rows.filter(function (row) {
+      return row.waitOpen || row.workOpen;
+    }).length;
+    var anomalyCount = rows.filter(function (row) {
+      return row.anomaly;
+    }).length;
+    summaryNode.textContent =
+      rows.length +
+      " REQ" +
+      (rows.length === 1 ? "" : "s") +
+      " in capture order, oldest at the top. " +
+      openCount +
+      " still open, measured to the now-line at " +
+      timelineFormatStamp(nowMs) +
+      (anomalyCount ? ". " + anomalyCount + " with broken stamps, drawn as breaks." : ".");
+
+    renderTimelineForecast(projection, rows);
+
+    var axisSvg = makeTimelineSvgNode(axisHost, "svg", {
+      class: "timeline-axis-svg",
+      height: TIMELINE_AXIS_HEIGHT,
+      width: "100%"
+    });
+    var rowsSvg = makeTimelineSvgNode(scrollHost, "svg", {
+      class: "timeline-rows-svg",
+      height: rows.length * TIMELINE_ROW_HEIGHT,
+      width: "100%",
+      role: "img",
+      "aria-label":
+        "One horizontal bar per REQ in capture order. The first segment is the wait from capture to claim, the second is the work from claim to completion. Every value is also listed in the table below."
+    });
+
+    function plotWidth() {
+      var hostWidth = scrollHost.clientWidth || scrollHost.getBoundingClientRect().width;
+      return Math.max(120, hostWidth - TIMELINE_LABEL_WIDTH - 12);
+    }
+
+    // 1 SVG unit = 1 CSS pixel here, so this is the whole pointer-to-data story.
+    function xOfEpoch(epochMs) {
+      var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs || 1;
+      return (
+        TIMELINE_LABEL_WIDTH +
+        ((epochMs - timelineViewState.windowStartMs) / windowSpanMs) * plotWidth()
+      );
+    }
+    function epochOfX(plotX) {
+      var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs || 1;
+      return (
+        timelineViewState.windowStartMs +
+        ((plotX - TIMELINE_LABEL_WIDTH) / plotWidth()) * windowSpanMs
+      );
+    }
+
+    function drawSegment(rowGroup, rowTopY, startMs, endMs, segmentClass) {
+      var leftX = xOfEpoch(Math.min(startMs, endMs));
+      var rightX = xOfEpoch(Math.max(startMs, endMs));
+      var clampedLeft = Math.max(leftX, TIMELINE_LABEL_WIDTH);
+      var clampedRight = Math.min(rightX, TIMELINE_LABEL_WIDTH + plotWidth());
+      if (clampedRight < TIMELINE_LABEL_WIDTH || clampedLeft > TIMELINE_LABEL_WIDTH + plotWidth()) {
+        return;
+      }
+      makeTimelineSvgNode(rowGroup, "rect", {
+        x: clampedLeft.toFixed(1),
+        y: (rowTopY + (TIMELINE_ROW_HEIGHT - TIMELINE_BAR_HEIGHT) / 2).toFixed(1),
+        width: Math.max(1.5, clampedRight - clampedLeft).toFixed(1),
+        height: TIMELINE_BAR_HEIGHT,
+        rx: 2,
+        class: segmentClass
+      });
+    }
+
+    function renderVisibleRows() {
+      rowsSvg.textContent = "";
+      appendTimelineHatchPattern(rowsSvg);
+      var visible = timelineVisibleRowRange(scrollHost.scrollTop, scrollHost.clientHeight, rows.length);
+      for (var rowIndex = visible.firstRow; rowIndex < visible.lastRow; rowIndex++) {
+        var row = rows[rowIndex];
+        var request = requestsById[row.id] || {};
+        var rowTopY = rowIndex * TIMELINE_ROW_HEIGHT;
+        var rowGroup = makeTimelineSvgNode(rowsSvg, "g", {
+          class: "timeline-row" + (row.anomaly ? " is-broken" : "") + (request.status === "cancelled" ? " is-cancelled" : ""),
+          "data-detail-kind": "request",
+          "data-detail-id": row.id,
+          "data-row-index": String(rowIndex),
+          tabindex: "0",
+          role: "button",
+          "aria-label": timelineRowDescription(row, request)
+        });
+        makeTimelineSvgNode(rowGroup, "rect", {
+          x: 0,
+          y: rowTopY,
+          width: "100%",
+          height: TIMELINE_ROW_HEIGHT,
+          class: "timeline-row-hit"
+        });
+        makeTimelineSvgNode(
+          rowGroup,
+          "text",
+          { x: 6, y: rowTopY + TIMELINE_ROW_HEIGHT - 5, class: "timeline-row-label" },
+          row.id
+        );
+
+        var createdMs = Date.parse(row.createdTime);
+        var claimedMs = row.claimedTime ? Date.parse(row.claimedTime) : nowMs;
+        drawSegment(rowGroup, rowTopY, createdMs, claimedMs,
+          "timeline-segment timeline-segment-wait" + (row.waitOpen ? " is-open" : ""));
+
+        var projectedRow = projectedById[row.id];
+        if (projectedRow) {
+          drawProjectedSegment(rowGroup, rowTopY, projectedRow);
+        }
+        if (row.hasWork) {
+          var workStartMs = Date.parse(row.claimedTime);
+          var workEndMs = row.completedTime ? Date.parse(row.completedTime) : nowMs;
+          // A reversed span has no width to draw honestly, so it is drawn as a
+          // break marker at the claim instant rather than as a bar running
+          // backwards or clamped forwards to nothing.
+          if (row.workMinutes < 0) {
+            makeTimelineSvgNode(rowGroup, "rect", {
+              x: (xOfEpoch(workStartMs) - 3).toFixed(1),
+              y: rowTopY + 2,
+              width: 6,
+              height: TIMELINE_ROW_HEIGHT - 4,
+              class: "timeline-segment-broken"
+            });
+          } else {
+            drawSegment(rowGroup, rowTopY, workStartMs, workEndMs,
+              "timeline-segment timeline-segment-work" + (row.workOpen ? " is-open" : ""));
+          }
+        }
+      }
+      drawNowRule();
+    }
+
+    function drawProjectedSegment(rowGroup, rowTopY, projectedRow) {
+      var startMs = Date.parse(projectedRow.startTime);
+      var endMs = Date.parse(projectedRow.endTime);
+      if (isNaN(startMs) || isNaN(endMs)) {
+        return;
+      }
+      drawSegment(rowGroup, rowTopY, startMs, endMs, "timeline-segment timeline-segment-projected");
+    }
+
+    // One node for the whole column, appended after the rows so it reads as an
+    // overlay. It lives in the rows SVG rather than in a positioned element
+    // because that is what guarantees it uses the same x scale as the bars it
+    // crosses — a separate element would need the container's padding folded in
+    // by hand, and would drift the first time that padding changed.
+    function drawNowRule() {
+      if (nowMs < timelineViewState.windowStartMs || nowMs > timelineViewState.windowEndMs) {
+        return;
+      }
+      var nowX = xOfEpoch(nowMs);
+      makeTimelineSvgNode(rowsSvg, "line", {
+        x1: nowX.toFixed(1),
+        y1: 0,
+        x2: nowX.toFixed(1),
+        y2: rows.length * TIMELINE_ROW_HEIGHT,
+        class: "timeline-now-rule"
+      });
+    }
+
+    function renderAxis() {
+      axisSvg.textContent = "";
+      var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs || 1;
+      var tickCount = 6;
+      for (var tickIndex = 0; tickIndex <= tickCount; tickIndex++) {
+        var tickMs = timelineViewState.windowStartMs + (windowSpanMs * tickIndex) / tickCount;
+        var tickX = xOfEpoch(tickMs);
+        makeTimelineSvgNode(axisSvg, "line", {
+          x1: tickX.toFixed(1),
+          y1: TIMELINE_AXIS_HEIGHT - 6,
+          x2: tickX.toFixed(1),
+          y2: TIMELINE_AXIS_HEIGHT,
+          class: "timeline-axis-tick"
+        });
+        makeTimelineSvgNode(
+          axisSvg,
+          "text",
+          {
+            x: tickX.toFixed(1),
+            y: TIMELINE_AXIS_HEIGHT - 10,
+            class: "timeline-axis-label",
+            "text-anchor": tickIndex === 0 ? "start" : tickIndex === tickCount ? "end" : "middle"
+          },
+          timelineFormatAxisTick(tickMs, windowSpanMs)
+        );
+      }
+      if (nowMs >= timelineViewState.windowStartMs && nowMs <= timelineViewState.windowEndMs) {
+        var nowX = xOfEpoch(nowMs);
+        makeTimelineSvgNode(axisSvg, "line", {
+          x1: nowX.toFixed(1),
+          y1: 0,
+          x2: nowX.toFixed(1),
+          y2: TIMELINE_AXIS_HEIGHT,
+          class: "timeline-now-line"
+        });
+      }
+    }
+
+    function renderAll() {
+      renderAxis();
+      renderVisibleRows();
+    }
+
+    function timelineRowDescription(row, request) {
+      var parts = [row.id];
+      if (request.title) {
+        parts.push(request.title);
+      }
+      parts.push(request.route ? "Route " + request.route : "no route recorded");
+      parts.push(request.status || "unknown status");
+      parts.push("waited " + timelineFormatSpanMinutes(row.waitMinutes) + (row.waitOpen ? " so far" : ""));
+      if (row.hasWork) {
+        parts.push("worked " + timelineFormatSpanMinutes(row.workMinutes) + (row.workOpen ? " so far" : ""));
+      } else {
+        parts.push("not started");
+      }
+      var projectedRow = projectedById[row.id];
+      if (projectedRow) {
+        parts.push(
+          "projected #" +
+            projectedRow.position +
+            " in the queue, " +
+            timelineFormatSpanMinutes((Date.parse(projectedRow.endTime) - Date.parse(projectedRow.startTime)) / 60000) +
+            " (forecast, " +
+            projectedRow.bucket +
+            ")"
+        );
+      }
+      if (row.anomaly) {
+        parts.push("broken stamps: " + row.anomalyReason);
+      }
+      return parts.join(" · ");
+    }
+
+    // ---- interaction ----
+    addTimelineListener(scrollHost, "scroll", renderVisibleRows);
+
+    addTimelineListener(scrollHost, "keydown", function (keyEvent) {
+      var activation = timelineKeyboardActivationTarget(keyEvent);
+      if (!activation) {
+        return;
+      }
+      keyEvent.preventDefault();
+      openDetail(activation.detailKind, activation.detailId);
+    });
+
+    addTimelineListener(scrollHost, "mousemove", function (moveEvent) {
+      if (!readoutNode) {
+        return;
+      }
+      var rowGroup = moveEvent.target.closest ? moveEvent.target.closest("[data-row-index]") : null;
+      if (!rowGroup) {
+        readoutNode.textContent = "";
+        return;
+      }
+      var row = rows[Number(rowGroup.getAttribute("data-row-index"))];
+      readoutNode.textContent = row ? timelineRowDescription(row, requestsById[row.id] || {}) : "";
+    });
+    addTimelineListener(scrollHost, "mouseleave", function () {
+      if (readoutNode) {
+        readoutNode.textContent = "";
+      }
+    });
+
+    // Zoom is modifier-gated so a plain wheel keeps scrolling the rows, which is
+    // the motion a 560-row list needs most.
+    addTimelineListener(
+      scrollHost,
+      "wheel",
+      function (wheelEvent) {
+        if (!wheelEvent.ctrlKey && !wheelEvent.metaKey) {
+          return;
+        }
+        wheelEvent.preventDefault();
+        var bounds = scrollHost.getBoundingClientRect();
+        var anchorFraction =
+          (wheelEvent.clientX - bounds.left - TIMELINE_LABEL_WIDTH) / plotWidth();
+        anchorFraction = Math.min(Math.max(anchorFraction, 0), 1);
+        var zoomed = timelineZoomedWindow(
+          timelineViewState.windowStartMs,
+          timelineViewState.windowEndMs,
+          wheelEvent.deltaY < 0 ? TIMELINE_ZOOM_STEP : 1 / TIMELINE_ZOOM_STEP,
+          anchorFraction,
+          boundStartMs,
+          boundEndMs
+        );
+        timelineViewState.windowStartMs = zoomed.windowStartMs;
+        timelineViewState.windowEndMs = zoomed.windowEndMs;
+        renderAll();
+      },
+      { passive: false }
+    );
+
+    var panState = null;
+    addTimelineListener(scrollHost, "pointerdown", function (downEvent) {
+      if (downEvent.button !== 0) {
+        return;
+      }
+      panState = { pointerX: downEvent.clientX, windowStartMs: timelineViewState.windowStartMs };
+      scrollHost.classList.add("is-panning");
+    });
+    addTimelineListener(scrollHost, "pointermove", function (moveEvent) {
+      if (!panState) {
+        return;
+      }
+      var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs;
+      var shiftMs = ((panState.pointerX - moveEvent.clientX) / plotWidth()) * windowSpanMs;
+      var nextStartMs = Math.min(
+        Math.max(panState.windowStartMs + shiftMs, boundStartMs),
+        boundEndMs - windowSpanMs
+      );
+      timelineViewState.windowStartMs = nextStartMs;
+      timelineViewState.windowEndMs = nextStartMs + windowSpanMs;
+      renderAll();
+    });
+    ["pointerup", "pointercancel", "pointerleave"].forEach(function (eventName) {
+      addTimelineListener(scrollHost, eventName, function () {
+        panState = null;
+        scrollHost.classList.remove("is-panning");
+      });
+    });
+
+    function wireZoomButton(buttonId, apply) {
+      var button = document.getElementById(buttonId);
+      if (button) {
+        button.onclick = function () {
+          apply();
+          renderAll();
+        };
+      }
+    }
+    wireZoomButton("timeline-zoom-in", function () {
+      var zoomed = timelineZoomedWindow(
+        timelineViewState.windowStartMs, timelineViewState.windowEndMs,
+        TIMELINE_ZOOM_STEP, 0.5, boundStartMs, boundEndMs);
+      timelineViewState.windowStartMs = zoomed.windowStartMs;
+      timelineViewState.windowEndMs = zoomed.windowEndMs;
+    });
+    wireZoomButton("timeline-zoom-out", function () {
+      var zoomed = timelineZoomedWindow(
+        timelineViewState.windowStartMs, timelineViewState.windowEndMs,
+        1 / TIMELINE_ZOOM_STEP, 0.5, boundStartMs, boundEndMs);
+      timelineViewState.windowStartMs = zoomed.windowStartMs;
+      timelineViewState.windowEndMs = zoomed.windowEndMs;
+    });
+    wireZoomButton("timeline-zoom-fit", function () {
+      timelineViewState.windowStartMs = boundStartMs;
+      timelineViewState.windowEndMs = boundEndMs;
+    });
+    // Zooming anchors at the centre, so the forecast at the far right takes a
+    // long drag to reach once you have zoomed in far enough to read it. A
+    // forecast you have to hunt for does not answer "when does the queue empty".
+    wireZoomButton("timeline-zoom-now", function () {
+      var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs;
+      var centredStartMs = Math.min(
+        Math.max(nowMs - windowSpanMs / 2, boundStartMs),
+        Math.max(boundEndMs - windowSpanMs, boundStartMs)
+      );
+      timelineViewState.windowStartMs = centredStartMs;
+      timelineViewState.windowEndMs = centredStartMs + windowSpanMs;
+    });
+
+    addTimelineListener(window, "resize", renderAll);
+    renderAll();
+
+    // ---- table view ----
+    // Every value the chart shows is reachable without a pointer.
+    rows.forEach(function (row) {
+      var request = requestsById[row.id] || {};
+      var tableRow = document.createElement("tr");
+      [
+        row.id,
+        request.title || "",
+        request.status || "",
+        timelineFormatSpanMinutes(row.waitMinutes) + (row.waitOpen ? " (open)" : ""),
+        row.hasWork
+          ? timelineFormatSpanMinutes(row.workMinutes) + (row.workOpen ? " (open)" : "")
+          : "not started",
+        row.anomaly ? row.anomalyReason : ""
+      ].forEach(function (cellText) {
+        var cell = document.createElement("td");
+        cell.textContent = cellText;
+        tableRow.appendChild(cell);
+      });
+      tableBody.appendChild(tableRow);
+    });
+  }

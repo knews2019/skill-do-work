@@ -8,6 +8,69 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.207.3 — Timeline Forecast and Keyboard Fixes from PR Review (2026-08-18)
+
+Four defects an automated reviewer found on PR #144, all in the Timeline that shipped over the last two releases. Two of them made the forecast quietly wrong.
+
+- A REQ waiting on work someone is doing right now was reported as unschedulable and dropped out of the queue-end estimate entirely — with a reason that claimed its dependency was missing or circular. It is now scheduled behind the in-flight work, which is what the chain start already assumed.
+- The chain sorted REQ ids as text, so past four digits `REQ-1000` came before `REQ-999` and the forecast named the wrong next REQ. It now uses the same numeric comparator the rest of the board does.
+- Filtering to something that matches no REQ left the previous forecast and exclusion list on screen next to "No REQ matches the current filters"
+- Timeline rows said `role="button"` and took focus but ignored Enter and Space, so the detail drawer was unreachable by keyboard. It opens now.
+
+## 0.207.2 — The Board Action Stops Counting Its Own Views (2026-08-18)
+
+`do-work-board board` described the board by listing some of its tabs — "a Kanban board + completion calendar", "a third view next to Board / Calendar". Both went stale as views were added, and one was already wrong before the Timeline arrived.
+
+- It now describes what the view switcher covers rather than naming two of five entries, so a sixth view needs no edit to that file at all
+- The Testing view is still called out by name where it matters, but for the reason it matters — it owns the board's only write surface and its only server API — rather than by its position in a list
+
+## 0.207.1 — Downloads and Screenshots Check Where They Landed (2026-08-18)
+
+Two shipped helpers published a file and returned without checking it arrived. If the destination path happened to be a directory, `mv` and `ln` tuck the file inside it and exit zero, so both reported success for something that never happened.
+
+- The screenshot helper's version was the worse one: under `--staged` it deleted the staged capture on the strength of that false success, so the only copy was destroyed and the destination never received it. It now keeps the source and refuses.
+- The download helper now refuses too, leaving the occupying directory exactly as it was and cleaning up only its own file
+- Both cases are pinned by new tests that fail on the old code, including the one that proves the staged screenshot survives
+- Found by reading the rule the previous release wrote down, rather than by another review sweep — which was the argument for writing it down
+
+## 0.207.0 — Timeline Projects the Remaining Queue (2026-08-18)
+
+The Timeline now runs forward as well as back. Every REQ nobody has started yet gets a projected bar, chained one after another in the order `do-work run` would actually claim them, and the view says when the queue empties.
+
+- The estimate states what it assumed right next to itself: the median of the last 60 completed REQs split by triage size, one REQ at a time, no parallel builders, a queue that stops growing
+- Paused and reversed spans are excluded from the medians — the same rule the Durations view already applies, not a second copy of it
+- Too little history and it declines instead of guessing: no bars, no date, and a line saying how many completions it needs
+- REQs waiting on you, waiting on something external, or stuck behind one that is, are listed by name with a plain reason and left out of the estimate — never quietly folded in
+- Projected bars are hatched in their own colour so a forecast can never be mistaken for a measurement, and a new `Now` button jumps you to the forecast at any zoom
+
+## 0.206.0 — Timeline View: One Bar Per REQ, Wait and Work (2026-08-18)
+
+A fifth board view. Every REQ gets a horizontal bar across real time, in two parts: how long it sat waiting to be claimed, then how long it took once someone started. Two things the board could never show before — the wait was measured nowhere, and a REQ running right now appeared in no view at all.
+
+- Zoom the time axis with the buttons or ⌘/Ctrl+scroll, drag to pan, and your zoom is still there when you come back from another tab
+- Rows are virtualized, so a 560-REQ board draws exactly as many nodes as a 200-REQ one
+- REQs still in flight draw as open bars running to a now-line; REQs nobody has claimed yet show their wait and nothing more
+- A REQ whose stamps are backwards draws as a visible break instead of being quietly clamped or dropped
+- Hover any row for its id, route, status and both durations; click for the full detail drawer; the table underneath carries every value without a pointer
+
+## 0.205.2 — Durations Chart Stops Overprinting and Clipping (2026-08-18)
+
+Two things the Durations view drew that read as values but were not. On a busy board the overflow lane turned into a solid block of overprinted text, because it labelled every long REQ and picked the slot from the sample's position in an array. And Panel B drew a 78-minute day as a 45-minute bar, flat at the ceiling, with nothing to say it had been clipped.
+
+- The lane now fits as many labels as it can without two touching, and prints `+N more over 60 min` for the ones it could not — you can no longer mistake four visible labels for the whole story
+- Which labels get drawn is decided once, on the Go side, and travels in the payload; the chart draws that answer instead of working out its own
+- Long spans and reversed stamps are packed separately, so a burst of one no longer shifts the other around
+- Panel B's top tick reads `45+`, and any day past the ceiling gets a detached cap above a full-height bar — every such day, not just the slowest
+
+## 0.205.1 — One Shared Rule for Verifying Publications (2026-08-18)
+
+The shell guide now says once, in its own section, that a publication whose destination could already be occupied has to check the path it actually wrote. It used to say it inside one script's section, which is how the same defect got fixed four separate times without anyone reading the guide catching it — and writing it down immediately turned up two more helpers that don't check.
+
+- New `## Verified exact publication` section in `skills/do-work/docs/prescribed-shell-primitives.md`, keyed on the condition rather than on a list of scripts, so a helper added later is covered without anyone remembering to update anything
+- The portfolio-summary and report-image-batch sections point at it instead of each restating it; each keeps its own policy for what to do about a nested write
+- The atomic-download section, which never carried the rule at all, now points at it and records that neither it nor the screenshot install makes the check yet
+- The new heading joins the exact-match heading ratchet, so deleting the section fails the suite instead of silently stranding three links
+
 ## 0.205.0 — Always-On Communication Style Crew Member (2026-08-17)
 
 Every install now talks like a concise senior engineer. A new crew member carries the communication contract (plain specific language, answer-first replies, reference codes, banned filler, `scr`/`eli`/`foc`/`ref` aliases), and the installer links it from the project's `CLAUDE.md` so it applies to every session, not just pipeline work. Adapted from [disler/fixing-smartass-opus-5](https://github.com/disler/fixing-smartass-opus-5).

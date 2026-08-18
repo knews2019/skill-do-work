@@ -34,6 +34,20 @@ if ! ln "$copy_path" "$destination_path"; then
   printf 'Screenshot destination already exists or no-clobber install failed; staged source preserved: %s\n' "$source_path" >&2
   exit 1
 fi
+# `ln` refuses an occupied FILE, and that refusal is where the no-clobber guarantee
+# comes from — but it treats a directory in the destination's place as a container,
+# nesting the private copy inside it and still exiting zero. Verify the path actually
+# written BEFORE anything reads this status as permission to remove the staged source:
+# under --staged that source is the dispatch's only copy, so a false success here
+# destroys the screenshot it was asked to install. Discard only this invocation's own
+# nested copy; the occupying directory is someone else's and is left untouched.
+nested_destination_path="$destination_path/${copy_path##*/}"
+if [ -e "$nested_destination_path" ]; then
+  rm -f -- "$nested_destination_path"
+  printf 'REFUSING: %s is a directory — screenshot not installed, staged source preserved: %s\n' \
+    "$destination_path" "$source_path" >&2
+  exit 1
+fi
 
 if ! rm -f "$copy_path"; then
   printf 'Permanent screenshot copy verified, but temporary copy could not be removed: %s\n' "$copy_path" >&2

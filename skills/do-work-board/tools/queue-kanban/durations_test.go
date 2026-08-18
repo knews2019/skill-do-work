@@ -1,7 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"math"
+	"regexp"
+	"sort"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -221,5 +225,222 @@ func TestLiveArchiveDurationsMatchTheCalibratedFigures(t *testing.T) {
 	}
 	if math.Abs(busiestDay.MedianMinutes-19.6) > 0.1 {
 		t.Fatalf("2026-08-15 should report a median of 19.6 min, got %.4f", busiestDay.MedianMinutes)
+	}
+}
+
+// denseOverflowTickets builds a board whose overflow band is saturated: every
+// REQ ran well over the ceiling and they all completed inside a two-day window,
+// so consecutive marks sit far closer together than their label text is wide.
+// The live archive cannot express this — it carries three overflow samples out
+// of ~205 — which is why this fixture is synthetic rather than pinned.
+func denseOverflowTickets(sampleCount int) []*RequestTicket {
+	windowStart := time.Date(2026, 5, 4, 6, 0, 0, 0, time.UTC)
+	windowLength := 48 * time.Hour
+	tickets := make([]*RequestTicket, 0, sampleCount)
+	for sampleIndex := 0; sampleIndex < sampleCount; sampleIndex++ {
+		completedAt := windowStart.Add(time.Duration(sampleIndex) * windowLength / time.Duration(sampleCount-1))
+		claimedAt := completedAt.Add(-95 * time.Minute)
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 400+sampleIndex),
+			"C",
+			claimedAt.Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		))
+	}
+	return tickets
+}
+
+// labelledDurationSpans returns each placed label's occupied x-interval, per row,
+// for one band — the geometry an overlap check needs.
+func labelledDurationSpans(aggregate DurationAggregate, bandName string) map[int][][2]float64 {
+	rangeStart, rangeEnd, _ := durationLabelTimeRange(aggregate.Samples)
+	spansByRow := map[int][][2]float64{}
+	for _, sample := range aggregate.Samples {
+		if durationLabelBandOf(sample) != bandName || sample.LabelRow == durationsLabelRowUnplaced {
+			continue
+		}
+		markX := durationLabelPlotX(sample.CompletionTime, rangeStart, rangeEnd)
+		textWidth := durationLabelWidthUnits(sample)
+		span := [2]float64{markX + durationsLabelGapUnits, markX + durationsLabelGapUnits + textWidth}
+		if sample.LabelAnchor == "end" {
+			span = [2]float64{markX - durationsLabelGapUnits - textWidth, markX - durationsLabelGapUnits}
+		}
+		spansByRow[sample.LabelRow] = append(spansByRow[sample.LabelRow], span)
+	}
+	return spansByRow
+}
+
+// The defect this pins: the renderer labelled every overflow sample and chose
+// its slot from the sample's array index, so N overflow marks produced N labels
+// in four recycled slots — an unreadable blob at any real density. Placement is
+// now a geometric decision made once, on the Go side, and every label it cannot
+// fit is counted rather than dropped in silence.
+func TestDenseOverflowLabelsStayBoundedAndNeverOverlap(t *testing.T) {
+	const overflowSampleCount = 40
+	aggregate := buildDurationAggregate(denseOverflowTickets(overflowSampleCount))
+
+	if len(aggregate.Samples) != overflowSampleCount {
+		t.Fatalf("fixture produced %d samples, want %d", len(aggregate.Samples), overflowSampleCount)
+	}
+	labelledCount := 0
+	for _, sample := range aggregate.Samples {
+		if durationLabelBandOf(sample) != "overflow" {
+			t.Fatalf("%s is not in the overflow band; fixture is wrong", sample.RequestId)
+		}
+		if sample.LabelRow != durationsLabelRowUnplaced {
+			labelledCount++
+		}
+	}
+
+	// (a) Bounded by what the lane can physically hold. The narrowest label in
+	// this fixture, plus the gutter it needs, gives the tightest legal pitch;
+	// two rows of that is the ceiling no correct placement can exceed.
+	narrowestLabelWidth := math.Inf(1)
+	for _, sample := range aggregate.Samples {
+		narrowestLabelWidth = math.Min(narrowestLabelWidth, durationLabelWidthUnits(sample))
+	}
+	physicalCapacity := durationsLabelRowCount *
+		int(durationsPlotWidthUnits/(narrowestLabelWidth+durationsLabelSeparationUnits)+1)
+	if labelledCount > physicalCapacity {
+		t.Fatalf("placed %d labels, but two rows of %.0f units hold at most %d",
+			labelledCount, durationsPlotWidthUnits, physicalCapacity)
+	}
+
+	// (b) No two labels on a row may touch.
+	for rowIndex, spans := range labelledDurationSpans(aggregate, "overflow") {
+		sort.Slice(spans, func(earlier, later int) bool { return spans[earlier][0] < spans[later][0] })
+		for spanIndex := 1; spanIndex < len(spans); spanIndex++ {
+			previousRight := spans[spanIndex-1][1]
+			currentLeft := spans[spanIndex][0]
+			if currentLeft < previousRight+durationsLabelSeparationUnits {
+				t.Fatalf("row %d: label starting at %.1f overlaps the one ending at %.1f",
+					rowIndex, currentLeft, previousRight)
+			}
+		}
+	}
+
+	// Every sample the rule dropped is accounted for, so the chart can say so.
+	if labelledCount+aggregate.OverflowLabels.HiddenCount != overflowSampleCount {
+		t.Fatalf("%d labelled + %d hidden = %d, want %d — dropped labels are unaccounted for",
+			labelledCount, aggregate.OverflowLabels.HiddenCount,
+			labelledCount+aggregate.OverflowLabels.HiddenCount, overflowSampleCount)
+	}
+	if aggregate.OverflowLabels.HiddenCount == 0 {
+		t.Fatal("a 40-sample two-day overflow burst must not fit entirely; the fixture is not dense enough")
+	}
+}
+
+// durationsWindowStart is the fixture window both label fixtures share, so the
+// two aggregates below plot against an identical x-domain and their placements
+// are comparable rather than merely similar.
+var durationsWindowStart = time.Date(2026, 5, 4, 6, 0, 0, 0, time.UTC)
+
+const durationsWindowLength = 48 * time.Hour
+
+// reversedStampTickets pins three broken-stamp REQs to the window's start,
+// middle and end, so they exist at the same x positions with or without an
+// overflow burst beside them.
+func reversedStampTickets() []*RequestTicket {
+	tickets := []*RequestTicket{}
+	for offsetIndex, offset := range []time.Duration{0, durationsWindowLength / 2, durationsWindowLength} {
+		completedAt := durationsWindowStart.Add(offset)
+		claimedAt := completedAt.Add(20 * time.Minute) // completed before claimed: a reversed stamp
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-9%02d", offsetIndex),
+			"A",
+			claimedAt.Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		))
+	}
+	return tickets
+}
+
+func durationLabelPlacementByRequestId(aggregate DurationAggregate) map[string][2]string {
+	placement := map[string][2]string{}
+	for _, sample := range aggregate.Samples {
+		placement[sample.RequestId] = [2]string{strconv.Itoa(sample.LabelRow), sample.LabelAnchor}
+	}
+	return placement
+}
+
+// The old rule ran ONE counter across both bands, so a reversed label's slot was
+// decided by how many overflow samples happened to precede it — two visually
+// unrelated groups sharing a phase. Placement is now per band: saturating the
+// overflow lane must leave the reversed band's answer byte-identical.
+func TestReversedLabelPlacementIsIndependentOfOverflowDensity(t *testing.T) {
+	reversedOnly := buildDurationAggregate(reversedStampTickets())
+	withOverflowBurst := buildDurationAggregate(append(denseOverflowTickets(40), reversedStampTickets()...))
+
+	alonePlacement := durationLabelPlacementByRequestId(reversedOnly)
+	besidePlacement := durationLabelPlacementByRequestId(withOverflowBurst)
+	for _, ticket := range reversedStampTickets() {
+		if alonePlacement[ticket.RequestId] != besidePlacement[ticket.RequestId] {
+			t.Fatalf("%s placed %v alone but %v beside a dense overflow lane; the bands share state",
+				ticket.RequestId, alonePlacement[ticket.RequestId], besidePlacement[ticket.RequestId])
+		}
+	}
+	if withOverflowBurst.OverflowLabels.HiddenCount == 0 {
+		t.Fatal("the overflow band must be saturated for the comparison above to mean anything")
+	}
+	if reversedOnly.ReversedLabels.HiddenCount != 0 {
+		t.Fatalf("three well-separated reversed stamps must all fit; %d were hidden",
+			reversedOnly.ReversedLabels.HiddenCount)
+	}
+	if withOverflowBurst.ReversedLabels.HiddenCount != 0 {
+		t.Fatalf("a saturated overflow lane must not consume the reversed band's rows; %d were hidden",
+			withOverflowBurst.ReversedLabels.HiddenCount)
+	}
+}
+
+// rendererNumericConstant reads one `var NAME = NUMBER;` out of an embedded view
+// fragment. Parity tests and JavaScript behavior probes read the renderer's own
+// values through it, so neither can drift into asserting against a hand-copied
+// number. It is why every constant a test needs is written as a plain literal
+// rather than as an expression.
+func rendererNumericConstant(t *testing.T, assetPath string, constantName string) float64 {
+	t.Helper()
+	rendererText, readError := embeddedWebAssets.ReadFile(assetPath)
+	if readError != nil {
+		t.Fatalf("read %s: %v", assetPath, readError)
+	}
+	pattern := regexp.MustCompile(`(?m)^\s*var ` + regexp.QuoteMeta(constantName) + ` = (-?[0-9.]+);`)
+	match := pattern.FindSubmatch(rendererText)
+	if match == nil {
+		t.Fatalf("%s declares no numeric constant %s", assetPath, constantName)
+	}
+	value, parseError := strconv.ParseFloat(string(match[1]), 64)
+	if parseError != nil {
+		t.Fatalf("parse %s: %v", constantName, parseError)
+	}
+	return value
+}
+
+func durationsRendererConstant(t *testing.T, constantName string) float64 {
+	t.Helper()
+	return rendererNumericConstant(t, "web/board-durations.js", constantName)
+}
+
+// Placement decides in the renderer's user-unit space, so the two files agree on
+// that space or every label is sized against a plot it does not land on. The
+// numbers are duplicated by necessity — one side computes, the other draws — and
+// this is what stops the duplicate becoming a divergence.
+func TestDurationLabelGeometryMatchesTheRenderer(t *testing.T) {
+	rendererPlotWidth := durationsRendererConstant(t, "DURATIONS_VIEW_WIDTH") -
+		durationsRendererConstant(t, "DURATIONS_MARGIN_LEFT") -
+		durationsRendererConstant(t, "DURATIONS_MARGIN_RIGHT")
+	if rendererPlotWidth != durationsPlotWidthUnits {
+		t.Fatalf("renderer plot width = %.1f, placement assumes %.1f", rendererPlotWidth, durationsPlotWidthUnits)
+	}
+	for _, pair := range []struct {
+		rendererName string
+		goValue      float64
+	}{
+		{"DURATIONS_CEILING_MINUTES", durationsOverflowCeilingMinutes},
+		{"DURATIONS_LABEL_ROW_COUNT", durationsLabelRowCount},
+		{"DURATIONS_LABEL_GAP", durationsLabelGapUnits},
+	} {
+		if rendererValue := durationsRendererConstant(t, pair.rendererName); rendererValue != pair.goValue {
+			t.Fatalf("renderer %s = %v, placement assumes %v", pair.rendererName, rendererValue, pair.goValue)
+		}
 	}
 }

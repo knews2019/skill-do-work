@@ -45,4 +45,16 @@ if ! mv "$download_path" "$target_path"; then
   printf 'Downloaded file could not be published: %s\n' "$target_path" >&2
   exit 2
 fi
+# `mv` treats a directory in the destination's place as a container rather than a
+# collision, so a target occupied by a directory nests the download inside it and
+# still exits zero — and the caller reads that status as proof the file landed.
+# Verify the path actually written, discard only this invocation's own nested
+# file, and leave the occupying directory exactly as it was.
+nested_download_path="$target_path/${download_path##*/}"
+if [ -e "$nested_download_path" ]; then
+  rm -f -- "$nested_download_path"
+  download_path=""
+  printf 'REFUSING: %s is a directory — download discarded, existing directory left unchanged\n' "$target_path" >&2
+  exit 1
+fi
 download_path=""

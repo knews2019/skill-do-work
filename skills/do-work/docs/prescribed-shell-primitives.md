@@ -59,6 +59,12 @@ scripts/add-local-git-exclude.sh <path> '**/<path>'
 
 Use `git rev-parse --git-path`; constructing `<repo>/.git/info/exclude` breaks linked worktrees and submodules. The `**/` prefix keeps an interior-slash pattern and a cwd-relative `git check-ignore` probe aligned from subdirectories. The command makes an untracked path ignorable, not a tracked path safe: a caller whose requirement is “must never be committed” also checks `git ls-files -- <path>` and asks the user to untrack it when necessary. A mere build artifact can skip that tracked-file check.
 
+## Verified exact publication
+
+Whenever a publication's destination could already be occupied, the publishing step verifies the path it actually wrote; the rename's or link's exit status is not that proof. `ln` and `mv` treat a directory standing in the destination's place as a container rather than a collision, so the payload lands inside it under the private staging name, the command exits zero, and the destination is still the directory it was. A caller that reads only the status records a publication that never happened, over a private file abandoned in someone else's directory.
+
+The trigger is that condition and not the identity of any one helper: it holds for a single file and for a whole staged directory, for every publication described below, and for any publication added later. What a helper does *about* a nested write is its own policy and stays in its own section — advancing to the next candidate, failing closed, and discarding only its own stage are each correct answers to the same check.
+
 ## Atomic download publication
 
 Never download incrementally into the final path when presence or size is later treated as success. The shipped helper downloads to a private adjacent temporary file, publishes by rename only after curl succeeds, and preserves failures:
@@ -73,11 +79,13 @@ Credentials are opt-in. When `GH_TOKEN` or `GITHUB_TOKEN` is non-empty the helpe
 
 Cleanup never converts a failed download into success. When review occurs between download and publication, later command blocks must re-derive the deterministic reviewed path and verify it exists; they must not silently download again.
 
+Publication here makes the [Verified exact publication](#verified-exact-publication) check, and so does the screenshot install that shares these mechanics: each verifies the path it actually wrote, removes only its own nested artifact, and exits nonzero with the occupying directory untouched. For the screenshot install that ordering is what protects the staged source, since a staged capture is removed only after a publication that verifiably happened.
+
 ## Portfolio summary publication
 
 Invoke `../do-work-toolbox/scripts/publish-portfolio-summary.sh` with one retained source and the action-selected mode. The helper copies and verifies that source into a private file adjacent to the canonical target, once per output. `--canonical-only` atomically replaces only the canonical file. `--with-snapshot` first publishes an exclusive snapshot from its own verified copy, advances occupied candidates with numeric suffixes, and only then atomically replaces the canonical file from the same bytes.
 
-The two outputs carry identical bytes but never share storage: a snapshot linked to the canonical file would follow every later in-place edit of it. Each publication also verifies the path it actually wrote, because `ln` and `mv` treat a directory in the destination's place as a container rather than a collision — a snapshot candidate occupied by a directory advances to the next suffix, a canonical path occupied by a directory fails closed, and neither leaves a private file nested inside it.
+The two outputs carry identical bytes but never share storage: a snapshot linked to the canonical file would follow every later in-place edit of it. Each publication makes the [Verified exact publication](#verified-exact-publication) check, and this helper's answers to it are that a snapshot candidate occupied by a directory advances to the next suffix, a canonical path occupied by a directory fails closed, and neither leaves a private file nested inside it.
 
 An exclusive snapshot failure leaves the prior canonical unchanged. A later canonical replacement failure leaves the new snapshot published and reports that partial outcome. Existing snapshots are never truncated, replaced, or automatically removed.
 
@@ -85,7 +93,7 @@ An exclusive snapshot failure leaves the prior canonical unchanged. A later cano
 
 Generate a report's images through `../do-work-toolbox/scripts/generate-report-image-batch.sh <report-directory> <style-brief> <target-name>:<prompt> …` rather than orchestrating the per-image helper yourself. Each pair splits on its first colon, and a target name must be a bare filename because the batch joins it to its own invocation-private staging directory adjacent to `generated/`.
 
-The batch launches one helper per image, retains every PID and status, and waits each one even after an earlier failure — a bare `wait` would discard the mixed statuses that decide which images are current. An image is current only when its own helper status is zero and its staged target is non-empty; failed targets are removed. Publication happens once, as a single same-filesystem rename of the complete verified batch, and only when at least one image is current. `generated/` must be absent both before staging and immediately before the rename, and the rename is verified afterwards because `mv` treats an existing destination directory as a container rather than a collision: a nested stage means someone else owns `generated/`, so the batch discards only its own stage, leaves that directory untouched, and exits nonzero.
+The batch launches one helper per image, retains every PID and status, and waits each one even after an earlier failure — a bare `wait` would discard the mixed statuses that decide which images are current. An image is current only when its own helper status is zero and its staged target is non-empty; failed targets are removed. Publication happens once, as a single same-filesystem rename of the complete verified batch, and only when at least one image is current. `generated/` must be absent both before staging and immediately before the rename, and the rename makes the [Verified exact publication](#verified-exact-publication) check: a nested stage means someone else owns `generated/`, so the batch discards only its own stage, leaves that directory untouched, and exits nonzero.
 
 An all-failed batch is not an error. It removes its exact private directory, prints nothing, and exits zero so the caller falls back to hand-authored diagrams. Success prints the published directory on stdout; every diagnostic goes to stderr so the caller can read the path directly.
 

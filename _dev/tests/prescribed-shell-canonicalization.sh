@@ -72,6 +72,7 @@ for required_heading in \
   '## Merge-aware commit diff' \
   '## Commit file listing' \
   '## Local Git ignore' \
+  '## Verified exact publication' \
   '## Atomic download publication' \
   '## Portfolio summary publication' \
   '## Report image batch publication' \

@@ -77,6 +77,9 @@
           <button type="button" class="control-button" data-view-target="durations" aria-pressed="false">
             Durations
           </button>
+          <button type="button" class="control-button" data-view-target="timeline" aria-pressed="false">
+            Timeline
+          </button>
           <button type="button" class="control-button" data-view-target="testing" aria-pressed="false">
             Testing
           </button>
@@ -213,6 +216,57 @@
                 </tr>
               </thead>
               <tbody id="durations-table-body"></tbody>
+            </table>
+          </div>
+        </details>
+      </section>
+
+      <!-- Timeline — one bar per REQ across real time: the wait from capture to
+           claim, then the work from claim to completion. Rows are virtualized,
+           so only the scrolled window carries SVG nodes. -->
+      <section id="view-timeline" class="view-panel" aria-label="Timeline" hidden>
+        <div class="timeline-intro">
+          <h2 class="timeline-heading">How long each REQ waited, and how long it took</h2>
+          <p class="timeline-subhead" id="timeline-summary"></p>
+        </div>
+        <div class="timeline-toolbar">
+          <div class="timeline-legend" role="group" aria-label="Segment colour key">
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="wait"></span>Waiting to be claimed</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="work"></span>Being worked on</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="open"></span>Still open, running to now</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="projected"></span>Projected, not measured</span>
+            <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="broken"></span>Broken stamps</span>
+          </div>
+          <div class="control-group" role="group" aria-label="Timeline zoom">
+            <button type="button" class="control-button" id="timeline-zoom-out" title="Zoom out">−</button>
+            <button type="button" class="control-button" id="timeline-zoom-in" title="Zoom in">+</button>
+            <button type="button" class="control-button" id="timeline-zoom-now">Now</button>
+            <button type="button" class="control-button" id="timeline-zoom-fit">Fit all</button>
+          </div>
+        </div>
+        <div class="timeline-chart">
+          <div class="timeline-axis" id="timeline-axis"></div>
+          <div class="timeline-scroll" id="timeline-scroll"></div>
+        </div>
+        <p class="timeline-forecast" id="timeline-forecast"></p>
+        <div class="timeline-excluded" id="timeline-excluded"></div>
+        <p class="timeline-hint">Scroll to move down the queue. Hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Click a row for its full detail.</p>
+        <p class="timeline-readout" id="timeline-readout" role="status" aria-live="polite"></p>
+        <details class="timeline-table">
+          <summary>Every REQ, as a table</summary>
+          <div class="timeline-table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col">REQ</th>
+                  <th scope="col">Title</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Waited</th>
+                  <th scope="col">Worked</th>
+                  <th scope="col">Note</th>
+                </tr>
+              </thead>
+              <tbody id="timeline-table-body"></tbody>
             </table>
           </div>
         </details>

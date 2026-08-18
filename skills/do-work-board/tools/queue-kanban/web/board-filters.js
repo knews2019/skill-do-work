@@ -152,10 +152,17 @@
     renderColumns();
     renderedOnce.userRequestLens = false;
     renderedOnce.calendar = false;
+    // Timeline filters, unlike Durations: a Gantt narrowed to one domain is a
+    // straightforward question about a queue, where a durations distribution
+    // narrowed the same way is a different statistic wearing the same axes.
+    renderedOnce.timeline = false;
     renderedOnce.testing = false;
     if (viewState.view === "calendar") {
       renderCalendar();
       renderedOnce.calendar = true;
+    } else if (viewState.view === "timeline") {
+      renderTimelineView();
+      renderedOnce.timeline = true;
     } else if (viewState.view === "testing") {
       renderTestingView();
       renderedOnce.testing = true;
