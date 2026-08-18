@@ -52,6 +52,41 @@ That resolution is sound and stays. What it exposed is that these numbers carry 
 - [ ] **`durations.go`'s `formatDurationLabelMinutes` emits an ASCII hyphen where the renderer draws U+2212.** The two glyphs differ by 1.73 units in this face, so the Go side models a narrower string than the browser draws. **Currently width-neutral** — both are one character and the width model counts characters — but it becomes a real under-estimate the moment anyone replaces the flat constant with a per-glyph model, which REQ-241 attempted and abandoned. Worth a comment at minimum.
 - [ ] **`durationsLabelRemainderReserveUnits` over-reserves more at the new width.** It scales as `24 × durationsLabelCharacterWidthUnits`, so raising that constant to 7.15 widened the reservation to 171.6 against a widest composable remainder sentence of 123.18 units. Over-reserving is the safe direction — it drops a label, which the remainder counts — but the gap is now large enough to be a deliberate choice rather than an accident.
 
+---
+
+## AI Execution State (P-A-U Loop)
+
+Added by the orchestrator at integration (review-generated REQ predating the block — the class REQ-264 asks to make visible). Transcribed from the builder hand-back:
+
+- [x] **[PLAN]:** Read brief, crew rules (incl. testing for tdd), the board prime with its Lessons. Inventoried every `durationsMeasured*` constant (3 + 4) and every browser-derived number in `durations.go`; traced provenance in the live archives (REQ-241: "chromium-1228"; REQ-242: Chromium 146). Plan: scratch fixture board, isolated-Chromium measurement of current geometry, RED provenance test, comment edits, GREEN, full gates.
+- [x] **[APPLY]:** Fixture board built in scratch (binary to scratch, never bare `go build`); measured on Chromium 141.0.7390.37 with `location.href` in the same evaluate as every number; RED test first (all 7 constants failed for the missing-build reason), then the comments.
+- [x] **[UNIFY]:** `gofmt -l` clean, `go vet` clean, package suite exit 0, maintainer-verify exit 0; class sweep found the only remaining unprovenance'd citations in `web/board-durations.js` (Scope-excluded, Discovered Task). Two commits, each green on its own.
+
+## Implementation Summary
+
+**What was done:** Every browser-measured constant in the Durations suite (7 `durationsMeasured*` constants across `durations_test.go` and `generate_test.go`) now names the Chromium build its number came from, written exactly as the source REQs recorded it, each with a fresh cross-check on this environment's Chromium 141.0.7390.37. A new `TestDurationsMeasuredConstantsNameTheirChromiumBuild` walks every Go file in the package (go/parser, vacuity-guarded) and fails any measured constant whose doc comment names no build — observed RED on all 7 before the edits. The Panel B clearance budget prose states it is per-browser and carries all three measurements (1.364 REQ-241 / 0.185 Chromium 146 / 1.111 fresh, post-REQ-248 geometry) plus the corrected model-space figure (0.49 units, pitch 14 breaks it). `durations.go` documents the hyphen-vs-U+2212 divergence (5.24 units on this build vs the REQ's recorded 1.73 — the delta itself is per-browser) and states the remainder reserve's over-shoot as deliberate with measured numbers; REQ-260's gofmt nit fixed in passing. **No constant's value changed** — two current-build measurements exceed their constants and that raise is a Discovered Task, per the REQ's no-fold rule.
+
+**Files changed:**
+- `skills/do-work-board/tools/queue-kanban/durations_test.go` (modified) — per-constant provenance, per-browser procedure note, budget prose, the provenance test
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modified) — measured-face block split; each of four constants carries its own build comment with current-build cross-checks
+- `skills/do-work-board/tools/queue-kanban/durations.go` (modified) — supremum's build named; hyphen/U+2212 comment; reserve over-shoot stated; gofmt fix
+
+*Integrated by orchestrator from builder hand-back; merge range `ca0cc84..c752529`.*
+
+## Decisions
+
+Transcribed from the builder hand-back:
+
+- **D-01 (DECIDE & STATE):** the mechanical provenance check ships as a real test — the failure it pins is a real integration collision (REQ-241/242's invisible redeclaration); ~60 lines of std-lib go/parser; vacuity guard included; stated limit: the `durationsMeasured` prefix is convention, a smuggled number under another name is review's job (package-wide sweep confirms the convention currently holds).
+- **D-02 (DECIDE & STATE):** no value change despite two current-build measurements exceeding their constants — the REQ forbids folding; no assertion currently flips; the comments state the raise-only status so they do not lie about currency.
+- **D-03 (DECIDE & STATE):** REQ-260's gofmt nit fixed in passing as the Scope allows — REQ-260 can be discarded at clarify.
+- **D-04 (DECIDE & STATE):** provenance identifiers written exactly as the source REQs recorded them ("browser build chromium-1228"; "Chromium 146 (Playwright 1.59)") — the surviving records are partly inconsistent and the comments say what is known rather than inventing a version.
+- **D-05 (DECIDE & STATE):** the budget prose's stale figures corrected alongside the provenance — the old "1.36 / pitch 15" predated the 12.1 ascent merge; the model figure is 0.49 / pitch 14.
+
+## Qualification
+
+Passed — 3 files in merge range `ca0cc84..c752529`, requirements traced (all 7 constants carry builds — RED transcript names each; budget prose carries three measurements + warning; no behaviour change — `git diff` shows comments, test, and the one-character gofmt fix only), P-A-U audited. Armed qualify note: the scan WARNs on the provenance test's own output lines (it owns its process exit) — confirmed from the diff as the test's failure messages, i.e. contract output.
+
 ## Requirements
 
 - Every constant in these files that is a browser measurement names the browser and build it was taken on, in the same comment as the number.
