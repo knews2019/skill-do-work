@@ -3,6 +3,7 @@ id: REQ-229
 title: Verify the published path in the download and screenshot helpers
 status: completed
 completed_at: 2026-08-18T01:43:47Z
+commit: 2f1cde5
 claimed_at: 2026-08-18T01:38:34Z
 domain: general
 created_at: 2026-08-18T00:18:44Z
