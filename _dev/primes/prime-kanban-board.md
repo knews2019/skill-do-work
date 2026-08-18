@@ -19,6 +19,7 @@
 
 ## Lessons
 
+- [REQ-236: a document-wide DOM count is only evidence when its root is the thing under test](../../do-work/archive/REQ-236-add-a-urs-only-lens-to-the-board.md#lessons-learned)
 - [REQ-233: a programmatic .focus() cannot answer a :focus-visible question, and will say the ring is broken when it is not](../../do-work/archive/REQ-233-give-the-timeline-a-keyboard-path-to-zoom-and-pan.md#lessons-learned)
 - [REQ-185: separate ordinary optional-tool skips from a counted maintainer-strict behavior lane](../../do-work/archive/UR-041/REQ-185-javascript-behavior-reachability.md#lessons-learned)
 - [REQ-194: retain canonical structured detector evidence and test the source seam directly](../../do-work/archive/UR-043/REQ-194-forward-stray-reqs-through-forensics.md#lessons-learned)

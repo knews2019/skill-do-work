@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.210.0 — Board Adds a URs-Only Lens (2026-08-18)
+
+The Board could show REQ cards in columns, or every UR with all its cards unrolled underneath. On 50-odd URs the second one is a very long page. There is now a third reading: just the user requests, one row each, opening in place when you want the REQs.
+
+- New `URs only` Lens button beside Columns and By UR
+- A row expands and collapses on click; several can be open at once
+- The UR detail drawer moved to its own button on the row, so opening details and expanding the row no longer fight
+- Search, domain and status filters, the Active/All scope, and the recently-done window all reach the new reading unchanged
+
 ## 0.209.0 — Timeline Pans and Zooms From the Keyboard (2026-08-18)
 
 The Timeline could be zoomed and dragged with a mouse and no other way. Tab to the chart and the arrow keys now move the time window, `+` and `-` zoom it, and the panel says so where a screen reader can hear it.

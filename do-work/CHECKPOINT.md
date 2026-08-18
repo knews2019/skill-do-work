@@ -21,7 +21,6 @@ Every hash was confirmed with `record-commit-hash.sh --verify`. `maintainer-veri
 
 ## In Progress (interrupted)
 - REQ-235: Give the Timeline period-based navigation and a jump to now — claimed 2026-08-18T11:13:25Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
-- REQ-236: Add a URs-only lens to the Board view — claimed 2026-08-18T11:00:00Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 
 
