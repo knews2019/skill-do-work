@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.8 — JavaScript Behavior Probes Run From Stdin (2026-08-18)
+
+The board's JavaScript behavior probes now hand their script to Node on stdin instead of as a command-line argument, so the large ones run on Linux as well as macOS.
+
+- A probe embedding the assembled client exceeded Linux's 128 KiB per-argument limit and failed the exec with "argument list too long" — the slowest-day annotation probe hit it, which made `maintainer-verify.sh` red on Linux for a reason that had nothing to do with the code under test.
+- macOS has no equivalent per-argument cap, so the same suite stayed green there; the fix removes the size ceiling on every probe rather than the one that happened to cross it.
+
 ## 0.212.7 — Every Timestamp Template Points at the Rule (2026-08-18)
 
 An agent filling in a template rarely goes looking for the rule behind it, so a template that just says "put a timestamp here" invites a guessed one — which is exactly how three fabricated stamps got written. Every one of those spots now points at the rule, and a check keeps it that way.

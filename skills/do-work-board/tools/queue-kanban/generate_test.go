@@ -267,7 +267,13 @@ func runJavaScriptBehaviorProbe(t *testing.T, probeName string, javascriptProbe 
 	t.Helper()
 	nodePath := lookupNodeForJavaScriptProbe(t)
 
-	probeCommand := exec.Command(nodePath, "-e", javascriptProbe)
+	// The probe arrives on stdin rather than as an "-e" argument: a probe that
+	// embeds the assembled client exceeds Linux's 128 KiB per-argument limit and
+	// fails the exec with "argument list too long" — a limit macOS does not have,
+	// so an "-e" invocation passes for the maintainer and fails in CI-like Linux
+	// environments on probe size alone.
+	probeCommand := exec.Command(nodePath, "-")
+	probeCommand.Stdin = strings.NewReader(javascriptProbe)
 	javaScriptBehaviorProbeCount.Add(1)
 	probeOutput, probeError := probeCommand.CombinedOutput()
 	if probeError != nil {
