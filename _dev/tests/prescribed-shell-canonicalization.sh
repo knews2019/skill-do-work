@@ -127,6 +127,7 @@ printf '%s\n' \
   'plain `git show` prints a combined diff that is usually empty' \
   'pattern with an interior slash is root-anchored' \
   'curl -o` writes the final path incrementally' \
+  'container rather than a collision' \
   'Shell state does not survive' \
   'never interpolate raw user text inside shell quoting' \
   '`diff -x PATTERN`' \
