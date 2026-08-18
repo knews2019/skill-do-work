@@ -11,7 +11,6 @@ session_depth: heavy
 ## In Progress (interrupted)
 
 - REQ-252: Record the browser with every measured-face number in the Durations tests — claimed 2026-08-18T19:12:47Z — writer: vm:/home/user/skill-do-work
-- REQ-254: Let qualify tell a check's own output from leftover instrumentation — claimed 2026-08-18T19:12:47Z — writer: vm:/home/user/skill-do-work
 
 ## Completed This Session
 

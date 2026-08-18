@@ -1,9 +1,11 @@
 ---
 id: REQ-254
 title: Let qualify tell a check's own output from leftover instrumentation
-status: claimed
+status: completed
 created_at: 2026-08-18T14:04:16Z
 claimed_at: 2026-08-18T19:12:47Z
+completed_at: 2026-08-18T19:53:41Z
+kb_status: pending
 route: B
 status_changed_at: 2026-08-18T14:04:16Z
 user_request: UR-055
@@ -127,3 +129,74 @@ Candidate signals, none prescribed: whether the added line is inside `_dev/tests
 **Dependencies:** ✓ Go 1.26.1, ShellCheck 0.11.0, `just`, Node, Chromium present
 
 *Checked by work action*
+
+## AI Execution State (P-A-U Loop)
+
+Added by the orchestrator at integration — this review-generated REQ predates the block, which is itself review finding I2. Transcribed from the builder hand-back:
+
+- [x] **[PLAN]:** Read brief, crew rules incl. maintenance/testing, the prime, qualify.sh, suite structure, work.md Step 6.3, and REQ-244's actual remediation diff. Candidate signals evaluated and rejected for cause; settled on process-exit ownership.
+- [x] **[APPLY]:** TDD order — lock-ins first, RED observed against unmodified qualify.sh, then the split. Two write-set files, +108/−2.
+- [x] **[UNIFY]:** Diff reviewed; shellcheck warning-level clean; new print( occurrences are fixture bytes and the suite owns its exit; maintainer-verify exit 0; tree clean.
+
+## Orchestrator correction and armed-run override
+
+Two records set straight, per review finding I2:
+
+1. **The mid-integration commit's "P-A-U transcription" claim was false.** The transcription replace calls targeted the capture template's checkbox text, which this file never contained; they no-op'd silently and the commit message overclaimed. The block above is the real transcription. The same slip affects REQ-250's trail commit message (its archived file also lacks the section); recorded here and in the session checkpoint rather than by editing history.
+2. **Armed-run override, on the record (REQ-244 precedent).** With a P-A-U section present, shipped `qualify.sh` over this REQ's own range `8f564b3..116eec6` FAILs twice: the marker scan on the lock-in's TODO *fixture* lines and on qualify.sh's own regex/comment text, and the output walk on `review-work.md`'s seam line ("never ends its own process" — a category error for prose). All three are contract/fixture/documentation bytes, not unfinished work or instrumentation — exactly the protected class. Overridden: the diff was read, each flagged line is quoted here by its role, and the rule fix (WARN on missing section; prose false positive) is REQ-264/REQ-263's territory.
+
+## Review
+
+**Overall: 91%** | 2026-08-18T19:49:39Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 85% |
+| Test Adequacy | 90% |
+| Scope | 90% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Verdict: Approve** — the ownership condition survives adversarial execution at its boundary: both RED cases reproduce GREEN in serial and range modes, all three lock-ins are mutation-falsifiable, and every hole found is either the REQ's accepted limit (D-05) or a pre-existing class this change strictly narrowed.
+
+### Requirements Checklist
+
+- [x] **Checker's own reporting passes; instrumentation still FAILs** — *reproduced by execution* in both modes: reporter WARN + exit 0 naming the reason; library debug print FAIL + exit 1 naming file and reason; browser `console.log` with no exit FAILs (D-03's class claim); TODO in an exit-owning checker still FAILs (D-04, verified live).
+- [x] **Condition, never a list** — the shipped comment states the ownership condition and marks both vocabularies illustrative; the exit-idiom enum degrades safely (a missing language's idiom falls back to the OLD behavior — FAIL, overridable — never a silent pass; probed with a Lua-style CLI).
+- [x] **Deletion genuinely considered** — D-01's tie-breaker is correct: the REQ's own GREEN requires library instrumentation to keep FAILing; the scan now claims strictly less and nothing that passed before now FAILs.
+- [x] **`maintainer-verify` exit 0** — observed un-piped (55-case suite included).
+
+### Findings
+
+**Important (audit record with gates):**
+- **I1 — the ownership condition is satisfiable by non-semantic bytes** (same-diff `sys.exit(0)` smuggle; `__main__`-guarded exit in a dual-use module; a docstring that merely *says* "exit 1") — each flips FAIL to WARN; the implemented whole-file grep is weaker than the stated condition. *Reproduced by execution.* Mitigation is structural (WARN names the file and instructs confirm-from-diff; Step 6.3 defines WARN as judgment; D-05 concedes intent-blindness on the WARN side), and the categorical fix would break the REQ's own GREEN case. — gate: **trivial** → REQ-263 (pending-answers, generation ≥2), folded with the WARN-legibility Minor.
+- **I2 — this REQ's own qualification "Passed" with Check 4's FAIL half disarmed**: the file carried no P-A-U section, both UNIFY-gated FAIL branches key on a checked box, and an armed run over the range FAILs on protected-class false positives with no override recorded. Not unique to this builder — every review-generated REQ from the previous session lacks the section. — gate: **rule-change** → REQ-264 (pending-answers, generation ≥2); the missing transcription and the armed-run override are corrected in this file, above.
+
+**Minor:** 5 (report only) — WARN omits matched lines (folds into REQ-263); `work.md:750`'s Because-cell now conditionally stale ("a diff containing console.log is a false claim the qualifier will catch" — in an exit-owning file it deliberately WARNs; a reader acting on it only over-complies); the prose-file false positive persists with a confidently wrong reason (docs quoting the tokens FAIL as "never ends its own process" — pre-existing in kind, class strictly narrowed); mechanical scope-drift flag on the orchestrator-applied seam landing in `review-work.md` where the Scope predicted `work.md` (traceability intact, not builder drift); seam sentence style dense (cosmetic).
+
+**Nit:** WARN fires even with `[UNIFY]` unchecked while FAIL requires it checked — harmless asymmetry.
+
+### Acceptance Testing
+
+**Result: Pass** — both RED cases GREEN in both modes in scratch fixtures; boundary probes executed (dual-use, smuggle, docstring, browser JS, comment/string literals, moved lines, shell `echo` unscanned, stale-enum edge); all three lock-ins proven mutation-falsifiable by executing three mutations (restored byte-identical); suite count 52 → 55 verified by the suite's own runtime count; gate exit 0 with a clean tree at review end.
+
+### Suggested Additional Testing
+
+Pin the accepted WARN boundary itself (docstring-"exit 1" case) so a future tightening shows red-green; exercise the missing-P-A-U WARN against REQ-250's and REQ-254's shapes when REQ-264 lands; confirm Go's `fmt.Println`/`os.Exit(` sitting outside both vocabularies is the intended floor.
+
+**Follow-ups created:** REQ-263, REQ-264 (by orchestrator; pending-answers per the depth stop) · **Sweeps appended to:** none
+
+*Reviewed by review-work action (independent adversarial pass, orchestrated mode; merge range `8f564b3..116eec6`)*
+
+## Lessons Learned
+
+**What worked:** Grounding the condition in the real fired case (REQ-244's actual remediation diff) instead of the REQ's abstract description — that is what disqualified three plausible candidate signals before any code. Safe-degradation as a design property: an unknown language's exit idiom falls back to the old FAIL-and-override behavior, never a silent pass.
+
+**What didn't:** The condition-as-implemented (whole-file grep for exit-idiom text) is weaker than the condition-as-stated (file ends its own process) — the ninth instance-vs-class occurrence, this time in the fix for the gate that hunts that shape. And the pipeline's own paperwork had the same hole one level up: review-generated REQs carry no P-A-U block, so the box audit was silently disarmed for exactly the REQs this session processed, and a false "transcription" claim in a commit message went unnoticed until the review re-armed the audit.
+
+**Worth knowing:** WARN is qualify's judgment channel and FAIL its gate; REQ-254 moved one token class between them, and `work.md:750`'s Because-cell is now conditionally stale (over-compliance direction). A forgotten debug print inside any exit-owning script WARNs — the honest boundary of intent-blindness.
+
+## Orientation
+
+Now qualify's debug-artifact scan distinguishes a check's own reporting (WARN, judgment) from leftover instrumentation (FAIL) by process-exit ownership, and unfinished-work markers still FAIL anywhere. Lives in core's `tools/checks/` gate layer. [MAP CHANGED] — Check 4 is now two half-checks with different channels, and the review layer's hygiene wording follows it. Prime staleness spot-check: `prime-shell-commands.md` paths still resolve; not stale.

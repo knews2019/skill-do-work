@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.16 — Qualify Tells a Check's Own Output From Instrumentation (2026-08-18)
+
+The debug-artifact gate no longer cries wolf on a checker's success line.
+
+- `qualify.sh`'s output-primitive tokens (`print(`, `console.log`) are now judged by process-exit ownership: a file that ends its own process has a terminal audience, so its added output surfaces as a legible WARN for judgment; a file that never ends its process is library code, so the same line still FAILs, naming the file and reason. Unfinished-work markers (`TODO`, `FIXME`, `debugger`) FAIL anywhere, unchanged.
+- Three lock-ins pin the boundary, including that the reporter exemption never pardons a TODO.
+- Known accepted limit, stated in the script: the gate cannot see intent, so a forgotten debug print inside a checker WARNs rather than FAILs — reviewers still read the diff.
+
 ## 0.212.15 — The Timestamp Rule's Last Two Boundary Cases Are Settled (2026-08-18)
 
 Every clock write in shipped action text is now governed by a stated rule.
