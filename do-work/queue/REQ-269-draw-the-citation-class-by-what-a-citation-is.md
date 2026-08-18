@@ -1,9 +1,9 @@
 ---
 id: REQ-269
 title: Draw the cross-package citation class by what a citation is, not by the punctuation around it
-status: pending-answers
+status: pending
 created_at: 2026-08-18T21:44:57Z
-status_changed_at: 2026-08-18T21:44:57Z
+status_changed_at: 2026-08-18T22:20:09Z
 user_request: UR-055
 addendum_to: REQ-259
 domain: general
@@ -73,6 +73,8 @@ The review verified the hole by mutation rather than by argument: restoring the 
 
 ## Open Questions
 
-- [ ] REQ-259's review found that the cross-package citation class is bounded by punctuation rather than by what a citation is, with six live escapees across three packages, and demonstrated by mutation that the pre-REQ-259 defect still passes the checker. Should I process this as a new task?
+- [x] REQ-259's review found that the cross-package citation class is bounded by punctuation rather than by what a citation is, with six live escapees across three packages, and demonstrated by mutation that the pre-REQ-259 defect still passes the checker. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it — accept that bare-text citations are checked by review rather than mechanically.
+
+**Answered [2026-08-18]:** User approved via `do-work clarify`, presented with the reviewer's mutation evidence — restoring the pre-REQ-259 defect still passes the checker today. Approved as a class fix, not a six-site patch: the Requirements' "done means the class cannot recur" clause is the acceptance bar, and the Red-Green Proof is that mutation.

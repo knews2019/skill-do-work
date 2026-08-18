@@ -1,9 +1,9 @@
 ---
 id: REQ-270
 title: Carry a worktree builder's hand-back sections into Step 8
-status: pending-answers
+status: pending
 created_at: 2026-08-18T21:45:21Z
-status_changed_at: 2026-08-18T21:45:21Z
+status_changed_at: 2026-08-18T22:20:09Z
 user_request: UR-055
 addendum_to: REQ-259
 domain: general
@@ -51,6 +51,8 @@ Worth knowing while it sits in the queue: **the loss is silent and unbounded in 
 
 ## Open Questions
 
-- [ ] REQ-259's review found that a worktree builder's `## Discovered Tasks` never reach Step 8, because Step 8 reads that section from the REQ file and a worktree builder may not write it — so every out-of-scope find is silently dropped unless the orchestrator transcribes it by hand. Should I process this as a new task?
+- [x] REQ-259's review found that a worktree builder's `## Discovered Tasks` never reach Step 8, because Step 8 reads that section from the REQ file and a worktree builder may not write it — so every out-of-scope find is silently dropped unless the orchestrator transcribes it by hand. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it — rely on the orchestrator transcribing hand-back sections as part of integration, and say so in the dispatch contract instead of changing Step 8.
+
+**Answered [2026-08-18]:** User approved via `do-work clarify`, presented as a live defect in the pipeline itself that fired during this very run. Approved keyed on the general shape (any Step 8 substep reading a builder-authored section from the REQ file), not on `## Discovered Tasks` alone.

@@ -1,8 +1,9 @@
 ---
 id: REQ-267
 title: Close the two remaining repairer shape divergences
-status: pending-answers
+status: pending
 created_at: 2026-08-18T21:03:15Z
+status_changed_at: 2026-08-18T22:20:09Z
 user_request: UR-056
 addendum_to: REQ-255
 domain: general
@@ -49,6 +50,8 @@ REQ-255's independent review, findings I-1 and I-2 (gate: trivial each — never
 
 ## Open Questions
 
-- [ ] REQ-255's review found two more shapes where the repairer and the board disagree — one repairs a file the board reads as having no frontmatter (and, in one variant, makes the session hook fail forever), the other refuses a shape the board accepts while the docs claim it is handled. Should I process this as a new task?
+- [x] REQ-255's review found two more shapes where the repairer and the board disagree — one repairs a file the board reads as having no frontmatter (and, in one variant, makes the session hook fail forever), the other refuses a shape the board accepts while the docs claim it is handled. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
+
+**Answered [2026-08-18]:** User approved via `do-work clarify`, presented as the only known live defect in the queue that can wedge a session permanently. Nothing was put out of scope — both instances stand, and the never-half-rewrite rule from REQ-255 still governs the refusal path.

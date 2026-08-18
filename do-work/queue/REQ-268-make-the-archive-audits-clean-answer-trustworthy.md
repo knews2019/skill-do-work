@@ -1,8 +1,9 @@
 ---
 id: REQ-268
 title: Make the archive audit's clean answer trustworthy
-status: pending-answers
+status: pending
 created_at: 2026-08-18T21:03:15Z
+status_changed_at: 2026-08-18T22:20:09Z
 user_request: UR-056
 addendum_to: REQ-255
 domain: general
@@ -47,6 +48,8 @@ Instance 1 is REQ-255's independent review, finding I-3 (gate: user-visible — 
 
 ## Open Questions
 
-- [ ] The archive auditor says "clean" both when it refused a malformed stamp it deliberately preserved and when its file walk failed outright and scanned nothing. Should I process this as a new task?
+- [x] The archive auditor says "clean" both when it refused a malformed stamp it deliberately preserved and when its file walk failed outright and scanned nothing. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
+
+**Answered [2026-08-18]:** User approved via `do-work clarify`. Both instances stand: the refused-stamp report line and the failed-walk exit path. The exit contract for a voiced refusal is builder latitude, as the Requirements already say.
