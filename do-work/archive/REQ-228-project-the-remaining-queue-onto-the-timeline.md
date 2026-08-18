@@ -3,6 +3,7 @@ id: REQ-228
 title: Project the remaining queue onto the Timeline
 status: completed
 completed_at: 2026-08-18T01:35:36Z
+commit: 2daefd1
 claimed_at: 2026-08-18T01:22:09Z
 created_at: 2026-08-17T23:51:17Z
 user_request: UR-051
