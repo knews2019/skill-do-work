@@ -1,8 +1,8 @@
 ---
-session_ended: 2026-08-18T12:29:36Z
-last_completed: REQ-239
-queue_state: 2 pending, 1 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
-reqs_processed_this_session: 10
+session_ended: 2026-08-18T14:07:35Z
+last_completed: REQ-244
+queue_state: 7 pending, 2 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
+reqs_processed_this_session: 5
 session_depth: heavy
 ---
 
@@ -10,54 +10,70 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-
 ## Completed This Session
 
-- REQ-231: Keep Panel A's direct labels clear of the mark band (Route B, 97%) — commit `720f23c`, shipped as **0.208.0**
-- REQ-230: Point caller docs at the canonical publication rationale (Route B, 98%) — commit `19669fc`, shipped as **0.208.1**
-- REQ-234: Stop the shell behavior suite counting its own cases (Route A, 97%) — commit `48ed251`, shipped as **0.208.2**
-- REQ-233: Give the Timeline a keyboard path to zoom and pan (Route B, 96%) — commit `9b2578b`, shipped as **0.209.0**
-- REQ-236: Add a URs-only lens to the Board view (Route C, 97%) — commit `456ee9d`, shipped as **0.210.0**
-- REQ-235: Give the Timeline period navigation and a jump to now (Route C, 95%) — commit `7cae7a4`, shipped as **0.211.0**
-- REQ-240: Stop the Timeline axis printing a fake minute (Route B, 97%) — commit `664b269`, shipped as **0.211.1**
-- REQ-237: Backfill the Durations label rows when the longest spans cluster (Route B, 96%) — commit `3720ab9`, shipped as **0.212.0**
-- REQ-238: Point present-work at the canonical independent-bytes rationale (Route B, 98%) — commit `d783ec9`, shipped as **0.212.1**
-- REQ-239: Give the Timeline's rows a real focus ring (Route B, 97%) — commit `1d76ad1`, shipped as **0.212.2**
+- REQ-241: Reconcile the Durations label metrics with the rendered face (Route B) — commit `90c74b7`, shipped as **0.212.3**
+- REQ-243: Check that shipped markdown pointers actually resolve (Route B) — commit `37d7729`, shipped as **0.212.4**
+- REQ-245: Name fabricated stamps in the board's future-stamp warnings (Route A) — commit `23bad9d`, shipped as **0.212.5**
+- REQ-242: Stop Panel B's slowest-day annotation colliding with its title (Route B) — commit `48263dd`, shipped as **0.212.6**
+- REQ-244: Cite the Timestamp rule at every timestamp write site (Route C) — commit `f733365`, shipped as **0.212.7**
 
-Every hash was confirmed with `record-commit-hash.sh --verify`. `maintainer-verify.sh` exits 0 at every commit boundary. All ten ran as worktree builders; every worktree and `worktree-agent-*` branch was removed with `git worktree remove` / `git branch -d` (never `-D`), and `git worktree list` shows only the main tree.
+Every hash was confirmed with `record-commit-hash.sh --verify`. `maintainer-verify.sh` exits 0 at every commit boundary and on the final tree. All five ran as worktree builders in two waves; every worktree and `worktree-agent-*` branch was removed with `git worktree remove` / `git branch -d` (never `-D`), the worktrees parent directory is gone, and `git worktree list` shows only the main tree.
+
+**All five were reviewed independently and all five came back PASS-WITH-FINDINGS** (80%, 88%, 88%, 88%, 66%). Every one was remediated on its builder's own branch and re-merged before shipping. No REQ shipped on its first pass.
 
 ## Still Queued
 
-- **REQ-241** (pending): Reconcile the Durations label metrics with the rendered face. Sweep, two instances — `durationsLabelCharacterWidthUnits = 6.2` against a measured 6.61 units/char, and `DURATIONS_LABEL_ROW_HEIGHT = 12` against a declared 13-unit text box. Approved via clarify.
-- **REQ-242** (pending): Stop Panel B's slowest-day annotation colliding with its own title. Pre-existing; `209 min` renders through the title on a fixture whose slowest day falls under it. Approved via clarify.
-- **REQ-243** (pending-answers): Check that shipped markdown pointers actually resolve. New machinery rather than a repair, which is why it is asking.
+Nine, none claimed:
 
-**REQ-241 and REQ-242 must not run in parallel with each other.** Both write `web/board-durations.js`, and REQ-241 may move `DURATIONS_LABEL_ROW_HEIGHT` — which shifts every panel below it, including the Panel B title REQ-242 is separating an annotation from. Run REQ-241 first, then re-measure REQ-242's collision against the result: it may change size or disappear. REQ-243 is fully disjoint (`_dev/tests/prescribed-shell-canonicalization.sh`) and can run alongside either.
+- **REQ-246** / **REQ-247** (pending): mechanical no-LLM timestamp repair — the SessionStart hook repairer and the git-commit-time archive auditor. REQ-247 depends on REQ-246. Captured before this session and deliberately left out of its assignment.
+- **REQ-248** (pending): anchor the Durations day buckets to UTC midnight. Panel B's leftmost bar sits in the axis gutter on this repository's own board, and a one- or two-day board renders Panel B **entirely off-canvas** (measured `x=-3330`). The highest-value item in the queue.
+- **REQ-249** (pending-answers): decide the cross-package citation path form. Two incompatible readings coexist; REQ-244 added eleven more in the prescribed form while the question stayed open.
+- **REQ-250** (pending): the four remaining markdown link-checker limits.
+- **REQ-251** (pending): two stale copies of the future-stamp message outside REQ-245's write set.
+- **REQ-252** (pending): record the browser with every measured-face number.
+- **REQ-253** (pending-answers): the two clock-write shapes the Timestamp rule governs with neither paragraph.
+- **REQ-254** (pending): let `qualify.sh` tell a check's own output from leftover instrumentation.
 
 ## Session Notes
 
-- **Every visual REQ this session had a defect that the suite passed and a render caught.** REQ-231's dot-on-label overprinting (55 overlapping pairs → 0), REQ-240's axis reading `18 Aug 11:00` five times, REQ-237's under-filled label rows, REQ-239's open question about whether a ring even suited an 18px row. In each case the assertions were green before and after the discovery. The rule from REQ-226 held for the fourth, fifth and sixth time: generate a board and look at it.
-- **A shared browser instance silently invalidates cross-builder DOM evidence.** REQ-237's builder measured a sibling's page and got confident, well-formed, wrong numbers; only unfamiliar REQ ids gave it away. REQ-239's builder was warned mid-build and re-took every reading in an isolated context with `location.href` and the page's own `cssRuleText` returned from the same `evaluate` — all identical. Both facts are now conventions in `_dev/primes/prime-kanban-board.md`.
-- **Two builders pushed back on their briefs, and both were right.** REQ-237's brief said `TestOverflowLabelsGoToTheLongestSpans` must pass unchanged; that test's assertions *were* the six-label cap the REQ removes, so no correct implementation could satisfy both. REQ-235's builder wrote a period-index clamp, found the tests passed without it, and deleted it as unearned. A builder that had quietly edited the test, or kept the dead clamp, would have looked identical in the diff.
-- **Merge conflicts in `generate_test.go` are not all alike.** Three occurred; two were clean appends where stripping markers works, and REQ-239's was not — both sides ended mid-function with their shared closing braces folded into the common tail, so the naive strip made one function swallow the other. Nothing in the marker positions distinguishes the cases. Compile, then run *both sides'* tests.
-- **Three self-inflicted errors, all caught and corrected:** three future-dated `completed_at` stamps written by extrapolating the clock instead of reading it (caught by the board's own future-timestamp check, commit `818ea17`); a dispatch brief that omitted the P-A-U instruction, so two REQs' boxes were filled by the orchestrator from hand-back evidence with an HTML comment saying so; and a `git mv` that ran after its frontmatter edit had already failed, archiving REQ-237 still reading `status: claimed`.
-- **Estimator calibration this session:** ten REQs, estimate vs actual wall minutes — 35/37, 20/6, 5/11, 30/70, 60/20, 75/24, 25/21, 30/28, 15/23, 20/30. The two Route C estimates (60, 75) overshot badly against 20 and 24 actual; Route B clustered close except REQ-233 (30 est / 70 actual, the one REQ that needed an integration seam). Worth a recalibration pass.
-- A builder left `timeline-focus-ring.png` in the main tree root — a write-set violation. Removed, and every subsequent brief carried a "scratch goes in /tmp" line.
+- **Every REQ this session shipped a mechanism that looked like it closed a class and closed only the instance.** This is the session's single finding, and it recurred five times independently. REQ-241's width constant was calibrated from a sweep that held one of two unbounded parameters fixed. REQ-243's heading walk relied on an invariant stronger than the one its fixture locked. REQ-242's "x-free" test sampled six x values, and a mutant banded on x reproduced the original defect **at the real board's own slowest-day position** while the suite stayed green. REQ-244's checker keyed on a literal bracket span containing one word, so it locked in exactly the drift it had removed. REQ-245's badge guard asserted a phrase was *absent*, and swapping the whole string for a wrong one passed. In every case the code was right and the net had a hole, and in three of the five the hole was precisely where the real data lives.
+
+- **The reviewers earned their cost this session; the builders' own evidence did not catch any of the five.** All five reviews were adversarial and all five found something real. Two findings were reproduced by mutation against the shipped code rather than argued from reading, which is what made them undeniable.
+
+- **A builder disproved the orchestrator's preferred fix with measurement, and was right.** REQ-241 was told to clamp the hour count so the label space would be finite. It measured that with hours clamped to `999h+`, `REQ-44444 −999h+` still exceeds the constant, because the REQ id is the *other* unbounded parameter. It shipped an amortization argument instead — only digits repeat without limit, every wide fixed character is amortized away, so per-character width converges to a pure digit run's 7.14 and cannot pass it. **"Complete sweep" is a property of the argument, not the sample size**: its first sweep was 10 000 strings and wrong, its second 280 800 and still would have been.
+
+- **The predicted merge conflict never happened, and a real one arrived where nothing was watching.** `generate_test.go` merged clean every time — three conflicts occurred last session and zero this one, because REQ-245 was steered to `timestamp_test.go` and REQ-242 was given sole ownership of the file for the wave. Instead REQ-241 and REQ-242 each measured the same 12px axis-title face on **different Chromium builds** (12.0372 vs 11.2300), rounded up, and declared the same constant in different files of one package. Git saw nothing — the edits never touched adjacent lines — and it surfaced as `redeclared in this block`. Resolved to the larger value inside the merge commit, and **both sides' tests were run by name** after resolving, not merely compiled.
+
+- **A measured face is per-browser, and the numbers we record are not portable.** REQ-241's D-03 budget of 1.364 units above Panel B's title measures **0.185 units** on Chromium 146 — still positive, still zero intersections, but roughly 7× thinner than recorded. That is REQ-252.
+
+- **A builder corrected its own record unprompted, and the correction was the point.** REQ-244's original hand-back quoted a GREEN transcript from a prototype under a sentence asserting it came from the committed checker. The committed checker printed nothing on success, so it could not have produced that line. In a REQ about agents writing values they did not read, that is the REQ's own failure mode appearing inside its evidence. The fix — make the check print its counts — then tripped `qualify.sh`'s debug-artifact scan, which is REQ-254.
+
+- **`qualify.sh` was overridden once, deliberately and on the record.** Its debug-artifact heuristic cannot distinguish a check's own success output from leftover instrumentation. The override is written into REQ-244 with the diff quoted, because an unrecorded override teaches the next reader that a qualify FAIL can be waved through.
+
+- **The environment failed mid-session and it was not the code.** `maintainer-verify.sh` failed with 36 `No space left on device` errors inside the installer probe. The volume is at 100% (263 MiB free of 123 GiB). Freed roughly 350 MB of this and prior sessions' scratch — including a 168 MB Chromium a reviewer downloaded and an **11 MB compiled `queue-kanban` binary a builder left in the source tree** (gitignored, so no git-hygiene failure, but it inflated every install-probe copy). Verify then exited 0 with zero space errors. **The machine still needs real space.**
+
+- **A builder can write outside its worktree without ever issuing a write.** The Playwright MCP drops a `.playwright-mcp/` directory into whatever it considers its working root, which was the main tree. It is gitignored and already held 36 files from sibling sessions. REQ-245's builder removed only its own two files by timestamp and left the rest — the correct call. The brief template now states this as an explicit exception rather than leaving builders to assume it.
+
+- **`queue-kanban verify` reports a live builder's worktree as `merged-worktree-leftover [fixable]`.** True and dangerous to act on: the branch tip is contained in HEAD because the orchestrator merged it, while the builder is still adding commits to it. Running `do-work cleanup` on that advice mid-remediation would delete live work.
+
+- **Estimator calibration this session:** five REQs, estimate vs actual active minutes — 35/28, 20/20, 5/48, 25/34, 55/32. Appended to `do-work/calibration-log.tsv`. The Route C estimate overshot again (55 vs 32), matching last session's pattern of both Route C estimates overshooting by roughly 2–3×. **REQ-245's 5/48 is the outlier and it is not an estimator failure** — it was estimated as trivial correctly, then had its scope widened twice by the orchestrator on the builder's own findings. A recalibration pass should exclude it or record why.
 
 ## Context Summary (heavy sessions only)
 
-**Read these fresh before starting; ten REQs of carried-over assumptions are not reliable.**
+**Read these fresh before starting; five REQs of carried-over assumptions are not reliable.**
 
-- `_dev/primes/prime-kanban-board.md` — gained five lesson links (REQ-233, 235, 236, 237, 239, 240) and **two new conventions** this session: render-and-look, and assert page identity inside the measuring call. Entry point for anything under `skills/do-work-board/tools/queue-kanban/`.
-- `_dev/primes/prime-shell-commands.md` — gained REQ-230, REQ-234 and REQ-238.
-- `skills/do-work-board/tools/queue-kanban/web/board-timeline.js` — changed by three REQs today (233, 235, 240) and is the file REQ-241/242's neighbours sit beside.
+- `_dev/primes/prime-kanban-board.md` — entry point for anything under `skills/do-work-board/tools/queue-kanban/`. Not yet updated with this session's lessons; that is a lessons-handoff still owed.
+- `_dev/primes/prime-shell-commands.md` — REQ-243 and REQ-244 both belong here.
+- `_dev/tests/contract-regressions.sh` — now carries the shape-keyed timestamp citation check, which prints `54 instant write sites cited, 17 date-only sites recognized` on every verify. A change in that count is signal.
+- `_dev/tests/shipped-package-reference-contract.sh` — now resolves markdown `#anchor` targets as well as paths, for 27 anchors across four packages.
 
 **Decisions with reach beyond their own REQ:**
 
-- **REQ-233 D-01 through D-06 established that every way of moving the Timeline's window goes through `timelineZoomedWindow`.** REQ-235 then added period navigation as a *third* driver without adding a fourth rule — it computes a candidate window and hands it to that same function. Anything that later moves the window must do the same, or the guarantee stops holding.
-- **REQ-235 D-02: the period level is derived from the window, never stored.** That is why "a free zoom marks the level inexact" needed no code. Do not add a `periodLevel` field.
-- **REQ-236 D-01: a lens and a lens button are no longer one-to-one.** `viewState.lens` holds two values while the Lens group offers three; the third is a fold modifier. Four sites read `viewState.lens === "user-request"` and are correct for both readings *because* of that. A future lens must check this assumption.
-- **REQ-237 [MAP CHANGED]: Durations label selection and placement are one descending-magnitude pass.** There is no candidate list and no `durationsLabelTopCount`. Row occupancy is an interval list because a magnitude-ordered walk does not visit x monotonically. Anything influencing *which* spans get labelled has one place to do it and must not reintroduce a pre-placement filter.
-- **REQ-240 D-02: the axis label format keys on the gap between ticks, not the window span.** `TIMELINE_AXIS_TICK_COUNT` exists so the formatter's threshold and `renderAxis`'s loop read one number. A third reader must join the same constant.
+- **REQ-241 D-07: this is now the pattern for any constant modelling a rendered face.** State the supremum over the space, not the worst case of a sample; say what makes the sweep complete, next to the number; pin from both sides. A one-sided pin cannot distinguish "correct" from "equal to the last measurement" — which is exactly how 6.75 passed against a 6.71 reference.
+- **REQ-242: an exact structural check beats a bigger sweep when the claim is that an input is unused.** Its assertion reads the shipped function out of the generated page and requires the baseline expression to mention neither `dayCentreX` nor `medianMinutes` — that is what makes one measurement at one x a statement about every x. A sweep is still a sample; a band narrower than its spacing slips through.
+- **REQ-244 D-08: recognition broad, requirement narrow.** The detector recognizes any placeholder shaped like a value assigned to something that names a clock value or sits under an `*_at` key; only two spellings satisfy it. That split is what makes a checker both complete and enforcing, and it is why names and date-only sites are excluded **by shape rather than by exception** — no path list, no exempt-file list.
+- **REQ-245 D-04/D-07: the strict JavaScript behavior lane selects by name pattern, not by file or registry.** A `TestJavaScriptBehavior…` probe participates from any file in the package, so a "you may not touch `generate_test.go`" constraint never blocks JS behavior coverage.
+- **REQ-245: a message rendered in two languages needs the pairing made mechanical.** The Go constant and the JS constant are held together by a verbatim comparison that runs without Node; the rendered text is checked by a probe that drives the real code path. Asserting a phrase is *absent* is not a guard — it passed when the whole string was replaced.
 
-**Architectural note:** the board now has three chart-ish views with different disciplines — Durations rebuilds its nodes each render and needs no teardown; Timeline binds to the scroll host and `window` and keeps an explicit teardown registry; the Board lenses share one renderer with a fold flag. Copying any one's habit into a fourth view without asking which case it is will be wrong two times in three.
+**Architectural note:** the board's Durations view now has three separately-pinned geometric guarantees — same-row label separation, label/mark clearance, and the annotation's baseline independence — and they are pinned by three different *kinds* of test (measured-constant assertion, live-DOM intersection, structural source inspection). Adding a fourth guarantee means choosing which kind fits, not copying whichever was written last.
