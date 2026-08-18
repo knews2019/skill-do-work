@@ -1,7 +1,8 @@
 ---
 id: REQ-233
 title: Give the Timeline a keyboard path to zoom and pan
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-18T10:26:34Z
 domain: general
 created_at: 2026-08-18T01:18:57Z
 user_request: UR-051
@@ -47,6 +48,7 @@ Not a regression: no other board view has zoom or pan at all, so REQ-227 added a
 
 ## Open Questions
 
-- [ ] I discovered this out-of-scope task while working on REQ-227: the new Timeline chart can be zoomed and dragged with a mouse, but there is no way to do either from the keyboard — the three zoom buttons can be tabbed to, dragging cannot be done at all, and the instructions for both sit in a line of text next to the chart rather than anywhere a screen reader announces. Nothing is unreadable: every row can be focused, opens its detail panel with Enter, and every number is repeated in the table underneath. What a keyboard user cannot do is move the time window they are reading in. Adding arrow-key panning and `+`/`-` zoom is a small, self-contained change to the one file. It is your call rather than mine because no other board view has zoom or pan at all, so this is a new capability to finish rather than a regression to repair, and you may prefer it batched with a wider accessibility pass over the board instead of done piecemeal here. Should I process this as a new task?
+- [x] I discovered this out-of-scope task while working on REQ-227: the new Timeline chart can be zoomed and dragged with a mouse, but there is no way to do either from the keyboard — the three zoom buttons can be tabbed to, dragging cannot be done at all, and the instructions for both sit in a line of text next to the chart rather than anywhere a screen reader announces. Nothing is unreadable: every row can be focused, opens its detail panel with Enter, and every number is repeated in the table underneath. What a keyboard user cannot do is move the time window they are reading in. Adding arrow-key panning and `+`/`-` zoom is a small, self-contained change to the one file. It is your call rather than mine because no other board view has zoom or pan at all, so this is a new capability to finish rather than a regression to repair, and you may prefer it batched with a wider accessibility pass over the board instead of done piecemeal here. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
+  *Answered 2026-08-18 via `do-work clarify` — user approved building the keyboard path now rather than batching it into a wider accessibility pass.*

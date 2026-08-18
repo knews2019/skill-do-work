@@ -1,7 +1,8 @@
 ---
 id: REQ-234
 title: Stop the shell behavior suite counting its own cases
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-18T10:26:34Z
 domain: general
 created_at: 2026-08-18T01:44:18Z
 user_request: UR-042
@@ -42,6 +43,7 @@ Found while adding two cases in REQ-229. The closing line read `(45 named script
 
 ## Open Questions
 
-- [ ] I discovered this out-of-scope task while working on REQ-229: one of the maintainer test scripts finishes by announcing how many test cases it just ran, and that number is typed into the file by hand rather than counted. It is already out of step — it claimed 45 while the file held 40 of the obvious unit — so it reports something remembered as though it were measured. Nothing is broken: every test still runs and still passes, and the number appears only in a success message. The fix is either to count the cases at run time or to stop claiming a number. It is your call rather than mine because working out what the original number was counting means picking a definition of "one case" for this suite, and picking it wrong would silently change what that line reports to every future reader. Should I process this as a new task?
+- [x] I discovered this out-of-scope task while working on REQ-229: one of the maintainer test scripts finishes by announcing how many test cases it just ran, and that number is typed into the file by hand rather than counted. It is already out of step — it claimed 45 while the file held 40 of the obvious unit — so it reports something remembered as though it were measured. Nothing is broken: every test still runs and still passes, and the number appears only in a success message. The fix is either to count the cases at run time or to stop claiming a number. It is your call rather than mine because working out what the original number was counting means picking a definition of "one case" for this suite, and picking it wrong would silently change what that line reports to every future reader. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
+  *Answered 2026-08-18 via `do-work clarify` — user approved deriving the count at run time (with a stated counting rule) or dropping the claim.*

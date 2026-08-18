@@ -1,7 +1,8 @@
 ---
 id: REQ-230
 title: "Review fix: point caller docs at the canonical publication rationale"
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-18T10:26:34Z
 domain: general
 created_at: 2026-08-18T00:19:09Z
 user_request: UR-042
@@ -49,6 +50,7 @@ Found during review of REQ-225 by its mandatory restatement sweep. REQ-225 moved
 
 ## Open Questions
 
-- [ ] While reviewing REQ-225 I found one shipped instruction file that repeats, word for word, a paragraph of shell rationale that REQ-225 had just moved into a single shared home. Nothing is broken and no behavior changes either way — the copy is accurate today. The cost of leaving it is that the next time the shared paragraph is corrected, this copy keeps teaching the old version, which is the failure this repeated rule has already produced elsewhere. The cost of fixing it is a small edit to a shipped file plus one line in a test, and a slightly less self-contained read for anyone who was relying on that paragraph being right there. This is your call rather than mine because REQ-225 was explicitly scoped to one file with your consent recorded on it, and quietly widening that scope to a second package would spend the consent you gave on something you did not agree to. Should I process this as a new task?
+- [x] While reviewing REQ-225 I found one shipped instruction file that repeats, word for word, a paragraph of shell rationale that REQ-225 had just moved into a single shared home. Nothing is broken and no behavior changes either way — the copy is accurate today. The cost of leaving it is that the next time the shared paragraph is corrected, this copy keeps teaching the old version, which is the failure this repeated rule has already produced elsewhere. The cost of fixing it is a small edit to a shipped file plus one line in a test, and a slightly less self-contained read for anyone who was relying on that paragraph being right there. This is your call rather than mine because REQ-225 was explicitly scoped to one file with your consent recorded on it, and quietly widening that scope to a second package would spend the consent you gave on something you did not agree to. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
+  *Answered 2026-08-18 via `do-work clarify` — user approved queueing the pointer-plus-test-pattern fix.*
