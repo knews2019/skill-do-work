@@ -1,7 +1,9 @@
 ---
 id: REQ-261
 title: Delete the date-only tripwire and keep the rule
-status: pending
+status: claimed
+claimed_at: 2026-08-18T22:59:48Z
+route: A
 created_at: 2026-08-18T19:30:47Z
 status_changed_at: 2026-08-18T21:01:24Z
 user_request: UR-055
@@ -15,6 +17,15 @@ depends_on: []
 maintenance: true
 write_set:
 - skills/do-work/actions/work-reference.md
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-08-18T22:59:48Z
+  basis:
+    - Route A
+    - 1-file write set
+    - 2 acceptance criteria
+    - full-suite verification
 ---
 
 # Delete the Date-Only Tripwire and Keep the Rule

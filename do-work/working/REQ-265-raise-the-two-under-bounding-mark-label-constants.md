@@ -1,7 +1,9 @@
 ---
 id: REQ-265
 title: Raise the two under-bounding mark-label constants to the current build
-status: pending
+status: claimed
+claimed_at: 2026-08-18T22:59:48Z
+route: A
 created_at: 2026-08-18T20:07:08Z
 status_changed_at: 2026-08-18T21:01:24Z
 user_request: UR-051
@@ -16,6 +18,15 @@ depends_on: []
 maintenance: false
 write_set:
 - skills/do-work-board/tools/queue-kanban/durations_test.go
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-08-18T22:59:48Z
+  basis:
+    - Route A
+    - 1-file write set
+    - 3 acceptance criteria
+    - full-suite verification
 ---
 
 # Raise the Two Under-Bounding Mark-Label Constants to the Current Build

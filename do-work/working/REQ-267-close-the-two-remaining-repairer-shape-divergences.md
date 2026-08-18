@@ -1,7 +1,9 @@
 ---
 id: REQ-267
 title: Close the two remaining repairer shape divergences
-status: pending
+status: claimed
+claimed_at: 2026-08-18T22:59:48Z
+route: B
 created_at: 2026-08-18T21:03:15Z
 status_changed_at: 2026-08-18T22:20:09Z
 user_request: UR-056
@@ -19,6 +21,16 @@ maintenance: false
 write_set:
 - skills/do-work/scripts/repair-req-timestamps.sh
 - _dev/tests/prescribed-shell-scripts-behavior.sh
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-08-18T22:59:48Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 4 acceptance criteria
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Close the Two Remaining Repairer Shape Divergences
