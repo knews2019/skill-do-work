@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.212.20 — The Core Router's Path Rule Now Matches the Paths (2026-08-18)
+
+The core `SKILL.md` was still telling agents to resolve a sibling package path from the folder holding all four skills — a rule that was retired in 0.212.10 and computes one directory too high against every path we actually ship. It now says what the paths mean: literal, resolved from the directory of the file you are reading.
+
+- `skills/do-work/SKILL.md` states the literal per-file resolution rule instead of the retired skill-root-relative one
+- Two sibling citations in `actions/commit.md` and `crew-members/security.md` corrected to the right depth and backticked, which puts them inside the shipped reference contract's enforcement — they cannot silently rot again
+- Verified by mutation, not assertion: reverting either path now fails the reference contract naming the file and line
+
 > Covers **0.121.1 onward**. Older releases live in dated archives, each named for the range it holds: [0.110.0–0.121.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-07-13-up-to-v0.121.0.md) · [0.65.0–0.109.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-07-07-up-to-v0.109.0.md) · [0.50.0–0.64.1](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-13-up-to-v0.64.1.md) · [0.1.0–0.49.0](https://github.com/knews2019/skill-do-work/blob/main/CHANGELOG-2026-04-07-up-to-v0.49.0.md). They are tracked in git but export-ignored from the distribution tarball, so a tarball install browses them at <https://github.com/knews2019/skill-do-work/tree/main>.
 >
 > Keep this note short: `actions/version.md` reads only the first ~80 lines to find the newest 5 entries.

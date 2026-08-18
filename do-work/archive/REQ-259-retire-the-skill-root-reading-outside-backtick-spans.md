@@ -1,7 +1,8 @@
 ---
 id: REQ-259
 title: Retire the skill-root citation reading at its three unbackticked sites
-status: claimed
+status: completed
+completed_at: 2026-08-18T21:45:31Z
 claimed_at: 2026-08-18T21:16:24Z
 route: B
 created_at: 2026-08-18T18:07:48Z
@@ -136,4 +137,56 @@ The rule to agree with is `_dev/primes/prime-action-files.md` § Cross-Referenci
 **Existing tests updated (cross-REQ impact):** none.
 
 *Verified by work action*
+
+---
+
+## Discovered Tasks
+
+Transcribed by the orchestrator from `do-work/runs/work-2026-08-18-211613/REQ-259-handback.md`. **A worktree builder cannot write this REQ file** — the brief routes its out-of-scope finds to the hand-back instead — so Step 8 would otherwise read an absent section and queue nothing. That gap is itself a finding of this REQ's review (Important 2) and is queued as REQ-270.
+
+- **[normal] D-T1 — a cross-package citation spelled with no `../` at all, in three copies of `crew-members/prompt-injection.md`.** Line 3 of the core, toolbox and knowledge copies each reads `through do-work-toolbox/actions/completed-work-presentation-reference.md` inside the JIT_CONTEXT comment. Not the retired reading by spelling, but it resolves from nowhere but `skills/`, and it is invisible to the checker because it is bare text. The toolbox copy is wrong twice over: from `skills/do-work-toolbox/crew-members/` the correct citation is the same-package `../actions/...`.
+- **[normal] D-T2 — the fence exemption is keyed on the fence character, not on its own rationale.** REQ-249 exempted fenced blocks because their text lands in *some other file*. That holds for a Red-Green Proof template pasted into a REQ; it does not hold for the Schema Read Contract yaml block in `skills/do-work/actions/work-reference.md`, whose `#` annotations are documentation for the agent reading that file. Four citations there (lines 130, 132, 137, 204) use the retired one-`../` reading under that shield; correct depth from `actions/` is `../../`.
+- **[normal] D-T3 — widening the checker past backticked spans.** Two of this REQ's three sites existed only because the checker's condition is "backticked span" while the rule's condition is "cross-package citation". Backticking moved two sites into coverage; it did not close the hole.
+
+All three share one root cause and consolidate into a single sweep REQ (REQ-269) rather than three follow-ups.
+
+---
+
+## Review
+
+**Overall: 91%** | 2026-08-18T21:44:13Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 88% |
+| Code Quality | 90% |
+| Test Adequacy | 85% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded gate disposition — this is the durable audit record the gate mandates):**
+- The sweep's condition is narrower than the rule's condition: the `../`-led spelling is closed, but the same skills-folder base spelled *without* `../` survives at three unfenced shipped sites, and the checker is still blind to every bare-text spelling. One root cause with the builder's D-T1/D-T2/D-T3 — the class is bounded by punctuation (a `../` lead, a backtick, a fence) instead of by the thing (a citation that must resolve from this file's directory). — gate: user-visible → REQ-269 created (sweep, consolidating all four instances)
+- In worktree dispatch mode a builder's `## Discovered Tasks` never reach Step 8: `work.md` Step 8 substep 4 reads the section from the REQ file, which a worktree builder may not write, so the finds silently vanish. Reproduced on this REQ — the section was absent until the orchestrator transcribed it by hand. — gate: rule-change → REQ-270 created
+
+**Minor findings:** 2 (report only) — the router sentence is unqualified against the two conforming-but-not-literal forms the corpus uses (`<skill-root>/`-anchored invocations, fenced consumer examples); and the archived REQ's P-A-U evidence lives in the hand-back with only a transcription here, correct for worktree mode but worth not reading as self-attested.
+**Acceptance:** Pass — gate exit 0 re-run by the reviewer; the sweep's counts (190 tokens, 10→8 non-resolving unfenced, 28→26 unbackticked) reproduced exactly from an independently written script; mutation tests confirm the enforcement lock is real (wrong depth with backticks → FAIL naming both sites) and that the pre-REQ state passes (bare + wrong depth → PASS), which is the hard evidence behind finding 1.
+**Suggested testing:** 3 items
+**Follow-ups created:** REQ-269, REQ-270; **sweeps appended to:** None
+
+*Reviewed by review-work action*
+
+---
+
+## Lessons Learned
+
+**What worked:** Sweeping for the *primitive* in three passes — including a pass for prose that states the rule with no path in it — is the only reason `SKILL.md:16` was reachable at all; it contains no `../` token, so any token-based sweep would have missed it. Backticking the two corrected paths converted them from "fixed today" into "checked forever" at zero cost, and a mutation probe proved the lock rather than assuming it.
+
+**What didn't:** The sweep still drew its boundary at punctuation. Three passes wide, and pass 3 *found* the no-`../` sites — then the hand-back reasoned them out of the class on the grounds that "there is no `../`, so it never claimed to be a relative path." That is a spelling test standing in for a semantic one, which is the exact substitution the builder's own Pushback names one section later. Finding the instances and then dismissing them by the marker is a distinct failure from not finding them.
+
+**Worth knowing:** The eighth consecutive REQ in this area has been bounded by a marker (a `../` lead, a backtick, a fence) rather than by the thing being governed (a citation that must resolve from the citing file's directory). Until the checker's condition *is* the rule's condition, every fix in this area closes a spelling and leaves the class open — that is what REQ-269 exists to end. Separately: a worktree builder cannot write its own REQ file, so any Step 8 substep that reads a builder-authored section from the REQ is silently disarmed in fan-out mode (REQ-270).
+
+## Orientation
+
+The core router now states the cross-package resolution rule correctly, so a consumer agent reading `skills/do-work/SKILL.md` no longer derives paths one directory too high; lives in the do-work core package's citation surface, governed by `_dev/primes/prime-action-files.md` § Cross-Referencing. Two sibling citations moved from unchecked prose into `_dev/tests/shipped-package-reference-contract.sh`'s enforcement. No map change — no module, data flow, or contract was added or renamed, and the prime's referenced paths all still exist.
 
