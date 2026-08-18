@@ -1,8 +1,8 @@
 ---
 id: REQ-242
 title: Stop Panel B's slowest-day annotation colliding with its own title
-status: claimed
-status_changed_at: 2026-08-18T13:05:12Z
+status: completed
+status_changed_at: 2026-08-18T14:00:46Z
 created_at: 2026-08-18T12:09:46Z
 user_request: UR-051
 addendum_to: REQ-237
@@ -28,6 +28,8 @@ estimate:
     - browser evidence
 claimed_at: 2026-08-18T13:05:12Z
 route: B
+completed_at: 2026-08-18T14:00:46Z
+commit:
 ---
 
 # Stop Panel B's Slowest-Day Annotation Colliding With Its Own Title
@@ -254,3 +256,22 @@ The second point — the leftmost day's bar drawn at x = 38.9, left of `DURATION
 - Scope exact: two files. The merge introduced nothing — `diff <(git diff 2ad71eb b139805) <(git diff 51beffc a8ef062)` is empty.
 
 *Reviewed by work action*
+
+## Review Remediation
+
+Both findings closed on the builder's own branch and re-merged; the cumulative merge range for this REQ is `51beffc..48263dd`.
+
+**F1 — the six-point sample is now a sweep plus an exact structural check.** The builder reproduced the M5 mutant on the merged branch before changing anything (`ok … 0.825s`, green while reproducing the defect), then closed it two ways and showed each biting on its own:
+
+1. A **deterministic sweep** of 10 006 cases — the six named extremes plus 200 pseudo-random positions across `[-400, 1400]` **crossed** with 50 medians across `[0, 240]`, crossed rather than paired so a rule keyed on position *and* height together has nowhere to hide. Seeded, so a failure names coordinates the next run reproduces, and positions are generated at one decimal place because the renderer writes x through `toFixed(1)` — a case the probe cannot echo back exactly would be testing the rounding rather than the geometry.
+2. An **exact structural check**, `assertDurationsAnnotationBaselineIgnoresItsInputs`, which reads the shipped function out of the generated page and requires its baseline expression to mention neither `dayCentreX` nor `medianMinutes`. This is the one that matters: a sweep is still a sample, and a band narrower than its spacing slips through. The structural check is what makes one measurement at one x a statement about every x — which is what D-02 claimed all along and did not previously pin.
+
+Both mutants now fail, each against each mechanism in isolation, with the failure naming the offending expression verbatim. Runtime is unchanged at under a third of a second.
+
+**F2 — the month rule is named as an accepted crossing rather than omitted.** The builder measured it independently rather than taking the review's number: 96 REQs over 90 days with the slowest day pinned to 1 July, a month boundary mid-plot. **12.963 units² of overlap, matching the review exactly.** Method note worth keeping: a vertical `<line>`'s client rect is zero wide because the stroke is not in the geometric bbox, so the overlap has to be computed in user units from `getBBox()` and the rule's `x1` ± `strokeWidth/2`.
+
+The comment now says the strip has three occupants, that two are cleared and the third is an accepted crossing, and why. The test carries the same distinction: `neighbourBoxes` stays the clearance list, and the month rule gets its own block asserting that the annotation's box is *inside* the rule's span — so the crossing genuinely cannot be avoided by any legal baseline, which is why it is not a clearance failure — plus the two properties that make it acceptable, **read from `board.css` rather than claimed**. Setting the rule to `stroke-width: 3` makes that assertion fail with "it is allowed to cross the slowest-day annotation only because it is a hairline".
+
+**Verification:** `bash _dev/tests/maintainer-verify.sh` exit 0, unpiped, on the builder's branch and again on the integrated tree.
+
+*Remediation verified by work action*

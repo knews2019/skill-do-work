@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.6 — Panel B's Slowest-Day Figure Stops Printing Through Its Own Heading (2026-08-18)
+
+On a board whose slowest day happened to fall under the heading, the little "209 min" note printed straight through "Median minutes per active day". It only stayed hidden here by luck of where that day landed — so the fix removes the luck rather than widening the gap.
+
+- The note now sits at one fixed baseline for every day and every bar height, so its clearance no longer depends on where the slowest day falls
+- The test proves that rather than sampling it: 10 006 swept positions and heights, plus a structural check that the baseline expression cannot read either input at all
+- The chart's comment claimed the strip below the median line had two occupants; it has three. The month gridline crosses the note, and that crossing is now named as accepted with the hairline-stroke reason asserted from the stylesheet
+
 ## 0.212.5 — Future-Stamp Warnings Name Both Causes (2026-08-18)
 
 A timestamp dated in the future used to be blamed on one thing: your timezone. A stamp an agent guessed instead of reading is a second cause, it has now actually happened, and the old wording sent that reader off to hunt a clock bug that was not there.

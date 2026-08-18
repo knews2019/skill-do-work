@@ -147,3 +147,130 @@ None. Both files are mine alone this wave, no shared registry or cross-REQ text 
 
 - The brief's third point — "test at the annotation's worst-case x" — is satisfied, but by making x irrelevant rather than by pinning a worst-case x. Six cases spanning the leftmost, mid-plot and rightmost day are in the test and all assert the same baseline; if a future change ties the baseline back to the bar, the case set fails on the disagreement rather than on any one coordinate. Flagging it because "pin the worst-case x" and "prove x cannot matter" are different tests and I chose the second.
 - **Unrelated pre-existing quirk, not fixed here:** the leftmost day's bar is drawn at x = 38.9, i.e. *left of* `DURATIONS_MARGIN_LEFT` (54) and outside the plot area. `xOfEpoch` maps the day bucket's midnight while `timeStart` is the first completion instant, so a day whose first REQ completed at 09:00 renders 15 hours' worth of axis to the left of the plot. Visible on the live board too (the `29 May` bar sits in the gutter). It is a placement bug of its own — worth a REQ, outside this write set.
+
+---
+
+# Addendum — Review Remediation
+
+Branch merged with `main` first (bringing REQ-241's remediation, REQ-245, and the orchestrator's seam edit to the `durationsMeasuredAxisTitleAscentUnits` comment block — preserved verbatim, not reverted). Remediation commit: **`ff842ee`**.
+
+```
+ .../tools/queue-kanban/generate_test.go            | 186 ++++++++++++++++++---
+ .../tools/queue-kanban/web/board-durations.js      |  26 ++-
+ 2 files changed, 181 insertions(+), 31 deletions(-)
+```
+
+`git diff --name-only HEAD~1 HEAD -- do-work/ VERSION CHANGELOG.md skills/do-work/VERSION skills/do-work/actions/version.md` is empty. `web/board.css` was mutated temporarily to prove one assertion bites and restored; `git status` is clean apart from the two write-set files.
+
+## F1 — the six-point sample is now a sweep plus an exact structural check
+
+Finding accepted in full. D-02 claimed an x-free property and the test pinned six points; those are not the same statement, and the gap was where the real data lives.
+
+**Reproduced first, on the merged branch, before changing anything.** The M5 mutant, applied to the `y:` expression alone:
+
+```
+y: (dayCentreX > 700 && dayCentreX < 1100) ? BASELINE - 112 : BASELINE
+→ ok  github.com/knews2019/skill-do-work/queue-kanban  0.825s
+```
+
+Two mechanisms now close it, and each was shown to bite on its own.
+
+**1. A deterministic sweep.** The six named extremes plus 200 pseudo-random positions across `[-400, 1400]` crossed with 50 medians across `[0, 240]` — 10 006 cases, crossed rather than paired so a rule keyed on position *and* height together has nowhere to hide. Seeded LCG, so a failure names coordinates the next run reproduces. Positions are generated at one decimal place because the renderer writes x through `toFixed(1)`, and a case the probe cannot echo back exactly would be testing the rounding.
+
+**M5 failing against the sweep alone** (structural check temporarily commented out to isolate it):
+
+```
+--- FAIL: TestJavaScriptBehaviorDurationsSlowestDayAnnotationClearsItsNeighbours (0.30s)
+    generate_test.go:2128: swept day at x=936.8 with a 233.50-minute median: the annotation's
+    text box [344.00, 357.80] intersects panel B's title's box [337.90, 352.80] — the two
+    overprint wherever their x ranges meet, and x follows whichever day is slowest
+```
+
+The median-banded mutant, same isolation:
+
+```
+--- FAIL: … generate_test.go:2128: swept day at x=936.8 with a 40.27-minute median: the
+    annotation's text box [344.00, 357.80] intersects panel B's title's box [337.90, 352.80] — …
+```
+
+**2. An exact structural check.** A sweep is still a sample: a band narrower than its spacing slips through. `assertDurationsAnnotationBaselineIgnoresItsInputs` reads the shipped function out of the generated page and requires its baseline expression to mention neither `dayCentreX` nor `medianMinutes` — which is precisely what makes one measurement at one x a statement about every x.
+
+**M5 failing against it**, with the sweep in place (this is the test as committed):
+
+```
+--- FAIL: TestJavaScriptBehaviorDurationsSlowestDayAnnotationClearsItsNeighbours (0.28s)
+    generate_test.go:2052: the annotation's baseline expression "y: (dayCentreX > 700 &&
+    dayCentreX < 1100) ? DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y - 112 :
+    DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y," reads dayCentreX — a baseline that depends on
+    where the slowest day sits or how tall its bar is puts the clearance back at the mercy
+    of the data, which is the defect REQ-242 fixed
+```
+
+And the median-banded mutant against it:
+
+```
+    generate_test.go:2052: the annotation's baseline expression "y: (slowestDay.medianMinutes > 1
+    && slowestDay.medianMinutes < 44) ? … " reads medianMinutes — …
+```
+
+Clean run after both mutants were reverted: `PASS (0.28s)`. The sweep costs no measurable runtime — the whole test is under a third of a second, unchanged from the six-point version.
+
+## F2 — the month rule, named and accepted
+
+Finding accepted. `board-durations.js` now says the strip has **three** occupants, that two are cleared and the third is an **accepted crossing**, and why the crossing is acceptable. The test carries the same distinction: `neighbourBoxes` is the clearance list, and the month rule gets its own block at the end asserting (a) that the annotation's box is *inside* the rule's span — i.e. the crossing genuinely cannot be avoided by any legal baseline, which is why it is not in the clearance list — and (b) the two properties that make it acceptable, read from `board.css` rather than claimed.
+
+**Measured it myself** rather than taking the number on trust. Fixture: 96 archived REQs over 90 days (15 May – 13 Aug 2026), slowest day pinned to **1 July**, a month boundary that falls mid-plot. Vertical `<line>` client rects are zero wide — the stroke is not in the geometric bbox — so the overlap is computed in user units from `getBBox()` and the rule's `x1` ± `strokeWidth/2`, with `location.href` returned from the same `evaluate` call:
+
+```
+"href": "file:///tmp/board-242-month/index.html",
+"annotationUserBox": { "left": 617.35, "right": 658.25, "top": 456.815, "bottom": 469.778 },
+"monthRulesUser": [
+  { "x1": "262.2",  … "overlapUserUnits2": 0 },
+  { "x1": "637.8",  "y1": "84", "y2": "572", "strokeWidth": "1px",
+    "stroke": "rgba(17, 24, 39, 0.08)", "overlapUserUnits2": 12.963 },
+  { "x1": "1026.0", … "overlapUserUnits2": 0 } ],
+"panelBTitleOverlap": 0, "panelCTitleOverlap": 0, "tickOverlaps": []
+```
+
+**12.963 units², matching the review exactly.** The annotation is centred at x=637.8 and the 1 Jul rule sits at x=637.8, so it passes through the middle of "210 min". I looked at the render: at `rgba(17, 24, 39, 0.08)` and one unit wide the rule is barely perceptible where it crosses the label, and the same rule crosses panel A's reversed-band labels and every bar in panels B and C the same way. Accepted, and now asserted to stay that way:
+
+```
+--- FAIL: … generate_test.go:2171: the month rule's stroke-width is "3", not "1" — it is
+    allowed to cross the slowest-day annotation only because it is a hairline
+```
+
+(produced by temporarily setting the rule to `stroke: var(--line-firm); stroke-width: 3` in `board.css`, then restoring it.)
+
+## Verification
+
+```
+maintainer-verify: queue-kanban go vet
+maintainer-verify: queue-kanban uncached ordinary tests
+ok  	github.com/knews2019/skill-do-work/queue-kanban	16.980s
+maintainer-verify: queue-kanban strict JavaScript behavior lane
+=== RUN   TestMaintainerStrictJavaScriptBehaviorLane
+--- PASS: TestMaintainerStrictJavaScriptBehaviorLane (6.00s)
+PASS
+ok  	github.com/knews2019/skill-do-work/queue-kanban	6.213s
+maintainer-verify: audit-metrics go vet
+maintainer-verify: audit-metrics uncached tests
+ok  	github.com/knews2019/skill-do-work/audit-metrics	1.359s
+Maintainer verification passed.
+0
+```
+
+Run unpiped from the worktree root; `echo $?` on its own line printed `0`.
+
+## Decisions
+
+- **D-06 — Both mechanisms, not one.** The brief said either was sufficient. They fail for different reasons and neither subsumes the other: the sweep is a statement about what the renderer *does* and survives any refactor, while the structural check is exact where the sweep is dense-but-sampled. Given that a mutant literally reproduced the shipped defect on the maintainer's own board, "dense enough" did not feel like the right place to stop. The structural check is fifteen lines and its failure message tells the next person what to do if the expression legitimately becomes multi-line.
+- **D-07 — The sweep is deterministic, not random.** A fixed LCG seed, so a failure prints coordinates that reproduce on the next run. A test that fails on one run in fifty and cannot be re-run into the same failure is worse than no test.
+- **D-08 — The month rule is asserted as an accepted crossing, not as a clearance.** No baseline in the strip can clear a line spanning y=84 to y=572, so a clearance assertion there would be unsatisfiable and its absence would read as an oversight — which is exactly what F2 caught. The test instead asserts the crossing is unavoidable *and* that the rule stays one unit and soft. If someone later moves the month rules behind the panels or shortens their span, the first of those assertions fires and says the crossing belongs in the clearance list now.
+- **D-09 — `durationsStyleDeclaration` is new and general.** Reading one property out of one rule in `board.css` is how a test holds a claim about how something is DRAWN against the sheet that draws it. `board.css` stays outside this REQ's write set; the helper only reads it.
+- **D-10 — D-02 stands, but it is now earned rather than asserted.** The x-free framing was the right one; my mistake was banking a general claim on six points. The claim is unchanged; what changed is that the test now proves it.
+
+## Lessons Learned (addendum)
+
+- **A sample dressed as a proof is worse than an honest sample.** The six-point version was not wrong about the shipped code — it was wrong about what it *guaranteed*, and the hand-back's D-02 sold the stronger reading. Mutation testing is what told the difference; reading the test could not have.
+- **Where a regression net has holes, they are rarely uniformly distributed.** Both surviving mutants banded exactly where the real board's data lives. That is not coincidence: a hand-picked case list gets picked from the *interesting* extremes, so the ordinary middle — which is where production data sits — is the part left uncovered.
+- **When an enumeration cannot be completed, say the item is accepted rather than dropping it.** Two occupants named and a third silently omitted reads as a finished list. "Three occupants; two cleared, one accepted, here is why" is the same length and cannot mislead.
