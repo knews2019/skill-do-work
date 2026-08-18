@@ -128,6 +128,7 @@ printf '%s\n' \
   'pattern with an interior slash is root-anchored' \
   'curl -o` writes the final path incrementally' \
   'container rather than a collision' \
+  'follow every later in-place edit' \
   'Shell state does not survive' \
   'never interpolate raw user text inside shell quoting' \
   '`diff -x PATTERN`' \
