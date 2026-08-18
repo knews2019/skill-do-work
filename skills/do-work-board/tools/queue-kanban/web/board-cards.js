@@ -184,13 +184,16 @@
     if (request.futureTimestampFields && request.futureTimestampFields.length > 0) {
       // A frontmatter stamp later than the board's generation time (+2min skew)
       // — flagged instead of rendered silently, since every elapsed-time
-      // reading derived from it is wrong until the wall clock catches up.
+      // reading derived from it is wrong for as long as the stamp stands. The
+      // cause text is shared with the stopwatch tooltip (board-core.js's
+      // futureStampCauseText) so the two can never disagree.
       var futureStampBadge = makeBadge("badge-future-timestamp", null, "⚠ future stamp");
       futureStampBadge.title =
         "Future-dated timestamp(s): " +
         request.futureTimestampFields.join(", ") +
-        " — later than the board's generation time (2min skew allowance). Likely local " +
-        "wall-clock time stamped with a Z suffix; fix: rewrite with the current UTC " +
+        " — later than the board's generation time (2min skew allowance). Likely " +
+        futureStampCauseText +
+        "; fix: rewrite with the current UTC " +
         "instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in actions/work-reference.md.";
       badges.appendChild(futureStampBadge);
     }

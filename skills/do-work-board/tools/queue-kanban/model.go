@@ -55,7 +55,11 @@ const futureTimestampSkewAllowance = 2 * time.Minute
 // One constant because three renderers say it — the generate-time data warning,
 // the reversed-span completion-anomaly reason, and verify's future-`claimed_at`
 // finding — and three hand-maintained copies is how a fourth cause gets added to
-// one of them and not the others.
+// one of them and not the others. Mirrored verbatim by futureStampCauseText in
+// web/board-core.js, which the client's two tooltips render — keep the two in
+// lock-step; nothing in the build compares them, so
+// TestFutureStampCauseClauseMatchesTheShippedClient is the guard. That copy is
+// why this REQ existed: the Go half gained a cause and the JS half did not.
 const futureStampCauseClause = "a fabricated value (guessed or extrapolated instead of read from the clock) " +
 	"or local wall-clock time written with a Z suffix"
 

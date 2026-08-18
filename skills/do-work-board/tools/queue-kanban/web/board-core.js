@@ -98,15 +98,25 @@
   }
 
   // A stopwatch instant more than this far ahead of the viewer's clock is a bad
-  // stamp (local wall-clock time written with a Z suffix), not a young claim —
-  // without the marker the negative clamp would render a dead-looking "0s" on
-  // every tick until the wall clock catches up. Mirrors model.go's
+  // stamp (futureStampCauseText names the two ways that happens), not a young
+  // claim — without the marker the negative clamp would render a dead-looking
+  // "0s" on every tick for as long as the stamp stands. Mirrors model.go's
   // futureTimestampSkewAllowance — keep the two in lock-step.
   var futureInstantSkewAllowanceMs = 2 * 60 * 1000;
   var clockSkewMarkerText = "⚠ clock skew";
+  // Why the stamp is wrong, said once for the whole client: the stopwatch
+  // tooltip below and board-cards.js's "⚠ future stamp" badge both render this,
+  // so the two can never tell a reader different stories. Byte-identical to
+  // futureStampCauseClause in model.go — keep the two in lock-step; nothing in
+  // the build compares them, so TestFutureStampCauseClauseMatchesTheShippedClient
+  // is what catches an edit to one and not the other.
+  // Deliberately one unbroken literal, not a wrapped concatenation: the lock-step
+  // test matches it against the Go constant verbatim, and a split literal would
+  // force that check to reassemble JavaScript before it could compare.
+  var futureStampCauseText = "a fabricated value (guessed or extrapolated instead of read from the clock) or local wall-clock time written with a Z suffix";
   var clockSkewExplanationText =
     "This timestamp is ahead of your clock by more than the 2-minute skew allowance — " +
-    "likely stamped with local wall-clock time plus a Z suffix. Fix the frontmatter with " +
+    "likely " + futureStampCauseText + ". Fix the frontmatter with " +
     "the current UTC instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in " +
     "actions/work-reference.md. Until then the stopwatch cannot measure real elapsed time.";
 
