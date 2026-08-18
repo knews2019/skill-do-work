@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.209.0 — Timeline Pans and Zooms From the Keyboard (2026-08-18)
+
+The Timeline could be zoomed and dragged with a mouse and no other way. Tab to the chart and the arrow keys now move the time window, `+` and `-` zoom it, and the panel says so where a screen reader can hear it.
+
+- ← and → pan by 15% of what is on screen, clamping at both ends of the range
+- `+`/`=` and `-`/`_` zoom through the same transform the wheel and the zoom buttons use, so the two paths cannot drift apart
+- The chart takes focus and draws a real focus ring instead of the browser's default
+- Up and Down are left alone, so the row list still scrolls
+
 ## 0.208.2 — The Shell Behavior Suite Counts Its Own Cases (2026-08-18)
 
 That suite used to finish by announcing how many cases it ran, from a number typed in by hand — and it was already wrong, claiming 47 against a file nobody could get 47 out of. It now counts them, and says out loud what it is counting.
