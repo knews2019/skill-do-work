@@ -1,8 +1,9 @@
 ---
 id: REQ-258
 title: Split the prescribed shell behavior suite per script
-status: pending-answers
+status: pending
 created_at: 2026-08-18T17:49:24Z
+status_changed_at: 2026-08-18T20:55:14Z
 user_request: UR-056
 addendum_to: REQ-246
 domain: general
@@ -23,7 +24,7 @@ write_set:
 `_dev/tests/prescribed-shell-scripts-behavior.sh` now carries 47 named cases, and the ten reservation-cleanup + timestamp-repair cases dominate its tail. If it keeps growing, per-script files may read and fail more legibly. Organizational only — no case changes.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -33,6 +34,8 @@ Builder-discovered on REQ-246 (Discovered Tasks, third item), classified [low]. 
 
 ## Open Questions
 
-- [ ] I discovered this out-of-scope task while working on REQ-246: the shell behavior suite is one growing file and could split per-script. Should I process this as a new task?
+- [ ] I discovered this out-of-scope task while working on REQ-246: the shell behavior suite is one growing file and could split per-script. Should I process this as a new task? → Yes, add to queue — user chose the non-recommended branch: the suite is worth splitting per script now rather than later
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it — one file is fine until it actually hurts.
+
+**Answered [2026-08-18]:** User approved via `do-work clarify` — queued for a future work run.

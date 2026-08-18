@@ -1,8 +1,9 @@
 ---
 id: REQ-259
 title: Retire the skill-root citation reading at its three unbackticked sites
-status: pending-answers
+status: pending
 created_at: 2026-08-18T18:07:48Z
+status_changed_at: 2026-08-18T20:59:31Z
 user_request: UR-055
 addendum_to: REQ-249
 domain: general
@@ -28,7 +29,7 @@ write_set:
 REQ-249 retired the skill-root-relative citation reading and swept every **backticked** cross-package citation to the literal form — but the retired *reading* survives at three shipped sites that are bare text, which both the sweep and the new checker are structurally blind to. One of them states the retired resolution rule as prose in the core router, now contradicting the prime and the swept corpus.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
+- [x] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
 - [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
 - [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
 
@@ -50,6 +51,8 @@ Found by REQ-249's independent review (Important, gate: rule-change; reproduced 
 
 ## Open Questions
 
-- [ ] REQ-249's review found the retired citation reading surviving at three unbackticked shipped sites (listed under Instances). Should I process this as a new task?
+- [ ] REQ-249's review found the retired citation reading surviving at three unbackticked shipped sites (listed under Instances). Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it.
+
+**Answered [2026-08-18]:** User approved via `do-work clarify`. An external automated review independently flagged the same three sites while this question was open, which corroborates the finding.
