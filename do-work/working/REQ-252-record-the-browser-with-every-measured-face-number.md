@@ -1,8 +1,10 @@
 ---
 id: REQ-252
 title: Record the browser with every measured-face number in the Durations tests
-status: pending
+status: claimed
 created_at: 2026-08-18T13:56:12Z
+claimed_at: 2026-08-18T19:12:47Z
+route: B
 status_changed_at: 2026-08-18T13:56:12Z
 user_request: UR-051
 addendum_to: REQ-241
@@ -20,6 +22,15 @@ write_set:
 - skills/do-work-board/tools/queue-kanban/durations_test.go
 - skills/do-work-board/tools/queue-kanban/generate_test.go
 - skills/do-work-board/tools/queue-kanban/durations.go
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-08-18T19:13:28Z
+  basis:
+    - Route B
+    - 3-file write set
+    - 3 acceptance criteria
+    - browser evidence
 ---
 
 # Record the Browser With Every Measured-Face Number in the Durations Tests
@@ -59,3 +70,43 @@ That resolution is sound and stays. What it exposed is that these numbers carry 
 - [~] **D-01: gated behind REQ-248 rather than left free-running.** Two reasons, and the second is the binding one. Textual: both REQs write `skills/do-work-board/tools/queue-kanban/generate_test.go`, and this session proved that two REQs in one Go package can collide in a way git cannot see — REQ-241 and REQ-242 each declared `durationsMeasuredAxisTitleAscentUnits` in different files, never touched adjacent lines, and the merge failed to compile. Semantic: this REQ records the provenance of measurements taken against Panel B's geometry, and REQ-248 moves that geometry. Recording provenance for a layout about to change would produce numbers that are wrong on arrival.
   **Value:** the one-line `do-work run` resume cannot schedule these two together, because auto-wave reads `depends_on` and deliberately does not read `write_set`.
   **Risk:** if REQ-248 is abandoned, this REQ stays gated behind it and needs the gate cleared by hand. Acceptable — REQ-248 is the highest-value item in the queue.
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** Documentation-fidelity sweep over measured constants plus a fresh per-build measurement of the Panel B budget; the what is clear, the current numbers need deriving in the live DOM on this build.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-board/tools/queue-kanban/durations_test.go` (modify) — every measured constant names its browser build
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modify) — same, and the Panel B budget prose gains both measurements + the per-browser warning
+- `skills/do-work-board/tools/queue-kanban/durations.go` (modify) — hyphen-vs-U+2212 comment; remainder-reserve over-reservation stated as deliberate; the REQ-260 gofmt nit at the `Truncate(24*time.Hour)` line may be fixed in passing (same file, one character)
+
+**Files I will NOT touch:**
+- `web/board-durations.js` — REQ-248's geometry landed; no behaviour change belongs to this REQ.
+- Any constant's *value* — this REQ records provenance; a measurement demanding a change is captured separately.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] Every browser-measured constant names the browser and build in the same comment as the number.
+- [ ] The Panel B clearance budget prose states it is per-browser and gives both measurements.
+- [ ] No behaviour change; suite still exits 0.
+
+## Pre-Flight
+
+**Git:** ✓ clean
+**Tests baseline:** ✓ `bash _dev/tests/maintainer-verify.sh` exits 0 at the branch point (0.212.14 tip)
+**Dependencies:** ✓ Go 1.26.1, ShellCheck 0.11.0, `just`, Node, Chromium present
+
+*Checked by work action*

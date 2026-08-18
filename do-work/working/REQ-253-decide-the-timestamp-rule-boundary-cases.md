@@ -1,8 +1,10 @@
 ---
 id: REQ-253
 title: Decide the Timestamp rule's two uncovered stamp shapes
-status: pending
+status: claimed
 created_at: 2026-08-18T13:56:12Z
+claimed_at: 2026-08-18T19:12:47Z
+route: A
 status_changed_at: 2026-08-18T14:12:05Z
 user_request: UR-055
 addendum_to: REQ-244
@@ -14,6 +16,17 @@ tdd: false
 suggested_spec:
 depends_on: [REQ-249]
 maintenance: true
+write_set:
+- skills/do-work/actions/work-reference.md
+- skills/do-work-toolbox/actions/ui-review.md
+- skills/do-work-knowledge/actions/memory.md
+- skills/do-work-knowledge/actions/memory-reference.md
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-18T19:13:28Z
+  basis:
+    - trivial short-circuit
 ---
 
 # Decide the Timestamp Rule's Two Uncovered Stamp Shapes
@@ -49,3 +62,19 @@ REQ-244 sweeps every timestamp write site under the rule. Its builder correctly 
   **Ordering chosen: REQ-249 first.** Its sweep establishes which citation form is the rule and updates `_dev/primes/prime-action-files.md` to say so. This REQ then adds its two or three new citations already conforming. The reverse order has this REQ writing citations in a form that REQ-249 is about to rewrite — correct in the end, but it means writing something known-wrong on purpose.
   **Value:** the one-line resume cannot schedule them together, and the second one to run inherits a settled convention rather than a contested one.
   **Risk:** this REQ is small and now waits on a large sweep. Accepted — the user has already answered both of this REQ's questions, so nothing is lost but ordering.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Both decisions are user-answered; the work is one line in the Timestamp rule's date-only paragraph, a citation at ui-review.md's header, and out-of-scope markers at the memory time-of-day headings.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A: Direct implementation
+
+*Skipped by work action*

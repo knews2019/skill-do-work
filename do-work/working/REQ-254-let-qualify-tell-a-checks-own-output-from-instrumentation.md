@@ -1,8 +1,10 @@
 ---
 id: REQ-254
 title: Let qualify tell a check's own output from leftover instrumentation
-status: pending
+status: claimed
 created_at: 2026-08-18T14:04:16Z
+claimed_at: 2026-08-18T19:12:47Z
+route: B
 status_changed_at: 2026-08-18T14:04:16Z
 user_request: UR-055
 addendum_to: REQ-244
@@ -16,6 +18,13 @@ depends_on: []
 maintenance: true
 write_set:
 - skills/do-work/tools/checks/qualify.sh
+- _dev/tests/prescribed-shell-scripts-behavior.sh
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-18T19:13:28Z
+  basis:
+    - trivial short-circuit (effort_estimate: trivial)
 ---
 
 # Let Qualify Tell a Check's Own Output From Leftover Instrumentation
@@ -53,3 +62,42 @@ Candidate signals, none prescribed: whether the added line is inside `_dev/tests
 **Why RED now:** both FAIL identically today; REQ-244's remediation range is a ready-made case.
 **GREEN when:** the first passes, the second still FAILs, and the reason each gets is legible.
 **Validation:** Orchestrator override recorded in REQ-244's Review Remediation section.
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The defect and a ready-made red-green case are stated; the open design question — a condition that separates a check's own output from instrumentation, or deleting the heuristic — is the builder's, inside one script plus its lock-ins.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/tools/checks/qualify.sh` (modify) — the debug-artifact scan keys on a condition, or the bare-print heuristic is removed (maintenance latitude)
+- `_dev/tests/prescribed-shell-scripts-behavior.sh` (modify) — red-green lock-ins: checker success line passes, genuine debug print still FAILs
+
+**Files I will NOT touch:**
+- `skills/do-work/actions/work.md` — Step 6.3's prose already describes FAIL/WARN semantics; change it only via integration seam if the resolution alters the contract.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] A checker's own reporting does not trip the scan; genuine leftover instrumentation still does.
+- [ ] The distinguishing rule is stated as a condition, never a file/line-shape list.
+- [ ] The delete-the-heuristic answer was genuinely considered (maintenance: true).
+- [ ] `bash _dev/tests/maintainer-verify.sh` exits 0.
+
+## Pre-Flight
+
+**Git:** ✓ clean
+**Tests baseline:** ✓ `bash _dev/tests/maintainer-verify.sh` exits 0 at the branch point (0.212.14 tip)
+**Dependencies:** ✓ Go 1.26.1, ShellCheck 0.11.0, `just`, Node, Chromium present
+
+*Checked by work action*
