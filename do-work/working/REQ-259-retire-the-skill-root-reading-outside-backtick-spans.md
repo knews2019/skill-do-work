@@ -118,3 +118,22 @@ The rule to agree with is `_dev/primes/prime-action-files.md` § Cross-Referenci
 - `skills/do-work/crew-members/security.md` (modified)
 
 **What was done:** Three one-line text edits, backed by a three-pass corpus sweep for the primitive. `SKILL.md:16` no longer states the retired skill-root-relative resolution rule — it now says a sibling path is literal and resolves from the citing file's own directory at the depth the path spells, matching `_dev/primes/prime-action-files.md` § Cross-Referencing. The two bare sibling paths in `actions/commit.md:17` and `crew-members/security.md:3` were corrected from one `../` to `../../` and backticked, which moves both into `_dev/tests/shipped-package-reference-contract.sh`'s enforcement so they cannot silently rot again. The sweep (every `(../)+<package>/` token in every file type regardless of backticks; prose stating a skill-root resolution rule with no path in it; the same reading spelled with no `../`) found nothing further in the `../`-led class — 10 non-resolving unfenced tokens before, 8 after, and all 8 survivors are `<skill-root>/`-anchored invocations or consumer-queue example paths that are correct as written.
+
+---
+
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` against the merged tree (range `662788c..4081c50`), run un-piped with the exit code read directly
+**Result:** ✓ `GATE_EXIT=0` — "Maintainer verification passed." This run is both Step 6.5's testing and Step 8's post-merge verification: the builder verified its own branch, this verifies the integrated result.
+
+**Red-green validation:** no new test was written, and the Finding-Closure Ratchet is satisfied by the two other routes it allows rather than by a new one. The orchestrator verified both by execution rather than accepting the hand-back's claim:
+
+- **Instances 2 and 3 — an existing check now fails if the fix is reverted.** Reverting `skills/do-work/actions/commit.md:17` to the one-`../` spelling and running `bash _dev/tests/shipped-package-reference-contract.sh` produced, observed: `FAIL: skills/do-work/actions/commit.md:17: backticked citation does not resolve in source and installed topology: ../do-work-toolbox/actions/inspect.md` / `shipped package reference contract: FAIL (1 broken reference(s), changelog mirror matches)`, exit 1. The probe was reverted and the tree confirmed clean. Backticking is what created this coverage — bare text is the checker's blind spot, which is why both sites survived REQ-249.
+- **Instance 1 — the named finding surface is deleted.** `SKILL.md:16`'s retired resolution sentence no longer exists in shipped text; there is nothing left to regress. No mechanical check covers prose that states a rule, which is exactly D-T2's point and why that follow-up matters.
+
+**New tests added:** none — see above. A test asserting "these three lines say X" would pin the instances, not the class, which is the failure shape this REQ exists to correct.
+
+**Existing tests updated (cross-REQ impact):** none.
+
+*Verified by work action*
+
