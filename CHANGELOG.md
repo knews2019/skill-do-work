@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.211.0 — Timeline Steps by Day, Week and Month (2026-08-18)
+
+On a board covering months, the Timeline could only be dragged sideways and there was no way to land on the work still open. It now steps by calendar period, and `Now` takes you to the remaining work in one click.
+
+- `Day`, `Week` and `Month` set the window to exactly that period in UTC — midnight to midnight, Monday to Sunday, the 1st to the 1st
+- `‹` and `›` step one period at a time, landing on clean boundaries and stopping at the ends of the range
+- `Now` covers the now-line and the forecast, and scrolls the row list to the first REQ still open
+- A readout says which level you are on, or `custom span` once a free zoom or drag leaves the grid
+- The existing zoom buttons, wheel-zoom, drag and keyboard path are unchanged and still drive the same window
+
 ## 0.210.0 — Board Adds a URs-Only Lens (2026-08-18)
 
 The Board could show REQ cards in columns, or every UR with all its cards unrolled underneath. On 50-odd URs the second one is a very long page. There is now a third reading: just the user requests, one row each, opening in place when you want the REQs.
