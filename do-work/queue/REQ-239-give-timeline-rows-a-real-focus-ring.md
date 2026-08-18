@@ -1,7 +1,8 @@
 ---
 id: REQ-239
 title: Give the Timeline's rows a real focus ring
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-18T11:56:00Z
 created_at: 2026-08-18T11:09:44Z
 user_request: UR-051
 addendum_to: REQ-233
@@ -49,6 +50,6 @@ The chart container's ring is the model to copy, including its reasoning: it use
 
 ## Open Questions
 
-- [ ] While reviewing REQ-233 I found that the Timeline's rows have their focus outline explicitly switched off, and get only a faint background tint instead — one shade different from the row's normal colour. Everything else on the board that can be focused gets a clear 2px coloured ring, which is what REQ-233 just added to the chart itself. So a keyboard user moving down the rows has a much weaker sense of where they are than anywhere else on the board. Nothing is broken and the rows still work; this is about how visible the current position is. The fix is a few lines of CSS plus one assertion. I am asking rather than doing it because the tint was written deliberately — someone chose to turn the outline off — and I cannot tell from the code whether that was to avoid a clipped or ugly ring on a dense chart, which is a real concern on rows that are only a few pixels tall. If it was, the answer might be a better tint rather than a ring. Should I process this as a new task?
+- [x] While reviewing REQ-233 I found that the Timeline's rows have their focus outline explicitly switched off, and get only a faint background tint instead — one shade different from the row's normal colour. Everything else on the board that can be focused gets a clear 2px coloured ring, which is what REQ-233 just added to the chart itself. So a keyboard user moving down the rows has a much weaker sense of where they are than anywhere else on the board. Nothing is broken and the rows still work; this is about how visible the current position is. The fix is a few lines of CSS plus one assertion. I am asking rather than doing it because the tint was written deliberately — someone chose to turn the outline off — and I cannot tell from the code whether that was to avoid a clipped or ugly ring on a dense chart, which is a real concern on rows that are only a few pixels tall. If it was, the answer might be a better tint rather than a ring. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it — the tint is the deliberate choice for dense rows and should stay.

@@ -1,7 +1,8 @@
 ---
 id: REQ-238
 title: "Review fix: point present-work at the canonical independent-bytes rationale"
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-18T11:56:00Z
 created_at: 2026-08-18T11:00:00Z
 user_request: UR-042
 addendum_to: REQ-230
@@ -53,6 +54,6 @@ Sized by grep, not assumed: two files carry the phrase `follow every later in-pl
 
 ## Open Questions
 
-- [ ] While reviewing REQ-230 I found a second copy of the same kind, one bullet above the one you just approved fixing. The same instruction file repeats a second paragraph of shell reasoning — about why a saved snapshot must not share storage with the file it was copied from — that also already has a single shared home. Nothing is broken and no behaviour changes either way: both copies say the right thing today. The cost of leaving it is the same one you accepted the argument for last time — the next correction to the shared paragraph leaves this copy teaching the old version. The fix is the same shape and about the same size: a small edit to one shipped file plus one line in a test. I am asking rather than just doing it because REQ-230 was deliberately scoped to one named instance with your consent recorded on it, and treating that consent as covering whatever the sweep finds next is exactly how a scoped approval quietly becomes an open one. Should I process this as a new task?
+- [x] While reviewing REQ-230 I found a second copy of the same kind, one bullet above the one you just approved fixing. The same instruction file repeats a second paragraph of shell reasoning — about why a saved snapshot must not share storage with the file it was copied from — that also already has a single shared home. Nothing is broken and no behaviour changes either way: both copies say the right thing today. The cost of leaving it is the same one you accepted the argument for last time — the next correction to the shared paragraph leaves this copy teaching the old version. The fix is the same shape and about the same size: a small edit to one shipped file plus one line in a test. I am asking rather than just doing it because REQ-230 was deliberately scoped to one named instance with your consent recorded on it, and treating that consent as covering whatever the sweep finds next is exactly how a scoped approval quietly becomes an open one. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it — one pointer per file is enough and the second copy is not worth the round trip.
