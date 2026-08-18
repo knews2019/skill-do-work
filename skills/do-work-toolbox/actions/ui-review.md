@@ -207,13 +207,13 @@ Note in the report that visual verification was attempted but the app could not 
 
 ### Step 9: Synthesize Report
 
-Compile all findings into a structured markdown report. **Do not modify any files** — output the report only.
+Compile all findings into a structured markdown report. **Do not modify any files** — output the report only. The header's `**Date**` is the current **UTC** calendar date — the date-only shape in the Timestamp rule (`../../do-work/actions/work-reference.md`).
 
 ```markdown
 # UI Review Report
 
 **Scope**: [list of reviewed files/directories]
-**Date**: [today]
+**Date**: [today's UTC date]
 **frontend-design skill**: [Installed / Not installed — recommend `do-work-toolbox install ui-design`]
 **Visual verification**: [Playwright CLI / Bowser skill / Skipped — recommend `do-work-toolbox install bowser`]
 
