@@ -1,7 +1,8 @@
 ---
 id: REQ-243
 title: Check that shipped markdown pointers actually resolve
-status: pending-answers
+status: pending
+status_changed_at: 2026-08-18T12:24:42Z
 created_at: 2026-08-18T12:20:30Z
 user_request: UR-042
 addendum_to: REQ-238
@@ -57,6 +58,7 @@ Neither existing check covers it. The canonicalization suite greps for phrases t
 
 ## Open Questions
 
-- [ ] Twice today a fix has replaced a repeated paragraph with a link to the one place that paragraph lives — REQ-230 and REQ-238, and there will be more, because that is the standard fix for this class. Each time, the test suite confirms the repeated text is gone, and nothing at all confirms the link works. Both times I checked the link by hand: that the path points at a file that exists, and that the heading it names is really in that file. A wrong link would pass every check we have. The fix is a check that walks the links in shipped instruction files and resolves them. I am asking rather than doing it because it is new machinery rather than a repair — a whole new class of check, with its own decisions about what to skip (external URLs, links into archived history) and its own maintenance cost — and you may prefer to keep checking these by hand while the class is only a few instances old. Should I process this as a new task?
+- [x] Twice today a fix has replaced a repeated paragraph with a link to the one place that paragraph lives — REQ-230 and REQ-238, and there will be more, because that is the standard fix for this class. Each time, the test suite confirms the repeated text is gone, and nothing at all confirms the link works. Both times I checked the link by hand: that the path points at a file that exists, and that the heading it names is really in that file. A wrong link would pass every check we have. The fix is a check that walks the links in shipped instruction files and resolves them. I am asking rather than doing it because it is new machinery rather than a repair — a whole new class of check, with its own decisions about what to skip (external URLs, links into archived history) and its own maintenance cost — and you may prefer to keep checking these by hand while the class is only a few instances old. Should I process this as a new task? → Confirmed: Yes, add to queue
   Recommended: Yes, add to queue (will flip to 'pending').
   Also: No, discard it — keep checking pointers by hand until the class is big enough to justify a checker.
+  *(Answered by user via do-work clarify, 2026-08-18T12:24:42Z)*
