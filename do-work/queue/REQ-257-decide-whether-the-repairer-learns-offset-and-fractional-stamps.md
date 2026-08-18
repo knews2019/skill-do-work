@@ -22,7 +22,7 @@ write_set:
 
 ## What
 
-REQ-246's repairer deliberately refuses stamps with numeric UTC offsets (`2093-01-01T00:00:00+02:00`) or fractional seconds — repairing them needs timezone arithmetic, and a wrong guess would rewrite a correct stamp (REQ-246 D-04, documented in the script header). The board and forensics still detect and warn on those shapes, so they remain a detection-without-repair residual. This asks whether that residual matters enough to implement offset arithmetic in `comparison_key_for`, or whether the documented refusal is the permanent answer.
+REQ-246's repairer deliberately refuses stamps with numeric UTC offsets (`2093-01-01T00:00:00+02:00`) or fractional seconds — repairing them needs timezone arithmetic, and a wrong guess would rewrite a correct stamp (REQ-246 D-04, documented in the script header). The board and forensics still detect and warn on those shapes, so they remain a detection-without-repair residual. **Correction (REQ-255 review, I-2):** these are no longer the *only* such residual — a quoted stamp with padding inside the quotes is also board-parseable and refused here; that one is tracked in REQ-267. This asks whether that residual matters enough to implement offset arithmetic in `comparison_key_for`, or whether the documented refusal is the permanent answer.
 
 ## AI Execution State (P-A-U Loop)
 - [x] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)

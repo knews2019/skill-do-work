@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.19 — The Timestamp Repairer and the Board Agree on What a Stamp Is (2026-08-18)
+
+Six shapes where the session-start repairer disagreed with the board's readers are closed at the shared primitive — including the one case where the repairer made a file worse than it found it.
+
+- Space-separated instants now repair whole instead of leaving a phantom time-of-day behind; the rewrite splices by the byte span the extractor measured, so a token boundary is never re-guessed.
+- Files behind a CRLF fence or a byte-order mark are scanned and repaired with those bytes preserved — the Windows shape that was previously invisible.
+- Calendar-impossible values (`9999-99-99`, April 31, Feb 29 in a non-leap century year) are refused byte-identical so the malformed evidence survives for diagnosis; real leap days still repair.
+- Duplicate stamp keys are read by their last occurrence, matching every YAML reader, so a board-visible reversed ordering is no longer audited as clean.
+- The archive auditor inherits all of it by sourcing, pinned by cases in both scan scopes; the suite grew from 55 to 64 named cases.
+
 ## 0.212.18 — The Docs Disclose the Session Hook's Write Surface (2026-08-18)
 
 A consumer auditing "what writes to my repo at session start" now gets a straight answer.

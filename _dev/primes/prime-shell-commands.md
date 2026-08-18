@@ -30,6 +30,7 @@ When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep 
 
 ## Lessons
 
+- [REQ-255: fix the class at the primitive and fuzz the value space — a six-item instance list assembled from two reviews was still a sample, and the fuzz found the shape that wedges the hook](../../do-work/archive/REQ-255-give-the-timestamp-repairer-shape-parity-with-the-read-side-detectors.md#lessons-learned)
 - [REQ-254: a condition implemented as a whole-file text grep is weaker than the condition as stated — and the paperwork that audits the gate can itself be silently disarmed](../../do-work/archive/REQ-254-let-qualify-tell-a-checks-own-output-from-instrumentation.md#lessons-learned)
 - [REQ-247: a REQ that states two ceilings must say which wins — the ordering clamp and the introducing-commit ceiling are unsatisfiable together, and nobody caught it before build](../../do-work/archive/REQ-247-archive-timestamp-audit-tool-driven-by-git-commit-times.md#lessons-learned)
 - [REQ-250: grep the same primitive across the file before calling a class closed — the genuinely silent instance lived in a different checker's copy of it; and pin every documented limitation with a fixture that can fail](../../do-work/archive/REQ-250-close-the-remaining-markdown-link-checker-gaps.md#lessons-learned)

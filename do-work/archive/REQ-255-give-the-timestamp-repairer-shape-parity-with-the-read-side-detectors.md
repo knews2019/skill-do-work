@@ -1,9 +1,11 @@
 ---
 id: REQ-255
 title: Give the timestamp repairer shape parity with the read-side detectors
-status: claimed
+status: completed
 created_at: 2026-08-18T17:47:52Z
 claimed_at: 2026-08-18T20:08:45Z
+completed_at: 2026-08-18T21:04:12Z
+kb_status: pending
 route: B
 user_request: UR-056
 addendum_to: REQ-246
@@ -127,3 +129,64 @@ Passed — 2 files in merge range `2fe04c6..84add20`, all three acceptance crite
 **Dependencies:** ✓ toolchain present
 
 *Checked by work action*
+
+## Review
+
+**Overall: 95%** | 2026-08-18T21:02:30Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 95% |
+| Code Quality | 92% |
+| Test Adequacy | 92% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Verdict: Approve.** The headline property held under attack: across a 25+-fixture fuzz of the value space — including two shapes nobody had tried and two deliberate sabotages of the fix itself — the script never once wrote a worse value than it found.
+
+### Requirements Checklist
+
+- [x] Unquoted space-separated mangle — repaired whole, canonical form, full old value in the audit line (also with trailing and multibyte comments; comments survive byte-exact)
+- [x] Quoted space-separated sibling — repaired to canonical unquoted (double, single, and quoted date-only)
+- [x] CRLF fences — scanned and repaired, every CR preserved (both scopes; duplicate-keys-across-CRLF and BOM+CRLF combined executed)
+- [x] BOM prefix — scanned and repaired, BOM bytes intact (both scopes)
+- [x] Calendar-impossible refusal — `9999-99-99T99:99:99Z`, `2093-04-31`, Feb 29 2100 all byte-identical; Feb 29 2096 and `9999-12-31T23:59:59Z` correctly repaired — the leap-year arithmetic is real and pinned in both directions
+- [x] Duplicate anchors last-occurrence — effective occurrence repaired, shadowed first never touched, incl. both-defective and CRLF variants
+- [~] Every refusal documented — misses the padded-inside-quotes refusal, which is board-parseable (finding I-2)
+- [x] Lock-ins through BOTH scan scopes — 9 new cases, suite 55 → 64 confirmed at runtime, mutation-falsifiable
+- [x] `maintainer-verify.sh` exits 0 — observed un-piped on the integration tree
+
+### Findings
+
+**Important (audit record with gates):**
+
+- **I-1 — an unterminated frontmatter block is repaired where the board sees only body text** *(reproduced by execution)*. The extractor scans to EOF for a file whose opening fence never closes, while the board's `splitFrontmatter` returns *no frontmatter* for that shape; the script's own scope comment states the fence-bounded contract the code does not honour. Second face of the same cause: with the defective stamp on the final line and no trailing newline, the changed-line guard expects four diff lines and sees two, so the repair is refused and the hook exits 1 **every session, permanently**, with no self-heal. Both reproduce identically at the pre-merge tip — pre-existing, not a regression, not among the six declared instances. — gate: **trivial** → REQ-267 (sweep, pending-answers).
+- **I-2 — quoted stamps with inner padding are board-parseable but refused, undocumented** *(reproduced by execution)*. A Go probe replicating the board's pipeline (unquote → trim → parse) accepts them and would flag them future; the refusal falls into the header's "anything else unparseable" catch-all, which is false for this shape, while the header's parity rule claims the opposite family-wide. — gate: **trivial** → REQ-267, plus a one-line correction applied to queued REQ-257, whose "last such class" claim this invalidates.
+- **I-3 — the archive auditor answers "clean" (exit 0) over stamps it deliberately refused** *(reproduced by execution)*. The refusal is correct — the malformed value is preserved as evidence — but the rationale is that a human can then see it, and the one tool a person runs to diagnose the archive is where it vanishes. — gate: **user-visible** → REQ-268 (pending-answers), which also carries an externally-reported sibling: a failing file walk reports `clean (0 file(s) scanned)` and exit 0.
+
+**Minor:** 1 (report only) — the future-timestamp check is Check **12** in forensics (Check 11 is Unrecognized Status Vocabulary), yet the script header and `work-reference.md` cite "Check 11"; pre-existing and untouched by this range.
+
+### Acceptance Testing
+
+**Result: Pass** — every refused shape byte-identical (`cmp`), every repair canonical and span-exact, second runs silent and byte-stable in both scopes; report-only lists full old values and exits 1, `--fix` repairs from commit author time. **Both externally-reported fixtures confirmed clean on the merged script for the record:** the calendar-impossible value is left byte-identical with no output (the erase is gone), and the duplicate-anchor pair repairs the effective last occurrence while leaving the shadowed first untouched (no false clean). Mutation-falsifiability proved in a clone: neutering the calendar check fails 6 named cases across both scopes; re-introducing token-boundary guessing fails 11 — and notably the sabotaged splice still could not corrupt, because the size-arithmetic guard refused the write. Span-plan audit: the plan format is injection-free and byte-lengths are consistent bash-to-awk under `LC_ALL=C`. Scope-drift exit 0.
+
+### Suggested Additional Testing
+
+A real Windows-authored consumer repo through the actual hook wiring (CRLF + BOM + local-time stamps together); a board render of a refused calendar-impossible value in both queue and archive views, to confirm the evidence-stays-visible promise on every surface; a fence-broken file on the board versus the hook once REQ-267 lands.
+
+**Follow-ups created:** REQ-267, REQ-268 (by orchestrator) · **Sweeps appended to:** none — no pending sweep carried this key.
+
+*Reviewed by review-work action (independent adversarial pass, orchestrated mode; merge range `2fe04c6..84add20`)*
+
+## Lessons Learned
+
+**What worked:** Fixing at the primitive rather than per symptom — one span-exact extractor/rewrite pair closed four shapes at once and, under deliberate sabotage, the pre-existing size guards still refused to write a corrupted file. Reproducing all six shapes against the shipped script *before* writing code made every RED honest.
+
+**What didn't:** The fuzz found two shapes the six-instance list never contemplated, one of which can wedge the SessionStart hook into permanent failure. An instance list — even a six-item one assembled from two independent reviews — is still a sample; the value space is what needed enumerating.
+
+**Worth knowing:** The board treats an unterminated fence as *no frontmatter*; the repairer scans to EOF. Padded-inside-quotes stamps are board-parseable and refused here. The archive auditor's "clean" is not yet trustworthy (REQ-268). The forensics check number cited in the script header is off by one.
+
+## Orientation
+
+Now the session-start repairer and the board agree on what a timestamp is: space-separated instants repair whole instead of half-rewriting, CRLF and BOM files are seen, calendar-impossible values are preserved for diagnosis, and duplicate keys are read the way every YAML reader reads them. Lives in core's `scripts/` layer, shared by sourcing with the archive auditor, so parity arrives in both tools from one edit. [MAP CHANGED] — the extractor now carries a byte-span plan, which is the mechanism that makes half-rewrites structurally impossible. Prime staleness spot-check: `prime-shell-commands.md` paths still resolve; not stale.
