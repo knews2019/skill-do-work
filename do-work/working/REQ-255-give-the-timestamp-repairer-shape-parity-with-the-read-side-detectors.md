@@ -1,8 +1,10 @@
 ---
 id: REQ-255
 title: Give the timestamp repairer shape parity with the read-side detectors
-status: pending
+status: claimed
 created_at: 2026-08-18T17:47:52Z
+claimed_at: 2026-08-18T20:08:45Z
+route: B
 user_request: UR-056
 addendum_to: REQ-246
 domain: general
@@ -18,6 +20,16 @@ maintenance: false
 write_set:
 - skills/do-work/scripts/repair-req-timestamps.sh
 - _dev/tests/prescribed-shell-scripts-behavior.sh
+estimate:
+  p50_active_minutes: 35
+  confidence: medium
+  calculated_at: 2026-08-18T20:08:45Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 3 acceptance criteria
+    - cross-route regression gates
+    - full-suite verification
 ---
 
 # Give the Timestamp Repairer Shape Parity With the Read-Side Detectors
@@ -51,3 +63,42 @@ Both findings come from REQ-246's independent review, reproduced by execution ag
 - Lock-in cases in `_dev/tests/prescribed-shell-scripts-behavior.sh` for each instance, in whichever direction it resolves — the unquoted space-separated mangle case is mandatory.
 - Each widened or refused shape gets a fixture through BOTH scan scopes (queue/working via the repairer, archive via `audit-archive-timestamps.sh`), so the shared-fix-reaches-both-tools property is pinned rather than assumed (REQ-247 review).
 - `bash _dev/tests/maintainer-verify.sh` exits 0.
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** Six instances of one root cause in a shared shell library with a corrupting case first; the fix direction per shape (repair vs documented refusal) is builder judgment inside two files, with both-scan-scopes pinning required.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B
+
+*Skipped by work action*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work/scripts/repair-req-timestamps.sh` (modify) — shape-parity fixes in the shared library (reaches both tools by sourcing)
+- `_dev/tests/prescribed-shell-scripts-behavior.sh` (modify) — lock-ins per shape, through both scan scopes
+
+**Files I will NOT touch:**
+- `skills/do-work/scripts/audit-archive-timestamps.sh` — it sources the library; parity arrives without editing it (edit only if a switch's contract must change, and then say so).
+- `skills/do-work/hooks/session-start.sh` — wiring unchanged.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] No board-detectable shape is ever half-rewritten: each instance repaired to canonical form or refused byte-identical with the refusal documented next to D-04's entry.
+- [ ] Lock-in cases per instance; the unquoted space-separated mangle case is mandatory; each widened/refused shape pinned through BOTH scan scopes.
+- [ ] `bash _dev/tests/maintainer-verify.sh` exits 0.
+
+## Pre-Flight
+
+**Git:** ✓ clean
+**Tests baseline:** ✓ `bash _dev/tests/maintainer-verify.sh` exits 0 at the branch point (0.212.17 tip)
+**Dependencies:** ✓ toolchain present
+
+*Checked by work action*

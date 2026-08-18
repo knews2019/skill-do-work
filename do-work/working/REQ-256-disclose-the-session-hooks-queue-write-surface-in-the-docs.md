@@ -1,8 +1,10 @@
 ---
 id: REQ-256
 title: Disclose the session hook's queue write surface in the docs
-status: pending
+status: claimed
 created_at: 2026-08-18T17:48:08Z
+claimed_at: 2026-08-18T20:08:45Z
+route: A
 user_request: UR-056
 addendum_to: REQ-246
 domain: general
@@ -16,6 +18,12 @@ maintenance: false
 write_set:
 - README.md
 - skills/do-work/actions/capture.md
+estimate:
+  p50_active_minutes: 5
+  confidence: high
+  calculated_at: 2026-08-18T20:08:45Z
+  basis:
+    - trivial short-circuit (effort_estimate would be trivial; gate-stamped normal for the disclosure class)
 ---
 
 # Disclose the Session Hook's Queue Write Surface in the Docs
@@ -42,3 +50,19 @@ Instance 1 is REQ-246's review finding I3 (restatement sweep — the omission pr
 
 - Both texts state the hook's write behavior; no behavior change anywhere.
 - `bash _dev/tests/maintainer-verify.sh` exits 0.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** Two named doc sites with the sentence content specified; no behaviour change.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route A
+
+*Skipped by work action*
