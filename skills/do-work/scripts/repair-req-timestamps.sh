@@ -44,10 +44,12 @@
 # or `YYYY-MM-DDTHH:MM:SSZ` (a space may stand in for the `T`; the whole value
 # after the colon is read, comment-aware, so a space-separated instant is
 # repaired whole — never split at the space and half-rewritten), optionally
-# wrapped in one matching pair of quotes — the schema's YAML readers unquote,
-# so a quoted future stamp is flagged read-side and must be repairable here too
-# (its replacement is written in the canonical unquoted form the Timestamp rule
-# prescribes). Everything else is REFUSED byte-identical, never half-rewritten:
+# wrapped in one matching pair of quotes with any ASCII whitespace padding
+# inside them trimmed — the schema's YAML readers unquote AND THEN TRIM, so
+# `created_at: "2093-01-01 00:00:00 "` is a value the board parses and
+# future-badges, and it must be repairable here too (its replacement is written
+# in the canonical unquoted form the Timestamp rule prescribes). Everything
+# else is REFUSED byte-identical, never half-rewritten:
 #   - A numeric UTC offset (`2093-01-01T00:00:00+02:00`) or fractional seconds
 #     (`2093-01-01T00:00:00.500Z`): refused PERMANENTLY — a settled answer, not
 #     a gap waiting on someone. The read side parses both, so a future one
@@ -71,6 +73,21 @@
 #     non-leap-year February 29): the read-side parser rejects it, so erasing
 #     it to a derived instant would destroy the malformed evidence the board
 #     leaves visible for diagnosis.
+#   - A value padded with a NON-ASCII space inside its quotes (U+00A0 and the
+#     rest of Unicode's whitespace): Go's strings.TrimSpace removes those read
+#     side, but this file matches bytes under LC_ALL=C and only trims ASCII
+#     whitespace, so such a value stays refused. Refusing can only fail to fix.
+#   - EVERY field of a file whose opening `---` fence is never closed. The
+#     board's splitFrontmatter reports NO frontmatter for exactly that shape
+#     and renders every line as body, so scanning to EOF here would rewrite
+#     prose the read side never treats as schema. The refusal also closes the
+#     one way this script could fail forever: when such a file ends on the
+#     defective stamp with no trailing newline, the changed-line guard expects
+#     the final-newline diff pair that a last-line rewrite can never produce,
+#     so the repair was rejected and the script exited 1 — printing a FAILED
+#     line into every session's start banner, with nothing able to heal it
+#     (REQ-267). A closed fence always puts at least the fence line after a
+#     repaired stamp, so no planned line can be the last line of the file.
 #   - Anything else unparseable.
 # Indented keys are skipped too: `estimate.calculated_at` is a nested field,
 # and every other reader in this skill anchors frontmatter keys at column zero.
@@ -228,6 +245,14 @@ comparison_key_for() {
     \"*\") raw_value="${raw_value#\"}"; raw_value="${raw_value%\"}" ;;
     \'*\') raw_value="${raw_value#\'}"; raw_value="${raw_value%\'}" ;;
   esac
+  # The read side unquotes and THEN trims (coerceScalarToString and
+  # parseTimestamp both run strings.TrimSpace), so padding inside the quotes —
+  # `"2093-01-01 00:00:00 "` — is a value the board parses and future-badges.
+  # Padding outside them was already trimmed by extract_timestamp_fields. Under
+  # LC_ALL=C this trims the ASCII whitespace only; the header records the
+  # non-ASCII residual.
+  raw_value="${raw_value#"${raw_value%%[![:space:]]*}"}"
+  raw_value="${raw_value%"${raw_value##*[![:space:]]}"}"
   # A space separator is folded to `T` so the patterns below never have to
   # carry a literal space inside a bracket expression, where its quoting is
   # shell-dependent. With whole-value extraction this is what makes the
@@ -273,13 +298,18 @@ later_of() {
 # likeliest source of both AND of the wrong local-time stamps this script
 # exists to repair. The BOM and every CR live outside the value span, so a
 # rewrite leaves them byte-for-byte in place.
+#
+# An opening fence that is never closed emits NOTHING: splitFrontmatter reports
+# no frontmatter at all for that shape, so every line of such a file is body to
+# the read side and none of it is this script's to rewrite. Rows are therefore
+# buffered and only printed once the closing fence has been seen.
 extract_timestamp_fields() {
   awk '
     BEGIN { utf8_bom = sprintf("%c%c%c", 239, 187, 191) }
     NR == 1 && index($0, utf8_bom) == 1 { $0 = substr($0, length(utf8_bom) + 1) }
     { line_body = $0; sub(/\r$/, "", line_body) }
     NR == 1 && line_body == "---" { inside_frontmatter = 1; next }
-    inside_frontmatter && line_body == "---" { exit }
+    inside_frontmatter && line_body == "---" { frontmatter_closed = 1; exit }
     inside_frontmatter {
       colon_index = index(line_body, ":")
       if (colon_index < 2) next
@@ -291,7 +321,12 @@ extract_timestamp_fields() {
       sub(/^[ \t]+/, "", field_rest)
       sub(/[ \t]+$/, "", field_rest)
       if (field_rest == "") next
-      print NR "\t" field_name "\t" field_rest
+      buffered_row_count++
+      buffered_rows[buffered_row_count] = NR "\t" field_name "\t" field_rest
+    }
+    END {
+      if (!frontmatter_closed) exit
+      for (row_index = 1; row_index <= buffered_row_count; row_index++) print buffered_rows[row_index]
     }
   ' "$1"
 }
