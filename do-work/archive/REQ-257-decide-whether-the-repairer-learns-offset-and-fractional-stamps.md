@@ -3,6 +3,7 @@ id: REQ-257
 title: Decide whether the timestamp repairer learns offset and fractional stamps
 status: completed
 completed_at: 2026-08-18T22:58:40Z
+commit: 6afcbd5
 claimed_at: 2026-08-18T21:16:24Z
 route: B
 created_at: 2026-08-18T17:49:24Z
