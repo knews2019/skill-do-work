@@ -26,6 +26,7 @@
 - [REQ-207: isolate active HTML by folder origin, capture addenda before implementation, and commit before hand-back](../../do-work/archive/UR-046/REQ-207-render-html-file-mentions-as-folder-aware-previews.md#lessons-learned)
 - [REQ-219: ship a rule's verdict in the payload so a second reader cannot become a second definition](../../do-work/archive/UR-050/REQ-219-board-durations-view.md#lessons-learned)
 - [REQ-226: decide a chart's label placement once, on the Go side, and verify the result by rendering it](../../do-work/archive/REQ-226-stop-durations-chart-overprinting-and-clipping.md#lessons-learned)
+- [REQ-231: a change that adds a second cause for an outcome makes every sentence naming the first one a half-truth](../../do-work/archive/REQ-231-keep-durations-labels-clear-of-the-mark-band.md#lessons-learned)
 - [REQ-227: a view that binds to persistent nodes owns its listener teardown; draw in pixels so a zoom has no scale to invalidate](../../do-work/archive/REQ-227-timeline-view-with-two-segment-req-bars.md#lessons-learned)
 - [REQ-228: a forecast may be wrong about timing, never about order — take the ordering rule from the action that will actually claim next](../../do-work/archive/REQ-228-project-the-remaining-queue-onto-the-timeline.md#lessons-learned)
 - [REQ-232: describe the board by what its switcher covers, not by naming some of its tabs](../../do-work/archive/REQ-232-stop-shipped-prose-counting-the-boards-views.md#lessons-learned)

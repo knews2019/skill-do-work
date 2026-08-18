@@ -240,12 +240,21 @@ const (
 	// band is sparse — which is exactly when there is no remainder to print.
 	durationsLabelRemainderReserveUnits = 24 * durationsLabelCharacterWidthUnits
 
-	// LabelRow for a sample the collision rule could not place.
+	// At most this many samples per band are label candidates, chosen by
+	// magnitude (REQ-231, Alternative 2). The lane's text answers "where are
+	// the outliers", so it goes to the longest spans rather than to whichever
+	// spans a left-to-right walk happened to pack first; everything else is
+	// carried by the remainder count, the hover readout, and the table.
+	durationsLabelTopCount = 6
+
+	// LabelRow for a sample that carries no direct label — either selection
+	// did not pick it, or the collision rule could not place it.
 	durationsLabelRowUnplaced = -1
 )
 
 // DurationLabelBand is one direct-label band's verdict: how many of its samples
-// could not be placed. A nonzero count is drawn on the chart as a remainder, so
+// carry no label, whether selection did not pick them or the collision rule
+// could not place them. A nonzero count is drawn on the chart as a remainder, so
 // a reader can never mistake the visible labels for all of them.
 type DurationLabelBand struct {
 	HiddenCount int
@@ -326,11 +335,14 @@ func durationLabelBandOf(sample DurationSample) string {
 	}
 }
 
-// planDurationLabels decides which samples get a direct label. Each band packs
-// its own rows: walk that band's samples left to right and give each the first
-// row where its text touches nothing already placed there. A sample that fits
-// nowhere is counted rather than drawn, and the renderer prints that count, so
-// a reader can never mistake the visible labels for all of them.
+// planDurationLabels decides which samples get a direct label. Each band first
+// narrows to its durationsLabelTopCount longest spans — the lane's text answers
+// "where are the outliers", so it goes to superlatives rather than to whichever
+// spans a walk packed first — then packs its own rows: walk the candidates left
+// to right and give each the first row where its text touches nothing already
+// placed there. A sample that is not selected, or that fits nowhere, is counted
+// rather than drawn, and the renderer prints that count, so a reader can never
+// mistake the visible labels for all of them.
 func planDurationLabels(samples []DurationSample) (DurationLabelBand, DurationLabelBand) {
 	for index := range samples {
 		samples[index].LabelRow = durationsLabelRowUnplaced
@@ -350,11 +362,37 @@ func planDurationLabels(samples []DurationSample) (DurationLabelBand, DurationLa
 // width, and only a pass that actually dropped something is redone with the
 // reservation held back. A board with no remainder pays nothing for one.
 func packDurationLabelBand(samples []DurationSample, bandName string, rangeStart time.Time, rangeEnd time.Time) DurationLabelBand {
-	band := placeDurationLabelBand(samples, bandName, rangeStart, rangeEnd, false)
+	selected := selectDurationLabelCandidates(samples, bandName)
+	band := placeDurationLabelBand(samples, bandName, selected, rangeStart, rangeEnd, false)
 	if band.HiddenCount == 0 {
 		return band
 	}
-	return placeDurationLabelBand(samples, bandName, rangeStart, rangeEnd, true)
+	return placeDurationLabelBand(samples, bandName, selected, rangeStart, rangeEnd, true)
+}
+
+// selectDurationLabelCandidates picks one band's label candidates: at most
+// durationsLabelTopCount sample indexes, by magnitude. The sort is stable over
+// completion order, so equal spans keep their left-to-right precedence and the
+// choice is deterministic on an archive full of identical durations.
+func selectDurationLabelCandidates(samples []DurationSample, bandName string) map[int]bool {
+	candidateIndexes := []int{}
+	for index := range samples {
+		if durationLabelBandOf(samples[index]) == bandName {
+			candidateIndexes = append(candidateIndexes, index)
+		}
+	}
+	sort.SliceStable(candidateIndexes, func(first, second int) bool {
+		return math.Abs(samples[candidateIndexes[first]].WallMinutes) >
+			math.Abs(samples[candidateIndexes[second]].WallMinutes)
+	})
+	if len(candidateIndexes) > durationsLabelTopCount {
+		candidateIndexes = candidateIndexes[:durationsLabelTopCount]
+	}
+	selected := make(map[int]bool, len(candidateIndexes))
+	for _, candidateIndex := range candidateIndexes {
+		selected[candidateIndex] = true
+	}
+	return selected
 }
 
 // placeDurationLabelBand is one greedy left-to-right pass over a single band.
@@ -363,6 +401,7 @@ func packDurationLabelBand(samples []DurationSample, bandName string, rangeStart
 func placeDurationLabelBand(
 	samples []DurationSample,
 	bandName string,
+	selected map[int]bool,
 	rangeStart time.Time,
 	rangeEnd time.Time,
 	reserveRemainder bool,
@@ -379,6 +418,10 @@ func placeDurationLabelBand(
 		}
 		samples[index].LabelRow = durationsLabelRowUnplaced
 		samples[index].LabelAnchor = ""
+		if !selected[index] {
+			band.HiddenCount++
+			continue
+		}
 
 		markX := durationLabelPlotX(samples[index].CompletionTime, rangeStart, rangeEnd)
 		textWidth := durationLabelWidthUnits(samples[index])

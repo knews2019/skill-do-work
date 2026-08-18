@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.208.0 — Durations Lane Separates Its Dots From Its Labels (2026-08-18)
+
+The Durations chart's top strip used to draw its first line of text at the same height as the dots, so on a busy board a neighbouring dot sat right on top of a label. Dots now keep the strip's top, the text moves below a divider with a tick tying each label to its dot, and the labels go to the longest jobs instead of whichever the packer reached first.
+
+- Panel A's overflow lane splits into a mark strip and a text band; both label rows clear the marks at any density, and the reversed band got the same treatment
+- Label selection is now the six longest spans per band rather than a left-to-right first fit, so the strip's scarce text names the outliers
+- Panels B and C shift down with the taller lane; the hover readout's panel boundary moves with them
+- Two new lock-in tests read the renderer's own constants, so the geometry and the source cannot drift apart
+
 ## 0.207.3 — Timeline Forecast and Keyboard Fixes from PR Review (2026-08-18)
 
 Four defects an automated reviewer found on PR #144, all in the Timeline that shipped over the last two releases. Two of them made the forecast quietly wrong.

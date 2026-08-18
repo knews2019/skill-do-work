@@ -21,14 +21,21 @@
   var DURATIONS_PLOT_WIDTH = DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_LEFT - DURATIONS_MARGIN_RIGHT;
 
   // Panel A — the overflow lane above a scale break exists so three long spans
-  // cannot squash the 90% of samples that live under 35 minutes.
+  // cannot squash the 90% of samples that live under 35 minutes. Marks keep the
+  // lane's top strip and both label rows sit below a divider (REQ-231), so a
+  // neighbouring dot can never overprint a label at any density —
+  // TestDurationsLabelRowsClearTheMarkBands holds the two apart.
   var DURATIONS_LANE_TOP = 22;
-  var DURATIONS_LANE_MARK_Y = 40;
-  var DURATIONS_BREAK_Y = 62;
-  var DURATIONS_MAIN_TOP = 70;
-  var DURATIONS_MAIN_BOTTOM = 272;
+  var DURATIONS_LANE_MARK_Y = 32;
+  // Band marks (overflow and reversed) are drawn a size up from ordinary marks;
+  // the geometry test reads this radius to prove the label rows clear the band.
+  var DURATIONS_BAND_MARK_RADIUS = 5;
+  var DURATIONS_LANE_DIVIDER_Y = 44;
+  var DURATIONS_BREAK_Y = 76;
+  var DURATIONS_MAIN_TOP = 84;
+  var DURATIONS_MAIN_BOTTOM = 286;
   var DURATIONS_CEILING_MINUTES = 60;
-  var DURATIONS_BELOW_ZERO_Y = 284;
+  var DURATIONS_BELOW_ZERO_Y = 298;
   // Direct labels. WHICH marks get one is decided in durations.go and arrives in
   // the payload as labelRow/labelAnchor; what lives here is only the geometry
   // that turns a row index into a baseline. The gap and the row count are shared
@@ -37,12 +44,13 @@
   var DURATIONS_LABEL_ROW_COUNT = 2;
   var DURATIONS_LABEL_GAP = 9;
   var DURATIONS_LABEL_ROW_HEIGHT = 12;
-  var DURATIONS_LANE_LABEL_ROW_Y = 44;
-  var DURATIONS_REVERSED_LABEL_ROW_Y = 288;
+  var DURATIONS_LABEL_TEXT_ASCENT = 11;
+  var DURATIONS_LANE_LABEL_ROW_Y = 56;
+  var DURATIONS_REVERSED_LABEL_ROW_Y = 322;
   // Panel B — median minutes per active day.
-  var DURATIONS_MEDIAN_TITLE_Y = 316;
-  var DURATIONS_MEDIAN_TOP = 334;
-  var DURATIONS_MEDIAN_BOTTOM = 414;
+  var DURATIONS_MEDIAN_TITLE_Y = 350;
+  var DURATIONS_MEDIAN_TOP = 368;
+  var DURATIONS_MEDIAN_BOTTOM = 448;
   var DURATIONS_MEDIAN_CEILING = 45;
   // A day over the ceiling is drawn as a full-height bar plus a detached sliver
   // above it, so the break reads as "continues above" rather than as a value.
@@ -50,11 +58,11 @@
   var DURATIONS_MEDIAN_OVER_CEILING_GAP = 6;
   var DURATIONS_MEDIAN_OVER_CEILING_HEIGHT = 3;
   // Panel C — REQs completed per day.
-  var DURATIONS_COUNT_TITLE_Y = 450;
-  var DURATIONS_COUNT_TOP = 468;
-  var DURATIONS_COUNT_BOTTOM = 538;
-  var DURATIONS_AXIS_LABEL_Y = 556;
-  var DURATIONS_VIEW_HEIGHT = 570;
+  var DURATIONS_COUNT_TITLE_Y = 484;
+  var DURATIONS_COUNT_TOP = 502;
+  var DURATIONS_COUNT_BOTTOM = 572;
+  var DURATIONS_AXIS_LABEL_Y = 590;
+  var DURATIONS_VIEW_HEIGHT = 604;
 
   var DURATIONS_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -247,6 +255,14 @@
       },
       "60+"
     );
+    // The divider holds the lane's mark strip apart from the text band below it.
+    makeDurationsSvgNode(svg, "line", {
+      x1: DURATIONS_MARGIN_LEFT,
+      y1: DURATIONS_LANE_DIVIDER_Y,
+      x2: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT,
+      y2: DURATIONS_LANE_DIVIDER_Y,
+      class: "durations-lane-divider"
+    });
     makeDurationsSvgNode(svg, "line", {
       x1: DURATIONS_MARGIN_LEFT,
       y1: DURATIONS_BREAK_Y,
@@ -273,7 +289,7 @@
       makeDurationsSvgNode(svg, "circle", {
         cx: markX.toFixed(1),
         cy: markY.toFixed(1),
-        r: isOverflow || isReversed ? 5 : 4,
+        r: isOverflow || isReversed ? DURATIONS_BAND_MARK_RADIUS : 4,
         fill: isReversed ? "var(--durations-critical)" : durationRouteFill(sample.route),
         class: "durations-mark"
       });
@@ -291,6 +307,18 @@
       if (baselineY === null) {
         return;
       }
+      // A leader tick ties the label back to its mark across the band gap. It
+      // ends at the text band's top edge — never inside a row — so it cannot
+      // cross a first-row label on its way to a second-row one.
+      var bandRowY =
+        mark.sample.wallMinutes < 0 ? DURATIONS_REVERSED_LABEL_ROW_Y : DURATIONS_LANE_LABEL_ROW_Y;
+      makeDurationsSvgNode(svg, "line", {
+        x1: mark.x.toFixed(1),
+        y1: (mark.y + DURATIONS_BAND_MARK_RADIUS + 1).toFixed(1),
+        x2: mark.x.toFixed(1),
+        y2: (bandRowY - DURATIONS_LABEL_TEXT_ASCENT).toFixed(1),
+        class: "durations-label-leader"
+      });
       var anchorsBeforeMark = mark.sample.labelAnchor === "end";
       makeDurationsSvgNode(
         svg,
@@ -305,7 +333,8 @@
       );
     });
 
-    // Whatever placement could not fit is stated, never dropped in silence: the
+    // Whatever carries no label is stated, never dropped in silence — samples
+    // selection passed over and samples placement could not fit alike: the
     // count is what stops a reader taking the visible labels for all of them.
     var durationLabelCounts = durations.labels || {};
     function drawDurationsRemainder(hiddenCount, bandRowY, remainderTail) {

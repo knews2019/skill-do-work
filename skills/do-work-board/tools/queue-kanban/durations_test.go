@@ -420,6 +420,102 @@ func durationsRendererConstant(t *testing.T, constantName string) float64 {
 	return rendererNumericConstant(t, "web/board-durations.js", constantName)
 }
 
+// Descent below the baseline for the renderer's 11px label face — the number
+// REQ-226 used to describe a label's text box. The ascent is the renderer's own
+// DURATIONS_LABEL_TEXT_ASCENT constant, read below; the descent exists only in
+// this test's geometric question, so it lives here.
+const durationsLabelTextDescentUnits = 2.0
+
+// The defect this pins (REQ-231): REQ-226 stopped labels overprinting each
+// other, but the mark band and the first label row still shared vertical space,
+// so on a dense board the DOTS overprinted the text instead. Both bands' label
+// rows must sit wholly clear of their band's marks, at any density — the rule is
+// geometric, so it is asserted against the renderer's own constants the same way
+// TestDurationLabelGeometryMatchesTheRenderer reads them.
+func TestDurationsLabelRowsClearTheMarkBands(t *testing.T) {
+	markRadius := durationsRendererConstant(t, "DURATIONS_BAND_MARK_RADIUS")
+	rowCount := int(durationsRendererConstant(t, "DURATIONS_LABEL_ROW_COUNT"))
+	rowHeight := durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
+	textAscent := durationsRendererConstant(t, "DURATIONS_LABEL_TEXT_ASCENT")
+	for _, band := range []struct {
+		bandName         string
+		markConstantName string
+		rowConstantName  string
+	}{
+		{"overflow", "DURATIONS_LANE_MARK_Y", "DURATIONS_LANE_LABEL_ROW_Y"},
+		{"reversed", "DURATIONS_BELOW_ZERO_Y", "DURATIONS_REVERSED_LABEL_ROW_Y"},
+	} {
+		markY := durationsRendererConstant(t, band.markConstantName)
+		firstRowY := durationsRendererConstant(t, band.rowConstantName)
+		for rowIndex := 0; rowIndex < rowCount; rowIndex++ {
+			baseline := firstRowY + float64(rowIndex)*rowHeight
+			textTop := baseline - textAscent
+			textBottom := baseline + durationsLabelTextDescentUnits
+			if textBottom >= markY-markRadius && textTop <= markY+markRadius {
+				t.Fatalf("%s band: row %d's text box [%.0f, %.0f] intersects the mark band [%.0f, %.0f] — a neighbouring dot can overprint the label",
+					band.bandName, rowIndex, textTop, textBottom, markY-markRadius, markY+markRadius)
+			}
+		}
+	}
+}
+
+// variedOverflowTickets is the dense fixture with a magnitude gradient: spans
+// grow left to right, so the longest samples sit at the crowded right edge and
+// a first-fit walk would spend both rows on the SHORT leftmost spans.
+func variedOverflowTickets(sampleCount int) []*RequestTicket {
+	tickets := make([]*RequestTicket, 0, sampleCount)
+	for sampleIndex := 0; sampleIndex < sampleCount; sampleIndex++ {
+		completedAt := durationsWindowStart.Add(time.Duration(sampleIndex) * durationsWindowLength / time.Duration(sampleCount-1))
+		claimedAt := completedAt.Add(-time.Duration(65+7*sampleIndex) * time.Minute)
+		tickets = append(tickets, durationTicket(
+			fmt.Sprintf("REQ-%03d", 500+sampleIndex),
+			"B",
+			claimedAt.Format(time.RFC3339),
+			completedAt.Format(time.RFC3339),
+		))
+	}
+	return tickets
+}
+
+// The lane's text answers "where are the outliers", so its labels must go to the
+// longest spans, not to whichever spans a left-to-right walk packed first. This
+// is REQ-231's Alternative-2 selection rule: at most durationsLabelTopCount
+// samples per band are candidates, chosen by magnitude, and every drawn label is
+// one of them.
+func TestOverflowLabelsGoToTheLongestSpans(t *testing.T) {
+	const overflowSampleCount = 40
+	aggregate := buildDurationAggregate(variedOverflowTickets(overflowSampleCount))
+
+	magnitudes := make([]float64, 0, overflowSampleCount)
+	for _, sample := range aggregate.Samples {
+		magnitudes = append(magnitudes, math.Abs(sample.WallMinutes))
+	}
+	sort.Sort(sort.Reverse(sort.Float64Slice(magnitudes)))
+	selectionFloor := magnitudes[durationsLabelTopCount-1]
+
+	labelledCount := 0
+	for _, sample := range aggregate.Samples {
+		if sample.LabelRow == durationsLabelRowUnplaced {
+			continue
+		}
+		labelledCount++
+		if math.Abs(sample.WallMinutes) < selectionFloor {
+			t.Fatalf("%s (%.0f min) carries a label but is not among the %d longest spans (floor %.0f min)",
+				sample.RequestId, sample.WallMinutes, durationsLabelTopCount, selectionFloor)
+		}
+	}
+	if labelledCount == 0 {
+		t.Fatal("a top-N rule must still label something on a dense board")
+	}
+	if labelledCount > durationsLabelTopCount {
+		t.Fatalf("%d labels placed, but at most %d samples may be candidates", labelledCount, durationsLabelTopCount)
+	}
+	if labelledCount+aggregate.OverflowLabels.HiddenCount != overflowSampleCount {
+		t.Fatalf("%d labelled + %d hidden ≠ %d — unselected samples must join the drawn remainder",
+			labelledCount, aggregate.OverflowLabels.HiddenCount, overflowSampleCount)
+	}
+}
+
 // Placement decides in the renderer's user-unit space, so the two files agree on
 // that space or every label is sized against a plot it does not land on. The
 // numbers are duplicated by necessity — one side computes, the other draws — and

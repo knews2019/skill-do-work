@@ -1900,6 +1900,17 @@ body.is-resizing-detail .detail-resizer::before {
   fill: var(--surface-2);
 }
 
+.durations-lane-divider {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.durations-label-leader {
+  stroke: var(--line-firm);
+  stroke-width: 1;
+}
+
 .durations-mark {
   stroke: none;
 }

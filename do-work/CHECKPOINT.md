@@ -21,10 +21,10 @@ Every hash was confirmed with `record-commit-hash.sh --verify`. `maintainer-veri
 
 ## In Progress (interrupted)
 
+
 ## Still Queued
 
 - REQ-230: Point caller docs at the canonical publication rationale (pending-answers — 1 question). Sweep, one instance: `present-work.md:137` restates the container-not-a-collision rationale that REQ-225 gave a single home.
-- REQ-231: Keep Panel A's direct labels clear of the mark band (pending-answers — 1 question). Needs a ~12-unit taller overflow lane, which REQ-226 was explicitly told not to redesign.
 - REQ-233: Give the Timeline a keyboard path to zoom and pan (pending-answers — 1 question). New capability to finish, not a regression to repair.
 - REQ-234: Stop the shell behavior suite counting its own cases (pending-answers — 1 question). Its closing literal claimed 45 against 40 derivable cases.
 
