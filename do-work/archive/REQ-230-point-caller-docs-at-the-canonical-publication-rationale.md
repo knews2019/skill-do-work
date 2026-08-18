@@ -3,7 +3,7 @@ id: REQ-230
 title: "Review fix: point caller docs at the canonical publication rationale"
 status: completed
 completed_at: 2026-08-18T11:12:00Z
-commit:
+commit: 19669fc
 claimed_at: 2026-08-18T10:56:00Z
 estimate:
   p50_active_minutes: 20
