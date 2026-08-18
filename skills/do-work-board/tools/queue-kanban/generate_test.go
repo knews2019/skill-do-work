@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -2751,4 +2752,279 @@ func userRequestIdsOf(rows []renderedUserRequestRow) []string {
 		ids = append(ids, row.UserRequestId)
 	}
 	return ids
+}
+
+// rendererDeclarationLine returns one `var NAME = ...;` line verbatim from a
+// shipped renderer fragment. It is rendererNumericConstant's sibling for the
+// declarations that are not a single number — a probe that needs the view's list
+// of period levels must drive THAT list, not a copy beside it that goes stale.
+func rendererDeclarationLine(t *testing.T, assetPath string, constantName string) string {
+	t.Helper()
+	rendererText, readError := embeddedWebAssets.ReadFile(assetPath)
+	if readError != nil {
+		t.Fatalf("read %s: %v", assetPath, readError)
+	}
+	pattern := regexp.MustCompile(`(?m)^\s*(var ` + regexp.QuoteMeta(constantName) + ` = .+;)$`)
+	match := pattern.FindSubmatch(rendererText)
+	if match == nil {
+		t.Fatalf("%s declares no single-line constant %s", assetPath, constantName)
+	}
+	return string(match[1])
+}
+
+// Period navigation is the THIRD way to move the timeline's window, after the
+// pointer and the keyboard, and what it can get wrong is a calendar that is only
+// nearly a calendar: a "week" starting at whatever instant sat in the middle of
+// the view, a "next" that adds 7×24h to an unaligned start, or a step that walks
+// off the end of the range. Those are invisible in a screenshot — the bars still
+// look like bars. This drives the pure transforms over a five-month fixture and
+// requires real Monday-to-Monday boundaries, a clamp at the end of the range, and
+// a level that stops claiming to be exact once a free zoom has moved the window.
+//
+// It also pins the other half of the Now button: recentring the time window never
+// moved the ROW list, so "jump to the remaining work" landed the reader on
+// whichever archived rows happened to be scrolled into view.
+func TestJavaScriptBehaviorTimelinePeriodStepsOnCalendarBoundariesAndJumpsToNow(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS", "TIMELINE_ROW_HEIGHT", "TIMELINE_NOW_JUMP_MARGIN_FRACTION") +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_PERIOD_LEVEL_NAMES") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineZoomedWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodStart(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineSteppedPeriodStart(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelinePeriodLevelOfWindow(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineFirstOpenRowIndex(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineNowJump(") + `
+// A board whose range spans five months — the shape the user reported, where the
+// only sideways movement was a very long drag.
+var boundStart = Date.UTC(2026, 3, 7);        // 7 Apr 2026
+var boundEnd = Date.UTC(2026, 8, 2);          // 2 Sep 2026
+var nowMs = Date.UTC(2026, 7, 18, 10, 30);
+var queueEndMs = Date.UTC(2026, 7, 30, 6, 0); // the projection's queue-empty instant
+
+var fitted = { windowStartMs: boundStart, windowEndMs: boundEnd };
+function anchorOf(movedWindow) {
+  return (movedWindow.windowStartMs + movedWindow.windowEndMs) / 2;
+}
+
+var weekWindow = timelinePeriodWindow(anchorOf(fitted), "week", 0, boundStart, boundEnd);
+var nextWeek = timelinePeriodWindow(anchorOf(weekWindow), "week", 1, boundStart, boundEnd);
+var prevWeek = timelinePeriodWindow(anchorOf(nextWeek), "week", -1, boundStart, boundEnd);
+
+// Held down against the end of the range: stepping has to stop, keeping the
+// window on the data instead of running off it.
+var atRangeEnd = weekWindow;
+for (var step = 0; step < 60; step++) {
+  atRangeEnd = timelinePeriodWindow(anchorOf(atRangeEnd), "week", 1, boundStart, boundEnd);
+}
+var pastRangeEnd = timelinePeriodWindow(anchorOf(atRangeEnd), "week", 1, boundStart, boundEnd);
+
+var dayWindow = timelinePeriodWindow(anchorOf(fitted), "day", 0, boundStart, boundEnd);
+var monthWindow = timelinePeriodWindow(anchorOf(fitted), "month", 0, boundStart, boundEnd);
+var nextMonth = timelinePeriodWindow(anchorOf(monthWindow), "month", 1, boundStart, boundEnd);
+
+// A free zoom through the pointer path's own transform: the level must stop
+// reading as an exact week rather than keep claiming one.
+var freelyZoomed = timelineZoomedWindow(
+  weekWindow.windowStartMs, weekWindow.windowEndMs, 1.6, 0.5, boundStart, boundEnd);
+
+// Three archived rows, then the still-open work — the 677-row board in miniature.
+var rows = [
+  { waitOpen: false, workOpen: false },
+  { waitOpen: false, workOpen: false },
+  { waitOpen: false, workOpen: false },
+  { waitOpen: true, workOpen: false },
+  { waitOpen: false, workOpen: true }
+];
+var scrollHostStub = { scrollTop: 0 };
+var nowJump = timelineNowJump(nowMs, queueEndMs, rows, boundStart, boundEnd);
+// The two assignments the Now button makes, run against a stub scroll host.
+if (nowJump.scrollTop !== null) {
+  scrollHostStub.scrollTop = nowJump.scrollTop;
+}
+
+function utcParts(epochMs) {
+  var instant = new Date(epochMs);
+  return {
+    iso: instant.toISOString(),
+    weekday: instant.getUTCDay(),
+    dayOfMonth: instant.getUTCDate(),
+    hour: instant.getUTCHours(),
+    minute: instant.getUTCMinutes()
+  };
+}
+
+process.stdout.write(JSON.stringify({
+  week: utcParts(weekWindow.windowStartMs),
+  weekEnd: utcParts(weekWindow.windowEndMs),
+  weekSpanMs: weekWindow.windowEndMs - weekWindow.windowStartMs,
+  nextWeek: utcParts(nextWeek.windowStartMs),
+  nextWeekStepMs: nextWeek.windowStartMs - weekWindow.windowStartMs,
+  nextWeekSpanMs: nextWeek.windowEndMs - nextWeek.windowStartMs,
+  prevWeekStartMs: prevWeek.windowStartMs,
+  weekStartMs: weekWindow.windowStartMs,
+  dayMs: TIMELINE_DAY_MS,
+
+  atRangeEndStartMs: atRangeEnd.windowStartMs,
+  atRangeEndEndMs: atRangeEnd.windowEndMs,
+  atRangeEndIso: new Date(atRangeEnd.windowStartMs).toISOString() + " → " + new Date(atRangeEnd.windowEndMs).toISOString(),
+  pastRangeEndStartMs: pastRangeEnd.windowStartMs,
+  pastRangeEndEndMs: pastRangeEnd.windowEndMs,
+  boundStartMs: boundStart,
+  boundEndMs: boundEnd,
+
+  day: utcParts(dayWindow.windowStartMs),
+  daySpanMs: dayWindow.windowEndMs - dayWindow.windowStartMs,
+  month: utcParts(monthWindow.windowStartMs),
+  monthEnd: utcParts(monthWindow.windowEndMs),
+  nextMonth: utcParts(nextMonth.windowStartMs),
+
+  exactWeekLevel: timelinePeriodLevelOfWindow(weekWindow.windowStartMs, weekWindow.windowEndMs),
+  exactDayLevel: timelinePeriodLevelOfWindow(dayWindow.windowStartMs, dayWindow.windowEndMs),
+  exactMonthLevel: timelinePeriodLevelOfWindow(monthWindow.windowStartMs, monthWindow.windowEndMs),
+  zoomedLevel: timelinePeriodLevelOfWindow(freelyZoomed.windowStartMs, freelyZoomed.windowEndMs),
+
+  nowWindowIso: new Date(nowJump.window.windowStartMs).toISOString() + " → " + new Date(nowJump.window.windowEndMs).toISOString(),
+  nowInsideWindow: nowMs >= nowJump.window.windowStartMs && nowMs <= nowJump.window.windowEndMs,
+  queueEndInsideWindow: queueEndMs >= nowJump.window.windowStartMs && queueEndMs <= nowJump.window.windowEndMs,
+  scrollTop: scrollHostStub.scrollTop,
+  wantScrollTop: 3 * TIMELINE_ROW_HEIGHT
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline period navigation", javascriptProbe)
+	type utcParts struct {
+		Iso        string `json:"iso"`
+		Weekday    int    `json:"weekday"`
+		DayOfMonth int    `json:"dayOfMonth"`
+		Hour       int    `json:"hour"`
+		Minute     int    `json:"minute"`
+	}
+	var periodResult struct {
+		Week            utcParts `json:"week"`
+		WeekEnd         utcParts `json:"weekEnd"`
+		WeekSpanMs      float64  `json:"weekSpanMs"`
+		NextWeek        utcParts `json:"nextWeek"`
+		NextWeekStepMs  float64  `json:"nextWeekStepMs"`
+		NextWeekSpanMs  float64  `json:"nextWeekSpanMs"`
+		PrevWeekStartMs float64  `json:"prevWeekStartMs"`
+		WeekStartMs     float64  `json:"weekStartMs"`
+		DayMs           float64  `json:"dayMs"`
+
+		AtRangeEndStartMs   float64 `json:"atRangeEndStartMs"`
+		AtRangeEndEndMs     float64 `json:"atRangeEndEndMs"`
+		AtRangeEndIso       string  `json:"atRangeEndIso"`
+		PastRangeEndStartMs float64 `json:"pastRangeEndStartMs"`
+		PastRangeEndEndMs   float64 `json:"pastRangeEndEndMs"`
+		BoundStartMs        float64 `json:"boundStartMs"`
+		BoundEndMs          float64 `json:"boundEndMs"`
+
+		Day       utcParts `json:"day"`
+		DaySpanMs float64  `json:"daySpanMs"`
+		Month     utcParts `json:"month"`
+		MonthEnd  utcParts `json:"monthEnd"`
+		NextMonth utcParts `json:"nextMonth"`
+
+		ExactWeekLevel  *string `json:"exactWeekLevel"`
+		ExactDayLevel   *string `json:"exactDayLevel"`
+		ExactMonthLevel *string `json:"exactMonthLevel"`
+		ZoomedLevel     *string `json:"zoomedLevel"`
+
+		NowWindowIso         string  `json:"nowWindowIso"`
+		NowInsideWindow      bool    `json:"nowInsideWindow"`
+		QueueEndInsideWindow bool    `json:"queueEndInsideWindow"`
+		ScrollTop            float64 `json:"scrollTop"`
+		WantScrollTop        float64 `json:"wantScrollTop"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &periodResult); decodeError != nil {
+		t.Fatalf("decode timeline period behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// A week is Monday→Sunday, starting at midnight UTC. "Seven days long" alone
+	// would pass for a window starting at 14:37 on a Thursday.
+	if periodResult.Week.Weekday != 1 || periodResult.Week.Hour != 0 || periodResult.Week.Minute != 0 {
+		t.Fatalf("the week window starts at %s (weekday %d); want a Monday at 00:00 UTC",
+			periodResult.Week.Iso, periodResult.Week.Weekday)
+	}
+	if periodResult.WeekSpanMs != 7*periodResult.DayMs {
+		t.Fatalf("the week window spans %.0f ms (%s → %s), want exactly seven days",
+			periodResult.WeekSpanMs, periodResult.Week.Iso, periodResult.WeekEnd.Iso)
+	}
+	if periodResult.NextWeekStepMs != 7*periodResult.DayMs {
+		t.Fatalf("next period moved the window %.0f ms (%s → %s), want exactly seven days",
+			periodResult.NextWeekStepMs, periodResult.Week.Iso, periodResult.NextWeek.Iso)
+	}
+	if periodResult.NextWeek.Weekday != 1 || periodResult.NextWeek.Hour != 0 {
+		t.Fatalf("next period landed on %s (weekday %d); stepping must stay Monday-aligned",
+			periodResult.NextWeek.Iso, periodResult.NextWeek.Weekday)
+	}
+	if periodResult.NextWeekSpanMs != periodResult.WeekSpanMs {
+		t.Fatalf("next period changed the window span from %.0f ms to %.0f ms; a step moves the window, it does not resize it",
+			periodResult.WeekSpanMs, periodResult.NextWeekSpanMs)
+	}
+	// Forward then back is the reader's undo; it has to return to the same week.
+	if periodResult.PrevWeekStartMs != periodResult.WeekStartMs {
+		t.Fatalf("next then previous landed on %s, want the week it started from %s",
+			time.UnixMilli(int64(periodResult.PrevWeekStartMs)).UTC().Format(time.RFC3339),
+			periodResult.Week.Iso)
+	}
+
+	// Held against the end of the range the window has to stop ON the data.
+	// Without a clamp it walks into empty months forever, and every bar leaves
+	// the screen.
+	if periodResult.AtRangeEndEndMs > periodResult.BoundEndMs ||
+		periodResult.AtRangeEndStartMs < periodResult.BoundStartMs {
+		t.Fatalf("stepping to the end of the range left the window at %s, outside the range %.0f–%.0f",
+			periodResult.AtRangeEndIso, periodResult.BoundStartMs, periodResult.BoundEndMs)
+	}
+	if periodResult.PastRangeEndStartMs != periodResult.AtRangeEndStartMs ||
+		periodResult.PastRangeEndEndMs != periodResult.AtRangeEndEndMs {
+		t.Fatalf("one more step past the last period moved the window from %s to %.0f–%.0f; it must clamp",
+			periodResult.AtRangeEndIso, periodResult.PastRangeEndStartMs, periodResult.PastRangeEndEndMs)
+	}
+
+	// Day and month are calendar periods too: midnight→midnight, and the 1st to
+	// the 1st — not 24h and not 30 days from wherever the view happened to be.
+	if periodResult.Day.Hour != 0 || periodResult.Day.Minute != 0 || periodResult.DaySpanMs != periodResult.DayMs {
+		t.Fatalf("the day window is %s spanning %.0f ms; want midnight UTC to midnight UTC",
+			periodResult.Day.Iso, periodResult.DaySpanMs)
+	}
+	if periodResult.Month.DayOfMonth != 1 || periodResult.Month.Hour != 0 {
+		t.Fatalf("the month window starts at %s; want the 1st at 00:00 UTC", periodResult.Month.Iso)
+	}
+	if periodResult.MonthEnd.DayOfMonth != 1 || periodResult.MonthEnd.Hour != 0 {
+		t.Fatalf("the month window ends at %s; want the 1st of the next month", periodResult.MonthEnd.Iso)
+	}
+	if periodResult.NextMonth.DayOfMonth != 1 {
+		t.Fatalf("next month landed on %s; a month step is calendar arithmetic, not 30 days", periodResult.NextMonth.Iso)
+	}
+
+	// The level is read back off the window, so it cannot claim a level the
+	// window no longer has once a free zoom has resized it.
+	for _, exactLevel := range []struct {
+		levelName string
+		reported  *string
+	}{
+		{"day", periodResult.ExactDayLevel},
+		{"week", periodResult.ExactWeekLevel},
+		{"month", periodResult.ExactMonthLevel},
+	} {
+		if exactLevel.reported == nil || *exactLevel.reported != exactLevel.levelName {
+			t.Fatalf("a %s window reads back as %v, want %q", exactLevel.levelName, exactLevel.reported, exactLevel.levelName)
+		}
+	}
+	if periodResult.ZoomedLevel != nil {
+		t.Fatalf("after a free zoom the level still reads %q; it must report no exact level rather than claim one",
+			*periodResult.ZoomedLevel)
+	}
+
+	// Now is two movements. The window has to carry both the now-line and the
+	// forecast, and the ROW list has to land on the still-open work — the half
+	// that recentring the time window never did.
+	if !periodResult.NowInsideWindow || !periodResult.QueueEndInsideWindow {
+		t.Fatalf("the Now window %s does not cover both the now-line and the projected queue end", periodResult.NowWindowIso)
+	}
+	if periodResult.ScrollTop != periodResult.WantScrollTop {
+		t.Fatalf("Now left the row list at scrollTop %.0f, want %.0f — the first still-open row",
+			periodResult.ScrollTop, periodResult.WantScrollTop)
+	}
 }

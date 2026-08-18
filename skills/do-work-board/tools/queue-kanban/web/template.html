@@ -235,7 +235,7 @@
       <!-- Timeline — one bar per REQ across real time: the wait from capture to
            claim, then the work from claim to completion. Rows are virtualized,
            so only the scrolled window carries SVG nodes. -->
-      <section id="view-timeline" class="view-panel" aria-label="Timeline. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it." hidden>
+      <section id="view-timeline" class="view-panel" aria-label="Timeline. With the chart focused, arrow keys pan the time axis and the plus and minus keys zoom it. The toolbar steps the window one calendar day, week or month at a time." hidden>
         <div class="timeline-intro">
           <h2 class="timeline-heading">How long each REQ waited, and how long it took</h2>
           <p class="timeline-subhead" id="timeline-summary"></p>
@@ -247,6 +247,18 @@
             <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="open"></span>Still open, running to now</span>
             <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="projected"></span>Projected, not measured</span>
             <span class="timeline-legend-item"><span class="timeline-swatch" data-segment="broken"></span>Broken stamps</span>
+          </div>
+          <!-- Period navigation sits ALONGSIDE the zoom group, not in place of it:
+               the levels set the window to one calendar day, week or month, and
+               ‹ / › step it one period at a time. The state span reads "custom
+               span" once a free zoom or drag has left the window off the grid. -->
+          <div class="control-group timeline-periods" role="group" aria-label="Timeline period">
+            <button type="button" class="control-button" id="timeline-period-prev" title="Previous period" aria-label="Previous period">‹</button>
+            <button type="button" class="control-button" data-timeline-period="day" aria-pressed="false">Day</button>
+            <button type="button" class="control-button" data-timeline-period="week" aria-pressed="false">Week</button>
+            <button type="button" class="control-button" data-timeline-period="month" aria-pressed="false">Month</button>
+            <button type="button" class="control-button" id="timeline-period-next" title="Next period" aria-label="Next period">›</button>
+            <span class="timeline-period-state" id="timeline-period-state" role="status" aria-live="polite"></span>
           </div>
           <div class="control-group" role="group" aria-label="Timeline zoom">
             <button type="button" class="control-button" id="timeline-zoom-out" title="Zoom out">−</button>
@@ -263,7 +275,7 @@
         </div>
         <p class="timeline-forecast" id="timeline-forecast"></p>
         <div class="timeline-excluded" id="timeline-excluded"></div>
-        <p class="timeline-hint">Scroll to move down the queue. Hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Click a row for its full detail. From the keyboard: Tab to the chart, then ← and → to pan and + and − to zoom.</p>
+        <p class="timeline-hint">Scroll to move down the queue. Hold ⌘ or Ctrl and scroll to zoom the time axis; drag to pan. Pick Day, Week or Month and use ‹ and › to step one calendar period at a time; Now jumps to the now-line, the forecast, and the first REQ still open. Click a row for its full detail. From the keyboard: Tab to the chart, then ← and → to pan and + and − to zoom.</p>
         <p class="timeline-readout" id="timeline-readout" role="status" aria-live="polite"></p>
         <details class="timeline-table">
           <summary>Every REQ, as a table</summary>

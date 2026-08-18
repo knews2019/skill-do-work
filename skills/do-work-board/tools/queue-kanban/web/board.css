@@ -2062,6 +2062,15 @@ body.is-resizing-detail .detail-resizer::before {
   padding: 12px 24px 0;
 }
 
+/* The period group's own readout: which level the window is exactly showing, or
+   "custom span" once a free zoom or drag has taken it off the calendar grid. */
+.timeline-period-state {
+  font-size: 11px;
+  color: var(--ink-faint);
+  padding: 0 8px 0 4px;
+  white-space: nowrap;
+}
+
 .timeline-legend {
   display: flex;
   flex-wrap: wrap;
