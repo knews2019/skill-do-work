@@ -55,6 +55,29 @@ All four came from REQ-243's independent review, which cleared the checker's cor
 - `bash _dev/tests/maintainer-verify.sh` still exits 0, and the existing 27 corpus anchors still resolve.
 - **`maintenance: true`: ask what can be removed before adding.** Two of these four may be better closed by deleting a claim than by adding code.
 
+## Implementation Summary
+
+**What was done:** All four checker edges resolved — two closed with code, two documented as stated limitations. (1) Bare `#anchor` links now validate: the fragment resolves as the carrying file's own name through the existing target-and-anchor pipeline; the corpus's 3 real bare-anchor links now get checked. (2) The `..`-escape class is clamped at every normpath-then-probe site — and the hole-hunt found the genuinely silent instance in REQ-249's citation checker, whose consumer-queue probe absorbed interior-`..` tails and could stat outside the repo (demonstrated reaching `/etc/hostname`); both citation sites are clamped and the silent-absorb hole is fixture-locked. (3) HTML-tag/entity slug divergence documented with both failure directions named, pinned by a fixture. (4) Blockquoted-heading drop documented as always-loud, pinned by a fixture.
+
+**Files changed:**
+- `_dev/tests/shipped-package-reference-contract.sh` (modified) — the only file (+67/−8): bare-anchor routing, escape clamps at three sites, two limitation statements, three fixtures
+
+*Integrated by orchestrator from builder hand-back; merge range `beb3b7b..330797b`.*
+
+## Decisions
+
+Transcribed from the builder hand-back:
+
+- **D-01 (DECIDE & STATE):** bare fragments resolve through the existing pipeline rather than a parallel anchor branch — dedup, caching and message consistency for ~6 lines.
+- **D-02 (DECIDE & STATE):** the clamp is `".." in <normalized>.parts` at every probe site rather than `relative_to(repo_root)` — in repo-relative PurePosixPaths any surviving `..` after normpath IS the escape condition; both topologies guarded so the invariant is stated rather than leaning on destination-root geometry.
+- **D-03 (DECIDE & STATE, maintenance):** instance 3 documented, not closed — no live corpus case, and correct closing needs code-span-aware HTML decoding; fails the earned-defense test. Pinning fixture keeps statement and behavior from drifting apart.
+- **D-04 (DECIDE & STATE, maintenance):** instance 4 documented, not closed — always loud, zero corpus cases, correct blockquote anchors need nested-quote machinery with no live case.
+- **D-05 (DECIDE & STATE):** the citation checker's interior-`..` clamp is in-scope, not a REQ-249 rework — instance 2's exact class at a second copy of the same primitive; all seven prior citation fixtures still pass.
+
+## Qualification
+
+Passed — 1 file verified in merge range `beb3b7b..330797b` (+67/−8), all three requirement clusters traced (each instance closed-or-stated with failure direction; suite green with the 27 pre-existing anchors plus 3 newly validated; maintenance posture honored — two edges resolved by statement, not machinery), P-A-U audited. The builder's pushback on instance 2's framing (the corpus read-risk was overstated; the real silent hole was in the citation checker's consumer-queue probe) is verified by its RED-2a/RED-2b transcripts and accepted as the more accurate account.
+
 ## Red-Green Proof
 
 **RED prompt/case:** per instance — a same-file link to a non-existent anchor; a `..`-escaping relative target; a heading containing an HTML tag with a link written to GitHub's slug; a blockquoted heading with a link to it.
