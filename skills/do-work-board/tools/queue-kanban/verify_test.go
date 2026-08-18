@@ -1183,7 +1183,7 @@ func TestVerifyLiftsCompletionAnomaliesIntoFindings(t *testing.T) {
 		RequestId:               "REQ-9330",
 		Status:                  "completed",
 		CompletionAnomaly:       true,
-		CompletionAnomalyReason: `completed_at "2026-01-01T10:00:00Z" is earlier than claimed_at "2026-01-02T10:00:00Z" — a reversed span cannot be real; one stamp is usually local wall-clock time written with a Z suffix; rewrite the wrong stamp with the true UTC instant`,
+		CompletionAnomalyReason: reversedSpanAnomalyReason(t),
 	}}
 	report := VerifyReport{}
 	appendCompletionAnomalyFindings(&report, ".", board)
@@ -1227,7 +1227,7 @@ func TestHashOnlyAnomalySkippedWhenGitUnavailable(t *testing.T) {
 			ClaimedAt:               "2026-01-02T10:00:00Z",
 			CompletedAt:             "2026-01-01T10:00:00Z",
 			CompletionAnomaly:       true,
-			CompletionAnomalyReason: `completed_at "2026-01-01T10:00:00Z" is earlier than claimed_at "2026-01-02T10:00:00Z" — a reversed span cannot be real; one stamp is usually local wall-clock time written with a Z suffix; rewrite the wrong stamp with the true UTC instant`,
+			CompletionAnomalyReason: reversedSpanAnomalyReason(t),
 		},
 	}
 	report := VerifyReport{}
