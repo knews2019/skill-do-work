@@ -1,7 +1,8 @@
 ---
 id: REQ-261
 title: Delete the date-only tripwire and keep the rule
-status: claimed
+status: completed
+completed_at: 2026-08-18T23:14:21Z
 claimed_at: 2026-08-18T22:59:48Z
 route: A
 created_at: 2026-08-18T19:30:47Z
@@ -67,7 +68,7 @@ Discovered by REQ-253's builder ([low]; the tripwire sentence was left verbatim 
 **Files changed:**
 - `skills/do-work/actions/work-reference.md` (modified)
 
-**What was done:** Deleted the date-only tripwire from the Timestamp rule's date-only paragraph — the clause "revisit if a second consumer appears" — **and, in the same sentence, the `for a single consumer` premise it rested on.** That premise was already false on its own line: the sentence names two consumers (the `memory/logs/` mirror and REQ-253's ui-review report header), so a builder cutting only the trailing clause would have shipped a sentence that names two consumers and then argues from one. The rule survives intact and now stands on its reason rather than on a count: there is no date-only subcommand because adding one would spend the skill's narrow compiled-tooling exception on something `date -u +%F` already covers. No subcommand added; no Go source, test, or board-tool file touched.
+**What was done:** Deleted the date-only tripwire from the Timestamp rule's date-only paragraph — the clause "revisit if a second consumer appears" — **and, in the same sentence, the `for a single consumer` premise it rested on.** That premise was already false on its own line: the **paragraph** names two consumers three sentences earlier (the `memory/logs/` mirror and REQ-253's ui-review report header), so a builder cutting only the trailing clause would have shipped a sentence that names two consumers and then argues from one. The rule survives intact and now stands on its reason rather than on a count: there is no date-only subcommand because adding one would spend the skill's narrow compiled-tooling exception on something `date -u +%F` already covers. No subcommand added; no Go source, test, or board-tool file touched.
 
 ---
 
@@ -93,4 +94,51 @@ Transcribed by the orchestrator from `do-work/runs/work-2026-08-18-230100/REQ-26
 **Existing tests updated (cross-REQ impact):** none.
 
 *Verified by work action*
+
+---
+
+## Review
+
+**Overall: 96%** | 2026-08-18T23:14:04Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 95% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded gate disposition — this is the durable audit record the gate mandates):**
+- None.
+
+**Minor findings:** 2 (report only)
+- The durable record claimed the two consumers are named "in the same sentence" as the removed premise. They are not — they are named three sentences earlier in the same paragraph. The substance is unaffected (the premise was false either way) but the record is what a future reader checks, so it was **corrected in place above** rather than left standing.
+- Pre-existing and outside this diff: `queue-kanban/timestamp.go:24` and `open_work.go:22` restate the board tool's write-surface count as **two** when it is three; `frontmatter_cli.go:34` and `main.go:49` say three. Not a Restatement Sweep finding against this REQ — the diff redefines nothing about write surfaces — but a contradiction the reviewer hit while sweeping and declined to leave unreported. — gate: rule-change → REQ-273 created
+
+**Acceptance:** Pass — the reviewer re-ran the canonical gate itself rather than reading the builder's log (exit 0, citation contract 54/17 unmoved), read the shipped paragraph byte-for-byte in the merged tree, confirmed `git diff --check` clean with no orphan punctuation at either cut site, and verified the `timestamp_rule_block` assertions still fall inside the extracted block. The dangling-citation and class checks were both re-derived independently rather than accepted.
+
+On the two judgment questions this REQ turned on, the reviewer ruled explicitly:
+- **The second deletion was correct scope judgment, not drift.** The clarify answer records the maintainer's *ratio* — the clause is defective because it keys on consumer count, which has no bearing on the argument — and `for a single consumer` keys on the same count for the same argument. Cutting it applies the stated reason; leaving it would have applied the letter against the reason.
+- **The class boundary is real, and for a better reason than the builder gave.** The three surviving "revisit if…" clauses in `decisions/records/` are each keyed on a **condition that bears on the argument** (ships as a plugin, proxy-less environments, the new engine growing heavy) — the shape `CLAUDE.md` § State conditions, not lists explicitly endorses. The deleted clause was keyed on a **count that does not**. So the boundary is count-versus-condition, and it merely happens to fall on the `skills/`-versus-`decisions/` line rather than being drawn there for convenience.
+
+**Suggested testing:** 2 items
+**Follow-ups created:** REQ-273; **sweeps appended to:** None
+
+*Reviewed by review-work action*
+
+---
+
+## Lessons Learned
+
+**What worked:** Reading the whole sentence's claim before cutting a clause out of it. The REQ scoped the cut to the trailing tripwire; the same sentence's opening premise carried the identical defect, and a builder following the requirement literally would have shipped prose that names two consumers and then argues from one. What made the wider cut defensible rather than drift was that the *stated reason* for the deletion — the clause keys on a count that has no bearing on the argument — applies to both fragments equally.
+
+**What didn't:** The record of the change was checkably wrong. Both the hand-back and the first draft of this REQ's Implementation Summary said the two consumers are named "in the same sentence" as the removed premise; they are three sentences earlier in the same paragraph. Nothing about the decision changes, but the archived REQ is what a future reader checks, and a wrong detail there costs more than it saves. Corrected in place.
+
+**Worth knowing:** A conditional in standing prose and a conditional in a decision record are not the same object. An ADR's "revisit if X" states the boundary of a decision a reader is consulting; a tripwire in `skills/` is an instruction an agent loads and acts on. The discriminator that actually separates them is not the directory — it is whether the condition **bears on the argument** or merely counts something. The three surviving ADR clauses pass that test; this one did not.
+
+## Orientation
+
+The Timestamp rule's date-only paragraph no longer carries a conditional that had already fired, and the no-subcommand rule now stands on its reason rather than on a consumer count; lives in the do-work core's Timestamp rule, which the citation contract holds at 54 instant and 17 date-only sites. No map change — prose only, no subcommand, tool, or test surface touched. The declared prime `_dev/primes/prime-kanban-board.md` needed no update; its referenced paths all still exist.
 

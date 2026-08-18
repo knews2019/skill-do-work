@@ -2,6 +2,13 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.212.23 — The Date-Only Rule Stands on Its Reason, Not a Head Count (2026-08-18)
+
+The Timestamp rule carried a note saying not to add a date-only mode to the board tool for one consumer, but to revisit if a second showed up. A second showed up, so the note had already fired — and the rule never needed the count anyway.
+
+- Both the tripwire and the "for a single consumer" premise are gone; the reason survives intact — a date-only subcommand would spend the skill's narrow compiled-tooling exception on something `date -u +%F` already covers
+- No subcommand added, and the rule still governs exactly the same sites: the citation contract is unmoved at 54 instant and 17 date-only
+
 ## 0.212.22 — The Offset Timestamp Refusal Is Now a Decision, Not a Gap (2026-08-18)
 
 The repairer has always refused stamps carrying a UTC offset or fractional seconds, on the grounds that it couldn't decide them without timezone arithmetic. That reason was wrong — an offset names an exact instant — so the refusal now stands on the real one: the arithmetic is the risk, not the obstacle.
