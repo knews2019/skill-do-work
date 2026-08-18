@@ -4,6 +4,7 @@ title: State verified-exact-publication once as a condition in the shipped shell
 status: completed
 status_changed_at: 2026-08-17T21:09:46Z
 completed_at: 2026-08-18T00:20:49Z
+commit: a54d5c4
 claimed_at: 2026-08-18T00:07:07Z
 domain: general
 created_at: 2026-08-17T21:02:00Z
