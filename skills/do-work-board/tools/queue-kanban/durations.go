@@ -235,9 +235,12 @@ const (
 	// per label, so its contribution is amortized away as the label grows, and
 	// per-character width is dragged toward — and cannot pass — the per-character
 	// width of a pure digit run. That is a measurable quantity: 7.1441 user units,
-	// the widest digit ("4") in the 11px sans face. Measured labels approach it
-	// from below and never reach it (7.1417 at 40 010 characters), so 7.15 is
-	// above the supremum of the whole space.
+	// the widest digit ("4") in the 11px sans face, measured for REQ-241 on the
+	// Chromium recorded as browser build chromium-1228 (Playwright 1.59) — the
+	// face is per-browser, and Chromium 141.0.7390.37 measures the same run at
+	// 6.9865, so the larger stands. Measured labels approach the supremum from
+	// below and never reach it (7.1417 at 40 010 characters), so 7.15 is above
+	// the supremum of the whole space.
 	// TestDurationsLabelWidthEstimateCoversTheRenderedFace pins this value on both
 	// sides — under the supremum it under-states the text, and far over it drops
 	// labels for nothing.
@@ -266,6 +269,16 @@ const (
 	// finished. The last row rather than the first because the marks themselves
 	// sit level with the first, so a sentence there is legible only while the
 	// band is sparse — which is exactly when there is no remainder to print.
+	//
+	// The reserve DELIBERATELY over-shoots the rendered sentence. 24 characters
+	// at the modeled width is 171.6 units, while even a six-digit count ("+999999
+	// more over 60 min") measures 152.71 in the rendered face on Chromium
+	// 141.0.7390.37 (Playwright 1.56.1, REQ-252) — the sentence is mostly narrow
+	// characters, so the digit-calibrated model over-states it. The gap widened
+	// when REQ-241 raised the per-character constant from 6.2, and it stays:
+	// over-reserving can only drop a label, which the remainder sentence counts;
+	// under-reserving overprints the sentence, the defect placement exists to
+	// prevent.
 	durationsLabelRemainderReserveUnits = 24 * durationsLabelCharacterWidthUnits
 
 	// LabelRow for a sample the collision rule could not place.
@@ -294,6 +307,16 @@ func durationLabelText(sample DurationSample) string {
 // formatDurationLabelMinutes mirrors the renderer's formatDurationMinutes. Only
 // the character count matters to placement, so this stays a width model rather
 // than becoming a second definition of the view's copy.
+//
+// One known divergence: the sign below is an ASCII hyphen where the renderer
+// draws U+2212 MINUS SIGN, and the two glyphs are far from the same width — on
+// Chromium 141.0.7390.37 (Playwright 1.56.1, REQ-252) the minus measures
+// 9.2015 units in the 11px face against the hyphen's 3.9642, and even that
+// delta is per-browser (an earlier build measured it at 1.73). Width-neutral
+// today, because both are one character and the model above counts characters —
+// but a per-glyph width model (attempted and abandoned by REQ-241) would
+// under-state every reversed label unless it models the minus the renderer
+// actually draws, not the hyphen this string carries.
 func formatDurationLabelMinutes(minutes float64) string {
 	magnitude := math.Abs(minutes)
 	sign := ""
@@ -337,7 +360,7 @@ func durationLabelTimeRange(samples []DurationSample) (time.Time, time.Time, boo
 	// midnight, so a completion at exactly 00:00 still gets its full day slot —
 	// mirroring the renderer's floor(end / day) * day + day.
 	rangeStart = rangeStart.UTC().Truncate(24 * time.Hour)
-	rangeEnd = rangeEnd.UTC().Truncate(24*time.Hour).Add(24 * time.Hour)
+	rangeEnd = rangeEnd.UTC().Truncate(24 * time.Hour).Add(24 * time.Hour)
 	return rangeStart, rangeEnd, true
 }
 

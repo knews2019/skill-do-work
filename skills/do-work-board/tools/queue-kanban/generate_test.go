@@ -1932,26 +1932,42 @@ process.stdout.write(JSON.stringify({
 //
 // Procedure, reproducible from any board directory `queue-kanban generate`
 // wrote: load index.html, activate the Durations view, and read getBBox()
-// against the node's own `y` on the two <text> nodes. Measured in headless
-// Chromium (Playwright 1.59) at 1400x1200 — the SVG is a fixed viewBox at
-// width:100%, so user units are zoom- and window-independent. The title box
-// came back 14.815 units tall, 12.0372 above the baseline and 2.7778 below; the
-// annotation's 12.9631 tall, 10.1853 above and 2.7778 below. The mark-label
-// ascent is rounded to 10.5 so it also covers the 10.4278 the same face
-// measured for REQ-241 on a different Chromium.
+// against the node's own `y` on the two <text> nodes, at 1400x1200 — the SVG is
+// a fixed viewBox at width:100%, so user units are zoom- and window-independent.
 //
-// The title ascent gets the same treatment for the same reason, and it is why
-// this constant is declared here for the whole package rather than once per
-// test file. REQ-241's clearance assertion measured 11.2300 for this face on a
-// different Chromium and would have rounded to 11.24; the two REQs merged into
-// one package and disagreed by 0.86 units. 12.1 is the larger, so it is the one
-// kept: a title box that reaches HIGHER makes every clearance test demand more
-// room than the render needs, which is the safe direction for both callers. A
-// future re-measurement may only raise this number, never lower it, without
-// re-checking every assertion that reads it.
+// A measured face is PER-BROWSER, so each constant's own doc comment names the
+// Chromium build its number was taken on — durations_test.go's
+// TestDurationsMeasuredConstantsNameTheirChromiumBuild enforces that for every
+// durationsMeasured constant in the package, and its comment records the
+// collision that earned the rule. A re-measurement on another build may only
+// RAISE a constant, never lower it: a box that reaches further makes every
+// clearance test demand more room than the render needs, which is the safe
+// direction for every caller.
+
+// The 12px title face's ascent, rounded up from the 12.0372 REQ-242 measured on
+// Chromium 146 (Playwright 1.59). This constant is declared here for the whole
+// package rather than once per test file because REQ-241's clearance assertion
+// measured the same face at 11.2300 on its own Chromium (recorded only as
+// browser build chromium-1228) and declared its own constant; the two REQs
+// merged into one package, disagreed by 0.86 units, and failed to compile. 12.1
+// is the larger, so it is the one kept. Chromium 141.0.7390.37 (Playwright
+// 1.56.1, REQ-252) measures 11.1112 — smaller, so the constant stands.
 const durationsMeasuredAxisTitleAscentUnits = 12.1
+
+// The same title box's descent, rounded up from the 2.7778 REQ-242 measured on
+// Chromium 146 (Playwright 1.59); Chromium 141.0.7390.37 (REQ-252) measures the
+// same 2.7778.
 const durationsMeasuredAxisTitleDescentUnits = 2.8
+
+// The 11px annotation face's ascent, rounded to 10.5 so it covers both the
+// 10.1853 REQ-242 measured on Chromium 146 (Playwright 1.59) and the 10.4278
+// the same face measured for REQ-241 on its chromium-1228 build; Chromium
+// 141.0.7390.37 (REQ-252) measures 10.1853.
 const durationsMeasuredMarkLabelAscentUnits = 10.5
+
+// The annotation box's descent, rounded up from the 2.7778 REQ-242 measured on
+// Chromium 146 (Playwright 1.59); Chromium 141.0.7390.37 (REQ-252) measures the
+// same 2.7778.
 const durationsMeasuredMarkLabelDescentUnits = 2.8
 
 // durationsAnnotationCase is one (position, bar height) the annotation can be
