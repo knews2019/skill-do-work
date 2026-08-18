@@ -1188,6 +1188,108 @@ cmp -s "$fixture_root/repair-guard-before.md" "$repair_guard_project/do-work/que
 printf '%s' "$repair_guard_output" | grep -q 'content was lost before this run' \
   || fail_case 'repair-req-timestamps tripped-guard case did not name the truncation as the reason'
 
+# audit-archive-timestamps: under --fix, a future stamp in a committed archived REQ
+# (inside an archived UR folder, proving the recursive scan) is rewritten to the
+# introducing commit's author time and the correction logs the sourcing commit hash.
+audit_fix_project="$fixture_root/audit-fix-project"
+fixture_repo_init "$audit_fix_project"
+mkdir -p "$audit_fix_project/do-work/archive/UR-901"
+printf -- '---\nid: REQ-901\nstatus: completed\ncreated_at: 2026-08-10T09:00:00Z\nclaimed_at: 2026-08-10T10:00:00Z\ncompleted_at: 2093-05-05T05:05:05Z\n---\nbody\n' \
+  > "$audit_fix_project/do-work/archive/UR-901/REQ-901-future.md"
+git -C "$audit_fix_project" add -A
+GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z' \
+  git -C "$audit_fix_project" commit -qm fixture
+audit_fix_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_fix_project")" \
+  || fail_case 'audit-archive-timestamps fixing case returned nonzero'
+grep -q '^completed_at: 2026-08-12T10:00:00Z$' "$audit_fix_project/do-work/archive/UR-901/REQ-901-future.md" \
+  || fail_case 'audit-archive-timestamps fixing case did not rewrite the stamp to the introducing commit author time'
+printf '%s' "$audit_fix_output" \
+  | grep -Eq 'REQ-901-future\.md completed_at: 2093-05-05T05:05:05Z -> 2026-08-12T10:00:00Z \(commit [0-9a-f]{7} author time\)' \
+  || fail_case 'audit-archive-timestamps fixing case did not log the correction with its sourcing commit hash'
+
+# audit-archive-timestamps: without --fix the default run only reports — the pending
+# correction prints as `would repair`, the archived file keeps its bytes, and the
+# exit code is nonzero so a caller can gate on findings.
+audit_report_project="$fixture_root/audit-report-project"
+fixture_repo_init "$audit_report_project"
+mkdir -p "$audit_report_project/do-work/archive"
+printf -- '---\nid: REQ-902\nstatus: completed\ncreated_at: 2026-08-10T09:00:00Z\ncompleted_at: 2093-05-05T05:05:05Z\n---\nbody\n' \
+  > "$audit_report_project/do-work/archive/REQ-902-future.md"
+git -C "$audit_report_project" add -A
+GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z' \
+  git -C "$audit_report_project" commit -qm fixture
+cp "$audit_report_project/do-work/archive/REQ-902-future.md" "$fixture_root/audit-report-before.md"
+audit_report_output="$("$core_scripts/audit-archive-timestamps.sh" "$audit_report_project")" \
+  && fail_case 'audit-archive-timestamps report-only case exited zero with a correction pending'
+printf '%s' "$audit_report_output" \
+  | grep -q 'would repair do-work/archive/REQ-902-future.md completed_at: 2093-05-05T05:05:05Z -> 2026-08-12T10:00:00Z' \
+  || fail_case 'audit-archive-timestamps report-only case did not print the pending correction'
+cmp -s "$fixture_root/audit-report-before.md" "$audit_report_project/do-work/archive/REQ-902-future.md" \
+  || fail_case 'audit-archive-timestamps report-only case changed bytes without --fix'
+
+# audit-archive-timestamps: a clean committed archive passes through byte-identical
+# with exit zero — and queue scope is never scanned: a wrong queue stamp belongs to
+# the hook-run repairer, not the archive audit.
+audit_clean_project="$fixture_root/audit-clean-project"
+fixture_repo_init "$audit_clean_project"
+mkdir -p "$audit_clean_project/do-work/archive" "$audit_clean_project/do-work/queue"
+printf -- '---\nid: REQ-903\nstatus: completed\ncreated_at: 2026-08-01T09:00:00Z\nclaimed_at: 2026-08-02T09:00:00Z\ncompleted_at: 2026-08-03T09:00:00Z\n---\nbody\n' \
+  > "$audit_clean_project/do-work/archive/REQ-903-clean.md"
+printf -- '---\nid: REQ-904\nstatus: pending\ncreated_at: 2093-06-06T06:06:06Z\n---\nbody\n' \
+  > "$audit_clean_project/do-work/queue/REQ-904-queue.md"
+git -C "$audit_clean_project" add -A
+GIT_AUTHOR_DATE='2026-08-04T09:00:00Z' GIT_COMMITTER_DATE='2026-08-04T09:00:00Z' \
+  git -C "$audit_clean_project" commit -qm fixture
+cp "$audit_clean_project/do-work/archive/REQ-903-clean.md" "$fixture_root/audit-clean-before.md"
+cp "$audit_clean_project/do-work/queue/REQ-904-queue.md" "$fixture_root/audit-queue-before.md"
+audit_clean_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_clean_project")" \
+  || fail_case 'audit-archive-timestamps clean-archive case returned nonzero'
+printf '%s' "$audit_clean_output" | grep -q 'archive audit clean' \
+  || fail_case 'audit-archive-timestamps clean-archive case did not report a clean audit'
+cmp -s "$fixture_root/audit-clean-before.md" "$audit_clean_project/do-work/archive/REQ-903-clean.md" \
+  || fail_case 'audit-archive-timestamps clean-archive case changed a clean archived file'
+cmp -s "$fixture_root/audit-queue-before.md" "$audit_clean_project/do-work/queue/REQ-904-queue.md" \
+  || fail_case 'audit-archive-timestamps clean-archive case wrote into queue scope'
+
+# audit-archive-timestamps: an impossible ordering in a committed archived REQ is
+# clamped so created_at <= claimed_at <= completed_at — the introducing commit's
+# author time precedes the anchor here, so both later fields land on the clamp floor.
+audit_order_project="$fixture_root/audit-order-project"
+fixture_repo_init "$audit_order_project"
+mkdir -p "$audit_order_project/do-work/archive"
+printf -- '---\nid: REQ-905\nstatus: completed\ncreated_at: 2026-08-10T12:00:00Z\nclaimed_at: 2026-08-01T09:00:00Z\ncompleted_at: 2026-08-03T10:00:00Z\n---\nbody\n' \
+  > "$audit_order_project/do-work/archive/REQ-905-order.md"
+git -C "$audit_order_project" add -A
+GIT_AUTHOR_DATE='2026-08-05T08:00:00Z' GIT_COMMITTER_DATE='2026-08-05T08:00:00Z' \
+  git -C "$audit_order_project" commit -qm fixture
+audit_order_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_order_project")" \
+  || fail_case 'audit-archive-timestamps ordering case returned nonzero'
+grep -q '^claimed_at: 2026-08-10T12:00:00Z$' "$audit_order_project/do-work/archive/REQ-905-order.md" \
+  || fail_case 'audit-archive-timestamps ordering case did not clamp claimed_at up to created_at'
+grep -q '^completed_at: 2026-08-10T12:00:00Z$' "$audit_order_project/do-work/archive/REQ-905-order.md" \
+  || fail_case 'audit-archive-timestamps ordering case did not clamp completed_at up to the repaired claimed_at'
+printf '%s' "$audit_order_output" | grep -q 'clamped to 2026-08-10T12:00:00Z' \
+  || fail_case 'audit-archive-timestamps ordering case did not log the clamp'
+
+# audit-archive-timestamps: an archived defect whose introducing commit cannot be
+# blamed (an uncommitted file) is reported and left byte-identical — replacements
+# derive from git alone, and the file mtime is never consulted as a fallback.
+audit_blameless_project="$fixture_root/audit-blameless-project"
+fixture_repo_init "$audit_blameless_project"
+mkdir -p "$audit_blameless_project/do-work/archive"
+printf -- '---\nid: REQ-906\nstatus: completed\ncreated_at: 2093-07-07T07:07:07Z\n---\nbody\n' \
+  > "$audit_blameless_project/do-work/archive/REQ-906-untracked.md"
+TZ=UTC touch -m -t 202608101200.00 "$audit_blameless_project/do-work/archive/REQ-906-untracked.md"
+cp "$audit_blameless_project/do-work/archive/REQ-906-untracked.md" "$fixture_root/audit-blameless-before.md"
+audit_blameless_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_blameless_project")" \
+  && fail_case 'audit-archive-timestamps blameless case exited zero on an unrepairable defect'
+printf '%s' "$audit_blameless_output" | grep -q 'FAILED to repair' \
+  || fail_case 'audit-archive-timestamps blameless case did not report the unrepairable defect'
+printf '%s' "$audit_blameless_output" | grep -q 'file mtime' \
+  && fail_case 'audit-archive-timestamps blameless case offered the file mtime as a source'
+cmp -s "$fixture_root/audit-blameless-before.md" "$audit_blameless_project/do-work/archive/REQ-906-untracked.md" \
+  || fail_case 'audit-archive-timestamps blameless case changed the file it could not derive for'
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi

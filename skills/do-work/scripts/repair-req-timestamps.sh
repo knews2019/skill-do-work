@@ -72,10 +72,31 @@ export LC_ALL=C
 # Matches the board's futureTimestampSkewAllowance and forensics Check 11.
 future_stamp_skew_seconds=120
 
+# ---------------------------------------------------------------------------
+# Shared-machinery switches. scripts/audit-archive-timestamps.sh sources this
+# file for the detection predicate, the derivation, and the guarded atomic
+# rewrite, then runs its own archive scan — sourcing stops at the library
+# return guard above the queue/working scan at the bottom. Sharing by sourcing
+# is deliberate: the recognized value shapes live in comparison_key_for below,
+# so widening that one function widens every tool built on this file at once
+# instead of leaving a sibling with a narrower hand-rolled recognizer.
+# The hook-run repairer keeps these defaults; a sourcing tool sets its own
+# values BEFORE the `source`.
+#
+#   timestamp_repair_apply_mode  0 = plan and report only, write nothing
+#   timestamp_repair_git_only    1 = replacements come from git blame alone;
+#                                    the file-mtime fallback is disabled
+# ---------------------------------------------------------------------------
+timestamp_repair_apply_mode="${timestamp_repair_apply_mode:-1}"
+timestamp_repair_git_only="${timestamp_repair_git_only:-0}"
+replacement_source_names='git blame or the file mtime'
+[ "$timestamp_repair_git_only" -eq 1 ] && replacement_source_names='git blame'
+
 project_root="${1:-${CLAUDE_PROJECT_DIR:-.}}"
 work_root="$project_root/do-work"
 failure_count=0
 repair_count=0
+pending_repair_count=0
 
 report_failure() {
   printf 'do-work: FAILED to repair %s — %s The file is unchanged.\n' "$1" "$2"
@@ -288,6 +309,12 @@ repair_request_file() {
         esac
       fi
     fi
+    # Git-only mode (the archive audit): a checkout resets committed files'
+    # mtimes, so for archived content the fallback below would read noise as
+    # signal — an unanswerable blame must fail the derivation instead.
+    if [ -z "$derived_stamp" ] && [ "$timestamp_repair_git_only" -eq 1 ]; then
+      return 1
+    fi
     if [ -z "$derived_stamp" ]; then
       modified_epoch="$(file_modified_epoch "$request_file")" || modified_epoch=''
       case "${modified_epoch:-}" in
@@ -311,7 +338,7 @@ repair_request_file() {
         field_sources[$index]="$derived_source"
       else
         report_failure "$display_path" \
-          "${field_names[$index]} is future-dated (${field_tokens[$index]}) but no replacement instant could be derived from git blame or the file mtime."
+          "${field_names[$index]} is future-dated (${field_tokens[$index]}) but no replacement instant could be derived from $replacement_source_names."
         return 0
       fi
     fi
@@ -344,7 +371,7 @@ repair_request_file() {
             effective_key="$clamped_stamp"
           else
             report_failure "$display_path" \
-              "$ordered_name (${field_tokens[$index]}) precedes the field before it, but no replacement instant could be derived from git blame or the file mtime."
+              "$ordered_name (${field_tokens[$index]}) precedes the field before it, but no replacement instant could be derived from $replacement_source_names."
             return 0
           fi
         fi
@@ -378,6 +405,22 @@ repair_request_file() {
     fi
     index=$((index + 1))
   done
+
+  # Report-only mode: the plan is printed and nothing is written. The caller's
+  # exit contract still holds — a detectably wrong stamp exists unrepaired.
+  if [ "$timestamp_repair_apply_mode" -eq 0 ]; then
+    index=0
+    while [ "$index" -lt "$field_count" ]; do
+      if [ -n "${field_new_values[$index]}" ]; then
+        printf 'do-work: would repair %s %s: %s -> %s (%s)\n' \
+          "$display_path" "${field_names[$index]}" "${field_tokens[$index]}" \
+          "${field_new_values[$index]}" "${field_sources[$index]}"
+        pending_repair_count=$((pending_repair_count + 1))
+      fi
+      index=$((index + 1))
+    done
+    return 0
+  fi
 
   # --- Pre-edit measurements the guards below compare against. ---
   pre_edit_bytes="$(wc -c < "$request_file" | tr -d '[:space:]')"
@@ -551,6 +594,16 @@ repair_request_file() {
   done
   return 0
 }
+
+# ---------------------------------------------------------------------------
+# Library mode ends here: when this file is sourced (scripts/
+# audit-archive-timestamps.sh), the shared machinery above is defined and
+# initialized and the sourcing tool owns its own scan, summary, and exit code.
+# Only direct execution continues into the queue/working scan below.
+# ---------------------------------------------------------------------------
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+  return 0
+fi
 
 # ---------------------------------------------------------------------------
 # The scan: queue + working only. Archived files are deliberately out of scope.
