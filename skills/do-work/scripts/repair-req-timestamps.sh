@@ -216,10 +216,17 @@ frontmatter_value_for() {
 # space-separated instant survives whole instead of truncating at the first
 # space — the truncation is what once half-rewrote `2093-01-01 00:00:00` into
 # an unparseable date-plus-phantom-suffix. The comment itself is never part of
-# the value, and never part of what gets rewritten either.
+# the value, and never part of what gets rewritten either. Fence matching
+# tolerates what the board's splitFrontmatter tolerates: a UTF-8 BOM before the
+# opening fence and a CRLF ending on any line — Windows agents are the
+# likeliest source of both AND of the wrong local-time stamps this script
+# exists to repair. The BOM and every CR live outside the value span, so a
+# rewrite leaves them byte-for-byte in place.
 extract_timestamp_fields() {
   awk '
-    { line_body = $0 }
+    BEGIN { utf8_bom = sprintf("%c%c%c", 239, 187, 191) }
+    NR == 1 && index($0, utf8_bom) == 1 { $0 = substr($0, length(utf8_bom) + 1) }
+    { line_body = $0; sub(/\r$/, "", line_body) }
     NR == 1 && line_body == "---" { inside_frontmatter = 1; next }
     inside_frontmatter && line_body == "---" { exit }
     inside_frontmatter {

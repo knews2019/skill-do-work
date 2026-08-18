@@ -1221,6 +1221,40 @@ grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_quoted_space_project/do-wo
 printf '%s' "$repair_quoted_space_output" | grep -q 'REQ-808-quoted-space.md created_at' \
   || fail_case 'repair-req-timestamps quoted-space case did not log the correction'
 
+# repair-req-timestamps: a CRLF-fenced file is scanned like the board scans it,
+# and a repair preserves every line's CRLF ending — Windows agents are the
+# likeliest source of both CRLF files and wrong local-time stamps (REQ-255 I2).
+repair_crlf_project="$fixture_root/repair-crlf-project"
+mkdir -p "$repair_crlf_project/do-work/queue"
+printf -- '---\r\nid: REQ-809\r\nstatus: pending\r\ncreated_at: 2093-03-03T03:03:03Z\r\n---\r\nbody\r\n' \
+  > "$repair_crlf_project/do-work/queue/REQ-809-crlf.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_crlf_project/do-work/queue/REQ-809-crlf.md"
+repair_crlf_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_crlf_project")" \
+  || fail_case 'repair-req-timestamps CRLF case returned nonzero'
+grep -q $'^created_at: 2026-08-10T12:00:00Z\r$' "$repair_crlf_project/do-work/queue/REQ-809-crlf.md" \
+  || fail_case 'repair-req-timestamps CRLF case did not repair the stamp behind the CRLF fence (or dropped the CR)'
+[ "$(grep -c $'\r$' "$repair_crlf_project/do-work/queue/REQ-809-crlf.md")" -eq 6 ] \
+  || fail_case 'repair-req-timestamps CRLF case did not preserve every CRLF line ending'
+printf '%s' "$repair_crlf_output" | grep -q 'REQ-809-crlf.md created_at: 2093-03-03T03:03:03Z -> 2026-08-10T12:00:00Z' \
+  || fail_case 'repair-req-timestamps CRLF case did not log the correction'
+
+# repair-req-timestamps: a BOM-prefixed file is scanned like the board scans it
+# (the board strips the BOM before the fence match), and a repair keeps the BOM
+# bytes in place (REQ-255 I2).
+repair_bom_project="$fixture_root/repair-bom-project"
+mkdir -p "$repair_bom_project/do-work/queue"
+printf -- '\xef\xbb\xbf---\nid: REQ-810\nstatus: pending\ncreated_at: 2093-04-04T04:04:04Z\n---\nbody\n' \
+  > "$repair_bom_project/do-work/queue/REQ-810-bom.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_bom_project/do-work/queue/REQ-810-bom.md"
+repair_bom_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_bom_project")" \
+  || fail_case 'repair-req-timestamps BOM case returned nonzero'
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_bom_project/do-work/queue/REQ-810-bom.md" \
+  || fail_case 'repair-req-timestamps BOM case did not repair the stamp behind the BOM-prefixed fence'
+[ "$(head -c 3 "$repair_bom_project/do-work/queue/REQ-810-bom.md")" = "$(printf '\xef\xbb\xbf')" ] \
+  || fail_case 'repair-req-timestamps BOM case did not keep the BOM bytes in place'
+printf '%s' "$repair_bom_output" | grep -q 'REQ-810-bom.md created_at: 2093-04-04T04:04:04Z -> 2026-08-10T12:00:00Z' \
+  || fail_case 'repair-req-timestamps BOM case did not log the correction'
+
 # audit-archive-timestamps: under --fix, a future stamp in a committed archived REQ
 # (inside an archived UR folder, proving the recursive scan) is rewritten to the
 # introducing commit's author time and the correction logs the sourcing commit hash.
