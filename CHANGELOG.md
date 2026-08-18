@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.205.2 — Durations Chart Stops Overprinting and Clipping (2026-08-18)
+
+Two things the Durations view drew that read as values but were not. On a busy board the overflow lane turned into a solid block of overprinted text, because it labelled every long REQ and picked the slot from the sample's position in an array. And Panel B drew a 78-minute day as a 45-minute bar, flat at the ceiling, with nothing to say it had been clipped.
+
+- The lane now fits as many labels as it can without two touching, and prints `+N more over 60 min` for the ones it could not — you can no longer mistake four visible labels for the whole story
+- Which labels get drawn is decided once, on the Go side, and travels in the payload; the chart draws that answer instead of working out its own
+- Long spans and reversed stamps are packed separately, so a burst of one no longer shifts the other around
+- Panel B's top tick reads `45+`, and any day past the ceiling gets a detached cap above a full-height bar — every such day, not just the slowest
+
 ## 0.205.1 — One Shared Rule for Verifying Publications (2026-08-18)
 
 The shell guide now says once, in its own section, that a publication whose destination could already be occupied has to check the path it actually wrote. It used to say it inside one script's section, which is how the same defect got fixed four separate times without anyone reading the guide catching it — and writing it down immediately turned up two more helpers that don't check.

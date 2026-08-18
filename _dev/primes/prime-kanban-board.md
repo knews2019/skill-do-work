@@ -25,3 +25,4 @@
 - [REQ-200: allowlist byte-detected inline formats without weakening the inert-text fallback](../../do-work/archive/UR-045/REQ-200-render-png-file-mentions-as-images.md#lessons-learned)
 - [REQ-207: isolate active HTML by folder origin, capture addenda before implementation, and commit before hand-back](../../do-work/archive/UR-046/REQ-207-render-html-file-mentions-as-folder-aware-previews.md#lessons-learned)
 - [REQ-219: ship a rule's verdict in the payload so a second reader cannot become a second definition](../../do-work/archive/UR-050/REQ-219-board-durations-view.md#lessons-learned)
+- [REQ-226: decide a chart's label placement once, on the Go side, and verify the result by rendering it](../../do-work/archive/REQ-226-stop-durations-chart-overprinting-and-clipping.md#lessons-learned)

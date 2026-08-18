@@ -29,11 +29,26 @@
   var DURATIONS_MAIN_BOTTOM = 272;
   var DURATIONS_CEILING_MINUTES = 60;
   var DURATIONS_BELOW_ZERO_Y = 284;
+  // Direct labels. WHICH marks get one is decided in durations.go and arrives in
+  // the payload as labelRow/labelAnchor; what lives here is only the geometry
+  // that turns a row index into a baseline. The gap and the row count are shared
+  // with that decision, so TestDurationLabelGeometryMatchesTheRenderer pins this
+  // file's constants against the Go ones.
+  var DURATIONS_LABEL_ROW_COUNT = 2;
+  var DURATIONS_LABEL_GAP = 9;
+  var DURATIONS_LABEL_ROW_HEIGHT = 12;
+  var DURATIONS_LANE_LABEL_ROW_Y = 44;
+  var DURATIONS_REVERSED_LABEL_ROW_Y = 288;
   // Panel B — median minutes per active day.
   var DURATIONS_MEDIAN_TITLE_Y = 316;
   var DURATIONS_MEDIAN_TOP = 334;
   var DURATIONS_MEDIAN_BOTTOM = 414;
   var DURATIONS_MEDIAN_CEILING = 45;
+  // A day over the ceiling is drawn as a full-height bar plus a detached sliver
+  // above it, so the break reads as "continues above" rather than as a value.
+  // Every over-ceiling day gets one, not only the slowest.
+  var DURATIONS_MEDIAN_OVER_CEILING_GAP = 6;
+  var DURATIONS_MEDIAN_OVER_CEILING_HEIGHT = 3;
   // Panel C — REQs completed per day.
   var DURATIONS_COUNT_TITLE_Y = 450;
   var DURATIONS_COUNT_TOP = 468;
@@ -76,6 +91,28 @@
 
   function formatDurationStamp(epochMs) {
     return new Date(epochMs).toISOString().replace("T", " ").slice(0, 16) + " UTC";
+  }
+
+  // The direct-label verdict is the payload's, not this file's: `labelRow` is the
+  // text row inside the sample's own band, and -1 when the collision rule could
+  // not place a label at all. Returns null for a sample that gets none, so the
+  // renderer has exactly one place where "is this labelled" is answered.
+  function durationsLabelBaselineY(sample) {
+    var labelRow = sample.labelRow;
+    if (typeof labelRow !== "number" || labelRow < 0 || labelRow >= DURATIONS_LABEL_ROW_COUNT) {
+      return null;
+    }
+    var bandRowY =
+      sample.wallMinutes < 0 ? DURATIONS_REVERSED_LABEL_ROW_Y : DURATIONS_LANE_LABEL_ROW_Y;
+    return bandRowY + labelRow * DURATIONS_LABEL_ROW_HEIGHT;
+  }
+
+  // The remainder sentence goes on the band's LAST text row. The marks sit level
+  // with the first row, so a sentence there is legible only while the band is
+  // sparse — which is exactly when there is no remainder to print. Placement
+  // reserves this row's right edge to match.
+  function durationsRemainderBaselineY(bandRowY) {
+    return bandRowY + (DURATIONS_LABEL_ROW_COUNT - 1) * DURATIONS_LABEL_ROW_HEIGHT;
   }
 
   function makeDurationsSvgNode(svg, name, attributes, textContent) {
@@ -243,26 +280,60 @@
       markIndex.push({ x: markX, y: markY, sample: sample, epochMs: epochMs });
     });
 
-    // Direct labels only where a mark matters individually: the overflow lane
-    // and any reversed span. Never a value on every point.
-    markIndex
-      .filter(function (mark) {
-        return mark.sample.wallMinutes > DURATIONS_CEILING_MINUTES || mark.sample.wallMinutes < 0;
-      })
-      .forEach(function (mark, position) {
-        var anchorsLeft = position % 2 === 0;
-        makeDurationsSvgNode(
-          svg,
-          "text",
-          {
-            x: (mark.x + (anchorsLeft ? -9 : 9)).toFixed(1),
-            y: (mark.y + (position % 4 < 2 ? 4 : 16)).toFixed(1),
-            class: "durations-mark-label",
-            "text-anchor": anchorsLeft ? "end" : "start"
-          },
-          mark.sample.id + " " + formatDurationMinutes(mark.sample.wallMinutes)
-        );
-      });
+    // Direct labels only where a mark carries a value its y cannot: the overflow
+    // lane, where every mark sits at one y, and the reversed band. Which marks
+    // get one is the payload's answer — `labelRow` is the text row inside that
+    // mark's band and -1 when the collision rule could not place a label, and
+    // `labelAnchor` is the side it was placed on. Both bands are packed
+    // independently there; nothing here recomputes either.
+    markIndex.forEach(function (mark) {
+      var baselineY = durationsLabelBaselineY(mark.sample);
+      if (baselineY === null) {
+        return;
+      }
+      var anchorsBeforeMark = mark.sample.labelAnchor === "end";
+      makeDurationsSvgNode(
+        svg,
+        "text",
+        {
+          x: (mark.x + (anchorsBeforeMark ? -DURATIONS_LABEL_GAP : DURATIONS_LABEL_GAP)).toFixed(1),
+          y: baselineY.toFixed(1),
+          class: "durations-mark-label",
+          "text-anchor": anchorsBeforeMark ? "end" : "start"
+        },
+        mark.sample.id + " " + formatDurationMinutes(mark.sample.wallMinutes)
+      );
+    });
+
+    // Whatever placement could not fit is stated, never dropped in silence: the
+    // count is what stops a reader taking the visible labels for all of them.
+    var durationLabelCounts = durations.labels || {};
+    function drawDurationsRemainder(hiddenCount, bandRowY, remainderTail) {
+      if (!hiddenCount) {
+        return;
+      }
+      makeDurationsSvgNode(
+        svg,
+        "text",
+        {
+          x: DURATIONS_VIEW_WIDTH - DURATIONS_MARGIN_RIGHT,
+          y: bandRowY,
+          class: "durations-tick",
+          "text-anchor": "end"
+        },
+        "+" + hiddenCount + " more " + remainderTail
+      );
+    }
+    drawDurationsRemainder(
+      durationLabelCounts.overflowHiddenCount,
+      durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y),
+      "over " + DURATIONS_CEILING_MINUTES + " min"
+    );
+    drawDurationsRemainder(
+      durationLabelCounts.reversedHiddenCount,
+      durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y),
+      "reversed"
+    );
 
     // ---- panel B: median minutes per active day ----
     makeDurationsSvgNode(
@@ -272,7 +343,11 @@
       "B · Median minutes per active day · paused and broken spans excluded"
     );
     [0, 15, 30, 45].forEach(function (minutes) {
-      gridRow(yOfDayMedian(minutes), minutes === 0, String(minutes));
+      gridRow(
+        yOfDayMedian(minutes),
+        minutes === 0,
+        minutes === DURATIONS_MEDIAN_CEILING ? minutes + "+" : String(minutes)
+      );
     });
 
     var dayWidth = (DURATIONS_PLOT_WIDTH * 86400000) / timeSpan;
@@ -292,6 +367,16 @@
         rx: 3,
         class: "durations-bar"
       });
+      if (day.medianMinutes > DURATIONS_MEDIAN_CEILING) {
+        makeDurationsSvgNode(svg, "rect", {
+          x: (xOfEpoch(dayEpochMs) - barWidth / 2).toFixed(1),
+          y: (DURATIONS_MEDIAN_TOP - DURATIONS_MEDIAN_OVER_CEILING_GAP).toFixed(1),
+          width: barWidth.toFixed(1),
+          height: DURATIONS_MEDIAN_OVER_CEILING_HEIGHT,
+          rx: 1,
+          class: "durations-bar durations-bar-over-ceiling"
+        });
+      }
       if (slowestDay === null || day.medianMinutes > slowestDay.medianMinutes) {
         slowestDay = day;
       }
@@ -302,7 +387,12 @@
         "text",
         {
           x: xOfEpoch(Date.parse(slowestDay.dayTime)).toFixed(1),
-          y: (yOfDayMedian(slowestDay.medianMinutes) - 7).toFixed(1),
+          y: (
+            yOfDayMedian(slowestDay.medianMinutes) -
+            (slowestDay.medianMinutes > DURATIONS_MEDIAN_CEILING
+              ? DURATIONS_MEDIAN_OVER_CEILING_GAP + 7
+              : 7)
+          ).toFixed(1),
           class: "durations-mark-label",
           "text-anchor": "middle"
         },

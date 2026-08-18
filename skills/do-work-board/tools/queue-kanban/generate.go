@@ -221,11 +221,24 @@ type generatedCalendarEntry struct {
 type generatedDurations struct {
 	Samples []generatedDurationSample `json:"samples"`
 	Days    []generatedDurationDay    `json:"days"`
+	Labels  generatedDurationLabels   `json:"labels"`
+}
+
+// generatedDurationLabels carries what the direct-label placement could not fit,
+// one count per band. The renderer turns each nonzero count into a remainder
+// sentence at that band's edge; it never re-derives which labels were dropped.
+type generatedDurationLabels struct {
+	OverflowHiddenCount int `json:"overflowHiddenCount"`
+	ReversedHiddenCount int `json:"reversedHiddenCount"`
 }
 
 // generatedDurationSample is one REQ's raw, signed wall span. `excludedReason`
 // is "paused" or "reversed" when the calibration's read-time rule holds it out
 // of the day medians, and empty when it counts — panel A plots it either way.
+// `labelRow` is the direct-label verdict: the text row this sample's label takes
+// inside its band, or -1 when the collision rule could not place one. `labelAnchor`
+// is the SVG text-anchor that verdict assumed. Both are decided in durations.go so
+// the renderer reads one answer instead of becoming a second definition of the rule.
 type generatedDurationSample struct {
 	RequestId      string  `json:"id"`
 	Route          string  `json:"route"`
@@ -233,6 +246,8 @@ type generatedDurationSample struct {
 	DayKey         string  `json:"dayKey"`
 	WallMinutes    float64 `json:"wallMinutes"`
 	ExcludedReason string  `json:"excludedReason,omitempty"`
+	LabelRow       int     `json:"labelRow"`
+	LabelAnchor    string  `json:"labelAnchor,omitempty"`
 }
 
 // generatedDurationDay carries both figures a day needs: the ruled median (with
@@ -527,7 +542,13 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 			DayKey:         sample.DayKey,
 			WallMinutes:    sample.WallMinutes,
 			ExcludedReason: sample.DayMedianExclusion,
+			LabelRow:       sample.LabelRow,
+			LabelAnchor:    sample.LabelAnchor,
 		})
+	}
+	data.Durations.Labels = generatedDurationLabels{
+		OverflowHiddenCount: durationAggregate.OverflowLabels.HiddenCount,
+		ReversedHiddenCount: durationAggregate.ReversedLabels.HiddenCount,
 	}
 	for _, day := range durationAggregate.Days {
 		data.Durations.Days = append(data.Durations.Days, generatedDurationDay{

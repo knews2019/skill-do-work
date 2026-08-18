@@ -1803,3 +1803,158 @@ func TestUserRequestActivityToggleDocumentsWidenedRule(t *testing.T) {
 		t.Fatalf("a stale prose restatement of the by-UR Active rule is still present in the generated page")
 	}
 }
+
+// The renderer must DRAW the placement verdict, not re-derive it: a label
+// appears exactly where the payload says `labelRow >= 0`, on that sample's own
+// band, and a band whose remainder is zero prints nothing while a nonzero one
+// states the count. Both were the defect — the old pass labelled every overflow
+// sample from an index cycle and had no concept of a remainder at all.
+func TestJavaScriptBehaviorDurationsLabelsFollowTheShippedVerdict(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+
+	constantPreamble := ""
+	for _, constantName := range []string{
+		"DURATIONS_LABEL_ROW_COUNT",
+		"DURATIONS_LABEL_ROW_HEIGHT",
+		"DURATIONS_LANE_LABEL_ROW_Y",
+		"DURATIONS_REVERSED_LABEL_ROW_Y",
+		"DURATIONS_VIEW_WIDTH",
+		"DURATIONS_MARGIN_RIGHT",
+	} {
+		constantPreamble += fmt.Sprintf("var %s = %v;\n", constantName, durationsRendererConstant(t, constantName))
+	}
+
+	javascriptProbe := constantPreamble +
+		"var svg = null;\n" +
+		"var drawnRemainders = [];\n" +
+		"function makeDurationsSvgNode(svg, name, attributes, textContent) { drawnRemainders.push(textContent); }\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function durationsLabelBaselineY(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function durationsRemainderBaselineY(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function drawDurationsRemainder(") + `
+drawDurationsRemainder(0, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
+drawDurationsRemainder(23, durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y), "over 60 min");
+drawDurationsRemainder(2, durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y), "reversed");
+process.stdout.write(JSON.stringify({
+  remainderBaselines: [
+    durationsRemainderBaselineY(DURATIONS_LANE_LABEL_ROW_Y),
+    durationsRemainderBaselineY(DURATIONS_REVERSED_LABEL_ROW_Y)
+  ],
+  baselines: [
+    durationsLabelBaselineY({ wallMinutes: 95, labelRow: 0 }),
+    durationsLabelBaselineY({ wallMinutes: 95, labelRow: 1 }),
+    durationsLabelBaselineY({ wallMinutes: 95, labelRow: -1 }),
+    durationsLabelBaselineY({ wallMinutes: -20, labelRow: 0 }),
+    durationsLabelBaselineY({ wallMinutes: -20, labelRow: 1 }),
+    durationsLabelBaselineY({ wallMinutes: -20, labelRow: -1 }),
+    durationsLabelBaselineY({ wallMinutes: 95 })
+  ],
+  remainders: drawnRemainders
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations label verdict", javascriptProbe)
+	var probeResult struct {
+		Baselines          []*float64 `json:"baselines"`
+		RemainderBaselines []float64  `json:"remainderBaselines"`
+		Remainders         []string   `json:"remainders"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &probeResult); decodeError != nil {
+		t.Fatalf("decode durations label behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	laneRowY := durationsRendererConstant(t, "DURATIONS_LANE_LABEL_ROW_Y")
+	reversedRowY := durationsRendererConstant(t, "DURATIONS_REVERSED_LABEL_ROW_Y")
+	rowHeight := durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
+	wantBaselines := []*float64{
+		&laneRowY,
+		floatPointer(laneRowY + rowHeight),
+		nil,
+		&reversedRowY,
+		floatPointer(reversedRowY + rowHeight),
+		nil,
+		nil,
+	}
+	if len(probeResult.Baselines) != len(wantBaselines) {
+		t.Fatalf("baseline count = %d, want %d", len(probeResult.Baselines), len(wantBaselines))
+	}
+	for baselineIndex := range wantBaselines {
+		got := probeResult.Baselines[baselineIndex]
+		want := wantBaselines[baselineIndex]
+		if (got == nil) != (want == nil) || (got != nil && *got != *want) {
+			t.Fatalf("baseline[%d] = %v, want %v (nil means the sample carries no direct label)",
+				baselineIndex, formatOptionalFloat(got), formatOptionalFloat(want))
+		}
+	}
+
+	// The remainder must land on the band's LAST row. On the first row it sits at
+	// the marks' own height, and the dense render showed it overprinted by the
+	// very blob it was describing — the defect reproduced inside its own fix.
+	lastRowOffset := (durationsRendererConstant(t, "DURATIONS_LABEL_ROW_COUNT") - 1) *
+		durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
+	wantRemainderBaselines := []float64{laneRowY + lastRowOffset, reversedRowY + lastRowOffset}
+	if len(probeResult.RemainderBaselines) != len(wantRemainderBaselines) {
+		t.Fatalf("remainder baseline count = %d, want %d",
+			len(probeResult.RemainderBaselines), len(wantRemainderBaselines))
+	}
+	for baselineIndex, wantBaseline := range wantRemainderBaselines {
+		if probeResult.RemainderBaselines[baselineIndex] != wantBaseline {
+			t.Fatalf("remainder baseline[%d] = %v, want %v — the sentence must clear the mark row",
+				baselineIndex, probeResult.RemainderBaselines[baselineIndex], wantBaseline)
+		}
+	}
+
+	wantRemainders := []string{"+23 more over 60 min", "+2 more reversed"}
+	if strings.Join(probeResult.Remainders, "|") != strings.Join(wantRemainders, "|") {
+		t.Fatalf("drawn remainders = %q, want %q — a zero remainder must draw nothing and a nonzero one must state its count",
+			probeResult.Remainders, wantRemainders)
+	}
+}
+
+// durationLabelWidthSampleMinutes spans the renderer's formatting branches: sub-hour
+// with a decimal, negative, exactly on the hour, and multi-hour.
+var durationLabelWidthSampleMinutes = []float64{7.5, -25, 60, 95.4, 655.2, 1440}
+
+// Placement sizes a label from the text the renderer will draw, so it carries its
+// own width model of that text. The renderer stays the definition of the copy —
+// this pins the model to it. Without this the two agree today and drift the first
+// time the renderer's formatting gains a character, and the only symptom would be
+// labels overlapping again at exactly the densities this REQ was about.
+func TestJavaScriptBehaviorDurationsLabelWidthModelMatchesTheRendererFormatter(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	probeValues, encodeError := json.Marshal(durationLabelWidthSampleMinutes)
+	if encodeError != nil {
+		t.Fatalf("encode probe values: %v", encodeError)
+	}
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function formatDurationMinutes(") + `
+process.stdout.write(JSON.stringify(` + string(probeValues) + `.map(formatDurationMinutes)));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "durations label width model", javascriptProbe)
+	var rendererTexts []string
+	if decodeError := json.Unmarshal(probeOutput, &rendererTexts); decodeError != nil {
+		t.Fatalf("decode renderer formatting: %v (output %q)", decodeError, probeOutput)
+	}
+	if len(rendererTexts) != len(durationLabelWidthSampleMinutes) {
+		t.Fatalf("renderer produced %d strings, want %d", len(rendererTexts), len(durationLabelWidthSampleMinutes))
+	}
+	for valueIndex, minutes := range durationLabelWidthSampleMinutes {
+		// The renderer writes U+2212 for a negative sign; only the character
+		// COUNT reaches the width model, so compare lengths in runes.
+		rendererLength := len([]rune(rendererTexts[valueIndex]))
+		modelLength := len([]rune(formatDurationLabelMinutes(minutes)))
+		if rendererLength != modelLength {
+			t.Fatalf("%.1f min: renderer draws %q (%d chars) but the width model assumes %q (%d chars)",
+				minutes, rendererTexts[valueIndex], rendererLength,
+				formatDurationLabelMinutes(minutes), modelLength)
+		}
+	}
+}
+
+func floatPointer(value float64) *float64 {
+	return &value
+}
+
+func formatOptionalFloat(value *float64) string {
+	if value == nil {
+		return "null"
+	}
+	return fmt.Sprintf("%v", *value)
+}
