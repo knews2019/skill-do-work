@@ -2183,13 +2183,27 @@ body.is-resizing-detail .detail-resizer::before {
   fill: transparent;
 }
 
+/* The tint is the POINTER signal and it stays: a click leaves a row :focus but not
+   :focus-visible, and this same rule serves hover, so dropping it would leave the
+   pointer path with no feedback at all. Keyboard focus draws both — the tint fills
+   the row, the ring below bounds it. */
 .timeline-row:hover .timeline-row-hit,
 .timeline-row:focus .timeline-row-hit {
   fill: var(--surface-2);
 }
 
+/* No ring for a plain :focus — a pointer click gets the tint alone. */
 .timeline-row {
   outline: none;
+}
+
+/* Drawn inward for the same reason .timeline-scroll's ring is, and one more: the
+   row's hit rect spans the full width of the rows SVG, and the top row sits flush
+   against the scroll container's edge, so an outward ring loses its left, right and
+   top edges to those clips and paints a divider under the next row instead. */
+.timeline-row:focus-visible {
+  outline: 2px solid var(--accent-claimed);
+  outline-offset: -2px;
 }
 
 .timeline-row-label {
