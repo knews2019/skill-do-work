@@ -1,7 +1,8 @@
 ---
 id: REQ-260
 title: Run the Go formatter as part of the canonical verify
-status: claimed
+status: completed
+completed_at: 2026-08-18T22:36:02Z
 claimed_at: 2026-08-18T21:16:24Z
 route: A
 created_at: 2026-08-18T18:41:26Z
@@ -85,7 +86,7 @@ Discovered by REQ-251's builder ([low]); the one-character instance was fixed in
 
 Transcribed by the orchestrator from the hand-back — a worktree builder cannot write this file, which is REQ-270.
 
-- **[low] The self-test's cleanup trap emits `self_test_root: unbound variable` on every failure path.** `run_self_test` sets `trap 'rm -rf -- "$self_test_root"' EXIT` with a single-quoted body, so the variable expands at trap time — but it is a function `local`, already out of scope once a `fail_self_test` path returns. Every self-test failure therefore prints a spurious unbound-variable line after its real FAIL line, and the temp directory is not actually removed. **Pre-existing, not introduced here** — the builder verified this by mutating the ShellCheck lane in the *pre-change* script (`git show HEAD~1:_dev/tests/maintainer-verify.sh`), which produces the same trailing line. Exit codes are correct throughout, so this is cosmetic plus a temp-directory leak on failure paths only.
+- **[low] The self-test's cleanup trap emits `self_test_root: unbound variable` on every failure path.** `run_self_test` sets `trap 'rm -rf -- "$self_test_root"' EXIT` with a single-quoted body, so the variable expands at trap time — but it is a function `local`, already out of scope once a `fail_self_test` path returns. Every self-test failure therefore prints a spurious unbound-variable line after its real FAIL line, and the temp directory is not actually removed. **Pre-existing, not introduced here** — the builder verified this by mutating the ShellCheck lane in the *pre-change* script (`git show HEAD~1:_dev/tests/maintainer-verify.sh`), which produces the same trailing line. Exit codes are correct throughout. **Corrected by this REQ's review, which measured it:** the leak is not confined to failure paths. The self-test's own mutation sub-run is *designed* to fail, so **every `--self-test` run leaks one temp directory, green runs included** — and since `contract-regressions.sh` invokes `--self-test` and the gate invokes that suite, every full gate run leaks one. Measured at 37→38 directories in `/tmp` across a single green self-test, with 37 already accumulated, most predating this change. Scope the follow-up to that behaviour, not to the narrower one the hand-back described.
 
 ---
 
@@ -108,4 +109,47 @@ The orchestrator deliberately did not run a third mutation of the same file conc
 **Existing tests updated (cross-REQ impact):** none — the stage-count assertions changed as a direct consequence of adding the lane, not as a behavior change to any prior REQ's test.
 
 *Verified by work action*
+
+---
+
+## Review
+
+**Overall: 96%** | 2026-08-18T22:35:51Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 95% |
+| Test Adequacy | 90% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Important findings (each with its recorded gate disposition — this is the durable audit record the gate mandates):**
+- None.
+
+**Minor findings:** 3 (report only, no follow-up REQ under Step 10's threshold)
+- The `[ ! -x "$gofmt_command" ]` guard is the one element of the lane `--self-test` does not pin — deleting it leaves the self-test green. Fail-closed still holds without it (a missing formatter path exits 127 under `set -euo pipefail`, confirmed directly), so the guard is error-message quality rather than the safety mechanism. Recorded because it is exactly the shape a later simplify pass deletes. — gate: trivial
+- The gofmt exit-status trap was not recorded in `_dev/primes/prime-shell-commands.md`, the REQ's declared prime and the stated home for this class. Routed through this action's Lessons-Capture Phase rather than a new REQ, and **written into the prime in this REQ's commit** — generalized past gofmt, since the class is any checking tool that reports findings on stdout while exiting zero. — gate: rule-change
+- The transcribed Discovered Task understated the temp-directory leak; corrected in place above from the reviewer's measurement. — gate: trivial (pre-existing)
+
+**Acceptance:** Pass — the lane bites (gate exit 1 on the reintroduced slip, naming the file and printing the remedy), reads output-emptiness rather than gofmt's zero exit status, and fails closed at exit 2 on a genuine formatter error. Six of seven attempted disarm mutations turn `--self-test` red, including deleting the lane, neutering its verdict, reverting to PATH resolution, and replacing the `git ls-files` pathspec with a hardcoded list. Restatement Sweep found nothing stale — no file outside the script enumerates the gate's lanes, which is a design property worth preserving.
+**Suggested testing:** 3 items
+**Follow-ups created:** None; **sweeps appended to:** None
+
+*Reviewed by review-work action*
+
+---
+
+## Lessons Learned
+
+**What worked:** Probing the tool's real contract before writing the lane. `gofmt -l` lists unformatted files and still exits 0, so the instruction "mirror the ShellCheck lane" — which was the right pointer — would have produced a decorative check if followed literally. The builder mirrored the file *selection* and the failure *shape* while deliberately differing on how the verdict is read, and said so. Second: writing two failure cases into the self-test rather than one. The generic error-injection case only proves the gate dies when the formatter *errors*; the real-world failure is a formatter that succeeds and prints a filename, and only the second case pins that.
+
+**What didn't:** Nothing failed, but the review found the one unpinned element by attacking the lane rather than exercising it — seven disarm mutations, six caught. The `-x` formatter guard survives deletion with the self-test green. That asymmetry is the lesson: a lane can be well tested for *biting* and still be quietly removable, and only the disarm direction shows which parts are load-bearing.
+
+**Worth knowing:** `local name="$(...)"` takes `local`'s own exit status, so a command substitution that crashes is masked from `set -e` — the shipped code splits the declaration from the assignment for exactly this reason, and reverting that "simplification" would let the gate pass green on a broken formatter run. Also: this gate's lanes are enumerated nowhere but the script itself. The justfile and `CLAUDE.md` both point at it and explicitly say the script owns the command inventory, which is why adding a lane needed no companion edits anywhere — worth preserving deliberately rather than by luck.
+
+## Orientation
+
+The canonical verify gate now fails on unformatted Go, so a formatting slip can no longer land and survive silently the way the day-domain truncation one did; lives in the maintainer verification suite, alongside the ShellCheck lane it sits beside and mirrors. No map change — one lane added to an existing script, no module, contract, or data flow altered. The declared prime `_dev/primes/prime-shell-commands.md` gained the exit-status-versus-stdout trap this REQ earned; its other referenced paths still exist.
 

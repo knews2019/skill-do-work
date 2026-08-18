@@ -2,6 +2,15 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.212.21 — The Gate Now Catches Unformatted Go (2026-08-18)
+
+`maintainer-verify.sh` ran `go vet` but never the formatter, so a formatting slip could land and sit there silently — one did. It now checks every tracked Go file and fails naming the ones that need `gofmt -w`.
+
+- New formatter lane beside the ShellCheck lane, selecting files with `git ls-files` so a future third module is covered with no edit
+- The formatter is resolved out of the pinned toolchain's GOROOT rather than PATH, so it inherits the gate's exact Go version pin
+- Reads the emptiness of the formatter's output, not its exit status — gofmt lists unformatted files and still exits zero, so an exit-status check would have been decorative
+- Self-test pins the lane against six ways of disarming it, including deleting it outright
+
 ## 0.212.20 — The Core Router's Path Rule Now Matches the Paths (2026-08-18)
 
 The core `SKILL.md` was still telling agents to resolve a sibling package path from the folder holding all four skills — a rule that was retired in 0.212.10 and computes one directory too high against every path we actually ship. It now says what the paths mean: literal, resolved from the directory of the file you are reading.
