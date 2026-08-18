@@ -38,11 +38,26 @@ const undatedCalendarDayKey = "undated"
 
 // futureTimestampSkewAllowance is how far past the board's `now` a frontmatter
 // timestamp may parse before it is flagged as future-dated. Two minutes absorbs
-// ordinary clock skew between machines; anything beyond it is almost always a
-// session that stamped local wall-clock time with a `Z` suffix (the Timestamp
-// rule in actions/work-reference.md requires the current UTC instant). Mirrored
-// by futureInstantSkewAllowanceMs in web/board-core.js — keep the two in lock-step.
+// ordinary clock skew between machines; anything beyond it is bookkeeping
+// damage, and futureStampCauseClause names the two ways it happens (the
+// Timestamp rule in actions/work-reference.md requires the current UTC instant).
+// Mirrored by futureInstantSkewAllowanceMs in web/board-core.js — keep the two
+// in lock-step.
 const futureTimestampSkewAllowance = 2 * time.Minute
+
+// futureStampCauseClause is the shared diagnosis for a stamp that cannot be
+// real, spliced into every message that reports one. Both causes are observed,
+// and naming only the second tells a reader who guessed the stamp that their
+// clock is misconfigured — a bug they will not find, because an extrapolated
+// stamp is not a timezone problem. The remedy is the same either way — rewrite
+// with the current UTC instant — so each call site keeps its own fix
+// instruction and shares only the diagnosis.
+// One constant because three renderers say it — the generate-time data warning,
+// the reversed-span completion-anomaly reason, and verify's future-`claimed_at`
+// finding — and three hand-maintained copies is how a fourth cause gets added to
+// one of them and not the others.
+const futureStampCauseClause = "a fabricated value (guessed or extrapolated instead of read from the clock) " +
+	"or local wall-clock time written with a Z suffix"
 
 // RequestTicket is one parsed REQ-*.md file: its frontmatter fields (with status
 // normalized and commit-hash variants collapsed), the raw Markdown body kept for
@@ -199,9 +214,9 @@ type RequestTicket struct {
 	// Derived by detectFutureTimestampFields against the board's `now` — never
 	// read from frontmatter. Each entry is "<field> <raw value>" for a stamp
 	// that parses to later than now + futureTimestampSkewAllowance — the
-	// signature of local wall-clock time written with a `Z` suffix. The
-	// frontend badges the card, and a board warning names the fix; nil when
-	// every stamp is sane.
+	// signature of a stamp that was not read from the clock (see
+	// futureStampCauseClause). The frontend badges the card, and a board
+	// warning names the fix; nil when every stamp is sane.
 	FutureTimestampFields []string
 }
 
@@ -376,8 +391,8 @@ func buildBoard(repoRoot string, now time.Time, recentWindow time.Duration, gitL
 		ticket.FutureTimestampFields = detectFutureTimestampFields(ticket, now)
 		if len(ticket.FutureTimestampFields) > 0 {
 			board.Warnings = append(board.Warnings, fmt.Sprintf(
-				"%s has future-dated timestamp(s): %s — later than the board's generation time (2min clock-skew allowance); likely local wall-clock time stamped with a Z suffix; fix: rewrite with the current UTC instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in actions/work-reference.md",
-				ticket.RequestId, strings.Join(ticket.FutureTimestampFields, ", ")))
+				"%s has future-dated timestamp(s): %s — later than the board's generation time (2min clock-skew allowance); likely %s; fix: rewrite with the current UTC instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in actions/work-reference.md",
+				ticket.RequestId, strings.Join(ticket.FutureTimestampFields, ", "), futureStampCauseClause))
 		}
 		board.RequestsById[ticket.RequestId] = ticket
 	}
@@ -1212,8 +1227,8 @@ func resolveCompletionTime(ticket *RequestTicket, repoRoot string, gitLookup git
 //
 // A ticket whose completed_at parsed is anomalous only when the parsed span is
 // reversed — completed_at strictly earlier than a parseable claimed_at — since
-// stamps written in order cannot produce a negative duration (the usual cause
-// is one stamp written as local wall-clock time with a Z suffix). The commit
+// stamps written in order cannot produce a negative duration (one stamp is
+// usually wrong in one of the two ways futureStampCauseClause names). The commit
 // hash is still not consulted on that path, so it is not re-validated here —
 // doing so would cost one git subprocess per archived ticket for no
 // board-behavior change.
@@ -1229,8 +1244,8 @@ func detectCompletionAnomaly(ticket *RequestTicket) (bool, string) {
 		completedInstant, completedParsed := parseTimestamp(ticket.CompletedAt)
 		if completedParsed && completedInstant.Before(claimedInstant) {
 			return true, fmt.Sprintf(
-				"completed_at %q is earlier than claimed_at %q — a reversed span cannot be real; one stamp is usually local wall-clock time written with a Z suffix; rewrite the wrong stamp with the true UTC instant",
-				ticket.CompletedAt, ticket.ClaimedAt)
+				"completed_at %q is earlier than claimed_at %q — a reversed span cannot be real; one stamp is usually %s; rewrite the wrong stamp with the true UTC instant",
+				ticket.CompletedAt, ticket.ClaimedAt, futureStampCauseClause)
 		}
 		return false, ""
 	}
@@ -1334,11 +1349,11 @@ func isPlausibleCommitHash(text string) bool {
 // detectFutureTimestampFields checks every timestamp the frontmatter can carry
 // against the board's `now` and returns a "<field> <raw value>" entry for each
 // one that parses to later than now + futureTimestampSkewAllowance. A future
-// stamp is bookkeeping damage worth surfacing wherever the ticket renders: the
-// usual cause is local wall-clock time written with a `Z` suffix, which makes
-// elapsed-time math (queue wait, claim stopwatch) silently wrong until the wall
-// clock catches up. Unparseable and absent values are not this check's concern
-// — other paths (completion anomalies) own those.
+// stamp is bookkeeping damage worth surfacing wherever the ticket renders (see
+// futureStampCauseClause for how it happens): elapsed-time math — queue wait,
+// claim stopwatch — is silently wrong for as long as the stamp stands.
+// Unparseable and absent values are not this check's concern — other paths
+// (completion anomalies) own those.
 func detectFutureTimestampFields(ticket *RequestTicket, now time.Time) []string {
 	timestampFields := []struct {
 		fieldName string

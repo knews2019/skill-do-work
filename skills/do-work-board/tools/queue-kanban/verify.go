@@ -368,8 +368,8 @@ func appendClaimFindings(report *VerifyReport, board *Board, now time.Time) {
 		if claimInstant.After(skewHorizon) {
 			report.Findings = append(report.Findings, VerifyFinding{
 				Category: verifyCategoryClaimNeedsAttention,
-				Detail: fmt.Sprintf("%s has a future-dated claimed_at (%s) — usually local wall-clock time written with a Z suffix",
-					claimedTicket.RequestId, rawClaimStamp),
+				Detail: fmt.Sprintf("%s has a future-dated claimed_at (%s) — usually %s",
+					claimedTicket.RequestId, rawClaimStamp, futureStampCauseClause),
 				// A command survives here because this is CLI output, read next to a
 				// shell — but it is `queue-kanban now`, the Timestamp rule's own
 				// first-choice source, which prints the right shape on every platform.
