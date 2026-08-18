@@ -1,8 +1,8 @@
 ---
 id: REQ-242
 title: Stop Panel B's slowest-day annotation colliding with its own title
-status: pending
-status_changed_at: 2026-08-18T12:17:03Z
+status: claimed
+status_changed_at: 2026-08-18T13:05:12Z
 created_at: 2026-08-18T12:09:46Z
 user_request: UR-051
 addendum_to: REQ-237
@@ -17,6 +17,17 @@ maintenance: false
 write_set:
 - skills/do-work-board/tools/queue-kanban/web/board-durations.js
 - skills/do-work-board/tools/queue-kanban/generate_test.go
+estimate:
+  p50_active_minutes: 25
+  confidence: medium
+  calculated_at: 2026-08-18T13:05:12Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 4 acceptance criteria
+    - browser evidence
+claimed_at: 2026-08-18T13:05:12Z
+route: B
 ---
 
 # Stop Panel B's Slowest-Day Annotation Colliding With Its Own Title

@@ -1,7 +1,7 @@
 ---
 id: REQ-244
 title: Cite the Timestamp rule at every timestamp write site
-status: pending
+status: claimed
 created_at: 2026-08-18T12:28:33Z
 user_request: UR-055
 domain: general
@@ -12,6 +12,20 @@ depends_on: []
 maintenance: false
 related: [REQ-245]
 batch: timestamp-stamping-integrity
+estimate:
+  p50_active_minutes: 55
+  confidence: low
+  calculated_at: 2026-08-18T13:05:12Z
+  basis:
+    - Route C
+    - 12-file write set
+    - 1 new files
+    - 4 subsystems involved
+    - 4 acceptance criteria
+    - cross-route regression gates
+    - full-suite verification
+claimed_at: 2026-08-18T13:05:12Z
+route: C
 ---
 
 # Cite the Timestamp Rule at Every Timestamp Write Site

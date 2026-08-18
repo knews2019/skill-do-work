@@ -13,6 +13,8 @@ session_depth: heavy
 - REQ-241: Reconcile the Durations label metrics with the face actually rendered — claimed 2026-08-18T12:43:06Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 - REQ-243: Check that shipped markdown pointers actually resolve — claimed 2026-08-18T12:43:06Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 - REQ-245: Name fabricated stamps in the board's future-stamp warnings — claimed 2026-08-18T12:43:06Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-242: Stop Panel B's slowest-day annotation colliding with its own title — claimed 2026-08-18T13:05:12Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-244: Cite the Timestamp rule at every timestamp write site — claimed 2026-08-18T13:05:12Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 
 ## Completed This Session
 
