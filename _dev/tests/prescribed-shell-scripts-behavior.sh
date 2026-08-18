@@ -1286,6 +1286,31 @@ grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_calendar_project/do-work/q
 printf '%s' "$repair_calendar_output" | grep -q 'REQ-811\|REQ-812\|REQ-813' \
   && fail_case 'repair-req-timestamps calendar case logged a correction for a value it must not touch'
 
+# repair-req-timestamps: a duplicated anchor key follows the last occurrence,
+# exactly like the read side (the board's YAML dedup keeps the LAST value of a
+# repeated top-level key) — a later-then-earlier claimed_at pair is a real
+# ordering defect on the board and must not be reported clean; and a future
+# FIRST occurrence shadowed by a clean last one is invisible to every YAML
+# reader and must stay untouched (REQ-255, PR #145 external review).
+repair_duplicate_project="$fixture_root/repair-duplicate-project"
+mkdir -p "$repair_duplicate_project/do-work/working"
+printf -- '---\nid: REQ-815\nstatus: claimed\ncreated_at: 2026-08-10T12:00:00Z\nclaimed_at: 2026-08-11T12:00:00Z\nclaimed_at: 2026-08-01T09:00:00Z\n---\nbody\n' \
+  > "$repair_duplicate_project/do-work/working/REQ-815-duplicate-anchor.md"
+printf -- '---\nid: REQ-816\nstatus: pending\ncreated_at: 2026-08-01T09:00:00Z\nblocked_at: 2093-01-01T00:00:00Z\nblocked_at: 2026-08-02T09:00:00Z\n---\nbody\n' \
+  > "$repair_duplicate_project/do-work/working/REQ-816-shadowed-first.md"
+TZ=UTC touch -m -t 202608121200.00 "$repair_duplicate_project/do-work/working/"REQ-81*.md
+cp "$repair_duplicate_project/do-work/working/REQ-816-shadowed-first.md" "$fixture_root/repair-shadowed-before.md"
+repair_duplicate_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_duplicate_project")" \
+  || fail_case 'repair-req-timestamps duplicate-anchor case returned nonzero'
+grep -q '^claimed_at: 2026-08-12T12:00:00Z$' "$repair_duplicate_project/do-work/working/REQ-815-duplicate-anchor.md" \
+  || fail_case 'repair-req-timestamps duplicate-anchor case reported clean instead of repairing the effective (last) occurrence'
+grep -q '^claimed_at: 2026-08-11T12:00:00Z$' "$repair_duplicate_project/do-work/working/REQ-815-duplicate-anchor.md" \
+  || fail_case 'repair-req-timestamps duplicate-anchor case rewrote the shadowed first occurrence'
+cmp -s "$fixture_root/repair-shadowed-before.md" "$repair_duplicate_project/do-work/working/REQ-816-shadowed-first.md" \
+  || fail_case 'repair-req-timestamps duplicate-anchor case touched a future first occurrence no YAML reader can see'
+printf '%s' "$repair_duplicate_output" | grep -q 'REQ-815-duplicate-anchor.md claimed_at: 2026-08-01T09:00:00Z -> 2026-08-12T12:00:00Z' \
+  || fail_case 'repair-req-timestamps duplicate-anchor case did not log the effective-occurrence correction'
+
 # audit-archive-timestamps: under --fix, a future stamp in a committed archived REQ
 # (inside an archived UR folder, proving the recursive scan) is rewritten to the
 # introducing commit's author time and the correction logs the sourcing commit hash.

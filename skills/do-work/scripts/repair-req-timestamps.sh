@@ -297,7 +297,7 @@ repair_request_file() {
   local changed_line_count expected_changed_lines byte_delta trailing_newline_added
   local file_matches_head path_tracked head_blob_bytes
   local pending_insertions pending_deletions post_insertions post_deletions
-  local ordered_field_names ordered_name planned_count awk_status
+  local ordered_field_names ordered_name planned_count awk_status field_slot
   local -a field_line_numbers=() field_names=() field_tokens=()
   local -a field_keys=() field_new_values=() field_sources=()
 
@@ -310,16 +310,28 @@ repair_request_file() {
   field_rows="$(extract_timestamp_fields "$request_file")"
   [ -n "$field_rows" ] || return 0
 
+  # A repeated top-level key keeps only its LAST occurrence, because that is
+  # what every YAML reader on the read side effectively sees (the board's
+  # duplicate-key recovery keeps the last value). Later rows overwrite the
+  # earlier slot, so a shadowed first occurrence is never examined and never
+  # rewritten — matching the readers is what makes a duplicated anchor's real
+  # ordering defect detectable instead of reported clean.
   field_count=0
   while IFS=$'\t' read -r line_number field_name value_token; do
     [ -n "${line_number:-}" ] || continue
-    field_line_numbers[field_count]="$line_number"
-    field_names[field_count]="$field_name"
-    field_tokens[field_count]="$value_token"
-    field_keys[field_count]="$(comparison_key_for "$value_token")"
-    field_new_values[field_count]=''
-    field_sources[field_count]=''
-    field_count=$((field_count + 1))
+    field_slot="$field_count"
+    index=0
+    while [ "$index" -lt "$field_count" ]; do
+      [ "${field_names[$index]}" = "$field_name" ] && field_slot="$index"
+      index=$((index + 1))
+    done
+    [ "$field_slot" -eq "$field_count" ] && field_count=$((field_count + 1))
+    field_line_numbers[field_slot]="$line_number"
+    field_names[field_slot]="$field_name"
+    field_tokens[field_slot]="$value_token"
+    field_keys[field_slot]="$(comparison_key_for "$value_token")"
+    field_new_values[field_slot]=''
+    field_sources[field_slot]=''
   done <<< "$field_rows"
   [ "$field_count" -gt 0 ] || return 0
 
