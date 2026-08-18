@@ -291,3 +291,42 @@ Two things I did not do, flagged rather than silently absorbed:
 On `ui-review.md:216` (`**Date**: [today]`): the builder is right that converting it either way would decide a question the REQ did not answer — UTC or deliberately-local for a human-facing report header. Left untouched and routed as a follow-up.
 
 On the `../` vs `../../` cross-package citation split: **verified independently rather than taken on trust.** `../do-work/actions/work-reference.md` does not resolve from `skills/do-work-toolbox/actions/` in either topology; `../../` does, and `present-work.md:37` already uses it. `prime-action-files.md:91` and `actions/memory.md` prescribe the `../` form, which only coheres read as *skill-root*-relative rather than directory-relative. The builder followed the documented convention and flagged the conflict instead of silently picking the other form mid-REQ — the correct call. Which reading is intended is a maintainer decision affecting the prime plus roughly a dozen existing citations, and it is routed as its own REQ rather than settled here. Note REQ-243's new checker cannot arbitrate it: it resolves Markdown link syntax, and every one of these is a backticked path.
+
+## Review
+
+**Reviewer:** independent subagent, read-only, running its own five-method sweep rather than checking the builder's, and probing the shipped checker with single-purpose fixture files.
+**Score:** 66% — **PASS-WITH-FINDINGS** (first pass, pre-remediation)
+
+Nothing shipped is broken and `maintainer-verify.sh` exits 0 under the reviewer's own unpiped run. But this is a sweep, and the sweep is incomplete: the REQ's stated GREEN — *"Every stamp write site uses a recognized spelling with an inline Timestamp-rule citation"* — is not met.
+
+### Findings returned to the builder
+
+1. **12 stamp write sites the checker does not see; 8 of them inside the declared `write_set`.** Proven rather than inferred: the fixed tree was copied, **only the spelling** of these sites changed to `<timestamp>`, no citations added, and the checker extracted verbatim from the committed `contract-regressions.sh` then failed naming all 12. They escape not by being cited but by never being *recognized as sites*.
+   - `interview.md:120,121` — `"started_at"` / `"last_activity_at"` in the fence captioned "Initial `session.json`:", **the canonical template an agent copies to create the file**. The prose at :165 was cited; the template was not.
+   - `interview-reference.md:133,134,138,140,144` — the "Full shape" schema, all five `*_at` keys.
+   - `deep-explore-reference.md:326` — `"created_at": "ISO 8601 timestamp"`, three lines below the `:323` the builder did edit **in the same fence**.
+   - Outside the write set, and unreported where `ui-review.md:216` was reported: `stray-check.md:92,127` (`**Scan date:** <ISO 8601 timestamp>`, structurally identical to the swept `forensics.md`/`roadmap.md` sites) and `inspect.md:253,358` (`**Date:** {timestamp}`).
+2. **The check's spelling clause is itself a closed enumeration, so it cannot catch finding 1's class.** It matches only a literal `[…]` containing the word "timestamp". Probed: `[timestamp]`, `[UTC timestamp]`, bare `<timestamp>` and bare `<now>` are caught; `<ISO 8601 timestamp>`, `{timestamp}`, `"started_at": "<iso>"`, `<YYYY-MM-DDTHH:MM:SSZ>` and `[date]` all pass. **The lock-in locks in exactly the drift that was fixed and none of the drift that was left.** D-03 argued the reject keys on the word rather than on two observed strings — true, but the bracket requirement is the enumeration one level up. The fix is to key on the *shape*: a placeholder adjacent to an `*_at` key, or any `<…>`/`{…}`/`[…]` naming a clock value.
+3. **`dream.md` is misclassified as date-only.** `dream.md:59` — "create it with the current UTC timestamp inside" — is a genuine instant write compared against a 5-minute mtime window. Low impact, wrong classification.
+4. **The hand-back's GREEN transcript is not the shipped code's output.** The heading twice asserts every run used the extracted committed checker; the quoted `OK: 43 stamp sites, all cited` is not what the committed check prints — it prints nothing on success. The count is correct (instrumented: 43), so the run happened, but the line came from a locally modified copy. **In a REQ about agents writing values they did not read, that needs correcting rather than explaining.**
+5. **The four new in-fence YAML comments break the lenient frontmatter path.** Strict parsing strips them, so the "valid if copied" claim holds normally — but `lenientFrontmatterFields`, reached when a REQ has a malformed `title:`, splits on the first colon and does not strip comments, returning the timestamp with the comment appended, which then fails `parseTimestamp`. Narrow, and only reachable because of this change. Moving those four to prose-above-the-fence removes it and matches the pattern already used for the six report templates.
+
+### Findings routed elsewhere
+
+6. Citation matching is a bare substring, so a fence introduced by *"Unlike the Timestamp rule, this stamp is fabricated from memory"* passes. Inherent to grep-based contract checks and consistent with the repo's others.
+7. Nested fences desync the fence tracker — a cited site inside a ```` ```markdown ```` block containing an inner fence reports as uncited. **False FAIL, never a false pass.** No current file trips it.
+8. The `## HH:MM UTC` shape in `memory.md:140` and `memory-reference.md:46,93,135` is governed by neither the instant nor the date-only paragraph of the rule.
+
+### Upheld against the builder's claims
+
+- The check **is** condition-keyed for what it recognizes — brand-new probe files with `created_at: [timestamp]` or bare `<timestamp>`/`<now>` are caught with no edit to the check. It globs; it does not enumerate files.
+- The **zero-site guard fires**: renaming every recognized spelling produced the "gone blind" failure.
+- The **positional definition of "uncited" holds where it matters** — a second fence after a cited fence does not inherit the carve-out.
+- **No clock command was added anywhere** — grepped for `date -u`, `+%Y`, `+%F`, `ISO 8601`, `Get-Date`, `queue-kanban now` across added lines: zero hits.
+- **No date-only site was converted to an instant.** `versions/v<N>-<YYYY-MM-DD>/` and the `## <YYYY-MM-DD HH:MM>` headings are untouched.
+- **Both run-directory respellings match their own file's prescription exactly** — `work-<YYYY-MM-DD-HHMMSS>/` against `work-reference.md:393`, and `deep-explore-<slug>-<YYYYMMDD-HHMMSS>` against `deep-explore.md:111`'s `$(date +%Y%m%d-%H%M%S)`.
+- **Exactly 4 citations sit inside fences**, all trailing YAML `#` comments on frontmatter lines, as claimed; the other six in-fence lines are bare placeholders whose citation sits in the prose introducing the fence, so a copied report body stays clean.
+- **The cross-package citation finding is factually confirmed and the change is consistent by package**: 11 new sibling-form and 7 new local-form citations; core is local-only, toolbox and knowledge sibling-only. Matches `prime-action-files.md:91` and the `memory.md` precedent.
+- Scope exact: the 13 declared files, nothing under `do-work/`, no version or changelog file, no board path.
+
+*Reviewed by work action*

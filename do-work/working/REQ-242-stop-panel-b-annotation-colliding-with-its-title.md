@@ -227,3 +227,30 @@ The annotation's x range (70.91–117.13) still overlaps the title's (110.33–5
 **Orchestrator resolution.** The first point is accepted, and the builder's choice is the better one. The brief said "test at the annotation's worst-case x"; the builder instead made x irrelevant and asserted the baseline never varies across six cases spanning the leftmost, mid-plot and rightmost day. Those are different tests, and proving x cannot matter is stronger than pinning the x that happens to be worst today — the defect existed *because* clearance depended on x. If a future change ties the baseline back to the bar, the case set fails on the disagreement rather than on any one coordinate.
 
 The second point — the leftmost day's bar drawn at x = 38.9, left of `DURATIONS_MARGIN_LEFT` and outside the plot area, because `xOfEpoch` maps the day bucket's midnight while `timeStart` is the first completion instant — is a real pre-existing placement bug visible on this repository's own board. Correctly left alone and routed as a follow-up.
+
+## Review
+
+**Reviewer:** independent subagent, read-only, judged from git state, from a 310-node SVG dump diff, and from 11 hand-built fixtures measured in a freshly launched isolated Chromium per fixture.
+**Score:** 88% — **PASS-WITH-FINDINGS** (first pass, pre-remediation)
+
+### Findings returned to the builder
+
+1. **The test is a 6-point sample, not the x-free / height-free proof D-02 claims — and a passing mutant reproduces the defect on this repository's own board.** Mutating only the `y:` expression to `(dayCentreX > 700 && dayCentreX < 1100) ? BASELINE - 112 : BASELINE` leaves the suite green while putting the annotation back at y=355, inside Panel B's title, for any slowest day in that band. **The real board's slowest day sits at x=881.4.** A second mutant banded on the median (`> 1 && < 44`) also passes; the sampled medians are only {0, 45, 209} and the real board's slowest median is **42 min**. A smooth x-dependence control correctly fails — so the net catches continuous drift and misses banded drift, and the bands that slip through are where the real data lives. The shipped code *is* x-free by inspection; this is a regression-net gap, not a live bug.
+2. **The strip has three occupants, not two, and `board-durations.js:87-89` says two.** `.durations-month-line` spans y=84 to y=572 and therefore crosses y=467; on a 90-day fixture whose slowest day falls on a month boundary it intersects the annotation's box by 12.963 units², passing between the "9" and the " min". Not a regression — it crossed the old y=355 position too — but the enumeration is incomplete in exactly the way this REQ's own lesson warns about, and `neighbourBoxes` omits it.
+
+### Findings routed elsewhere
+
+3. **The `xOfEpoch` bug the builder reported is worse than reported, and is being filed at above-cosmetic priority.** On the real board the leftmost Panel B bar spans x=37.1–49.1, entirely left of `DURATIONS_MARGIN_LEFT` (54). On a **one-day** board the annotation renders at x=-3330 and the bar at x=-3342 — completely off-canvas, so Panel B renders empty. Two-day boards likewise (x=-336.5). Root cause is `timeStart` being the first completion *instant* while the day buckets are *midnights*; the suggested fix is flooring `timeStart` to its UTC midnight before computing `timeSpan`.
+4. **REQ-241's recorded 1.364-unit headroom measures 0.185 units on Chromium 146** (title ascent 12.0372 / descent 2.7778 there, against 11.23 / 2.41 on REQ-241's build). Still positive, still zero intersections, and **not caused by REQ-242** — the SVG output for that region is byte-identical across the range. But D-03's "1.36 units is the whole budget" is per-Chromium and roughly 7× optimistic on at least one current build. This is what the integration seam on `durationsMeasuredAxisTitleAscentUnits` resolved conservatively, and it is why the larger value won.
+5. `medianMinutes.toFixed(0)` prints "0 min" for a 0.4-minute median — pre-existing, and the annotation exists to state a value a clipped bar cannot.
+
+### Upheld against the builder's claims
+
+- **`DURATIONS_TICK_BASELINE_DROP` proven value-preserving rather than argued:** all 310 SVG child nodes were dumped from the pre- and post- boards and diffed. **Exactly one line differs** — the annotation's `y=366.8 → y=467`. Every tick baseline, gridline, bar, mark and label is byte-identical. All three former copies of the literal were replaced; the one remaining bare `4` is a different quantity, correctly left alone.
+- **`describeAtPointer` unchanged from git and by driving events.** The extracted function body is byte-identical across the range (same `shasum` at both endpoints), and synthesized `mousemove` sweeps at three x positions on pre- and post- boards resolve `A` at y ≤ 338 and `B/C` at y ≥ 339 on both — matching REQ-241's recorded boundary exactly.
+- The REQ's own failing case (leftmost slowest, 209 min) now shows **zero collisions** and zero Panel B title intersections; the defect is gone in the render.
+- REQ-231's and REQ-237's guarantees hold **by construction** via the 310-node diff, and were re-measured anyway: 0 same-row label overlaps, 0 label/mark overlaps.
+- Association with the bar survives at 70 and 90 days, where the label is 3–4× the bar width — nearest-bar-centre distance 0.00–0.05 units in every fixture.
+- Scope exact: two files. The merge introduced nothing — `diff <(git diff 2ad71eb b139805) <(git diff 51beffc a8ef062)` is empty.
+
+*Reviewed by work action*

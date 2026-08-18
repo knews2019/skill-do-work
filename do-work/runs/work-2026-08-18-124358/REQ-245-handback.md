@@ -329,3 +329,177 @@ Not piped. From the worktree root, `echo $?` on its own line → `0`.
 ## Pushback (addendum)
 
 None on this instruction — the call to fold it in was right, and the badge tooltip turned out to be the reader-facing half of the message. One thing worth recording rather than acting on: `verify_test.go`'s stale fixture literals (original Integration Seams item 3) are now **more** stale, since the reversed-span message they copy has moved twice. Still input fixtures, still passing, still outside my write set, and I agree with routing them as their own small REQ — but if that REQ is not written soon, the next person greping for the reversed-span text will find two copies of a message that no longer exists.
+
+---
+
+# Addendum 2 — Guard Holes and the Fourth Renderer
+
+Review findings 1–4. **Findings 2 and 3 are correct and they are my errors** — I shipped a test whose comment claimed it prevented badge drift when it only forbade one literal, which is worse than shipping no test, because it tells the next reader the case is covered. Finding 4 is my miss too: my own lesson about sweeping for the *claim shape* rather than the changed string, landing one line short in the file I had just edited.
+
+**Commit:** `14103cc` — `[REQ-245] close the badge-tooltip guard hole and the fourth renderer`
+
+Branch was merged with `main` first (`git merge main`, clean) so `forensics.md` was edited at its post-REQ-244 text.
+
+## Diffstat
+
+```
+ skills/do-work-board/tools/queue-kanban/model.go   | 30 +++++++---
+ .../tools/queue-kanban/prime-do-kanban.md          |  2 +-
+ .../tools/queue-kanban/timestamp_test.go           | 66 +++++++++++++++++-----
+ .../tools/queue-kanban/web/board-cards.js          | 24 +++++---
+ .../tools/queue-kanban/web/board-core.js           |  9 +--
+ skills/do-work/actions/forensics.md                |  4 +-
+ 6 files changed, 97 insertions(+), 38 deletions(-)
+```
+
+Merge base with `main` is now `a8ef062`, so `git diff --name-only <base>...HEAD` lists exactly those six files — `do-work/`, `VERSION`, `version.md`, `CHANGELOG.md` and `generate_test.go` are all absent. (Worth noting for your merge check: because the branch now contains a merge of `main`, a **two**-dot diff would show every `do-work/` path main carries. The three-dot form you already use stays correct.)
+
+## Finding 2 + 3 — the badge guard now guards
+
+The tooltip was an inline concatenation buried in `makeRequestCard`, which is ~226 lines and needs `requestsById`, `createElement` and a pile of formatters — that is why I reached for a source-level check the first time, and it was the wrong trade. Extracted `futureStampTooltipText(futureTimestampFields)` in `web/board-cards.js`: a pure function taking the fields and returning the title string, with `makeRequestCard` reduced to `futureStampBadge.title = futureStampTooltipText(request.futureTimestampFields)`. A pure function needs no DOM stub at all, so the probe drives the real thing.
+
+`TestJavaScriptBehaviorFutureStampBadgeTooltipNamesBothCauses` builds the tooltip under Node and asserts the rendered text names all three markers plus every fix fragment. The negative `Z suffix` check it subsumes is **deleted**, not kept alongside — a guard that cannot fail is worse than absent.
+
+**The mutation that used to pass and now fails.** I reproduced the reviewer's edit exactly, replacing `futureStampCauseText +` with `"a misconfigured clock" +`, and ran the old guard and the new probe together:
+
+```
+$ go test -count=1 -run 'TestFutureStampCauseClauseMatchesTheShippedClient|TestJavaScriptBehaviorFutureStampBadgeTooltipNamesBothCauses' -v .
+=== RUN   TestJavaScriptBehaviorFutureStampBadgeTooltipNamesBothCauses
+    timestamp_test.go:308: the badge tooltip does not name "fabricated" as a possible cause — the reader who hovers the card is sent to the wrong fix.
+        got: Future-dated timestamp(s): claimed_at 2026-06-30T14:00:00Z — later than the board's generation time (2min skew allowance). Likely a misconfigured clock; fix: rewrite with the current UTC instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in actions/work-reference.md.
+    timestamp_test.go:308: the badge tooltip does not name "wall-clock" as a possible cause — …
+    timestamp_test.go:308: the badge tooltip does not name "Z suffix" as a possible cause — …
+--- FAIL: TestJavaScriptBehaviorFutureStampBadgeTooltipNamesBothCauses (0.30s)
+=== RUN   TestFutureStampCauseClauseMatchesTheShippedClient
+--- PASS: TestFutureStampCauseClauseMatchesTheShippedClient (0.00s)
+FAIL
+```
+
+That single run is the whole finding: **the source guard passes the mutation, the rendered-text probe fails it**, and the probe's failure prints the actual wrong tooltip a user would have read. Mutation reverted from a pristine copy afterwards; `git diff` on `board-cards.js` confirms only the intended refactor remains.
+
+**GREEN**, unmutated:
+
+```
+$ go test -count=1 -run 'TestFutureStamp|TestJavaScriptBehaviorFutureStamp|TestJavaScriptBehaviorClockSkew' -v .
+--- PASS: TestFutureStampDiagnosesNameBothCauses (0.02s)
+--- PASS: TestFutureStampDiagnosesKeepTheirFixInstruction (0.02s)
+--- PASS: TestJavaScriptBehaviorClockSkewTooltipNamesBothCauses (0.37s)
+--- PASS: TestJavaScriptBehaviorFutureStampBadgeTooltipNamesBothCauses (0.28s)
+--- PASS: TestFutureStampCauseClauseMatchesTheShippedClient (0.00s)
+PASS
+```
+
+**Finding 3 accepted as stated.** I did not harden the string search — the reviewer is right that the binding trick is contrived and the realistic edit-in-place case is caught. Instead the surviving check's doc comment now states its real guarantee (present in the file, not bound to the variable), names the probes as what covers the rest, and D-06 is amended below.
+
+## Finding 4 — the surviving phrasing
+
+`web/board-core.js:225`'s comment on `syncClockSkewTitle` said the tooltip is "removed the moment the wall clock catches up". Now: "removed the moment the stamp is corrected (or the wall clock catches up)" — both resolution paths, fabricated stamps included.
+
+I then swept the repo for the whole *class* rather than that one line — `wall clock catches up`, `stamped with a Z suffix`, `stamped with local`, `usual cause`, `specific corruption`, `signature of local`. The only live source hit left is the new `board-core.js` wording above. Everything else is `do-work/` history, `CHANGELOG.md` release notes describing what shipped at the time, an `ai-reports/` narrative, and `record-commit-hash.sh:158`'s "usual cause" about an unrelated subject.
+
+## Finding 1 — the fourth renderer, folded in
+
+`skills/do-work/actions/forensics.md` check 12 now reads:
+
+> "REQ-NNN's `{field}` is `{value}` — {N} in the future. Likely local wall-clock time written with a `Z` suffix, or a fabricated value — guessed or extrapolated instead of read from the clock (the Timestamp rule in `actions/work-reference.md` requires the current UTC instant). **For as long as the stamp stands**, elapsed-time math built on it is wrong: …"
+
+The "Until the wall clock catches up" framing is gone here too. The suggested fix was already right for both causes and is untouched.
+
+Because it is a different skill package, nothing can hold it in step mechanically, so the pointer goes in both directions: `futureStampCauseClause`'s doc comment names it and says to change it in the same commit, and the `prime-do-kanban.md` bullet does the same. I deliberately did **not** number the copies ("a fourth", "a fifth") in those pointers — a count is a closed enumeration and goes stale the moment a renderer is added or removed.
+
+**The gate caught a real error here.** My first version of the prime pointer cited `actions/forensics.md`, and the staged-skills contract failed: `prime-do-kanban.md` ships inside `do-work-board`, where that path does not resolve. Corrected to the file's existing cross-package convention, `../do-work/actions/forensics.md`.
+
+```
+unresolved staged runtime references in do-work-board:
+tools/queue-kanban/prime-do-kanban.md:60: actions/forensics.md
+FAIL: staged skills contract probes failed
+```
+
+## The clause-order call — taking the reviewer's version
+
+Reversed to `local wall-clock time written with a Z suffix, or a fabricated value (guessed or extrapolated instead of read from the clock)`, applied to all five renderers.
+
+I argued myself out of my original order. The instinct against it was "lead with the newly-observed cause, since that is the reader we misdirected" — but that confuses emphasis with reachability. What matters is where a skimmer's eye stops, and in my order the two causes were separated by a 66-character parenthetical, so cause two was only reachable *through* the elaboration. In the reviewer's order both causes land inside the first 67 characters and the elaboration is deferred to the end, where stopping early costs nothing. Same information, strictly earlier. It is the same defect this REQ exists to fix, one notch milder, and the reviewer was right to name it.
+
+All assertions are order-independent (`fabricated`, `wall-clock`, `Z suffix` as separate `Contains` checks), so no test needed changing to accommodate the swap — which is itself a small argument that they were asserting the right thing.
+
+## Rendered evidence
+
+Regenerated the board and re-read every renderer, because the order changed and a table of counts says nothing about whether the new sentence reads. All five, live:
+
+- board data warning and reversed-span anomaly reason — via `summary`
+- verify's future-`claimed_at` finding — via `verify`
+- badge tooltip, stopwatch tooltip, anomaly badge tooltip — read from a live board at `http://127.0.0.1:8751/`, with `location.href` and `document.title` returned from the same `evaluate` call (`req245b-fix — do-work queue board`, the fixture I created)
+
+```
+badge:     …(2min skew allowance). Likely local wall-clock time written with a Z suffix, or a fabricated
+           value (guessed or extrapolated instead of read from the clock); fix: rewrite with the current
+           UTC instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in actions/work-reference.md.
+stopwatch: …by more than the 2-minute skew allowance — likely local wall-clock time written with a Z
+           suffix, or a fabricated value (guessed or extrapolated instead of read from the clock). Fix the
+           frontmatter with the current UTC instant — …
+```
+
+Retired-clause counts in the freshly generated `index.html`, including the mutation string as a control:
+
+| string | count |
+|---|---|
+| `wall-clock time stamped with a Z suffix` | 0 |
+| `likely stamped with local wall-clock time plus a Z suffix` | 0 |
+| `Likely local wall-clock time stamped` | 0 |
+| `a misconfigured clock` (mutation control) | 0 |
+
+Server killed, `/tmp` scratch removed, and my two `.playwright-mcp/` files removed from the main tree (siblings' left intact, as before).
+
+## Verification
+
+```
+maintainer-verify: checking Go go1.26.1
+maintainer-verify: checking ShellCheck 0.11.0
+maintainer-verify: ShellCheck warning-level lint (50 tracked files)
+maintainer-verify: aggregate contract suite
+Maintainer verification self-test passed.
+Suite manifest contract probes passed.
+shipped package reference contract: PASS
+Shell-block lint self-test passed.
+Shell-block lint passed: 74 fenced blocks and 31 shipped shell files; ShellCheck enabled.
+SessionStart hook behavior probes passed.
+Prescribed shell primitive canonicalization checks passed.
+Defensive-surface exact deletion regressions passed.
+record-commit-hash and blanked-req-scan guard probes passed.
+update-script behavior probes passed.
+Prescribed shell script behavior probes passed (42 named script cases).
+staged skills contract: PASS
+suite installer behavior probes passed.
+p50 estimator suite: all probes passed.
+Contract regression checks passed.
+maintainer-verify: queue-kanban go vet
+maintainer-verify: queue-kanban uncached ordinary tests
+ok  	github.com/knews2019/skill-do-work/queue-kanban	15.705s
+maintainer-verify: queue-kanban strict JavaScript behavior lane
+=== RUN   TestMaintainerStrictJavaScriptBehaviorLane
+--- PASS: TestMaintainerStrictJavaScriptBehaviorLane (5.44s)
+PASS
+ok  	github.com/knews2019/skill-do-work/queue-kanban	5.686s
+maintainer-verify: audit-metrics go vet
+maintainer-verify: audit-metrics uncached tests
+ok  	github.com/knews2019/skill-do-work/audit-metrics	1.410s
+Maintainer verification passed.
+0
+```
+
+Not piped. `echo $?` on its own line → `0`.
+
+## Decisions (continuing from D-07)
+
+- **D-06 — AMENDED.** The original claim, that splitting the guard into a Node-gated probe and an always-on equality check means the pair is covered with or without Node, is **too strong**. What the always-on check actually proves is that the sentence is *present in* `board-core.js`, not that `futureStampCauseText` is *bound to* it; binding something else while the literal survives in a comment passes. The honest statement: without Node, the guard catches the realistic failure (someone edits one language and not the other) and misses the contrived one (someone rebinds the variable); with Node, the two behavior probes close it. The test's doc comment now says exactly this rather than implying total coverage.
+- **D-08 — A string that must be asserted gets extracted into a function, even when its call site is untestable.** `futureStampTooltipText` exists because `makeRequestCard` is too large to drive and the tooltip is too important to leave unasserted. The general rule: when the cheap guard you can write does not actually guard, the answer is to make the thing addressable, not to accept the cheap guard. Reach: any future card badge whose text carries a diagnosis should be extracted the same way.
+- **D-09 — Cross-package copies get a pointer, never a count.** `forensics.md` cannot be reached from the board module, so the only available mechanism is a sentence telling the next editor it exists. Both `model.go` and `prime-do-kanban.md` carry it, phrased as a condition ("one more copy lives outside this module … change it in the same commit") rather than an enumeration, per CLAUDE.md's Closed Enumerations Go Stale.
+- **D-10 — Both causes are named before any elaboration.** Reviewer's ordering, adopted for all five renderers, with the reason recorded in `futureStampCauseClause`'s doc comment and the prime bullet so a future editor does not "improve" the sentence by moving the parenthetical back between the causes.
+
+## Lessons Learned (addendum 2)
+
+- **A negative assertion is the weakest possible way to pin a string, and it reads like the strongest.** `assert board-cards.js contains no "Z suffix"` looks like it constrains the tooltip; it constrains only one spelling of one cause, and every wrong tooltip that avoids those two words passes. The tell is that the assertion never mentions the thing it claims to protect — it named a file and a substring, not a tooltip. **If a test's comment describes an outcome the assertion cannot observe, the assertion is wrong.** That is the shape to grep for in review, and it is exactly what a mutation catches in one run.
+- **"Too expensive to test" is usually "not yet extracted".** I rejected the badge probe as needing a 226-line function stubbed, and settled for a guard that did not guard. The actual cost of getting it right was a nine-line pure function. When the reason for a weak test is the size of the enclosing function, that is an argument for extraction, not for the weak test.
+- **A doc comment that overstates a guarantee is a defect with the same shape as the one this REQ fixes.** D-06 told a future reader that the Node-less path was covered when it was not — the same class of error as a message naming one cause when there are two: a confident sentence that sends the next person somewhere useless. Guarantees in comments deserve the same "is this literally true" pass as the strings they describe.
+- **The sweep that found finding 4 for the reviewer is one I had already written down and then did not run to completion.** My own Addendum-1 lesson said to grep for the claim shape ("the usual cause", "until the wall clock catches up") rather than the changed string; I applied it to `model.go` and not to the JS file I was editing in the same commit. A lesson recorded in a hand-back is not a lesson applied — the sweep has to be a step, not an intention, which is why this time I ran it across the whole repo and pasted the result rather than reasoning about where it was likely to hit.

@@ -239,3 +239,212 @@ One note for the merge, not a seam: `durations_test.go` is a file a sibling coul
 - **The REQ's second instance says `DURATIONS_LABEL_ROW_HEIGHT = 12` is smaller than a 13-unit box and reports "20 cross-row bounding-box intersections, each 1.6px deep".** My saturated fixture measures 0.834 user units of intersection, which is 1.04 CSS px at my viewport — the depth in px depends on the browser window width, since the SVG is `width:100%` over a fixed viewBox, so a px figure is not portable between measurements. The count (16–19 on my fixtures vs the REQ's 20) also depends on fixture composition. Neither discrepancy changes the finding; both are reported in user units here so the number is reproducible.
 
 - Nothing else in the brief was wrong, and no existing test needed editing. `TestDurationsLabelRowsClearTheMarkBands`, `TestDurationLabelGeometryMatchesTheRenderer`, `TestDenseOverflowLabelsStayBoundedAndNeverOverlap`, `TestClusteredOverflowLabelsFillBothLabelRows`, `TestOverflowLabelsGoToTheLongestSpans`, and `TestReversedLabelPlacementIsIndependentOfOverflowDensity` all pass unchanged against the new constants.
+
+---
+
+# Addendum — Review Remediation
+
+**Commit:** `8de5929` (on top of `4950c81`, same branch)
+
+The finding is correct and I have reproduced it. It is also worse than "the sweep was incomplete": **no sweep of any size could have established that bound**, and the fix the review preferred does not close it either. Both of those are measured below, not argued.
+
+## Files Changed
+
+```
+ skills/do-work-board/tools/queue-kanban/durations.go       |  36 +++++--
+ skills/do-work-board/tools/queue-kanban/durations_test.go  | 104 +++++++++++++++++----
+ 2 files changed, 114 insertions(+), 26 deletions(-)
+```
+
+- **`durations.go`** — `durationsLabelCharacterWidthUnits` 6.75 → **7.15**, above the measured supremum of the whole label space. The comment now carries the completeness argument rather than a sweep's worst case.
+- **`durations_test.go`** — `durationsMeasuredWidestUnitsPerCharacter` (6.71, from the incomplete sweep) replaced by `durationsMeasuredLabelWidthSupremumUnits` (7.1441) with the argument that closes it; added `durationsLabelWidthModelSlackUnits`, `durationsMeasuredLabelBoxDescentUnits`, `durationsMeasuredAxisTitleAscentUnits`; the width test now pins **both sides**; added `TestDurationsLastLabelRowClearsPanelBTitle`.
+- **`web/board-durations.js` is untouched by this commit.** The row pitch stays 13 and no formatter clamp was added — see D-05.
+
+## The finding, reproduced
+
+All three of the reviewer's strings, measured with `getComputedTextLength()` on a rendered board in an isolated Chromium:
+
+| Label | chars | advance | u/char | vs 6.75 |
+|---|---|---|---|---|
+| `REQ-444 −44444h 48m` | 19 | 128.506 u | **6.7635** | over |
+| `REQ-4444 4444h 48m` | 18 | 121.524 u | **6.7514** | over |
+| `REQ-44444 −44444h 20m` | 21 | 142.255 u | **6.7740** | over |
+
+And the mechanism, confirmed monotone — hour count swept at a fixed three-digit id:
+
+```
+REQ-444 4h 44m                6.6436      REQ-444 44444h 44m           6.7541  over
+REQ-444 44h 44m               6.6762      REQ-444 444444h 44m          6.7747  over
+REQ-444 444h 44m              6.7054      REQ-444 44444444h 44m        6.8092  over
+REQ-444 4444h 44m             6.7312      REQ-444 44444444444444h 44m  6.8832  over
+```
+
+## Why no sweep could have worked, and why the preferred fix does not close it
+
+**The label space has two independent unbounded parameters, not one.** A label is `"REQ-" + id + " " + duration`. Nothing bounds the id's digit count, and nothing bounds the hour count. Per-character width rises with length in both directions, so "the worst case I sampled" is never "the worst case".
+
+**Clamping the hours leaves it unbounded.** This was the review's preferred fix, on the reasoning that it would make the claim "simply true". Measured with hours clamped to `999h+`, sweeping id length:
+
+```
+REQ-444 −999h+                6.7126        REQ-444 999h 44m             6.6913
+REQ-4444 −999h+               6.7413        REQ-4444 999h 44m            6.7179
+REQ-44444 −999h+              6.7657  over  REQ-44444 999h 44m           6.7416
+REQ-444444 −999h+             6.7880  over  REQ-444444 999h 44m          6.7628  over
+REQ-4444444444 −999h+         6.8552  over  REQ-4444444444 999h 44m      6.8286  over
+```
+
+A five-digit REQ id passes 6.75 with the hours already clamped. So clamping bounds one of the two unbounded parameters and buys nothing for the claim, while changing what a reader sees. **I did not clamp** — see D-05, and see Pushback for what I think should happen with the idea instead.
+
+## What actually closes it
+
+Only **digits** can repeat without limit. Every wide fixed character — `R`, `E`, `Q`, `m`, `h`, `−` — appears at most twice per label, so its contribution is amortized away as the label grows, and per-character width is dragged toward, and cannot pass, the per-character width of a pure digit run. That converts an unbounded search into a measurable quantity.
+
+Measured from both directions:
+
+| Evidence | Result |
+|---|---|
+| Pure 500-digit run, per character, widest digit `4` | **7.1418** |
+| Marginal advance of `4` inside a 40-digit run | **7.1441** ← the supremum |
+| Exhaustive over the bounded region: every digit, id lengths 1–40, hour counts 1–40, both duration forms, both signs, mixed-digit ids — **280 800 labels** | max **7.0643** |
+| Limit probe, both unbounded parameters grown together — 2 010 / 10 010 / 40 010 characters | 7.1384 / 7.1411 / **7.1417**, rising, still under |
+| Randomized search, 4 000 mixed-digit labels at 60+60 digits | max 6.8223 — a uniform `4` run is genuinely the worst mix |
+
+Per-digit run widths, which is why `4` is the answer and not `9` or `8`:
+
+```
+4: 7.1418   8: 7.0881   6: 7.0667   9: 7.0667   0: 6.9915
+3: 6.9593   5: 6.8626   2: 6.7015   7: 6.5400   1: 5.1658
+```
+
+**What makes this complete, stated plainly:** the space is parameterized by exactly two unbounded integers plus a finite set of choices (which digits, which duration form, sign present). The bounded parameters are covered exhaustively; the unbounded ones are covered by their limit; and monotonicity in both connects the two, so there is no gap between them for a worse label to hide in. `durationsLabelCharacterWidthUnits = 7.15` sits above the supremum, so it bounds every label the renderer can compose — including ones no board will ever produce.
+
+### One measurement I threw away, because it was wrong
+
+I first tried to bound the space with a **per-glyph width table** — sum a measured advance per character, and the model becomes an upper bound by construction over any string, with no sweep at all. It fails, and the failure is worth recording: summing isolated glyph advances **under-ran** the rendered string by up to 10 units over a 63 000-string corpus (`REQ-77777777777777 77777h 77m`: table 176.797, measured 186.861). Digits in this face are narrower in isolation than inside a run — `7` measures 6.3294 alone but 6.5425 inside a digit run — so a table built from isolated glyphs is not an upper bound on anything. A second attempt using worst-context *marginal* advances did produce a true upper bound over all 63 000 strings, but over-estimated realistic labels by 14–18%, worse than the flat constant it would have replaced. Dropped both.
+
+## Red-Green Evidence
+
+All REDs produced by restoring the pre-change blob (`git show HEAD:<path>`) or by editing the constant under test in place — never `git stash push`.
+
+### RED A — the lower pin, against the shipped 6.75
+
+```
+231:	durationsLabelCharacterWidthUnits = 6.75
+--- RED A: lower pin, shipped 6.75 vs supremum 7.1441 ---
+=== RUN   TestDurationsLabelWidthEstimateCoversTheRenderedFace
+    durations_test.go:534: width model assumes 6.7500 units per character, but label text reaches 7.1441 in the rendered face — the estimate under-states the text it is placing
+--- FAIL: TestDurationsLabelWidthEstimateCoversTheRenderedFace (0.00s)
+FAIL
+FAIL	github.com/knews2019/skill-do-work/queue-kanban	0.614s
+```
+
+### RED B — the upper pin, which the previous version did not have
+
+```
+--- RED B: upper pin, inflated 9.0 vs supremum 7.1441 + 0.25 slack ---
+=== RUN   TestDurationsLabelWidthEstimateCoversTheRenderedFace
+    durations_test.go:539: width model assumes 9.0000 units per character against a supremum of 7.1441 — over-estimating by more than 0.25 drops labels the rows could carry
+--- FAIL: TestDurationsLabelWidthEstimateCoversTheRenderedFace (0.00s)
+FAIL
+FAIL	github.com/knews2019/skill-do-work/queue-kanban	0.330s
+```
+
+### RED C — the new Panel B clearance assertion, at the pitch D-03 predicted
+
+Note which test fails and which passes. This is the exact silent-erosion scenario the assertion exists for: raising the pitch to clear a bigger face satisfies the row-pitch **floor** while eating the **ceiling**.
+
+```
+--- RED C: Panel B clearance, row pitch raised 13 -> 15 ---
+=== RUN   TestDurationsLabelRowPitchClearsTheLabelTextBox
+--- PASS: TestDurationsLabelRowPitchClearsTheLabelTextBox (0.00s)
+=== RUN   TestDurationsLastLabelRowClearsPanelBTitle
+    durations_test.go:585: the reversed band's last label row ends at 339.41 but Panel B's title starts at 338.76 — the label rows have grown into the title
+--- FAIL: TestDurationsLastLabelRowClearsPanelBTitle (0.00s)
+FAIL
+FAIL	github.com/knews2019/skill-do-work/queue-kanban	0.343s
+```
+
+339.41 against 338.76 is the prose prediction from D-03 ("a pitch of 15 would put the last row's box bottom at 339.41, past the title's top at 338.77") now failing a test instead of sitting in a document.
+
+### GREEN
+
+```
+247:	durationsLabelCharacterWidthUnits = 7.15
+54:  var DURATIONS_LABEL_ROW_HEIGHT = 13;
+--- GREEN: full queue-kanban suite ---
+ok  	github.com/knews2019/skill-do-work/queue-kanban	15.864s
+GREEN_EXIT=0
+```
+
+## Before / after renders
+
+Live DOM, isolated Chromium, `location.href` returned from the same `evaluate` call as every measurement.
+
+| Board | Labels | Same-row overlaps | Tightest same-row gap | Cross-row | Label/mark | Remainder |
+|---|---|---|---|---|---|---|
+| Real board @ 6.75 | 3 | 0 | 76.65 u | 0 | 0 / 221 | — |
+| **Real board @ 7.15** | **3** | **0** | 76.65 u | **0** | **0 / 221** | — |
+| Clustered fixture @ 6.75 | 21 | 0 | 11.35 u | 0 | 0 / 63 | `+42 more` |
+| **Clustered fixture @ 7.15** | **20** | **0** | **22.67 u** | **0** | **0 / 63** | `+43 more` |
+| Reversed band @ 6.75 | 17 | 0 | 15.86 u | 0 | 0 / 60 | `+43 more` |
+| **Reversed band @ 7.15** | **17** | **0** | 15.86 u | **0** | **0 / 60** | `+43 more` |
+
+**On a real board the remediation costs nothing: 3 labels at 6.75 and 3 at 7.15.** The clustered fixture loses exactly one label; the saturated reversed band loses none.
+
+Panel B clearance and pointer resolution, re-measured on the saturated-reversed board at 7.15: clearance **1.3636 units**, **0** live-DOM intersections with the title, and `describeAtPointer` resolving `A` at y ≤ 338 and `B/C` at y ≥ 339 exactly as before. `web/board-durations.js` is unchanged by this commit, so this is unchanged by construction as well as by measurement.
+
+Screenshots: `/tmp/board-241b/shot-r2-fixture.png`, `/tmp/board-241b/shot-r2-reversed.png`. Looked at both — two cleanly separated label rows, remainder sentence on the last row's right edge, reversed band clear of Panel B's title.
+
+## Verification
+
+```
+maintainer-verify: queue-kanban go vet
+maintainer-verify: queue-kanban uncached ordinary tests
+ok  	github.com/knews2019/skill-do-work/queue-kanban	14.380s
+maintainer-verify: queue-kanban strict JavaScript behavior lane
+=== RUN   TestMaintainerStrictJavaScriptBehaviorLane
+--- PASS: TestMaintainerStrictJavaScriptBehaviorLane (4.62s)
+PASS
+ok  	github.com/knews2019/skill-do-work/queue-kanban	4.832s
+maintainer-verify: audit-metrics go vet
+maintainer-verify: audit-metrics uncached tests
+ok  	github.com/knews2019/skill-do-work/audit-metrics	1.439s
+Maintainer verification passed.
+0
+```
+
+Run unpiped from the worktree root, `echo $?` on its own line.
+
+## Integration Seams
+
+None. Two files, no shared registry, `generate_test.go` never opened. Branch still touches nothing under `do-work/` and no version or changelog file.
+
+I did **not** touch the main tree's `.playwright-mcp/` directory. None of its contents are mine — every file there is timestamped 13:33–15:04, before my session, and I drive my own Playwright process rather than the MCP browser, so all of it belongs to sibling agents.
+
+## Decisions
+
+- **D-05 — No formatter clamp.** The review preferred clamping the hour count so the label space would be finite. Measured, it is not: with hours clamped to `999h+`, `REQ-44444 −999h+` still reaches 6.7657 u/char, because the REQ id is the *other* unbounded parameter. A clamp would therefore change rendered output without making the claim true, which is the same category of error this remediation exists to remove — a mechanism that looks like it bounds the space and does not. The bound comes from the amortization argument instead, which holds with or without a clamp. **This is not a rejection of the clamp as an idea** — see Pushback.
+
+- **D-06 — The width pin is two-sided.** A width model must over-estimate, but unbounded over-estimation is not free: it drops labels the rows could have carried, invisibly except as a larger remainder count. The one-sided assertion also could not tell a correct constant from one merely equal to the last sweep's output, which is precisely how 6.75 passed against a 6.71 reference. `durationsLabelWidthModelSlackUnits = 0.25` is the stated allowance; anything beyond it is a deliberate choice that should have to edit the slack and say why.
+
+- **D-07 — Reach: this is now the pattern for any constant modelling a rendered face.** State the supremum over the space, not the worst case of a sample; say what makes the sweep complete; pin from both sides. The three constants in this file that model the face (`durationsLabelCharacterWidthUnits`, `DURATIONS_LABEL_ROW_HEIGHT`, `DURATIONS_LABEL_TEXT_ASCENT`) now all carry their measured value, and two of the three are pinned by a test.
+
+## Lessons Learned
+
+- **"Complete sweep" is a property of the argument, not the sample size.** My first sweep was 10 000 strings and wrong; my second was 280 800 and still would have been wrong on its own. What made the third one complete was noticing that the space has exactly two unbounded parameters, that per-character width is monotone in both, and that only digits can repeat — so the bounded part can be enumerated and the unbounded part replaced by a limit, with nothing in between. **When a sweep is the evidence, the reviewable claim is why the sweep closes, and that sentence belongs next to the number.**
+
+- **A one-sided pin cannot distinguish "correct" from "equal to the last measurement".** `6.75 >= 6.71` passed for a constant that was wrong, and would have kept passing if the constant had been dropped back to 6.71. Whenever a test exists to stop a constant drifting, ask which direction it can drift and pin both; a lock-in test that only pins the direction you happened to fix last time is half a test.
+
+- **An isolated glyph advance is not the advance that glyph gets in a string.** This face gives digits tabular widths inside runs — `7` is 6.3294 alone and 6.5425 in a run — so a per-glyph width table built from isolated measurements under-ran real strings by up to 10 units. Any font measurement taken out of context is suspect; measure the marginal contribution in the context the string actually presents, and verify the result is an upper bound over a corpus before trusting it.
+
+- **Beware the trailing-space collapse when measuring text incrementally.** `getComputedTextLength()` ignores a trailing space, so `measure("REQ-444 " + c) − measure("REQ-444 ")` charges `c` for the space as well and reported digit advances of 10.3 units against a true 7.14. It looks like a real signal — ordered, reproducible, plausible — and it is an artifact of the probe. Pad the prefix with a sentinel character whose own width you subtract.
+
+- **A budget recorded only in prose is not a constraint.** D-03 measured the Panel B clearance, named the pitch that breaks it, and wrote it in a document — where the next pitch change would have sailed past it while the row-pitch floor test went green. RED C shows exactly that: at pitch 15 the floor passes and the ceiling fails. **If a hand-back says "this is the binding constraint", that sentence is a request for an assertion.**
+
+## Pushback
+
+- **The review's preferred fix does not achieve its stated purpose, and I did not apply it.** Clamping the hour count leaves the REQ id unbounded; measured, `REQ-44444 −999h+` reaches 6.7657 u/char with hours already clamped. The stated reason for preferring it — "then the claim is simply true" — does not hold. I applied the bound that does hold instead. If this reasoning is wrong I would rather be told than have shipped a clamp that reads like a fix.
+
+- **The clamp is still a good idea, for its other reason, as its own REQ.** A label reading `−44444h 20m` is meaningless output from a broken stamp, and rendering it as `−999h+` is better for a reader regardless of anything to do with width. That is an output-quality change to `formatDurationMinutes` in both the renderer and its Go width-model mirror, it changes what appears on screen, and it belongs next to REQ-246 (mechanical repair of fabricated timestamps) rather than buried in a constants REQ. I have deliberately not filed it — queue state is the orchestrator's.
+
+- **One thing I found and did not fix, because it is width-neutral under this model.** `durations.go`'s `formatDurationLabelMinutes` emits an ASCII hyphen for negative spans while the renderer draws U+2212 (`−`). The two glyphs differ by 1.73 units in this face, so the Go side models a narrower string than the browser draws — but both are one character, and the width model counts characters, so nothing is currently wrong. It would become a real under-estimate the moment anyone replaces the flat constant with a per-glyph model, which is exactly what I attempted above. Worth a comment at minimum; out of this REQ's scope.
