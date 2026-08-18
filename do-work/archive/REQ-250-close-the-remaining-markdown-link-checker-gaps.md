@@ -5,6 +5,7 @@ status: completed
 created_at: 2026-08-18T13:55:32Z
 claimed_at: 2026-08-18T18:25:40Z
 completed_at: 2026-08-18T18:58:44Z
+commit: 330797b
 kb_status: pending
 route: B
 status_changed_at: 2026-08-18T13:55:32Z
