@@ -592,6 +592,18 @@ def normalize_markdown_target(target):
 # A heading anchor is generated from the heading's *rendered* text: lowercase it, drop
 # every character that is not a word character, a hyphen, or a space, then turn spaces
 # into hyphens. Repeated slugs take a -1, -2 … suffix in document order.
+#
+# Stated limitation, deliberately left open: HTML tags and entities in heading text
+# slug literally here ("## <kbd>Ctrl</kbd> and stuff" -> kbdctrlkbd-and-stuff,
+# "## Tom &amp; Jerry" -> tom-amp-jerry) while GitHub strips the tags and decodes
+# the entities first (ctrl-and-stuff, tom--jerry). Failure direction: both. A link
+# written to GitHub's true slug fails loudly here (spurious FAIL the author sees);
+# a link written to this checker's divergent slug passes silently while broken in
+# every renderer. No shipped heading contains a tag or an entity today, and correct
+# decoding would need code-span awareness inside the heading (entities in inline
+# code stay literal), so closing this buys HTML parsing with no live case. The
+# anchor fixture below pins the divergence; closing it later must update this
+# statement in the same change.
 inline_link_label_pattern = re.compile(r"!?\[([^\[\]]*)\](?:\([^()]*\)|\[[^\[\]]*\])")
 atx_heading_pattern = re.compile(r"^[ ]{0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
 heading_slug_cache = {}
@@ -615,6 +627,11 @@ def heading_anchor_slugs_from_text(markdown_text):
     # A line whose masked form no longer opens with # sat inside a fence, an indented
     # block, or an HTML comment and is not a heading. Slugs come from the raw line,
     # because masking blanks inline code that the rendered heading text keeps.
+    #
+    # Stated limitation: a blockquoted ATX heading ("> # Quoted") yields no anchor
+    # here, because its line opens with ">", while GitHub does generate one. Failure
+    # direction: loud — a link to such an anchor reports as missing (spurious FAIL);
+    # it is never silently accepted.
     #
     # Both arrays are split on "\n" alone, never str.splitlines(). masking guarantees only
     # that the length and the "\n" positions survive — the property the parser fixtures
@@ -796,6 +813,21 @@ def run_anchor_slug_fixtures():
             "a masked form feed leaves the headings after it aligned",
             "`a\x0cb`\n`open\n# One\n# Two\n",
             {"one", "two"},
+        ),
+        (
+            # Pins the stated limitation above heading_anchor_slug, not desired
+            # behavior: GitHub slugs these ctrl-and-stuff and tom--jerry. Closing
+            # the divergence must update that statement and this fixture together.
+            "HTML tags and entities slug literally, diverging from GitHub",
+            "## <kbd>Ctrl</kbd> and stuff\n## Tom &amp; Jerry\n",
+            {"kbdctrlkbd-and-stuff", "tom-amp-jerry"},
+        ),
+        (
+            # Pins the stated limitation in heading_anchor_slugs_from_text: GitHub
+            # generates quoted-heading; here a link to it fails loudly, never silently.
+            "blockquoted headings yield no anchor",
+            "> # Quoted Heading\n\n# Plain Heading\n",
+            {"plain-heading"},
         ),
     ]
 
@@ -1167,6 +1199,8 @@ def backticked_citation_messages(
     # prime-lesson-link computation examples) and cannot be told apart from a
     # citation to a deleted core file. Those spans are skipped; every other
     # package's tail is unambiguous, so citing a deleted file there still fails.
+    # A tail or resolved target still carrying ../ segments after the lead strip
+    # is treated as unresolvable, never probed: no path leaves the repository root.
     stripped_span = span_text.strip()
     if not stripped_span:
         return []
@@ -1180,8 +1214,10 @@ def backticked_citation_messages(
     tail_path = pathlib.PurePosixPath(tail_text)
     if tail_path.parts[0] not in {source_root.name for source_root, _ in modules}:
         return []
-    if tail_path.parts[0] == consumer_queue_directory and not path_exists(
-        package_parent / tail_path
+    if (
+        tail_path.parts[0] == consumer_queue_directory
+        and ".." not in tail_path.parts
+        and not path_exists(package_parent / tail_path)
     ):
         return []
     relative_target = pathlib.PurePosixPath(token.split("#")[0])
@@ -1189,7 +1225,7 @@ def backticked_citation_messages(
     source_target = pathlib.PurePosixPath(
         os.path.normpath((source_directory / relative_target).as_posix())
     )
-    if not path_exists(source_target):
+    if ".." in source_target.parts or not path_exists(source_target):
         missing_locations.append("source")
     installed_target = pathlib.PurePosixPath(
         os.path.normpath((installed_directory / relative_target).as_posix())
@@ -1263,6 +1299,14 @@ def run_backticked_citation_fixtures():
         (
             "citing a deleted non-core file must still fail",
             "../../do-work-board/actions/gone.md",
+            True,
+        ),
+        (
+            # Interior ../ segments survive the lead strip, so an escaping tail could
+            # both probe the filesystem above the repository root and be silently
+            # absorbed by the consumer-queue skip. It must fail as a citation instead.
+            "escaping do-work tail is a failing citation, not a consumer-state skip",
+            "../../do-work/../../../elsewhere.md",
             True,
         ),
     ]
@@ -1365,7 +1409,7 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
     for target_start, _, target in markdown_targets(markdown_text):
         line_number = markdown_text.count("\n", 0, target_start) + 1
         target = normalize_markdown_target(target)
-        if not target or target.startswith("#") or is_dynamic_target(target):
+        if not target or is_dynamic_target(target):
             continue
 
         parsed = urllib.parse.urlsplit(target)
@@ -1380,10 +1424,25 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
 
         decoded_target = urllib.parse.unquote(parsed.path)
         if not decoded_target:
-            continue
+            if not parsed.fragment:
+                continue
+            # A bare #fragment names the file that carries it. Resolving it as this
+            # file's own name sends it through the same target-and-anchor machinery
+            # as every other relative link, in both topologies.
+            decoded_target = markdown_path.name
         relative_target = pathlib.PurePosixPath(decoded_target)
         source_target = pathlib.PurePosixPath(os.path.normpath((markdown_path.parent / relative_target).as_posix()))
         installed_target = pathlib.PurePosixPath(os.path.normpath((installed_file.parent / relative_target).as_posix()))
+        # os.path.normpath clamps nothing: enough ../ segments walk a target above the
+        # repository root, and every path this checker stats or reads must stay inside
+        # it. Escapes fail here, before any filesystem access outside the repository.
+        if ".." in source_target.parts or ".." in installed_target.parts:
+            fail(
+                f"{markdown_path}:{line_number}: relative target escapes the "
+                f"repository root: {target}"
+            )
+            broken_references += 1
+            continue
         installed_source_target = resolve_installed_target(installed_target, modules)
 
         missing_locations = []
@@ -1404,9 +1463,9 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
         # carries both a fragment and a Markdown target. Everything skipped is skipped
         # because this checker cannot resolve it without leaving the repository or
         # guessing — a scheme'd URL (http(s), mailto, anything else) is not read; a
-        # bare fragment names no file to resolve against; a root-absolute or templated
-        # target has no single on-disk meaning; and a heading only exists in Markdown,
-        # so a fragment on any other suffix is an application's own addressing scheme.
+        # root-absolute or templated target has no single on-disk meaning; and a
+        # heading only exists in Markdown, so a fragment on any other suffix is an
+        # application's own addressing scheme.
         # Anchors resolve against ATX headings, which is what this repository writes; a
         # heading declared any other way reports here as a missing anchor.
         anchor = urllib.parse.unquote(parsed.fragment)
