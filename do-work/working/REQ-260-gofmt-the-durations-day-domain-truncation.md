@@ -1,7 +1,9 @@
 ---
 id: REQ-260
 title: Run the Go formatter as part of the canonical verify
-status: pending
+status: claimed
+claimed_at: 2026-08-18T21:16:24Z
+route: A
 created_at: 2026-08-18T18:41:26Z
 status_changed_at: 2026-08-18T20:59:31Z
 user_request: UR-051
@@ -15,6 +17,15 @@ depends_on: []
 maintenance: false
 write_set:
 - _dev/tests/maintainer-verify.sh
+estimate:
+  p50_active_minutes: 15
+  confidence: medium
+  calculated_at: 2026-08-18T21:17:28Z
+  basis:
+    - Route A
+    - 1-file write set
+    - 3 acceptance criteria
+    - full-suite verification
 ---
 
 # Run the Go Formatter as Part of the Canonical Verify
@@ -40,3 +51,13 @@ Discovered by REQ-251's builder ([low]); the one-character instance was fixed in
   Also: No, discard it — or fold it into REQ-252, which already owns the file.
 
 **Answered [2026-08-18]:** User approved via `do-work clarify` and **widened the scope**: the original one-character fix is already satisfied by REQ-252's in-passing correction, so this REQ now covers making the gate run the formatter over tracked Go files. Title and requirements updated to match; `effort_estimate` raised from trivial to normal.
+
+---
+
+## Triage
+
+**Route: A** - Simple
+
+**Reasoning:** One named file, and the change mirrors a pattern that already exists inside it (the ShellCheck lane's `git ls-files` selection and fail-on-non-empty shape). Scope is obvious and bounded.
+
+**Planning:** Not required
