@@ -1095,6 +1095,99 @@ reservation_symlink_output="$("$core_scripts/cleanup-req-reservations.sh" "$rese
 [ -f "$reservation_external_store/REQ-000042" ] \
   || fail_case 'cleanup-req-reservations symlinked-directory case deleted through the symlinked store'
 
+# repair-req-timestamps: a future created_at in the queue is rewritten to the
+# file's own mtime — the actual write instant — and the correction is logged.
+repair_mtime_project="$fixture_root/repair-mtime-project"
+mkdir -p "$repair_mtime_project/do-work/queue"
+printf -- '---\nid: REQ-801\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\n\nbody\n' \
+  > "$repair_mtime_project/do-work/queue/REQ-801-future.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_mtime_project/do-work/queue/REQ-801-future.md"
+repair_mtime_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_mtime_project")" \
+  || fail_case 'repair-req-timestamps future-stamp case returned nonzero'
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_mtime_project/do-work/queue/REQ-801-future.md" \
+  || fail_case 'repair-req-timestamps future-stamp case did not rewrite the stamp to the file mtime'
+printf '%s' "$repair_mtime_output" \
+  | grep -q 'REQ-801-future.md created_at: 2093-01-01T00:00:00Z -> 2026-08-10T12:00:00Z (file mtime)' \
+  || fail_case 'repair-req-timestamps future-stamp case did not log the correction'
+
+# repair-req-timestamps: impossible orderings in working/ are repaired and
+# clamped so created_at <= claimed_at <= completed_at <= now — here the derived
+# mtime precedes created_at, so both later fields land exactly on the clamp floor.
+repair_order_project="$fixture_root/repair-order-project"
+mkdir -p "$repair_order_project/do-work/working"
+printf -- '---\nid: REQ-802\nstatus: completed\ncreated_at: 2026-08-10T12:00:00Z\nclaimed_at: 2026-08-01T09:00:00Z\ncompleted_at: 2026-08-03T10:00:00Z\n---\nbody\n' \
+  > "$repair_order_project/do-work/working/REQ-802-order.md"
+TZ=UTC touch -m -t 202608050800.00 "$repair_order_project/do-work/working/REQ-802-order.md"
+repair_order_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_order_project")" \
+  || fail_case 'repair-req-timestamps ordering case returned nonzero'
+grep -q '^claimed_at: 2026-08-10T12:00:00Z$' "$repair_order_project/do-work/working/REQ-802-order.md" \
+  || fail_case 'repair-req-timestamps ordering case did not clamp claimed_at up to created_at'
+grep -q '^completed_at: 2026-08-10T12:00:00Z$' "$repair_order_project/do-work/working/REQ-802-order.md" \
+  || fail_case 'repair-req-timestamps ordering case did not clamp completed_at up to the repaired claimed_at'
+printf '%s' "$repair_order_output" | grep -q 'clamped to 2026-08-10T12:00:00Z' \
+  || fail_case 'repair-req-timestamps ordering case did not log the clamp'
+
+# repair-req-timestamps: a committed file that matches HEAD is repaired to the
+# author time of the commit that introduced the stamp line, not to a fresh clone's
+# meaningless mtime.
+repair_blame_project="$fixture_root/repair-blame-project"
+fixture_repo_init "$repair_blame_project"
+mkdir -p "$repair_blame_project/do-work/queue"
+printf -- '---\nid: REQ-803\nstatus: pending\ncreated_at: 2026-08-14T09:00:00Z\nclaimed_at: "2093-02-02T02:02:02Z"\n---\nbody\n' \
+  > "$repair_blame_project/do-work/queue/REQ-803-committed.md"
+git -C "$repair_blame_project" add -A
+GIT_AUTHOR_DATE='2026-08-15T14:00:00Z' GIT_COMMITTER_DATE='2026-08-15T14:05:00Z' \
+  git -C "$repair_blame_project" commit -qm fixture
+repair_blame_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_blame_project")" \
+  || fail_case 'repair-req-timestamps committed-file case returned nonzero'
+grep -q '^claimed_at: 2026-08-15T14:00:00Z$' "$repair_blame_project/do-work/queue/REQ-803-committed.md" \
+  || fail_case 'repair-req-timestamps committed-file case did not use the introducing commit author time (quoted stamps must be repairable too)'
+printf '%s' "$repair_blame_output" | grep -q 'author time' \
+  || fail_case 'repair-req-timestamps committed-file case did not name the commit author time as the replacement source'
+
+# repair-req-timestamps: a clean fixture passes through byte-identical — including
+# the shapes the repairer must not touch: a nested (indented) calculated_at, a
+# numeric-offset value it cannot compare without timezone arithmetic, and an
+# archive-scope directory it must never scan.
+repair_clean_project="$fixture_root/repair-clean-project"
+mkdir -p "$repair_clean_project/do-work/queue" "$repair_clean_project/do-work/archive"
+printf -- '---\nid: REQ-804\nstatus: pending\ncreated_at: 2026-08-10T12:00:00Z   # trailing comment\nblocked_at: 2026-08-11T09:00:00+09:00\nestimate:\n  calculated_at: 2093-06-06T06:06:06Z\n---\nbody\n' \
+  > "$repair_clean_project/do-work/queue/REQ-804-clean.md"
+printf -- '---\nid: REQ-805\nstatus: completed\ncreated_at: 2093-03-03T03:03:03Z\n---\nbody\n' \
+  > "$repair_clean_project/do-work/archive/REQ-805-archived.md"
+cp "$repair_clean_project/do-work/queue/REQ-804-clean.md" "$fixture_root/repair-clean-before.md"
+cp "$repair_clean_project/do-work/archive/REQ-805-archived.md" "$fixture_root/repair-archive-before.md"
+repair_clean_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_clean_project")" \
+  || fail_case 'repair-req-timestamps clean-fixture case returned nonzero'
+[ -z "$repair_clean_output" ] \
+  || fail_case 'repair-req-timestamps clean-fixture case printed output for a no-op run'
+cmp -s "$fixture_root/repair-clean-before.md" "$repair_clean_project/do-work/queue/REQ-804-clean.md" \
+  || fail_case 'repair-req-timestamps clean-fixture case changed a file with nothing provably wrong'
+cmp -s "$fixture_root/repair-archive-before.md" "$repair_clean_project/do-work/archive/REQ-805-archived.md" \
+  || fail_case 'repair-req-timestamps clean-fixture case wrote into archive scope'
+
+# repair-req-timestamps: a tripped guard leaves the file byte-identical and exits
+# nonzero — here the truncation floor: a file at less than half its committed size
+# lost content before the run, and repairing a stamp in the remains would help
+# commit the loss.
+repair_guard_project="$fixture_root/repair-guard-project"
+fixture_repo_init "$repair_guard_project"
+mkdir -p "$repair_guard_project/do-work/queue"
+{
+  printf -- '---\nid: REQ-806\nstatus: pending\ncreated_at: 2093-04-04T04:04:04Z\n---\n'
+  awk 'BEGIN { for (line_index = 1; line_index <= 200; line_index++) print "ballast decision-trail line " line_index }'
+} > "$repair_guard_project/do-work/queue/REQ-806-truncated.md"
+fixture_repo_commit_all "$repair_guard_project" fixture
+head -n 5 "$repair_guard_project/do-work/queue/REQ-806-truncated.md" > "$fixture_root/repair-truncated.tmp"
+mv "$fixture_root/repair-truncated.tmp" "$repair_guard_project/do-work/queue/REQ-806-truncated.md"
+cp "$repair_guard_project/do-work/queue/REQ-806-truncated.md" "$fixture_root/repair-guard-before.md"
+repair_guard_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_guard_project")" \
+  && fail_case 'repair-req-timestamps tripped-guard case exited zero on a truncated file'
+cmp -s "$fixture_root/repair-guard-before.md" "$repair_guard_project/do-work/queue/REQ-806-truncated.md" \
+  || fail_case 'repair-req-timestamps tripped-guard case modified the truncated file'
+printf '%s' "$repair_guard_output" | grep -q 'content was lost before this run' \
+  || fail_case 'repair-req-timestamps tripped-guard case did not name the truncation as the reason'
+
 if [ "$failure_count" -gt 0 ]; then
   exit 1
 fi
