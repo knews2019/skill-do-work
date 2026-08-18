@@ -77,3 +77,20 @@ Transcribed by the orchestrator from `do-work/runs/work-2026-08-18-230100/REQ-26
 
 - **None to queue, and the class was checked rather than assumed.** The builder grepped shipped instructions and docs for the same *shape* — a conditional "revisit/reconsider if…" tripwire sitting in standing prose — with `grep -rniE "revisit (this|if|when)|reconsider (if|when|this)|if a (second|third)|when a second" skills/ _dev/primes/ decisions/ CLAUDE.md`. Nothing else in `skills/` or `_dev/primes/` has this shape. The three remaining hits are in `decisions/records/` (adr-013, adr-016, adr-017), where "Revisit if X" sits in an Alternatives or Consequences section — a decision record stating its own boundary, which is the correct home for a conditional. Left alone deliberately; no follow-up recommended.
 
+---
+
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` against the merged tree (range `2fc89fe..210abba`), un-piped with the exit code read directly
+**Result:** ✓ `GATE_EXIT=0` — "Maintainer verification passed." This run is both Step 6.5's testing and Step 8's post-merge verification.
+
+**The acceptance criterion that actually matters here, verified:** the gate's Timestamp rule citation contract reports `54 instant write sites cited, 17 date-only sites recognized` — **unmoved**. The REQ required the tripwire to go without disturbing which sites the rule governs, and that contract is the mechanical statement of exactly that. A deletion that had clipped the paragraph's governing scope would have moved one of those counts.
+
+**Red-green validation:** none, and none is owed. This is a deletion of standing prose with no behavioural surface: no subcommand was added or removed, no Go source, test, or board-tool file was touched, and the `timestamp_rule_block` assertions in `_dev/tests/contract-regressions.sh` pin `ToUniversalTime` and `powershell -NoProfile -Command`, neither of which this diff goes near. The regression evidence is the citation contract above plus the full gate.
+
+**New tests added:** none. A test asserting "this sentence does not contain the words 'revisit if'" would pin the instance rather than anything worth keeping, which is the failure shape this session has been correcting all evening.
+
+**Existing tests updated (cross-REQ impact):** none.
+
+*Verified by work action*
+
