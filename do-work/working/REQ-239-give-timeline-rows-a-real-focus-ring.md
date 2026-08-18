@@ -1,7 +1,18 @@
 ---
 id: REQ-239
 title: Give the Timeline's rows a real focus ring
-status: pending
+status: claimed
+claimed_at: 2026-08-18T11:57:10Z
+route: B
+estimate:
+  p50_active_minutes: 20
+  confidence: medium
+  calculated_at: 2026-08-18T11:57:10Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 5 acceptance criteria
+    - browser evidence
 status_changed_at: 2026-08-18T11:56:00Z
 created_at: 2026-08-18T11:09:44Z
 user_request: UR-051

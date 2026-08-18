@@ -20,6 +20,8 @@ session_depth: heavy
 Every hash was confirmed with `record-commit-hash.sh --verify`. `maintainer-verify.sh` exits 0 at hand-back.
 
 ## In Progress (interrupted)
+- REQ-238: Point present-work at the canonical independent-bytes rationale — claimed 2026-08-18T11:57:10Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
+- REQ-239: Give the Timeline's rows a real focus ring — claimed 2026-08-18T11:57:10Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 - REQ-237: Backfill the Durations label rows when the longest spans cluster — claimed 2026-08-18T11:42:03Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 - REQ-240: Stop the Timeline axis printing a fake minute — claimed 2026-08-18T11:42:03Z — writer: t2s-Virtual-Machine:/Users/t2/Desktop/e1-experimental-repos/skill-do-work2
 

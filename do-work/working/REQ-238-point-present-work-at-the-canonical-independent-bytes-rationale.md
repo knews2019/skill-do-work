@@ -1,7 +1,17 @@
 ---
 id: REQ-238
 title: "Review fix: point present-work at the canonical independent-bytes rationale"
-status: pending
+status: claimed
+claimed_at: 2026-08-18T11:57:10Z
+route: B
+estimate:
+  p50_active_minutes: 15
+  confidence: high
+  calculated_at: 2026-08-18T11:57:10Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 4 acceptance criteria
 status_changed_at: 2026-08-18T11:56:00Z
 created_at: 2026-08-18T11:00:00Z
 user_request: UR-042
