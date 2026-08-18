@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.1 — Present-Work Points at the Shared Snapshot Rule (2026-08-18)
+
+The second of two paragraphs that a shipped instruction file was keeping its own copy of. It now points at the one place that reasoning lives, and the suite will fail the next copy.
+
+- `present-work.md` links the canonical **Portfolio summary publication** contract instead of restating why a snapshot must not share storage with the file it came from
+- Added that rationale to the stale-pattern list, so a future restatement anywhere in shipped markdown fails the suite
+- The action keeps its own requirement and its own policy; only the shared reasoning moved
+
 ## 0.212.0 — Durations Lane Fills Both Label Rows (2026-08-18)
 
 The chart picked its six longest jobs to label, then dropped any that could not fit side by side — and gave the freed space to nobody. On a board where several long jobs finish close together that left two labels in a strip with room for twenty.

@@ -30,6 +30,7 @@ When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep 
 
 ## Lessons
 
+- [REQ-238: every fix of this class trades a staleness risk that has a detector for a broken-link risk that has none](../../do-work/archive/REQ-238-point-present-work-at-the-canonical-independent-bytes-rationale.md#lessons-learned)
 - [REQ-234: a derived count that almost reproduces the remembered figure is the trap, not the fix](../../do-work/archive/REQ-234-stop-the-shell-behavior-suite-counting-its-own-cases.md#lessons-learned)
 - [REQ-230: a canonicalization suite proves a restatement is absent, never that the pointer replacing it resolves](../../do-work/archive/REQ-230-point-caller-docs-at-the-canonical-publication-rationale.md#lessons-learned)
 - [REQ-180: use the tracked filename's exact case in shell test paths](../../do-work/archive/UR-040/REQ-180-contract-suite-justfile-case-mismatch.md#lessons-learned)
