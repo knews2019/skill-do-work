@@ -157,12 +157,41 @@ file_modified_epoch() {
   printf '%s' "$modified_epoch"
 }
 
+# The read-side parser (the board's parseTimestamp, backed by Go's time.Parse)
+# rejects a shape-valid but calendar-impossible instant — 9999-99-99, April 31,
+# February 29 outside a leap year — so treating one as comparable here would
+# "repair" (erase) exactly the malformed evidence the board leaves visible for
+# diagnosis. Components are validated against the real calendar before any
+# string comparison; an impossible value is not comparable and stays untouched.
+calendar_components_valid() {
+  local canonical_stamp="$1" month_day_ceiling
+  local year_number=$((10#${canonical_stamp:0:4})) month_number=$((10#${canonical_stamp:5:2}))
+  local day_number=$((10#${canonical_stamp:8:2})) hour_number=$((10#${canonical_stamp:11:2}))
+  local minute_number=$((10#${canonical_stamp:14:2})) second_number=$((10#${canonical_stamp:17:2}))
+  [ "$month_number" -ge 1 ] && [ "$month_number" -le 12 ] || return 1
+  [ "$hour_number" -le 23 ] || return 1
+  [ "$minute_number" -le 59 ] || return 1
+  [ "$second_number" -le 59 ] || return 1
+  case "$month_number" in
+    4 | 6 | 9 | 11) month_day_ceiling=30 ;;
+    2)
+      month_day_ceiling=28
+      if [ $((year_number % 4)) -eq 0 ] && \
+        { [ $((year_number % 100)) -ne 0 ] || [ $((year_number % 400)) -eq 0 ]; }; then
+        month_day_ceiling=29
+      fi
+      ;;
+    *) month_day_ceiling=31 ;;
+  esac
+  [ "$day_number" -ge 1 ] && [ "$day_number" -le "$month_day_ceiling" ]
+}
+
 # A comparison key is a canonical `YYYY-MM-DDTHH:MM:SSZ` string, which orders
 # correctly under a plain string comparison — that is what lets this script
 # compare instants without any date-parsing dependency. Empty output means the
 # value is not comparable and must be left alone.
 comparison_key_for() {
-  local raw_value="$1" separator_normalized
+  local raw_value="$1" separator_normalized candidate_key
   # One matching pair of wrapping quotes is stripped first: YAML readers hand
   # the board the unquoted value, so a quoted stamp is comparable here too.
   case "$raw_value" in
@@ -171,16 +200,21 @@ comparison_key_for() {
   esac
   # A space separator is folded to `T` so the patterns below never have to
   # carry a literal space inside a bracket expression, where its quoting is
-  # shell-dependent.
+  # shell-dependent. With whole-value extraction this is what makes the
+  # board-parseable `YYYY-MM-DD HH:MM:SS` layout comparable — and repairable.
   separator_normalized="${raw_value/ /T}"
+  candidate_key=''
   case "$separator_normalized" in
     [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9])
-      printf '%sT00:00:00Z' "$separator_normalized" ;;
+      candidate_key="${separator_normalized}T00:00:00Z" ;;
     [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9])
-      printf '%sZ' "$separator_normalized" ;;
+      candidate_key="${separator_normalized}Z" ;;
     [0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9]:[0-9][0-9]:[0-9][0-9]Z)
-      printf '%s' "$separator_normalized" ;;
+      candidate_key="$separator_normalized" ;;
+    *) return 0 ;;
   esac
+  calendar_components_valid "$candidate_key" || return 0
+  printf '%s' "$candidate_key"
   return 0
 }
 

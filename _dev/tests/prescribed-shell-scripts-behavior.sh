@@ -1255,6 +1255,37 @@ grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_bom_project/do-work/queue/
 printf '%s' "$repair_bom_output" | grep -q 'REQ-810-bom.md created_at: 2093-04-04T04:04:04Z -> 2026-08-10T12:00:00Z' \
   || fail_case 'repair-req-timestamps BOM case did not log the correction'
 
+# repair-req-timestamps: a shape-valid but calendar-impossible stamp is left
+# byte-identical for diagnosis — the board's parser rejects it, so erasing it
+# to a derived instant would destroy the malformed evidence while claiming
+# parity (REQ-255, PR #145 external review). The range check must match the
+# read side's real calendar: month, day-in-that-month, leap years, and time
+# components — a real leap-day future stamp must still be repaired.
+repair_calendar_project="$fixture_root/repair-calendar-project"
+mkdir -p "$repair_calendar_project/do-work/queue"
+printf -- '---\nid: REQ-811\nstatus: pending\ncreated_at: 9999-99-99T99:99:99Z\n---\nbody\n' \
+  > "$repair_calendar_project/do-work/queue/REQ-811-impossible.md"
+printf -- '---\nid: REQ-812\nstatus: pending\ncreated_at: 2093-04-31T10:00:00Z\n---\nbody\n' \
+  > "$repair_calendar_project/do-work/queue/REQ-812-april-31.md"
+printf -- '---\nid: REQ-813\nstatus: pending\ncreated_at: 2093-02-29T10:00:00Z\n---\nbody\n' \
+  > "$repair_calendar_project/do-work/queue/REQ-813-not-a-leap-year.md"
+printf -- '---\nid: REQ-814\nstatus: pending\ncreated_at: 2092-02-29T10:00:00Z\n---\nbody\n' \
+  > "$repair_calendar_project/do-work/queue/REQ-814-real-leap-day.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_calendar_project/do-work/queue/"REQ-81*.md
+for impossible_fixture in REQ-811-impossible REQ-812-april-31 REQ-813-not-a-leap-year; do
+  cp "$repair_calendar_project/do-work/queue/$impossible_fixture.md" "$fixture_root/$impossible_fixture-before.md"
+done
+repair_calendar_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_calendar_project")" \
+  || fail_case 'repair-req-timestamps calendar case returned nonzero'
+for impossible_fixture in REQ-811-impossible REQ-812-april-31 REQ-813-not-a-leap-year; do
+  cmp -s "$fixture_root/$impossible_fixture-before.md" "$repair_calendar_project/do-work/queue/$impossible_fixture.md" \
+    || fail_case "repair-req-timestamps calendar case erased the impossible stamp in $impossible_fixture instead of leaving it for diagnosis"
+done
+grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_calendar_project/do-work/queue/REQ-814-real-leap-day.md" \
+  || fail_case 'repair-req-timestamps calendar case refused a real leap-day future stamp the board parses'
+printf '%s' "$repair_calendar_output" | grep -q 'REQ-811\|REQ-812\|REQ-813' \
+  && fail_case 'repair-req-timestamps calendar case logged a correction for a value it must not touch'
+
 # audit-archive-timestamps: under --fix, a future stamp in a committed archived REQ
 # (inside an archived UR folder, proving the recursive scan) is rewritten to the
 # introducing commit's author time and the correction logs the sourcing commit hash.
