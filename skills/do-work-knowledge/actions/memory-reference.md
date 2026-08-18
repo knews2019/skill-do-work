@@ -82,7 +82,7 @@ command -v embed >/dev/null 2>&1               # a standalone embed CLI
 [ -n "${OPENAI_API_KEY:-}${VOYAGE_API_KEY:-}" ] # an embeddings API key is exported
 ```
 
-If a backend is found: chunk candidates by daily-log `##` headings (working-memory.md is one chunk per section), embed query + chunks, rank by cosine similarity, then **merge with the lexical results by reciprocal-rank fusion** (score = Σ 1/(60 + rank) across both lists) and keep each chunk's attribution. If no backend is found: silently proceed lexical-only — same graceful degradation as `../do-work-board/actions/board.md` without Go. Never install, download, or prompt for a backend from inside `recall`.
+If a backend is found: chunk candidates by daily-log `##` headings (working-memory.md is one chunk per section), embed query + chunks, rank by cosine similarity, then **merge with the lexical results by reciprocal-rank fusion** (score = Σ 1/(60 + rank) across both lists) and keep each chunk's attribution. If no backend is found: silently proceed lexical-only — same graceful degradation as `../../do-work-board/actions/board.md` without Go. Never install, download, or prompt for a backend from inside `recall`.
 
 ## Consolidation Algorithm (the 2,500-char cap)
 
@@ -106,7 +106,7 @@ Files: `memory/usage-ledger.jsonl` (memory engine) and `usage-ledger.jsonl` at t
 
 | Field | Value |
 | --- | --- |
-| `ts` | current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`) |
+| `ts` | current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`) |
 | `engine` | `memory` \| `bkb` |
 | `event` | memory: `inject`, `capture`, `write`, `recall`, `hit_cited` · bkb: `query`, `ingest`, `hit_cited` (illustrative — new events allowed, auditor buckets unknown events as "other") |
 | `query` | recall/query events only; sanitized token form (same text-operation sanitize as lexical recall), never raw user text |
@@ -114,7 +114,7 @@ Files: `memory/usage-ledger.jsonl` (memory engine) and `usage-ledger.jsonl` at t
 | `source` | file path of the writer (e.g. `hooks/memory-stop-capture.sh`) |
 | `note` | free text, usually empty |
 
-Prescribed append (derive-then-substitute; `$utc_now`, `$safe_query` and `$hit_count` are already-derived values — `$utc_now` per the Timestamp rule, `../do-work/actions/work-reference.md`):
+Prescribed append (derive-then-substitute; `$utc_now`, `$safe_query` and `$hit_count` are already-derived values — `$utc_now` per the Timestamp rule, `../../do-work/actions/work-reference.md`):
 
 ```bash
 printf '{"ts":"%s","engine":"memory","event":"recall","query":"%s","hits":%d,"source":"actions/memory.md","note":""}\n' \
@@ -145,7 +145,7 @@ The memory store is split by durability: the curated `working-memory.md` is **co
 
 ## Hook Install Internals (used by actions/setup-memory.md → memory-module)
 
-`hooks/memory-hooks.json` is a fragment shaped exactly like `../do-work/hooks/hooks.json`. The shipped installer appends only missing entries into the consumer's `.claude/settings.json` — compose, never clobber:
+`hooks/memory-hooks.json` is a fragment shaped exactly like `../../do-work/hooks/hooks.json`. The shipped installer appends only missing entries into the consumer's `.claude/settings.json` — compose, never clobber:
 
 ```bash
 <skill-root>/scripts/install-memory-hooks.sh "$PROJECT_ROOT" "<skill-root>/hooks/memory-hooks.json"

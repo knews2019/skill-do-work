@@ -86,7 +86,7 @@ Otherwise:
 
 ## Output Format
 
-The report's `<timestamp>` is the current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`).
+The report's `<timestamp>` is the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`).
 
 ```markdown
 # Stray-Check Report
@@ -121,7 +121,7 @@ If `fix` mode and auto-fixable items exist, follow the Summary with the consent 
 <M> items are auto-fixable. Apply? [all / numbers / none]
 ```
 
-If nothing was found — same `<timestamp>` stamping (Timestamp rule, `../do-work/actions/work-reference.md`):
+If nothing was found — same `<timestamp>` stamping (Timestamp rule, `../../do-work/actions/work-reference.md`):
 
 ```
 # Stray-Check Report
@@ -135,9 +135,9 @@ All clear — no stray, misplaced, or orphan files detected.
 ## Rules
 
 - **The scan phase makes zero writes.** Findings are reported; fixes happen only after explicit confirmation (Step 5), and never in `report` mode.
-- **Skip the entire `do-work/` tree** and defer misplaced `do-work/` directories to `../do-work/actions/cleanup.md`. This action owns repo-wide hygiene, not do-work's bookkeeping.
+- **Skip the entire `do-work/` tree** and defer misplaced `do-work/` directories to `../../do-work/actions/cleanup.md`. This action owns repo-wide hygiene, not do-work's bookkeeping.
 - **Tracked files are removed with `git rm`, never raw `rm`** — prefer `git rm --cached` when the intent is to stop tracking rather than destroy.
-- **Never `git add -A` / `git add .`** — stage only the paths this action touched (see `../do-work/actions/commit.md` § Rules for the full staging/hook guard); never auto-commit; never touch paths outside the scan root.
+- **Never `git add -A` / `git add .`** — stage only the paths this action touched (see `../../do-work/actions/commit.md` § Rules for the full staging/hook guard); never auto-commit; never touch paths outside the scan root.
 - **Secrets are flagged loudly** with a history-retention + rotation warning; `git rm --cached` does not remove them from history — say so.
 - **Dead-code findings are Info-only and never auto-fixed.** Always attach the false-positive caveat.
 - **Respect `.gitignore`**: an untracked file already covered by an ignore rule is correct, not pollution — don't report it.

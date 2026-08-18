@@ -314,7 +314,7 @@ After capturing, write `session/sources/manifest.md`:
 
 ## State File Schema
 
-`session/state.json` tracks exploration progress for the orchestrator and for continue mode. Its `created_at`/`completed_at` are the current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`). The run directory's root `manifest.md` separately tracks the shared lifecycle (`in-progress` → `synthesized` → `consumed`) used by recovery and cleanup; do not use this nested state file as cleanup's deletion signal.
+`session/state.json` tracks exploration progress for the orchestrator and for continue mode. Its `created_at`/`completed_at` are the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`). The run directory's root `manifest.md` separately tracks the shared lifecycle (`in-progress` → `synthesized` → `consumed`) used by recovery and cleanup; do not use this nested state file as cleanup's deletion signal.
 
 ```json
 {

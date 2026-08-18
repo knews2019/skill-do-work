@@ -37,7 +37,7 @@ The toolbar carries a text filter (id or title), domain and status selects, a **
 
 ### Reading the `overlaps` badge
 
-It names the other pending/claimed REQs whose declared `write_set` could touch the same files — an informational heads-up, never a block. The badge schedules nothing, however many builders are running: when you hand several REQs out at once, the declared set is advisory input to *your* pick, and the merge refusing is what proves two builders didn't collide (`../do-work/actions/work-reference.md` → Worktree Dispatch Mode → Fan-Out Dispatch). It just surfaces declared file contention.
+It names the other pending/claimed REQs whose declared `write_set` could touch the same files — an informational heads-up, never a block. The badge schedules nothing, however many builders are running: when you hand several REQs out at once, the declared set is advisory input to *your* pick, and the merge refusing is what proves two builders didn't collide (`../../do-work/actions/work-reference.md` → Worktree Dispatch Mode → Fan-Out Dispatch). It just surfaces declared file contention.
 
 It under-reports, so read it as a floor, not a guarantee:
 

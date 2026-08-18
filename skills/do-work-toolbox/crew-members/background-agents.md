@@ -78,7 +78,7 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
    deletion, write `Status: consumed` to the manifest.
    The delete is a filesystem change that rides the normal commit flow; no action
    force-commits on its own. `consumed` is the bridge for the narrow window between
-   promotion and deletion — if a run is abandoned there, `../do-work/actions/cleanup.md` can
+   promotion and deletion — if a run is abandoned there, `../../do-work/actions/cleanup.md` can
    safely sweep it. It must never sweep `in-progress` or `synthesized` runs: the former
    still needs work, and the latter may hold an assembled output the user never received.
 
@@ -87,7 +87,7 @@ Disk-as-source-of-truth fixes that *regardless of why the session died*.
 Run directories are committable (step 1) and must **never** be ignored. For a genuinely
 transient sibling path such as a vendored engine or build artifact, apply the canonical
 [Local Git ignore](../../do-work/docs/prescribed-shell-primitives.md#local-git-ignore)
-primitive by invoking `../do-work/scripts/add-local-git-exclude.sh <path> '**/<path>'`.
+primitive by invoking `../../do-work/scripts/add-local-git-exclude.sh <path> '**/<path>'`.
 The caller supplies the exact path and states whether it merely wants quiet
 status output or must also reject an already-tracked copy; the guide owns the worktree-safe
 exclude path, root-aligned pattern, tracked-file caveat, and fail-soft shell form.
@@ -183,7 +183,7 @@ the merged state before starting the next merge. If a merge cannot be reconciled
 safely, abort it; if post-merge verification fails, revert that merge to the last
 verified state. In either case preserve and report the branch and worktree for
 recovery — never force-merge, `git branch -D`, or `git worktree remove --force`.
-For `do-work run`, follow `../do-work/actions/work-reference.md` → **Worktree Dispatch
+For `do-work run`, follow `../../do-work/actions/work-reference.md` → **Worktree Dispatch
 Mode (Step 1)** for the canonical hand-back, merge-range, verification, and cleanup
 flow.
 

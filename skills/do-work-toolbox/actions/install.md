@@ -17,7 +17,7 @@ Each target is idempotent and follows detect → install → verify → report. 
 **Do NOT use when:**
 - The project explicitly uses a different design system or browser-automation tool and adding the do-work default would conflict.
 - The environment can't install global npm packages (for `bowser`) and the user hasn't consented to a local-only install.
-- The user just wants to view the board once — that's `do-work-board board` (`../do-work-board/actions/board.md`), no install needed.
+- The user just wants to view the board once — that's `do-work-board board` (`../../do-work-board/actions/board.md`), no install needed.
 
 ## Input
 

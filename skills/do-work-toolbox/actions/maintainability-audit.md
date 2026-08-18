@@ -22,7 +22,7 @@ Every finding is a **refutable claim with reproducible evidence, never an impera
 **Do NOT use when:**
 - The user wants a qualitative, single-run review of consistency, security, or architecture → `actions/code-review.md`
 - The user wants a quick list of low-effort refactor targets without calibration or a persistent report → `actions/quick-wins.md`
-- The user suspects the do-work queue or archive itself is corrupted → core `../do-work/actions/forensics.md`
+- The user suspects the do-work queue or archive itself is corrupted → core `../../do-work/actions/forensics.md`
 - The user wants to audit prime-file freshness and coverage directly → `actions/prime.md` (audit sub-command); here, missing prime coverage is one judgment dimension, not the whole job
 
 ## Input
@@ -106,7 +106,7 @@ Same fallback rule as Step 2. For churn and hotspots, add one `--exclude-path` p
 
 Read only: hotspot files, entry points, the public API surface, their tests — plus any area the user named at the gate. Weight the dimensions as agreed there. Findings that collide with a documented decision or a recorded lesson from Step 2 are either dropped into **Pre-empted** (with the covering path) or emitted with an explicit `Challenges-decision: <path>` field and gate `rule-change` — never emitted as if the decision didn't exist.
 
-1. **Naming** — apply `../do-work/crew-members/coding-guardrails.md` § 5 (Naming for Reach) as the canonical rule set; do not restate it here. One audit-specific addition on top of it: names should match the project's *own* vocabulary — which in a do-work repo lives in the URs (the user's words), the prime files, and REQ titles, not primarily the README.
+1. **Naming** — apply `../../do-work/crew-members/coding-guardrails.md` § 5 (Naming for Reach) as the canonical rule set; do not restate it here. One audit-specific addition on top of it: names should match the project's *own* vocabulary — which in a do-work repo lives in the URs (the user's words), the prime files, and REQ titles, not primarily the README.
 2. **Abstraction** — repetition that wants a shared helper; helpers with a single caller; leaky layers (SQL in HTTP handlers, transport concerns in domain logic).
 3. **Consistency** — the same thing done more than one way: error handling, config access, response shapes, logging, folder conventions. Inconsistency outranks any single ugly function.
 4. **Test quality** — per hotspot: do tests assert behavior and contract, or restate implementation? Change-detector signals: assertions against mock internals, tests that break under behavior-preserving refactors, high mock-to-assertion ratio. Also the inverse gap: is the public contract covered at all?

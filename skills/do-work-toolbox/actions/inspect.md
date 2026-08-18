@@ -2,7 +2,7 @@
 
 > **Part of the do-work-toolbox skill.** Invoked when routing determines the user wants to understand uncommitted changes. Read-only — examines the working tree, explains what changed, traces changes to REQs, and assesses commit readiness. When scoped to a REQ or UR, also inspects committed files from the Implementation Summary for a complete picture. User-facing walkthrough: [`docs/inspect-guide.md`](../docs/inspect-guide.md).
 
-Unlike `../do-work/actions/commit.md` (which stages and commits), this action only reads and reports. Use it to understand what's in your working tree before deciding whether to commit, fix, or discard.
+Unlike `../../do-work/actions/commit.md` (which stages and commits), this action only reads and reports. Use it to understand what's in your working tree before deciding whether to commit, fix, or discard.
 
 ## When to Use
 
@@ -136,7 +136,7 @@ What the script settles, so this prose no longer has to:
 - **Terminal-success matching honors the Schema Read Contract's aliases**, so `completed`, `completed-with-issues`, and `complete`/`done`/`finished`/`closed` all qualify. Testing only for the literal `completed` drops every remediated-with-issues REQ, and its files then never get associated.
 - **In-flight `working/` REQs are included** regardless of status, since a claimed REQ is never terminal.
 - **Conflict resolution:** a path claimed by two REQs goes to the one with the latest `completed_at`. An archived REQ outranks an in-flight one.
-- **`do-work/` metadata paths are excluded** from association, matching `../do-work/tools/checks/scope-drift.sh`.
+- **`do-work/` metadata paths are excluded** from association, matching `../../do-work/tools/checks/scope-drift.sh`.
 
 **Partial matches count.** If 3 out of 5 files in a REQ's Implementation Summary are among the uncommitted files, group all 3 under that REQ.
 
@@ -245,7 +245,7 @@ Print the structured report. See Output Format below.
 
 ## Output Format
 
-The report uses a **hybrid format**: narrative explanations per group (like a colleague walking you through the code), followed by a compact readiness summary table at the end for quick scanning. The report's `<timestamp>` is the current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`).
+The report uses a **hybrid format**: narrative explanations per group (like a colleague walking you through the code), followed by a compact readiness summary table at the end for quick scanning. The report's `<timestamp>` is the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`).
 
 ```markdown
 # Inspect Report
@@ -350,7 +350,7 @@ Whenever XD appears, add this warning: committing the deletion removes the path 
 - The **Overall** line at the bottom counts only uncommitted files for the readiness assessment. Committed files are noted separately ("N committed files shown for context").
 - Omit sections with no entries (e.g., skip "REQ-Associated Changes" if no files match any REQ).
 
-If the working tree is clean and no REQ/UR scope was specified — same `<timestamp>` stamping (Timestamp rule, `../do-work/actions/work-reference.md`):
+If the working tree is clean and no REQ/UR scope was specified — same `<timestamp>` stamping (Timestamp rule, `../../do-work/actions/work-reference.md`):
 
 ```markdown
 # Inspect Report

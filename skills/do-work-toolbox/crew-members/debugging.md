@@ -51,7 +51,7 @@ Label diagnostic claims in REQ updates and escalation reports so the orchestrato
 ## When to Escalate
 
 - After **2 failed fix attempts** on the same hypothesis: discard it, form a new one.
-- After **3 total fix attempts** across different hypotheses: document what you've tried, then report to the orchestrator as a failure with the appropriate `error_type` (classify using the **Failure Classification (Step 8)** table in `../do-work/actions/work-reference.md`: `intent` for ambiguous requirements, `spec` for wrong approach, `code` for implementation bugs, `environment` for external issues).
+- After **3 total fix attempts** across different hypotheses: document what you've tried, then report to the orchestrator as a failure with the appropriate `error_type` (classify using the **Failure Classification (Step 8)** table in `../../do-work/actions/work-reference.md`: `intent` for ambiguous requirements, `spec` for wrong approach, `code` for implementation bugs, `environment` for external issues).
 - If the failure is in code you didn't write and don't fully understand: document the symptom and escalate rather than guessing.
 
 ## Knowledge Capture

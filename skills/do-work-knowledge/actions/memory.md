@@ -14,7 +14,7 @@
 **Do NOT use when:**
 - The content is wiki-grade knowledge to compile and interlink → `actions/bkb.md`.
 - The user wants to consolidate/prune an arbitrary memory or wiki directory → `actions/dream.md`.
-- The user is queueing work ("remember to fix X" = a task, not a fact) → `../do-work/actions/capture.md`.
+- The user is queueing work ("remember to fix X" = a task, not a fact) → `../../do-work/actions/capture.md`.
 
 ## Input
 
@@ -47,7 +47,7 @@ If `$MEMORY_DIR/working-memory.md` is missing for any sub-command except `audit`
 1. Read the WHOLE `working-memory.md` first — never blind-append.
 2. Place the fact in the right section (`## Active Threads` / `## Notes` / `## Pending Decisions`). If it duplicates an existing bullet, merge; if it supersedes one ("we now use X instead of Y"), replace the old bullet in place. An explicit ask to *forget* something is not a `remember` — route it to the `forget` sub-command below; supersede-in-place replaces a fact with its successor, `forget` erases a fact outright, and only the latter must also reach the logs.
 3. Enforce the hard cap: if the file would exceed **2,500 characters** (`wc -c`), run the consolidation algorithm in `actions/memory-reference.md` — merge, then demote droppables to today's log, then tighten. The file must end ≤ 2,500 chars.
-4. Mirror a one-liner to `memory/logs/<UTC date>.md` — the date-only shape in the Timestamp rule (`../do-work/actions/work-reference.md`) — under a `## HH:MM UTC note` heading (create the file if needed).
+4. Mirror a one-liner to `memory/logs/<UTC date>.md` — the date-only shape in the Timestamp rule (`../../do-work/actions/work-reference.md`) — under a `## HH:MM UTC note` heading (create the file if needed).
 5. Update the `updated:` frontmatter date. Append a `write` ledger event per `actions/memory-reference.md` (best-effort, never blocking).
 6. Tell the user what was stored, and what (if anything) was merged, replaced, or demoted. Remind them once per conversation that writes surface at the NEXT session start (the injected snapshot is frozen).
 
