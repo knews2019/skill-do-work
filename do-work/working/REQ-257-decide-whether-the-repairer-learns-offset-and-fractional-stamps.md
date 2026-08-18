@@ -110,3 +110,44 @@ Transcribed by the orchestrator from `do-work/runs/work-2026-08-18-211613/REQ-25
 - **[normal] The board's future warning prints a value that is not in the file.** For `created_at: 2093-01-01T00:00:00+02:00` the warning reads `created_at 2092-12-31T22:00:00Z`; for `2093-01-01T00:00:00.500Z` and `2093-01-01 00:00:00.5` it reads `2093-01-01T00:00:00Z`. The YAML layer types these as timestamps and `normalizeFrontmatterValue` re-formats them to RFC3339 UTC before the warning is built. A user who greps the file for the value the board named will not find it, and the warning's own remediation — "rewrite with the current UTC instant" — is aimed at a string that is not there. Observed by execution, not fixed: it lives in the board package, outside this REQ's write set. **This matters more now than before**, because this REQ's decision makes the board's warning the *only* signal for these shapes.
 - **[low] `created_at: 2093-01-01 00:00:00Z` is repaired here but is not board-parseable** — a space separator with a `Z` matches no `parseTimestamp` layout, and the board emitted no warning for it. The repairer is *broader* than the read side in this one direction, which is benign (an unreadable value is replaced with a readable one). Recorded as a known asymmetry rather than proposed as a REQ.
 
+---
+
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` against the merged tree (range `e5e0232..6afcbd5`), un-piped with the exit code read directly
+**Result:** ✓ `GATE_EXIT=0` — "Maintainer verification passed." The suite reports **66 named script cases**, up from 64: this REQ's two new case blocks are present and passing in the integrated tree. This run is both Step 6.5's testing and Step 8's post-merge verification.
+
+**Red-green validation:** a refusal cannot go red on its own, so RED is a mutation — the builder widened `comparison_key_for` exactly as "someone silently starts repairing those shapes" would, and ran the suite against pre-change code. Observed, verbatim:
+
+```
+FAIL: repair-req-timestamps refused-shape case logged a correction for an offset or fractional stamp
+FAIL: repair-req-timestamps refused-shape case rewrote REQ-817-offset-ahead.md — the offset/fractional
+      refusal is a decided permanent answer; changing it means re-deciding it, not widening comparison_key_for
+… (six fixtures, one per board-parseable refused shape)
+```
+
+Suite exit 1. A second RED, after the archive fixture was added, fired the auditor's assertions too — proving the pin reaches the **sourced** body and not just the repairer:
+
+```
+FAIL: audit-archive-timestamps refusal-parity case repaired a numeric-offset stamp in the archive —
+      the offset refusal is the sourced library one and must reach every tool built on it
+```
+
+GREEN is the 66-case suite passing in the merged tree above.
+
+**Premise check — the REQ's own framing was tested, and it was wrong.** Ten shapes through the shipped repairer: only the canonical one is repaired. The same ten through a board binary built to scratch: **six** produce a future warning. Lowercase `z`, `+0200`, and space-before-offset produce none — the board cannot parse those either, so those three refusals are agreed by both sides. The residual is therefore exactly six shapes, and the six lock-in fixtures are those six — the case pins the residual class rather than a sample of it.
+
+**Class check, not instance check.** `comparison_key_for` was sourced out of the shipped script and fuzzed across the value space — 2 dates × 2 times × 6 fraction spellings × 10 zone spellings × 2 separators × 3 quote spellings:
+
+```
+fuzz: 48 accepted, 1392 refused, 1440 total
+```
+
+Zero leaks. The 48 accepted are exactly the fraction-less, offset-less-or-`Z` shapes. No offset or fractional value produces a comparison key, and none is half-recognized — which is the property REQ-255's never-half-rewrite rule demands.
+
+**New tests added:** two case blocks — the six-shape refusal, and a read-side layout lock-step case that fails if the board's `parseTimestamp` layouts change underneath this decision — plus a numeric-offset fixture in the archive-parity block whose "logged a correction" assertion now covers both refused shapes. 64 → 66 named cases.
+
+**Existing tests updated (cross-REQ impact):** the archive-parity block gained a fixture and a widened assertion; no prior REQ's asserted behaviour changed.
+
+*Verified by work action*
+
