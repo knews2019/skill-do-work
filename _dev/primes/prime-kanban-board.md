@@ -24,6 +24,7 @@
 
 ## Lessons
 
+- [REQ-251: fixtures that need production wording should call the production helper, never hold a pasted copy — the third copy strands at the next message move exactly as the first two did](../../do-work/archive/REQ-251-retire-the-stale-copies-of-the-future-stamp-message.md#lessons-learned)
 - [REQ-248: pin shared geometry with a both-directions agreement assertion — one domain read by two languages needs a test that fails whichever side drifts alone](../../do-work/archive/REQ-248-anchor-durations-day-buckets-to-utc-midnight.md#lessons-learned)
 - [REQ-241: state the supremum over the space, not the worst case of a sample — and say what makes the sweep complete, next to the number](../../do-work/archive/REQ-241-reconcile-durations-label-metrics-with-the-rendered-face.md#lessons-learned)
 - [REQ-242: when the claim is that an input is unused, an exact structural check beats a bigger sweep — a band narrower than the sampling slips through](../../do-work/archive/REQ-242-stop-panel-b-annotation-colliding-with-its-title.md#lessons-learned)

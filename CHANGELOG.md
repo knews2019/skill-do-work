@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.12 — Stale Future-Stamp Wording Retired From Shipped Source (2026-08-18)
+
+A grep for the board's future-stamp diagnosis now finds only the production wording.
+
+- The two `verify_test.go` fixtures that held hand-typed copies of the retired reversed-span reason now derive it from production via `reversedSpanAnomalyReason(t)`, so the next message change cannot strand another copy.
+- `timestamp.go`'s comment no longer overstates its own test's claim — it matches its test twin: the Z-suffix relabel is one of the two corruptions the diagnosis names, not "the exact corruption".
+
 ## 0.212.11 — Panel B Stays on Canvas at Every Day Count (2026-08-18)
 
 The board's Durations view no longer draws its day bars off-canvas — a one- or two-day board used to render Panel B entirely off-screen, and even the many-day board had its leftmost bar struck through by the axis.

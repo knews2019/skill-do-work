@@ -12,7 +12,6 @@ session_depth: heavy
 
 - REQ-247: Archive timestamp audit tool driven by git commit times — claimed 2026-08-18T18:25:40Z — writer: vm:/home/user/skill-do-work
 - REQ-250: Close the remaining markdown link checker gaps — claimed 2026-08-18T18:25:40Z — writer: vm:/home/user/skill-do-work
-- REQ-251: Retire the stale copies of the future-stamp message — claimed 2026-08-18T18:25:40Z — writer: vm:/home/user/skill-do-work
 
 ## Completed This Session
 
