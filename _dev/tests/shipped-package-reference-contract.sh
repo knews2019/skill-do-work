@@ -545,6 +545,119 @@ def normalize_markdown_target(target):
     return "".join(normalized_target)
 
 
+# A heading anchor is generated from the heading's *rendered* text: lowercase it, drop
+# every character that is not a word character, a hyphen, or a space, then turn spaces
+# into hyphens. Repeated slugs take a -1, -2 … suffix in document order.
+inline_link_label_pattern = re.compile(r"!?\[([^\[\]]*)\](?:\([^()]*\)|\[[^\[\]]*\])")
+atx_heading_pattern = re.compile(r"^[ ]{0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
+heading_slug_cache = {}
+
+
+def heading_rendered_text(heading_text):
+    previous_text = None
+    while previous_text != heading_text:
+        previous_text = heading_text
+        heading_text = inline_link_label_pattern.sub(r"\1", heading_text)
+    return heading_text
+
+
+def heading_anchor_slug(heading_text):
+    slug = heading_rendered_text(heading_text).strip().lower()
+    slug = re.sub(r"[^\w\- ]", "", slug)
+    return slug.replace(" ", "-")
+
+
+def heading_anchor_slugs_from_text(markdown_text):
+    # strip_markdown_code preserves byte and line offsets, so a line whose masked form no
+    # longer opens with # sat inside a fence, an indented block, or an HTML comment and is
+    # not a heading. Slugs come from the raw line, because masking blanks inline code that
+    # the rendered heading text keeps.
+    masked_lines = strip_markdown_code(markdown_text).splitlines()
+    anchor_slugs = set()
+    slug_occurrences = {}
+    for line_index, raw_line in enumerate(markdown_text.splitlines()):
+        if line_index >= len(masked_lines):
+            break
+        if not masked_lines[line_index].lstrip(" \t").startswith("#"):
+            continue
+        heading_match = atx_heading_pattern.match(raw_line)
+        if heading_match is None:
+            continue
+        heading_text = re.sub(r"[ \t]+#+$", "", heading_match.group(2) or "")
+        anchor_slug = heading_anchor_slug(heading_text)
+        if not anchor_slug:
+            continue
+        occurrence_index = slug_occurrences.get(anchor_slug, 0)
+        slug_occurrences[anchor_slug] = occurrence_index + 1
+        anchor_slugs.add(
+            anchor_slug if occurrence_index == 0 else f"{anchor_slug}-{occurrence_index}"
+        )
+    return anchor_slugs
+
+
+def heading_anchor_slugs(markdown_file):
+    cache_key = os.fspath(markdown_file)
+    if cache_key not in heading_slug_cache:
+        try:
+            markdown_text = markdown_file.read_text(encoding="utf-8")
+        except (OSError, UnicodeError):
+            heading_slug_cache[cache_key] = None
+        else:
+            heading_slug_cache[cache_key] = heading_anchor_slugs_from_text(markdown_text)
+    return heading_slug_cache[cache_key]
+
+
+def run_anchor_slug_fixtures():
+    anchor_cases = [
+        (
+            "case folding and punctuation removal",
+            "## Portfolio summary publication\n## Raw text before shell quoting\n",
+            {"portfolio-summary-publication", "raw-text-before-shell-quoting"},
+        ),
+        (
+            "inline code contributes its content, not its backticks",
+            "## What `run` does (and does not) do\n",
+            {"what-run-does-and-does-not-do"},
+        ),
+        (
+            "link labels replace their destinations",
+            "## See [the guide](../docs/guide.md#top) first\n",
+            {"see-the-guide-first"},
+        ),
+        (
+            "code blocks and comments hold no headings",
+            "```sh\n# fenced comment\n```\n"
+            "    # indented comment\n"
+            "<!-- # commented heading -->\n"
+            "# Real Heading\n",
+            {"real-heading"},
+        ),
+        (
+            "repeated headings take numbered suffixes",
+            "# Same\n\n# Same\n\n# Same\n",
+            {"same", "same-1", "same-2"},
+        ),
+        (
+            "closing hash sequences are not part of the anchor",
+            "## Trailing Hashes ##\n",
+            {"trailing-hashes"},
+        ),
+    ]
+
+    fixture_failures = 0
+    for fixture_name, fixture_markdown, expected_slugs in anchor_cases:
+        actual_slugs = heading_anchor_slugs_from_text(fixture_markdown)
+        if actual_slugs != expected_slugs:
+            fail(
+                f"anchor fixture {fixture_name!r}: expected {sorted(expected_slugs)!r}, "
+                f"got {sorted(actual_slugs)!r}"
+            )
+            fixture_failures += 1
+
+    if fixture_failures:
+        raise SystemExit(1)
+
+
 def run_parser_fixtures():
     parser_cases = [
         (
@@ -919,6 +1032,7 @@ def validate_first_party_url(target, tracked_paths):
 
 
 run_parser_fixtures()
+run_anchor_slug_fixtures()
 modules = read_manifest()
 tracked_paths = {
     os.fsdecode(path_bytes)
@@ -989,6 +1103,45 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
                 f"{' and '.join(missing_locations)} topology: {target}"
             )
             broken_references += 1
+            continue
+
+        # Anchor resolution is keyed on a condition, never on a list of files or link
+        # forms: a link is anchor-checked exactly when it survived the skips above and
+        # carries both a fragment and a Markdown target. Everything skipped is skipped
+        # because this checker cannot resolve it without leaving the repository or
+        # guessing — a scheme'd URL (http(s), mailto, anything else) is not read; a
+        # bare fragment names no file to resolve against; a root-absolute or templated
+        # target has no single on-disk meaning; and a heading only exists in Markdown,
+        # so a fragment on any other suffix is an application's own addressing scheme.
+        # Anchors resolve against ATX headings, which is what this repository writes; a
+        # heading declared any other way reports here as a missing anchor.
+        anchor = urllib.parse.unquote(parsed.fragment)
+        if not anchor or relative_target.suffix.lower() != ".md":
+            continue
+
+        # The two topologies usually resolve back to the same source file; check each
+        # distinct one so a link that lands somewhere else once installed is still read.
+        anchor_targets = []
+        for topology_name, resolved_target in (
+            ("source", source_target),
+            ("installed", installed_source_target),
+        ):
+            if resolved_target in anchor_targets:
+                continue
+            anchor_targets.append(resolved_target)
+            target_slugs = heading_anchor_slugs(repo_root / resolved_target)
+            if target_slugs is None:
+                fail(
+                    f"{markdown_path}:{line_number}: cannot read {topology_name} "
+                    f"topology target {resolved_target}: {target}"
+                )
+                broken_references += 1
+            elif anchor not in target_slugs:
+                fail(
+                    f"{markdown_path}:{line_number}: anchor #{anchor} is not a heading "
+                    f"in {topology_name} topology target {resolved_target}: {target}"
+                )
+                broken_references += 1
 
 root_changelog = repo_root / "CHANGELOG.md"
 installed_changelog = repo_root / "skills/do-work/CHANGELOG.md"
