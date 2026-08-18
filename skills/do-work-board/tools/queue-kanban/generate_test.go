@@ -1976,10 +1976,11 @@ var durationsAnnotationNamedExtremes = []durationsAnnotationCase{
 	{"rightmost day, over the ceiling", 1182, 209},
 }
 
-// Sweep bounds. x runs WIDER than the plot because xOfEpoch puts a day's centre
-// outside it whenever the first sample of the first day completed after
-// midnight; the median range covers everything under the four-hour read-time
-// ceiling that admits a sample at all.
+// Sweep bounds. x runs WIDER than the plot on purpose: the day-anchored domain
+// (REQ-248) keeps every real day centre inside it, but this sweep is a property
+// of the drawing function at ANY x it could ever be handed, so it still covers
+// the off-plot band the pre-REQ-248 renderer produced. The median range covers
+// everything under the four-hour read-time ceiling that admits a sample at all.
 const (
 	durationsAnnotationSweepLeftX      = -400.0
 	durationsAnnotationSweepRightX     = 1400.0
