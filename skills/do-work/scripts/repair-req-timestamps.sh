@@ -50,8 +50,8 @@
 # prescribes). Everything else is REFUSED byte-identical, never half-rewritten:
 #   - A numeric UTC offset (`2093-01-01T00:00:00+02:00`) or fractional seconds
 #     (`2093-01-01T00:00:00.500Z`): refused PERMANENTLY — a settled answer, not
-#     a gap waiting on someone. The read side parses both, so the board badges
-#     such a stamp as future while this script leaves it alone. That residual
+#     a gap waiting on someone. The read side parses both, so a future one
+#     keeps its board badge while this script leaves it alone. That residual
 #     is real and it is accepted, because the arithmetic that would close it is
 #     the risk: comparison here is dependency-free string ordering, and
 #     normalizing an offset means carrying civil-date arithmetic in this file.
