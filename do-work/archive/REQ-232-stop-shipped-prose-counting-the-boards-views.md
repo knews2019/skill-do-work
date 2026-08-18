@@ -3,6 +3,7 @@ id: REQ-232
 title: "Review fix: stop shipped prose from counting the board's views"
 status: completed
 completed_at: 2026-08-18T01:50:46Z
+commit: ea6b1c3
 claimed_at: 2026-08-18T01:46:45Z
 domain: general
 created_at: 2026-08-18T01:17:41Z
