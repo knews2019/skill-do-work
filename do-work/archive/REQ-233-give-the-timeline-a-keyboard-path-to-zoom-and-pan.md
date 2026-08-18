@@ -3,7 +3,7 @@ id: REQ-233
 title: Give the Timeline a keyboard path to zoom and pan
 status: completed
 completed_at: 2026-08-18T11:10:30Z
-commit:
+commit: 9b2578b
 claimed_at: 2026-08-18T11:00:00Z
 route: B
 estimate:
