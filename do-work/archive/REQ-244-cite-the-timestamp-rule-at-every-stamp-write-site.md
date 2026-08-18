@@ -44,7 +44,7 @@ estimate:
 claimed_at: 2026-08-18T13:05:12Z
 route: C
 completed_at: 2026-08-18T14:04:36Z
-commit:
+commit: f733365
 ---
 
 # Cite the Timestamp Rule at Every Timestamp Write Site
