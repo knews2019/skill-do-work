@@ -1948,23 +1948,82 @@ const durationsMeasuredAxisTitleDescentUnits = 2.8
 const durationsMeasuredMarkLabelAscentUnits = 10.5
 const durationsMeasuredMarkLabelDescentUnits = 2.8
 
-// durationsSlowestDayAnnotationCases drive the annotation through both
-// dimensions that decided whether the defect was visible: WHERE on the calendar
-// axis the slowest day sits, and HOW TALL its bar is. The leftmost case is the
-// one this repository's own data has never produced, and it is the case the
-// defect hid behind — the annotation is centred on its day, so its x follows the
-// slowest day wherever that lands.
-var durationsSlowestDayAnnotationCases = []struct {
+// durationsAnnotationCase is one (position, bar height) the annotation can be
+// asked for — the two dimensions that decided whether the original defect was
+// visible.
+type durationsAnnotationCase struct {
 	caseName      string
 	dayCentreX    float64
 	medianMinutes float64
-}{
+}
+
+// The named extremes. Each is a position or a height this repository's own data
+// has never produced, and the first is the one the defect hid behind — the
+// annotation is centred on its day, so its x follows the slowest day wherever
+// that lands.
+var durationsAnnotationNamedExtremes = []durationsAnnotationCase{
 	{"leftmost day, over the ceiling", 54, 209},
 	{"leftmost day, a hair left of the plot", 38.9, 209},
 	{"leftmost day, at the ceiling", 54, 45},
 	{"leftmost day, a flat bar", 54, 0},
 	{"mid-plot day, over the ceiling", 618, 209},
 	{"rightmost day, over the ceiling", 1182, 209},
+}
+
+// Sweep bounds. x runs WIDER than the plot because xOfEpoch puts a day's centre
+// outside it whenever the first sample of the first day completed after
+// midnight; the median range covers everything under the four-hour read-time
+// ceiling that admits a sample at all.
+const (
+	durationsAnnotationSweepLeftX      = -400.0
+	durationsAnnotationSweepRightX     = 1400.0
+	durationsAnnotationSweepMaxMinutes = 240.0
+	durationsAnnotationSweepXCount     = 200
+	durationsAnnotationSweepMedians    = 50
+)
+
+// durationsSlowestDayAnnotationCaseList is the named extremes plus a
+// deterministic pseudo-random sweep of the whole plane the annotation can be
+// asked for, crossed so that a rule keyed on x AND median together has nowhere
+// to hide either.
+//
+// Why a sweep and not six points: six points is a SAMPLE, and the property
+// under test is a claim about every x. A mutant that returned the original
+// defect's baseline for x in (700, 1100) — which is where the maintainer's own
+// slowest day sits, at x=881.4 — passed the six-point version while
+// reproducing the defect on the real board. So did one banded on the median
+// between 1 and 44, where the real board's 42-minute median lives. Ten thousand
+// pairs cost about a third of a second; the structural check below closes the
+// gap the sweep still leaves for an arbitrarily narrow band.
+func durationsSlowestDayAnnotationCaseList() []durationsAnnotationCase {
+	annotationCases := append([]durationsAnnotationCase(nil), durationsAnnotationNamedExtremes...)
+	// A fixed seed, so a failure names coordinates the next run reproduces.
+	randomState := uint64(20260818)
+	nextUnitInterval := func() float64 {
+		randomState = randomState*6364136223846793005 + 1442695040888963407
+		return float64(randomState>>11) / float64(uint64(1)<<53)
+	}
+	// One decimal place, because the renderer writes x through toFixed(1) and a
+	// case the probe cannot echo back exactly would test the rounding instead.
+	sweptPositions := make([]float64, durationsAnnotationSweepXCount)
+	for positionIndex := range sweptPositions {
+		spread := durationsAnnotationSweepRightX - durationsAnnotationSweepLeftX
+		sweptPositions[positionIndex] = math.Round((durationsAnnotationSweepLeftX+nextUnitInterval()*spread)*10) / 10
+	}
+	sweptMedians := make([]float64, durationsAnnotationSweepMedians)
+	for medianIndex := range sweptMedians {
+		sweptMedians[medianIndex] = math.Round(nextUnitInterval()*durationsAnnotationSweepMaxMinutes*100) / 100
+	}
+	for _, sweptX := range sweptPositions {
+		for _, sweptMedian := range sweptMedians {
+			annotationCases = append(annotationCases, durationsAnnotationCase{
+				caseName:      fmt.Sprintf("swept day at x=%.1f with a %.2f-minute median", sweptX, sweptMedian),
+				dayCentreX:    sweptX,
+				medianMinutes: sweptMedian,
+			})
+		}
+	}
+	return annotationCases
 }
 
 // The defect this pins (REQ-242): the slowest-day annotation was drawn 7 units
@@ -1976,22 +2035,27 @@ var durationsSlowestDayAnnotationCases = []struct {
 //
 // The annotation now sits below panel B's baseline, so the clearance is the same
 // for every x and every bar height — which is what the assertion states by
-// driving the renderer's own drawing function through the extremes of both and
-// demanding one unchanging baseline that clears every neighbour that strip has:
-// panel B's title, panel B's "0" axis tick, panel C's title, and the plot the
-// bars occupy.
+// driving the renderer's own drawing function across ten thousand positions and
+// heights and demanding one unchanging baseline that clears every neighbour that
+// strip has: panel B's title, panel B's "0" axis tick, panel C's title, and the
+// plot the bars occupy. The strip's fourth occupant, the month rule, cannot be
+// cleared by any baseline and is handled as an accepted crossing at the end.
 func TestJavaScriptBehaviorDurationsSlowestDayAnnotationClearsItsNeighbours(t *testing.T) {
 	indexHtml := generateLiveSite(t)
+	annotationCases := durationsSlowestDayAnnotationCaseList()
 
-	probeCases, encodeError := json.Marshal(durationsSlowestDayAnnotationProbeCases())
+	probeCases, encodeError := json.Marshal(durationsSlowestDayAnnotationProbeCases(annotationCases))
 	if encodeError != nil {
 		t.Fatalf("encode annotation probe cases: %v", encodeError)
 	}
+	annotationSource := sliceBalancedBlockAfter(t, indexHtml, "function drawDurationsSlowestDayAnnotation(")
+	assertDurationsAnnotationBaselineIgnoresItsInputs(t, annotationSource)
+
 	javascriptProbe := fmt.Sprintf("var DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y = %v;\n",
 		durationsRendererConstant(t, "DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y")) +
 		"var drawnNodes = [];\n" +
 		"function makeDurationsSvgNode(svg, name, attributes, textContent) { drawnNodes.push({ name: name, attributes: attributes, text: textContent }); }\n" +
-		sliceBalancedBlockAfter(t, indexHtml, "function drawDurationsSlowestDayAnnotation(") + `
+		annotationSource + `
 var probeCases = ` + string(probeCases) + `;
 probeCases.forEach(function (probeCase) {
   drawDurationsSlowestDayAnnotation(null, { medianMinutes: probeCase.medianMinutes }, probeCase.dayCentreX);
@@ -2008,11 +2072,12 @@ process.stdout.write(JSON.stringify(drawnNodes.map(function (node) {
 		Text   string  `json:"text"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &drawnAnnotations); decodeError != nil {
-		t.Fatalf("decode slowest-day annotation behavior: %v (output %q)", decodeError, probeOutput)
+		t.Fatalf("decode slowest-day annotation behavior: %v (output starts %q)",
+			decodeError, string(probeOutput[:min(len(probeOutput), 400)]))
 	}
-	if len(drawnAnnotations) != len(durationsSlowestDayAnnotationCases) {
+	if len(drawnAnnotations) != len(annotationCases) {
 		t.Fatalf("the renderer drew %d annotations for %d cases — it must draw exactly one per slowest day",
-			len(drawnAnnotations), len(durationsSlowestDayAnnotationCases))
+			len(drawnAnnotations), len(annotationCases))
 	}
 
 	// Every box below is the taller of the two models of its own face: the one
@@ -2055,7 +2120,7 @@ process.stdout.write(JSON.stringify(drawnNodes.map(function (node) {
 	for _, neighbour := range neighbourBoxes {
 		neighbourTop := neighbour.baseline - neighbour.ascent
 		neighbourBottom := neighbour.baseline + neighbour.descent
-		for caseIndex, probeCase := range durationsSlowestDayAnnotationCases {
+		for caseIndex, probeCase := range annotationCases {
 			drawn := drawnAnnotations[caseIndex]
 			annotationTop := drawn.Y - annotationAscent
 			annotationBottom := drawn.Y + annotationDescent
@@ -2065,7 +2130,7 @@ process.stdout.write(JSON.stringify(drawnNodes.map(function (node) {
 			}
 		}
 	}
-	for caseIndex, probeCase := range durationsSlowestDayAnnotationCases {
+	for caseIndex, probeCase := range annotationCases {
 		drawn := drawnAnnotations[caseIndex]
 		if drawn.Y-annotationAscent <= medianBaseline {
 			t.Fatalf("%s: the annotation's text box starts at %.2f, above panel B's baseline at %.2f — inside the plot it overprints the bars, which are 4 units wide and shoulder to shoulder on a dense board",
@@ -2073,25 +2138,98 @@ process.stdout.write(JSON.stringify(drawnNodes.map(function (node) {
 		}
 		if drawn.Y != drawnAnnotations[0].Y {
 			t.Fatalf("%s: the annotation's baseline is %.2f but %s put it at %.2f — a baseline that moves with the day's position or its bar's height is a clearance that holds only for the days this repository happens to have",
-				probeCase.caseName, drawn.Y, durationsSlowestDayAnnotationCases[0].caseName, drawnAnnotations[0].Y)
+				probeCase.caseName, drawn.Y, annotationCases[0].caseName, drawnAnnotations[0].Y)
 		}
 		if drawn.X != probeCase.dayCentreX || drawn.Anchor != "middle" {
 			t.Fatalf("%s: the annotation was drawn at x=%.2f anchored %q, want x=%.2f anchored \"middle\" — it must stay centred on the day it describes",
 				probeCase.caseName, drawn.X, drawn.Anchor, probeCase.dayCentreX)
 		}
-		if wantText := fmt.Sprintf("%.0f min", probeCase.medianMinutes); drawn.Text != wantText {
+		if wantText := fmt.Sprintf("%.0f min", math.Round(probeCase.medianMinutes)); drawn.Text != wantText {
 			t.Fatalf("%s: the annotation reads %q, want %q — moving it must not cost it the value it exists to state",
 				probeCase.caseName, drawn.Text, wantText)
 		}
 	}
+
+	// The strip's fourth occupant is the month rule, and unlike the other three
+	// it cannot be cleared: .durations-month-line spans DURATIONS_MAIN_TOP to
+	// DURATIONS_COUNT_BOTTOM, so it crosses EVERY baseline the annotation could
+	// legally take, and it crosses panel A's reversed-band labels the same way.
+	// The crossing is accepted, not overlooked — on a fixture whose slowest day
+	// falls on a month boundary the rule passes between the "9" and the " min".
+	// What makes it acceptable is that it is a one-unit soft rule, so that is
+	// what gets asserted in place of a clearance: if the month rule ever grows
+	// wide or firm, this fires and the acceptance has to be re-argued.
+	annotationTop := drawnAnnotations[0].Y - annotationAscent
+	annotationBottom := drawnAnnotations[0].Y + annotationDescent
+	monthRuleTop := durationsRendererConstant(t, "DURATIONS_MAIN_TOP")
+	monthRuleBottom := durationsRendererConstant(t, "DURATIONS_COUNT_BOTTOM")
+	if annotationTop <= monthRuleTop || annotationBottom >= monthRuleBottom {
+		t.Fatalf("the annotation's text box [%.2f, %.2f] is no longer inside the month rule's span [%.2f, %.2f] — the crossing this test ACCEPTS has become avoidable, so it belongs in the clearance list above instead",
+			annotationTop, annotationBottom, monthRuleTop, monthRuleBottom)
+	}
+	if strokeWidth := durationsStyleDeclaration(t, ".durations-month-line", "stroke-width"); strokeWidth != "1" {
+		t.Fatalf("the month rule's stroke-width is %q, not \"1\" — it is allowed to cross the slowest-day annotation only because it is a hairline",
+			strokeWidth)
+	}
+	if strokeColour := durationsStyleDeclaration(t, ".durations-month-line", "stroke"); strokeColour != "var(--line-soft)" {
+		t.Fatalf("the month rule is stroked %q, not the soft line token — it is allowed to cross the slowest-day annotation only because it is soft",
+			strokeColour)
+	}
+}
+
+// The sweep above is dense, but it is still a sample: a band narrower than its
+// spacing would slip through it. This closes that gap exactly, by reading the
+// shipped function and requiring its baseline expression to mention neither
+// input. That is what makes one measurement at one x a statement about every x,
+// which is the whole claim this REQ rests on.
+func assertDurationsAnnotationBaselineIgnoresItsInputs(t *testing.T, annotationSource string) {
+	t.Helper()
+	baselineExpression := ""
+	for _, sourceLine := range strings.Split(annotationSource, "\n") {
+		if strings.HasPrefix(strings.TrimSpace(sourceLine), "y:") {
+			baselineExpression = strings.TrimSpace(sourceLine)
+			break
+		}
+	}
+	if baselineExpression == "" {
+		t.Fatal("drawDurationsSlowestDayAnnotation declares no single-line `y:` baseline — if the expression became multi-line, restate this check against its new shape rather than deleting it")
+	}
+	for _, inputName := range []string{"dayCentreX", "medianMinutes"} {
+		if strings.Contains(baselineExpression, inputName) {
+			t.Fatalf("the annotation's baseline expression %q reads %s — a baseline that depends on where the slowest day sits or how tall its bar is puts the clearance back at the mercy of the data, which is the defect REQ-242 fixed",
+				baselineExpression, inputName)
+		}
+	}
+}
+
+// durationsStyleDeclaration reads one property out of one rule in the board's
+// own stylesheet, so a test can hold a claim about how something is DRAWN
+// against the sheet that draws it rather than against a copied value.
+func durationsStyleDeclaration(t *testing.T, ruleSelector string, propertyName string) string {
+	t.Helper()
+	styleSheet, readError := embeddedWebAssets.ReadFile("web/board.css")
+	if readError != nil {
+		t.Fatalf("read web/board.css: %v", readError)
+	}
+	rulePattern := regexp.MustCompile(`(?s)` + regexp.QuoteMeta(ruleSelector) + `\s*\{(.*?)\}`)
+	ruleMatch := rulePattern.FindSubmatch(styleSheet)
+	if ruleMatch == nil {
+		t.Fatalf("web/board.css declares no rule for %s", ruleSelector)
+	}
+	declarationPattern := regexp.MustCompile(`(?m)^\s*` + regexp.QuoteMeta(propertyName) + `\s*:\s*([^;]+);`)
+	declarationMatch := declarationPattern.FindSubmatch(ruleMatch[1])
+	if declarationMatch == nil {
+		t.Fatalf("%s declares no %s", ruleSelector, propertyName)
+	}
+	return strings.TrimSpace(string(declarationMatch[1]))
 }
 
 // durationsSlowestDayAnnotationProbeCases hands the probe only the two fields it
 // drives the renderer with; the case name stays on the Go side for the failure
 // messages.
-func durationsSlowestDayAnnotationProbeCases() []map[string]float64 {
-	probeCases := make([]map[string]float64, 0, len(durationsSlowestDayAnnotationCases))
-	for _, probeCase := range durationsSlowestDayAnnotationCases {
+func durationsSlowestDayAnnotationProbeCases(annotationCases []durationsAnnotationCase) []map[string]float64 {
+	probeCases := make([]map[string]float64, 0, len(annotationCases))
+	for _, probeCase := range annotationCases {
 		probeCases = append(probeCases, map[string]float64{
 			"dayCentreX":    probeCase.dayCentreX,
 			"medianMinutes": probeCase.medianMinutes,
