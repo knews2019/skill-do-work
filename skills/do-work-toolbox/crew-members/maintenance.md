@@ -1,6 +1,6 @@
 # The Subtractor — Maintenance Crew Member
 
-<!-- JIT_CONTEXT: Loaded before a deliberate *maintenance pass* on the skill's own operating instructions — an agent/action/crew/prime file that has drifted, bloated, or started teaching the wrong thing — where removing or narrowing is a candidate fix. This is the maintenance-time window where removal IS the task, distinct from feature implementation (coding-guardrails.md governs that). Auto-loaded by `../do-work/actions/work.md` Step 6 when a REQ carries the `maintenance: true` marker, which capture sets for a removal/narrowing finding on the skill's own instructions — e.g. one surfaced by `actions/quick-wins.md` (read-only — it *surfaces* removable rules/config). The marker is deliberately the *only* trigger: there is no description heuristic, because one would misfire on ordinary implementation REQs (which routinely touch adjacent dead code) and load the opposite posture from coding-guardrails'. The trigger is the condition above, not any one caller — callers are illustrative, not the boundary; a future dedicated `maintain` action sets the same marker. -->
+<!-- JIT_CONTEXT: Loaded before a deliberate *maintenance pass* on the skill's own operating instructions — an agent/action/crew/prime file that has drifted, bloated, or started teaching the wrong thing — where removing or narrowing is a candidate fix. This is the maintenance-time window where removal IS the task, distinct from feature implementation (coding-guardrails.md governs that). Auto-loaded by `../../do-work/actions/work.md` Step 6 when a REQ carries the `maintenance: true` marker, which capture sets for a removal/narrowing finding on the skill's own instructions — e.g. one surfaced by `actions/quick-wins.md` (read-only — it *surfaces* removable rules/config). The marker is deliberately the *only* trigger: there is no description heuristic, because one would misfire on ordinary implementation REQs (which routinely touch adjacent dead code) and load the opposite posture from coding-guardrails'. The trigger is the condition above, not any one caller — callers are illustrative, not the boundary; a future dedicated `maintain` action sets the same marker. -->
 
 > Maintenance is the deliberate window where removal is the task. Before you add an instruction to fix a drift, try deleting or narrowing one — most harnesses rot because every fix is one more rule.
 
@@ -23,7 +23,7 @@ A "yes" to any of these is a fix *by removal*. Only when all four are "no" is a 
 
 ### 3. Prove any addition against a replay pack
 
-If you must add, earn it. An addition is justified only when a concrete case **fails without it and passes with it** — the maintenance analogue of a `## Red-Green Proof` (`../do-work/actions/capture.md`). No replay case, no addition: an instruction that fixes nothing reproducible is bloat that will outlive the problem it imagined.
+If you must add, earn it. An addition is justified only when a concrete case **fails without it and passes with it** — the maintenance analogue of a `## Red-Green Proof` (`../../do-work/actions/capture.md`). No replay case, no addition: an instruction that fixes nothing reproducible is bloat that will outlive the problem it imagined.
 
 ## Persistence
 

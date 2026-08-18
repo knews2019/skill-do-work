@@ -6,7 +6,7 @@
 
 ## Philosophy
 
-Most findings actions in this skill (`actions/code-review.md`, `actions/quick-wins.md`, `actions/ui-review.md`) and the core `../do-work/actions/forensics.md` action *produce* findings. This one *receives* them — a code-review comment, a PR thread, a security report, an audit someone else ran — and adjudicates each against the actual code. The output is a per-item verdict with evidence, not a rewrite.
+Most findings actions in this skill (`actions/code-review.md`, `actions/quick-wins.md`, `actions/ui-review.md`) and the core `../../do-work/actions/forensics.md` action *produce* findings. This one *receives* them — a code-review comment, a PR thread, a security report, an audit someone else ran — and adjudicates each against the actual code. The output is a per-item verdict with evidence, not a rewrite.
 
 Two principles do the heavy lifting:
 
@@ -22,8 +22,8 @@ Two principles do the heavy lifting:
 
 **Do NOT use when:**
 - The user wants you to *generate* a review of the codebase → `actions/code-review.md` (or `actions/ui-review.md` for UI, `actions/quick-wins.md` for low-hanging fixes).
-- The user wants to check whether captured REQs faithfully reflect the original input → `../do-work/actions/verify-requests.md`.
-- The user wants a post-build review of completed work against its acceptance criteria → `../do-work/actions/review-work.md`.
+- The user wants to check whether captured REQs faithfully reflect the original input → `../../do-work/actions/verify-requests.md`.
+- The user wants a post-build review of completed work against its acceptance criteria → `../../do-work/actions/review-work.md`.
 
 ## Input
 
@@ -66,7 +66,7 @@ For every finding, before forming a verdict:
 2. **Check whether it's already addressed.** Inspect git — `git diff` (uncommitted), `git log`/`git show` (recent commits), staged changes — for evidence the issue was already handled.
 3. **Adversarially verify the claim.** Try to *refute* it before accepting it: is the premise actually true? Does the cited line do what the finding says? Is the impact real or theoretical? Is the scope right? When subagents are available, spawn an independent verifier per non-trivial finding and default to "refuted" when the evidence is ambiguous.
 4. **Maintain provenance.** Keep straight which statements come from the pasted finding versus the code you read, so the verdict's evidence is traceable.
-5. **Price added defensive surface.** Apply `../do-work/crew-members/coding-guardrails.md` § 2's earned-defense rubric when the proposed remedy would add a **guard, fallback, retry, validation layer, rule, or warning apparatus**. For this triage, ask: **what incident earned this, and is the fix still cheaper than the surface it added?** Record the incident/replay case, long-lived surface, cost call, and test as the finding's Surface-cost evidence; flag it when the rubric is not earned or a cheaper remedy wins. Direct bug fixes, deletions, and simplifications are outside this check and receive **Surface-cost: N/A**.
+5. **Price added defensive surface.** Apply `../../do-work/crew-members/coding-guardrails.md` § 2's earned-defense rubric when the proposed remedy would add a **guard, fallback, retry, validation layer, rule, or warning apparatus**. For this triage, ask: **what incident earned this, and is the fix still cheaper than the surface it added?** Record the incident/replay case, long-lived surface, cost call, and test as the finding's Surface-cost evidence; flag it when the rubric is not earned or a cheaper remedy wins. Direct bug fixes, deletions, and simplifications are outside this check and receive **Surface-cost: N/A**.
 
 ### Step 5: Recommend a Verdict per Item
 

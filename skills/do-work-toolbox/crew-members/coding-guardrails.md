@@ -27,7 +27,7 @@ and surface later via `do-work clarify`. Silent assumptions are the failure mode
 
 Not every choice deserves the user's attention, and not every choice should be made
 silently. Sort each one into three tiers — this is the **canonical statement of the
-gate**; `crew-members/anti-slop.md` § 8 and `../do-work/actions/work.md` Steps 3.5/6 point here.
+gate**; `crew-members/anti-slop.md` § 8 and `../../do-work/actions/work.md` Steps 3.5/6 point here.
 
 - **DECIDE & STATE** — reversible, intent inferable from context, no reasonable person
   would disagree. Just do it, then record it tersely so it surfaces as a *handled* item,

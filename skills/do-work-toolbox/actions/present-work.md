@@ -78,7 +78,7 @@ Commit identifiers may be listed when recorded. If a recorded commit needs inspe
 
 Before drafting, read `../../do-work/crew-members/anti-slop.md` and apply all of its current principles. Generate the complete portfolio summary once and retain that generated content as one stable byte sequence for publication.
 
-Use this compact structure, omitting empty optional sections — `<timestamp>` is the current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`):
+Use this compact structure, omitting empty optional sections — `<timestamp>` is the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`):
 
 ```markdown
 # Work Portfolio
