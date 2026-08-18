@@ -87,3 +87,25 @@ Transcribed by the orchestrator from the hand-back — a worktree builder cannot
 
 - **[low] The self-test's cleanup trap emits `self_test_root: unbound variable` on every failure path.** `run_self_test` sets `trap 'rm -rf -- "$self_test_root"' EXIT` with a single-quoted body, so the variable expands at trap time — but it is a function `local`, already out of scope once a `fail_self_test` path returns. Every self-test failure therefore prints a spurious unbound-variable line after its real FAIL line, and the temp directory is not actually removed. **Pre-existing, not introduced here** — the builder verified this by mutating the ShellCheck lane in the *pre-change* script (`git show HEAD~1:_dev/tests/maintainer-verify.sh`), which produces the same trailing line. Exit codes are correct throughout, so this is cosmetic plus a temp-directory leak on failure paths only.
 
+---
+
+## Testing
+
+**Tests run:** `bash _dev/tests/maintainer-verify.sh` against the merged tree (range `79d594c..307e146`), run un-piped with the exit code read directly
+**Result:** ✓ `GATE_EXIT=0` — "Maintainer verification passed." The new lane is present and running in the integrated gate: `maintainer-verify: gofmt formatting check (56 tracked files)`. This run is both Step 6.5's testing and Step 8's post-merge verification.
+
+**Red-green validation:** the acceptance criterion is that the lane *bites*, which cannot be shown by a green gate. Evidence comes from two independent mutation runs rather than from assertion:
+
+- **Builder, on its branch:** reintroduced the exact slip from this REQ's story — a stray space in the day-domain truncation expression in `skills/do-work-board/tools/queue-kanban/durations.go` (`Truncate(24 * time.Hour)` → `Truncate(24  * time.Hour)`) — and observed `GATE_EXIT_MISFORMATTED=1` with the failure naming `skills/do-work-board/tools/queue-kanban/durations.go` and printing the `gofmt -w` remedy. Reverted, `git status --porcelain` empty, `GATE_EXIT_AFTER_REVERT=0`.
+- **Independent reviewer, on the merged tree:** asked to reproduce that mutation itself rather than accept it, plus to attempt to *disarm* the lane and check whether `--self-test` catches the disarming. Findings recorded in `## Review`.
+
+The orchestrator deliberately did not run a third mutation of the same file concurrently with the reviewer's — two agents mutating and reverting one path in one tree is how mutation evidence stops meaning anything.
+
+**Prior-art check on the tool's contract (the reason the lane is not a copy of the ShellCheck lane):** `gofmt -l` on a deliberately mis-formatted file lists that file and **still exits 0** (observed, `exit-bad=0`). A lane trusting the exit status would have been decorative — green forever, catching nothing.
+
+**New tests added:** self-test coverage in the same file — a `gofmt` shim case through a fixture GOROOT, a `go env GOROOT` shim case, a dual-pathspec `git ls-files` shim case, the new stage in the success-stage assertions (expected totals 8→9 and 9→10), and two failure shapes: `gofmt-lint` (formatter errors) and `gofmt-unformatted` (formatter exits 0 but lists a file), the second additionally asserting the failure output names the offending file. Self-test observed: `SELFTEST_EXIT=0`.
+
+**Existing tests updated (cross-REQ impact):** none — the stage-count assertions changed as a direct consequence of adding the lane, not as a behavior change to any prior REQ's test.
+
+*Verified by work action*
+
