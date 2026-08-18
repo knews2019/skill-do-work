@@ -14,7 +14,7 @@ Unlike the commit steps embedded in other actions (capture Step 7, work.md's Com
 - Files have accumulated outside the normal pipeline (manual edits, ad-hoc fixes)
 
 **Do NOT use when:**
-- User just wants to *understand* uncommitted changes — route to ../do-work-toolbox/actions/inspect.md instead
+- User just wants to *understand* uncommitted changes — route to `../../do-work-toolbox/actions/inspect.md` instead
 - Committing as part of actions/work.md (work.md has its own commit step)
 
 ## When This Runs
