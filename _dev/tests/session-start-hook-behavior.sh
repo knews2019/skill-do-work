@@ -108,6 +108,41 @@ if [[ -e "$cleanup_project_root/do-work/.req-reservations/REQ-000001" ]]; then
   failure_count=$((failure_count + 1))
 fi
 
+# With the timestamp repairer installed, a detectably wrong stamp in the queue is
+# mechanically repaired at session start — before any agent or board render reads
+# the file — and the hook appends the audit trail to the banner. The cases above
+# run without scripts/ present, pinning that a partial install still emits the
+# plain banner.
+repair_case_root="$fixture_root/timestamp-repair"
+repair_skill_root="$repair_case_root/skill"
+repair_project_root="$repair_case_root/project"
+mkdir -p "$repair_skill_root/hooks" "$repair_skill_root/actions" "$repair_skill_root/scripts" \
+  "$repair_project_root/do-work/queue"
+cp "$hook_source" "$repair_skill_root/hooks/session-start.sh"
+cp "$repo_root/skills/do-work/scripts/repair-req-timestamps.sh" "$repair_skill_root/scripts/"
+printf '**Current version**: 9.8.7\n' > "$repair_skill_root/actions/version.md"
+printf -- '---\nid: REQ-001\nstatus: pending\ncreated_at: 2093-01-01T00:00:00Z\n---\nbody\n' \
+  > "$repair_project_root/do-work/queue/REQ-001-fixture.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_project_root/do-work/queue/REQ-001-fixture.md"
+repair_expected_output="do-work v9.8.7 loaded. 1 pending REQ(s). Say 'do-work help' for commands.
+do-work: repaired do-work/queue/REQ-001-fixture.md created_at: 2093-01-01T00:00:00Z -> 2026-08-10T12:00:00Z (file mtime)
+do-work: repaired 1 detectably wrong timestamp(s) — review and commit the correction(s) with the next housekeeping commit."
+repair_actual_output="$(CLAUDE_PROJECT_DIR="$repair_project_root" \
+  bash "$repair_skill_root/hooks/session-start.sh" 2> "$repair_case_root/stderr.txt")" || {
+  printf 'FAIL: timestamp-repair: hook exited nonzero; stderr: %s\n' \
+    "$(tr '\n' ' ' < "$repair_case_root/stderr.txt")" >&2
+  failure_count=$((failure_count + 1))
+}
+if [[ "$repair_actual_output" != "$repair_expected_output" ]]; then
+  printf 'FAIL: timestamp-repair: expected <%s>, got <%s>.\n' \
+    "$repair_expected_output" "$repair_actual_output" >&2
+  failure_count=$((failure_count + 1))
+fi
+if ! grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_project_root/do-work/queue/REQ-001-fixture.md"; then
+  printf 'FAIL: timestamp-repair: the future stamp survived the session start.\n' >&2
+  failure_count=$((failure_count + 1))
+fi
+
 if [[ "$failure_count" -gt 0 ]]; then
   exit 1
 fi
