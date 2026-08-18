@@ -216,16 +216,28 @@ const (
 
 	// A label's width is estimated per character rather than measured. The exact
 	// answer needs getComputedTextLength, which exists only after render and
-	// would move this decision back into the client. The estimate is deliberately
-	// generous for the 11px sans face: over-estimating drops a label, which is
-	// visible and counted, while under-estimating overprints one, which is the
-	// defect this rule exists to fix.
-	durationsLabelCharacterWidthUnits = 6.2
+	// would move this decision back into the client. Over-estimating drops a
+	// label, which is visible and counted; under-estimating overprints one, which
+	// is the defect this rule exists to fix — so the constant is calibrated ABOVE
+	// the widest label the renderer can compose, not at the average one.
+	//
+	// The 11px sans face was measured on the board's own page: "REQ-4444 44h 44m"
+	// advances 107.29 user units over 16 characters, 6.71 per character, and
+	// today's three-digit ids top out at 6.68 ("REQ-444 44h 44m", 100.14 over 15).
+	// TestDurationsLabelWidthEstimateCoversTheRenderedFace holds this value at or
+	// above that measurement. It stood at 6.2 until REQ-241, which is BELOW the
+	// face — the old comment claimed a generosity that ran the other way, and only
+	// durationsLabelSeparationUnits kept the error off the screen.
+	durationsLabelCharacterWidthUnits = 6.75
 
 	// Mark centre to the near edge of its text, matching the renderer's offset.
 	durationsLabelGapUnits = 9.0
 
-	// Minimum clear space between two labels sharing a row.
+	// Minimum clear space between two labels sharing a row. With the width model
+	// calibrated above the face (REQ-241) this is real whitespace rather than the
+	// slack that used to absorb an under-estimate: at 6.2 units per character the
+	// tightest gap in a saturated lane measured 3.08 units against the 6 the rule
+	// claims to hold.
 	durationsLabelSeparationUnits = 6.0
 
 	// Text rows available in each band. Each band packs its own rows; they have

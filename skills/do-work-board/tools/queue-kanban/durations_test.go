@@ -451,6 +451,70 @@ func durationsRendererConstant(t *testing.T, constantName string) float64 {
 // this test's geometric question, so it lives here.
 const durationsLabelTextDescentUnits = 2.0
 
+// ---- the rendered face, measured ------------------------------------------
+//
+// Both numbers below come from the browser, because the face is the browser's
+// answer and no amount of arithmetic over the constants under test can produce
+// it — computing a guarantee from the constant it is meant to judge is circular.
+// They are recorded here so a Go test can hold the model to the face without a
+// browser in the loop, and both are rounded AWAY from the model (up), so a
+// passing assertion can never be an artefact of the rounding.
+//
+// Procedure, reproducible from any board directory `queue-kanban generate` wrote:
+// load index.html, activate the Durations view, append an SVG <text> carrying
+// class "durations-mark-label" to the chart's own <svg>, and read
+// getComputedTextLength() and getBBox() off it. Measured in Chromium 1228 at the
+// class's declared 11px over the board's --font-sans stack; the SVG is a fixed
+// viewBox at width:100%, so user units are zoom- and window-independent.
+
+// The widest label per character the renderer can compose. formatDurationMinutes
+// emits exactly two forms — "N.N min" under an hour and "Hh Mm" at or above one —
+// and the second is the dense one, because " min" spends three characters on a
+// space, a narrow "i" and an "n". Worst over every digit and both three- and
+// four-digit REQ ids: "REQ-4444 44h 44m", 107.29 units across 16 characters =
+// 6.7054. Three-digit ids alone top out at 6.6762 ("REQ-444 44h 44m"). Rounded
+// up to 6.71.
+const durationsMeasuredWidestUnitsPerCharacter = 6.71
+
+// The same face's rendered line box: 12.8343 units tall, 10.4278 above the
+// baseline and 2.4064 below, and constant whether or not the string carries
+// descenders — it is the line box, not the ink. Rounded up to 12.84.
+const durationsMeasuredLabelBoxHeightUnits = 12.84
+
+// The defect this pins (REQ-241): durationsLabelCharacterWidthUnits was 6.2
+// against a face that draws 6.71, and its comment called that "deliberately
+// generous" — a claimed safety margin pointing the wrong way. A per-character
+// width model is only honest as an UPPER bound: over-estimating drops a label,
+// which the remainder sentence counts, while under-estimating overprints one,
+// which is the whole defect placement exists to prevent.
+func TestDurationsLabelWidthEstimateCoversTheRenderedFace(t *testing.T) {
+	if durationsLabelCharacterWidthUnits < durationsMeasuredWidestUnitsPerCharacter {
+		t.Fatalf("width model assumes %.4f units per character, but the rendered face draws up to %.4f — the estimate under-states the text it is placing",
+			durationsLabelCharacterWidthUnits, durationsMeasuredWidestUnitsPerCharacter)
+	}
+}
+
+// The defect this pins (REQ-241): DURATIONS_LABEL_ROW_HEIGHT was 12 while the
+// same file declared an 11-unit ascent and this file a 2-unit descent — a 13-unit
+// box on a 12-unit pitch, so two label rows' boxes overlapped by 0.83 units in a
+// live render. Nothing visibly collided, because a line box is padding rather
+// than ink; what it cost was the ability to assert row-against-row separation at
+// all, the way TestDurationsLabelRowsClearTheMarkBands asserts row-against-mark.
+// The pitch must clear BOTH boxes: the one the code declares and the one the
+// browser draws.
+func TestDurationsLabelRowPitchClearsTheLabelTextBox(t *testing.T) {
+	rowHeight := durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
+	declaredBoxHeight := durationsRendererConstant(t, "DURATIONS_LABEL_TEXT_ASCENT") + durationsLabelTextDescentUnits
+	if rowHeight < declaredBoxHeight {
+		t.Fatalf("row pitch %.2f is smaller than the %.2f-unit text box the renderer declares (ascent + %.2f descent) — consecutive rows share vertical space",
+			rowHeight, declaredBoxHeight, durationsLabelTextDescentUnits)
+	}
+	if rowHeight < durationsMeasuredLabelBoxHeightUnits {
+		t.Fatalf("row pitch %.2f is smaller than the %.2f-unit line box the browser draws — consecutive rows share vertical space",
+			rowHeight, durationsMeasuredLabelBoxHeightUnits)
+	}
+}
+
 // The defect this pins (REQ-231): REQ-226 stopped labels overprinting each
 // other, but the mark band and the first label row still shared vertical space,
 // so on a dense board the DOTS overprinted the text instead. Both bands' label
