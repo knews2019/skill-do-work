@@ -52,6 +52,32 @@ A false positive here is not free. It teaches a reader that a qualify FAIL can b
 - The distinguishing rule is **stated as a condition** and not as a list of allowed files or allowed line shapes (CLAUDE.md → Closed Enumerations Go Stale; the detail is in `_dev/primes/prime-shell-commands.md`).
 - `maintenance: true`: **ask what can be removed before adding.** It is worth asking whether a bare-`print(` grep earns its place at all, given that the scan cannot see the difference between a debug line and a contract's output, and given that the reviewer and the orchestrator both read the diff anyway. Deleting a heuristic that cries wolf may be a better answer than teaching it a new trick.
 
+## Implementation Summary
+
+**What was done:** `qualify.sh`'s debug-artifact scan (Check 4) now splits its tokens by property. Unfinished-work markers (`debugger`, `TODO`, `FIXME` — vocabulary illustrative) FAIL anywhere, unchanged. Output primitives (`print(`, `console.log` — the class, not the fired token) are judged by process-exit ownership: a file that ends its own process (exit idioms, illustrative vocabulary) has a terminal audience, so an added output line is presumptively its own reporting and surfaces as a legible WARN; a file that never ends its process is library code, so the same line FAILs naming the file and reason. The output half walks changed files per path in both serial and range modes. REQ-244's ready-made case now passes with a WARN; genuine library instrumentation still FAILs. Deletion of the heuristic was weighed and declined on the REQ's own GREEN criterion (D-01). Orchestrator applied one seam: `review-work.md`'s diff-hygiene line no longer re-flags a checker's success output.
+
+**Files changed:**
+- `skills/do-work/tools/checks/qualify.sh` (modified) — token split (`unfinished_marker_regex` / `output_primitive_regex`), per-file ownership walk, condition stated in the comment
+- `_dev/tests/prescribed-shell-scripts-behavior.sh` (modified) — three `qualify:` lock-ins (reporter passes serial+range; library instrumentation FAILs with named file; TODO in a reporter still FAILs), suite 52 → 55 cases
+- `skills/do-work/actions/review-work.md` (modified) — integration seam: diff-hygiene wording aligned with the new boundary
+
+*Integrated by orchestrator from builder hand-back; merge range `8f564b3..116eec6`.*
+
+## Decisions
+
+Transcribed from the builder hand-back:
+
+- **D-01 (DECIDE & STATE):** keep a narrowed scan, decline deletion — the REQ's GREEN requires library instrumentation to keep FAILing; the narrowing removes exactly the crying-wolf half and the scan now claims strictly less.
+- **D-02 (DECIDE & STATE):** the condition is process-exit ownership — printed output belongs to whoever owns the process exit; both token and exit-idiom vocabularies marked illustrative.
+- **D-03 (DECIDE & STATE):** the exemption covers the output-primitive class, not the fired token — `console.log` in a Node checker is the same defect one language over; pinned in the reporter fixture.
+- **D-04 (DECIDE & STATE):** unfinished-work markers stay unconditional — the reporter exemption is not a file-level pardon; pinned by the third lock-in.
+- **D-05 (DECIDE & STATE):** reporter hits WARN, not silent pass — WARN is the script's existing judgment channel; accepted limit: a forgotten debug print inside a checker WARNs, the honest boundary of intent-blindness.
+- **D-06 (DECIDE & STATE):** no `work.md` seam — the FAIL/WARN prose contract is unchanged; only which side one token class lands on moved.
+
+## Qualification
+
+Passed — 3 files in merge range `8f564b3..116eec6` (2 builder + 1 seam), requirements traced (condition-not-list verified in the shipped comment; both REQ RED cases exercised; deletion genuinely weighed with the tie-breaker named), P-A-U audited. The builder's pushback — the REQ's condition-and-deletion asks pull opposite ways and the Red-Green Proof broke the tie — is accepted as the correct reading; the widest consequence (any script's stray print WARNs rather than FAILs) is recorded with its rationale.
+
 ## Builder Guidance
 
 Candidate signals, none prescribed: whether the added line is inside `_dev/tests/`; whether the file is itself a check; whether the print is unreachable after a raise/exit on the failure path; whether the printed text is asserted anywhere. The mechanical definition is the builder's call — the requirement is that it keys on a property, not on a filename.
