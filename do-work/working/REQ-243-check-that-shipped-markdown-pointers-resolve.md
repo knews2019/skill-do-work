@@ -303,3 +303,31 @@ a `[see below](#some-section)` pointing at a heading that was renamed is silentl
 I left it out because the REQ named it a skip deliberately rather than by omission, and narrowing or
 widening a scope decision the author made on purpose is the author's call, not mine. If you want it,
 it is a very small follow-up.
+
+## Review
+
+**Reviewer:** independent subagent, read-only, judged from git state and from executing the changed code — not from the builder's report.
+**Score:** 88% — **PASS-WITH-FINDINGS** (first pass, pre-remediation)
+
+### Findings returned to the builder
+
+1. **The line-offset invariant relied on is not the one the fixtures lock, and it breaks in both directions.** The code builds its raw and code-masked line arrays with `str.splitlines()`, which splits on `\r`, `\x0b`, `\x0c`, `\x1c`, `\x1d`, `\x1e`, `\x85`, U+2028 and U+2029 as well as `\n`; `mask_text_range` preserves only `\n` and turns everything else in a masked range into a space. So any of those code points inside a fence, inline-code span, or HTML comment makes the masked array shorter and shifts every later index. The existing fixture cited as proof asserts only that length and `\n` *positions* are preserved — it says nothing about `splitlines()` indices. Reproduced on the real functions in both directions: headings silently lost, **and a false-negative where a link to a non-existent anchor passes while the genuine anchor fails.** Zero live occurrences in `skills/**/*.md` today, so latent rather than broken — but a link checker with a silent false-negative mode is the precise failure this REQ exists to prevent. Fix is `.split("\n")` in two places, which makes the code depend on exactly the invariant the fixture already locks, plus the fixture nobody had written.
+2. **The installed-topology branch of the new check has never executed** — not on the corpus, not in a fixture. All 27 live anchor checks are `[source]` against one target file; the dedup guard suppresses the second iteration every time, leaving the installed tuple and both installed-topology messages with zero coverage of any kind.
+
+### Findings routed as follow-ups rather than remediation
+
+3. HTML tags and entities in heading text diverge from GitHub's slug in the false-negative direction (`## <kbd>Ctrl</kbd> and stuff` → `kbdctrlkbd-and-stuff` vs GitHub's `ctrl-and-stuff`). All 27 real headings with suspicious characters currently slug correctly.
+4. Blockquoted ATX headings (`> # Quoted`) are dropped; GitHub does generate an anchor. Fails loudly, so low severity, but the limitation is unstated.
+5. Same-file bare `#anchor` links are not validated — `[see below](#renamed-section)` is silently broken today. ~3 lines now that slugs are cached.
+6. **`os.path.normpath` does not clamp `..` at the repo root**, and this change escalates such a path from `stat` to `read_text`. Pre-existing in origin, escalated in effect. The only one of the four the orchestrator would call a hole rather than a limitation.
+
+### Upheld against the builder's claims
+
+- The new `continue` cannot skip anything — confirmed against `git show 2432f45:` that the branch was previously the last statement in the loop body.
+- The skip rule is genuinely condition-keyed (`if not anchor or relative_target.suffix.lower() != ".md"`), not a hidden enumeration.
+- The slug rule is correct for **every** real anchor in this repo, hand-checked against GitHub on the awkward cases: `` The `estimate:` Frontmatter Block ``, `` Sub-Command: `init [path]` ``, `7. Stale Pending-Answers & Blocked` (two spaces → two hyphens, matching github-slugger's non-collapsing rule), and ``What `run` does (and does not) do``.
+- The check is **not vacuous**: instrumenting the corpus walk reaches 27 anchor resolutions, and monkeypatching one anchor away produces 6 `FAIL:` lines carrying citing file, line, anchor, resolved target and raw link — the corpus failure path fires, not only the fixtures.
+- Not holes, each checked: uppercase `.MD`, `foo.md?q=1#a`, percent-encoded anchors, reference definitions `[x]: file.md#a`, case-mismatched anchors, fences with a backtick in the info string, and `#`-lines in indented code.
+- Scope clean: one file, no `do-work/`, no version files, no changelog.
+
+*Reviewed by work action*
