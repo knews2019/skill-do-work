@@ -30,6 +30,7 @@ When a rule applies "whenever X happens" (load a guardrail, honor an enum, keep 
 
 ## Lessons
 
+- [REQ-230: a canonicalization suite proves a restatement is absent, never that the pointer replacing it resolves](../../do-work/archive/REQ-230-point-caller-docs-at-the-canonical-publication-rationale.md#lessons-learned)
 - [REQ-180: use the tracked filename's exact case in shell test paths](../../do-work/archive/UR-040/REQ-180-contract-suite-justfile-case-mismatch.md#lessons-learned)
 - [REQ-186: give identical baseline child invocations one required owner](../../do-work/archive/UR-041/REQ-186-baseline-suite-single-ownership.md#lessons-learned)
 - [REQ-187: keep one maintainer command inventory and close aggregate self-test recursion with a fixture-only mode](../../do-work/archive/UR-041/REQ-187-canonical-local-maintainer-gate.md#lessons-learned)

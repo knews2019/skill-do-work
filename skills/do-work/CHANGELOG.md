@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.208.1 — Present-Work Points at the Shared Publication Rule (2026-08-18)
+
+One shipped instruction file was carrying its own word-for-word copy of a shell rule that already lives in the shared guide. It now points at the guide and keeps only its own policy, and the canonicalization suite will fail the next copy instead of letting it through.
+
+- `present-work.md` links the canonical **Verified exact publication** section rather than restating why a directory in the destination's place is a container, not a collision
+- Added that rationale to the stale-pattern list, so a future restatement anywhere in shipped markdown fails the suite
+
 ## 0.208.0 — Durations Lane Separates Its Dots From Its Labels (2026-08-18)
 
 The Durations chart's top strip used to draw its first line of text at the same height as the dots, so on a busy board a neighbouring dot sat right on top of a label. Dots now keep the strip's top, the text moves below a divider with a tick tying each label to its dot, and the labels go to the longest jobs instead of whichever the packer reached first.
