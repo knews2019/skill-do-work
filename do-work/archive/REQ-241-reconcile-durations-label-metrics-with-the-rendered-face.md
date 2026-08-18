@@ -34,7 +34,7 @@ estimate:
 claimed_at: 2026-08-18T12:43:06Z
 route: B
 completed_at: 2026-08-18T13:51:09Z
-commit:
+commit: 90c74b7
 ---
 
 # Reconcile the Durations Label Metrics With the Face Actually Rendered
