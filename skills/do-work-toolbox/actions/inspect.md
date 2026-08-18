@@ -245,12 +245,12 @@ Print the structured report. See Output Format below.
 
 ## Output Format
 
-The report uses a **hybrid format**: narrative explanations per group (like a colleague walking you through the code), followed by a compact readiness summary table at the end for quick scanning.
+The report uses a **hybrid format**: narrative explanations per group (like a colleague walking you through the code), followed by a compact readiness summary table at the end for quick scanning. The report's `<timestamp>` is the current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`).
 
 ```markdown
 # Inspect Report
 
-**Date:** {timestamp}
+**Date:** <timestamp>
 **Scope:** {All changes / REQ-NNN / UR-NNN}
 **Uncommitted files:** {N} ({M modified}, {A added}, {D deleted}, {XD secret-shaped deletions}, {X excluded})
 **Committed files:** {N} (from Implementation Summary — REQ/UR scope only)
@@ -350,12 +350,12 @@ Whenever XD appears, add this warning: committing the deletion removes the path 
 - The **Overall** line at the bottom counts only uncommitted files for the readiness assessment. Committed files are noted separately ("N committed files shown for context").
 - Omit sections with no entries (e.g., skip "REQ-Associated Changes" if no files match any REQ).
 
-If the working tree is clean and no REQ/UR scope was specified:
+If the working tree is clean and no REQ/UR scope was specified — same `<timestamp>` stamping (Timestamp rule, `../do-work/actions/work-reference.md`):
 
 ```markdown
 # Inspect Report
 
-**Date:** {timestamp}
+**Date:** <timestamp>
 **Scope:** All changes
 
 No uncommitted changes.

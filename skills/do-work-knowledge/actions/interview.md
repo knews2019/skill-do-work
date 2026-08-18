@@ -110,15 +110,15 @@ Create the directory structure:
 └── CHANGELOG.md
 ```
 
-Initial `session.json`:
+Initial `session.json` — every `*_at` value is the current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`):
 
 ```json
 {
   "template": "<template>",
   "template_version": "<current template version>",
   "session_id": "<uuid>",
-  "started_at": "<iso>",
-  "last_activity_at": "<iso>",
+  "started_at": "<timestamp>",
+  "last_activity_at": "<timestamp>",
   "status": "in_progress",
   "pending_layer": "<first-layer-id-from-template>",
   "previous_version": null,

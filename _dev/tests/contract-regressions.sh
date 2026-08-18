@@ -1377,22 +1377,32 @@ fi
 # clock command, every other stamp write site has to point at it, or an agent filling a template from
 # context never re-reads the rule. That is not hypothetical — three completed_at stamps were once
 # written by extrapolating the clock forward instead of reading it, and nothing at those sites said
-# otherwise (REQ-244). Two conditions, keyed on shape rather than on any list of files or sites:
+# otherwise (REQ-244).
 #
-#   1. Spelling. The rule recognizes exactly `<timestamp>` and `<now>`. A bracket-form placeholder
-#      naming a timestamp is a spelling no rule governs, so it is a regression wherever it appears.
-#   2. Citation. Every recognized placeholder carries `Timestamp rule` on its own line — or, when the
-#      site sits inside a fenced block whose lines are copied verbatim into a generated artifact, on
-#      the nearest non-blank line above that fence's opening delimiter. Those two positions are the
-#      only ones a reader of the site actually sees; a citation anywhere else in the file is not at
-#      the site. Fenced YAML takes the same-line form as a trailing comment (the capture-reference.md
-#      precedent), which is why the fence carve-out is a position, not an exemption.
+# Recognition is keyed on shape, never on a spelling or a site list. A site is a placeholder — any
+# bracketed or quoted span short enough to name a value rather than be prose — that is assigned to
+# something and that either denotes a clock value by name or is the value of an `*_at` key, which is
+# the rule's own stated trigger ("every `*_at` field in this schema, and any timestamp a future field
+# adds"). The denoting vocabulary below is illustrative and meant to grow; what must not grow is a
+# list of files. A first pass at this check keyed on the literal bracket forms it had just fixed and
+# consequently could not see `<ISO 8601 timestamp>`, `{timestamp}`, `"<iso>"`, or a bare `*_at` key —
+# the enumeration had simply moved up one level (REQ-244 review, F2).
 #
-# Placeholders that name a *directory* rather than a stamp are spelled with their own calendar form
-# (`work-<YYYY-MM-DD-HHMMSS>`), so nothing here needs a path exception. Date-only sites are a
-# different shape governed by the rule's own Date-only paragraph and are deliberately not swept into
-# the instant spelling. The zero-site guard is the anti-vacuity clause: if the recognized spellings
-# are ever renamed, this check must fail loudly rather than pass by matching nothing.
+# Two requirements at every INSTANT site:
+#   1. Spelling. The line carries `<timestamp>` or `<now>` — the two spellings the rule's own sentence
+#      says mean it. Recognition stays broad so a new spelling is still caught; the requirement stays
+#      narrow so it gets normalized.
+#   2. Citation. `Timestamp rule` appears on the site's own line, or — when the site sits inside a
+#      fenced block copied verbatim into a generated artifact — on the nearest non-blank line above
+#      that fence's opening delimiter. Those are the only two positions a reader of the site sees.
+#
+# Placeholders naming a *directory* or a path are names, not stamps, and are skipped by shape (a `/`
+# inside, or `-`/`/` glued to the outside). DATE-ONLY sites are recognized and counted but are NOT
+# required to cite: the rule's Date-only paragraph governs UTC calendar dates while explicitly
+# leaving local dates (report slugs, changelog headings) ungoverned, and no one has yet decided which
+# of the report-header dates are which. Counting them keeps that open question visible instead of
+# silently in scope. The zero-site guard is the anti-vacuity clause, and the success line prints both
+# counts so a run that quietly stops recognizing sites is visible rather than green.
 if ! python3 - "$repo_root" <<'PY'
 import pathlib
 import re
@@ -1401,12 +1411,20 @@ import sys
 root = pathlib.Path(sys.argv[1])
 failures = []
 
-recognized_placeholder = re.compile(r"<(?:timestamp|now)>")
-bracket_placeholder = re.compile(r"\[[^\]\n]*timestamp[^\]\n]*\]", re.IGNORECASE)
+placeholder_span = re.compile(r"<([^<>\n]*)>|\{([^{}\n]*)\}|\[([^\[\]\n]*)\]|\"([^\"\n]*)\"")
+nested_placeholder = re.compile(r"<[^<>\n]*>|\{[^{}\n]*\}")
+instant_word = re.compile(r"\b(?:timestamp|now|iso)\b", re.IGNORECASE)
+instant_shape = re.compile(r"YYYY-MM-DDTHH")
+date_word = re.compile(r"\b(?:date|today)\b", re.IGNORECASE)
+date_shape = re.compile(r"YYYY-MM-DD")
+stamp_key_assignment = re.compile(r"[A-Za-z_][A-Za-z0-9_]*_at\"?\s*[:=]\s*$")
+assignment = re.compile(r"[:=]")
+recognized_spelling = re.compile(r"<(?:timestamp|now)>")
 rule_citation = re.compile(r"Timestamp rule")
 fence_delimiter = re.compile(r"^\s*(```|~~~)")
 
-stamp_site_count = 0
+instant_site_count = 0
+date_only_site_count = 0
 for action_file in sorted(root.glob("skills/*/actions/*.md")):
     relative_path = action_file.relative_to(root).as_posix()
     inside_fence = False
@@ -1431,13 +1449,32 @@ for action_file in sorted(root.glob("skills/*/actions/*.md")):
                 last_nonblank_line = line
             continue
 
-        for bracket_match in bracket_placeholder.finditer(line):
-            failures.append(
-                f"{relative_path}:{line_number}: {bracket_match.group(0)} is a placeholder "
-                "spelling no rule governs; the Timestamp rule recognizes <timestamp> and <now>"
+        for match in placeholder_span.finditer(line):
+            inner_text = next(group for group in match.groups() if group is not None)
+            written_form = match.group(0)
+            preceding = line[: match.start()]
+            following = line[match.end() :]
+            if len(inner_text) > 30 and not nested_placeholder.search(inner_text):
+                continue
+            if "/" in inner_text or preceding[-1:] in ("-", "/") or following[:1] in ("-", "/"):
+                continue
+            if not assignment.search(preceding):
+                continue
+            names_an_instant = bool(
+                instant_word.search(inner_text)
+                or instant_shape.search(inner_text)
+                or stamp_key_assignment.search(preceding)
             )
-        if recognized_placeholder.search(line):
-            stamp_site_count += 1
+            names_a_date = bool(date_word.search(inner_text) or date_shape.search(inner_text))
+            if not names_an_instant:
+                date_only_site_count += names_a_date
+                continue
+            instant_site_count += 1
+            if not recognized_spelling.search(line):
+                failures.append(
+                    f"{relative_path}:{line_number}: instant write site is written "
+                    f"{written_form}; the rule recognizes <timestamp> and <now>"
+                )
             if not rule_citation.search(line) and not (
                 inside_fence and rule_citation.search(fence_introduction)
             ):
@@ -1448,19 +1485,21 @@ for action_file in sorted(root.glob("skills/*/actions/*.md")):
         if line.strip():
             last_nonblank_line = line
 
-if stamp_site_count == 0:
+if instant_site_count == 0:
     failures.append(
-        "no recognized stamp placeholder was found in any shipped action file — the "
-        "spellings this check keys on were renamed and it has gone blind"
+        "no instant write site was recognized in any shipped action file — the shapes this "
+        "check keys on changed and it has gone blind"
     )
 
 if failures:
-    raise SystemExit(
-        "timestamp citation failures:\n- " + "\n- ".join(failures)
-    )
+    raise SystemExit("timestamp citation failures:\n- " + "\n- ".join(failures))
+print(
+    f"Timestamp rule citation contract: {instant_site_count} instant write sites cited, "
+    f"{date_only_site_count} date-only sites recognized."
+)
 PY
 then
-  printf 'FAIL: a shipped stamp write site uses an ungoverned placeholder spelling or points at no Timestamp rule, so an agent filling it has nothing telling it to read a clock (REQ-244).\n' >&2
+  printf 'FAIL: a shipped stamp write site uses an unrecognized spelling or points at no Timestamp rule, so an agent filling it has nothing telling it to read a clock (REQ-244).\n' >&2
   fail_count=$((fail_count + 1))
 fi
 
