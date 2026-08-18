@@ -1286,6 +1286,51 @@ grep -q '^created_at: 2026-08-10T12:00:00Z$' "$repair_calendar_project/do-work/q
 printf '%s' "$repair_calendar_output" | grep -q 'REQ-811\|REQ-812\|REQ-813' \
   && fail_case 'repair-req-timestamps calendar case logged a correction for a value it must not touch'
 
+# repair-req-timestamps: a numeric UTC offset or fractional seconds is refused
+# permanently — the decided answer to the residual, not a to-do (REQ-257). Every
+# such shape the read side parses and future-badges is left byte-identical, is
+# never logged, and does not fail the run. This case is what fails if someone
+# quietly teaches comparison_key_for offset arithmetic: a refusal that lived only
+# in a header comment pinned nothing, and the risk being refused is real —
+# repairing here would rewrite an instant the read side already reads correctly.
+repair_refused_shape_project="$fixture_root/repair-refused-shape-project"
+mkdir -p "$repair_refused_shape_project/do-work/queue"
+printf -- '---\nid: REQ-817\nstatus: pending\ncreated_at: 2093-01-01T00:00:00+02:00\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-817-offset-ahead.md"
+printf -- '---\nid: REQ-818\nstatus: pending\ncreated_at: 2093-01-01T00:00:00-05:00\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-818-offset-behind.md"
+printf -- '---\nid: REQ-819\nstatus: pending\ncreated_at: "2093-01-01T00:00:00+02:00"\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-819-quoted-offset.md"
+printf -- '---\nid: REQ-820\nstatus: pending\ncreated_at: 2093-01-01T00:00:00.500Z\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-820-fractional-zulu.md"
+printf -- '---\nid: REQ-821\nstatus: pending\ncreated_at: 2093-01-01T00:00:00.5\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-821-fractional-bare.md"
+printf -- '---\nid: REQ-822\nstatus: pending\ncreated_at: 2093-01-01 00:00:00.5\n---\nbody\n' \
+  > "$repair_refused_shape_project/do-work/queue/REQ-822-fractional-space.md"
+TZ=UTC touch -m -t 202608101200.00 "$repair_refused_shape_project/do-work/queue/"REQ-8[12]*.md
+for refused_fixture in "$repair_refused_shape_project/do-work/queue/"REQ-8[12]*.md; do
+  cp "$refused_fixture" "$fixture_root/refused-$(basename "$refused_fixture")"
+done
+repair_refused_shape_output="$("$core_scripts/repair-req-timestamps.sh" "$repair_refused_shape_project")" \
+  || fail_case 'repair-req-timestamps refused-shape case returned nonzero for shapes it deliberately does not repair'
+[ -z "$repair_refused_shape_output" ] \
+  || fail_case 'repair-req-timestamps refused-shape case logged a correction for an offset or fractional stamp'
+for refused_fixture in "$repair_refused_shape_project/do-work/queue/"REQ-8[12]*.md; do
+  cmp -s "$fixture_root/refused-$(basename "$refused_fixture")" "$refused_fixture" \
+    || fail_case "repair-req-timestamps refused-shape case rewrote $(basename "$refused_fixture") — the offset/fractional refusal is a decided permanent answer; changing it means re-deciding it, not widening comparison_key_for"
+done
+
+# repair-req-timestamps: the read-side layout list the refusal is scoped against
+# stays in lock-step — the residual is the GAP between the board's parser and
+# this script's, so pinning only the refusing side would let a widened board grow
+# the gap silently. A new layout here means the offset/fractional decision (and
+# the header paragraph stating it) gets re-made, not inherited.
+board_timestamp_layouts="$(awk '/^func parseTimestamp\(/, /^}/' \
+  "$repo_root/skills/do-work-board/tools/queue-kanban/model.go" \
+  | sed -n 's/^[[:space:]]*\(time\.RFC3339\|"2006[^"]*"\),$/\1/p' | tr '\n' ' ')"
+[ "$board_timestamp_layouts" = 'time.RFC3339 "2006-01-02T15:04:05" "2006-01-02 15:04:05" "2006-01-02" ' ] \
+  || fail_case "repair-req-timestamps read-side-layout case: the board's parseTimestamp layouts are now [$board_timestamp_layouts] — re-decide what repair-req-timestamps.sh refuses before widening the read side"
+
 # repair-req-timestamps: a duplicated anchor key follows the last occurrence,
 # exactly like the read side (the board's YAML dedup keeps the LAST value of a
 # repeated top-level key) — a later-then-earlier claimed_at pair is a real
