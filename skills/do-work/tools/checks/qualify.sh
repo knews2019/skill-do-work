@@ -170,6 +170,24 @@ if [ "${unchecked_boxes:-0}" -gt 0 ]; then
   failure_count=$((failure_count + 1))
 fi
 if [ "$git_available" -eq 1 ]; then
+  # Artifact tokens split by a property, never a file list (REQ-254). Markers of
+  # unfinished or debug-only work (debugger, TODO, FIXME — vocabulary illustrative,
+  # meant to grow) are artifacts wherever they land: nothing shipped keeps them on
+  # purpose, so they FAIL on sight. Output primitives (print(, console.log — same
+  # caveat) are different in kind: the same token writes a checker's success line
+  # and a forgotten debug dump, and a scan cannot see intent. The distinguishing
+  # condition: printed output belongs to whoever owns the process exit. A file that
+  # ends its own process (the exit idioms in the regex below approximate that
+  # condition) is a program with a terminal audience — a check, a CLI — so an added
+  # output line there is presumptively the file's own reporting, surfaced as a WARN
+  # for judgment. A file that never ends its process is library code: nothing reads
+  # its stdout by contract, so the same line FAILs as leftover instrumentation.
+  # This scan once FAILed a checker's only success line (REQ-244's remediation) and
+  # the override went on the record — a gate that cries wolf trains people to wave
+  # through FAILs.
+  unfinished_marker_regex='debugger|TODO|FIXME'
+  output_primitive_regex='console\.log|(^|[^[:alnum:]_])print\('
+  process_exit_regex='(^|[^[:alnum:]_])exit +[0-9$]|sys\.exit *\(|raise +SystemExit|os\._exit *\(|process\.exit *\('
   # do-work/ is excluded at the pathspec level, NOT with a `grep -v 'do-work/'`
   # on the piped lines: added-content lines carry no file path, so a content
   # grep cannot scope by file — it silently matched REQ prose that merely
@@ -177,15 +195,35 @@ if [ "$git_available" -eq 1 ]; then
   # clean implementations. `+++` headers are dropped so a filename containing
   # TODO cannot trip the artifact grep either.
   if [ -n "$diff_range" ]; then
-    debug_artifact_lines="$(git diff "$diff_range" -- . ':(exclude)do-work/' | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE 'console\.log|debugger|(^|[^[:alnum:]_])print\(|TODO|FIXME' || true)"
+    debug_artifact_lines="$(git diff "$diff_range" -- . ':(exclude)do-work/' | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE "$unfinished_marker_regex" || true)"
   else
-    debug_artifact_lines="$({ git diff -- . ':(exclude)do-work/'; git diff --staged -- . ':(exclude)do-work/'; } | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE 'console\.log|debugger|(^|[^[:alnum:]_])print\(|TODO|FIXME' || true)"
+    debug_artifact_lines="$({ git diff -- . ':(exclude)do-work/'; git diff --staged -- . ':(exclude)do-work/'; } | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE "$unfinished_marker_regex" || true)"
   fi
   if [ -n "$debug_artifact_lines" ] && grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file"; then
     echo "FAIL: [UNIFY] is checked but the diff adds debug artifacts — un-check it and flag:"
     printf '%s\n' "$debug_artifact_lines" | head -10 | sed 's/^/  /'
     failure_count=$((failure_count + 1))
   fi
+  # The output-primitive half needs file attribution (the ownership condition reads
+  # the file that gained the line), so it walks the changed files instead of the
+  # raw diff stream. do-work/ is skipped per path — the same boundary as above.
+  while IFS= read -r changed_path; do
+    [ -z "$changed_path" ] && continue
+    case "$changed_path" in do-work/*) continue;; esac
+    if [ -n "$diff_range" ]; then
+      added_output_lines="$(git diff "$diff_range" -- "$changed_path" | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE "$output_primitive_regex" || true)"
+    else
+      added_output_lines="$({ git diff -- "$changed_path"; git diff --staged -- "$changed_path"; } | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -nE "$output_primitive_regex" || true)"
+    fi
+    [ -z "$added_output_lines" ] && continue
+    if [ -f "$changed_path" ] && grep -qE "$process_exit_regex" "$changed_path"; then
+      echo "WARN: added print(/console.log line(s) in $changed_path read as the file's own reporting — it owns its process exit, so printed output is presumptively contract, not a debug artifact; confirm from the diff"
+    elif grep -qE '^[[:space:]]*-[[:space:]]\[x\][[:space:]]\*\*\[UNIFY\]' "$request_file"; then
+      echo "FAIL: [UNIFY] is checked but the diff adds output line(s) to $changed_path, which never ends its own process — no terminal audience, so they read as leftover instrumentation:"
+      printf '%s\n' "$added_output_lines" | head -10 | sed 's/^/  /'
+      failure_count=$((failure_count + 1))
+    fi
+  done <<< "$changed_file_list"
 fi
 
 if [ "$failure_count" -eq 0 ]; then
