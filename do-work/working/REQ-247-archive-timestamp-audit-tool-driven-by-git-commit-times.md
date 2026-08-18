@@ -40,9 +40,9 @@ estimate:
 A deliberately-invoked audit tool that scans `do-work/archive/` for detectably wrong `*_at` stamps and repairs them, deriving every replacement from git commit times — the author time of the commit that introduced the stamp. Never run from a hook: repairing the archive is an exception to the immutability rule and stays a conscious invocation.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read the prime, four crew files, REQ-246's script/hook/suites, capture.md and review-work.md precedents, and the constraining contract suites. Approach fixed before code: library-mode refactor of the repairer, thin sourcing auditor, capture.md co-located amendment, five lock-ins. (Transcribed from builder hand-back.)
+- [x] **[APPLY]:** Exactly the REQ's four write-set files; no hooks, no board tool, all fixtures in scratch mktemp space. (Transcribed from builder hand-back.)
+- [x] **[UNIFY]:** `git diff --stat ad69e56..HEAD`: 4 files, +272/−4, reviewed file-by-file; ShellCheck warning-level clean; no debug artifacts; maintainer-verify exit 0; extra edge probes (no-archive, unknown flag, symlinked root, quoted/space-separated shapes). (Transcribed from builder hand-back.)
 
 ## Detailed Requirements
 
@@ -52,6 +52,35 @@ A deliberately-invoked audit tool that scans `do-work/archive/` for detectably w
 - **Amend the archive-immutability rule in the same commit** that ships the tool: `skills/do-work/actions/capture.md` § Immutability Rule (~line 63) gains a stated mechanical-timestamp-repair exception alongside the existing review-annotation exception (`actions/review-work.md` ~line 448 is the precedent wording). Co-location rule: the exception and the tool land together, and any other statement of archive immutability found in the sweep is amended in that commit too.
 - **Audit trail:** print each correction (file, field, old value, new value, sourcing commit hash) to stdout. No new frontmatter fields.
 - **Dry-run by default is acceptable builder latitude** (report what would change, `--fix` to write); if implemented, the RED/GREEN below refers to the fixing mode.
+
+## Implementation Summary
+
+**What was done:** A deliberately-invoked archive auditor, `scripts/audit-archive-timestamps.sh`, scanning `do-work/archive/**/REQ-*.md` at any depth for REQ-246's detection predicate, deriving every replacement from the introducing commit's author time (`git blame --line-porcelain`; mtime disabled in this path; unanswerable blame reports and leaves bytes untouched). Report-only by default with exit 1 on findings, `--fix` writes through the repairer's full guard set. Sharing is by **sourcing**: the repairer became a sourceable library (two pre-source switches, report-only bail, return guard), so predicate, shape recognizer, clamp, and atomic-write guards are one code body — REQ-255's widening reaches both tools in one edit. `capture.md` § Immutability Rule gained the mechanical-timestamp-repair exception in the same commit as the tool, with two co-located restatement fixes; the orchestrator applied the builder's offered seam scoping `present-work-guide.md`'s immutability restatement to its own workflow. Never hook-wired.
+
+**Files changed:**
+- `skills/do-work/scripts/audit-archive-timestamps.sh` (new) — the auditor: arg parse, symlink refusal, missing-archive no-op, sources the repairer with git-only + report-only switches, recursive scan, summary/exit semantics
+- `skills/do-work/scripts/repair-req-timestamps.sh` (modified) — shared-library switches with hook-preserving defaults, git-only gate, parameterized failure messages, report-only planner, library return guard
+- `skills/do-work/actions/capture.md` (modified) — § Immutability Rule second exception ("these are the only exceptions; neither is a precedent"); two restatements aligned
+- `_dev/tests/prescribed-shell-scripts-behavior.sh` (modified) — five `audit-archive-timestamps:` lock-ins (fix/report-only/clean-scope/ordering-clamp/blameless)
+- `skills/do-work-toolbox/docs/present-work-guide.md` (modified) — integration seam: immutability restatement scoped "to this workflow"
+
+*Integrated by orchestrator from builder hand-back; merge range `6268320..4035ddc`.*
+
+## Decisions
+
+Transcribed from the builder hand-back:
+
+- **D-01 (DECIDE & STATE):** share by sourcing the repairer, not a third lib file — one file owns the shape-set, change stays in the write set; direct execution behavior-identical (hook suite green).
+- **D-02 (DECIDE & STATE):** report-only exits 1 when corrections are pending — linter convention, usable as a gate.
+- **D-03 (DECIDE & STATE):** unanswerable blame reports through `report_failure` and exits 1, file byte-identical — honors "never invents" while keeping the exit contract's meaning.
+- **D-04 (DECIDE & STATE):** shipped headers state the one-shape-set property without citing "REQ-255" by number — a maintainer queue id means nothing in a consumer install; the linkage is recorded here.
+- **D-05 (DECIDE & STATE):** sweep classification — three capture.md statements amended; workflow-scoped statements left as true; one borderline handed back as a seam (applied by the orchestrator).
+- **D-06 (DECIDE & STATE):** archive scan is `find -name 'REQ-*.md'` at any depth — filename condition, not a directory list (Closed Enumerations Go Stale).
+- **D-07 (logged):** report-only mode bypasses the write guards — they protect writes, and report-only writes nothing; `--fix` runs the full set.
+
+## Qualification
+
+Passed — 5 files verified in merge range `6268320..4035ddc` (4 builder + 1 seam), all six acceptance criteria traced (git-only proven by the blameless lock-in — file left byte-identical although a valid mtime existed; sourcing = zero duplicated logic; clamp pinned; same-commit amendment in `a6764fd`; no hooks touched; gate green), P-A-U audited. The known space-separated shape holes were probed and confirmed **pre-existing and shared, not copied** — recorded for REQ-255, whose fix now lands in both tools at once.
 
 ## Constraints
 
