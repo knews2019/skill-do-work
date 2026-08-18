@@ -592,6 +592,18 @@ def normalize_markdown_target(target):
 # A heading anchor is generated from the heading's *rendered* text: lowercase it, drop
 # every character that is not a word character, a hyphen, or a space, then turn spaces
 # into hyphens. Repeated slugs take a -1, -2 … suffix in document order.
+#
+# Stated limitation, deliberately left open: HTML tags and entities in heading text
+# slug literally here ("## <kbd>Ctrl</kbd> and stuff" -> kbdctrlkbd-and-stuff,
+# "## Tom &amp; Jerry" -> tom-amp-jerry) while GitHub strips the tags and decodes
+# the entities first (ctrl-and-stuff, tom--jerry). Failure direction: both. A link
+# written to GitHub's true slug fails loudly here (spurious FAIL the author sees);
+# a link written to this checker's divergent slug passes silently while broken in
+# every renderer. No shipped heading contains a tag or an entity today, and correct
+# decoding would need code-span awareness inside the heading (entities in inline
+# code stay literal), so closing this buys HTML parsing with no live case. The
+# anchor fixture below pins the divergence; closing it later must update this
+# statement in the same change.
 inline_link_label_pattern = re.compile(r"!?\[([^\[\]]*)\](?:\([^()]*\)|\[[^\[\]]*\])")
 atx_heading_pattern = re.compile(r"^[ ]{0,3}(#{1,6})(?:[ \t]+(.*?))?[ \t]*$")
 heading_slug_cache = {}
@@ -615,6 +627,11 @@ def heading_anchor_slugs_from_text(markdown_text):
     # A line whose masked form no longer opens with # sat inside a fence, an indented
     # block, or an HTML comment and is not a heading. Slugs come from the raw line,
     # because masking blanks inline code that the rendered heading text keeps.
+    #
+    # Stated limitation: a blockquoted ATX heading ("> # Quoted") yields no anchor
+    # here, because its line opens with ">", while GitHub does generate one. Failure
+    # direction: loud — a link to such an anchor reports as missing (spurious FAIL);
+    # it is never silently accepted.
     #
     # Both arrays are split on "\n" alone, never str.splitlines(). masking guarantees only
     # that the length and the "\n" positions survive — the property the parser fixtures
@@ -796,6 +813,21 @@ def run_anchor_slug_fixtures():
             "a masked form feed leaves the headings after it aligned",
             "`a\x0cb`\n`open\n# One\n# Two\n",
             {"one", "two"},
+        ),
+        (
+            # Pins the stated limitation above heading_anchor_slug, not desired
+            # behavior: GitHub slugs these ctrl-and-stuff and tom--jerry. Closing
+            # the divergence must update that statement and this fixture together.
+            "HTML tags and entities slug literally, diverging from GitHub",
+            "## <kbd>Ctrl</kbd> and stuff\n## Tom &amp; Jerry\n",
+            {"kbdctrlkbd-and-stuff", "tom-amp-jerry"},
+        ),
+        (
+            # Pins the stated limitation in heading_anchor_slugs_from_text: GitHub
+            # generates quoted-heading; here a link to it fails loudly, never silently.
+            "blockquoted headings yield no anchor",
+            "> # Quoted Heading\n\n# Plain Heading\n",
+            {"plain-heading"},
         ),
     ]
 
