@@ -27,10 +27,14 @@
   var TIMELINE_ROW_HEIGHT = 18;
   var TIMELINE_BAR_HEIGHT = 10;
   var TIMELINE_AXIS_HEIGHT = 26;
+  // Ticks per axis, and therefore the gap between them: the label format is
+  // keyed to that gap, so the two have to be read from one number.
+  var TIMELINE_AXIS_TICK_COUNT = 6;
   var TIMELINE_LABEL_WIDTH = 104;
   var TIMELINE_OVERSCAN_ROWS = 4;
   var TIMELINE_MIN_SPAN_MS = 3600000; // one hour in ms — as far in as zoom goes
   var TIMELINE_DAY_MS = 86400000;
+  var TIMELINE_YEAR_MS = 365 * TIMELINE_DAY_MS;
   var TIMELINE_ZOOM_STEP = 1.6;
   var TIMELINE_PAN_FRACTION = 0.15;
   var TIMELINE_NOW_JUMP_MARGIN_FRACTION = 0.1;
@@ -78,19 +82,30 @@
     return sign + Math.floor(magnitude / (60 * 24)) + "d " + Math.round((magnitude % (60 * 24)) / 60) + "h";
   }
 
+  // Every part of a tick's label comes from the tick's own instant. The minute
+  // used to be the literal ":00", which made every tick inside one hour read the
+  // same — seven ticks, two labels, on the window the Now button lands in.
+  //
+  // WHICH parts appear is keyed to the gap between ticks rather than to a span
+  // threshold of its own, so the label always carries whatever separates one
+  // tick from the next: the time once ticks sit less than a day apart, the year
+  // once the window is long enough for one day-and-month to come round twice.
   function timelineFormatAxisTick(epochMs, spanMs) {
     var instant = new Date(epochMs);
-    if (spanMs <= 3 * 24 * 60 * 60 * 1000) {
+    var calendarDate = instant.getUTCDate() + " " + TIMELINE_MONTHS[instant.getUTCMonth()];
+    if (spanMs / TIMELINE_AXIS_TICK_COUNT < TIMELINE_DAY_MS) {
       return (
-        instant.getUTCDate() +
-        " " +
-        TIMELINE_MONTHS[instant.getUTCMonth()] +
+        calendarDate +
         " " +
         String(instant.getUTCHours()).padStart(2, "0") +
-        ":00"
+        ":" +
+        String(instant.getUTCMinutes()).padStart(2, "0")
       );
     }
-    return instant.getUTCDate() + " " + TIMELINE_MONTHS[instant.getUTCMonth()];
+    if (spanMs >= TIMELINE_YEAR_MS) {
+      return calendarDate + " " + instant.getUTCFullYear();
+    }
+    return calendarDate;
   }
 
   function timelineFormatStamp(epochMs) {
@@ -685,7 +700,7 @@
     function renderAxis() {
       axisSvg.textContent = "";
       var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs || 1;
-      var tickCount = 6;
+      var tickCount = TIMELINE_AXIS_TICK_COUNT;
       for (var tickIndex = 0; tickIndex <= tickCount; tickIndex++) {
         var tickMs = timelineViewState.windowStartMs + (windowSpanMs * tickIndex) / tickCount;
         var tickX = xOfEpoch(tickMs);

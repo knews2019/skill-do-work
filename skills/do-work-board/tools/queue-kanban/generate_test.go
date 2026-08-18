@@ -3028,3 +3028,133 @@ process.stdout.write(JSON.stringify({
 			periodResult.ScrollTop, periodResult.WantScrollTop)
 	}
 }
+
+// The axis is the one part of this view whose defect is pure text. The ticks are
+// positioned correctly, so nothing about the drawing looks wrong while several
+// labels read the same instant. REQ-227 wrote the minute as the literal ":00",
+// and REQ-235's Now button made a sub-hour window the landing state of the
+// view's most-used control: seven ticks, two distinct labels, measured live.
+//
+// This drives the formatter over every window the view can be left in and
+// requires two things of each: no two ticks may render the same label, and every
+// number in a label must be one the tick's own instant carries.
+func TestJavaScriptBehaviorTimelineAxisLabelsNameTheirOwnInstant(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS", "TIMELINE_DAY_MS", "TIMELINE_AXIS_TICK_COUNT") +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_YEAR_MS") + "\n" +
+		rendererDeclarationLine(t, "web/board-timeline.js", "TIMELINE_MONTHS") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineFormatAxisTick(") + `
+// The same evenly-spaced ticks renderAxis draws, formatted the same way.
+function axisTicks(name, startMs, spanMs) {
+  var ticks = [];
+  for (var tickIndex = 0; tickIndex <= TIMELINE_AXIS_TICK_COUNT; tickIndex++) {
+    var tickMs = startMs + (spanMs * tickIndex) / TIMELINE_AXIS_TICK_COUNT;
+    var instant = new Date(tickMs);
+    ticks.push({
+      label: timelineFormatAxisTick(tickMs, spanMs),
+      dayOfMonth: instant.getUTCDate(),
+      hour: instant.getUTCHours(),
+      minute: instant.getUTCMinutes(),
+      year: instant.getUTCFullYear()
+    });
+  }
+  return { name: name, ticks: ticks };
+}
+
+var mondayMs = Date.UTC(2026, 7, 17);      // 17 Aug 2026 is a Monday
+process.stdout.write(JSON.stringify({
+  windows: [
+    // Where the Now button lands: the window covers the now-line and the
+    // forecast's queue-empty instant, which on a healthy queue is well under an
+    // hour, so the span settles on the view's floor and the start is wherever
+    // "now" fell — 11:26, not the top of an hour.
+    axisTicks("Now", Date.UTC(2026, 7, 18, 11, 26), TIMELINE_MIN_SPAN_MS),
+    axisTicks("Day", Date.UTC(2026, 7, 18), TIMELINE_DAY_MS),
+    // A free zoom between the period levels. Six ticks across four days sit 16h
+    // apart, so a date-only label repeats itself twice over.
+    axisTicks("free zoom, four days", Date.UTC(2026, 7, 15), 4 * TIMELINE_DAY_MS),
+    axisTicks("Week", mondayMs, 7 * TIMELINE_DAY_MS),
+    axisTicks("Month", Date.UTC(2026, 7, 1), Date.UTC(2026, 8, 1) - Date.UTC(2026, 7, 1)),
+    axisTicks("Fit all", Date.UTC(2026, 3, 7), Date.UTC(2026, 7, 18) - Date.UTC(2026, 3, 7)),
+    // Fit all is the whole capture history, and it only grows. Once it reaches
+    // back past a year, one day-and-month comes round twice.
+    axisTicks("Fit all across two years", Date.UTC(2025, 7, 18), 2 * TIMELINE_YEAR_MS)
+  ]
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline axis labels", javascriptProbe)
+	var axisResult struct {
+		Windows []struct {
+			Name  string `json:"name"`
+			Ticks []struct {
+				Label      string `json:"label"`
+				DayOfMonth int    `json:"dayOfMonth"`
+				Hour       int    `json:"hour"`
+				Minute     int    `json:"minute"`
+				Year       int    `json:"year"`
+			} `json:"ticks"`
+		} `json:"windows"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &axisResult); decodeError != nil {
+		t.Fatalf("decode timeline axis behavior: %v (output %q)", decodeError, probeOutput)
+	}
+
+	// What each window's labels have to look like. The three period windows and
+	// Fit all are here to hold their EXISTING labels: this is a formatting fix,
+	// and the formats that were already right may not move.
+	const (
+		axisLabelWithTime = "date and time"
+		axisLabelDateOnly = "date alone"
+		axisLabelWithYear = "date and year"
+	)
+	wantAxisLabelShape := map[string]string{
+		"Now":                      axisLabelWithTime,
+		"Day":                      axisLabelWithTime,
+		"free zoom, four days":     axisLabelWithTime,
+		"Week":                     axisLabelDateOnly,
+		"Month":                    axisLabelDateOnly,
+		"Fit all":                  axisLabelDateOnly,
+		"Fit all across two years": axisLabelWithYear,
+	}
+	if len(axisResult.Windows) != len(wantAxisLabelShape) {
+		t.Fatalf("the probe drove %d windows, want the %d named", len(axisResult.Windows), len(wantAxisLabelShape))
+	}
+
+	for _, window := range axisResult.Windows {
+		labelShape, isNamed := wantAxisLabelShape[window.Name]
+		if !isNamed {
+			t.Fatalf("the probe drove an unnamed window %q", window.Name)
+		}
+		renderedLabels := make([]string, 0, len(window.Ticks))
+		distinctLabels := map[string]bool{}
+		for _, tick := range window.Ticks {
+			renderedLabels = append(renderedLabels, tick.Label)
+			distinctLabels[tick.Label] = true
+		}
+		// Two ticks at different instants reading the same label is what makes
+		// the axis unreadable rather than merely imprecise.
+		if len(distinctLabels) != len(window.Ticks) {
+			t.Fatalf("the %s window draws %d ticks with only %d distinct labels: %q",
+				window.Name, len(window.Ticks), len(distinctLabels), renderedLabels)
+		}
+		// Every number in the label has to be one the instant carries. Matching
+		// the whole label also pins the shape, so a window cannot quietly gain
+		// or lose a component the reader relies on.
+		for _, tick := range window.Ticks {
+			var wantLabelPattern string
+			switch labelShape {
+			case axisLabelWithTime:
+				wantLabelPattern = fmt.Sprintf(`^%d [A-Z][a-z]{2} %02d:%02d$`, tick.DayOfMonth, tick.Hour, tick.Minute)
+			case axisLabelDateOnly:
+				wantLabelPattern = fmt.Sprintf(`^%d [A-Z][a-z]{2}$`, tick.DayOfMonth)
+			case axisLabelWithYear:
+				wantLabelPattern = fmt.Sprintf(`^%d [A-Z][a-z]{2} %d$`, tick.DayOfMonth, tick.Year)
+			}
+			if !regexp.MustCompile(wantLabelPattern).MatchString(tick.Label) {
+				t.Fatalf("the %s window renders the tick at %d/%02d:%02d/%d as %q, want %s matching %s",
+					window.Name, tick.DayOfMonth, tick.Hour, tick.Minute, tick.Year,
+					tick.Label, labelShape, wantLabelPattern)
+			}
+		}
+	}
+}
