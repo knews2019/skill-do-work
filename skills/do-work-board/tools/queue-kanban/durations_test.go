@@ -458,11 +458,11 @@ const durationsLabelTextDescentUnits = 2.0
 
 // ---- the rendered face, measured ------------------------------------------
 //
-// Both numbers below come from the browser, because the face is the browser's
+// Every number below comes from the browser, because the face is the browser's
 // answer and no amount of arithmetic over the constants under test can produce
 // it — computing a guarantee from the constant it is meant to judge is circular.
 // They are recorded here so a Go test can hold the model to the face without a
-// browser in the loop, and both are rounded AWAY from the model (up), so a
+// browser in the loop, and each is rounded AWAY from the model (up), so a
 // passing assertion can never be an artefact of the rounding.
 //
 // Procedure, reproducible from any board directory `queue-kanban generate` wrote:
@@ -518,27 +518,41 @@ const durationsMeasuredLabelWidthSupremumUnits = 7.1441
 // could have carried — so the pin is two-sided and this is the slack it allows.
 const durationsLabelWidthModelSlackUnits = 0.25
 
-// The same face's rendered line box: 12.8343 units tall, 10.4278 above the
-// baseline and 2.4064 below, and constant whether or not the string carries
-// descenders — it is the line box, not the ink. Rounded up to 12.84.
+// The same face's rendered line box — the height getBBox() reports for a
+// .durations-mark-label <text>, constant whether or not the string carries
+// descenders, because it is the line box and not the ink. It is exactly that
+// face's ascent plus its descent, and generate_test.go already bounds both
+// parts for the whole package, as durationsMeasuredMarkLabelAscentUnits and
+// durationsMeasuredMarkLabelDescentUnits. The box gets a constant of its own
+// anyway because the SUM of those two bounds is 13.3: each was rounded up from
+// the build that maximised it, the maxima fall on different builds, and no
+// build has ever drawn both together — so the sum over-bounds every face ever
+// measured, while the pitch floor below needs a bound a real face can be held
+// to.
 //
-// Build: REQ-241's Chromium, recorded only as browser build chromium-1228
-// (Playwright 1.59). Chromium 141.0.7390.37 (Playwright 1.56.1, REQ-252)
-// measures the same box LARGER — 12.9631 — which per the raise-only rule above
-// means the next re-measurement should lift this constant; the shipped pitch of
-// 13 clears both values, so nothing fails meanwhile.
-const durationsMeasuredLabelBoxHeightUnits = 12.84
-
-// The label box's descent below its baseline, rounded up from the measured
-// 2.4064. Distinct from durationsLabelTextDescentUnits, which is the smaller
-// value the code DECLARES; this is what the browser actually draws, and it is the
-// one a clearance question has to use.
+// Sampled builds, ascent + descent = box:
 //
-// Build: REQ-241's Chromium, recorded only as browser build chromium-1228
-// (Playwright 1.59). Chromium 141.0.7390.37 (Playwright 1.56.1, REQ-252)
-// measures 2.7778 — larger, same raise-only note as the line box above; the
-// Panel B clearance below holds at either value.
-const durationsMeasuredLabelBoxDescentUnits = 2.41
+//	chromium-1228 (Playwright 1.59, REQ-241)             10.4278 + 2.4064 = 12.8343
+//	Chromium 146 (Playwright 1.59, REQ-242)              10.1853 + 2.7778 = 12.9631
+//	Chromium 141.0.7390.37 (Playwright 1.56.1, REQ-252)  10.1853 + 2.7778 = 12.9631
+//
+// REQ-265 re-ran the procedure above on Chromium 141.0.7390.37 and read the
+// same three numbers to four decimals. 12.97 is the largest sampled box,
+// rounded up.
+//
+// What this constant is NOT is a supremum over the face space, and that gap
+// matters more than the 0.13 units the REQ-265 raise moved it. The face is
+// whatever --font-sans resolves to, and board.css ends that stack in the open
+// generic sans-serif; every sample above is one Linux container's answer to it.
+// The design's own cap is the row pitch: 13 units over an 11-unit font size is
+// an (ascent+descent)/em ratio of 1.1818, and the largest ratio ever sampled is
+// 1.1785 — 0.03 units of slack under the floor below. So this number is wrong,
+// with the pitch wrong behind it, the first time the board renders somewhere
+// --font-sans resolves to a face whose ratio clears 1.1818. Padding it toward
+// that cap would buy nothing and hide exactly that, so it is not padded: the
+// raise-only rule keeps it honest, and a measurement that exceeds it is meant
+// to cost somebody an edit.
+const durationsMeasuredLabelBoxHeightUnits = 12.97
 
 // The 12px axis-title face's ascent is declared once for the whole package, in
 // generate_test.go's measured-face block, because REQ-241 and REQ-242 each
@@ -596,8 +610,21 @@ func TestDurationsLabelRowPitchClearsTheLabelTextBox(t *testing.T) {
 // The row pitch has a ceiling as well as a floor, and this is it. The reversed
 // band's rows grow DOWNWARD into the gap above Panel B's title, so every unit
 // added to the pitch is taken from that gap — in this assertion's own model the
-// shipped pitch of 13 leaves 0.49 units between the last row's box bottom and
+// shipped pitch of 13 leaves 0.10 units between the last row's box bottom and
 // the title's box top, and a pitch of 14 would put it through.
+//
+// The descent below is the package's one bound for the 11px
+// .durations-mark-label face — durationsMeasuredMarkLabelDescentUnits, in
+// generate_test.go, which the slowest-day annotation's clearance reads for the
+// same face and the same reason. It is deliberately the DRAWN descent and not
+// durationsLabelTextDescentUnits, the smaller box the renderer declares; a
+// clearance question has to use what the browser puts on the page. Until
+// REQ-265 this test read a second constant declared here at 2.41 while that one
+// already stood at 2.8 — two numbers for one quantity of one face, in two files
+// of one package, which is the same shape that made REQ-241's and REQ-242's
+// title-face measurements collide. REQ-252 made every such constant name its
+// build; the duplicate is gone so there is one bound per face and quantity for
+// a build name to be attached to.
 //
 // That budget is PER-BROWSER, and the live headroom has measured very
 // differently on different builds: REQ-241 read 1.364 units on its Chromium
@@ -620,7 +647,7 @@ func TestDurationsLastLabelRowClearsPanelBTitle(t *testing.T) {
 	rowHeight := durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
 	panelBTitleY := durationsRendererConstant(t, "DURATIONS_MEDIAN_TITLE_Y")
 
-	lastRowBoxBottom := reversedRowY + (rowCount-1)*rowHeight + durationsMeasuredLabelBoxDescentUnits
+	lastRowBoxBottom := reversedRowY + (rowCount-1)*rowHeight + durationsMeasuredMarkLabelDescentUnits
 	panelBTitleBoxTop := panelBTitleY - durationsMeasuredAxisTitleAscentUnits
 	if lastRowBoxBottom >= panelBTitleBoxTop {
 		t.Fatalf("the reversed band's last label row ends at %.2f but Panel B's title starts at %.2f — the label rows have grown into the title",
