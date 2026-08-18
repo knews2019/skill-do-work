@@ -1933,6 +1933,16 @@ process.stdout.write(JSON.stringify({
 // annotation's 12.9631 tall, 10.1853 above and 2.7778 below. The mark-label
 // ascent is rounded to 10.5 so it also covers the 10.4278 the same face
 // measured for REQ-241 on a different Chromium.
+//
+// The title ascent gets the same treatment for the same reason, and it is why
+// this constant is declared here for the whole package rather than once per
+// test file. REQ-241's clearance assertion measured 11.2300 for this face on a
+// different Chromium and would have rounded to 11.24; the two REQs merged into
+// one package and disagreed by 0.86 units. 12.1 is the larger, so it is the one
+// kept: a title box that reaches HIGHER makes every clearance test demand more
+// room than the render needs, which is the safe direction for both callers. A
+// future re-measurement may only raise this number, never lower it, without
+// re-checking every assertion that reads it.
 const durationsMeasuredAxisTitleAscentUnits = 12.1
 const durationsMeasuredAxisTitleDescentUnits = 2.8
 const durationsMeasuredMarkLabelAscentUnits = 10.5

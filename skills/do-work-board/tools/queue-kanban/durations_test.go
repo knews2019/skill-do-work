@@ -467,30 +467,77 @@ const durationsLabelTextDescentUnits = 2.0
 // class's declared 11px over the board's --font-sans stack; the SVG is a fixed
 // viewBox at width:100%, so user units are zoom- and window-independent.
 
-// The widest label per character the renderer can compose. formatDurationMinutes
-// emits exactly two forms — "N.N min" under an hour and "Hh Mm" at or above one —
-// and the second is the dense one, because " min" spends three characters on a
-// space, a narrow "i" and an "n". Worst over every digit and both three- and
-// four-digit REQ ids: "REQ-4444 44h 44m", 107.29 units across 16 characters =
-// 6.7054. Three-digit ids alone top out at 6.6762 ("REQ-444 44h 44m"). Rounded
-// up to 6.71.
-const durationsMeasuredWidestUnitsPerCharacter = 6.71
+// The SUPREMUM of units per character over the whole label space — not the worst
+// case of a sweep. The distinction is the entire point, and getting it wrong is
+// what this constant's own history records: 6.2 was fitted to a plausible string,
+// and 6.71 came from a sweep that varied REQ-id digits but held the hour count at
+// two, which bounded nothing.
+//
+// The space is infinite in two independent directions (id digit count, hour
+// count) and per-character width rises with length in both, because the narrow
+// fixed characters are a fixed cost diluted by every added digit. So the sweep
+// has to be closed by an argument, not by more sampling. The argument:
+//
+//  1. A label is "REQ-" + id + " " + duration, and only DIGITS can repeat without
+//     limit — every wide fixed character (R, E, Q, m, h, −) appears at most twice.
+//  2. So as a label grows, the fixed characters amortize away and per-character
+//     width converges to that of a pure digit run, from below.
+//  3. A pure run of the widest digit ("4") measures 7.1441 units per character.
+//
+// Both ends were then measured rather than assumed. Exhaustively over the bounded
+// region — every digit, id lengths 1-40, hour counts 1-40, both duration forms,
+// both signs, mixed-digit ids, 280 800 labels — the maximum is 7.0643. Pushing
+// both unbounded parameters to the limit gives 7.1384 at 2 010 characters, 7.1411
+// at 10 010 and 7.1417 at 40 010: rising, and still under 7.1441. A randomized
+// search over 4 000 mixed-digit labels confirms a uniform "4" run is the worst
+// case, so the exhaustive region's shape is right.
+const durationsMeasuredLabelWidthSupremumUnits = 7.1441
+
+// How far above the supremum the model may sit. A width model must over-estimate,
+// but unbounded over-estimation is not free — it silently drops labels the rows
+// could have carried — so the pin is two-sided and this is the slack it allows.
+const durationsLabelWidthModelSlackUnits = 0.25
 
 // The same face's rendered line box: 12.8343 units tall, 10.4278 above the
 // baseline and 2.4064 below, and constant whether or not the string carries
 // descenders — it is the line box, not the ink. Rounded up to 12.84.
 const durationsMeasuredLabelBoxHeightUnits = 12.84
 
+// The label box's descent below its baseline, rounded up from the measured
+// 2.4064. Distinct from durationsLabelTextDescentUnits, which is the smaller
+// value the code DECLARES; this is what the browser actually draws, and it is the
+// one a clearance question has to use.
+const durationsMeasuredLabelBoxDescentUnits = 2.41
+
+// The 12px axis-title face's ascent is declared once for the whole package, in
+// generate_test.go's measured-face block, because REQ-241 and REQ-242 each
+// measured it independently and landed on different numbers. The clearance test
+// below reads it from there — see that block for which measurement won and why.
+
 // The defect this pins (REQ-241): durationsLabelCharacterWidthUnits was 6.2
-// against a face that draws 6.71, and its comment called that "deliberately
-// generous" — a claimed safety margin pointing the wrong way. A per-character
-// width model is only honest as an UPPER bound: over-estimating drops a label,
-// which the remainder sentence counts, while under-estimating overprints one,
-// which is the whole defect placement exists to prevent.
+// against a face whose labels reach 7.14 units per character, and its comment
+// called that "deliberately generous" — a claimed safety margin pointing the
+// wrong way. A per-character width model is only honest as an UPPER bound:
+// over-estimating drops a label, which the remainder sentence counts, while
+// under-estimating overprints one, which is the whole defect placement exists to
+// prevent.
+//
+// The pin is two-sided on purpose. A one-sided "at least the measured worst case"
+// assertion passed while the constant sat at 6.75 and the true supremum was
+// 7.1441, and it would have kept passing if the constant were dropped back to the
+// stale reference value — the assertion cannot distinguish "correct" from "equal
+// to whatever number the last sweep happened to produce". The lower bound is the
+// correctness one; the upper bound is what stops the constant being inflated to
+// buy safety with labels nobody chose to spend.
 func TestDurationsLabelWidthEstimateCoversTheRenderedFace(t *testing.T) {
-	if durationsLabelCharacterWidthUnits < durationsMeasuredWidestUnitsPerCharacter {
-		t.Fatalf("width model assumes %.4f units per character, but the rendered face draws up to %.4f — the estimate under-states the text it is placing",
-			durationsLabelCharacterWidthUnits, durationsMeasuredWidestUnitsPerCharacter)
+	if durationsLabelCharacterWidthUnits < durationsMeasuredLabelWidthSupremumUnits {
+		t.Fatalf("width model assumes %.4f units per character, but label text reaches %.4f in the rendered face — the estimate under-states the text it is placing",
+			durationsLabelCharacterWidthUnits, durationsMeasuredLabelWidthSupremumUnits)
+	}
+	ceiling := durationsMeasuredLabelWidthSupremumUnits + durationsLabelWidthModelSlackUnits
+	if durationsLabelCharacterWidthUnits > ceiling {
+		t.Fatalf("width model assumes %.4f units per character against a supremum of %.4f — over-estimating by more than %.2f drops labels the rows could carry",
+			durationsLabelCharacterWidthUnits, durationsMeasuredLabelWidthSupremumUnits, durationsLabelWidthModelSlackUnits)
 	}
 }
 
@@ -512,6 +559,31 @@ func TestDurationsLabelRowPitchClearsTheLabelTextBox(t *testing.T) {
 	if rowHeight < durationsMeasuredLabelBoxHeightUnits {
 		t.Fatalf("row pitch %.2f is smaller than the %.2f-unit line box the browser draws — consecutive rows share vertical space",
 			rowHeight, durationsMeasuredLabelBoxHeightUnits)
+	}
+}
+
+// The row pitch has a ceiling as well as a floor, and this is it. The reversed
+// band's rows grow DOWNWARD into the gap above Panel B's title, so every unit
+// added to the pitch is taken from that gap — at the shipped pitch of 13 the
+// last row's box bottom sits 1.36 units above the title's box top, and a pitch of
+// 15 would put it through.
+//
+// REQ-241 established that budget by measurement and then left it in prose, where
+// nothing enforces it: the row-pitch floor above and this ceiling are the two
+// halves of one constraint, and a future change that raises the pitch to clear a
+// bigger face would satisfy the floor and silently eat the ceiling. The band's
+// last row is the one that matters because the marks sit level with the first.
+func TestDurationsLastLabelRowClearsPanelBTitle(t *testing.T) {
+	reversedRowY := durationsRendererConstant(t, "DURATIONS_REVERSED_LABEL_ROW_Y")
+	rowCount := durationsRendererConstant(t, "DURATIONS_LABEL_ROW_COUNT")
+	rowHeight := durationsRendererConstant(t, "DURATIONS_LABEL_ROW_HEIGHT")
+	panelBTitleY := durationsRendererConstant(t, "DURATIONS_MEDIAN_TITLE_Y")
+
+	lastRowBoxBottom := reversedRowY + (rowCount-1)*rowHeight + durationsMeasuredLabelBoxDescentUnits
+	panelBTitleBoxTop := panelBTitleY - durationsMeasuredAxisTitleAscentUnits
+	if lastRowBoxBottom >= panelBTitleBoxTop {
+		t.Fatalf("the reversed band's last label row ends at %.2f but Panel B's title starts at %.2f — the label rows have grown into the title",
+			lastRowBoxBottom, panelBTitleBoxTop)
 	}
 }
 

@@ -218,17 +218,33 @@ const (
 	// answer needs getComputedTextLength, which exists only after render and
 	// would move this decision back into the client. Over-estimating drops a
 	// label, which is visible and counted; under-estimating overprints one, which
-	// is the defect this rule exists to fix — so the constant is calibrated ABOVE
-	// the widest label the renderer can compose, not at the average one.
+	// is the defect this rule exists to fix — so the constant is an UPPER BOUND on
+	// units per character over the whole label space, not the worst case of some
+	// sample of it.
 	//
-	// The 11px sans face was measured on the board's own page: "REQ-4444 44h 44m"
-	// advances 107.29 user units over 16 characters, 6.71 per character, and
-	// today's three-digit ids top out at 6.68 ("REQ-444 44h 44m", 100.14 over 15).
-	// TestDurationsLabelWidthEstimateCoversTheRenderedFace holds this value at or
-	// above that measurement. It stood at 6.2 until REQ-241, which is BELOW the
-	// face — the old comment claimed a generosity that ran the other way, and only
-	// durationsLabelSeparationUnits kept the error off the screen.
-	durationsLabelCharacterWidthUnits = 6.75
+	// The label space is INFINITE: a label is "REQ-" + id + " " + duration, and
+	// neither the id's digit count nor the hour count is bounded by anything —
+	// broken stamps produce arbitrarily large magnitudes. Per-character width
+	// rises with length, because the narrow fixed characters ("-", the spaces,
+	// "i", ".") are a fixed cost diluted by every digit added. So no sweep over
+	// "realistic" labels can establish this bound, and two earlier attempts that
+	// tried are why this comment is long.
+	//
+	// What makes it boundable anyway: only DIGITS can repeat without limit. Every
+	// wide fixed character (R, E, Q, m, h, −) appears at most a couple of times
+	// per label, so its contribution is amortized away as the label grows, and
+	// per-character width is dragged toward — and cannot pass — the per-character
+	// width of a pure digit run. That is a measurable quantity: 7.1441 user units,
+	// the widest digit ("4") in the 11px sans face. Measured labels approach it
+	// from below and never reach it (7.1417 at 40 010 characters), so 7.15 is
+	// above the supremum of the whole space.
+	// TestDurationsLabelWidthEstimateCoversTheRenderedFace pins this value on both
+	// sides — under the supremum it under-states the text, and far over it drops
+	// labels for nothing.
+	//
+	// It stood at 6.2 until REQ-241 and at 6.75 briefly within it; both were below
+	// the face, and 6.2's comment claimed a generosity that ran the other way.
+	durationsLabelCharacterWidthUnits = 7.15
 
 	// Mark centre to the near edge of its text, matching the renderer's offset.
 	durationsLabelGapUnits = 9.0
