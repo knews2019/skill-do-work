@@ -157,10 +157,10 @@ This check is the mechanical sweep behind the board's invalid-status warning (`.
 
 Scan every REQ file — `do-work/queue/REQ-*.md`, `do-work/working/REQ-*.md`, and `find do-work/archive -name 'REQ-*.md'` — and parse every frontmatter timestamp (`created_at`, `claimed_at`, `completed_at`, `blocked_at`, `testing_updated_at`, and any other `*_at` field present). Compare each against the current UTC time (obtain it per the Timestamp rule, `actions/work-reference.md`), allowing ~2 minutes of clock skew.
 
-- **Warning** for each field that parses to later than now + skew: "REQ-NNN's `{field}` is `{value}` — {N} in the future. Likely local wall-clock time stamped with a `Z` suffix (the Timestamp rule in `actions/work-reference.md` requires the current UTC instant). Until the wall clock catches up, elapsed-time math built on it is wrong: the board's stopwatch shows a clock-skew marker, and queue-wait / implementation-time spans go negative."
+- **Warning** for each field that parses to later than now + skew: "REQ-NNN's `{field}` is `{value}` — {N} in the future. Likely local wall-clock time written with a `Z` suffix, or a fabricated value — guessed or extrapolated instead of read from the clock (the Timestamp rule in `actions/work-reference.md` requires the current UTC instant). For as long as the stamp stands, elapsed-time math built on it is wrong: the board's stopwatch shows a clock-skew marker, and queue-wait / implementation-time spans go negative."
   **Suggested fix:** Rewrite the field with the instant the event actually happened if recoverable (e.g., from the REQ file's git history), otherwise with the current UTC instant.
 
-This check is the mechanical sweep behind the board's future-stamp badge and data warning (`../do-work-board/tools/queue-kanban/model.go` `detectFutureTimestampFields`).
+This check is the mechanical sweep behind the board's future-stamp badge and data warning (`../do-work-board/tools/queue-kanban/model.go` `detectFutureTimestampFields`). The warning above says the same thing the board says, and both causes must stay named in both places — the board's copy is `futureStampCauseClause` in that file, mirrored by `futureStampCauseText` in `web/board-core.js`. Those two are held together by a test; this one is in a different skill package and nothing can reach it, so it is kept in step by hand.
 
 ### 13. Blanked or Unparseable REQ Files
 

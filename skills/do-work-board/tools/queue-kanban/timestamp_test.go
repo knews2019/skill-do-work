@@ -277,11 +277,58 @@ process.stdout.write(JSON.stringify(durationNode.title));`
 	}
 }
 
+// Executes the real futureStampTooltipText, so the assertion is about the string
+// the "⚠ future stamp" badge is actually given. This is the diagnosis a reader is
+// most likely to meet — hovering a card is easier than reading the data-warnings
+// panel — and it is the string whose wrongness widened this REQ.
+//
+// It exists because the source-level guard it replaced did not guard: asserting
+// that board-cards.js contains no "Z suffix" literal stayed green when the
+// tooltip was rewritten to render "a misconfigured clock" instead of the shared
+// constant. Only building the tooltip catches that.
+func TestJavaScriptBehaviorFutureStampBadgeTooltipNamesBothCauses(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := sliceJavaScriptStatementsThrough(t, indexHtml,
+		"var futureStampCauseText =", "var futureStampCauseText =") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function futureStampTooltipText(") + `
+process.stdout.write(JSON.stringify(
+  futureStampTooltipText(["claimed_at 2026-06-30T14:00:00Z"])));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "future-stamp badge tooltip", javascriptProbe)
+	var renderedTooltip string
+	if decodeError := json.Unmarshal(probeOutput, &renderedTooltip); decodeError != nil {
+		t.Fatalf("decode badge tooltip: %v (output %q)", decodeError, probeOutput)
+	}
+
+	if !strings.Contains(renderedTooltip, "claimed_at 2026-06-30T14:00:00Z") {
+		t.Errorf("the badge tooltip does not name the offending field; got: %s", renderedTooltip)
+	}
+	for _, requiredCause := range []string{"fabricated", "wall-clock", "Z suffix"} {
+		if !strings.Contains(renderedTooltip, requiredCause) {
+			t.Errorf("the badge tooltip does not name %q as a possible cause — the reader who hovers the card is sent to the wrong fix.\ngot: %s",
+				requiredCause, renderedTooltip)
+		}
+	}
+	for _, expectedFragment := range []string{
+		"fix: rewrite with the current UTC instant",
+		"YYYY-MM-DDTHH:MM:SSZ",
+		"Timestamp rule in actions/work-reference.md",
+	} {
+		if !strings.Contains(renderedTooltip, expectedFragment) {
+			t.Errorf("the badge tooltip lost %q; got: %s", expectedFragment, renderedTooltip)
+		}
+	}
+}
+
 // The Go and JS renderings of the cause are one sentence in two languages, and
-// nothing but this test makes them agree: the Go constant is compiled, the JS
-// one is embedded, and no build step compares them. Asserting byte equality is
-// what "keep the two in lock-step" means for a string, and it is the reason the
-// client may not keep a second copy of the cause anywhere else.
+// no build step compares them, so this asserts byte equality of the literals.
+//
+// Its guarantee is narrower than it looks, and the two behavior probes are what
+// make up the difference: this check proves the sentence is PRESENT in the file,
+// not that futureStampCauseText is BOUND to it — parking the right literal in a
+// comment and binding something else passes here. That is contrived, but the
+// realistic failure (editing one language and not the other) is caught, and the
+// probes catch the rest whenever Node is available.
 func TestFutureStampCauseClauseMatchesTheShippedClient(t *testing.T) {
 	boardCoreSource, readError := embeddedWebAssets.ReadFile("web/board-core.js")
 	if readError != nil {
@@ -289,16 +336,5 @@ func TestFutureStampCauseClauseMatchesTheShippedClient(t *testing.T) {
 	}
 	if !strings.Contains(string(boardCoreSource), `"`+futureStampCauseClause+`"`) {
 		t.Errorf("web/board-core.js does not carry futureStampCauseClause verbatim, so the board's Go and JS diagnoses disagree.\nwant the literal: %q", futureStampCauseClause)
-	}
-
-	// board-cards.js renders the badge tooltip from the shared constant. If it
-	// spells the cause itself again, the two JS tooltips can drift from each
-	// other even while both still name two causes.
-	boardCardsSource, readError := embeddedWebAssets.ReadFile("web/board-cards.js")
-	if readError != nil {
-		t.Fatalf("read web/board-cards.js: %v", readError)
-	}
-	if strings.Contains(string(boardCardsSource), "Z suffix") {
-		t.Errorf("web/board-cards.js spells the future-stamp cause itself; it must render futureStampCauseText so the badge and stopwatch tooltips cannot disagree")
 	}
 }

@@ -8,6 +8,22 @@
     return fullText.slice(0, limit - 1).replace(/\s+$/, "") + "…";
   }
 
+  // The "⚠ future stamp" badge's tooltip. A named function rather than an inline
+  // concatenation so it can be executed on its own: the tooltip is the diagnosis
+  // a reader is most likely to actually read, and the only way to assert what it
+  // says is to build one. Shares futureStampCauseText with the stopwatch tooltip
+  // (board-core.js) so the two cannot tell different stories.
+  function futureStampTooltipText(futureTimestampFields) {
+    return (
+      "Future-dated timestamp(s): " +
+      futureTimestampFields.join(", ") +
+      " — later than the board's generation time (2min skew allowance). Likely " +
+      futureStampCauseText +
+      "; fix: rewrite with the current UTC " +
+      "instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in actions/work-reference.md."
+    );
+  }
+
   function makeBadge(className, labelText, valueText, datasetName, datasetValue) {
     var badge = createElement("span", "badge " + className);
     if (labelText) {
@@ -188,13 +204,7 @@
       // cause text is shared with the stopwatch tooltip (board-core.js's
       // futureStampCauseText) so the two can never disagree.
       var futureStampBadge = makeBadge("badge-future-timestamp", null, "⚠ future stamp");
-      futureStampBadge.title =
-        "Future-dated timestamp(s): " +
-        request.futureTimestampFields.join(", ") +
-        " — later than the board's generation time (2min skew allowance). Likely " +
-        futureStampCauseText +
-        "; fix: rewrite with the current UTC " +
-        "instant — YYYY-MM-DDTHH:MM:SSZ, per the Timestamp rule in actions/work-reference.md.";
+      futureStampBadge.title = futureStampTooltipText(request.futureTimestampFields);
       badges.appendChild(futureStampBadge);
     }
     if (request.testingStatus) {
