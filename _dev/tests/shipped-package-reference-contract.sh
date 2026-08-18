@@ -1167,6 +1167,8 @@ def backticked_citation_messages(
     # prime-lesson-link computation examples) and cannot be told apart from a
     # citation to a deleted core file. Those spans are skipped; every other
     # package's tail is unambiguous, so citing a deleted file there still fails.
+    # A tail or resolved target still carrying ../ segments after the lead strip
+    # is treated as unresolvable, never probed: no path leaves the repository root.
     stripped_span = span_text.strip()
     if not stripped_span:
         return []
@@ -1180,8 +1182,10 @@ def backticked_citation_messages(
     tail_path = pathlib.PurePosixPath(tail_text)
     if tail_path.parts[0] not in {source_root.name for source_root, _ in modules}:
         return []
-    if tail_path.parts[0] == consumer_queue_directory and not path_exists(
-        package_parent / tail_path
+    if (
+        tail_path.parts[0] == consumer_queue_directory
+        and ".." not in tail_path.parts
+        and not path_exists(package_parent / tail_path)
     ):
         return []
     relative_target = pathlib.PurePosixPath(token.split("#")[0])
@@ -1189,7 +1193,7 @@ def backticked_citation_messages(
     source_target = pathlib.PurePosixPath(
         os.path.normpath((source_directory / relative_target).as_posix())
     )
-    if not path_exists(source_target):
+    if ".." in source_target.parts or not path_exists(source_target):
         missing_locations.append("source")
     installed_target = pathlib.PurePosixPath(
         os.path.normpath((installed_directory / relative_target).as_posix())
@@ -1263,6 +1267,14 @@ def run_backticked_citation_fixtures():
         (
             "citing a deleted non-core file must still fail",
             "../../do-work-board/actions/gone.md",
+            True,
+        ),
+        (
+            # Interior ../ segments survive the lead strip, so an escaping tail could
+            # both probe the filesystem above the repository root and be silently
+            # absorbed by the consumer-queue skip. It must fail as a citation instead.
+            "escaping do-work tail is a failing citation, not a consumer-state skip",
+            "../../do-work/../../../elsewhere.md",
             True,
         ),
     ]
@@ -1389,6 +1401,16 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
         relative_target = pathlib.PurePosixPath(decoded_target)
         source_target = pathlib.PurePosixPath(os.path.normpath((markdown_path.parent / relative_target).as_posix()))
         installed_target = pathlib.PurePosixPath(os.path.normpath((installed_file.parent / relative_target).as_posix()))
+        # os.path.normpath clamps nothing: enough ../ segments walk a target above the
+        # repository root, and every path this checker stats or reads must stay inside
+        # it. Escapes fail here, before any filesystem access outside the repository.
+        if ".." in source_target.parts or ".." in installed_target.parts:
+            fail(
+                f"{markdown_path}:{line_number}: relative target escapes the "
+                f"repository root: {target}"
+            )
+            broken_references += 1
+            continue
         installed_source_target = resolve_installed_target(installed_target, modules)
 
         missing_locations = []
