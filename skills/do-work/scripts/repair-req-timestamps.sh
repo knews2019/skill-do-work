@@ -48,8 +48,25 @@
 # so a quoted future stamp is flagged read-side and must be repairable here too
 # (its replacement is written in the canonical unquoted form the Timestamp rule
 # prescribes). Everything else is REFUSED byte-identical, never half-rewritten:
-#   - A numeric UTC offset or fractional seconds: NOT provably wrong without
-#     timezone arithmetic — the conservative direction.
+#   - A numeric UTC offset (`2093-01-01T00:00:00+02:00`) or fractional seconds
+#     (`2093-01-01T00:00:00.500Z`): refused PERMANENTLY — a settled answer, not
+#     a gap waiting on someone. The read side parses both, so a future one
+#     keeps its board badge while this script leaves it alone. That residual
+#     is real and it is accepted, because the arithmetic that would close it is
+#     the risk: comparison here is dependency-free string ordering, and
+#     normalizing an offset means carrying civil-date arithmetic in this file.
+#     `2026-08-19T00:29:11+05:00` denotes 2026-08-18T19:29:11Z; a repairer that
+#     reads the wall clock and ignores the offset sees a value five hours later
+#     than the instant, which is how a CORRECT stamp gets erased as
+#     future-dated. Refusing can only fail to fix; repairing can destroy,
+#     unattended, from a SessionStart hook. The population is close to empty
+#     besides: what this script exists to repair is a local wall clock stamped
+#     `Z`, or a fabricated value, and neither carries an offset or a fraction —
+#     a value that carries one came from a formatter that got the instant
+#     right. Widening the read side re-opens this decision rather than
+#     inheriting it, and both halves are pinned:
+#     _dev/tests/prescribed-shell-scripts-behavior.sh fails if this refusal is
+#     quietly dropped, or if the board's parseTimestamp layouts change under it.
 #   - A shape-valid but calendar-impossible instant (a 99th month, April 31, a
 #     non-leap-year February 29): the read-side parser rejects it, so erasing
 #     it to a derived instant would destroy the malformed evidence the board
