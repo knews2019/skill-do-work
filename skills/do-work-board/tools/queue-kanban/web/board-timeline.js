@@ -30,8 +30,13 @@
   var TIMELINE_LABEL_WIDTH = 104;
   var TIMELINE_OVERSCAN_ROWS = 4;
   var TIMELINE_MIN_SPAN_MS = 3600000; // one hour in ms — as far in as zoom goes
+  var TIMELINE_DAY_MS = 86400000;
   var TIMELINE_ZOOM_STEP = 1.6;
   var TIMELINE_PAN_FRACTION = 0.15;
+  var TIMELINE_NOW_JUMP_MARGIN_FRACTION = 0.1;
+  // Shortest first, so a window that satisfies more than one level reports the
+  // tightest one it actually is.
+  var TIMELINE_PERIOD_LEVEL_NAMES = ["day", "week", "month"];
   var TIMELINE_HATCH_PATTERN_ID = "timeline-projected-hatch";
   var TIMELINE_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -154,6 +159,135 @@
       return timelineZoomedWindow(windowStartMs, windowEndMs, 1 / TIMELINE_ZOOM_STEP, 0.5, boundStartMs, boundEndMs);
     }
     return null;
+  }
+
+  // Period navigation is the THIRD way to move the window, after the pointer and
+  // the keyboard, and it obeys the same rule they do: it computes a CANDIDATE
+  // window and hands it to timelineZoomedWindow to settle. Factor 1 at anchor 0
+  // means "keep this window, apply the model's floor, ceiling and edge clamp", so
+  // the period controls cannot acquire a floor or a clamp of their own.
+  //
+  // All of it is UTC calendar arithmetic and all of it is O(1) in the board's
+  // range: a step is one Date.UTC call, not a walk across the months in between,
+  // which is why stepping does not get slower as the archive grows.
+
+  // The start of the calendar period containing an instant.
+  function timelinePeriodStart(epochMs, levelName) {
+    var instant = new Date(epochMs);
+    if (levelName === "month") {
+      return Date.UTC(instant.getUTCFullYear(), instant.getUTCMonth(), 1);
+    }
+    var dayStartMs = Date.UTC(instant.getUTCFullYear(), instant.getUTCMonth(), instant.getUTCDate());
+    if (levelName === "week") {
+      // getUTCDay is 0 on Sunday; the week runs Monday to Sunday.
+      return dayStartMs - ((instant.getUTCDay() + 6) % 7) * TIMELINE_DAY_MS;
+    }
+    return dayStartMs;
+  }
+
+  // The start of the period stepCount periods away. Months step as months rather
+  // than as 30 days, so February and March both land on the 1st.
+  function timelineSteppedPeriodStart(periodStartMs, levelName, stepCount) {
+    if (levelName === "month") {
+      var instant = new Date(periodStartMs);
+      return Date.UTC(instant.getUTCFullYear(), instant.getUTCMonth() + stepCount, 1);
+    }
+    return periodStartMs + stepCount * (levelName === "week" ? 7 : 1) * TIMELINE_DAY_MS;
+  }
+
+  // One calendar period, positioned by an anchor instant and stepped by
+  // stepCount. The step is clamped on the PERIOD rather than on milliseconds:
+  // prev and next stop at the first and last period the range reaches, so holding
+  // next cannot walk the window off the data and leave a screen with no bars.
+  function timelinePeriodWindow(anchorMs, levelName, stepCount, boundStartMs, boundEndMs) {
+    var periodStartMs = timelineSteppedPeriodStart(
+      timelinePeriodStart(anchorMs, levelName),
+      levelName,
+      stepCount
+    );
+    return timelineZoomedWindow(
+      periodStartMs,
+      timelineSteppedPeriodStart(periodStartMs, levelName, 1),
+      1,
+      0,
+      boundStartMs,
+      boundEndMs
+    );
+  }
+
+  // Which level the window is EXACTLY showing, or null when it is showing a span
+  // of the reader's own. A free zoom, a drag, and a period cut short by the end of
+  // the range all land here, and the control then states no level instead of
+  // claiming one the window no longer has.
+  function timelinePeriodLevelOfWindow(windowStartMs, windowEndMs) {
+    for (var levelIndex = 0; levelIndex < TIMELINE_PERIOD_LEVEL_NAMES.length; levelIndex++) {
+      var levelName = TIMELINE_PERIOD_LEVEL_NAMES[levelIndex];
+      if (
+        timelinePeriodStart(windowStartMs, levelName) === windowStartMs &&
+        timelineSteppedPeriodStart(windowStartMs, levelName, 1) === windowEndMs
+      ) {
+        return levelName;
+      }
+    }
+    return null;
+  }
+
+  // Which level prev and next step by when the window is not exactly a period:
+  // the one closest to what is already on screen, so a step after a free zoom is
+  // about the size the reader was looking at and still lands on a boundary.
+  function timelineNearestPeriodLevel(windowStartMs, windowEndMs) {
+    var windowSpanMs = windowEndMs - windowStartMs;
+    var nearestLevelName = TIMELINE_PERIOD_LEVEL_NAMES[0];
+    var nearestDistanceMs = Infinity;
+    TIMELINE_PERIOD_LEVEL_NAMES.forEach(function (levelName) {
+      var periodStartMs = timelinePeriodStart(windowStartMs, levelName);
+      var periodSpanMs = timelineSteppedPeriodStart(periodStartMs, levelName, 1) - periodStartMs;
+      var distanceMs = Math.abs(periodSpanMs - windowSpanMs);
+      if (distanceMs < nearestDistanceMs) {
+        nearestDistanceMs = distanceMs;
+        nearestLevelName = levelName;
+      }
+    });
+    return nearestLevelName;
+  }
+
+  // The first row still waiting or still running — where "what is left" actually
+  // sits in a list whose first hundreds of rows are finished work.
+  function timelineFirstOpenRowIndex(rows) {
+    for (var rowIndex = 0; rowIndex < rows.length; rowIndex++) {
+      if (rows[rowIndex].waitOpen || rows[rowIndex].workOpen) {
+        return rowIndex;
+      }
+    }
+    return -1;
+  }
+
+  // Jumping to now is two movements, not one. Recentring the time window leaves
+  // the reader looking at whichever rows were already scrolled into view — on a
+  // long board, the oldest archived ones — so this also says where the ROW list
+  // goes. The window carries the now-line and the forecast's queue-empty instant
+  // together, because "what is left" is the span between them. Returns both so
+  // the button is two assignments and the decision is testable without a browser.
+  function timelineNowJump(nowMs, queueEndMs, rows, boundStartMs, boundEndMs) {
+    var earliestMs = isNaN(queueEndMs) ? nowMs : Math.min(nowMs, queueEndMs);
+    var latestMs = isNaN(queueEndMs) ? nowMs : Math.max(nowMs, queueEndMs);
+    // Margin so both lines sit inside the window rather than on its frame.
+    var marginMs = Math.max(
+      (latestMs - earliestMs) * TIMELINE_NOW_JUMP_MARGIN_FRACTION,
+      TIMELINE_MIN_SPAN_MS / 2
+    );
+    var openRowIndex = timelineFirstOpenRowIndex(rows);
+    return {
+      window: timelineZoomedWindow(
+        earliestMs - marginMs,
+        latestMs + marginMs,
+        1,
+        0,
+        boundStartMs,
+        boundEndMs
+      ),
+      scrollTop: openRowIndex < 0 ? null : openRowIndex * TIMELINE_ROW_HEIGHT
+    };
   }
 
   // Which rows have SVG nodes. Everything above and below the scrolled window is
@@ -586,9 +720,37 @@
       }
     }
 
+    // The level a step would use: the one the window is exactly showing, or the
+    // nearest one when a free zoom or drag has left it showing a span of its own.
+    // Either way prev/next lands on a calendar boundary.
+    function steppingLevelName() {
+      return (
+        timelinePeriodLevelOfWindow(timelineViewState.windowStartMs, timelineViewState.windowEndMs) ||
+        timelineNearestPeriodLevel(timelineViewState.windowStartMs, timelineViewState.windowEndMs)
+      );
+    }
+
+    // The period control has to say when it is no longer exact. After a free zoom
+    // or drag the window is a span of the reader's own choosing, and a level
+    // button left highlighted would be claiming otherwise. Called from renderAll,
+    // so every path that moves the window — buttons, keys, wheel, drag — refreshes
+    // it and none of them can leave a stale level on screen.
+    function renderPeriodControls() {
+      var exactLevelName = timelinePeriodLevelOfWindow(
+        timelineViewState.windowStartMs,
+        timelineViewState.windowEndMs
+      );
+      setActiveButton("#view-timeline .timeline-periods", "data-timeline-period", exactLevelName || "");
+      var periodStateNode = document.getElementById("timeline-period-state");
+      if (periodStateNode) {
+        periodStateNode.textContent = exactLevelName ? "one " + exactLevelName : "custom span";
+      }
+    }
+
     function renderAll() {
       renderAxis();
       renderVisibleRows();
+      renderPeriodControls();
     }
 
     function timelineRowDescription(row, request) {
@@ -745,7 +907,7 @@
       });
     });
 
-    function wireZoomButton(buttonId, apply) {
+    function wireToolbarButton(buttonId, apply) {
       var button = document.getElementById(buttonId);
       if (button) {
         button.onclick = function () {
@@ -754,35 +916,65 @@
         };
       }
     }
-    wireZoomButton("timeline-zoom-in", function () {
+    wireToolbarButton("timeline-zoom-in", function () {
       var zoomed = timelineZoomedWindow(
         timelineViewState.windowStartMs, timelineViewState.windowEndMs,
         TIMELINE_ZOOM_STEP, 0.5, boundStartMs, boundEndMs);
       timelineViewState.windowStartMs = zoomed.windowStartMs;
       timelineViewState.windowEndMs = zoomed.windowEndMs;
     });
-    wireZoomButton("timeline-zoom-out", function () {
+    wireToolbarButton("timeline-zoom-out", function () {
       var zoomed = timelineZoomedWindow(
         timelineViewState.windowStartMs, timelineViewState.windowEndMs,
         1 / TIMELINE_ZOOM_STEP, 0.5, boundStartMs, boundEndMs);
       timelineViewState.windowStartMs = zoomed.windowStartMs;
       timelineViewState.windowEndMs = zoomed.windowEndMs;
     });
-    wireZoomButton("timeline-zoom-fit", function () {
+    wireToolbarButton("timeline-zoom-fit", function () {
       timelineViewState.windowStartMs = boundStartMs;
       timelineViewState.windowEndMs = boundEndMs;
     });
     // Zooming anchors at the centre, so the forecast at the far right takes a
     // long drag to reach once you have zoomed in far enough to read it. A
     // forecast you have to hunt for does not answer "when does the queue empty".
-    wireZoomButton("timeline-zoom-now", function () {
-      var windowSpanMs = timelineViewState.windowEndMs - timelineViewState.windowStartMs;
-      var centredStartMs = Math.min(
-        Math.max(nowMs - windowSpanMs / 2, boundStartMs),
-        Math.max(boundEndMs - windowSpanMs, boundStartMs)
+    wireToolbarButton("timeline-zoom-now", function () {
+      var nowJump = timelineNowJump(nowMs, Date.parse(projection.queueEnd), rows, boundStartMs, boundEndMs);
+      timelineViewState.windowStartMs = nowJump.window.windowStartMs;
+      timelineViewState.windowEndMs = nowJump.window.windowEndMs;
+      // Moving the window alone left the reader on whichever rows were already
+      // scrolled into view, which on a long board is the oldest archived work.
+      if (nowJump.scrollTop !== null) {
+        scrollHost.scrollTop = nowJump.scrollTop;
+      }
+    });
+
+    // The period controls: three levels and a step either way, all of them going
+    // through timelinePeriodWindow and therefore through timelineZoomedWindow.
+    // The window's own midpoint is the anchor, so choosing a level keeps the
+    // reader near what they were looking at and a step moves off the period they
+    // are on.
+    function applyPeriodWindow(levelName, stepCount) {
+      var periodWindow = timelinePeriodWindow(
+        (timelineViewState.windowStartMs + timelineViewState.windowEndMs) / 2,
+        levelName,
+        stepCount,
+        boundStartMs,
+        boundEndMs
       );
-      timelineViewState.windowStartMs = centredStartMs;
-      timelineViewState.windowEndMs = centredStartMs + windowSpanMs;
+      timelineViewState.windowStartMs = periodWindow.windowStartMs;
+      timelineViewState.windowEndMs = periodWindow.windowEndMs;
+    }
+    document.querySelectorAll("#view-timeline [data-timeline-period]").forEach(function (levelButton) {
+      levelButton.onclick = function () {
+        applyPeriodWindow(levelButton.getAttribute("data-timeline-period"), 0);
+        renderAll();
+      };
+    });
+    wireToolbarButton("timeline-period-prev", function () {
+      applyPeriodWindow(steppingLevelName(), -1);
+    });
+    wireToolbarButton("timeline-period-next", function () {
+      applyPeriodWindow(steppingLevelName(), 1);
     });
 
     addTimelineListener(window, "resize", renderAll);
