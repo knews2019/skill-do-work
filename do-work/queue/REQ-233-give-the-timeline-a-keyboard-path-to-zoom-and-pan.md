@@ -25,7 +25,9 @@ The Timeline view's zoom and pan are pointer-only. The three zoom buttons are re
 
 ## Context
 
-Found while implementing REQ-227, which built the view. Rows already take focus and open the detail drawer with Enter, and every value the chart draws is also in the table below it, so no *data* is unreachable — what is unreachable is the navigation. A keyboard user can read every row but cannot move the window they are read in.
+Found while implementing REQ-227, which built the view. Every value the chart draws is also in the table below it, so no *data* is unreachable — what is unreachable is the navigation. A keyboard user can read every row but cannot move the window they are read in.
+
+**Narrowed since capture.** This REQ originally recorded that rows "already take focus and open the detail drawer with Enter". That was wrong: the rows carried `role="button"` and `tabindex="0"` but the drawer opened only on a delegated `click`, which a non-native `<g>` never synthesizes from Enter or Space. PR #144's review caught it and it was fixed there — row activation now works from the keyboard and is pinned by `TestJavaScriptBehaviorTimelineRowsActivateFromTheKeyboard`. What remains for this REQ is only what its title says: arrow-key panning and `+`/`-` zoom, plus stating the interaction in the panel's accessible name.
 
 Not a regression: no other board view has zoom or pan at all, so REQ-227 added an un-keyboarded capability rather than removing a keyboarded one. That is why it is a follow-up rather than a fix inside REQ-227.
 

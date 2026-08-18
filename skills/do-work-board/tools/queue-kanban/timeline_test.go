@@ -393,3 +393,96 @@ func TestTimelineProjectionStartsAfterWorkAlreadyInFlight(t *testing.T) {
 		t.Fatalf("first projected REQ starts %+v, want %s", projection.Rows, wantStart)
 	}
 }
+
+// A pending REQ whose prerequisite is CLAIMED is schedulable, not stuck: the
+// chain already starts after in-flight work finishes, so by the time the chain
+// runs that dependency has resolved. Treating it as unschedulable dropped the
+// REQ from the queue-end figure and reported a reason — "unschedulable, missing,
+// or circular" — that was actively wrong about a REQ someone was working on.
+func TestTimelineProjectionSchedulesDependentsOfClaimedWork(t *testing.T) {
+	now := time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)
+	tickets := []*RequestTicket{}
+	for spanIndex, spanMinutes := range []float64{20, 30, 40, 50, 60, 70} {
+		tickets = append(tickets, completedSpanTicket(
+			fmt.Sprintf("REQ-1%02d", spanIndex), "normal",
+			now.Add(-time.Duration(spanIndex+1)*time.Hour), spanMinutes))
+	}
+	// Claimed 10 minutes ago against a normal median of 45, so it has 35 left.
+	inFlight := timelineTicket("REQ-300", "claimed",
+		"2026-06-01T09:00:00Z", now.Add(-10*time.Minute).Format(time.RFC3339), "")
+	inFlight.EffortEstimate = "normal"
+	tickets = append(tickets,
+		inFlight,
+		projectionTicket("REQ-401", "pending", "normal", []string{"REQ-300"}),
+		projectionTicket("REQ-402", "pending", "normal", []string{"REQ-401"}),
+	)
+	resolveUnmetDependenciesForTest(tickets)
+
+	projection := buildTimelineProjection(tickets, buildDurationAggregate(tickets), now)
+
+	if len(projection.Rows) != 2 {
+		t.Fatalf("chain = %+v, want both REQs scheduled behind the in-flight one", projection.Rows)
+	}
+	if projection.Rows[0].RequestId != "REQ-401" || projection.Rows[1].RequestId != "REQ-402" {
+		t.Fatalf("chain order = %s, %s; want REQ-401 then REQ-402",
+			projection.Rows[0].RequestId, projection.Rows[1].RequestId)
+	}
+	wantStart := now.Add(35 * time.Minute)
+	if !projection.Rows[0].StartTime.Equal(wantStart) {
+		t.Fatalf("REQ-401 starts %s, want %s — after the in-flight REQ's remaining median",
+			projection.Rows[0].StartTime, wantStart)
+	}
+	if len(projection.Excluded) != 0 {
+		t.Fatalf("excluded = %+v, want none — a claimed prerequisite is in flight, not unschedulable",
+			projection.Excluded)
+	}
+	if projection.QueueEnd.IsZero() {
+		t.Fatal("queue end went absent; the estimate must cover both scheduled REQs")
+	}
+
+	// A pending REQ behind a genuinely unschedulable one still drops out, so the
+	// fix widens what counts as resolvable without weakening the exclusion.
+	blockedTickets := append([]*RequestTicket{}, tickets...)
+	blockedTickets = append(blockedTickets,
+		projectionTicket("REQ-403", "blocked", "normal", nil),
+		projectionTicket("REQ-404", "pending", "normal", []string{"REQ-403"}),
+	)
+	resolveUnmetDependenciesForTest(blockedTickets)
+	blockedProjection := buildTimelineProjection(blockedTickets, buildDurationAggregate(blockedTickets), now)
+	excludedIds := map[string]bool{}
+	for _, exclusion := range blockedProjection.Excluded {
+		excludedIds[exclusion.RequestId] = true
+	}
+	if !excludedIds["REQ-404"] || !excludedIds["REQ-403"] {
+		t.Fatalf("excluded = %+v, want REQ-403 and REQ-404 still held out",
+			blockedProjection.Excluded)
+	}
+}
+
+// The chain must run in the order the work action would actually claim, and that
+// order is numeric. Lexically REQ-1000 sorts before REQ-999, so past four digits
+// a lexical chain predicts the wrong next REQ — the one thing REQ-228's own
+// lesson says the forecast must never get wrong.
+func TestTimelineProjectionChainOrderIsNumericNotLexical(t *testing.T) {
+	now := time.Date(2026, 6, 20, 12, 0, 0, 0, time.UTC)
+	tickets := []*RequestTicket{}
+	for spanIndex, spanMinutes := range []float64{20, 30, 40, 50, 60, 70} {
+		tickets = append(tickets, completedSpanTicket(
+			fmt.Sprintf("REQ-1%02d", spanIndex), "normal",
+			now.Add(-time.Duration(spanIndex+1)*time.Hour), spanMinutes))
+	}
+	tickets = append(tickets,
+		projectionTicket("REQ-1000", "pending", "normal", nil),
+		projectionTicket("REQ-999", "pending", "normal", nil),
+	)
+	resolveUnmetDependenciesForTest(tickets)
+
+	projection := buildTimelineProjection(tickets, buildDurationAggregate(tickets), now)
+	if len(projection.Rows) != 2 {
+		t.Fatalf("chain = %+v, want both REQs", projection.Rows)
+	}
+	if projection.Rows[0].RequestId != "REQ-999" {
+		t.Fatalf("chain starts with %s; work.md takes the lowest NUMERIC id, so REQ-999 precedes REQ-1000",
+			projection.Rows[0].RequestId)
+	}
+}

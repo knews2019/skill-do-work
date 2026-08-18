@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.207.3 — Timeline Forecast and Keyboard Fixes from PR Review (2026-08-18)
+
+Four defects an automated reviewer found on PR #144, all in the Timeline that shipped over the last two releases. Two of them made the forecast quietly wrong.
+
+- A REQ waiting on work someone is doing right now was reported as unschedulable and dropped out of the queue-end estimate entirely — with a reason that claimed its dependency was missing or circular. It is now scheduled behind the in-flight work, which is what the chain start already assumed.
+- The chain sorted REQ ids as text, so past four digits `REQ-1000` came before `REQ-999` and the forecast named the wrong next REQ. It now uses the same numeric comparator the rest of the board does.
+- Filtering to something that matches no REQ left the previous forecast and exclusion list on screen next to "No REQ matches the current filters"
+- Timeline rows said `role="button"` and took focus but ignored Enter and Space, so the detail drawer was unreachable by keyboard. It opens now.
+
 ## 0.207.2 — The Board Action Stops Counting Its Own Views (2026-08-18)
 
 `do-work-board board` described the board by listing some of its tabs — "a Kanban board + completion calendar", "a third view next to Board / Calendar". Both went stale as views were added, and one was already wrong before the Timeline arrived.

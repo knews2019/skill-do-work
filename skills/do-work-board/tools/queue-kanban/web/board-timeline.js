@@ -146,6 +146,26 @@
     svg.appendChild(defs);
   }
 
+  // A <g role="button"> takes focus but is not a native button, so Enter and
+  // Space never reach the delegated click handler that opens the drawer. Rows
+  // advertise the role, so they owe the behavior. Returns the id it activated,
+  // or null when the event was not an activation on a detail trigger.
+  function timelineKeyboardActivationTarget(keyEvent) {
+    if (keyEvent.key !== "Enter" && keyEvent.key !== " " && keyEvent.key !== "Spacebar") {
+      return null;
+    }
+    var trigger = keyEvent.target && keyEvent.target.closest
+      ? keyEvent.target.closest("[data-detail-kind]")
+      : null;
+    if (!trigger) {
+      return null;
+    }
+    return {
+      detailKind: trigger.getAttribute("data-detail-kind"),
+      detailId: trigger.getAttribute("data-detail-id")
+    };
+  }
+
   function makeTimelineSvgNode(parent, name, attributes, textContent) {
     var node = document.createElementNS(TIMELINE_SVG_NS, name);
     Object.keys(attributes).forEach(function (key) {
@@ -162,14 +182,29 @@
   // a date without stating what it assumed is the artifact people screenshot and
   // quote; the assumptions are not a footnote here, they are the other half of
   // the sentence.
-  function renderTimelineForecast(projection, rows) {
+  // Emptying both nodes is its own function because the no-rows path has to do
+  // it without rendering anything: a forecast left standing beside "no REQ
+  // matches" describes rows that are not on screen.
+  function clearTimelineForecast() {
     var forecastNode = document.getElementById("timeline-forecast");
     var excludedNode = document.getElementById("timeline-excluded");
+    if (forecastNode) {
+      forecastNode.textContent = "";
+      forecastNode.classList.remove("is-declined");
+    }
+    if (excludedNode) {
+      excludedNode.textContent = "";
+    }
+    return { forecastNode: forecastNode, excludedNode: excludedNode };
+  }
+
+  function renderTimelineForecast(projection, rows) {
+    var forecastNodes = clearTimelineForecast();
+    var forecastNode = forecastNodes.forecastNode;
+    var excludedNode = forecastNodes.excludedNode;
     if (!forecastNode || !excludedNode) {
       return;
     }
-    forecastNode.textContent = "";
-    excludedNode.textContent = "";
 
     if (!projection.confident) {
       forecastNode.textContent =
@@ -279,6 +314,8 @@
     tableBody.textContent = "";
 
     if (rows.length === 0) {
+      // The forecast describes the rows; with none on screen it must go too.
+      clearTimelineForecast();
       summaryNode.textContent = (timeline.rows || []).length
         ? "No REQ matches the current filters."
         : "No REQ carries a readable created_at yet, so there is nothing to place on a timeline.";
@@ -545,6 +582,15 @@
 
     // ---- interaction ----
     addTimelineListener(scrollHost, "scroll", renderVisibleRows);
+
+    addTimelineListener(scrollHost, "keydown", function (keyEvent) {
+      var activation = timelineKeyboardActivationTarget(keyEvent);
+      if (!activation) {
+        return;
+      }
+      keyEvent.preventDefault();
+      openDetail(activation.detailKind, activation.detailId);
+    });
 
     addTimelineListener(scrollHost, "mousemove", function (moveEvent) {
       if (!readoutNode) {

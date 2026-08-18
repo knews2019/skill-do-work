@@ -123,7 +123,7 @@ func buildTimelineAggregate(tickets []*RequestTicket, now time.Time) TimelineAgg
 	// The view states this ordering rather than leaving the reader to infer it.
 	sort.SliceStable(aggregate.Rows, func(earlier, later int) bool {
 		if aggregate.Rows[earlier].CreatedTime.Equal(aggregate.Rows[later].CreatedTime) {
-			return aggregate.Rows[earlier].RequestId < aggregate.Rows[later].RequestId
+			return requestIdLess(aggregate.Rows[earlier].RequestId, aggregate.Rows[later].RequestId)
 		}
 		return aggregate.Rows[earlier].CreatedTime.Before(aggregate.Rows[later].CreatedTime)
 	})
@@ -337,7 +337,9 @@ func timelineChainStart(tickets []*RequestTicket, projection TimelineProjection,
 // timelineChain places every schedulable pending REQ, and reports the rest.
 //
 // The placement rule is work.md's: among REQs whose dependencies have all
-// resolved or been placed already, take the lowest id. Repeating that until
+// resolved or been placed already, take the lowest id — NUMERICALLY, through
+// requestIdLess, because past four digits a lexical order puts REQ-1000 ahead of
+// REQ-999 and the forecast would name the wrong next REQ. Repeating that until
 // nothing more can be placed is what makes the chain agree with what `do-work
 // run` would actually claim next.
 func timelineChain(tickets []*RequestTicket, projection TimelineProjection) ([]TimelineProjectedRow, []TimelineExclusion) {
@@ -358,10 +360,22 @@ func timelineChain(tickets []*RequestTicket, projection TimelineProjection) ([]T
 		}
 	}
 	sort.SliceStable(pendingTickets, func(earlier, later int) bool {
-		return pendingTickets[earlier].RequestId < pendingTickets[later].RequestId
+		return requestIdLess(pendingTickets[earlier].RequestId, pendingTickets[later].RequestId)
 	})
 
+	// Seeded with the REQs already in flight. UnmetDependencies holds anything
+	// that has not reached terminal success, which includes a CLAIMED
+	// prerequisite — but the chain starts after in-flight work finishes
+	// (timelineChainStart), so by the time any of this runs that dependency has
+	// resolved. Without the seed a REQ waiting on claimed work could never
+	// become ready: it dropped out of the chain, out of the queue-end figure,
+	// and into the exclusion list under a reason that was wrong about it.
 	placedIds := map[string]bool{}
+	for _, ticket := range tickets {
+		if ticket != nil && ticket.Status == "claimed" {
+			placedIds[ticket.RequestId] = true
+		}
+	}
 	var rows []TimelineProjectedRow
 	chainCursor := projection.ChainStart
 	for {
@@ -412,7 +426,7 @@ func timelineChain(tickets []*RequestTicket, projection TimelineProjection) ([]T
 		})
 	}
 	sort.SliceStable(exclusions, func(earlier, later int) bool {
-		return exclusions[earlier].RequestId < exclusions[later].RequestId
+		return requestIdLess(exclusions[earlier].RequestId, exclusions[later].RequestId)
 	})
 	return rows, exclusions
 }

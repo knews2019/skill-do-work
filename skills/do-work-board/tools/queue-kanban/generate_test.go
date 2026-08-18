@@ -2106,14 +2106,23 @@ process.stdout.write(JSON.stringify({
 // SENTENCE — which figures reach the reader — not the layout.
 const timelineForecastDomStub = `
 function makeStubNode() {
-  return {
-    textContent: "",
+  var node = {
+    storedText: "",
     className: "",
     children: [],
     classList: { add: function () {}, remove: function () {} },
     setAttribute: function () {},
     appendChild: function (child) { this.children.push(child); return child; }
   };
+  // Assigning textContent replaces ALL children, exactly as the DOM does. A
+  // plain data property would leave the old children in place and make "was it
+  // cleared?" unanswerable — which is how the first version of this probe
+  // passed against code that cleared nothing.
+  Object.defineProperty(node, "textContent", {
+    get: function () { return this.storedText; },
+    set: function (value) { this.storedText = value; this.children = []; }
+  });
+  return node;
 }
 var stubNodes = { "timeline-forecast": makeStubNode(), "timeline-excluded": makeStubNode() };
 var document = {
@@ -2137,6 +2146,7 @@ func TestJavaScriptBehaviorTimelineForecastStatesItsAssumptions(t *testing.T) {
 	javascriptProbe := timelineForecastDomStub +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineFormatSpanMinutes(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function timelineFormatStamp(") + "\n" +
+		sliceBalancedBlockAfter(t, indexHtml, "function clearTimelineForecast(") + "\n" +
 		sliceBalancedBlockAfter(t, indexHtml, "function renderTimelineForecast(") + `
 var confidentProjection = {
   confident: true,
@@ -2161,10 +2171,18 @@ renderTimelineForecast({
 }, []);
 var declinedText = collectText(stubNodes["timeline-forecast"]);
 
+// The no-rows path clears both nodes without rendering anything: a forecast left
+// standing beside "no REQ matches" describes rows that are not on screen.
+clearTimelineForecast();
+var clearedText = collectText(stubNodes["timeline-forecast"]);
+var clearedExcludedText = collectText(stubNodes["timeline-excluded"]);
+
 process.stdout.write(JSON.stringify({
   confidentText: confidentText,
   confidentExcludedText: confidentExcludedText,
-  declinedText: declinedText
+  declinedText: declinedText,
+  clearedText: clearedText,
+  clearedExcludedText: clearedExcludedText
 }));`
 
 	probeOutput := runJavaScriptBehaviorProbe(t, "timeline forecast", javascriptProbe)
@@ -2172,6 +2190,8 @@ process.stdout.write(JSON.stringify({
 		ConfidentText         string `json:"confidentText"`
 		ConfidentExcludedText string `json:"confidentExcludedText"`
 		DeclinedText          string `json:"declinedText"`
+		ClearedText           string `json:"clearedText"`
+		ClearedExcludedText   string `json:"clearedExcludedText"`
 	}
 	if decodeError := json.Unmarshal(probeOutput, &forecastResult); decodeError != nil {
 		t.Fatalf("decode timeline forecast behavior: %v (output %q)", decodeError, probeOutput)
@@ -2203,11 +2223,83 @@ process.stdout.write(JSON.stringify({
 			forecastResult.ConfidentExcludedText)
 	}
 
+	if strings.TrimSpace(forecastResult.ClearedText) != "" ||
+		strings.TrimSpace(forecastResult.ClearedExcludedText) != "" {
+		t.Fatalf("clearing left forecast %q and excluded %q; a filter matching no rows must leave neither standing beside \"no REQ matches\"",
+			forecastResult.ClearedText, forecastResult.ClearedExcludedText)
+	}
+
 	if strings.Contains(forecastResult.DeclinedText, "Queue empties") {
 		t.Fatalf("thin history produced an end date: %q", forecastResult.DeclinedText)
 	}
 	if !strings.Contains(forecastResult.DeclinedText, "No end estimate") ||
 		!strings.Contains(forecastResult.DeclinedText, "5 are needed") {
 		t.Fatalf("declining must say so and carry the reason; got %q", forecastResult.DeclinedText)
+	}
+}
+
+// Rows advertise role="button" and take focus, but a <g> is not a native button:
+// Enter and Space never synthesize the click the drawer listens for. The role is
+// a promise, and this is the code that keeps it.
+func TestJavaScriptBehaviorTimelineRowsActivateFromTheKeyboard(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := sliceBalancedBlockAfter(t, indexHtml, "function timelineKeyboardActivationTarget(") + `
+function rowEvent(key, detailId) {
+  var trigger = detailId === null ? null : {
+    getAttribute: function (name) {
+      return name === "data-detail-kind" ? "request" : detailId;
+    }
+  };
+  return { key: key, target: { closest: function () { return trigger; } } };
+}
+process.stdout.write(JSON.stringify({
+  enter: timelineKeyboardActivationTarget(rowEvent("Enter", "REQ-401")),
+  space: timelineKeyboardActivationTarget(rowEvent(" ", "REQ-402")),
+  legacySpace: timelineKeyboardActivationTarget(rowEvent("Spacebar", "REQ-403")),
+  tab: timelineKeyboardActivationTarget(rowEvent("Tab", "REQ-404")),
+  arrow: timelineKeyboardActivationTarget(rowEvent("ArrowDown", "REQ-405")),
+  offRow: timelineKeyboardActivationTarget(rowEvent("Enter", null))
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline keyboard activation", javascriptProbe)
+	var activationResult struct {
+		Enter       *struct{ DetailKind, DetailId string } `json:"enter"`
+		Space       *struct{ DetailKind, DetailId string } `json:"space"`
+		LegacySpace *struct{ DetailKind, DetailId string } `json:"legacySpace"`
+		Tab         *struct{ DetailKind, DetailId string } `json:"tab"`
+		Arrow       *struct{ DetailKind, DetailId string } `json:"arrow"`
+		OffRow      *struct{ DetailKind, DetailId string } `json:"offRow"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &activationResult); decodeError != nil {
+		t.Fatalf("decode timeline keyboard activation: %v (output %q)", decodeError, probeOutput)
+	}
+	for _, activated := range []struct {
+		keyName string
+		result  *struct{ DetailKind, DetailId string }
+		wantId  string
+	}{
+		{"Enter", activationResult.Enter, "REQ-401"},
+		{"Space", activationResult.Space, "REQ-402"},
+		{"Spacebar (legacy)", activationResult.LegacySpace, "REQ-403"},
+	} {
+		if activated.result == nil {
+			t.Fatalf("%s on a focused row activated nothing; the row advertises role=button", activated.keyName)
+		}
+		if activated.result.DetailId != activated.wantId || activated.result.DetailKind != "request" {
+			t.Fatalf("%s activated %+v, want request/%s", activated.keyName, *activated.result, activated.wantId)
+		}
+	}
+	// Navigation keys and keys pressed off a row must not open anything.
+	for _, ignored := range []struct {
+		keyName string
+		result  *struct{ DetailKind, DetailId string }
+	}{
+		{"Tab", activationResult.Tab},
+		{"ArrowDown", activationResult.Arrow},
+		{"Enter off a row", activationResult.OffRow},
+	} {
+		if ignored.result != nil {
+			t.Fatalf("%s activated %+v; it must open nothing", ignored.keyName, *ignored.result)
+		}
 	}
 }
