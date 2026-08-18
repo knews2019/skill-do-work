@@ -20,8 +20,13 @@
 
 - **Active repository HTML gets a folder origin, never the board origin.** The live `/file` route may render `.html` / `.htm` only by redirecting to a lazily bound loopback preview server rooted at that file's containing directory. Keep the preview read-only, authority-guarded, traversal-safe, and shut down with the board; ordinary text and active formats such as SVG stay inert on `/file`.
 
+- **A measured face is per-browser, and a constant that does not name its build cannot be argued with.** REQ-241 and REQ-242 each measured the same 12px axis-title face, on different Chromium builds, and got 12.0372 and 11.2300; both rounded up, both declared the same constant in different files of one package, and the merge failed to compile. Git could not see it — the edits never touched adjacent lines. Record the browser and build beside every measured number, take the larger where two disagree (a box that reaches further makes a clearance test demand more room than the render needs), and expect the same number to differ on someone else's machine: REQ-241's 1.364-unit Panel B budget measures 0.185 on Chromium 146.
+
 ## Lessons
 
+- [REQ-241: state the supremum over the space, not the worst case of a sample — and say what makes the sweep complete, next to the number](../../do-work/archive/REQ-241-reconcile-durations-label-metrics-with-the-rendered-face.md#lessons-learned)
+- [REQ-242: when the claim is that an input is unused, an exact structural check beats a bigger sweep — a band narrower than the sampling slips through](../../do-work/archive/REQ-242-stop-panel-b-annotation-colliding-with-its-title.md#lessons-learned)
+- [REQ-245: asserting a phrase is absent is not a guard — it passes when the whole string is replaced](../../do-work/archive/REQ-245-name-fabricated-stamps-in-the-boards-future-stamp-warnings.md#lessons-learned)
 - [REQ-239: a merge resolution can compile and still have dropped an assertion — run both sides' tests](../../do-work/archive/REQ-239-give-timeline-rows-a-real-focus-ring.md#lessons-learned)
 - [REQ-237: when a REQ removes a rule, every test asserting that rule's shape is in scope — say so loudly, because a quietly-edited test looks identical in a diff](../../do-work/archive/REQ-237-backfill-durations-label-rows-when-top-spans-cluster.md#lessons-learned)
 - [REQ-240: a threshold that depends on a count must read that count, or it rots the next time someone edits the other](../../do-work/archive/REQ-240-stop-the-timeline-axis-printing-a-fake-minute.md#lessons-learned)

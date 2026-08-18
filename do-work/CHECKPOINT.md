@@ -63,8 +63,8 @@ Nine, none claimed:
 
 **Read these fresh before starting; five REQs of carried-over assumptions are not reliable.**
 
-- `_dev/primes/prime-kanban-board.md` — entry point for anything under `skills/do-work-board/tools/queue-kanban/`. Not yet updated with this session's lessons; that is a lessons-handoff still owed.
-- `_dev/primes/prime-shell-commands.md` — REQ-243 and REQ-244 both belong here.
+- `_dev/primes/prime-kanban-board.md` — entry point for anything under `skills/do-work-board/tools/queue-kanban/`. Gained REQ-241, REQ-242 and REQ-245's lessons plus **one new convention**: a measured face is per-browser, so record the build beside the number and take the larger where two disagree.
+- `_dev/primes/prime-shell-commands.md` — gained REQ-243 and REQ-244.
 - `_dev/tests/contract-regressions.sh` — now carries the shape-keyed timestamp citation check, which prints `54 instant write sites cited, 17 date-only sites recognized` on every verify. A change in that count is signal.
 - `_dev/tests/shipped-package-reference-contract.sh` — now resolves markdown `#anchor` targets as well as paths, for 27 anchors across four packages.
 
