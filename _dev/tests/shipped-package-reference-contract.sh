@@ -568,14 +568,21 @@ def heading_anchor_slug(heading_text):
 
 
 def heading_anchor_slugs_from_text(markdown_text):
-    # strip_markdown_code preserves byte and line offsets, so a line whose masked form no
-    # longer opens with # sat inside a fence, an indented block, or an HTML comment and is
-    # not a heading. Slugs come from the raw line, because masking blanks inline code that
-    # the rendered heading text keeps.
-    masked_lines = strip_markdown_code(markdown_text).splitlines()
+    # A line whose masked form no longer opens with # sat inside a fence, an indented
+    # block, or an HTML comment and is not a heading. Slugs come from the raw line,
+    # because masking blanks inline code that the rendered heading text keeps.
+    #
+    # Both arrays are split on "\n" alone, never str.splitlines(). masking guarantees only
+    # that the length and the "\n" positions survive — the property the parser fixtures
+    # lock — while splitlines() also breaks on \r, \x0b, \x0c, \x1c, \x1d, \x1e, \x85,
+    # U+2028 and U+2029, every one of which mask_text_range turns into a space. One of
+    # those inside a fence or a code span would shorten the masked array alone and shift
+    # the gate off by a line, which silently drops real headings and can accept an anchor
+    # that names a heading found only in code.
+    masked_lines = strip_markdown_code(markdown_text).split("\n")
     anchor_slugs = set()
     slug_occurrences = {}
-    for line_index, raw_line in enumerate(markdown_text.splitlines()):
+    for line_index, raw_line in enumerate(markdown_text.split("\n")):
         if line_index >= len(masked_lines):
             break
         if not masked_lines[line_index].lstrip(" \t").startswith("#"):
@@ -605,6 +612,98 @@ def heading_anchor_slugs(markdown_file):
         else:
             heading_slug_cache[cache_key] = heading_anchor_slugs_from_text(markdown_text)
     return heading_slug_cache[cache_key]
+
+
+def link_topology_targets(source_target, installed_source_target):
+    # Both topologies a pointer has to satisfy, named so the pairing itself is a tested
+    # unit rather than an argument list only the live corpus ever builds — and the live
+    # corpus resolves the two to one file every time.
+    return (("source", source_target), ("installed", installed_source_target))
+
+
+def anchor_failure_messages(anchor, topology_targets, read_anchor_slugs):
+    # A pointer is checked once per *distinct* resolved target. The source and installed
+    # topologies normally resolve back to the same file, so the second pass is usually
+    # suppressed — but a link that lands somewhere else once installed still gets read,
+    # and that is the case the live corpus never produces and the fixtures below cover.
+    failure_messages = []
+    checked_targets = []
+    for topology_name, resolved_target in topology_targets:
+        if resolved_target in checked_targets:
+            continue
+        checked_targets.append(resolved_target)
+        target_slugs = read_anchor_slugs(resolved_target)
+        if target_slugs is None:
+            failure_messages.append(
+                f"cannot read {topology_name} topology target {resolved_target}"
+            )
+        elif anchor not in target_slugs:
+            failure_messages.append(
+                f"anchor #{anchor} is not a heading in {topology_name} "
+                f"topology target {resolved_target}"
+            )
+    return failure_messages
+
+
+def run_anchor_topology_fixtures():
+    # The live corpus resolves both topologies to one file every time, so without these
+    # the installed branch would never execute anywhere.
+    source_only_slugs = {
+        "source.md": {"present"},
+        "installed.md": {"different"},
+        "unreadable.md": None,
+    }
+
+    # Every case builds its pair through link_topology_targets, so dropping a topology
+    # from the pairing fails here too — the walk itself never distinguishes the two.
+    topology_cases = [
+        (
+            "both topologies resolving to one target are read once",
+            "present",
+            link_topology_targets("source.md", "source.md"),
+            [],
+        ),
+        (
+            "a distinct installed target is read on its own",
+            "present",
+            link_topology_targets("source.md", "installed.md"),
+            [
+                "anchor #present is not a heading in installed "
+                "topology target installed.md"
+            ],
+        ),
+        (
+            "an unreadable installed target is reported, not skipped",
+            "present",
+            link_topology_targets("source.md", "unreadable.md"),
+            ["cannot read installed topology target unreadable.md"],
+        ),
+        (
+            "an anchor missing from both topologies is reported twice",
+            "absent",
+            link_topology_targets("source.md", "installed.md"),
+            [
+                "anchor #absent is not a heading in source topology target source.md",
+                "anchor #absent is not a heading in installed "
+                "topology target installed.md",
+            ],
+        ),
+    ]
+
+    fixture_failures = 0
+    for fixture_name, anchor, topology_targets, expected_messages in topology_cases:
+        actual_messages = anchor_failure_messages(
+            anchor, topology_targets, source_only_slugs.get
+        )
+        if actual_messages != expected_messages:
+            fail(
+                f"anchor topology fixture {fixture_name!r}: expected "
+                f"{expected_messages!r}, got {actual_messages!r}"
+            )
+            fixture_failures += 1
+
+    if fixture_failures:
+        raise SystemExit(1)
 
 
 def run_anchor_slug_fixtures():
@@ -641,6 +740,18 @@ def run_anchor_slug_fixtures():
             "closing hash sequences are not part of the anchor",
             "## Trailing Hashes ##\n",
             {"trailing-hashes"},
+        ),
+        (
+            "only newlines divide lines, so a masked form feed cannot shift the gate",
+            "```sh\nprintf 'a\x0cb'\n```\n\n# Real One\n\n# Real Two\n",
+            {"real-one", "real-two"},
+        ),
+        (
+            # The unclosed backtick on line two is literal text, so both headings below
+            # it are genuine; a desynced gate finds only the first.
+            "a masked form feed leaves the headings after it aligned",
+            "`a\x0cb`\n`open\n# One\n# Two\n",
+            {"one", "two"},
         ),
     ]
 
@@ -1033,6 +1144,7 @@ def validate_first_party_url(target, tracked_paths):
 
 run_parser_fixtures()
 run_anchor_slug_fixtures()
+run_anchor_topology_fixtures()
 modules = read_manifest()
 tracked_paths = {
     os.fsdecode(path_bytes)
@@ -1119,29 +1231,15 @@ for markdown_path in sorted(set(markdown_paths), key=lambda path: path.as_posix(
         if not anchor or relative_target.suffix.lower() != ".md":
             continue
 
-        # The two topologies usually resolve back to the same source file; check each
-        # distinct one so a link that lands somewhere else once installed is still read.
-        anchor_targets = []
-        for topology_name, resolved_target in (
-            ("source", source_target),
-            ("installed", installed_source_target),
+        # Both resolved targets are known to exist here: the missing-target branch above
+        # continues before this point, and it reports a None installed target as missing.
+        for anchor_message in anchor_failure_messages(
+            anchor,
+            link_topology_targets(source_target, installed_source_target),
+            lambda resolved_target: heading_anchor_slugs(repo_root / resolved_target),
         ):
-            if resolved_target in anchor_targets:
-                continue
-            anchor_targets.append(resolved_target)
-            target_slugs = heading_anchor_slugs(repo_root / resolved_target)
-            if target_slugs is None:
-                fail(
-                    f"{markdown_path}:{line_number}: cannot read {topology_name} "
-                    f"topology target {resolved_target}: {target}"
-                )
-                broken_references += 1
-            elif anchor not in target_slugs:
-                fail(
-                    f"{markdown_path}:{line_number}: anchor #{anchor} is not a heading "
-                    f"in {topology_name} topology target {resolved_target}: {target}"
-                )
-                broken_references += 1
+            fail(f"{markdown_path}:{line_number}: {anchor_message}: {target}")
+            broken_references += 1
 
 root_changelog = repo_root / "CHANGELOG.md"
 installed_changelog = repo_root / "skills/do-work/CHANGELOG.md"
