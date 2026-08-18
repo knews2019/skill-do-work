@@ -83,13 +83,25 @@
   // available either: at a dense day count the bars are 4 units wide and a label
   // there would overprint its neighbours.
   //
-  // That leaves the strip under the baseline, and it has two occupants of its
-  // own: the "0" tick, whose baseline is DURATIONS_MEDIAN_BOTTOM +
-  // DURATIONS_TICK_BASELINE_DROP, and panel C's title. This number centres the
-  // annotation's text box between them, so the clearance is the same at every x
-  // and every bar height — which is the whole point. Every one of these
-  // neighbours is asserted, because the original defect was invisible here for
-  // no better reason than where this repository's slowest day happens to fall.
+  // That leaves the strip under the baseline, and it has three occupants of its
+  // own. Two are cleared: the "0" tick, whose baseline is
+  // DURATIONS_MEDIAN_BOTTOM + DURATIONS_TICK_BASELINE_DROP, and panel C's
+  // title. This number centres the annotation's text box between them, so the
+  // clearance is the same at every x and every bar height — which is the whole
+  // point.
+  //
+  // The third is the month rule, and it is an ACCEPTED crossing rather than a
+  // cleared one: .durations-month-line spans DURATIONS_MAIN_TOP to
+  // DURATIONS_COUNT_BOTTOM, so no baseline in this strip can avoid it, and on a
+  // fixture whose slowest day falls on a month boundary it passes between the
+  // "9" and the " min". A one-unit soft rule through a label is the same
+  // crossing panel A's reversed-band labels already take, so it is accepted —
+  // and the test asserts it STAYS one unit and soft, because that is the only
+  // reason it is acceptable.
+  //
+  // All four facts are asserted, because the original defect was invisible here
+  // for no better reason than where this repository's slowest day happens to
+  // fall.
   var DURATIONS_MEDIAN_ANNOTATION_BASELINE_Y = 467;
   // Panel C — REQs completed per day.
   var DURATIONS_COUNT_TITLE_Y = 484;
