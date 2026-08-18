@@ -39,16 +39,29 @@
 # `created_at <= claimed_at <= completed_at <= now`. An ordering repair rewrites
 # the LATER field of the offending pair — the earlier one is the anchor.
 #
-# SHAPES LEFT ALONE, deliberately. A value is only comparable when it reads
-# `YYYY-MM-DD`, `YYYY-MM-DDTHH:MM:SS`, or `YYYY-MM-DDTHH:MM:SSZ` (a space may
-# stand in for the `T`), optionally wrapped in one matching pair of quotes —
-# the schema's YAML readers unquote, so a quoted future stamp is flagged
-# read-side and must be repairable here too (its replacement is written in the
-# canonical unquoted form the Timestamp rule prescribes). A numeric UTC offset,
-# fractional seconds, or anything unparseable is NOT provably wrong without
-# timezone arithmetic, so it is never touched — the conservative direction.
+# SHAPES LEFT ALONE, deliberately — and the parity rule that scopes the list:
+# a value is only comparable when it reads `YYYY-MM-DD`, `YYYY-MM-DDTHH:MM:SS`,
+# or `YYYY-MM-DDTHH:MM:SSZ` (a space may stand in for the `T`; the whole value
+# after the colon is read, comment-aware, so a space-separated instant is
+# repaired whole — never split at the space and half-rewritten), optionally
+# wrapped in one matching pair of quotes — the schema's YAML readers unquote,
+# so a quoted future stamp is flagged read-side and must be repairable here too
+# (its replacement is written in the canonical unquoted form the Timestamp rule
+# prescribes). Everything else is REFUSED byte-identical, never half-rewritten:
+#   - A numeric UTC offset or fractional seconds: NOT provably wrong without
+#     timezone arithmetic — the conservative direction.
+#   - A shape-valid but calendar-impossible instant (a 99th month, April 31, a
+#     non-leap-year February 29): the read-side parser rejects it, so erasing
+#     it to a derived instant would destroy the malformed evidence the board
+#     leaves visible for diagnosis.
+#   - Anything else unparseable.
 # Indented keys are skipped too: `estimate.calculated_at` is a nested field,
 # and every other reader in this skill anchors frontmatter keys at column zero.
+# A repeated top-level key is read by its LAST occurrence — the value every
+# YAML reader effectively sees — and the shadowed earlier lines are invisible
+# to those readers, so they are never examined and never rewritten. CRLF line
+# endings and a leading UTF-8 BOM are tolerated and preserved, exactly as the
+# board's splitFrontmatter tolerates them.
 #
 # GUARD STYLE is deliberately `tools/checks/record-commit-hash.sh`'s, and that is
 # a hard requirement rather than a stylistic nod: free-form frontmatter edits once
@@ -225,24 +238,11 @@ later_of() {
   if [[ "$1" > "$2" ]]; then printf '%s' "$1"; else printf '%s' "$2"; fi
 }
 
-# Frontmatter scope is line 1 `---` up to the next `---`, and keys are anchored at
-# column zero. A `status:` in body prose or an indented `  calculated_at:` under
-# `estimate:` is therefore unreachable — which is what keeps this script off the
-# nested fields no other reader in this skill treats as schema.
-frontmatter_value_for() {
-  awk -v field_name="$2" '
-    NR == 1 && $0 == "---" { inside_frontmatter = 1; next }
-    inside_frontmatter && $0 == "---" { exit }
-    inside_frontmatter && index($0, field_name ":") == 1 {
-      field_value = substr($0, length(field_name) + 2)
-      sub(/^[ \t]+/, "", field_value)
-      sub(/[ \t]+$/, "", field_value)
-      print field_value
-      exit
-    }
-  ' "$1"
-}
-
+# Frontmatter scope is line 1 `---` up to the next `---`, and keys are anchored
+# at column zero. A `status:` in body prose or an indented `  calculated_at:`
+# under `estimate:` is therefore unreachable — which is what keeps this script
+# off the nested fields no other reader in this skill treats as schema.
+#
 # Emits one `<line-number>\t<field-name>\t<value>` row per top-level frontmatter
 # key whose name ends in `_at`. The value is everything after the colon up to a
 # trailing YAML comment (a `#` preceded by whitespace — the read-side YAML

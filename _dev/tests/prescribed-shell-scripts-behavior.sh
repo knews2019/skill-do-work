@@ -1413,6 +1413,74 @@ printf '%s' "$audit_blameless_output" | grep -q 'file mtime' \
 cmp -s "$fixture_root/audit-blameless-before.md" "$audit_blameless_project/do-work/archive/REQ-906-untracked.md" \
   || fail_case 'audit-archive-timestamps blameless case changed the file it could not derive for'
 
+# audit-archive-timestamps: the widened shapes (space-separated, quoted, CRLF,
+# BOM) repair through the archive scan too — the fix lives in the sourced
+# library, and this pins the shared-fix-reaches-both-tools property instead of
+# assuming it (REQ-255; REQ-247 review).
+audit_shapes_project="$fixture_root/audit-shapes-project"
+fixture_repo_init "$audit_shapes_project"
+mkdir -p "$audit_shapes_project/do-work/archive"
+printf -- '---\nid: REQ-907\nstatus: completed\ncreated_at: 2093-01-01 00:00:00\n---\nbody\n' \
+  > "$audit_shapes_project/do-work/archive/REQ-907-space.md"
+printf -- '---\nid: REQ-908\nstatus: completed\ncreated_at: "2093-01-01 00:00:00"\n---\nbody\n' \
+  > "$audit_shapes_project/do-work/archive/REQ-908-quoted-space.md"
+printf -- '---\r\nid: REQ-909\r\nstatus: completed\r\ncreated_at: 2093-03-03T03:03:03Z\r\n---\r\nbody\r\n' \
+  > "$audit_shapes_project/do-work/archive/REQ-909-crlf.md"
+printf -- '\xef\xbb\xbf---\nid: REQ-910\nstatus: completed\ncreated_at: 2093-04-04T04:04:04Z\n---\nbody\n' \
+  > "$audit_shapes_project/do-work/archive/REQ-910-bom.md"
+git -C "$audit_shapes_project" add -A
+GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z' \
+  git -C "$audit_shapes_project" commit -qm fixture
+audit_shapes_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_shapes_project")" \
+  || fail_case 'audit-archive-timestamps widened-shapes case returned nonzero'
+for widened_fixture in REQ-907-space REQ-908-quoted-space REQ-910-bom; do
+  grep -q '^created_at: 2026-08-12T10:00:00Z$' "$audit_shapes_project/do-work/archive/$widened_fixture.md" \
+    || fail_case "audit-archive-timestamps widened-shapes case did not repair $widened_fixture through the archive scan"
+done
+grep -q $'^created_at: 2026-08-12T10:00:00Z\r$' "$audit_shapes_project/do-work/archive/REQ-909-crlf.md" \
+  || fail_case 'audit-archive-timestamps widened-shapes case did not repair the CRLF file (or dropped the CR)'
+[ "$(head -c 3 "$audit_shapes_project/do-work/archive/REQ-910-bom.md")" = "$(printf '\xef\xbb\xbf')" ] \
+  || fail_case 'audit-archive-timestamps widened-shapes case did not keep the BOM bytes in place'
+printf '%s' "$audit_shapes_output" \
+  | grep -q 'REQ-907-space.md created_at: 2093-01-01 00:00:00 -> 2026-08-12T10:00:00Z' \
+  || fail_case 'audit-archive-timestamps widened-shapes case did not report the full old value in the audit line'
+
+# audit-archive-timestamps: the refused and duplicate-key shapes hold through
+# the archive scan too — a calendar-impossible stamp stays byte-identical (and
+# is not a defect), while a duplicated anchor repairs on its effective (last)
+# occurrence from the introducing commit's author time (REQ-255).
+audit_parity_project="$fixture_root/audit-parity-project"
+fixture_repo_init "$audit_parity_project"
+mkdir -p "$audit_parity_project/do-work/archive"
+printf -- '---\nid: REQ-911\nstatus: completed\ncreated_at: 9999-99-99T99:99:99Z\n---\nbody\n' \
+  > "$audit_parity_project/do-work/archive/REQ-911-impossible.md"
+printf -- '---\nid: REQ-912\nstatus: completed\ncreated_at: 2026-08-10T12:00:00Z\nclaimed_at: 2026-08-11T12:00:00Z\nclaimed_at: 2026-08-01T09:00:00Z\n---\nbody\n' \
+  > "$audit_parity_project/do-work/archive/REQ-912-duplicate-anchor.md"
+git -C "$audit_parity_project" add -A
+GIT_AUTHOR_DATE='2026-08-12T10:00:00Z' GIT_COMMITTER_DATE='2026-08-12T10:05:00Z' \
+  git -C "$audit_parity_project" commit -qm fixture
+cp "$audit_parity_project/do-work/archive/REQ-911-impossible.md" "$fixture_root/audit-impossible-before.md"
+audit_parity_output="$("$core_scripts/audit-archive-timestamps.sh" --fix "$audit_parity_project")" \
+  || fail_case 'audit-archive-timestamps refusal-parity case returned nonzero'
+cmp -s "$fixture_root/audit-impossible-before.md" "$audit_parity_project/do-work/archive/REQ-911-impossible.md" \
+  || fail_case 'audit-archive-timestamps refusal-parity case erased a calendar-impossible stamp in the archive'
+grep -q '^claimed_at: 2026-08-12T10:00:00Z$' "$audit_parity_project/do-work/archive/REQ-912-duplicate-anchor.md" \
+  || fail_case 'audit-archive-timestamps refusal-parity case did not repair the effective (last) anchor occurrence'
+grep -q '^claimed_at: 2026-08-11T12:00:00Z$' "$audit_parity_project/do-work/archive/REQ-912-duplicate-anchor.md" \
+  || fail_case 'audit-archive-timestamps refusal-parity case rewrote the shadowed first occurrence'
+printf '%s' "$audit_parity_output" | grep -q 'REQ-911' \
+  && fail_case 'audit-archive-timestamps refusal-parity case logged the impossible stamp as a correction'
+
+# repair-req-timestamps: the 2-minute future-skew constant stays in lock-step
+# with the board's futureTimestampSkewAllowance — a fourth hand-kept copy of
+# the same allowance, pinned the way the repo pins cause-clause pairs
+# (REQ-255 rider; REQ-246 review nit).
+grep -q '^future_stamp_skew_seconds=120$' "$core_scripts/repair-req-timestamps.sh" \
+  || fail_case 'repair-req-timestamps skew-constant case: the repairer no longer declares future_stamp_skew_seconds=120'
+grep -q '^const futureTimestampSkewAllowance = 2 \* time\.Minute$' \
+  "$repo_root/skills/do-work-board/tools/queue-kanban/model.go" \
+  || fail_case 'repair-req-timestamps skew-constant case: the board constant moved or changed — keep the two allowances in lock-step'
+
 # qualify: an output line added to a file that owns its process exit is the file's own
 # reporting, not a debug artifact — the scan passes it and names the reason (REQ-254; the
 # scan once FAILed a checker's only success line, REQ-244's remediation). Both output
