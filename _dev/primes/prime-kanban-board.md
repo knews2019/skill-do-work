@@ -22,6 +22,7 @@
 
 ## Lessons
 
+- [REQ-239: a merge resolution can compile and still have dropped an assertion — run both sides' tests](../../do-work/archive/REQ-239-give-timeline-rows-a-real-focus-ring.md#lessons-learned)
 - [REQ-237: when a REQ removes a rule, every test asserting that rule's shape is in scope — say so loudly, because a quietly-edited test looks identical in a diff](../../do-work/archive/REQ-237-backfill-durations-label-rows-when-top-spans-cluster.md#lessons-learned)
 - [REQ-240: a threshold that depends on a count must read that count, or it rots the next time someone edits the other](../../do-work/archive/REQ-240-stop-the-timeline-axis-printing-a-fake-minute.md#lessons-learned)
 - [REQ-235: derive state instead of storing it and a whole class of invalidation bug stops existing](../../do-work/archive/REQ-235-add-period-zoom-and-jump-to-now-on-the-timeline.md#lessons-learned)

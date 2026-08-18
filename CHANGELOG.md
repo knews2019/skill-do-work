@@ -8,6 +8,15 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.2 — Timeline Rows Get the Board's Focus Ring (2026-08-18)
+
+The chart itself got a focus ring earlier today; the rows inside it still had theirs switched off, leaving a keyboard user with only a faint background tint to say where they were. They now draw the same ring as everything else on the board.
+
+- A keyboard-focused row draws the board's 2px accent ring, in both light and dark themes
+- Drawn inward, so neither the chart's own edge nor the scroll container clips it
+- Pointer clicks still draw nothing — the ring is `:focus-visible` only
+- The existing background tint stays as a complement rather than being replaced
+
 ## 0.212.1 — Present-Work Points at the Shared Snapshot Rule (2026-08-18)
 
 The second of two paragraphs that a shipped instruction file was keeping its own copy of. It now points at the one place that reasoning lives, and the suite will fail the next copy.
