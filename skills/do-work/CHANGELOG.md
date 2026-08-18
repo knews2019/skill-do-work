@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.11 — Panel B Stays on Canvas at Every Day Count (2026-08-18)
+
+The board's Durations view no longer draws its day bars off-canvas — a one- or two-day board used to render Panel B entirely off-screen, and even the many-day board had its leftmost bar struck through by the axis.
+
+- The axis domain is anchored to whole UTC days (first completion's midnight through the midnight after the last), with day buckets centred on each day's noon and the outermost bars clamped inside the plot past ~280 active days.
+- The Go label planner floors and ceils to the same domain, and a new mark-position agreement assertion fails whichever side ever drifts alone — renderer and planner cannot silently become two definitions again.
+- Verified in the live DOM at 1 through 400 active days on Chromium 141: zero bars or annotations outside the plot area, existing label-separation guarantees intact.
+
 ## 0.212.10 — Cross-Package Citations Are Literal Paths, and Checked (2026-08-18)
 
 Backticked cross-package citations in shipped markdown now resolve as real relative paths from the citing file's own directory — the spelling a reader can paste — and the reference contract enforces it mechanically.

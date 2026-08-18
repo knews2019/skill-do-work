@@ -1,9 +1,11 @@
 ---
 id: REQ-248
 title: Anchor the Durations day buckets to UTC midnight so Panel B stays on canvas
-status: claimed
+status: completed
 created_at: 2026-08-18T13:54:59Z
 claimed_at: 2026-08-18T16:09:27Z
+completed_at: 2026-08-18T18:24:42Z
+kb_status: pending
 route: B
 status_changed_at: 2026-08-18T13:54:59Z
 user_request: UR-051
@@ -125,6 +127,63 @@ Transcribed from the builder hand-back; D-01's resolution is the orchestrator's.
 ## Qualification
 
 Passed — 3 files verified in merge range `695b420..1cb897f` (+263/−20), all four acceptance criteria traced (floor/ceil visible on both the JS renderer, `board-durations.js:261-262`, and the Go planner, `durationLabelTimeRange`; noon-centring via `xOfEpoch(dayEpochMs + DAY/2)`; clamp via `durationsBarLeftX`; no diff lines on `DURATIONS_MEDIAN_TITLE_Y` or `describeAtPointer`'s boundary), P-A-U audited (no debug artifacts; probe output uses the established `process.stdout.write` convention). D-01 scope extension accepted and recorded; Scope + `write_set` extended.
+
+## Review
+
+**Overall: 96%** | 2026-08-18T18:22:56Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 100% |
+| Code Quality | 92% |
+| Test Adequacy | 92% |
+| Scope | 100% |
+| Risk | None |
+| Acceptance | Pass |
+
+**Requirements check, per criterion** (all coordinates in SVG user units against plot area [54, 1182]; every measured number taken on Chromium 141.0.7390.37 headless via Playwright 1.56.1 — the same build the builder recorded — with `location.href` returned in the same evaluate call per the board prime's convention):
+
+- [x] **Every Panel B bar inside the plot at every day count, incl. 1 and 2 active days** — *reproduced by execution* on eleven boards: 1 day (bars [606, 630]), 2 days ([324, 912]), 3 days, 4 days across a month boundary and across a year boundary (both [183, 1053]), a single sample, all-samples-within-one-hour, a completion at exactly 00:00:00Z ([230, 1006] — JS `floor(end/day)*day + day` and Go's unconditional `+24h` agree), 283 and 400 active days (both exactly [54, 1182] — the D-03 clamp engaged), and the REAL repository board (228 samples, 24 active days: bars [55, 1181]; the Instance-1 bar formerly at x=37.1 now starts ≥54). Zero bars outside the plot on any board, Panels B and C both.
+- [x] **Slowest-day annotation on canvas at every day count** — *reproduced by execution*: exactly one mid-anchored annotation per board, anchor inside [54, 1182] on all eleven, zero bounding-rect intersections anywhere.
+- [x] **No change to `DURATIONS_MEDIAN_TITLE_Y` or `describeAtPointer`'s A/B boundary** — *verified by diff* (zero lines touch either); the only `describeAtPointer` change is the day-nearest rule reading noon centres — verified live at slot boundaries on the 3-day board; Panel A region still describes a sample.
+- [x] **REQ-241/242 guarantees hold unchanged** — *reproduced by execution*: all eight named durations label/annotation tests pass (exit 0, un-piped), full package suite green; live confirmation on the real board: 0 same-strip label overlaps, 0 label/mark overlaps, 0 annotation collisions. The REQ-242 sweep's bounds were kept, only their rationale retitled, traced in the comment and its own commit.
+
+**Class-closure attack — the mechanism held in all three drift directions,** each *reproduced by execution* in a scratch worktree at the merge commit:
+- Reverting the JS floor → the new probe FAILS (annotation x=−660.4 off-plot, plus the mark-agreement message on every mark).
+- Reverting the Go planner's floor/ceil alone → FAILS with the agreement message in the opposite direction.
+- Removing the D-03 clamp → the 400-day subtest FAILS (bar edges outside [54, 1182]) — the clamp is load-bearing and pinned.
+
+**Important findings:** None
+
+**Minor findings:** 2 (report only)
+1. Stale restatement, `durations.go:344-348`: `durationLabelPlotX`'s comment still cites the renderer's `timeSpan || 1` guard this diff removed (the `domainSeconds <= 0` branch is now unreachable). Found by the Step-6 restatement sweep; the rest of the corpus (both primes, board-guide, test comments) carries no other statement of the old first-instant domain.
+2. D-04 (end label/aria-label name the last *active* day) is delivered — verified live on three boards — but no test pins it; a future edit could silently revert it.
+
+**Nit:** at very high day counts with the slowest day at the domain's left edge, the annotation's centred text box extends into the axis gutter (anchor inside the plot, zero collisions measured); the aria-label reads `firstCompletionMs` where the visible start label reads `timeStart` — same rendered day, two expressions of one value.
+
+**Acceptance:** Pass — eleven scratchpad-fixture boards plus the real repository board generated, rendered and *looked at* (screenshots inspected), geometry measured in the live DOM, hover exercised at slot boundaries, month ticks verified across month- and year-boundary domains.
+
+**Suggested testing:** (1) regenerate the maintainer's large reporting board (560 REQs / 42 active days) and eyeball Panel B's left edge — the environment this repo cannot reproduce; (2) a one-line probe assertion on the end label's text would pin D-04.
+
+**Scope:** `scope-drift.sh` exits 0; the D-01 extension is orchestrator-accepted and recorded; no other file drifted; all new names are two-plus words and greppable.
+
+**Follow-ups created:** None · **Sweeps appended to:** None
+
+**Reviewer-recommended disposition: Approve** (Acceptance Pass, 96% ≥ 75%; both Minors are comment/lock-in-hardening level).
+
+*Reviewed by review-work action (independent adversarial review, orchestrated mode; merge range `695b420..1cb897f`)*
+
+## Lessons Learned
+
+**What worked:** The mark-position agreement assertion is the class-closure this board's geometry work had been missing — it fails in *both* drift directions (JS-only revert, Go-only revert), so renderer and planner cannot silently become two definitions of the domain again. Sweeping day counts to 400 caught the hole behind the instance (the 4-unit minimum bar width overhanging past ~280 days), which the floor/ceil fix alone did not close. Driving the full real `renderDurationsView` over a DOM stub found what sliced-function tests hide.
+
+**What didn't:** The captured write set excluded `durations.go` on a collision theory that was empty (REQ-252 is gated behind this REQ), and criterion 4 was unsatisfiable without it — the D-01 escalation cost a scope negotiation mid-build. When a REQ's own guidance says "check the other readers of this domain", the files encoding those readers belong in the write set from the start.
+
+**Worth knowing:** Day buckets centre on noon, not midnight — a bar at its floored midnight straddles the previous slot. The axis end label deliberately names the last *active* day, not the domain's exclusive end (D-04, currently unpinned by any test). `durationLabelPlotX`'s zero-width-domain guard is now unreachable and its comment stale (review Minor 1).
+
+## Orientation
+
+Now Panel B stays on canvas at every day count — the Durations axis domain is anchored to whole UTC days, shared verbatim between the JS renderer and the Go label planner, and pinned by a both-directions agreement assertion. Lives in the board's Durations view (`skills/do-work-board/tools/queue-kanban/`: `web/board-durations.js`, `durations.go`). [MAP CHANGED] — the Durations domain is now a single day-anchored definition with a fourth pinned geometric guarantee (mark-position agreement, structural), joining the three kinds catalogued in the previous session's architectural note. Prime staleness spot-check: `_dev/primes/prime-kanban-board.md` paths still resolve; not stale.
 
 ## Pre-Flight
 
