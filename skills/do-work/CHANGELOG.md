@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.5 — Future-Stamp Warnings Name Both Causes (2026-08-18)
+
+A timestamp dated in the future used to be blamed on one thing: your timezone. A stamp an agent guessed instead of reading is a second cause, it has now actually happened, and the old wording sent that reader off to hunt a clock bug that was not there.
+
+- All four renderers of the diagnosis — the board's data warning, the reversed-span message, `verify`'s finding, and `do-work forensics` check 12 — now name a fabricated value alongside the local-wall-clock cause, with the fix instruction unchanged because it was already right for both
+- The badge tooltip and the stopwatch explanation you actually hover were hand-written duplicates of the Go warning and still said the old thing; both now render one shared string
+- Both languages' copies are held together by a test, and the badge tooltip is checked by reading the text it renders rather than by forbidding a phrase — the earlier check passed when the tooltip was replaced wholesale
+
 ## 0.212.4 — Shipped Markdown Anchors Are Checked, Not Assumed (2026-08-18)
 
 When a repeated paragraph gets replaced by a link to the one place it lives, nothing used to confirm the link's `#anchor` actually names a heading. Now something does, and it caught a way of missing broken links that nobody had noticed.

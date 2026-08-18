@@ -1,7 +1,7 @@
 ---
 id: REQ-245
 title: Name fabricated stamps in the board's future-stamp warnings
-status: claimed
+status: completed
 created_at: 2026-08-18T12:28:33Z
 user_request: UR-055
 domain: general
@@ -30,6 +30,9 @@ estimate:
     - trivial short-circuit
 claimed_at: 2026-08-18T12:43:06Z
 route: A
+status_changed_at: 2026-08-18T13:52:03Z
+completed_at: 2026-08-18T13:52:03Z
+commit:
 ---
 
 # Name Fabricated Stamps in the Board's Future-Stamp Warnings
