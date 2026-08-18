@@ -3,6 +3,7 @@ id: REQ-265
 title: Raise the two under-bounding mark-label constants to the current build
 status: completed
 completed_at: 2026-08-18T23:54:48Z
+commit: 1227678
 claimed_at: 2026-08-18T22:59:48Z
 route: A
 created_at: 2026-08-18T20:07:08Z
