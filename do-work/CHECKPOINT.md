@@ -10,6 +10,10 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
+- REQ-246: Repair detectably wrong queue and working timestamps from the session hook — claimed 2026-08-18T16:09:27Z — writer: vm:/home/user/skill-do-work
+- REQ-248: Anchor the Durations day buckets to UTC midnight so Panel B stays on canvas — claimed 2026-08-18T16:09:27Z — writer: vm:/home/user/skill-do-work
+- REQ-249: Decide the cross-package citation path form and sweep to match — claimed 2026-08-18T16:09:27Z — writer: vm:/home/user/skill-do-work
+
 ## Completed This Session
 
 - REQ-241: Reconcile the Durations label metrics with the rendered face (Route B) — commit `90c74b7`, shipped as **0.212.3**

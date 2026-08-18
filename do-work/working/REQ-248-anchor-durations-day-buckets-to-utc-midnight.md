@@ -1,8 +1,10 @@
 ---
 id: REQ-248
 title: Anchor the Durations day buckets to UTC midnight so Panel B stays on canvas
-status: pending
+status: claimed
 created_at: 2026-08-18T13:54:59Z
+claimed_at: 2026-08-18T16:09:27Z
+route: B
 status_changed_at: 2026-08-18T13:54:59Z
 user_request: UR-051
 addendum_to: REQ-242
@@ -17,6 +19,16 @@ maintenance: false
 write_set:
 - skills/do-work-board/tools/queue-kanban/web/board-durations.js
 - skills/do-work-board/tools/queue-kanban/generate_test.go
+estimate:
+  p50_active_minutes: 30
+  confidence: medium
+  calculated_at: 2026-08-18T16:10:30Z
+  basis:
+    - Route B
+    - 2-file write set
+    - 4 acceptance criteria
+    - browser evidence
+    - cross-route regression gates
 ---
 
 # Anchor the Durations Day Buckets to UTC Midnight So Panel B Stays on Canvas
@@ -54,3 +66,43 @@ The suggested root fix from the review is to floor `timeStart` to its UTC midnig
 **Why RED now:** measured `x=-3330` on a one-day board and `x=37.1` against a left margin of 54 on the real board.
 **GREEN when:** the assertion passes at every day count and a render at one and two days shows Panel B populated.
 **Validation:** Review finding on REQ-242; apply `actions/work-reference.md` → **Finding-Closure Ratchet (Step 6.5)**.
+
+---
+
+## Triage
+
+**Route: B** - Medium
+
+**Reasoning:** The defect is reproduced and the suggested root fix is named, but it has to be checked against Panels A and C which read the same domain, and the day-count evidence needs live measurement — the what is clear, the blast radius is not.
+
+**Planning:** Not required
+
+## Plan
+
+**Planning not required** - Route B: Exploration-guided implementation
+
+*Skipped by work action*
+
+## Scope
+
+**Files I will touch:**
+- `skills/do-work-board/tools/queue-kanban/web/board-durations.js` (modify) — anchor the axis domain and the day buckets to one origin
+- `skills/do-work-board/tools/queue-kanban/generate_test.go` (modify) — the day-count lock-in probe
+
+**Files I will NOT touch:**
+- `durations.go` and `durations_test.go` — REQ-252 owns the measured-face provenance work and is gated behind this REQ.
+- `DURATIONS_MEDIAN_TITLE_Y` and `describeAtPointer`'s A/B boundary — named unchanged by the REQ.
+
+**Acceptance criteria (restated from REQ):**
+- [ ] Every Panel B bar renders inside the plot area at every day count, including one and two active days.
+- [ ] The slowest-day annotation renders on canvas at every day count.
+- [ ] No change to `DURATIONS_MEDIAN_TITLE_Y` or `describeAtPointer`'s A/B boundary.
+- [ ] REQ-241's and REQ-242's guarantees hold unchanged: 0 same-row label overlaps, 0 label/mark overlaps, the annotation clear of every neighbour in its strip.
+
+## Pre-Flight
+
+**Git:** ✓ clean outside `do-work/`
+**Tests baseline:** ✓ `bash _dev/tests/maintainer-verify.sh` exits 0 (recorded in `do-work/working/baseline.json`)
+**Dependencies:** ⚠ this checkout needed Go 1.26.1, ShellCheck 0.11.0 and `just` installed before the baseline could run at all, and one pre-existing Linux-only test failure had to be fixed first (0.212.8) — see the REQ brief.
+
+*Checked by work action*
