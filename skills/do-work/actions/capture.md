@@ -64,6 +64,8 @@ Files in `working/` and `archive/` are **immutable**. If someone wants to add to
 
 **Exception:** actions/review-work.md may append a `## Review` section to archived files — review annotations are post-work metadata, not content changes. See `actions/review-work.md`.
 
+**Exception (mechanical timestamp repair):** `scripts/audit-archive-timestamps.sh` may rewrite a detectably wrong `*_at` stamp in an archived REQ to the author time of the git commit that introduced it — a mechanical correction of recorded metadata sourced from git history, not a content change. It is never wired into any hook: the user invokes it deliberately as an audit, and the repaired files are committed through the normal flow. These are the only exceptions; neither is a precedent for editing archived content.
+
 ## File Naming
 
 - **REQ files:** `REQ-[number]-[slug].md` in `do-work/queue/`
@@ -112,7 +114,7 @@ Read the user's input. Determine:
 
 **Queued requests** — read each `REQ-*.md` in `do-work/queue/` and compare the new request's intent against the existing file's `title`, heading, and `## What` section. Slugs are lossy — a file named `REQ-042-ui-cleanup.md` may contain the exact requirement being re-submitted under different phrasing. Match on intent, not just keywords.
 
-**In-flight and archived requests** — list filenames in `do-work/working/` and `do-work/archive/` (including inside `do-work/archive/UR-*/`). A filename scan is sufficient here since these files are immutable regardless.
+**In-flight and archived requests** — list filenames in `do-work/working/` and `do-work/archive/` (including inside `do-work/archive/UR-*/`). A filename scan is sufficient here since these filenames are stable regardless — the Immutability Rule's exceptions edit fields inside a file, never its name.
 
 If `do-work/` is freshly bootstrapped (no existing REQ files anywhere), skip duplicate checking entirely.
 
@@ -153,7 +155,7 @@ The `addendum_to` field is what connects the addendum to its origin. The new REQ
 
 **Context is critical for addenda to archived/completed REQs.** When writing the addendum REQ, read the original archived REQ and include a `## Prior Implementation` section summarizing: what was built, key files modified, patterns used, and commit hash (if available). Without this, the builder wastes time re-discovering what already exists. For in-flight REQs this matters less — the builder will encounter the work in progress naturally.
 
-**When the original UR is archived:** The original UR folder is in `archive/UR-NNN/` and is immutable. The new addendum UR goes into `do-work/user-requests/` as normal. Do not attempt to modify or re-open the archived UR folder.
+**When the original UR is archived:** The original UR folder is in `archive/UR-NNN/` and is immutable (the Immutability Rule's exceptions are mechanical or post-work metadata, never a way to add content). The new addendum UR goes into `do-work/user-requests/` as normal. Do not attempt to modify or re-open the archived UR folder.
 
 **Coherence across addendum chains:** When creating an addendum REQ for an in-flight or completed request, read the original REQ's What, Requirements, and any prior addendum chain (follow `addendum_to` links). If the new addendum contradicts the original or a prior addendum, present the conflict to the user with concrete options (same protocol as the queued addenda Coherence Rule above): show what conflicts, ask which should win, and record the resolution or flag as an Open Question. The addendum REQ must state clearly how it relates to the original: extending, narrowing, replacing, or correcting.
 
