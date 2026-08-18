@@ -23,7 +23,7 @@
   }
 
   var viewState = {
-    view: "board", // "board" | "calendar" | "durations" | "testing"
+    view: "board", // "board" | "calendar" | "durations" | "timeline" | "testing"
     lens: "flat", // "flat" | "user-request"
     windowHours: 24
   };
@@ -41,7 +41,13 @@
     userRequestActivity: "active" // "active" | "all"
   };
 
-  var renderedOnce = { userRequestLens: false, calendar: false, durations: false, testing: false };
+  var renderedOnce = {
+    userRequestLens: false,
+    calendar: false,
+    durations: false,
+    timeline: false,
+    testing: false
+  };
 
 /* INLINE_BOARD_FRAGMENTS */
   // ---- boot ---------------------------------------------------------------

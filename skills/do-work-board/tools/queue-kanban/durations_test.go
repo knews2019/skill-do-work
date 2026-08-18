@@ -392,26 +392,32 @@ func TestReversedLabelPlacementIsIndependentOfOverflowDensity(t *testing.T) {
 	}
 }
 
-// durationsRendererConstant reads one `var NAME = NUMBER;` out of the embedded
-// renderer. Both the parity test and the JavaScript behavior probe read the
-// renderer's own values through it, so neither can drift into asserting against
-// a hand-copied number.
-func durationsRendererConstant(t *testing.T, constantName string) float64 {
+// rendererNumericConstant reads one `var NAME = NUMBER;` out of an embedded view
+// fragment. Parity tests and JavaScript behavior probes read the renderer's own
+// values through it, so neither can drift into asserting against a hand-copied
+// number. It is why every constant a test needs is written as a plain literal
+// rather than as an expression.
+func rendererNumericConstant(t *testing.T, assetPath string, constantName string) float64 {
 	t.Helper()
-	rendererText, readError := embeddedWebAssets.ReadFile("web/board-durations.js")
+	rendererText, readError := embeddedWebAssets.ReadFile(assetPath)
 	if readError != nil {
-		t.Fatalf("read embedded renderer: %v", readError)
+		t.Fatalf("read %s: %v", assetPath, readError)
 	}
 	pattern := regexp.MustCompile(`(?m)^\s*var ` + regexp.QuoteMeta(constantName) + ` = (-?[0-9.]+);`)
 	match := pattern.FindSubmatch(rendererText)
 	if match == nil {
-		t.Fatalf("web/board-durations.js declares no numeric constant %s", constantName)
+		t.Fatalf("%s declares no numeric constant %s", assetPath, constantName)
 	}
 	value, parseError := strconv.ParseFloat(string(match[1]), 64)
 	if parseError != nil {
 		t.Fatalf("parse %s: %v", constantName, parseError)
 	}
 	return value
+}
+
+func durationsRendererConstant(t *testing.T, constantName string) float64 {
+	t.Helper()
+	return rendererNumericConstant(t, "web/board-durations.js", constantName)
 }
 
 // Placement decides in the renderer's user-unit space, so the two files agree on

@@ -45,6 +45,7 @@ func TestEmbeddedAuthoredJavaScriptInventory(t *testing.T) {
 		"web/board-durations.js",
 		"web/board-filters.js",
 		"web/board-testing.js",
+		"web/board-timeline.js",
 		"web/board.js",
 	}
 	if strings.Join(authoredJavaScriptPaths, "\n") != strings.Join(wantAuthoredJavaScriptPaths, "\n") {
@@ -60,6 +61,7 @@ func TestBoardJavaScriptAssemblyStructure(t *testing.T) {
 		"web/board-cards.js",
 		"web/board-calendar.js",
 		"web/board-durations.js",
+		"web/board-timeline.js",
 		"web/board-testing.js",
 		"web/board-detail.js",
 		"web/board-controls.js",
@@ -1957,4 +1959,144 @@ func formatOptionalFloat(value *float64) string {
 		return "null"
 	}
 	return fmt.Sprintf("%v", *value)
+}
+
+// timelineProbePreamble declares the renderer's own constants, read from the
+// fragment rather than copied, so a probe cannot pass against numbers the
+// shipped view does not use.
+func timelineProbePreamble(t *testing.T, constantNames ...string) string {
+	t.Helper()
+	preamble := ""
+	for _, constantName := range constantNames {
+		preamble += fmt.Sprintf("var %s = %v;\n",
+			constantName, rendererNumericConstant(t, "web/board-timeline.js", constantName))
+	}
+	return preamble
+}
+
+// Zoom is the one piece of this view that can be wrong in a way no screenshot
+// shows: the instant under the pointer has to stay under the pointer, or every
+// zoom drifts the chart sideways a little and the reader loses their place. It
+// is a pure transform precisely so this can be asserted.
+func TestJavaScriptBehaviorTimelineZoomHoldsTheAnchorInstant(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_MIN_SPAN_MS") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineZoomedWindow(") + `
+var boundStart = 0;
+var boundEnd = 30 * 24 * 3600 * 1000;   // a 30-day board
+var startWindow = { windowStartMs: boundStart, windowEndMs: boundEnd };
+
+function anchorInstant(window, fraction) {
+  return window.windowStartMs + (window.windowEndMs - window.windowStartMs) * fraction;
+}
+
+// Zoom in three times at the same off-centre anchor; the instant under it must
+// not move.
+var anchorFraction = 0.25;
+var wantAnchor = anchorInstant(startWindow, anchorFraction);
+var zoomed = startWindow;
+for (var step = 0; step < 3; step++) {
+  zoomed = timelineZoomedWindow(zoomed.windowStartMs, zoomed.windowEndMs, 1.6, anchorFraction, boundStart, boundEnd);
+}
+var anchorDriftMs = Math.abs(anchorInstant(zoomed, anchorFraction) - wantAnchor);
+
+// Zooming all the way back out clamps to the bounds rather than overshooting.
+var wideOpen = zoomed;
+for (var back = 0; back < 12; back++) {
+  wideOpen = timelineZoomedWindow(wideOpen.windowStartMs, wideOpen.windowEndMs, 1 / 1.6, 0.5, boundStart, boundEnd);
+}
+
+// Zooming all the way in stops at the floor rather than collapsing to zero.
+var deep = startWindow;
+for (var deeper = 0; deeper < 40; deeper++) {
+  deep = timelineZoomedWindow(deep.windowStartMs, deep.windowEndMs, 1.6, 0.5, boundStart, boundEnd);
+}
+
+process.stdout.write(JSON.stringify({
+  anchorDriftMs: anchorDriftMs,
+  widestSpanMs: wideOpen.windowEndMs - wideOpen.windowStartMs,
+  boundSpanMs: boundEnd - boundStart,
+  deepestSpanMs: deep.windowEndMs - deep.windowStartMs,
+  minSpanMs: TIMELINE_MIN_SPAN_MS,
+  withinBounds: wideOpen.windowStartMs >= boundStart && wideOpen.windowEndMs <= boundEnd
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline zoom", javascriptProbe)
+	var zoomResult struct {
+		AnchorDriftMs float64 `json:"anchorDriftMs"`
+		WidestSpanMs  float64 `json:"widestSpanMs"`
+		BoundSpanMs   float64 `json:"boundSpanMs"`
+		DeepestSpanMs float64 `json:"deepestSpanMs"`
+		MinSpanMs     float64 `json:"minSpanMs"`
+		WithinBounds  bool    `json:"withinBounds"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &zoomResult); decodeError != nil {
+		t.Fatalf("decode timeline zoom behavior: %v (output %q)", decodeError, probeOutput)
+	}
+	if zoomResult.AnchorDriftMs > 1 {
+		t.Fatalf("the anchored instant drifted %.0f ms over three zoom steps; it must stay put",
+			zoomResult.AnchorDriftMs)
+	}
+	if zoomResult.WidestSpanMs != zoomResult.BoundSpanMs {
+		t.Fatalf("zooming out settled at %.0f ms, want the full bound span %.0f ms",
+			zoomResult.WidestSpanMs, zoomResult.BoundSpanMs)
+	}
+	if !zoomResult.WithinBounds {
+		t.Fatal("the zoomed-out window escaped its bounds")
+	}
+	if zoomResult.DeepestSpanMs != zoomResult.MinSpanMs {
+		t.Fatalf("zooming in settled at %.0f ms, want the %.0f ms floor",
+			zoomResult.DeepestSpanMs, zoomResult.MinSpanMs)
+	}
+}
+
+// Virtualization is what makes 560 rows cost the same as 40, and it is invisible
+// in a screenshot: a wrong slice shows blank strips only while scrolling fast.
+func TestJavaScriptBehaviorTimelineVirtualizesRowsAtScale(t *testing.T) {
+	indexHtml := generateLiveSite(t)
+	javascriptProbe := timelineProbePreamble(t, "TIMELINE_ROW_HEIGHT", "TIMELINE_OVERSCAN_ROWS") +
+		sliceBalancedBlockAfter(t, indexHtml, "function timelineVisibleRowRange(") + `
+var rowCount = 560;
+var viewportHeight = 600;
+var atTop = timelineVisibleRowRange(0, viewportHeight, rowCount);
+var midway = timelineVisibleRowRange(rowCount * TIMELINE_ROW_HEIGHT / 2, viewportHeight, rowCount);
+var atBottom = timelineVisibleRowRange(rowCount * TIMELINE_ROW_HEIGHT, viewportHeight, rowCount);
+process.stdout.write(JSON.stringify({
+  atTopCount: atTop.lastRow - atTop.firstRow,
+  midwayCount: midway.lastRow - midway.firstRow,
+  midwayCoversScrollPosition:
+    midway.firstRow <= rowCount / 2 && midway.lastRow > rowCount / 2,
+  atBottomLastRow: atBottom.lastRow,
+  rowCount: rowCount
+}));`
+
+	probeOutput := runJavaScriptBehaviorProbe(t, "timeline virtualization", javascriptProbe)
+	var sliceResult struct {
+		AtTopCount                 int  `json:"atTopCount"`
+		MidwayCount                int  `json:"midwayCount"`
+		MidwayCoversScrollPosition bool `json:"midwayCoversScrollPosition"`
+		AtBottomLastRow            int  `json:"atBottomLastRow"`
+		RowCount                   int  `json:"rowCount"`
+	}
+	if decodeError := json.Unmarshal(probeOutput, &sliceResult); decodeError != nil {
+		t.Fatalf("decode timeline virtualization behavior: %v (output %q)", decodeError, probeOutput)
+	}
+	// A 600px viewport at the shipped row height holds well under 60 rows; the
+	// point of the assertion is that the slice is bounded by the VIEWPORT and
+	// never by the row count, which is what a non-virtualized render would do.
+	if sliceResult.AtTopCount >= sliceResult.RowCount/4 {
+		t.Fatalf("a 600px viewport rendered %d of %d rows; the slice must be viewport-bounded",
+			sliceResult.AtTopCount, sliceResult.RowCount)
+	}
+	if sliceResult.MidwayCount != sliceResult.AtTopCount {
+		t.Fatalf("slice size changed with scroll position (%d at top, %d midway); it must not",
+			sliceResult.AtTopCount, sliceResult.MidwayCount)
+	}
+	if !sliceResult.MidwayCoversScrollPosition {
+		t.Fatal("the midway slice does not contain the row at the scroll position")
+	}
+	if sliceResult.AtBottomLastRow != sliceResult.RowCount {
+		t.Fatalf("scrolled past the end the slice reached row %d, want it clamped to %d",
+			sliceResult.AtBottomLastRow, sliceResult.RowCount)
+	}
 }

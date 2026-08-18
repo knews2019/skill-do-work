@@ -14,6 +14,7 @@
       board: document.getElementById("view-board"),
       calendar: document.getElementById("view-calendar"),
       durations: document.getElementById("view-durations"),
+      timeline: document.getElementById("view-timeline"),
       testing: document.getElementById("view-testing")
     };
     Object.keys(viewPanels).forEach(function (viewName) {
@@ -37,6 +38,10 @@
     if (viewState.view === "durations" && !renderedOnce.durations) {
       renderDurationsView();
       renderedOnce.durations = true;
+    }
+    if (viewState.view === "timeline" && !renderedOnce.timeline) {
+      renderTimelineView();
+      renderedOnce.timeline = true;
     }
     if (viewState.view === "testing" && !renderedOnce.testing) {
       renderTestingView();

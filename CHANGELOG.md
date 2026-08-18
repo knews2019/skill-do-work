@@ -8,6 +8,16 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.206.0 — Timeline View: One Bar Per REQ, Wait and Work (2026-08-18)
+
+A fifth board view. Every REQ gets a horizontal bar across real time, in two parts: how long it sat waiting to be claimed, then how long it took once someone started. Two things the board could never show before — the wait was measured nowhere, and a REQ running right now appeared in no view at all.
+
+- Zoom the time axis with the buttons or ⌘/Ctrl+scroll, drag to pan, and your zoom is still there when you come back from another tab
+- Rows are virtualized, so a 560-REQ board draws exactly as many nodes as a 200-REQ one
+- REQs still in flight draw as open bars running to a now-line; REQs nobody has claimed yet show their wait and nothing more
+- A REQ whose stamps are backwards draws as a visible break instead of being quietly clamped or dropped
+- Hover any row for its id, route, status and both durations; click for the full detail drawer; the table underneath carries every value without a pointer
+
 ## 0.205.2 — Durations Chart Stops Overprinting and Clipping (2026-08-18)
 
 Two things the Durations view drew that read as values but were not. On a busy board the overflow lane turned into a solid block of overprinted text, because it labelled every long REQ and picked the slot from the sample's position in an array. And Panel B drew a 78-minute day as a 45-minute bar, flat at the ceiling, with nothing to say it had been clipped.

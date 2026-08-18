@@ -45,6 +45,7 @@ var boardJavaScriptFragmentPaths = [...]string{
 	"web/board-cards.js",
 	"web/board-calendar.js",
 	"web/board-durations.js",
+	"web/board-timeline.js",
 	"web/board-testing.js",
 	"web/board-detail.js",
 	"web/board-controls.js",
@@ -74,6 +75,7 @@ type generatedBoardData struct {
 	UserRequests     map[string]generatedUserRequest `json:"userRequests"`
 	Calendar         []generatedCalendarEntry        `json:"calendar"`
 	Durations        generatedDurations              `json:"durations"`
+	Timeline         generatedTimeline               `json:"timeline"`
 	Notes            []generatedNote                 `json:"notes,omitempty"`    // do-work/notes.md lines — rendered as a strip above the queue
 	Warnings         []string                        `json:"warnings,omitempty"` // data-shape warnings (e.g. duplicate ids, unrecognized statuses, future-dated stamps) — rendered as a banner
 
@@ -260,6 +262,38 @@ type generatedDurationDay struct {
 	HasMedian      bool    `json:"hasMedian"`
 	KeptCount      int     `json:"keptCount"`
 	CompletedCount int     `json:"completedCount"`
+}
+
+// generatedTimeline is the Timeline view's data: one row per REQ that carries a
+// parseable created_at, plus the range those rows span and the single instant
+// every open span was measured against.
+type generatedTimeline struct {
+	Rows       []generatedTimelineRow `json:"rows"`
+	RangeStart string                 `json:"rangeStart"`
+	RangeEnd   string                 `json:"rangeEnd"`
+	Now        string                 `json:"now"`
+}
+
+// generatedTimelineRow carries timing only. Title, route, status and domain stay
+// in `requests` where every other view already reads them — a second copy here
+// would be a second thing to keep in step, and the client holds both.
+//
+// `waitMinutes` and `workMinutes` are SIGNED: a negative span is the board's
+// reversed-stamp anomaly, reported through `anomaly`/`anomalyReason` copied from
+// the ticket, and clamping it here would erase the very thing the reader needs
+// to see.
+type generatedTimelineRow struct {
+	RequestId     string  `json:"id"`
+	CreatedTime   string  `json:"createdTime"`
+	ClaimedTime   string  `json:"claimedTime,omitempty"`
+	CompletedTime string  `json:"completedTime,omitempty"`
+	WaitMinutes   float64 `json:"waitMinutes"`
+	WaitOpen      bool    `json:"waitOpen,omitempty"`
+	HasWork       bool    `json:"hasWork"`
+	WorkMinutes   float64 `json:"workMinutes"`
+	WorkOpen      bool    `json:"workOpen,omitempty"`
+	Anomaly       bool    `json:"anomaly,omitempty"`
+	AnomalyReason string  `json:"anomalyReason,omitempty"`
 }
 
 type staticSiteOutput struct {
@@ -550,6 +584,29 @@ func buildGeneratedBoardData(board *Board) (generatedBoardData, error) {
 		OverflowHiddenCount: durationAggregate.OverflowLabels.HiddenCount,
 		ReversedHiddenCount: durationAggregate.ReversedLabels.HiddenCount,
 	}
+
+	// The board's generation instant is the view's one now: it measures every
+	// open span here and positions the client's now-line, so the two cannot
+	// disagree about where "still running" ends.
+	timelineAggregate := buildTimelineAggregate(board.AllRequests, board.GeneratedAt)
+	for _, row := range timelineAggregate.Rows {
+		data.Timeline.Rows = append(data.Timeline.Rows, generatedTimelineRow{
+			RequestId:     row.RequestId,
+			CreatedTime:   formatTimestamp(row.CreatedTime),
+			ClaimedTime:   formatTimestamp(row.ClaimedTime),
+			CompletedTime: formatTimestamp(row.CompletedTime),
+			WaitMinutes:   row.WaitMinutes,
+			WaitOpen:      row.WaitOpen,
+			HasWork:       row.HasWork,
+			WorkMinutes:   row.WorkMinutes,
+			WorkOpen:      row.WorkOpen,
+			Anomaly:       row.Anomaly,
+			AnomalyReason: row.AnomalyReason,
+		})
+	}
+	data.Timeline.RangeStart = formatTimestamp(timelineAggregate.RangeStart)
+	data.Timeline.RangeEnd = formatTimestamp(timelineAggregate.RangeEnd)
+	data.Timeline.Now = formatTimestamp(timelineAggregate.Now)
 	for _, day := range durationAggregate.Days {
 		data.Durations.Days = append(data.Durations.Days, generatedDurationDay{
 			DayKey:         day.DayKey,

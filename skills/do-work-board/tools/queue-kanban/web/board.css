@@ -92,6 +92,11 @@
   /* A reversed span is a broken stamp, not a fast REQ: it renders below the
      zero line in the critical colour rather than being clamped to zero. */
   --durations-critical: #e66767;
+  /* Timeline segments — the wait is the quieter hue on purpose: on a queue with
+     real backlog it is usually the longer bar, and the eye should land on the
+     work it brackets rather than on the waiting. */
+  --timeline-wait: #3a4655;
+  --timeline-work: #4d8fe0;
 }
 
 /* ---------------------------------------------------------------------------
@@ -146,6 +151,8 @@
     --route-none: #6c7480;
     --durations-bar: #a4522a;
     --durations-critical: #c0392b;
+    --timeline-wait: #c2ccd9;
+    --timeline-work: #2f6fc0;
 
     /* Tints behind badges/dots — accent hues, low alpha, visible on white. */
     --tint-pending: rgba(143, 94, 16, 0.12);
@@ -1952,4 +1959,230 @@ body.is-resizing-detail .detail-resizer::before {
   background: var(--surface-2);
   color: var(--ink-soft);
   font-weight: 600;
+}
+
+/* ---- timeline view ------------------------------------------------------
+   One bar per REQ across real time. Rows are virtualized, so .timeline-scroll
+   is the scroll container and the SVG inside it is full height while only the
+   visible rows carry nodes. Everything is drawn in CSS pixels with no viewBox,
+   which is what keeps a pointer's x equal to a plot x at every zoom level. */
+
+.timeline-intro {
+  padding: 16px 24px 0;
+}
+
+.timeline-heading {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  color: var(--ink-base);
+}
+
+.timeline-subhead {
+  font-size: 12px;
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.timeline-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px 0;
+}
+
+.timeline-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.timeline-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.timeline-swatch {
+  width: 18px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.timeline-swatch[data-segment="wait"] {
+  background: var(--timeline-wait);
+}
+
+.timeline-swatch[data-segment="work"] {
+  background: var(--timeline-work);
+}
+
+.timeline-swatch[data-segment="open"] {
+  background: repeating-linear-gradient(
+    135deg,
+    var(--timeline-work) 0 4px,
+    transparent 4px 8px
+  );
+  border: 1px solid var(--timeline-work);
+}
+
+.timeline-swatch[data-segment="broken"] {
+  background: var(--durations-critical);
+}
+
+.timeline-chart {
+  position: relative;
+  padding: 8px 24px 0;
+}
+
+.timeline-axis-svg,
+.timeline-rows-svg {
+  display: block;
+  width: 100%;
+}
+
+.timeline-axis-tick {
+  stroke: var(--line-firm);
+  stroke-width: 1;
+}
+
+.timeline-axis-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--ink-faint);
+}
+
+/* The now-line runs the full height of the rows SVG as ONE node, redrawn with
+   the rows rather than positioned over them, so it cannot drift out of step
+   with the axis it belongs to. */
+.timeline-now-line {
+  stroke: var(--durations-critical);
+  stroke-width: 1.5;
+}
+
+.timeline-now-rule {
+  stroke: var(--durations-critical);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.7;
+}
+
+.timeline-scroll {
+  position: relative;
+  max-height: 58vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-top: 1px solid var(--line-soft);
+  cursor: grab;
+}
+
+.timeline-scroll.is-panning {
+  cursor: grabbing;
+}
+
+.timeline-row-hit {
+  fill: transparent;
+}
+
+.timeline-row:hover .timeline-row-hit,
+.timeline-row:focus .timeline-row-hit {
+  fill: var(--surface-2);
+}
+
+.timeline-row {
+  outline: none;
+}
+
+.timeline-row-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  fill: var(--ink-faint);
+}
+
+.timeline-segment-wait {
+  fill: var(--timeline-wait);
+}
+
+.timeline-segment-work {
+  fill: var(--timeline-work);
+}
+
+/* An open segment is hollow: it has an end on screen but not in fact, and a
+   solid cap would claim otherwise. */
+.timeline-segment.is-open {
+  fill-opacity: 0.35;
+  stroke: var(--timeline-work);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+}
+
+.timeline-segment-wait.is-open {
+  stroke: var(--timeline-wait);
+}
+
+.timeline-segment-broken {
+  fill: var(--durations-critical);
+}
+
+/* A cancelled REQ still consumed queue time, so it stays on the chart; it is
+   dimmed rather than hidden, because hiding it would make the wait segments
+   lie by omission. */
+.timeline-row.is-cancelled {
+  opacity: 0.45;
+}
+
+.timeline-hint,
+.timeline-readout {
+  padding: 8px 24px 0;
+  margin: 0;
+  font-size: 11px;
+  color: var(--ink-faint);
+  min-height: 16px;
+}
+
+.timeline-readout {
+  font-family: var(--font-mono);
+  color: var(--ink-soft);
+}
+
+.timeline-table {
+  padding: 12px 24px 24px;
+  font-size: 12px;
+}
+
+.timeline-table summary {
+  cursor: pointer;
+  color: var(--ink-soft);
+}
+
+.timeline-table-scroll {
+  max-height: 360px;
+  overflow: auto;
+  margin-top: 8px;
+}
+
+.timeline-table table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.timeline-table th,
+.timeline-table td {
+  text-align: left;
+  padding: 4px 10px 4px 0;
+  border-bottom: 1px solid var(--line-soft);
+  white-space: nowrap;
+}
+
+.timeline-table th {
+  color: var(--ink-faint);
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  background: var(--surface-1);
 }

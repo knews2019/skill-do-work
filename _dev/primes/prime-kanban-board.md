@@ -26,3 +26,4 @@
 - [REQ-207: isolate active HTML by folder origin, capture addenda before implementation, and commit before hand-back](../../do-work/archive/UR-046/REQ-207-render-html-file-mentions-as-folder-aware-previews.md#lessons-learned)
 - [REQ-219: ship a rule's verdict in the payload so a second reader cannot become a second definition](../../do-work/archive/UR-050/REQ-219-board-durations-view.md#lessons-learned)
 - [REQ-226: decide a chart's label placement once, on the Go side, and verify the result by rendering it](../../do-work/archive/REQ-226-stop-durations-chart-overprinting-and-clipping.md#lessons-learned)
+- [REQ-227: a view that binds to persistent nodes owns its listener teardown; draw in pixels so a zoom has no scale to invalidate](../../do-work/archive/REQ-227-timeline-view-with-two-segment-req-bars.md#lessons-learned)
