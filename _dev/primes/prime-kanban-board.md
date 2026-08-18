@@ -28,3 +28,4 @@
 - [REQ-226: decide a chart's label placement once, on the Go side, and verify the result by rendering it](../../do-work/archive/REQ-226-stop-durations-chart-overprinting-and-clipping.md#lessons-learned)
 - [REQ-227: a view that binds to persistent nodes owns its listener teardown; draw in pixels so a zoom has no scale to invalidate](../../do-work/archive/REQ-227-timeline-view-with-two-segment-req-bars.md#lessons-learned)
 - [REQ-228: a forecast may be wrong about timing, never about order — take the ordering rule from the action that will actually claim next](../../do-work/archive/REQ-228-project-the-remaining-queue-onto-the-timeline.md#lessons-learned)
+- [REQ-232: describe the board by what its switcher covers, not by naming some of its tabs](../../do-work/archive/REQ-232-stop-shipped-prose-counting-the-boards-views.md#lessons-learned)

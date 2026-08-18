@@ -8,6 +8,13 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.207.2 — The Board Action Stops Counting Its Own Views (2026-08-18)
+
+`do-work-board board` described the board by listing some of its tabs — "a Kanban board + completion calendar", "a third view next to Board / Calendar". Both went stale as views were added, and one was already wrong before the Timeline arrived.
+
+- It now describes what the view switcher covers rather than naming two of five entries, so a sixth view needs no edit to that file at all
+- The Testing view is still called out by name where it matters, but for the reason it matters — it owns the board's only write surface and its only server API — rather than by its position in a list
+
 ## 0.207.1 — Downloads and Screenshots Check Where They Landed (2026-08-18)
 
 Two shipped helpers published a file and returned without checking it arrived. If the destination path happened to be a directory, `mv` and `ln` tuck the file inside it and exit zero, so both reported success for something that never happened.

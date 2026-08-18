@@ -1,6 +1,6 @@
 # Board Action
 
-> **Part of the do-work-board skill.** Builds and runs the shipped `queue-kanban` Go tool to render this repo's `do-work/` queue as a Kanban board + completion calendar. Invoked by `do-work-board board` / `do-work-board kanban`.
+> **Part of the do-work-board skill.** Builds and runs the shipped `queue-kanban` Go tool to render this repo's `do-work/` queue as an interactive HTML board — one page whose view switcher covers the queue's current state, its history, and its timing. Invoked by `do-work-board board` / `do-work-board kanban`.
 
 **Read-only toward the work pipeline.** The board never writes the pipeline's state — it never changes `status`, claims REQs, or moves files. It writes exactly three things: the compiled binary (gitignored); in `static` mode, a throwaway HTML artifact under `build/` (kept out of `git status` via a one-line `.git/info/exclude` entry — see Step 5); and, from the **Testing view** in `serve` mode only, the testing-track placeholders — the `testing_status` / `tested_by` / `testing_updated_at` / `testing_feedback` frontmatter fields of a REQ plus the `do-work/testers.md` profile list (see "Testing view" below). Those testing writes are the point: the Markdown files are the database of who tested what, with git as the history — there is deliberately no locking or concurrency control, because every write lands in the working tree where it can be reviewed and committed.
 
@@ -11,7 +11,7 @@ The tool is a standalone Go module that ships inside the skill at `tools/queue-k
 **Use when:**
 - The user says "board", "kanban", "show the queue", "queue board", or "visualize the queue".
 - The user wants a live board of pending/claimed/blocked/recently-done REQs (serve mode rebuilds from disk on every browser reload — refresh the page to see new state; it does not push updates to an open tab).
-- The user wants to track **who tested which finished REQ** — the board's Testing view (serve mode; linked from the Board/Calendar view toggle) lets a tester pick their profile, select a finished REQ to test, and mark it in-testing / tested / returned-with-feedback.
+- The user wants to track **who tested which finished REQ** — the board's Testing view (serve mode; reachable from the board's view switcher) lets a tester pick their profile, select a finished REQ to test, and mark it in-testing / tested / returned-with-feedback.
 - The user wants a shareable static HTML snapshot of queue state (`static` mode).
 - The user wants quick column counts without a browser (`summary` mode).
 - The user asks what's in flight / in progress / blocked right now and wants it in the terminal, not a browser tab (`open-work` mode — open count, claimed REQ titles, the status parking each needs-input REQ).
@@ -90,7 +90,7 @@ A pending or claimed card carries an `overlaps` badge naming the other pending/c
 
 ### Step 6: Testing view (serve mode, in-browser — nothing more for the agent to run)
 
-The served board's **Testing** view (a third view next to Board / Calendar) tracks who tested which finished REQ. It shows every terminal-success REQ (`completed` / `completed-with-issues` — plus any REQ that already carries a testing record, so records never vanish) in four columns: **Ready to test → In testing → Returned with feedback → Tested**. The user picks (or adds) a tester profile in the view's toolbar, then drives per-card actions; the browser POSTs to the live server's `/api/testing/*` endpoints, which write the record into the Markdown itself:
+The served board's **Testing** view — the only one that writes anything, and the only one with a server API behind it — tracks who tested which finished REQ. It shows every terminal-success REQ (`completed` / `completed-with-issues` — plus any REQ that already carries a testing record, so records never vanish) in four columns: **Ready to test → In testing → Returned with feedback → Tested**. The user picks (or adds) a tester profile in the view's toolbar, then drives per-card actions; the browser POSTs to the live server's `/api/testing/*` endpoints, which write the record into the Markdown itself:
 
 - REQ frontmatter placeholders: `testing_status: in-testing | tested | returned`, `tested_by`, `testing_updated_at`, and (while returned) `testing_feedback` — see `../do-work/actions/work-reference.md`'s Request File Schema.
 - Tester profiles: one `- Name` bullet per profile in `do-work/testers.md` (created on first use; hand-editable).
