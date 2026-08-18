@@ -123,7 +123,7 @@ Four independent status fields live in session state. They do not share a lifecy
 
 ## `session.json` Schema
 
-Session state lives at `./do-work/interview/<template>/session.json`. Every `*_at` value is the current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`). Full shape:
+Session state lives at `./do-work/interview/<template>/session.json`. Every `*_at` value is the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`). Full shape:
 
 ```json
 {
@@ -294,7 +294,7 @@ When the user invokes `do-work-knowledge interview <template>` and the existing 
 2. Create `./do-work/interview/<template>/versions/v<N>-<YYYY-MM-DD>/`.
 3. Copy the current `session.json`, the `checkpoints/` directory, and the `exports/` directory into that version folder.
 4. Delete the working `checkpoints/` and `exports/` contents (the versioned copy is now the only archive).
-5. Write a new empty `session.json` — fresh `session_id`, `template: <slug>`, `template_version: <current template version>` (read from the template file's frontmatter `version` field), `started_at: <now>`, `last_activity_at: <now>` (current UTC instant — Timestamp rule, `../do-work/actions/work-reference.md`), `status: in_progress`, `pending_layer: <first-layer-id>`, `previous_version: null`, `review_completed_at: null`, `review_runs: 0`, `last_exported_at: null`, `layers: {}`.
+5. Write a new empty `session.json` — fresh `session_id`, `template: <slug>`, `template_version: <current template version>` (read from the template file's frontmatter `version` field), `started_at: <now>`, `last_activity_at: <now>` (current UTC instant — Timestamp rule, `../../do-work/actions/work-reference.md`), `status: in_progress`, `pending_layer: <first-layer-id>`, `previous_version: null`, `review_completed_at: null`, `review_runs: 0`, `last_exported_at: null`, `layers: {}`.
 6. Append to `CHANGELOG.md`:
    ```
    ## <YYYY-MM-DD HH:MM> — fresh start: archived as v<N>
@@ -312,14 +312,14 @@ When the user invokes `do-work-knowledge interview <template>` and the existing 
 3. For each layer in declared order, walk each entry individually. For each entry in the prior session's `layers.<layer-id>.entries`:
    1. Display the entry verbatim (all fields).
    2. Prompt: `Still accurate? [confirm / edit / mark-stale / delete / skip]`
-   3. On `confirm`: set `source_confidence: confirmed`, update `last_validated_at: <now>` (current UTC instant — Timestamp rule, `../do-work/actions/work-reference.md`), leave all other fields unchanged.
-   4. On `edit`: enter an interactive edit — show current values, let the user override any field, produce a new checkpoint for this entry only, save after approval. Set `last_validated_at: <now>` (Timestamp rule, `../do-work/actions/work-reference.md`). Sets `any_edits = true`.
-   5. On `mark-stale`: set `status: stale`, update `last_validated_at: <now>` (Timestamp rule, `../do-work/actions/work-reference.md`). The entry remains but is flagged in exports. Sets `any_edits = true`.
+   3. On `confirm`: set `source_confidence: confirmed`, update `last_validated_at: <now>` (current UTC instant — Timestamp rule, `../../do-work/actions/work-reference.md`), leave all other fields unchanged.
+   4. On `edit`: enter an interactive edit — show current values, let the user override any field, produce a new checkpoint for this entry only, save after approval. Set `last_validated_at: <now>` (Timestamp rule, `../../do-work/actions/work-reference.md`). Sets `any_edits = true`.
+   5. On `mark-stale`: set `status: stale`, update `last_validated_at: <now>` (Timestamp rule, `../../do-work/actions/work-reference.md`). The entry remains but is flagged in exports. Sets `any_edits = true`.
    6. On `delete`: remove the entry from `layers.<layer-id>.entries`. Log the deletion with full prior content in the CHANGELOG. Sets `any_edits = true`.
    7. On `skip`: leave `last_validated_at` unchanged; the entry carries forward without revalidation.
 4. After walking all existing entries in a layer, offer to add new entries by running the layer's original prompts. New entries follow the normal interview flow (canonical entry contract, per-entry approval). Each addition sets `any_edits = true`.
 5. **Empty a layer.** If the user deletes every entry in a layer, the Interviewer proposes an empty layer with a short summary explaining why (e.g., "no standing dependencies this quarter"). The user explicitly approves the empty state. On approval, `layers.<layer-id>.entries` is set to `[]` and `approved_at` is refreshed. An empty layer still counts as approved and does not block `review` or `export`.
-6. Once all entries are processed in a layer, re-approve the layer as a whole — the layer-level approval gate still applies, now recording that the entry-level walk completed. Set `layers.<layer-id>.approved_at = <now>` (current UTC instant — Timestamp rule, `../do-work/actions/work-reference.md`).
+6. Once all entries are processed in a layer, re-approve the layer as a whole — the layer-level approval gate still applies, now recording that the entry-level walk completed. Set `layers.<layer-id>.approved_at = <now>` (current UTC instant — Timestamp rule, `../../do-work/actions/work-reference.md`).
 7. When the final layer is confirmed, set `status: complete`, `pending_layer: null`. **If `any_edits` is true**, also reset `review_completed_at = null` and `review_runs = 0` — the prior review covered a superseded version of the model, and the export gate must force the user back through the cross-layer contradiction pass before the next `export`. If every layer was re-confirmed without edits (`any_edits` stayed `false`), leave `review_completed_at` and `review_runs` untouched.
 8. Append to `CHANGELOG.md`, one entry per touched layer:
    ```
@@ -336,7 +336,7 @@ When the user invokes `do-work-knowledge interview <template>` and the existing 
 **Steps:**
 1. Determine next version number `<N>` and archive as in `fresh` (copy session + checkpoints + exports into `versions/v<N>-<YYYY-MM-DD>/`).
 2. Clear the working `checkpoints/` and `exports/`.
-3. Write a new empty `session.json` — same shape as `fresh` (including `template_version: <current template version>` and `last_activity_at: <now>` — current UTC instant, Timestamp rule, `../do-work/actions/work-reference.md`), except `previous_version: "v<N>"`.
+3. Write a new empty `session.json` — same shape as `fresh` (including `template_version: <current template version>` and `last_activity_at: <now>` — current UTC instant, Timestamp rule, `../../do-work/actions/work-reference.md`), except `previous_version: "v<N>"`.
 4. Append to `CHANGELOG.md`:
    ```
    ## <YYYY-MM-DD HH:MM> — versioned: archived as v<N>, new session seeded

@@ -51,7 +51,7 @@ The action loads templates from `<skill-root>/interviews/<name>.md`, runs a chec
 
 ## Locating the Template
 
-Templates live at `<skill-root>/interviews/<template>.md`. `<skill-root>` is the directory containing `SKILL.md` (same convention used by `../do-work/actions/version.md` and `actions/prompts.md`). There is no project-root fallback — adding or modifying a template means editing the file inside the skill install.
+Templates live at `<skill-root>/interviews/<template>.md`. `<skill-root>` is the directory containing `SKILL.md` (same convention used by `../../do-work/actions/version.md` and `actions/prompts.md`). There is no project-root fallback — adding or modifying a template means editing the file inside the skill install.
 
 If `<skill-root>/interviews/<template>.md` does not exist, list available templates (per the `list` sub-command) and stop with: `Template '<template>' not found. Run 'do-work-knowledge interview list' to see available templates.`
 
@@ -110,7 +110,7 @@ Create the directory structure:
 └── CHANGELOG.md
 ```
 
-Initial `session.json` — every `*_at` value is the current UTC instant (Timestamp rule, `../do-work/actions/work-reference.md`):
+Initial `session.json` — every `*_at` value is the current UTC instant (Timestamp rule, `../../do-work/actions/work-reference.md`):
 
 ```json
 {
@@ -162,7 +162,7 @@ For each layer in the template's declared order (starting from `pending_layer`):
 
 5. **Present and wait for approval.** Show the checkpoint contents to the user in-chat. Accepted confirmations: "save," "looks right," "confirmed," "approve," or semantic equivalents. Corrections: the user edits specific entries — regenerate the checkpoint and ask again. Never persist unconfirmed content.
 
-6. **Persist on approval.** Write approved entries to `session.json` under `layers.<layer-id>.entries[]`. Set `layers.<layer-id>.approved = true`, `layers.<layer-id>.approved_at = <now>`, `last_activity_at = <now>` (current UTC instant — Timestamp rule, `../do-work/actions/work-reference.md`). Update each entry's `last_validated_at`. Delete `./do-work/interview/<template>/checkpoints/.draft-<layer-id>.md` if present. Advance `pending_layer` to the next layer id (or `null` if this was the last layer — and flip `status` to `complete`).
+6. **Persist on approval.** Write approved entries to `session.json` under `layers.<layer-id>.entries[]`. Set `layers.<layer-id>.approved = true`, `layers.<layer-id>.approved_at = <now>`, `last_activity_at = <now>` (current UTC instant — Timestamp rule, `../../do-work/actions/work-reference.md`). Update each entry's `last_validated_at`. Delete `./do-work/interview/<template>/checkpoints/.draft-<layer-id>.md` if present. Advance `pending_layer` to the next layer id (or `null` if this was the last layer — and flip `status` to `complete`).
 
 7. **Append to CHANGELOG.** Add one line:
    ```
@@ -232,7 +232,7 @@ Runs the cross-layer contradiction pass. Requires all layers approved.
 
 5. **Both-are-true.** If the user picks `both-are-true`, append a short note to both affected entries' `constraints` list: e.g., `known tension with <other-entry-title>`. No re-approval needed.
 
-6. When every surfaced tension has a resolution (or was skipped), update `session.json`: set `review_completed_at = <now>` (current UTC instant — Timestamp rule, `../do-work/actions/work-reference.md`), increment `review_runs += 1`, update `last_activity_at`. Append one line to CHANGELOG:
+6. When every surfaced tension has a resolution (or was skipped), update `session.json`: set `review_completed_at = <now>` (current UTC instant — Timestamp rule, `../../do-work/actions/work-reference.md`), increment `review_runs += 1`, update `last_activity_at`. Append one line to CHANGELOG:
    ```
    ## <YYYY-MM-DD HH:MM> — review pass completed (run <review_runs>)
    <N> tensions surfaced, <M> resolved, <K> skipped.
@@ -254,7 +254,7 @@ Writes the template's declared export artifacts to `./do-work/interview/<templat
 
 1. **Freshness preflight.** Read `session.json.last_exported_at`. If non-null and `last_activity_at > last_exported_at`, announce: "Exports last written <last_exported_at>; session modified since at <last_activity_at>. Regenerating." If `last_exported_at` is `null`, this is the first export — proceed without announcement. Never block — this step only surfaces staleness. The stamp lives on `session.json`, not in `exports/`, so nothing ever lands in the exports directory that `ingest` could accidentally copy.
 
-2. **Stamp the export timestamp in-memory before rendering.** Set `session.last_exported_at = <now>` (current UTC instant — Timestamp rule, `../do-work/actions/work-reference.md`) as an in-memory value that the render step below will substitute into templates (e.g. `{{session.last_exported_at}}` in the USER/SOUL/HEARTBEAT/JSON export headers and in the ingest frontmatter `created:`). Do not write `session.json` yet — the file write happens in step 4 after the artifacts are on disk, so a crash mid-render does not leave a stamp pointing at a partial export.
+2. **Stamp the export timestamp in-memory before rendering.** Set `session.last_exported_at = <now>` (current UTC instant — Timestamp rule, `../../do-work/actions/work-reference.md`) as an in-memory value that the render step below will substitute into templates (e.g. `{{session.last_exported_at}}` in the USER/SOUL/HEARTBEAT/JSON export headers and in the ingest frontmatter `created:`). Do not write `session.json` yet — the file write happens in step 4 after the artifacts are on disk, so a crash mid-render does not leave a stamp pointing at a partial export.
 
 3. Read the template's `exports:` frontmatter. For each declared export:
    - Look up the render template in the template file's `## Export Templates` section — one block per export `path`. Per `actions/interview-reference.md` (Export Schemas), all per-export schemas live in the template file itself, not the reference.
