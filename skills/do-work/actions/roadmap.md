@@ -129,10 +129,12 @@ Render the report per the Output Format below. Lead with the actionable section 
 
 ## Output Format
 
+The report's `<timestamp>` is the current UTC instant (Timestamp rule, `actions/work-reference.md`).
+
 ```markdown
 # Roadmap
 
-**Scan date:** [timestamp]
+**Scan date:** <timestamp>
 **Scope:** [full | pending | in-progress | done | REQ-NNN | UR-NNN | since <date>]
 **Totals:** [N ready] · [N needs clarification] · [N blocked] · [N in-progress] · [N completed] · [N failed] · [N cancelled]
 **TDD posture (pending):** [N on] · [N eligible] · [N not applicable]
@@ -236,12 +238,12 @@ REQs whose Lessons Learned were captured but never staged — either the user ch
 
 The Suggested Next Steps list is **filtered** — emit only the items whose corresponding section had at least one entry. The numbering in the rendered report stays compact (1, 2, 3 … without gaps); the template above shows the canonical line per category.
 
-Omit sections with no entries. If the queue is empty and nothing is in-progress, report:
+Omit sections with no entries. If the queue is empty and nothing is in-progress, report — same `<timestamp>` stamping (Timestamp rule, `actions/work-reference.md`):
 
 ```markdown
 # Roadmap
 
-**Scan date:** [timestamp]
+**Scan date:** <timestamp>
 **Scope:** [scope]
 
 [If `do-work/notes.md` is non-empty: render the `## Notes` block here (per Step 0) — notes surface even when the queue is empty.]

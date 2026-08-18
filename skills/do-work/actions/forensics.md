@@ -210,10 +210,12 @@ Exit 0 means no findings. Exit 1 means findings were printed — **a finding, no
 
 ## Output Format
 
+The report's `<timestamp>` is the current UTC instant (Timestamp rule, `actions/work-reference.md`).
+
 ```markdown
 # Forensics Report
 
-**Scan date:** [timestamp]
+**Scan date:** <timestamp>
 **Queue:** [N pending, N completed/done (awaiting archive), N pending-answers]
 **Archive:** [N completed, N completed-with-issues, N failed, N cancelled]
 **Working:** [N in-progress]
@@ -249,12 +251,12 @@ Exit 0 means no findings. Exit 1 means findings were printed — **a finding, no
 [1-2 sentence recommendation based on findings]
 ```
 
-Omit sections with no findings. If everything is clean, report:
+Omit sections with no findings. If everything is clean, report — same `<timestamp>` stamping (Timestamp rule, `actions/work-reference.md`):
 
 ```
 # Forensics Report
 
-**Scan date:** [timestamp]
+**Scan date:** <timestamp>
 **Queue:** [N pending, N completed/done (awaiting archive), N pending-answers]
 **Archive:** [N completed, N failed]
 

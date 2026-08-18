@@ -298,7 +298,7 @@ When the user confirms, create REQ files using the standard format:
 id: REQ-NNN
 title: "Code review: [brief description]"
 status: pending
-created_at: [timestamp]
+created_at: <timestamp>   # current UTC instant (Timestamp rule, ../do-work/actions/work-reference.md)
 review_generated: true
 source: code-review
 scope: [prime file or directory that surfaced this]
