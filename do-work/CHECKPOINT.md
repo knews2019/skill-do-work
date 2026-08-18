@@ -1,8 +1,8 @@
 ---
-session_ended: 2026-08-18T14:07:35Z
-last_completed: REQ-244
-queue_state: 7 pending, 2 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
-reqs_processed_this_session: 5
+session_ended: 2026-08-18T21:06:10Z
+last_completed: REQ-255
+queue_state: 12 pending, 0 pending-answers, 0 blocked, 0 blocked-archive-collision, 0 blocked-dependency-cycle, 0 in-progress
+reqs_processed_this_session: 12
 session_depth: heavy
 ---
 
@@ -10,71 +10,66 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-
 ## Completed This Session
 
-- REQ-241: Reconcile the Durations label metrics with the rendered face (Route B) — commit `90c74b7`, shipped as **0.212.3**
-- REQ-243: Check that shipped markdown pointers actually resolve (Route B) — commit `37d7729`, shipped as **0.212.4**
-- REQ-245: Name fabricated stamps in the board's future-stamp warnings (Route A) — commit `23bad9d`, shipped as **0.212.5**
-- REQ-242: Stop Panel B's slowest-day annotation colliding with its title (Route B) — commit `48263dd`, shipped as **0.212.6**
-- REQ-244: Cite the Timestamp rule at every timestamp write site (Route C) — commit `f733365`, shipped as **0.212.7**
+Twelve REQs shipped, 0.212.8 through 0.212.19, each with an independent adversarial review:
 
-Every hash was confirmed with `record-commit-hash.sh --verify`. `maintainer-verify.sh` exits 0 at every commit boundary and on the final tree. All five ran as worktree builders in two waves; every worktree and `worktree-agent-*` branch was removed with `git worktree remove` / `git branch -d` (never `-D`), the worktrees parent directory is gone, and `git worktree list` shows only the main tree.
+- REQ-246: repair wrong queue/working timestamps from the session hook (Route C, 78%) — commit `270a2d0`, **0.212.9**
+- REQ-249: decide the cross-package citation path form and sweep (Route B, 97%) — `cc1083c`, **0.212.10**
+- REQ-248: anchor the Durations day buckets to UTC midnight (Route B, 96%) — `1cb897f`, **0.212.11**
+- REQ-251: retire the stale copies of the future-stamp message (Route A, 95%) — `96bb593`, **0.212.12**
+- REQ-250: close the remaining markdown link checker gaps (Route B, 97%) — `330797b`, **0.212.13**
+- REQ-247: archive timestamp audit tool driven by git commit times (Route C, 94%) — `4035ddc`, **0.212.14**
+- REQ-253: decide the Timestamp rule's two uncovered stamp shapes (Route A, 95%) — `0d8d629`, **0.212.15**
+- REQ-254: let qualify tell a check's own output from instrumentation (Route B, 91%) — `116eec6`, **0.212.16**
+- REQ-252: record the browser with every measured-face number (Route B, 97%) — `c752529`, **0.212.17**
+- REQ-256: disclose the session hook's queue write surface (Route A, 96%) — `fbc14e8`, **0.212.18**
+- REQ-255: give the timestamp repairer shape parity with the read-side detectors (Route B, 95%) — `84add20`, **0.212.19**
 
-**All five were reviewed independently and all five came back PASS-WITH-FINDINGS** (80%, 88%, 88%, 88%, 66%). Every one was remediated on its builder's own branch and re-merged before shipping. No REQ shipped on its first pass.
+Plus **0.212.8**, an environment fix committed before the queue run: the board's JavaScript behavior probes now reach Node on stdin instead of as an argv entry, because a probe embedding the assembled client exceeds Linux's 128 KiB per-argument limit. That failure made `maintainer-verify.sh` red on this checkout for a reason unrelated to any REQ.
+
+Every hash was confirmed with `record-commit-hash.sh --verify`. `maintainer-verify.sh` exited 0 at every commit boundary. All eleven worktrees and branches were removed with `git worktree remove` / `git branch -d` (never `-D`); the worktrees parent directory is gone and `git worktree list` shows only the main tree.
 
 ## Still Queued
 
-Nine, none claimed:
+Twelve, all `pending`, none claimed. Every one was answered by the user in a single `do-work clarify` session — there are no open questions anywhere in the queue.
 
-- **REQ-246** / **REQ-247** (pending): mechanical no-LLM timestamp repair — the SessionStart hook repairer and the git-commit-time archive auditor. REQ-247 depends on REQ-246. Captured before this session and deliberately left out of its assignment.
-- **REQ-248** (pending): anchor the Durations day buckets to UTC midnight. Panel B's leftmost bar sits in the axis gutter on this repository's own board, and a one- or two-day board renders Panel B **entirely off-canvas** (measured `x=-3330`). The highest-value item in the queue.
-- **REQ-249** (pending-answers): decide the cross-package citation path form. Two incompatible readings coexist; REQ-244 added eleven more in the prescribed form while the question stayed open.
-- **REQ-250** (pending): the four remaining markdown link-checker limits.
-- **REQ-251** (pending): two stale copies of the future-stamp message outside REQ-245's write set.
-- **REQ-252** (pending): record the browser with every measured-face number.
-- **REQ-253** (pending-answers): the two clock-write shapes the Timestamp rule governs with neither paragraph.
-- **REQ-254** (pending): let `qualify.sh` tell a check's own output from leftover instrumentation.
+- **REQ-257** — teach the repairer offset and fractional-second stamps (gated behind REQ-255, now satisfied)
+- **REQ-258** — split the shell behaviour suite per script (user chose the non-recommended branch)
+- **REQ-259** — retire the skill-root citation reading at its three unbackticked sites *(externally corroborated on PR #145)*
+- **REQ-260** — run the Go formatter as part of the canonical verify *(rescoped by the user from a one-character fix to the rule behind it)*
+- **REQ-261** — delete the date-only tripwire and keep the rule *(user settled the underlying question; see Decisions below)*
+- **REQ-262** — govern the prompt-kit templates' date headers
+- **REQ-263** — tighten qualify's ownership probe and make its WARN legible *(externally corroborated)*
+- **REQ-264** — make a disarmed P-A-U audit visible
+- **REQ-265** — raise the two under-bounding mark-label constants
+- **REQ-266** — name builds beside the JS renderer's measured face numbers (sweep key `durations-measured-face-constants-lack-provenance`)
+- **REQ-267** — close the two remaining repairer shape divergences (sweep key `repairer-detector-shape-parity`)
+- **REQ-268** — make the archive audit's clean answer trustworthy *(one instance externally reported, both orchestrator-reproduced)*
 
 ## Session Notes
 
-- **Every REQ this session shipped a mechanism that looked like it closed a class and closed only the instance.** This is the session's single finding, and it recurred five times independently. REQ-241's width constant was calibrated from a sweep that held one of two unbounded parameters fixed. REQ-243's heading walk relied on an invariant stronger than the one its fixture locked. REQ-242's "x-free" test sampled six x values, and a mutant banded on x reproduced the original defect **at the real board's own slowest-day position** while the suite stayed green. REQ-244's checker keyed on a literal bracket span containing one word, so it locked in exactly the drift it had removed. REQ-245's badge guard asserted a phrase was *absent*, and swapping the whole string for a wrong one passed. In every case the code was right and the net had a hole, and in three of the five the hole was precisely where the real data lives.
-
-- **The reviewers earned their cost this session; the builders' own evidence did not catch any of the five.** All five reviews were adversarial and all five found something real. Two findings were reproduced by mutation against the shipped code rather than argued from reading, which is what made them undeniable.
-
-- **A builder disproved the orchestrator's preferred fix with measurement, and was right.** REQ-241 was told to clamp the hour count so the label space would be finite. It measured that with hours clamped to `999h+`, a label carrying a five-digit id still exceeds the constant, because the id is the *other* unbounded parameter. (The measured worst-case labels are quoted in REQ-241's archived Lessons Learned; they are deliberately not repeated here, because a synthetic five-digit id in this file reads to `queue-kanban verify` as a REQ that does not exist.) It shipped an amortization argument instead — only digits repeat without limit, every wide fixed character is amortized away, so per-character width converges to a pure digit run's 7.14 and cannot pass it. **"Complete sweep" is a property of the argument, not the sample size**: its first sweep was 10 000 strings and wrong, its second 280 800 and still would have been.
-
-- **The predicted merge conflict never happened, and a real one arrived where nothing was watching.** `generate_test.go` merged clean every time — three conflicts occurred last session and zero this one, because REQ-245 was steered to `timestamp_test.go` and REQ-242 was given sole ownership of the file for the wave. Instead REQ-241 and REQ-242 each measured the same 12px axis-title face on **different Chromium builds** (12.0372 vs 11.2300), rounded up, and declared the same constant in different files of one package. Git saw nothing — the edits never touched adjacent lines — and it surfaced as `redeclared in this block`. Resolved to the larger value inside the merge commit, and **both sides' tests were run by name** after resolving, not merely compiled.
-
-- **A measured face is per-browser, and the numbers we record are not portable.** REQ-241's D-03 budget of 1.364 units above Panel B's title measures **0.185 units** on Chromium 146 — still positive, still zero intersections, but roughly 7× thinner than recorded. That is REQ-252.
-
-- **A builder corrected its own record unprompted, and the correction was the point.** REQ-244's original hand-back quoted a GREEN transcript from a prototype under a sentence asserting it came from the committed checker. The committed checker printed nothing on success, so it could not have produced that line. In a REQ about agents writing values they did not read, that is the REQ's own failure mode appearing inside its evidence. The fix — make the check print its counts — then tripped `qualify.sh`'s debug-artifact scan, which is REQ-254.
-
-- **`qualify.sh` was overridden once, deliberately and on the record.** Its debug-artifact heuristic cannot distinguish a check's own success output from leftover instrumentation. The override is written into REQ-244 with the diff quoted, because an unrecorded override teaches the next reader that a qualify FAIL can be waved through.
-
-- **The environment failed mid-session and it was not the code.** `maintainer-verify.sh` failed with 36 `No space left on device` errors inside the installer probe. The volume is at 100% (263 MiB free of 123 GiB). Freed roughly 350 MB of this and prior sessions' scratch — including a 168 MB Chromium a reviewer downloaded and an **11 MB compiled `queue-kanban` binary a builder left in the source tree** (gitignored, so no git-hygiene failure, but it inflated every install-probe copy). Verify then exited 0 with zero space errors. **The machine still needs real space.**
-
-- **A builder can write outside its worktree without ever issuing a write.** The Playwright MCP drops a `.playwright-mcp/` directory into whatever it considers its working root, which was the main tree. It is gitignored and already held 36 files from sibling sessions. REQ-245's builder removed only its own two files by timestamp and left the rest — the correct call. The brief template now states this as an explicit exception rather than leaving builders to assume it.
-
-- **`queue-kanban verify` reports a live builder's worktree as `merged-worktree-leftover [fixable]`.** True and dangerous to act on: the branch tip is contained in HEAD because the orchestrator merged it, while the builder is still adding commits to it. Running `do-work cleanup` on that advice mid-remediation would delete live work.
-
-- **Estimator calibration this session:** five REQs, estimate vs actual active minutes — 35/28, 20/20, 5/48, 25/34, 55/32. Appended to `do-work/calibration-log.tsv`. The Route C estimate overshot again (55 vs 32), matching last session's pattern of both Route C estimates overshooting by roughly 2–3×. **REQ-245's 5/48 is the outlier and it is not an estimator failure** — it was estimated as trivial correctly, then had its scope widened twice by the orchestrator on the builder's own findings. A recalibration pass should exclude it or record why.
+- **The instance-versus-class failure recurred in nine of twelve REQs, and the two that beat it did the same thing.** REQ-250 and REQ-255 both grepped or fuzzed the *primitive* before declaring a class closed, and both found the real hole somewhere the instance list never pointed — REQ-250's in a different checker's copy of the same path logic, REQ-255's in a value shape (unterminated frontmatter fence) that no reviewer had contemplated. Every other REQ shipped a mechanism that looked complete and wasn't. **An instance list is a sample; the primitive is the class.**
+- **Three independent review channels found different things, and none was redundant.** The pipeline's own adversarial reviews found what execution reveals (mutation-falsifiability, fuzz corruption, class holes); the external automated reviewer on PR #145 found what fresh eyes reveal (calendar-impossible erasure, first-versus-last duplicate keys, a failing file walk reported as clean); the orchestrator's own re-reading found what bookkeeping reveals (a commit message claiming a P-A-U transcription that silently no-op'd). All three fired on work the other two had already passed.
+- **A gate can be silently disarmed by the shape of the file it audits.** Every review-generated REQ this session lacked the P-A-U block that qualify's debug-artifact check keys on, so half that gate was off for the REQs most likely to need it — and the false "transcription" claim in two commit messages went unnoticed until a reviewer armed the check by hand. REQ-264 makes that visible; the record was corrected in REQ-254's archived trail rather than by rewriting history.
+- **The environment needed real repair before any REQ could be judged.** Go 1.26.1, ShellCheck 0.11.0 and `just` were installed, and one pre-existing Linux-only test failure fixed, before the canonical gate could exit 0 at all. A red baseline is not a REQ's fault, but nothing downstream means anything until it's green.
+- **Estimator calibration:** twelve rows appended. Estimates ran 5–45 minutes against wall spans of 12–135, but the wall figures are inflated by server-side API failures (several builders were killed mid-run by 529s and resumed) and by serial integration queuing behind other REQs' reviews. Route A held closest; Route B and C overshot in the estimate and undershot in wall time. **Do not recalibrate from this session's spans** — they measure the harness, not the work.
+- **Concurrency held.** Four waves of two to three builders, disjoint write sets each time, zero merge conflicts and zero invisible collisions — the failure mode from the previous session (two REQs declaring the same constant in different files of one Go package) did not recur, because REQ-252 was gated behind REQ-248 rather than run beside it.
 
 ## Context Summary (heavy sessions only)
 
-**Read these fresh before starting; five REQs of carried-over assumptions are not reliable.**
+**Read these fresh before starting; twelve REQs of carried-over assumptions are not reliable.**
 
-- `_dev/primes/prime-kanban-board.md` — entry point for anything under `skills/do-work-board/tools/queue-kanban/`. Gained REQ-241, REQ-242 and REQ-245's lessons plus **one new convention**: a measured face is per-browser, so record the build beside the number and take the larger where two disagree.
-- `_dev/primes/prime-shell-commands.md` — gained REQ-243 and REQ-244.
-- `_dev/tests/contract-regressions.sh` — now carries the shape-keyed timestamp citation check, which prints `54 instant write sites cited, 17 date-only sites recognized` on every verify. A change in that count is signal.
-- `_dev/tests/shipped-package-reference-contract.sh` — now resolves markdown `#anchor` targets as well as paths, for 27 anchors across four packages.
+- `_dev/primes/prime-shell-commands.md` — gained REQ-246, 247, 250, 254 and 255's lessons. The load-bearing one: fix at the primitive and fuzz the value space.
+- `_dev/primes/prime-kanban-board.md` — gained REQ-248, 251 and 252's. Measured constants now name their browser build, held by a test.
+- `_dev/primes/prime-action-files.md` — gained REQ-249 and 253's. The citation convention changed this session: literal relative paths from the citing file's own directory, checked mechanically.
+- `_dev/tests/prescribed-shell-scripts-behavior.sh` — 42 named cases at session start, 64 now.
+- `_dev/tests/shipped-package-reference-contract.sh` — now also checks backticked cross-package citations in both topologies, and validates bare `#anchor` links.
 
 **Decisions with reach beyond their own REQ:**
 
-- **REQ-241 D-07: this is now the pattern for any constant modelling a rendered face.** State the supremum over the space, not the worst case of a sample; say what makes the sweep complete, next to the number; pin from both sides. A one-sided pin cannot distinguish "correct" from "equal to the last measurement" — which is exactly how 6.75 passed against a 6.71 reference.
-- **REQ-242: an exact structural check beats a bigger sweep when the claim is that an input is unused.** Its assertion reads the shipped function out of the generated page and requires the baseline expression to mention neither `dayCentreX` nor `medianMinutes` — that is what makes one measurement at one x a statement about every x. A sweep is still a sample; a band narrower than its spacing slips through.
-- **REQ-244 D-08: recognition broad, requirement narrow.** The detector recognizes any placeholder shaped like a value assigned to something that names a clock value or sits under an `*_at` key; only two spellings satisfy it. That split is what makes a checker both complete and enforcing, and it is why names and date-only sites are excluded **by shape rather than by exception** — no path list, no exempt-file list.
-- **REQ-245 D-04/D-07: the strict JavaScript behavior lane selects by name pattern, not by file or registry.** A `TestJavaScriptBehavior…` probe participates from any file in the package, so a "you may not touch `generate_test.go`" constraint never blocks JS behavior coverage.
-- **REQ-245: a message rendered in two languages needs the pairing made mechanical.** The Go constant and the JS constant are held together by a verbatim comparison that runs without Node; the rendered text is checked by a probe that drives the real code path. Asserting a phrase is *absent* is not a guard — it passed when the whole string was replaced.
-
-**Architectural note:** the board's Durations view now has three separately-pinned geometric guarantees — same-row label separation, label/mark clearance, and the annotation's baseline independence — and they are pinned by three different *kinds* of test (measured-constant assertion, live-DOM intersection, structural source inspection). Adding a fourth guarantee means choosing which kind fits, not copying whichever was written last.
+- **The Timestamp rule's date-only tripwire is a builder's prose, not a maintainer decision** — established during clarify by tracing it to the repository import. The user settled it: keep the rule, delete the "revisit if a second consumer appears" clause, add no date-only subcommand. Consumer count has no bearing on whether a shell one-liner suffices. That is REQ-261, and it is the model for any tripwire keyed on a count rather than a condition.
+- **REQ-255 D-04: duplicate stamp keys are repaired last-occurrence, not refused** — refusal would have made the SessionStart hook exit nonzero every session on a file the board renders fine. When a fix's two options are "match the read side" and "refuse loudly", an unattended path should not be the one that fails forever.
+- **REQ-254 D-02: printed output belongs to whoever owns the process exit** — the condition that separates a check's own reporting from leftover instrumentation. Its implementation (a whole-file text grep) is weaker than its statement, which is REQ-263.
+- **REQ-247 D-01: share by sourcing, not duplication** — the archive auditor holds zero predicate code of its own, which is why REQ-255's six-shape fix reached both tools in one edit. Verified by grep at review time, not assumed.
+- **REQ-252 D-01: hold a documentation convention with a vacuity-guarded test** — comments do not stay honest on their own; the test walks every Go file and fails a measured constant whose comment names no build.
