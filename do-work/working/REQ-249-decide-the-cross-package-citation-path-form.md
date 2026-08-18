@@ -101,6 +101,78 @@ Counts at capture, verified by REQ-244's review: 30 local-form citations in core
 - [ ] The answer states whether backticked cross-package pointers become mechanically checkable, and implements the check if the answer is yes.
 - [ ] `bash _dev/tests/maintainer-verify.sh` exits 0.
 
+## Implementation Summary
+
+**What was done:** Every backticked cross-package citation in shipped markdown now resolves as a real relative path from the citing file's own directory, in both source and installed topologies — 122 citations rewritten across 46 files, 19 already-correct ones untouched, depth derived per file (`../../` from `actions/`/`crew-members/`/`docs/`, `../../../` from `tools/queue-kanban/`). `_dev/primes/prime-action-files.md` § Cross-Referencing states the literal form as the rule, retires the skill-root-relative shorthand by name, exempts fenced template/example blocks, and points at the checker. The mechanical-checkability question is answered **yes and implemented**: `_dev/tests/shipped-package-reference-contract.sh` now verifies backticked cross-package citations in both topologies, reusing the existing CommonMark walk via a behavior-identical extraction refactor (`mask_block_code` / `inline_code_regions`), locked by the existing parser fixtures; against the pre-sweep tree it reports exactly the 122 swept citations.
+
+**Files changed (48, +319/−122):**
+- `_dev/primes/prime-action-files.md` (modified) — the literal rule stated in § Cross-Referencing
+- `_dev/tests/shipped-package-reference-contract.sh` (modified) — backticked-citation check + parser refactor + fixtures
+- `skills/do-work-board/actions/board.md` (modified) — citations swept to the literal form
+- `skills/do-work-board/docs/board-guide.md` (modified) — citations swept to the literal form
+- `skills/do-work-board/tools/queue-kanban/prime-do-kanban.md` (modified) — citations swept to the literal form
+- `skills/do-work-knowledge/actions/bkb.md` (modified) — citations swept to the literal form
+- `skills/do-work-knowledge/actions/dream.md` (modified) — citations swept to the literal form
+- `skills/do-work-knowledge/actions/interview-reference.md` (modified) — citations swept to the literal form
+- `skills/do-work-knowledge/actions/interview.md` (modified) — citations swept to the literal form
+- `skills/do-work-knowledge/actions/memory-reference.md` (modified) — citations swept to the literal form
+- `skills/do-work-knowledge/actions/memory.md` (modified) — citations swept to the literal form
+- `skills/do-work-knowledge/crew-members/anti-slop.md` (modified) — citations swept to the literal form
+- `skills/do-work-knowledge/crew-members/background-agents.md` (modified) — citations swept to the literal form
+- `skills/do-work-knowledge/crew-members/clear-questions.md` (modified) — citations swept to the literal form
+- `skills/do-work-knowledge/crew-members/maintenance.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/code-review.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/deep-explore-reference.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/deep-explore.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/inspect.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/install.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/maintainability-audit.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/note.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/present-work.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/quick-wins.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/stray-check.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/tidy-repo.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/ui-review.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/actions/validate-feedback.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/crew-members/anti-slop.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/crew-members/background-agents.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/crew-members/clear-questions.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/crew-members/coding-guardrails.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/crew-members/debugging.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/crew-members/maintenance.md` (modified) — citations swept to the literal form
+- `skills/do-work-toolbox/crew-members/security.md` (modified) — citations swept to the literal form
+- `skills/do-work/actions/capture-reference.md` (modified) — citations swept to the literal form
+- `skills/do-work/actions/capture.md` (modified) — citations swept to the literal form
+- `skills/do-work/actions/commit.md` (modified) — citations swept to the literal form
+- `skills/do-work/actions/forensics.md` (modified) — citations swept to the literal form
+- `skills/do-work/actions/kb-lessons-handoff.md` (modified) — citations swept to the literal form
+- `skills/do-work/actions/review-work.md` (modified) — citations swept to the literal form
+- `skills/do-work/actions/roadmap.md` (modified) — citations swept to the literal form
+- `skills/do-work/actions/work-reference.md` (modified) — citations swept to the literal form
+- `skills/do-work/actions/work.md` (modified) — citations swept to the literal form
+- `skills/do-work/crew-members/general.md` (modified) — citations swept to the literal form
+- `skills/do-work/crew-members/maintenance.md` (modified) — citations swept to the literal form
+- `skills/do-work/docs/prescribed-shell-primitives.md` (modified) — citations swept to the literal form
+- `skills/do-work/docs/standing-preferences.md` (modified) — citations swept to the literal form
+
+No serial-only file touched. Deliberately exempt: fenced template/example blocks (D-01), Markdown link syntax (REQ-243's checker), `<skill-root>/../` invocation forms.
+
+*Integrated by orchestrator from builder hand-back; merge range `e8c6f80..cc1083c`.*
+
+## Decisions
+
+Transcribed by the orchestrator from the builder hand-back:
+
+- **D-01 (DECIDE & STATE): fenced blocks are exempt from sweep and checker** — fenced occurrences are content destined for a consumer's files, not citations from the citing file; no single literal path is correct from their eventual location. Matches REQ-243's checker. Stated in the prime.
+- **D-02 (DECIDE & STATE): HTML comments are checked** — JIT_CONTEXT headers carry real citations; masking comments would leave a 12-citation hole exactly where the always-loaded instruction surface lives (the standing class-vs-instance warning's shape).
+- **D-03 (DECIDE & STATE): the core-package/queue-root name collision is a documented skip** — `do-work` names both the core package and the consumer queue root, so a span whose tail names no real package content is skipped; residual: a citation to a *deleted core* file is indistinguishable from a consumer-state example. The three other packages still catch deletions. Keyed on the collision condition, not a hand list.
+- **D-04 (DECIDE & STATE): first whitespace token is the path** — invocation spans resolve only the leading token, so argument placeholders never false-positive.
+- **D-05 (DECIDE & STATE): parser refactor over a second parser** — extracting `mask_block_code`/`inline_code_regions` from `strip_markdown_code` (fixtures prove identity) beats a parallel fence-walker that would drift.
+
+## Qualification
+
+Passed — 48 files verified in merge range `e8c6f80..cc1083c`, requirements traced (rule stated in `prime-action-files.md` § Cross-Referencing with per-file depth examples and the retired shorthand named; spot-resolved swept citations from `present-work.md` land on real files; checker present in the reference contract), P-A-U audited (sweep scripts stayed in session scratch, no stray binary, no debug artifacts in the merged diff). The 122-vs-140 count difference from the brief is explained and verified by the builder's condition-derived extent (fenced content and `<skill-root>/../` invocations are not citations under the decided rule).
+
 ## Pre-Flight
 
 **Git:** ✓ clean outside `do-work/`
