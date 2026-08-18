@@ -362,7 +362,7 @@ id: REQ-NNN
 title: "Review fix: [brief description]"
 status: pending
 domain: [same domain as the reviewed REQ]
-created_at: [timestamp]
+created_at: <timestamp>   # current UTC instant (Timestamp rule, actions/work-reference.md)
 user_request: [same UR as the reviewed REQ]
 addendum_to: [reviewed REQ id]
 review_generated: true
@@ -417,12 +417,12 @@ Follow-up REQs go in `do-work/queue/`. In orchestrated mode, the work loop picks
 
 ### Append to REQ File
 
-After generating the report, append a Review section to the REQ file:
+After generating the report, append a Review section to the REQ file — its `<timestamp>` is the current UTC instant (Timestamp rule, `actions/work-reference.md`):
 
 ```markdown
 ## Review
 
-**Overall: [X]%** | [timestamp]
+**Overall: [X]%** | <timestamp>
 
 | Dimension | Score |
 |-----------|-------|

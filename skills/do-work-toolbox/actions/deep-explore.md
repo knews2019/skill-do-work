@@ -247,7 +247,7 @@ Spawn a subagent with the Writer persona from `actions/deep-explore-reference.md
 3. `session/VISION_<concept>.md` — consolidated vision document (source of truth)
 4. `session/SESSION_SUMMARY.md` — session recap
 
-Update state.json: set `writer_status: "done"`, `status: "complete"`, `completed_at: <timestamp>`, `surviving_directions: <count of briefs produced>`, and `total_directions_explored: <count of all directions across all rounds>`. Verify all Writer outputs exist, then set the root `manifest.md` to `Status: synthesized`. This records that spawning is finished while presentation/promotion is still pending.
+Update state.json: set `writer_status: "done"`, `status: "complete"`, `completed_at: <timestamp>` (current UTC instant — Timestamp rule, `../do-work/actions/work-reference.md`), `surviving_directions: <count of briefs produced>`, and `total_directions_explored: <count of all directions across all rounds>`. Verify all Writer outputs exist, then set the root `manifest.md` to `Status: synthesized`. This records that spawning is finished while presentation/promotion is still pending.
 
 ---
 

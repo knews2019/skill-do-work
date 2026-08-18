@@ -333,7 +333,7 @@ Once every `working/` file has been recovered, taken over, or left alone as a re
 
 **State stays home.** **Every path under `do-work/` exists in the main tree only and is the orchestrator's** — the queue, `working/`, `CHECKPOINT.md` and `runs/` are examples of the rule, not its extent, so a directory added later is covered the moment it exists rather than when someone remembers to list it. Builders receive their REQ brief in the dispatch prompt and never read or write queue state from inside a worktree. Untracked files do not propagate into a new worktree, so on the common install (where `do-work/` is untracked) a builder simply finds nothing there. The trap is the other install: where a consumer **commits** `do-work/`, the worktree carries a *stale snapshot* of the queue as it stood at the branch point. Treat that snapshot as absent — never read a status from it, never write to it. Every claim, status flip, and archive move happens in the main tree, by the orchestrator.
 
-**Sole integrator.** The builder never writes the main tree or its branch, **with exactly one exception: its own `do-work/runs/work-<timestamp>/REQ-NNN-handback.md`**, reached by the absolute main-tree path the orchestrator hands it (the repo-relative trap below cuts both directions) and **never staged, committed, or merged** — it is an orchestrator-owned working file, not branch content. That is one path, derived from the builder's own REQ id: a sibling's hand-back, `manifest.md`, anything else under `do-work/runs/`, and every other main-tree path remain violations. The exception exists because the hand-back has to survive a dead transcript (`crew-members/background-agents.md`); without it the mandatory file has nowhere legal to go. It commits on its own branch and hands back its file manifest; the orchestrator merges. A shared file needing one line of wiring — a `<link>` in a shared template, a registry entry, an export barrel — is an **integration seam**: the builder hands back the exact line and where it goes, and the orchestrator applies it in the main tree **inside the merge commit** — step 3 of the hand-back sequence below, which is what keeps the seam inside this REQ's merge range. A builder that edits the seam itself writes the main tree the orchestrator alone owns.
+**Sole integrator.** The builder never writes the main tree or its branch, **with exactly one exception: its own `do-work/runs/work-<YYYY-MM-DD-HHMMSS>/REQ-NNN-handback.md`**, reached by the absolute main-tree path the orchestrator hands it (the repo-relative trap below cuts both directions) and **never staged, committed, or merged** — it is an orchestrator-owned working file, not branch content. That is one path, derived from the builder's own REQ id: a sibling's hand-back, `manifest.md`, anything else under `do-work/runs/`, and every other main-tree path remain violations. The exception exists because the hand-back has to survive a dead transcript (`crew-members/background-agents.md`); without it the mandatory file has nowhere legal to go. It commits on its own branch and hands back its file manifest; the orchestrator merges. A shared file needing one line of wiring — a `<link>` in a shared template, a registry entry, an export barrel — is an **integration seam**: the builder hands back the exact line and where it goes, and the orchestrator applies it in the main tree **inside the merge commit** — step 3 of the hand-back sequence below, which is what keeps the seam inside this REQ's merge range. A builder that edits the seam itself writes the main tree the orchestrator alone owns.
 
 **Merge, never rebase.** Integrate with `git merge --no-ff <branch>` (the full invocation, which adds `--no-commit` so the integration seam has somewhere to go, is step 2 of the hand-back sequence below). Rebasing rewrites the builder's commits, so `git branch -d` no longer recognizes the work as merged and the free merged-ness assertion below is destroyed. `--no-ff` also preserves the merge commit as the "integrated by orchestrator" provenance record.
 
@@ -624,7 +624,7 @@ The existence-verify check on the resolved path runs in Step 8 (post-move) — t
    id: REQ-NNN
    title: "Confirm: [brief description of the choice]"
    status: pending-answers
-   created_at: [timestamp]
+   created_at: <timestamp>   # current UTC instant (Timestamp rule, actions/work-reference.md)
    user_request: [same UR as the original REQ]
    addendum_to: [original REQ id]
    builder_decided: true
@@ -890,7 +890,7 @@ This ensures the `commit:` field in the archived REQ contains the real implement
 
 ```markdown
 ---
-session_ended: [timestamp]
+session_ended: <timestamp>   # current UTC instant (Timestamp rule, actions/work-reference.md)
 last_completed: REQ-NNN
 queue_state: [N pending, N pending-answers, N blocked, N blocked-archive-collision, N blocked-dependency-cycle, N in-progress]
 reqs_processed_this_session: N

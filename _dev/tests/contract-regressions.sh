@@ -1373,6 +1373,97 @@ if [ -n "$timestamp_command_copies" ]; then
   fail_count=$((fail_count + 1))
 fi
 
+# The other half of that same arrangement: because the rule's home is the ONLY place that spells a
+# clock command, every other stamp write site has to point at it, or an agent filling a template from
+# context never re-reads the rule. That is not hypothetical — three completed_at stamps were once
+# written by extrapolating the clock forward instead of reading it, and nothing at those sites said
+# otherwise (REQ-244). Two conditions, keyed on shape rather than on any list of files or sites:
+#
+#   1. Spelling. The rule recognizes exactly `<timestamp>` and `<now>`. A bracket-form placeholder
+#      naming a timestamp is a spelling no rule governs, so it is a regression wherever it appears.
+#   2. Citation. Every recognized placeholder carries `Timestamp rule` on its own line — or, when the
+#      site sits inside a fenced block whose lines are copied verbatim into a generated artifact, on
+#      the nearest non-blank line above that fence's opening delimiter. Those two positions are the
+#      only ones a reader of the site actually sees; a citation anywhere else in the file is not at
+#      the site. Fenced YAML takes the same-line form as a trailing comment (the capture-reference.md
+#      precedent), which is why the fence carve-out is a position, not an exemption.
+#
+# Placeholders that name a *directory* rather than a stamp are spelled with their own calendar form
+# (`work-<YYYY-MM-DD-HHMMSS>`), so nothing here needs a path exception. Date-only sites are a
+# different shape governed by the rule's own Date-only paragraph and are deliberately not swept into
+# the instant spelling. The zero-site guard is the anti-vacuity clause: if the recognized spellings
+# are ever renamed, this check must fail loudly rather than pass by matching nothing.
+if ! python3 - "$repo_root" <<'PY'
+import pathlib
+import re
+import sys
+
+root = pathlib.Path(sys.argv[1])
+failures = []
+
+recognized_placeholder = re.compile(r"<(?:timestamp|now)>")
+bracket_placeholder = re.compile(r"\[[^\]\n]*timestamp[^\]\n]*\]", re.IGNORECASE)
+rule_citation = re.compile(r"Timestamp rule")
+fence_delimiter = re.compile(r"^\s*(```|~~~)")
+
+stamp_site_count = 0
+for action_file in sorted(root.glob("skills/*/actions/*.md")):
+    relative_path = action_file.relative_to(root).as_posix()
+    inside_fence = False
+    fence_marker = ""
+    fence_introduction = ""
+    last_nonblank_line = ""
+    for line_number, line in enumerate(
+        action_file.read_text(encoding="utf-8").splitlines(), start=1
+    ):
+        fence_match = fence_delimiter.match(line)
+        if fence_match:
+            marker = fence_match.group(1)
+            if not inside_fence:
+                inside_fence = True
+                fence_marker = marker
+                fence_introduction = last_nonblank_line
+            elif line.strip().startswith(fence_marker):
+                inside_fence = False
+                fence_marker = ""
+                fence_introduction = ""
+            if line.strip():
+                last_nonblank_line = line
+            continue
+
+        for bracket_match in bracket_placeholder.finditer(line):
+            failures.append(
+                f"{relative_path}:{line_number}: {bracket_match.group(0)} is a placeholder "
+                "spelling no rule governs; the Timestamp rule recognizes <timestamp> and <now>"
+            )
+        if recognized_placeholder.search(line):
+            stamp_site_count += 1
+            if not rule_citation.search(line) and not (
+                inside_fence and rule_citation.search(fence_introduction)
+            ):
+                failures.append(
+                    f"{relative_path}:{line_number}: stamp write site cites no Timestamp rule "
+                    f"on its own line or above its fence: {line.strip()[:110]}"
+                )
+        if line.strip():
+            last_nonblank_line = line
+
+if stamp_site_count == 0:
+    failures.append(
+        "no recognized stamp placeholder was found in any shipped action file — the "
+        "spellings this check keys on were renamed and it has gone blind"
+    )
+
+if failures:
+    raise SystemExit(
+        "timestamp citation failures:\n- " + "\n- ".join(failures)
+    )
+PY
+then
+  printf 'FAIL: a shipped stamp write site uses an ungoverned placeholder spelling or points at no Timestamp rule, so an agent filling it has nothing telling it to read a clock (REQ-244).\n' >&2
+  fail_count=$((fail_count + 1))
+fi
+
 timestamp_rule_block="$(sed -n '/^\*\*Timestamp rule —/,/^```yaml/p' "$core_root/actions/work-reference.md")"
 
 assert_block_contains \
