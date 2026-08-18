@@ -3,6 +3,7 @@ id: REQ-259
 title: Retire the skill-root citation reading at its three unbackticked sites
 status: completed
 completed_at: 2026-08-18T21:45:31Z
+commit: 4081c50
 claimed_at: 2026-08-18T21:16:24Z
 route: B
 created_at: 2026-08-18T18:07:48Z
