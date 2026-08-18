@@ -3,6 +3,7 @@ id: REQ-267
 title: Close the two remaining repairer shape divergences
 status: completed
 completed_at: 2026-08-18T23:39:58Z
+commit: f7441d7
 claimed_at: 2026-08-18T22:59:48Z
 route: B
 created_at: 2026-08-18T21:03:15Z
