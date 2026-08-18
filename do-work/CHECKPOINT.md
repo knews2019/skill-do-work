@@ -10,7 +10,6 @@ session_depth: heavy
 
 ## In Progress (interrupted)
 
-- REQ-247: Archive timestamp audit tool driven by git commit times — claimed 2026-08-18T18:25:40Z — writer: vm:/home/user/skill-do-work
 
 ## Completed This Session
 

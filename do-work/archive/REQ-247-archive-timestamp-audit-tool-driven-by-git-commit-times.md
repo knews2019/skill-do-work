@@ -1,9 +1,11 @@
 ---
 id: REQ-247
 title: Archive timestamp audit tool driven by git commit times
-status: claimed
+status: completed
 created_at: 2026-08-18T12:38:26Z
 claimed_at: 2026-08-18T18:25:40Z
+completed_at: 2026-08-18T19:11:56Z
+kb_status: pending
 route: C
 user_request: UR-056
 domain: general
@@ -81,6 +83,66 @@ Transcribed from the builder hand-back:
 ## Qualification
 
 Passed — 5 files verified in merge range `6268320..4035ddc` (4 builder + 1 seam), all six acceptance criteria traced (git-only proven by the blameless lock-in — file left byte-identical although a valid mtime existed; sourcing = zero duplicated logic; clamp pinned; same-commit amendment in `a6764fd`; no hooks touched; gate green), P-A-U audited. The known space-separated shape holes were probed and confirmed **pre-existing and shared, not copied** — recorded for REQ-255, whose fix now lands in both tools at once.
+
+## Review
+
+**Overall: 94%** | 2026-08-18T19:09:56Z
+
+| Dimension | Score |
+|-----------|-------|
+| Requirements | 97% |
+| Code Quality | 92% |
+| Test Adequacy | 88% |
+| Scope | 100% |
+| Risk | Low |
+| Acceptance | Pass |
+
+**Verdict: Approve** — git-author-time-only replacements, shared predicate by sourcing, deliberate invocation only, dry-run default, and the immutability amendment co-located in the tool's own commit; every core behavior reproduced by execution in scratch git repos.
+
+### Requirements Checklist
+
+- [x] **Git only; mtime never consulted for archives** — *reproduced*: stamp committed in commit A (known author date), body edited in commit B → repair wrote **A's** time; a dirty archive file with a valid mtime available was refused byte-identical, failure message naming git blame alone.
+- [x] **Shared predicate by sourcing** — the auditor contains no predicate/shape/clamp/guard code of its own (grep-verified); quoted-shape canonicalization works through the audit route.
+- [x] **Ordering clamp** — delivered, with one correctly-resolved internal tension recorded: when the derived commit time precedes the anchor, the floor clamps up to the predecessor, which can exceed the introducing commit's time — the two clauses are unsatisfiable together there; ordering wins, the audit line says `clamped to <anchor>`, and the shipped lock-in pins exactly this shape.
+- [x] **Same-commit amendment** — verified from git: `a6764fd` carries `capture.md` and the tool together; the seam landed in the merge commit itself, matching the trail.
+- [x] **Never hook-wired** — no reference under `hooks/`; hook path exercised against a scratch project: banner intact, mtime fallback still active for dirty queue files (the git-only switch does not leak), direct execution identical.
+- [x] **Dry-run default / `--fix`** — *reproduced*: report-only leaves bytes and exits 1 with a rerun hint; `--fix` writes, rerun clean, exit 0; arg/usage/missing-dir/symlinked-root edges all behave.
+- [x] **Audit trail with sourcing hash; no new frontmatter** — every correction line carries the 7-char hash or its annotation.
+- [x] **Deep-path + legacy scan** — nested UR folder and top-level legacy REQ both scanned in one run.
+- [x] **`maintainer-verify` exit 0** — observed un-piped at review end (52 named script cases).
+
+### Findings
+
+**Important:** None
+
+**Minor (report only, 3):**
+1. *(reproduced)* A **symlinked archive REQ file is silently skipped and counted scanned-clean** — safe direction holds (never write through a link), but silence-reads-as-clean is what the script's header refuses for the root case, and the "worker refuses symlinked files" comment overstates a silent `return 0`.
+2. *(reproduced)* The `${var:-default}` switches are an environment override surface: an exported `timestamp_repair_apply_mode=0` flips the hook repairer to report-only, and in that leaked mode direct execution exits 0 with a defect unrepaired. Requires exporting those exact names — realistically inert.
+3. *(reproduced)* Mixed `--fix` run (one repairable + one blameless) writes the repairable file and exits 1 correctly per the header contract, but no lock-in pins that branch.
+
+**Pre-existing, not re-reported:** the space-separated / duplicate-key / calendar-impossible shapes behave through the audit path exactly as queued REQ-255's instances describe — inherited via the shared sourced code, not worsened; REQ-255's fix lands in both tools in one edit, as D-01 claims.
+
+**Restatement sweep:** capture.md ×3 amended with the "only exceptions; neither is a precedent" close; every other immutability statement is workflow-scoped and remains true; the orchestrator's seam closes the one borderline. Nothing stale.
+
+**Scope:** `scope-drift.sh` names only the orchestrator-applied seam file — not builder drift; the builder touched exactly its declared set.
+
+**Acceptance: Pass.** **Suggested testing:** lock in the mixed-run branch; voice the symlinked-archive skip; when REQ-255 lands, add one archive-path fixture per widened shape so shared-fix-reaches-both-tools is pinned, not assumed.
+
+**Follow-ups created:** None · **Sweeps appended to:** none by the reviewer (the both-tools pinning note threaded into REQ-255's requirements by the orchestrator)
+
+*Reviewed by review-work action (independent adversarial pass, orchestrated mode; merge range `6268320..4035ddc`)*
+
+## Lessons Learned
+
+**What worked:** Sharing by sourcing rather than a copied or third-file library — the reviewer verified by grep that the auditor holds zero predicate code, which is what turns REQ-255's future fix into a single edit that reaches both tools. The blameless lock-in that proves mtime is *never* a fallback (file left byte-identical although a valid mtime existed) is the strongest kind of negative evidence this suite has.
+
+**What didn't:** The ordering-clamp requirement's two clauses ("clamped to the anchor" and "no later than the introducing commit's time") are unsatisfiable together when the derived commit time precedes the anchor — the REQ text carried a latent contradiction nobody caught at capture or verify. Resolved in favor of ordering with a transparent audit annotation; a REQ stating two ceilings should state which one wins.
+
+**Worth knowing:** The library switches (`timestamp_repair_apply_mode`, `timestamp_repair_git_only`) read `${var:-default}`, so exported environment variables of those names override them — inert in practice, worth knowing before renaming. A symlinked archive REQ file is silently skipped and counted clean (review Minor 1). Mixed `--fix` runs write what they can and exit 1.
+
+## Orientation
+
+Now the archive can be audited and mechanically repaired — `scripts/audit-archive-timestamps.sh`, deliberate invocation only, git author times as the only truth source, dry-run by default — and the archive-immutability rule names this as its second and final bounded exception. Lives in core's `scripts/` subsystem as a sourcing consumer of the repairer library. [MAP CHANGED] — `repair-req-timestamps.sh` is now a shared library with two consumers, and the immutability rule has a stated exception set. Prime staleness spot-check: `prime-shell-commands.md` paths still resolve; not stale.
 
 ## Constraints
 

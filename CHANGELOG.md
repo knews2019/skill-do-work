@@ -8,6 +8,14 @@ What's new, what's better, what's different. Most recent stuff on top.
 
 ---
 
+## 0.212.14 — Archive Timestamps Get a Git-Driven Audit Tool (2026-08-18)
+
+The archive can now be audited and mechanically repaired — deliberately, never from a hook.
+
+- New `scripts/audit-archive-timestamps.sh`: scans `do-work/archive/` at any depth for the same detectably-wrong-stamp predicate the session-start repairer uses, deriving every replacement from the introducing commit's author time — file mtimes are never consulted for committed archive content. Report-only by default (exit 1 on findings), `--fix` writes through the full guard set.
+- The repairer became a sourceable library, so the two tools share one predicate, shape recognizer, clamp, and guard path — a future shape fix lands in both at once.
+- The archive-immutability rule in `actions/capture.md` names mechanical timestamp repair as its second and final bounded exception, amended in the same commit as the tool.
+
 ## 0.212.13 — Link Checker Validates Bare Anchors and Refuses Path Escapes (2026-08-18)
 
 The shipped-reference checker closes two of its four known limits and states the other two so they cannot drift.

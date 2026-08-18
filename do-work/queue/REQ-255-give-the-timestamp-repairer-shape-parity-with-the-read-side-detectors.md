@@ -49,4 +49,5 @@ Both findings come from REQ-246's independent review, reproduced by execution ag
 
 - No board-detectable shape is ever half-rewritten: each instance is either repaired to the canonical form or refused byte-identical, and every refusal is documented in the script header next to the D-04 entry.
 - Lock-in cases in `_dev/tests/prescribed-shell-scripts-behavior.sh` for each instance, in whichever direction it resolves — the unquoted space-separated mangle case is mandatory.
+- Each widened or refused shape gets a fixture through BOTH scan scopes (queue/working via the repairer, archive via `audit-archive-timestamps.sh`), so the shared-fix-reaches-both-tools property is pinned rather than assumed (REQ-247 review).
 - `bash _dev/tests/maintainer-verify.sh` exits 0.
