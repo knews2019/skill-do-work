@@ -223,10 +223,12 @@ func TestCleanSyntheticTreeHasNoCompletionAnomalies(t *testing.T) {
 }
 
 // A parsed completed_at strictly before a parsed claimed_at is a reversed
-// span — impossible for stamps written in order (REQ-213; archived REQ-091 is
-// the real-data case: one stamp was local wall-clock written with a Z suffix).
-// The frontmatter-parsed path previously short-circuited as never-anomalous,
-// which let the reversal render as a normal card.
+// span — impossible for stamps written in order (REQ-213). Both real-data cases
+// futureStampCauseClause names have now been seen: archived REQ-091 was local
+// wall-clock written with a Z suffix, and REQ-244/REQ-245 came from stamps
+// extrapolated forward instead of read from the clock. The frontmatter-parsed
+// path previously short-circuited as never-anomalous, which let the reversal
+// render as a normal card.
 func TestNegativeClaimedToCompletedSpanFlagged(t *testing.T) {
 	ticket := &RequestTicket{
 		RequestId:            "REQ-9320",
