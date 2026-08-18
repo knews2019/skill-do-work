@@ -250,22 +250,47 @@ func denseOverflowTickets(sampleCount int) []*RequestTicket {
 	return tickets
 }
 
-// labelledDurationSpans returns each placed label's occupied x-interval, per row,
-// for one band — the geometry an overlap check needs.
-func labelledDurationSpans(aggregate DurationAggregate, bandName string) map[int][][2]float64 {
+// placedDurationLabel is one drawn label's occupied x-interval together with the
+// sample it belongs to: the geometry an overlap check needs, plus the magnitude
+// a "was this span passed over for a shorter one" check needs.
+type placedDurationLabel struct {
+	requestId string
+	magnitude float64
+	spanLeft  float64
+	spanRight float64
+}
+
+// placedDurationLabelsByRow returns one band's drawn labels grouped by text row.
+// It is the tests' single definition of where a drawn label actually sits, so no
+// assertion below re-derives that geometry for itself.
+func placedDurationLabelsByRow(aggregate DurationAggregate, bandName string) map[int][]placedDurationLabel {
 	rangeStart, rangeEnd, _ := durationLabelTimeRange(aggregate.Samples)
-	spansByRow := map[int][][2]float64{}
+	placedByRow := map[int][]placedDurationLabel{}
 	for _, sample := range aggregate.Samples {
 		if durationLabelBandOf(sample) != bandName || sample.LabelRow == durationsLabelRowUnplaced {
 			continue
 		}
 		markX := durationLabelPlotX(sample.CompletionTime, rangeStart, rangeEnd)
 		textWidth := durationLabelWidthUnits(sample)
-		span := [2]float64{markX + durationsLabelGapUnits, markX + durationsLabelGapUnits + textWidth}
-		if sample.LabelAnchor == "end" {
-			span = [2]float64{markX - durationsLabelGapUnits - textWidth, markX - durationsLabelGapUnits}
+		spanLeft, spanRight, _ := durationLabelSpan(markX, textWidth, sample.LabelAnchor, durationsPlotWidthUnits)
+		placedByRow[sample.LabelRow] = append(placedByRow[sample.LabelRow], placedDurationLabel{
+			requestId: sample.RequestId,
+			magnitude: math.Abs(sample.WallMinutes),
+			spanLeft:  spanLeft,
+			spanRight: spanRight,
+		})
+	}
+	return placedByRow
+}
+
+// labelledDurationSpans returns each placed label's occupied x-interval, per row,
+// for one band — the geometry an overlap check needs.
+func labelledDurationSpans(aggregate DurationAggregate, bandName string) map[int][][2]float64 {
+	spansByRow := map[int][][2]float64{}
+	for rowIndex, placedLabels := range placedDurationLabelsByRow(aggregate, bandName) {
+		for _, placed := range placedLabels {
+			spansByRow[rowIndex] = append(spansByRow[rowIndex], [2]float64{placed.spanLeft, placed.spanRight})
 		}
-		spansByRow[sample.LabelRow] = append(spansByRow[sample.LabelRow], span)
 	}
 	return spansByRow
 }
@@ -477,42 +502,135 @@ func variedOverflowTickets(sampleCount int) []*RequestTicket {
 	return tickets
 }
 
+// durationLabelRowRightEdge mirrors placement's own right-edge rule: the band's
+// last row gives up durationsLabelRemainderReserveUnits to the remainder
+// sentence, and only when there IS a remainder to print. A check that ignored
+// the reservation would call the reserved strip "free space".
+func durationLabelRowRightEdge(rowIndex int, band DurationLabelBand) float64 {
+	if band.HiddenCount > 0 && rowIndex == durationsLabelRowCount-1 {
+		return durationsPlotWidthUnits - durationsLabelRemainderReserveUnits
+	}
+	return durationsPlotWidthUnits
+}
+
+// durationLabelSpansConflict reports whether two x-intervals on one row come
+// closer than the separation the rule demands.
+func durationLabelSpansConflict(firstLeft float64, firstRight float64, secondLeft float64, secondRight float64) bool {
+	return firstLeft < secondRight+durationsLabelSeparationUnits &&
+		secondLeft < firstRight+durationsLabelSeparationUnits
+}
+
+// assertDurationLabelPriority is the band-level statement of "labels go to the
+// longest spans", written so it holds however many labels the rows end up
+// carrying. For every sample that got none, every row/anchor slot its text could
+// legally occupy must be blocked by a drawn label AT LEAST AS LONG as it. Two
+// distinct defects fail it: a free slot means the rows stopped short of what they
+// hold, and a slot blocked only by shorter labels means a short span took a long
+// span's place, which is the left-edge first-fit sampling REQ-231 removed.
+func assertDurationLabelPriority(t *testing.T, aggregate DurationAggregate, bandName string, band DurationLabelBand) {
+	t.Helper()
+	rangeStart, rangeEnd, _ := durationLabelTimeRange(aggregate.Samples)
+	placedByRow := placedDurationLabelsByRow(aggregate, bandName)
+	for _, sample := range aggregate.Samples {
+		if durationLabelBandOf(sample) != bandName || sample.LabelRow != durationsLabelRowUnplaced {
+			continue
+		}
+		markX := durationLabelPlotX(sample.CompletionTime, rangeStart, rangeEnd)
+		textWidth := durationLabelWidthUnits(sample)
+		magnitude := math.Abs(sample.WallMinutes)
+		for rowIndex := 0; rowIndex < durationsLabelRowCount; rowIndex++ {
+			rowRightEdge := durationLabelRowRightEdge(rowIndex, band)
+			for _, anchor := range []string{"end", "start"} {
+				spanLeft, spanRight, anchorFits := durationLabelSpan(markX, textWidth, anchor, rowRightEdge)
+				if !anchorFits {
+					continue
+				}
+				longestBlocker := math.Inf(-1)
+				blockerId := ""
+				for _, placed := range placedByRow[rowIndex] {
+					if !durationLabelSpansConflict(spanLeft, spanRight, placed.spanLeft, placed.spanRight) {
+						continue
+					}
+					if placed.magnitude > longestBlocker {
+						longestBlocker = placed.magnitude
+						blockerId = placed.requestId
+					}
+				}
+				if blockerId == "" {
+					t.Fatalf("%s band: %s (%.0f min) carries no label, but row %d anchor %q is free at [%.0f, %.0f] — the rows stopped short of what they hold",
+						bandName, sample.RequestId, sample.WallMinutes, rowIndex, anchor, spanLeft, spanRight)
+				}
+				if longestBlocker < magnitude {
+					t.Fatalf("%s band: %s (%.0f min) was passed over on row %d anchor %q, blocked only by shorter labels (longest blocker %s at %.0f min) — labels are not going to the longest spans",
+						bandName, sample.RequestId, sample.WallMinutes, rowIndex, anchor, blockerId, longestBlocker)
+				}
+			}
+		}
+	}
+}
+
+func labelledDurationSampleCount(aggregate DurationAggregate, bandName string) int {
+	labelledCount := 0
+	for _, sample := range aggregate.Samples {
+		if durationLabelBandOf(sample) == bandName && sample.LabelRow != durationsLabelRowUnplaced {
+			labelledCount++
+		}
+	}
+	return labelledCount
+}
+
 // The lane's text answers "where are the outliers", so its labels must go to the
-// longest spans, not to whichever spans a left-to-right walk packed first. This
-// is REQ-231's Alternative-2 selection rule: at most durationsLabelTopCount
-// samples per band are candidates, chosen by magnitude, and every drawn label is
-// one of them.
+// longest spans, not to whichever spans a left-to-right walk packed first — the
+// rule REQ-231 introduced. REQ-231 spelt it as a fixed top-6 candidate set, which
+// REQ-237 replaced with a descending-magnitude walk that keeps going until the
+// rows are full; the invariant that survives both is the priority one, so this
+// asserts that rather than a candidate count.
 func TestOverflowLabelsGoToTheLongestSpans(t *testing.T) {
 	const overflowSampleCount = 40
 	aggregate := buildDurationAggregate(variedOverflowTickets(overflowSampleCount))
 
-	magnitudes := make([]float64, 0, overflowSampleCount)
-	for _, sample := range aggregate.Samples {
-		magnitudes = append(magnitudes, math.Abs(sample.WallMinutes))
-	}
-	sort.Sort(sort.Reverse(sort.Float64Slice(magnitudes)))
-	selectionFloor := magnitudes[durationsLabelTopCount-1]
+	assertDurationLabelPriority(t, aggregate, "overflow", aggregate.OverflowLabels)
 
-	labelledCount := 0
-	for _, sample := range aggregate.Samples {
-		if sample.LabelRow == durationsLabelRowUnplaced {
-			continue
-		}
-		labelledCount++
-		if math.Abs(sample.WallMinutes) < selectionFloor {
-			t.Fatalf("%s (%.0f min) carries a label but is not among the %d longest spans (floor %.0f min)",
-				sample.RequestId, sample.WallMinutes, durationsLabelTopCount, selectionFloor)
-		}
-	}
+	labelledCount := labelledDurationSampleCount(aggregate, "overflow")
 	if labelledCount == 0 {
-		t.Fatal("a top-N rule must still label something on a dense board")
-	}
-	if labelledCount > durationsLabelTopCount {
-		t.Fatalf("%d labels placed, but at most %d samples may be candidates", labelledCount, durationsLabelTopCount)
+		t.Fatal("the rule must still label something on a dense board")
 	}
 	if labelledCount+aggregate.OverflowLabels.HiddenCount != overflowSampleCount {
-		t.Fatalf("%d labelled + %d hidden ≠ %d — unselected samples must join the drawn remainder",
+		t.Fatalf("%d labelled + %d hidden ≠ %d — unlabelled samples must join the drawn remainder",
 			labelledCount, aggregate.OverflowLabels.HiddenCount, overflowSampleCount)
+	}
+}
+
+// The defect this pins (REQ-237): selection took the six longest spans and
+// placement then dropped whichever of them collided, with nothing offering the
+// freed space to the seventh. On a board where magnitude correlates with
+// completion time every candidate lands in the same crowded corner, so the two
+// rows drew 2 labels where they physically hold ten times that and the remainder
+// count carried all 38. The rows are a fixed budget; a dropped span's space
+// belongs to the next-longest span, not to nobody.
+func TestClusteredOverflowLabelsFillBothLabelRows(t *testing.T) {
+	const overflowSampleCount = 40
+	aggregate := buildDurationAggregate(variedOverflowTickets(overflowSampleCount))
+
+	// The fixture spaces its samples evenly across the plot, so one row's greedy
+	// capacity is arithmetic rather than a guess: a label needs its own width plus
+	// the separation clear, which is every Nth sample at that pitch. Two rows must
+	// carry at least what a single row holds — a deliberately slack floor, since
+	// the second row interleaves with the first.
+	widestLabelWidth := 0.0
+	for _, sample := range aggregate.Samples {
+		if durationLabelBandOf(sample) == "overflow" {
+			widestLabelWidth = math.Max(widestLabelWidth, durationLabelWidthUnits(sample))
+		}
+	}
+	sampleStrideUnits := durationsPlotWidthUnits / float64(overflowSampleCount-1)
+	samplesPerLabel := math.Ceil((widestLabelWidth + durationsLabelSeparationUnits) / sampleStrideUnits)
+	singleRowCapacity := 1 + int(float64(overflowSampleCount-1)/samplesPerLabel)
+
+	labelledCount := labelledDurationSampleCount(aggregate, "overflow")
+	if labelledCount < singleRowCapacity {
+		t.Fatalf("%d labels drawn across %d rows, but one row alone holds %d at this fixture's pitch — collided spans are not being backfilled",
+			labelledCount, durationsLabelRowCount, singleRowCapacity)
 	}
 }
 

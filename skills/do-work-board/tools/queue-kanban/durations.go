@@ -53,8 +53,8 @@ type DurationSample struct {
 
 	// Direct-label verdict, decided by planDurationLabels. LabelRow is the text
 	// row inside this sample's band, or durationsLabelRowUnplaced when the
-	// collision rule could not fit a label. LabelAnchor is the SVG text-anchor
-	// the placement assumed, "" when unplaced.
+	// collision rule could not fit a label beside this mark. LabelAnchor is the
+	// SVG text-anchor the placement assumed, "" when unplaced.
 	LabelRow    int
 	LabelAnchor string
 }
@@ -240,22 +240,14 @@ const (
 	// band is sparse — which is exactly when there is no remainder to print.
 	durationsLabelRemainderReserveUnits = 24 * durationsLabelCharacterWidthUnits
 
-	// At most this many samples per band are label candidates, chosen by
-	// magnitude (REQ-231, Alternative 2). The lane's text answers "where are
-	// the outliers", so it goes to the longest spans rather than to whichever
-	// spans a left-to-right walk happened to pack first; everything else is
-	// carried by the remainder count, the hover readout, and the table.
-	durationsLabelTopCount = 6
-
-	// LabelRow for a sample that carries no direct label — either selection
-	// did not pick it, or the collision rule could not place it.
+	// LabelRow for a sample the collision rule could not place.
 	durationsLabelRowUnplaced = -1
 )
 
 // DurationLabelBand is one direct-label band's verdict: how many of its samples
-// carry no label, whether selection did not pick them or the collision rule
-// could not place them. A nonzero count is drawn on the chart as a remainder, so
-// a reader can never mistake the visible labels for all of them.
+// carry no label because the collision rule could not fit one. A nonzero count is
+// drawn on the chart as a remainder, so a reader can never mistake the visible
+// labels for all of them.
 type DurationLabelBand struct {
 	HiddenCount int
 }
@@ -335,14 +327,16 @@ func durationLabelBandOf(sample DurationSample) string {
 	}
 }
 
-// planDurationLabels decides which samples get a direct label. Each band first
-// narrows to its durationsLabelTopCount longest spans — the lane's text answers
-// "where are the outliers", so it goes to superlatives rather than to whichever
-// spans a walk packed first — then packs its own rows: walk the candidates left
-// to right and give each the first row where its text touches nothing already
-// placed there. A sample that is not selected, or that fits nowhere, is counted
-// rather than drawn, and the renderer prints that count, so a reader can never
-// mistake the visible labels for all of them.
+// planDurationLabels decides which samples get a direct label. Each band packs
+// its own rows in DESCENDING MAGNITUDE order: the longest span is offered a row
+// first, and each span after it takes the first row where its text touches
+// nothing already placed. The lane's text answers "where are the outliers", so
+// the order is what sends it to superlatives — and because the walk simply keeps
+// going down that order until nothing more fits, a span the geometry rejects
+// frees its space to the next-longest span rather than to nobody (REQ-237,
+// amending REQ-231's fixed six-candidate selection). A sample that fits nowhere
+// is counted rather than drawn, and the renderer prints that count, so a reader
+// can never mistake the visible labels for all of them.
 func planDurationLabels(samples []DurationSample) (DurationLabelBand, DurationLabelBand) {
 	for index := range samples {
 		samples[index].LabelRow = durationsLabelRowUnplaced
@@ -357,71 +351,76 @@ func planDurationLabels(samples []DurationSample) (DurationLabelBand, DurationLa
 }
 
 // packDurationLabelBand runs the greedy pass, at most twice. The remainder
-// sentence needs room at row 0's right edge, but whether there IS a remainder is
+// sentence needs room at the LAST row's right edge (durationsLabelRemainderReserveUnits
+// says why there rather than the first), but whether there IS a remainder is
 // only known once placement has finished — so the first pass uses the full
 // width, and only a pass that actually dropped something is redone with the
 // reservation held back. A board with no remainder pays nothing for one.
 func packDurationLabelBand(samples []DurationSample, bandName string, rangeStart time.Time, rangeEnd time.Time) DurationLabelBand {
-	selected := selectDurationLabelCandidates(samples, bandName)
-	band := placeDurationLabelBand(samples, bandName, selected, rangeStart, rangeEnd, false)
+	labelOrder := durationLabelMagnitudeOrder(samples, bandName)
+	band := placeDurationLabelBand(samples, labelOrder, rangeStart, rangeEnd, false)
 	if band.HiddenCount == 0 {
 		return band
 	}
-	return placeDurationLabelBand(samples, bandName, selected, rangeStart, rangeEnd, true)
+	return placeDurationLabelBand(samples, labelOrder, rangeStart, rangeEnd, true)
 }
 
-// selectDurationLabelCandidates picks one band's label candidates: at most
-// durationsLabelTopCount sample indexes, by magnitude. The sort is stable over
-// completion order, so equal spans keep their left-to-right precedence and the
-// choice is deterministic on an archive full of identical durations.
-func selectDurationLabelCandidates(samples []DurationSample, bandName string) map[int]bool {
-	candidateIndexes := []int{}
+// durationLabelMagnitudeOrder lists one band's sample indexes longest span
+// first — the order placement offers rows in, and so the whole of the "labels go
+// to the outliers" rule. The sort is stable over completion order, so equal spans
+// keep their left-to-right precedence and the choice is deterministic on an
+// archive full of identical durations.
+func durationLabelMagnitudeOrder(samples []DurationSample, bandName string) []int {
+	labelOrder := []int{}
 	for index := range samples {
 		if durationLabelBandOf(samples[index]) == bandName {
-			candidateIndexes = append(candidateIndexes, index)
+			labelOrder = append(labelOrder, index)
 		}
 	}
-	sort.SliceStable(candidateIndexes, func(first, second int) bool {
-		return math.Abs(samples[candidateIndexes[first]].WallMinutes) >
-			math.Abs(samples[candidateIndexes[second]].WallMinutes)
+	sort.SliceStable(labelOrder, func(first, second int) bool {
+		return math.Abs(samples[labelOrder[first]].WallMinutes) >
+			math.Abs(samples[labelOrder[second]].WallMinutes)
 	})
-	if len(candidateIndexes) > durationsLabelTopCount {
-		candidateIndexes = candidateIndexes[:durationsLabelTopCount]
-	}
-	selected := make(map[int]bool, len(candidateIndexes))
-	for _, candidateIndex := range candidateIndexes {
-		selected[candidateIndex] = true
-	}
-	return selected
+	return labelOrder
 }
 
-// placeDurationLabelBand is one greedy left-to-right pass over a single band.
-// Samples arrive in completion order, so their x positions are non-decreasing
-// and a row's occupancy is fully described by how far right it already reaches.
+// durationLabelInterval is one placed label's occupied x-interval on a row.
+type durationLabelInterval struct {
+	spanLeft  float64
+	spanRight float64
+}
+
+// durationLabelSpanIsBlocked reports whether a candidate interval comes closer
+// than durationsLabelSeparationUnits to a label already on that row. The walk is
+// ordered by magnitude rather than by x, so a row's occupancy is no longer a
+// single "reaches this far right" number and every interval has to be consulted.
+func durationLabelSpanIsBlocked(occupied []durationLabelInterval, spanLeft float64, spanRight float64) bool {
+	for _, placed := range occupied {
+		if spanLeft < placed.spanRight+durationsLabelSeparationUnits &&
+			placed.spanLeft < spanRight+durationsLabelSeparationUnits {
+			return true
+		}
+	}
+	return false
+}
+
+// placeDurationLabelBand is one greedy pass over a single band, taking its
+// samples in the order given. Every sample the order names is offered a row, so
+// the pass stops only when the rows are full: a span the geometry rejects costs
+// the band nothing but its own label.
 func placeDurationLabelBand(
 	samples []DurationSample,
-	bandName string,
-	selected map[int]bool,
+	labelOrder []int,
 	rangeStart time.Time,
 	rangeEnd time.Time,
 	reserveRemainder bool,
 ) DurationLabelBand {
-	occupiedTo := make([]float64, durationsLabelRowCount)
-	for rowIndex := range occupiedTo {
-		occupiedTo[rowIndex] = math.Inf(-1)
-	}
+	occupied := make([][]durationLabelInterval, durationsLabelRowCount)
 
 	band := DurationLabelBand{}
-	for index := range samples {
-		if durationLabelBandOf(samples[index]) != bandName {
-			continue
-		}
+	for _, index := range labelOrder {
 		samples[index].LabelRow = durationsLabelRowUnplaced
 		samples[index].LabelAnchor = ""
-		if !selected[index] {
-			band.HiddenCount++
-			continue
-		}
 
 		markX := durationLabelPlotX(samples[index].CompletionTime, rangeStart, rangeEnd)
 		textWidth := durationLabelWidthUnits(samples[index])
@@ -430,26 +429,27 @@ func placeDurationLabelBand(
 			if reserveRemainder && rowIndex == durationsLabelRowCount-1 {
 				rowRightEdge -= durationsLabelRemainderReserveUnits
 			}
-			// Anchoring BEFORE the mark is tried first, and the preference is a
-			// packing decision rather than a stylistic one: this walk moves left
-			// to right, so a label drawn to the mark's left reuses space the walk
-			// has already passed, while one drawn to its right consumes space the
-			// next mark still needs. Anchoring after the mark is the fallback that
-			// keeps the leftmost sample labellable, since its own label would
-			// otherwise start off-plot. Neither is an alternation: both are
-			// geometric decisions about one specific label.
+			// Anchoring BEFORE the mark is tried first, with after-the-mark as the
+			// fallback that keeps the leftmost sample labellable, since its own
+			// label would otherwise start off-plot. REQ-231 chose that order as a
+			// packing decision — the walk ran left to right, so a label drawn to
+			// the mark's left reused space the walk had already passed. This walk
+			// runs by magnitude, so that argument no longer applies and the order
+			// is kept as a consistency one: a label sits on the same side of its
+			// mark unless the plot edge forbids it. Neither anchor is an
+			// alternation: both are geometric decisions about one specific label.
 			spanLeft, spanRight, anchorFits := durationLabelSpan(markX, textWidth, "end", rowRightEdge)
 			anchor := "end"
-			if !anchorFits || spanLeft < occupiedTo[rowIndex]+durationsLabelSeparationUnits {
+			if !anchorFits || durationLabelSpanIsBlocked(occupied[rowIndex], spanLeft, spanRight) {
 				spanLeft, spanRight, anchorFits = durationLabelSpan(markX, textWidth, "start", rowRightEdge)
 				anchor = "start"
 			}
-			if !anchorFits || spanLeft < occupiedTo[rowIndex]+durationsLabelSeparationUnits {
+			if !anchorFits || durationLabelSpanIsBlocked(occupied[rowIndex], spanLeft, spanRight) {
 				continue
 			}
 			samples[index].LabelRow = rowIndex
 			samples[index].LabelAnchor = anchor
-			occupiedTo[rowIndex] = spanRight
+			occupied[rowIndex] = append(occupied[rowIndex], durationLabelInterval{spanLeft: spanLeft, spanRight: spanRight})
 			break
 		}
 		if samples[index].LabelRow == durationsLabelRowUnplaced {

@@ -333,9 +333,10 @@
       );
     });
 
-    // Whatever carries no label is stated, never dropped in silence — samples
-    // selection passed over and samples placement could not fit alike: the
-    // count is what stops a reader taking the visible labels for all of them.
+    // Whatever carries no label is stated, never dropped in silence: the count
+    // is what stops a reader taking the visible labels for all of them. There is
+    // one cause again (REQ-237 removed top-N selection) — placement could not
+    // fit it.
     var durationLabelCounts = durations.labels || {};
     function drawDurationsRemainder(hiddenCount, bandRowY, remainderTail) {
       if (!hiddenCount) {
