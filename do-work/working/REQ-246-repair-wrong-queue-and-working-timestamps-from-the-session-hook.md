@@ -40,9 +40,9 @@ write_set:
 A core script that scans REQ files in `do-work/queue/` and `do-work/working/` for detectably wrong `*_at` stamps and rewrites them with a mechanically derived correct value — no agent judgment anywhere in the path. Wired into the SessionStart hook the way `scripts/cleanup-req-reservations.sh` already is, so repair happens before any agent or board render sees the file.
 
 ## AI Execution State (P-A-U Loop)
-- [ ] **[PLAN]:** (Agent: Read listed `prime_files` and agent rules. Write brief technical approach here. Do not write code yet.)
-- [ ] **[APPLY]:** (Agent: Code written exactly as planned. Scope strictly limited to planned files.)
-- [ ] **[UNIFY]:** (Agent: Run `git diff --stat` and review every changed file. Run native project linters. Verify no debug artifacts in diff. List each file you verified and what you checked.)
+- [x] **[PLAN]:** Read `_dev/primes/prime-shell-commands.md`, four crew files, exemplar `record-commit-hash.sh`, the cleanup script + hook + both test suites, and the board's skew-allowance code. Approach: one script, string-comparable canonical stamp keys, two mechanical defect predicates, file-state-decided replacement source, record-commit-hash-style guards, hook block cloned from the cleanup wiring. (Transcribed from builder hand-back.)
+- [x] **[APPLY]:** All writes confined to the four declared write-set files; board tool, action markdown and archive scope untouched. (Transcribed from builder hand-back.)
+- [x] **[UNIFY]:** `git diff --stat 67dae6b..HEAD` = 4 files, +716/-0, each reviewed; `shellcheck --severity=warning` clean on all four; no debug artifacts; working tree clean; no bare `go build` run. (Transcribed from builder hand-back.)
 
 ## Why (if provided)
 
@@ -128,6 +128,24 @@ See `do-work/user-requests/UR-056/input.md` for complete verbatim input.
 - [ ] A tripped guard leaves the file byte-identical and exits nonzero.
 - [ ] The repairer runs from the SessionStart hook and can also be invoked directly.
 - [ ] `bash _dev/tests/maintainer-verify.sh` exits 0.
+
+## Implementation Summary
+
+**What was done:** Built `skills/do-work/scripts/repair-req-timestamps.sh`, a POSIX-floor mechanical repairer for detectably wrong `*_at` stamps in `do-work/queue/` and `do-work/working/`: future stamps beyond the shared 2-minute skew allowance (any top-level `*_at` key — the suffix is the rule, not a field list) and impossible orderings among `created_at`/`claimed_at`/`completed_at`. Replacement source is file mtime when the file is dirty against HEAD (or untracked / no git), otherwise the introducing commit's author time via `git blame --line-porcelain`; derived values are clamped to `created_at ≤ claimed_at ≤ completed_at ≤ now`. Guard style follows `tools/checks/record-commit-hash.sh` (verify-before-replace, atomic same-directory rename, tripped guard leaves the file byte-identical, nonzero exit, one audit line per correction). Wired into `hooks/session-start.sh` alongside the reservation cleanup, presence-guarded so a partial install still prints the banner; also directly invocable.
+
+**Files changed:**
+- `skills/do-work/scripts/repair-req-timestamps.sh` (new) — detection, replacement derivation, ordering clamp, guarded atomic write, audit trail (573 lines)
+- `skills/do-work/hooks/session-start.sh` (modified) — invokes the repairer after the reservation cleanup, guarded the same way
+- `_dev/tests/prescribed-shell-scripts-behavior.sh` (modified) — five lock-in cases: future→mtime with logged correction, ordering clamp on both later fields, committed-file→blame author time incl. quoted stamps, clean fixture byte-identical, tripped guard byte-identical+nonzero
+- `_dev/tests/session-start-hook-behavior.sh` (modified) — hook-wiring probe: repair runs at session start, audit lines join the banner, partial-install cases unchanged
+
+**Deliberately untouched:** numeric-offset / fractional-second values (not provable without timezone arithmetic — D-04), nested keys like `estimate.calculated_at`, unparseable values, symlinks, and everything under `do-work/archive/` (REQ-247's territory).
+
+*Integrated by orchestrator from builder hand-back; merge range `e427aa1..270a2d0`.*
+
+## Qualification
+
+Passed — 4 files verified in the merge range `e427aa1..270a2d0` (573-line script is substantive, not placeholder), all six requirement clusters traced (skew-120s detection, file-state-decided replacement, record-commit-hash guard style, log-only audit trail, hook + direct invocation, queue+working scope), P-A-U audited against the diff (no debug artifacts; the script's success/audit lines are its contract output, not instrumentation). Orchestrator spot-check: the hook's `2>/dev/null` does not lose failure lines — the repairer prints FAILED lines to stdout by design (D-03), only the cannot-read-clock abort uses stderr.
 
 ## Pre-Flight
 
