@@ -308,10 +308,16 @@ func formatDurationLabelMinutes(minutes float64) string {
 	return sign + strconv.Itoa(hours) + "h " + strconv.Itoa(remainder) + "m"
 }
 
-// durationLabelTimeRange is the x-axis domain the renderer uses: first to last
-// completion instant across every sample, overflow and ordinary alike. Placement
-// has to share that domain or a label would be sized against a different plot
-// than the one it lands on.
+// durationLabelTimeRange is the x-axis domain the renderer uses. Placement has
+// to share that domain or a label would be sized against a different plot than
+// the one it lands on — TestJavaScriptBehaviorDurationsDayBucketsStayInsideThePlot
+// holds the two to one definition.
+//
+// The domain is anchored to whole UTC days (REQ-248): the first completion
+// floored to its UTC midnight, and the midnight AFTER the last completion. The
+// renderer's day buckets sit at their days' midnights, so a domain that began
+// at the first completion INSTANT put every bucket left of its samples — and
+// pushed Panel B off canvas entirely at one or two active days.
 func durationLabelTimeRange(samples []DurationSample) (time.Time, time.Time, bool) {
 	if len(samples) == 0 {
 		return time.Time{}, time.Time{}, false
@@ -326,6 +332,12 @@ func durationLabelTimeRange(samples []DurationSample) (time.Time, time.Time, boo
 			rangeEnd = sample.CompletionTime
 		}
 	}
+	// Truncate is UTC-midnight-aligned here because both instants are UTC and
+	// Go's civil time has no leap seconds. The end is unconditionally the NEXT
+	// midnight, so a completion at exactly 00:00 still gets its full day slot —
+	// mirroring the renderer's floor(end / day) * day + day.
+	rangeStart = rangeStart.UTC().Truncate(24 * time.Hour)
+	rangeEnd = rangeEnd.UTC().Truncate(24*time.Hour).Add(24 * time.Hour)
 	return rangeStart, rangeEnd, true
 }
 
