@@ -2,6 +2,14 @@
 
 What's new, what's better, what's different. Most recent stuff on top.
 
+## 0.212.25 — One Bound Per Face, Instead of Two That Disagreed (2026-08-18)
+
+Two constants in two files were measuring the same thing — the descent of the Durations mark-label face — and they disagreed, 2.41 against 2.8. That is the same shape that made two earlier board changes collide invisibly. There is now one.
+
+- The duplicate is deleted and the clearance test reads the surviving bound, so the effective bound rose rather than fell
+- The line-box bound moved 12.84 → 12.97 to match what a current Chromium actually draws, deliberately not padded past it, with its falsifier written beside it
+- Both guards were proven live by perturbation — a bound nothing would notice changing is not a bound
+
 ## 0.212.24 — A Broken Frontmatter Fence No Longer Gets Rewritten (2026-08-18)
 
 A REQ file whose opening `---` never closes reads as having no frontmatter at all to the board — but the startup timestamp repairer was scanning it to the end of the file and rewriting body prose. Worse, one variant made the repairer fail on every single session with nothing able to fix it. Both are gone.

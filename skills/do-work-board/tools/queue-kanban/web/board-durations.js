@@ -46,11 +46,14 @@
   var DURATIONS_LABEL_GAP = 9;
   // Row pitch is the label text box, never less. The 11px sans face's line box
   // measures 12.9631 user units on a current Chromium and 12.8343 on the build
-  // REQ-241 used — 10.19 above the baseline and 2.78 below on the former — and
-  // the box this file DECLARES rounds both up, to an ascent of 11 and (in
-  // durations_test.go) a descent of 2. So 13 is the binding number, and
+  // REQ-241 used — 10.1853 above the baseline and 2.7778 below on the former.
+  // The declared parts (an ascent of 11 here, a descent of 2 in
+  // durations_test.go) sum to 13, which clears that box by 0.037 — but the
+  // declared descent of 2 is deliberately UNDER the drawn one, which is why
+  // the clearance tests take math.Max against the measured constant rather
+  // than trusting the declared part. So 13 is the binding number, and
   // TestDurationsLabelRowPitchClearsTheLabelTextBox holds the pitch there
-  // against durationsMeasuredLabelBoxHeightUnits, now 12.97.
+  // against durationsMeasuredLabelBoxHeightUnits.
   // It stood at 12 until REQ-241: two rows of line box then intersected by 0.83
   // units, which was padding rather than ink — the render showed two clean rows
   // — but it made row-against-row separation unassertable.
